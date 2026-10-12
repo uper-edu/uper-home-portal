@@ -1,3 +1,4 @@
+import {crmMessageTimestamp,crmMessageTimeLabel,compareCrmEventTimes} from '../utils/crmMessageTime';
 import { LeadActivity, LeadPendingAction } from '../components/LeadAttention';
 import LeadTaskActions from '../components/LeadTaskActions';
 import NotificationCenter from '../components/NotificationCenter';
@@ -541,7 +542,7 @@ export default function CrmWorkbench() {
         .forEach((msg, idx) => {
           events.push({
             id: `chat-inquiry-${msg.id || idx}`,
-            timestamp: msg.timestamp || selectedLead.submittedAt,
+            timestamp: crmMessageTimestamp(msg) || '',
             category: 'engagement',
             actorType: 'client',
             actorName: selectedLead.fullName,
@@ -675,7 +676,8 @@ export default function CrmWorkbench() {
 
     // Sort all events by timestamp descending (newest at top), with logical secondary weight sorting when timestamps match
     return events.sort((a, b) => {
-      const timeDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      const timeDiff = compareCrmEventTimes(a,b);
+      if(!Number.isFinite(Date.parse(a.timestamp)) && !Number.isFinite(Date.parse(b.timestamp)))return 0;
       if (timeDiff !== 0) return timeDiff;
 
       const getWeight = (id: string) => {
@@ -3185,7 +3187,7 @@ export default function CrmWorkbench() {
 
                                   <span className={`font-mono text-[10.5px] flex items-center gap-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                                     <Clock className="w-3 h-3" />
-                                    {formatCrmDateTime(ev.timestamp)}
+                                    {ev.timestamp && Number.isFinite(Date.parse(ev.timestamp))?formatCrmDateTime(ev.timestamp):t('Unknown time','未知时间')}
                                   </span>
                                 </div>
 
@@ -3441,11 +3443,9 @@ export default function CrmWorkbench() {
                               <span className={`font-semibold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                 {msg.role === 'user' ? `👤 ${selectedLead.fullName}` : '🤖 UPER AI Advisor'}
                               </span>
-                              {msg.timestamp && (
-                                <span className="font-mono">
-                                  · {formatCrmDateTime(msg.timestamp)}
-                                </span>
-                              )}
+                              <span className="font-mono">
+                                · {crmMessageTimeLabel(msg,lang,formatCrmDateTime)}
+                              </span>
                             </div>
                             <div
                               className={`p-3 rounded-2xl max-w-[88%] text-xs leading-relaxed whitespace-pre-wrap ${

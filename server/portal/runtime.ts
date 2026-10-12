@@ -1,3 +1,4 @@
+import {normalizeCrmMessage} from '../../src/utils/crmMessageTime.ts';
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import type { Express, Request, Response } from "express";
 import {validWebhook} from "./notificationDelivery.ts";
@@ -405,10 +406,10 @@ export async function mountPortal(app: Express) {
       const e = await staff(req);
       const leads = (
         await pool.query(
-          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'source',c.source,'status',m.status) ORDER BY m.sequence) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
+          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'created_at',m.created_at,'source',c.source,'status',m.status,'error',m.error) ORDER BY m.sequence) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
         )
       ).rows
-        .map((r) => r.profile)
+        .map((r) => ({...r.profile,chatTranscript:(r.profile.chatTranscript || []).map(normalizeCrmMessage)}))
         .filter((p) => allowed(e, p))
         .filter(
           (p) =>
@@ -511,6 +512,7 @@ export async function mountPortal(app: Express) {
           [l.id],
         )
       ).rows;
+      const transcript = rows.map(normalizeCrmMessage);
       const tasks = (
         await pool.query("SELECT * FROM followup_tasks WHERE lead_id=$1", [
           l.id,
@@ -518,8 +520,8 @@ export async function mountPortal(app: Express) {
       ).rows;
       res.json({
         ...l.profile,
-        lead: { ...l.profile, chatTranscript: rows },
-        chatTranscript: rows,
+        lead: { ...l.profile, chatTranscript: transcript },
+        chatTranscript: transcript,
         tasks,
       });
     }),

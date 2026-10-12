@@ -57,6 +57,12 @@ export interface ChatTranscriptMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  timestampKnown?: boolean;
+  created_at?: string;
+  status?: string;
+  source?: string;
+  error?: string | null;
+  originalTimestamp?: unknown;
 }
 
 export interface LeadAttention {
