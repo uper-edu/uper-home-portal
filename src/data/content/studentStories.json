@@ -1,0 +1,113 @@
+[
+  {
+    "_createdAt": "2026-05-06T03:04:22Z",
+    "_id": "8e3e3e65-5d3c-4a28-8410-7ed2b92e0a1d",
+    "_rev": "nypLANVCk7FbrB0Tv2BRvO",
+    "_type": "studentStory",
+    "_updatedAt": "2026-05-06T03:13:37Z",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-82916a2e7514ce1b116f3069c87094422f6d1493-1280x1600-webp",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/82916a2e7514ce1b116f3069c87094422f6d1493-1280x1600.webp"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/82916a2e7514ce1b116f3069c87094422f6d1493-1280x1600.webp"
+    },
+    "name": "Zalwa Aldila",
+    "quote": "Kelas HSK di UPER terasa nyaman dan safe buat belajar Mandarin tanpa rasa takut. Environment-nya sangat suportif dan beginner-friendly. Laoshinya juga perhatian dan always checking on each of us apakah sudah mengerti atau belum. Teman-teman sekelasnya aktif dan bersemangat, jadi secara overall environment-nya terasa suportif dan enjoyable untuk belajar Mandarin. Highly recommended for anyone looking for an HSK course!",
+    "school": "Marketing Manager, PT AVO Innovation"
+  },
+  {
+    "_createdAt": "2026-05-06T07:00:08Z",
+    "_id": "aea0c15d-bfe0-472c-9ea8-0acc56132d76",
+    "_rev": "41WRVOEI9CW4fqRNomzdeK",
+    "_system": {
+      "base": {
+        "id": "aea0c15d-bfe0-472c-9ea8-0acc56132d76",
+        "rev": "0mVYhk3gBB5MO6HK2YLd64"
+      }
+    },
+    "_type": "studentStory",
+    "_updatedAt": "2026-07-12T22:39:45Z",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-38b6ccd967e1bffffb06cad25b888da7727c3d0e-1200x1599-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/38b6ccd967e1bffffb06cad25b888da7727c3d0e-1200x1599.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/38b6ccd967e1bffffb06cad25b888da7727c3d0e-1200x1599.jpg"
+    },
+    "name": "Thoriq Mahendra",
+    "quote": "Menurut saya, dengan harga 85k untuk beberapa pertemuan worth it. Harga yang terjangkau untuk beberapa siswa/i yang berminat untuk belajar mandarin.",
+    "school": "SMA Muhammadiyah 8 Ciputat "
+  },
+  {
+    "_createdAt": "2026-05-06T03:18:54Z",
+    "_id": "c97cc593-16db-4428-8e76-70e383c3f7a0",
+    "_rev": "oUmmebc2kiE1Ja5GIdqdTQ",
+    "_system": {
+      "base": {
+        "id": "c97cc593-16db-4428-8e76-70e383c3f7a0",
+        "rev": "nypLANVCk7FbrB0Tv2BcNm"
+      }
+    },
+    "_type": "studentStory",
+    "_updatedAt": "2026-05-06T07:00:06Z",
+    "name": "Damara Refalia",
+    "quote": "Menurut aku,Mandarin is really fun,dimana kek gak cuman belajar tapi ada games dan musik itu bikin kelasnya ga terlalu boring,dan untuk saat ini materinya lumayan,dan kita kek di ulang kembali apa yang sudah dipelajarin agar lebih mudah diingat,laoshi nya juga lumayan asikk dan seru.",
+    "school": "SMA Muhammadiyah 8 Ciputat "
+  },
+  {
+    "_createdAt": "2026-05-06T02:51:09Z",
+    "_id": "d655faa6-610b-4b7d-aa7b-c79bfc93db2b",
+    "_rev": "nypLANVCk7FbrB0Tv2CXyE",
+    "_system": {
+      "base": {
+        "id": "d655faa6-610b-4b7d-aa7b-c79bfc93db2b",
+        "rev": "nypLANVCk7FbrB0Tv2BAin"
+      }
+    },
+    "_type": "studentStory",
+    "_updatedAt": "2026-05-06T03:50:36Z",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-fc037a652275858f44bb61030dc48f2fe8623e85-1080x1080-webp",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/fc037a652275858f44bb61030dc48f2fe8623e85-1080x1080.webp"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/fc037a652275858f44bb61030dc48f2fe8623e85-1080x1080.webp"
+    },
+    "name": "Loew Alghivari",
+    "quote": "Buat aku yang sama sekali nggak punya basic bahasa Mandarin, kelas HSK di UPER ini beneran ngebantu banget! Belajarnya benar-benar dari nol dan bertahap. Laoshi-nya juga enak banget kalau ngejelasin dan selalu open buat ditanya-tanya kalau ada materi yang masih bingung. Suasana kelasnya juga hidup, jadi nggak bosenin sama sekali. Terus, di luar jam kursus, UPER rajin ngasih tugas yang ngebantu banget buat ngukur sejauh mana perkembangan bahasa Mandarin kita. Pokoknya worth it banget, give it a try!",
+    "school": "MA Al Muddatsiriyah"
+  },
+  {
+    "_createdAt": "2026-05-04T04:26:22Z",
+    "_id": "e58d4c75-4380-4c29-8322-322dd381fb4b",
+    "_rev": "nypLANVCk7FbrB0Tv2CXtu",
+    "_system": {
+      "base": {
+        "id": "e58d4c75-4380-4c29-8322-322dd381fb4b",
+        "rev": "nypLANVCk7FbrB0Tv25z6j"
+      }
+    },
+    "_type": "studentStory",
+    "_updatedAt": "2026-05-06T03:50:34Z",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-f87e5c3672ecb3c7feafda934ec367e922d48678-720x960-webp",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/f87e5c3672ecb3c7feafda934ec367e922d48678-720x960.webp"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/f87e5c3672ecb3c7feafda934ec367e922d48678-720x960.webp"
+    },
+    "name": "Riza Siti",
+    "quote": "Kelas HSK di UPER menurut aku asik, karena ada game-nya biar gak boring-boring amat, dan penjelasan-nya juga jelas banget bikin ngerti, dan ada praktik ngomong-nya juga itu yang bikin kita makin bisa, sejauh ini itu sih ka. Belajar-nya juga pelan-pelann gak ngebut jadi ya makin inget dan ngerti kitanya kak, dan juga ada pengulangan, itu yang ngebuat kita makin kuat dan ngerti dengan materi itu kak.",
+    "school": "MA Al Muddatsiriyah",
+    "videoUrl": "https://www.instagram.com/reel/DWyk3uvDnqU/?igsh=bzd4ZWEyYXo0aXlz"
+  }
+]

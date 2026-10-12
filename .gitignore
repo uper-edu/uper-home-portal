@@ -1,0 +1,14 @@
+node_modules/
+coverage/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+build/
+dist/
+.aistudio/
+
+# Runtime records and local migration backups
+/data/
+/.local-backups/

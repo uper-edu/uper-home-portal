@@ -1,0 +1,1052 @@
+[
+  {
+    "_createdAt": "2026-05-07T03:17:52Z",
+    "_id": "99591e53-b433-4975-a023-bb7fa1362067",
+    "_rev": "2CQM2S9k4KCu1HPV88BgIr",
+    "_system": {
+      "base": {
+        "id": "99591e53-b433-4975-a023-bb7fa1362067",
+        "rev": "2CQM2S9k4KCu1HPV854TEn"
+      }
+    },
+    "_type": "campaign",
+    "_updatedAt": "2026-05-07T08:59:25Z",
+    "content": [
+      {
+        "_key": "0bc55cc19fe1",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "260abe2aa741",
+            "_type": "span",
+            "marks": [],
+            "text": "Dalam rangka mendukung pengembangan pendidikan bahasa Tionghoa di luar negeri secara berkualitas tinggi, merespons kebutuhan strategi nasional, memanfaatkan keunggulan teknologi pendidikan Tiongkok, memperdalam jaringan kerja sama pendidikan internasional, serta mendorong integrasi mendalam antara kecerdasan buatan dan pendidikan, institusi kami akan menyelenggarakan program pelatihan bertajuk:"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "9bcb3ed5d3cc",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "ea3db3d4c5a9",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "ed0d71ff325c",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "3ac1e04d3151",
+            "_type": "span",
+            "marks": [],
+            "text": " “Pendidikan Bahasa Tionghoa & Guru Bahasa Tionghoa — Peningkatan Kompetensi Guru di Era Digital dan Pelestarian Budaya Tionghoa”"
+          }
+        ],
+        "level": 1,
+        "listItem": "number",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "300105d410a1",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "7025e0df06dd",
+            "_type": "span",
+            "marks": [],
+            "text": "Tanggal 25 Mei 2026 hingga 7 Juni 2026."
+          }
+        ],
+        "level": 1,
+        "listItem": "number",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "0db568334e58",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "aedeae8bd3ec",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "367d86ff7cd7",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "30ce06d21e6b",
+            "_type": "span",
+            "marks": [],
+            "text": "Program ini akan berbagi konsep mutakhir serta pengalaman praktis Tiongkok dalambidang pendidikan berbasis kecerdasan buatan (AI), guna membantu para guru bahasa Tionghoa mewujudkan transformasi digital dalam pembelajaran, sehingga dapat mendorong pengembangan pendidikan bahasa Tionghoa yang berkualitas tinggi dan berkelanjutandi wilayah masing-masing."
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "a64edb1beb2b",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "2d70ab830b4b",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "7c43f764d8ef",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "bc3c6519c923",
+            "_type": "span",
+            "marks": [],
+            "text": "Adapun informasi pendaftaran program adalah sebagai berikut: "
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "9aaebb922dd3",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "769713905844",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "fbfb02fd1a04",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "bc3c6519c923",
+            "_type": "span",
+            "marks": [],
+            "text": "1. "
+          },
+          {
+            "_key": "f7591b1f759d",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "Tema "
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "c5b54239662e",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "bc3c6519c923",
+            "_type": "span",
+            "marks": [],
+            "text": "Pendidikan Bahasa Mandarin · Guru Bahasa Mandarin Peningkatan kualitas kemampuan guru di era digital & budaya Tiongkok"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "7333f2ce3420",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "fd22f7ba22c0",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "923754b02900",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "19a54a09d00d",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "2. Waktu"
+          },
+          {
+            "_key": "b021984e7593",
+            "_type": "span",
+            "marks": [],
+            "text": " "
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "b676e31cbd26",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b021984e7593",
+            "_type": "span",
+            "marks": [],
+            "text": "25 Mei 2026 – 7 Juni 2026 "
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "f53a06513795",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b021984e7593",
+            "_type": "span",
+            "marks": [],
+            "text": "Pagi: 08.30–11.40 "
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "41e4895cdd55",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b021984e7593",
+            "_type": "span",
+            "marks": [],
+            "text": "Siang: 14.30–17.40 "
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "0c3f96c314bc",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b021984e7593",
+            "_type": "span",
+            "marks": [],
+            "text": "Daftar ulang: 25 Mei (seharian) "
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "1f2ed5da8919",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b021984e7593",
+            "_type": "span",
+            "marks": [],
+            "text": "Upacara Pembukaan: 26 Mei 08.00 "
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "679bc98dfb8b",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b021984e7593",
+            "_type": "span",
+            "marks": [],
+            "text": "Upacara Penutupan: 6 Juni 17.00"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "57e900d988f3",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "e6dfa80bb047",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "246a7b8ca320",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "457d3ad00a10",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "3. Tempat"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "0a00bdb06c0f",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "19ac0db31ee3",
+            "_type": "span",
+            "marks": [],
+            "text": "Kampus Utama Central China Normal University (Guangbutun)"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "b68aa7d21419",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "4dad8f2ff356",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "9f3bf0daafe6",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "767bb0a15625",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "4. Syarat pendaftaran"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "781df214ffa6",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "f8e2d7f8fedb",
+            "_type": "span",
+            "marks": [],
+            "text": "Guru bahasa Tionghoa yang sedang aktif mengajar di luar negeri, dalamkondisi sehat jasmani, tidak memiliki catatan kriminal, tidak menderita penyakit menular maupun penyakit serius seperti hipertensi berat, penyakit kardiovaskular atau serebrovaskular, serta gangguan mental; bukan penyandang disabilitas fisik, tidak dalam masa kehamilan, dan berusia tidak lebih dari 65 tahun."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "875da9f0cbad",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "8c1f10ca60cc",
+            "_type": "span",
+            "marks": [],
+            "text": "Setiap peserta dalam satu tahun hanya diperbolehkan mengikuti paling banyakduasesi pelatihan."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "0a6c7c80fb91",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "85302a8a2131",
+            "_type": "span",
+            "marks": [],
+            "text": "Untuk menjamin kualitas pelatihan, seluruh guru bahasa Tionghoa diwajibkan membawa laptop pribadi guna mendukung efektivitas pembelajaran dan pengalaman praktik."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "3e28160510e7",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "f5ea7461620a",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "6a38d224c06d",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "0d26f2b9d51a",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "5. Biaya"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "0f10226ad6d7",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "8b9ba5ef9c06",
+            "_type": "span",
+            "marks": [],
+            "text": "GRATIS (tidak bayar biaya pelatihan)"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "b371843b7fb0",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "79c90bb06ac4",
+            "_type": "span",
+            "marks": [],
+            "text": "Peserta tanggung biaya tiket pesawat internasional sendiri"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "6ab093de59e1",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "a0f37a7d713f",
+            "_type": "span",
+            "marks": [],
+            "text": "Makan & tempat tinggal selama pelatihan dibiayai penyelenggara"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "cffcd95f6045",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "3054aeaed69d",
+            "_type": "span",
+            "marks": [],
+            "text": "Biaya tambahan (datang awal/pulang lambat) tanggung sendiri"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "39f87cb609d2",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "f7f1dd9b04ef",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "c596d7614c35",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "667771c286c3",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "6. Cara pendaftaran"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "b0f16cfaec90",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "9b9dac99de40",
+            "_type": "span",
+            "marks": [],
+            "text": "Kirim formulir yang ditandatangani Kepala Sekolah/ Ketua Yayasan ke Whatsapp: 0813-1514-5384 (Zainul)"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "1b7c772ae8c1",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "6d6dbd207c21",
+            "_type": "span",
+            "marks": [],
+            "text": "Batas waktu: 13 Mei 2026"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "be6ada3e9b3f",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "4b2935b5d066",
+            "_type": "span",
+            "marks": [],
+            "text": "Pihak penyelenggara akan melakukan verifikasi dokumen berdasarkan data pendaftaran dan akan menghubungi peserta yang memenuhi syarat."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "f11fe917e737",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "69dcbf6867fc",
+            "_type": "span",
+            "marks": [],
+            "text": "Selain menyelesaikan proses pendaftaran di institusi kami, para pendaftar juga diminta untuk melakukan pelaporan informasi kepada Kedutaan Besar atau Konsulat Tiongkok setempat."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "d389af86044e",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "35679142d199",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "d694cfd64014",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "ba17ecb169bc",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "7. Aturan penting"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "82c30d7abcf2",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "1c71924e2065",
+            "_type": "span",
+            "marks": [],
+            "text": "Pelaporan informasi kepada Kedutaan Besar atau Konsulat Tiongkok merupakan tahapan penting dalam proses pendaftaran. Apabila data Anda tidak tercantum dalam daftar pelaporan tersebut, hal ini dapat memengaruhi kelayakan akhir Anda untuk mengikuti program."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "3d637fcf9339",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "369bab742f56",
+            "_type": "span",
+            "marks": [],
+            "text": "Guru yang dikirim secara resmi (government-sponsored teachers) dan relawan tidak diperkenankan mengikuti program pelatihan ini."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "8bfacc6c4f7e",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "35d12e51130f",
+            "_type": "span",
+            "marks": [],
+            "text": "Peserta tidak diperkenankan membawa anggota keluarga. Selama masa pelatihan, peserta wajib mematuhi seluruh peraturan yang berlaku dan tidak diperkenankan meninggalkan kegiatan tanpa izin."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "155907ae6274",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "352d6977aa34",
+            "_type": "span",
+            "marks": [],
+            "text": "Kuota peserta terbatas dan akan diproses berdasarkan prinsip first come, first served. Apabila kuota pada pilihan kelas utama telah penuh, silakan memilih kelaslainnya. Peserta yang telah terdaftar tidak diperkenankan membatalkan keikutsertaan dengan alasan apa pun, baik subjektif maupun objektif; pelanggaranakan berdampak pada kelayakan pendaftaran di masa mendatang."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "19bdb99f801c",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "4cf1b8223e93",
+            "_type": "span",
+            "marks": [],
+            "text": "Setiap peserta maksimal hanya dapat mengikuti 2 (dua) program pelatihan yang diselenggarakan oleh Pusat Pengembangan Pendidikan Bahasa Tionghoa dalam satu tahun. Untuk setiap kelas, peserta yang baru pertama kali mendaftar padatahun berjalan akan diprioritaskan."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "8fab90073437",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b84aeeccd9e3",
+            "_type": "span",
+            "marks": [],
+            "text": "Formulir pendaftaran wajib ditandatangani oleh Kepala Sekolah atau Ketua Yayasan dari sekolah masing-masing. Peserta juga harus secara jelas mencantumkan seluruh pilihan kelas serta jumlah keikut sertaan dalam tahun berjalan (maksimal 2 kali)."
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "8ad3022dae18",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "761f25c18437",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "e306082d6c41",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "82f8df98949e",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "Kontak"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "a38ce4c272b8",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "6b169c5261f1",
+            "_type": "span",
+            "marks": [],
+            "text": "0813-1514-5384 (Zainul)"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "bdb920d5169e",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "e418384dcda5",
+            "_type": "span",
+            "marks": [],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "c0214362c1ea",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "a00ee6448610",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": "Informasi Pribadi yang dibutuhkan:"
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "a635358d7ae7",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "015fac29963f",
+            "_type": "span",
+            "marks": [],
+            "text": "Nama kelas ; lokasi"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "3fdc1c9c1fc3",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "8ece9d41d570",
+            "_type": "span",
+            "marks": [],
+            "text": "Nama Tionghoa ; Nama paspor"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "d16e9ecab61a",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "f20ded1bb509",
+            "_type": "span",
+            "marks": [],
+            "text": "Jenis kelamin; Nomor paspor; Tanggal lahir; Kewarganegaraan"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "2ec4df25021b",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "b2c45f8897de",
+            "_type": "span",
+            "marks": [],
+            "text": "Sekolah tempat kerja; Negara tinggal"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "7c5a4300b856",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "0ccd952c14a0",
+            "_type": "span",
+            "marks": [],
+            "text": "Pekerjaan: Guru / Kepala Sekolah / Ketua Dewan/ Pimpinan Lembaga Pendidikan Bahasa Tionghoa, dll"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "29bde9eedc50",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "88c604fdb479",
+            "_type": "span",
+            "marks": [],
+            "text": "HP; WeChat; email"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "a7af4544b2db",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "55f829163225",
+            "_type": "span",
+            "marks": [],
+            "text": "Permintaan makanan (halal/vegetarian)"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "ff7532c3ddde",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "de51969baf57",
+            "_type": "span",
+            "marks": [],
+            "text": "Informasi pesawat & jemputan"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "14663ebab56a",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "ba72e126fe4d",
+            "_type": "span",
+            "marks": [],
+            "text": "Jumlah kelas yang diikuti tahun ini (wajib isi)"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "da579402ae93",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "a7a890ed1261",
+            "_type": "span",
+            "marks": [],
+            "text": "Tandatangan Kepala Sekolah atau Kepala Yayasan (wajib isi)\n"
+          }
+        ],
+        "level": 1,
+        "listItem": "bullet",
+        "markDefs": [],
+        "style": "normal"
+      },
+      {
+        "_key": "c83878c835ec",
+        "_type": "image",
+        "asset": {
+          "_ref": "image-1a6186b5a936ae806a2b897b514fd22f764a9d25-1536x1024-png",
+          "_type": "reference"
+        }
+      },
+      {
+        "_key": "81a16d932c5e",
+        "_type": "block",
+        "children": [
+          {
+            "_key": "daab424e2be9",
+            "_type": "span",
+            "marks": [
+              "strong"
+            ],
+            "text": ""
+          }
+        ],
+        "markDefs": [],
+        "style": "normal"
+      }
+    ],
+    "countdownDate": "2026-05-13T04:04:00.000Z",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-b688d995a43ba89b234cbf311589ce875b2c4b0d-2752x1536-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/b688d995a43ba89b234cbf311589ce875b2c4b0d-2752x1536.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/b688d995a43ba89b234cbf311589ce875b2c4b0d-2752x1536.png"
+    },
+    "isActive": true,
+    "slug": {
+      "_type": "slug",
+      "current": "pendaftaran-kelas-pelatihan-gurubahasa"
+    },
+    "subtitle": "“Pendidikan Bahasa Tionghoa & Guru Bahasa Tionghoa — Peningkatan Kompetensi Guru di Era Digital dan Pelestarian Budaya Tionghoa”",
+    "title": "CCNU Digital Era Mandarin Teacher Training Program 2026"
+  },
+  {
+    "_createdAt": "2026-03-06T23:07:34Z",
+    "_id": "c89ef6b7-5621-4dfc-82e4-b0e9ad0b626e",
+    "_rev": "nypLANVCk7FbrB0Tv2hzas",
+    "_system": {
+      "base": {
+        "id": "c89ef6b7-5621-4dfc-82e4-b0e9ad0b626e",
+        "rev": "SlhvY9im97XlCzZ6PNEEtb"
+      }
+    },
+    "_type": "campaign",
+    "_updatedAt": "2026-05-06T07:27:50Z",
+    "countdownDate": "2026-04-30T22:08:00.000Z",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-8b3714553d7ca069d53b3f90b1d240ee1d3a8b97-1200x900-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/8b3714553d7ca069d53b3f90b1d240ee1d3a8b97-1200x900.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/8b3714553d7ca069d53b3f90b1d240ee1d3a8b97-1200x900.jpg"
+    },
+    "isActive": false,
+    "subtitle": "Summer Camp, 28 June ~ 12 July, 2026",
+    "title": "Mandarin & Culture Study at Central Normal University in WuHan, China"
+  }
+]

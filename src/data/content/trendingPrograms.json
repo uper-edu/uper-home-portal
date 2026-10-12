@@ -1,0 +1,266 @@
+[
+  {
+    "_createdAt": "2026-06-03T06:19:45Z",
+    "_id": "d2b92d6b-925a-480a-a60d-e82c7e3e641a",
+    "_rev": "fU1GG1h0UZ892Cv6ezzlIY",
+    "_system": {
+      "base": {
+        "id": "d2b92d6b-925a-480a-a60d-e82c7e3e641a",
+        "rev": "27GxKsKMSMowmaA4hM1Wdc"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-07-16T07:17:10Z",
+    "badge": "📚 In Progress",
+    "category": "📚 HSK",
+    "desc": "HSK 1 Online Class\nBuild Your First Chinese Foundation\n\nStart speaking Chinese from day one and build confidence step by step.\n\nAfter Completing HSK 1, You Can:\n1. Introduce yourself in Chinese\n2. Use basic daily expressions\n3. Ask and answer simple questions\n4. Understand and use 150+ common words\n5. Recognize and write basic Chinese characters\n6. Build simple Chinese sentences\n7. Begin listening, speaking, reading & writing in Chinese\n\nYour First Step Toward Chinese Proficiency:\n1. Build a strong language foundation\n2. Develop confidence in daily communication\n3. Prepare for higher HSK levels",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-70562a61dd26912dbd1c4fc2995aaac866e0040f-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/70562a61dd26912dbd1c4fc2995aaac866e0040f-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/70562a61dd26912dbd1c4fc2995aaac866e0040f-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/hsk",
+    "order": 0,
+    "price": "IDR 1.000.000",
+    "seats": "15 Seats",
+    "startDate": "July 15, 2026",
+    "term": "10 Weeks",
+    "title": "HSK 1 Online Class"
+  },
+  {
+    "_createdAt": "2026-06-03T06:25:49Z",
+    "_id": "662ebe54-b55f-4d1e-9ac9-89b73c399092",
+    "_rev": "TMmaH7mfbHr39zmx08Ej7X",
+    "_system": {
+      "base": {
+        "id": "662ebe54-b55f-4d1e-9ac9-89b73c399092",
+        "rev": "ozq8uGlzlkluwdw2cS97lV"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-07-01T02:20:11Z",
+    "badge": "⏳ Coming Soon",
+    "category": "📚 HSK",
+    "desc": "HSK 2 Online Class\nCommunicate More Naturally in Chinese\n\nExpand your vocabulary and handle everyday situations with greater confidence.\n\nAfter Completing HSK 2, You Can:\n1. Conduct simple daily conversations\n2. Talk about work, study, and personal life\n3. Understand and use 300+ common words\n4. Recognize and write more Chinese characters\n5. Use essential grammar patterns in conversation\n6. Understand short passages and dialogues\n7. Improve listening, speaking, reading & writing skills\n\nMoving Toward Intermediate Chinese:\n1. Strengthen communication skills\n2. Expand practical vocabulary usage\n3. Prepare for HSK 3 and academic Chinese learning",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-1aecfafcbf33190b55c96cdb59207c7e9feb6119-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/1aecfafcbf33190b55c96cdb59207c7e9feb6119-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/1aecfafcbf33190b55c96cdb59207c7e9feb6119-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/hsk",
+    "order": 1,
+    "price": "IDR 1.100.000",
+    "seats": "15 Seats",
+    "startDate": "July 13, 2026",
+    "term": "11 Weeks",
+    "title": "HSK 2 Online Class"
+  },
+  {
+    "_createdAt": "2026-04-21T19:43:05Z",
+    "_id": "c4643e52-9046-47a5-aa83-925a5eae1b42",
+    "_rev": "fU1GG1h0UZ892Cv6ezzvBO",
+    "_system": {
+      "base": {
+        "id": "c4643e52-9046-47a5-aa83-925a5eae1b42",
+        "rev": "uBUfGXcSktsPwN4ztvvWm2"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-07-16T07:17:25Z",
+    "badge": "🔥 Enroll Now",
+    "category": "📚 HSK",
+    "desc": "HSK 3 Online Class\n\nBuild Real-Life Chinese Communication Skills\nNot just learning a language — but opening a door to a new world.\n\nAfter Completing HSK 3, You Can:\n1. Handle daily life conversations in Chinese\n2. Communicate in study & basic work situations\n3. Travel in China with confidence\n4. Understand and use 400+ common words\n5. Recognize and write 300+ Chinese characters\n6. Apply around 40 key grammar structures\n7. Able to listen, speak, read & write in Chinese\n\nOne Step Closer to Studying in China:\n1. Closer to University Admission Requirements\n2. Stronger Academic Chinese Foundation\n3. More Prepared for Study in China",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-3441b49cc617250227bb07a7094625b4a3f3856a-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/3441b49cc617250227bb07a7094625b4a3f3856a-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/3441b49cc617250227bb07a7094625b4a3f3856a-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/hsk",
+    "order": 2,
+    "price": "IDR 2.000.000",
+    "seats": "15 Seats",
+    "startDate": "July 13, 2026",
+    "term": "20 weeks",
+    "title": "HSK 3 Online Class"
+  },
+  {
+    "_createdAt": "2026-05-06T07:49:32Z",
+    "_id": "c89b882b-811e-4052-b0ac-8a23eb130096",
+    "_rev": "uBUfGXcSktsPwN4ztvvfuA",
+    "_system": {
+      "base": {
+        "id": "c89b882b-811e-4052-b0ac-8a23eb130096",
+        "rev": "31ZYHThkucP97gw3bVp44X"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-07-01T02:22:11Z",
+    "badge": "⏳ Coming Soon",
+    "category": "📚 HSK",
+    "desc": "HSK 4A Online Class\n\nBuild Your Intermediate Chinese Foundation\n\nAfter Completing HSK 4A, You Can:\n1.  Handle conversations in daily, study & basic work settings\n2. Describe experiences and situations more clearly\n3. Understand longer sentences and common real-life topics\n4. Use 500+ new vocabulary in communication\n5. Build strong foundation towards full HSK 4 level\n\nLearning Focus:\n📘 ~579 new vocabulary (Book 3)\n📘 ~300 Chinese characters\n📘 ~40 key grammar points\n\nWhat This Means for You:\n🎯 Start understanding classroom & practical Chinese\n🎯 Move beyond basic communication\n🎯 Prepare for full HSK 4 level",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-85ff13a1b645f0520c15d98f64ab75896ae09f2e-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/85ff13a1b645f0520c15d98f64ab75896ae09f2e-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/85ff13a1b645f0520c15d98f64ab75896ae09f2e-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/hsk",
+    "order": 3,
+    "price": "IDR 2.000.000",
+    "seats": "15 Seats",
+    "startDate": "July 13, 2026",
+    "term": "20 weeks",
+    "title": "HSK 4A Online Class"
+  },
+  {
+    "_createdAt": "2026-05-06T09:03:09Z",
+    "_id": "51685ec7-6d47-4fa4-b092-8b0f13f5a7f6",
+    "_rev": "TMmaH7mfbHr39zmx08Esjf",
+    "_system": {
+      "base": {
+        "id": "51685ec7-6d47-4fa4-b092-8b0f13f5a7f6",
+        "rev": "23x4Xzqqxaar2cxcv5XSju"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-07-01T02:22:46Z",
+    "badge": "⏳ Coming Soon",
+    "category": "📚 HSK",
+    "desc": "HSK 4B Online Class\n\nAchieve Full HSK 4 & Step Closer to China\n\nAfter Completing HSK 4B, You Can:\n1. Communicate confidently in study, work & social situations\n2. Express opinions, give reasons, and explain ideas clearly\n3. Understand structured conversations and longer content\n4. Use 600+ new vocabulary in real situations\n5. Achieve full HSK 4 level\n\nLearning Focus:\n📘 ~600 new vocabulary (Book 4)\n📘 200+ Chinese characters\n📘 ~40 key grammar points\n\nWhat This Means for You:\n🎯 Eligible to apply for China university programs\n🎯 Closer to scholarship application level (CSC)\n🎯 Competitive for Mandarin speaker job opportunities",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-aaa6c6428e0e54f89eae245ec101f7929157cbd4-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/aaa6c6428e0e54f89eae245ec101f7929157cbd4-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/aaa6c6428e0e54f89eae245ec101f7929157cbd4-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/hsk",
+    "order": 4,
+    "price": "IDR 2.000.000",
+    "seats": "15 Seats",
+    "startDate": "July 13, 2026",
+    "term": "20",
+    "title": "HSK 4B Online Class"
+  },
+  {
+    "_createdAt": "2026-05-06T07:50:47Z",
+    "_id": "e9e5f2ac-e799-41f4-b0ca-5db50b0cca4c",
+    "_rev": "23x4Xzqqxaar2cxcv5XWII",
+    "_system": {
+      "base": {
+        "id": "e9e5f2ac-e799-41f4-b0ca-5db50b0cca4c",
+        "rev": "g9Nq48KToSNAnu1U1Kzuzm"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-06-22T07:09:27Z",
+    "badge": "⏳ Coming Soon",
+    "category": "🏗️ CSCA",
+    "desc": "24-Hour High-Impact Training for Exam Preparation\n\nEntry Requirement:\n1. Applicants must pass an entry assessment before joining\n2. Only students who meet the required standard will be admitted\n\nWhy Take the CSCA?\n1. Required for Chinese University Applications\n2. Demonstrate Strong Math & Analytical Skills\n3. Strengthen Your Academic Competitiveness\n\nTaught by Chinese Experts:\n1. Understand the Exam Structure & Key Focus\n2. Master Problem-Solving Techniques\n3. Develop Strong Logical Thinking\n4. Prepare for Undergraduate-Level Study\n\nWhat You Gain:\n1. A Strong Advantage in University Applications\n2. Readiness for China’s Academic System\n3. Confidence in Advanced Mathematics",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-ab350b29cbf79dad8c33a092001ea48e6d7e5a62-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/ab350b29cbf79dad8c33a092001ea48e6d7e5a62-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/ab350b29cbf79dad8c33a092001ea48e6d7e5a62-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/csca",
+    "order": 4,
+    "price": "IDR 6.000.000",
+    "seats": "5 Seats",
+    "startDate": "July 1, 2026",
+    "term": "8 Weeks",
+    "title": "CSCA Mathematics Intensive"
+  },
+  {
+    "_createdAt": "2026-06-03T06:31:37Z",
+    "_id": "889143cc-7aa5-4637-9a3e-460d9f384664",
+    "_rev": "ozq8uGlzlkluwdw2cS98rE",
+    "_system": {
+      "base": {
+        "id": "889143cc-7aa5-4637-9a3e-460d9f384664",
+        "rev": "GhxLdJNx5Uvtq4iAtb9YJ7"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-06-22T07:09:18Z",
+    "badge": "⏳ Coming Soon",
+    "category": "🏗️ CSCA",
+    "desc": "CSCA Chinese Social Sciences\nMaster Academic Chinese for Social Sciences\n\nDevelop the language and analytical skills needed for humanities-related university programs in China.\n\nThrough This Course, You Will:\n1. Understand academic Chinese used in humanities subjects\n2. Improve reading comprehension of social and cultural topics\n3. Build advanced vocabulary for arts, business, economics, and social sciences\n4. Analyze texts, arguments, and opinions in Chinese\n5. Strengthen Chinese writing and interpretation skills\n6. Develop critical thinking in Chinese academic contexts\n7. Prepare for the CSCA Chinese Social Sciences examination\n\nOne Step Closer to Chinese Universities:\n1. Build readiness for humanities-related majors\n2. Strengthen academic Chinese proficiency\n3. Improve competitiveness for university admission and scholarships",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-10ef923a614513e5fe498e381d9079f337272a19-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/10ef923a614513e5fe498e381d9079f337272a19-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/10ef923a614513e5fe498e381d9079f337272a19-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/csca",
+    "order": 6,
+    "price": "IDR 9.000.000",
+    "seats": "5",
+    "startDate": "July 1, 2026",
+    "term": "12.5 Weeks",
+    "title": "CSCA Chinese Social Sciences"
+  },
+  {
+    "_createdAt": "2026-06-03T06:40:53Z",
+    "_id": "ca27c19d-17bf-46dc-9ded-8787c0c2fcef",
+    "_rev": "ozq8uGlzlkluwdw2cS93nY",
+    "_system": {
+      "base": {
+        "id": "ca27c19d-17bf-46dc-9ded-8787c0c2fcef",
+        "rev": "ozq8uGlzlkluwdw2cS933D"
+      }
+    },
+    "_type": "trendingProgram",
+    "_updatedAt": "2026-06-22T07:08:08Z",
+    "badge": "⏳ Coming Soon",
+    "category": "🏗️ CSCA",
+    "desc": "CSCA Chinese Science\nMaster Academic Chinese for STEM Studies\n\nBuild the Chinese language skills required for science, engineering, and technology programs in China.\n\nThrough This Course, You Will:\n1. Understand scientific and technical Chinese terminology\n2. Read academic texts related to science and technology\n3. Learn Chinese expressions used in mathematics and science subjects\n4. Improve comprehension of scientific concepts in Chinese\n5. Strengthen academic reading and problem-solving skills\n6. Develop confidence in Chinese-medium STEM learning\n7. Prepare for the CSCA Chinese (Science) examination\n\nOne Step Closer to STEM Studies in China:\n1. Build a strong foundation for science and engineering programs\n2. Adapt to Chinese-medium university courses\n3. Improve competitiveness for admission and scholarships",
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-9620e6f0d15e2fc31f9ddecf870ed361151ab139-1920x1080-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/9620e6f0d15e2fc31f9ddecf870ed361151ab139-1920x1080.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/9620e6f0d15e2fc31f9ddecf870ed361151ab139-1920x1080.png"
+    },
+    "isActive": true,
+    "link": "/csca",
+    "order": 7,
+    "price": "IDR 9.000.000",
+    "seats": "5 Seats",
+    "startDate": "July 1, 2026",
+    "term": "12.5 Weeks",
+    "title": "CSCA Chinese Science"
+  }
+]

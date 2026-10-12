@@ -1,0 +1,1439 @@
+{
+  "lang": {
+    "en": "English",
+    "id": "Indonesian",
+    "zh": "Chinese"
+  },
+  "nav": {
+    "home": "Home",
+    "studentPrograms": "Programs",
+    "hskAi": "HSK Training",
+    "cscaCoaching": "CSCA Training",
+    "studyTours": "Study Tours",
+    "studyAbroad": "Study Abroad",
+    "news": "News",
+    "partners": "Partners",
+    "aboutUs": "About Us",
+    "aboutUsSub": "About UPER",
+    "faq": "FAQs",
+    "careers": "Careers",
+    "contact": "Contact",
+    "startJourney": "Free Consult Now"
+  },
+  "footer": {
+    "description": "An international educational organization dedicated to global study, bridging cultures, and empowering students through tech-enhanced learning.",
+    "quickLinks": "Quick Links",
+    "contactUs": "Contact Us",
+    "jakartaHeadOffice": "Jakarta Head Office",
+    "jakartaAddress": "Ruko Golf Island, JL. Pantai Indah Kapuk No. 100 Blok E, Jakarta",
+    "chinaOffice": "China Office (Hangzhou)",
+    "chinaAddress": "Headquarters Economy Park for Alumni Corporation of Zhejiang University",
+    "chinaContact": "Contact: Wang Lisong (+86 18612142789)",
+    "chinaPerson": "Wang Lisong",
+    "chinaPhone": "+86 18612142789",
+    "addressLabel": "Address",
+    "representativeLabel": "Representative",
+    "phoneLabel": "Phone",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "appearanceSettings": "Display & Theme Settings"
+  },
+  "fab": {
+    "chat": "Free consult with us NOW!"
+  },
+  "mobile": {
+    "freeGuide": "Free Guide",
+    "chatNow": "Chat Now",
+    "startJourney": "Free Consult Now"
+  },
+  "home": {
+    "hero": {
+      "tag": "The Premier Educational Bridge from Indonesia to China",
+      "heading1": "Empowering Your Global Future:",
+      "heading2": "Your Pathway to China's Top Universities.",
+      "desc": "Language is more than just a tool; it's the key to the future. We combine AI-powered learning with expert application guidance to help Indonesian students seamlessly transition to top Chinese universities and broad career opportunities.",
+      "explore": "Start Your Journey",
+      "chat": "Free Consult Now",
+      "join": "Join",
+      "students": "500+ students from Indonesia",
+      "partnership": {
+        "prefix": "In partnership with:",
+        "highlight": "40+ entities",
+        "suffix": " (universities from China & Indonesia, schools from Indonesia and Chinese companies in Indonesia)"
+      }
+    },
+    "audience": {
+      "students": {
+        "tag": "For Individuals",
+        "title": "Parents / Students",
+        "desc": "Customized study plans, self-paced prep, and comprehensive HSK coaching",
+        "items": [
+          "HSK",
+          "CSCA",
+          "Study Abroad",
+          "Study Tours"
+        ],
+        "cta": "Learn More"
+      },
+      "schools": {
+        "tag": "For Institutions",
+        "title": "Schools",
+        "desc": "One-stop study abroad & articulation solutions, promoting institutional partnerships",
+        "items": [
+          "HSK Compulsory / Interest Classes",
+          "Language Centers",
+          "Partnerships"
+        ],
+        "cta": "Partner With Us"
+      },
+      "companies": {
+        "tag": "For Corporates",
+        "title": "Companies",
+        "desc": "Exclusive corporate Mandarin & cross-cultural training customized for global ventures",
+        "items": [
+          "Corporate Chinese Training",
+          "Talent Recruitment",
+          "School-Enterprise Collaboration"
+        ],
+        "cta": "Request a Quote"
+      }
+    },
+    "services": {
+      "tag": "Educational Solutions",
+      "title1": "Our Core",
+      "title2": "Programs",
+      "desc": "Discover our comprehensive educational solutions designed to accelerate your global journey.",
+      "explore": "Explore Program"
+    },
+    "trending": {
+      "tag": "Highly Recommended",
+      "title1": "Trending &",
+      "title2": "Featured",
+      "desc": "Discover our most highly sought-after courses and upcoming study tours."
+    },
+    "campaign": {
+      "tag": "Limited Time Offer"
+    },
+    "news": {
+      "tag": "News & Updates",
+      "title1": "Latest",
+      "title2": "Insights",
+      "desc": "Stay updated with UPER and global education trends.",
+      "viewAll": "View All"
+    },
+    "stories": {
+      "tag": "Success Stories",
+      "title1": "Student",
+      "title2": "Experiences",
+      "desc": "Hear from our alumni who have successfully embarked on their global journeys."
+    },
+    "schoolPartnerships": {
+      "tag": "School Partnerships",
+      "title1": "30+ Indonesian Schools",
+      "title2": "Trust UPER",
+      "desc": "Empowering schools with world-class Chinese language programs and custom credit classes.",
+      "storiesTitle": "Success Stories",
+      "story1": {
+        "name": "SMA Negeri 1 Jakarta",
+        "type": "Language Center",
+        "stats": "150+ students"
+      },
+      "story2": {
+        "name": "SMA Muhammadiyah 8 Ciputat",
+        "type": "Credit Classes",
+        "stats": "80+ students"
+      },
+      "processTitle": "Partnership Process",
+      "process": [
+        "Consultation",
+        "Needs Assessment",
+        "Custom Proposal",
+        "Trial Class",
+        "Agreement",
+        "Ongoing Support"
+      ],
+      "cta": "Start Partnership"
+    },
+    "partners": {
+      "tag": "Strategic Partners",
+      "title1": "Trusted by",
+      "title2": "Leading Institutions",
+      "partners": "Partners"
+    },
+    "servicesData": {
+      "hsk": {
+        "title": "AI-Assisted HSK Training",
+        "desc": "Master Chinese efficiently with our AI-assisted platform and expert teachers, personalized learning paths for all levels."
+      },
+      "csca": {
+        "title": "CSCA Training",
+        "desc": "Expert coaching for the CSCA exam. Elevate your professional credentials with our specialized curriculum and dedicated instructors."
+      },
+      "tours": {
+        "title": "Study Tours to China",
+        "desc": "Immersive programs blending language learning, cultural experiences, and visits to tech giants and historical landmarks."
+      },
+      "consultancy": {
+        "title": "Study Abroad Consultancy",
+        "desc": "Comprehensive guidance for studying in China, from university selection to visa processing and scholarship applications."
+      }
+    },
+    "corporate": {
+      "tag": "Corporate Training",
+      "title1": "Corporate Training",
+      "title2": "Empowering Your Local Workforce",
+      "desc": "Equip your team with the language skills needed to thrive in an international business environment.",
+      "solutionsTitle": "Industry Solutions",
+      "industries": [
+        "Mining",
+        "Manufacturing",
+        "Banking",
+        "Infrastructure",
+        "Retail",
+        "Tech"
+      ],
+      "storiesTitle": "Client Success Stories",
+      "story1": {
+        "name": "HAND Enterprise Solutions Indonesia",
+        "highlight": "Custom vocabulary",
+        "stats": "30 employees"
+      },
+      "features": [
+        "Custom vocabulary",
+        "Flexible scheduling",
+        "Progress tracking"
+      ],
+      "ctaTitle": "Empower your workforce today",
+      "ctaDesc": "Partner with UPER to create a customized language training program that meets your company's specific needs and goals.",
+      "ctaBtn": "Request a Proposal"
+    },
+    "trendingFallbacks": {
+      "hsk4": {
+        "title": "HSK 4 Intensive Bootcamp",
+        "desc": "Master HSK 4 efficiently. Study online or at our Jakarta center. Perfect for scholarship seekers.",
+        "badge": "🔥 Enroll Now"
+      },
+      "csca": {
+        "title": "CSCA Scholarship Prep",
+        "desc": "Expert preparation on our Jakarta Campus to help you secure prestigious Chinese university scholarships.",
+        "badge": "⭐ Enroll Now"
+      },
+      "tourBeijing": {
+        "title": "Beijing · Cultural Tour",
+        "desc": "Tsinghua Univ base. Explore Forbidden City, Great Wall, Hutong, and experience an actual HSK Trial.",
+        "badge": "🏃 Recruiting"
+      },
+      "tourHangzhou": {
+        "title": "Hangzhou · Jiangnan Tour",
+        "desc": "Zhejiang University base. Discover West Lake, Longjing Tea, Alibaba HQ, and Songcheng Show.",
+        "badge": "🏃 Recruiting"
+      },
+      "tourWuhan": {
+        "title": "Wuhan · Chu Culture Tour",
+        "desc": "Wuhan University base. Visit Yellow Crane Tower, East Lake, Hubei Museum, and take a Yangtze Cruise.",
+        "badge": "🏃 Recruiting"
+      },
+      "hsk3": {
+        "title": "HSK 3 Foundation Build",
+        "desc": "Solidify your Chinese foundation. Interactive classes with native speakers. Perfect for beginners.",
+        "badge": "🎯 New Batch"
+      }
+    }
+  },
+  "meta": {
+    "title": "UPER | Study in China & HSK Training Specialist in Jakarta Indonesia",
+    "description": "UPER is the premier educational consultant in Jakarta, Indonesia for studying in China. We offer immersive study tours, HSK training in PIK, CSCA preparation, and Chinese university scholarship consultancy.",
+    "about": {
+      "title": "About UPER | Leading China Study Abroad Agency in Jakarta",
+      "description": "Learn about UPER's dedication as the trusted bridge for Indonesian and Southeast Asian students to access elite education, top universities, and scholarships in China."
+    },
+    "careers": {
+      "title": "Join UPER | Work With Us & Careers in Global Education",
+      "description": "Discover career opportunities at UPER. Lead Southeast Asia's digital and cultural bridge to premier universities in China. View open roles in counseling, lecturing, marketing, and systems."
+    },
+    "faq": {
+      "title": "UPER FAQs | China Scholarships, HSK Exam & Study Tours Q&A",
+      "description": "Got questions about studying in China, obtaining CSC scholarships, starting HSK courses in Jakarta, or joining UPER study tours? Find instant, factual answers here."
+    },
+    "partners": {
+      "title": "Our Partners | Elite Chinese Universities & Indonesian Schools | UPER",
+      "description": "Discover top-tier Chinese universities (C9, Double First-Class) and premium Indonesian schools in partnership with UPER for scholarship and academic pathways."
+    },
+    "tours": {
+      "title": "Immersive China Study Tours for Indonesian Students | UPER",
+      "description": "Join UPER's curated immersive study tours in Beijing, Shanghai, Hangzhou, and Wuhan. Cultivate global insights and visit top Chinese tech giants."
+    },
+    "hsk": {
+      "title": "AI-Assisted HSK Training in Jakarta PIK | Master Chinese with UPER",
+      "description": "Accelerate your Chinese proficiency with UPER's hybrid HSK preparation classes in PIK, Jakarta. Powered by professional mentors and adaptive AI diagnostics."
+    },
+    "csca": {
+      "title": "CSCA Exam Coaching & Chinese University Standards Prep | UPER",
+      "description": "Master advanced logic, math, and physics for the Chinese Standardized College Entrance Test (CSCA) with UPER expert tutoring to secure top scholarships."
+    },
+    "consultancy": {
+      "title": "China University Application & Scholarship Consultations | UPER",
+      "description": "UPER provides complete guidance for selecting prestige universities (Tsinghua, Peking, SJTU) and applying for Chinese Government Scholarships (CSC) from Indonesia."
+    },
+    "news": {
+      "title": "Latest China Education News & Insights | UPER Jakarta",
+      "description": "Stay updated with UPER news, Chinese scholarship trends, HSK exam guidelines, and valuable articles on studying abroad in China."
+    },
+    "contact": {
+      "title": "Contact UPER PIK | Speak with a China Education Consultant",
+      "description": "Visit our head office in Pantai Indah Kapuk (PIK), North Jakarta or consult via WhatsApp. We represent top Chinese university entry channels."
+    }
+  },
+  "about": {
+    "tag": "About UPER",
+    "title1": "Building Educational",
+    "title2": "Bridges",
+    "desc": "Welcome to UPER, an international educational organization dedicated to global study, with a primary focus on creating enriching experiences for Southeast Asian students in China.",
+    "missionTitle": "Our Mission",
+    "missionDesc1": "To build a strong bridge of cultural exchange and knowledge sharing between Southeast Asia and China.",
+    "missionDesc2": "We open doors for young learners to explore Chinese culture and academic excellence, fostering mutual understanding and collaborative growth across borders.",
+    "visionTitle": "Our Vision",
+    "visionDesc1": "To be the leading connector between Southeast Asian students and educational opportunities in China.",
+    "visionDesc2": "We are dedicated to shaping a generation of globally-minded, future-ready leaders who can thrive in an interconnected world and build lasting bridges between cultures.",
+    "teamTitle": "A Team of Education Experts",
+    "teamDesc": "Our team consists of seasoned education experts and professionals well-versed in international cultural exchange, dedicated to your success."
+  },
+  "csca": {
+    "header": {
+      "tag": "Prime Preparation for Fall 2026",
+      "title1": "Keys to Top",
+      "title2": "University Admission",
+      "desc": "Limited spots available. Closing the gap between Indonesian high school systems and China's elite university standards. Secure your extremely scarce \"Academic Insurance\".",
+      "cta": "Secure Your Academic Future"
+    },
+    "intro": {
+      "tag": "What is CSCA?",
+      "title": "CSCA Chinese Scholastic Assessment",
+      "desc": "CSCA (Chinese Scholastic Assessment) is an academic credentials standard specifically tailored for international high school students applying to elite Chinese Universities. It evaluates comprehensive scholastic competency, logic synthesis, and Chinese application skills, serving as an academic prerequisite and major differentiator for C9 League, 985/211 project schools, and undergraduate full scholarships."
+    },
+    "crisis": {
+      "title1": "The Ignored",
+      "title2": "\"Crisis\"",
+      "desc": "Many students enter Chinese universities with excellent Indonesian grades, only to face massive academic struggles. Why? Because the grading standards are entirely different.",
+      "currentState": "Current State:",
+      "theCrisis": "The Crisis:",
+      "items": [
+        {
+          "title": "The Logic Gap",
+          "subtitle": "Mathematics & Sciences Gap",
+          "current": "Indonesian systems (National/IB/A-Level) heavily emphasize formula memorization and calculation.",
+          "crisis": "Chinese elite universities strictly evaluate advanced logic and complex proofs.",
+          "quote": "\"Students aren't lacking ability; they just have a different way of thinking...\""
+        },
+        {
+          "title": "Academic Language Barrier",
+          "subtitle": "The HSK Myth",
+          "current": "Believing an HSK 5 certificate is enough for university success abroad.",
+          "crisis": "HSK secures daily conversations; CSCA tests university studies.",
+          "quote": "\"If you can't read technical terms, understand lesson logic, or write equations in Chinese, you become a 'Silent Student'.\""
+        }
+      ]
+    },
+    "preparation": {
+      "title": "The High Cost of Being Unprepared",
+      "desc": "Skipping CSCA preparatory coaching isn't saving money; it's a growing risk that causes a chain reaction of bad grades.",
+      "items": [
+        {
+          "title": "Higher Tuition Costs",
+          "desc": "Failing courses in your freshman year carries a massive risk of repeating a year..."
+        },
+        {
+          "title": "Loss of Confidence",
+          "desc": "Lacking scientific Chinese leads to isolation in classrooms..."
+        },
+        {
+          "title": "Limited Career Options",
+          "desc": "Failing to master professional terms means missing out completely..."
+        }
+      ]
+    },
+    "why": {
+      "tag": "The UPER Positioning",
+      "title1": "Not a setup class.",
+      "title2": "An Elite Pre-University.",
+      "desc": "UPER is not an after-school tutoring center. We are a complete, exam-focused learning platform.",
+      "badge1": "ROI Guaranteed",
+      "badge2": "Academic Insurance",
+      "items": [
+        {
+          "title": "Zero Distance. Top Resources.",
+          "desc": "Access elite Chinese pre-university standards straight from Indonesia..."
+        },
+        {
+          "title": "Top-Tier Teachers",
+          "desc": "Taught strictly by current Chinese university professors and SNBT-level Gaokao grading experts..."
+        },
+        {
+          "title": "The Best Educational Investment",
+          "desc": "It's a ticket to massive scholarships. It's an insurance policy for a happy, successful 4-year degree..."
+        }
+      ]
+    },
+    "analytics": {
+      "tag": "Quantified Admission Analytics",
+      "title": "Admission Guide & Indonesian Student Academic Performance Report",
+      "desc": "Deep multi-dimensional analysis of admission thresholds and academic data in Chinese and Mathematics for Indonesian students, providing highly secure guidance for major scholarships.",
+      "benchmarkTitle": "Chinese Elite University Admission Benchmarks",
+      "mathTab": "CSCA Math",
+      "chineseTab": "CSCA Comprehensive Chinese",
+      "scoringRule": "* Based on actual admission statistics of Indonesian scholarship applicants in 2024-2025. 100-point scale.",
+      "math": {
+        "c9": {
+          "title": "C9 League Elite Universities (Peking/Tsinghua/Fudan/ZJU/SJTU, etc.)",
+          "desc": "Highly competitive threshold: 88–100 points (Required benchmarks for full tuition & stipend package)"
+        },
+        "g985": {
+          "title": "985 Project First-Class Universities (Tongji/ECNU/SDU/XMU, etc.)",
+          "desc": "High probability threshold: 83–88 points (Target range for prestigious national or provincial scholarships)"
+        },
+        "g211": {
+          "title": "211 Project Key Prestigious Universities (HQU/DHU/UIBE, etc.)",
+          "desc": "High probability threshold: 70–78 points (Target range for key municipal or university corporate-sponsored grants)"
+        }
+      },
+      "chinese": {
+        "c9": {
+          "title": "C9 League Elite Universities (Peking/Tsinghua/Fudan/ZJU, etc.)",
+          "desc": "Admission Benchmark: Chinese score of 90–100 points, or high score in HSK 6"
+        },
+        "g985": {
+          "title": "985 Project First-Class Universities (Tongji/ECNU/DLUT, etc.)",
+          "desc": "Admission Benchmark: Chinese score of 90–100 points, or high score in HSK 5 (>240)"
+        },
+        "g211": {
+          "title": "211 Project Key Prestigious Universities",
+          "desc": "Admission Benchmark: Chinese score of 85–89 points, or passing HSK 5 (>180)"
+        }
+      },
+      "academicAdvice": {
+        "label": "UPER Academic Advice:",
+        "text": "CSCA admission thresholds are rising annually. Logic and mathematical application represent the general bottleneck for Indonesian students applying for full scholarships; starting early structured preparation is the essential path to top-tier institutional success."
+      },
+      "dangerZone": {
+        "title": "Indonesian Students' Academic Weaknesses Ratio",
+        "desc": "Based on aggregate performance and score-loss distribution of over 300 Indonesian candidates (from AP, IB, and National curriculums) on mathematical sections of recent CSCA assessments.",
+        "subjects": {
+          "geometry": {
+            "name": "Geometry & Vectors",
+            "val": "33% (Most Critical)"
+          },
+          "trig": {
+            "name": "Trigonometry & Formulas",
+            "val": "21%"
+          },
+          "algebra": {
+            "name": "Algebra & Set Inequalities",
+            "val": "17%"
+          },
+          "functions": {
+            "name": "Functions & Graphs",
+            "val": "15%"
+          },
+          "sequences": {
+            "name": "Sequences & Limits",
+            "val": "12%"
+          },
+          "prob": {
+            "name": "Probability & Combinatorics",
+            "val": "2%"
+          }
+        }
+      },
+      "gaps": {
+        "title": "Three Key Academic Gaps & Advice for Indonesian Students",
+        "item1": {
+          "title": "1. Logic and space transformation gap in vector geometry:",
+          "desc": "Indonesian curricula focus on step-by-step plane algebraic solutions. CSCA demands multidimensional synthesis. We recommend targeted Chinese-structure mock sets to develop cross-disciplinary geometry skills."
+        },
+        "item2": {
+          "title": "2. Theorem-heavy with low transfer application:",
+          "desc": "While formula memorization is swift, students drop points during intersecting operations and system transformations. High-frequency deep logical path practice under test constraints is strongly recommended."
+        },
+        "item3": {
+          "title": "3. Terminology and scientific Chinese barrier:",
+          "desc": "Difficulty reading and parsing mathematically dense Chinese phrases. UPER provides custom bilingual Mandarin-Indonesian science lexicon sets to remove the translation hurdle."
+        }
+      }
+    },
+    "cta": {
+      "title1": "Seize the Admission Advantage,",
+      "title2": "Seats are extremely limited",
+      "desc": "Don't let inadequate preparation stealthily drain your confidence. Enroll now to secure your prime preparation window for Fall 2026 admission.",
+      "btn": "Secure Your Spot & Talk to an Advisor"
+    }
+  },
+  "contact": {
+    "tag": "Contact Us",
+    "title1": "Get in ",
+    "title2": "Touch",
+    "desc": "Ready to start your journey? Our team is here to answer your questions and guide you through the process."
+  },
+  "contactPage": {
+    "headOffice": "Head Office",
+    "whatsappPhone": "WhatsApp & Phone",
+    "freeConsultNow": "Free consult with us NOW!",
+    "email": "Email",
+    "sendEmail": "Send an email",
+    "sendMessage": "Send us a message",
+    "fillForm": "Fill out the form below and our educational consultants will get back to you within 24 hours.",
+    "fullName": "Full Name",
+    "emailAddress": "Email Address",
+    "mobilePhone": "Mobile Phone",
+    "interestedIn": "Interested In",
+    "message": "Detailed Description (your background, purpose, major goals, or requests)",
+    "messagePlaceholder": "Please describe your background, study goals, specific needs/requests, etc., so our consultants can provide the most suitable customized proposal...",
+    "interests": {
+      "studyTours": "Study Tours",
+      "hskTraining": "HSK Training",
+      "studyAbroad": "Study Abroad Consultancy",
+      "other": "Other"
+    },
+    "submitting": "Submitting...",
+    "submitInquiry": "Submit Inquiry",
+    "thankYou": "Thank you!",
+    "successMessage": "Your message has been successfully sent. Our educational consultants will get back to you soon.",
+    "errors": {
+      "nameRequired": "Full Name is required",
+      "emailRequired": "Email Address is required",
+      "emailInvalid": "Please enter a valid email address",
+      "phoneRequired": "Mobile Phone is required",
+      "phoneInvalid": "Please enter a valid phone number"
+    }
+  },
+  "partnersPage": {
+    "tag": "Global Network",
+    "title1": "Our Strategic ",
+    "title2": "Partners",
+    "desc": "We collaborate with leading educational institutions and businesses to provide the best opportunities for our students.",
+    "categories": {
+      "Chinese Universities": "Chinese Universities",
+      "Chinese Enterprises": "Chinese Enterprises",
+      "Indonesian Universities & Schools": "Indonesian Universities & Schools",
+      "Indonesian Organizations": "Indonesian Organizations",
+      "Other": "Other"
+    },
+    "subcategories": {
+      "University": "University",
+      "High School": "High School",
+      "Vocational School": "Vocational School",
+      "Junior High School": "Junior High School",
+      "Primary School": "Primary School"
+    }
+  },
+  "abroad": {
+    "tag": "More Than Study Abroad—A Turning Point",
+    "title1": "Craft Your ",
+    "title2": "Success Story",
+    "desc": "Say goodbye to cookie-cutter applications. We focus on 'Background Enhancement' and cultivating a 'Global Vision', tailoring your unique advantage for top Chinese universities and full scholarships.",
+    "services": [
+      {
+        "title": "Deep Background Enhancement",
+        "desc": "We don’t just match schools; we uncover your strengths and plan high-impact extracurricular and academic projects, building a personal brand that wows admission officers."
+      },
+      {
+        "title": "Full Scholarship Strategies",
+        "desc": "Studying abroad shouldn't be a financial burden. We leverage rich admission data and essay expertise to help you secure the Chinese Government Scholarship (CSC) and university-specific grants."
+      },
+      {
+        "title": "Bespoke Mentorship & Essays",
+        "desc": "No generic templates. Mentors with elite university backgrounds help craft a compelling, story-driven personal statement that highlights your international perspective and potential."
+      },
+      {
+        "title": "Direct Access to Elite Networks",
+        "desc": "The moment you get your offer, you step into a vast network of Tsinghua and Peking University alumni, paving the way for your future global career."
+      }
+    ],
+    "why": {
+      "title": "You Need a Partner, Not Just an Agency",
+      "desc": "We accompany you through every step of this transformation, polishing your profile with real-world insights so you stand out in the competitive admissions process.",
+      "quote": "Your dream deserves to be seen. We are dedicated to turning your potential into an achievement that surprises the world.",
+      "btn": "Plan My Journey to Top U's"
+    },
+    "mentors": {
+      "tag": "Bespoke Essay | Essay Tailoring",
+      "title": "Elite Mentor Essay Customization",
+      "desc": "Admissions essays (Personal Statement / Study Plan) are the most critical element in top-tier university screening and scholarship evaluations, showcasing your unique personality and core academic competitiveness. UPER's exclusive elite mentor essay customization service goes beyond traditional templated translations to craft a golden profile that resonates with admissions officers.",
+      "p1": {
+        "title": "Top-Tier Masters & PhD Mentor Team",
+        "desc": "Edited throughout by outstanding Master & PhD candidates, distinguished alumni, and industry elites from top Chinese universities such as Tsinghua University, Peking University, Fudan University, and Shanghai Jiao Tong University. They deeply understand the underlying logic of admissions."
+      },
+      "p2": {
+        "title": "1-on-1 Deep Customization System",
+        "desc": "Starting from brainstorming to discover student's unique background highlights, academic planning, scientific research, and extracurricular growth, framing a completely irreplaceable personal narrative storyline."
+      },
+      "p3": {
+        "title": "Academic & Native-Level Polishing",
+        "desc": "Fine native-level proofreading in both Chinese and English. It not only elevates vocabulary, grammar, and academic logical chains, but also ensures that the narrative perspective perfectly aligns with the expression system of top Chinese universities."
+      },
+      "p4": {
+        "title": "Extremely High Admission & Scholarship Rate",
+        "desc": "Scholarship personal statements refined through this program see an average increase of over 140% in success rates for outstanding full government and university council gold-level scholarships."
+      }
+    },
+    "draft": {
+      "comment": "UPER Elite Mentor Edit Block",
+      "profileLabel": "Student Profile:",
+      "profileValue": "International Applicant (Jakarta PIK)",
+      "targetLabel": "Target University:",
+      "targetValue": "Peking University (北京大学)",
+      "quote": "\"My cross-disciplinary approach in computational linguistics has fueled local Indonesian educational models, inspired by deep heritage...\"",
+      "result": "Academic Narrative: EXCELLENT",
+      "score": "Scholarship Compatibility: 98.7%",
+      "header": "Scholar Study Plan Draft"
+    },
+    "roadmap": {
+      "tag": "APPLICATION PIPELINE",
+      "title": "China's Top University Application Roadmap",
+      "desc": "Clearly understand your application planning from profile assessment to visa acquisition. UPER guides you every step of the way. Click each phase to explore core tasks and expert tips.",
+      "coreChecks": "CORE CHECKS",
+      "stepIndicator": "STEP {{current}} OF {{total}}",
+      "getHelp": "Get Help with Step {{step}}",
+      "contactAdvisor": "Contact Advisor",
+      "step1": {
+        "title": "Assessment & Target Planning",
+        "desc": "Establish target universities & matching scholarship tracks (CSC, SGS, CIS, etc.) based on early profile auditing.",
+        "item1": "Profile evaluation & GPA transcript auditing",
+        "item2": "Research interest matching (for graduate applicants)",
+        "item3": "HSK, HSKK & CSCA (Scholastic Assessment) score diagnosis & diagnostic timeline setup",
+        "item4": "Scholarship strategy selection (Type A, Type B, or Local Gov)",
+        "tip": "UPER Mentor Hack: Getting evaluated early gives you a 3-month head start in contacting prospective advisors!"
+      },
+      "step2": {
+        "title": "Document Strategy & Essays",
+        "desc": "Collaborate 1-on-1 with elite mentors to draft compelling, story-driven Personal Statements and Study Plans.",
+        "item1": "Personal Statement & Study Plan deep brainstorming sessions",
+        "item2": "1-on-1 revisions with masters/PhD alumni from Tsinghua & Peking U",
+        "item3": "CSCA intensive STEM logic coaching & academic resume layout optimization",
+        "item4": "Secure recommendation letters from senior faculty members",
+        "tip": "UPER Mentor Hack: A distinctive study plan explaining your cultural integration value is the #1 decision maker for CSC boards!"
+      },
+      "step3": {
+        "title": "Portal Launch & Submissions",
+        "desc": "Execute synchronous applications across multiple university admissions portals and government platforms.",
+        "item1": "University portal profile setup and document uploads",
+        "item2": "Chinese Government Scholarship (CSC) online system registration",
+        "item3": "Application fee processing and physical exam forms validation",
+        "item4": "Pre-admission track monitoring and immediate corrective actions",
+        "tip": "UPER Mentor Hack: Submitting early in January ensures your file gets reviewed by the first-round panel when budgets are peak!"
+      },
+      "step4": {
+        "title": "Interviews & Auditing",
+        "desc": "Refine oral academic expression through authentic simulated mock sessions with UPER's alumni advisory panel.",
+        "item1": "Realistic mock interviews with former scholars & elite alumni",
+        "item2": "Answering frameworks preparation (Academic goals, regional adaptation)",
+        "item3": "Math, science, or program-specific technical exam guidelines",
+        "item4": "Tracking waitlists and providing supplemental achievements",
+        "tip": "UPER Mentor Hack: Keep your answers focused on how you will bridge academic research between China and your home region!"
+      },
+      "step5": {
+        "title": "Visas & Pre-Departure",
+        "desc": "Claim your official admissions package containing original JW201/202 forms and finalize your relocation roadmap.",
+        "item1": "Collection and validation of official Admission Notices and JW201/202s",
+        "item2": "X1 study visa application at regional embassies/consulates",
+        "item3": "UPER exclusive pre-departure briefing (SIMs, banking, housing)",
+        "item4": "Dorm reservations, airport greetings, and PPIT peer matching",
+        "tip": "UPER Mentor Hack: Joining UPER's exclusive active students network in China ensures you have peers welcoming you on campus!"
+      }
+    },
+    "cases": {
+      "tag": "STUDENT TRIUMPHS",
+      "title": "Top Admissions & Scholarship Honor Wall",
+      "desc": "Every top university admission is powered by customized background positioning and a compelling academic story. Easily configurable in the Sanity backend.",
+      "viewCert": "View Admission Certificate"
+    }
+  },
+  "tours": {
+    "tag": "Expand Your Worldview",
+    "title1": "Transformational ",
+    "title2": "Study Tours",
+    "desc": "Say goodbye to superficial sightseeing. This is more than a walk through Tsinghua or Peking University—it's an immersive journey to break cognitive boundaries, build a global vision, and powerfully endorse your future university applications.",
+    "highlights": [
+      {
+        "title": "Resume Building & Admission Edge",
+        "desc": "Dive deep into top-tier universities, experience the true academic vibe, and earn prestigious certificates and experiences that'll put you ahead in your future scholarship and admission battles."
+      },
+      {
+        "title": "Connect with Elite Minds",
+        "desc": "Engage in profound dialogues with outstanding university scholars and industry leaders. Build a global circle of friends and tap into an elite network of innovative thinking."
+      },
+      {
+        "title": "Explore Tech Frontiers",
+        "desc": "Step inside tech giants and innovation hubs to witness the technological forces changing the world, broadening your global understanding of future careers and commerce."
+      },
+      {
+        "title": "Language & Cultural Breakthroughs",
+        "desc": "Beyond the Great Wall and Forbidden City, you'll shatter language barriers in real-world scenarios, build cultural confidence, and return with a compelling growth story ready for your application essays."
+      }
+    ],
+    "contact": {
+      "title": "Don't Miss This Life-Changing Journey",
+      "desc": "Spots are highly exclusive. Reserve your place now to start accumulating compelling academic and personal milestones.",
+      "btn": "Request Exclusive Details"
+    },
+    "availablePrograms": "Available Programs",
+    "requestItinerary": "Learn More",
+    "guidingPrinciples": {
+      "title": "Our Guiding Principles",
+      "desc": "We believe in a holistic approach that combines the efficiency of modern technology with the warmth of human connection."
+    },
+    "destinations": {
+      "title": "Study Destinations Gallery",
+      "desc": "Explore the incredible places you'll visit during our immersive study tours."
+    },
+    "destinationLabel": "Destination",
+    "features": [
+      {
+        "title": "Expertly Crafted Programs",
+        "desc": "Language learning, cultural workshops, academic interactions, and visits to tech giants and historical landmarks."
+      },
+      {
+        "title": "Extensive Resource Integration",
+        "desc": "Long-term partnerships with prestigious educational institutions, top-tier universities, and renowned professors."
+      },
+      {
+        "title": "Comprehensive Service Assurance",
+        "desc": "Professional tour leaders, overseas travel insurance, comfortable accommodation, and seamless communication with parents."
+      }
+    ],
+    "values": [
+      {
+        "title": "Tech-Enhanced Learning",
+        "desc": "Cutting-edge AI tools and interactive platforms that adapt to your pace, making mastering Chinese faster and more intuitive."
+      },
+      {
+        "title": "Humanistic Care",
+        "desc": "Education is more than academics. We prioritize your emotional wellbeing, personal growth, and cultural sensitivity."
+      },
+      {
+        "title": "Global Citizenship",
+        "desc": "Starting in Indonesia, we build bridges to China and the world, celebrating diverse perspectives and inclusive environments."
+      }
+    ],
+    "programs": [
+      {
+        "title": "Wuhan Study Tour",
+        "desc": "Immerse yourself in the vibrant culture and academic excellence of central China. Visit Huanghelou, explore Wuhan University's campus, and experience local traditions.",
+        "tags": [
+          "Summer 2025",
+          "Language",
+          "Culture"
+        ]
+      },
+      {
+        "title": "Beijing Study Tour",
+        "desc": "A full 14-day guided experience exploring top universities like Tsinghua and Peking University, tech innovations in Zhongguancun, and historical heritage like the Great Wall.",
+        "tags": [
+          "Capital",
+          "Top Universities",
+          "Heritage"
+        ]
+      },
+      {
+        "title": "Shanghai-Hangzhou Study Tour",
+        "desc": "Experience the magic of modern metropolises. Includes visits to Alibaba headquarters, modern tech hubs, and the serene beauty of the West Lake.",
+        "tags": [
+          "Tech Giants",
+          "Modern City",
+          "E-commerce"
+        ]
+      },
+      {
+        "title": "Shenzhen Study Tour",
+        "desc": "Step into the heart of China's silicon valley. Exclusive access to leading technological giants, hardware markets, and networking with local innovators.",
+        "tags": [
+          "Innovation",
+          "Networking",
+          "Tech Hub"
+        ]
+      }
+    ]
+  },
+  "news": {
+    "tag": "News & Updates",
+    "latest": "Latest Updates",
+    "defaultTitle": "Latest News & Insights",
+    "defaultSubtitle": "Stay updated with UPER and global education trends.",
+    "noNews": "No news articles found.",
+    "readMore": "Read More",
+    "newsBadge": "News",
+    "searchPlaceholder": "Search articles by title or keywords...",
+    "noResults": "No articles found matching your criteria",
+    "noResultsDesc": "Please refine your keywords, clear the search, or choose one of the popular search tags above.",
+    "clearSearch": "Clear Search",
+    "popularTags": "Popular Searches",
+    "tagAll": "All Topics",
+    "tagChina": "China & STEM",
+    "tagScholarship": "Scholarships",
+    "tagMandarin": "Mandarin",
+    "tagMuhammadiyah": "Muhammadiyah",
+    "tagForum": "Forums & Summits",
+    "externalSource": "External Reports"
+  },
+  "common": {
+    "backToList": "Back to List",
+    "share": "Share",
+    "readTime": "min read"
+  },
+  "details": {
+    "notFound": "Not Found",
+    "newsNotFoundDesc": "The news article was not found.",
+    "campaignNotFoundDesc": "The campaign you are looking for does not exist or has expired.",
+    "returnBack": "Return Back",
+    "back": "Back",
+    "loading": "Loading...",
+    "specialCampaign": "Special Campaign",
+    "endsOn": "Ends on",
+    "moreDetailsSoon": "More details about this campaign will be available soon.",
+    "participateNow": "Participate Now",
+    "allNews": "Back to all news",
+    "loadingArticle": "Loading article..."
+  },
+  "hsk": {
+    "header": {
+      "tag": "Tech-Enhanced Learning",
+      "title1": "Master Chinese with Expert Tutors &",
+      "title2": "AI Assistance",
+      "desc": "Experience a new era of HSK preparation. We combine highly experienced human tutors with adaptive AI platforms to pinpoint your weak spots and warmly guide you to fluency."
+    },
+    "blcu": {
+      "tag": "Academic Authority",
+      "title": "BLCU Teaching & Research System Support",
+      "desc": "Relying on the deep, authentic and authoritative academic foundation of Beijing Language and Culture University (BLCU)—the cradle of Teaching Chinese as a Foreign Language (TCFL)—and combining it with modern technology, we tailor a precise, comprehensive, and elite Chinese curriculum.",
+      "point1": {
+        "title": "BLCU Teaching & Research Support",
+        "desc": "Aligned with BLCU's high-standard TCFL syllabus and academic assessment metrics"
+      },
+      "point2": {
+        "title": "Guidance from Expert BLCU Tutors",
+        "desc": "Supervised and designed by senior front-line TCFL professors and expert educators from BLCU"
+      },
+      "point3": {
+        "title": "Professional TCFL Backgrounds",
+        "desc": "Brings together top-tier TCFL Master's and PhD educational research talents from China and Indonesia"
+      },
+      "point4": {
+        "title": "Advanced HSK Research Focus",
+        "desc": "Exceptional mastery of the new HSK syllabus evolution, with precise multi-dimensional analysis of key testing points"
+      }
+    },
+    "levels": [
+      {
+        "level": "HSK 1-2",
+        "title": "Beginner",
+        "desc": "Fundamental Chinese expressions and basic communication skills for beginners."
+      },
+      {
+        "level": "HSK 3-4",
+        "title": "Intermediate",
+        "desc": "Intermediate language skills for everyday situations and academic contexts."
+      },
+      {
+        "level": "HSK 5-6",
+        "title": "Advanced",
+        "desc": "Advanced proficiency for highly complex topics and professional environments."
+      }
+    ],
+    "methodology": {
+      "title": "Our Methodology",
+      "desc": "We combine traditional academic rigor with modern technological solutions.",
+      "items": [
+        "Immersive classroom discussions",
+        "Intensive listening & speaking exercises",
+        "Multimedia resources & role-plays",
+        "Comprehensive study materials & mock exams"
+      ]
+    },
+    "benefits": {
+      "title": "Why Choose UPER for HSK?",
+      "desc": "Our teaching system is derived from the teaching and research team of Beijing Language and Culture University, with curriculum designs closely aligned with HSK exam requirements. From professional Chinese tutor guidance to digital materials and AI-assisted learning systems, we help students comprehensively improve their listening, speaking, reading, and writing skills to achieve more efficient Chinese learning outcomes.",
+      "btn": "Start Your Journey"
+    },
+    "vision": {
+      "tag": "In Development",
+      "title1": "The Future of",
+      "title2": "Language AI",
+      "desc": "We are currently developing a proprietary AI system that will revolutionize how our students learn Chinese. Get ready for a truly personalized learning journey.",
+      "items": [
+        {
+          "title": "Smart Assessment",
+          "desc": "Continuous evaluation to pinpoint exact areas needing improvement."
+        },
+        {
+          "title": "Adaptive Pathway",
+          "desc": "Dynamic curriculum that adjusts to your learning speed and style."
+        },
+        {
+          "title": "24/7 Virtual Tutor",
+          "desc": "Practice speaking anytime with our conversational AI agent."
+        }
+      ],
+      "inDevelopment": "Expected Launch: Fall 2025"
+    }
+  },
+  "faq": {
+    "portal": {
+      "hsk": {
+        "title": "Have Questions about HSK?",
+        "desc": "Get precise guidance about exam preparation, standard tutoring alignments, offline camp facilities, and tone diagnosis tools.",
+        "btn": "Go to HSK FAQs",
+        "badge": "Knowledge Portal"
+      },
+      "csca": {
+        "title": "Have Questions about CSCA Bridging?",
+        "desc": "Explore critical questions about scholastic evaluation benchmarks, advanced mathematical syllabuses, and how to prove STEM capabilities to elite CSC committees.",
+        "btn": "Go to CSCA FAQs",
+        "badge": "Academic Guide"
+      },
+      "abroad": {
+        "title": "Have Questions about University Placements?",
+        "desc": "Find essential compliance answers on fully-funded scholarship ratios, regional Chinese embassies/visa offices, PPIT student groups, and cross-border fintech.",
+        "btn": "Go to Admission FAQs",
+        "badge": "Expat Advisor"
+      }
+    },
+    "tag": "Instant Solutions",
+    "abroadTitlePrefix": "Study-Abroad ",
+    "title1": "Frequently Asked",
+    "title2": "Questions",
+    "desc": "Find clear, authoritative answers to help you navigate HSK preparation, scholarship applications, and university admissions in China.",
+    "searchPlaceholder": "Search FAQs...",
+    "filterByProgram": "Filter by Program",
+    "programs": {
+      "all": "All Programs",
+      "studyAbroad": "Study Abroad"
+    },
+    "categories": {
+      "all": "All Questions",
+      "academic": "Application & Academic Questions",
+      "financial": "Financial Questions",
+      "life": "Life & Culture in China",
+      "career": "Career & Future"
+    },
+    "items": [
+      {
+        "id": "q1",
+        "category": "academic",
+        "question": "What are the basic requirements to apply for a bachelor's degree in China?",
+        "answer": "The main requirements are:\n\n* **Academic:** A high school diploma with a good GPA. Your national exam scores (like Ujian Nasional) are also considered.\n* **Language:** For programs taught in Chinese, you typically need an HSK 4 or HSK 5 certificate. For English-taught programs, an IELTS (usually 5.5-6.0+) or TOEFL score is required.\n* **Age:** Generally, you should be under 25 years old.\n* **Health:** You must be in good health."
+      },
+      {
+        "id": "q2",
+        "category": "academic",
+        "question": "What is the typical timeline for applying to Chinese universities?",
+        "answer": "Planning ahead is crucial! Here is a general timeline before university semester start:\n\n* **12-10 Months Before:** Research universities and programs. Start learning Chinese.\n* **9-8 Months Before:** Prepare for and take the HSK/IELTS/TOEFL exam.\n* **7-6 Months Before:** This is the key application period. Most applications open. Contact professors for Master's/PhD. Finalize your documents (Personal Statement, Recommendation Letters).\n* **5-4 Months Before:** Submit all applications before the deadlines. Apply for scholarships (CSC, university-specific).\n* **3-2 Months Before:** Receive admission notices and JW202 form. Apply for your student visa (X1) at the Chinese Embassy in Jakarta.\n* **1 Month Before:** Book flights, pack, and get ready for your adventure!"
+      },
+      {
+        "id": "q8",
+        "category": "academic",
+        "question": "How do I choose the right university and major for me?",
+        "answer": "We will consider several factors together:\n\n* **Your Academic Background:** Your high school grades and subjects.\n* **Your Career Goals:** What do you want to do after graduation?\n* **University Ranking:** China's C9 League (like Peking, Tsinghua Univ.) are top-tier, but many other universities excel in specific fields (e.g., Tongji for Engineering, Fudan for Business).\n* **Location & Climate:** Do you prefer a modern megacity like Shanghai, a historical city like Beijing, or a milder climate in Southern China (e.g., Guangzhou)?"
+      },
+      {
+        "id": "q9",
+        "category": "academic",
+        "question": "What is the application process like?",
+        "answer": "The general process is:\n\n1. **Prepare Documents:** Diploma, transcripts, passport copy, language certificate, personal statement, etc.\n2. **Submit Online Application** via the university’s portal or the **CSC (China Scholarship Council)** platform if applying for a scholarship.\n3. **Pay Application Fee.**\n4. **Receive Admission Notice and JW202 Form** (for your student visa).\n5. **Apply for Student Visa (X1 Visa)** at the Chinese Embassy in Jakarta."
+      },
+      {
+        "id": "q10",
+        "category": "academic",
+        "question": "What documents do I need to prepare?",
+        "answer": "While requirements vary, you will typically need:\n\n* **Must-Haves:** Passport copy, notarized academic transcripts/diploma, passport-sized photos.\n* **Application Forms:** The university's online form and often the Physical Examination Record.\n* **Proof of Language Proficiency:** HSK, IELTS, or TOEFL score report.\n* **Personal Documents:** Personal Statement, Recommendation Letters (usually 2), CV/Resume.\n* **Additional:** Portfolio for art/design majors, research proposal for postgraduate studies."
+      },
+      {
+        "id": "q11",
+        "category": "academic",
+        "question": "Should I apply to multiple universities?",
+        "answer": "**Yes, absolutely.** It is highly recommended to apply to **4-7 universities** to increase your chances. Categorize them into:\n\n* **Dream Schools:** Top-tier, competitive universities.\n* **Target Schools:** Universities where your profile matches their requirements.\n* **Safety Schools:** Universities where you are almost certain to be admitted."
+      },
+      {
+        "id": "q12",
+        "category": "academic",
+        "question": "What are the most common mistakes students make in their applications?",
+        "answer": "* **Missed Deadlines:** Chinese universities are strict about deadlines.\n* **Incomplete Applications:** Double-check that every required document is uploaded.\n* **Generic Personal Statements:** Your statement for University A should not be identical to the one for University B. Mention the university by name and why you chose it.\n* **Poor Translation:** Ensure your academic documents are translated and notarized correctly."
+      },
+      {
+        "id": "q13",
+        "category": "academic",
+        "question": "Who should I ask for help during the application process?",
+        "answer": "* **Your Consultancy:** We are here to guide you on strategy, document review, and deadlines.\n* **University Admissions Office:** If you have a specific question about a program or requirement, **email them directly**. They are usually helpful.\n* **Seniors:** Connect with Indonesian seniors already studying in China through social media (Instagram, Facebook groups). They can offer firsthand advice."
+      },
+      {
+        "id": "q14",
+        "category": "academic",
+        "question": "My high school grading system is different. How will Chinese universities evaluate my GPA?",
+        "answer": "This is a common situation. Universities have experienced admissions officers who are familiar with international grading systems, including Indonesia's *Nilai UN* and school-specific report cards.\n\n**What we will do:** We will help you get your transcripts **notarized and officially translated** into English or Chinese. Many applications also allow you to provide a brief explanation of your grading scale."
+      },
+      {
+        "id": "q15",
+        "category": "academic",
+        "question": "What is a \"Personal Statement\" or \"Study Plan,\" and why is it important?",
+        "answer": "This is a crucial part of your application, especially for scholarship seekers. It’s your chance to speak directly to the admissions committee.\n\n* **It should include:** Your academic background, why you are interested in your chosen major, why you chose China and that specific university, your future career goals, and how you plan to contribute as a student.\n\n**We will guide you** in crafting a compelling and authentic story that stands out."
+      },
+      {
+        "id": "q16",
+        "category": "academic",
+        "question": "How important are recommendation letters, and who should I ask?",
+        "answer": "Very important for competitive programs and scholarships.\n\n* **Who to ask:** Your **high school principal, head teacher, or a subject teacher** who knows you well (e.g., your Math teacher for an Engineering application). They should be able to comment on your academic abilities, character, and potential."
+      },
+      {
+        "id": "q17",
+        "category": "academic",
+        "question": "How do I get a strong recommendation letter?",
+        "answer": "1. **Ask Early:** Give your recommenders at least one month’s notice.\n2. **Choose the Right Person:** Ask a teacher, principal, or employer who **knows you well personally**, not just the one who gave you the highest grade. A personalized letter from a department head is better than a generic one from a school director who doesn’t remember you.\n3. **Provide a “Cheat Sheet”:** Make it easy for them. Give them your CV, transcript, personal statement, and a list of key points or achievements you’d like them to mention (e.g., “Remember that science project I led?”)."
+      },
+      {
+        "id": "q18",
+        "category": "academic",
+        "question": "Is there an entrance exam for universities?",
+        "answer": "Typically, **no**. For most undergraduate programs, admission is based on your academic records, language proficiency, and application documents. However, some top-tier universities for arts (like music or fine arts) or very competitive programs like Peking University have their own aptitude tests or interviews."
+      },
+      {
+        "id": "q19",
+        "category": "academic",
+        "question": "What is the \"JW201/JW202 Form\"?",
+        "answer": "This is a **Visa Application for Study in China** form issued by the Chinese government. It is **essential** for applying for your student visa. The university will send it to you along with your admission letter. **Do not lose it!**"
+      },
+      {
+        "id": "q20",
+        "category": "academic",
+        "question": "How do I apply for a student visa (X1 Visa) in Indonesia?",
+        "answer": "You must apply at the **Visa Application Service Center** of the Chinese Embassy in Jakarta.\n\n* **Required Documents:** Your passport, admission notice, JW202 form, completed visa application form, and a photo.\n* **Process:** Submit the documents, pay the fee, and wait for processing (usually a few working days). You may need to do an interview."
+      },
+      {
+        "id": "q21",
+        "category": "financial",
+        "question": "How much does it cost to study and live in China?",
+        "answer": "Costs vary by city and university. Here’s a rough estimate:\n\n* **Tuition Fees: ¥10,000 - ¥50,000 per year** ($1,400 - $7,000 USD). Medical degrees and programs at elite universities are higher.\n* **Accommodation: ¥3,000 - ¥15,000 per year** for a university dormitory. Off-campus apartments are more expensive.\n* **Living Costs (food, transport): ¥1,500 - ¥2,500 per month**, depending on your lifestyle. Smaller cities are cheaper than Beijing or Shanghai."
+      },
+      {
+        "id": "q22",
+        "category": "financial",
+        "question": "Are there scholarships available for Indonesian students?",
+        "answer": "**Yes! There are excellent opportunities:**\n\n* **Chinese Government Scholarship (CSC Scholarship):** This is the most prestigious one, often covering full tuition, accommodation, medical insurance, and providing a living stipend.\n* **Belt and Road Scholarship:** Many provinces and universities offer scholarships specifically for students from ASEAN countries like Indonesia.\n* **University-Specific Scholarships:** Most universities offer merit-based scholarships for international students.\n\nWe will help you identify and apply for all scholarships you are eligible for."
+      },
+      {
+        "id": "q23",
+        "category": "financial",
+        "question": "Can you explain the different types of CSC Scholarships?",
+        "answer": "Certainly. The Chinese Government Scholarship has several programs:\n\n* **Type A (Bilateral Program):** This is applied for through the Chinese Embassy or your home government’s ministry of education (e.g., in Jakarta). It has a specific quota for Indonesian students.\n* **Type B (University Program):** This is applied for directly through a Chinese university. Each university has its own quota.\n* **Confucius Institute Scholarship (CIS):** Specifically for students of Chinese language and culture. If you want to study for a degree in Teaching Chinese, this is a top choice.\n* **Provincial/Municipal Scholarships:** Offered by local governments (e.g., Beijing, Shanghai, Jiangsu). They usually cover partial tuition or provide a stipend.\n* **University-Specific Scholarships:** Almost every university offers its own merit-based scholarships for international students. These can range from full tuition waivers to discounts (e.g., 30% off tuition).\n* **ASEAN-China Scholarship:** Specifically for students from ASEAN member states like Indonesia, promoting regional exchange.\n\nWe will analyze which program gives you the highest chance of success based on your profile and our experience with different universities."
+      },
+      {
+        "id": "q24",
+        "category": "financial",
+        "question": "I'm not a top student with a perfect GPA. Can I still get a scholarship?",
+        "answer": "**Absolutely.** While a high GPA helps, scholarship committees look at a **holistic profile**:\n\n* **Strong Personal Statement:** A compelling story about your goals and why you chose China.\n* **Extracurricular Activities:** Leadership roles, volunteer work, and club participation show well-roundedness.\n* **Language Potential:** Even a basic HSK score shows commitment.\n* **Recommendation Letters:** Powerful letters from teachers can make a big difference. Many university scholarships are designed to attract good, motivated students, not just the absolute top 1%."
+      },
+      {
+        "id": "q25",
+        "category": "financial",
+        "question": "What is the best strategy to increase my chances of getting a scholarship?",
+        "answer": "Follow this strategy:\n\n1. **Apply Early:** Applications open 6-8 months before the semester starts.\n2. **Apply Broadly:** Don’t just apply for one scholarship. Apply for the CSC and university-specific scholarships simultaneously. You can sometimes hold multiple partial scholarships.\n3. **Target “Friendly” Universities:** Some universities in China have a higher quota of scholarships for international students. We can advise you on which universities have a history of awarding more scholarships to Indonesians.\n4. **Have a Backup Plan:** Always be prepared to self-fund at least the first year, even if you are applying for scholarships."
+      },
+      {
+        "id": "q26",
+        "category": "financial",
+        "question": "What is the single most important document for a scholarship application?",
+        "answer": "While all documents are important, the **Personal Statement / Study Plan** is your chance to speak directly to the committee. It must be unique, genuine, and explain:\n\n1. Your academic and professional background.\n2. Why you want to study in China and at that specific university.\n3. Your detailed study and research plan in China.\n4. Your future career goals and how your studies in China will help you achieve them.\n\n**A generic, copied statement is the fastest way to get rejected.**"
+      },
+      {
+        "id": "q27",
+        "category": "financial",
+        "question": "Is there an interview for scholarships? How should I prepare?",
+        "answer": "Some competitive scholarships (like CSC or university top-tier scholarships) may have an interview. **Prepare to talk about:**\n\n* Why you chose your major and that university.\n* Your basic knowledge about China and Chinese culture.\n* Your future plans.\n* How you will be a good bridge between Indonesia and China.\n\n**Practice:** Have a mock interview with a friend or your consultant. Dress professionally and be on time for the online interview."
+      },
+      {
+        "id": "q28",
+        "category": "financial",
+        "question": "I was offered a scholarship from a less prestigious university but nothing from my top choice. What should I do?",
+        "answer": "This is a common dilemma. You must decide what is more important to you:\n\n* **Prestige of the University:** If the brand name of your top-choice school is critical for your career goals, you might consider self-funding the first year and applying for scholarships again *within* the university for your second year.\n* **Financial Necessity:** If your budget is tight, accepting the scholarship from the other university is a wise and practical choice. Remember, a degree from any Chinese university is highly valued in Indonesia."
+      },
+      {
+        "id": "q29",
+        "category": "financial",
+        "question": "My scholarship application was rejected. What should I do now?",
+        "answer": "Don't give up!\n\n1. **Ask for Feedback:** Politely ask the scholarship provider or university if they can provide a reason. Sometimes they do.\n2. **Reapply Next Year:** Use the time to improve your profile: get a higher HSK/IELTS score, gain some work experience, or improve your grades.\n3. **Consider a Pathway Program:** Enroll in a Chinese language program in China. This makes you a stronger candidate for degree programs and scholarships the following year, as you are already in the system."
+      },
+      {
+        "id": "q30",
+        "category": "financial",
+        "question": "If I get a CSC scholarship, how and when will I receive the living stipend?",
+        "answer": "The stipend is paid **monthly directly into your Chinese bank account**, which you will set up after you arrive. The amount varies by degree level (e.g., undergraduate, master’s, PhD). Payment usually starts after you complete your university registration and medical check.\n\n**Important:** The stipend is for living expenses; it is not a large amount of money, so you must budget wisely."
+      },
+      {
+        "id": "q31",
+        "category": "financial",
+        "question": "Does the scholarship cover my flight tickets to and from China?",
+        "answer": "Typically, **most scholarships do NOT cover international airfare**. The CSC scholarship, for example, does not include round-trip airfare. You are responsible for your travel costs. Always check the specific details of the scholarship offer."
+      },
+      {
+        "id": "q32",
+        "category": "financial",
+        "question": "What happens if my grades drop after I get the scholarship?",
+        "answer": "Scholarships are contingent on maintaining good academic performance. Universities will require you to **pass all your exams and maintain a minimum GPA** (e.g., above 70% or 2.5/4.0). If your grades fall below the standard, you may receive a warning, and if it continues, the scholarship could be **suspended or canceled**."
+      },
+      {
+        "id": "q33",
+        "category": "financial",
+        "question": "Besides tuition, what other costs should I budget for?",
+        "answer": "Hidden costs are important:\n\n* **Health Insurance:** Mandatory for all international students, approx. **¥800 - ¥1,200 per year**.\n* **Visa Application & Renewal Fees.**\n* **Books and Study Materials.**\n* **Travel Costs** for exploring during holidays.\n* **Initial Setup Costs** when you first arrive (bedding, kitchenware, winter clothes)."
+      },
+      {
+        "id": "q34",
+        "category": "financial",
+        "question": "How can I open a Chinese bank account?",
+        "answer": "It’s a straightforward process once you are in China.\n\n* **Required Documents:** Your passport, student ID, and a residential registration form provided by your university.\n* **Process:** We or your university’s international student office will often take new students to a local bank (like **Bank of China** or **ICBC**) to help you open an account. This is essential for receiving scholarships, paying bills, and using mobile payment apps."
+      },
+      {
+        "id": "q35",
+        "category": "life",
+        "question": "As a Muslim student, will I be able to find Halal food and mosques?",
+        "answer": "Yes, this is a very common concern, and China is well-prepared.\n\n* **Halal Food:** Most universities, especially in major cities, have **Halal canteens** (qīngzhēn shítáng 清真食堂). Cities with large Muslim populations (like **Xi'an, Lanzhou, Ningxia**) have countless Halal restaurants and street food stalls.\n* **Mosques:** Major cities have central mosques. You can easily find them using apps like **WeChat or Baidu Maps**. Universities will also help you locate the nearest prayer facilities."
+      },
+      {
+        "id": "q36",
+        "category": "life",
+        "question": "What is student life like in China?",
+        "answer": "It’s vibrant and diverse! You will have the opportunity to:\n\n* Join student clubs and associations.\n* Participate in cultural festivals (both Chinese and international).\n* Travel during holidays to see China’s incredible history and landscapes.\n* Make friends with students from all over the world and from different parts of China."
+      },
+      {
+        "id": "q37",
+        "category": "life",
+        "question": "Will it be difficult to adjust to the culture?",
+        "answer": "There will be an adjustment period, but it’s part of the adventure! Chinese people are generally very friendly and curious about international students.\n\n* **We provide pre-departure cultural training** to prepare you.\n* Universities have **International Student Offices** that offer support and organize events to help you adapt. \n* You will also find a strong community of **Indonesian students** (PPI Tiongkok) in every major city who can help you settle in."
+      },
+      {
+        "id": "q38",
+        "category": "life",
+        "question": "Should I live on-campus or off-campus?",
+        "answer": "Most international students, especially first-years, live **on-campus**.\n\n* **On-Campus Dormitory:**\n  * *Pros:* Cheaper, safer, closer to classes and friends, easier to make friends, managed by the university.\n  * *Cons:* Might have rules (e.g., curfews, no cooking), shared facilities.\n* **Off-Campus Apartment:**\n  * *Pros:* More privacy and freedom.\n  * *Cons:* More expensive, requires a security deposit, rental contracts can be complex, commuting time.\n\n**We recommend** starting on-campus for your first year for convenience and community."
+      },
+      {
+        "id": "q39",
+        "category": "life",
+        "question": "What is the best way to get a mobile phone and internet in China?",
+        "answer": "* **Mobile:** Upon arrival, you can get a prepaid SIM card from providers like **China Mobile, China Unicom, or China Telecom**. You’ll need your passport. Data plans are very affordable.\n* **Apps:** You will immediately need **WeChat** (for everything: messaging, payments, official accounts). Also, get a **VPN (Virtual Private Network)** *before you arrive* to access Google, WhatsApp, Instagram, and other international sites, as they are restricted in China."
+      },
+      {
+        "id": "q40",
+        "category": "life",
+        "question": "How is the transportation system in China?",
+        "answer": "It is arguably the **best in the world**.\n\n* **Within Cities:** Subway systems in major cities are extensive, clean, efficient, and cheap. Didi (like Uber/Grab) is also widely used.\n* **Between Cities:** The **high-speed rail (HSR)** network is incredible. You can travel from Beijing to Shanghai (1,300 km) in just 4.5 hours. It’s the preferred way to travel for students."
+      },
+      {
+        "id": "q41",
+        "category": "life",
+        "question": "What about healthcare for students?",
+        "answer": "* **University Clinic:** Most universities have an on-campus clinic for minor illnesses at a very low cost.\n* **International Hospitals:** For more serious issues, major cities have international hospitals with English-speaking staff. This is why **comprehensive health insurance is mandatory**—it covers costs at these hospitals."
+      },
+      {
+        "id": "q42",
+        "category": "career",
+        "question": "Can I work part-time while studying?",
+        "answer": "Yes, but with restrictions. International students can work part-time on campus (e.g., in the library, as a teaching assistant) or off-campus with special permission from the university and immigration authorities. It’s usually limited to a certain number of hours per week."
+      },
+      {
+        "id": "q43",
+        "category": "career",
+        "question": "What are my job prospects after graduating from a Chinese university?",
+        "answer": "A Chinese degree is highly respected. Your options are excellent:\n\n* **Work in China:** There is high demand for graduates who understand both Chinese and international markets, especially in trade, technology, and engineering. You can apply for a work visa after you find a job.\n* **Work in Indonesia:** Many Indonesian companies (especially those trading with China) highly value graduates with Chinese education, language skills, and cultural understanding.\n* **Start Your Own Business:** You could become an entrepreneur, facilitating business between Indonesia and China."
+      },
+      {
+        "id": "q44",
+        "category": "career",
+        "question": "What is the policy for internships during my studies?",
+        "answer": "It is possible and encouraged.\n\n* You can find internships during summer/winter holidays. Many universities have **Career Service Centers** that post internship opportunities, especially from companies looking for students with bilingual skills (Indonesian-Chinese/English).\n* Some programs may have a formal **internship or co-op** component built into the curriculum."
+      },
+      {
+        "id": "q45",
+        "category": "career",
+        "question": "Can I stay in China to look for a job after I graduate?",
+        "answer": "Yes. After graduation, you can apply for a **Residence Permit for Internship or Entrepreneurship** to stay and look for work for up to 2 years. Once you secure a full-time job, your employer will help you convert that into a **work permit and residence permit**."
+      },
+      {
+        "id": "q46",
+        "category": "career",
+        "question": "How valued is a Chinese degree and work experience back in Indonesia?",
+        "answer": "**Extremely valued.**\n\n* Indonesia and China have deep trade and investment ties. Companies in sectors like **infrastructure, tech, e-commerce, and manufacturing** are actively seeking talent who understand the Chinese market, language, and business culture.\n* Your experience will make you a highly competitive candidate for roles dealing with Chinese partners or for Chinese companies investing in Indonesia (e.g., **TikTok, Xiaomi, Huawei, Alibaba's Lazada**)."
+      },
+      {
+        "id": "q47",
+        "category": "career",
+        "question": "Do I need to get my Chinese degree certified when I return to Indonesia?",
+        "answer": "Yes, for official purposes. The process is called **legalisasi**.\n\n* You will need to get your diploma and transcripts authenticated by: 1. The Chinese Ministry of Foreign Affairs (or local Foreign Affairs Office). 2. The Indonesian Embassy/Consulate in China.\n* Upon returning to Indonesia, you may need to submit these to the **Indonesian Ministry of Education** for recognition. **We will provide you with a detailed guide** on this process before you graduate."
+      },
+      {
+        "id": "q57",
+        "category": "academic",
+        "question": "Is studying in China worth it for international students?",
+        "answer": "Absolutely. China offers a rare combination of world-class academic institutions, cutting-edge technology ecosystems, and highly affordable tuition and living costs compared to Western countries. Furthermore, China's massive trade and economic relations with Southeast Asia mean that graduates with a Chinese education and bilingual fluency possess an unparalleled competitive edge in the job market."
+      },
+      {
+        "id": "q58",
+        "category": "life",
+        "question": "What is the cost of living for international students in China?",
+        "answer": "The cost of living is highly affordable. On average, students spend between **¥1,500 to ¥2,500 per month** (approximately USD 200 - 350) on meals, local transport, utilities, and daily necessities. This varies by city; tier-1 cities like Beijing and Shanghai are more expensive, while beautiful provincial capitals and academic hubs offer outstanding quality of life at a fraction of the cost."
+      },
+      {
+        "id": "q59",
+        "category": "academic",
+        "question": "What are the best universities in China for Indonesian students?",
+        "answer": "Indonesian students thrive at top-tier universities across prominent hub cities:\n\n* **Top Comprehensive & Technology:** Tsinghua University, Peking University, Shanghai Jiao Tong University, Zhejiang University, and Fudan University.\n* **Top Subject-Specialized:** Tongji University (for Architecture & Civil Engineering), University of International Business and Economics (UIBE) or Shanghai University of Finance and Economics (SUFE) (for Business & Economics), and elite provincial universities hosting dedicated ASEAN scholarship schemes."
+      },
+      {
+        "id": "q60",
+        "category": "financial",
+        "question": "Is studying in China cheaper than studying in Australia or the US?",
+        "answer": "Yes, significantly cheaper. Tuition fees in Western countries like Australia, the UK, or the US can easily range from **USD 25,000 to USD 50,000 per year**, with high annual living costs exceeding USD 15,000. In comparison, high-quality Chinese universities charge tuition of only **USD 2,000 to USD 5,000 per year**, and student accommodation/living is incredibly affordable. In addition, China's generous full scholarship opportunities (covering full tuition, housing, and monthly living stipends) are far more accessible."
+      }
+    ]
+  },
+  "careers": {
+    "tag": "Join Our Mission",
+    "title1": "Build the Bridge,",
+    "title2": "Elevate Your Career",
+    "desc": "Come join a premier team driven to dismantle barriers between Southeast Asian aspirants and top-tier Chinese universities. We combine AI tutoring with human counseling mastery.",
+    "whyWorkWithUs": "Why Join UPER?",
+    "benefits": {
+      "title": "Premier Benefits & Inclusive Care at UPER",
+      "subtitle": "We celebrate and invest in our change-makers, delivering competitive rewards and fluid cross-border growth paths.",
+      "list": [
+        {
+          "title": "Highly Competitive Reward Loops",
+          "desc": "Favorable base salaries paired with generous quarterly performance bonuses and end-of-year profit sharing."
+        },
+        {
+          "title": "Comprehensive Healthcare Coverage",
+          "desc": "Full BPJS (Kesehatan & Ketenagakerjaan) benefits alongside premium private supplementary clinical insurance."
+        },
+        {
+          "title": "Cross-Border Travels & Delegations",
+          "desc": "Fully-funded high-specification study advisor and tutor tours to partner double first-class Chinese universities."
+        },
+        {
+          "title": "Learning & Tech Certifications",
+          "desc": "Sizable personal growth budgets covering HSK pedagogy trainings, system frameworks, and content skills."
+        },
+        {
+          "title": "Elite Waterfront Workspace in PIK",
+          "desc": "Work inside our modern, light-filled hub at Golf Island PIK (Jakarta) with flexible hybrid collaboration options."
+        },
+        {
+          "title": "Vibrant Cultural Celebrations & Snacks",
+          "desc": "Engaging bi-lingual team-building camps, holiday gift chests, diverse cultural parties, and unlimited fresh brews."
+        }
+      ]
+    },
+    "perks": {
+      "globalTitle": "Global Exposure",
+      "globalDesc": "Work alongside prominent Ivy-league equivalent Chinese university admission officers, with fully-funded international travel.",
+      "aiTitle": "AI & Innovation Grounding",
+      "aiDesc": "Tackle educational bottlenecks using cutting-edge adaptive AI assessment tech and high-tech client infrastructure.",
+      "impactTitle": "Generational Career Leverage",
+      "impactDesc": "Help thousands of high-schoolers secure life-defining state fellowships, executive packages, and academic success."
+    },
+    "introSubtitle": "Become an architectural pillar in building elite Indonesian-Chinese student bridges. Apply today to elevate your potential.",
+    "positions": "Open Career Tracks",
+    "viewDetails": "View Details",
+    "closeDetails": "Hide Details",
+    "form": {
+      "title": "Apply for this Role",
+      "desc": "Fill out this form and attach your academic or corporate profile. Our HR operations team will respond to qualified candidates in 3-5 days.",
+      "name": "Full Name",
+      "namePl": "e.g., Jonathan Wijaya",
+      "email": "Email Address",
+      "emailPl": "e.g., jonathan@example.com",
+      "phone": "Phone Number / WhatsApp",
+      "phonePl": "e.g., +62 812-3456-7890",
+      "role": "Target Position",
+      "experience": "Years of Experience",
+      "experiencePl": "e.g., 3 years",
+      "resume": "Resume Link / Cloud Storage URL",
+      "resumePl": "e.g., Google Drive or Dropbox link to your CV",
+      "resumeFile": "Attach Resume File (PDF/Word)",
+      "resumeFileLimit": "Max 10MB. Formats: PDF, DOC, DOCX",
+      "dragAndDrop": "Drag & drop your resume PDF/Word here, or click to choose file",
+      "changeFile": "Change File",
+      "coverLetter": "Introduce Yourself (Cover Letter)",
+      "coverLetterPl": "Tell us briefly why you would make an incredible team player at UPER...",
+      "submit": "Submit Application",
+      "submitting": "Submitting...",
+      "comingSoon": "Application Portal Active",
+      "comingSoonDesc": "Our official application portal is fully active. Please fill out the form below, upload your latest resume/CV, and our Talent Team will evaluate your profile within 3 business days.",
+      "successTitle": "Application Received!",
+      "successDesc": "Excellent! Your application files have been securely transmitted to UPER Talent Operations. (An email confirmation trace has been simulated in this preview environment.)",
+      "errorTitle": "Form Errors Found",
+      "errorDesc": "Please double-check all required fields before hitting submit.",
+      "errorFileRequired": "Please attach your CV/Resume file or provide a cloud link.",
+      "serverErrorTitle": "Submission Failed (System Error)",
+      "serverErrorDesc": "We're sorry, your application could not be sent. This might be due to mail server configuration issues. Please try again or email us directly at service@uperedu.com."
+    },
+    "locations": "Locations:",
+    "locJakarta": "Jakarta PIK, Indonesia",
+    "locHangzhou": "Hangzhou, China",
+    "locShenzhen": "Shenzhen, China",
+    "locWuhan": "Wuhan, China",
+    "workspace": {
+      "title": "Our Work Environment",
+      "desc": "View our modern sea-view, tech hub, and academic research workspaces across Jakarta, Shenzhen, and Wuhan.",
+      "picDesc": "Jakarta PIK Coastal Office Workspace",
+      "szDesc": "Shenzhen Tech Hub & Operations Center",
+      "whDesc": "Wuhan Academic Pedagogy Lab",
+      "teamDesc": "Warm & Open Collaborative Hub"
+    },
+    "jobs": [
+      {
+        "id": "mandarin-teacher",
+        "title": "Mandarin Teacher",
+        "department": "Education & Curriculum",
+        "location": "Tangerang Selatan / Yogyakarta",
+        "type": "Full-time / Part-time",
+        "headcount": "several vacancies",
+        "description": "We are seeking passionate Mandarin Teachers to deliver highly engaging lessons to beginner and intermediate levels. You will prepare lesson plans, guide students through core listening, speaking, reading, and writing competencies, and adjust pedagogical methods to promote personal academic outcomes.",
+        "requirements": [
+          "Bachelor’s degree in Mandarin Language, Education, or related field.",
+          "Strong proficiency in Mandarin (HSK 4–6 preferred).",
+          "Teaching experience (minimum 1 year preferred).",
+          "Good communication skills, patient, and able to deliver engaging lessons.",
+          "Able to use digital tools for teaching (Zoom, PPT, Google Classroom, etc.).",
+          "Experience studying in China or holding a Mandarin teaching certification is a plus (Preferred)."
+        ],
+        "responsibilities": [
+          "Teach Mandarin to beginner and intermediate levels.",
+          "Prepare lesson plans, teaching materials, and interactive learning activities.",
+          "Guide students in developing listening, speaking, reading, and writing skills.",
+          "Conduct assessments and provide progress reports.",
+          "Adjust teaching methods based on students’ needs and proficiency levels."
+        ],
+        "salary": "IDR 8,000,000 – 15,000,000",
+        "benefits": [
+          "Opportunity to receive direct training from BLCU (Beijing Language and Culture University) lecturers.",
+          "Supportive and professional working environment."
+        ]
+      },
+      {
+        "id": "senior-sales",
+        "title": "Senior Sales",
+        "department": "Sales & Admissions Growth",
+        "location": "Tangerang Selatan",
+        "type": "Full-time",
+        "headcount": "several vacancies",
+        "description": "We are seeking a results-oriented Senior Sales specialist to follow up on prospective student inquiries and convert high-quality social media leads. You will engage with prospects, understand their academic goals, recommend suitable HSK, CSCA, or academic consulting programs, and guide them smoothly toward successful enrollment.",
+        "requirements": [
+          "Strong sales mindset with a highly results-oriented approach.",
+          "Excellent communication and persuasion skills.",
+          "Experience in education sales, course sales, study abroad consulting, or online sales is a plus.",
+          "Experience handling social media leads (Instagram / TikTok / WhatsApp) is preferred.",
+          "Familiar with Google Sheets and Google Forms for data input, lead tracking, and reporting."
+        ],
+        "languages": [
+          "Fluent in Bahasa Indonesia (required)",
+          "Able to communicate in basic English for daily communication (non-teaching purpose)"
+        ],
+        "responsibilities": [
+          "Follow up and convert leads from WhatsApp, website, Instagram, TikTok, and Google.",
+          "Communicate with prospective students and guide them to enroll in HSK courses, CSCA programs, and study abroad services.",
+          "Understand customer needs and recommend suitable programs.",
+          "Handle inquiries, objections, and perform consistent follow-ups to close deals.",
+          "Manage and track leads, ensuring timely and effective follow-up.",
+          "Maintain records of conversion performance and provide insights for improvement.",
+          "Collaborate with the team to optimize sales scripts and conversion strategies."
+        ],
+        "kpis": [
+          "Lead-to-sale conversion rate",
+          "Number of enrollments (HSK / CSCA)",
+          "Follow-up efficiency and response time"
+        ],
+        "salary": "Performance-based incentives",
+        "benefits": [
+          "High commission potential",
+          "Opportunity to grow in the education and international programs sector"
+        ]
+      },
+      {
+        "id": "accounting-tax",
+        "title": "Accounting & Tax Officer",
+        "department": "Finance & Corporate Services",
+        "location": "Jakarta PIK Office (Pantai Indah Kapuk)",
+        "type": "Full-time",
+        "headcount": "1 vacancy",
+        "description": "We are seeking a detail-oriented, responsible, and high-integrity Accounting & Tax Officer to handle daily financial bookkeeping, balance sheets, invoice reconciliations, and routine Indonesian tax compliance procedures.",
+        "requirements": [
+          "Bachelor’s degree in Accounting, Taxation, or related field.",
+          "2–3 years of experience in accounting and/or taxation.",
+          "Strong understanding of accounting principles and Indonesian tax regulations.",
+          "Familiar with Coretax, e-Faktur, and DJP Online systems.",
+          "Proficient in Microsoft Excel.",
+          "Brevet A & B required (Brevet C is a plus).",
+          "Detail-oriented, responsible, and able to meet strict deadlines.",
+          "Good communication and teamwork skills.",
+          "High level of integrity."
+        ],
+        "responsibilities": [
+          "Handle daily accounting activities, including journal entries and General Ledger (GL) maintenance.",
+          "Prepare monthly financial reports and perform reconciliations.",
+          "Manage Accounts Receivable (AR) and Accounts Payable (AP).",
+          "Handle tax operations, including VAT (input/output) and reconciliation with GL & e-Faktur.",
+          "Prepare and report PPh (Art. 21, 23, 4(2), etc.).",
+          "Ensure timely submission of tax filings (SPT) and tax payments.",
+          "Issue withholding tax slips (Bukti Potong) and verify supporting documents.",
+          "Maintain proper financial and tax documentation for audit readiness.",
+          "Support tax audits and coordinate with internal teams / tax consultants."
+        ],
+        "salary": "IDR 8,000,000 – 9,000,000",
+        "benefits": [
+          "Supportive and professional working environment.",
+          "Fulfill standard regulatory social security and health insurances."
+        ]
+      }
+    ]
+  },
+  "contactPage": {
+    "headOffice": "Jakarta Head Office",
+    "headOfficeTitle": "Jakarta PIK Campus HQ (Indonesia)",
+    "headOfficeAddress": "Ruko Golf Island, JL. Pantai Indah Kapuk No. 100 Blok E, Jakarta, DKI Jakarta, Indonesia",
+    "chinaOffice": "China Office",
+    "chinaOfficeTitle": "China Center (Hangzhou, China)",
+    "chinaOfficeAddress": "Headquarters Economy Park for Alumni Corporation of Zhejiang University",
+    "chinaRepresentative": "China Representative",
+    "chinaContactPerson": "Wang Lisong",
+    "chinaPhone": "18612142789",
+    "chinaPhoneFormatted": "+86 18612142789",
+    "chinaPhoneDirect": "Direct Call",
+    "whatsappPhone": "WhatsApp & Admissions Hotline",
+    "freeConsultNow": "Free consult with us NOW!",
+    "email": "Email",
+    "sendEmail": "Send an email",
+    "thankYou": "Thank you!",
+    "successMessage": "Your message has been successfully sent. Our educational consultants will get back to you within 24 hours.",
+    "sendMessage": "Send us a message",
+    "fillForm": "Fill out the form below and our educational consultants will get back to you within 24 hours.",
+    "fullName": "Full Name",
+    "emailAddress": "Email Address",
+    "mobilePhone": "Mobile Phone / WhatsApp",
+    "interestedIn": "Interested In",
+    "interests": {
+      "studyTours": "China Study Tours",
+      "hskTraining": "HSK Training & AI Platform",
+      "studyAbroad": "Study in China & Scholarships",
+      "cscaTraining": "CSCA Scholastic Assessment Prep",
+      "other": "Other Inquiries & Partnerships"
+    },
+    "message": "Detailed Description",
+    "messagePlaceholder": "Please describe your academic background, target universities/majors, HSK level, or specific questions...",
+    "submitting": "Submitting...",
+    "submitInquiry": "Submit Inquiry",
+    "errors": {
+      "nameRequired": "Full Name is required",
+      "emailRequired": "Email Address is required",
+      "emailInvalid": "Please enter a valid email address",
+      "phoneRequired": "Mobile Phone is required",
+      "phoneInvalid": "Please enter a valid phone number"
+    }
+  }
+}

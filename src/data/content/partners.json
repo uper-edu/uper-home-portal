@@ -1,0 +1,1383 @@
+[
+  {
+    "_createdAt": "2026-07-30T01:35:24Z",
+    "_id": "2c000262-6bda-4a97-93f5-e6bd181c45ce",
+    "_rev": "FHgHG06NenAI49vCz00ylA",
+    "_type": "partner",
+    "_updatedAt": "2026-07-30T01:45:04Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://sdmjogokariyan.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-b07c8644873a60a75050a0ab0f7792514fb6c65d-300x90-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/b07c8644873a60a75050a0ab0f7792514fb6c65d-300x90.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/b07c8644873a60a75050a0ab0f7792514fb6c65d-300x90.png"
+    },
+    "name": "SD Muhammadiyah Jogokariyan Yogyakarta",
+    "order": 1,
+    "subcategory": "Primary School"
+  },
+  {
+    "_createdAt": "2026-07-27T10:03:00Z",
+    "_id": "a827b099-55bf-49e8-ad38-2949824301cb",
+    "_rev": "m3RwsgxYFRconbUOCbwyoS",
+    "_system": {
+      "base": {
+        "id": "a827b099-55bf-49e8-ad38-2949824301cb",
+        "rev": "bhWxV10yTKFx2C3SJOADda"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-07-30T01:35:12Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://smpmuh1-yog.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-6dbb41f92142dcc6039c1d6cd9c36082d22da170-404x404-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/6dbb41f92142dcc6039c1d6cd9c36082d22da170-404x404.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/6dbb41f92142dcc6039c1d6cd9c36082d22da170-404x404.png"
+    },
+    "name": "SMP Muhammadiyah 1 Yogyakarta",
+    "order": 1,
+    "subcategory": "Junior High School"
+  },
+  {
+    "_createdAt": "2026-06-03T08:28:45Z",
+    "_id": "18ade6eb-d094-49a9-8650-4cc0588bea14",
+    "_rev": "g9Nq48KToSNAnu1U1LiV2Q",
+    "_type": "partner",
+    "_updatedAt": "2026-06-03T08:31:40Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://pmb.tarumanagara.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-c5e33425102eba92ae5e2533f91e60592a349277-224x224-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/c5e33425102eba92ae5e2533f91e60592a349277-224x224.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/c5e33425102eba92ae5e2533f91e60592a349277-224x224.jpg"
+    },
+    "name": "Tarumanagara Xinya College",
+    "order": 4,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-06-03T08:34:24Z",
+    "_id": "83a60e4e-32d8-46b7-a20d-c74168cc0d63",
+    "_rev": "Ynk9x94JRrq7S6BwJI06fT",
+    "_type": "partner",
+    "_updatedAt": "2026-06-03T08:36:51Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.umy.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-8045a0f10a01664963ec7e5ca314b9f426aedb50-155x156-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/8045a0f10a01664963ec7e5ca314b9f426aedb50-155x156.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/8045a0f10a01664963ec7e5ca314b9f426aedb50-155x156.png"
+    },
+    "name": "Universitas Muhammadiyah Yogyakarta",
+    "order": 6,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-07-01T02:12:25Z",
+    "_id": "0de8ba32-5800-485c-bd22-b2788b474253",
+    "_rev": "FMNFtA68zhfuONoecF1ftq",
+    "_system": {
+      "base": {
+        "id": "0de8ba32-5800-485c-bd22-b2788b474253",
+        "rev": "uBUfGXcSktsPwN4ztvuGoA"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-07-01T02:17:21Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://sibermu.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-171c6e62c0a88d5599996a73953538e5f07b2f8e-1601x1859-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/171c6e62c0a88d5599996a73953538e5f07b2f8e-1601x1859.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/171c6e62c0a88d5599996a73953538e5f07b2f8e-1601x1859.png"
+    },
+    "name": "Universitas Siber Muhammadiyah",
+    "order": 8,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-07-01T02:13:57Z",
+    "_id": "9f95922f-cd67-4e4e-ae25-6316d28d1c50",
+    "_rev": "TMmaH7mfbHr39zmx08EbHP",
+    "_system": {
+      "base": {
+        "id": "9f95922f-cd67-4e4e-ae25-6316d28d1c50",
+        "rev": "FMNFtA68zhfuONoecF1XdB"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-07-01T02:18:09Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://share.google/rmpDOMmfUiLakUNs5",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-23d650ee96a2533b8336d778d4cde67bfc15232c-320x314-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/23d650ee96a2533b8336d778d4cde67bfc15232c-320x314.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/23d650ee96a2533b8336d778d4cde67bfc15232c-320x314.png"
+    },
+    "name": "Universitas Muhammadiyah Yogyakarta",
+    "order": 9,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-07-01T02:18:33Z",
+    "_id": "06cfb906-668c-4f01-9c4c-823fdca4eb9e",
+    "_rev": "uBUfGXcSktsPwN4ztvuvgg",
+    "_type": "partner",
+    "_updatedAt": "2026-07-01T02:19:09Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://share.google/2rump7BTaLk4iz3L3",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-68f50cf78a399960aba909fb37d0813139396c83-1102x1104-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/68f50cf78a399960aba909fb37d0813139396c83-1102x1104.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/68f50cf78a399960aba909fb37d0813139396c83-1102x1104.png"
+    },
+    "name": "SMA Muhammadiyah 3 Yogyakarta",
+    "order": 10,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-06-03T08:53:58Z",
+    "_id": "788f81af-f039-4d1a-b753-66666f07176d",
+    "_rev": "Ynk9x94JRrq7S6BwJI1nfT",
+    "_type": "partner",
+    "_updatedAt": "2026-06-03T08:55:42Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://sma.alazhar-bsd.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-b7a0b0b349cfe42d6d66f1295fe7a96415814308-303x166-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/b7a0b0b349cfe42d6d66f1295fe7a96415814308-303x166.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/b7a0b0b349cfe42d6d66f1295fe7a96415814308-303x166.png"
+    },
+    "name": "Al-Azhar Bumi Serpong Damai Senior High School",
+    "order": 16,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-06-03T08:57:41Z",
+    "_id": "d97bd47c-a59f-4e88-900d-070f3aa2afeb",
+    "_rev": "pK4BxbcVrBbaTpqeEZPcic",
+    "_type": "partner",
+    "_updatedAt": "2026-06-03T09:04:11Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://saintjohn.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-a70ad2f33dc78ab7e1d08746dff50e584914c5e6-225x225-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/a70ad2f33dc78ab7e1d08746dff50e584914c5e6-225x225.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/a70ad2f33dc78ab7e1d08746dff50e584914c5e6-225x225.png"
+    },
+    "name": "Saint John's Catholic School",
+    "order": 17,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-01T04:17:19Z",
+    "_id": "19707040-cf84-470a-b148-dfe84950615e",
+    "_rev": "Woxh0KN3xBhbD6G863QcsK",
+    "_type": "partner",
+    "_updatedAt": "2026-09-01T04:18:40Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://aladzkar.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-053f15d854d8405202bc0a7b23ab80532b8e9d81-300x287-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/053f15d854d8405202bc0a7b23ab80532b8e9d81-300x287.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/053f15d854d8405202bc0a7b23ab80532b8e9d81-300x287.png"
+    },
+    "name": "SMA Al-Adzkar",
+    "order": 20,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-07-27T10:02:15Z",
+    "_id": "b7d5c286-1788-4506-8ddf-e3a3531f0889",
+    "_rev": "m3RwsgxYFRconbUOCbwxmy",
+    "_system": {
+      "base": {
+        "id": "b7d5c286-1788-4506-8ddf-e3a3531f0889",
+        "rev": "vJwN2JbD1ckhplNrBsXIut"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-07-30T01:34:43Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.smamuhibantul.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-7715168e2185be0568a2a10bce45d39b518c5080-666x375-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/7715168e2185be0568a2a10bce45d39b518c5080-666x375.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/7715168e2185be0568a2a10bce45d39b518c5080-666x375.png"
+    },
+    "name": "SMA Muhammadiyah 1 Bantul",
+    "order": 20,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-04T09:45:31Z",
+    "_id": "f06c222a-bb25-454a-8235-6bf34a2681f5",
+    "_rev": "xHNIAHXusO6Pa7RquPkhhO",
+    "_type": "partner",
+    "_updatedAt": "2026-09-04T09:48:13Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://elyon.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-2ef4c1313b3763f8a36c1b7e49a9abb263a9d026-841x720-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/2ef4c1313b3763f8a36c1b7e49a9abb263a9d026-841x720.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/2ef4c1313b3763f8a36c1b7e49a9abb263a9d026-841x720.png"
+    },
+    "name": "Elyon Christian School",
+    "order": 22,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-04T09:50:11Z",
+    "_id": "2908413a-00ea-4b5c-b4a1-096325cf98ac",
+    "_rev": "sOmfalcSjojVzxV0OGByyb",
+    "_type": "partner",
+    "_updatedAt": "2026-09-04T09:51:08Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://gloriaschool.org/sukomanunggal/sma-kristen-gloria-1/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-d11a5e7f5691d566fbaa0000841358b17176085d-604x261-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/d11a5e7f5691d566fbaa0000841358b17176085d-604x261.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/d11a5e7f5691d566fbaa0000841358b17176085d-604x261.png"
+    },
+    "name": "SMA Kristen Gloria 1",
+    "order": 24,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-04T09:51:40Z",
+    "_id": "83ac3005-9247-4cc3-b50e-10573a2bb75b",
+    "_rev": "PE3QY8ShreshusJmYBpx8Q",
+    "_type": "partner",
+    "_updatedAt": "2026-09-04T09:52:39Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://surabayacambridge.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-5a85ce8b23448617f52c60beca2654a0c382f170-888x230-webp",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/5a85ce8b23448617f52c60beca2654a0c382f170-888x230.webp"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/5a85ce8b23448617f52c60beca2654a0c382f170-888x230.webp"
+    },
+    "name": "Surabaya Cambridge School",
+    "order": 25,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-21T03:27:57Z",
+    "_id": "40e5c57a-7030-486c-a7de-5b888c3ccc87",
+    "_rev": "5vNcDuk4ZqfyXzbSVahIxz",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:29:28Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.lspr.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-b445eb1bb1319994d651443eef5ed8fd1dfbdd5d-1982x2560-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/b445eb1bb1319994d651443eef5ed8fd1dfbdd5d-1982x2560.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/b445eb1bb1319994d651443eef5ed8fd1dfbdd5d-1982x2560.png"
+    },
+    "name": "LSPR Institute of Communication & Business",
+    "order": 26,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-09-21T03:31:31Z",
+    "_id": "8f8e9eb8-ee8f-4c5b-bf1a-ff92a43e57e5",
+    "_rev": "igvX9WG071mGud8yxiKdoI",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:32:31Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://smaksangtimur-jkt.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-4d07cf2db78fdbe24414f149cf3bf18a1b716d65-150x150-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/4d07cf2db78fdbe24414f149cf3bf18a1b716d65-150x150.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/4d07cf2db78fdbe24414f149cf3bf18a1b716d65-150x150.png"
+    },
+    "name": "SMAK Sang Timur",
+    "order": 27,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-21T03:30:01Z",
+    "_id": "d89070f0-c63c-4586-b528-7248d9b36526",
+    "_rev": "O3KxgINb1vCTGCwgFXtKtZ",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:30:38Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://calvin.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-f68241d56f42f942af924505d7a6930cfe5afdc5-2761x901-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/f68241d56f42f942af924505d7a6930cfe5afdc5-2761x901.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/f68241d56f42f942af924505d7a6930cfe5afdc5-2761x901.png"
+    },
+    "name": "Calvin Institute of Techonology",
+    "order": 27,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-09-21T03:35:09Z",
+    "_id": "139d85e1-a901-473d-8d78-031522db8773",
+    "_rev": "5vNcDuk4ZqfyXzbSVahmMv",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:36:14Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.sdh.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-52d6b76d6d06f7d2244c724bae6e3da97ba9fb96-1330x1330-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/52d6b76d6d06f7d2244c724bae6e3da97ba9fb96-1330x1330.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/52d6b76d6d06f7d2244c724bae6e3da97ba9fb96-1330x1330.png"
+    },
+    "name": "Sekolah Dian Harapan",
+    "order": 28,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-21T03:33:02Z",
+    "_id": "a9655ed2-95a4-4d1d-b21a-76927c2240c8",
+    "_rev": "5vNcDuk4ZqfyXzbSVahjJM",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:34:58Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://bpkpenabur.or.id/smpk-2-penabur-jakarta?menu=beranda",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-ca49f0dbfa482b90f38484cba2846a7d72b8aee1-1469x1825-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/ca49f0dbfa482b90f38484cba2846a7d72b8aee1-1469x1825.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/ca49f0dbfa482b90f38484cba2846a7d72b8aee1-1469x1825.png"
+    },
+    "name": "SMAK Penabur 2",
+    "order": 28,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-21T03:37:57Z",
+    "_id": "a9c5acb1-4137-4ccd-89d9-17eece0d46b1",
+    "_rev": "O3KxgINb1vCTGCwgFXuZ49",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:38:52Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.mahabodhividya.sch.id/school_profile.html",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-edd75228f9325a7e0284414087271e02580b5965-5272x1736-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/edd75228f9325a7e0284414087271e02580b5965-5272x1736.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/edd75228f9325a7e0284414087271e02580b5965-5272x1736.png"
+    },
+    "name": "SMA Mahabodhi Vidya",
+    "order": 29,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-21T03:36:58Z",
+    "_id": "c38102bc-d760-4d4b-a8e6-841640776b62",
+    "_rev": "igvX9WG071mGud8yxiKoER",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:37:47Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.jubilee-jkt.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-d3b477ad2244f403912f146e5e0ef2a0cac4b421-1014x1218-gif",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/d3b477ad2244f403912f146e5e0ef2a0cac4b421-1014x1218.gif"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/d3b477ad2244f403912f146e5e0ef2a0cac4b421-1014x1218.gif"
+    },
+    "name": "Jubilee School",
+    "order": 29,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-09-21T03:39:04Z",
+    "_id": "5f7e7c8a-4e02-4ed0-80bc-652894c90eb7",
+    "_rev": "5vNcDuk4ZqfyXzbSVai1Jy",
+    "_type": "partner",
+    "_updatedAt": "2026-09-21T03:40:21Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.tika.school/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-cff58f9d2f3700c5ae252844856cf73e560ad29e-7424x9423-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/cff58f9d2f3700c5ae252844856cf73e560ad29e-7424x9423.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/cff58f9d2f3700c5ae252844856cf73e560ad29e-7424x9423.png"
+    },
+    "name": "SMA Tiara Kasih",
+    "order": 30,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-21T20:29:03Z",
+    "_id": "00c74835-8778-4860-b786-fb05060be7e7",
+    "_rev": "yS625NFNj2jCznNNnPPpbj",
+    "_system": {
+      "base": {
+        "id": "00c74835-8778-4860-b786-fb05060be7e7",
+        "rev": "v6E4R73W1Mf7hiY67bLgxZ"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:51:20Z",
+    "category": "Chinese Universities",
+    "isActive": true,
+    "link": "https://english.blcu.edu.cn/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-725ff1022c6efebef8c584662a3644d4e047f5da-316x316-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/725ff1022c6efebef8c584662a3644d4e047f5da-316x316.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/725ff1022c6efebef8c584662a3644d4e047f5da-316x316.png"
+    },
+    "name": "Beijing Language and Culture University",
+    "order": 1001
+  },
+  {
+    "_createdAt": "2026-04-21T21:37:36Z",
+    "_id": "fdbf287f-d1d5-4f3f-bad0-7cc839ffa720",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuS7Fb",
+    "_system": {
+      "base": {
+        "id": "fdbf287f-d1d5-4f3f-bad0-7cc839ffa720",
+        "rev": "voxjvOpuTcfhSJKlQOaLxW"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:42:04Z",
+    "category": "Chinese Universities",
+    "isActive": true,
+    "link": "http://www.ccnu.edu.cn",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-e824b39ebfe3cedba6e4492296f7acae0d3ac67d-960x960-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/e824b39ebfe3cedba6e4492296f7acae0d3ac67d-960x960.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/e824b39ebfe3cedba6e4492296f7acae0d3ac67d-960x960.png"
+    },
+    "name": "Central China Normal University",
+    "order": 1002
+  },
+  {
+    "_createdAt": "2026-04-21T22:17:11Z",
+    "_id": "0e5cda3c-9400-4403-9b6d-078571e75e70",
+    "_rev": "yS625NFNj2jCznNNnPP5Kr",
+    "_system": {
+      "base": {
+        "id": "0e5cda3c-9400-4403-9b6d-078571e75e70",
+        "rev": "voxjvOpuTcfhSJKlQOaNVK"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:41:09Z",
+    "category": "Chinese Universities",
+    "isActive": true,
+    "link": "https://www.dukekunshan.edu.cn/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-d485a3e6fde0b1f9f0f11e7ab56d3ad4aea5109e-900x900-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/d485a3e6fde0b1f9f0f11e7ab56d3ad4aea5109e-900x900.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/d485a3e6fde0b1f9f0f11e7ab56d3ad4aea5109e-900x900.jpg"
+    },
+    "name": "Duke Kunshan University",
+    "order": 1003
+  },
+  {
+    "_createdAt": "2026-04-21T22:19:01Z",
+    "_id": "c39e3b1a-c688-408e-bedf-eeef2fcdbbd2",
+    "_rev": "yS625NFNj2jCznNNnPPc1h",
+    "_system": {
+      "base": {
+        "id": "c39e3b1a-c688-408e-bedf-eeef2fcdbbd2",
+        "rev": "voxjvOpuTcfhSJKlQOLEP8"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:49:58Z",
+    "category": "Chinese Universities",
+    "isActive": true,
+    "link": "https://admission.zstu.edu.cn/en",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-484b10be8a262c37169731164437ee89f25630e7-250x250-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/484b10be8a262c37169731164437ee89f25630e7-250x250.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/484b10be8a262c37169731164437ee89f25630e7-250x250.png"
+    },
+    "name": "Zhejiang Sci-Tech University",
+    "order": 1004
+  },
+  {
+    "_createdAt": "2026-04-21T21:40:51Z",
+    "_id": "243fe8fb-adb7-4f57-bd8c-109d42683993",
+    "_rev": "5AKsOGTR4Bo2gSi6RHfuW5",
+    "_system": {
+      "base": {
+        "id": "243fe8fb-adb7-4f57-bd8c-109d42683993",
+        "rev": "yS625NFNj2jCznNNnPMQcQ"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:12:03Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.politekniktempo.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-11f4b833e66d5ea291473ebc5d5740d4a4471cef-487x513-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/11f4b833e66d5ea291473ebc5d5740d4a4471cef-487x513.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/11f4b833e66d5ea291473ebc5d5740d4a4471cef-487x513.png"
+    },
+    "name": "Politeknik Tempo",
+    "order": 3101,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-04-21T22:26:37Z",
+    "_id": "d6d1c48b-8ddf-43a5-9c6f-c3634ca8f57d",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuP9m1",
+    "_system": {
+      "base": {
+        "id": "d6d1c48b-8ddf-43a5-9c6f-c3634ca8f57d",
+        "rev": "voxjvOpuTcfhSJKlQOaKCe"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:11:40Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://uin-malang.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-e6a6a6f6e65e2b4b98fef766e508bf9a6b6f03cd-503x496-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/e6a6a6f6e65e2b4b98fef766e508bf9a6b6f03cd-503x496.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/e6a6a6f6e65e2b4b98fef766e508bf9a6b6f03cd-503x496.png"
+    },
+    "name": "Universitas Islam Negeri Malang",
+    "order": 3102,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-04-21T22:28:19Z",
+    "_id": "32a8f74a-5216-4aa4-b90c-61fe8f279d6b",
+    "_rev": "5AKsOGTR4Bo2gSi6RHg1bp",
+    "_system": {
+      "base": {
+        "id": "32a8f74a-5216-4aa4-b90c-61fe8f279d6b",
+        "rev": "S3C3Ykxr79YHVeeHLe50J5"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:14:55Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://umj.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-91bcb818d1ba5b8c0bb07af09167987d75a09763-1144x1140-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/91bcb818d1ba5b8c0bb07af09167987d75a09763-1144x1140.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/91bcb818d1ba5b8c0bb07af09167987d75a09763-1144x1140.png"
+    },
+    "name": "Universitas Muhammadiyah Jakarta",
+    "order": 3103,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-04-21T22:29:24Z",
+    "_id": "68ec6954-b602-4061-8d68-cf831e564970",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuPOWj",
+    "_system": {
+      "base": {
+        "id": "68ec6954-b602-4061-8d68-cf831e564970",
+        "rev": "S3C3Ykxr79YHVeeHLe503v"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:15:18Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://umm.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-b5daa6a9af0700423aededd3e11c4d2ef7f66d78-641x389-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/b5daa6a9af0700423aededd3e11c4d2ef7f66d78-641x389.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/b5daa6a9af0700423aededd3e11c4d2ef7f66d78-641x389.png"
+    },
+    "name": "Universitas Muhammadiyah Malang",
+    "order": 3104,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-04-21T22:30:16Z",
+    "_id": "3cf8f1aa-e726-4dfa-9660-11f1b6fc29a1",
+    "_rev": "5AKsOGTR4Bo2gSi6RHgB6D",
+    "_system": {
+      "base": {
+        "id": "3cf8f1aa-e726-4dfa-9660-11f1b6fc29a1",
+        "rev": "v6E4R73W1Mf7hiY67bLeTh"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:17:32Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://unj.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-5cd386b86bf8da33c7e9cd243fda0f44396a5d91-496x503-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/5cd386b86bf8da33c7e9cd243fda0f44396a5d91-496x503.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/5cd386b86bf8da33c7e9cd243fda0f44396a5d91-496x503.png"
+    },
+    "name": "Universitas Negeri Jakarta",
+    "order": 3105,
+    "subcategory": "University"
+  },
+  {
+    "_createdAt": "2026-04-21T22:34:02Z",
+    "_id": "93d03da1-cec9-461c-b574-bd00305edecb",
+    "_rev": "5AKsOGTR4Bo2gSi6RHiYCD",
+    "_system": {
+      "base": {
+        "id": "93d03da1-cec9-461c-b574-bd00305edecb",
+        "rev": "voxjvOpuTcfhSJKlQOaJ9K"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:56:45Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-a53227b154cb2d97c3e83d55758780d5f6989be5-500x500-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/a53227b154cb2d97c3e83d55758780d5f6989be5-500x500.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/a53227b154cb2d97c3e83d55758780d5f6989be5-500x500.png"
+    },
+    "name": "Al-Amanah Islamic High School",
+    "order": 3201,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-21T22:34:58Z",
+    "_id": "1661e394-f00c-49c1-aef7-70865b67bb8f",
+    "_rev": "yS625NFNj2jCznNNnPNWaJ",
+    "_system": {
+      "base": {
+        "id": "1661e394-f00c-49c1-aef7-70865b67bb8f",
+        "rev": "voxjvOpuTcfhSJKlQOaIaU"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:24:09Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://alfathschoolindonesia.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-3fb4e69bebe5de589950fc1507015458bd8c3539-225x225-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/3fb4e69bebe5de589950fc1507015458bd8c3539-225x225.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/3fb4e69bebe5de589950fc1507015458bd8c3539-225x225.png"
+    },
+    "name": "Al-Fath Islamic High School",
+    "order": 3202,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:14:13Z",
+    "_id": "75d6eadf-3a6b-4b51-ae02-bc1b1b04ab70",
+    "_rev": "5AKsOGTR4Bo2gSi6RHgkSj",
+    "_system": {
+      "base": {
+        "id": "75d6eadf-3a6b-4b51-ae02-bc1b1b04ab70",
+        "rev": "S3C3Ykxr79YHVeeHLe4vPr"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:25:10Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://psb.daarelqolam3.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-141cde666269b45f205b2b69f151f023543ca19c-449x556-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/141cde666269b45f205b2b69f151f023543ca19c-449x556.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/141cde666269b45f205b2b69f151f023543ca19c-449x556.png"
+    },
+    "name": "Daar El-Qolam Islamic Boarding School",
+    "order": 3203,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:15:35Z",
+    "_id": "c61cef1c-d522-43f3-ad74-913608fcfb01",
+    "_rev": "yS625NFNj2jCznNNnPNdNK",
+    "_system": {
+      "base": {
+        "id": "c61cef1c-d522-43f3-ad74-913608fcfb01",
+        "rev": "S3C3Ykxr79YHVeeHLe4xN9"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:25:55Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://gisserpong.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-0720d3504b81114920f77ee4f6940d79a843e7ad-150x150-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/0720d3504b81114920f77ee4f6940d79a843e7ad-150x150.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/0720d3504b81114920f77ee4f6940d79a843e7ad-150x150.png"
+    },
+    "name": "Global Islamic School 2 Serpong",
+    "order": 3204,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:16:27Z",
+    "_id": "8081e47b-0910-4db1-b8c1-455f2021344d",
+    "_rev": "yS625NFNj2jCznNNnPNg8i",
+    "_system": {
+      "base": {
+        "id": "8081e47b-0910-4db1-b8c1-455f2021344d",
+        "rev": "S3C3Ykxr79YHVeeHLe4x7z"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:26:32Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://annisaa-izada.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-ff22332ccdda5c12b729ad32c9f0f1ec9066fa6b-313x107-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/ff22332ccdda5c12b729ad32c9f0f1ec9066fa6b-313x107.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/ff22332ccdda5c12b729ad32c9f0f1ec9066fa6b-313x107.png"
+    },
+    "name": "Izada Islamic High School Bintaro",
+    "order": 3205,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:17:11Z",
+    "_id": "3b11b81b-7961-40fa-a390-fa56c02622e6",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuQZdv",
+    "_system": {
+      "base": {
+        "id": "3b11b81b-7961-40fa-a390-fa56c02622e6",
+        "rev": "v6E4R73W1Mf7hiY67bLbPv"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:29:11Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://ma-almuddatsiriyah.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-fc9c6c77d0e30c096e6f93da56cffd93d035b9dd-300x300-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/fc9c6c77d0e30c096e6f93da56cffd93d035b9dd-300x300.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/fc9c6c77d0e30c096e6f93da56cffd93d035b9dd-300x300.png"
+    },
+    "name": "MA Al Muddatsiriyah",
+    "order": 3206,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:17:56Z",
+    "_id": "5c3fdaf1-3ac7-4b26-a6d4-2ac31dba536b",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuQaeh",
+    "_system": {
+      "base": {
+        "id": "5c3fdaf1-3ac7-4b26-a6d4-2ac31dba536b",
+        "rev": "v6E4R73W1Mf7hiY67bLb5P"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:29:29Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.shb.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-b60c0ea76620f85797390b9f33e16d695256e967-143x154-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/b60c0ea76620f85797390b9f33e16d695256e967-143x154.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/b60c0ea76620f85797390b9f33e16d695256e967-143x154.png"
+    },
+    "name": "Sekolah Harapan Bangsa",
+    "order": 3207,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:18:40Z",
+    "_id": "b327aff6-f9dd-465e-89d1-974f342aed83",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuQfrX",
+    "_system": {
+      "base": {
+        "id": "b327aff6-f9dd-465e-89d1-974f342aed83",
+        "rev": "voxjvOpuTcfhSJKlQOaGPU"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:29:55Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://smamdelapan.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-c1efcfb3a55bfe21cfae009539268ee64f9e25fd-225x225-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/c1efcfb3a55bfe21cfae009539268ee64f9e25fd-225x225.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/c1efcfb3a55bfe21cfae009539268ee64f9e25fd-225x225.png"
+    },
+    "name": "Sekolah Muhammadiyah 8 Ciputat",
+    "order": 3208,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:19:18Z",
+    "_id": "eb0f9374-5e3f-4d8b-bc5e-b34dbc26a27f",
+    "_rev": "5AKsOGTR4Bo2gSi6RHhFKX",
+    "_system": {
+      "base": {
+        "id": "eb0f9374-5e3f-4d8b-bc5e-b34dbc26a27f",
+        "rev": "v6E4R73W1Mf7hiY67bLWSB"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:32:01Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://smam25pamulang.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-f251a5a9d97113b5b756f5d5573c60149b6856fe-500x441-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/f251a5a9d97113b5b756f5d5573c60149b6856fe-500x441.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/f251a5a9d97113b5b756f5d5573c60149b6856fe-500x441.png"
+    },
+    "name": "SMA Muhammadiyah 25 Pamulang ",
+    "order": 3209,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:20:35Z",
+    "_id": "171375b7-3134-4462-bcbe-f1b53dd62f3c",
+    "_rev": "yS625NFNj2jCznNNnPO8Nq",
+    "_system": {
+      "base": {
+        "id": "171375b7-3134-4462-bcbe-f1b53dd62f3c",
+        "rev": "voxjvOpuTcfhSJKlQOaDoM"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:32:21Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.solideo.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-8239247556e72289de83700c76722e7426a6b7b9-842x642-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/8239247556e72289de83700c76722e7426a6b7b9-842x642.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/8239247556e72289de83700c76722e7426a6b7b9-842x642.png"
+    },
+    "name": "SMA SoLiDeo",
+    "order": 3210,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-22T02:21:19Z",
+    "_id": "acec3119-74ad-4515-a95f-5f7b0c537a88",
+    "_rev": "yS625NFNj2jCznNNnPOAQW",
+    "_system": {
+      "base": {
+        "id": "acec3119-74ad-4515-a95f-5f7b0c537a88",
+        "rev": "voxjvOpuTcfhSJKlQOMBgc"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:32:40Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://thursinaiibs.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-7a2d7f7b0b8f976fb645ad71b7e1cabce227f85d-707x353-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/7a2d7f7b0b8f976fb645ad71b7e1cabce227f85d-707x353.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/7a2d7f7b0b8f976fb645ad71b7e1cabce227f85d-707x353.png"
+    },
+    "name": "Thursina International Islamic Boarding School",
+    "order": 3211,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-05-04T02:39:00Z",
+    "_id": "d01f258c-463e-4e36-8bb4-87f08cfd85cd",
+    "_rev": "yS625NFNj2jCznNNnPOz96",
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:40:11Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://pahoa.sch.id/en/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-7ea1f472a92035ea921f13d433356f6c7d571967-419x419-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/7ea1f472a92035ea921f13d433356f6c7d571967-419x419.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/7ea1f472a92035ea921f13d433356f6c7d571967-419x419.png"
+    },
+    "name": "Sekolah Terpadu Pahoa",
+    "order": 3212,
+    "subcategory": "High School"
+  },
+  {
+    "_createdAt": "2026-04-21T22:31:17Z",
+    "_id": "ea4a8bbf-befa-4d49-ac4c-72771b61b9c7",
+    "_rev": "5AKsOGTR4Bo2gSi6RHiTwz",
+    "_system": {
+      "base": {
+        "id": "ea4a8bbf-befa-4d49-ac4c-72771b61b9c7",
+        "rev": "S3C3Ykxr79YHVeeHLduv5S"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:55:16Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-be9cf49a9e290cb34a505a0c4c33505302309c34-583x583-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/be9cf49a9e290cb34a505a0c4c33505302309c34-583x583.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/be9cf49a9e290cb34a505a0c4c33505302309c34-583x583.jpg"
+    },
+    "name": "SMK Darussalam Pamulang",
+    "order": 3301,
+    "subcategory": "Vocational School"
+  },
+  {
+    "_createdAt": "2026-04-21T22:33:00Z",
+    "_id": "8e89f7e2-5af8-420a-9cdd-ec761a1e3cec",
+    "_rev": "5AKsOGTR4Bo2gSi6RHgXfx",
+    "_system": {
+      "base": {
+        "id": "8e89f7e2-5af8-420a-9cdd-ec761a1e3cec",
+        "rev": "v6E4R73W1Mf7hiY67bLdeP"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:19:33Z",
+    "category": "Indonesian Universities & Schools",
+    "isActive": true,
+    "link": "https://www.muhtiga.sch.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-4a0c6626f6ba9652e0539d2ae184c863ac2d0610-500x500-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/4a0c6626f6ba9652e0539d2ae184c863ac2d0610-500x500.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/4a0c6626f6ba9652e0539d2ae184c863ac2d0610-500x500.png"
+    },
+    "name": "SMK Muhammadiyah 3 Tangerang Selatan",
+    "order": 3302,
+    "subcategory": "Vocational School"
+  },
+  {
+    "_createdAt": "2026-04-21T21:41:41Z",
+    "_id": "80548b13-da3b-4c39-b0b7-9d129b13c962",
+    "_rev": "voxjvOpuTcfhSJKlQOaLT2",
+    "_system": {
+      "base": {
+        "id": "80548b13-da3b-4c39-b0b7-9d129b13c962",
+        "rev": "voxjvOpuTcfhSJKlQM3ZKK"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-04-22T03:17:11Z",
+    "category": "Indonesian Organizations",
+    "isActive": true,
+    "link": "https://www.uperedu.com",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-a0187f57c173a006f4c139566c679db01b0a98cf-500x500-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/a0187f57c173a006f4c139566c679db01b0a98cf-500x500.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/a0187f57c173a006f4c139566c679db01b0a98cf-500x500.png"
+    },
+    "name": "Dikdasemen Muhammadiyah",
+    "order": 4001
+  },
+  {
+    "_createdAt": "2026-04-22T03:07:25Z",
+    "_id": "9161ba42-1578-4742-9d4c-070f1367a140",
+    "_rev": "yS625NFNj2jCznNNnPPueh",
+    "_system": {
+      "base": {
+        "id": "9161ba42-1578-4742-9d4c-070f1367a140",
+        "rev": "S3C3Ykxr79YHVeeHLe4iKj"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:53:17Z",
+    "category": "Indonesian Organizations",
+    "isActive": true,
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-ff320315e6ebd18f645f4ad6b8d6981f442e2ee1-500x500-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/ff320315e6ebd18f645f4ad6b8d6981f442e2ee1-500x500.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/ff320315e6ebd18f645f4ad6b8d6981f442e2ee1-500x500.png"
+    },
+    "name": "Forum Komunikasi Kepala Sekolah Swasta",
+    "order": 4002
+  },
+  {
+    "_createdAt": "2026-04-22T03:09:05Z",
+    "_id": "30114ee3-5d29-4e72-85cb-515f2fd46d7e",
+    "_rev": "5AKsOGTR4Bo2gSi6RHhSPt",
+    "_system": {
+      "base": {
+        "id": "30114ee3-5d29-4e72-85cb-515f2fd46d7e",
+        "rev": "voxjvOpuTcfhSJKlQOaCCC"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:34:10Z",
+    "category": "Indonesian Organizations",
+    "isActive": true,
+    "link": "https://www.indoent.com/en/sites/957.html",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-a23429f48c2de77b369feea565b04e077e23a172-212x212-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/a23429f48c2de77b369feea565b04e077e23a172-212x212.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/a23429f48c2de77b369feea565b04e077e23a172-212x212.png"
+    },
+    "name": "China Chamber of Commerce in Indonesia (ICCC)",
+    "order": 4003
+  },
+  {
+    "_createdAt": "2026-04-22T03:09:52Z",
+    "_id": "0fbdf527-c24b-48ba-8c45-12161665261a",
+    "_rev": "yS625NFNj2jCznNNnPOavb",
+    "_system": {
+      "base": {
+        "id": "0fbdf527-c24b-48ba-8c45-12161665261a",
+        "rev": "v6E4R73W1Mf7hiY67bLTTX"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:36:32Z",
+    "category": "Indonesian Organizations",
+    "isActive": true,
+    "link": "https://jms.sch.id/id/beranda/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-eea8291ff2c352febef2380bb68806c033aef465-499x499-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/eea8291ff2c352febef2380bb68806c033aef465-499x499.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/eea8291ff2c352febef2380bb68806c033aef465-499x499.png"
+    },
+    "name": "Jakarta Multicultural School",
+    "order": 4004
+  },
+  {
+    "_createdAt": "2026-04-22T03:10:35Z",
+    "_id": "7ba8b2eb-ea90-413c-a534-3588c5356b17",
+    "_rev": "yS625NFNj2jCznNNnPOdVo",
+    "_system": {
+      "base": {
+        "id": "7ba8b2eb-ea90-413c-a534-3588c5356b17",
+        "rev": "S3C3Ykxr79YHVeeHLe4rzb"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:36:49Z",
+    "category": "Indonesian Organizations",
+    "isActive": true,
+    "link": "https://jicoms.polimedia.ac.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-819b63cf7c39c68765330cb7e54e0198940b3a81-1280x905-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/819b63cf7c39c68765330cb7e54e0198940b3a81-1280x905.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/819b63cf7c39c68765330cb7e54e0198940b3a81-1280x905.jpg"
+    },
+    "name": "JICOMS",
+    "order": 4005
+  },
+  {
+    "_createdAt": "2026-04-22T03:11:19Z",
+    "_id": "fa584f50-f824-4975-bf21-5378fddf270f",
+    "_rev": "5AKsOGTR4Bo2gSi6RHiW69",
+    "_system": {
+      "base": {
+        "id": "fa584f50-f824-4975-bf21-5378fddf270f",
+        "rev": "v6E4R73W1Mf7hiY67bLQKd"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:55:37Z",
+    "category": "Indonesian Organizations",
+    "isActive": true,
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-5a3aa2141f638970714c55198c6603a0a4568286-459x544-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/5a3aa2141f638970714c55198c6603a0a4568286-459x544.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/5a3aa2141f638970714c55198c6603a0a4568286-459x544.png"
+    },
+    "name": "Matahari Global Edu",
+    "order": 4006
+  },
+  {
+    "_createdAt": "2026-04-22T03:11:54Z",
+    "_id": "7648e3c4-9c9f-4eb3-b19a-1a5de7a2296d",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuRUGn",
+    "_system": {
+      "base": {
+        "id": "7648e3c4-9c9f-4eb3-b19a-1a5de7a2296d",
+        "rev": "v6E4R73W1Mf7hiY67bL4jx"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:38:32Z",
+    "category": "Indonesian Organizations",
+    "isActive": true,
+    "link": "https://olympicad.pwmsulsel.id/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-2eaeb761ee73978fe18f73098a5237a88ab9eae0-460x460-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/2eaeb761ee73978fe18f73098a5237a88ab9eae0-460x460.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/2eaeb761ee73978fe18f73098a5237a88ab9eae0-460x460.jpg"
+    },
+    "name": "Olympicad Makassar VIII",
+    "order": 4007
+  },
+  {
+    "_createdAt": "2026-04-21T21:39:36Z",
+    "_id": "5181b36e-3176-4348-acf6-b7811d243b43",
+    "_rev": "PZ1PAWrP2Dv1PCRoTuOzwD",
+    "_system": {
+      "base": {
+        "id": "5181b36e-3176-4348-acf6-b7811d243b43",
+        "rev": "v6E4R73W1Mf7hiY67bLg8H"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:09:54Z",
+    "category": "Chinese Enterprises",
+    "isActive": true,
+    "link": "https://www.hand-global.com/about/location",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-6c02ff4bc75f01b06c39a1e373fb5f6f0d534c9d-200x200-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/6c02ff4bc75f01b06c39a1e373fb5f6f0d534c9d-200x200.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/6c02ff4bc75f01b06c39a1e373fb5f6f0d534c9d-200x200.png"
+    },
+    "name": "HAND Enterprise Solutions",
+    "order": 9001
+  },
+  {
+    "_createdAt": "2026-04-21T22:21:06Z",
+    "_id": "4f2f3b4f-21b2-4cc5-80bd-ee994eaf577d",
+    "_rev": "5AKsOGTR4Bo2gSi6RHfkZp",
+    "_system": {
+      "base": {
+        "id": "4f2f3b4f-21b2-4cc5-80bd-ee994eaf577d",
+        "rev": "S3C3Ykxr79YHVeeHLe51Dw"
+      }
+    },
+    "_type": "partner",
+    "_updatedAt": "2026-05-04T02:10:13Z",
+    "category": "Chinese Enterprises",
+    "isActive": true,
+    "link": "http://en.tusholdings.com/",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-5c2a5fe6374d96e5306b79c24620d97110dc1d5a-299x168-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/5c2a5fe6374d96e5306b79c24620d97110dc1d5a-299x168.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/5c2a5fe6374d96e5306b79c24620d97110dc1d5a-299x168.png"
+    },
+    "name": "TUSHOLDINGS",
+    "order": 9002
+  }
+]

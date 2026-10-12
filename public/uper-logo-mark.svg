@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <!-- Graduation Cap (Mortarboard) - Tilted beautifully -->
+  <g id="cap" fill="#2ebf4f">
+    <!-- Tassel -->
+    <path d="M 64,30 Q 66,42 64,52" stroke="#2ebf4f" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    <circle cx="64" cy="53" r="2.5" />
+    
+    <!-- Cap Diamond top plate -->
+    <path d="M 95,12 L 156,21 M 156,21 L 118,35 M 118,35 L 56,26 M 56,26 L 95,12 Z" fill="#2ebf4f" stroke="#2ebf4f" stroke-width="1.5" stroke-linejoin="round" />
+    <polygon points="95,12 156,21 118,35 56,26" />
+    
+    <!-- Skull cap body -->
+    <path d="M 78,28 Q 95,35 114,32 C 114,37 108,41 95,41 C 82,41 78,37 78,28 Z" fill="#1b8531" />
+  </g>
+
+  <!-- Student Head -->
+  <circle id="head" cx="95" cy="54" r="14" fill="#2ebf4f" />
+
+  <!-- Celebration Leafy Humanoid Body Shape / V-Y structure -->
+  <!-- Dark Green base wing/shield on the right side -->
+  <path id="right-shield" d="
+    M 106,182 
+    C 107,165 116,135 128,110 
+    C 134,98 147,85 158,78
+    C 161,85 158,105 150,123
+    C 138,144 120,168 106,182 Z" 
+    fill="#145c23" />
+
+  <!-- Bright Green Celebrant (the Y-Shape) -->
+  <path id="body-y" d="
+    M 106,182
+    C 102,152 86,114 64,92
+    C 52,80 38,72 28,66
+    C 38,68 52,74 64,84
+    C 80,96 90,112 97,128
+    C 100,122 104,112 110,101
+    C 118,87 128,72 138,58
+    C 140,60 136,74 128,91
+    C 118,114 110,142 106,182 Z" 
+    fill="#2ebf4f" />
+</svg>

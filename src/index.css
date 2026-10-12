@@ -1,0 +1,546 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+@import "tailwindcss";
+@variant dark (.never-match-this-class-to-disable-dark-mode &);
+@plugin "@tailwindcss/typography";
+
+:root {
+  /* Default Classic Teal */
+  --primary-50: #f0fdfa;
+  --primary-100: #ccfbf1;
+  --primary-200: #99f6e4;
+  --primary-300: #5eead4;
+  --primary-400: #2dd4bf;
+  --primary-500: #14b8a6;
+  --primary-600: #0d9488;
+  --primary-700: #0f766e;
+  --primary-800: #115e59;
+  --primary-900: #134e4a;
+  
+  --tech-50: #f5f3ff;
+  --tech-100: #ede9fe;
+  --tech-200: #ddd6fe;
+  --tech-300: #c4b5fd;
+  --tech-400: #a78bfa;
+  --tech-500: #6366f1;
+  --tech-600: #4f46e5;
+  
+  /* Default base background overlay */
+  --bg-gradient-1: hsla(173, 80%, 90%, 1);
+  --bg-gradient-2: hsla(233, 80%, 93%, 1);
+
+  /* Transitionable design tokens */
+  --card-radius-xl: 12px;
+  --card-radius-2xl: 16px;
+  --card-radius-3xl: 24px;
+  --card-radius-lg: 8px;
+  --input-radius: 8px;
+  --input-font-size: 16px;
+}
+
+:root[data-color-theme="ocean"] {
+  --primary-50: #f0f6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+  
+  --tech-50: #ecfeff;
+  --tech-100: #cffafe;
+  --tech-200: #a5f3fc;
+  --tech-300: #67e8f9;
+  --tech-400: #22d3ee;
+  --tech-500: #06b6d4;
+  --tech-600: #0891b2;
+  
+  --bg-gradient-1: hsla(210, 100%, 92%, 1);
+  --bg-gradient-2: hsla(185, 100%, 92%, 1);
+}
+
+:root[data-color-theme="autumn"] {
+  --primary-50: #fffbeb;
+  --primary-100: #fef3c7;
+  --primary-200: #fde68a;
+  --primary-300: #fcd34d;
+  --primary-400: #fbbf24;
+  --primary-500: #d97706;
+  --primary-600: #b45309;
+  --primary-700: #92400e;
+  --primary-800: #78350f;
+  --primary-900: #78350f;
+  
+  --tech-50: #fff1f2;
+  --tech-100: #ffe4e6;
+  --tech-200: #fecdd3;
+  --tech-300: #fda4af;
+  --tech-400: #fb7185;
+  --tech-500: #e11d48;
+  --tech-600: #be123c;
+  
+  --bg-gradient-1: hsla(35, 100%, 93%, 1);
+  --bg-gradient-2: hsla(350, 100%, 94%, 1);
+}
+
+:root[data-color-theme="charcoal"] {
+  --primary-50: #f8fafc;
+  --primary-100: #f1f5f9;
+  --primary-200: #e2e8f0;
+  --primary-300: #cbd5e1;
+  --primary-400: #94a3b8;
+  --primary-500: #64748b;
+  --primary-600: #475569;
+  --primary-700: #334155;
+  --primary-800: #1e293b;
+  --primary-900: #0f172a;
+  
+  --tech-50: #ecfdf5;
+  --tech-100: #d1fae5;
+  --tech-200: #a7f3d0;
+  --tech-300: #6ee7b7;
+  --tech-400: #34d399;
+  --tech-500: #10b981;
+  --tech-600: #059669;
+  
+  --bg-gradient-1: hsla(215, 20%, 90%, 1);
+  --bg-gradient-2: hsla(150, 20%, 90%, 1);
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-zh: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  
+  --color-tech-50: var(--tech-50);
+  --color-tech-100: var(--tech-100);
+  --color-tech-200: var(--tech-200);
+  --color-tech-300: var(--tech-300);
+  --color-tech-400: var(--tech-400);
+  --color-tech-500: var(--tech-500);
+  --color-tech-600: var(--tech-600);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #fafafa;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+
+strong, b {
+  font-weight: 700 !important;
+}
+
+body[lang="zh"] {
+  font-family: var(--font-zh);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+body[lang="zh"] h1, body[lang="zh"] h2, body[lang="zh"] h3, body[lang="zh"] h4, body[lang="zh"] h5, body[lang="zh"] h6 {
+  font-family: var(--font-zh);
+}
+
+/* Custom utilities for glassmorphism and gradients */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-tech-600));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-mesh {
+  background-color: #fafafa;
+  background-image: 
+    radial-gradient(at 0% 0%, var(--bg-gradient-1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, var(--bg-gradient-2) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, var(--bg-gradient-1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, var(--bg-gradient-2) 0px, transparent 50%);
+  transition: background-image 0.5s ease-in-out;
+}
+
+/* Connect Tailwind border radius utilities to transitionable custom properties */
+.rounded-lg:not(button):not(input):not(select):not(a) {
+  border-radius: var(--card-radius-lg);
+}
+.rounded-xl:not(button):not(input):not(select):not(a) {
+  border-radius: var(--card-radius-xl);
+}
+.rounded-2xl:not(button):not(input):not(select):not(a) {
+  border-radius: var(--card-radius-2xl);
+}
+.rounded-3xl:not(button):not(input):not(select):not(a) {
+  border-radius: var(--card-radius-3xl);
+}
+
+/* Connect inputs, textareas, and selects to dynamic transitionable variables */
+input[type="text"]:not([class*="text-"]),
+input[type="email"]:not([class*="text-"]),
+input[type="tel"]:not([class*="text-"]),
+input[type="search"]:not([class*="text-"]),
+textarea:not([class*="text-"]),
+select:not([class*="text-"]) {
+  font-size: var(--input-font-size);
+  border-radius: var(--input-radius);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Elegant dynamic focus state for Default Style, beautifully adapting to active color theme */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="search"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--primary-500) !important;
+  box-shadow: 0 0 0 1px var(--primary-500), 0 0 0 4px var(--primary-100) !important;
+  outline: none !important;
+}
+
+/* ==========================================
+   Apple Minimalist Override Rules (Safe, Authentic & Premium)
+   ========================================== */
+
+/* Apply smooth premium transition for theme shifts */
+body, .glass-card, button, a, div, section, input, select, textarea {
+  transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-radius 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              font-size 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-design-style="apple"] {
+  --color-radius-modifier: 1.6;
+  --card-radius-xl: 20px;
+  --card-radius-2xl: 20px;
+  --card-radius-3xl: 20px;
+  --card-radius-lg: 12px;
+  --input-radius: 12px;
+  --input-font-size: 14px;
+}
+
+/* Force Apple-native System Font Stack across all languages & elements */
+:root[data-design-style="apple"],
+:root[data-design-style="apple"] body,
+:root[data-design-style="apple"] button,
+:root[data-design-style="apple"] input,
+:root[data-design-style="apple"] textarea,
+:root[data-design-style="apple"] select,
+:root[data-design-style="apple"] a,
+:root[data-design-style="apple"] span,
+:root[data-design-style="apple"] div,
+:root[data-design-style="apple"] p,
+:root[data-design-style="apple"] h1,
+:root[data-design-style="apple"] h2,
+:root[data-design-style="apple"] h3,
+:root[data-design-style="apple"] h4,
+:root[data-design-style="apple"] h5,
+:root[data-design-style="apple"] h6 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "PingFang SC", "Noto Sans SC" !important;
+}
+
+/* 1. Flat Clean Airiness - Eliminate Mesh and Background Gradients */
+:root[data-design-style="apple"] .bg-mesh {
+  background-color: #fcfcfd !important;
+  background-image: none !important;
+}
+
+/* Map default background grays to Apple's signature cool gray section background */
+:root[data-design-style="apple"] .bg-slate-50,
+:root[data-design-style="apple"] .bg-gray-50,
+:root[data-design-style="apple"] .bg-zinc-50,
+:root[data-design-style="apple"] .bg-slate-100\/50,
+:root[data-design-style="apple"] section[class*="bg-slate-50"] {
+  background-color: #f5f5f7 !important;
+}
+
+/* 2. Glassmorphism squircle cards with subtle borders & soft drop shadows */
+:root[data-design-style="apple"] .glass-card,
+:root[data-design-style="apple"] [class*="rounded-xl"]:not(button):not(input):not(select):not(a),
+:root[data-design-style="apple"] [class*="rounded-2xl"]:not(button):not(input):not(select):not(a),
+:root[data-design-style="apple"] [class*="rounded-3xl"]:not(button):not(input):not(select):not(a) {
+  border-radius: var(--card-radius-3xl) !important;
+}
+
+/* Translucent clean glass backgrounds - ONLY apply to light-background or transparent cards */
+:root[data-design-style="apple"] .glass-card,
+:root[data-design-style="apple"] [class*="rounded-xl"]:not(button):not(input):not(select):not(a):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="bg-gray-9"]):not([class*="bg-gray-8"]):not([class*="bg-primary-"]):not([class*="bg-gradient-"]):not([class*="bg-[#"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-white/"]):not([class*="bg-white/["]),
+:root[data-design-style="apple"] [class*="rounded-2xl"]:not(button):not(input):not(select):not(a):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="bg-gray-9"]):not([class*="bg-gray-8"]):not([class*="bg-primary-"]):not([class*="bg-gradient-"]):not([class*="bg-[#"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-white/"]):not([class*="bg-white/["]),
+:root[data-design-style="apple"] [class*="rounded-3xl"]:not(button):not(input):not(select):not(a):not([class*="bg-slate-9"]):not([class*="bg-slate-8"]):not([class*="bg-gray-9"]):not([class*="bg-gray-8"]):not([class*="bg-primary-"]):not([class*="bg-gradient-"]):not([class*="bg-[#"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-white/"]):not([class*="bg-white/["]) {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  background-color: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.01) !important;
+}
+
+/* Full-bleed nav elements should never have rounded corners */
+:root[data-design-style="apple"] nav,
+:root[data-design-style="apple"] header {
+  border-radius: 0 !important;
+}
+
+/* Soften smaller card and badge structures */
+:root[data-design-style="apple"] [class*="rounded-lg"]:not(button):not(input):not(select):not(a) {
+  border-radius: var(--card-radius-lg) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 3. Solid Typography with Contrast Safeguards */
+/* Map standard light-theme headings to Apple's signature charcoal black */
+:root[data-design-style="apple"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] h5:not([class*="text-"]),
+:root[data-design-style="apple"] h6:not([class*="text-"]) {
+  color: #1d1d1f !important;
+  letter-spacing: -0.025em !important;
+  font-weight: 600 !important;
+}
+
+/* Safeguard contrast inside dark containers (footers, dark cards, dark sections, or text-white containers) */
+:root[data-design-style="apple"] footer h1,
+:root[data-design-style="apple"] footer h2,
+:root[data-design-style="apple"] footer h3,
+:root[data-design-style="apple"] footer h4,
+:root[data-design-style="apple"] footer h5,
+:root[data-design-style="apple"] footer h6,
+:root[data-design-style="apple"] .text-white h1,
+:root[data-design-style="apple"] .text-white h2,
+:root[data-design-style="apple"] .text-white h3,
+:root[data-design-style="apple"] .text-white h4,
+:root[data-design-style="apple"] .text-white h5,
+:root[data-design-style="apple"] .text-white h6,
+:root[data-design-style="apple"] [class*="text-slate-100"] h1,
+:root[data-design-style="apple"] [class*="text-slate-100"] h2,
+:root[data-design-style="apple"] [class*="text-slate-100"] h3,
+:root[data-design-style="apple"] [class*="text-slate-100"] h4,
+:root[data-design-style="apple"] [class*="text-slate-200"] h1,
+:root[data-design-style="apple"] [class*="text-slate-200"] h2,
+:root[data-design-style="apple"] [class*="text-slate-200"] h3,
+:root[data-design-style="apple"] [class*="text-slate-200"] h4,
+:root[data-design-style="apple"] [class*="text-slate-300"] h1,
+:root[data-design-style="apple"] [class*="text-slate-300"] h2,
+:root[data-design-style="apple"] [class*="text-slate-300"] h3,
+:root[data-design-style="apple"] [class*="text-slate-300"] h4,
+:root[data-design-style="apple"] [class*="bg-slate-9"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-slate-9"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-slate-9"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-slate-9"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-slate-8"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-slate-8"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-slate-8"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-slate-8"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-9"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-9"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-9"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-9"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-950"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-950"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-950"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-primary-950"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-indigo-9"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-indigo-9"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-indigo-9"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="bg-indigo-9"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-indigo-9"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-indigo-9"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-indigo-9"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-indigo-9"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-primary-9"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-primary-9"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-primary-9"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="from-primary-9"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-slate-9"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-slate-9"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-slate-9"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-slate-9"] h4:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-indigo-9"] h1:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-indigo-9"] h2:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-indigo-9"] h3:not([class*="text-"]),
+:root[data-design-style="apple"] [class*="to-indigo-9"] h4:not([class*="text-"]) {
+  color: #ffffff !important;
+}
+
+/* Replace noisy rainbow gradients with solid elegant Apple SF Blue highlight */
+:root[data-design-style="apple"] .text-gradient {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+  background-clip: initial !important;
+  color: #0071e3 !important; /* Premium brand solid accent blue */
+  font-weight: 600 !important;
+}
+
+/* 4. Elegant macOS-style buttons & interactive scale */
+:root[data-design-style="apple"] button,
+:root[data-design-style="apple"] a[class*="rounded-full"],
+:root[data-design-style="apple"] button[class*="rounded-full"],
+:root[data-design-style="apple"] a[class*="bg-primary-"],
+:root[data-design-style="apple"] button[class*="bg-primary-"] {
+  border-radius: 9999px !important; /* Authentic Apple rounded capsule style */
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Target and flatten gradients on buttons and navigation links to Solid Apple SF Blue */
+:root[data-design-style="apple"] button[class*="bg-gradient-to-"],
+:root[data-design-style="apple"] a[class*="bg-gradient-to-"] {
+  background-image: none !important;
+  background-color: #0071e3 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root[data-design-style="apple"] button[class*="bg-gradient-to-"]:hover,
+:root[data-design-style="apple"] a[class*="bg-gradient-to-"]:hover {
+  background-color: #0077ed !important;
+}
+
+/* Micro spring tactile animations on hover and click */
+:root[data-design-style="apple"] button:hover,
+:root[data-design-style="apple"] a:hover {
+  transform: translateY(-1px) scale(1.015);
+}
+:root[data-design-style="apple"] button:active,
+:root[data-design-style="apple"] a:active {
+  transform: translateY(0.5px) scale(0.985);
+}
+
+/* 5. Minimal ultra-soft drop shadows and fine strokes */
+:root[data-design-style="apple"] [class*="shadow-"] {
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.02), 0 1px 3px -1px rgba(0, 0, 0, 0.01) !important;
+}
+
+:root[data-design-style="apple"] .shadow-2xl,
+:root[data-design-style="apple"] .shadow-xl {
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.04), 0 4px 12px -2px rgba(0, 0, 0, 0.01) !important;
+}
+
+:root[data-design-style="apple"] [class*="border-"]:not([class*="border-transparent"]):not([class*="border-white"]):not(.glass-card) {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 6. Native, ultra-clean Form Controls (inputs, textareas, selects) */
+:root[data-design-style="apple"] input[type="text"]:not([class*="bg-"]),
+:root[data-design-style="apple"] input[type="email"]:not([class*="bg-"]),
+:root[data-design-style="apple"] input[type="tel"]:not([class*="bg-"]),
+:root[data-design-style="apple"] input[type="search"]:not([class*="bg-"]),
+:root[data-design-style="apple"] textarea:not([class*="bg-"]),
+:root[data-design-style="apple"] select:not([class*="bg-"]) {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+:root[data-design-style="apple"] input[type="text"],
+:root[data-design-style="apple"] input[type="email"],
+:root[data-design-style="apple"] input[type="tel"],
+:root[data-design-style="apple"] input[type="search"],
+:root[data-design-style="apple"] textarea,
+:root[data-design-style="apple"] select {
+  border: 1px solid transparent !important;
+  border-radius: var(--input-radius) !important;
+  color: #1d1d1f !important;
+  box-shadow: none !important;
+}
+
+:root[data-design-style="apple"] input[type="text"]:not([class*="text-"]),
+:root[data-design-style="apple"] input[type="email"]:not([class*="text-"]),
+:root[data-design-style="apple"] input[type="tel"]:not([class*="text-"]),
+:root[data-design-style="apple"] input[type="search"]:not([class*="text-"]),
+:root[data-design-style="apple"] textarea:not([class*="text-"]),
+:root[data-design-style="apple"] select:not([class*="text-"]) {
+  font-size: var(--input-font-size) !important;
+}
+
+:root[data-design-style="apple"] input[type="text"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="email"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="tel"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="search"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
+:root[data-design-style="apple"] textarea:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
+:root[data-design-style="apple"] select:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]) {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+:root[data-design-style="apple"] input[type="text"]:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="email"]:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="tel"]:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="search"]:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] textarea:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] select:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]) {
+  padding-left: 16px !important;
+}
+
+/* Ensure search inputs with magnifying glass icons have proper spacing in Apple Style */
+:root[data-design-style="apple"] input[class*="pl-12"],
+:root[data-design-style="apple"] input[type="text"][class*="pl-12"],
+:root[data-design-style="apple"] input[type="search"][class*="pl-12"] {
+  padding-left: 44px !important;
+}
+
+:root[data-design-style="apple"] input[class*="pl-10"],
+:root[data-design-style="apple"] input[type="text"][class*="pl-10"],
+:root[data-design-style="apple"] input[type="search"][class*="pl-10"] {
+  padding-left: 40px !important;
+}
+
+:root[data-design-style="apple"] input[type="text"]:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="email"]:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="tel"]:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] input[type="search"]:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] textarea:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] select:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]) {
+  padding-right: 16px !important;
+}
+
+:root[data-design-style="apple"] input[type="text"]:focus,
+:root[data-design-style="apple"] input[type="email"]:focus,
+:root[data-design-style="apple"] input[type="tel"]:focus,
+:root[data-design-style="apple"] input[type="search"]:focus,
+:root[data-design-style="apple"] textarea:focus,
+:root[data-design-style="apple"] select:not([class*="border"]):not([class*="bg-"]):focus {
+  background-color: #ffffff !important;
+  border-color: #0071e3 !important;
+  box-shadow: 0 0 0 1px #0071e3, 0 0 0 4px rgba(0, 113, 227, 0.15) !important;
+  outline: none !important;
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

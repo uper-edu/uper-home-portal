@@ -1,0 +1,14 @@
+# robots.txt for UPER Education (https://uperedu.com)
+User-agent: *
+Allow: /
+
+# Disallow internal CMS studio & backend API endpoints from web crawlers
+Disallow: /studio/
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://uperedu.com/sitemap.xml
+
+# LLMs.txt for AI Search Engines (GEO)
+# https://llmstxt.org/
+# https://uperedu.com/llms.txt

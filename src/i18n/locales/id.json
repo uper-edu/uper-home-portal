@@ -1,0 +1,1436 @@
+{
+  "lang": {
+    "en": "Inggris",
+    "id": "Indonesia",
+    "zh": "Mandarin"
+  },
+  "nav": {
+    "home": "Beranda",
+    "studentPrograms": "Program",
+    "hskAi": "Pelatihan HSK",
+    "cscaCoaching": "Pelatihan CSCA",
+    "studyTours": "Tur Studi",
+    "studyAbroad": "Studi di Luar Negeri",
+    "news": "Berita",
+    "partners": "Mitra",
+    "aboutUs": "Tentang Kami",
+    "aboutUsSub": "Tentang UPER",
+    "faq": "Tanya Jawab (FAQ)",
+    "careers": "Karir & Karir",
+    "contact": "Kontak",
+    "startJourney": "Konsultasi Gratis"
+  },
+  "footer": {
+    "description": "Organisasi pendidikan internasional yang didedikasikan untuk studi global, menjembatani budaya, dan memberdayakan siswa melalui pembelajaran berbasis teknologi.",
+    "quickLinks": "Tautan Cepat",
+    "contactUs": "Hubungi Kami",
+    "jakartaHeadOffice": "Kantor Pusat Jakarta",
+    "jakartaAddress": "Ruko Golf Island, JL. Pantai Indah Kapuk No. 100 Blok E, Jakarta",
+    "chinaOffice": "Kantor Cabang Tiongkok (Hangzhou)",
+    "chinaAddress": "Headquarters Economy Park for Alumni Corporation of Zhejiang University, Hangzhou, Tiongkok",
+    "chinaContact": "Kontak: Wang Lisong (+86 18612142789)",
+    "chinaPerson": "Wang Lisong",
+    "chinaPhone": "+86 18612142789",
+    "addressLabel": "Alamat",
+    "representativeLabel": "Penanggung Jawab",
+    "phoneLabel": "Telepon",
+    "privacyPolicy": "Kebijakan Privasi",
+    "termsOfService": "Syarat Layanan",
+    "appearanceSettings": "Pengaturan Tampilan & Tema"
+  },
+  "fab": {
+    "chat": "Konsultasi gratis dengan kami SEKARANG!"
+  },
+  "mobile": {
+    "freeGuide": "Panduan Gratis",
+    "chatNow": "Mengobrol",
+    "startJourney": "Konsultasi Gratis"
+  },
+  "home": {
+    "hero": {
+      "tag": "Jembatan Pendidikan Utama dari Indonesia ke Tiongkok",
+      "heading1": "Memberdayakan Masa Depan Global Anda:",
+      "heading2": "Jalan Anda Menuju Universitas Top Tiongkok.",
+      "desc": "Bahasa bukan sekadar alat, melainkan kunci masa depan. Kami memadukan pembelajaran cerdas AI dan panduan pendaftaran ahli untuk membantu siswa Indonesia bertransisi dengan lancar ke universitas terkemuka di Tiongkok dan peluang karier yang luas.",
+      "explore": "Mulai Perjalanan Belajar Anda",
+      "chat": "Konsultasi dengan kami sekarang!",
+      "join": "Bergabung dengan",
+      "students": "500+ siswa dari Indonesia",
+      "partnership": {
+        "prefix": "Bekerjasama dengan:",
+        "highlight": "40+ entitas",
+        "suffix": " (universitas dari Tiongkok & Indonesia, sekolah dari Indonesia dan perusahaan Tiongkok di Indonesia)"
+      }
+    },
+    "audience": {
+      "students": {
+        "tag": "Untuk Individu",
+        "title": "Orang Tua / Siswa",
+        "desc": "Rencana belajar khusus, persiapan mandiri, dan bimbingan HSK komprehensif",
+        "items": [
+          "HSK",
+          "CSCA",
+          "Studi Luar Negeri",
+          "Tur Kampus"
+        ],
+        "cta": "Pelajari Lebih Lanjut"
+      },
+      "schools": {
+        "tag": "Untuk Institusi",
+        "title": "Sekolah",
+        "desc": "Solusi studi ke luar negeri satu atap, mendukung kemitraan institusi",
+        "items": [
+          "Kelas Wajib HSK / Kelas Peminatan HSK",
+          "Pusat Bahasa",
+          "Kemitraan"
+        ],
+        "cta": "Bermitra dengan Kami"
+      },
+      "companies": {
+        "tag": "Untuk Perusahaan",
+        "title": "Perusahaan",
+        "desc": "Pelatihan Mandarin korporat & lintas budaya eksklusif untuk bisnis global",
+        "items": [
+          "Pelatihan Bahasa Mandarin Perusahaan",
+          "Perekrutan Bakat",
+          "Kerja Sama Sekolah-Perusahaan"
+        ],
+        "cta": "Dapatkan Penawaran"
+      }
+    },
+    "services": {
+      "tag": "Solusi Pendidikan",
+      "title1": "Program",
+      "title2": "Utama Kami",
+      "desc": "Temukan solusi pendidikan komprehensif kami yang dirancang untuk mempercepat perjalanan global Anda.",
+      "explore": "Jelajahi Program"
+    },
+    "trending": {
+      "tag": "Sangat Direkomendasikan",
+      "title1": "Populer &",
+      "title2": "Unggulan",
+      "desc": "Temukan kursus kami yang paling banyak dicari dan tur studi yang akan datang."
+    },
+    "campaign": {
+      "tag": "Penawaran Waktu Terbatas"
+    },
+    "news": {
+      "tag": "Berita & Pembaruan",
+      "title1": "Wawasan",
+      "title2": "Terbaru",
+      "desc": "Ikuti perkembangan UPER dan tren pendidikan global.",
+      "viewAll": "Lihat Semua"
+    },
+    "stories": {
+      "tag": "Kisah Sukses",
+      "title1": "Pengalaman",
+      "title2": "Siswa",
+      "desc": "Dengarkan dari alumni kami yang telah berhasil memulai perjalanan global mereka."
+    },
+    "schoolPartnerships": {
+      "tag": "Kemitraan Sekolah",
+      "title1": "30+ Sekolah Indonesia",
+      "title2": "Mempercayai UPER",
+      "desc": "Memberdayakan sekolah dengan program bahasa Mandarin kelas dunia dan kelas kredit khusus.",
+      "storiesTitle": "Kisah Sukses",
+      "story1": {
+        "name": "SMA Negeri 1 Jakarta",
+        "type": "Pusat Bahasa",
+        "stats": "150+ siswa"
+      },
+      "story2": {
+        "name": "SMA Muhammadiyah 8 Ciputat",
+        "type": "Kelas Kredit",
+        "stats": "80+ siswa"
+      },
+      "processTitle": "Proses Kemitraan",
+      "process": [
+        "Konsultasi",
+        "Penilaian Kebutuhan",
+        "Proposal Khusus",
+        "Kelas Uji Coba",
+        "Perjanjian",
+        "Dukungan Berkelanjutan"
+      ],
+      "cta": "Mulai Kemitraan"
+    },
+    "partners": {
+      "tag": "Mitra Strategis",
+      "title1": "Dipercaya oleh",
+      "title2": "Institusi Terkemuka",
+      "partners": "Mitra"
+    },
+    "servicesData": {
+      "hsk": {
+        "title": "Pelatihan HSK Bantuan AI",
+        "desc": "Kuasai bahasa Mandarin secara efisien dengan platform bantuan AI kami dan guru ahli, jalur pembelajaran khusus untuk semua level."
+      },
+      "csca": {
+        "title": "Pelatihan CSCA",
+        "desc": "Pembinaan ahli untuk ujian CSCA. Tingkatkan kredensial profesional Anda dengan kurikulum khusus kami."
+      },
+      "tours": {
+        "title": "Tur Studi ke Tiongkok",
+        "desc": "Program mendalam yang menggabungkan pembelajaran bahasa, budaya, dan kunjungan ke perusahaan teknologi terkemuka."
+      },
+      "consultancy": {
+        "title": "Konsultasi Studi",
+        "desc": "Panduan komprehensif untuk belajar di Tiongkok, dari pemilihan universitas hingga visa & beasiswa."
+      }
+    },
+    "corporate": {
+      "tag": "Pelatihan Perusahaan",
+      "title1": "Pelatihan",
+      "title2": "Memajukan Tim Lokal Anda",
+      "desc": "Bekali tim Anda dengan keterampilan bahasa yang diperlukan untuk berkembang dalam lingkungan bisnis internasional.",
+      "solutionsTitle": "Solusi Industri",
+      "industries": [
+        "Pertambangan",
+        "Manufaktur",
+        "Perbankan",
+        "Infrastruktur",
+        "Ritel",
+        "Teknologi"
+      ],
+      "storiesTitle": "Kisah Sukses Klien",
+      "story1": {
+        "name": "HAND Enterprise Solutions Indonesia",
+        "highlight": "Kosakata Bisnis",
+        "stats": "30 karyawan"
+      },
+      "features": [
+        "Kosakata industri",
+        "Penjadwalan fleksibel",
+        "Pelacakan kemajuan"
+      ],
+      "ctaTitle": "Berdayakan tim Anda",
+      "ctaDesc": "Bermitra dengan UPER untuk membuat program bahasa sesuai tujuan perusahaan.",
+      "ctaBtn": "Minta Proposal"
+    },
+    "trendingFallbacks": {
+      "hsk4": {
+        "title": "Bootcamp HSK 4",
+        "desc": "Kuasai HSK 4 dengan cepat. Belajar online atau di kampus Jakarta. Sangat cocok untuk pemburu beasiswa.",
+        "badge": "🔥 Daftar"
+      },
+      "csca": {
+        "title": "Persiapan Beasiswa CSCA",
+        "desc": "Persiapan ahli di Jakarta untuk membantu Anda berkuliah di universitas top Tiongkok.",
+        "badge": "⭐ Daftar"
+      },
+      "tourBeijing": {
+        "title": "Beijing · Tur Budaya",
+        "desc": "Universitas Tsinghua base. Jelajahi Kota Terlarang, Tembok Besar, dan tes HSK.",
+        "badge": "🏃 Rekrutmen"
+      },
+      "tourHangzhou": {
+        "title": "Hangzhou · Tur Jiangnan",
+        "desc": "Universitas Zhejiang base. Danau Barat, Longjing, dan Kantor Pusat Alibaba.",
+        "badge": "🏃 Rekrutmen"
+      },
+      "tourWuhan": {
+        "title": "Wuhan · Tur Budaya Chu",
+        "desc": "Universitas Wuhan base. Kunjungi Menara Bangau Kuning, dan Pesiar Yangtze.",
+        "badge": "🏃 Rekrutmen"
+      },
+      "hsk3": {
+        "title": "Kelas Dasar HSK 3",
+        "desc": "Perkuat fondasi Mandarin Anda. Kelas interaktif bersama tutor berpengalaman.",
+        "badge": "🎯 Kelas Baru"
+      }
+    }
+  },
+  "meta": {
+    "title": "UPER | Konsultan Kuliah ke China & Kursus HSK Terpercaya di Jakarta",
+    "description": "UPER adalah konsultan pendidikan kuliah ke China/Tiongkok terbaik di Jakarta, Indonesia. Menyediakan beasiswa, pelatihan HSK di PIK, bimbingan tes CSCA, dan tur studi.",
+    "about": {
+      "title": "Tentang UPER | Agen Studi Luar Negeri ke China di Jakarta",
+      "description": "Pelajari mata rantai dan komitmen tepercaya UPER sebagai jembatan bagi pelajar di Indonesia dan Asia Tenggara untuk berkuliah di universitas top di China."
+    },
+    "careers": {
+      "title": "Karir di UPER | Bergabung dan Berkontribusi di Bidang Edukasi Global",
+      "description": "Temukan kesempatan karir luar biasa di UPER. Jadilah jembatan digital dan budaya bagi masa depan akademis pelajar Indonesia ke China. Lamar lowongan strategis hari ini."
+    },
+    "faq": {
+      "title": "Tanya Jawab UPER | Beasiswa China, Ujian HSK & Tanya Jawab Study Tour",
+      "description": "Punya pertanyaan tentang cara kuliah di China, cara dapat beasiswa CSC, kursus HSK di Jakarta, atau ikut study tour UPER? Temukan jawaban lengkapnya di sini."
+    },
+    "partners": {
+      "title": "Kemitraan Universitas Terbaik China & Sekolah Indonesia | UPER",
+      "description": "Temukan daftar universitas elit di China (Double First-Class) dan sekolah rekanan di Indonesia yang berkolaborasi dengan UPER demi jalur seleksi beasiswa resmi."
+    },
+    "tours": {
+      "title": "Program Study Tour ke China Terpercaya dari Indonesia | UPER",
+      "description": "Ikuti program study tour komprehensif ke Beijing, Shanghai, Hangzhou, dan Wuhan. Kunjungi kampus ternama dan raksasa teknologi dunia bersama UPER."
+    },
+    "hsk": {
+      "title": "Kursus & Pelatihan HSK Jakarta PIK dengan Modul AI | UPER",
+      "description": "Akselerasi kemampuan bahasa Mandarin dan lulus ujian HSK dengan bimbingan tutor profesional serta simulasi AI adaptif dari UPER di PIK Jakarta."
+    },
+    "csca": {
+      "title": "Bimbingan Persiapan Ujian Beasiswa CSCA Indonesia | UPER",
+      "description": "Kuasai materi logika matematika dan sains tingkat lanjut untuk ujian CSCA agar sukses menembus seleksi luar biasa di universitas kelas dunia di China."
+    },
+    "consultancy": {
+      "title": "Jasa Konsultan Kuliah ke China & Beasiswa Pemerintah Tiongkok | UPER",
+      "description": "Dapatkan konsultasi lengkap pendaftaran kuliah serta pendampingan beasiswa penuh (CSC Scholarship) ke universitas elit di China dari Indonesia."
+    },
+    "news": {
+      "title": "Berita & Tren Studi Kuliah ke China Terbaru | UPER Jakarta",
+      "description": "Pantau informasi terbaru seputar info beasiswa China, rilis berita UPER, tips ujian HSK, serta wawasan penting belajar di Tiongkok."
+    },
+    "contact": {
+      "title": "Hubungi UPER PIK | Konsultasi Kuliah ke China Sekarang",
+      "description": "Kunjungi kantor kami di Pantai Indah Kapuk (PIK) Jakarta Utara atau hubungi via WhatsApp untuk konsultasi universitas dan beasiswa China."
+    }
+  },
+  "about": {
+    "tag": "Tentang UPER",
+    "title1": "Membangun Jembatan",
+    "title2": "Pendidikan",
+    "desc": "Selamat datang di UPER, sebuah organisasi pendidikan internasional yang berdedikasi untuk studi global, dengan fokus utama dalam menciptakan pengalaman yang memperkaya bagi para pelajar Asia Tenggara di Tiongkok.",
+    "missionTitle": "Misi Kami",
+    "missionDesc1": "Membangun jembatan pertukaran budaya dan berbagi pengetahuan yang kuat antara Asia Tenggara dan Tiongkok.",
+    "missionDesc2": "Memiliki tujuan awal membuka jalan bagi para murid muda untuk berjelajah budaya dan pencapaian akademik di Tiongkok, memajukan pengertian mengenai pertumbuhan kolaboratif lintas batas.",
+    "visionTitle": "Visi Kami",
+    "visionDesc1": "Menjadi penghubung terdepan antara pelajar dan murid di Asia Tenggara dengan kesempatan meraih edukasi di Tiongkok.",
+    "visionDesc2": "Kami berdedikasi untuk membentuk generasi pemimpin yang memiliki wawasan global, siap menghadapi masa depan, dan mampu berkembang di dunia yang saling terhubung sambil membangun jembatan abadi antar budaya.",
+    "teamTitle": "Tim Ahli Pendidikan",
+    "teamDesc": "Tim kami terdiri dari para ahli pendidikan dan profesional berpengalaman yang memahami pertukaran budaya internasional dan berdedikasi untuk kesuksesan Anda."
+  },
+  "csca": {
+    "header": {
+      "tag": "Waktu Persiapan Emas Musim Gugur 2026",
+      "title1": "Kunci Penerimaan",
+      "title2": "Universitas Top",
+      "desc": "Ketersediaan tempat sangat terbatas. Menjembatani kesenjangan sistem pendidikan Indonesia dan standar universitas elit Tiongkok. Amankan \"Asuransi Akademik\" Anda sekarang.",
+      "cta": "Amankan Masa Depan Akademik Anda"
+    },
+    "intro": {
+      "tag": "Apa itu CSCA?",
+      "title": "Chinese Scholastic Assessment (CSCA)",
+      "desc": "CSCA (Chinese Scholastic Assessment) adalah sistem penilaian kemampuan akademik dan bahasa Mandarin bagi siswa internasional yang mendaftar ke universitas terkemuka di Tiongkok. Ujian ini menguji pemikiran logika matematika, sintesis ilmiah, serta kefasihan bahasa Mandarin akademik, menjadi tolok ukur utama untuk masuk ke universitas kelompok C9 League, proyek 985/211, dan mendapatkan beasiswa sarjana penuh."
+    },
+    "crisis": {
+      "title1": "Krisis",
+      "title2": "yang Diabaikan",
+      "desc": "Banyak siswa masuk universitas Tiongkok dengan nilai memuaskan di Indonesia, namun menghadapi kesulitan akademik yang luar biasa. Mengapa? Karena standar penilaian sangat berbeda.",
+      "currentState": "Kondisi Saat Ini:",
+      "theCrisis": "Krisis Yang Terjadi:",
+      "items": [
+        {
+          "title": "Kesenjangan Logika",
+          "subtitle": "Matematika & Sains",
+          "current": "Sistem pendidikan Indonesia (Nasional/IB/A-Level) sangat menekankan hafalan rumus dan perhitungan kalkulasi.",
+          "crisis": "Universitas elit Tiongkok secara ketat mengevaluasi argumen logika tingkat lanjut dan pembuktian kompleks.",
+          "quote": "\"Siswa tidak kekurangan kemampuan; mereka hanya memiliki cara berpikir yang berbeda...\""
+        },
+        {
+          "title": "Hambatan Bahasa Akademik",
+          "subtitle": "Mitos HSK",
+          "current": "Percaya bahwa sertifikat HSK 5 cukup untuk sukses kuliah di luar negeri.",
+          "crisis": "HSK menjamin percakapan sehari-hari; CSCA menguji studi universitas. Tidak ada basa-basi di laboratorium universitas.",
+          "quote": "\"Jika Anda tidak dapat membaca istilah teknis atau menulis persamaan dalam bahasa Mandarin, Anda akan menjadi 'Siswa Pendiam'.\""
+        }
+      ]
+    },
+    "preparation": {
+      "title": "Tingginya Biaya Kurang Persiapan",
+      "desc": "Melewatkan persiapan CSCA bukanlah penghematan; namun merupakan risiko kegagalan berantai dengan nilai buruk.",
+      "items": [
+        {
+          "title": "Biaya Kuliah Membengkak",
+          "desc": "Mengulang tahun pertama membawa risiko biaya sekolah dan hidup berkelanjutan yang sangat masif..."
+        },
+        {
+          "title": "Kehilangan Rasa Percaya Diri",
+          "desc": "Kekurangan penguasaan bahasa Mandarin saintifik berujung pada isolasi, merasa tertinggal dan ditinggalkan siswa lain..."
+        },
+        {
+          "title": "Pilihan Karir Terbatas",
+          "desc": "Gagal menguasai istilah teknis pada bahasa spesifik menghilangkan potensi dan peluang karir di perusahaan Tiongkok..."
+        }
+      ]
+    },
+    "why": {
+      "tag": "Posisi UPER",
+      "title1": "Bukan bimbingan biasa.",
+      "title2": "Pendidikan Pra-Üniversitas Elit.",
+      "desc": "UPER bukan sekadar bimbingan belajar biasa. Kami adalah platform pendidikan lengkap dan fokus pada prestasi.",
+      "badge1": "ROI Terjamin",
+      "badge2": "Asuransi Akademik",
+      "items": [
+        {
+          "title": "Pendidikan Terbaik. Bebas Jarak.",
+          "desc": "Akses standar pendidikan elit Tiongkok langsung dari Indonesia. Kualitas tanpa kompromi..."
+        },
+        {
+          "title": "Guru Profesional",
+          "desc": "Diajarkan langsung oleh profesor universitas terkemuka Tiongkok dengan keahlian luar biasa..."
+        },
+        {
+          "title": "Investasi Terbaik",
+          "desc": "Asuransi untuk gelar sarjana terbaik bagi diri Anda dan jalan mulus meraih beasiswa penuh..."
+        }
+      ]
+    },
+    "analytics": {
+      "tag": "Analisis Penerimaan Terukur",
+      "title": "Panduan Pendaftaran & Laporan Kemampuan Akademik Siswa Indonesia",
+      "desc": "Analisis multidimensi mendalam tentang ambang batas masuk dan data performa akademis matematika serta bahasa Mandarin siswa Indonesia, memberikan kepastian tinggi untuk perolehan beasiswa utama.",
+      "benchmarkTitle": "Standar Nilai Masuk Universitas Elit Tiongkok",
+      "mathTab": "CSCA Matematika",
+      "chineseTab": "CSCA Bahasa Mandarin Komprehensif",
+      "scoringRule": "* Berdasarkan data statistik riil pelamar beasiswa asal Indonesia tahun 2024-2025. Skala 100 poin.",
+      "math": {
+        "c9": {
+          "title": "Universitas Unggulan C9 League (Peking/Tsinghua/Fudan/ZJU/SJTU, dll.)",
+          "desc": "Peluang diterima sangat tinggi: skor 88–100 (Mutlak diperlukan untuk beasiswa penuh bebas biaya kuliah & tempat tinggal beserta uang saku bulanan)"
+        },
+        "g985": {
+          "title": "Universitas Kelas Satu Proyek 985 (Tongji/ECNU/SDU/XMU, dll.)",
+          "desc": "Peluang diterima sangat tinggi: skor 83–88 (Rentang target ideal untuk beasiswa penuh nasional atau pemerintah provinsi)"
+        },
+        "g211": {
+          "title": "Universitas Kunci Terkenal Proyek 211 (HQU/DHU/UIBE, dll.)",
+          "desc": "Peluang diterima sangat tinggi: skor 70–78 (Target aman untuk beasiswa pemerintah kota atau dana bantuan universitas)"
+        }
+      },
+      "chinese": {
+        "c9": {
+          "title": "Universitas Unggulan C9 League (Peking/Tsinghua/Fudan/ZJU, dll.)",
+          "desc": "Tolok Ukur Penerimaan: Skor bahasa Mandarin komprehensif mencapai 90–100, atau memiliki sertifikat HSK 6 dengan nilai tinggi"
+        },
+        "g985": {
+          "title": "Universitas Kelas Satu Proyek 985 (Tongji/ECNU/DLUT, dll.)",
+          "desc": "Tolok Ukur Penerimaan: Skor bahasa Mandarin komprehensif mencapai 90–100, atau sertifikat HSK 5 dengan skor tinggi (>240)"
+        },
+        "g211": {
+          "title": "Universitas Kunci Terkenal Proyek 211",
+          "desc": "Tolok Ukur Penerimaan: Skor bahasa Mandarin komprehensif mencapai 85–89, atau sertifikat HSK 5 lulus kualifikasi (>180)"
+        }
+      },
+      "academicAdvice": {
+        "label": "Saran Akademik UPER:",
+        "text": "Standar kelulusan CSCA meningkat setiap tahunnya. Kelemahan dalam logika berpikir matematis analitis merupakan kendala umum siswa Indonesia yang mengajukan beasiswa penuh. Memulai latihan persiapan intensif sejak dini merupakan kunci kepastian lolos universitas papan atas."
+      },
+      "dangerZone": {
+        "title": "Rasio Kelemahan Akademik Siswa Indonesia",
+        "desc": "Berdasarkan performa akumulatif dan distribusi kesalahan menjawab dari 300 lebih kandidat Indonesia (dari kurikulum AP, IB, maupun Nasional) dalam bagian matematika sains pada sesi CSCA terbaru.",
+        "subjects": {
+          "geometry": {
+            "name": "Geometri Analisis & Vektor",
+            "val": "33% (Wilayah Paling Lemah)"
+          },
+          "trig": {
+            "name": "Trigonometri & Rumus Sektoral",
+            "val": "21%"
+          },
+          "algebra": {
+            "name": "Operasi Aljabar & Pertidaksamaan",
+            "val": "17%"
+          },
+          "functions": {
+            "name": "Hubungan Fungsi & Grafik",
+            "val": "15%"
+          },
+          "sequences": {
+            "name": "Barisan & Deret / Konsep Limit",
+            "val": "12%"
+          },
+          "prob": {
+            "name": "Probabilitas & Kombinatorika",
+            "val": "2%"
+          }
+        }
+      },
+      "gaps": {
+        "title": "Tiga Kesenjangan Akademik Utama & Saran untuk Siswa Indonesia",
+        "item1": {
+          "title": "1. Kelemahan pemahaman spasial geometri vektor dimensi tiga:",
+          "desc": "Kurikulum sekolah di Indonesia cenderung berfokus pada aljabar bidang secara modular. Sementara CSCA menuntut kemampuan spasial vektor multi-dimensi. Kami menyarankan latihan soal terstruktur standar ujian Tiongkok untuk memperkuat perpindahan logika geometri-fisika."
+        },
+        "item2": {
+          "title": "2. Kuat dalam teori dasar, lemah dalam implementasi soal:",
+          "desc": "Meskipun siswa sangat cepat dalam menghafal rumus rincian, mereka kerap kehilangan skor berharga saat menghadapi penggabungan pertidaksamaan silang yang kompleks. Latihan intensif menyelesaikan alur logika di bawah tekanan waktu ujian sangat dibutuhkan."
+        },
+        "item3": {
+          "title": "3. Kendala istilah bahasa Mandarin sains teknis:",
+          "desc": "Kurangnya kemampuan membaca serta mencerna instruksi soal matematika yang padat akan glosarium bahasa Mandarin. UPER membekali siswa dengan buku panduan istilah hibrida dwi-bahasa Mandarin-Indonesia khusus matematika dan fisika untuk melewati rintangan tersebut."
+        }
+      }
+    },
+    "cta": {
+      "title1": "Raih Keuntungan Penerimaan,",
+      "title2": "Kouta Sangat Terbatas",
+      "desc": "Jangan biarkan kurangnya persiapan mencuri rasa percaya diri Anda. Daftar segera untuk memaksimalkan persiapan penerimaan Musim Gugur 2026.",
+      "btn": "Amankan Tempat Anda & Hubungi Penasihat"
+    }
+  },
+  "contact": {
+    "tag": "Hubungi Kami",
+    "title1": "Mari ",
+    "title2": "Berbincang",
+    "desc": "Siap untuk memulai perjalanan Anda? Tim kami siap menjawab pertanyaan Anda dan memandu Anda melalui seluruh proses."
+  },
+  "contactPage": {
+    "headOffice": "Kantor Pusat",
+    "whatsappPhone": "WhatsApp & Telepon",
+    "freeConsultNow": "Konsultasi gratis dengan kami SEKARANG!",
+    "email": "Email",
+    "sendEmail": "Kirim email",
+    "sendMessage": "Kirim pesan kepada kami",
+    "fillForm": "Isi formulir di bawah ini dan konsultan pendidikan kami akan menghubungi Anda kembali dalam waktu 24 jam.",
+    "fullName": "Nama Lengkap",
+    "emailAddress": "Alamat Email",
+    "mobilePhone": "Telepon Seluler",
+    "interestedIn": "Tertarik Pada",
+    "message": "Deskripsi Mendalam (latar belakang, tujuan, atau permintaan khusus Anda)",
+    "messagePlaceholder": "Silakan deskripsikan latar belakang, tujuan studi, kebutuhan khusus, atau permintaan Anda agar konsultan kami dapat memberikan proposal kustom yang paling sesuai...",
+    "interests": {
+      "studyTours": "Tur Studi",
+      "hskTraining": "Pelatihan HSK",
+      "studyAbroad": "Konsultasi Studi Luar Negeri",
+      "other": "Lainnya"
+    },
+    "submitting": "Mengirimkan...",
+    "submitInquiry": "Kirim Pertanyaan",
+    "thankYou": "Terima kasih!",
+    "successMessage": "Pesan Anda telah berhasil dikirim. Konsultan pendidikan kami akan segera menghubungi Anda.",
+    "errors": {
+      "nameRequired": "Nama Lengkap wajib diisi",
+      "emailRequired": "Alamat Email wajib diisi",
+      "emailInvalid": "Silakan masukkan alamat email yang valid",
+      "phoneRequired": "Telepon Seluler wajib diisi",
+      "phoneInvalid": "Silakan masukkan nomor telepon yang valid"
+    }
+  },
+  "partnersPage": {
+    "tag": "Jaringan Global",
+    "title1": "Mitra Strategis ",
+    "title2": "Kami",
+    "desc": "Kami berkolaborasi dengan institusi pendidikan dan perusahaan terkemuka untuk memberikan peluang terbaik bagi para siswa kami.",
+    "categories": {
+      "Chinese Universities": "Universitas Tiongkok",
+      "Chinese Enterprises": "Perusahaan Tiongkok",
+      "Indonesian Universities & Schools": "Universitas & Sekolah Indonesia",
+      "Indonesian Organizations": "Organisasi Indonesia",
+      "Other": "Lainnya"
+    },
+    "subcategories": {
+      "University": "Universitas",
+      "High School": "Sekolah Menengah Atas",
+      "Vocational School": "Sekolah Vokasi",
+      "Junior High School": "Sekolah Menengah Pertama",
+      "Primary School": "Sekolah Dasar"
+    }
+  },
+  "abroad": {
+    "tag": "Lebih dari Sekadar Studi—Titik Balik Anda",
+    "title1": "Ciptakan Kisah",
+    "title2": "Sukses Anda",
+    "desc": "Tinggalkan aplikasi yang seragam. Kami berfokus pada 'Peningkatan Portofolio' dan 'Visi Global', merancang keunggulan unik Anda agar diterima di universitas top Tiongkok dengan beasiswa penuh.",
+    "services": [
+      {
+        "title": "Peningkatan Latar Belakang Mendalam",
+        "desc": "Kami tidak sekadar mencocokkan sekolah; kami menggali potensi Anda, merencanakan proyek akademik & ekstrakurikuler berdampak tinggi, dan membangun personal branding yang memukau panitia admisi."
+      },
+      {
+        "title": "Strategi Beasiswa Penuh",
+        "desc": "Studi ke luar negeri tak seharusnya membebani finansial. Kami bantu Anda membidik Beasiswa Pemerintah Tiongkok (CSC) dan beasiswa kampus lainnya melalui esai dan pengalaman yang meyakinkan."
+      },
+      {
+        "title": "Esai & Pendampingan Eksklusif",
+        "desc": "Bebas dari template pasaran. Mentor dari lulusan kampus elit akan membantu menyusun personal statement yang bercerita, menonjolkan cara pandang internasional dan potensi sukses Anda."
+      },
+      {
+        "title": "Akses Langsung ke Jaringan Elit",
+        "desc": "Sejak Anda menerima tawaran, Anda akan terhubung dengan jaringan alumni luas dari universitas seperti Tsinghua dan Peking, membuka jalan mulus bagi karier global Anda di masa depan."
+      }
+    ],
+    "why": {
+      "title": "Bukan Sekadar Agen, Tapi Mitra Perjalanan Anda",
+      "desc": "Kami mendampingi setiap langkah transformasi Anda, mengasah profil Anda dengan wawasan nyata agar bersinar di ketatnya persaingan seleksi penerimaan.",
+      "quote": "Mimpi Anda layak untuk diwujudkan. Kami berdedikasi mengubah potensi Anda menjadi pencapaian yang luar biasa di kancah dunia.",
+      "btn": "Rencanakan Perjalanan Saya"
+    },
+    "mentors": {
+      "tag": "Kustomisasi Esai | Essay Tailoring",
+      "title": "Kustomisasi Esai oleh Mentor Elit",
+      "desc": "Esai pendaftaran (Personal Statement / Study Plan) adalah penentu terpenting dalam seleksi universitas elit dan evaluasi beasiswa, yang menampilkan keunikan pribadi dan daya saing akademik utama Anda. Layanan kustomisasi esai mentor elit eksklusif UPER melampaui terjemahan templat konvensional untuk menyusun profil emas yang memikat panitia admisi.",
+      "p1": {
+        "title": "Tim Mentor S2 & S3 dari Kampus Elit",
+        "desc": "Diedit sepenuhnya oleh mahasiswa S2 & S3 berprestasi, alumni terkemuka, dan elit industri dari universitas top Tiongkok seperti Universitas Tsinghua, Universitas Peking, Universitas Fudan, dan Universitas Shanghai Jiao Tong. Mereka sangat memahami logika penyeleksian admisi."
+      },
+      "p2": {
+        "title": "Sistem Kustomisasi Mendalam 1-on-1",
+        "desc": "Dimulai dari sesi curah pendapat (brainstorming) untuk menemukan poin unik latar belakang siswa, rencana studi, riset akademik, dan perkembangan ekstrakurikuler, guna menyusun alur cerita yang unik dan tak tergantikan."
+      },
+      "p3": {
+        "title": "Penyempurnaan Akademis & Tingkat Penutur Asli",
+        "desc": "Penyuntingan dwi-bahasa Mandarin dan Inggris tingkat penutur asli secara presisi. Tidak hanya meningkatkan kosakata, tata bahasa, dan rantai logika akademis, tetapi juga memastikan sudut pandang naratif selaras dengan sistem ekspresi universitas top Tiongkok."
+      },
+      "p4": {
+        "title": "Tingkat Kelulusan Admisi & Beasiswa Sangat Tinggi",
+        "desc": "Personal statement beasiswa yang disempurnakan melalui program ini mencatatkan peningkatan rata-rata lebih dari 140% dalam tingkat keberhasilan memperoleh beasiswa penuh pemerintah maupun universitas."
+      }
+    },
+    "draft": {
+      "comment": "Blok Suntingan Mentor Elit UPER",
+      "profileLabel": "Profil Siswa:",
+      "profileValue": "Calon Mahasiswa Internasional (Jakarta PIK)",
+      "targetLabel": "Universitas Tujuan:",
+      "targetValue": "Universitas Peking (北京大学)",
+      "quote": "\"Pendekatan lintas disiplin saya dalam linguistik komputasi telah mendorong model pendidikan lokal di Indonesia, terinspirasi oleh warisan budaya yang mendalam...\"",
+      "result": "Narasi Akademis: SANGAT BAIK",
+      "score": "Kesesuaian Beasiswa: 98.7%",
+      "header": "Draf Rencana Studi Beasiswa"
+    },
+    "roadmap": {
+      "tag": "PIPELINE PENDAFTARAN",
+      "title": "Peta Jalan Pendaftaran Universitas Top Tiongkok",
+      "desc": "Pahami perencanaan pendaftaran Anda dengan jelas, mulai dari penilaian profil hingga perolehan visa. UPER mendampingi setiap langkah Anda. Klik setiap tahap untuk menjelajahi tugas utama dan tips mentor.",
+      "coreChecks": "DAFTAR TUGAS UTAMA",
+      "stepIndicator": "TAHAP {{current}} DARI {{total}}",
+      "getHelp": "Rencanakan Tahap Ini",
+      "contactAdvisor": "Hubungi Konsultan",
+      "step1": {
+        "title": "Penilaian & Perencanaan Target",
+        "desc": "Tentukan universitas target & jalur beasiswa yang cocok (CSC, SGS, CIS, dll.) berdasarkan audit profil awal.",
+        "item1": "Evaluasi profil & audit transkrip nilai/IPK",
+        "item2": "Pencocokan minat penelitian/akademis (untuk pelamar pascasarjana)",
+        "item3": "Diagnosis skor HSK, HSKK & CSCA (Chinese Scholastic Assessment) serta perencanaan jadwal ujian",
+        "item4": "Pemilihan strategi beasiswa (Tipe A, Tipe B, atau Beasiswa Pemerintah Daerah)",
+        "tip": "Tips Mentor UPER: Melakukan evaluasi lebih awal memberi Anda keunggulan 3 bulan lebih cepat dalam menghubungi calon dosen pembimbing!"
+      },
+      "step2": {
+        "title": "Peningkatan Portofolio & Penyempurnaan Esai",
+        "desc": "Berkolaborasi secara mendalam 1-on-1 dengan mentor elit untuk menyusun Personal Statement dan Rencana Studi yang bercerita serta memiliki daya tarik akademis tinggi.",
+        "item1": "Sesi curah pendapat (brainstorming) mendalam untuk Personal Statement & Rencana Studi",
+        "item2": "Revisi 1-on-1 dengan mentor lulusan S2/S3 dari Tsinghua & Peking U",
+        "item3": "Pelatihan intensif logika STEM CSCA & optimasi resume akademis (CV)",
+        "item4": "Dapatkan surat rekomendasi dari anggota fakultas senior untuk dukungan akademis kuat",
+        "tip": "Tips Mentor UPER: Rencana studi unik yang menonjolkan nilai integrasi lintas budaya adalah faktor penentu utama bagi komite penyeleksi beasiswa!"
+      },
+      "step3": {
+        "title": "Pendaftaran Portal Resmi & Pengajuan",
+        "desc": "Lakukan pengajuan aplikasi secara sinkron di berbagai portal penerimaan universitas dan platform beasiswa pemerintah (CSC) untuk memastikan semua berkas akurat dan tepat waktu.",
+        "item1": "Pembuatan profil portal universitas sasaran & unggah dokumen",
+        "item2": "Pendaftaran & pengisian informasi di sistem online Beasiswa Pemerintah Tiongkok (CSC)",
+        "item3": "Pembayaran biaya pendaftaran, validasi formulir pemeriksaan fisik & surat bebas catatan kriminal",
+        "item4": "Pemantauan berkala proses pra-penerimaan & tindakan korektif segera jika diperlukan",
+        "tip": "Tips Mentor UPER: Mengajukan aplikasi lebih awal pada bulan Januari memastikan berkas Anda ditinjau pada gelombang pertama saat kuota beasiswa masih penuh!"
+      },
+      "step4": {
+        "title": "Simulasi Wawancara & Pelacakan Seleksi",
+        "desc": "Sempurnakan ekspresi akademis lisan Anda melalui sesi simulasi wawancara nyata (Mock Interview) dengan panel penasihat alumni UPER berdasarkan bank soal universitas sasaran.",
+        "item1": "Simulasi wawancara realistis 1-on-1 dengan alumni elit & mantan penerima beasiswa",
+        "item2": "Persiapan kerangka jawaban emas (tujuan akademis, adaptasi lintas budaya, dll.)",
+        "item3": "Bimbingan & saran belajar untuk ujian masuk tertulis atau pengetahuan dasar khusus program",
+        "item4": "Melacak status daftar tunggu (waitlist) & mengirimkan dokumen pencapaian tambahan",
+        "tip": "Tips Mentor UPER: Saat wawancara, hubungkan rencana studi Anda dengan upaya 'memajukan pertukaran akademis dan budaya antarbangsa' untuk menarik perhatian tim penguji!"
+      },
+      "step5": {
+        "title": "Pengurusan Visa & Keberangkatan",
+        "desc": "Dapatkan paket penerimaan resmi yang berisi formulir asli JW201/202, mengurus visa studi X1, serta mengikuti pembekalan keberangkatan eksklusif UPER.",
+        "item1": "Pengumpulan, pemeriksaan, & pelacakan pengiriman Surat Penerimaan resmi dan formulir JW201/202",
+        "item2": "Pengajuan aplikasi visa studi X1 di kedutaan/konsulat Tiongkok di wilayah Anda",
+        "item3": "Pembekalan keberangkatan eksklusif UPER (kartu SIM, pembukaan rekening bank, akomodasi, panduan imigrasi)",
+        "item4": "Reservasi asrama mahasiswa baru, pemesanan tiket pesawat, & pencocokan rekan sebaya PPIT",
+        "tip": "Tips Mentor UPER: Bergabunglah dengan jaringan mahasiswa aktif UPER di Tiongkok agar kehidupan kampus Anda terasa aman dan nyaman sejak hari pertama!"
+      }
+    },
+    "cases": {
+      "tag": "PENCAPAIAN SISWA",
+      "title": "Dinding Kehormatan Penerimaan & Beasiswa",
+      "desc": "Setiap keberhasilan diterima di universitas impian didukung oleh personal branding profil yang disesuaikan & kisah akademis yang persuasif. Dapat dikonfigurasi dengan mudah di backend Sanity.",
+      "viewCert": "Lihat Surat Penerimaan"
+    }
+  },
+  "tours": {
+    "tag": "Perluas Cara Pandang Anda",
+    "title1": "Perjalanan ",
+    "title2": "Transformasional",
+    "desc": "Tinggalkan wisata biasa. Ini bukan sekadar jalan-jalan di kampus Tsinghua atau Peking, melainkan perjalanan mendalam untuk menembus batas pemikiran, membangun Visi Global, dan memperkuat posisi Anda untuk pendaftaran universitas elit nanti.",
+    "highlights": [
+      {
+        "title": "Memperkuat Portofolio & Peluang Admisi",
+        "desc": "Eksplorasi mendalam di kampus top dunia. Rasakan aura akademik nyatanya, raih sertifikat prestisius, dan kumpulkan pengalaman yang akan memberi Anda keunggulan saat mendaftar kampus dan beasiswa."
+      },
+      {
+        "title": "Jejaring dengan Para Elit",
+        "desc": "Berdiskusi langsung dengan mahasiswa terbaik dan pakar industri. Bangun lingkaran pertemanan internasional dan pelajari pola pikir inovatif dari talenta-talenta cemerlang."
+      },
+      {
+        "title": "Menjelajahi Masa Depan Teknologi",
+        "desc": "Kunjungi raksasa teknologi dan pusat inovasi dunia. Saksikan langsung teknologi yang mengubah zaman dan perluas wawasan global Anda mengenai karier di masa depan."
+      },
+      {
+        "title": "Terobosan Budaya & Bahasa",
+        "desc": "Lebih dari sekadar melihat Tembok Besar dan Kota Terlarang, Anda akan mendobrak batasan bahasa di dunia nyata, menumbuhkan rasa percaya diri, dan membawa pulang kisah inspiratif untuk esai pendaftaran Anda."
+      }
+    ],
+    "contact": {
+      "title": "Jangan Lewatkan Perjalanan Mengubah Hidup Ini",
+      "desc": "Kuota kursi sangat luar biasa terbatas. Gabunglah di tur kami selanjutnya untuk mulai membangun rekam jejak akademik terbaik.",
+      "btn": "Minta Detail Kesempatan Eksklusif"
+    },
+    "availablePrograms": "Program Tersedia",
+    "requestItinerary": "Minta Rencana Perjalanan",
+    "guidingPrinciples": {
+      "title": "Prinsip Panduan Kami",
+      "desc": "Kami percaya pada pendekatan holistik yang menggabungkan efisiensi teknologi modern dengan kehangatan hubungan antarmanusia."
+    },
+    "destinations": {
+      "title": "Galeri Destinasi Studi",
+      "desc": "Jelajahi tempat-tempat luar biasa yang akan Anda kunjungi selama tur studi imersif kami."
+    },
+    "destinationLabel": "Destinasi",
+    "features": [
+      {
+        "title": "Program yang Dirancang Ahli",
+        "desc": "Pembelajaran bahasa, lokakarya budaya, interaksi akademik, serta kunjungan ke perusahaan teknologi dan tengara bersejarah."
+      },
+      {
+        "title": "Integrasi Sumber Daya yang Luas",
+        "desc": "Kemitraan jangka panjang dengan institusi pendidikan bergengsi, universitas papan atas, dan profesor ternama."
+      },
+      {
+        "title": "Jaminan Layanan Komprehensif",
+        "desc": "Pemimpin tur profesional, asuransi perjalanan luar negeri, akomodasi nyaman, dan komunikasi yang lancar dengan orang tua."
+      }
+    ],
+    "values": [
+      {
+        "title": "Pembelajaran Berbasis Teknologi",
+        "desc": "Alat AI mutakhir dan platform interaktif yang beradaptasi dengan kecepatan Anda, membuat penguasaan bahasa Mandarin lebih cepat."
+      },
+      {
+        "title": "Perhatian Humanis",
+        "desc": "Pendidikan lebih dari sekadar akademik. Kami memprioritaskan kesejahteraan emosional, pertumbuhan pribadi, dan kepekaan budaya Anda."
+      },
+      {
+        "title": "Kewarganegaraan Global",
+        "desc": "Dimulai dari Indonesia, kami membangun jembatan ke Tiongkok dan dunia, merayakan sudut pandang yang beragam."
+      }
+    ],
+    "programs": [
+      {
+        "title": "Tur Studi Wuhan",
+        "desc": "Benamkan diri Anda dalam budaya dinamis dan keunggulan akademik Tiongkok tengah. Kunjungi Menara Bangau Kuning, jelajahi Universitas Wuhan, dan rasakan tradisi lokal.",
+        "tags": [
+          "Musim Panas 2025",
+          "Bahasa",
+          "Budaya"
+        ]
+      },
+      {
+        "title": "Tur Studi Beijing",
+        "desc": "Pengalaman tur terpandu selama 14 hari penuh menjelajahi universitas ternama seperti Tsinghua dan Universitas Peking, inovasi teknologi, serta warisan sejarah.",
+        "tags": [
+          "Ibu Kota",
+          "Universitas Top",
+          "Warisan"
+        ]
+      },
+      {
+        "title": "Tur Studi Shanghai & Hangzhou",
+        "desc": "Rasakan keajaiban kota metropolis modern. Termasuk kunjungan ke markas besar Alibaba, pusat teknologi modern, dan keindahan Danau Barat.",
+        "tags": [
+          "Raksasa Teknologi",
+          "Kota Modern",
+          "E-commerce"
+        ]
+      },
+      {
+        "title": "Tur Studi Shenzhen",
+        "desc": "Masukilah pusat silikon Tiongkok. Akses eksklusif ke raksasa teknologi terkemuka, pasar perangkat keras, dan berjejaring dengan inovator lokal.",
+        "tags": [
+          "Inovasi",
+          "Jejaring",
+          "Pusat Teknologi"
+        ]
+      }
+    ]
+  },
+  "news": {
+    "tag": "Berita & Pembaruan",
+    "latest": "Pembaruan Terbaru",
+    "defaultTitle": "Berita & Wawasan Terbaru",
+    "defaultSubtitle": "Tetap ikuti perkembangan UPER dan tren pendidikan global.",
+    "noNews": "Tidak ada berita ditemukan.",
+    "readMore": "Baca Selengkapnya",
+    "newsBadge": "Berita",
+    "searchPlaceholder": "Cari artikel berdasarkan judul atau kata kunci...",
+    "noResults": "Tidak ada artikel yang sesuai dengan kriteria Anda",
+    "noResultsDesc": "Silakan saring kata kunci Anda, hapus pencarian, atau pilih salah satu tag pencarian populer di atas.",
+    "clearSearch": "Hapus Pencarian",
+    "popularTags": "Pencarian Populer",
+    "tagAll": "Semua Topik",
+    "tagChina": "China & STEM",
+    "tagScholarship": "Beasiswa",
+    "tagMandarin": "Mandarin",
+    "tagMuhammadiyah": "Muhammadiyah",
+    "tagForum": "Forum & KTT",
+    "externalSource": "Laporan & Media Eksternal"
+  },
+  "common": {
+    "backToList": "Kembali ke Daftar",
+    "share": "Bagikan",
+    "readTime": "mnt dibaca"
+  },
+  "details": {
+    "notFound": "Tidak Ditemukan",
+    "newsNotFoundDesc": "Artikel berita tidak ditemukan.",
+    "campaignNotFoundDesc": "Kampanye yang Anda cari tidak ada atau telah berakhir.",
+    "returnBack": "Kembali",
+    "back": "Kembali",
+    "loading": "Memuat...",
+    "specialCampaign": "Kampanye Spesial",
+    "endsOn": "Berakhir pada",
+    "moreDetailsSoon": "Detail lebih lanjut mengenai kampanye ini akan segera tersedia.",
+    "participateNow": "Ikuti Sekarang",
+    "allNews": "Kembali ke semua berita",
+    "loadingArticle": "Memuat artikel..."
+  },
+  "hsk": {
+    "header": {
+      "tag": "Pembelajaran Berbasis Teknologi",
+      "title1": "Kuasai Bahasa Mandarin bersama Tutor Ahli &",
+      "title2": "Bantuan AI",
+      "desc": "Masuki era baru persiapan HSK. Kami tidak hanya bergantung pada kecerdasan buatan pasif, namun mengkombinasikan pengalaman mendalam dari tutor ahli dengan platform AI adaptif untuk menemukan kelemahan Anda secara efektif."
+    },
+    "blcu": {
+      "tag": "Otoritas Akademik",
+      "title": "Dukungan Sistem Pengajaran & Penelitian BLCU",
+      "desc": "Mengandalkan fondasi akademis yang mendalam, autentik, dan tepercaya dari Beijing Language and Culture University (BLCU)—pionir dalam Pembelajaran Bahasa Mandarin untuk Penutur Asing (TCFL)—serta memadukannya dengan teknologi modern, kami merancang kurikulum bahasa Mandarin elit yang presisi dan komprehensif.",
+      "point1": {
+        "title": "Sistem Pengajaran & Penelitian BLCU",
+        "desc": "Selaras dengan silabus TCFL standar tinggi dan metrik penilaian akademik BLCU"
+      },
+      "point2": {
+        "title": "Bimbingan dari Tim Pengajar Ahli BLCU",
+        "desc": "Diawasi dan dirancang oleh akademisi serta pengajar senior BLCU garis depan"
+      },
+      "point3": {
+        "title": "Latar Belakang Profesional TCFL",
+        "desc": "Menghadirkan talenta penelitian pendidikan Master dan Doktor TCFL terbaik dari Tiongkok dan Indonesia"
+      },
+      "point4": {
+        "title": "Keunggulan Penelitian HSK",
+        "desc": "Penguasaan luar biasa atas evolusi silabus HSK baru dengan analisis multi-dimensi yang tepat pada poin ujian utama"
+      }
+    },
+    "levels": [
+      {
+        "level": "HSK 1-2",
+        "title": "Pemula",
+        "desc": "Ungkapan dasar bahasa Mandarin dan keterampilan komunikasi untuk pemula."
+      },
+      {
+        "level": "HSK 3-4",
+        "title": "Menengah",
+        "desc": "Keterampilan bahasa tingkat menengah untuk situasi sehari-hari dan konteks akademik."
+      },
+      {
+        "level": "HSK 5-6",
+        "title": "Lanjutan",
+        "desc": "Kemahiran tingkat lanjut untuk topik yang sangat kompleks serta lingkungan profesional."
+      }
+    ],
+    "methodology": {
+      "title": "Metodologi Kami",
+      "desc": "Kami menggabungkan ketelitian akademik tradisional dengan solusi teknologi modern.",
+      "items": [
+        "Diskusi kelas imersif",
+        "Latihan mendengarkan & berbicara secara intensif",
+        "Sumber daya multimedia & bermain peran",
+        "Materi pembelajaran komprehensif & ujian tiruan (mock exams)"
+      ]
+    },
+    "benefits": {
+      "title": "Mengapa Memilih UPER untuk HSK?",
+      "desc": "Sistem pengajaran kami berasal dari tim pengajaran dan penelitian Beijing Language and Culture University, dengan desain kurikulum yang sangat selaras dengan persyaratan ujian HSK. Mulai dari bimbingan guru bahasa Mandarin profesional hingga alat pembelajaran digital dan sistem pembelajaran bantuan AI, kami membantu siswa meningkatkan kemampuan mendengarkan, berbicara, membaca, dan menulis secara komprehensif untuk mencapai hasil pembelajaran bahasa Mandarin yang lebih efisien.",
+      "btn": "Daftar Gelombang Berikutnya"
+    },
+    "vision": {
+      "tag": "Sedang Dikembangkan",
+      "title1": "Masa Depan",
+      "title2": "AI Bahasa",
+      "desc": "Kami saat ini sedang mengembangkan sistem AI eksklusif yang akan merevolusi cara siswa kami mempelajari bahasa Mandarin. Bersiaplah untuk perjalanan belajar yang benar-benar personal.",
+      "items": [
+        {
+          "title": "Penilaian Pintar (Smart Assessment)",
+          "desc": "Evaluasi berkelanjutan untuk menemukan letak area yang butuh perbaikan secara akurat."
+        },
+        {
+          "title": "Jalur Belajar Adaptif",
+          "desc": "Kurikulum dinamis yang menyesuaikan dengan gaya dan kecepatan belajar Anda."
+        },
+        {
+          "title": "Tutor Virtual 24/7",
+          "desc": "Berlatih berbicara kapan saja dengan agen AI percakapan kami."
+        }
+      ],
+      "inDevelopment": "Target Rilis: Musim Gugur 2025"
+    }
+  },
+  "faq": {
+    "portal": {
+      "hsk": {
+        "title": "Ada Pertanyaan tentang HSK?",
+        "desc": "Dapatkan panduan presisi mengenai persiapan ujian, penyelarasan bimbingan belajar standar, fasilitas kamp offline, dan alat analisis nada bicara.",
+        "btn": "Buka FAQ HSK",
+        "badge": "Portal Pengetahuan"
+      },
+      "csca": {
+        "title": "Ada Pertanyaan tentang Penyelarasan CSCA?",
+        "desc": "Pelajari pertanyaan krusial tentang tolok ukur evaluasi skolastik, silabus matematika tingkat lanjut, dan cara membuktikan kemampuan STEM kepada komite seleksi CSC elit.",
+        "btn": "Buka FAQ CSCA",
+        "badge": "Panduan Akademik"
+      },
+      "abroad": {
+        "title": "Ada Pertanyaan tentang Penempatan Universitas?",
+        "desc": "Temukan jawaban kepatuhan penting mengenai rasio beasiswa penuh, kantor kedutaan/visa China regional, perkumpulan mahasiswa PPIT, dan fintech lintas batas.",
+        "btn": "Buka FAQ Penerimaan",
+        "badge": "Penasihat Ekspatriat"
+      }
+    },
+    "tag": "Solusi Instan",
+    "abroadTitlePrefix": "Studi di Luar Negeri - ",
+    "title1": "Pertanyaan yang Sering",
+    "title2": "Diajukan",
+    "desc": "Temukan jawaban yang jelas dan tepercaya untuk membantu perjalanan belajar Mandarin, pengajuan beasiswa, dan pendaftaran universitas ke China.",
+    "searchPlaceholder": "Cari Pertanyaan...",
+    "filterByProgram": "Saring berdasarkan Program",
+    "programs": {
+      "all": "Semua Program",
+      "studyAbroad": "Kuliah di China"
+    },
+    "categories": {
+      "all": "Semua Pertanyaan",
+      "academic": "Pertanyaan Aplikasi & Akademik",
+      "financial": "Pertanyaan Finansial",
+      "life": "Kehidupan & Budaya di China",
+      "career": "Karir & Masa Depan"
+    },
+    "items": [
+      {
+        "id": "q1",
+        "category": "academic",
+        "question": "Apa saja persyaratan dasar untuk mendaftar gelar sarjana (S1) di China?",
+        "answer": "Persyaratan utamanya adalah:\n\n* **Akademik:** Ijazah SMA dengan nilai rata-rata (GPA) yang baik. Nilai ujian nasional Anda (seperti Ujian Nasional) juga turut dipertimbangkan.\n* **Bahasa:** Untuk program yang diajarkan dalam bahasa Mandarin, Anda biasanya memerlukan sertifikat HSK 4 atau HSK 5. Untuk program berbahasa Inggris, diperlukan skor IELTS (biasanya 5.5 - 6.0+) atau TOEFL.\n* **Usia:** Umumnya, Anda harus berusia di bawah 25 tahun.\n* **Kesehatan:** Anda harus berada dalam kondisi kesehatan yang baik."
+      },
+      {
+        "id": "q2",
+        "category": "academic",
+        "question": "Bagaimana lini masa (timeline) umum untuk mendaftar ke universitas di China?",
+        "answer": "Perencanaan sejak jauh hari sangat penting! Berikut adalah lini masa umum sebelum semester universitas dimulai:\n\n* **12-10 Bulan Sebelum Berangkat:** Riset universitas dan program studi. Mulai belajar bahasa Mandarin.\n* **9-8 Bulan Sebelum Berangkat:** Persiapkan diri dan ikuti ujian HSK/IELTS/TOEFL.\n* **7-6 Bulan Sebelum Berangkat:** Ini adalah periode pendaftaran utama karena sebagian besar aplikasi mulai dibuka. Hubungi profesor jika mendaftar S2/S3. Selesaikan dokumen pendaftaran (Personal Statement, Surat Rekomendasi).\n* **5-4 Bulan Sebelum Berangkat:** Kirimkan semua dokumen pendaftaran sebelum tenggat waktu. Daftar beasiswa (beasiswa pemerintah CSC maupun universitas).\n* **3-2 Bulan Sebelum Berangkat:** Terima Surat Penerimaan (Admission Notice) dan formulir JW202. Ajukan visa pelajar (Visa X1) di Kedutaan Besar China di Jakarta.\n* **1 Bulan Sebelum Berangkat:** Pesan tiket pesawat, berkemas, dan bersiaplah untuk memulai petualangan baru Anda!"
+      },
+      {
+        "id": "q8",
+        "category": "academic",
+        "question": "Bagaimana cara memilih universitas dan jurusan kuliah yang tepat untuk saya?",
+        "answer": "Kita akan bersama-sama mempertimbangkan beberapa faktor penting:\n\n* **Latar Belakang Akademik Anda:** Nilai rapor SMA dan mata pelajaran pilihan Anda.\n* **Tujuan Karir:** Apa yang ingin Anda lakukan setelah lulus kuliah?\n* **Peringkat Universitas:** Universitas di liga C9 China (seperti Peking University atau Tsinghua University) adalah yang terbaik, namun banyak universitas lain yang sangat unggul di bidang tertentu (misalnya Tongji untuk Teknik, Fudan untuk Bisnis).\n* **Lokasi & Iklim:** Apakah Anda mendambakan kota megapolitan modern seperti Shanghai, kota bersejarah seperti Beijing, atau iklim yang bersahabat di China Selatan (seperti Guangzhou)?"
+      },
+      {
+        "id": "q9",
+        "category": "academic",
+        "question": "Seperti apa proses pendaftaran universitas di China?",
+        "answer": "Alur pendaftaran umumnya meliputi langkah-langkah berikut:\n\n1. **Persiapkan Dokumen:** Ijazah, transkrip nilai, salinan paspor, sertifikat kemampuan bahasa, Personal Statement, dll.\n2. **Kirim Aplikasi Online** melalui portal universitas masing-masing atau melalui platform **CSC (China Scholarship Council)** jika Anda mengajukan beasiswa pemerintah.\n3. **Bayar Biaya Pendaftaran.**\n4. **Terima Surat Penerimaan** serta Formulir JW202 (untuk pengurusan visa pelajar Anda).\n5. **Ajukan Visa Pelajar (Visa X1)** di Pusat Layanan Aplikasi Visa China di Jakarta."
+      },
+      {
+        "id": "q10",
+        "category": "academic",
+        "question": "Dokumen apa saja yang perlu saya persiapkan?",
+        "answer": "Meskipun persyaratan setiap universitas bervariasi, dokumen wajib yang biasanya diperlukan meliputi:\n\n* **Dokumen Utama:** Salinan paspor, ijazah dan transkrip akademik yang telah dinotariskan, pasfoto ukuran paspor.\n* **Formulir Aplikasi:** Mengisi formulir online universitas serta Formulir Rekam Pemeriksaan Fisik (Pemeriksaan Kesehatan).\n* **Sertifikat Kemampuan Bahasa:** Lembar skor resmi HSK, IELTS, atau TOEFL.\n* **Dokumen Pribadi:** Esai Personal Statement, Surat Rekomendasi (biasanya sebanyak 2 buah), Curriculum Vitae (CV).\n* **Dokumen Pendukung:** Portofolio karya untuk jurusan seni/desain, proposal penelitian bagi pelamar program pascasarjana."
+      },
+      {
+        "id": "q11",
+        "category": "academic",
+        "question": "Haruskah saya mendaftar ke beberapa universitas sekaligus?",
+        "answer": "**Ya, sangat disarankan.** Sangat direkomendasikan untuk mendaftar ke **4-7 universitas** untuk memaksimalkan peluang penerimaan Anda. Kelompokkan pilihan Anda ke dalam:\n\n* **Dream Schools:** Universitas papan atas berpangkat tinggi dan sangat kompetitif.\n* **Target Schools:** Universitas di mana profil akademik Anda memenuhi seluruh kriteria masuk dengan pas.\n* **Safety Schools:** Universitas dengan peluang penerimaan yang sangat besar atau hampir pasti."
+      },
+      {
+        "id": "q12",
+        "category": "academic",
+        "question": "Apa kesalahan paling umum yang dilakukan siswa dalam pendaftaran mereka?",
+        "answer": "* **Keterlambatan Pengiriman:** Universitas China sangat ketat terhadap tenggat waktu (deadlines).\n* **Dokumen Tidak Lengkap:** Kurang teliti memeriksa kelengkapan file wajib yang diunggah.\n* **Personal Statement yang Terlalu Umum:** Mengirimkan esai yang sama persis ke berbagai universitas. Sebaiknya sesuaikan esai Anda untuk menyebutkan nama universitas tujuan dan alasan Anda memilihnya secara spesifik.\n* **Terjemahan Dokumen yang Buruk:** Pastikan dokumen akademik diterjemahkan secara resmi oleh penerjemah tersumpah dan dinotariskan dengan benar."
+      },
+      {
+        "id": "q13",
+        "category": "academic",
+        "question": "Kepada siapa saya harus meminta bantuan selama proses pendaftaran?",
+        "answer": "* **Konsultan Pendidikan Anda (UPER):** Kami siap membantu memandu Anda mulai dari strategi pemilihan universitas, kurasi dokumen, hingga pengawasan tenggat waktu.\n* **Kantor Admisi Internasional Universitas:** Apabila memiliki pertanyaan khusus mengenai program studi atau persyaratan, silakan **kirim email langsung** kepada mereka. Mereka biasanya sangat responsif membantu.\n* **Kakak Tingkat (Senior):** Berjejaring dengan mahasiswa asal Indonesia yang sedang kuliah di China melalui media sosial (Instagram, grup Facebook PPI Tiongkok). Mereka dapat memberikan perspektif langsung."
+      },
+      {
+        "id": "q14",
+        "category": "academic",
+        "question": "Sistem penilaian sekolah menengah saya berbeda. Bagaimana universitas di China menilai GPA/Rapor saya?",
+        "answer": "Ini adalah situasi yang sangat umum ditemui. Kantor admisi universitas di China memiliki staf berpengalaman yang familier dengan berbagai sistem penilaian rapor internasional, termasuk *Nilai UN* di Indonesia serta rapor kurikulum nasional.\n\n**Langkah yang kami lakukan:** UPER akan membantu memastikan transkrip nilai Anda **dilegalisir, diterjemahkan secara resmi**, dan dinotariskan ke dalam bahasa Inggris atau bahasa Mandarin. Sebagian besar aplikasi juga mengizinkan Anda menyertakan penjelasan singkat tentang skala penilaian rapor sekolah Anda."
+      },
+      {
+        "id": "q15",
+        "category": "academic",
+        "question": "Apa itu \"Personal Statement\" atau \"Study Plan\" (Rencana Studi), dan mengapa itu penting?",
+        "answer": "Ini adalah komponen paling krusial dalam berkas pendaftaran Anda, terutama jika Anda membidik paket beasiswa. Ini adalah kesempatan emas Anda menunjukkan kepribadian Anda langsung ke komite admisi.\n\n* **Esai harus memuat:** Latar belakang akademik Anda, alasan ketertarikan pada jurusan tersebut, mengapa Anda memilih menempuh jalur studi di China dan universitas tersebut, rencana masa depan karir Anda, serta kontribusi yang akan Anda berikan sebagai mahasiswa.\n\n**UPER akan memandu Anda** secara intensif dalam merancang cerita unik, jujur, dan berkesan agar berkas Anda menonjol."
+      },
+      {
+        "id": "q16",
+        "category": "academic",
+        "question": "Seberapa pentingkah surat rekomendasi, dan siapa yang harus saya hubungi?",
+        "answer": "Sangat penting, khususnya untuk program yang kompetitif dan beasiswa penuh.\n\n* **Siapa yang harus dihubungi:** **Kepala sekolah, wakil kurikulum, wali kelas, atau guru mata pelajaran** yang mengenal diri Anda secara personal dengan baik (misalkan guru Matematika Anda untuk pendaftaran jurusan Teknik). Mereka harus dapat memberikan ulasan objektif tentang kemampuan akademik, karakter, serta potensi Anda."
+      },
+      {
+        "id": "q17",
+        "category": "academic",
+        "question": "Bagaimana cara mendapatkan surat rekomendasi yang kuat?",
+        "answer": "1. **Hubungi Jauh Hari:** Berikan pemberitahuan kepada perekomendasi Anda setidaknya satu bulan sebelum tenggat waktu pendaftaran.\n2. **Pilih Orang yang Tepat:** Carilah guru atau kepala sekolah yang **mengenal karakter belajar Anda secara personal**, bukan hanya guru yang memberi Anda nilai tertinggi. Surat rekomendasi yang dipersonalisasi jauh lebih bernilai dibanding surat formal template generik.\n3. **Berikan Lembar Penjelas (Cheat Sheet):** Permudah tugas mereka. Serahkan CV, salinan nilai rapor, Personal Statement, serta daftar pencapaian khusus atau proyek sekolah sukses yang pernah Anda pimpin sebelumnya untuk mereka masukkan sebagai poin referensi."
+      },
+      {
+        "id": "q18",
+        "category": "academic",
+        "question": "Apakah ada ujian masuk untuk universitas?",
+        "answer": "Umumnya **tidak ada**. Bagi sebagian besar program sarjana (S1), keputusan admisi didasarkan sepenuhnya pada rekam jejak akademik rapor sekolah, kemampuan bahasa, serta kelengkapan dokumen pendaftaran Anda. Namun, beberapa akademi seni bergengsi serta program elite yang sangat kompetitif di universitas peringkat teratas seperti Peking University mungkin menyelenggarakan tes bakat atau wawancara masuk tambahan."
+      },
+      {
+        "id": "q19",
+        "category": "academic",
+        "question": "Apa itu \"Formulir JW201/JW202\"?",
+        "answer": "Ini adalah **Dokumen Formulir Permohonan Visa Pelajar Asing ke China** yang diterbitkan secara resmi oleh otoritas pemerintah China. Dokumen ini **sangat penting dan bersifat wajib** untuk pengajuan permohonan visa pelajar Anda. Pihak universitas akan mengirimkan formulir fisik ini bersamaan dengan Surat Penerimaan asli Anda. **Jangan sampai kiriman berkas ini hilang!**"
+      },
+      {
+        "id": "q20",
+        "category": "academic",
+        "question": "Bagaimana cara mengajukan visa pelajar (Visa X1) di Indonesia?",
+        "answer": "Anda wajib memproses pengajuan visa melalui **Pusat Layanan Aplikasi Visa China (Visa Application Service Center)** di Jakarta.\n\n* **Berkas yang Diperlukan:** Paspor asli yang masih berlaku, Surat Penerimaan asli dari universitas, Formulir JW202 asli, formulir aplikasi permohonan visa yang telah diisi lengkap, dan pasfoto terbaru.\n* **Proses:** Serahkan seluruh dokumen fisik, bayar biaya administrasi visa, lalu tunggu waktu pemrosesan (biasanya memakan waktu beberapa hari kerja). Wawancara langsung terkadang dapat dilakukan sesuai permintaan petugas kedutaan."
+      },
+      {
+        "id": "q21",
+        "category": "financial",
+        "question": "Berapa biaya kuliah dan biaya hidup di China?",
+        "answer": "Biaya studi sangat bervariasi tergantung pada kota dan universitas yang dituju. Berikut adalah perkiraan kasarnya:\n\n* **Biaya Kuliah (Tuition Fee):** Mulai dari **¥10,000 sampai ¥50,000 per tahun** (sekitar $1,400 - $7,000 USD). Untuk jurusan Kedokteran dan universitas elite baris teratas, biayanya dapat lebih tinggi.\n* **Biaya Akomodasi (Homestay/Asrama):** Sekitar **¥3,000 hingga ¥15,000 per tahun** untuk asrama kampus. Menyewa apartemen sendiri di luar kampus biasanya memakan biaya lebih mahal.\n* **Biaya Hidup Bulanan (Makan, Transportasi):** Berkisar antara **¥1,500 hingga ¥2,500 per bulan**, tergantung gaya hidup masing-masing. Kota-kota yang berukuran lebih kecil umumnya jauh lebih murah dibandingkan kota metropolitan seperti Beijing atau Shanghai."
+      },
+      {
+        "id": "q22",
+        "category": "financial",
+        "question": "Apakah ada beasiswa yang tersedia untuk siswa Indonesia?",
+        "answer": "**Ya! Ada banyak kesempatan beasiswa yang sangat bagus:**\n\n* **Beasiswa Pemerintah China (Beasiswa CSC):** Paket beasiswa paling bergengsi yang mencakup biaya kuliah penuh, asrama gratis, asuransi kesehatan, serta tunjangan saku bulanan.\n* **Beasiswa Jalur Sutra (Belt and Road Scholarship):** Beasiswa penuh atau parsial yang ditawarkan oleh pemerintah provinsi atau universitas khusus untuk mahasiswa dari negara-negara ASEAN, termasuk Indonesia.\n* **Beasiswa Mandiri Universitas:** Universitas di China menawarkan ratusan beasiswa prestasi akademik per tahun bagi pelamar asing berprestasi.\n\nUPER akan membantu mengidentifikasi pilihan dan memandu pengajuan seluruh bantuan beasiswa yang sesuai klasifikasi kualifikasi Anda."
+      },
+      {
+        "id": "q23",
+        "category": "financial",
+        "question": "Dapatkah Anda menjelaskan berbagai jenis Beasiswa Pemerintah China (CSC)?",
+        "answer": "Tentu saja. Beasiswa CSC dibagi menjadi beberapa jalur pengajuan program:\n\n* **Jalur Tipe A (Bilateral Program):** Aplikasi diproses melalui Kedutaan Besar China di negara asal atau kementerian pendidikan nasional (misalnya di Jakarta). Memiliki kuota terbatas khusus untuk siswa Indonesia.\n* **Jalur Tipe B (University Program):** Pengajuan langsung dikirimkan melalui koordinasi pendaftaran universitas di China yang memiliki kuota beasiswa CSC internal masing-masing.\n* **Beasiswa Confucius Institute (CIS):** Khusus ditujukan bagi peminat bidang pendidikan bahasa Mandarin dan pengajaran kebudayaan Tiongkok.\n* **Beasiswa Pemerintah Provinsi/Kota:** Disediakan oleh pemerintah administratif daerah (seperti Beijing, Shanghai, Jiangsu) untuk mendukung biaya kuliah siswa asing.\n* **Beasiswa Kemitraan ASEAN-China:** Program kolaborasi bilateral khusus untuk mempererat pertukaran pendidikan mahasiswa dari negara-negara ASEAN.\n\nTim ahli UPER akan menganalisis profil rapor Anda untuk merekomendasikan pilihan jenis beasiswa yang memiliki tingkat keberhasilan tertinggi."
+      },
+      {
+        "id": "q24",
+        "category": "financial",
+        "question": "Saya bukan siswa berprestasi tertinggi dengan IPK sempurna. Apakah saya masih bisa mendapatkan beasiswa?",
+        "answer": "**Sangat mungkin.** Meskipun nilai akademik rapor tinggi sangat mendukung, panitia seleksi beasiswa menilai profil mahasiswa secara **holistik menyeluruh**:\n\n* **Kekuatan Personal Statement:** Esai yang menceritakan determinasi tujuan pendidikan Anda serta kontribusi yang akan dibawa.\n* **Aktivitas Ekstrakurikuler:** Pengalaman kepemimpinan organisasi, aktivitas sukarelawan, dan keaktifan menunjukkan kedewasaan kepribadian.\n* **Potensi Kemampuan Bahasa:** Memiliki skor HSK walaupun dasar sudah menunjukkan antusiasme belajar yang nyata.\n* **Surat Rekomendasi yang Meyakinkan:** Kesaksian ulasan positif dari guru Anda. Banyak sekali paket beasiswa universitas yang dirancang untuk menjaring pelamar berbakat yang aktif dan bertekad kuat, bukan melulu soal nilai akademis 1% teratas saja."
+      },
+      {
+        "id": "q25",
+        "category": "financial",
+        "question": "Apa strategi terbaik untuk meningkatkan peluang saya mendapatkan beasiswa?",
+        "answer": "Berikut strategi jitu yang patut dipraktikkan:\n\n1. **Kirim Berkas Sejak Dini (Apply Early):** Banyak pendaftaran beasiswa mulai dibuka 6-8 bulan sebelum semester akademik berjalan.\n2. **Daftar ke Beberapa Opsi (Apply Broadly):** Jangan hanya terpaku pada satu jenis beasiswa. Ajukan beasiswa CSC dan beasiswa universitas sekaligus secara paralel.\n3. **Bidik Universitas yang Ramah Pelamar Asing:** Beberapa daerah atau kampus tertentu memiliki alokasi kuota beasiswa yang lebih besar untuk mahasiswa asal Indonesia. Kami dapat merekomendasikan daftar pilihan ini.\n4. **Miliki Rencana Cadangan (Backup Plan):** Siapkan kalkulasi finansial mandiri cadangan untuk biaya hidup tahun pertama sebagai antisipasi."
+      },
+      {
+        "id": "q26",
+        "category": "financial",
+        "question": "Apa satu dokumen terpenting untuk aplikasi beasiswa?",
+        "answer": "Meskipun seluruh berkas penting, lembar **Personal Statement / Rencana Studi (Study Plan)** adalah media terpenting Anda berbicara meyakinkan komite beasiswa. Pastikan esai Anda orisinal, tulus, serta memperinci:\n\n1. Latar belakang minat belajar akademis dan kualifikasi Anda.\n2. Mengapa memilih melanjutkan studi tinggi di China dan universitas tujuan tersebut.\n3. Rincian rencana penelitian atau metodologi belajar Anda selama di sana.\n4. Bagaimana kelanjutan karir masa depan Anda setelah lulus dibantu oleh ilmu yang didapatkan.\n\n**Hindari mengunggah esai hasil menyalin / generik, karena merupakan cara tercepat aplikasi ditolak.**"
+      },
+      {
+        "id": "q27",
+        "category": "financial",
+        "question": "Apakah ada wawancara beasiswa? Bagaimana cara mempersiapkannya?",
+        "answer": "Beberapa seleksi beasiswa yang sangat ketat (seperti beasiswa CSC tingkat master/doktoral atau beasiswa unggulan universitas) menyelenggarakan sesi wawancara. **Poin-poin persiapan penting:**\n\n* Latihlah menjelaskan latar belakang pemilihan program studi serta universitas tujuan.\n* Pelajari kebudayaan dasar serta perkembangan sosial-ekonomi umum tentang China.\n* Paparkan proyeksi karir masa depan Anda.\n* Jelaskan bagaimana Anda akan menjadi duta pertukaran hubungan baik antara Indonesia dan China.\n\n**Tips Wawancara:** Lakukan latihan simulasi percakapan wawancara bersama trainer ahli kami, pilih pakaian resmi, dan pastikan koneksi internet stabil saat waktu wawancara tiba."
+      },
+      {
+        "id": "q28",
+        "category": "financial",
+        "question": "Saya ditawari beasiswa dari universitas yang kurang bergengsi, tetapi tidak mendapatkan apa-apa dari pilihan utama. Apa yang harus saya lakukan?",
+        "answer": "Ini adalah dilema klasik yang sering dihadapi calon mahasiswa. Anda harus memutuskan skala prioritas pribadi:\n\n* **Nama Besar Kampus (Prestige):** Jika gengsi dan peringkat universitas pilihan utama sangat mutlak bagi karir masa depan Anda, pertimbangkan opsi pembiayaan mandiri tahun pertama seraya bersiap mengajukan beasiswa prestasi internal kampus di tahun kedua.\n* **Kondisi Keuangan (Financial Necessity):** Jika anggaran Anda terbatas, menerima beasiswa dari universitas kedua adalah langkah paling bijaksana dan logis. Ingat, lulusan universitas berakreditasi China manapun memiliki reputasi sangat baik di Indonesia."
+      },
+      {
+        "id": "q29",
+        "category": "financial",
+        "question": "Aplikasi beasiswa saya ditolak. Apa yang harus saya lakukan sekarang?",
+        "answer": "Tetap semangat dan jangan menyerah!\n\n1. **Minta Masukan (Feedback):** Kirimkan email ramah ke kantor admisi universitas menanyakan area perbaikan pada berkas Anda jika memungkinkan.\n2. **Persiapkan untuk Tahun Depan:** Gunakan waktu luang untuk meningkatkan profil kompetensi Anda (perbaiki skor HSK/IELTS Anda, tambah pengalaman magang/kerja, atau ambil kursus).\n3. **Ambil Kelas Jembatan (Pathway):** Mendaftar terlebih dahulu di program bahasa Mandarin intensif di China. Menjadi bagian dari ekosistem pendidikan lokal akan mempermudah jalan Anda mendapat beasiswa di tahun berikutnya."
+      },
+      {
+        "id": "q30",
+        "category": "financial",
+        "question": "Jika saya mendapatkan beasiswa CSC, bagaimana dan ketika saya akan menerima biaya saku bulanan?",
+        "answer": "Uang saku bulanan akan ditransfer secara **rutin bulanan langsung ke rekening bank lokal China Anda** yang wajib Anda buka setibanya di sana. Besaran nominal disesuaikan dengan tingkat jenjang studi (S1, S2, atau S3). Transfer perdana biasanya cair setelah Anda tuntas memproses registrasi kampus fisik serta tes kesehatan ulang.\n\n**Catatan Penting:** Uang subsidi saku ditujukan murni untuk pemenuhan kebutuhan pangan dan transportasi pribadi sehari-hari. Kelola keuangan saku dengan bijak!"
+      },
+      {
+        "id": "q31",
+        "category": "financial",
+        "question": "Apakah beasiswa menanggung tiket pesawat pulang pergi ke China?",
+        "answer": "Umumnya, **hampir sebagian besar paket beasiswa tidak menanggung biaya penerbangan internasional**. Penerima beasiswa penuh CSC pun umumnya wajib mendanai pembelian tiket pesawat keberangkatan awal dan kepulangan akhir secara pribadi. Selalu periksa detail lampiran penawaran beasiswa secara teliti."
+      },
+      {
+        "id": "q32",
+        "category": "financial",
+        "question": "Apa yang terjadi jika nilai saya turun setelah mendapatkan beasiswa?",
+        "answer": "Kelangsungan bantuan beasiswa sangat bergantung pada konsistensi prestasi belajar Anda setiap tahunnya. Pihak universitas mensyaratkan penerima beasiswa **lulus semua mata kuliah dan mempertahankan batas minimum IPK harian** (misalkan nilai rata-rata di atas 70 atau IPK di atas 2.5/4.0). Apabila performa nilai menurun di bawah standar, Anda akan menerima surat peringatan terancam **pengurangan atau bahkan pembatalan paket beasiswa**."
+      },
+      {
+        "id": "q33",
+        "category": "financial",
+        "question": "Selain biaya kuliah, biaya apa lagi yang harus masuk anggaran saya?",
+        "answer": "Beberapa pos biaya tersembunyi yang wajib masuk kalkulasi anggaran di antaranya:\n\n* **Asuransi Kesehatan:** Wajib dibayarkan bagi mahasiswa asing, berkisar antara **¥800 - ¥1,200 per tahun**.\n* **Iuran Aplikasi & Perpanjangan Izin Tinggal (Visa/Residence Permit).**\n* **Pembelian Buku Cetak & Alat Penunjang Belajar.**\n* **Biaya Transportasi Personal** untuk masa liburan.\n* **Belanja Logistik Awal** untuk kebutuhan asrama (kasur, peralatan mandi, pakaian musim dingin)."
+      },
+      {
+        "id": "q34",
+        "category": "financial",
+        "question": "How can I open a Chinese bank account?",
+        "answer": "Proses pembukaan rekening bank sangat mudah dan teratur begitu Anda tiba secara fisik di China.\n\n* **Dokumen Wajib:** Paspor asli, Kartu Mahasiswa (Student ID), serta lembar bukti pendaftaran domisili apartemen/asrama yang diterbitkan universitas Anda.\n* **Alur Proses:** Biasanya, staf kantor hubungan internasional universitas Anda akan mengatur jadwal mendampingi para mahasiswa baru ke kantor cabang bank lokal terdekat (seperti **Bank of China** atau **ICBC**) demi kelancaran integrasi rekening dengan aplikasi pembayaran digital populer (WeChat Pay / Alipay)."
+      },
+      {
+        "id": "q35",
+        "category": "life",
+        "question": "Sebagai siswa Muslim, apakah saya bisa menemukan makanan Halal dan masjid dengan mudah?",
+        "answer": "Ya, tentu saja. China sangat menghargai keberagaman budaya dan sangat ramah terhadap kebutuhan muslim penganut agama Islam.\n\n* **Kantin Halal Kampus:** Sebagian besar universitas di China menyediakan gedung **Kantin Khusus Halal (qīngzhēn shítáng 清真食堂)**. Kota-kota berpopulasi muslim besar (seperti **Xi'an, Lanzhou, atau wilayah Ningxia**) dipenuhi ribuan kedai jajanan halal di setiap jalan.\n* **Masjid:** Kota-kota besar memiliki situs masjid bersejarah yang aktif. Anda dapat dengan praktis mendeteksi lokasinya memanfaatkan navigasi peta aplikasi **WeChat atau Baidu Maps**. Layanan admisi kampus juga dengan senang hati menolong memetakan tempat ibadah terdekat."
+      },
+      {
+        "id": "q36",
+        "category": "life",
+        "question": "Seperti apa kehidupan siswa di China?",
+        "answer": "Sangat dinamis, modern, dan multibudaya! Anda akan memiliki kesempatan luas untuk:\n\n* Bergabung dalam bermacam unit kegiatan mahasiswa (UKM) dan olahraga/minat.\n* Berpartisipasi dalam pentas festival kebudayaan internasional tahunan.\n* Melakukan penjelajahan wisata domestik kereta cepat menikmati situs bersejarah legendaris.\n* Menjalin tali persahabatan global dengan ribuan mahasiswa mancanegara dari seantero penjuru dunia."
+      },
+      {
+        "id": "q37",
+        "category": "life",
+        "question": "Apakah sulit untuk menyesuaikan diri dengan budaya lokal?",
+        "answer": "Proses adaptasi awal kultural merupakan tantangan yang wajar, namun jadikan itu petualangan hidup berharga! Masyarakat umum di China sangat ramah, hangat, dan antusias menyambut mahasiswa internasional.\n\n* **UPER menyelenggarakan pembekalan budaya pra-keberangkatan (Pre-Departure Briefing)** secara detail membantu Anda bersiap.\n* Setiap universitas memiliki **Kantor Layanan Mahasiswa Internasional (International Student Office)** yang aktif mengadakan acara sambutan bersosialisasi.\n* Anda juga akan dinaungi oleh jejaring komunitas solidaritas kuat dari **Persatuan Pelajar Indonesia di Tiongkok (PPI Tiongkok)** di masing-masing kota."
+      },
+      {
+        "id": "q38",
+        "category": "life",
+        "question": "Sebaiknya saya tinggal di asrama kampus atau di luar kampus?",
+        "answer": "Mayoritas mahasiswa asing, terutama di tahun pertama studi, sangat direkomendasikan tinggal di **dalam lingkungan asrama kampus (On-Campus)**.\n\n* **Asrama Kampus (Dormitory):**\n  * *Kelebihan:* Tarif sewa ekonomis, tingkat pengamanan terjamin, efisien menjangkau kelas, praktis bersosialisasi dengan teman, dikelola resmi pihak universitas.\n  * *Kekurangan:* Memiliki batasan jam malam, larangan masak di kamar di beberapa tempat, fasilitas kamar mandi bersama.\n* **Menyewa Apartemen Luar (Off-Campus):**\n  * *Kelebihan:* Memiliki kebebasan privasi mutlak.\n  * *Kekurangan:* Struktur biaya relatif jauh lebih mahal, kewajiban menyerahkan jaminan deposit sewa, formalitas kontrak hukum rumit, pengeluaran transportasi harian.\n\n**Saran Kami:** Tempati asrama kampus terlebih dahulu di tahun awal demi keamanan adaptasi."
+      },
+      {
+        "id": "q39",
+        "category": "life",
+        "question": "Apa cara terbaik untuk mendapatkan kartu SIM ponsel dan internet di China?",
+        "answer": "* **Kartu Seluler:** Setibanya di bandara atau area dekat kampus, Anda dapat mendaftar paket internet seluler prabayar resmi dari operator seluler terkemuka lokal (seperti **China Mobile, China Unicom, atau China Telecom**) dengan menunjukkan paspor asli Anda. Tarif kuota data internet bulanan terbilang sangat murah.\n* **Aplikasi Seluler Penting:** Anda wajib langsung memasang aplikasi serba-bisa **WeChat** (untuk transaksi, berkirim pesan, informasi). Serta pastikan Anda telah memasang aplikasi **VPN (Virtual Private Network)** terpercaya reguler *sebelum berangkat meninggalkan bandara Indonesia* agar tetap dapat bebas tersambung ke Google, WhatsApp, Instagram, dan media sosial internasional lainnya yang terblokir di wilayah China."
+      },
+      {
+        "id": "q40",
+        "category": "life",
+        "question": "Bagaimana sistem transportasi di China?",
+        "answer": "Sistem infrastruktur transportasi di China diakui secara global sebagai salah satu **yang terbaik dan tercanggih di dunia**.\n\n* **Transportasi Dalam Kota:** Jaringan kereta bawah tanah (subway/metro) di kota-kota besar sangat luas, higienis, aman, dan sangat murah. Alternatif transportasi online memanfaatkan aplikasi Didi Chuxing (sejenis Grab/Gojek) juga senantiasa siaga melayani.\n* **Transportasi Antar Kota:** Jaringan rel **Kereta Cepat (High-Speed Rail / HSR)** mereka sangat mengagumkan. Rute Beijing menuju Shanghai sepanjang 1,300 kilometer dapat ditempuh kilat hanya dalam waktu 4,5 jam saja. Ini transportasi favorit mahasiswa berwisata."
+      },
+      {
+        "id": "q41",
+        "category": "life",
+        "question": "Bagaimana dengan jaminan kesehatan untuk mahasiswa asing di China?",
+        "answer": "* **Klinik Kesehatan Universitas:** Kampus-kampus umumnya mengoperasikan poliklinik khusus melayani kebutuhan pengobatan sakit ringan siswa dengan biaya pengadaan obat sangat murah.\n* **Rumah Sakit Internasional:** Untuk kondisi darurat darurat medis yang memerlukan penanganan komprehensif, kota-kota besar menyediakan rumah sakit bertaraf internasional dengan staf medis cakap berbahasa Inggris. Seluruh biaya penanganan ini dijamin oleh **kepemilikan polis asuransi kesehatan wajib mahasiswa** yang Anda miliki."
+      },
+      {
+        "id": "q42",
+        "category": "career",
+        "question": "Bisakah saya bekerja paruh waktu sambil kuliah?",
+        "answer": "Bisa, namun tunduk pada regulasi hukum yang berlaku. Mahasiswa internasional diizinkan mengambil aktivitas magang kerja paruh waktu resmi di lingkungan internal kampus (misalkan membantu tugas pustakawan atau asisten dosen) ataupun di luar kampus asalkan telah memperoleh persetujuan izin tertulis resmi dari pihak manajemen universitas dan kantor imigrasi setempat dengan batasan kuota jam kerja terbatas mingguan."
+      },
+      {
+        "id": "q43",
+        "category": "career",
+        "question": "Bagaimana prospek kerja saya setelah lulus dari universitas di China?",
+        "answer": "Predikat kelulusan gelar akademik China mendapatkan rekognisi tinggi bernilai di pasar kerja global. Jalur prospek Anda sangat menjanjikan:\n\n* **Bekerja di China:** Kebutuhan industri sangat besar menyerap lulusan global yang cakap menguasai multibahasa serta paham karakteristik bisnis China, utamanya sektor manufaktur, e-commerce, dan rekayasa teknologi.\n* **Bekerja di Indonesia:** Ratusan konglomerasi multinasional raksasa China yang berinvestasi masif di Indonesia menaruh minat tinggi menyerap talenta lokal lulusan lulusan China.\n* **Mendirikan Bisnis Mandiri (Wirausaha):** Menjadi jembatan dagang importir ekportir andalan yang menghubungkan komoditas bisnis kedua negara."
+      },
+      {
+        "id": "q44",
+        "category": "career",
+        "question": "Bagaimana kebijakan magang selama masa studi saya?",
+        "answer": "Aktivitas magang kerja (internship) sangat didukung penuh dan difasilitasi universitas selama kurun masa libur semester berganti.\n\n* Universitas biasanya mengoperasikan **Pusat Rekrutmen Karir (Career Service Center)** yang aktif menyalurkan info lowongan magang komprehensif dari korporasi mitra bagi mahasiswa bilingual (Indonesia-Mandarin-Inggris).\n* Sebagian besar rancangan program kurikulum jurusan kuliah bahkan telah menyisipkan skema kelas magang wajib berbobot SKS kelulusan."
+      },
+      {
+        "id": "q45",
+        "category": "career",
+        "question": "Bisakah saya tetap tinggal di China untuk mencari pekerjaan setelah lulus?",
+        "answer": "Bisa. Otoritas imigrasi China menerbitkan skema **Izin Tinggal Khusus Magang & Kewirausahaan (Residence Permit for Internship or Entrepreneurship)** berdurasi izin hingga 2 tahun bagi para lulusan baru untuk mencari peluang penempatan kerja profesional. Begitu tuntas lolos kontrak kerja penuh, pihak HRD korporasi akan mensponsori konversi izin tinggal tersebut beralih menjadi kartu **Izin Kerja Pelajar Asing Resmi (Work Permit & Residence Permit)**."
+      },
+      {
+        "id": "q46",
+        "category": "career",
+        "question": "Seberapa bernilai gelar akademik dan pengalaman kerja di China saat kembali ke Indonesia?",
+        "answer": "**Sangat bernilai dan dicari banyak perusahaan.**\n\n* Kemitraan strategis ekonomi kerja sama dagang dan investasi finansial Indonesia-China berjalan sangat erat dan bernilai tinggi. Korporasi industri infrastruktur, finansial teknologi, platform e-commerce, hingga industri manufaktur raksasa aktif memburu talenta lokal berwawasan luas yang menguasai kultur bahasa operasional bisnis China.\n* Portofolio lulusan Anda otomatis menempatkan diri Anda pada tingkat keunggulan bersaing tinggi untuk menempati posisi pimpinan strategis di korporasi kelas dunia terkemuka (seperti **TikTok, Xiaomi, Huawei, maupun ekosistem Lazada Alibaba**)."
+      },
+      {
+        "id": "q47",
+        "category": "career",
+        "question": "Apakah saya perlu melegalisasi ijazah kelulusan China saya setelah kembali ke Indonesia?",
+        "answer": "Ya, proses tersebut mutlak diperlukan guna urusan administrasi penarikan kesetaraan ijazah formal di tanah air. Proses penyetaraan ini dinamakan **legalisasi ijazah**.\n\n* Alur prosesnya dimulai dengan memohon cap pengesahan berkas ijazah asli dan transkrip nilai Anda ke: 1. Kantor Atase Pendidikan Kementerian Luar Negeri China setempat, dilanjutkan ke 2. Kantor KBRI/Konsulat Jenderal Republik Indonesia setempat di wilayah China.\n* Setibanya di Indonesia, Anda mengunggah berkas tersebut ke portal **Kementerian Pendidikan Nasional (Kemendikbudristek)** secara online guna perolehan Lembar SK Penyetaraan Ijazah resmi. Tim pembimbing akademik UPER akan senantiasa mengawal pembekalan petunjuk proses legalisasi ini menjelang hari kelulusan wisuda Anda."
+      },
+      {
+        "id": "q57",
+        "category": "academic",
+        "question": "Apakah kuliah di China sangat bernilai (worth it) bagi mahasiswa Indonesia?",
+        "answer": "Pilihan yang sangat bernilai. China mengombinasikan pendidikan universitas berkualitas unggul terakreditasi dunia, iklim riset teknologi digital mutakhir, serta biaya kuliah dan hidup yang jauh lebih terjangkau dibandingkan kuliah di negara-negara Barat. Lebih dari itu, pertumbuhan investasi ekonomi erat antara China-Indonesia menjamin peluang karier luar biasa bagi lulusan bergelar Tiongkok yang fasih dalam dwi bahasa."
+      },
+      {
+        "id": "q58",
+        "category": "life",
+        "question": "Berapa kisaran biaya hidup bulanan untuk mahasiswa internasional di China?",
+        "answer": "Biaya hidup siswa internasional di China sangatlah terjangkau. Rata-rata mahasiswa menghabiskan sekitar **RMB 1.500 hingga RMB 2.500 per bulan** (setara USD 200 - 350 atau sekitar Rp3,2 juta - Rp5,3 juta) untuk kebutuhan makan di kantin kampus, transportasi lokal, listrik, air, dan belanja kebutuhan bulanan. Biaya bervariasi tergantung lokasi kota; kota utama tier-1 seperti Beijing dan Shanghai membutuhkan pengeluaran lebih tinggi, sedangkan ibu kota provinsi pendukung menawarkan kualitas hidup luar biasa dengan biaya jauh lebih bersahabat."
+      },
+      {
+        "id": "q59",
+        "category": "academic",
+        "question": "Universitas terbaik di China mana saja yang direkomendasikan bagi mahasiswa Indonesia?",
+        "answer": "Mahasiswa Indonesia umumnya sangat menyukai belajar di berbagai universitas utama yang terletak di kota akademis andalan:\n\n* **Universitas Riset Komprehensif & Teknologi Teratas:** Tsinghua University, Peking University, Shanghai Jiao Tong University, Zhejiang University, dan Fudan University.\n* **Universitas Spesialis Terkemuka:** Tongji University (spesialisasi Arsitektur & Teknik Sipil terbaik), University of International Business and Economics (UIBE) atau Shanghai University of Finance and Economics (SUFE) (pilihan terbaik studi Bisnis & Keuangan), serta berbagai universitas pemerintah provinsi yang menyediakan kuota beasiswa khusus wilayah ASEAN."
+      },
+      {
+        "id": "q60",
+        "category": "financial",
+        "question": "Apakah kuliah di China nyata lebih murah dibandingkan kuliah di Australia atau Amerika?",
+        "answer": "Benar-benar jauh lebih murah. Biaya kuliah (tuition fee) tahunan di universitas di Australia atau Amerika berkisar antara **USD 25,000 hingga USD 50,000 per tahun**, ditambah biaya hidup tinggi mencapai lebih dari USD 15,000. Sebagai pembanding, kuliah di universitas unggulan China hanya berkisar **USD 2.000 sampai USD 5,000 per tahun** dengan fasilitas sewa asrama modern yang luar biasa murah. Terlebih, ketersediaan beasiswa penuh (CSC) di China yang menanggung bebas tuntas biaya kuliah, tanpa bayar asrama, dan disokong uang saku bulanan jauh lebih melimpah dan terbuka lebar bagi siswa berprestasi."
+      }
+    ]
+  },
+  "careers": {
+    "tag": "Bergabung Bersama Kami",
+    "title1": "Bangun Jembatan,",
+    "title2": "Tingkatkan Karir Anda",
+    "desc": "Bergabunglah dengan tim elite yang berdedikasi meruntuhkan batasan antara siswa berprestasi Asia Tenggara dan universitas papan atas di China. Kami memadukan kecerdasan bimbingan AI dengan keahlian konsultasi manusia.",
+    "whyWorkWithUs": "Mengapa Bergabung di UPER?",
+    "benefits": {
+      "title": "Keuntungan Utama & Apresiasi Karir Eksklusif di UPER",
+      "subtitle": "Kami menghargai setiap pionir pendidikan kami, menyediakan jaminan komprehensif dan panggung pengembangan lintas batas.",
+      "list": [
+        {
+          "title": "Kompensasi Sangat Kompetitif",
+          "desc": "Gaji pokok yang menarik yang disesuaikan dengan bonus kinerja kuartalan serta apresiasi akhir tahun."
+        },
+        {
+          "title": "Jaminan Kesehatan & BPJS Lengkap",
+          "desc": "Keanggotaan penuh paket BPJS Kesehatan & Ketenagakerjaan ditambah asuransi kesehatan swasta tambahan."
+        },
+        {
+          "title": "Kunjungan Studi Lintas Negara",
+          "desc": "Sponsor penuh perjalanan luar negeri ke universitas elit di Tiongkok bersama tim delegasi akademik."
+        },
+        {
+          "title": "Anggaran Pelatihan & Sertifikasi",
+          "desc": "Subsidi dana belajar mandiri untuk metodologi pengajaran HSK cerdas, pengembangan operasional digital, dll."
+        },
+        {
+          "title": "Ruang Kerja Tepi Laut Modern di PIK",
+          "desc": "Bekerja di gedung modern yang asri di kawasan elit Golf Island PIK (Jakarta Utara) dengan sistem kerja hybrid fleksibel."
+        },
+        {
+          "title": "Team Building & Budaya Kerja Seru",
+          "desc": "Sesi team building dwi-bahasa yang asyik, bingkisan hari raya, perayaan festival budaya dwi-negara, dan kopi segar gratis sepuasnya."
+        }
+      ]
+    },
+    "perks": {
+      "globalTitle": "Paparan Global",
+      "globalDesc": "Bekerja bersama langsung dengan perwakilan resmi universitas elit di China, dengan kesempatan perjalanan internasional penuh.",
+      "aiTitle": "Inovasi & AI Terdepan",
+      "aiDesc": "Selesaikan tantangan pendidikan menggunakan teknologi evaluasi AI adaptif mutakhir dan sistem platform siswa terbaik.",
+      "impactTitle": "Dampak Generasional",
+      "impactDesc": "Bantu ribuan siswa SMA mengamankan beasiswa penuh pemerintah, beasiswa universitas, dan kesuksesan akademik berkelanjutan."
+    },
+    "introSubtitle": "Jadilah pilar utama dalam membangun jembatan pendidikan elit bagi pelajar Indonesia ke China. Lamar hari ini untuk mengembangkan potensi terbaik Anda.",
+    "positions": "Lowongan Kerja Aktif",
+    "viewDetails": "Lihat Detail",
+    "closeDetails": "Sembunyikan Detail",
+    "form": {
+      "title": "Kirim Lamaran Posisi Ini",
+      "desc": "Silakan isi formulir di bawah ini dan lampirkan profil akademik atau profesional Anda. Tim operasi HR kami akan merespons kandidat yang memenuhi kualifikasi dalam waktu 3-5 hari kerja.",
+      "name": "Nama Lengkap",
+      "namePl": "misal, Jonathan Wijaya",
+      "email": "Alamat Email",
+      "emailPl": "misal, jonathan@example.com",
+      "phone": "Nomor WhatsApp / Telepon",
+      "phonePl": "misal, +62 812-3456-7890",
+      "role": "Posisi yang Dilamar",
+      "experience": "Lama Pengalaman",
+      "experiencePl": "misal, 3 tahun",
+      "resume": "Tautan Resume / URL Cloud Storage",
+      "resumePl": "misal, tautan Google Drive atau Dropbox ke CV Anda",
+      "resumeFile": "Lampirkan Berkas Resume (PDF/Word)",
+      "resumeFileLimit": "Maks. 10MB. Format: PDF, DOC, DOCX",
+      "dragAndDrop": "Seret & letakkan resume PDF/Word Anda di sini, atau klik untuk memilih file",
+      "changeFile": "Ganti File",
+      "coverLetter": "Perkenalkan Diri Anda (Surat Lamaran)",
+      "coverLetterPl": "Ceritakan secara singkat mengapa Anda akan menjadi anggota tim yang luar biasa di UPER...",
+      "submit": "Kirim Lamaran",
+      "submitting": "Mengirimkan...",
+      "comingSoon": "Portal Pendaftaran Telah Aktif",
+      "comingSoonDesc": "Portal pendaftaran resmi kami sekarang telah aktif sepenuhnya. Silakan isi formulir di bawah ini, unggah CV/Resume terbaru Anda, dan Tim Rekrutmen kami akan mengevaluasi profil Anda dalam waktu 3 hari kerja.",
+      "successTitle": "Lamaran Diterima!",
+      "successDesc": "Luar biasa! Berkas lamaran Anda telah dikirimkan secara aman ke tim Talent Operations UPER. (Konfirmasi pelacakan email telah disimulasikan dalam lingkungan pratinjau ini.)",
+      "errorTitle": "Ada Kesalahan pada Formulir",
+      "errorDesc": "Harap periksa kembali semua kolom wajib sebelum mengirimkan lamaran."
+    },
+    "locations": "Lokasi Kantor:",
+    "locJakarta": "Jakarta PIK, Indonesia",
+    "locHangzhou": "Hangzhou, Tiongkok",
+    "locShenzhen": "Shenzhen, Tiongkok",
+    "locWuhan": "Wuhan, Tiongkok",
+    "workspace": {
+      "title": "Lingkungan Kerja Kami",
+      "desc": "Intip pemandangan laut kantor Jakarta PIK, hub teknologi modern Shenzhen, dan lab akademis Wuhan.",
+      "picDesc": "Area Kerja Pantai Indah Kapuk Jakarta",
+      "szDesc": "Hub Teknologi & Operasional Shenzhen",
+      "whDesc": "Laboratorium Riset & Akademis Wuhan",
+      "teamDesc": "Area Kolaborasi Multibahasa yang Hangat"
+    },
+    "jobs": [
+      {
+        "id": "mandarin-teacher",
+        "title": "Guru Bahasa Mandarin (Mandarin Teacher)",
+        "department": "Pendidikan & Kurikulum",
+        "location": "Tangerang Selatan / Yogyakarta",
+        "type": "Full-time / Part-time",
+        "headcount": "beberapa lowongan",
+        "description": "Kami mencari Guru Bahasa Mandarin yang berdedikasi untuk mengajar tingkat pemula hingga menengah. Anda akan menyusun rencana pelajaran, membimbing keterampilan mendengar, berbicara, membaca, dan menulis siswa, serta melakukan evaluasi berkala.",
+        "requirements": [
+          "Gelar Sarjana (S1) di bidang Sastra/Pendidikan Bahasa Mandarin, atau bidang terkait.",
+          "Kemahiran bahasa Mandarin yang kuat (diutamakan HSK 4–6).",
+          "Pengalaman mengajar (diutamakan minimal 1 tahun).",
+          "Kemampuan komunikasi yang baik, sabar, dan mampu membawakan kelas secara menarik.",
+          "Mampu menggunakan alat digital untuk mengajar (Zoom, PPT, Google Classroom, dll.).",
+          "Pengalaman belajar di Tiongkok atau memiliki sertifikasi mengajar bahasa Mandarin (Sangat Diutamakan)."
+        ],
+        "responsibilities": [
+          "Mengajar bahasa Mandarin untuk tingkat pemula (beginner) dan menengah (intermediate).",
+          "Mempersiapkan rencana pelaksanaan pembelajaran (RPP), materi ajar, dan aktivitas belajar interaktif.",
+          "Membimbing siswa dalam mengembangkan keterampilan mendengar, berbicara, membaca, dan menulis.",
+          "Melakukan penilaian (assessment) dan memberikan laporan kemajuan belajar siswa.",
+          "Menyesuaikan metode pengajaran berdasarkan kebutuhan dan tingkat kemahiran siswa."
+        ],
+        "salary": "IDR 8.000.000 – 15.000.000",
+        "benefits": [
+          "Kesempatan menerima pelatihan langsung dari dosen BLCU (Beijing Language and Culture University).",
+          "Lingkungan kerja yang suportif dan profesional."
+        ]
+      },
+      {
+        "id": "senior-sales",
+        "title": "Senior Sales",
+        "department": "Sales & Admissions Growth",
+        "location": "Tangerang Selatan",
+        "type": "Full-time",
+        "headcount": "beberapa lowongan",
+        "description": "Kami mencari spesialis Senior Sales yang berorientasi pada hasil untuk menindaklanjuti pertanyaan calon siswa dan mengonversi prospek dari berbagai media sosial berkualitas tinggi. Anda akan berkomunikasi dengan prospek, memahami tujuan akademik mereka, menyarankan program HSK, CSCA, atau konsultasi akademik yang tepat, serta membimbing mereka menuju pendaftaran yang sukses.",
+        "requirements": [
+          "Pola pikir penjualan yang kuat dengan pendekatan berorientasi pada hasil (results-oriented).",
+          "Keterampilan komunikasi dan persuasi yang sangat baik.",
+          "Pengalaman dalam penjualan pendidikan, kursus, konsultasi studi ke luar negeri, atau penjualan daring (online sales) adalah nilai tambah.",
+          "Pengalaman menangani prospek media sosial (Instagram / TikTok / WhatsApp) lebih disukai.",
+          "Akrab dengan Google Sheets dan Google Forms untuk input data, pelacakan prospek, dan pelaporan."
+        ],
+        "languages": [
+          "Lancar berbahasa Indonesia (Wajib)",
+          "Mampu berkomunikasi dalam bahasa Inggris dasar untuk komunikasi sehari-hari (bukan tujuan mengajar)"
+        ],
+        "responsibilities": [
+          "Menindaklanjuti dan mengonversi prospek dari WhatsApp, situs web, Instagram, TikTok, dan Google.",
+          "Berkomunikasi dengan calon siswa dan membimbing mereka untuk mendaftar di kursus HSK, program CSCA, dan layanan studi ke luar negeri.",
+          "Memahami kebutuhan pelanggan dan merekomendasikan program yang sesuai.",
+          "Menangani pertanyaan, keberatan (objeksi), dan melakukan tindak lanjut (follow-up) yang konsisten untuk menutup penjualan.",
+          "Mengelola dan melacak prospek, memastikan tindak lanjut yang tepat waktu dan efektif.",
+          "Memelihara catatan kinerja konversi dan memberikan wawasan untuk perbaikan.",
+          "Berkolaborasi dengan tim untuk mengoptimalkan skrip penjualan dan strategi konversi."
+        ],
+        "kpis": [
+          "Tingkat konversi prospek-ke-penjualan",
+          "Jumlah pendaftaran baru (HSK / CSCA)",
+          "Efisiensi tindak lanjut dan waktu respons layanan"
+        ],
+        "salary": "Insentif berbasis kinerja",
+        "benefits": [
+          "Potensi komisi yang sangat tinggi",
+          "Kesempatan berkembang pesat di sektor pendidikan dan program internasional"
+        ]
+      },
+      {
+        "id": "accounting-tax",
+        "title": "Accounting & Tax Officer",
+        "department": "Keuangan & Layanan Perusahaan",
+        "location": "Kantor PIK Jakarta (Pantai Indah Kapuk)",
+        "type": "Full-time",
+        "headcount": "1 lowongan",
+        "description": "Kami mencari staf Akuntansi & Perpajakan yang berorientasi pada detail, bertanggung jawab, dan memiliki integritas tinggi untuk menangani pembukuan keuangan harian, neraca saldo, rekonsiliasi faktur, serta prosedur kepatuhan pajak Indonesia yang berlaku secara rutin.",
+        "requirements": [
+          "Gelar Sarjana (S1) di bidang Akuntansi, Perpajakan, atau bidang terkait.",
+          "Pengalaman bekerja selama 2–3 tahun di bidang akuntansi dan/atau perpajakan secara praktis.",
+          "Pemahaman yang mendalam tentang prinsip akuntansi berstandar dan peraturan perpajakan Indonesia terbaru.",
+          "Sangat terbiasa dan akrab menggunakan sistem Coretax, e-Faktur, dan portal DJP Online.",
+          "Sangat mahir menggunakan fungsi-fungsi Microsoft Excel secara profesional.",
+          "Wajib memiliki sertifikat Brevet A & B (Brevet C menjadi nilai tambah).",
+          "Berorientasi pada detail, bertanggung jawab penuh, dan berkomitmen tinggi dalam memenuhi tenggat waktu laporan yang ketat.",
+          "Kemampuan komunikasi dan koordinasi tim yang baik.",
+          "Tingkat integritas profesional yang tinggi."
+        ],
+        "responsibilities": [
+          "Menangani aktivitas akuntansi harian, termasuk pencatatan jurnal harian dan pemeliharaan Buku Besar (GL).",
+          "Menyusun laporan keuangan bulanan yang akurat serta melakukan proses rekonsiliasi perbankan/kantor.",
+          "Mengelola administrasi Piutang (AR) dan Utang Usaha (AP).",
+          "Mengelola seluruh operasional pajak, termasuk pemrosesan PPN (masukan/keluaran) dan rekonsiliasi pajak dengan GL & e-Faktur.",
+          "Mempersiapkan, menghitung, dan melaporkan PPh pajak (Pasal 21, 23, 4(2), dsb.).",
+          "Membantu memastikan penyelesaian serta pengiriman laporan pajak (SPT) dan pembayaran pajak tepat waktu.",
+          "Menerbitkan Bukti Pemotongan Pajak (Bukti Potong) dan memverifikasi kelengkapan dokumen keuangan pendukung.",
+          "Memelihara dokumentasi pembukuan dan perpajakan yang tertata rapi serta memadai untuk kebutuhan kesiapan audit eksternal.",
+          "Mendukung kelancaran pemeriksaan pajak dan berkoordinasi secara efektif dengan tim internal maupun konsultan perpajakan."
+        ],
+        "salary": "IDR 8.000.000 – Rp 9.000.000",
+        "benefits": [
+          "Lingkungan kerja korporasi yang suportif dan profesional.",
+          "Penyediaan program asuransi kesehatan serta jaminan sosial sesuai regulasi pemerintah yang berlaku."
+        ]
+      }
+    ]
+  },
+  "contactPage": {
+    "headOffice": "Kantor Pusat Jakarta",
+    "headOfficeTitle": "Kampus Pusat PIK Jakarta (Indonesia)",
+    "headOfficeAddress": "Ruko Golf Island, JL. Pantai Indah Kapuk No. 100 Blok E, Jakarta, Daerah Khusus Ibukota Jakarta",
+    "chinaOffice": "Kantor Cabang Tiongkok",
+    "chinaOfficeTitle": "Pusat Riset & Layanan Tiongkok (Hangzhou)",
+    "chinaOfficeAddress": "Headquarters Economy Park for Alumni Corporation of Zhejiang University, Hangzhou, Tiongkok",
+    "chinaRepresentative": "Penanggung Jawab Tiongkok",
+    "chinaContactPerson": "Wang Lisong",
+    "chinaPhone": "18612142789",
+    "chinaPhoneFormatted": "+86 18612142789",
+    "chinaPhoneDirect": "Telepon Langsung",
+    "whatsappPhone": "WhatsApp & Saluran Resmi",
+    "freeConsultNow": "Konsultasi GRATIS sekarang!",
+    "email": "Email Resmi",
+    "sendEmail": "Kirim email",
+    "thankYou": "Terima kasih!",
+    "successMessage": "Pesan Anda telah berhasil dikirim. Konsultan pendidikan kami akan segera menghubungi Anda dalam 24 jam.",
+    "sendMessage": "Kirimkan pesan kepada kami",
+    "fillForm": "Isi formulir di bawah ini dan konsultan pendidikan kami akan menghubungi Anda dalam waktu 24 jam.",
+    "fullName": "Nama Lengkap",
+    "emailAddress": "Alamat Email",
+    "mobilePhone": "Nomor HP / WhatsApp",
+    "interestedIn": "Program yang Diminati",
+    "interests": {
+      "studyTours": "Study Tour ke Tiongkok",
+      "hskTraining": "Pelatihan HSK & AI",
+      "studyAbroad": "Konsultasi Kuliah & Beasiswa Tiongkok",
+      "cscaTraining": "Persiapan Tes CSCA",
+      "other": "Kerjasama & Lainnya"
+    },
+    "message": "Deskripsi Kebutuhan",
+    "messagePlaceholder": "Jelaskan latar belakang pendidikan Anda, universitas/jurusan impian, tingkat HSK, atau pertanyaan khusus...",
+    "submitting": "Mengirimkan...",
+    "submitInquiry": "Kirim Pertanyaan",
+    "errors": {
+      "nameRequired": "Nama Lengkap wajib diisi",
+      "emailRequired": "Alamat Email wajib diisi",
+      "emailInvalid": "Harap masukkan alamat email yang valid",
+      "phoneRequired": "Nomor HP wajib diisi",
+      "phoneInvalid": "Harap masukkan nomor telepon yang valid"
+    }
+  }
+}

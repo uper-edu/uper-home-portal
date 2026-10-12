@@ -1,0 +1,165 @@
+[
+  {
+    "_createdAt": "2026-05-07T11:08:48Z",
+    "_id": "33aacd15-0070-4948-828d-30031791d72e",
+    "_rev": "2CQM2S9k4KCu1HPV8AwdKn",
+    "_type": "newsPage",
+    "_updatedAt": "2026-05-07T11:11:30Z",
+    "coverImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-cba55a6e4737012d1189dae73a8d59541f06bcf3-1280x1707-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/cba55a6e4737012d1189dae73a8d59541f06bcf3-1280x1707.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/cba55a6e4737012d1189dae73a8d59541f06bcf3-1280x1707.jpg"
+    },
+    "order": 7,
+    "subtitle": "Providing students with immersive academic and campus experiences in China",
+    "title": "UPER Leads Study Tour to Zhejiang Sci-Tech University"
+  },
+  {
+    "_createdAt": "2026-04-22T16:14:51Z",
+    "_id": "509f4758-4c1d-4ce5-a9a0-271c68b82c42",
+    "_rev": "wAhfKXbUH8j475d5I98qJS",
+    "_system": {
+      "base": {
+        "id": "509f4758-4c1d-4ce5-a9a0-271c68b82c42",
+        "rev": "wAhfKXbUH8j475d5I97mys"
+      }
+    },
+    "_type": "newsPage",
+    "_updatedAt": "2026-05-07T11:02:53Z",
+    "coverImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-f66465a9dd0b7c742424fb333d25c81a755c92c0-1364x902-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/f66465a9dd0b7c742424fb333d25c81a755c92c0-1364x902.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/f66465a9dd0b7c742424fb333d25c81a755c92c0-1364x902.png"
+    },
+    "order": 4,
+    "subtitle": "Offline workshop to promote Mandarin Education Courses",
+    "title": "GIS 2 Workshop"
+  },
+  {
+    "_createdAt": "2026-05-07T02:40:24Z",
+    "_id": "992c5914-c0e0-4c23-968d-dff39e9019a8",
+    "_rev": "e0FzjgFZMxMP1ctyIEywEn",
+    "_system": {
+      "base": {
+        "id": "992c5914-c0e0-4c23-968d-dff39e9019a8",
+        "rev": "wAhfKXbUH8j475d5I97c7K"
+      }
+    },
+    "_type": "newsPage",
+    "_updatedAt": "2026-05-07T11:01:47Z",
+    "coverImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-21580e32d73792a52ba60260ec6753b54fad4c24-4096x2304-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/21580e32d73792a52ba60260ec6753b54fad4c24-4096x2304.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/21580e32d73792a52ba60260ec6753b54fad4c24-4096x2304.jpg"
+    },
+    "order": 1,
+    "subtitle": "Chinese language education collaboration with partner school",
+    "title": "UPER Invited to OlympicAD Makassar"
+  },
+  {
+    "_createdAt": "2026-05-07T02:23:07Z",
+    "_id": "b3cee82e-31e0-41e5-bc0c-374b08fc9c8b",
+    "_rev": "wAhfKXbUH8j475d5I9J36U",
+    "_system": {
+      "base": {
+        "id": "b3cee82e-31e0-41e5-bc0c-374b08fc9c8b",
+        "rev": "2CQM2S9k4KCu1HPV83Zzqz"
+      }
+    },
+    "_type": "newsPage",
+    "_updatedAt": "2026-05-07T11:03:33Z",
+    "coverImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-a1e5a2486dd19440f1d8176195a934c2fc9c23fc-1010x925-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/a1e5a2486dd19440f1d8176195a934c2fc9c23fc-1010x925.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/a1e5a2486dd19440f1d8176195a934c2fc9c23fc-1010x925.png"
+    },
+    "order": 5,
+    "subtitle": "Strengthening school-based Chinese language learning through structured collaboration and curriculum development in South Tangerang",
+    "title": "UPER and FKKSS Sign MoU for Chinese Education in South Tangerang Schools"
+  },
+  {
+    "_createdAt": "2026-05-07T11:03:49Z",
+    "_id": "e2c7df6d-f5dd-4bd4-aa02-2a484d5fcc16",
+    "_rev": "e0FzjgFZMxMP1ctyIFDD4I",
+    "_type": "newsPage",
+    "_updatedAt": "2026-05-07T11:12:14Z",
+    "coverImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-98a79d981b1741aecb917aba833544a21a40bfad-1080x1350-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/98a79d981b1741aecb917aba833544a21a40bfad-1080x1350.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/98a79d981b1741aecb917aba833544a21a40bfad-1080x1350.jpg"
+    },
+    "order": 6,
+    "subtitle": "University introduction and alumni sharing session for prospective students",
+    "title": "UPER × BLCU Online Scholarship & University Talk"
+  },
+  {
+    "_createdAt": "2026-05-07T02:50:43Z",
+    "_id": "e7a0fec1-4afa-4df3-9a68-13a2b9c2797a",
+    "_rev": "2CQM2S9k4KCu1HPV8AaU7x",
+    "_system": {
+      "base": {
+        "id": "e7a0fec1-4afa-4df3-9a68-13a2b9c2797a",
+        "rev": "2CQM2S9k4KCu1HPV83e1qj"
+      }
+    },
+    "_type": "newsPage",
+    "_updatedAt": "2026-05-07T11:02:30Z",
+    "coverImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-c68ef84fa0a4d789876a380c1fbfbc4b681e9784-5184x3456-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/c68ef84fa0a4d789876a380c1fbfbc4b681e9784-5184x3456.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/c68ef84fa0a4d789876a380c1fbfbc4b681e9784-5184x3456.jpg"
+    },
+    "order": 3,
+    "subtitle": "Scholarships awarded to support student learning",
+    "title": "UPER Launches Mandarin Training Center in Yogyakarta"
+  },
+  {
+    "_createdAt": "2026-05-07T02:32:29Z",
+    "_id": "ea3d7469-342f-4908-8774-77e9c7868eec",
+    "_rev": "e0FzjgFZMxMP1ctyIEz1ht",
+    "_system": {
+      "base": {
+        "id": "ea3d7469-342f-4908-8774-77e9c7868eec",
+        "rev": "2CQM2S9k4KCu1HPV8AZbqX"
+      }
+    },
+    "_type": "newsPage",
+    "_updatedAt": "2026-05-07T11:02:01Z",
+    "coverImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-d1e3910454141dfc01b319442af856a7e2f7ed61-1920x1280-jpg",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/d1e3910454141dfc01b319442af856a7e2f7ed61-1920x1280.jpg"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/d1e3910454141dfc01b319442af856a7e2f7ed61-1920x1280.jpg"
+    },
+    "order": 2,
+    "subtitle": "Engaging in global dialogue on AI innovation and industry–education integration in higher education",
+    "title": "UPER at Industrial Digitalization & AI Innovation Summit in Changsha"
+  }
+]

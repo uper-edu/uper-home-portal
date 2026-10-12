@@ -1,0 +1,32 @@
+[
+  {
+    "_createdAt": "2026-07-16T07:30:45Z",
+    "_id": "6935b9c4-45d9-46ad-b1ca-09adfb26265e",
+    "_rev": "giM5C7whRahmLB9Ji1ZyQA",
+    "_type": "admissionsList",
+    "_updatedAt": "2026-07-16T07:51:12Z",
+    "admissionDate": "September 2026 to July 2028",
+    "certificateImage": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-2ac61e1aebda78511b8d0d9bcd279986bd0f4823-589x721-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/2ac61e1aebda78511b8d0d9bcd279986bd0f4823-589x721.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/2ac61e1aebda78511b8d0d9bcd279986bd0f4823-589x721.png"
+    },
+    "image": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-6646512f9a1509eee34347e5d781968ce3f8b42c-337x375-png",
+        "_type": "reference",
+        "url": "https://cdn.sanity.io/images/xtbhepdi/production/6646512f9a1509eee34347e5d781968ce3f8b42c-337x375.png"
+      },
+      "url": "https://cdn.sanity.io/images/xtbhepdi/production/6646512f9a1509eee34347e5d781968ce3f8b42c-337x375.png"
+    },
+    "name": "Seno Pamungkas Rahman",
+    "program": "Computer Science and Technology",
+    "scholarship": "Chinese Government Scholarship - Full Scholarship",
+    "school": "Huazhong University of Science and Technology"
+  }
+]
