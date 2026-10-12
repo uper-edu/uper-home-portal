@@ -97,6 +97,9 @@ export interface CrmLeadRecord {
 
   // ④ 测评成绩
   quizScore?: number;
+  quizMaxScore?: number;
+  latestAssessment?: import('../data/hskAssessment').HskResult;
+  assessmentProvenance?: 'server_recomputed_adapted_paper' | 'legacy_unverified';
   totalQuestions?: number;
   quizBreakdown?: {
     hsk1Correct?: number;

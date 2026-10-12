@@ -1,0 +1,4818 @@
+{
+  "examVersion": "pdf-e80a3cbaabc5-audio-1d13ab13-choice-v2",
+  "scoringVersion": "stars-15-17-18-v2",
+  "gradingModel": "source-stars-two-points-v2",
+  "questions": [
+    {
+      "id": 1,
+      "level": "HSK 1",
+      "section": "listening",
+      "format": "image_select",
+      "pageHeader": "一、 听 力\n第 1～3 题 ★",
+      "example": {
+        "textZh": "例如：苹果。我想买几个大苹果。",
+        "answerKey": "C"
+      },
+      "spokenScript": "坐飞机。",
+      "audioStartSec": 7.2,
+      "audioEndSec": 23.3,
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "car",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "imageKey": "bullet_train",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "airplane",
+          "isCorrect": true
+        }
+      ],
+      "explanationZh": "录音内容为“坐飞机”。正确答案为 C（飞机）。",
+      "explanationEn": "The audio says \"坐飞机 (take an airplane)\". Correct answer is C.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 2,
+      "level": "HSK 1",
+      "section": "listening",
+      "format": "image_select",
+      "pageHeader": "一、 听 力\n第 1～3 题 ★",
+      "spokenScript": "不想听。",
+      "audioStartSec": 23.35,
+      "audioEndSec": 39.5,
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "cover_ears",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "imageKey": "cover_eyes",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "shh",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "录音内容为“不想听”。正确答案为 A（捂耳朵）。",
+      "explanationEn": "The audio says \"不想听 (do not want to listen)\". Correct answer is A.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 3,
+      "level": "HSK 1",
+      "section": "listening",
+      "format": "image_select",
+      "pageHeader": "一、 听 力\n第 1～3 题 ★",
+      "spokenScript": "在椅子上。",
+      "audioStartSec": 39.7,
+      "audioEndSec": 56.8,
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "bird_branch",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "imageKey": "cat_on_chair",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "imageKey": "dog_under_chair",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "录音内容为“在椅子上”。正确答案为 B（小猫在椅子上）。",
+      "explanationEn": "The audio says \"在椅子上 (on the chair)\". Correct answer is B."
+    },
+    {
+      "id": 4,
+      "level": "HSK 1",
+      "section": "listening",
+      "format": "pinyin_options",
+      "pageHeader": "第 4～5 题 ★",
+      "example": {
+        "textPinyin": "Jīntiān tiānqì zěnmeyàng ？",
+        "textZh": "例如： 今天 天气 怎么样 ？",
+        "answerKey": "C"
+      },
+      "spokenScript": "你家有几口人？",
+      "audioStartSec": 62.6,
+      "audioEndSec": 85,
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "xīngqīsì",
+          "text": "星期四",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "星期四",
+              "pinyin": "xīngqīsì"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "sān kuài qián",
+          "text": "三 块 钱",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "三",
+              "pinyin": "sān"
+            },
+            {
+              "hanzi": "块",
+              "pinyin": "kuài"
+            },
+            {
+              "hanzi": "钱",
+              "pinyin": "qián"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "wǔ kǒu rén",
+          "text": "五 口 人",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "五",
+              "pinyin": "wǔ"
+            },
+            {
+              "hanzi": "口",
+              "pinyin": "kǒu"
+            },
+            {
+              "hanzi": "人",
+              "pinyin": "rén"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "录音问“你家有几口人？”，对应答案为“五口人”。",
+      "explanationEn": "The question asks \"How many people in your family?\". Correct answer: C.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 5,
+      "level": "HSK 1",
+      "section": "listening",
+      "format": "pinyin_options",
+      "pageHeader": "第 4～5 题 ★",
+      "spokenScript": "你坐哪儿？",
+      "audioStartSec": 85.4,
+      "audioEndSec": 101.5,
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "qiánbian",
+          "text": "前边",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "前边",
+              "pinyin": "qiánbian"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "zuò fàn",
+          "text": "做 饭",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "做",
+              "pinyin": "zuò"
+            },
+            {
+              "hanzi": "饭",
+              "pinyin": "fàn"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "bú kèqi",
+          "text": "不 客气",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "不",
+              "pinyin": "bú"
+            },
+            {
+              "hanzi": "客气",
+              "pinyin": "kèqi"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "录音问“你坐哪儿？”，询问方位，答案为“前边”。",
+      "explanationEn": "The question asks \"Where are you sitting?\". Correct answer: A (前边)."
+    },
+    {
+      "id": 6,
+      "level": "HSK 1",
+      "section": "listening",
+      "format": "pinyin_options",
+      "pageHeader": "第 6～7 题 ★",
+      "example": {
+        "textPinyin": "Xiàwǔ wǒ qù chāoshì , wǒ xiǎng mǎi yīxiē shuǐguǒ\n问：说话的人下午去哪里了？",
+        "textZh": "例如： 下午 我 去 超市 ， 我 想买一些水果",
+        "answerKey": "A"
+      },
+      "promptPinyin": "",
+      "promptText": "",
+      "spokenScript": "小张生病了，今天没来公司。\n问：小张怎么了？",
+      "audioStartSec": 108.3,
+      "audioEndSec": 142.5,
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "bìng le",
+          "text": "病 了",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "病",
+              "pinyin": "bìng"
+            },
+            {
+              "hanzi": "了",
+              "pinyin": "le"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "méi lái shàngxué",
+          "text": "没 来 上学",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "没",
+              "pinyin": "méi"
+            },
+            {
+              "hanzi": "来",
+              "pinyin": "lái"
+            },
+            {
+              "hanzi": "上学",
+              "pinyin": "shàngxué"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "bù xiǎng shuìjiào",
+          "text": "不 想 睡觉",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "不",
+              "pinyin": "bù"
+            },
+            {
+              "hanzi": "想",
+              "pinyin": "xiǎng"
+            },
+            {
+              "hanzi": "睡觉",
+              "pinyin": "shuìjiào"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "录音明确指出“小张生病了”，故答案选 A。",
+      "explanationEn": "The speaker states \"小张生病了 (Xiao Zhang fell ill)\". Correct answer: A."
+    },
+    {
+      "id": 7,
+      "level": "HSK 1",
+      "section": "listening",
+      "format": "pinyin_options",
+      "pageHeader": "第 6～7 题 ★",
+      "promptPinyin": "",
+      "promptText": "",
+      "spokenScript": "喂，您好，是王月女士吗？\n问：说话人正在做什么？",
+      "audioStartSec": 143.1,
+      "audioEndSec": 171.5,
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "mài chē",
+          "text": "卖 车",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "卖",
+              "pinyin": "mài"
+            },
+            {
+              "hanzi": "车",
+              "pinyin": "chē"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "dǎ diànhuà",
+          "text": "打 电话",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "打",
+              "pinyin": "dǎ"
+            },
+            {
+              "hanzi": "电话",
+              "pinyin": "diànhuà"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "zhǎo shǒujī",
+          "text": "找 手机",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "找",
+              "pinyin": "zhǎo"
+            },
+            {
+              "hanzi": "手机",
+              "pinyin": "shǒujī"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "以“喂，您好”开头是打电话的标准表达。",
+      "explanationEn": "\"喂，您好\" indicates making a phone call. Correct answer: B."
+    },
+    {
+      "id": 8,
+      "level": "HSK 2",
+      "section": "listening",
+      "format": "image_select",
+      "pageHeader": "第 8～10 题 ★★",
+      "example": {
+        "textPinyin": "Nǐ xǐhuān shénme yùndòng?\nWǒ zuì xǐhuān tī zúqiú",
+        "textZh": "例如：男：你喜欢什么运动？\n女：我最喜欢踢足球",
+        "answerKey": "D"
+      },
+      "spokenScript": "女：你在笑什么呢？\n男：电视上的这个人太有意思了。",
+      "audioStartSec": 172.1,
+      "audioEndSec": 199.1,
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "hand_bottle",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "imageKey": "headache",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "driver_car_wave",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "imageKey": "soccer_girl",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "imageKey": "laughing_tv",
+          "isCorrect": true
+        },
+        {
+          "id": "F",
+          "imageKey": "boy_books",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "男士说“电视上的这个人太有意思了”，对应靠在垫子上大笑的图片 E。",
+      "explanationEn": "The man says \"This person on TV is so funny\", matching image E.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 9,
+      "level": "HSK 2",
+      "section": "listening",
+      "format": "image_select",
+      "pageHeader": "第 8～10 题 ★★",
+      "spokenScript": "男：给你水，要我帮你打开吗？\n女：谢谢，我自己来吧。",
+      "audioStartSec": 199.6,
+      "audioEndSec": 226.1,
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "hand_bottle",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "imageKey": "headache",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "driver_car_wave",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "imageKey": "soccer_girl",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "imageKey": "laughing_tv",
+          "isCorrect": false
+        },
+        {
+          "id": "F",
+          "imageKey": "boy_books",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "男士问“给你水，要我帮你打开吗？”，对应手递矿泉水瓶的图片 A。",
+      "explanationEn": "Dialogue is about handing a water bottle. Correct answer: A."
+    },
+    {
+      "id": 10,
+      "level": "HSK 2",
+      "section": "listening",
+      "format": "image_select",
+      "pageHeader": "第 8～10 题 ★★",
+      "spokenScript": "女：我走了，再见。\n男：下次见，开车慢点儿。",
+      "audioStartSec": 226.5,
+      "audioEndSec": 249.5,
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "hand_bottle",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "imageKey": "headache",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "driver_car_wave",
+          "isCorrect": true
+        },
+        {
+          "id": "D",
+          "imageKey": "soccer_girl",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "imageKey": "laughing_tv",
+          "isCorrect": false
+        },
+        {
+          "id": "F",
+          "imageKey": "boy_books",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "男士嘱咐“下次见，开车慢点儿”，对应车内挥手告别的图片 C。",
+      "explanationEn": "The man says \"See you next time, drive carefully\", matching image C."
+    },
+    {
+      "id": 11,
+      "level": "HSK 2",
+      "section": "listening",
+      "format": "pinyin_options",
+      "pageHeader": "第 11～13 题 ★★",
+      "promptPinyin": "",
+      "promptText": "",
+      "spokenScript": "女：坐公交车去机场怎么样？\n男：还是坐地铁吧，比公交车快。\n问：男的准备怎么去机场？",
+      "audioStartSec": 255.4,
+      "audioEndSec": 297.8,
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "zuò dìtiě",
+          "text": "坐 地铁",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "坐",
+              "pinyin": "zuò"
+            },
+            {
+              "hanzi": "地铁",
+              "pinyin": "dìtiě"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "zuò huǒchē",
+          "text": "坐 火车",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "坐",
+              "pinyin": "zuò"
+            },
+            {
+              "hanzi": "火车",
+              "pinyin": "huǒchē"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "zuò gōngjiāochē",
+          "text": "坐 公交车",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "坐",
+              "pinyin": "zuò"
+            },
+            {
+              "hanzi": "公交车",
+              "pinyin": "gōngjiāochē"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "录音问“男的准备怎么去机场？”，男士回答“还是坐地铁吧，比公交车快”，故选 A。",
+      "explanationEn": "Question asks how the man plans to go to the airport. He chooses the subway (\"还是坐地铁吧\"). Correct: A.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 12,
+      "level": "HSK 2",
+      "section": "listening",
+      "format": "pinyin_options",
+      "pageHeader": "第 11～13 题 ★★",
+      "promptPinyin": "",
+      "promptText": "",
+      "spokenScript": "男：您好，请问最近的洗手间在哪里？\n女：前面那个商场里就有。\n问：洗手间在哪儿？",
+      "audioStartSec": 298.1,
+      "audioEndSec": 339.1,
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "yīyuàn pángbiān",
+          "text": "医院 旁边",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "医院",
+              "pinyin": "yīyuàn"
+            },
+            {
+              "hanzi": "旁边",
+              "pinyin": "pángbiān"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "jiǔdiàn wàimiàn",
+          "text": "酒店 外面",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "酒店",
+              "pinyin": "jiǔdiàn"
+            },
+            {
+              "hanzi": "外面",
+              "pinyin": "wàimiàn"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "shāngchǎng lǐmiàn",
+          "text": "商场 里面",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "商场",
+              "pinyin": "shāngchǎng"
+            },
+            {
+              "hanzi": "里面",
+              "pinyin": "lǐmiàn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "录音问“洗手间在哪儿？”，女士回答“前面那个商场里就有”，答案为 C。",
+      "explanationEn": "Question asks where the restroom is. Woman answers \"Inside the shopping mall ahead\". Correct: C."
+    },
+    {
+      "id": 13,
+      "level": "HSK 2",
+      "section": "listening",
+      "format": "pinyin_options",
+      "pageHeader": "第 11～13 题 ★★",
+      "promptPinyin": "",
+      "promptText": "",
+      "spokenScript": "女：阴天了，可能要下雨。\n男：那我们快回家吧。\n问：现在天气怎么样？",
+      "audioStartSec": 339.3,
+      "audioEndSec": 374.5,
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "xià xuě le",
+          "text": "下雪 了",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "下雪",
+              "pinyin": "xiàxuě"
+            },
+            {
+              "hanzi": "了",
+              "pinyin": "le"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "xià yǔ le",
+          "text": "下雨 了",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "下",
+              "pinyin": "xià"
+            },
+            {
+              "hanzi": "雨",
+              "pinyin": "yǔ"
+            },
+            {
+              "hanzi": "了",
+              "pinyin": "le"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "yīn tiān le",
+          "text": "阴天 了",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "阴天",
+              "pinyin": "yīntiān"
+            },
+            {
+              "hanzi": "了",
+              "pinyin": "le"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "录音问“现在天气怎么样？”，女士说“阴天了，可能要下雨”，当前天气是“阴天了”。",
+      "explanationEn": "Question asks about the weather. The woman says \"It has become overcast\". Correct: C."
+    },
+    {
+      "id": 14,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "example": {
+        "textZh": "例如： 女： 我需要搬一些椅子到楼上办公室， 你能来帮忙吗？\n男： 没问题， 我再叫几个人来帮你。\n问： 他们要把椅子搬到哪儿？",
+        "answerKey": "B"
+      },
+      "promptText": "",
+      "spokenScript": "男：你准备在晚会上表演什么节目？\n女：我打算讲个故事。\n问：女的要表演什么？",
+      "audioStartSec": 381.3,
+      "audioEndSec": 417.2,
+      "options": [
+        {
+          "id": "A",
+          "text": "跳舞",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "讲故事",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "唱中文歌",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "录音问“女的要表演什么？”，女士回答“我打算讲个故事”，正确答案选 B。",
+      "explanationEn": "Question asks what the woman plans to perform. She replies \"I plan to tell a story\". Correct answer: B.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 15,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "promptText": "",
+      "spokenScript": "女：你最近在忙什么？\n男：我奶奶住院了，我每天一下班就去医院照顾她。\n问：男的的奶奶怎么了？",
+      "audioStartSec": 417.3,
+      "audioEndSec": 457.3,
+      "options": [
+        {
+          "id": "A",
+          "text": "住院了",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "变胖了",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "太累了",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "录音问“男的的奶奶怎么了？”，男士说明“我奶奶住院了”，选 A。",
+      "explanationEn": "Question asks what happened to the grandmother. He states she was hospitalized. Correct: A."
+    },
+    {
+      "id": 16,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "promptText": "",
+      "spokenScript": "男：十点一刻了，该睡觉了，别打游戏了。\n女：我再玩五分钟就睡。\n问：现在几点了？",
+      "audioStartSec": 457.5,
+      "audioEndSec": 493.4,
+      "options": [
+        {
+          "id": "A",
+          "text": "9:05",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "10:15",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "10:30",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "录音问“现在几点了？”，“十点一刻”为 10 点 15 分，选 B。",
+      "explanationEn": "Question asks what time it is. \"十点一刻\" means 10:15. Correct answer: B.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 17,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "promptText": "",
+      "spokenScript": "女：奇怪，我的笔记本电脑突然不能开机了。\n男：是不是没电了？\n问：女的遇到了什么问题？",
+      "audioStartSec": 493.6,
+      "audioEndSec": 528.1,
+      "options": [
+        {
+          "id": "A",
+          "text": "手表坏了",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "书包丢了",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "电脑不能开机",
+          "isCorrect": true
+        }
+      ],
+      "explanationZh": "录音问“女的遇到了什么问题？”，女士说“笔记本电脑突然不能开机了”，答案选 C。",
+      "explanationEn": "Question asks what problem she had. She says her laptop cannot turn on. Correct: C."
+    },
+    {
+      "id": 18,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "promptText": "",
+      "spokenScript": "同学们，这个题其实挺简单的，大家先看清楚要求再做。\n问：说话人让同学们怎么做？",
+      "audioStartSec": 534.5,
+      "audioEndSec": 574.2,
+      "options": [
+        {
+          "id": "A",
+          "text": "不做难题",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "复习汉字",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "看清楚要求",
+          "isCorrect": true
+        }
+      ],
+      "explanationZh": "录音问“说话人让同学们怎么做？”，提示“大家先看清楚要求再做”，答案选 C。",
+      "explanationEn": "Question asks what the teacher asked students to do. Read requirements clearly first. Correct: C."
+    },
+    {
+      "id": 19,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "promptText": "",
+      "spokenScript": "我在草地上发现了一只瘦瘦的小猫，它看上去很饿，我就给它拿了一些吃的。\n问：说话人在什么地方发现的小猫？",
+      "audioStartSec": 574.3,
+      "audioEndSec": 618.9,
+      "options": [
+        {
+          "id": "A",
+          "text": "河边",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "街上",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "草地上",
+          "isCorrect": true
+        }
+      ],
+      "explanationZh": "录音问“说话人在什么地方发现的小猫？”，“我在草地上发现了一只瘦瘦的小猫”，地点在草地上。",
+      "explanationEn": "Question asks where the cat was found. On the grass (\"在草地上\"). Correct: C."
+    },
+    {
+      "id": 20,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "promptText": "",
+      "spokenScript": "老李的生活习惯很不好，平时几乎不打扫自己的房间。\n问：关于老李，可以知道什么？",
+      "audioStartSec": 618.9,
+      "audioEndSec": 657.1,
+      "options": [
+        {
+          "id": "A",
+          "text": "习惯差",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "每晚扫地",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "正在洗碗",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "录音问“关于老李，可以知道什么？”，录音说“老李的生活习惯很不好”，即习惯差。",
+      "explanationEn": "Question asks about Lao Li. He has poor habits (\"习惯差\"). Correct: A."
+    },
+    {
+      "id": 21,
+      "level": "HSK 3",
+      "section": "listening",
+      "format": "pure_hanzi",
+      "pageHeader": "第 14～21 题 ★★★",
+      "promptText": "",
+      "spokenScript": "这里的夏天没那么热，春天和秋天很凉快，冬天也不太冷，一年四季都很舒服。\n问：那里秋季的天气怎么样？",
+      "audioStartSec": 657.1,
+      "audioEndSec": 698,
+      "options": [
+        {
+          "id": "A",
+          "text": "凉快",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "刮大风",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "晴天少",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "录音问“那里秋季的天气怎么样？”，“春天和秋天很凉快”，故秋季凉快。",
+      "explanationEn": "Question asks about autumn weather. It is pleasant and cool (\"凉快\"). Correct: A."
+    },
+    {
+      "id": 22,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "image_select",
+      "pageHeader": "二、阅 读\n第 22～25 题 ★",
+      "example": {
+        "textPinyin": "Wǒ hěn xǐhuan zhè běn shū .",
+        "textZh": "例如： 我 很 喜欢 这 本 书。",
+        "answerKey": "E"
+      },
+      "promptPinyin": "Wáng xiānsheng， zàijiàn．",
+      "promptText": "22． 王 先生 ，再见。",
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "guitar_boy",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "imageKey": "schoolgirl",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "umbrella",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "imageKey": "eggs_milk",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "imageKey": "reading_chair",
+          "isCorrect": false
+        },
+        {
+          "id": "F",
+          "imageKey": "two_men_waving",
+          "isCorrect": true
+        }
+      ],
+      "explanationZh": "“王先生，再见”对应两位商务男士挥手告别的图片 F。",
+      "explanationEn": "Waving goodbye matches image F.",
+      "promptTokens": [
+        {
+          "hanzi": "王",
+          "pinyin": "Wáng"
+        },
+        {
+          "hanzi": "先生，",
+          "pinyin": "xiānsheng"
+        },
+        {
+          "hanzi": "再见。",
+          "pinyin": "zàijiàn"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "image_select",
+      "pageHeader": "二、阅 读\n第 22～25 题 ★",
+      "promptPinyin": "Dìdi hěn ài chàng gē .",
+      "promptText": "23． 弟弟 很 爱 唱 歌。",
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "guitar_boy",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "imageKey": "schoolgirl",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "umbrella",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "imageKey": "eggs_milk",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "imageKey": "reading_chair",
+          "isCorrect": false
+        },
+        {
+          "id": "F",
+          "imageKey": "two_men_waving",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“弟弟很爱唱歌”对应弹吉他唱歌的男生图片 A。",
+      "explanationEn": "Singing with guitar matches image A.",
+      "promptTokens": [
+        {
+          "hanzi": "弟弟",
+          "pinyin": "Dìdi"
+        },
+        {
+          "hanzi": "很",
+          "pinyin": "hěn"
+        },
+        {
+          "hanzi": "爱",
+          "pinyin": "ài"
+        },
+        {
+          "hanzi": "唱",
+          "pinyin": "chàng"
+        },
+        {
+          "hanzi": "歌。",
+          "pinyin": "gē"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "image_select",
+      "pageHeader": "二、阅 读\n第 22～25 题 ★",
+      "promptPinyin": "Zǎofàn chī jīdàn hé niúnǎi， zěnmeyàng？",
+      "promptText": "24． 早饭 吃 鸡蛋 和 牛奶，怎么样 ？",
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "guitar_boy",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "imageKey": "schoolgirl",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "imageKey": "umbrella",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "imageKey": "eggs_milk",
+          "isCorrect": true
+        },
+        {
+          "id": "E",
+          "imageKey": "reading_chair",
+          "isCorrect": false
+        },
+        {
+          "id": "F",
+          "imageKey": "two_men_waving",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“早饭吃鸡蛋和牛奶”对应杯子与鸡蛋的图片 D。",
+      "explanationEn": "Breakfast with milk & eggs matches image D.",
+      "promptTokens": [
+        {
+          "hanzi": "早饭",
+          "pinyin": "Zǎofàn"
+        },
+        {
+          "hanzi": "吃",
+          "pinyin": "chī"
+        },
+        {
+          "hanzi": "鸡蛋",
+          "pinyin": "jīdàn"
+        },
+        {
+          "hanzi": "和",
+          "pinyin": "hé"
+        },
+        {
+          "hanzi": "牛奶，",
+          "pinyin": "niúnǎi"
+        },
+        {
+          "hanzi": "怎么样？",
+          "pinyin": "zěnmeyàng"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "image_select",
+      "pageHeader": "二、阅 读\n第 22～25 题 ★",
+      "promptPinyin": "Jīntiān shì mèimei shàng xiǎoxué de dì-yī tiān.",
+      "promptText": "25． 今天 是 妹妹 上 小学 的 第一天。",
+      "options": [
+        {
+          "id": "A",
+          "imageKey": "guitar_boy",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "imageKey": "schoolgirl",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "imageKey": "umbrella",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "imageKey": "eggs_milk",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "imageKey": "reading_chair",
+          "isCorrect": false
+        },
+        {
+          "id": "F",
+          "imageKey": "two_men_waving",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "妹妹上小学第一天，对应背着书包上学的小女孩图片 B。",
+      "explanationEn": "First day of school matches schoolgirl image B.",
+      "promptTokens": [
+        {
+          "hanzi": "今天",
+          "pinyin": "Jīntiān"
+        },
+        {
+          "hanzi": "是",
+          "pinyin": "shì"
+        },
+        {
+          "hanzi": "妹妹",
+          "pinyin": "mèimei"
+        },
+        {
+          "hanzi": "上",
+          "pinyin": "shàng"
+        },
+        {
+          "hanzi": "小学",
+          "pinyin": "xiǎoxué"
+        },
+        {
+          "hanzi": "的",
+          "pinyin": "de"
+        },
+        {
+          "hanzi": "第一",
+          "pinyin": "dì-yī"
+        },
+        {
+          "hanzi": "天。",
+          "pinyin": "tiān"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "word_bank",
+      "pageHeader": "第 26～29 题 ★",
+      "wordBank": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午"
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮"
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息"
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫"
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事"
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很"
+        }
+      ],
+      "promptPinyin": "Jīntiān shūdiàn li yǒu duō xiǎopéngyǒu．",
+      "promptText": "26． 今天 书店 里 有 （ ） 多 小朋友 。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "上午",
+              "pinyin": "shàngwǔ"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "漂亮",
+              "pinyin": "piàoliang"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "休息",
+              "pinyin": "xiūxi"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "叫",
+              "pinyin": "jiào"
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "事",
+              "pinyin": "shì"
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "很",
+              "pinyin": "hěn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "“很多”为常用搭配，选 F（很）。",
+      "explanationEn": "\"很多\" means many. Correct: F.",
+      "isExpressSelected": true,
+      "promptTokens": [
+        {
+          "hanzi": "今天",
+          "pinyin": "Jīntiān"
+        },
+        {
+          "hanzi": "书店",
+          "pinyin": "shūdiàn"
+        },
+        {
+          "hanzi": "里",
+          "pinyin": "li"
+        },
+        {
+          "hanzi": "有",
+          "pinyin": "yǒu"
+        },
+        {
+          "hanzi": "（　）",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "多",
+          "pinyin": "duō"
+        },
+        {
+          "hanzi": "小朋友。",
+          "pinyin": "xiǎopéngyǒu"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "word_bank",
+      "pageHeader": "第 26～29 题 ★",
+      "wordBank": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午"
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮"
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息"
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫"
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事"
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很"
+        }
+      ],
+      "promptPinyin": "Tāmen xuéle Zhōngwén．",
+      "promptText": "27． 他们 （ ） 学了 中文 。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "上午",
+              "pinyin": "shàngwǔ"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "漂亮",
+              "pinyin": "piàoliang"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "休息",
+              "pinyin": "xiūxi"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "叫",
+              "pinyin": "jiào"
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "事",
+              "pinyin": "shì"
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "很",
+              "pinyin": "hěn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "时间状语置于动词前，“上午学了中文”，选 A。",
+      "explanationEn": "Time adverb: \"上午 (morning)\". Correct: A.",
+      "promptTokens": [
+        {
+          "hanzi": "他们",
+          "pinyin": "Tāmen"
+        },
+        {
+          "hanzi": "（　）",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "学了",
+          "pinyin": "xuéle"
+        },
+        {
+          "hanzi": "中文。",
+          "pinyin": "Zhōngwén"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "word_bank",
+      "pageHeader": "第 26～29 题 ★",
+      "wordBank": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午"
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮"
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息"
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫"
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事"
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很"
+        }
+      ],
+      "promptPinyin": "Wǒ juéde dì-èr gè bēizi mǎi nàge ba．",
+      "promptText": "28． 我 觉得 第二 个 杯子 （ ）， 买 那个 吧。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "上午",
+              "pinyin": "shàngwǔ"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "漂亮",
+              "pinyin": "piàoliang"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "休息",
+              "pinyin": "xiūxi"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "叫",
+              "pinyin": "jiào"
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "事",
+              "pinyin": "shì"
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "很",
+              "pinyin": "hěn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "作形容词谓语评价杯子，“漂亮”，选 B。",
+      "explanationEn": "\"杯子漂亮 (cup is pretty)\". Correct: B.",
+      "promptTokens": [
+        {
+          "hanzi": "我",
+          "pinyin": "Wǒ"
+        },
+        {
+          "hanzi": "觉得",
+          "pinyin": "juéde"
+        },
+        {
+          "hanzi": "第二",
+          "pinyin": "dì-èr"
+        },
+        {
+          "hanzi": "个",
+          "pinyin": "gè"
+        },
+        {
+          "hanzi": "杯子",
+          "pinyin": "bēizi"
+        },
+        {
+          "hanzi": "（　），",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "买",
+          "pinyin": "mǎi"
+        },
+        {
+          "hanzi": "那个",
+          "pinyin": "nàge"
+        },
+        {
+          "hanzi": "吧。",
+          "pinyin": "ba"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "level": "HSK 1",
+      "section": "reading",
+      "format": "word_bank",
+      "pageHeader": "第 26～29 题 ★",
+      "wordBank": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午"
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮"
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息"
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫"
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事"
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很"
+        }
+      ],
+      "promptPinyin": "Xiàkè , tóngxuémen y íxià .",
+      "promptText": "29． 下课， 同学们 （ ） 一下。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "shàngwǔ",
+          "text": "上午",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "上午",
+              "pinyin": "shàngwǔ"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "piàoliang",
+          "text": "漂亮",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "漂亮",
+              "pinyin": "piàoliang"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "xiūxi",
+          "text": "休息",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "休息",
+              "pinyin": "xiūxi"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "pinyin": "jiào",
+          "text": "叫",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "叫",
+              "pinyin": "jiào"
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "pinyin": "shì",
+          "text": "事",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "事",
+              "pinyin": "shì"
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "pinyin": "hěn",
+          "text": "很",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "很",
+              "pinyin": "hěn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "下课后动词搭配“休息一下”，选 C。",
+      "explanationEn": "\"休息一下 (take a rest)\". Correct: C.",
+      "promptTokens": [
+        {
+          "hanzi": "下课，",
+          "pinyin": "Xiàkè"
+        },
+        {
+          "hanzi": "同学们",
+          "pinyin": "tóngxuémen"
+        },
+        {
+          "hanzi": "（　）",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "一下。",
+          "pinyin": "yíxià"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 30～32 题 ★★",
+      "promptPinyin": "Suīrán wǒ shì wàiguó rén, dàn wǒ yǒu yīgè zhōngwén míngzì",
+      "promptText": "30. 虽然我是外国人，但我有一个中文名字",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "Shéi zài wàimiàn？ Zě nme bú jìnlái ？",
+          "text": "A. 谁 在 外面 ？怎么 不 进来？",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "谁",
+              "pinyin": "Shéi"
+            },
+            {
+              "hanzi": "在",
+              "pinyin": "zài"
+            },
+            {
+              "hanzi": "外面？",
+              "pinyin": "wàimiàn"
+            },
+            {
+              "hanzi": "怎么",
+              "pinyin": "Zěnme"
+            },
+            {
+              "hanzi": "不",
+              "pinyin": "bú"
+            },
+            {
+              "hanzi": "进来？",
+              "pinyin": "jìnlái"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "Wǒ xìng gāo, wǒ jiào gāo hànwén",
+          "text": "B. 我 姓 高，我叫 高 汉文",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "我",
+              "pinyin": "Wǒ"
+            },
+            {
+              "hanzi": "姓",
+              "pinyin": "xìng"
+            },
+            {
+              "hanzi": "高，",
+              "pinyin": "gāo"
+            },
+            {
+              "hanzi": "我",
+              "pinyin": "wǒ"
+            },
+            {
+              "hanzi": "叫",
+              "pinyin": "jiào"
+            },
+            {
+              "hanzi": "高",
+              "pinyin": "gāo"
+            },
+            {
+              "hanzi": "汉文",
+              "pinyin": "hànwén"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "Suǒyǐ xiànzài hái bùnéng zhù",
+          "text": "C. 所以 现在 还不能 住",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "所以",
+              "pinyin": "Suǒyǐ"
+            },
+            {
+              "hanzi": "现在",
+              "pinyin": "xiànzài"
+            },
+            {
+              "hanzi": "还",
+              "pinyin": "hái"
+            },
+            {
+              "hanzi": "不能",
+              "pinyin": "bùnéng"
+            },
+            {
+              "hanzi": "住",
+              "pinyin": "zhù"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "提到中文名字，接“我姓高，我叫高汉文”，选 B。",
+      "explanationEn": "Matches Chinese name introduction B.",
+      "isExpressSelected": true,
+      "promptTokens": [
+        {
+          "hanzi": "虽然",
+          "pinyin": "Suīrán"
+        },
+        {
+          "hanzi": "我",
+          "pinyin": "wǒ"
+        },
+        {
+          "hanzi": "是",
+          "pinyin": "shì"
+        },
+        {
+          "hanzi": "外国人，",
+          "pinyin": "wàiguórén"
+        },
+        {
+          "hanzi": "但",
+          "pinyin": "dàn"
+        },
+        {
+          "hanzi": "我",
+          "pinyin": "wǒ"
+        },
+        {
+          "hanzi": "有",
+          "pinyin": "yǒu"
+        },
+        {
+          "hanzi": "一个",
+          "pinyin": "yīgè"
+        },
+        {
+          "hanzi": "中文",
+          "pinyin": "zhōngwén"
+        },
+        {
+          "hanzi": "名字",
+          "pinyin": "míngzì"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 30～32 题 ★★",
+      "promptPinyin": "Shì wǒ , bāng wǒ kā i y íxià mén．",
+      "promptText": "31．是 我， 帮 我 开 一下 门 。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "Shéi zài wàimiàn？ Zě nme bú jìnlái ？",
+          "text": "A. 谁 在 外面 ？怎么 不 进来？",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "谁",
+              "pinyin": "Shéi"
+            },
+            {
+              "hanzi": "在",
+              "pinyin": "zài"
+            },
+            {
+              "hanzi": "外面？",
+              "pinyin": "wàimiàn"
+            },
+            {
+              "hanzi": "怎么",
+              "pinyin": "Zěnme"
+            },
+            {
+              "hanzi": "不",
+              "pinyin": "bú"
+            },
+            {
+              "hanzi": "进来？",
+              "pinyin": "jìnlái"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "Wǒ xìng gāo, wǒ jiào gāo hànwén",
+          "text": "B. 我 姓 高，我叫 高 汉文",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "我",
+              "pinyin": "Wǒ"
+            },
+            {
+              "hanzi": "姓",
+              "pinyin": "xìng"
+            },
+            {
+              "hanzi": "高，",
+              "pinyin": "gāo"
+            },
+            {
+              "hanzi": "我",
+              "pinyin": "wǒ"
+            },
+            {
+              "hanzi": "叫",
+              "pinyin": "jiào"
+            },
+            {
+              "hanzi": "高",
+              "pinyin": "gāo"
+            },
+            {
+              "hanzi": "汉文",
+              "pinyin": "hànwén"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "Suǒyǐ xiànzài hái bùnéng zhù",
+          "text": "C. 所以 现在 还不能 住",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "所以",
+              "pinyin": "Suǒyǐ"
+            },
+            {
+              "hanzi": "现在",
+              "pinyin": "xiànzài"
+            },
+            {
+              "hanzi": "还",
+              "pinyin": "hái"
+            },
+            {
+              "hanzi": "不能",
+              "pinyin": "bùnéng"
+            },
+            {
+              "hanzi": "住",
+              "pinyin": "zhù"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "开门应答对应提问“谁在外面？怎么不进来？”，选 A。",
+      "explanationEn": "Answers \"Who is outside?\". Correct: A.",
+      "promptTokens": [
+        {
+          "hanzi": "是",
+          "pinyin": "Shì"
+        },
+        {
+          "hanzi": "我，",
+          "pinyin": "wǒ"
+        },
+        {
+          "hanzi": "帮",
+          "pinyin": "bāng"
+        },
+        {
+          "hanzi": "我",
+          "pinyin": "wǒ"
+        },
+        {
+          "hanzi": "开",
+          "pinyin": "kāi"
+        },
+        {
+          "hanzi": "一下",
+          "pinyin": "yíxià"
+        },
+        {
+          "hanzi": "门。",
+          "pinyin": "mén"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 30～32 题 ★★",
+      "promptPinyin": "Zhège fángjiān yǒu zhuō yǐ, dàn hái méiyǒu chuáng",
+      "promptText": "32. 这个 房间 有 桌椅，但 还 没有 床。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "Shéi zài wàimiàn？ Zě nme bú jìnlái ？",
+          "text": "A. 谁 在 外面 ？怎么 不 进来？",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "谁",
+              "pinyin": "Shéi"
+            },
+            {
+              "hanzi": "在",
+              "pinyin": "zài"
+            },
+            {
+              "hanzi": "外面？",
+              "pinyin": "wàimiàn"
+            },
+            {
+              "hanzi": "怎么",
+              "pinyin": "Zěnme"
+            },
+            {
+              "hanzi": "不",
+              "pinyin": "bú"
+            },
+            {
+              "hanzi": "进来？",
+              "pinyin": "jìnlái"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "Wǒ xìng gāo, wǒ jiào gāo hànwén",
+          "text": "B. 我 姓 高，我叫 高 汉文",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "我",
+              "pinyin": "Wǒ"
+            },
+            {
+              "hanzi": "姓",
+              "pinyin": "xìng"
+            },
+            {
+              "hanzi": "高，",
+              "pinyin": "gāo"
+            },
+            {
+              "hanzi": "我",
+              "pinyin": "wǒ"
+            },
+            {
+              "hanzi": "叫",
+              "pinyin": "jiào"
+            },
+            {
+              "hanzi": "高",
+              "pinyin": "gāo"
+            },
+            {
+              "hanzi": "汉文",
+              "pinyin": "hànwén"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "Suǒyǐ xiànzài hái bùnéng zhù",
+          "text": "C. 所以 现在 还不能 住",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "所以",
+              "pinyin": "Suǒyǐ"
+            },
+            {
+              "hanzi": "现在",
+              "pinyin": "xiànzài"
+            },
+            {
+              "hanzi": "还",
+              "pinyin": "hái"
+            },
+            {
+              "hanzi": "不能",
+              "pinyin": "bùnéng"
+            },
+            {
+              "hanzi": "住",
+              "pinyin": "zhù"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "没有床所以还不能住，因果承接，选 C。",
+      "explanationEn": "No bed implies cannot live in yet. Correct: C.",
+      "promptTokens": [
+        {
+          "hanzi": "这个",
+          "pinyin": "Zhège"
+        },
+        {
+          "hanzi": "房间",
+          "pinyin": "fángjiān"
+        },
+        {
+          "hanzi": "有",
+          "pinyin": "yǒu"
+        },
+        {
+          "hanzi": "桌椅，",
+          "pinyin": "zhuōyǐ"
+        },
+        {
+          "hanzi": "但",
+          "pinyin": "dàn"
+        },
+        {
+          "hanzi": "还",
+          "pinyin": "hái"
+        },
+        {
+          "hanzi": "没有",
+          "pinyin": "méiyǒu"
+        },
+        {
+          "hanzi": "床。",
+          "pinyin": "chuáng"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "word_bank",
+      "pageHeader": "第 33～35 题 ★★",
+      "wordBank": [
+        {
+          "id": "A",
+          "pinyin": "gēn",
+          "text": "跟"
+        },
+        {
+          "id": "B",
+          "pinyin": "dǎchē",
+          "text": "打车"
+        },
+        {
+          "id": "C",
+          "pinyin": "cóngxiǎo",
+          "text": "从小"
+        },
+        {
+          "id": "D",
+          "pinyin": "lóu",
+          "text": "楼"
+        },
+        {
+          "id": "E",
+          "pinyin": "duō",
+          "text": "多"
+        },
+        {
+          "id": "F",
+          "pinyin": "yuǎn",
+          "text": "远"
+        }
+      ],
+      "promptPinyin": "Tā jiù ài yùndòng．",
+      "promptText": "33． 他 （ ） 就 爱 运动 。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "gēn",
+          "text": "跟",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "跟",
+              "pinyin": "gēn"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "dǎchē",
+          "text": "打车",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "打车",
+              "pinyin": "dǎchē"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "cóngxiǎo",
+          "text": "从小",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "从小",
+              "pinyin": "cóngxiǎo"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "pinyin": "lóu",
+          "text": "楼",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "楼",
+              "pinyin": "lóu"
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "pinyin": "duō",
+          "text": "多",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "多",
+              "pinyin": "duō"
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "pinyin": "yuǎn",
+          "text": "远",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "远",
+              "pinyin": "yuǎn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "“从小就爱运动”，选 C。",
+      "explanationEn": "\"从小就爱运动\" (loved sports since childhood). Correct: C.",
+      "promptTokens": [
+        {
+          "hanzi": "他",
+          "pinyin": "Tā"
+        },
+        {
+          "hanzi": "（　）",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "就",
+          "pinyin": "jiù"
+        },
+        {
+          "hanzi": "爱",
+          "pinyin": "ài"
+        },
+        {
+          "hanzi": "运动。",
+          "pinyin": "yùndòng"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "word_bank",
+      "pageHeader": "第 33～35 题 ★★",
+      "wordBank": [
+        {
+          "id": "A",
+          "pinyin": "gēn",
+          "text": "跟"
+        },
+        {
+          "id": "B",
+          "pinyin": "dǎchē",
+          "text": "打车"
+        },
+        {
+          "id": "C",
+          "pinyin": "cóngxiǎo",
+          "text": "从小"
+        },
+        {
+          "id": "D",
+          "pinyin": "lóu",
+          "text": "楼"
+        },
+        {
+          "id": "E",
+          "pinyin": "duō",
+          "text": "多"
+        },
+        {
+          "id": "F",
+          "pinyin": "yuǎn",
+          "text": "远"
+        }
+      ],
+      "promptPinyin": "Zhōngguó zěnmeyàng？ Kuài wǒ shuōshuo．",
+      "promptText": "34． 中国 怎么样 ？ 快 （ ） 我 说说 。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "gēn",
+          "text": "跟",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "跟",
+              "pinyin": "gēn"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "dǎchē",
+          "text": "打车",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "打车",
+              "pinyin": "dǎchē"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "cóngxiǎo",
+          "text": "从小",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "从小",
+              "pinyin": "cóngxiǎo"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "pinyin": "lóu",
+          "text": "楼",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "楼",
+              "pinyin": "lóu"
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "pinyin": "duō",
+          "text": "多",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "多",
+              "pinyin": "duō"
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "pinyin": "yuǎn",
+          "text": "远",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "远",
+              "pinyin": "yuǎn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "介词“跟我说说”，选 A。",
+      "explanationEn": "Preposition \"跟\" (跟我说说). Correct: A.",
+      "promptTokens": [
+        {
+          "hanzi": "中国",
+          "pinyin": "Zhōngguó"
+        },
+        {
+          "hanzi": "怎么样？",
+          "pinyin": "zěnmeyàng"
+        },
+        {
+          "hanzi": "快",
+          "pinyin": "Kuài"
+        },
+        {
+          "hanzi": "（　）",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "我",
+          "pinyin": "wǒ"
+        },
+        {
+          "hanzi": "说说。",
+          "pinyin": "shuōshuo"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "word_bank",
+      "pageHeader": "第 33～35 题 ★★",
+      "wordBank": [
+        {
+          "id": "A",
+          "pinyin": "gēn",
+          "text": "跟"
+        },
+        {
+          "id": "B",
+          "pinyin": "dǎchē",
+          "text": "打车"
+        },
+        {
+          "id": "C",
+          "pinyin": "cóngxiǎo",
+          "text": "从小"
+        },
+        {
+          "id": "D",
+          "pinyin": "lóu",
+          "text": "楼"
+        },
+        {
+          "id": "E",
+          "pinyin": "duō",
+          "text": "多"
+        },
+        {
+          "id": "F",
+          "pinyin": "yuǎn",
+          "text": "远"
+        }
+      ],
+      "promptPinyin": "Nǐ chūláile ma？ Wǒ dào xià le ．",
+      "promptText": "35． 你 出来了 吗？ 我 到 （ ） 下 了。",
+      "options": [
+        {
+          "id": "A",
+          "pinyin": "gēn",
+          "text": "跟",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "跟",
+              "pinyin": "gēn"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "pinyin": "dǎchē",
+          "text": "打车",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "打车",
+              "pinyin": "dǎchē"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "pinyin": "cóngxiǎo",
+          "text": "从小",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "从小",
+              "pinyin": "cóngxiǎo"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "pinyin": "lóu",
+          "text": "楼",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "楼",
+              "pinyin": "lóu"
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "pinyin": "duō",
+          "text": "多",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "多",
+              "pinyin": "duō"
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "pinyin": "yuǎn",
+          "text": "远",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "远",
+              "pinyin": "yuǎn"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "“到楼下了”，选 D。",
+      "explanationEn": "\"到楼下了\" (arrived downstairs). Correct: D.",
+      "promptTokens": [
+        {
+          "hanzi": "你",
+          "pinyin": "Nǐ"
+        },
+        {
+          "hanzi": "出来了",
+          "pinyin": "chūláile"
+        },
+        {
+          "hanzi": "吗？",
+          "pinyin": "ma"
+        },
+        {
+          "hanzi": "我",
+          "pinyin": "Wǒ"
+        },
+        {
+          "hanzi": "到",
+          "pinyin": "dào"
+        },
+        {
+          "hanzi": "（　）",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "下",
+          "pinyin": "xià"
+        },
+        {
+          "hanzi": "了。",
+          "pinyin": "le"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "level": "HSK 3",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 36～40 题 ★★★",
+      "promptText": "36． 没问题， 有不明白的问我就行。",
+      "options": [
+        {
+          "id": "A",
+          "text": "A. 您好！ 我是李冰， 是您妻子的同事。",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B. 八元五角。 要不要来点儿？",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "C. 经理怎么不在办公室？",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "D. 你到哪儿了？ 表演快开始了。",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "text": "E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。",
+          "isCorrect": true
+        }
+      ],
+      "explanationZh": "“没问题，有不明白的问我就行”对应“我上节数学课没来，能看看你的笔记吗？明天还你”，选 E。",
+      "explanationEn": "Math notes borrow request matches E.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 37,
+      "level": "HSK 3",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 36～40 题 ★★★",
+      "promptText": "37． 这位是我爱人张南， 他在图书馆上班。",
+      "options": [
+        {
+          "id": "A",
+          "text": "A. 您好！ 我是李冰， 是您妻子的同事。",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "B. 八元五角。 要不要来点儿？",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "C. 经理怎么不在办公室？",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "D. 你到哪儿了？ 表演快开始了。",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "text": "E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "介绍爱人张南对应同事问候，选 A。",
+      "explanationEn": "Introducing spouse matches A."
+    },
+    {
+      "id": 38,
+      "level": "HSK 3",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 36～40 题 ★★★",
+      "promptText": "38． 他休假了， 你有事可以给他发邮件。",
+      "options": [
+        {
+          "id": "A",
+          "text": "A. 您好！ 我是李冰， 是您妻子的同事。",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B. 八元五角。 要不要来点儿？",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "C. 经理怎么不在办公室？",
+          "isCorrect": true
+        },
+        {
+          "id": "D",
+          "text": "D. 你到哪儿了？ 表演快开始了。",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "text": "E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "询问经理不在办公室，选 C。",
+      "explanationEn": "Manager absent inquiry matches C."
+    },
+    {
+      "id": 39,
+      "level": "HSK 3",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 36～40 题 ★★★",
+      "promptText": "39． 别急， 我已经上电梯了。",
+      "options": [
+        {
+          "id": "A",
+          "text": "A. 您好！ 我是李冰， 是您妻子的同事。",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B. 八元五角。 要不要来点儿？",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "C. 经理怎么不在办公室？",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "D. 你到哪儿了？ 表演快开始了。",
+          "isCorrect": true
+        },
+        {
+          "id": "E",
+          "text": "E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "催促快开始对应上电梯，选 D。",
+      "explanationEn": "Urging about performance matches D."
+    },
+    {
+      "id": 40,
+      "level": "HSK 3",
+      "section": "reading",
+      "format": "sentence_match",
+      "pageHeader": "第 36～40 题 ★★★",
+      "promptText": "40． 请问香蕉多少钱一公斤?",
+      "options": [
+        {
+          "id": "A",
+          "text": "A. 您好！ 我是李冰， 是您妻子的同事。",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B. 八元五角。 要不要来点儿？",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "C. 经理怎么不在办公室？",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "D. 你到哪儿了？ 表演快开始了。",
+          "isCorrect": false
+        },
+        {
+          "id": "E",
+          "text": "E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "问水果价格对应“八元五角”，选 B。",
+      "explanationEn": "Fruit price inquiry matches B."
+    },
+    {
+      "id": 41,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "passage_comprehension",
+      "pageHeader": "第 41～42 题 ★★",
+      "promptText": "41．小海刚来中国生活， 除了我以外， 没什么认识的人。 快要到春节了， 我想请他来咱们家过节， 一起包饺子、 看电视。\n\n★ 小海：",
+      "options": [
+        {
+          "id": "A",
+          "text": "A. 是游客",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B. 打算请客",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "C. 来中国不久",
+          "isCorrect": true
+        }
+      ],
+      "explanationZh": "“小海刚来中国生活”，即来中国不久，选 C。",
+      "explanationEn": "Xiao Hai came to China recently. Correct: C.",
+      "isExpressSelected": true
+    },
+    {
+      "id": 42,
+      "level": "HSK 2",
+      "section": "reading",
+      "format": "passage_comprehension",
+      "pageHeader": "第 41～42 题 ★★",
+      "promptText": "42． 难过的时候， 我会选择做一些运动， 比如出去跑跑步、 骑会儿车。 每次不需要锻炼太久， 只要让身体动起来， 我心里就会觉得舒服很多。\n\n★ 他难过时会怎么做？",
+      "options": [
+        {
+          "id": "A",
+          "text": "A. 笑一笑",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B. 锻炼身体",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "C. 喝几瓶饮料",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“做一些运动，比如跑步、骑车”，即锻炼身体，选 B。",
+      "explanationEn": "Exercise when sad. Correct: B."
+    },
+    {
+      "id": 43,
+      "level": "HSK 2",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "三、书 写\n第 43～45 题 ★★",
+      "promptPinyin": "Wǒ hái zài lùshang， wǒ ( de ) chē huài le．",
+      "promptText": "43． 我 还 在 路上 ，我 （ ）车 坏 了。",
+      "options": [
+        {
+          "id": "A",
+          "text": "的",
+          "pinyin": "de",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "的",
+              "pinyin": "de"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "text": "得",
+          "pinyin": "de",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "得",
+              "pinyin": "de"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "text": "地",
+          "pinyin": "de",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "地",
+              "pinyin": "de"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "定语修饰名词“我的车”，选“的”。",
+      "explanationEn": "Possessive particle \"的\". Correct: A.",
+      "promptTokens": [
+        {
+          "hanzi": "我",
+          "pinyin": "Wǒ"
+        },
+        {
+          "hanzi": "还",
+          "pinyin": "hái"
+        },
+        {
+          "hanzi": "在",
+          "pinyin": "zài"
+        },
+        {
+          "hanzi": "路上，",
+          "pinyin": "lùshang"
+        },
+        {
+          "hanzi": "我",
+          "pinyin": "wǒ"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "de",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "车",
+          "pinyin": "chē"
+        },
+        {
+          "hanzi": "坏",
+          "pinyin": "huài"
+        },
+        {
+          "hanzi": "了。",
+          "pinyin": "le"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "level": "HSK 2",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "第 43～45 题 ★★",
+      "promptPinyin": "Nǐ ( kě ) yǐ zài wǎng shang mǎi jīpiào．",
+      "promptText": "44． 你 （ ） 以 在 网 上 买 机票。",
+      "options": [
+        {
+          "id": "A",
+          "text": "可",
+          "pinyin": "kě",
+          "isCorrect": true,
+          "tokens": [
+            {
+              "hanzi": "可",
+              "pinyin": "kě"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "text": "渴",
+          "pinyin": "kě",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "渴",
+              "pinyin": "kě"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "text": "课",
+          "pinyin": "kè",
+          "isCorrect": false,
+          "tokens": [
+            {
+              "hanzi": "课",
+              "pinyin": "kè"
+            }
+          ]
+        }
+      ],
+      "explanationZh": "“可以”表示许可，汉字为“可”。",
+      "explanationEn": "\"可以\" (can/may). Correct: A (可).",
+      "promptTokens": [
+        {
+          "hanzi": "你",
+          "pinyin": "Nǐ"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "kě",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "以",
+          "pinyin": "yǐ"
+        },
+        {
+          "hanzi": "在",
+          "pinyin": "zài"
+        },
+        {
+          "hanzi": "网",
+          "pinyin": "wǎng"
+        },
+        {
+          "hanzi": "上",
+          "pinyin": "shang"
+        },
+        {
+          "hanzi": "买",
+          "pinyin": "mǎi"
+        },
+        {
+          "hanzi": "机票。",
+          "pinyin": "jīpiào"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "level": "HSK 2",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "第 43～45 题 ★★",
+      "promptPinyin": "Wǒ bù ( hǎo ) yìsi ràng péngyou bāngmáng．",
+      "promptText": "45． 我 不 （ ） 意思 让 朋友 帮忙。",
+      "options": [
+        {
+          "id": "A",
+          "text": "好",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "号",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "浩",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“不好意思”，空位为“好”（hǎo）。",
+      "explanationEn": "The missing character in “不好意思” is 好 (hǎo). Correct: A.",
+      "promptTokens": [
+        {
+          "hanzi": "我",
+          "pinyin": "Wǒ"
+        },
+        {
+          "hanzi": "不",
+          "pinyin": "bù"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "hǎo",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "意思",
+          "pinyin": "yìsi"
+        },
+        {
+          "hanzi": "让",
+          "pinyin": "ràng"
+        },
+        {
+          "hanzi": "朋友",
+          "pinyin": "péngyou"
+        },
+        {
+          "hanzi": "帮忙。",
+          "pinyin": "bāngmáng"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "level": "HSK 3",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "第 46～50 题 ★★★",
+      "promptPinyin": "fāng",
+      "promptText": "46． 听说这些鸟是从北 （ ） 飞过来的。",
+      "options": [
+        {
+          "id": "A",
+          "text": "方",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "房",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "放",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“北方”，选“方”。",
+      "explanationEn": "\"北方\" (the North). Correct: A (方).",
+      "promptTokens": [
+        {
+          "hanzi": "听说这些鸟是从北"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "fāng",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "飞过来的。"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "level": "HSK 3",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "第 46～50 题 ★★★",
+      "promptPinyin": "gāi",
+      "promptText": "47． 没有经过我的同意， 你不 （ ） 动我的东西。",
+      "options": [
+        {
+          "id": "A",
+          "text": "该",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "改",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "概",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“不该”表示不应当，选“该”。",
+      "explanationEn": "\"不该\" (should not). Correct: A (该).",
+      "promptTokens": [
+        {
+          "hanzi": "没有经过我的同意，你不"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "gāi",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "动我的东西。"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "level": "HSK 3",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "第 46～50 题 ★★★",
+      "promptPinyin": "máo",
+      "promptText": "48． 这里一个鸡蛋只要八 （ ） 钱。",
+      "options": [
+        {
+          "id": "A",
+          "text": "毛",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "猫",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "帽",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“八毛钱”，选“毛”。",
+      "explanationEn": "\"八毛钱\" (0.8 yuan). Correct: A (毛).",
+      "promptTokens": [
+        {
+          "hanzi": "这里一个鸡蛋只要八"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "máo",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "钱。"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "level": "HSK 3",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "第 46～50 题 ★★★",
+      "promptPinyin": "chéng",
+      "promptText": "49． 小东这次中文考试考了第一， （ ） 绩比上次高十分。",
+      "options": [
+        {
+          "id": "A",
+          "text": "成",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "城",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "诚",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“成绩”，选“成”。",
+      "explanationEn": "\"成绩\" (grades/achievement). Correct: A (成).",
+      "promptTokens": [
+        {
+          "hanzi": "小东这次中文考试考了第一，"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "chéng",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "绩比上次高十分。"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "level": "HSK 3",
+      "section": "writing",
+      "format": "writing_pinyin",
+      "pageHeader": "第 46～50 题 ★★★",
+      "promptPinyin": "fǎ",
+      "promptText": "50． 牛先生认为这个办 （ ） 不能解决问题。",
+      "options": [
+        {
+          "id": "A",
+          "text": "法",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "发",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "伐",
+          "isCorrect": false
+        }
+      ],
+      "explanationZh": "“办法”，选“法”。",
+      "explanationEn": "\"办法\" (method/solution). Correct: A (法).",
+      "promptTokens": [
+        {
+          "hanzi": "牛先生认为这个办"
+        },
+        {
+          "hanzi": "（　）",
+          "pinyin": "fǎ",
+          "kind": "blank"
+        },
+        {
+          "hanzi": "不能解决问题。"
+        }
+      ]
+    }
+  ],
+  "fullPassCounts": {
+    "hsk1": {
+      "hsk1": 11
+    },
+    "hsk2": {
+      "hsk1": 12,
+      "hsk2": 12
+    },
+    "hsk3": {
+      "hsk1": 12,
+      "hsk2": 14,
+      "hsk3": 13
+    }
+  },
+  "explanationsId": {
+    "1": "Rekaman menyebut naik pesawat.",
+    "2": "Tidak ingin mendengar cocok dengan menutup telinga.",
+    "3": "Di atas kursi cocok dengan kucing di atas kursi.",
+    "4": "Pertanyaan menanyakan jumlah anggota keluarga; jawabannya lima orang.",
+    "5": "Pertanyaan menanyakan tempat duduk; jawabannya di depan.",
+    "6": "Xiao Zhang sakit, bukan tidak datang ke sekolah.",
+    "7": "Pembicara sedang menelepon.",
+    "8": "Mereka tertawa karena seseorang di televisi lucu.",
+    "9": "Dialog menyebut membuka botol air.",
+    "10": "Mereka berpisah; salah satunya diminta mengemudi perlahan.",
+    "11": "Pria memilih naik metro karena lebih cepat daripada bus.",
+    "12": "Toilet berada di dalam pusat perbelanjaan.",
+    "13": "Cuaca mendung; hujan belum dinyatakan turun.",
+    "14": "Wanita akan bercerita.",
+    "15": "Nenek pria dirawat di rumah sakit.",
+    "16": "十点一刻 berarti pukul 10.15.",
+    "17": "Komputer wanita tidak dapat dinyalakan.",
+    "18": "Siswa diminta membaca instruksi dengan teliti.",
+    "19": "Kucing ditemukan di atas rumput.",
+    "20": "Pilih sesuai naskah rekaman: kebiasaan yang kurang baik.",
+    "21": "Musim gugur sejuk dan nyaman (凉快).",
+    "22": "再见 berarti sampai jumpa; cocok dengan orang melambaikan tangan.",
+    "23": "唱歌 berarti menyanyi; cocok dengan anak bermain gitar dan menyanyi.",
+    "24": "鸡蛋和牛奶 berarti telur dan susu.",
+    "25": "Hari pertama sekolah cocok dengan anak perempuan membawa tas sekolah.",
+    "26": "很多 berarti banyak.",
+    "27": "上午 berarti pagi; mereka belajar bahasa Mandarin pagi hari.",
+    "28": "漂亮 berarti indah; kata ini menjelaskan cangkir kedua.",
+    "29": "休息一下 berarti beristirahat sebentar.",
+    "30": "Kalimat tentang nama Mandarin dilanjutkan dengan perkenalan nama Gao Hanwen.",
+    "31": "Permintaan membuka pintu cocok dengan pertanyaan siapa yang berada di luar.",
+    "32": "Tidak ada tempat tidur, sehingga belum bisa ditinggali.",
+    "33": "从小 berarti sejak kecil.",
+    "34": "跟我说说 berarti ceritakan kepada saya.",
+    "35": "楼下 berarti di bawah/di lantai bawah.",
+    "36": "Jawaban tentang membantu memahami pelajaran cocok dengan permintaan meminjam catatan matematika.",
+    "37": "Perkenalan suami cocok dengan sapaan dari rekan kerja istrinya.",
+    "38": "Manajer sedang cuti; dapat dihubungi lewat surel.",
+    "39": "Sudah masuk lift menjawab pertanyaan lokasi menjelang pertunjukan.",
+    "40": "Pertanyaan harga pisang dijawab delapan yuan lima jiao.",
+    "41": "刚来中国 berarti baru datang ke China.",
+    "42": "Saat sedih, ia menggerakkan tubuh dengan berolahraga.",
+    "43": "我的车 berarti mobil saya; karakter yang hilang adalah 的.",
+    "44": "可以 berarti boleh/dapat; karakter yang hilang adalah 可.",
+    "45": "不好意思 berarti merasa sungkan; karakter yang hilang adalah 好 (hǎo).",
+    "46": "北方 berarti bagian utara; pilih 方 (fāng).",
+    "47": "不该 berarti tidak seharusnya; pilih 该 (gāi).",
+    "48": "八毛钱 berarti 0,8 yuan; pilih 毛 (máo).",
+    "49": "成绩 berarti hasil/nilai; pilih 成 (chéng).",
+    "50": "办法 berarti cara/solusi; pilih 法 (fǎ)."
+  },
+  "imageAssets": {
+    "car": {
+      "src": "/images/hsk/source-e80a3cbaabc5/car.png",
+      "page": 2,
+      "bbox": [
+        172.96,
+        318.52,
+        272.24,
+        362.24
+      ],
+      "width": 414,
+      "height": 182,
+      "sha256": "ab7795b708b814dcbdb8b508c84dc7fcc397613deb79f8b9fce4814637d2a2e9"
+    },
+    "bullet_train": {
+      "src": "/images/hsk/source-e80a3cbaabc5/bullet_train.png",
+      "page": 2,
+      "bbox": [
+        298.6,
+        318.52,
+        386,
+        362.24
+      ],
+      "width": 365,
+      "height": 182,
+      "sha256": "0649f60ddd34abef5d5f35933e96a23d51a6283d60c7c1b1020910cedce8a755"
+    },
+    "airplane": {
+      "src": "/images/hsk/source-e80a3cbaabc5/airplane.png",
+      "page": 2,
+      "bbox": [
+        412.96,
+        315.76,
+        510.32,
+        365.12
+      ],
+      "width": 406,
+      "height": 205,
+      "sha256": "66819894ffb004631d44e59c9d716fc049c09d436420f5e4a8b67d4b26509f3a"
+    },
+    "cover_ears": {
+      "src": "/images/hsk/source-e80a3cbaabc5/cover_ears.png",
+      "page": 2,
+      "bbox": [
+        166.96,
+        449.32,
+        278.72,
+        524.36
+      ],
+      "width": 466,
+      "height": 313,
+      "sha256": "21bee85962330b84e7c7692252ba92bf50ce55a02c5ae4b28b6f83a76b0b9373"
+    },
+    "cover_eyes": {
+      "src": "/images/hsk/source-e80a3cbaabc5/cover_eyes.png",
+      "page": 2,
+      "bbox": [
+        286.6,
+        444.04,
+        398.36,
+        526.52
+      ],
+      "width": 466,
+      "height": 344,
+      "sha256": "76c305c1a08076eb558471212e7d2a2b48a233b8cfebed37f3301ce73e99e405"
+    },
+    "shh": {
+      "src": "/images/hsk/source-e80a3cbaabc5/shh.png",
+      "page": 2,
+      "bbox": [
+        426.76,
+        442.36,
+        497.72,
+        532.16
+      ],
+      "width": 295,
+      "height": 374,
+      "sha256": "d72d2c94aad889dc1e7bb94a89d197eec4d9e82b1d150204a1eff17a8ff8666c"
+    },
+    "bird_branch": {
+      "src": "/images/hsk/source-e80a3cbaabc5/bird_branch.png",
+      "page": 2,
+      "bbox": [
+        181.96,
+        591.28,
+        263.12,
+        668.36
+      ],
+      "width": 339,
+      "height": 321,
+      "sha256": "bcfb575f55401a312da728ef009803e563927ebcd41eb732f51065fccbbb2d61"
+    },
+    "cat_on_chair": {
+      "src": "/images/hsk/source-e80a3cbaabc5/cat_on_chair.png",
+      "page": 2,
+      "bbox": [
+        311.8,
+        589.48,
+        372.44,
+        671.12
+      ],
+      "width": 253,
+      "height": 340,
+      "sha256": "0ff8f5e0c56559b22985707d4e48061f112e130ca2bd1657e78a1aaf54edb968"
+    },
+    "dog_under_chair": {
+      "src": "/images/hsk/source-e80a3cbaabc5/dog_under_chair.png",
+      "page": 2,
+      "bbox": [
+        426.16,
+        582.88,
+        498.32,
+        677.6
+      ],
+      "width": 301,
+      "height": 394,
+      "sha256": "a0de4b1aff175353d414e94e03d346ea55675e68be0f25b46e3c86ba61203621"
+    },
+    "hand_bottle": {
+      "src": "/images/hsk/source-e80a3cbaabc5/hand_bottle.png",
+      "page": 4,
+      "bbox": [
+        150,
+        100,
+        280,
+        220
+      ],
+      "width": 542,
+      "height": 500,
+      "sha256": "0a27988fde4930f6772dbde0561e66d9d08de07f5a70dbc596848044fc24fc55"
+    },
+    "headache": {
+      "src": "/images/hsk/source-e80a3cbaabc5/headache.png",
+      "page": 4,
+      "bbox": [
+        365,
+        100,
+        485,
+        222
+      ],
+      "width": 500,
+      "height": 508,
+      "sha256": "7d0c90c278ccb4ed9d18f906e98eaa7f1de4f364bc6efd9202d5150490a16000"
+    },
+    "driver_car_wave": {
+      "src": "/images/hsk/source-e80a3cbaabc5/driver_car_wave.png",
+      "page": 4,
+      "bbox": [
+        155,
+        232,
+        285,
+        325
+      ],
+      "width": 542,
+      "height": 387,
+      "sha256": "85d0e4b1d2a6102e0b3fd0f35e574574e8476fcd4b674ae57afc8b04d7c8c821"
+    },
+    "soccer_girl": {
+      "src": "/images/hsk/source-e80a3cbaabc5/soccer_girl.png",
+      "page": 4,
+      "bbox": [
+        368,
+        222,
+        486,
+        348
+      ],
+      "width": 491,
+      "height": 525,
+      "sha256": "5b4fef0b95bc2569b3518767894c27f7194abea92fbdf81f289603ee31c800a5"
+    },
+    "laughing_tv": {
+      "src": "/images/hsk/source-e80a3cbaabc5/laughing_tv.png",
+      "page": 4,
+      "bbox": [
+        158,
+        346,
+        284,
+        454
+      ],
+      "width": 526,
+      "height": 450,
+      "sha256": "9eff267829fb0fe1b0c877e32c49c05d3ecb6d8db16c1dd1daed8b79ace2560d"
+    },
+    "boy_books": {
+      "src": "/images/hsk/source-e80a3cbaabc5/boy_books.png",
+      "page": 4,
+      "bbox": [
+        368,
+        345,
+        484,
+        454
+      ],
+      "width": 483,
+      "height": 454,
+      "sha256": "6a5c068428d749d8405fe24fc3a409bb8bd409daf2d246447d3b2c33040f1c2d"
+    },
+    "guitar_boy": {
+      "src": "/images/hsk/source-e80a3cbaabc5/guitar_boy.png",
+      "page": 7,
+      "bbox": [
+        145,
+        127,
+        283,
+        241
+      ],
+      "width": 575,
+      "height": 475,
+      "sha256": "cf540fe81a6f91b0da1ff2663987376a28f06cb09570e08596ebd3da595d84cd"
+    },
+    "schoolgirl": {
+      "src": "/images/hsk/source-e80a3cbaabc5/schoolgirl.png",
+      "page": 7,
+      "bbox": [
+        365,
+        124,
+        473,
+        245
+      ],
+      "width": 450,
+      "height": 504,
+      "sha256": "022c7f6aa050ef1abb7fa281d9820d1a4f791be6c33dee6fda9c5deb01a5ef0e"
+    },
+    "umbrella": {
+      "src": "/images/hsk/source-e80a3cbaabc5/umbrella.png",
+      "page": 7,
+      "bbox": [
+        147,
+        244,
+        275,
+        344
+      ],
+      "width": 533,
+      "height": 416,
+      "sha256": "6a01f27c4578eb07b0c855a4d0b8bc72f4f72551bab1b90156c5aecb90cc5487"
+    },
+    "eggs_milk": {
+      "src": "/images/hsk/source-e80a3cbaabc5/eggs_milk.png",
+      "page": 7,
+      "bbox": [
+        357,
+        244,
+        493,
+        344
+      ],
+      "width": 567,
+      "height": 416,
+      "sha256": "bbf3b781e7e81f244346e39794960472f972f4d743444f33d910a26e9419d237"
+    },
+    "reading_chair": {
+      "src": "/images/hsk/source-e80a3cbaabc5/reading_chair.png",
+      "page": 7,
+      "bbox": [
+        148,
+        344,
+        285,
+        480
+      ],
+      "width": 571,
+      "height": 567,
+      "sha256": "985ef0becc542b504652c995df93c2b61fde944126cc8f0b1f373601ce5e2054"
+    },
+    "two_men_waving": {
+      "src": "/images/hsk/source-e80a3cbaabc5/two_men_waving.png",
+      "page": 7,
+      "bbox": [
+        362,
+        344,
+        493,
+        480
+      ],
+      "width": 546,
+      "height": 567,
+      "sha256": "6b430b20b97b251e7b1fd17496affa4b206574b4ec9bf67812f1b44f7dd8102f"
+    },
+    "example_apples": {
+      "src": "/images/hsk/source-e80a3cbaabc5/example_apples.png",
+      "page": 2,
+      "bbox": [
+        412.96,
+        161.2,
+        511.16,
+        230.36
+      ],
+      "width": 409,
+      "height": 288,
+      "sha256": "3c861e0a5cddbcc90b65be5f7b75751c307f877d49d0da238383242a33d89ce2"
+    }
+  },
+  "audioAssets": {
+    "1": {
+      "src": "/audio/source-1d13ab138e86/q1.mp3",
+      "startSec": 7.2,
+      "endSec": 23.3,
+      "durationSec": 16.09,
+      "recordedNumber": 1,
+      "sha256": "e4971655b33c1700f26094f3963f88a1f6f541589259d4e440106b1ddbd519b5",
+      "sourceFirstPacket": 277,
+      "sourcePacketCount": 616
+    },
+    "2": {
+      "src": "/audio/source-1d13ab138e86/q2.mp3",
+      "startSec": 23.35,
+      "endSec": 39.5,
+      "durationSec": 16.17,
+      "recordedNumber": 2,
+      "sha256": "f64fa916d079fa3a7fb108710f0d3529b7945e743bb4282ae71b23d6ba22aef7",
+      "sourceFirstPacket": 895,
+      "sourcePacketCount": 619
+    },
+    "3": {
+      "src": "/audio/source-1d13ab138e86/q3.mp3",
+      "startSec": 39.7,
+      "endSec": 56.8,
+      "durationSec": 17.11,
+      "recordedNumber": 3,
+      "sha256": "aaf4b6a3aa3ca60dfda2c4e35364b0ab65cbfec44ae42e144910b0da9b181424",
+      "sourceFirstPacket": 1521,
+      "sourcePacketCount": 655
+    },
+    "4": {
+      "src": "/audio/source-1d13ab138e86/q4.mp3",
+      "startSec": 62.6,
+      "endSec": 85,
+      "durationSec": 22.39,
+      "recordedNumber": 6,
+      "sha256": "f18e444d3a0380fdfc551f1a7abde008a7d74e6a1cf10f9dcc2493e93e75fc26",
+      "sourceFirstPacket": 2398,
+      "sourcePacketCount": 857
+    },
+    "5": {
+      "src": "/audio/source-1d13ab138e86/q5.mp3",
+      "startSec": 85.4,
+      "endSec": 101.5,
+      "durationSec": 16.09,
+      "recordedNumber": 7,
+      "sha256": "774180e8de7fe28794f0b97072aa93b7a405df7351c8c8be661285f4b9472e78",
+      "sourceFirstPacket": 3271,
+      "sourcePacketCount": 616
+    },
+    "6": {
+      "src": "/audio/source-1d13ab138e86/q6.mp3",
+      "startSec": 108.3,
+      "endSec": 142.5,
+      "durationSec": 34.22,
+      "recordedNumber": 16,
+      "sha256": "e1f9f86a505283e38e59799422c141602ddcbffa6957dc069a38d0032d2f3a9e",
+      "sourceFirstPacket": 4147,
+      "sourcePacketCount": 1310
+    },
+    "7": {
+      "src": "/audio/source-1d13ab138e86/q7.mp3",
+      "startSec": 143.1,
+      "endSec": 171.5,
+      "durationSec": 28.4,
+      "recordedNumber": 17,
+      "sha256": "3e37e9ad1ab5f247a3d55ca13d64f54675b68a5c2ecf223caf25721e502105f0",
+      "sourceFirstPacket": 5480,
+      "sourcePacketCount": 1087
+    },
+    "8": {
+      "src": "/audio/source-1d13ab138e86/q8.mp3",
+      "startSec": 172.1,
+      "endSec": 199.1,
+      "durationSec": 26.98,
+      "recordedNumber": 6,
+      "sha256": "19d57535784fc827d1baff6afeed880eadf566471f26be57e8a95aa4b13ca4ab",
+      "sourceFirstPacket": 6590,
+      "sourcePacketCount": 1033
+    },
+    "9": {
+      "src": "/audio/source-1d13ab138e86/q9.mp3",
+      "startSec": 199.6,
+      "endSec": 226.1,
+      "durationSec": 26.51,
+      "recordedNumber": 7,
+      "sha256": "b2f260aaed456ab11b3ff1ff629249c26e836b623fccc92fc847de57acbb0fda",
+      "sourceFirstPacket": 7642,
+      "sourcePacketCount": 1015
+    },
+    "10": {
+      "src": "/audio/source-1d13ab138e86/q10.mp3",
+      "startSec": 226.5,
+      "endSec": 249.5,
+      "durationSec": 23.01,
+      "recordedNumber": 8,
+      "sha256": "d4a60aaecfbef94d0741263b186108ceaa13ef461fbbff0294a61a4c647d88e5",
+      "sourceFirstPacket": 8672,
+      "sourcePacketCount": 881
+    },
+    "11": {
+      "src": "/audio/source-1d13ab138e86/q11.mp3",
+      "startSec": 255.4,
+      "endSec": 297.8,
+      "durationSec": 42.42,
+      "recordedNumber": 16,
+      "sha256": "2fa3176436fee85026991576e5ba88f76546f92f041ad4b4157a3029991a3707",
+      "sourceFirstPacket": 9778,
+      "sourcePacketCount": 1624
+    },
+    "12": {
+      "src": "/audio/source-1d13ab138e86/q12.mp3",
+      "startSec": 298.1,
+      "endSec": 339.1,
+      "durationSec": 41.01,
+      "recordedNumber": 17,
+      "sha256": "bc8b17abbb0696d32eac215890ee3c04646653a024b984d23829e54bfd9781d5",
+      "sourceFirstPacket": 11413,
+      "sourcePacketCount": 1570
+    },
+    "13": {
+      "src": "/audio/source-1d13ab138e86/q13.mp3",
+      "startSec": 339.3,
+      "endSec": 374.5,
+      "durationSec": 35.21,
+      "recordedNumber": 18,
+      "sha256": "9269bfc18c6d752a6fc7e7cd9fdcf339c34287ad9a69566b1219a6a0f39f4f68",
+      "sourceFirstPacket": 12990,
+      "sourcePacketCount": 1348
+    },
+    "14": {
+      "src": "/audio/source-1d13ab138e86/q14.mp3",
+      "startSec": 381.3,
+      "endSec": 417.2,
+      "durationSec": 35.89,
+      "recordedNumber": 11,
+      "sha256": "cfe5504b86e0317bc210897335026fc2b8fb6b1fbe678b1943ef79a6ff700324",
+      "sourceFirstPacket": 14598,
+      "sourcePacketCount": 1374
+    },
+    "15": {
+      "src": "/audio/source-1d13ab138e86/q15.mp3",
+      "startSec": 417.3,
+      "endSec": 457.3,
+      "durationSec": 39.99,
+      "recordedNumber": 12,
+      "sha256": "df6375b8eae80b5f443db98dbb3dc1c1d293c1270742b2442bfd9c9d14c278d9",
+      "sourceFirstPacket": 15976,
+      "sourcePacketCount": 1531
+    },
+    "16": {
+      "src": "/audio/source-1d13ab138e86/q16.mp3",
+      "startSec": 457.5,
+      "endSec": 493.4,
+      "durationSec": 35.89,
+      "recordedNumber": 13,
+      "sha256": "5f0ef077fed96dbe70090dd35af23c6711b0306c146d092a78b88abcd263b70e",
+      "sourceFirstPacket": 17515,
+      "sourcePacketCount": 1374
+    },
+    "17": {
+      "src": "/audio/source-1d13ab138e86/q17.mp3",
+      "startSec": 493.6,
+      "endSec": 528.1,
+      "durationSec": 34.51,
+      "recordedNumber": 14,
+      "sha256": "e441c249cdb373875f9c0719bf2bf920f6d5ecb4781818e20908ea6845c6f861",
+      "sourceFirstPacket": 18897,
+      "sourcePacketCount": 1321
+    },
+    "18": {
+      "src": "/audio/source-1d13ab138e86/q18.mp3",
+      "startSec": 534.5,
+      "endSec": 574.2,
+      "durationSec": 39.71,
+      "recordedNumber": 21,
+      "sha256": "113dd9255f7dbfd727f541ebdbd2c3141a1f6181745478eb746e8b83ec7f4948",
+      "sourceFirstPacket": 20463,
+      "sourcePacketCount": 1520
+    },
+    "19": {
+      "src": "/audio/source-1d13ab138e86/q19.mp3",
+      "startSec": 574.3,
+      "endSec": 618.9,
+      "durationSec": 44.62,
+      "recordedNumber": 22,
+      "sha256": "15e2085c9eb7e7f3fec276d7528014f6c283d6a175db7d51db66361b4a7762cd",
+      "sourceFirstPacket": 21986,
+      "sourcePacketCount": 1708
+    },
+    "20": {
+      "src": "/audio/source-1d13ab138e86/q20.mp3",
+      "startSec": 618.9,
+      "endSec": 657.1,
+      "durationSec": 38.19,
+      "recordedNumber": 23,
+      "sha256": "0be6e3ade1e789fb156f0a26f19622390996bd86e3b989079b25a74d9169d380",
+      "sourceFirstPacket": 23694,
+      "sourcePacketCount": 1462
+    },
+    "21": {
+      "src": "/audio/source-1d13ab138e86/q21.mp3",
+      "startSec": 657.1,
+      "endSec": 698,
+      "durationSec": 40.91,
+      "recordedNumber": 24,
+      "sha256": "8a41b243f5e2c9f8d5b92ff7d4c96e0804ba3e91f4840115dbc9a44d302b0433",
+      "sourceFirstPacket": 25156,
+      "sourcePacketCount": 1566
+    }
+  },
+  "displayOptions": {
+    "1": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "2": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "3": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "4": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "5": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "6": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "7": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "8": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "9": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "10": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "11": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "12": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "13": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "14": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "15": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "16": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "17": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "18": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "19": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "20": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "21": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "22": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "23": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "24": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "25": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "26": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "27": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "28": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "29": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "30": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "31": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "32": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "33": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "34": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "35": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      },
+      {
+        "id": "F",
+        "label": "F"
+      }
+    ],
+    "36": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      }
+    ],
+    "37": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      }
+    ],
+    "38": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      }
+    ],
+    "39": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      }
+    ],
+    "40": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      },
+      {
+        "id": "D",
+        "label": "D"
+      },
+      {
+        "id": "E",
+        "label": "E"
+      }
+    ],
+    "41": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "42": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "43": [
+      {
+        "id": "B",
+        "label": "A"
+      },
+      {
+        "id": "C",
+        "label": "B"
+      },
+      {
+        "id": "A",
+        "label": "C"
+      }
+    ],
+    "44": [
+      {
+        "id": "C",
+        "label": "A"
+      },
+      {
+        "id": "A",
+        "label": "B"
+      },
+      {
+        "id": "B",
+        "label": "C"
+      }
+    ],
+    "45": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "46": [
+      {
+        "id": "B",
+        "label": "A"
+      },
+      {
+        "id": "C",
+        "label": "B"
+      },
+      {
+        "id": "A",
+        "label": "C"
+      }
+    ],
+    "47": [
+      {
+        "id": "C",
+        "label": "A"
+      },
+      {
+        "id": "A",
+        "label": "B"
+      },
+      {
+        "id": "B",
+        "label": "C"
+      }
+    ],
+    "48": [
+      {
+        "id": "A",
+        "label": "A"
+      },
+      {
+        "id": "B",
+        "label": "B"
+      },
+      {
+        "id": "C",
+        "label": "C"
+      }
+    ],
+    "49": [
+      {
+        "id": "B",
+        "label": "A"
+      },
+      {
+        "id": "C",
+        "label": "B"
+      },
+      {
+        "id": "A",
+        "label": "C"
+      }
+    ],
+    "50": [
+      {
+        "id": "C",
+        "label": "A"
+      },
+      {
+        "id": "A",
+        "label": "B"
+      },
+      {
+        "id": "B",
+        "label": "C"
+      }
+    ]
+  }
+}

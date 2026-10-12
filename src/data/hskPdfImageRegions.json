@@ -1,0 +1,228 @@
+{
+  "sourceSha256": "e80a3cbaabc5e75c186001a54bb98793a29129fb3459e6b75903e69e5c9e4a54",
+  "sourceFilename": "HSK测评题.pdf",
+  "units": "PDF points, top-left origin",
+  "regions": [
+    {
+      "id": "car",
+      "pageIndex": 2,
+      "bbox": [
+        172.96,
+        318.52,
+        272.24,
+        362.24
+      ]
+    },
+    {
+      "id": "bullet_train",
+      "pageIndex": 2,
+      "bbox": [
+        298.6,
+        318.52,
+        386.0,
+        362.24
+      ]
+    },
+    {
+      "id": "airplane",
+      "pageIndex": 2,
+      "bbox": [
+        412.96,
+        315.76,
+        510.32,
+        365.12
+      ]
+    },
+    {
+      "id": "cover_ears",
+      "pageIndex": 2,
+      "bbox": [
+        166.96,
+        449.32,
+        278.72,
+        524.36
+      ]
+    },
+    {
+      "id": "cover_eyes",
+      "pageIndex": 2,
+      "bbox": [
+        286.6,
+        444.04,
+        398.36,
+        526.52
+      ]
+    },
+    {
+      "id": "shh",
+      "pageIndex": 2,
+      "bbox": [
+        426.76,
+        442.36,
+        497.72,
+        532.16
+      ]
+    },
+    {
+      "id": "bird_branch",
+      "pageIndex": 2,
+      "bbox": [
+        181.96,
+        591.28,
+        263.12,
+        668.36
+      ]
+    },
+    {
+      "id": "cat_on_chair",
+      "pageIndex": 2,
+      "bbox": [
+        311.8,
+        589.48,
+        372.44,
+        671.12
+      ]
+    },
+    {
+      "id": "dog_under_chair",
+      "pageIndex": 2,
+      "bbox": [
+        426.16,
+        582.88,
+        498.32,
+        677.6
+      ]
+    },
+    {
+      "id": "hand_bottle",
+      "pageIndex": 4,
+      "bbox": [
+        150,
+        100,
+        280,
+        220
+      ]
+    },
+    {
+      "id": "headache",
+      "pageIndex": 4,
+      "bbox": [
+        365,
+        100,
+        485,
+        222
+      ]
+    },
+    {
+      "id": "driver_car_wave",
+      "pageIndex": 4,
+      "bbox": [
+        155,
+        232,
+        285,
+        325
+      ]
+    },
+    {
+      "id": "soccer_girl",
+      "pageIndex": 4,
+      "bbox": [
+        368,
+        222,
+        486,
+        348
+      ]
+    },
+    {
+      "id": "laughing_tv",
+      "pageIndex": 4,
+      "bbox": [
+        158,
+        346,
+        284,
+        454
+      ]
+    },
+    {
+      "id": "boy_books",
+      "pageIndex": 4,
+      "bbox": [
+        368,
+        345,
+        484,
+        454
+      ]
+    },
+    {
+      "id": "guitar_boy",
+      "pageIndex": 7,
+      "bbox": [
+        145,
+        127,
+        283,
+        241
+      ]
+    },
+    {
+      "id": "schoolgirl",
+      "pageIndex": 7,
+      "bbox": [
+        365,
+        124,
+        473,
+        245
+      ]
+    },
+    {
+      "id": "umbrella",
+      "pageIndex": 7,
+      "bbox": [
+        147,
+        244,
+        275,
+        344
+      ]
+    },
+    {
+      "id": "eggs_milk",
+      "pageIndex": 7,
+      "bbox": [
+        357,
+        244,
+        493,
+        344
+      ]
+    },
+    {
+      "id": "reading_chair",
+      "pageIndex": 7,
+      "bbox": [
+        148,
+        344,
+        285,
+        480
+      ]
+    },
+    {
+      "id": "two_men_waving",
+      "pageIndex": 7,
+      "bbox": [
+        362,
+        344,
+        493,
+        480
+      ]
+    },
+    {
+      "id": "example_apples",
+      "pageIndex": 2,
+      "bbox": [
+        412.96,
+        161.2,
+        511.16,
+        230.36
+      ],
+      "exampleOnly": true
+    }
+  ]
+}

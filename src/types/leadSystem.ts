@@ -106,6 +106,9 @@ export interface LeadProfile {
   
   // 测评数据
   quizScore?: number;
+  quizMaxScore?: number;
+  latestAssessment?: import("../data/hskAssessment").HskResult;
+  assessmentProvenance?: "server_recomputed_adapted_paper" | "legacy_unverified";
   totalQuestions?: number;
   quizResultSummary?: string;
   quizBreakdown?: {

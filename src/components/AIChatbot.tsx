@@ -1,4 +1,7 @@
+import { safeHskResult } from "../data/hskReportHistory";
 import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
+import HskAssessmentReport from './HskAssessmentReport';
+import {chooseText} from '../data/hskAssessment';
 import { chatFetch, registerContact, restoreChat, finishChat } from '../services/portalChat';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -545,10 +548,10 @@ export default function AIChatbot() {
   const getStarterPrompts = () => {
     const ctx = studentContext || getStudentContext();
     if (ctx?.assessment?.completed) {
-      const level = ctx.assessment.levelConfirmed || 'HSK 1';
+      const level = safeHskResult(ctx.assessment.result,currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id')?.levelConfirmed || chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id','历史结果（未核验）','Legacy result (unverified)','Hasil lama (belum diverifikasi)');
       if (currentLang.startsWith('zh')) {
         return [
-          `针对我测出的 ${level}，有哪些推荐班型与开班时间？`,
+          `针对我报告中的 ${level}，有哪些推荐班型与开班时间？`,
           `达到中国顶尖名校（C9/双一流）申请要求还需要多久？`,
           `如何预约雅加达校区 1 对 1 专家试听与答疑？`,
           `UPER 的奖学金申请保录取计划具体是怎样的？`,
@@ -556,7 +559,7 @@ export default function AIChatbot() {
       }
       if (currentLang.startsWith('en')) {
         return [
-          `What class schedules are recommended for my confirmed ${level}?`,
+          `What class schedules are recommended for my diagnostic ${level}?`,
           `How long does it take to qualify for top C9 university scholarships?`,
           `How can I book a 1-on-1 expert consultation at UPER Jakarta?`,
           `What are the terms of UPER's Scholarship Guarantee Program?`,
@@ -579,16 +582,16 @@ export default function AIChatbot() {
     const ctx = studentContext || getStudentContext();
     if (ctx?.assessment?.completed) {
       const name = ctx.leadProfile?.fullName || (currentLang.startsWith('zh') ? '同学' : 'there');
-      const level = ctx.assessment.levelConfirmed || 'HSK 1';
-      const score = ctx.assessment.score ?? 0;
-      const total = ctx.assessment.total ?? 15;
-      if (currentLang.startsWith('zh')) {
-        return `🎉 欢迎回来，**${name}**！已为您无缝同步在全景测评舱的 HSK 诊断成果（测评定级：**${level}**，实测得分：**${score}/${total}** 正确）。\n\n针对该水平，UPER 已为您匹配好名校阶梯课程及全额奖学金备考方案。请问有什么我可以为您深度解析的吗？`;
-      }
-      if (currentLang.startsWith('en')) {
-        return `🎉 Welcome back, **${name}**! We have synchronized your diagnostic results from our Placement Lab (Confirmed Level: **${level}**, Score: **${score}/${total}** correct).\n\nBased on your level, UPER has mapped out your target university pathway and scholarship curriculum. How can I assist you with your personalized study plan today?`;
-      }
-      return `🎉 Selamat datang kembali, **${name}**! Hasil tes penempatan HSK Anda telah terhubung (Level Terkonfirmasi: **${level}**, Skor: **${score}/${total}**).\n\nBerdasarkan level ini, UPER telah menyiapkan jalur universitas impian dan program beasiswa untuk Anda. Ada rencana studi atau beasiswa yang ingin didiskusikan?`;
+      if(!ctx.assessment.result) return chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id','检测到历史测评记录，但缺少作答、版本和明确分值单位，尚未核验。建议重新测评或请教师复核。','A legacy assessment record was found, but answers, version and score units are missing. It is unverified; take a new assessment or request teacher review.','Ditemukan hasil tes lama tanpa jawaban, versi dan satuan nilai yang jelas. Hasil belum diverifikasi; ikuti tes baru atau minta peninjauan guru.');
+      const observed=safeHskResult(ctx.assessment.result,currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id');
+      if (!observed) return chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id','检测到历史报告，但其版本或作答记录暂不可复核。原记录保留，可重新测评或联系教师核对。','A historical report is retained, but its version or answers cannot currently be reviewed. Take a new assessment or ask a teacher to review it.','Laporan lama dipertahankan, tetapi versi atau jawabannya belum dapat ditinjau. Ikuti tes baru atau minta guru meninjaunya.');
+      const score=observed.score;
+      const total=observed.maxScore;
+      return chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id',
+        `欢迎回来，${name}！您有一份UPER分班参考报告（${score}/${total}分）。请查看报告的保存状态与测评范围；可继续讨论复习或教师复核。`,
+        `Welcome back, ${name}! You have a UPER placement reference report (${score}/${total} points). Check its save status and scope; we can discuss review or a teacher assessment.`,
+        `Selamat datang kembali, ${name}! Ada laporan referensi penempatan UPER (${score}/${total} poin). Periksa status penyimpanan dan cakupan tes; kita dapat membahas belajar ulang atau peninjauan guru.`);
+
     }
 
     if (ctx?.leadProfile) {
@@ -1654,17 +1657,17 @@ export default function AIChatbot() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 rounded-md bg-white/90 border border-primary-300 text-primary-700 font-extrabold text-[10px] shadow-2xs tracking-tight">
-                            {studentContext.assessment.levelConfirmed || 'HSK 1'}
+                            {safeHskResult(studentContext.assessment.result,currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id')?.levelConfirmed || chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id','历史结果（未核验）','Legacy result (unverified)','Hasil lama (belum diverifikasi)')}
                           </span>
                           <div className="flex flex-col">
                             <span className="font-bold text-slate-800 text-[11px] leading-tight flex items-center gap-1">
-                              <span>{currentLang.startsWith('zh') ? '已打通独立舱测评档案' : currentLang.startsWith('en') ? 'Placement Lab Profile Synced' : 'Profil Tes Penempatan Terhubung'}</span>
+                              <span>{currentLang.startsWith('zh') ? '分班参考报告' : currentLang.startsWith('en') ? 'Placement reference report' : 'Laporan referensi penempatan'}</span>
                               <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             </span>
                             <span className="text-[10px] text-slate-500 font-sans">
-                              {currentLang.startsWith('zh') 
-                                ? `得分: ${studentContext.assessment.score ?? 'N/A'}/${studentContext.assessment.total ?? 15} · 状态: 已同步`
-                                : `Score: ${studentContext.assessment.score ?? 'N/A'}/${studentContext.assessment.total ?? 15} · Status: Verified`}
+                              {!safeHskResult(studentContext.assessment.result,currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id') ? chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id','历史版本或记录暂不可复核','Historical version or record not currently reviewable','Versi atau catatan lama belum dapat ditinjau') : currentLang.startsWith('zh')
+                                ? `得分: ${studentContext.assessment.score ?? 'N/A'}/${studentContext.assessment.maxScore ?? studentContext.assessment.total ?? '?'} 分 · ${studentContext.assessment.saveStatus==='saved'?'服务端已保存':'服务端保存未确认'}`
+                                : chooseText(currentLang.startsWith('en')?'en':'id','',`Score: ${studentContext.assessment.score ?? 'N/A'}/${studentContext.assessment.maxScore ?? studentContext.assessment.total ?? '?'} points · ${studentContext.assessment.saveStatus==='saved'?'Server saved':'Server save unconfirmed'}`,`Skor: ${studentContext.assessment.score ?? 'N/A'}/${studentContext.assessment.maxScore ?? studentContext.assessment.total ?? '?'} poin · ${studentContext.assessment.saveStatus==='saved'?'Tersimpan di server':'Penyimpanan server belum dikonfirmasi'}`)}
                             </span>
                           </div>
                         </div>
@@ -1674,7 +1677,7 @@ export default function AIChatbot() {
                             onClick={() => setShowAssessmentCard(!showAssessmentCard)}
                             className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md transition-all cursor-pointer"
                           >
-                            {showAssessmentCard ? (currentLang.startsWith('zh') ? '收起' : 'Hide') : (currentLang.startsWith('zh') ? '详情' : 'Detail')}
+                            {chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id',showAssessmentCard?'收起':'详情',showAssessmentCard?'Hide':'Details',showAssessmentCard?'Tutup':'Rincian')}
                           </button>
                           <a 
                             href="/chat"
@@ -1690,14 +1693,7 @@ export default function AIChatbot() {
                       {/* Expandable Diagnostic Breakdown Sheet */}
                       {showAssessmentCard && (
                         <div className="pt-2 border-t border-primary-200/50 flex flex-col gap-2">
-                          {studentContext.assessment.summary && (
-                            <div className="p-2 bg-white/80 rounded-lg border border-primary-100 text-[11px] text-slate-700 leading-relaxed font-sans">
-                              <p className="font-bold text-slate-900 mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wide text-primary-700">
-                                <span>{currentLang.startsWith('zh') ? '官方能力诊断报告' : 'Official Diagnostic Report'}</span>
-                              </p>
-                              <p className="line-clamp-4">{studentContext.assessment.summary}</p>
-                            </div>
-                          )}
+                          {studentContext.assessment.result ? <HskAssessmentReport result={studentContext.assessment.result} lang={currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id'}/> : <p className="text-xs">{chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id','历史结果缺少作答与版本，未核验；建议重新测评。','This legacy result has no answers or version and is unverified. Take a new assessment.','Hasil lama tidak memiliki jawaban atau versi dan belum diverifikasi. Ikuti tes baru.')}</p>}
 
                           <div className="flex items-center gap-2">
                             <button

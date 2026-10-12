@@ -1,3 +1,4 @@
+import {mountHskAssets} from "./server/hskAssets.ts";
 import { mountPortal } from './server/portal/runtime.ts';
 import { mountChat } from './server/portal/chat.ts';
 import { startWorker } from './server/portal/worker.ts';
@@ -170,14 +171,14 @@ async function startServer() {
   if (process.env.DATABASE_URL) { mountChat(app); startWorker(); }
   else if (process.env.LEGACY_CHAT_TEST !== 'true') app.post('/api/chat', (_q, r) => { r.status(503).json({error:'Database required; message not saved'}); });
 
-  // Static directory for official HSK audio assets
+  // Static directory for versioned source HSK audio assets
   const publicAudioDir = path.join(process.cwd(), 'public/audio');
   if (!fs.existsSync(publicAudioDir)) {
     fs.mkdirSync(publicAudioDir, { recursive: true });
   }
   app.use('/audio', express.static(publicAudioDir));
 
-  // Static directory for official HSK exam cropped images
+  // Static directory for direct source PDF crops
   const publicHskImagesDir = path.join(process.cwd(), 'public/images/hsk');
   if (!fs.existsSync(publicHskImagesDir)) {
     fs.mkdirSync(publicHskImagesDir, { recursive: true });
@@ -884,111 +885,7 @@ Language: Please output the summary in standard Chinese and Indonesian dual-lang
     }
   });
 
-  // Priority: HSK Official Audio status and upload endpoints (Auto-Detect Any MP3)
-  app.get('/api/hsk-audio-status', (req, res) => {
-    try {
-      const audioDir = path.join(process.cwd(), 'public/audio');
-      if (fs.existsSync(audioDir)) {
-        const files = fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3') || f.endsWith('.m4a') || f.endsWith('.wav'));
-        if (files.length > 0) {
-          const matched = files[0];
-          const stats = fs.statSync(path.join(audioDir, matched));
-          return res.json({ 
-            available: true, 
-            size: stats.size, 
-            url: `/audio/${encodeURIComponent(matched)}`,
-            filename: matched
-          });
-        }
-      }
-      // Check public root as well
-      const publicDir = path.join(process.cwd(), 'public');
-      const rootFiles = fs.readdirSync(publicDir).filter(f => f.endsWith('.mp3') || f.endsWith('.m4a') || f.endsWith('.wav'));
-      if (rootFiles.length > 0) {
-        const matched = rootFiles[0];
-        const stats = fs.statSync(path.join(publicDir, matched));
-        return res.json({ 
-          available: true, 
-          size: stats.size, 
-          url: `/${encodeURIComponent(matched)}`,
-          filename: matched
-        });
-      }
-      return res.json({ available: false, size: 0, url: null });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/upload-hsk-audio', (req, res) => {
-    try {
-      const audioDir = path.join(process.cwd(), 'public/audio');
-      if (!fs.existsSync(audioDir)) {
-        fs.mkdirSync(audioDir, { recursive: true });
-      }
-      const targetFile = path.join(audioDir, 'hsk_exam.mp3');
-
-      if (req.body && req.body.audioBase64) {
-        const base64Data = req.body.audioBase64.replace(/^data:audio\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        fs.writeFileSync(targetFile, buffer);
-        console.log(`[HSK AUDIO] Successfully wrote ${buffer.length} bytes to ${targetFile}`);
-        return res.json({ success: true, size: buffer.length, url: '/audio/hsk_exam.mp3' });
-      }
-
-      return res.status(400).json({ error: 'Missing audioBase64 payload' });
-    } catch (err: any) {
-      console.error('[HSK AUDIO UPLOAD ERROR]', err);
-      return res.status(500).json({ error: 'Failed to save audio file', details: err.message });
-    }
-  });
-
-  // HSK Official Extracted Images Status Endpoint
-  app.get('/api/hsk-images-status', (req, res) => {
-    try {
-      const dir = path.join(process.cwd(), 'public/images/hsk');
-      if (!fs.existsSync(dir)) {
-        return res.json({ availableKeys: [], total: 0 });
-      }
-      const files = fs.readdirSync(dir).filter(f => f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.webp'));
-      const keys = files.map(f => f.replace(/\.[^/.]+$/, ''));
-      return res.json({ availableKeys: keys, total: keys.length });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // HSK Official Extracted Images Upload Endpoint
-  app.post('/api/upload-hsk-extracted-images', (req, res) => {
-    try {
-      const dir = path.join(process.cwd(), 'public/images/hsk');
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      const images = req.body.images;
-      if (!images || typeof images !== 'object') {
-        return res.status(400).json({ error: 'Missing images map' });
-      }
-
-      let count = 0;
-      for (const [key, base64Data] of Object.entries(images)) {
-        if (typeof base64Data === 'string' && base64Data.length > 50) {
-          const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
-          const buffer = Buffer.from(cleanBase64, 'base64');
-          const filePath = path.join(dir, `${key}.png`);
-          fs.writeFileSync(filePath, buffer);
-          count++;
-        }
-      }
-
-      console.log(`[HSK IMAGES] Successfully saved ${count} extracted images to ${dir}`);
-      return res.json({ success: true, savedCount: count });
-    } catch (err: any) {
-      console.error('[HSK IMAGES UPLOAD ERROR]', err);
-      return res.status(500).json({ error: 'Failed to save extracted images', details: err.message });
-    }
-  });
+  mountHskAssets(app);
 
   app.post('/api/standalone-chat-lead', formRateLimiter, async (req, res, next) => {
     const rawFullName = req.body.fullName;

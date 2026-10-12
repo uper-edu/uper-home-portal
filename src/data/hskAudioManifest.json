@@ -1,0 +1,224 @@
+{
+  "packetCopyVerified": true,
+  "sourcePacketCount": 26747,
+  "kind": "source_recording_crops",
+  "sourceFilename": "HSK测评听力音频.mp3",
+  "sourceAudioUsed": true,
+  "sourceAudioSha256": "1d13ab138e86993ee00f8de4129737bdf995d80606d2e8eda1d839003d1ed8fa",
+  "sourceAudioDurationSec": 698.697143,
+  "method": "direct_mp3_frame_copy",
+  "verification": "local_ASR_assisted_semantic_comparison_not_publisher_answer_sheet",
+  "recordedNumberPolicy": "Preserve the source's announcements, voices, pauses and existing repetitions. Recorded question numbers differ from PDF IDs because the source combines exam groups. Match by spoken content, not announced number. MP3 boundaries have frame precision (~26ms).",
+  "assets": {
+    "1": {
+      "src": "/audio/source-1d13ab138e86/q1.mp3",
+      "startSec": 7.2,
+      "endSec": 23.3,
+      "durationSec": 16.09,
+      "recordedNumber": 1,
+      "sha256": "e4971655b33c1700f26094f3963f88a1f6f541589259d4e440106b1ddbd519b5",
+      "sourceFirstPacket": 277,
+      "sourcePacketCount": 616
+    },
+    "2": {
+      "src": "/audio/source-1d13ab138e86/q2.mp3",
+      "startSec": 23.35,
+      "endSec": 39.5,
+      "durationSec": 16.17,
+      "recordedNumber": 2,
+      "sha256": "f64fa916d079fa3a7fb108710f0d3529b7945e743bb4282ae71b23d6ba22aef7",
+      "sourceFirstPacket": 895,
+      "sourcePacketCount": 619
+    },
+    "3": {
+      "src": "/audio/source-1d13ab138e86/q3.mp3",
+      "startSec": 39.7,
+      "endSec": 56.8,
+      "durationSec": 17.11,
+      "recordedNumber": 3,
+      "sha256": "aaf4b6a3aa3ca60dfda2c4e35364b0ab65cbfec44ae42e144910b0da9b181424",
+      "sourceFirstPacket": 1521,
+      "sourcePacketCount": 655
+    },
+    "4": {
+      "src": "/audio/source-1d13ab138e86/q4.mp3",
+      "startSec": 62.6,
+      "endSec": 85.0,
+      "durationSec": 22.39,
+      "recordedNumber": 6,
+      "sha256": "f18e444d3a0380fdfc551f1a7abde008a7d74e6a1cf10f9dcc2493e93e75fc26",
+      "sourceFirstPacket": 2398,
+      "sourcePacketCount": 857
+    },
+    "5": {
+      "src": "/audio/source-1d13ab138e86/q5.mp3",
+      "startSec": 85.4,
+      "endSec": 101.5,
+      "durationSec": 16.09,
+      "recordedNumber": 7,
+      "sha256": "774180e8de7fe28794f0b97072aa93b7a405df7351c8c8be661285f4b9472e78",
+      "sourceFirstPacket": 3271,
+      "sourcePacketCount": 616
+    },
+    "6": {
+      "src": "/audio/source-1d13ab138e86/q6.mp3",
+      "startSec": 108.3,
+      "endSec": 142.5,
+      "durationSec": 34.22,
+      "recordedNumber": 16,
+      "sha256": "e1f9f86a505283e38e59799422c141602ddcbffa6957dc069a38d0032d2f3a9e",
+      "sourceFirstPacket": 4147,
+      "sourcePacketCount": 1310
+    },
+    "7": {
+      "src": "/audio/source-1d13ab138e86/q7.mp3",
+      "startSec": 143.1,
+      "endSec": 171.5,
+      "durationSec": 28.4,
+      "recordedNumber": 17,
+      "sha256": "3e37e9ad1ab5f247a3d55ca13d64f54675b68a5c2ecf223caf25721e502105f0",
+      "sourceFirstPacket": 5480,
+      "sourcePacketCount": 1087
+    },
+    "8": {
+      "src": "/audio/source-1d13ab138e86/q8.mp3",
+      "startSec": 172.1,
+      "endSec": 199.1,
+      "durationSec": 26.98,
+      "recordedNumber": 6,
+      "sha256": "19d57535784fc827d1baff6afeed880eadf566471f26be57e8a95aa4b13ca4ab",
+      "sourceFirstPacket": 6590,
+      "sourcePacketCount": 1033
+    },
+    "9": {
+      "src": "/audio/source-1d13ab138e86/q9.mp3",
+      "startSec": 199.6,
+      "endSec": 226.1,
+      "durationSec": 26.51,
+      "recordedNumber": 7,
+      "sha256": "b2f260aaed456ab11b3ff1ff629249c26e836b623fccc92fc847de57acbb0fda",
+      "sourceFirstPacket": 7642,
+      "sourcePacketCount": 1015
+    },
+    "10": {
+      "src": "/audio/source-1d13ab138e86/q10.mp3",
+      "startSec": 226.5,
+      "endSec": 249.5,
+      "durationSec": 23.01,
+      "recordedNumber": 8,
+      "sha256": "d4a60aaecfbef94d0741263b186108ceaa13ef461fbbff0294a61a4c647d88e5",
+      "sourceFirstPacket": 8672,
+      "sourcePacketCount": 881
+    },
+    "11": {
+      "src": "/audio/source-1d13ab138e86/q11.mp3",
+      "startSec": 255.4,
+      "endSec": 297.8,
+      "durationSec": 42.42,
+      "recordedNumber": 16,
+      "sha256": "2fa3176436fee85026991576e5ba88f76546f92f041ad4b4157a3029991a3707",
+      "sourceFirstPacket": 9778,
+      "sourcePacketCount": 1624
+    },
+    "12": {
+      "src": "/audio/source-1d13ab138e86/q12.mp3",
+      "startSec": 298.1,
+      "endSec": 339.1,
+      "durationSec": 41.01,
+      "recordedNumber": 17,
+      "sha256": "bc8b17abbb0696d32eac215890ee3c04646653a024b984d23829e54bfd9781d5",
+      "sourceFirstPacket": 11413,
+      "sourcePacketCount": 1570
+    },
+    "13": {
+      "src": "/audio/source-1d13ab138e86/q13.mp3",
+      "startSec": 339.3,
+      "endSec": 374.5,
+      "durationSec": 35.21,
+      "recordedNumber": 18,
+      "sha256": "9269bfc18c6d752a6fc7e7cd9fdcf339c34287ad9a69566b1219a6a0f39f4f68",
+      "sourceFirstPacket": 12990,
+      "sourcePacketCount": 1348
+    },
+    "14": {
+      "src": "/audio/source-1d13ab138e86/q14.mp3",
+      "startSec": 381.3,
+      "endSec": 417.2,
+      "durationSec": 35.89,
+      "recordedNumber": 11,
+      "sha256": "cfe5504b86e0317bc210897335026fc2b8fb6b1fbe678b1943ef79a6ff700324",
+      "sourceFirstPacket": 14598,
+      "sourcePacketCount": 1374
+    },
+    "15": {
+      "src": "/audio/source-1d13ab138e86/q15.mp3",
+      "startSec": 417.3,
+      "endSec": 457.3,
+      "durationSec": 39.99,
+      "recordedNumber": 12,
+      "sha256": "df6375b8eae80b5f443db98dbb3dc1c1d293c1270742b2442bfd9c9d14c278d9",
+      "sourceFirstPacket": 15976,
+      "sourcePacketCount": 1531
+    },
+    "16": {
+      "src": "/audio/source-1d13ab138e86/q16.mp3",
+      "startSec": 457.5,
+      "endSec": 493.4,
+      "durationSec": 35.89,
+      "recordedNumber": 13,
+      "sha256": "5f0ef077fed96dbe70090dd35af23c6711b0306c146d092a78b88abcd263b70e",
+      "sourceFirstPacket": 17515,
+      "sourcePacketCount": 1374
+    },
+    "17": {
+      "src": "/audio/source-1d13ab138e86/q17.mp3",
+      "startSec": 493.6,
+      "endSec": 528.1,
+      "durationSec": 34.51,
+      "recordedNumber": 14,
+      "sha256": "e441c249cdb373875f9c0719bf2bf920f6d5ecb4781818e20908ea6845c6f861",
+      "sourceFirstPacket": 18897,
+      "sourcePacketCount": 1321
+    },
+    "18": {
+      "src": "/audio/source-1d13ab138e86/q18.mp3",
+      "startSec": 534.5,
+      "endSec": 574.2,
+      "durationSec": 39.71,
+      "recordedNumber": 21,
+      "sha256": "113dd9255f7dbfd727f541ebdbd2c3141a1f6181745478eb746e8b83ec7f4948",
+      "sourceFirstPacket": 20463,
+      "sourcePacketCount": 1520
+    },
+    "19": {
+      "src": "/audio/source-1d13ab138e86/q19.mp3",
+      "startSec": 574.3,
+      "endSec": 618.9,
+      "durationSec": 44.62,
+      "recordedNumber": 22,
+      "sha256": "15e2085c9eb7e7f3fec276d7528014f6c283d6a175db7d51db66361b4a7762cd",
+      "sourceFirstPacket": 21986,
+      "sourcePacketCount": 1708
+    },
+    "20": {
+      "src": "/audio/source-1d13ab138e86/q20.mp3",
+      "startSec": 618.9,
+      "endSec": 657.1,
+      "durationSec": 38.19,
+      "recordedNumber": 23,
+      "sha256": "0be6e3ade1e789fb156f0a26f19622390996bd86e3b989079b25a74d9169d380",
+      "sourceFirstPacket": 23694,
+      "sourcePacketCount": 1462
+    },
+    "21": {
+      "src": "/audio/source-1d13ab138e86/q21.mp3",
+      "startSec": 657.1,
+      "endSec": 698.0,
+      "durationSec": 40.91,
+      "recordedNumber": 24,
+      "sha256": "8a41b243f5e2c9f8d5b92ff7d4c96e0804ba3e91f4840115dbc9a44d302b0433",
+      "sourceFirstPacket": 25156,
+      "sourcePacketCount": 1566
+    }
+  }
+}

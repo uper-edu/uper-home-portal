@@ -1,0 +1,281 @@
+{
+  "sourceFilename": "HSK测评题.pdf",
+  "sourceSha256": "e80a3cbaabc5e75c186001a54bb98793a29129fb3459e6b75903e69e5c9e4a54",
+  "method": "direct_pdf_page_crop",
+  "renderDpi": 300,
+  "assets": {
+    "car": {
+      "src": "/images/hsk/source-e80a3cbaabc5/car.png",
+      "page": 2,
+      "bbox": [
+        172.96,
+        318.52,
+        272.24,
+        362.24
+      ],
+      "width": 414,
+      "height": 182,
+      "sha256": "ab7795b708b814dcbdb8b508c84dc7fcc397613deb79f8b9fce4814637d2a2e9"
+    },
+    "bullet_train": {
+      "src": "/images/hsk/source-e80a3cbaabc5/bullet_train.png",
+      "page": 2,
+      "bbox": [
+        298.6,
+        318.52,
+        386.0,
+        362.24
+      ],
+      "width": 365,
+      "height": 182,
+      "sha256": "0649f60ddd34abef5d5f35933e96a23d51a6283d60c7c1b1020910cedce8a755"
+    },
+    "airplane": {
+      "src": "/images/hsk/source-e80a3cbaabc5/airplane.png",
+      "page": 2,
+      "bbox": [
+        412.96,
+        315.76,
+        510.32,
+        365.12
+      ],
+      "width": 406,
+      "height": 205,
+      "sha256": "66819894ffb004631d44e59c9d716fc049c09d436420f5e4a8b67d4b26509f3a"
+    },
+    "cover_ears": {
+      "src": "/images/hsk/source-e80a3cbaabc5/cover_ears.png",
+      "page": 2,
+      "bbox": [
+        166.96,
+        449.32,
+        278.72,
+        524.36
+      ],
+      "width": 466,
+      "height": 313,
+      "sha256": "21bee85962330b84e7c7692252ba92bf50ce55a02c5ae4b28b6f83a76b0b9373"
+    },
+    "cover_eyes": {
+      "src": "/images/hsk/source-e80a3cbaabc5/cover_eyes.png",
+      "page": 2,
+      "bbox": [
+        286.6,
+        444.04,
+        398.36,
+        526.52
+      ],
+      "width": 466,
+      "height": 344,
+      "sha256": "76c305c1a08076eb558471212e7d2a2b48a233b8cfebed37f3301ce73e99e405"
+    },
+    "shh": {
+      "src": "/images/hsk/source-e80a3cbaabc5/shh.png",
+      "page": 2,
+      "bbox": [
+        426.76,
+        442.36,
+        497.72,
+        532.16
+      ],
+      "width": 295,
+      "height": 374,
+      "sha256": "d72d2c94aad889dc1e7bb94a89d197eec4d9e82b1d150204a1eff17a8ff8666c"
+    },
+    "bird_branch": {
+      "src": "/images/hsk/source-e80a3cbaabc5/bird_branch.png",
+      "page": 2,
+      "bbox": [
+        181.96,
+        591.28,
+        263.12,
+        668.36
+      ],
+      "width": 339,
+      "height": 321,
+      "sha256": "bcfb575f55401a312da728ef009803e563927ebcd41eb732f51065fccbbb2d61"
+    },
+    "cat_on_chair": {
+      "src": "/images/hsk/source-e80a3cbaabc5/cat_on_chair.png",
+      "page": 2,
+      "bbox": [
+        311.8,
+        589.48,
+        372.44,
+        671.12
+      ],
+      "width": 253,
+      "height": 340,
+      "sha256": "0ff8f5e0c56559b22985707d4e48061f112e130ca2bd1657e78a1aaf54edb968"
+    },
+    "dog_under_chair": {
+      "src": "/images/hsk/source-e80a3cbaabc5/dog_under_chair.png",
+      "page": 2,
+      "bbox": [
+        426.16,
+        582.88,
+        498.32,
+        677.6
+      ],
+      "width": 301,
+      "height": 394,
+      "sha256": "a0de4b1aff175353d414e94e03d346ea55675e68be0f25b46e3c86ba61203621"
+    },
+    "hand_bottle": {
+      "src": "/images/hsk/source-e80a3cbaabc5/hand_bottle.png",
+      "page": 4,
+      "bbox": [
+        150,
+        100,
+        280,
+        220
+      ],
+      "width": 542,
+      "height": 500,
+      "sha256": "0a27988fde4930f6772dbde0561e66d9d08de07f5a70dbc596848044fc24fc55"
+    },
+    "headache": {
+      "src": "/images/hsk/source-e80a3cbaabc5/headache.png",
+      "page": 4,
+      "bbox": [
+        365,
+        100,
+        485,
+        222
+      ],
+      "width": 500,
+      "height": 508,
+      "sha256": "7d0c90c278ccb4ed9d18f906e98eaa7f1de4f364bc6efd9202d5150490a16000"
+    },
+    "driver_car_wave": {
+      "src": "/images/hsk/source-e80a3cbaabc5/driver_car_wave.png",
+      "page": 4,
+      "bbox": [
+        155,
+        232,
+        285,
+        325
+      ],
+      "width": 542,
+      "height": 387,
+      "sha256": "85d0e4b1d2a6102e0b3fd0f35e574574e8476fcd4b674ae57afc8b04d7c8c821"
+    },
+    "soccer_girl": {
+      "src": "/images/hsk/source-e80a3cbaabc5/soccer_girl.png",
+      "page": 4,
+      "bbox": [
+        368,
+        222,
+        486,
+        348
+      ],
+      "width": 491,
+      "height": 525,
+      "sha256": "5b4fef0b95bc2569b3518767894c27f7194abea92fbdf81f289603ee31c800a5"
+    },
+    "laughing_tv": {
+      "src": "/images/hsk/source-e80a3cbaabc5/laughing_tv.png",
+      "page": 4,
+      "bbox": [
+        158,
+        346,
+        284,
+        454
+      ],
+      "width": 526,
+      "height": 450,
+      "sha256": "9eff267829fb0fe1b0c877e32c49c05d3ecb6d8db16c1dd1daed8b79ace2560d"
+    },
+    "boy_books": {
+      "src": "/images/hsk/source-e80a3cbaabc5/boy_books.png",
+      "page": 4,
+      "bbox": [
+        368,
+        345,
+        484,
+        454
+      ],
+      "width": 483,
+      "height": 454,
+      "sha256": "6a5c068428d749d8405fe24fc3a409bb8bd409daf2d246447d3b2c33040f1c2d"
+    },
+    "guitar_boy": {
+      "src": "/images/hsk/source-e80a3cbaabc5/guitar_boy.png",
+      "page": 7,
+      "bbox": [
+        145,
+        127,
+        283,
+        241
+      ],
+      "width": 575,
+      "height": 475,
+      "sha256": "cf540fe81a6f91b0da1ff2663987376a28f06cb09570e08596ebd3da595d84cd"
+    },
+    "schoolgirl": {
+      "src": "/images/hsk/source-e80a3cbaabc5/schoolgirl.png",
+      "page": 7,
+      "bbox": [
+        365,
+        124,
+        473,
+        245
+      ],
+      "width": 450,
+      "height": 504,
+      "sha256": "022c7f6aa050ef1abb7fa281d9820d1a4f791be6c33dee6fda9c5deb01a5ef0e"
+    },
+    "umbrella": {
+      "src": "/images/hsk/source-e80a3cbaabc5/umbrella.png",
+      "page": 7,
+      "bbox": [
+        147,
+        244,
+        275,
+        344
+      ],
+      "width": 533,
+      "height": 416,
+      "sha256": "6a01f27c4578eb07b0c855a4d0b8bc72f4f72551bab1b90156c5aecb90cc5487"
+    },
+    "eggs_milk": {
+      "src": "/images/hsk/source-e80a3cbaabc5/eggs_milk.png",
+      "page": 7,
+      "bbox": [
+        357,
+        244,
+        493,
+        344
+      ],
+      "width": 567,
+      "height": 416,
+      "sha256": "bbf3b781e7e81f244346e39794960472f972f4d743444f33d910a26e9419d237"
+    },
+    "reading_chair": {
+      "src": "/images/hsk/source-e80a3cbaabc5/reading_chair.png",
+      "page": 7,
+      "bbox": [
+        148,
+        344,
+        285,
+        480
+      ],
+      "width": 571,
+      "height": 567,
+      "sha256": "985ef0becc542b504652c995df93c2b61fde944126cc8f0b1f373601ce5e2054"
+    },
+    "two_men_waving": {
+      "src": "/images/hsk/source-e80a3cbaabc5/two_men_waving.png",
+      "page": 7,
+      "bbox": [
+        362,
+        344,
+        493,
+        480
+      ],
+      "width": 546,
+      "height": 567,
+      "sha256": "6b430b20b97b251e7b1fd17496affa4b206574b4ec9bf67812f1b44f7dd8102f"
+    }
+  }
+}

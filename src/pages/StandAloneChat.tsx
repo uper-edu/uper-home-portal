@@ -1,17 +1,18 @@
+import { safeHskResult } from "../data/hskReportHistory";
 import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
 import { chatFetch, registerContact, restoreChat, finishChat } from '../services/portalChat';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Send, 
-  Sparkles, 
-  MessageCircle, 
-  Award, 
-  BookOpen, 
-  CheckCircle2, 
-  ArrowLeft, 
-  UserCheck, 
-  Clock, 
+import {
+  Send,
+  Sparkles,
+  MessageCircle,
+  Award,
+  BookOpen,
+  CheckCircle2,
+  ArrowLeft,
+  UserCheck,
+  Clock,
   HelpCircle,
   Globe2
 } from 'lucide-react';
@@ -19,13 +20,17 @@ import { Link } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import GFormOnboardingModal from '../components/GFormOnboardingModal';
+import HskAssessmentReport from '../components/HskAssessmentReport';
+import {type HskResult, chooseText} from '../data/hskAssessment';
+import {saveHskAttempt, restoreHskAttempts} from '../services/portalChat';
+import {writeHskResult,readHskHistory} from '../services/hskAttemptStorage';
 import HSKPlacementAssessment from '../components/HSKPlacementAssessment';
 import { LeadProfile, calculateLeadTier } from '../types/leadSystem';
-import { 
-  getStudentContext, 
+import {
+  getStudentContext,
   getChatAssessmentStatus,
-  saveStudentContext, 
-  subscribeStudentContext 
+  saveStudentContext,
+  subscribeStudentContext
 } from '../services/studentProfileStorage';
 
 interface ChatMessage {
@@ -37,12 +42,7 @@ interface ChatMessage {
   suggestedPrompts?: string[];
   isAssessmentCard?: boolean;
   isAssessmentResult?: boolean;
-  assessmentData?: {
-    score: number;
-    total: number;
-    levelConfirmed: string;
-    whatsapp?: string;
-  };
+  assessmentData?: HskResult & { whatsapp?: string };
 }
 
 export default function StandAloneChat() {
@@ -57,7 +57,17 @@ export default function StandAloneChat() {
   });
   useEffect(()=>{fetch('/api/portal/session').then(r=>r.ok?r.json():Promise.reject()).then(s=>{if(!s.registered)setShowOnboardingModal(true);}).catch(()=>{});},[]);
   const [isTakingAssessment, setIsTakingAssessment] = useState(() => getChatAssessmentStatus(initialContext) === 'pending');
-  useEffect(() => { let active=true; restoreChat('standalone_chat').then(rows => { if(active && rows.length) setMessages(rows); }).catch(() => {}); return () => { active=false; }; }, []);
+  useEffect(() => {
+    let active=true;
+    Promise.all([restoreChat('standalone_chat').catch(()=>[]),restoreHskAttempts().catch(()=>readHskHistory(initialContext?.preferredLanguage||'en'))]).then(([rows,attempts])=>{
+      if(!active)return;
+      const latest=attempts[0] || safeHskResult(initialContext?.assessment?.result, initialContext?.preferredLanguage || 'en');
+      if(latest)writeHskResult(latest);
+      const unavailable = !latest && initialContext?.assessment?.result;
+      if(rows.length || latest || unavailable)setMessages([...rows,...(latest?[{id:`assessment-${latest.attempt.attemptId}`,role:'assistant' as const,content:latest.summary,timestamp:new Date(latest.attempt.completedAt!),isAssessmentResult:true,assessmentData:latest}]:unavailable?[{id:'assessment-unavailable',role:'assistant' as const,content:chooseText(initialContext?.preferredLanguage || 'en','历史报告待核对','Historical report needs review','Laporan lama perlu ditinjau'),timestamp:new Date(),isAssessmentResult:true,assessmentData:unavailable}]:[])]);
+    });
+    return()=>{active=false;};
+  },[]);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (!initialContext?.leadProfile) return [];
     const pending = getChatAssessmentStatus(initialContext) === 'pending';
@@ -91,9 +101,13 @@ export default function StandAloneChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const mainRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    scrollToBottom();
+    if (!isTakingAssessment) scrollToBottom();
   }, [messages, isTyping, isTakingAssessment]);
+  useEffect(() => {
+    if (isTakingAssessment) mainRef.current?.scrollTo({ top: 0 });
+  }, [isTakingAssessment]);
 
   // Keep state synchronized with storage events
   useEffect(() => {
@@ -116,25 +130,7 @@ export default function StandAloneChat() {
     const launchMsg: ChatMessage = {
       id: `msg-voluntary-${Date.now()}`,
       role: 'assistant',
-      content: lang === 'en'
-        ? `🎯 **Official HSK Placement Diagnostic Activated!**
-
-Below is our official HSK placement evaluation. You can choose either:
-- **⚡ Express Seminar Mode (10 Questions, ~3 mins)**: Fast diagnostic for quick level confirmation.
-- **📜 Full Official Exam (50 Questions, ~20 mins)**: 21 Listening, 21 Reading, and 8 Writing questions with official pass standards.
-
-Please choose your mode and start below:`
-        : lang === 'zh'
-        ? `🎯 **已为您开启官方 HSK 能力摸底测评！**
-
-系统已为您准备好真题测试卷，您可以选择：
-- **⚡ 宣讲会精炼快测 (10 题 · 约 3 分钟)**：快速检测并定位当前 HSK 等级；
-- **📜 完整官方 50 题试卷 (约 20 分钟)**：严格按真题评测卷 21 听力 + 21 阅读 + 8 书写进行诊断。
-
-请在下方卡片中点击开始：`
-        : `🎯 **Tes Penempatan HSK Resmi Diaktifkan!**
-
-Silakan pilih mode tes di bawah ini (Mode Cepat 10 Soal atau Ujian Lengkap 50 Soal) untuk memulai:`,
+      content: chooseText(lang,'中文分班诊断已开启。快测11题，仅供筛查；完整测评50题（21听力、21阅读、8识字选择）。这是所提供试卷的数字化改编，不是官方认证考试。请在下方选择模式。','The Mandarin diagnostic is ready. Screening has 11 items; the full diagnostic has 50 (21 listening, 21 reading, 8 character choices). This is an adaptation of the supplied paper, not an official certification exam. Choose a mode below.','Diagnostik Mandarin siap. Skrining berisi 11 soal; tes lengkap berisi 50 (21 menyimak, 21 membaca, 8 pilihan karakter). Ini adaptasi tes yang disediakan, bukan ujian sertifikasi resmi. Pilih mode di bawah.'),
       timestamp: new Date(),
       isAssessmentCard: true
     };
@@ -164,29 +160,29 @@ Silakan pilih mode tes di bawah ini (Mode Cepat 10 Soal atau Ujian Lengkap 50 So
     if (levelState === 'PARTIAL') {
       // PARTIAL -> Assessment Needed
       setIsTakingAssessment(true);
-      const greetingContent = selectedLang === 'en' 
+      const greetingContent = selectedLang === 'en'
         ? `Hello **${studentName}**! Welcome to your UPER Education academic consultation. 🌟
 
 Based on your inquiry profile:
 - 🎯 **Primary Goal:** ${goal}
 - 📊 **Current Level:** ${reportedLevel} (Verification Required)
 
-*According to UPER and BLCU standards, accurate placement is essential so that classes are neither too demanding nor too basic. We have prepared an **Official HSK 1~3 Mixed Placement Diagnostic** for you below:*`
+*According to UPER placement guidance, accurate placement is essential so that classes are neither too demanding nor too basic. We have prepared an **UPER HSK 1–3 diagnostic adaptation** for you below:*`
         : selectedLang === 'zh'
-        ? `您好 **${studentName}**！欢迎来到 UPER 官方学术咨询中心。🌟
+        ? `您好 **${studentName}**！欢迎来到 UPER 学习咨询中心。🌟
 
 根据您的登记信息：
 - 🎯 **学习目标：** ${goal}
 - 📊 **自报基础：** ${reportedLevel} (需测评定级)
 
-*为确保分班精准、避免课程过难或重复学习，我们已在下方为您开启 **官方 HSK 1~3 级混合摸底测试**：*`
-        : `Halo **${studentName}**! Senang bertemu dengan Anda di sesi konsultasi UPER Education. 
+*为确保分班精准、避免课程过难或重复学习，我们已在下方为您开启 **UPER HSK 1~3 级混合摸底测试**：*`
+        : `Halo **${studentName}**! Senang bertemu dengan Anda di sesi konsultasi UPER Education.
 
 Berdasarkan formulir Anda:
 - 🎯 **Tujuan Belajar:** ${goal}
 - 📊 **Tingkat Saat Ini:** ${reportedLevel} (Perlu verifikasi)
 
-*Sesuai standar akademik UPER dan BLCU, kami telah mengaktifkan **Tes Penempatan HSK Resmi** untuk Anda di bawah ini:*`;
+*Sesuai standar akademik UPER, kami telah mengaktifkan **Diagnostik Penempatan UPER HSK** untuk Anda di bawah ini:*`;
 
       const initialGreeting: ChatMessage = {
         id: 'msg-init-partial',
@@ -213,7 +209,7 @@ What would you like to explore regarding class schedules, tuition packages, or C
         : selectedLang === 'zh'
         ? `您好 **${studentName}**！欢迎来到 UPER Education！🌟
 
-太棒了！您已具备 **${reportedLevel}** 的明确中文基础。根据 UPER 教学规范：
+太棒了！您自报的中文基础是 **${reportedLevel}**。根据 UPER 教学规范：
 - ✅ **测评状态：** 您**无需重复参加基础摸底测验**，基础非常清晰！
 - 🎯 **推荐规划：** 我们直接为您对接高级进阶班排期、赴华奖学金名额或中资企业职场中文通道。
 
@@ -222,7 +218,7 @@ What would you like to explore regarding class schedules, tuition packages, or C
 关于近期的开班排期、课程学费或奖学金申请，您目前最想了解哪方面？`
         : `Halo **${studentName}**! Selamat datang di UPER Education! 🌟
 
-Hebat sekali! Anda telah memiliki sertifikasi/kemampuan **${reportedLevel}**. Sesuai standar UPER:
+Hebat sekali! Tingkat yang Anda laporkan adalah **${reportedLevel}**. Sesuai standar UPER:
 - ✅ **Status Tes:** Anda **tidak perlu mengulang tes dasar**, fondasi Anda sudah sangat jelas!
 - 🎯 **Rekomendasi:** Kami langsung menyusun jalur percepatan HSK lanjutan & persiapan karir perusahaan Tiongkok.
 
@@ -233,12 +229,12 @@ Hebat sekali! Anda telah memiliki sertifikasi/kemampuan **${reportedLevel}**. Se
         role: 'assistant',
         content: greetingContent,
         timestamp: new Date(),
-        suggestedPrompts: selectedLang === 'en' ? [
-          '🎯 Take Official HSK Placement Test (Optional)',
+        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何安排教师复核或试听？'] : selectedLang === 'en' ? [
+          '🎯 Take UPER HSK Placement Diagnostic (Optional)',
           'What are the course fees and available installment plans?',
           'When are the nearest class start dates for my level?'
         ] : [
-          '🎯 参加官方 HSK 摸底测试 (自测)',
+          '🎯 Ikuti diagnostik UPER HSK (opsional)',
           'Berapa biaya kelas lanjutan dan opsi cicilannya?',
           'Kapan jadwal kelas terdekat untuk level saya?'
         ]
@@ -252,10 +248,10 @@ Hebat sekali! Anda telah memiliki sertifikasi/kemampuan **${reportedLevel}**. Se
         ? `Hello **${studentName}**! Welcome to UPER Education.
 
 As a **Complete Beginner**, your academic pathway is structured as follows:
-- **Diagnostic Status:** Mandatory placement testing waived (Zero baseline confirmed).
+- **Diagnostic Status:** Mandatory placement testing waived (self-reported beginner).
 - **Recommended Program:** **HSK 1 Starter & Practical Conversation Track** (Comprehensive Pinyin system, tones, and 150 core high-frequency vocabulary).
 
-*Optional: If you would like to preview authentic exam audio, feel free to click **"Take HSK Test"** at the top right anytime.*
+*Optional: If you would like to preview diagnostic audio, feel free to click **"Take HSK Test"** at the top right anytime.*
 
 How can I assist you today with course schedules, class options, or tuition details?`
         : selectedLang === 'zh'
@@ -283,12 +279,12 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         role: 'assistant',
         content: greetingContent,
         timestamp: new Date(),
-        suggestedPrompts: selectedLang === 'en' ? [
-          '🎯 Take Official HSK Placement Test (Optional)',
+        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何安排教师复核或试听？'] : selectedLang === 'en' ? [
+          '🎯 Take UPER HSK Placement Diagnostic (Optional)',
           'How long does it take from zero to conversational fluency?',
           'What are the tuition fees and schedules for HSK 1 beginner classes?'
         ] : [
-          '🎯 参加官方 HSK 摸底测试 (自测)',
+          '🎯 Ikuti diagnostik UPER HSK (opsional)',
           'Berapa lama belajar dari nol hingga bisa bicara lancar?',
           'Berapa biaya dan jadwal kelas pemula HSK 1?'
         ]
@@ -298,125 +294,23 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
     }
   };
 
-  // Called when HSK Placement Quiz completes
-  const handleAssessmentComplete = (result: {
-    score: number;
-    total: number;
-    levelConfirmed: string;
-    summary: string;
-    breakdown?: {
-      hsk1Correct: number;
-      hsk1Total: number;
-      hsk2Correct: number;
-      hsk2Total: number;
-      hsk3Correct: number;
-      hsk3Total: number;
-    };
-  }) => {
+  const handleAssessmentComplete = (result: HskResult) => {
     setIsTakingAssessment(false);
-
     if (profile) {
-      const updatedProfile: LeadProfile = {
-        ...profile,
-        quizScore: result.score,
-        totalQuestions: result.total,
-        levelConfirmed: result.levelConfirmed,
-        levelSource: 'mixed',
-        quizResultSummary: result.summary,
-        quizBreakdown: result.breakdown
-      };
-
-      // Recalculate Tier with assessment done (R5 rule)
-      const recalculated = calculateLeadTier({
-        buyingSignal: updatedProfile.buyingSignal,
-        currentStatus: updatedProfile.currentStatus,
-        goal: updatedProfile.goal,
-        levelState: updatedProfile.levelState,
-        city: updatedProfile.city,
-        mode: updatedProfile.mode,
-        hskExamPlan: updatedProfile.hskExamPlan,
-        assessmentDone: true
-      });
-      updatedProfile.tier = recalculated.tier;
+      const updatedProfile: LeadProfile = {...profile,quizScore:result.score,totalQuestions:result.questionCount,quizMaxScore:result.maxScore,
+        ...(profile.levelSource==='trial'?{}:{levelConfirmed:result.levelConfirmed,levelSource:'assessment' as const}),quizResultSummary:result.summary,quizBreakdown:result.breakdown,
+        latestAssessment:result,assessmentProvenance:result.saveStatus==='saved'?'server_recomputed_adapted_paper':undefined};
+      updatedProfile.tier=calculateLeadTier({buyingSignal:updatedProfile.buyingSignal,currentStatus:updatedProfile.currentStatus,goal:updatedProfile.goal,levelState:updatedProfile.levelState,city:updatedProfile.city,mode:updatedProfile.mode,hskExamPlan:updatedProfile.hskExamPlan,assessmentDone:true}).tier;
       setProfile(updatedProfile);
-      syncLeadToBackend(updatedProfile).catch(e => alert(e.message));
-
-      // Save assessment state into unified student context
-      saveStudentContext({
-        leadProfile: updatedProfile,
-        chatAssessmentStatus: 'completed',
-        assessment: {
-          completed: true,
-          score: result.score,
-          total: result.total,
-          levelConfirmed: result.levelConfirmed,
-          summary: result.summary,
-          breakdown: result.breakdown,
-          completedAt: new Date().toISOString()
-        }
-      });
+      saveStudentContext({leadProfile:updatedProfile,chatAssessmentStatus:'completed',assessment:{completed:true,result,score:result.score,total:result.maxScore,maxScore:result.maxScore,questionCount:result.questionCount,levelConfirmed:result.levelConfirmed,summary:result.summary,breakdown:result.breakdown,saveStatus:result.saveStatus,completedAt:result.attempt.completedAt}});
     }
-
-    const resultContent = lang === 'en'
-      ? `🎉 **Your HSK Diagnostic Assessment Results Are Ready!**
-
-- 🏆 **Your Score:** ${result.score} / ${result.total} Correct
-- 📜 **Confirmed Official Level:** **${result.levelConfirmed}**
-
-### 💡 Diagnostic Analysis & Recommendation
-${result.summary}
-
-Your complete assessment report has been securely logged in UPER's academic system. Our advisory team will also send the course syllabus, HSK vocabulary guide, and schedule to your WhatsApp (**${profile?.whatsapp}**).
-
-Feel free to ask me anything now!`
-      : lang === 'zh'
-      ? `🎉 **您的 HSK 摸底能力测评报告已生成！**
-
-- 🏆 **测试得分：** ${result.score} / ${result.total} 题正确
-- 📜 **官方测评定级：** **${result.levelConfirmed}**
-
-### 💡 综合能力诊断与分班建议
-${result.summary}
-
-您的完整测评数据与学生画像已归档至 UPER 教学系统。规划顾问也可通过 WhatsApp（**${profile?.whatsapp}**）为您发送详细课程大纲与排期优惠方案。
-
-您现在可以直接向我提问！`
-      : `🎉 **Hasil Tes Diagnostik HSK Anda Telah Keluar!**
-
-- 🏆 **Skor Anda:** ${result.score} / ${result.total} Benar
-- 📜 **Estimasi Level Resmi:** **${result.levelConfirmed}**
-
-### 💡 Analisis Kemampuan & Rekomendasi
-${result.summary}
-
-Laporan lengkap dan silabus kelas telah dicatat di sistem UPER. Tim konsultan akademik kami juga dapat mengirimkan modul kosakata dan jadwal kelas via WhatsApp ke nomor Anda (**${profile?.whatsapp}**).
-
-Silakan tanyakan apa saja kepada saya sekarang!`;
-
-    const assessmentResultMsg: ChatMessage = {
-      id: `msg-eval-${Date.now()}`,
-      role: 'assistant',
-      content: result.summary,
-      timestamp: new Date(),
-      isAssessmentResult: true,
-      assessmentData: {
-        score: result.score,
-        total: result.total,
-        levelConfirmed: result.levelConfirmed,
-        whatsapp: profile?.whatsapp
-      },
-      suggestedPrompts: lang === 'en' ? [
-        'When is the nearest start date for my recommended class?',
-        'What are the course tuition fees and seminar promotional discounts?',
-        'Can I schedule an in-person consultation at UPER Jakarta Campus?'
-      ] : [
-        'Kapan tanggal mulai kelas terdekat untuk level saya?',
-        'Berapa biaya kursus dan apakah ada promo seminar hari ini?',
-        'Apakah bisa konsultasi tatap muka langsung di kampus UPER Jakarta?'
-      ]
-    };
-
-    setMessages((prev) => [...prev, assessmentResultMsg]);
+    setMessages(prev=>[...prev.filter(m=>m.id!==`assessment-${result.attempt.attemptId}`),{id:`assessment-${result.attempt.attemptId}`,role:'assistant',content:result.summary,timestamp:new Date(),isAssessmentResult:true,assessmentData:result,
+      suggestedPrompts:lang==='zh'?['哪些错题值得优先复习？','如何安排教师复核或试听？','适合我的课程什么时候开班？']:lang==='id'?['Soal salah mana yang perlu dipelajari dulu?','Bagaimana menjadwalkan peninjauan guru atau kelas percobaan?','Kapan kelas yang sesuai dimulai?']:['Which missed items should I review first?','How can I arrange a teacher review or trial lesson?','When does a suitable course start?']}]);
+  };
+  const [savingReport,setSavingReport]=useState(false);
+  const retryReport=async(result:HskResult)=>{
+    if(savingReport)return;setSavingReport(true);
+    try {const saved=await saveHskAttempt(result.attempt,lang);writeHskResult(saved);handleAssessmentComplete(saved);} catch {} finally {setSavingReport(false);}
   };
 
   // Send message to DeepSeek backend
@@ -443,7 +337,7 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-100 text-slate-900 font-sans">
+    <div className="flex flex-col h-dvh bg-slate-100 text-slate-900 font-sans">
       {/* Onboarding Profile Modal (GForm First) */}
       <GFormOnboardingModal
         isOpen={showOnboardingModal}
@@ -452,41 +346,43 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
       />
 
       {/* Standalone Header */}
-      <header className="bg-slate-900 border-b border-slate-800 text-white py-3 px-4 sm:px-6 flex items-center justify-between shadow-md shrink-0">
-        <div className="flex items-center gap-3">
-          <Link 
-            to="/" 
+      <header className={`bg-slate-900 border-b border-slate-800 text-white px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0 ${isTakingAssessment ? 'py-2 gap-2' : 'py-3 flex-col gap-3 sm:flex-row'}`}>
+        {isTakingAssessment ? <span className="text-sm font-semibold min-w-0">{chooseText(lang,'HSK 分班参考测评','HSK placement assessment','Tes penempatan HSK')}</span> : (
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            to="/"
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="Return to Home"
+            title={chooseText(lang,'返回首页','Return to Home','Kembali ke beranda')}
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-tech-500 flex items-center justify-center font-bold text-white shadow-sm shadow-primary-500/30 text-sm">
               UP
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm tracking-tight text-white">UPER AI Smart Advisory</span>
+                <span className="font-bold text-sm tracking-tight text-white truncate">{chooseText(lang,'UPER 学习咨询','UPER Learning Advisory','Konsultasi Belajar UPER')}</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Live
+                  AI
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 truncate max-w-[200px] sm:max-w-none">
-                {profile ? `${profile.fullName} · ${profile.goal}` : 'Academic Consultation & HSK Placement Portal'}
+                {profile ? profile.fullName : chooseText(lang,'课程咨询与分班参考','Course consultation and placement reference','Konsultasi kursus dan referensi penempatan')}
               </p>
             </div>
           </div>
         </div>
 
+        )}
         {/* Right Action: Voluntary HSK Test, Language Switcher & WhatsApp Link */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Voluntary Assessment Quick Launcher Button */}
           {!isTakingAssessment && (
             <button
               type="button"
               onClick={handleStartVoluntaryAssessment}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer"
             >
               <Award className="w-3.5 h-3.5 text-white" />
               <span>{lang === 'en' ? 'Take HSK Test' : lang === 'zh' ? 'HSK 摸底测验' : 'Ikuti Tes HSK'}</span>
@@ -498,7 +394,8 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
             <button
               type="button"
               onClick={() => changeLanguage('en')}
-              className={`px-2 py-0.5 rounded-full transition-all font-semibold ${
+              aria-pressed={lang === 'en'}
+              className={`px-2 py-0.5 min-h-11 rounded-full transition-all font-semibold ${
                 lang === 'en' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -507,7 +404,8 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
             <button
               type="button"
               onClick={() => changeLanguage('id')}
-              className={`px-2 py-0.5 rounded-full transition-all font-semibold ${
+              aria-pressed={lang === 'id'}
+              className={`px-2 py-0.5 min-h-11 rounded-full transition-all font-semibold ${
                 lang === 'id' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -516,7 +414,8 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
             <button
               type="button"
               onClick={() => changeLanguage('zh')}
-              className={`px-2 py-0.5 rounded-full transition-all font-semibold ${
+              aria-pressed={lang === 'zh'}
+              className={`px-2 py-0.5 min-h-11 rounded-full transition-all font-semibold ${
                 lang === 'zh' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -524,21 +423,22 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
             </button>
           </div>
 
-          <a
+          {!isTakingAssessment && <a
             href="https://wa.me/6281116612062?text=Hello%20UPER%2C%20I%20am%20using%20the%20AI%20Advisory%20Portal%20and%20would%20like%20to%20speak%20with%20an%20academic%20consultant."
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            aria-label={chooseText(lang,'通过WhatsApp联系顾问','Contact an advisor on WhatsApp','Hubungi konsultan via WhatsApp')}
+            className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             <MessageCircle className="w-4 h-4" />
-            <span className="hidden xs:inline">WhatsApp Advisor</span>
-          </a>
+            <span className="hidden sm:inline">{chooseText(lang,'联系顾问','Advisor','Konsultan')}</span>
+          </a>}
         </div>
       </header>
 
       {/* Main Dialogue Scrollable Body */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 max-w-4xl w-full mx-auto">
-        {messages.map((msg) => (
+      <main ref={mainRef} className={`flex-1 min-h-0 overflow-y-auto space-y-4 w-full mx-auto ${isTakingAssessment ? 'p-2 sm:p-4 max-w-5xl' : 'p-4 sm:p-6 max-w-4xl'}`}>
+        {!isTakingAssessment && messages.map((msg) => (
           <div
             key={msg.id}
             className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
@@ -559,106 +459,9 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
                   : 'bg-white text-slate-800 rounded-tl-sm border border-slate-200/80 shadow-sm'
               }`}>
                 {msg.isAssessmentResult && msg.assessmentData ? (
-                  <div className="space-y-3.5">
-                    {/* Header: Confirmed Level Badge & Score */}
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-primary-600">
-                          {lang === 'en' ? 'Diagnostic Result' : lang === 'zh' ? '测评诊断结果' : 'Hasil Diagnostik'}
-                        </span>
-                        <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5">
-                          {msg.assessmentData.levelConfirmed}
-                        </h3>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block font-medium">
-                          {lang === 'en' ? 'Score' : lang === 'zh' ? '测试得分' : 'Skor Resmi'}
-                        </span>
-                        <span className="text-base font-black font-mono text-primary-700">
-                          {msg.assessmentData.score} <span className="text-xs font-normal text-slate-400">/ {msg.assessmentData.total}</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Recommendation & Breakdown with breathing room */}
-                    <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed prose-p:my-1.5 prose-ul:my-1.5">
-                      <Markdown remarkPlugins={[remarkGfm]}>{msg.content}</Markdown>
-                    </div>
-
-                    {/* Separate Dedicated Bottom CTA Card */}
-                    <div className="mt-3 p-3.5 bg-emerald-50/90 rounded-2xl border border-emerald-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-start gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                          <MessageCircle className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 text-xs">
-                          <p className="font-bold text-emerald-950">
-                            {lang === 'en' ? 'Report Logged · Advisor Follow-up' : lang === 'zh' ? '报告已归档 · 顾问专属跟进' : 'Laporan Tersimpan & Konsultasi WA'}
-                          </p>
-                          <p className="text-[11px] text-emerald-800 mt-0.5 leading-snug">
-                            {lang === 'en' 
-                              ? `Syllabus and discount plan will be sent to WhatsApp (${msg.assessmentData.whatsapp || '+62...'}).`
-                              : lang === 'zh'
-                              ? `课程大纲与排期优惠将同步发送至 WhatsApp（${msg.assessmentData.whatsapp || '您的号码'}）。`
-                              : `Silabus dan jadwal kelas akan dikirim via WhatsApp (${msg.assessmentData.whatsapp || 'nomor Anda'}).`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <a
-                        href={`https://wa.me/6281116612062?text=${encodeURIComponent(`Hello UPER, I have completed the HSK assessment (Score: ${msg.assessmentData.score}/${msg.assessmentData.total}, Level: ${msg.assessmentData.levelConfirmed}). I would like to consult with an academic advisor.`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>{lang === 'en' ? 'Chat on WhatsApp' : lang === 'zh' ? '联系学术顾问' : 'Chat Konsultan'}</span>
-                      </a>
-                    </div>
-
-                    {/* P3: 针对该定级的专属导师 1对1 直达连线通道 */}
-                    <div className="mt-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-primary-600" />
-                          <span>{lang === 'en' ? 'Connect with Expert Specialists' : lang === 'zh' ? '针对您的定级 · 专属名师 1对1 答疑通道' : 'Hubungi Konsultan Spesialis'}</span>
-                        </span>
-                        <span className="text-[10px] text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full font-semibold border border-primary-100">
-                          {lang === 'en' ? 'Click to Consult' : lang === 'zh' ? '点击即刻连线' : 'Tanya Sekarang'}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {[
-                          { id: 'lili', name: lang === 'zh' ? '莉莉老师' : 'Teacher Lili', role: lang === 'zh' ? 'HSK 语言专家' : 'HSK Specialist', prompt: lang === 'zh' ? `我想请教莉莉老师：根据我的 ${msg.assessmentData.levelConfirmed} 测评成绩，推荐报读什么班型与排期？` : `Question for Teacher Lili: Based on my ${msg.assessmentData.levelConfirmed} score, which course fits me best?` },
-                          { id: 'jason', name: lang === 'zh' ? '杰森老师' : 'Coach Jason', role: lang === 'zh' ? 'CSCA 备考教练' : 'CSCA Coach', prompt: lang === 'zh' ? `我想请教杰森老师：我的成绩冲刺中国顶尖大学（如清华/交大），CSCA 课程如何规划？` : `Question for Coach Jason: How to plan CSCA prep for top China universities with my profile?` },
-                          { id: 'sarah', name: lang === 'zh' ? '萨拉老师' : 'Sarah', role: lang === 'zh' ? '奖学金顾问' : 'Scholarship Advisor', prompt: lang === 'zh' ? `我想请教萨拉老师：以我目前基础，能申请哪些中国大学全额奖学金？` : `Question for Sarah: What full scholarships can I target in China right now?` },
-                          { id: 'kevin', name: lang === 'zh' ? '凯文老师' : 'Kevin', role: lang === 'zh' ? '研学营总监' : 'Study Tour Director', prompt: lang === 'zh' ? `我想请教凯文老师：近期前往北京/上海名校研学营的具体排期与报名条件？` : `Question for Kevin: What are the schedules and criteria for China study tours?` }
-                        ].map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => handleSendMessage(c.prompt)}
-                            className="p-2.5 bg-white hover:bg-primary-50/70 border border-slate-200/90 hover:border-primary-300 rounded-xl text-left transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
-                          >
-                            <p className="font-bold text-xs text-slate-900 group-hover:text-primary-700">{c.name}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{c.role}</p>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* 全站数据互通感知提示 */}
-                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                          <span>{lang === 'zh' ? '测评报告已同步至首页右下角 AI 顾问，全站任意页面均可继续沟通' : 'Profile synced with Homepage AI Assistant across all pages'}</span>
-                        </span>
-                        <Link to="/" className="text-primary-600 hover:underline font-semibold flex items-center gap-0.5">
-                          <span>{lang === 'zh' ? '返回首页' : 'Home'}</span>
-                          <span aria-hidden="true">&rarr;</span>
-                        </Link>
-                      </div>
-                    </div>
+                  <div className="space-y-4">
+                    <HskAssessmentReport result={msg.assessmentData} lang={lang} saving={savingReport} onRetry={()=>void retryReport(msg.assessmentData!)}/>
+                    <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-primary-300 px-4 text-primary-700 font-semibold">{chooseText(lang,'主动联系顾问','Contact an advisor','Hubungi konsultan')}</a>
                   </div>
                 ) : (
                   <div className="prose prose-sm max-w-none text-inherit prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5">
@@ -703,7 +506,7 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
         )}
 
         {/* AI Typing Indicator */}
-        {isTyping && (
+        {!isTakingAssessment && isTyping && (
           <div className="flex items-center gap-2 text-xs text-slate-500 pl-10">
             <div className="flex gap-1">
               <span className="w-1.5 h-1.5 bg-primary-600 rounded-full animate-bounce" />
@@ -711,11 +514,11 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
               <span className="w-1.5 h-1.5 bg-primary-600 rounded-full animate-bounce [animation-delay:0.4s]" />
             </div>
             <span>
-              {lang === 'en' 
-                ? 'UPER AI is crafting your official academic response...' 
+              {lang === 'en'
+                ? 'UPER AI is preparing a reply...'
                 : lang === 'zh'
                 ? 'UPER AI 正在生成专属解答与规划...'
-                : 'UPER AI sedang mengetik jawaban resmi...'}
+                : 'UPER AI sedang menyiapkan jawaban...'}
             </span>
           </div>
         )}
@@ -724,7 +527,7 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
       </main>
 
       {/* Bottom Sticky Input */}
-      <footer className="bg-white border-t border-slate-200 p-3 sm:p-4 shrink-0">
+      {!isTakingAssessment && <footer className="bg-white border-t border-slate-200 p-3 sm:p-4 shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -738,11 +541,11 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
             onChange={(e) => setInputValue(e.target.value)}
             disabled={isTakingAssessment || isTyping}
             placeholder={
-              isTakingAssessment 
-                ? (lang === 'en' ? 'Please complete the diagnostic questions above first...' : 'Selesaikan soal HSK di atas terlebih dahulu...') 
-                : (lang === 'en' ? 'Type your question about courses, HSK preparation, or scholarships...' : 'Ketik pertanyaan Anda seputar kursus, HSK, atau beasiswa...')
+              isTakingAssessment
+                ? chooseText(lang,'请先完成上方测评…','Please complete the assessment above…','Selesaikan tes di atas terlebih dahulu…')
+                : chooseText(lang,'请输入课程、HSK或学习规划问题…','Ask about courses, HSK or study planning…','Tanyakan tentang kursus, HSK atau rencana belajar…')
             }
-            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="min-w-0 flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900 disabled:opacity-60 disabled:cursor-not-allowed"
           />
           <button
             type="submit"
@@ -752,7 +555,7 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
             <Send className="w-4 h-4" />
           </button>
         </form>
-      </footer>
+      </footer>}
     </div>
   );
 }

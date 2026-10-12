@@ -1,12 +1,18 @@
 /**
- * UPER Official HSK Placement Examination Test Bank (HSK 1~3)
- * Exact replication of the 12-page official exam PDF & audio recording.
+ * UPER HSK 1–3 placement bank adapted from the supplied 12-page source PDF.
+ * Character completion uses mobile choices. Retain per-question star levels;
+ * the source's final 15/15/20 count table is superseded by the confirmed profile.
  */
+
+import audioManifest from './hskAudioManifest.json';
+import { HSK_OPTION_TOKENS, HSK_PROMPT_TOKENS, type HskTextToken } from './hskTextTokens';
+import { assertFullHskProfile, FULL_HSK_PASS_COUNTS } from './hskScoring';
 
 export interface QuizOption {
   id: string; // 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
   text?: string; // Chinese text
   pinyin?: string; // Pinyin displayed above Hanzi (only when present in PDF)
+  tokens?: HskTextToken[];
   imageKey?: string; // Key corresponding to HskExamImage
   isCorrect: boolean;
 }
@@ -24,6 +30,7 @@ export interface RealHskQuestion {
   };
   promptText?: string;
   promptPinyin?: string;
+  promptTokens?: HskTextToken[];
   wordBank?: { id: string; pinyin: string; text: string }[];
   options: QuizOption[];
   spokenScript?: string;
@@ -34,7 +41,46 @@ export interface RealHskQuestion {
   isExpressSelected?: boolean;
 }
 
-export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
+/** Shared source groups keep display and grading options identical across their items. */
+function sharedOptions(bank: readonly Omit<QuizOption, 'isCorrect'>[], correctId: string): QuizOption[] {
+  if (!bank.some(option => option.id === correctId)) throw new Error('Unknown shared HSK answer');
+  return bank.map(option => ({...option, isCorrect: option.id === correctId}));
+}
+
+const WORD_BANK_26 = [
+      { id: 'A', pinyin: 'shàngwǔ', text: '上午' },
+      { id: 'B', pinyin: 'piàoliang', text: '漂亮' },
+      { id: 'C', pinyin: 'xiūxi', text: '休息' },
+      { id: 'D', pinyin: 'jiào', text: '叫' },
+      { id: 'E', pinyin: 'shì', text: '事' },
+      { id: 'F', pinyin: 'hěn', text: '很' }
+    ];
+
+const WORD_BANK_33 = [
+      { id: 'A', pinyin: 'gēn', text: '跟' },
+      { id: 'B', pinyin: 'dǎchē', text: '打车' },
+      { id: 'C', pinyin: 'cóngxiǎo', text: '从小' },
+      { id: 'D', pinyin: 'lóu', text: '楼' },
+      { id: 'E', pinyin: 'duō', text: '多' },
+      { id: 'F', pinyin: 'yuǎn', text: '远' }
+    ];
+
+const SENTENCE_BANK_30 = [
+      { id: 'A', pinyin: 'Shéi zài wàimiàn？ Zě nme bú jìnlái ？', text: 'A. 谁 在 外面 ？怎么 不 进来？' },
+      { id: 'B', pinyin: 'Wǒ xìng gāo, wǒ jiào gāo hànwén', text: 'B. 我 姓 高，我叫 高 汉文' },
+      { id: 'C', pinyin: 'Suǒyǐ xiànzài hái bùnéng zhù', text: 'C. 所以 现在 还不能 住' }
+    ];
+
+const SENTENCE_BANK_36 = [
+      { id: 'A', text: 'A. 您好！ 我是李冰， 是您妻子的同事。' },
+      { id: 'B', text: 'B. 八元五角。 要不要来点儿？' },
+      { id: 'C', text: 'C. 经理怎么不在办公室？' },
+      { id: 'D', text: 'D. 你到哪儿了？ 表演快开始了。' },
+      { id: 'E', text: 'E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。' },
+
+    ];
+
+const SOURCE_HSK_EXAM: RealHskQuestion[] = [
   // =================== PART 1: 听力 (LISTENING 21 QUESTIONS) ===================
   // --- Page 2: 第 1～3 题 ★ Image Selection ---
   {
@@ -310,7 +356,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     explanationEn: 'Question asks about the weather. The woman says "It has become overcast". Correct: C.'
   },
 
-  // --- Page 6: 第 14～21 题 ★★★ Pure Hanzi, NO Pinyin (HSK 3 Official Standard) ---
+  // --- Page 6: 第 14～21 题 ★★★ Pure Hanzi, NO Pinyin (HSK 3 source star level) ---
   {
     id: 14,
     level: 'HSK 3',
@@ -553,24 +599,10 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'reading',
     format: 'word_bank',
     pageHeader: '第 26～29 题 ★',
-    wordBank: [
-      { id: 'A', pinyin: 'shàngwǔ', text: '上午' },
-      { id: 'B', pinyin: 'piàoliang', text: '漂亮' },
-      { id: 'C', pinyin: 'xiūxi', text: '休息' },
-      { id: 'D', pinyin: 'jiào', text: '叫' },
-      { id: 'E', pinyin: 'shì', text: '事' },
-      { id: 'F', pinyin: 'hěn', text: '很' }
-    ],
+    wordBank: WORD_BANK_26,
     promptPinyin: 'Jīntiān shūdiàn li yǒu duō xiǎopéngyǒu．',
     promptText: '26． 今天 书店 里 有 （ ） 多 小朋友 。',
-    options: [
-      { id: 'A', text: '上午', pinyin: 'shàngwǔ', isCorrect: false },
-      { id: 'B', text: '漂亮', pinyin: 'piàoliang', isCorrect: false },
-      { id: 'C', text: '休息', pinyin: 'xiūxi', isCorrect: false },
-      { id: 'D', text: '叫', pinyin: 'jiào', isCorrect: false },
-      { id: 'E', text: '事', pinyin: 'shì', isCorrect: false },
-      { id: 'F', text: '很', pinyin: 'hěn', isCorrect: true }
-    ],
+    options: sharedOptions(WORD_BANK_26, 'F'),
     explanationZh: '“很多”为常用搭配，选 F（很）。',
     explanationEn: '"很多" means many. Correct: F.',
     isExpressSelected: true
@@ -581,24 +613,10 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'reading',
     format: 'word_bank',
     pageHeader: '第 26～29 题 ★',
-    wordBank: [
-      { id: 'A', pinyin: 'shàngwǔ', text: '上午' },
-      { id: 'B', pinyin: 'piàoliang', text: '漂亮' },
-      { id: 'C', pinyin: 'xiūxi', text: '休息' },
-      { id: 'D', pinyin: 'jiào', text: '叫' },
-      { id: 'E', pinyin: 'shì', text: '事' },
-      { id: 'F', pinyin: 'hěn', text: '很' }
-    ],
+    wordBank: WORD_BANK_26,
     promptPinyin: 'Tāmen xuéle Zhōngwén．',
     promptText: '27． 他们 （ ） 学了 中文 。',
-    options: [
-      { id: 'A', text: '上午', pinyin: 'shàngwǔ', isCorrect: true },
-      { id: 'B', text: '漂亮', pinyin: 'piàoliang', isCorrect: false },
-      { id: 'C', text: '休息', pinyin: 'xiūxi', isCorrect: false },
-      { id: 'D', text: '叫', pinyin: 'jiào', isCorrect: false },
-      { id: 'E', text: '事', pinyin: 'shì', isCorrect: false },
-      { id: 'F', text: '很', pinyin: 'hěn', isCorrect: false }
-    ],
+    options: sharedOptions(WORD_BANK_26, 'A'),
     explanationZh: '时间状语置于动词前，“上午学了中文”，选 A。',
     explanationEn: 'Time adverb: "上午 (morning)". Correct: A.'
   },
@@ -608,24 +626,10 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'reading',
     format: 'word_bank',
     pageHeader: '第 26～29 题 ★',
-    wordBank: [
-      { id: 'A', pinyin: 'shàngwǔ', text: '上午' },
-      { id: 'B', pinyin: 'piàoliang', text: '漂亮' },
-      { id: 'C', pinyin: 'xiūxi', text: '休息' },
-      { id: 'D', pinyin: 'jiào', text: '叫' },
-      { id: 'E', pinyin: 'shì', text: '事' },
-      { id: 'F', pinyin: 'hěn', text: '很' }
-    ],
+    wordBank: WORD_BANK_26,
     promptPinyin: 'Wǒ juéde dì-èr gè bēizi mǎi nàge ba．',
     promptText: '28． 我 觉得 第二 个 杯子 （ ）， 买 那个 吧。',
-    options: [
-      { id: 'A', text: '上午', pinyin: 'shàngwǔ', isCorrect: false },
-      { id: 'B', text: '漂亮', pinyin: 'piàoliang', isCorrect: true },
-      { id: 'C', text: '休息', pinyin: 'xiūxi', isCorrect: false },
-      { id: 'D', text: '叫', pinyin: 'jiào', isCorrect: false },
-      { id: 'E', text: '事', pinyin: 'shì', isCorrect: false },
-      { id: 'F', text: '很', pinyin: 'hěn', isCorrect: false }
-    ],
+    options: sharedOptions(WORD_BANK_26, 'B'),
     explanationZh: '作形容词谓语评价杯子，“漂亮”，选 B。',
     explanationEn: '"杯子漂亮 (cup is pretty)". Correct: B.'
   },
@@ -635,24 +639,10 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'reading',
     format: 'word_bank',
     pageHeader: '第 26～29 题 ★',
-    wordBank: [
-      { id: 'A', pinyin: 'shàngwǔ', text: '上午' },
-      { id: 'B', pinyin: 'piàoliang', text: '漂亮' },
-      { id: 'C', pinyin: 'xiūxi', text: '休息' },
-      { id: 'D', pinyin: 'jiào', text: '叫' },
-      { id: 'E', pinyin: 'shì', text: '事' },
-      { id: 'F', pinyin: 'hěn', text: '很' }
-    ],
+    wordBank: WORD_BANK_26,
     promptPinyin: 'Xiàkè , tóngxuémen y íxià .',
     promptText: '29． 下课， 同学们 （ ） 一下。',
-    options: [
-      { id: 'A', text: '上午', pinyin: 'shàngwǔ', isCorrect: false },
-      { id: 'B', text: '漂亮', pinyin: 'piàoliang', isCorrect: false },
-      { id: 'C', text: '休息', pinyin: 'xiūxi', isCorrect: true },
-      { id: 'D', text: '叫', pinyin: 'jiào', isCorrect: false },
-      { id: 'E', text: '事', pinyin: 'shì', isCorrect: false },
-      { id: 'F', text: '很', pinyin: 'hěn', isCorrect: false }
-    ],
+    options: sharedOptions(WORD_BANK_26, 'C'),
     explanationZh: '下课后动词搭配“休息一下”，选 C。',
     explanationEn: '"休息一下 (take a rest)". Correct: C.'
   },
@@ -666,11 +656,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     pageHeader: '第 30～32 题 ★★',
     promptPinyin: 'Suīrán wǒ shì wàiguó rén, dàn wǒ yǒu yīgè zhōngwén míngzì',
     promptText: '30. 虽然我是外国人，但我有一个中文名字',
-    options: [
-      { id: 'B', pinyin: 'Wǒ xìng gāo, wǒ jiào gāo hànwén', text: 'B. 我 姓 高，我叫 高 汉文', isCorrect: true },
-      { id: 'A', pinyin: 'Shéi zài wàimiàn？ Zě nme bú jìnlái ？', text: 'A. 谁 在 外面 ？怎么 不 进来？', isCorrect: false },
-      { id: 'C', pinyin: 'Suǒyǐ xiànzài hái bùnéng zhù', text: 'C. 所以 现在 还不能 住', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_30, 'B'),
     explanationZh: '提到中文名字，接“我姓高，我叫高汉文”，选 B。',
     explanationEn: 'Matches Chinese name introduction B.',
     isExpressSelected: true
@@ -683,11 +669,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     pageHeader: '第 30～32 题 ★★',
     promptPinyin: 'Shì wǒ , bāng wǒ kā i y íxià mén．',
     promptText: '31．是 我， 帮 我 开 一下 门 。',
-    options: [
-      { id: 'A', pinyin: 'Shéi zài wàimiàn？ Zě nme bú jìnlái ？', text: 'A. 谁 在 外面 ？怎么 不 进来？', isCorrect: true },
-      { id: 'B', pinyin: 'Wǒ xìng gāo, wǒ jiào gāo hànwén', text: 'B. 我 姓 高，我叫 高 汉文', isCorrect: false },
-      { id: 'C', pinyin: 'Suǒyǐ xiànzài hái bùnéng zhù', text: 'C. 所以 现在 还不能 住', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_30, 'A'),
     explanationZh: '开门应答对应提问“谁在外面？怎么不进来？”，选 A。',
     explanationEn: 'Answers "Who is outside?". Correct: A.'
   },
@@ -699,11 +681,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     pageHeader: '第 30～32 题 ★★',
     promptPinyin: 'Zhège fángjiān yǒu zhuō yǐ, dàn hái méiyǒu chuáng',
     promptText: '32. 这个 房间 有 桌椅，但 还 没有 床。',
-    options: [
-      { id: 'C', pinyin: 'Suǒyǐ xiànzài hái bùnéng zhù', text: 'C. 所以 现在 还不能 住', isCorrect: true },
-      { id: 'A', pinyin: 'Shéi zài wàimiàn？ Zě nme bú jìnlái ？', text: 'A. 谁 在 外面 ？怎么 不 进来？', isCorrect: false },
-      { id: 'B', pinyin: 'Wǒ xìng gāo, wǒ jiào gāo hànwén', text: 'B. 我 姓 高，我叫 高 汉文', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_30, 'C'),
     explanationZh: '没有床所以还不能住，因果承接，选 C。',
     explanationEn: 'No bed implies cannot live in yet. Correct: C.'
   },
@@ -715,21 +693,10 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'reading',
     format: 'word_bank',
     pageHeader: '第 33～35 题 ★★',
-    wordBank: [
-      { id: 'A', pinyin: 'gēn', text: '跟' },
-      { id: 'B', pinyin: 'dǎchē', text: '打车' },
-      { id: 'C', pinyin: 'cóngxiǎo', text: '从小' },
-      { id: 'D', pinyin: 'lóu', text: '楼' },
-      { id: 'E', pinyin: 'duō', text: '多' },
-      { id: 'F', pinyin: 'yuǎn', text: '远' }
-    ],
+    wordBank: WORD_BANK_33,
     promptPinyin: 'Tā jiù ài yùndòng．',
     promptText: '33． 他 （ ） 就 爱 运动 。',
-    options: [
-      { id: 'C', text: '从小', pinyin: 'cóngxiǎo', isCorrect: true },
-      { id: 'A', text: '跟', pinyin: 'gēn', isCorrect: false },
-      { id: 'B', text: '打车', pinyin: 'dǎchē', isCorrect: false }
-    ],
+    options: sharedOptions(WORD_BANK_33, 'C'),
     explanationZh: '“从小就爱运动”，选 C。',
     explanationEn: '"从小就爱运动" (loved sports since childhood). Correct: C.'
   },
@@ -739,21 +706,10 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'reading',
     format: 'word_bank',
     pageHeader: '第 33～35 题 ★★',
-    wordBank: [
-      { id: 'A', pinyin: 'gēn', text: '跟' },
-      { id: 'B', pinyin: 'dǎchē', text: '打车' },
-      { id: 'C', pinyin: 'cóngxiǎo', text: '从小' },
-      { id: 'D', pinyin: 'lóu', text: '楼' },
-      { id: 'E', pinyin: 'duō', text: '多' },
-      { id: 'F', pinyin: 'yuǎn', text: '远' }
-    ],
+    wordBank: WORD_BANK_33,
     promptPinyin: 'Zhōngguó zěnmeyàng？ Kuài wǒ shuōshuo．',
     promptText: '34． 中国 怎么样 ？ 快 （ ） 我 说说 。',
-    options: [
-      { id: 'A', text: '跟', pinyin: 'gēn', isCorrect: true },
-      { id: 'B', text: '打车', pinyin: 'dǎchē', isCorrect: false },
-      { id: 'D', text: '楼', pinyin: 'lóu', isCorrect: false }
-    ],
+    options: sharedOptions(WORD_BANK_33, 'A'),
     explanationZh: '介词“跟我说说”，选 A。',
     explanationEn: 'Preposition "跟" (跟我说说). Correct: A.'
   },
@@ -763,26 +719,15 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'reading',
     format: 'word_bank',
     pageHeader: '第 33～35 题 ★★',
-    wordBank: [
-      { id: 'A', pinyin: 'gēn', text: '跟' },
-      { id: 'B', pinyin: 'dǎchē', text: '打车' },
-      { id: 'C', pinyin: 'cóngxiǎo', text: '从小' },
-      { id: 'D', pinyin: 'lóu', text: '楼' },
-      { id: 'E', pinyin: 'duō', text: '多' },
-      { id: 'F', pinyin: 'yuǎn', text: '远' }
-    ],
+    wordBank: WORD_BANK_33,
     promptPinyin: 'Nǐ chūláile ma？ Wǒ dào xià le ．',
     promptText: '35． 你 出来了 吗？ 我 到 （ ） 下 了。',
-    options: [
-      { id: 'D', text: '楼', pinyin: 'lóu', isCorrect: true },
-      { id: 'B', text: '打车', pinyin: 'dǎchē', isCorrect: false },
-      { id: 'F', text: '远', pinyin: 'yuǎn', isCorrect: false }
-    ],
+    options: sharedOptions(WORD_BANK_33, 'D'),
     explanationZh: '“到楼下了”，选 D。',
     explanationEn: '"到楼下了" (arrived downstairs). Correct: D.'
   },
 
-  // --- Page 9: 第 36～40 题 ★★★ Pure Hanzi Match (HSK 3 Official) ---
+  // --- Page 9: 第 36～40 题 ★★★ Pure Hanzi Match (HSK 3 source star level) ---
   {
     id: 36,
     level: 'HSK 3',
@@ -790,14 +735,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     format: 'sentence_match',
     pageHeader: '第 36～40 题 ★★★',
     promptText: '36． 没问题， 有不明白的问我就行。',
-    options: [
-      { id: 'A', text: 'A. 您好！ 我是李冰， 是您妻子的同事。', isCorrect: false },
-      { id: 'B', text: 'B. 八元五角。 要不要来点儿？', isCorrect: false },
-      { id: 'C', text: 'C. 经理怎么不在办公室？', isCorrect: false },
-      { id: 'D', text: 'D. 你到哪儿了？ 表演快开始了。', isCorrect: false },
-      { id: 'E', text: 'E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。', isCorrect: true },
-      { id: 'F', text: 'F. 谢谢你告诉我这个好消息， 我马上过去。', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_36, 'E'),
     explanationZh: '“没问题，有不明白的问我就行”对应“我上节数学课没来，能看看你的笔记吗？明天还你”，选 E。',
     explanationEn: 'Math notes borrow request matches E.',
     isExpressSelected: true
@@ -809,14 +747,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     format: 'sentence_match',
     pageHeader: '第 36～40 题 ★★★',
     promptText: '37． 这位是我爱人张南， 他在图书馆上班。',
-    options: [
-      { id: 'A', text: 'A. 您好！ 我是李冰， 是您妻子的同事。', isCorrect: true },
-      { id: 'B', text: 'B. 八元五角。 要不要来点儿？', isCorrect: false },
-      { id: 'C', text: 'C. 经理怎么不在办公室？', isCorrect: false },
-      { id: 'D', text: 'D. 你到哪儿了？ 表演快开始了。', isCorrect: false },
-      { id: 'E', text: 'E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。', isCorrect: false },
-      { id: 'F', text: 'F. 谢谢你告诉我这个好消息， 我马上过去。', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_36, 'A'),
     explanationZh: '介绍爱人张南对应同事问候，选 A。',
     explanationEn: 'Introducing spouse matches A.'
   },
@@ -827,14 +758,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     format: 'sentence_match',
     pageHeader: '第 36～40 题 ★★★',
     promptText: '38． 他休假了， 你有事可以给他发邮件。',
-    options: [
-      { id: 'A', text: 'A. 您好！ 我是李冰， 是您妻子的同事。', isCorrect: false },
-      { id: 'B', text: 'B. 八元五角。 要不要来点儿？', isCorrect: false },
-      { id: 'C', text: 'C. 经理怎么不在办公室？', isCorrect: true },
-      { id: 'D', text: 'D. 你到哪儿了？ 表演快开始了。', isCorrect: false },
-      { id: 'E', text: 'E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。', isCorrect: false },
-      { id: 'F', text: 'F. 谢谢你告诉我这个好消息， 我马上过去。', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_36, 'C'),
     explanationZh: '询问经理不在办公室，选 C。',
     explanationEn: 'Manager absent inquiry matches C.'
   },
@@ -845,14 +769,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     format: 'sentence_match',
     pageHeader: '第 36～40 题 ★★★',
     promptText: '39． 别急， 我已经上电梯了。',
-    options: [
-      { id: 'A', text: 'A. 您好！ 我是李冰， 是您妻子的同事。', isCorrect: false },
-      { id: 'B', text: 'B. 八元五角。 要不要来点儿？', isCorrect: false },
-      { id: 'C', text: 'C. 经理怎么不在办公室？', isCorrect: false },
-      { id: 'D', text: 'D. 你到哪儿了？ 表演快开始了。', isCorrect: true },
-      { id: 'E', text: 'E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。', isCorrect: false },
-      { id: 'F', text: 'F. 谢谢你告诉我这个好消息， 我马上过去。', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_36, 'D'),
     explanationZh: '催促快开始对应上电梯，选 D。',
     explanationEn: 'Urging about performance matches D.'
   },
@@ -863,14 +780,7 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     format: 'sentence_match',
     pageHeader: '第 36～40 题 ★★★',
     promptText: '40． 请问香蕉多少钱一公斤?',
-    options: [
-      { id: 'A', text: 'A. 您好！ 我是李冰， 是您妻子的同事。', isCorrect: false },
-      { id: 'B', text: 'B. 八元五角。 要不要来点儿？', isCorrect: true },
-      { id: 'C', text: 'C. 经理怎么不在办公室？', isCorrect: false },
-      { id: 'D', text: 'D. 你到哪儿了？ 表演快开始了。', isCorrect: false },
-      { id: 'E', text: 'E. 我上节数学课没来， 能看看你的笔记吗？ 明天还你。', isCorrect: false },
-      { id: 'F', text: 'F. 谢谢你告诉我这个好消息， 我马上过去。', isCorrect: false }
-    ],
+    options: sharedOptions(SENTENCE_BANK_36, 'B'),
     explanationZh: '问水果价格对应“八元五角”，选 B。',
     explanationEn: 'Fruit price inquiry matches B.'
   },
@@ -948,15 +858,15 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
     section: 'writing',
     format: 'writing_pinyin',
     pageHeader: '第 43～45 题 ★★',
-    promptPinyin: 'Wǒ bùhǎo ( yì ) si ràng péngyou bāngmáng．',
-    promptText: '45． 我 不好 （ ） 思 让 朋友 帮忙。',
+    promptPinyin: 'Wǒ bù ( hǎo ) yìsi ràng péngyou bāngmáng．',
+    promptText: '45． 我 不 （ ） 意思 让 朋友 帮忙。',
     options: [
-      { id: 'A', text: '意', pinyin: 'yì', isCorrect: true },
-      { id: 'B', text: '易', pinyin: 'yì', isCorrect: false },
-      { id: 'C', text: '忆', pinyin: 'yì', isCorrect: false }
+      { id: 'A', text: '好', isCorrect: true },
+      { id: 'B', text: '号', isCorrect: false },
+      { id: 'C', text: '浩', isCorrect: false }
     ],
-    explanationZh: '“不好意思”，汉字为“意”。',
-    explanationEn: '"不好意思" (feel embarrassed). Correct: A (意).'
+    explanationZh: '“不好意思”，空位为“好”（hǎo）。',
+    explanationEn: 'The missing character in “不好意思” is 好 (hǎo). Correct: A.'
   },
 
   // --- Page 11: 第 46～50 题 ★★★ Pinyin Pronunciation on top, pure Hanzi ---
@@ -1042,16 +952,36 @@ export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = [
   }
 ];
 
+export const OFFICIAL_HSK_EXAM: RealHskQuestion[] = SOURCE_HSK_EXAM.map(question => {
+  const options = question.wordBank
+    ? question.wordBank.map(word => ({ ...word, isCorrect: question.options.some(o => o.id === word.id && o.isCorrect) }))
+    : question.options.filter(Boolean).sort((a, b) => a.id.localeCompare(b.id));
+  return {
+    ...question,
+    ...(question.section==='listening' ? {audioStartSec:audioManifest.assets[String(question.id) as keyof typeof audioManifest.assets].startSec,audioEndSec:audioManifest.assets[String(question.id) as keyof typeof audioManifest.assets].endSec} : {}),
+    promptTokens: HSK_PROMPT_TOKENS[question.id],
+    options: options.map(option => ({
+      ...option,
+      tokens: HSK_OPTION_TOKENS[question.id]?.[option.id]
+        ?? (option.text && option.pinyin && (question.format === 'word_bank' || question.format === 'writing_pinyin')
+          ? [{ hanzi: option.text, pinyin: option.pinyin }]
+          : undefined),
+    })),
+  };
+});
+
 export function getExamQuestions(mode: 'express' | 'full' = 'express'): RealHskQuestion[] {
   if (mode === 'express') {
     return OFFICIAL_HSK_EXAM.filter(q => q.isExpressSelected);
   }
+  assertFullHskProfile(OFFICIAL_HSK_EXAM);
   return OFFICIAL_HSK_EXAM;
 }
 
 export function evaluateOfficialHskScore(
   answers: Record<number, string>,
-  questions: RealHskQuestion[]
+  questions: RealHskQuestion[],
+  mode: 'express' | 'full' = questions.length === 50 ? 'full' : 'express'
 ): {
   totalScore: number;
   totalQuestions: number;
@@ -1061,7 +991,7 @@ export function evaluateOfficialHskScore(
   hsk2Total: number;
   hsk3Correct: number;
   hsk3Total: number;
-  levelConfirmed: 'HSK 3+' | 'HSK 2' | 'HSK 1' | 'Below HSK 1';
+  levelConfirmed: 'HSK 3' | 'HSK 2' | 'HSK 1' | 'Below HSK 1';
   passStandards: {
     passHsk1: boolean;
     passHsk2: boolean;
@@ -1071,6 +1001,7 @@ export function evaluateOfficialHskScore(
   recommendationEn: string;
   targetTrack: string;
 } {
+  if (mode === 'full') assertFullHskProfile(questions);
   let hsk1Correct = 0;
   let hsk1Total = 0;
   let hsk2Correct = 0;
@@ -1100,40 +1031,31 @@ export function evaluateOfficialHskScore(
 
   const totalQuestions = questions.length;
 
-  const hsk1Rate = hsk1Total > 0 ? hsk1Correct / hsk1Total : 0;
-  const hsk2Rate = hsk2Total > 0 ? hsk2Correct / hsk2Total : 0;
-  const hsk3Rate = hsk3Total > 0 ? hsk3Correct / hsk3Total : 0;
+  const passHsk1 = mode === 'full'
+    ? hsk1Correct >= FULL_HSK_PASS_COUNTS.hsk1.hsk1
+    : false;
+  const passHsk2 = mode === 'full'
+    ? hsk1Correct >= FULL_HSK_PASS_COUNTS.hsk2.hsk1 && hsk2Correct >= FULL_HSK_PASS_COUNTS.hsk2.hsk2
+    : false;
+  const passHsk3 = mode === 'full'
+    ? hsk1Correct >= FULL_HSK_PASS_COUNTS.hsk3.hsk1 && hsk2Correct >= FULL_HSK_PASS_COUNTS.hsk3.hsk2 && hsk3Correct >= FULL_HSK_PASS_COUNTS.hsk3.hsk3
+    : false;
 
-  const passHsk1 = hsk1Rate >= 0.7;
-  const passHsk2 = hsk1Rate >= 0.8 && hsk2Rate >= 0.7;
-  const passHsk3 = hsk1Rate >= 0.8 && hsk2Rate >= 0.8 && hsk3Rate >= 0.7;
-
-  let levelConfirmed: 'HSK 3+' | 'HSK 2' | 'HSK 1' | 'Below HSK 1' = 'Below HSK 1';
+  let levelConfirmed: 'HSK 3' | 'HSK 2' | 'HSK 1' | 'Below HSK 1' = 'Below HSK 1';
   let recommendationZh = '';
   let recommendationEn = '';
   let targetTrack = '';
 
-  if (passHsk3) {
-    levelConfirmed = 'HSK 3+';
-    targetTrack = 'HSK 3-4 Advanced Business & University Scholarship Track';
-    recommendationZh = '恭喜通过 HSK 3 级标准评测！您的听力与语境理解扎实，词汇量储备已达 600 词以上。建议直接入读【HSK 3-4 进阶中资经贸实战班】或申请【赴华留学全额奖学金】。';
-    recommendationEn = 'Congratulations! You have passed the official HSK 3 standard. Your listening and contextual fluency exceed 600 words. Ready for the HSK 3-4 Advanced Business & University Scholarship Track.';
-  } else if (passHsk2) {
-    levelConfirmed = 'HSK 2';
-    targetTrack = 'HSK 2-3 Intermediate Fluency Track';
-    recommendationZh = '恭喜通过 HSK 2 级标准评测！您已掌握基础日常会话与 300+ 核心词汇，但在中长句子听力和复杂关联词上有提升空间。建议入读【HSK 2-3 强化突破班】。';
-    recommendationEn = 'Congratulations! You have passed the HSK 2 standard (300+ words). Recommended for the HSK 2-3 Intermediate Fluency Track.';
-  } else if (passHsk1) {
-    levelConfirmed = 'HSK 1';
-    targetTrack = 'HSK 1-2 Essential Grammar & Daily Speaking Track';
-    recommendationZh = '恭喜通过 HSK 1 级基础评测！您掌握了约 150 个基础生存词汇。建议入读【HSK 1-2 进阶班】，夯实日常生存听说技能与语法骨架。';
-    recommendationEn = 'Passed HSK 1 level (150 words). Recommended for the HSK 1-2 Essential Grammar & Daily Speaking Track.';
-  } else {
-    levelConfirmed = 'Below HSK 1';
-    targetTrack = 'HSK 1 Starter & Practical Conversation Track';
-    recommendationZh = '诊断显示您的中文处于零基础起步阶段。建议直接入读【HSK 1 零基础启航课】，从拼音声调、常用生存口语与汉字基础系统学起。';
-    recommendationEn = 'Diagnosis shows you are at complete beginner stage. Recommended to start with the HSK 1 Starter & Practical Conversation Track.';
-  }
+  if (passHsk3) levelConfirmed = 'HSK 3';
+  else if (passHsk2) levelConfirmed = 'HSK 2';
+  else if (passHsk1) levelConfirmed = 'HSK 1';
+  recommendationZh = mode === 'express'
+    ? '快测样本很少，只报告各级题目的作答表现，不用于确定分级。请完成50题或参加教师复核。'
+    : '本次结果仅表示这份改编试卷的门槛达成情况，听力使用提供的原始MP3切片，按录音语义判分。未测口语与手写，不代表官方HSK成绩、词汇量或奖学金资格。';
+  recommendationEn = mode === 'express'
+    ? 'This small screening sample does not determine a level. Complete the 50-question diagnostic or request a teacher review.'
+    : 'This result describes thresholds on this adapted paper only. Listening uses direct crops of the supplied MP3 and semantic answer keys. Speaking and handwriting are not tested; no HSK certification, vocabulary size or scholarship eligibility is inferred.';
+  targetTrack = mode === 'express' ? 'Teacher review / full diagnostic' : 'Review missed items with a teacher';
 
   return {
     totalScore,

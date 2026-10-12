@@ -1,3 +1,4 @@
+import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import type { Express, Request, Response } from "express";
 import {validWebhook} from "./notificationDelivery.ts";
 import crypto from "node:crypto";
@@ -13,6 +14,7 @@ import {
   type Rule,
 } from "./policy.ts";
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
+import { mountHskAssessments } from "./assessments.ts";
 const cookieName = "uper_visitor";
 async function visitor(req: Request, res: Response) {
   let token = (req.headers.cookie || "")
@@ -124,7 +126,13 @@ export async function mountPortal(app: Express) {
     }
     next();
   });
-  app.get('/api/portal/ready',wrap(async(_req,res)=>{await pool.query('SELECT 1');res.json({ready:true});}));
+  app.get(
+    "/api/portal/ready",
+    wrap(async (_req, res) => {
+      await pool.query("SELECT 1");
+      res.json({ ready: true });
+    }),
+  );
   app.get(
     "/api/portal/employees",
     wrap(async (req, res) => {
@@ -136,7 +144,10 @@ export async function mountPortal(app: Express) {
     "/api/portal/session",
     wrap(async (req, res) => {
       const v = await visitor(req, res);
-      res.json({ registered: !!v.lead_id, cacheScope: crypto.createHash("sha256").update(v.id).digest("hex") });
+      res.json({
+        registered: !!v.lead_id,
+        cacheScope: crypto.createHash("sha256").update(v.id).digest("hex"),
+      });
     }),
   );
   app.post(
@@ -208,9 +219,25 @@ export async function mountPortal(app: Express) {
       });
     }),
   );
+  mountHskAssessments(app);
   const register = wrap(async (req, res) => {
     const v = await visitor(req, res);
     const b = req.body;
+    if (
+      [
+        "quizScore",
+        "quizMaxScore",
+        "totalQuestions",
+        "levelConfirmed",
+        "quizResultSummary",
+        "quizBreakdown",
+        "latestAssessment",
+      ].some((k) => b[k] !== undefined)
+    )
+      fail(
+        400,
+        "Submit answers through the assessment endpoint; client scores are not accepted",
+      );
     const name = String(b.fullName || "").trim(),
       phone = String(b.whatsapp || b.phone || "").trim(),
       email = String(b.email || "")
@@ -239,6 +266,9 @@ export async function mountPortal(app: Express) {
         ).rows[0]?.profile || {};
       const profile = {
         ...existing,
+        ...(existing.quizScore !== undefined && !existing.assessmentProvenance
+          ? { assessmentProvenance: "legacy_unverified" }
+          : {}),
         id: leadId,
         name,
         fullName: name,
@@ -258,10 +288,6 @@ export async function mountPortal(app: Express) {
         "levelState",
         "city",
         "mode",
-        "quizScore",
-        "totalQuestions",
-        "levelConfirmed",
-        "quizResultSummary",
         "buyingSignal",
       ])
         if (b[k] !== undefined) profile[k] = b[k];
@@ -301,8 +327,37 @@ export async function mountPortal(app: Express) {
           taskId,
         });
       }
-      if (b.quizScore !== undefined && b.quizScore !== existing.quizScore)
-        await event(c, "assessment.completed", leadId, { score: b.quizScore });
+      // Link previously submitted anonymous attempts without trusting contact-supplied grades.
+      await c.query(
+        "UPDATE hsk_attempts SET lead_id=$1 WHERE visitor_id=$2 AND lead_id IS NULL",
+        [leadId, v.id],
+      );
+      const latestRows = (await c.query(
+        "SELECT result FROM hsk_attempts WHERE visitor_id=$1 ORDER BY created_at DESC LIMIT 20", [v.id]
+      )).rows;
+      const latest = latestRows.map(row => safeHskResult(row.result)).find(Boolean);
+      if (latest) {
+        latest.saveStatus = "saved";
+        Object.assign(profile, {
+          latestAssessment: latest,
+          quizScore: latest.score,
+          totalQuestions: latest.questionCount,
+          quizMaxScore: latest.maxScore,
+          quizResultSummary: latest.summary,
+          quizBreakdown: latest.breakdown,
+          ...(profile.levelSource === "trial"
+            ? {}
+            : {
+                levelConfirmed: latest.levelConfirmed,
+                levelSource: "assessment",
+              }),
+          assessmentProvenance: "server_recomputed_adapted_paper",
+        });
+        await c.query("UPDATE portal_leads SET profile=$2 WHERE id=$1", [
+          leadId,
+          profile,
+        ]);
+      }
       return profile;
     });
     res.json({ success: true, lead: result });
@@ -890,4 +945,4 @@ export async function mountPortal(app: Express) {
     });
   });
 }
-export { wrap, own, fail };
+export { wrap, own, fail, visitor };

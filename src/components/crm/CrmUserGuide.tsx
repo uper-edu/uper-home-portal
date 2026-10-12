@@ -1682,10 +1682,11 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                               { name: 'reportedLevel', type: 'ReportedLevelType', format: 'Complete beginner / Beginner / Not sure / HSK 1 ~ 4+', defEn: 'Self-reported Chinese language proficiency registered at onboarding.', defZh: '学员初次登记自述的现有汉语能力水平。' },
                               { name: 'levelState', type: 'LevelStateType', format: 'ZERO / PARTIAL / KNOWN', defEn: 'Derived academic proficiency state governing Flag recommendations.', defZh: '推导学术认知状态，决定是否建议开展定级水平测试。' },
                               { name: 'quizScore', type: 'number (optional)', format: '0 ~ 100', defEn: 'Placement assessment diagnostic score (0 to 100).', defZh: '智能自测诊断试卷总得分（0~100）。' },
-                              { name: 'totalQuestions', type: 'number (optional)', format: '10', defEn: 'Total questions included in the placement assessment.', defZh: '自测试卷总题量，标准版固定为 10 题。' },
+                              { name: 'totalQuestions', type: 'number (optional)', format: '11 / 50', defEn: 'Item count: screening 11, full 50. This is not maximum points.', defZh: '题数：快测11、完整50，不代表满分。' },
+                              { name: 'quizMaxScore', type: 'number (optional)', format: '22 / 100', defEn: 'Maximum points: screening 22, full 100. Legacy records without this field have an unknown points scale.', defZh: '满分：快测22、完整100。历史记录缺少此字段时不能推断分值单位。' },
                               { name: 'quizBreakdown', type: 'object (optional)', format: '{ hsk1Correct, hsk2Correct, hsk3Correct }', defEn: 'Detailed accuracy breakdown by HSK level tier.', defZh: 'HSK 各等级对应题目的答题正确率分布明细。' },
                               { name: 'quizResultSummary', type: 'string (optional)', format: 'text', defEn: 'Algorithmic evaluation summary generated post-assessment.', defZh: '自测试卷提交后由系统自动化生成的学术诊断综述。' },
-                              { name: 'levelConfirmed', type: 'string (optional)', format: 'HSK 1 / HSK 2 / HSK 3 / HSK 4+', defEn: 'Academic advisor verified curriculum placement level.', defZh: '学术顾问经过复核或面试沟通后认定的最终定级等级。' },
+                              { name: 'levelConfirmed', type: 'string (optional)', format: 'HSK 1 / HSK 2 / HSK 3 / HSK 4+', defEn: 'Placement reference; assessment results describe paper thresholds and are not proficiency certification. Check levelSource and assessmentProvenance.', defZh: '分班参考；系统测评只描述本卷门槛，不代表能力认证。需结合levelSource与assessmentProvenance判断来源。' },
                               { name: 'levelSource', type: 'string (optional)', format: 'self / assessment / trial / mixed', defEn: 'Verification source underlying level confirmation.', defZh: '定级认定的数据凭据来源（自述/测试出分/试听完课/综合评定）。' }
                             ]
                           },
@@ -1802,10 +1803,11 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   { name: 'reportedLevel', type: 'ReportedLevelType', format: 'Complete beginner / Beginner / Not sure / HSK 1 ~ 4+', defEn: 'Self-reported Chinese language proficiency registered at onboarding.', defZh: '学员初次登记自述的现有汉语能力水平。' },
                   { name: 'levelState', type: 'LevelStateType', format: 'ZERO / PARTIAL / KNOWN', defEn: 'Derived academic proficiency state governing Flag recommendations.', defZh: '推导学术认知状态，决定是否建议开展定级水平测试。' },
                   { name: 'quizScore', type: 'number (optional)', format: '0 ~ 100', defEn: 'Placement assessment diagnostic score (0 to 100).', defZh: '智能自测诊断试卷总得分（0~100）。' },
-                  { name: 'totalQuestions', type: 'number (optional)', format: '10', defEn: 'Total questions included in the placement assessment.', defZh: '自测试卷总题量，标准版固定为 10 题。' },
+                  { name: 'totalQuestions', type: 'number (optional)', format: '11 / 50', defEn: 'Item count: screening 11, full 50. This is not maximum points.', defZh: '题数：快测11、完整50，不代表满分。' },
+                              { name: 'quizMaxScore', type: 'number (optional)', format: '22 / 100', defEn: 'Maximum points: screening 22, full 100. Legacy records without this field have an unknown points scale.', defZh: '满分：快测22、完整100。历史记录缺少此字段时不能推断分值单位。' },
                   { name: 'quizBreakdown', type: 'object (optional)', format: '{ hsk1Correct, hsk2Correct, hsk3Correct }', defEn: 'Detailed accuracy breakdown by HSK level tier.', defZh: 'HSK 各等级对应题目的答题正确率分布明细。' },
                   { name: 'quizResultSummary', type: 'string (optional)', format: 'text', defEn: 'Algorithmic evaluation summary generated post-assessment.', defZh: '自测试卷提交后由系统自动化生成的学术诊断综述。' },
-                  { name: 'levelConfirmed', type: 'string (optional)', format: 'HSK 1 / HSK 2 / HSK 3 / HSK 4+', defEn: 'Academic advisor verified curriculum placement level.', defZh: '学术顾问经过复核或面试沟通后认定的最终定级等级。' },
+                  { name: 'levelConfirmed', type: 'string (optional)', format: 'HSK 1 / HSK 2 / HSK 3 / HSK 4+', defEn: 'Placement reference; assessment results describe paper thresholds and are not proficiency certification. Check levelSource and assessmentProvenance.', defZh: '分班参考；系统测评只描述本卷门槛，不代表能力认证。需结合levelSource与assessmentProvenance判断来源。' },
                   { name: 'levelSource', type: 'string (optional)', format: 'self / assessment / trial / mixed', defEn: 'Verification source underlying level confirmation.', defZh: '定级认定的数据凭据来源（自述/测试出分/试听完课/综合评定）。' }
                 ]
               },

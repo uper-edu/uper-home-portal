@@ -1,0 +1,135 @@
+{
+  "sourceFilename": "HSK测评听力音频.mp3",
+  "sourceSha256": "1d13ab138e86993ee00f8de4129737bdf995d80606d2e8eda1d839003d1ed8fa",
+  "sourceDurationSec": 698.697143,
+  "method": "direct_mp3_frame_copy",
+  "note": "Preserve the source's announcements, voices, pauses and existing repetitions. Recorded question numbers differ from PDF IDs because the source combines exam groups. Match by spoken content, not announced number. MP3 boundaries have frame precision (~26ms).",
+  "regions": [
+    {
+      "id": 1,
+      "start": 7.2,
+      "end": 23.3,
+      "recordedNumber": 1
+    },
+    {
+      "id": 2,
+      "start": 23.35,
+      "end": 39.5,
+      "recordedNumber": 2
+    },
+    {
+      "id": 3,
+      "start": 39.7,
+      "end": 56.8,
+      "recordedNumber": 3
+    },
+    {
+      "id": 4,
+      "start": 62.6,
+      "end": 85.0,
+      "recordedNumber": 6
+    },
+    {
+      "id": 5,
+      "start": 85.4,
+      "end": 101.5,
+      "recordedNumber": 7
+    },
+    {
+      "id": 6,
+      "start": 108.3,
+      "end": 142.5,
+      "recordedNumber": 16
+    },
+    {
+      "id": 7,
+      "start": 143.1,
+      "end": 171.5,
+      "recordedNumber": 17
+    },
+    {
+      "id": 8,
+      "start": 172.1,
+      "end": 199.1,
+      "recordedNumber": 6
+    },
+    {
+      "id": 9,
+      "start": 199.6,
+      "end": 226.1,
+      "recordedNumber": 7
+    },
+    {
+      "id": 10,
+      "start": 226.5,
+      "end": 249.5,
+      "recordedNumber": 8
+    },
+    {
+      "id": 11,
+      "start": 255.4,
+      "end": 297.8,
+      "recordedNumber": 16
+    },
+    {
+      "id": 12,
+      "start": 298.1,
+      "end": 339.1,
+      "recordedNumber": 17
+    },
+    {
+      "id": 13,
+      "start": 339.3,
+      "end": 374.5,
+      "recordedNumber": 18
+    },
+    {
+      "id": 14,
+      "start": 381.3,
+      "end": 417.2,
+      "recordedNumber": 11
+    },
+    {
+      "id": 15,
+      "start": 417.3,
+      "end": 457.3,
+      "recordedNumber": 12
+    },
+    {
+      "id": 16,
+      "start": 457.5,
+      "end": 493.4,
+      "recordedNumber": 13
+    },
+    {
+      "id": 17,
+      "start": 493.6,
+      "end": 528.1,
+      "recordedNumber": 14
+    },
+    {
+      "id": 18,
+      "start": 534.5,
+      "end": 574.2,
+      "recordedNumber": 21
+    },
+    {
+      "id": 19,
+      "start": 574.3,
+      "end": 618.9,
+      "recordedNumber": 22
+    },
+    {
+      "id": 20,
+      "start": 618.9,
+      "end": 657.1,
+      "recordedNumber": 23
+    },
+    {
+      "id": 21,
+      "start": 657.1,
+      "end": 698.0,
+      "recordedNumber": 24
+    }
+  ]
+}

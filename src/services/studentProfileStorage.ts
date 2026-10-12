@@ -1,7 +1,12 @@
+import type { HskResult } from '../data/hskAssessment';
 import type { LeadProfile } from '../types/leadSystem';
 
 export interface UnifiedAssessmentData {
   completed: boolean;
+  result?: HskResult;
+  maxScore?: number;
+  questionCount?: number;
+  saveStatus?: "local" | "saved" | "legacy_unverified";
   score?: number;
   total?: number;
   levelConfirmed?: string;
@@ -48,6 +53,7 @@ export function getStudentContext(): UnifiedStudentContext | null {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
+        if(parsed.assessment?.completed && !parsed.assessment.result) parsed.assessment.saveStatus="legacy_unverified";
         return parsed as UnifiedStudentContext;
       }
     }
@@ -66,6 +72,7 @@ export function getStudentContext(): UnifiedStudentContext | null {
         leadProfile: legacyLead,
         assessment: legacyLead.quizScore !== undefined ? {
           completed: true,
+          saveStatus: "legacy_unverified",
           score: legacyLead.quizScore,
           total: legacyLead.totalQuestions || 15,
           levelConfirmed: legacyLead.levelConfirmed,

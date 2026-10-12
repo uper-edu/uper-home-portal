@@ -89,6 +89,10 @@ export function mountChat(app: Express) {
             [conv.id],
           )
         ).rows.slice(-40);
+        const ownedProfile=conv.lead_id?(await db.query('SELECT profile FROM portal_leads WHERE id=$1',[conv.lead_id])).rows[0]?.profile:null;
+        const placementContext=ownedProfile?.latestAssessment
+          ? '\nVisitor-owned diagnostic result (server-recomputed answers, not HSK certification): '+JSON.stringify({mode:ownedProfile.latestAssessment.attempt.mode,score:ownedProfile.latestAssessment.score,maxScore:ownedProfile.latestAssessment.maxScore,questionCount:ownedProfile.latestAssessment.questionCount,sections:ownedProfile.latestAssessment.sections,thresholds:ownedProfile.latestAssessment.thresholds,summary:ownedProfile.latestAssessment.summary})
+          : '';
         let reply = "",
           modelUsed: string | null = null;
         const providers = [
@@ -123,7 +127,7 @@ export function mountChat(app: Express) {
                   {
                     role: "system",
                     content:
-                      getSystemInstruction(false) +
+                      getSystemInstruction(false) + placementContext +
                       "\nYou are an AI assistant. Human requests create follow-up tasks; never impersonate an employee.",
                   },
                   ...history,

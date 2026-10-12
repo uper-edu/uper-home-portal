@@ -1,0 +1,21 @@
+{
+  "sourceFilename": "HSK测评题.pdf",
+  "sourceSha256": "e80a3cbaabc5e75c186001a54bb98793a29129fb3459e6b75903e69e5c9e4a54",
+  "method": "direct_pdf_page_crop",
+  "renderDpi": 300,
+  "assets": {
+    "example_apples": {
+      "src": "/images/hsk/source-e80a3cbaabc5/example_apples.png",
+      "page": 2,
+      "bbox": [
+        412.96,
+        161.2,
+        511.16,
+        230.36
+      ],
+      "width": 409,
+      "height": 288,
+      "sha256": "3c861e0a5cddbcc90b65be5f7b75751c307f877d49d0da238383242a33d89ce2"
+    }
+  }
+}

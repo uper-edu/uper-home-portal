@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS portal_audit(id bigserial PRIMARY KEY, actor text NOT
 CREATE TABLE IF NOT EXISTS portal_settings(id text PRIMARY KEY, value jsonb NOT NULL);
 CREATE TABLE IF NOT EXISTS identity_candidates(visitor_id text NOT NULL REFERENCES visitor_sessions, lead_id text NOT NULL REFERENCES portal_leads, candidate_id text NOT NULL REFERENCES portal_leads, PRIMARY KEY(visitor_id,candidate_id));
 CREATE TABLE IF NOT EXISTS lead_read_marks(employee_id text NOT NULL,lead_id text NOT NULL REFERENCES portal_leads,seen_at timestamptz NOT NULL,PRIMARY KEY(employee_id,lead_id));
+-- Immutable, visitor-owned attempts. Scores are computed from the server's versioned bank.
+CREATE TABLE IF NOT EXISTS hsk_attempts(id text PRIMARY KEY, visitor_id text NOT NULL REFERENCES visitor_sessions, lead_id text REFERENCES portal_leads, input_hash text NOT NULL, attempt jsonb NOT NULL, result jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS hsk_attempt_history ON hsk_attempts(visitor_id,created_at DESC);
 
 -- Notification send time and rule activation are separate from scheduled due time.
 ALTER TABLE notification_jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz;

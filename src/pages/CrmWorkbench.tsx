@@ -575,8 +575,8 @@ export default function CrmWorkbench() {
           ? 'bg-purple-50 text-purple-700 border-purple-200' 
           : 'bg-purple-950/60 text-purple-300 border-purple-800',
         title: t(
-          `Completed Diagnostic: ${selectedLead.quizScore}/${selectedLead.totalQuestions || 15} (${selectedLead.levelConfirmed || selectedLead.levelState})`,
-          `完成摸底测评：${selectedLead.quizScore}/${selectedLead.totalQuestions || 15} 分 (判定等级: ${selectedLead.levelConfirmed || selectedLead.levelState})`
+          `Completed Diagnostic: ${selectedLead.quizScore}/${selectedLead.quizMaxScore ?? '?'} (${selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState})`,
+          `完成摸底测评：${selectedLead.quizScore}/${selectedLead.quizMaxScore ?? '?'} 分 (分班参考: ${selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState})`
         ),
         subtitle: breakdownText,
         content: selectedLead.quizResultSummary || t('Diagnostic results synced to consultant dashboard for personalized curriculum recommendation.', '测评明细已生成，可为学员精准匹配对应的课程分级与班型。')
@@ -904,7 +904,7 @@ export default function CrmWorkbench() {
           ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
           : 'bg-emerald-950 text-emerald-300 border-emerald-800',
         title: typeof lead.quizScore === 'number'
-          ? t(`Quiz score: ${lead.quizScore}/${lead.totalQuestions || 100}`, `测评得分: ${lead.quizScore}/${lead.totalQuestions || 100}`)
+          ? t(`Quiz score: ${lead.quizScore}/${lead.quizMaxScore ?? '?'}`, `测评得分: ${lead.quizScore}/${lead.quizMaxScore ?? '?'}`)
           : t('Assessment completed', '已完成在线测评')
       };
     }
@@ -2132,9 +2132,9 @@ export default function CrmWorkbench() {
                                 }`}>
                                   <span className="text-emerald-500 font-bold">✓</span>
                                   <span>{lead.levelConfirmed || lead.reportedLevel}</span>
-                                  <span className="opacity-75">{t('Confirmed', '已定级')}</span>
+                                  <span className="opacity-75">{lead.levelSource==='trial' ? t('Teacher placement','教师定级') : lead.latestAssessment ? t('Paper result','本卷参考') : lead.levelSource==='assessment' ? t('Legacy unverified','历史未核验') : t('Confirmed','已定级')}</span>
                                   {typeof lead.quizScore === 'number' && (
-                                    <span className="font-mono font-bold opacity-90">· {lead.quizScore}/{lead.totalQuestions || 10}{t('pts', '分')}</span>
+                                    <span className="font-mono font-bold opacity-90">· {t('Paper','本卷')} {lead.quizScore}/{lead.quizMaxScore ?? '?'}{t('pts', '分')}</span>
                                   )}
                                 </span>
                               ) : lead.reportedLevel && lead.reportedLevel !== 'Beginner' ? (
@@ -2429,9 +2429,9 @@ export default function CrmWorkbench() {
                               }`}>
                                 <span className="text-emerald-500 font-bold">✓</span>
                                 <span>{lead.levelConfirmed || lead.reportedLevel}</span>
-                                <span className="opacity-75">{t('Confirmed', '已定级')}</span>
+                                <span className="opacity-75">{lead.levelSource==='trial' ? t('Teacher placement','教师定级') : lead.latestAssessment ? t('Paper result','本卷参考') : lead.levelSource==='assessment' ? t('Legacy unverified','历史未核验') : t('Confirmed','已定级')}</span>
                                 {typeof lead.quizScore === 'number' && (
-                                  <span className="font-mono font-bold opacity-90">· {lead.quizScore}/{lead.totalQuestions || 10}{t('pts', '分')}</span>
+                                  <span className="font-mono font-bold opacity-90">· {t('Paper','本卷')} {lead.quizScore}/{lead.quizMaxScore ?? '?'}{t('pts', '分')}</span>
                                 )}
                               </span>
                             ) : lead.reportedLevel && lead.reportedLevel !== 'Beginner' ? (
@@ -2795,7 +2795,7 @@ export default function CrmWorkbench() {
                             {t('Diagnostic Score & Confirmed Level:', '摸底得分与判定级别:')}
                           </span>
                           <span className="font-bold font-mono text-emerald-600 text-sm">
-                            {selectedLead.quizScore} / {selectedLead.totalQuestions || 15} ({selectedLead.levelConfirmed || selectedLead.levelState})
+                            {selectedLead.quizScore} / {selectedLead.quizMaxScore ?? '?'} ({selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState})
                           </span>
                         </div>
                         {selectedLead.quizBreakdown && (
