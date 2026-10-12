@@ -1,3 +1,4 @@
+import { chatFetch, registerContact, restoreChat } from '../services/portalChat';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -52,7 +53,9 @@ export default function StandAloneChat() {
     const ctx = getStudentContext();
     return !ctx?.leadProfile;
   });
+  useEffect(()=>{fetch('/api/portal/session').then(r=>r.ok?r.json():Promise.reject()).then(s=>{if(!s.registered)setShowOnboardingModal(true);}).catch(()=>{});},[]);
   const [isTakingAssessment, setIsTakingAssessment] = useState(() => getChatAssessmentStatus(initialContext) === 'pending');
+  useEffect(() => { let active=true; restoreChat('standalone_chat').then(rows => { if(active && rows.length) setMessages(rows); }).catch(() => {}); return () => { active=false; }; }, []);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (!initialContext?.leadProfile) return [];
     const pending = getChatAssessmentStatus(initialContext) === 'pending';
@@ -101,53 +104,8 @@ export default function StandAloneChat() {
   }, []);
 
   // Sync lead profile to backend API
-  const syncLeadToBackend = async (lead: LeadProfile, customMessages?: ChatMessage[]) => {
-    try {
-      const msgsToSync = customMessages || messages;
-      const transcript = msgsToSync.map(m => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : new Date().toISOString()
-      }));
-
-      await fetch('/api/standalone-chat-lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...lead,
-          chatTranscript: transcript
-        })
-      });
-    } catch (e) {
-      console.warn('[LEAD SYNC] Failed to background sync lead:', e);
-    }
-  };
-
-  // Sync complete dialogue transcript to CRM in real-time
-  const syncChatTranscript = async (lead: LeadProfile | null, currentMessages: ChatMessage[]) => {
-    if (!lead) return;
-    try {
-      const transcript = currentMessages.map(m => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : new Date().toISOString()
-      }));
-
-      await fetch('/api/crm/leads/sync-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          whatsapp: lead.whatsapp,
-          email: lead.email,
-          messages: transcript
-        })
-      });
-    } catch (e) {
-      console.warn('[CHAT SYNC] Failed to background sync chat transcript:', e);
-    }
-  };
+  const syncLeadToBackend = async (lead: LeadProfile, _messages?: ChatMessage[]) => { await registerContact(lead); };
+  const syncChatTranscript = async (_lead: LeadProfile | null, _messages: ChatMessage[]) => {};
 
   // Explicit handler to voluntarily launch HSK Placement Assessment anytime
   const handleStartVoluntaryAssessment = () => {
@@ -182,7 +140,8 @@ Silakan pilih mode tes di bawah ini (Mode Cepat 10 Soal atau Ujian Lengkap 50 So
   };
 
   // Called when student finishes 30s GForm Profile
-  const handleOnboardingComplete = (completedProfile: LeadProfile, selectedLang: 'en' | 'id' | 'zh') => {
+  const handleOnboardingComplete = async (completedProfile: LeadProfile, selectedLang: 'en' | 'id' | 'zh') => {
+    try { await registerContact(completedProfile); } catch (e) { alert((e as Error).message); return; }
     setProfile(completedProfile);
     setLang(selectedLang);
     setShowOnboardingModal(false);
@@ -235,7 +194,7 @@ Berdasarkan formulir Anda:
         isAssessmentCard: true
       };
       setMessages([initialGreeting]);
-      syncLeadToBackend(completedProfile);
+
 
     } else if (levelState === 'KNOWN') {
       // KNOWN -> Skip Assessment (But offer voluntary entry)
@@ -283,7 +242,7 @@ Hebat sekali! Anda telah memiliki sertifikasi/kemampuan **${reportedLevel}**. Se
         ]
       };
       setMessages([initialGreeting]);
-      syncLeadToBackend(completedProfile);
+
 
     } else {
       // ZERO -> Complete Beginner (Also offer voluntary entry)
@@ -333,7 +292,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         ]
       };
       setMessages([initialGreeting]);
-      syncLeadToBackend(completedProfile);
+
     }
   };
 
@@ -378,7 +337,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
       });
       updatedProfile.tier = recalculated.tier;
       setProfile(updatedProfile);
-      syncLeadToBackend(updatedProfile);
+      syncLeadToBackend(updatedProfile).catch(e => alert(e.message));
 
       // Save assessment state into unified student context
       saveStudentContext({
@@ -488,8 +447,8 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
     try {
       const currentContext = getStudentContext();
       const messagesHistory = [
-        ...messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content })),
-        { role: 'user', content: messageContent }
+        ...messages.filter(m => m.role !== 'system').map(m => ({ id: m.id, role: m.role, content: m.content })),
+        { id: userMessage.id, role: 'user', content: messageContent }
       ];
 
       const botMessageId = `msg-${Date.now() + 1}`;
@@ -501,7 +460,7 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
       };
       setMessages((prev) => [...prev, botPlaceholder]);
 
-      const res = await fetch('/api/chat', {
+      const res = await chatFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -510,7 +469,7 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
           isHumanMode: false,
           stream: true
         })
-      });
+      }, 'standalone_chat');
 
       if (!res.ok) {
         throw new Error(`Chat API error: ${res.status}`);

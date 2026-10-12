@@ -1,3 +1,6 @@
+import { mountPortal } from './server/portal/runtime.ts';
+import { mountChat } from './server/portal/chat.ts';
+import { startWorker } from './server/portal/worker.ts';
 import express from 'express';
 import compression from 'compression';
 import path from 'path';
@@ -154,7 +157,7 @@ async function startServer() {
                  (process.argv[1] && (process.argv[1].includes('dist') || process.argv[1].includes('server.cjs')));
 
   // Bind strictly to port 3000 as required by AI Studio reverse proxy
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
   const root = process.cwd();
   const distPath = fs.existsSync(path.join(root, 'dist/index.html'))
     ? path.join(root, 'dist')
@@ -163,6 +166,9 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  await mountPortal(app);
+  if (process.env.DATABASE_URL) { mountChat(app); startWorker(); }
+  else if (process.env.LEGACY_CHAT_TEST !== 'true') app.post('/api/chat', (_q, r) => { r.status(503).json({error:'Database required; message not saved'}); });
 
   // Static directory for official HSK audio assets
   const publicAudioDir = path.join(process.cwd(), 'public/audio');
@@ -1962,7 +1968,7 @@ ${cmsUrls.join('\n')}
     });
   });
 
-  const server = app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, process.env.PLATFORM_MODE === 'mock' ? '127.0.0.1' : '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 

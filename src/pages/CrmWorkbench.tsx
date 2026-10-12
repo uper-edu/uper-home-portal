@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { LeadActivity, LeadPendingAction } from '../components/LeadAttention';
+import LeadTaskActions from '../components/LeadTaskActions';
+import NotificationCenter from '../components/NotificationCenter';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { safeStorage } from '../utils/safeStorage';
 import { 
@@ -131,6 +134,9 @@ export default function CrmWorkbench() {
     conversionRate: '0.0%'
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [dataScope,setDataScope] = useState<'own'|'team'|'all'>('all');
+  const [attentionFilter,setAttentionFilter] = useState<'all'|'mine'|'unread'|'unassigned'|'overdue'>('all');
+  const [leadActionError,setLeadActionError] = useState('');
   const [selectedTierTab, setSelectedTierTab] = useState<string>('All');
   const [selectedStage, setSelectedStage] = useState<string>('All');
   const [selectedOwner, setSelectedOwner] = useState<string>('All');
@@ -206,11 +212,16 @@ export default function CrmWorkbench() {
   });
 
   // Dynamic Overdue Count based on live policy config & cadence rules
-  const dynamicOverdueCount = leads.filter(l => evaluateLeadCadence(l, policyConfig, lang).isOverdue).length;
+  const dynamicOverdueCount = leads.filter(l => l.attention ? l.attention.tasks.some(t=>t.status==='overdue'||Date.parse(t.dueAt)<Date.now()) : evaluateLeadCadence(l, policyConfig, lang).isOverdue).length;
 
   // Filtered Leads accounting for Stage, Owner, Search and all Telesales filters
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
+      if(attentionFilter==='mine'&&(!lead.attention?.isMine||!lead.attention.tasks.length))return false;
+      if(attentionFilter==='unread'&&!lead.attention?.unreadCount)return false;
+      if(attentionFilter==='unassigned'&&lead.owner)return false;
+      if(attentionFilter==='overdue'&&!lead.attention?.tasks.some(t=>t.status==='overdue'||Date.parse(t.dueAt)<Date.now()))return false;
+
       if (selectedConnectStatus !== 'All' && lead.connectStatus !== selectedConnectStatus) {
         return false;
       }
@@ -228,11 +239,16 @@ export default function CrmWorkbench() {
         if (selectedSlaStatus === 'stale' && cadence.statusType !== 'stale_alert') return false;
       }
       return true;
+    }).sort((a,b)=>{
+      if(attentionFilter==='mine'||attentionFilter==='overdue'){const due=(l:CrmLeadRecord)=>Math.min(...(l.attention?.tasks||[]).map(t=>Date.parse(t.dueAt)));return due(a)-due(b);}
+      if(attentionFilter==='unread')return Date.parse(b.attention?.latest?.at||'1970-01-01')-Date.parse(a.attention?.latest?.at||'1970-01-01');
+      return 0;
     });
-  }, [leads, selectedConnectStatus, selectedMode, selectedBuyingSignal, selectedSlaStatus, policyConfig, lang]);
+  }, [leads, attentionFilter, selectedConnectStatus, selectedMode, selectedBuyingSignal, selectedSlaStatus, policyConfig, lang]);
 
   // Check if any filters or search query are active
   const hasActiveFilters = Boolean(
+    attentionFilter !== 'all' ||
     selectedTierTab !== 'All' ||
     selectedStage !== 'All' ||
     selectedSlaStatus !== 'All' ||
@@ -264,7 +280,7 @@ export default function CrmWorkbench() {
 
   const handleResetAllFilters = () => {
     const needManualFetch = selectedTierTab === 'All' && selectedStage === 'All' && selectedOwner === 'All' && searchQuery.trim().length > 0;
-    setSelectedTierTab('All');
+    setAttentionFilter('all'); setSelectedTierTab('All');
     setSelectedStage('All');
     setSelectedSlaStatus('All');
     setSelectedConnectStatus('All');
@@ -287,7 +303,9 @@ export default function CrmWorkbench() {
   };
 
   // Follow-up form state
-  const [staffName, setStaffName] = useState('Sales A');
+  const [staffName, setStaffName] = useState('');
+  const [employees,setEmployees] = useState<Array<{id:string}>>([]);
+  useEffect(()=>{fetch('/api/portal/employees').then(r=>r.json()).then(setEmployees).catch(()=>{});},[]);
   const [channel, setChannel] = useState<'WhatsApp' | 'Phone Call' | 'Campus Visit' | 'Email' | 'Other'>('WhatsApp');
   const [connectStatus, setConnectStatus] = useState<ConnectStatusType>('Connected');
   const [newStage, setNewStage] = useState<StageType>('Contacted');
@@ -299,8 +317,8 @@ export default function CrmWorkbench() {
   const [copiedScript, setCopiedScript] = useState(false);
 
   // Fetch leads from backend
-  const fetchLeads = async () => {
-    setIsLoading(true);
+  const fetchLeads = async (quiet = false) => {
+    if(!quiet) setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedTierTab !== 'All') params.append('tier', selectedTierTab);
@@ -309,10 +327,13 @@ export default function CrmWorkbench() {
       if (searchQuery.trim()) params.append('search', searchQuery.trim());
 
       const res = await fetch(`/api/crm/leads?${params.toString()}`);
+      if(!res.ok){const error=await res.json();throw Error(error.error||String(res.status));}
       if (res.ok) {
         const data = await res.json();
+        setLeadActionError('');
         setLeads(data.leads || []);
-        if (data.stats) setStats(data.stats);
+        if(data.dataScope)setDataScope(data.dataScope);
+        if (data.stats) setStats(prev=>({...prev,...data.stats}));
 
         // Update selected lead if drawer is open
         if (selectedLead) {
@@ -321,15 +342,18 @@ export default function CrmWorkbench() {
         }
       }
     } catch (err) {
-      console.error('Failed to load CRM leads:', err);
+      console.error('Failed to load CRM leads:', err); setLeadActionError((err as Error).message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchLeadsRef=useRef(fetchLeads);
+  useEffect(()=>{fetchLeadsRef.current=fetchLeads;});
   useEffect(() => {
     fetchLeads();
-  }, [selectedTierTab, selectedStage, selectedOwner]);
+    const timer=setInterval(()=>fetchLeadsRef.current(true),5000); return ()=>clearInterval(timer);
+  }, [selectedTierTab, selectedStage, selectedOwner, selectedLead?.id]);
 
   // Load SLA & Cadence Policy Configuration
   const fetchPolicyConfig = async () => {
@@ -357,9 +381,9 @@ export default function CrmWorkbench() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.config) {
-          setPolicyConfig(data.config);
-          fetchLeads(); // refresh leads metrics
+        if (data.success) {
+          await fetchPolicyConfig();
+          fetchLeads();
           return true;
         }
       }
@@ -377,9 +401,9 @@ export default function CrmWorkbench() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.config) {
-          setPolicyConfig(data.config);
-          fetchLeads(); // refresh leads metrics
+        if (data.success) {
+          await fetchPolicyConfig();
+          fetchLeads();
           return true;
         }
       }
@@ -404,6 +428,7 @@ export default function CrmWorkbench() {
     setNextFollowUpAt(lead.nextFollowUpAt || '');
     setActiveDrawerTab(tab);
     setIsDrawerOpen(true);
+    if(lead.attention?.unreadCount){fetch(`/api/crm/leads/${lead.id}/read`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({readThrough:lead.attention.observedAt})}).then(async r=>{if(!r.ok)throw Error((await r.json()).error);setLeadActionError('');fetchLeads(true);}).catch(e=>setLeadActionError(e.message));}
   };
 
   // Submit follow-up log
@@ -688,6 +713,8 @@ export default function CrmWorkbench() {
 
   // Config-driven Dynamic Cadence & SLA calculation
   const getSlaDisplay = (lead: CrmLeadRecord) => {
+    if(lead.attention){const task=lead.attention.tasks[0];const overdue=!!task&&(task.status==='overdue'||Date.parse(task.dueAt)<Date.now());return {text:task?(task.status==='migration_hold'?t('Historical task: review required','历史待办待确认'):overdue?t('Overdue','已逾期'):t('Follow-up pending','待跟进')):t('No pending follow-up','暂无待办'),color:overdue?'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800':'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',isOverdue:overdue,suggestedAction:lead.nextAction||'',statusType:task?'scheduled':'none'};}
+
     const cadence = evaluateLeadCadence(lead, policyConfig, lang);
     return { 
       text: cadence.badgeText, 
@@ -786,6 +813,8 @@ export default function CrmWorkbench() {
   // Smart next action recommendation using policy configuration
   const getDisplayNextAction = (lead: CrmLeadRecord): string => {
     if (lead.nextAction && lead.nextAction.trim()) return lead.nextAction.trim();
+    if(lead.attention){const task=lead.attention.tasks[0];if(!task)return t('No pending follow-up','暂无待跟进事项');const actions:Record<string,[string,string]>={consultation:['Contact and qualify','联系客户并确认需求'],handoff:['Advisor contact requested','安排顾问联系'],booking:['Confirm booking','确认预约安排'],enrollment:['Follow up enrollment','跟进报名意向']};return actions[task.kind]?.[lang==='zh'?1:0]||t('Follow up with customer','联系客户跟进');}
+
     return evaluateLeadCadence(lead, policyConfig, lang).suggestedAction;
   };
 
@@ -1159,7 +1188,7 @@ export default function CrmWorkbench() {
               <>
                 <button
                   type="button"
-                  onClick={fetchLeads}
+                  onClick={()=>fetchLeads()}
                   disabled={isLoading}
                   className={`flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                     isLight
@@ -1278,6 +1307,7 @@ export default function CrmWorkbench() {
             onNavigateTab={(tab) => setCrmModule(tab)}
           />
         ) : crmModule === 'policy' ? (
+          <>
           <CrmPolicySettings
             isLight={isLight}
             lang={lang}
@@ -1287,6 +1317,8 @@ export default function CrmWorkbench() {
             onNavigateTab={(tab) => setCrmModule(tab)}
             onActionControlsChange={setPolicyControls}
           />
+          <NotificationCenter isLight={isLight} lang={lang} />
+          </>
         ) : crmModule === 'docs' ? (
           <CrmUserGuide
             isLight={isLight}
@@ -1336,7 +1368,7 @@ export default function CrmWorkbench() {
                   {stats.hot}
                 </div>
                 <span className={`text-[11px] font-medium leading-tight truncate ${isLight ? 'text-amber-700/80' : 'text-amber-400/80'}`}>
-                  {t('24h SLA Required', '需 24h 内快速响应')}
+                  {t('Configured SLA', '按配置响应')}
                 </span>
               </div>
 
@@ -1444,6 +1476,10 @@ export default function CrmWorkbench() {
               </div>
             </div>
 
+            {leadActionError&&<p role="alert" className="text-xs text-rose-500">{leadActionError}</p>}
+            <div className="flex gap-2 flex-wrap" aria-label={t('Work queue','工作队列')}>
+              {([{id:'all',en:'All accessible leads',zh:'全部可见线索'},{id:'mine',en:'My pending follow-up',zh:'我的待办'},{id:'unread',en:'Unread activity',zh:'未读动态'},{id:'unassigned',en:'Unassigned',zh:'待分配'},{id:'overdue',en:'Overdue',zh:'已逾期'}] as const).filter(f=>f.id!=='unassigned'||dataScope!=='own').map(f=><button key={f.id} type="button" aria-pressed={attentionFilter===f.id} onClick={()=>setAttentionFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-xs font-medium ${attentionFilter===f.id?'bg-primary-600 text-white border-primary-600':isLight?'bg-white text-slate-600 border-slate-200':'bg-slate-900 text-slate-300 border-slate-700'}`}>{t(f.en,f.zh)}</button>)}
+            </div>
         {/* Filter Bar: Row 1 (Tier + Advanced Filters Toggle) -> Collapsible 6 Dropdowns -> Bottom Row (Search + Column Switcher) */}
         <div className={`rounded-2xl p-3.5 space-y-3 transition-colors ${
           isLight ? 'bg-white border border-slate-200/90 shadow-2xs' : 'bg-slate-900 border border-slate-800'
@@ -1454,7 +1490,7 @@ export default function CrmWorkbench() {
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0">
               {[
                 { id: 'All', label: t('All Leads', '全部线索') },
-                { id: 'Hot', label: t('🔥 Hot (24h)', '🔥 Hot (24h响应)') },
+                { id: 'Hot', label: t('🔥 Hot', '🔥 高意向') },
                 { id: 'Warm-Offline', label: t('🏫 Warm-Offline', '🏫 Warm-线下') },
                 { id: 'Warm-Online', label: t('🌐 Warm-Online', '🌐 Warm-线上') },
                 { id: 'School', label: t('🏢 School (B2B)', '🏢 院校合作(B2B)') },
@@ -1794,10 +1830,7 @@ export default function CrmWorkbench() {
                     <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
                       {t('All', '全部')}
                     </option>
-                    <option value="Sales A" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>Sales A</option>
-                    <option value="Sales B" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>Sales B</option>
-                    <option value="B2B owner" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>B2B owner</option>
-                    <option value="Online Ops" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>Online Ops</option>
+                    <option value="">未分配</option>{Array.from(new Set(leads.map(l=>l.owner).filter(o=>o&&!employees.some(e=>e.id===o)))).map(owner=><option key={owner} value={owner}>{owner}（历史归属）</option>)}{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
                   </select>
                   <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
                     isLight ? 'text-slate-400' : 'text-slate-500'
@@ -2041,6 +2074,7 @@ export default function CrmWorkbench() {
                                 </div>
                               </div>
                             </div>
+                            <LeadActivity lead={lead} lang={lang} onOpen={()=>handleOpenLeadDrawer(lead,'chat')} />
                             <span className={`inline-block mt-0.5 px-1.5 py-0.2 text-[9px] rounded font-medium ${
                               lead.currentStatus === 'Working professional'
                                 ? isLight ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-blue-950 text-blue-300'
@@ -2055,7 +2089,7 @@ export default function CrmWorkbench() {
                           {/* 3. 城市与授课模式 */}
                           <td className={`py-3 px-3 whitespace-nowrap border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
                             <div className={`font-semibold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
-                              {lead.city === 'Jakarta' ? t('Jakarta (Jabodetabek)', '雅加达 (Jabodetabek)') : t('Other City / Islands', '其他城市/外岛')}
+                              {!lead.city ? t('Unknown','未知') : lead.city === 'Jakarta' ? t('Jakarta (Jabodetabek)', '雅加达 (Jabodetabek)') : t('Other City / Islands', '其他城市/外岛')}
                             </div>
                             <span className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.2 rounded font-medium ${
                               lead.mode === 'Offline'
@@ -2105,7 +2139,7 @@ export default function CrmWorkbench() {
                                 <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${
                                   isLight ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-slate-800 border-slate-700 text-slate-400'
                                 }`}>
-                                  {t('Beginner / Zero-base', '零基础')}
+                                  {lead.reportedLevel === 'Beginner' ? t('Beginner / Zero-base', '零基础') : t('Unknown', '未知')}
                                 </span>
                               )}
                             </div>
@@ -2130,6 +2164,7 @@ export default function CrmWorkbench() {
                                 {getDisplayNextAction(lead)}
                               </span>
                             </div>
+                            <LeadPendingAction lead={lead} lang={lang} />
                           </td>
 
                           {/* 6. 购买信号 */}
@@ -2209,7 +2244,8 @@ export default function CrmWorkbench() {
                           {/* 9. 归属顾问 (Owner) */}
                           <td className={`py-3 px-3 text-left whitespace-nowrap w-[130px] border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`} onClick={(e) => e.stopPropagation()}>
                             <select
-                              value={lead.owner}
+                              value={lead.owner || ''}
+                              disabled={dataScope==='own'}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { owner: e.target.value });
                                 e.currentTarget.blur();
@@ -2222,10 +2258,7 @@ export default function CrmWorkbench() {
                                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                             >
-                              <option value="Sales A" style={{ fontSize: '11px' }}>Sales A</option>
-                              <option value="Sales B" style={{ fontSize: '11px' }}>Sales B</option>
-                              <option value="B2B owner" style={{ fontSize: '11px' }}>B2B owner</option>
-                              <option value="Online Ops" style={{ fontSize: '11px' }}>Online Ops</option>
+                              <option value="">未分配</option>{lead.owner && !employees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
                             </select>
                           </td>
                         </tr>
@@ -2321,6 +2354,7 @@ export default function CrmWorkbench() {
                             <div className="truncate max-w-[130px]" title={lead.fullName}>
                               {lead.fullName}
                             </div>
+                            <LeadActivity lead={lead} lang={lang} onOpen={()=>handleOpenLeadDrawer(lead,'chat')} />
                           </td>
 
                           {/* 3. 提交时间 */}
@@ -2402,7 +2436,7 @@ export default function CrmWorkbench() {
                               <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${
                                 isLight ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-slate-800 border-slate-700 text-slate-400'
                               }`}>
-                                {t('Beginner / Zero-base', '零基础')}
+                                {lead.reportedLevel === 'Beginner' ? t('Beginner / Zero-base', '零基础') : t('Unknown', '未知')}
                               </span>
                             )}
                           </td>
@@ -2429,6 +2463,7 @@ export default function CrmWorkbench() {
                                 {getDisplayNextAction(lead)}
                               </span>
                             </div>
+                          <LeadPendingAction lead={lead} lang={lang} />
                           </td>
 
                           {/* 13. 购买信号 */}
@@ -2492,7 +2527,8 @@ export default function CrmWorkbench() {
                           {/* 16. 归属顾问 (Owner) - 纯净左对齐，无右箭头 */}
                           <td className="py-3 px-3 text-left whitespace-nowrap w-[130px]" onClick={(e) => e.stopPropagation()}>
                             <select
-                              value={lead.owner}
+                              value={lead.owner || ''}
+                              disabled={dataScope==='own'}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { owner: e.target.value });
                                 e.currentTarget.blur();
@@ -2505,10 +2541,7 @@ export default function CrmWorkbench() {
                                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                             >
-                              <option value="Sales A" style={{ fontSize: '11px' }}>Sales A</option>
-                              <option value="Sales B" style={{ fontSize: '11px' }}>Sales B</option>
-                              <option value="B2B owner" style={{ fontSize: '11px' }}>B2B owner</option>
-                              <option value="Online Ops" style={{ fontSize: '11px' }}>Online Ops</option>
+                              <option value="">未分配</option>{lead.owner && !employees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
                             </select>
                           </td>
                         </tr>
@@ -2800,6 +2833,7 @@ export default function CrmWorkbench() {
               {/* TAB 2: 📋 动态与时间轴 (Unified Customer Journey Timeline & Activities) */}
               {activeDrawerTab === 'activities' && (
                 <div className="space-y-4">
+                  <LeadTaskActions key={selectedLead.id} leadId={selectedLead.id} isLight={isLight} lang={lang} onChange={()=>fetchLeads(true)} />
                   {/* Top Action Bar: Add Follow-up Toggle + Timeline Filter */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <button
@@ -2897,10 +2931,7 @@ export default function CrmWorkbench() {
                                 isLight ? 'bg-white border border-slate-200 text-slate-800' : 'bg-slate-900 border border-slate-800 text-slate-200'
                               }`}
                             >
-                              <option value="Sales A">Sales A</option>
-                              <option value="Sales B">Sales B</option>
-                              <option value="B2B owner">B2B owner</option>
-                              <option value="Online Ops">Online Ops</option>
+                              <option value="">未分配</option>{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
                             </select>
                           </div>
 

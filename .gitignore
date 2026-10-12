@@ -12,3 +12,6 @@ dist/
 # Runtime records and local migration backups
 /data/
 /.local-backups/
+
+# Private environment-specific reconciliation reports
+/docs/local3000-cutover.md

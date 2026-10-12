@@ -1,3 +1,4 @@
+import { chatFetch, registerContact, restoreChat } from '../services/portalChat';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X, Send, Sparkles, Languages, HelpCircle, Loader2, ArrowUpRight, MessageCircle, RotateCcw, Bot, GraduationCap } from 'lucide-react';
@@ -283,6 +284,7 @@ export default function AIChatbot() {
   const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  useEffect(() => { let active=true; restoreChat('homepage_widget').then(rows => { if(active && rows.length) setMessages(rows); }).catch(() => {}); return () => { active=false; }; }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -334,36 +336,6 @@ export default function AIChatbot() {
     messagesRef.current = messages;
   }, [messages]);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (pendingLeadDataRef.current) {
-        const historyContext = messagesRef.current.map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-        const payload = JSON.stringify({
-          fullName: pendingLeadDataRef.current.fullName,
-          phone: pendingLeadDataRef.current.phone,
-          email: pendingLeadDataRef.current.email,
-          interest: pendingLeadDataRef.current.interest,
-          chatHistory: historyContext
-        });
-        
-        fetch('/api/chatbot-inquiry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-          keepalive: true
-        }).catch(() => {});
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []);
-
   const [studentContext, setStudentContext] = useState<UnifiedStudentContext | null>(() => getStudentContext());
   const [showAssessmentCard, setShowAssessmentCard] = useState<boolean>(false);
 
@@ -377,6 +349,7 @@ export default function AIChatbot() {
     }
   });
 
+  useEffect(()=>{fetch('/api/portal/session').then(r=>r.ok?r.json():Promise.reject()).then(s=>setLeadSubmitted(!!s.registered)).catch(()=>{});},[]);
   useEffect(() => {
     const unsubscribe = subscribeStudentContext((ctx) => {
       setStudentContext(ctx);
@@ -686,7 +659,7 @@ export default function AIChatbot() {
         submitBtn: '确认提交并请求联系',
         cancelBtn: '取消并返回对话',
         successHeader: '登记成功！',
-        successMsg: '您的咨询意向与联系方式已成功登记！现在您可以关闭此表单并继续与 AI 顾问畅聊。当您最终关闭本 Chat 窗口时，系统将自动结合所有上下文对话，全自动编译一份「AI 留学诊断总结报告」发送至您的注册邮箱并抄送给 UPER 专家顾问（service@uperedu.com）。专属顾问将在24小时内主动与您 1 对 1 建联协助！',
+        successMsg: 'Contact details saved to CRM. An advisor will follow up according to the schedule.',
       };
     }
     if (currentLang.startsWith('en')) {
@@ -710,7 +683,7 @@ export default function AIChatbot() {
         submitBtn: 'Submit Inquiry Card',
         cancelBtn: 'Go Back',
         successHeader: 'Successfully Registered!',
-        successMsg: 'Your preferences and contact details have been successfully saved! You can close this overlay and continue chatting. Once you finally close this Chat box, our AI will compile a customized study-abroad diagnosis report of our entire conversation and email it to service@uperedu.com. A dedicated consultant will connect with you via WhatsApp within 24 hours!',
+        successMsg: 'Contact details saved to CRM. An advisor will follow up according to the schedule.',
       };
     }
     // Indonesian fallback
@@ -734,46 +707,11 @@ export default function AIChatbot() {
       submitBtn: 'Kirim & Hubungi Saya',
       cancelBtn: 'Kembali ke Chat',
       successHeader: 'Pendaftaran Sukses!',
-      successMsg: 'Detail kontak dan peminatan Anda berhasil kami simpan! Anda dapat menutup formulir ini dan melanjutkan percakapan. Begitu Anda akhirnya menutup jendela Chat ini, sistem akan merangkum Intel AI Diagnostic dari seluruh obrolan kita dan mengirimkannya ke service@uperedu.com. Konsultan kami akan menghubungi Anda dalam 24 jam.',
+      successMsg: 'Contact details saved to CRM. An advisor will follow up according to the schedule.',
     };
   };
 
-  const dispatchPendingLead = async (
-    data: { fullName: string; phone: string; email: string; interest: string } | null,
-    currentMessages: Message[]
-  ) => {
-    if (!data) return;
-    setPendingLeadData(null);
-    try {
-      const historyContext = currentMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      await fetch('/api/chatbot-inquiry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: data.fullName,
-          phone: data.phone,
-          email: data.email,
-          interest: data.interest,
-          chatHistory: historyContext
-        })
-      });
-      console.log('[DEFERRED SUBMISSION] Lead successfully submitted on chat close.');
-    } catch (err) {
-      console.error('[DEFERRED SUBMISSION ERROR]', err);
-    }
-  };
-
-  const handleCloseChat = () => {
-    setIsOpen(false);
-    trackChatbotInteraction('close');
-    if (pendingLeadData) {
-      dispatchPendingLead(pendingLeadData, messages);
-    }
-  };
+  const handleCloseChat = () => { setIsOpen(false); trackChatbotInteraction('close'); };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -794,7 +732,7 @@ export default function AIChatbot() {
         interest: formInterest,
       };
 
-      setPendingLeadData(leadData);
+      await registerContact({...leadData, entryPoint: "homepage_widget"});
       setFormSuccess(true);
       setLeadSubmitted(true);
       trackFormSubmit('chatbot_lead_form', true, { interest: formInterest });
@@ -811,16 +749,16 @@ export default function AIChatbot() {
           fullName: formName.trim(),
           whatsapp: formPhone.trim(),
           email: formEmail.trim(),
-          currentStatus: 'University student',
+          currentStatus: undefined as any,
           goal: formInterest.includes('HSK') ? 'Prepare for HSK certification' : formInterest.includes('CSCA') ? 'Study in China or scholarship' : 'Improve my Mandarin skills',
-          reportedLevel: 'Beginner',
-          levelState: 'PARTIAL',
-          city: 'Jakarta',
-          mode: 'Online',
-          buyingSignal: 'Asked price',
+          reportedLevel: undefined as any,
+          levelState: undefined as any,
+          city: undefined as any,
+          mode: undefined as any,
+          buyingSignal: undefined as any,
           nextStepInterest: formInterest,
-          tier: 'Warm-Online',
-          flag: 'Assessment Needed',
+          tier: undefined as any,
+          flag: undefined as any,
           tierSource: 'predicted'
         }
       });
@@ -837,11 +775,7 @@ export default function AIChatbot() {
         {
           id: 'lead_form_submitted_success_msg_' + Math.random().toString(36).substring(7),
           role: 'assistant',
-          content: currentLang.startsWith('zh')
-            ? `🎉 **[咨询信息登记成功]** 已为您成功保存咨询意向！\n\n您可继续在此畅谈或进行详细留学咨询。当您**关闭本 Chat 窗口**时，系统将针对本次全部对话为您全自动编译一份 **AI 留学诊断深度总结**，并直接发送您的邮箱并抄送至 UPER 专属顾问团队（service@uperedu.com）。\n\n我们的专业导师会根据报告，在 24 小时内通过微信/WhatsApp 与您 1 对 1 主动联系。祝您申请一切顺利！`
-            : currentLang.startsWith('en')
-            ? `🎉 **[Registration Successful]** Your study preferences and coordinates have been safely recorded!\n\nYou can keep chatting with the AI. Once you finish your session and **close this Chat box**, our system will instantly compile an **AI Intel Diagnostic Summary** of our full dialogue and mail it to UPER and you (\`service@uperedu.com\`).\n\nA study advisor will reach out via WhatsApp/Phone within 24 hours. Good luck!`
-            : `🎉 **[Pendaftaran Sukses]** Minat dan kontak konsultasi Anda berhasil kami simpan!\n\nAnda dapat terus mengobrol dengan AI. Begitu Anda **menutup jendela percakapan Chat ini**, sistem AI kami akan menyusun **Intel AI Diagnostic Summary** dari seluruh obrolan kita dan langsung mengirimkannya ke service@uperedu.com serta email Anda.\n\nKonsultan kami akan menghubungi Anda via WhatsApp dalam waktu 24 jam.`,
+          content: currentLang.startsWith('zh') ? '咨询信息已保存到 CRM，顾问会根据跟进安排联系您。' : 'Your contact details have been saved. An advisor will follow up.',
           timestamp: new Date(),
           isComplete: true,
         }
@@ -1064,6 +998,7 @@ export default function AIChatbot() {
       // Map entire state context for server side Gemini conversation history
       const messagesToContext = extraSystemMsg ? [...messages, userMsg, extraSystemMsg] : [...messages, userMsg];
       const historyContext = messagesToContext.map((m) => ({
+        id: m.id,
         role: m.role,
         content: m.content,
       }));
@@ -1076,7 +1011,7 @@ export default function AIChatbot() {
         const botMsgId = Math.random().toString(36).substring(7);
         let streamStarted = false;
 
-        const res = await fetch('/api/chat', {
+        const res = await chatFetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1087,7 +1022,7 @@ export default function AIChatbot() {
             stream: true
           }),
           signal: controller.signal
-        });
+        }, 'homepage_widget');
 
         if (!res.ok) {
           let serverErrorMsg = '';
@@ -1181,7 +1116,7 @@ export default function AIChatbot() {
         setSuggestedPrompts(receivedSuggestions);
       } else {
         // Human Mode with realistic counselor delay
-        const res = await fetch('/api/chat', {
+        const res = await chatFetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1192,7 +1127,7 @@ export default function AIChatbot() {
             stream: false
           }),
           signal: controller.signal
-        });
+        }, 'homepage_widget');
 
         if (!res.ok) {
           let serverErrorMsg = '';

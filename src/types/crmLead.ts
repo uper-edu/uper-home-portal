@@ -59,7 +59,16 @@ export interface ChatTranscriptMessage {
   timestamp: string;
 }
 
+export interface LeadAttention {
+  unreadCount: number;
+  observedAt: string;
+  latest?: {type:string;at:string};
+  tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string}>;
+  isMine: boolean;
+}
 export interface CrmLeadRecord {
+  attention?: LeadAttention;
+
   // ① 场景来源
   id: string; // leadId (e.g. UPER-20260930-001)
   entryPoint: string;

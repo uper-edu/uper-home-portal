@@ -4,22 +4,24 @@ React/TypeScript website with an Express backend, CRM/CMS workbenches, HSK place
 
 ## Local development
 
-Requires Node.js 24 or newer and npm.
+Requires Node.js 24 or newer, npm, and a PostgreSQL database. Configure DATABASE_URL in .env before starting. For restricted localhost testing use PLATFORM_MODE=mock; real employee identity and permissions must come from the education management platform before remote CRM access.
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 cp .env.example .env
 # Fill local credentials in .env; do not commit them.
 npm run dev
 ```
 
-The server listens on port 3000. Routes include `/`, `/chat`, `/crm`, and `/cms`.
+The locked `msedge-tts` package includes a pnpm-only installation guard. The npm workflow above skips dependency lifecycle scripts; the isolated snapshot was tested and built with this installation. On macOS arm64, run `node node_modules/@embedded-postgres/darwin-arm64/scripts/hydrate-symlinks.js` before initializing a fresh embedded cluster. A separately managed PostgreSQL service avoids the optional embedded setup.
+
+The server listens on port 3000 (overridable with PORT). Mock employee mode binds to 127.0.0.1 and rejects proxied authentication. The local starter can restart an already initialized macOS arm64 PostgreSQL cluster in data/postgres-local; other environments use their separately managed database. Routes include `/`, `/chat`, `/crm`, and `/cms`.
 
 ## AI configuration
 
-Set `OPENAI_API_KEY`, `OPENAI_MODEL` (default `gpt-4o`), and `DEFAULT_AI_PROVIDER=openai`. Set a valid `DEEPSEEK_API_KEY` to enable automatic fallback to `deepseek-chat`. The application retries with the backup if the primary fails, and resets partial streamed output before replacement. The model info endpoint confirms loaded configuration, not live provider health.
+Set `OPENAI_API_KEY`, `OPENAI_MODEL` (default `gpt-4o`), and `DEFAULT_AI_PROVIDER=openai`. Set a valid `DEEPSEEK_API_KEY` to enable automatic fallback to `deepseek-chat`. The application retries with the backup if the primary fails, records failed attempts, and saves the final reply before confirming completion. The model info endpoint confirms loaded configuration, not live provider health.
 
-The server loads `.env` first, otherwise `.env.prod`. Keep both private. Gmail credentials support form notifications; without SMTP, existing form handlers may return simulated delivery.
+The server loads `.env` first, otherwise `.env.prod`. Keep both private. Consultation chat is saved directly to CRM rather than deferred email submission. Unrelated contact/careers forms still use their existing SMTP handlers.
 
 ## Checks and production run
 
@@ -30,14 +32,16 @@ npm run build
 npm start
 ```
 
-`lint` runs the existing TypeScript check. Unreferenced Lark modules are not included by that check and still require repair before use. Tests use temporary directories and mock provider credentials; they do not require production secrets.
+`lint` includes all server modules. Tests use temporary directories and mock provider credentials. Set PORTAL_TEST_DATABASE_URL to a separate disposable PostgreSQL database to include CRM integration tests; production secrets and customer records are never required.
 
 ## Data and migration boundary
 
 This organizational repository starts from a clean source snapshot. It intentionally does not include the previous personal repository's Git history, real environment files, or runtime customer data. Public website content in `src/data/content/` and static learning assets are retained.
 
-CRM runtime JSON records are created under `data/` and are excluded from Git. Existing local records can remain in place. New deployments start with an empty lead store and built-in default campaigns/policies. Provide persistent storage and backups separately. Do not use Git to synchronize customer records.
+Customer profiles, visitor sessions, conversations, messages, follow-up tasks and notification jobs now live in PostgreSQL. Legacy campaign JSON, local database clusters, reports and backups remain under ignored local paths. See docs/portal-operations.md for dry-run migration, integrity checks and backup/restore procedures. Do not use Git to synchronize customer records.
 
-The current application has no authentication on administrative APIs. Keep development access restricted; authentication, durable storage, and credential rotation remain necessary before expanding production use. Do not treat repository creation as production deployment.
+CRM routes enforce employee permissions and lead scope through the platform adapter. The bundled identity fixtures are localhost-only; real platform integration is pending. CMS and remaining legacy/public form boundaries require a separate deployment security review. Syncing this source does not authorize deployment.
 
 The repaired assessment entry resumes pending/skipped/completed status on reload; individual question progress is not persisted.
+
+Notification rules, channels and delivery audit appear under SLA & Policy. Daily reminders appear as activity badges and tasks in Leads. Reading a lead does not complete follow-up. Internal inbox and Lark adapters are implemented; Lark defaults to simulation until a designated group is configured. Email/SMS are disconnected. See docs/portal-validation.md for acceptance boundaries.

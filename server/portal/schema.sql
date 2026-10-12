@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS portal_leads(id text PRIMARY KEY, profile jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS visitor_sessions(id text PRIMARY KEY, lead_id text REFERENCES portal_leads, expires_at timestamptz NOT NULL);
+CREATE TABLE IF NOT EXISTS conversations(id text PRIMARY KEY, visitor_id text NOT NULL REFERENCES visitor_sessions, lead_id text REFERENCES portal_leads, source text NOT NULL, attribution jsonb NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS messages(id text PRIMARY KEY, conversation_id text NOT NULL REFERENCES conversations, request_id text NOT NULL, role text NOT NULL, content text NOT NULL, status text NOT NULL, model text, error text, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(conversation_id,request_id,role));
+CREATE TABLE IF NOT EXISTS ai_attempts(id bigserial PRIMARY KEY, message_id text REFERENCES messages, model text NOT NULL, content text NOT NULL, error text, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS followup_tasks(id text PRIMARY KEY, lead_id text REFERENCES portal_leads, kind text NOT NULL, owner_id text, status text NOT NULL DEFAULT 'open', due_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE UNIQUE INDEX IF NOT EXISTS open_task ON followup_tasks(lead_id,kind) WHERE status='open';
+CREATE TABLE IF NOT EXISTS outbox(id text PRIMARY KEY, type text NOT NULL, lead_id text, payload jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), processed_at timestamptz);
+CREATE TABLE IF NOT EXISTS notification_rules(id text PRIMARY KEY, version integer NOT NULL, config jsonb NOT NULL, enabled boolean NOT NULL DEFAULT false);
+CREATE TABLE IF NOT EXISTS rule_versions(id text NOT NULL,version integer NOT NULL,config jsonb NOT NULL, PRIMARY KEY(id,version));
+CREATE TABLE IF NOT EXISTS notification_channels(id text PRIMARY KEY, config jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS notification_jobs(id text PRIMARY KEY, event_id text NOT NULL REFERENCES outbox, rule_id text NOT NULL, version integer NOT NULL, channel text NOT NULL, recipient text NOT NULL, state text NOT NULL DEFAULT 'pending', due_at timestamptz NOT NULL, attempts integer NOT NULL DEFAULT 0, lease_until timestamptz, result text, snapshot jsonb NOT NULL, UNIQUE(event_id,rule_id,channel,recipient));
+CREATE TABLE IF NOT EXISTS notification_inbox(id text PRIMARY KEY REFERENCES notification_jobs, employee_id text NOT NULL, content jsonb NOT NULL, read_at timestamptz);
+CREATE TABLE IF NOT EXISTS portal_audit(id bigserial PRIMARY KEY, actor text NOT NULL, action text NOT NULL, data jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS portal_settings(id text PRIMARY KEY, value jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS identity_candidates(visitor_id text NOT NULL REFERENCES visitor_sessions, lead_id text NOT NULL REFERENCES portal_leads, candidate_id text NOT NULL REFERENCES portal_leads, PRIMARY KEY(visitor_id,candidate_id));
+CREATE TABLE IF NOT EXISTS lead_read_marks(employee_id text NOT NULL,lead_id text NOT NULL REFERENCES portal_leads,seen_at timestamptz NOT NULL,PRIMARY KEY(employee_id,lead_id));
