@@ -45,7 +45,7 @@ Back up with `pg_dump` and restore into a separate PostgreSQL database with `pg_
 
 Monitor oldest pending outbox/job age, failed and unknown deliveries, overdue tasks, database errors and interrupted AI replies. Worker leases expire after one minute; external sends become unknown, internal jobs can retry. Advisory locks serialize generation per conversation and external sends per group. Health and job monitoring must be linked to the eventual deployment's operations system.
 
-Remaining integration/release work: real platform authentication and employee lookup; approved Lark test group receipt; backup/restore drill in the target hosting environment; complete UI acceptance across both chat surfaces and all rule branches. The notification editor currently exposes JSON rather than a polished form. No public release is authorized by this local implementation.
+Remaining integration/release work: real platform authentication and employee lookup; approved Lark test group receipt; backup/restore drill in the target hosting environment; complete UI acceptance across both chat surfaces and all rule branches. The notification editor now uses grouped forms and delivery tables; see docs/notification-settings-guide.md. No public release is authorized by this local implementation.
 
 A tested application-level snapshot utility is available: `DATABASE_URL=... node --import tsx scripts/portal-backup.ts backup /absolute/backup.json` and `restore /absolute/backup.json`. Restore requires empty destination tables, verifies SHA-256 and restores foreign keys in dependency order; it never overwrites existing records. It covers this portal schema only, not full PostgreSQL roles/extensions. Keep production pg_dump backups as well.
 
@@ -56,3 +56,9 @@ The platform adapter supplies stable employee ID, permissions and data scope. Sa
 ## Local 3000 startup
 
 The configured local instance uses persistent data/postgres-local on 127.0.0.1:5449. `npm run dev` invokes scripts/local-start.mjs to ensure that local PostgreSQL is running before starting the application. Keep migration reconciliation reports private and outside Git. New consultation writes go to PostgreSQL; keep source JSON in protected local backups.
+
+## Backup and migration acceptance update (2026-10-12)
+
+Application snapshots now use v2, cover 17 portal tables including HSK attempts, preserve timestamp microseconds and sequence state, and reject unknown source tables. Snapshot creation is read-only and does not initialize the schema. Restore checks integrity before initialization, refuses occupied destinations, and rolls back partial imports. v1 imports explicitly report their missing independent HSK coverage. See docs/portal-backup-migration-acceptance-20261012.md for evidence and limits.
+
+Migration dry-run reports contact-match candidates and anomalies. Unknown message dates use an explicitly marked epoch placeholder; original source text and metadata remain available. Apply stores per-lead source fingerprints; re-importing the same source retains newer database writes. Changed sources, existing ID conflicts, and early imports without fingerprints require manual review. Historical tasks remain migration_hold and retain deadlines; imports create no events. Run restores into isolated databases with outbound delivery disabled, reconcile all tables, inspect interrupted/unknown jobs, then authorize worker activation. Native full-database backup, offsite retention and target-host recovery remain deployment gates.
