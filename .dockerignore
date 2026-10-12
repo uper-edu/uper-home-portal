@@ -5,3 +5,10 @@ npm-debug.log
 .DS_Store
 .env
 .env.local
+
+# Keep local secrets, runtime customer data and legacy history out of uploads.
+.env*
+!.env.example
+.local-backups/
+data/
+*.log
