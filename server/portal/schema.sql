@@ -2,6 +2,18 @@ CREATE TABLE IF NOT EXISTS portal_leads(id text PRIMARY KEY, profile jsonb NOT N
 CREATE TABLE IF NOT EXISTS visitor_sessions(id text PRIMARY KEY, lead_id text REFERENCES portal_leads, expires_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS conversations(id text PRIMARY KEY, visitor_id text NOT NULL REFERENCES visitor_sessions, lead_id text REFERENCES portal_leads, source text NOT NULL, attribution jsonb NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS messages(id text PRIMARY KEY, conversation_id text NOT NULL REFERENCES conversations, request_id text NOT NULL, role text NOT NULL, content text NOT NULL, status text NOT NULL, model text, error text, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(conversation_id,request_id,role));
+CREATE SEQUENCE IF NOT EXISTS message_sequence;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sequence bigint;
+WITH ordered AS MATERIALIZED (
+  SELECT id, nextval('message_sequence') AS position FROM messages WHERE sequence IS NULL
+  ORDER BY created_at, conversation_id,
+    CASE WHEN status='legacy' AND request_id ~ '^[0-9]+$' THEN request_id::numeric END,
+    request_id, CASE WHEN role='user' THEN 0 ELSE 1 END, id
+)
+UPDATE messages SET sequence=ordered.position FROM ordered WHERE messages.id=ordered.id;
+ALTER TABLE messages ALTER COLUMN sequence SET DEFAULT nextval('message_sequence');
+ALTER TABLE messages ALTER COLUMN sequence SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS messages_sequence ON messages(sequence);
 CREATE TABLE IF NOT EXISTS ai_attempts(id bigserial PRIMARY KEY, message_id text REFERENCES messages, model text NOT NULL, content text NOT NULL, error text, created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS followup_tasks(id text PRIMARY KEY, lead_id text REFERENCES portal_leads, kind text NOT NULL, owner_id text, status text NOT NULL DEFAULT 'open', due_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 CREATE UNIQUE INDEX IF NOT EXISTS open_task ON followup_tasks(lead_id,kind) WHERE status='open';

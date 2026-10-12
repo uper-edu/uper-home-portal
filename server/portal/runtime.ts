@@ -48,6 +48,7 @@ function wrap(fn: (req: Request, res: Response) => Promise<any>) {
       console.error("[PORTAL]", e.message);
       if (!res.headersSent)
         res.status(e.status || 503).json({
+          saved: typeof e.saved === "boolean" ? e.saved : undefined,
           error: e.status
             ? e.message
             : "Storage or service unavailable; not saved",
@@ -122,6 +123,7 @@ export async function mountPortal(app: Express) {
     }
     next();
   });
+  app.get('/api/portal/ready',wrap(async(_req,res)=>{await pool.query('SELECT 1');res.json({ready:true});}));
   app.get(
     "/api/portal/employees",
     wrap(async (req, res) => {
@@ -133,7 +135,7 @@ export async function mountPortal(app: Express) {
     "/api/portal/session",
     wrap(async (req, res) => {
       const v = await visitor(req, res);
-      res.json({ registered: !!v.lead_id });
+      res.json({ registered: !!v.lead_id, cacheScope: crypto.createHash("sha256").update(v.id).digest("hex") });
     }),
   );
   app.post(
@@ -198,7 +200,7 @@ export async function mountPortal(app: Express) {
         conversation: c,
         messages: (
           await pool.query(
-            "SELECT * FROM messages WHERE conversation_id=$1 ORDER BY created_at,id",
+            "SELECT * FROM messages WHERE conversation_id=$1 ORDER BY sequence",
             [c.id],
           )
         ).rows,
@@ -347,7 +349,7 @@ export async function mountPortal(app: Express) {
       const e = await staff(req);
       const leads = (
         await pool.query(
-          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'source',c.source,'status',m.status) ORDER BY m.created_at) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
+          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'source',c.source,'status',m.status) ORDER BY m.sequence) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
         )
       ).rows
         .map((r) => r.profile)
@@ -449,7 +451,7 @@ export async function mountPortal(app: Express) {
       const { l } = await leadAccess(req);
       const rows = (
         await pool.query(
-          "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=$1 ORDER BY m.created_at",
+          "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=$1 ORDER BY m.sequence",
           [l.id],
         )
       ).rows;

@@ -83,6 +83,7 @@ if (mode === "backup") {
         `SELECT setval(pg_get_serial_sequence('${table}','id'),coalesce((SELECT max(id) FROM ${table}),1),EXISTS(SELECT 1 FROM ${table}))`,
       );
   });
+  await pool.query("SELECT setval('message_sequence',coalesce((SELECT max(sequence) FROM messages),1),EXISTS(SELECT 1 FROM messages))");
   console.log(JSON.stringify({ restored: true, sha256: backup.sha256 }));
 }
 await pool.end();

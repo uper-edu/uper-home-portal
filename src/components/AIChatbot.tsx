@@ -1,4 +1,5 @@
-import { chatFetch, registerContact, restoreChat } from '../services/portalChat';
+import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
+import { chatFetch, registerContact, restoreChat, finishChat } from '../services/portalChat';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X, Send, Sparkles, Languages, HelpCircle, Loader2, ArrowUpRight, MessageCircle, RotateCcw, Bot, GraduationCap } from 'lucide-react';
@@ -16,6 +17,7 @@ import {
 } from '../services/studentProfileStorage';
 
 interface Message {
+  delivery?: Delivery;
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -856,9 +858,9 @@ export default function AIChatbot() {
     );
   };
 
-  const handleSend = async (textToSend?: string) => {
-    const text = (textToSend || input).trim();
-    if (!text) return;
+  const handleSend = async (textToSend?: string, retry?: Message) => {
+    const text = (retry?.content || textToSend || input).trim();
+    if (!text || isLoading) return;
 
     if (textToSend) {
       trackChatbotInteraction('click_shortcut', { prompt_text: text });
@@ -880,22 +882,22 @@ export default function AIChatbot() {
     setSuggestedPrompts([]);
 
     // Append user message
-    const userMsg: Message = {
-      id: Math.random().toString(36).substring(7),
+    const userMsg: Message = retry || {
+      id: crypto.randomUUID(),
       role: 'user',
       content: text,
       timestamp: new Date(),
       isComplete: true,
     };
 
-    let activeHumanMode = isHumanMode;
+    let activeHumanMode = retry ? false : isHumanMode;
     let extraSystemMsg: Message | null = null;
 
     // Detect natural language requests for speaking directly to a human/live agent
     const isHumanKeyword = /人工|客服|联系老师|微信|电话|真人|human|advisor|agent|representative|live|sarah|lili|jason|kevin|bicara langsung|bantuan/i.test(text);
-    if (isHumanKeyword && !isHumanMode) {
+    if (!retry && isHumanKeyword && !isHumanMode) {
       // Append user message first so they see their typing selection
-      setMessages((prev) => [...prev, userMsg]);
+      setMessages((prev) => [...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
 
       // Detect preferred counselor based on full context and current text
       const detectedCounselorId = detectBestCounselorId(messages, formInterest, text);
@@ -987,7 +989,7 @@ export default function AIChatbot() {
         return nextMsgs;
       });
     } else {
-      setMessages((prev) => [...prev, userMsg]);
+      setMessages((prev) => [...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
       setIsLoading(true);
     }
 
@@ -1007,113 +1009,17 @@ export default function AIChatbot() {
       let receivedSuggestions: string[] = [];
 
       if (!activeHumanMode) {
-        // P2: SSE Streaming Mode for AI Chatbot
-        const botMsgId = Math.random().toString(36).substring(7);
-        let streamStarted = false;
+        const botMsgId='reply-'+userMsg.id;
+        setMessages(prev=>[...prev.filter(m=>m.id!==botMsgId),{id:botMsgId,role:'assistant',content:'',timestamp:new Date(),isComplete:true}]);
+        const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historyContext,isHumanMode:false,stream:true}),signal:controller.signal},'homepage_widget');
+        const result=await finishChat(res,'homepage_widget',userMsg.id,e=>{
+          if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply&&!e.chunk)reply=e.reply;
+          setMessages(prev=>prev.map(m=>m.id===userMsg.id&&e.saved?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:reply}:m));
+        });
+        if(result.modelUsed)setActiveModelUsed(result.modelUsed);
+        setMessages(prev=>prev.map(m=>m.id===userMsg.id?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:result.reply,isComplete:true}:m));
+        setSuggestedPrompts(result.suggestedPrompts || []);
 
-        const res = await chatFetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            messages: historyContext,
-            isHumanMode: false,
-            counselorId: activeCounselorId,
-            studentContext: studentContext || getStudentContext(),
-            stream: true
-          }),
-          signal: controller.signal
-        }, 'homepage_widget');
-
-        if (!res.ok) {
-          let serverErrorMsg = '';
-          try {
-            const errData = await res.json();
-            serverErrorMsg = errData.error || errData.details || '';
-          } catch (_) {}
-          throw new Error(serverErrorMsg || 'Network error generating response');
-        }
-
-        if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder('utf-8');
-          let streamBuffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            streamBuffer += decoder.decode(value, { stream: true });
-            const lines = streamBuffer.split('\n');
-            streamBuffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed.startsWith('data:')) continue;
-              const dataStr = trimmed.slice(5).trim();
-              if (!dataStr) continue;
-              try {
-                const parsed = JSON.parse(dataStr);
-                if (parsed.reset) {
-                  reply = '';
-                  receivedSuggestions = [];
-                  setMessages((prev) => prev.map((m) => m.id === botMsgId ? { ...m, content: '', suggestedPrompts: [] } : m));
-                }
-                if (parsed.chunk) {
-                  reply += parsed.chunk;
-                  if (!streamStarted) {
-                    streamStarted = true;
-                    setIsLoading(false);
-                    setMessages((prev) => [
-                      ...prev,
-                      {
-                        id: botMsgId,
-                        role: 'assistant',
-                        content: reply,
-                        timestamp: new Date(),
-                        isComplete: true
-                      }
-                    ]);
-                  } else {
-                    setMessages((prev) =>
-                      prev.map((m) => (m.id === botMsgId ? { ...m, content: reply } : m))
-                    );
-                  }
-                }
-                if (parsed.done) {
-                  if (Array.isArray(parsed.suggestedPrompts)) {
-                    receivedSuggestions = parsed.suggestedPrompts;
-                  }
-                  if (parsed.modelUsed) {
-                    setActiveModelUsed(parsed.modelUsed);
-                  }
-                  if (parsed.reply && !reply) {
-                    reply = parsed.reply;
-                  }
-                }
-              } catch (_) {}
-            }
-          }
-        } else {
-          const data = await res.json();
-          if (data.modelUsed) {
-            setActiveModelUsed(data.modelUsed);
-          }
-          reply = (data.reply || '').trim();
-          receivedSuggestions = data.suggestedPrompts || [];
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: botMsgId,
-              role: 'assistant',
-              content: reply,
-              timestamp: new Date(),
-              isComplete: false
-            }
-          ]);
-        }
-
-        setIsLoading(false);
-        setSuggestedPrompts(receivedSuggestions);
       } else {
         // Human Mode with realistic counselor delay
         const res = await chatFetch('/api/chat', {
@@ -1201,40 +1107,9 @@ export default function AIChatbot() {
           });
         }, 3500); // 3.5 seconds delay to let typewriter complete most of the main text
       }
-    } catch (error: any) {
-      console.error('Chat error:', error);
-      
-      const serverErrorMessage = error?.message || '';
-      const isTimeout = error.name === 'AbortError' || serverErrorMessage.toLowerCase().includes('timeout');
-      
-      let detailMsg = '';
-      if (isTimeout) {
-        detailMsg = currentLang.startsWith('zh')
-          ? '\n\n【 诊断提示：连接超时。目前 DeepSeek-V3 接口线路可能较为拥堵，建议稍后双击对话框重新输入。 】'
-          : currentLang.startsWith('en')
-          ? '\n\n【 Diagnosis: Connection Timeout. The DeepSeek-V3 API route may be temporarily congested, please try resending in a moment. 】'
-          : '\n\n【 Diagnosis: Koneksi Timeout. Jalur API DeepSeek-V3 mungkin sedang padat, silakan coba kirim ulang beberapa saat lagi. 】';
-      } else if (serverErrorMessage) {
-        detailMsg = `\n\nDetail: ${serverErrorMessage}`;
-      }
-
-      let errorText = `Maaf, terjadi kesalahan koneksi. Silakan hubungi admin kami melalui WhatsApp (+62 811-1661-2062).${detailMsg}`;
-      if (currentLang.startsWith('zh')) {
-        errorText = `抱歉，连接服务器失败。请点击右下角通过 WhatsApp 联系我们的顾问老师协助您（+62 811-1661-2062）。${detailMsg}`;
-      } else if (currentLang.startsWith('en')) {
-        errorText = `Sorry, a connection error occurred. Please get in touch directly with our advisors over WhatsApp at +62 811-1661-2062.${detailMsg}`;
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).substring(7),
-          role: 'assistant',
-          content: errorText,
-          timestamp: new Date(),
-          isComplete: false,
-        },
-      ]);
+    } catch (err) {
+      const delivery=draft('homepage_widget',userMsg.id)?.delivery || 'unknown';
+      setMessages(prev=>prev.filter(m=>m.id!==('reply-'+userMsg.id)).map(m=>m.id===userMsg.id?{...m,delivery}:m));
       setSuggestedPrompts([]);
     } finally {
       clearTimeout(timeoutId);
@@ -1859,6 +1734,7 @@ export default function AIChatbot() {
                         ? 'bg-primary-600 text-white rounded-br-none' 
                         : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
                       }`}>
+                        {m.role==='user' && m.delivery && <div role="status" className="text-xs mb-2">{deliveryText(m.delivery,currentLang)}{!['pending','saved'].includes(m.delivery) && <button className="ml-3 underline min-h-11" disabled={isLoading} onClick={()=>void handleSend(undefined,m)}>{currentLang.startsWith('zh')?'重试':currentLang.startsWith('en')?'Retry':'Coba lagi'}</button>}</div>}
                         {/* Render message with linebreaks or Typewriter if assistant and not complete */}
                         <div className="leading-relaxed dynamic-chat-text">
                           {m.id === 'select_project_counselor' ? (

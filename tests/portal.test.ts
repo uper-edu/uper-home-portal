@@ -53,6 +53,21 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
       await new Promise<void>((r) => server.close(() => r()));
       await pool.end();
     });
+    await t.test("stable message sequence and retry failed assistant without duplicating user",async()=>{
+      const native=globalThis.fetch;let failure=true;
+      globalThis.fetch=async(url,options)=>String(url).includes('api.openai.com')||String(url).includes('api.deepseek.com')?new Response(failure?'{}':JSON.stringify({choices:[{message:{content:'Recovered'},finish_reason:'stop'}]}),{status:failure?503:200,headers:{'content-type':'application/json'}}):native(url,options);
+      process.env.OPENAI_API_KEY='fixture';process.env.DEEPSEEK_API_KEY='fixture';
+      try{
+        const conv=(await request('/api/portal/conversations',{source:'standalone_chat',newSession:true})).data.conversationId;
+        const body={conversationId:conv,messageId:'retry-failed',content:'Retry original message',stream:false};
+        assert.equal((await request('/api/chat',body)).data.error,'all_providers_failed');
+        failure=false;assert.equal((await request('/api/chat',body)).data.reply,'Recovered');
+        const rows=(await request('/api/portal/conversations/'+conv)).data.messages;
+        assert.deepEqual(rows.map((m:any)=>m.role),['user','assistant']);
+        assert.equal(rows.length,2);assert.ok(Number(rows[0].sequence)<Number(rows[1].sequence));
+        assert.equal(rows[1].status,'completed');
+      }finally{globalThis.fetch=native;}
+    });
     await t.test(
       "anonymous registration preserves conversations, idempotent contact and candidate identity do not expose history",
       async () => {

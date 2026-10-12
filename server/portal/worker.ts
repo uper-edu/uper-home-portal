@@ -1,4 +1,4 @@
-import { pool, tx, id, event } from "./store.ts";
+import { pool, tx, id, event, connection } from "./store.ts";
 import { platform } from "./identity.ts";
 import { schedule, local, defaults, type Rule } from "./policy.ts";
 export async function tick() {
@@ -134,9 +134,10 @@ export async function tick() {
     return row;
   });
   if (!job) return;
-  const guard = job.channel === "lark" ? await pool.connect() : null;
+  const lease = job.channel === "lark" ? await connection() : null;
+  const guard = lease?.client;
   if (guard) {
-    const locked = (
+    try { const locked = (
       await guard.query(
         "SELECT pg_try_advisory_lock(hashtext($1)) AS acquired",
         ["lark:" + job.recipient],
@@ -147,9 +148,9 @@ export async function tick() {
         "UPDATE notification_jobs SET state='pending',due_at=now()+interval '1 second' WHERE id=$1",
         [job.id],
       );
-      guard.release();
+      lease?.release();
       return;
-    }
+    } } catch(e) { lease?.release(); throw e; }
   }
   try {
     const r = job.snapshot.rule as Rule;
@@ -309,10 +310,9 @@ export async function tick() {
     }
   } finally {
     if (guard) {
-      await guard.query("SELECT pg_advisory_unlock(hashtext($1))", [
+      try { await guard.query("SELECT pg_advisory_unlock(hashtext($1))", [
         "lark:" + job.recipient,
-      ]);
-      guard.release();
+      ]); } catch(e) { console.error("[WORKER CLEANUP]",(e as Error).message); } finally { lease?.release(); }
     }
   }
 }

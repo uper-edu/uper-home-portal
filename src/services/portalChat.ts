@@ -1,3 +1,4 @@
+import {setDraftScope,drafts,draft,saveDraft,removeDraft,readChatResponse} from "./chatDelivery";
 export type ChatSource = "homepage_widget" | "standalone_chat";
 async function checked(res: Response) {
   if (!res.ok) {
@@ -9,7 +10,7 @@ async function checked(res: Response) {
 let sessionReady: Promise<Response> | undefined;
 function session() {
   return (sessionReady ||= fetch("/api/portal/session")
-    .then(checked)
+    .then(checked).then(async r=>{const s=await r.clone().json();setDraftScope(s.cacheScope || "");return r;})
     .catch((e) => {
       sessionReady = undefined;
       throw e;
@@ -45,7 +46,12 @@ export async function chatFetch(
 ) {
   const old = JSON.parse(String(init.body));
   const user = [...old.messages].reverse().find((m) => m.role === "user");
-  const conversationId = await conversation(source);
+  await session();
+  const previous = draft(source,user.id);
+  const messageId=user.id || crypto.randomUUID();
+  const queued={id:messageId,content:user.content,conversationId:previous?.conversationId || '',timestamp:previous?.timestamp || new Date().toISOString(),delivery:'unknown' as const};
+  if(!old.isHumanMode)saveDraft(source,queued);
+  const conversationId = previous?.conversationId || await conversation(source);
   if (old.isHumanMode) {
     const action = await checked(
       await fetch("/api/portal/actions", {
@@ -60,17 +66,14 @@ export async function chatFetch(
       suggestedPrompts: [],
     });
   }
-  return checked(
-    await fetch("/api/chat", {
-      ...init,
-      body: JSON.stringify({
-        conversationId,
-        messageId: user.id || crypto.randomUUID(),
-        content: user.content,
-        stream: old.stream,
-      }),
-    }),
-  );
+  const pending={id:messageId,content:user.content,conversationId,timestamp:previous?.timestamp || new Date().toISOString(),delivery:'unknown' as const};
+  saveDraft(source,pending);
+  try {
+    const res=await fetch('/api/chat',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,stream:old.stream})});
+    if(!res.ok){const error=await res.clone().json().catch(()=>({}));if(error.saved===false)saveDraft(source,{...pending,delivery:'unsaved'});if(error.saved===true)saveDraft(source,{...pending,delivery:'interrupted'});await checked(res);}
+    return res;
+  } catch(e){throw e;}
+
 }
 
 export async function restoreChat(source: ChatSource) {
@@ -78,9 +81,23 @@ export async function restoreChat(source: ChatSource) {
   const data = await (
     await checked(await fetch("/api/portal/conversations/" + conversationId))
   ).json();
-  return data.messages.map((m: any) => ({
+  for(const m of data.messages)if(m.role==='user'){
+    const answer=data.messages.find((a:any)=>a.request_id===m.request_id && a.role==='assistant');
+    if(answer && ['failed','interrupted'].includes(answer.status))saveDraft(source,{id:m.request_id,content:m.content,conversationId:m.conversation_id,timestamp:m.created_at,delivery:answer.status});
+  }
+  for(const m of data.messages)if(m.role==='assistant'&&m.status==='completed')removeDraft(source,m.request_id);
+  const rows=data.messages.map((m: any) => ({
     ...m,
+    id: m.role==='user' ? m.request_id : 'reply-'+m.request_id,
+    delivery: m.role==='user' ? (draft(source,m.request_id)?.delivery || 'saved') : undefined,
     timestamp: new Date(m.created_at),
-    content: m.status === "interrupted" ? "[回复中断，可重新提问]" : m.content,
+    content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
   }));
+  return [...rows,...drafts(source).filter(m=>!rows.some((x:any)=>x.id===m.id)).map(m=>({...m,role:'user' as const,timestamp:new Date(m.timestamp)}))];
+
+}
+
+export async function finishChat(res:Response,source:ChatSource,messageId:string,onProgress:(e:any)=>void){
+ const m=draft(source,messageId);
+ try{const result=await readChatResponse(res,e=>{if(e.saved&&m)saveDraft(source,{...m,delivery:e.done&&e.error?'failed':'saved'});onProgress(e);});removeDraft(source,messageId);return result;}catch(e){if(m){const latest=draft(source,messageId);saveDraft(source,{...m,delivery:latest?.delivery==='saved'?'interrupted':latest?.delivery || 'unknown'});}throw e;}
 }

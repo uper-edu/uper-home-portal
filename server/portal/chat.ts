@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { pool, tx, id, event } from "./store.ts";
+import { pool, tx, id, event, connection } from "./store.ts";
 import { wrap, own, fail } from "./runtime.ts";
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 export function mountChat(app: Express) {
@@ -18,13 +18,15 @@ export function mountChat(app: Express) {
         content.length > 5000
       )
         fail(400, "messageId and content required");
-      const db = await pool.connect();
-      const lock = await db.query(
+      const lease = await connection();
+      const db = lease.client;
+      let lock;
+      try { lock = await db.query(
         "SELECT pg_try_advisory_lock(hashtext($1)) AS acquired",
         [conv.id],
-      );
+      ); } catch (e) { lease.release(); throw e; }
       if (!lock.rows[0].acquired) {
-        db.release();
+        lease.release();
         fail(409, "Conversation busy; retry same messageId");
       }
       const transaction = async (fn: any) => {
@@ -34,11 +36,11 @@ export function mountChat(app: Express) {
           await db.query("COMMIT");
           return result;
         } catch (e) {
-          await db.query("ROLLBACK");
+          await db.query("ROLLBACK").catch(() => {});
           throw e;
         }
       };
-      const assistantId = id();
+      let assistantId = id();
       let saved = false;
       try {
         const old = (
@@ -52,15 +54,13 @@ export function mountChat(app: Express) {
           if (user?.content !== content)
             fail(409, "Idempotency key reused with different content");
           const answer = old.find((m) => m.role === "assistant");
-          res.json({
-            saved: true,
-            reply: answer?.content || "",
-            modelUsed: answer?.model,
-            status: answer?.status || "interrupted",
-            error: answer?.error,
-          });
-          return;
-        }
+          if (answer?.status === 'completed') {
+            res.json({saved:true,reply:answer.content,modelUsed:answer.model,status:answer.status});
+            return;
+          }
+          assistantId = answer?.id || assistantId;
+          await db.query("UPDATE messages SET status='generating',content='',error=NULL,model=NULL WHERE id=$1",[assistantId]);
+        } else {
         await transaction(async (c) => {
           await c.query(
             "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES($1,$2,$3,'user',$4,'saved'),($5,$2,$3,'assistant','','generating')",
@@ -75,6 +75,7 @@ export function mountChat(app: Express) {
               source: conv.source,
             });
         });
+        }
         saved = true;
         const stream = req.body.stream === true;
         if (stream) {
@@ -84,7 +85,7 @@ export function mountChat(app: Express) {
         }
         const history = (
           await db.query(
-            "SELECT role,content FROM messages WHERE conversation_id=$1 AND status IN ('saved','completed') ORDER BY created_at,id",
+            "SELECT role,content FROM messages WHERE conversation_id=$1 AND status IN ('saved','completed') ORDER BY sequence",
             [conv.id],
           )
         ).rows.slice(-40);
@@ -210,6 +211,7 @@ export function mountChat(app: Express) {
           suggestedPrompts: [],
           modelUsed,
           saved: true,
+          status: modelUsed ? "completed" : "failed",
           error: modelUsed ? undefined : "all_providers_failed",
         };
         if (stream) {
@@ -218,14 +220,14 @@ export function mountChat(app: Express) {
           res.write(`data: ${JSON.stringify({ ...result, done: true })}\n\n`);
           res.end();
         } else res.json(result);
-      } finally {
-        if (saved)
+      } catch(e) { throw Object.assign(e as Error,{saved}); } finally {
+        try { if (saved)
           await db.query(
             "UPDATE messages SET status='interrupted',error='request_interrupted' WHERE id=$1 AND status='generating'",
             [assistantId],
           );
         await db.query("SELECT pg_advisory_unlock(hashtext($1))", [conv.id]);
-        db.release();
+        } catch (e) { console.error("[CHAT CLEANUP]", (e as Error).message); } finally { lease.release(); }
       }
     }),
   );

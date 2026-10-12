@@ -1,4 +1,5 @@
-import { chatFetch, registerContact, restoreChat } from '../services/portalChat';
+import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
+import { chatFetch, registerContact, restoreChat, finishChat } from '../services/portalChat';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -28,6 +29,7 @@ import {
 } from '../services/studentProfileStorage';
 
 interface ChatMessage {
+  delivery?: Delivery;
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -418,145 +420,26 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
   };
 
   // Send message to DeepSeek backend
-  const handleSendMessage = async (textToSend?: string) => {
-    const messageContent = (textToSend || inputValue).trim();
-    if (!messageContent || isTyping) return;
-
-    // Direct interception for voluntary placement assessment trigger
-    if (
-      messageContent.includes('🎯') || 
-      messageContent.toLowerCase().includes('take official hsk') || 
-      messageContent.includes('参加官方 HSK 摸底测试')
-    ) {
-      handleStartVoluntaryAssessment();
-      return;
-    }
-
-    setInputValue('');
-
-    const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: messageContent,
-      timestamp: new Date()
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setIsTyping(true);
-
-    try {
-      const currentContext = getStudentContext();
-      const messagesHistory = [
-        ...messages.filter(m => m.role !== 'system').map(m => ({ id: m.id, role: m.role, content: m.content })),
-        { id: userMessage.id, role: 'user', content: messageContent }
-      ];
-
-      const botMessageId = `msg-${Date.now() + 1}`;
-      const botPlaceholder: ChatMessage = {
-        id: botMessageId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date()
-      };
-      setMessages((prev) => [...prev, botPlaceholder]);
-
-      const res = await chatFetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: messagesHistory,
-          studentContext: currentContext || (profile ? { leadProfile: profile } : undefined),
-          isHumanMode: false,
-          stream: true
-        })
-      }, 'standalone_chat');
-
-      if (!res.ok) {
-        throw new Error(`Chat API error: ${res.status}`);
-      }
-
-      let accumulatedReply = '';
-      let suggested: string[] = [];
-
-      if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let streamBuffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          streamBuffer += decoder.decode(value, { stream: true });
-          const lines = streamBuffer.split('\n');
-          streamBuffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const dataStr = trimmed.slice(5).trim();
-            if (!dataStr) continue;
-            try {
-              const parsed = JSON.parse(dataStr);
-              if (parsed.reset) {
-                accumulatedReply = '';
-                suggested = [];
-                setMessages((prev) => prev.map((m) => m.id === botMessageId ? { ...m, content: '', suggestedPrompts: [] } : m));
-              }
-              if (parsed.chunk) {
-                accumulatedReply += parsed.chunk;
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === botMessageId ? { ...m, content: accumulatedReply } : m))
-                );
-              }
-              if (parsed.done) {
-                if (Array.isArray(parsed.suggestedPrompts)) {
-                  suggested = parsed.suggestedPrompts;
-                }
-                if (parsed.reply && !accumulatedReply) {
-                  accumulatedReply = parsed.reply;
-                }
-              }
-            } catch (_) {}
-          }
-        }
-      } else {
-        const data = await res.json();
-        accumulatedReply = data.reply || (
-          lang === 'en' 
-            ? 'Sorry, the system is processing your inquiry. Please try asking again.' 
-            : 'Maaf, sistem sedang memproses informasi. Silakan ulangi pertanyaan Anda.'
-        );
-        suggested = Array.isArray(data.suggestedPrompts) ? data.suggestedPrompts : [];
-      }
-
-      setMessages((prev) => {
-        const next = prev.map((m) =>
-          m.id === botMessageId
-            ? { ...m, content: accumulatedReply || '...', suggestedPrompts: suggested }
-            : m
-        );
-        syncChatTranscript(profile, next);
-        return next;
+  const handleSendMessage = async (textToSend?: string, retry?: ChatMessage) => {
+    const messageContent=(retry?.content || textToSend || inputValue).trim();
+    if(!messageContent || isTyping)return;
+    if(!retry && (messageContent.includes('🎯') || messageContent.toLowerCase().includes('take official hsk') || messageContent.includes('参加UPER HSK 摸底测试'))){handleStartVoluntaryAssessment();return;}
+    setInputValue('');setIsTyping(true);
+    const userMessage:ChatMessage=retry || {id:crypto.randomUUID(),role:'user',content:messageContent,timestamp:new Date()};
+    const botMessageId='reply-'+userMessage.id;
+    setMessages(prev=>[...prev.filter(m=>m.id!==botMessageId && m.id!==userMessage.id),{...userMessage,delivery:'pending'},{id:botMessageId,role:'assistant',content:'',timestamp:new Date()}]);
+    let reply='';
+    try{
+      const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[userMessage],isHumanMode:false,stream:true})},'standalone_chat');
+      const result=await finishChat(res,'standalone_chat',userMessage.id,e=>{
+        if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply && !e.chunk)reply=e.reply;
+        setMessages(prev=>prev.map(m=>m.id===userMessage.id&&e.saved?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:reply}:m));
       });
-    } catch (err) {
-      console.error('[CHAT ERROR]', err);
-      const errorMessage: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: lang === 'en'
-          ? 'Network connectivity blip. You can also directly connect with our official academic advisor via WhatsApp at **+62 811-1661-2062**.'
-          : 'Terjadi sedikit kendala jaringan. Anda juga dapat langsung menghubungi konsultan resmi kami via WhatsApp di nomor **+62 811-1661-2062**.',
-        timestamp: new Date()
-      };
-      setMessages((prev) => {
-        const next = [...prev, errorMessage];
-        syncChatTranscript(profile, next);
-        return next;
-      });
-    } finally {
-      setIsTyping(false);
-    }
+      setMessages(prev=>prev.map(m=>m.id===userMessage.id?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:result.reply,suggestedPrompts:result.suggestedPrompts}:m));
+    }catch(e){
+      const delivery=draft('standalone_chat',userMessage.id)?.delivery || 'unknown';
+      setMessages(prev=>prev.filter(m=>m.id!==botMessageId).map(m=>m.id===userMessage.id?{...m,delivery}:m));
+    }finally{setIsTyping(false);}
   };
 
   return (
@@ -660,6 +543,7 @@ Silakan tanyakan apa saja kepada saya sekarang!`;
             key={msg.id}
             className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
           >
+            {msg.role==='user' && msg.delivery && <div role="status" className="text-xs mb-1">{deliveryText(msg.delivery,lang)}{!['pending','saved'].includes(msg.delivery) && <button className="ml-3 underline min-h-11" disabled={isTyping} onClick={()=>void handleSendMessage(undefined,msg)}>{lang==='zh'?'重试':lang==='en'?'Retry':'Coba lagi'}</button>}</div>}
             <div className={`flex items-start gap-2.5 max-w-[92%] sm:max-w-[80%] ${
               msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
             }`}>
