@@ -431,6 +431,18 @@ export default function CrmWorkbench() {
     if(lead.attention?.unreadCount){fetch(`/api/crm/leads/${lead.id}/read`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({readThrough:lead.attention.observedAt})}).then(async r=>{if(!r.ok)throw Error((await r.json()).error);setLeadActionError('');fetchLeads(true);}).catch(e=>setLeadActionError(e.message));}
   };
 
+  // Deep links from notifications fetch only the lead authorized by the server.
+  useEffect(()=>{
+    const id=new URLSearchParams(window.location.search).get('lead');
+    if(!id)return;
+    let active=true;
+    fetch(`/api/crm/leads/${encodeURIComponent(id)}`).then(async response=>{
+      const data=await response.json();if(!response.ok)throw Error(data.error || 'Lead unavailable');
+      if(active){setCrmModule('leads');handleOpenLeadDrawer(data.lead || data,'activities');}
+    }).catch(error=>{if(active)setLeadActionError(error.message);});
+    return ()=>{active=false;};
+  },[]);
+
   // Submit follow-up log
   const handleSaveFollowUpLog = async (e: React.FormEvent) => {
     e.preventDefault();

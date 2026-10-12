@@ -27,3 +27,9 @@ CREATE TABLE IF NOT EXISTS portal_audit(id bigserial PRIMARY KEY, actor text NOT
 CREATE TABLE IF NOT EXISTS portal_settings(id text PRIMARY KEY, value jsonb NOT NULL);
 CREATE TABLE IF NOT EXISTS identity_candidates(visitor_id text NOT NULL REFERENCES visitor_sessions, lead_id text NOT NULL REFERENCES portal_leads, candidate_id text NOT NULL REFERENCES portal_leads, PRIMARY KEY(visitor_id,candidate_id));
 CREATE TABLE IF NOT EXISTS lead_read_marks(employee_id text NOT NULL,lead_id text NOT NULL REFERENCES portal_leads,seen_at timestamptz NOT NULL,PRIMARY KEY(employee_id,lead_id));
+
+-- Notification send time and rule activation are separate from scheduled due time.
+ALTER TABLE notification_jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE notification_rules ADD COLUMN IF NOT EXISTS effective_at timestamptz NOT NULL DEFAULT '1970-01-01 UTC';
+UPDATE notification_rules SET effective_at='1970-01-01 UTC' WHERE effective_at='-infinity';
+ALTER TABLE notification_rules ALTER COLUMN effective_at SET DEFAULT '1970-01-01 UTC';

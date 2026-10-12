@@ -1,41 +1,25 @@
+import {recipients,priority,retryAfter,validWebhook,larkCard} from "./notificationDelivery.ts";
 import { pool, tx, id, event, connection } from "./store.ts";
 import { platform } from "./identity.ts";
 import { schedule, local, defaults, type Rule } from "./policy.ts";
-export async function tick() {
+export async function tick(clock=new Date()) {
   await tx(async (c) => {
     await c.query(
       "UPDATE messages SET status='interrupted',error='process_interrupted' WHERE status='generating' AND pg_try_advisory_xact_lock(hashtext(conversation_id))",
     );
-    const digestRule = (
-      await c.query(
-        "SELECT config FROM notification_rules WHERE enabled=true AND config->>'event'='daily.digest' LIMIT 1",
-      )
-    ).rows[0]?.config;
-    if (digestRule) {
-      const today = new Intl.DateTimeFormat("en-CA", {
-        timeZone: digestRule.timezone,
-      }).format(new Date());
-      const l = local(new Date(), digestRule);
-      if (digestRule.days.includes(l.day) && l.time >= digestRule.digestTime) {
-        await c.query(
-          "INSERT INTO outbox(id,type,payload) VALUES($1,'daily.digest',$2) ON CONFLICT DO NOTHING",
-          [
-            "digest-" + digestRule.timezone + "-" + today,
-            {
-              date: today,
-              counts: (
-                await c.query(
-                  "SELECT stage,count(*) FROM (SELECT profile->>'currentStage' AS stage FROM portal_leads) p GROUP BY stage",
-                )
-              ).rows,
-            },
-          ],
-        );
+    const digestRules=(await c.query("SELECT * FROM notification_rules WHERE enabled=true AND config->>'event'='daily.digest' AND effective_at<=$1",[clock])).rows;
+    for(const row of digestRules){
+      const digestRule=row.config as Rule;
+      const today=new Intl.DateTimeFormat('en-CA',{timeZone:digestRule.timezone}).format(clock);
+      const l=local(clock,digestRule);
+      if(digestRule.days.includes(l.day) && l.time>=digestRule.digestTime){
+        const counts=(await c.query("SELECT profile->>'currentStage' AS stage,count(*) FROM portal_leads WHERE COALESCE(profile->>'team','sales')=$1 AND (created_at AT TIME ZONE $2)::date=$3::date AND (cardinality($4::text[])=0 OR profile->>'tier'=ANY($4)) AND (cardinality($5::text[])=0 OR profile->>'currentStage'=ANY($5)) AND (cardinality($6::text[])=0 OR profile->>'entryPoint'=ANY($6)) GROUP BY profile->>'currentStage'",[digestRule.team,digestRule.timezone,today,digestRule.tiers,digestRule.states,digestRule.sources])).rows;
+        await c.query("INSERT INTO outbox(id,type,payload,created_at) VALUES($1,'daily.digest',$2,$3) ON CONFLICT DO NOTHING",['digest-'+row.id+'-'+today,{date:today,ruleId:row.id,team:digestRule.team,counts},clock]);
       }
     }
     const tasks = (
       await c.query(
-        "SELECT * FROM followup_tasks WHERE status='open' AND due_at<now() FOR UPDATE SKIP LOCKED",
+        "SELECT * FROM followup_tasks WHERE status='open' AND due_at<$1 FOR UPDATE SKIP LOCKED",[clock],
       )
     ).rows;
     for (const task of tasks) {
@@ -58,32 +42,27 @@ export async function tick() {
             ])
           ).rows[0]?.profile
         : {};
+      if(ev.payload.taskId){
+        const task=(await c.query('SELECT status FROM followup_tasks WHERE id=$1',[ev.payload.taskId])).rows[0];
+        if(!task || task.status==='completed'){await c.query('UPDATE outbox SET processed_at=now() WHERE id=$1',[ev.id]);continue;}
+      }
       const rules = (
-        await c.query("SELECT * FROM notification_rules WHERE enabled=true")
+        await c.query("SELECT * FROM notification_rules WHERE enabled=true AND effective_at<=(SELECT created_at FROM outbox WHERE id=$1)",[ev.id])
       ).rows;
       for (const rule of rules) {
         const r = rule.config as Rule;
         if (
           r.event !== ev.type ||
-          (r.sources.length && !r.sources.includes(ev.payload.source)) ||
-          (r.tiers.length && !r.tiers.includes(lead?.tier)) ||
-          (r.states.length && !r.states.includes(lead?.currentStage))
+          (ev.type==='daily.digest' && ev.payload.ruleId!==rule.id) ||
+          (r.teams?.length && !r.teams.includes(ev.type==='daily.digest'?ev.payload.team:(lead?.team || 'sales'))) ||
+          (ev.type!=='daily.digest' && r.sources.length && !r.sources.includes(ev.payload.source)) ||
+          (ev.type!=='daily.digest' && r.tiers.length && !r.tiers.includes(lead?.tier)) ||
+          (ev.type!=='daily.digest' && r.states.length && !r.states.includes(lead?.currentStage))
         )
           continue;
         for (const channel of r.channels) {
-          const recipients =
-            channel === "lark"
-              ? [r.group]
-              : employees
-                  .filter((e) =>
-                    r.recipient === "owner" && lead?.owner
-                      ? e.id === lead.owner
-                      : e.teams.includes(
-                          r.recipient === "supervisor" ? "supervisors" : r.team,
-                        ),
-                  )
-                  .map((e) => e.id);
-          for (const recipient of recipients) {
+          const targets=channel==='lark'?[r.group]:recipients(r,lead,employees,ev.lead_id);
+          for (const recipient of targets) {
             const key = id();
             await c.query(
               "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING",
@@ -102,6 +81,7 @@ export async function tick() {
                   channel,
                 ),
                 {
+                  priority: priority(ev.type,ev.payload,lead),
                   rule: r,
                   event: ev.type,
                   leadId: ev.lead_id,
@@ -123,7 +103,7 @@ export async function tick() {
   const job = await tx(async (c) => {
     const row = (
       await c.query(
-        "SELECT * FROM notification_jobs WHERE state='pending' AND due_at<=now() ORDER BY due_at FOR UPDATE SKIP LOCKED LIMIT 1",
+        "SELECT * FROM notification_jobs WHERE state='pending' AND due_at<=$1 ORDER BY due_at FOR UPDATE SKIP LOCKED LIMIT 1",[clock],
       )
     ).rows[0];
     if (row)
@@ -160,17 +140,14 @@ export async function tick() {
           job.snapshot.leadId,
         ])
       ).rows[0]?.profile || {};
-    if (
-      r.recipient === "owner" &&
-      lead.owner &&
-      job.channel === "inapp" &&
-      lead.owner !== job.recipient
-    ) {
-      job.recipient = lead.owner;
-      await pool.query(
-        "UPDATE notification_jobs SET recipient=$2 WHERE id=$1",
-        [job.id, job.recipient],
-      );
+    if(job.channel==='inapp'){
+      const targets=recipients(r,lead,await platform.employees(),job.snapshot.leadId);
+      if(!targets.includes(job.recipient)){
+        await tx(async c=>{
+          for(const recipient of targets)await c.query("INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES($1,$2,$3,$4,'inapp',$5,$6,$7) ON CONFLICT DO NOTHING",[id(),job.event_id,job.rule_id,job.version,recipient,clock,job.snapshot]);
+          await c.query("UPDATE notification_jobs SET state='cancelled',result='Recipient changed or no longer authorized',completed_at=$2 WHERE id=$1",[job.id,clock]);
+        });return;
+      }
     }
     const task =
       job.snapshot.payload.taskId &&
@@ -179,7 +156,7 @@ export async function tick() {
           job.snapshot.payload.taskId,
         ])
       ).rows[0];
-    if (task?.status === "completed") {
+    if (job.snapshot.payload.taskId && (!task || task.status === "completed")) {
       await pool.query(
         "UPDATE notification_jobs SET state='cancelled',result='Task completed' WHERE id=$1",
         [job.id],
@@ -188,9 +165,9 @@ export async function tick() {
     }
     const content = {
       event: job.snapshot.event,
-      name: lead.name || "Anonymous",
+      name: lead.fullName || lead.name || "Anonymous",
       owner: lead.owner || "Unassigned",
-      due: task?.due_at || "",
+      due: task?.due_at ? new Intl.DateTimeFormat(r.language==='zh'?'zh-CN':r.language==='id'?'id-ID':'en-US',{timeZone:r.timezone,dateStyle:'medium',timeStyle:'short'}).format(new Date(task.due_at)) : '',
       leadId: job.snapshot.leadId,
     };
     if (job.channel === "inapp") {
@@ -200,20 +177,22 @@ export async function tick() {
           [job.id, job.recipient, content],
         );
         await c.query(
-          "UPDATE notification_jobs SET state='accepted' WHERE id=$1",
-          [job.id],
+          "UPDATE notification_jobs SET state='accepted',completed_at=$2 WHERE id=$1",
+          [job.id,clock],
         );
       });
       return;
     }
+    const next=schedule(clock,{...r,timing:'immediate'},'lark');
+    if(next.getTime()>clock.getTime()){await pool.query("UPDATE notification_jobs SET state='pending',due_at=$2,result='Deferred by current working hours' WHERE id=$1",[job.id,next]);return;}
     const recent = (
       await pool.query(
-        "SELECT j.id FROM notification_jobs j WHERE j.channel='lark' AND j.recipient=$1 AND j.state IN ('accepted','simulated') AND j.snapshot->>'leadId' IS NOT DISTINCT FROM $2 AND j.snapshot->>'event'=$3 AND j.due_at>now()-($4*interval '1 minute') LIMIT 1",
+        "SELECT j.id FROM notification_jobs j WHERE j.channel='lark' AND j.recipient=$1 AND j.state IN ('accepted','simulated') AND j.snapshot->>'leadId' IS NOT DISTINCT FROM $2 AND j.snapshot->>'event'=$3 AND COALESCE(j.completed_at,j.due_at)>$4::timestamptz-($5*interval '1 minute') AND COALESCE(j.snapshot->>'priority','normal')=$6 LIMIT 1",
         [
           job.recipient,
           job.snapshot.leadId,
           job.snapshot.event,
-          r.dedupeMinutes,
+          clock,r.dedupeMinutes,job.snapshot.priority || 'normal',
         ],
       )
     ).rows;
@@ -226,8 +205,8 @@ export async function tick() {
     }
     const count = (
       await pool.query(
-        "SELECT count(*) FROM notification_jobs WHERE channel='lark' AND recipient=$1 AND state IN ('accepted','simulated') AND due_at>now()-interval '1 hour'",
-        [job.recipient],
+        "SELECT count(*) FROM notification_jobs WHERE channel='lark' AND recipient=$1 AND state IN ('accepted','simulated') AND COALESCE(completed_at,due_at)>$2::timestamptz-interval '1 hour'",
+        [job.recipient,clock],
       )
     ).rows[0].count;
     if (Number(count) >= r.maxPerHour) {
@@ -244,28 +223,28 @@ export async function tick() {
     ).rows[0]?.config;
     if (!config || config.mode !== "live") {
       await pool.query(
-        "UPDATE notification_jobs SET state='simulated',result='No live channel configured' WHERE id=$1",
-        [job.id],
+        "UPDATE notification_jobs SET state='simulated',result='No live channel configured',completed_at=$2 WHERE id=$1",
+        [job.id,clock],
       );
       return;
     }
     const url = process.env[config.secretRef];
     if (
-      !url ||
-      !url.startsWith("https://open.larksuite.com/open-apis/bot/v2/hook/") ||
-      (process.env.NODE_ENV !== "production" &&
+      !validWebhook(url) ||
+      (config.signingSecretRef && !process.env[config.signingSecretRef]) ||
+      ((process.env.PLATFORM_MODE === "mock" || process.env.APP_ENV === "test" || process.env.NODE_ENV !== "production") &&
         process.env.LARK_TEST_GROUP !== job.recipient)
     ) {
-      await pool.query(
-        "UPDATE notification_jobs SET state='failed',result='Channel not configured or test group disallowed' WHERE id=$1",
-        [job.id],
-      );
+      await tx(async c=>{
+        await c.query("UPDATE notification_jobs SET state='failed',result='Channel not configured or test group disallowed',completed_at=$2 WHERE id=$1",[job.id,clock]);
+        if(job.snapshot.event!=='notification.failed')await event(c,'notification.failed',null,{jobId:job.id});
+      });
       return;
     }
     let state = "accepted",
       result = "";
     let retry = false;
-    let retryAfter = 0;
+    let serverWait = 0;
     try {
       const text = r.template.replace(
         /\{\{(event|name|owner|due)\}\}/g,
@@ -274,19 +253,15 @@ export async function tick() {
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          msg_type: "text",
-          content: {
-            text: `[${process.env.NODE_ENV || "DEV"}] ${text}${job.snapshot.payload.counts ? "\n" + JSON.stringify(job.snapshot.payload.counts) : ""}\n${process.env.APP_URL || ""}/crm?lead=${content.leadId}`,
-          },
-        }),
+        body: JSON.stringify(larkCard(text+(job.snapshot.payload.counts?'\n'+JSON.stringify(job.snapshot.payload.counts):''),job.snapshot.leadId,config.signingSecretRef?process.env[config.signingSecretRef]:undefined,clock)),
         signal: AbortSignal.timeout(10000),
       });
-      retryAfter = Number(response.headers.get("retry-after")) || 0;
-      const body = await response.json();
-      if (!response.ok || Number(body.code ?? body.StatusCode) !== 0) {
+      serverWait = retryAfter(response.headers.get("retry-after"),clock);
+      const body = await response.json().catch(()=>null);
+      if(response.ok && (!body || (body.code===undefined && body.StatusCode===undefined)))throw Error("Invalid Lark receipt");
+      if (!response.ok || Number(body?.code ?? body?.StatusCode) !== 0) {
         state = "failed";
-        result = `HTTP ${response.status}; code ${body.code ?? body.StatusCode}`;
+        result = `HTTP ${response.status}; code ${body?.code ?? body?.StatusCode}`;
         retry = response.status === 429 || response.status >= 500;
       }
     } catch (e) {
@@ -296,13 +271,13 @@ export async function tick() {
     if (retry && job.attempts < r.retries.length) {
       await pool.query(
         "UPDATE notification_jobs SET state='pending',due_at=now()+($2*interval '1 minute'),result=$3 WHERE id=$1",
-        [job.id, Math.max(r.retries[job.attempts], retryAfter / 60), result],
+        [job.id, Math.max(r.retries[job.attempts], serverWait / 60), result],
       );
     } else {
       await tx(async (c) => {
         await c.query(
-          "UPDATE notification_jobs SET state=$2,result=$3 WHERE id=$1",
-          [job.id, state, result],
+          "UPDATE notification_jobs SET state=$2,result=$3,completed_at=$4 WHERE id=$1",
+          [job.id, state, result,clock],
         );
         if (state === "failed" && job.snapshot.event !== "notification.failed")
           await event(c, "notification.failed", null, { jobId: job.id });

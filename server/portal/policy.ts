@@ -1,5 +1,7 @@
 export type Channel = "inapp" | "lark" | "email" | "sms";
 export interface Rule {
+  quiet?: { start:string; end:string };
+  teams?: string[];
   event: string;
   channels: Channel[];
   recipient: "owner" | "team" | "supervisor";
@@ -71,6 +73,9 @@ export function validate(r: Rule) {
     !["immediate", "delay", "digest"].includes(r.timing)
   )
     throw Error("Invalid policy");
+  for(const values of [r.sources,r.tiers,r.states,r.teams || []])if(!Array.isArray(values)||values.length>30||values.some(v=>typeof v!=='string'||v.length>100))throw Error('Invalid filters');
+  if(r.quiet && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.quiet.start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.quiet.end)||r.quiet.start===r.quiet.end))throw Error('Invalid quiet hours');
+  for(const value of [r.team,r.group])if(typeof value!=='string'||!value.trim()||value.length>100)throw Error('Invalid team/group');
   new Intl.DateTimeFormat("en", { timeZone: r.timezone });
   for (const t of [r.start, r.end, r.digestTime])
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw Error("Invalid time");
@@ -114,7 +119,7 @@ export function nextWork(date: Date, r: Rule) {
   let d = new Date(date);
   for (let i = 0; i < 1440 * 15; i++) {
     if (working(d, r)) return d;
-    d = new Date(d.getTime() + 60000);
+    d = new Date(Math.floor(d.getTime()/60000)*60000 + 60000);
   }
   throw Error("No working time");
 }
@@ -127,10 +132,16 @@ export function schedule(date: Date, r: Rule, channel: Channel) {
     for (let i = 0; i < 1440 * 15; i++) {
       const l = local(d, r);
       if (r.days.includes(l.day) && l.time === r.digestTime) break;
-      d = new Date(d.getTime() + 60000);
+      d = new Date(Math.floor(d.getTime()/60000)*60000 + 60000);
     }
   }
-  return r.businessOnly ? nextWork(d, r) : d;
+  for(let i=0;i<1440*15;i++){
+    const time=local(d,r).time;
+    const quiet=r.quiet && (r.quiet.start<r.quiet.end ? time>=r.quiet.start&&time<r.quiet.end : time>=r.quiet.start||time<r.quiet.end);
+    if((!r.businessOnly || working(d,r)) && !quiet)return d;
+    d=new Date(Math.floor(d.getTime()/60000)*60000+60000);
+  }
+  throw Error('No permitted send time');
 }
 export function sla(date: Date, hours: number, r: Rule) {
   return nextWork(new Date(nextWork(date, r).getTime() + hours * 3600000), r);

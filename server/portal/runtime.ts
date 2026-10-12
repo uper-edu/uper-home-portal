@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import {validWebhook} from "./notificationDelivery.ts";
 import crypto from "node:crypto";
 import { DEFAULT_CRM_POLICY_CONFIG } from "../../src/types/crmPolicyConfig.ts";
 import { pool, tx, id, event, initialize } from "./store.ts";
@@ -485,32 +486,18 @@ export async function mountPortal(app: Express) {
     "/api/crm/leads/:id",
     wrap(async (req, res) => {
       const { l, e } = await leadAccess(req, "crm.write");
-      const next = { ...l.profile };
-      for (const k of ["owner", "currentStage", "tier", "nextAction"])
-        if (req.body[k] !== undefined) next[k] = req.body[k];
-      if (
-        next.owner !== l.profile.owner &&
-        !e.permissions.includes("crm.assign")
-      )
-        fail(403, "Lead assignment permission required");
-      if (
-        next.owner &&
-        !(await platform.employees()).some((p) => p.id === next.owner)
-      )
-        fail(400, "Unknown employee");
-      await tx(async (c) => {
-        await c.query("UPDATE portal_leads SET profile=$2 WHERE id=$1", [
-          l.id,
-          next,
-        ]);
-        await c.query(
-          "UPDATE followup_tasks SET owner_id=$2 WHERE lead_id=$1 AND status='open'",
-          [l.id, next.owner],
-        );
-        await c.query(
-          "INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)",
-          [e.id, "lead.update", { id: l.id, changes: req.body }],
-        );
+      const directory=await platform.employees();
+      const next=await tx(async c=>{
+        const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[l.id])).rows[0]?.profile;
+        if(!current || !allowed(e,current))fail(404,'Lead not found');
+        const next={...current};
+        for(const k of ['owner','currentStage','tier','nextAction'])if(req.body[k]!==undefined)next[k]=req.body[k];
+        if(next.owner!==current.owner && !e.permissions.includes('crm.assign'))fail(403,'Lead assignment permission required');
+        if(next.owner && !directory.some(person=>person.id===next.owner))fail(400,'Unknown employee');
+        await c.query('UPDATE portal_leads SET profile=$2 WHERE id=$1',[l.id,next]);
+        await c.query("UPDATE followup_tasks SET owner_id=$2 WHERE lead_id=$1 AND status IN ('open','overdue','migration_hold')",[l.id,next.owner]);
+        await c.query('INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)',[e.id,'lead.update',{id:l.id,changes:req.body}]);
+        return next;
       });
       res.json({ success: true, lead: next });
     }),
@@ -559,10 +546,10 @@ export async function mountPortal(app: Express) {
         )
       ).rows[0];
       if (!t || !allowed(e, t.profile)) fail(404, "Task not found");
-      await pool.query(
-        "UPDATE followup_tasks SET status='completed' WHERE id=$1",
-        [t.id],
-      );
+      await tx(async c=>{
+        await c.query("UPDATE followup_tasks SET status='completed' WHERE id=$1",[t.id]);
+        await c.query("UPDATE notification_jobs SET state='cancelled',result='Task completed',completed_at=now() WHERE state='pending' AND snapshot->'payload'->>'taskId'=$1",[t.id]);
+      });
       res.json({ success: true });
     }),
   );
@@ -608,7 +595,7 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-rules/:id",
     wrap(async (req, res) => {
       const e = await staff(req, "notifications.manage");
-      validate(req.body.config);
+      try { validate(req.body.config); } catch(e) { fail(400,(e as Error).message); }
       await tx(async (c) => {
         await c.query(
           "SELECT id FROM notification_rules WHERE id=$1 FOR UPDATE",
@@ -621,7 +608,7 @@ export async function mountPortal(app: Express) {
         ).rows[0];
         const version = (old?.version || 0) + 1;
         await c.query(
-          "INSERT INTO notification_rules(id,version,config,enabled) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET version=$2,config=$3,enabled=$4",
+          "INSERT INTO notification_rules(id,version,config,enabled,effective_at) VALUES($1,$2,$3,$4,clock_timestamp()) ON CONFLICT(id) DO UPDATE SET version=$2,config=$3,enabled=$4,effective_at=clock_timestamp()",
           [req.params.id, version, req.body.config, req.body.enabled === true],
         );
         await c.query("INSERT INTO rule_versions VALUES($1,$2,$3)", [
@@ -641,7 +628,7 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-simulate",
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
-      validate(req.body.config);
+      try { validate(req.body.config); } catch(e) { fail(400,(e as Error).message); }
       res.json({
         sendAt: req.body.config.channels.map((channel: string) => ({
           channel,
@@ -668,6 +655,25 @@ export async function mountPortal(app: Express) {
       );
     }),
   );
+  app.post('/api/crm/notification-jobs/:id/cancel',wrap(async(req,res)=>{
+    const employee=await staff(req,'notifications.manage');
+    await tx(async c=>{
+      const job=(await c.query('SELECT * FROM notification_jobs WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+      if(!job)fail(404,'Notification not found');
+      if(job.state!=='pending')fail(409,'Only pending notifications can be cancelled');
+      const reason=String(req.body.reason || 'Cancelled by employee').slice(0,300);
+      await c.query("UPDATE notification_jobs SET state='cancelled',result=$2,completed_at=now() WHERE id=$1",[job.id,reason]);
+      await c.query('INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)',[employee.id,'notification.cancel',{jobId:job.id,reason}]);
+    });res.json({success:true});
+  }));
+  app.get('/api/crm/integration-readiness',wrap(async(req,res)=>{
+    await staff(req,'notifications.manage');
+    const channels=(await pool.query('SELECT * FROM notification_channels')).rows.map(row=>{
+      const config=row.config;
+      return {id:row.id,team:config.team,mode:config.mode,webhookConfigured:validWebhook(process.env[config.secretRef]),signingSecretConfigured:!config.signingSecretRef || !!process.env[config.signingSecretRef],designatedTestGroup:process.env.LARK_TEST_GROUP===row.id,realReceiptVerified:false};
+    });
+    res.json({identity:{mode:process.env.PLATFORM_MODE || 'disabled',adapter:'local-fixtures-only',realPlatformVerified:false},channels,releaseReady:false,required:['Real platform identity/directory/scope contract','Designated Lark group receipt with event/job IDs']});
+  }));
   app.get(
     "/api/crm/notification-jobs",
     wrap(async (req, res) => {
@@ -696,16 +702,17 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-channels/:id",
     wrap(async (req, res) => {
       const e = await staff(req, "notifications.manage");
-      const { team, secretRef, mode } = req.body;
+      const { team, secretRef, mode, signingSecretRef } = req.body;
       if (
         !/^[A-Z0-9_]{1,80}$/.test(secretRef) ||
         !["simulation", "live"].includes(mode) ||
-        typeof team !== "string"
+        typeof team !== "string" ||
+        (signingSecretRef!==undefined && !/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))
       )
         fail(400, "Invalid channel config");
       await pool.query(
         "INSERT INTO notification_channels VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET config=$2",
-        [req.params.id, { team, secretRef, mode }],
+        [req.params.id, { team, secretRef, mode, signingSecretRef }],
       );
       await pool.query(
         "INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)",

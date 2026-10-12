@@ -16,7 +16,7 @@ for (const name of ['src', 'server', 'node_modules']) await fs.symlink(path.join
 await fs.mkdir(path.join(dir, 'dist'));
 await fs.writeFile(path.join(dir, 'dist/index.html'), '<title>Test</title>');
 await fs.writeFile(path.join(dir, 'package.json'), '{"type":"module"}');
-await fs.writeFile(path.join(dir, '.env'), 'OPENAI_API_KEY=test\nDEEPSEEK_API_KEY=test\nDEFAULT_AI_PROVIDER=openai\nOPENAI_API_BASE_URL=https://mock.invalid/openai\n');
+await fs.writeFile(path.join(dir, '.env'), 'OPENAI_API_KEY=test\nDEEPSEEK_API_KEY=test\nDEFAULT_AI_PROVIDER=openai\nOPENAI_API_BASE_URL=https://mock.invalid/openai\nDATABASE_URL=\n');
 await fs.writeFile(path.join(dir, 'server.ts'), (await fs.readFile(path.join(root, 'server.ts'), 'utf8')).replace('const PORT = Number(process.env.PORT || 3000);', `const PORT = ${port};`));
 await fs.writeFile(path.join(dir, 'mock.mjs'), `
 const nativeFetch = globalThis.fetch;
@@ -43,7 +43,9 @@ globalThis.fetch = async (url, options) => {
  }}),{headers:{'Content-Type':'text/event-stream'}});
 };
 `);
-const child = spawn(process.execPath, ['--import', 'tsx', '--import', './mock.mjs', 'server.ts'], {cwd:dir, env:{...process.env,NODE_ENV:'production',LEGACY_CHAT_TEST:'true'}});
+// This fixture tests provider failover without customer persistence. Never inherit
+// DATABASE_URL or real provider credentials from the parent test runner.
+const child = spawn(process.execPath, ['--import', 'tsx', '--import', './mock.mjs', 'server.ts'], {cwd:dir, env:{PATH:process.env.PATH,TMPDIR:os.tmpdir(),NODE_ENV:'production',LEGACY_CHAT_TEST:'true',DATABASE_URL:''}});
 let logs='';
 await new Promise((resolve,reject)=>{
  const timer=setTimeout(()=>reject(new Error('Test server startup timed out')),10000);
@@ -53,7 +55,9 @@ await new Promise((resolve,reject)=>{
 const endpoint = `http://127.0.0.1:${port}/api/chat`;
 async function request(scenario, stream=true){
  const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stream,messages:[{role:'user',content:scenario}]})});
+ assert.equal(res.status,200,'Provider fixture must use legacy chat, not the persisted conversation route');
  if(!stream) return res.json();
+ assert.match(res.headers.get('content-type'),/text\/event-stream/);
  return (await res.text()).split('\n').filter(l=>l.startsWith('data:')).map(l=>JSON.parse(l.slice(5)));
 }
 try {

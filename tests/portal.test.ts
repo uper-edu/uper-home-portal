@@ -328,7 +328,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
               "lark",
               "verification",
               {
-                rule: { ...defaults, dedupeMinutes: 0 },
+                rule: { ...defaults, businessOnly:false, dedupeMinutes: 0 },
                 event: "test",
                 payload: {},
               },
