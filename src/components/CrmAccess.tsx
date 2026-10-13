@@ -1,3 +1,5 @@
+import { ArrowRight, LockKeyhole, Users, ListChecks, Bell } from "lucide-react";
+import "./crm/crm-sign-in.css";
 import { CrmLanguageSelect } from "./crm/CrmLanguageSelect";
 import { crmId } from "../utils/crmIndonesian";
 import {
@@ -152,9 +154,27 @@ export default function CrmAccess({
     );
   if (!employee)
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <main className="crm-sign-in">
+        <header className="crm-sign-in-header">
+          <a href="/" className="crm-sign-in-brand" aria-label="UPER">
+            <img src="/uper-logo-mark.svg" alt="" />
+            <span>UPER</span>
+          </a>
+          <div className="crm-sign-in-language"><CrmLanguageSelect lang={lang} onChange={setLang} /></div>
+        </header>
+        <div className="crm-sign-in-layout">
+          <section className="crm-sign-in-intro" aria-labelledby="crm-sign-in-intro-title">
+            <span className="crm-sign-in-eyebrow">{t("Sales workspace", "销售工作区")}</span>
+            <h2 id="crm-sign-in-intro-title">{t("Every customer. A clear next step.", "每一位客户，都有清晰的下一步。")}</h2>
+            <p>{t("Keep customer conversations, ownership and follow-up in one place.", "在同一个工作区管理客户对话、负责人和跟进安排。")}</p>
+            <ul className="crm-sign-in-features">
+              <li><Users size={20} aria-hidden="true" /><span>{t("Customer records & conversations", "客户资料与对话")}</span></li>
+              <li><ListChecks size={20} aria-hidden="true" /><span>{t("Ownership & follow-up", "客户归属与跟进")}</span></li>
+              <li><Bell size={20} aria-hidden="true" /><span>{t("Reminders & sales operations", "提醒与销售运营")}</span></li>
+            </ul>
+          </section>
         <form
-          className="w-full max-w-sm bg-white border rounded-2xl p-6 space-y-4"
+          className="crm-sign-in-card"
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
@@ -170,25 +190,25 @@ export default function CrmAccess({
             }
           }}
         >
-          <CrmLanguageSelect lang={lang} onChange={setLang} />
-          <h1 className="text-xl font-bold">{t("CRM sign in", "CRM 登录")}</h1>
-          <p className="text-sm text-slate-500">
-            {t("Use your staff account", "请使用员工账号登录")}
-          </p>
-          <label className="block text-sm">
+          <div className="crm-sign-in-lock"><LockKeyhole size={22} aria-hidden="true" /></div>
+          <h1>{t("CRM sign in", "CRM 登录")}</h1>
+          <p className="crm-sign-in-subtitle">{t("Use your staff account", "请使用员工账号登录")}</p>
+          <label className="crm-sign-in-label">
             {t("Login ID", "登录账号")}
             <input
-              className={field}
+              className="crm-sign-in-input"
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
               required
             />
           </label>
-          <label className="block text-sm">
+          <label className="crm-sign-in-label">
             {t("Password", "密码")}
             <input
-              className={field}
+              className="crm-sign-in-input"
               type="password"
               autoComplete="current-password"
               value={password}
@@ -197,18 +217,23 @@ export default function CrmAccess({
             />
           </label>
           {error && (
-            <p role="alert" className="text-sm text-rose-600">
+            <p role="alert" className="crm-sign-in-error">
               {crmError(error, lang)}
             </p>
           )}
           <button
             type="submit"
             disabled={busy}
-            className="w-full bg-primary-600 text-white rounded-lg p-3"
+            className="crm-sign-in-submit"
+            aria-busy={busy}
           >
-            {t("Sign in", "登录")}
+            {busy ? t("Signing in…", "正在登录…") : t("Sign in", "登录")}
+            <ArrowRight size={18} aria-hidden="true" />
           </button>
+          <p className="crm-sign-in-footnote">{t("Staff access only. Your role determines what you can view and manage.", "仅供员工访问。可查看的数据与操作权限由账号角色决定。")}</p>
         </form>
+        </div>
+        <footer className="crm-sign-in-footer">UPER · {t("Customer relationship management", "客户关系管理")}</footer>
       </main>
     );
   return (

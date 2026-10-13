@@ -26,6 +26,11 @@ export const guideSections = [
     title: ["Accounts and permissions", "Akun dan izin akses", "账号与权限"],
     body: [
       [
+        "The sign-in page uses the same EN, ID and Chinese language buttons as CRM. Choose a language before signing in; the choice is kept in the workspace. Use your existing staff login ID and password. Changing language does not clear entered credentials.",
+        "Halaman masuk memakai tombol bahasa EN, ID, dan Mandarin yang sama dengan CRM. Pilih bahasa sebelum masuk; pilihan tetap digunakan di ruang kerja. Gunakan ID akun staf dan kata sandi yang sudah ada. Mengganti bahasa tidak menghapus isian akun.",
+        "登录页与 CRM 使用相同的 EN、ID、中文语言按钮。可先选择语言，进入工作区后继续使用该语言。请使用已有员工账号和密码；切换语言不会清空已输入内容。",
+      ],
+      [
         "In Profile, Customer owner and Sales stage use the same option style as the main list. Search is available for owners; the fixed stage list has no search. Selecting a different value saves it immediately through the existing permission checks; selecting the current value makes no change. Escape closes without saving.",
         "Di Profil, Penanggung jawab pelanggan dan Tahap penjualan memakai gaya pilihan yang sama dengan daftar utama. Penanggung jawab dapat dicari; daftar tahap tetap tidak memiliki pencarian. Memilih nilai berbeda langsung menyimpannya melalui pemeriksaan izin yang berlaku; memilih nilai saat ini tidak mengubah data. Escape menutup tanpa menyimpan.",
         "客户资料中的负责人和销售阶段使用与主列表一致的选项样式。负责人可搜索，固定阶段列表无搜索。选择不同值会按现有权限立即保存；选择当前值不改动数据，Escape 关闭不保存。",
