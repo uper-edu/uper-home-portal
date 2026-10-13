@@ -1,11 +1,12 @@
 import {CrmLeadFilters} from '../components/crm/CrmLeadFilters';
-import {defaultLeadFilters,filterQuery,isOverdueTask,type LeadFilters} from '../utils/crmLeadFilters';
+import {defaultLeadFilters,filterQuery,type LeadFilters} from '../utils/crmLeadFilters';
 import {crmValue,crmError,crmLocale,type CrmLanguage} from '../utils/crmLanguage';
 import {leadDisplayNumber} from '../utils/leadNumber';
 import {formatCrmOperatingTime} from '../utils/crmOperatingTime';
+import {confirmedTaskDeadline,pendingFollowUps} from '../utils/crmFollowUp';
 import CrmAccess, {CrmAccountControls,type CrmEmployee} from "../components/CrmAccess";
 import {crmMessageTimestamp,crmMessageTimeLabel,compareCrmEventTimes} from '../utils/crmMessageTime';
-import { LeadActivity, LeadPendingAction } from '../components/LeadAttention';
+import { LeadActivity } from '../components/LeadAttention';
 import LeadTaskActions from '../components/LeadTaskActions';
 import NotificationCenter from '../components/NotificationCenter';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -62,7 +63,8 @@ import { CrmLeadRecord, FollowUpLog, StageType, ConnectStatusType, OutcomeType }
 import { TierType, BuyingSignalType } from '../types/leadSystem';
 import type { CrmPolicyConfig } from '../types/crmPolicyConfig';
 import { DEFAULT_CRM_POLICY_CONFIG } from '../types/crmPolicyConfig';
-import { evaluateLeadCadence } from '../utils/cadenceEngine';
+import { CrmFollowUp } from '../components/crm/CrmFollowUp';
+import '../components/crm/crm-followup.css';
 import { CrmPolicySettings, PolicyActionControls } from '../components/crm/CrmPolicySettings';
 import { CrmUserGuide } from '../components/crm/CrmUserGuide';
 import { CrmCampaignHub } from '../components/crm/CrmCampaignHub';
@@ -157,7 +159,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
   const queryKey=filterQuery({...filters,search:appliedSearch});
   useEffect(()=>{const timer=setTimeout(()=>setAppliedSearch(filters.search),filters.search?300:0);return ()=>clearTimeout(timer);},[filters.search]);
   const [selectedLead, setSelectedLead] = useState<CrmLeadRecord | null>(null);
-  const responseDeadline = selectedLead?.attention ? selectedLead.attention.tasks.filter(task=>['open','overdue'].includes(task.status)).sort((a,b)=>Date.parse(a.dueAt)-Date.parse(b.dueAt))[0]?.dueAt : selectedLead?.slaDueTime;
+  const responseTask = pendingFollowUps(selectedLead?.attention?.tasks || [])[0];
+  const responseDeadline = responseTask && confirmedTaskDeadline(responseTask) !== null ? responseTask.dueAt : undefined;
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<'profile' | 'activities' | 'playbook' | 'chat'>('profile');
   const [isAddLogOpen, setIsAddLogOpen] = useState(false);
@@ -645,20 +648,6 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
     }
   };
 
-  // Config-driven Dynamic Cadence & SLA calculation
-  const getSlaDisplay = (lead: CrmLeadRecord) => {
-    if(lead.attention){const task=lead.attention.tasks.find(t=>['open','overdue'].includes(t.status)) || lead.attention.tasks[0];const overdue=!!task&&isOverdueTask(task,Date.now());return {text:task?(task.status==='migration_hold'?t('Historical task: review required','历史待办待确认'):overdue?t('Overdue','已逾期'):t('Follow-up pending','待跟进')):t('No pending follow-up','暂无待办'),color:overdue?'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800':'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',isOverdue:overdue,suggestedAction:lead.nextAction||'',statusType:task?'scheduled':'none'};}
-
-    const cadence = evaluateLeadCadence(lead, policyConfig, lang);
-    return { 
-      text: cadence.badgeText, 
-      color: cadence.badgeColor,
-      isOverdue: cadence.isOverdue,
-      suggestedAction: cadence.suggestedAction,
-      statusType: cadence.statusType
-    };
-  };
-
   // Generate customized WhatsApp Link & text
   const getWhatsAppAction = (lead: CrmLeadRecord) => {
     const cleanPhone = (lead.whatsapp || '').replace(/\D/g, '').replace(/^0/, '62');
@@ -731,14 +720,6 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
   };
 
   const formatCrmDateTime = (isoString?: string) => formatCrmOperatingTime(isoString,policyConfig.businessHours.timezone);
-
-  // Smart next action recommendation using policy configuration
-  const getDisplayNextAction = (lead: CrmLeadRecord): string => {
-    if (lead.nextAction && lead.nextAction.trim()) return lead.nextAction.trim();
-    if(lead.attention){const task=lead.attention.tasks[0];if(!task)return t('No pending follow-up','暂无待跟进事项');const actions:Record<string,[string,string]>={consultation:['Contact and qualify','联系客户并确认需求'],handoff:['Advisor contact requested','安排顾问联系'],booking:['Confirm booking','确认预约安排'],enrollment:['Follow up enrollment','跟进报名意向']};return actions[task.kind]?.[lang==='zh'?1:0]||t('Follow up with customer','联系客户跟进');}
-
-    return evaluateLeadCadence(lead, policyConfig, lang).suggestedAction;
-  };
 
   // Dynamic, lead-tailored Objection Handling Playbook generator (Fully Personalized per Lead)
   const getPersonalizedObjections = (lead: CrmLeadRecord | null) => {
@@ -1433,7 +1414,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                     </th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('City & Mode', '城市与授课模式')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Goal & Placement', '目标与测评定级')}</th>
-                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Customer group & Next action', '客户分组与下一步待办')}</th>
+                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Customer group', '客户分组')}</th>
+                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Follow-up', '跟进安排')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Buying Signal', '购买信号')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Current Stage', '推进阶段')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Follow-up Count', '跟进次数')}</th>
@@ -1442,12 +1424,11 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                 </thead>
                 <tbody className={`divide-y ${isLight ? 'divide-slate-100' : 'divide-slate-800/80'}`}>
                   {isLoading ? (
-                    renderSkeletonRows(9)
+                    renderSkeletonRows(10)
                   ) : filteredLeads.length === 0 ? (
-                    renderEmptyState(9)
+                    renderEmptyState(10)
                   ) : (
                     filteredLeads.map((lead) => {
-                      const sla = getSlaDisplay(lead);
                       const wa = getWhatsAppAction(lead);
                       const touches = formatTouchesDisplay(lead);
 
@@ -1601,26 +1582,14 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                             </div>
                           </td>
 
-                          {/* 5. 优先级 & 下一步待办 (Priority & Next Action) */}
-                          <td className={`py-3 px-3 max-w-[240px] border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
-                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border shadow-2xs ${getTierBadge(lead.tier)}`}>
-                                {crmValue(lead.tier,lang)}
-                              </span>
-                              <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${sla.color}`}>
-                                {sla.text}
-                              </span>
-                            </div>
-                            <div 
-                              className="mt-1 flex items-center gap-1 max-w-[230px]" 
-                              title={`${t('Next Action:', '下一步动作:')} ${getDisplayNextAction(lead)}`}
-                            >
-                              <span className="text-primary-500 text-[10px] shrink-0 font-bold">👉</span>
-                              <span className={`text-[10.5px] truncate font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                                {getDisplayNextAction(lead)}
-                              </span>
-                            </div>
-                            <LeadPendingAction lead={lead} lang={lang} timezone={policyConfig.businessHours.timezone} />
+                          {/* Customer classification and pending work are independent. */}
+                          <td className={`py-3 px-3 whitespace-nowrap border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border shadow-2xs ${getTierBadge(lead.tier)}`}>
+                              {crmValue(lead.tier,lang)}
+                            </span>
+                          </td>
+                          <td className={`py-3 px-3 border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
+                            <CrmFollowUp lead={lead} lang={lang} timezone={policyConfig.businessHours.timezone} isLight={isLight} employees={employees} onOpen={() => handleOpenLeadDrawer(lead, 'activities')} />
                           </td>
 
                           {/* 6. 购买信号 */}
@@ -1755,8 +1724,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Goal', '学习目标')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Placement Level', '测评定级')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Customer group', '客户分组')}</th>
-                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('SLA Status', 'SLA倒计时')}</th>
-                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Next Action', '下一步动作')}</th>
+                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Follow-up', '跟进安排')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Buying Signal', '购买信号')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Current Stage', '推进阶段')}</th>
                     <th className={`py-3 px-3 text-center whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Follow-up Count', '跟进次数')}</th>
@@ -1766,12 +1734,11 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                 </thead>
                 <tbody className={`divide-y ${isLight ? 'divide-slate-100' : 'divide-slate-800/80'}`}>
                   {isLoading ? (
-                    renderSkeletonRows(17)
+                    renderSkeletonRows(16)
                   ) : filteredLeads.length === 0 ? (
-                    renderEmptyState(17)
+                    renderEmptyState(16)
                   ) : (
                     filteredLeads.map((lead) => {
-                      const sla = getSlaDisplay(lead);
                       const wa = getWhatsAppAction(lead);
                       const touches = formatTouchesDisplay(lead);
 
@@ -1905,22 +1872,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                             </span>
                           </td>
 
-                          {/* 11. SLA */}
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${sla.color}`}>
-                              {sla.text}
-                            </span>
-                          </td>
-
-                          {/* 12. 下一步动作 (Next Action) */}
-                          <td className="py-3 px-3 max-w-[220px]" title={getDisplayNextAction(lead)}>
-                            <div className="flex items-center gap-1">
-                              <span className="text-primary-500 text-[10px] shrink-0 font-bold">👉</span>
-                              <span className={`text-[11px] truncate font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                                {getDisplayNextAction(lead)}
-                              </span>
-                            </div>
-                          <LeadPendingAction lead={lead} lang={lang} timezone={policyConfig.businessHours.timezone} />
+                          <td className="py-3 px-3">
+                            <CrmFollowUp lead={lead} lang={lang} timezone={policyConfig.businessHours.timezone} isLight={isLight} employees={employees} onOpen={() => handleOpenLeadDrawer(lead, 'activities')} />
                           </td>
 
                           {/* 13. 购买信号 */}

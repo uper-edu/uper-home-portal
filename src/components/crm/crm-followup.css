@@ -1,0 +1,60 @@
+.crm-followup {
+  min-width: 180px;
+  max-width: 250px;
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #334155;
+}
+.crm-followup-action {
+  font-weight: 600;
+}
+.crm-followup-secondary,
+.crm-followup-timing {
+  color: #64748b;
+}
+.crm-followup-timing[data-tone="overdue"] {
+  color: #be123c;
+}
+.crm-followup-timing[data-tone="today"],
+.crm-followup-timing[data-tone="review"] {
+  color: #92400e;
+}
+.crm-followup-note {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.crm-followup-more {
+  justify-self: start;
+  font: inherit;
+  color: #0f766e;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.crm-followup-more:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+.crm-followup[data-theme="dark"] {
+  color: #cbd5e1;
+}
+.crm-followup[data-theme="dark"] .crm-followup-secondary,
+.crm-followup[data-theme="dark"] .crm-followup-timing {
+  color: #94a3b8;
+}
+.crm-followup[data-theme="dark"] .crm-followup-timing[data-tone="overdue"] {
+  color: #fda4af;
+}
+.crm-followup[data-theme="dark"] .crm-followup-timing[data-tone="today"],
+.crm-followup[data-theme="dark"] .crm-followup-timing[data-tone="review"] {
+  color: #fcd34d;
+}
+.crm-followup[data-theme="dark"] .crm-followup-more {
+  color: #5eead4;
+}

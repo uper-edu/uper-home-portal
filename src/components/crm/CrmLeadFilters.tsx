@@ -40,7 +40,7 @@ export function CrmLeadFilters({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState<Dimension | SingleField | null>(null);
-  const [optionSearch, setOptionSearch] = useState("");
+  const [ownerSearch, setOwnerSearch] = useState("");
   const activeField = useRef<HTMLDivElement | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
   const t = (en: string, zh: string) => (lang === "zh" ? zh : en);
@@ -59,7 +59,7 @@ export function CrmLeadFilters({
   const reset = () => {
     onChange(defaultLeadFilters(scope));
     setOpen(null);
-    setOptionSearch("");
+    setOwnerSearch("");
   };
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function CrmLeadFilters({
     initialFocus?.focus();
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [open]);
-  useEffect(() => setOptionSearch(""), [lang]);
+  useEffect(() => setOwnerSearch(""), [lang]);
 
   const singleSelect = ({
     id,
@@ -99,11 +99,14 @@ export function CrmLeadFilters({
   }) => {
     const isOpen = open === id;
     const selected = options.find((option) => option.value === value);
-    const visibleOptions = options.filter((option) =>
-      option.label
-        .toLocaleLowerCase()
-        .includes(optionSearch.trim().toLocaleLowerCase()),
-    );
+    const visibleOptions =
+      id === "owner"
+        ? options.filter((option) =>
+            option.label
+              .toLocaleLowerCase()
+              .includes(ownerSearch.trim().toLocaleLowerCase()),
+          )
+        : options;
     const close = () => {
       setOpen(null);
       trigger.current?.focus();
@@ -170,13 +173,13 @@ export function CrmLeadFilters({
           title={title}
           onClick={() => {
             setOpen(isOpen ? null : id);
-            setOptionSearch("");
+            setOwnerSearch("");
           }}
           onKeyDown={(event) => {
             if (!isOpen && ["ArrowDown", "ArrowUp"].includes(event.key)) {
               event.preventDefault();
               setOpen(id);
-              setOptionSearch("");
+              setOwnerSearch("");
             }
           }}
         >
@@ -193,14 +196,14 @@ export function CrmLeadFilters({
             aria-label={accessibleLabel + t(" options", "选项")}
             className="crm-filter-popover"
           >
-            {options.length >= 6 && (
+            {id === "owner" && (
               <input
                 type="search"
                 className="crm-filter-option-search"
                 aria-label={t("Search ", "搜索") + accessibleLabel}
                 placeholder={t("Find options…", "搜索选项…")}
-                value={optionSearch}
-                onChange={(event) => setOptionSearch(event.target.value)}
+                value={ownerSearch}
+                onChange={(event) => setOwnerSearch(event.target.value)}
               />
             )}
             <div
@@ -341,11 +344,7 @@ export function CrmLeadFilters({
                         `${selected.length} selected`,
                         `已选 ${selected.length} 项`,
                       );
-              const options = filterDimensions[k].options.filter((o) =>
-                t(o[1], o[2])
-                  .toLocaleLowerCase()
-                  .includes(optionSearch.trim().toLocaleLowerCase()),
-              );
+              const options = filterDimensions[k].options;
               return (
                 <div
                   key={k}
@@ -381,7 +380,7 @@ export function CrmLeadFilters({
                     aria-controls={"lead-options-" + k}
                     onClick={() => {
                       setOpen(isOpen ? null : k);
-                      setOptionSearch("");
+                      setOwnerSearch("");
                     }}
                   >
                     <span className="crm-filter-dimension-name">
@@ -404,16 +403,6 @@ export function CrmLeadFilters({
                       aria-label={dimLabel(k) + t(" options", "选项")}
                       className="crm-filter-popover"
                     >
-                      {filterDimensions[k].options.length >= 6 && (
-                        <input
-                          type="search"
-                          className="crm-filter-option-search"
-                          aria-label={t("Search ", "搜索") + dimLabel(k)}
-                          placeholder={t("Find options…", "搜索选项…")}
-                          value={optionSearch}
-                          onChange={(e) => setOptionSearch(e.target.value)}
-                        />
-                      )}
                       <div className="crm-filter-options">
                         {options.map((o) => (
                           <label key={o[0]} className="crm-filter-option">
@@ -425,11 +414,6 @@ export function CrmLeadFilters({
                             <span>{t(o[1], o[2])}</span>
                           </label>
                         ))}
-                        {!options.length && (
-                          <p className="crm-filter-no-options">
-                            {t("No matching options", "无匹配选项")}
-                          </p>
-                        )}
                       </div>
                       <div className="crm-filter-popover-footer">
                         <span>

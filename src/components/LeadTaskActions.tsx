@@ -1,5 +1,6 @@
-import {crmValue,crmError,crmLocale} from '../utils/crmLanguage';
+import { crmError } from "../utils/crmLanguage";
 import { useEffect, useState } from "react";
+import { describeFollowUpTask, pendingFollowUps } from "../utils/crmFollowUp";
 export default function LeadTaskActions({
   leadId,
   readOnly = false,
@@ -40,30 +41,36 @@ export default function LeadTaskActions({
       </h3>
       {error && (
         <p role="alert" className="text-xs text-rose-500">
-          {crmError(error,lang)}
+          {crmError(error, lang)}
         </p>
       )}
-      {tasks
-        .filter((t) => ["open", "overdue", "migration_hold"].includes(t.status))
-        .map((task) => (
+      {pendingFollowUps(
+        tasks.map((task) => ({
+          ...task,
+          dueAt: task.due_at,
+          ownerId: task.owner_id,
+        })),
+      ).map((task) => {
+        const display = describeFollowUpTask(task, lang, timezone);
+        return (
           <div
             key={task.id}
             className="flex items-center justify-between gap-3 text-xs py-2"
           >
             <div>
               <p>
-                {crmValue(task.kind,lang)} ·{" "}
-                {task.owner_id || (lang === "zh" ? "待分配" : "Unassigned")}
+                {display.action} ·{" "}
+                {task.ownerId || (lang === "zh" ? "待分配" : "Unassigned")}
               </p>
               <p
                 className={
-                  Date.parse(task.due_at) < Date.now()
+                  display.tone === "overdue"
                     ? "text-rose-500"
                     : "text-slate-500"
                 }
               >
-                {lang === "zh" ? "截止" : "Due"}:{" "}
-                {new Date(task.due_at).toLocaleString(crmLocale(lang),{timeZone:timezone})} ({timezone})
+                {display.timing}
+                {display.deadline !== null && ` (${timezone})`}
               </p>
             </div>
             <button
@@ -71,7 +78,7 @@ export default function LeadTaskActions({
               disabled={readOnly || busy === task.id}
               className="border rounded-lg px-3 py-1.5"
               onClick={async () => {
-                if(readOnly)return;
+                if (readOnly) return;
                 setBusy(task.id);
                 try {
                   const r = await fetch(
@@ -101,7 +108,8 @@ export default function LeadTaskActions({
                   : "Complete follow-up"}
             </button>
           </div>
-        ))}
+        );
+      })}
       {!error &&
         !tasks.some((t) =>
           ["open", "overdue", "migration_hold"].includes(t.status),
