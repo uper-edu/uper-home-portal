@@ -66,6 +66,11 @@ export const guideSections = [
     ],
     body: [
       [
+        "The contact form uses the standard CRM option panel for channel, contact result, stage and buying signal. These fixed lists have no search. Staff identity remains locked to the signed-in employee. Changing form choices edits the draft only; Save follow-up submits the record.",
+        "Formulir kontak memakai panel pilihan standar CRM untuk kanal, hasil kontak, tahap, dan sinyal pembelian. Daftar tetap ini tidak memiliki pencarian. Identitas staf tetap terkunci pada akun yang masuk. Perubahan pilihan hanya mengubah draf; Simpan tindak lanjut mengirim catatan.",
+        "跟进表单的沟通方式、接通情况、推进阶段和购买信号使用标准 CRM 选项面板，固定选项无搜索。顾问责任人保持为当前登录员工，不可切换。修改选项只编辑草稿，点击保存跟进记录后才提交。",
+      ],
+      [
         "The list action, state and deadline come from the same persisted task. A task owner may differ from the customer owner. Additional tasks open in the panel. Manual notes are kept separately and do not become system tasks.",
         "Tindakan, status, dan tenggat pada daftar berasal dari tugas tersimpan yang sama. Penanggung jawab tugas dapat berbeda dari penanggung jawab pelanggan. Tugas tambahan dibuka dalam panel. Catatan manual disimpan terpisah dan tidak menjadi tugas sistem.",
         "列表动作、状态、截止时间来自同一条持久任务；任务负责人可以不同于客户负责人。其他任务在面板查看。人工备注独立保留，不被当作系统任务。",

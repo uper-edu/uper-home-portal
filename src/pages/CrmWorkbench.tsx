@@ -1537,18 +1537,12 @@ function CrmWorkspace({
                         >
                           {t("Staff / Consultant", "顾问责任人")}
                         </label>
-                        <select
-                          value={employee.id}
-                          disabled
-                          style={{ outline: "none", boxShadow: "none" }}
-                          className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${isLight ? "bg-white border border-slate-200 text-slate-800" : "bg-slate-900 border border-slate-800 text-slate-200"}`}
-                        >
-                          {employees.map((e) => (
-                            <option key={e.id} value={e.id}>
-                              {employeeLabel(e)}
-                            </option>
-                          ))}
-                        </select>
+                        <CrmSingleSelect
+                          label={t("Staff / Consultant", "顾问责任人")}
+                          value={employee.id} disabled onChange={() => {}}
+                          lang={lang} isLight={isLight}
+                          options={employees.map((e) => ({ value: e.id, label: employeeLabel(e) }))}
+                        />
                       </div>
 
                       <div>
@@ -1557,27 +1551,17 @@ function CrmWorkspace({
                         >
                           {t("Channel", "沟通方式")}
                         </label>
-                        <select
-                          value={channel}
-                          onChange={(e) => {
-                            setChannel(e.target.value as any);
-                            e.currentTarget.blur();
-                          }}
-                          style={{ outline: "none", boxShadow: "none" }}
-                          className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${isLight ? "bg-white border border-slate-200 text-slate-800" : "bg-slate-900 border border-slate-800 text-slate-200"}`}
-                        >
-                          <option value="WhatsApp">WhatsApp</option>
-                          <option value="Phone Call">
-                            {t("Phone Call", "电话")}
-                          </option>
-                          <option value="Campus Visit">
-                            {t("Campus Visit", "校区接待")}
-                          </option>
-                          <option value="Email">
-                            {t("Email", "电子邮件")}
-                          </option>
-                          <option value="Other">{t("Other", "其他")}</option>
-                        </select>
+                        <CrmSingleSelect
+                          label={t("Channel", "沟通方式")} value={channel}
+                          onChange={(value) => setChannel(value as any)} lang={lang} isLight={isLight}
+                          options={[
+                            { value: "WhatsApp", label: "WhatsApp" },
+                            { value: "Phone Call", label: t("Phone Call", "电话") },
+                            { value: "Campus Visit", label: t("Campus Visit", "校区接待") },
+                            { value: "Email", label: t("Email", "电子邮件") },
+                            { value: "Other", label: t("Other", "其他") },
+                          ]}
+                        />
                       </div>
                     </div>
 
@@ -1588,28 +1572,16 @@ function CrmWorkspace({
                         >
                           {t("Connect Status", "接通情况")}
                         </label>
-                        <select
-                          value={connectStatus}
-                          onChange={(e) => {
-                            setConnectStatus(e.target.value as any);
-                            e.currentTarget.blur();
-                          }}
-                          style={{ outline: "none", boxShadow: "none" }}
-                          className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${isLight ? "bg-white border border-slate-200 text-slate-800" : "bg-slate-900 border border-slate-800 text-slate-200"}`}
-                        >
-                          <option value="Connected">
-                            {t("Connected / Replied", "已接通 / 已回复")}
-                          </option>
-                          <option value="No Response">
-                            {t("No Response / Unreachable", "未接通 / 未回应")}
-                          </option>
-                          <option value="Wrong Number">
-                            {t("Wrong / Invalid Number", "空号错号")}
-                          </option>
-                          <option value="Interested">
-                            {t("High Interest", "意向强烈")}
-                          </option>
-                        </select>
+                        <CrmSingleSelect
+                          label={t("Connect Status", "接通情况")} value={connectStatus}
+                          onChange={(value) => setConnectStatus(value as any)} lang={lang} isLight={isLight}
+                          options={[
+                            { value: "Connected", label: t("Connected / Replied", "已接通 / 已回复") },
+                            { value: "No Response", label: t("No Response / Unreachable", "未接通 / 未回应") },
+                            { value: "Wrong Number", label: t("Wrong / Invalid Number", "空号错号") },
+                            { value: "Interested", label: t("High Interest", "意向强烈") },
+                          ]}
+                        />
                       </div>
 
                       <div>
@@ -1618,21 +1590,11 @@ function CrmWorkspace({
                         >
                           {t("New Stage", "推进阶段")}
                         </label>
-                        <select
-                          value={newStage}
-                          onChange={(e) => {
-                            setNewStage(e.target.value as any);
-                            e.currentTarget.blur();
-                          }}
-                          style={{ outline: "none", boxShadow: "none" }}
-                          className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 font-semibold ${isLight ? "bg-white border border-slate-200 text-slate-900" : "bg-slate-900 border border-slate-800 text-slate-200"}`}
-                        >
-                          {STAGE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {t(opt.labelEn, opt.labelZh)}
-                            </option>
-                          ))}
-                        </select>
+                        <CrmSingleSelect
+                          label={t("New Stage", "推进阶段")} value={newStage}
+                          onChange={(value) => setNewStage(value as any)} lang={lang} isLight={isLight}
+                          options={STAGE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelEn, opt.labelZh) }))}
+                        />
                       </div>
                     </div>
 
@@ -1645,34 +1607,18 @@ function CrmWorkspace({
                           "本次跟进观察到的购买信号",
                         )}
                       </label>
-                      <select
-                        value={buyingSignalDetected}
-                        onChange={(e) => {
-                          setBuyingSignalDetected(e.target.value as any);
-                          e.currentTarget.blur();
-                        }}
-                        style={{ outline: "none", boxShadow: "none" }}
-                        className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${isLight ? "bg-white border border-slate-200 text-slate-800" : "bg-slate-900 border border-slate-800 text-slate-200"}`}
-                      >
-                        <option value="None yet">
-                          {t("None yet", "暂未出现")}
-                        </option>
-                        <option value="Asked price">
-                          {t("Asked tuition/fees", "咨询学费政策")}
-                        </option>
-                        <option value="Asked schedule">
-                          {t("Asked schedule / start date", "询问开班时间")}
-                        </option>
-                        <option value="Asked payment">
-                          {t(
-                            "Asked payment / installments",
-                            "询问付款方案/分期",
-                          )}
-                        </option>
-                        <option value="Ready to enroll">
-                          {t("Ready to enroll", "准备报名")}
-                        </option>
-                      </select>
+                      <CrmSingleSelect
+                        label={t("Buying signal observed in this follow-up", "本次跟进观察到的购买信号")}
+                        value={buyingSignalDetected} onChange={(value) => setBuyingSignalDetected(value as any)}
+                        lang={lang} isLight={isLight}
+                        options={[
+                          { value: "None yet", label: t("None yet", "暂未出现") },
+                          { value: "Asked price", label: t("Asked tuition/fees", "咨询学费政策") },
+                          { value: "Asked schedule", label: t("Asked schedule / start date", "询问开班时间") },
+                          { value: "Asked payment", label: t("Asked payment / installments", "询问付款方案/分期") },
+                          { value: "Ready to enroll", label: t("Ready to enroll", "准备报名") },
+                        ]}
+                      />
                     </div>
 
                     <div>
