@@ -1,3 +1,4 @@
+import {taskDeadline,leadTier,ensureFollowup,followupReply,type FollowupAction} from './followup.ts';
 import {initializeLocalAccounts,mountLocalAuth} from "./localAuth.ts";
 import {normalizeCrmMessage} from '../../src/utils/crmMessageTime.ts';
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
@@ -266,7 +267,7 @@ export async function mountPortal(app: Express) {
       const leadId = locked.lead_id || id();
       const existing =
         (
-          await c.query("SELECT profile FROM portal_leads WHERE id=$1", [
+          await c.query("SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE", [
             leadId,
           ])
         ).rows[0]?.profile || {};
@@ -317,7 +318,8 @@ export async function mountPortal(app: Express) {
         const s = (
           await c.query("SELECT value FROM portal_settings WHERE id='sla'")
         ).rows[0].value;
-        const due = sla(new Date(), s.warmHours, s);
+        profile.tier=leadTier(profile);
+        const {due,snapshot}=taskDeadline(profile,'consultation',s);
         const taskId = id();
         profile.slaDueTime = due.toISOString();
         await c.query("UPDATE portal_leads SET profile=$2 WHERE id=$1", [
@@ -325,14 +327,17 @@ export async function mountPortal(app: Express) {
           profile,
         ]);
         await c.query(
-          "INSERT INTO followup_tasks(id,lead_id,kind,due_at) VALUES($1,$2,$3,$4)",
-          [taskId, leadId, "consultation", due],
+          "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES($1,$2,$3,$4,$5)",
+          [taskId, leadId, "consultation", profile.owner || null, due],
         );
         await event(c, "lead.created", leadId, {
           source: b.entryPoint || "homepage_widget",
-          taskId,
+          taskId,sla:snapshot,
         });
       }
+      // Anonymous follow-up messages are already saved; link them without copying messages.
+      const pending=(await c.query("SELECT m.id,m.request_id,m.metadata,c.id conversation_id,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=$1 AND m.role='assistant' AND m.metadata->>'followupAction' IN ('handoff','booking','enrollment') AND m.metadata->>'taskId' IS NULL ORDER BY m.sequence",[v.id])).rows;
+      for(const message of pending){const action=message.metadata.followupAction as FollowupAction;const outcome=await ensureFollowup(c,{id:message.conversation_id,lead_id:leadId,source:message.source},action,message.request_id,message.metadata.language || 'en');await c.query("UPDATE messages SET metadata=metadata || jsonb_build_object('taskId',$2::text) WHERE id=$1",[message.id,outcome.taskId]);}
       // Link previously submitted anonymous attempts without trusting contact-supplied grades.
       await c.query(
         "UPDATE hsk_attempts SET lead_id=$1 WHERE visitor_id=$2 AND lead_id IS NULL",
@@ -382,24 +387,31 @@ export async function mountPortal(app: Express) {
       const c = await own(req, res);
       if (!["handoff", "booking", "enrollment"].includes(req.body.action))
         fail(400, "Invalid action");
-      if (!c.lead_id) fail(409, "Register contact details first");
-      await tx(async (db) => {
-        await db.query(
-          "INSERT INTO followup_tasks(id,lead_id,kind,due_at) VALUES($1,$2,$3,now()+interval '3 hours') ON CONFLICT DO NOTHING",
-          [id(), c.lead_id, req.body.action],
-        );
-        await event(
-          db,
-          req.body.action === "handoff"
-            ? "handoff.requested"
-            : req.body.action === "booking"
-              ? "booking.requested"
-              : "enrollment.requested",
-          c.lead_id,
-          { source: c.source },
-        );
-      });
-      res.json({ success: true, status: "awaiting_advisor" });
+      const {messageId,content}=req.body;
+      if(typeof messageId!=='string'||!messageId.trim()||messageId.length>100||typeof content!=='string'||!content.trim()||content.length>5000)fail(400,'messageId and content required');
+      const action=req.body.action as FollowupAction;
+      const lang=['zh','en','id'].includes(req.body.language)?req.body.language:'en';
+      try {const outcome=await tx(async db=>{
+        await db.query('SELECT id FROM visitor_sessions WHERE id=$1 FOR UPDATE',[c.visitor_id]);
+        await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',[c.id]);
+        const current=(await db.query('SELECT * FROM conversations WHERE id=$1',[c.id])).rows[0];
+        const old=(await db.query('SELECT * FROM messages WHERE conversation_id=$1 AND request_id=$2',[c.id,messageId])).rows;
+        if(old.length){
+          const user=old.find(m=>m.role==='user'),answer=old.find(m=>m.role==='assistant');
+          if(user?.content!==content || answer?.metadata?.followupAction!==action)fail(409,'Idempotency key reused with different action or content');
+          const taskId=answer.metadata.taskId;
+          const task=!taskId?null:(await db.query('SELECT status FROM followup_tasks WHERE id=$1',[taskId])).rows[0];
+          const status=!taskId?'contact_required':task?.status==='completed'?'completed':'awaiting_advisor';
+          return {taskId:taskId || null,status,reply:followupReply(lang,status)};
+        }
+        await db.query("INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES($1,$2,$3,'user',$4,'saved')",[id(),c.id,messageId,content]);
+        const result=await ensureFollowup(db,current,action,messageId,lang);
+        await db.query("INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES($1,$2,$3,'assistant',$4,'completed',$5)",[id(),c.id,messageId,result.reply,{followupAction:action,taskId:result.taskId,language:lang}]);
+        await db.query('UPDATE conversations SET updated_at=now() WHERE id=$1',[c.id]);
+        if(current.lead_id)await event(db,'conversation.updated',current.lead_id,{source:c.source,taskId:result.taskId});
+        return result;
+      });res.json({success:true,saved:true,...outcome});}catch(e){throw Object.assign(e,{saved:false});}
+
     }),
   );
   app.post("/api/crm/leads/sync-chat", (_q, r) => {
@@ -411,7 +423,7 @@ export async function mountPortal(app: Express) {
       const e = await staff(req);
       const leads = (
         await pool.query(
-          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'created_at',m.created_at,'source',c.source,'status',m.status,'error',m.error) ORDER BY m.sequence) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
+          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'created_at',m.created_at,'source',c.source,'metadata',m.metadata,'status',m.status,'error',m.error) ORDER BY m.sequence) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
         )
       ).rows
         .map((r) => ({...r.profile,chatTranscript:(r.profile.chatTranscript || []).map(normalizeCrmMessage)}))
@@ -841,23 +853,21 @@ export async function mountPortal(app: Express) {
       const v = (
         await pool.query("SELECT value FROM portal_settings WHERE id='sla'")
       ).rows[0].value;
+      const configured=(await pool.query("SELECT value FROM portal_settings WHERE id='crm_policy'")).rows[0]?.value || DEFAULT_CRM_POLICY_CONFIG;
+      const displayDuration=(name:string,hours:number)=>{const d=configured.firstResponseSla?.[name];const factor=d?.unit==='minutes'?1/60:d?.unit==='days'?24:d?.unit==='hours'?1:NaN;return d && Number.isFinite(d.value) && d.value*factor===hours?d:{value:hours,unit:'hours'};};
       res.json({
-        ...((
-          await pool.query(
-            "SELECT value FROM portal_settings WHERE id='crm_policy'",
-          )
-        ).rows[0]?.value || DEFAULT_CRM_POLICY_CONFIG),
+        ...configured,
         businessHours: {
           timezone: v.timezone,
           startTime: v.start,
           endTime: v.end,
           workDays: v.days,
-          nextDayGraceTime: v.start,
+          nextDayGraceTime: v.nextDayGraceTime || v.start,
         },
         firstResponseSla: {
-          hot: { value: v.hotHours, unit: "hours" },
-          warm: { value: v.warmHours, unit: "hours" },
-          cold: { value: v.coldHours, unit: "hours" },
+          hot: displayDuration("hot",v.hotHours),
+          warm: displayDuration("warm",v.warmHours),
+          cold: displayDuration("cold",v.coldHours),
         },
       });
     }),
@@ -870,14 +880,14 @@ export async function mountPortal(app: Express) {
         await pool.query("SELECT value FROM portal_settings WHERE id='sla'")
       ).rows[0].value;
       const b = req.body;
-      const duration = (d: any) =>
-        d.value * (d.unit === "minutes" ? 1 / 60 : d.unit === "days" ? 24 : 1);
+      const duration=(d:any)=>{if(!d || !['minutes','hours','days'].includes(d.unit)||!Number.isFinite(d.value)||d.value<=0)fail(400,'Invalid SLA duration');return d.value*(d.unit==='minutes'?1/60:d.unit==='days'?24:1);};
       const next = {
         ...old,
         timezone: b.businessHours?.timezone || old.timezone,
         start: b.businessHours?.startTime || old.start,
         end: b.businessHours?.endTime || old.end,
         days: b.businessHours?.workDays || old.days,
+        nextDayGraceTime:b.businessHours?.nextDayGraceTime || old.nextDayGraceTime || old.start,
         hotHours: b.firstResponseSla
           ? duration(b.firstResponseSla.hot)
           : old.hotHours,
@@ -891,17 +901,19 @@ export async function mountPortal(app: Express) {
       validate(next);
       for (const k of ["hotHours", "warmHours", "coldHours"])
         if (!Number.isFinite(next[k]) || next[k] <= 0) fail(400, "Invalid SLA");
-      await pool.query("UPDATE portal_settings SET value=$1 WHERE id='sla'", [
+      await tx(async db=>{
+      await db.query("UPDATE portal_settings SET value=$1 WHERE id='sla'", [
         next,
       ]);
-      await pool.query(
+      await db.query(
         "INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)",
         [e.id, "sla.save", next],
       );
-      await pool.query(
+      await db.query(
         "INSERT INTO portal_settings(id,value) VALUES('crm_policy',$1) ON CONFLICT(id) DO UPDATE SET value=$1",
         [b],
       );
+      });
       res.json({ success: true });
     }),
   );

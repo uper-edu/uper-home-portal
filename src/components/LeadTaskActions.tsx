@@ -5,12 +5,14 @@ export default function LeadTaskActions({
   readOnly = false,
   isLight,
   lang,
+  timezone = "Asia/Jakarta",
   onChange,
 }: {
   leadId: string;
   readOnly?: boolean;
   isLight: boolean;
   lang: "zh" | "en";
+  timezone?: string;
   onChange: () => void;
 }) {
   const [tasks, setTasks] = useState<any[]>([]),
@@ -61,7 +63,7 @@ export default function LeadTaskActions({
                 }
               >
                 {lang === "zh" ? "截止" : "Due"}:{" "}
-                {new Date(task.due_at).toLocaleString(crmLocale(lang))}
+                {new Date(task.due_at).toLocaleString(crmLocale(lang),{timeZone:timezone})} ({timezone})
               </p>
             </div>
             <button

@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS portal_leads(id text PRIMARY KEY, profile jsonb NOT N
 CREATE TABLE IF NOT EXISTS visitor_sessions(id text PRIMARY KEY, lead_id text REFERENCES portal_leads, expires_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS conversations(id text PRIMARY KEY, visitor_id text NOT NULL REFERENCES visitor_sessions, lead_id text REFERENCES portal_leads, source text NOT NULL, attribution jsonb NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS messages(id text PRIMARY KEY, conversation_id text NOT NULL REFERENCES conversations, request_id text NOT NULL, role text NOT NULL, content text NOT NULL, status text NOT NULL, model text, error text, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(conversation_id,request_id,role));
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}';
 CREATE SEQUENCE IF NOT EXISTS message_sequence;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS sequence bigint;
 WITH ordered AS MATERIALIZED (

@@ -81,22 +81,14 @@ export async function chatFetch(
     timestamp: previous?.timestamp || new Date().toISOString(),
     delivery: "unknown" as const,
   };
-  if (!old.isHumanMode) saveDraft(source, queued);
+  saveDraft(source, {...queued,action:old.isHumanMode || previous?.action==='handoff'?'handoff':undefined});
   const conversationId =
     previous?.conversationId || (await conversation(source));
-  if (old.isHumanMode) {
-    const action = await checked(
-      await fetch("/api/portal/actions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, action: "handoff" }),
-      }),
-    );
-    await action.json();
-    return Response.json({
-      reply: "人工跟进请求已登记，等待顾问联系。AI 仍可继续回答常见问题。",
-      suggestedPrompts: [],
-    });
+  if (old.isHumanMode || previous?.action==='handoff') {
+    const pending={...queued,conversationId,action:'handoff' as const};saveDraft(source,pending);
+    const res=await fetch('/api/portal/actions',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,action:'handoff',language:old.language || 'en'})});
+    if(!res.ok){const error=await res.clone().json().catch(()=>({}));if(error.saved===false)saveDraft(source,{...pending,delivery:'unsaved'});await checked(res);}
+    return res;
   }
   const pending = {
     id: messageId,
@@ -163,6 +155,7 @@ export async function restoreChat(source: ChatSource) {
         ? draft(source, m.request_id)?.delivery || "saved"
         : undefined,
     timestamp: new Date(m.created_at),
+    action: m.role==='user' && data.messages.some((a:any)=>a.request_id===m.request_id && a.metadata?.followupAction==='handoff') ? 'handoff' : undefined,
     content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
   }));
   return [

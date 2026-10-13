@@ -1,3 +1,5 @@
+import {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
+export {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
 export type Channel = "inapp" | "lark" | "email" | "sms";
 export interface Rule {
   calendarMode?: "inherit" | "custom";
@@ -98,34 +100,6 @@ export function validate(r: Rule) {
   )
     throw Error("Invalid template/retries");
 }
-export function local(date: Date, r: Rule) {
-  const p = new Intl.DateTimeFormat("en-US", {
-    timeZone: r.timezone,
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const get = (t: string) => p.find((x) => x.type === t)!.value;
-  return {
-    day: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(
-      get("weekday"),
-    ),
-    time: `${get("hour")}:${get("minute")}`,
-  };
-}
-export function working(date: Date, r: Rule) {
-  const l = local(date, r);
-  return r.days.includes(l.day) && l.time >= r.start && l.time < r.end;
-}
-export function nextWork(date: Date, r: Rule) {
-  let d = new Date(date);
-  for (let i = 0; i < 1440 * 15; i++) {
-    if (working(d, r)) return d;
-    d = new Date(Math.floor(d.getTime()/60000)*60000 + 60000);
-  }
-  throw Error("No working time");
-}
 export function schedule(date: Date, r: Rule, channel: Channel) {
   if (channel === "inapp") return date;
   let d = new Date(
@@ -145,9 +119,6 @@ export function schedule(date: Date, r: Rule, channel: Channel) {
     d=new Date(Math.floor(d.getTime()/60000)*60000+60000);
   }
   throw Error('No permitted send time');
-}
-export function sla(date: Date, hours: number, r: Rule) {
-  return nextWork(new Date(nextWork(date, r).getTime() + hours * 3600000), r);
 }
 export const defaultRules = events.map(
   (event) =>

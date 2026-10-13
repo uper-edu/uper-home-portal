@@ -1,3 +1,4 @@
+import {sla as responseDeadline,calendarSample} from '../../utils/workCalendar';
 import {crmLocale,crmValue} from '../../utils/crmLanguage';
 import React, { useState, useEffect, useMemo } from 'react';
 import type { CrmPolicyConfig, TimeUnit, TimeDuration } from '../../types/crmPolicyConfig.ts';
@@ -256,7 +257,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     if (curr.businessHours.timezone !== orig.businessHours.timezone) count++;
     if (curr.businessHours.startTime !== orig.businessHours.startTime) count++;
     if (curr.businessHours.endTime !== orig.businessHours.endTime) count++;
-    if (curr.businessHours.nextDayGraceTime !== orig.businessHours.nextDayGraceTime) count++;
     if (JSON.stringify(curr.businessHours.workDays.slice().sort()) !== JSON.stringify(orig.businessHours.workDays.slice().sort())) count++;
 
     if (!isDurationEqual(curr.firstResponseSla.hot, orig.firstResponseSla.hot)) count++;
@@ -311,24 +311,12 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
   // SLA Timeline Simulation Engine
   const simulationResult = useMemo(() => {
-    // 1. Determine simulated ingestion time
-    let sampleDate = new Date();
-    let sampleLabel = t('Now (Current Moment)', '当前时间');
-
-    if (simPresetTime === 'fri_night') {
-      // Friday 19:30
-      sampleLabel = t('Friday 19:30 (30 mins before closing)', '周五 19:30 (距营业结束 30 分钟)');
-    } else if (simPresetTime === 'sat_night') {
-      // Saturday 21:15 (Off hours)
-      sampleLabel = t('Saturday 21:15 (Weekend off-hours)', '周六 21:15 (周末夜间免打扰时段)');
-    } else if (simPresetTime === 'sun_afternoon') {
-      // Sunday 14:00 (Non-work day if Sunday not in workDays)
-      sampleLabel = t('Sunday 14:00 (Weekly rest day)', '周日 14:00 (团队公休日)');
-    } else if (simPresetTime === 'mon_morning') {
-      // Monday 09:30 (Active morning)
-      sampleLabel = t('Monday 09:30 (Peak business hours)', '周一 09:30 (正常开工时段)');
-    }
-
+    const calendar={timezone:formData.businessHours.timezone,days:formData.businessHours.workDays,start:formData.businessHours.startTime,end:formData.businessHours.endTime};
+    const presets:Record<string,[string,string]>={fri_night:['2026-10-09','19:30'],sat_night:['2026-10-10','21:15'],sun_afternoon:['2026-10-11','14:00'],mon_morning:['2026-10-12','09:30']};
+    const preset=presets[simPresetTime];
+    const sampleDate=preset?calendarSample(preset[0],preset[1],calendar.timezone):new Date();
+    const format=(date:Date)=>new Intl.DateTimeFormat(crmLocale(lang),{timeZone:calendar.timezone,weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(date);
+    const sampleLabel=format(sampleDate);
     // 2. Determine target SLA duration in minutes
     let targetDuration: TimeDuration = formData.firstResponseSla.hot;
     let tierTitle = t('Tier 1: Hot (High Intent)', "等级 1：高意向");
@@ -343,52 +331,11 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       tierTitle = t('Dormant Reactivation', '沉睡客户复活响应');
     }
 
-    const targetMinutes = durationToMs(targetDuration) / (60 * 1000);
+    let finalDeadline='';
+    try{finalDeadline=format(responseDeadline(sampleDate,durationToMs(targetDuration)/3600000,calendar));}catch{finalDeadline=t('Invalid work calendar','工作日历无效');}
+    const explanation=t('Natural elapsed hours: start at the next opening if received outside working hours; move the deadline to the next opening if it falls outside working hours. The same calculation is used by the server. Existing task deadlines are retained.', '按自然时长计时：非工作时间收到的申请从下次上班开始计时；截止落在非工作时间则顺延到下次上班。与服务端使用同一计算函数，已有任务截止时间保持原值。');
+    return {sampleLabel,tierTitle,targetDuration,isLeadInWorkingHours:false,explanation,finalDeadline,graceNote:''};
 
-    // 3. Step calculations
-    const isLeadInWorkingHours = simPresetTime === 'mon_morning' || (simPresetTime === 'fri_night' && formData.businessHours.endTime > '19:30');
-    const isSundayOff = !formData.businessHours.workDays.includes(0);
-
-    let explanation = '';
-    let finalDeadline = '';
-    let graceNote = '';
-
-    if (simPresetTime === 'fri_night') {
-      explanation = t(
-        `Lead enters 30 minutes before ${formData.businessHours.endTime}. Friday consumes 30m of the SLA window. At ${formData.businessHours.endTime}, the timer freezes overnight. On Saturday 09:00, timer resumes for the remaining ${(targetMinutes - 30 > 0 ? (targetMinutes - 30) / 60 : 0).toFixed(1)} hours.`,
-        `线索在距离停止外呼前 30 分钟入库。周五当晚消耗 30 分钟 SLA 倒计时；${formData.businessHours.endTime} 准时冻结时钟进入免打扰。周六早晨 09:00 自动唤醒，继续消耗剩余 ${(targetMinutes - 30 > 0 ? (targetMinutes - 30) / 60 : 0).toFixed(1)} 小时。`
-      );
-      finalDeadline = `${t('Saturday','周六')} ${targetMinutes <= 30 ? '20:00' : '11:30'}`;
-    } else if (simPresetTime === 'sat_night') {
-      explanation = t(
-        `Lead enters after ${formData.businessHours.endTime}. System tags lead with Off-Hours status and suppresses notification sounds. If Sunday is a day off, the timer rolls over until Monday morning at ${formData.businessHours.nextDayGraceTime}.`,
-        `线索在 ${formData.businessHours.endTime} 后入库，系统标记为夜间免打扰状态。${isSundayOff ? '因周日为公休休息日，' : ''}该线索将顺延至下个工作日早晨，必须在 ${formData.businessHours.nextDayGraceTime} 宽限截止前发起 WhatsApp 首访。`
-      );
-      finalDeadline = `${isSundayOff ? t('Monday','周一') : t('Sunday','周日')} ${formData.businessHours.nextDayGraceTime}`;
-      graceNote = t('Grace Deadline Triggered', '已激活早间宽限预警');
-    } else if (simPresetTime === 'sun_afternoon') {
-      explanation = t(
-        `Sunday is an official rest day (workDays policy). Consultant is not penalized. Countdown automatically locks until Monday 09:00 morning opening.`,
-        `周日为团队法定公休日（依据工作日设置），销售不计超期考核。倒计时自动锁定，顺延至周一早晨 09:00 营业开始后正式计时。`
-      );
-      finalDeadline = `${t('Monday','周一')} ${formData.businessHours.nextDayGraceTime}`;
-    } else {
-      explanation = t(
-        `Lead arrives during active business hours. Continuous real-time countdown active on the workbench lead drawer.`,
-        `正常营业时段进线。工作台与跟进抽屉开启毫秒级实时倒计时，到期前 30 分钟亮起橙色警报。`
-      );
-      finalDeadline = `${t('Today','今天')} + ${targetDuration.value} ${targetDuration.unit==='minutes'?t('minutes','分钟'):targetDuration.unit==='hours'?t('hours','小时'):t('days','天')}`;
-    }
-
-    return {
-      sampleLabel,
-      tierTitle,
-      targetDuration,
-      isLeadInWorkingHours,
-      explanation,
-      finalDeadline,
-      graceNote
-    };
   }, [simTier, simPresetTime, formData, t]);
 
   // Apply Quick Policy Presets
@@ -406,7 +353,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           startTime: '08:30',
           endTime: '21:00',
           workDays: [0, 1, 2, 3, 4, 5, 6], // 7 days
-          nextDayGraceTime: '09:30'
         },
         firstResponseSla: {
           hot: { value: 1, unit: 'hours' },
@@ -434,7 +380,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           startTime: '09:30',
           endTime: '18:30',
           workDays: [1, 2, 3, 4, 5], // Mon-Fri
-          nextDayGraceTime: '10:30'
         },
         firstResponseSla: {
           hot: { value: 4, unit: 'hours' },
@@ -782,8 +727,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 </h3>
                 <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                   {t(
-                    'Simulate how business hours, overnight freezing, and weekend rollovers affect actual SLA deadlines.',
-                    '直观验证不同评级线索在指定时间进线时，业务时段、夜间冻结与周末顺延对最终 SLA 违规红线的影响。'
+                    'Preview natural-hour response deadlines using the same work calendar calculation as the server.',
+                    '使用与服务端相同的工作日历计算，预览不同等级的自然时长响应截止时间。'
                   )}
                 </p>
               </div>
@@ -1048,7 +993,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 {t('Mandatory golden response window (Hot ≤3h, Warm ≤24h, Cold ≤48h).', '首响黄金时效倒计时，非营业时段自动顺延至次日 10:00。')}
               </p>
               <div className="mt-2 text-[10px] font-mono font-bold">
-                {formData.firstResponseSla.hot.value}{t('h','小时')} / {formData.firstResponseSla.warm.value}{t('h','小时')}
+                {formData.firstResponseSla.hot.value} {crmValue(formData.firstResponseSla.hot.unit,lang)} / {formData.firstResponseSla.warm.value} {crmValue(formData.firstResponseSla.warm.unit,lang)}
               </div>
             </div>
 
@@ -1322,29 +1267,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 </div>
               </div>
 
-              {/* Next Day Grace Time */}
-              <div>
-                <label className={`block font-semibold text-xs mb-1 ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
-                  {t('Off-Hours Next-Day Grace Deadline', '夜间线索次日早晨响应宽限截止')}
-                </label>
-                <p className={`text-[11px] mb-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  {t(
-                    'Target completion deadline next morning for leads submitted during off-hours (default: 10:00).',
-                    '深夜进来的表单，次日早晨必须完成建联的时间（缺省为上午 10:00 前）。'
-                  )}
-                </p>
-                <input
-                  type="time"
-                  value={formData.businessHours.nextDayGraceTime}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    businessHours: { ...formData.businessHours, nextDayGraceTime: e.target.value }
-                  })}
-                  className={`w-full max-w-[140px] h-8 text-xs rounded-lg px-2.5 border outline-none font-semibold font-mono ${
-                    isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-800 text-slate-200'
-                  }`}
-                />
-              </div>
+              <p className="text-xs text-slate-500">{t('Response deadlines use natural elapsed hours. Requests outside working hours start at the next opening, and deadlines outside working hours move to the next opening. The legacy next-day grace value is retained but inactive in this mode.', '响应截止时间按自然时长计算。非工作时间收到的申请从下次上班开始计时；截止落在非工作时间则顺延。旧版次日宽限值保留，但在此模式下不使用。')}</p>
             </div>
           </div>
         )}
@@ -1377,8 +1300,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 lang={lang}
                 titleEn="Tier 1 (Hot) First Response SLA"
                 titleZh="等级 1 (高意向) 首访响应时限"
-                descEn="Golden response window for urgent, high-intent students (e.g. asked tuition, starting soon)."
-                descZh="高意向学员提交咨询后，顾问发起首次电话或 WhatsApp 沟通的黄金承诺时限。"
+                descEn="High-priority response deadline. Advisor follow-up, booking and enrollment requests use this duration regardless of lead tier."
+                descZh="高优先级响应时限。申请顾问跟进、预约及报名均使用此时限，不受原客户等级限制。"
                 duration={formData.firstResponseSla.hot}
                 originalDuration={policyConfig.firstResponseSla.hot}
                 recommendedText={t('Default: 3 Hours', '官方推荐: 3 小时')}

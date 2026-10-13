@@ -56,9 +56,11 @@ export function LeadActivity({
 export function LeadPendingAction({
   lead,
   lang,
+  timezone = "Asia/Jakarta",
 }: {
   lead: CrmLeadRecord;
   lang: "en" | "zh";
+  timezone?: string;
 }) {
   const task = lead.attention?.tasks[0];
   if (!task) return null;
@@ -85,7 +87,7 @@ export function LeadPendingAction({
           ? "历史待办待确认 · "
           : "Historical task pending review · "
         : ""}
-      {label} · {new Date(task.dueAt).toLocaleString(crmLocale(lang))}
+      {label} · {new Date(task.dueAt).toLocaleString(crmLocale(lang),{timeZone:timezone})} ({timezone})
       <span className="block">
         {task.ownerId || (lang === "zh" ? "待分配" : "Unassigned")}
       </span>

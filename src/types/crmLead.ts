@@ -63,6 +63,7 @@ export interface ChatTranscriptMessage {
   source?: string;
   error?: string | null;
   originalTimestamp?: unknown;
+  metadata?: {followupAction?: string;taskId?: string|null;language?: string};
 }
 
 export interface LeadAttention {

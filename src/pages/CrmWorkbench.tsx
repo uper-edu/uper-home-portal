@@ -155,6 +155,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedLead, setSelectedLead] = useState<CrmLeadRecord | null>(null);
+  const responseDeadline = selectedLead?.attention ? selectedLead.attention.tasks.filter(task=>['open','overdue'].includes(task.status)).sort((a,b)=>Date.parse(a.dueAt)-Date.parse(b.dueAt))[0]?.dueAt : selectedLead?.slaDueTime;
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<'profile' | 'activities' | 'playbook' | 'chat'>('profile');
   const [isAddLogOpen, setIsAddLogOpen] = useState(false);
@@ -2173,7 +2174,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                                 {getDisplayNextAction(lead)}
                               </span>
                             </div>
-                            <LeadPendingAction lead={lead} lang={lang} />
+                            <LeadPendingAction lead={lead} lang={lang} timezone={policyConfig.businessHours.timezone} />
                           </td>
 
                           {/* 6. 购买信号 */}
@@ -2473,7 +2474,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                                 {getDisplayNextAction(lead)}
                               </span>
                             </div>
-                          <LeadPendingAction lead={lead} lang={lang} />
+                          <LeadPendingAction lead={lead} lang={lang} timezone={policyConfig.businessHours.timezone} />
                           </td>
 
                           {/* 13. 购买信号 */}
@@ -2600,7 +2601,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                   </span>
                   <span className={`font-mono text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{selectedLead.id.replace(/^UPER-/, '')}</span>
                   <span className={`text-[10px] font-mono ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {t('Response deadline:','响应截止：')} {new Date(selectedLead.slaDueTime).toLocaleTimeString(crmLocale(lang), { hour: '2-digit', minute: '2-digit' })}
+                    {responseDeadline ? <>{t('Response deadline:','响应截止：')} {new Date(responseDeadline).toLocaleString(crmLocale(lang), {timeZone:policyConfig.businessHours.timezone})} ({policyConfig.businessHours.timezone})</> : t('No active response deadline','当前无响应待办')}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2 mt-1.5 flex-wrap">
@@ -2845,7 +2846,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
               {activeDrawerTab === 'activities' && (
                 <div className="space-y-4">
                   {!canEditLead(selectedLead) && <p className="text-xs text-slate-500">{t('Claim this unassigned lead before updating it or recording follow-up.','请先认领此未分配客户，再修改资料或记录跟进。')}</p>}
-                  <LeadTaskActions readOnly={!canEditLead(selectedLead)} key={selectedLead.id} leadId={selectedLead.id} isLight={isLight} lang={lang} onChange={()=>fetchLeads(true)} />
+                  <LeadTaskActions timezone={policyConfig.businessHours.timezone} readOnly={!canEditLead(selectedLead)} key={selectedLead.id} leadId={selectedLead.id} isLight={isLight} lang={lang} onChange={()=>fetchLeads(true)} />
                   {/* Top Action Bar: Add Follow-up Toggle + Timeline Filter */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <button
@@ -3391,7 +3392,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                   }`}>
                     <div>
                       <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-slate-200'}`}>
-                        {t('AI Advisory Dialogue Transcript', 'AI 咨询全量对话记录')}
+                        {t('Consultation transcript', '咨询对话记录')}
                       </span>
                       <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                         {t('Full conversation logs between student and AI advisor at intake', '记录学员在入口端与 AI / 顾问的每一轮真实提问与回复')}
@@ -3436,7 +3437,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                           >
                             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-1 px-1">
                               <span className={`font-semibold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                                {msg.role === 'user' ? `👤 ${selectedLead.fullName}` : '🤖 UPER AI Advisor'}
+                                {msg.role === 'user' ? `👤 ${selectedLead.fullName}` : msg.metadata?.followupAction?t('UPER system notification','UPER 系统通知'):'🤖 UPER AI Advisor'}
                               </span>
                               <span className="font-mono">
                                 · {crmMessageTimeLabel(msg,lang,formatCrmDateTime)}

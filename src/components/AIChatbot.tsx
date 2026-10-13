@@ -117,8 +117,6 @@ interface Counselor {
   gradient: string;
   role: { zh: string; en: string; id: string };
   desc: { zh: string; en: string; id: string };
-  typingText: { zh: string; en: string; id: string };
-  connectedText: { zh: string; en: string; id: string };
 }
 
 const UPER_COUNSELORS: Counselor[] = [
@@ -138,16 +136,7 @@ const UPER_COUNSELORS: Counselor[] = [
       en: '6+ years in study profiling, background upgrade, and full scholarship awards matches.',
       id: 'Pengalaman 6+ tahun memandu ratusan siswa lolos beasiswa penuh di kampus terbaik.'
     },
-    typingText: {
-      zh: 'Sarah 老师正在输入中...',
-      en: 'Sarah is typing...',
-      id: 'Kak Sarah sedang mengetik...'
-    },
-    connectedText: {
-      zh: '🔔 **[人工客服已接入]** 您好！我是 UPER 雅加达办公室全职留学咨询顾问 **Sarah**，很高兴为您服务。有什么关于大学、全额奖学金申请或者选校的具体需求，您都可以随时在这里告诉我，我将竭诚协助您！',
-      en: '🔔 **[Advisor Connected]** Hello! I am **Sarah**, senior study advisor here at UPER Jakarta HQ. I am completely at your service now. Please type any questions about our full scholarship programs, course details, or application process and I will guide you step by step!',
-      id: '🔔 **[Konsultan Tersambung]** Halo! Saya **Sarah**, konsultan akademik senior di kantor pusat UPER Jakarta. Saya sangat senang bisa membantu Anda sekarang. Silakan ketik pertanyaan Anda secara detail tentang beasiswa S1/S2/S3, atau pendaftaran!'
-    }
+
   },
   {
     id: 'hsk',
@@ -165,16 +154,7 @@ const UPER_COUNSELORS: Counselor[] = [
       en: '8+ years teaching Chinese. Certified TCSOL tutor. Expert in Indonesian accent diagnostics.',
       id: '8+ tahun mengajar Mandarin. Pemegang TCSOL. Pakar pelafalan & persiapan ujian HSK.'
     },
-    typingText: {
-      zh: '莉莉老师正在输入中...',
-      en: 'Lili is typing...',
-      id: 'Lili老师 sedang mengetik...'
-    },
-    connectedText: {
-      zh: '🔔 **[HSK专家已接入]** 大家好！我是 UPER 印尼校区汉语教研总监 **Lili老师**。想学好中文并通过 HSK 拿到名校敲门砖吗？不管是零基础、听说纠音还是真题备考，我都会为您安排最棒的方案。随时问我吧！',
-      en: '🔔 **[HSK Expert Connected]** Hello there! I am **Lili老师**, Head of Language Curriculum at UPER. Ready to upgrade your Mandarin standard and pass your HSK exams? I can advise on standard classes, level placements, tones, or test setups. Ask me anything!',
-      id: '🔔 **[Pakar HSK Tersambung]** Halo semuanya! Saya **Lili老师**, Direktur Akademik HSK di UPER. Ingin menguasai bahasa Mandarin dan lulus ujian HSK untuk kuliah di China? Dari kelas pemula hingga tingkat lanjut, saya siap membantu. Silakan bertanya!'
-    }
+
   },
   {
     id: 'csca',
@@ -192,16 +172,7 @@ const UPER_COUNSELORS: Counselor[] = [
       en: '10 years analytical coaching. Guided Binus/Ipeka/JNY students to crack Tsinghua/SJTU STEM test requirements.',
       id: 'Analis akademik 10 tahun. Membimbing siswa sekolah unggulan lolos tes masuk universitas C9 China.'
     },
-    typingText: {
-      zh: '杰森老师正在输入中...',
-      en: 'Mr. Jason is typing...',
-      id: 'Coach Jason sedang mengetik...'
-    },
-    connectedText: {
-      zh: '🔔 **[学术教练已接入]** 你好！我是 UPER 学术考前培训总教练 **杰森老师**。顶尖高校笔试是一场硬仗。我们的 CSCA 课程是你的学术保险，我们会通过数理化衔接帮你直通清华、交大等中国 C9 联盟高校。关于考试大纲，尽管提问！',
-      en: '🔔 **[CSCA Coach Connected]** Welcome! I am **Coach Jason**, chief strategist for CSCA test preparation at UPER. Elite C9 universities have challenging entrance tests in math & physics. Our CSCA bridging is your ultimate academic protection. Let me know your target major!',
-      id: '🔔 **[Coach CSCA Tersambung]** Selamat datang! Saya **Coach Jason**, kepala pelatih persiapan ujian akademik CSCA di UPER. Ujian seleksi masuk universitas C9 seperti Tsinghua/SJTU sangat menantang. Bimbel CSCA adalah jaminan akademik Anda. Apa jurusan impian Anda?'
-    }
+
   },
   {
     id: 'camp',
@@ -219,16 +190,7 @@ const UPER_COUNSELORS: Counselor[] = [
       en: 'Led 20+ successful group tours to major Chinese tech hubs. Expert in tech enterprise and safety logistics.',
       id: 'Berhasil memimpin 20+ kali kunjungan study tour ke Beijing, Shanghai, Shenzhen. Pakar keselamatan.'
     },
-    typingText: {
-      zh: '凯文老师正在输入中...',
-      en: 'Kevin is typing...',
-      id: 'Kak Kevin sedang mengetik...'
-    },
-    connectedText: {
-      zh: '🔔 **[游学总监已接入]** 哈啰！我是 UPER 的国际研学营总监 **凯文老师**。探索中国不仅能在课堂上，更能走入大厂！我们去天安门、去清华、去腾讯、去阿里巴巴。关于签证、安全保障、酒店安排等，我都可以为你解答。走起！',
-      en: '🔔 **[Camp Director Connected]** Hey there! **Kevin** here, study tour and camps director at UPER. Want to witness China’s tech boom, explore scenic landmarks, and gain international certificates? I have all the answers on upcoming tour logistics, costs, and safety. Ask away!',
-      id: '🔔 **[Camp Director Tersambung]** Halo adik-adip dan rekan sekalian! Saya **Kak Kevin**, Direktur Program Study Tour UPER. Ingin mengunjungi kampus Tsinghua, kantor Tencent & Alibaba, serta mengeksplorasi budaya China? Tanyakan saya tentang jadwal, fasilitas, visa, dan lainnya!'
-    }
+
   }
 ];
 
@@ -418,23 +380,7 @@ export default function AIChatbot() {
       }
     } catch (_) {}
 
-    if (notify) {
-      const counselor = UPER_COUNSELORS.find((c) => c.id === id) || UPER_COUNSELORS[0];
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'sys_swap_' + Math.random().toString(36).substring(7),
-          role: 'assistant',
-          content: currentLang.startsWith('zh')
-            ? `🔄 **[系统提示]** 已成功无缝切换至专属顾问 **${counselor.nameCn}**。${counselor.role.zh}已接入，欢迎随时继续提问。`
-            : currentLang.startsWith('en')
-            ? `🔄 **[System]** Successfully switched to expert advisor **${counselor.name}** (${counselor.role.en}). Ready to support you.`
-            : `🔄 **[Sistem]** Berhasil berpindah ke konsultan spesialis **${counselor.name}** (${counselor.role.id}). Silakan ajukan pertanyaan Anda.`,
-          timestamp: new Date(),
-          isComplete: true,
-        },
-      ]);
-    }
+    if(notify)toggleHumanMode(false);
   };
 
   const toggleHumanMode = (val: boolean) => {
@@ -664,7 +610,7 @@ export default function AIChatbot() {
         submitBtn: '确认提交并请求联系',
         cancelBtn: '取消并返回对话',
         successHeader: '登记成功！',
-        successMsg: 'Contact details saved to CRM. An advisor will follow up according to the schedule.',
+        successMsg: '联系信息已保存到 CRM，顾问将按跟进安排联系您。',
       };
     }
     if (currentLang.startsWith('en')) {
@@ -688,7 +634,7 @@ export default function AIChatbot() {
         submitBtn: 'Submit Inquiry Card',
         cancelBtn: 'Go Back',
         successHeader: 'Successfully Registered!',
-        successMsg: 'Contact details saved to CRM. An advisor will follow up according to the schedule.',
+        successMsg: 'Kontak tersimpan di CRM. Konsultan akan menindaklanjuti sesuai jadwal.',
       };
     }
     // Indonesian fallback
@@ -893,109 +839,10 @@ export default function AIChatbot() {
       isComplete: true,
     };
 
-    let activeHumanMode = retry ? false : isHumanMode;
-    let extraSystemMsg: Message | null = null;
-
-    // Detect natural language requests for speaking directly to a human/live agent
-    const isHumanKeyword = /人工|客服|联系老师|微信|电话|真人|human|advisor|agent|representative|live|sarah|lili|jason|kevin|bicara langsung|bantuan/i.test(text);
-    if (!retry && isHumanKeyword && !isHumanMode) {
-      // Append user message first so they see their typing selection
-      setMessages((prev) => [...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
-
-      // Detect preferred counselor based on full context and current text
-      const detectedCounselorId = detectBestCounselorId(messages, formInterest, text);
-      
-      if (!detectedCounselorId) {
-        // System is unable to determine project. Let's provide the choice card.
-        const selectMsg: Message = {
-          id: 'select_project_counselor',
-          role: 'assistant',
-          content: currentLang.startsWith('zh')
-            ? '为了分配最合适的专业领域顾问，请选择您想要咨询的具体项目：'
-            : currentLang.startsWith('en')
-            ? 'To connect you with the right specialist advisor, please select the specific program you want to consult about:'
-            : 'Agar kami dapat menghubungkan Anda dengan konsultan spesialis yang tepat, silakan pilih program yang ingin Anda tanyakan:',
-          timestamp: new Date(),
-          isComplete: true,
-        };
-
-        setIsLoading(true);
-        setTimeout(() => {
-          setIsLoading(false);
-          setMessages((prev) => [...prev, selectMsg]);
-        }, 800);
-        return;
-      }
-
-      setIsLoading(true);
-      const matchedC = UPER_COUNSELORS.find(c => c.id === detectedCounselorId) || UPER_COUNSELORS[0];
-
-      // Step 1: Detect and request transfer
-      setSwitchingStep(
-        currentLang.startsWith('zh') 
-          ? '已为您检测到人工专属咨询需求，正在呼叫有关部门专家...' 
-          : currentLang.startsWith('en')
-          ? 'Live consultant request detected. Initializing specialized transfer...'
-          : 'Deteksi permintaan admin manusia. Membuka jalur transfer spesialis...'
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1400));
-
-      // Step 2: Assign Counselor
-      setSwitchingStep(
-        currentLang.startsWith('zh') 
-          ? `正在呼叫 ${matchedC.nameCn}（${matchedC.role.zh}），正在审阅对话背景...` 
-          : currentLang.startsWith('en')
-          ? `Connecting Counselor ${matchedC.name}. Reviewing previous conversation topics...`
-          : `Menghubungkan Kak ${matchedC.name}. Menyelaraskan ringkasan percakapan...`
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1600));
-
-      // Transition completes
-      activeHumanMode = true;
-      toggleHumanMode(true);
-      setActiveCounselorId(detectedCounselorId);
-      try {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('uper_chat_counselor_id', detectedCounselorId);
-        }
-      } catch (_) {}
-      setSwitchingStep('');
-
-      // Create the transition message
-      extraSystemMsg = {
-        id: 'sys_' + Math.random().toString(36).substring(7),
-        role: 'assistant',
-        content: currentLang.startsWith('zh') 
-          ? `🔔 **[系统提示]** 已成功无缝切换为 **人工专家顾问会话**！专属导师 **${matchedC.nameCn}** 已接入，正为您准备沟通解答...`
-          : currentLang.startsWith('en')
-          ? `🔔 **[System]** Successfully switched to **Live Specialist Consulting**. Our advisor **${matchedC.name}** has joined and is ready to assist you...`
-          : `🔔 **[Sistem]** Berhasil berpindah ke **Mode Konsultan Manusia**! Mentor **${matchedC.name}** telah siaga dalam obrolan untuk melayani Anda...`,
-        timestamp: new Date(),
-        isComplete: true,
-      };
-
-      setMessages((prev) => {
-        const nextMsgs = [...prev, extraSystemMsg!];
-        if (!leadSubmitted) {
-          nextMsgs.push({
-            id: 'inline_lead_form_prompt_handover',
-            role: 'assistant',
-            content: currentLang.startsWith('zh')
-              ? '为了顾问老师能更高效、精准地协助您，建议您先登记一下联系信息与咨询意愿，以便老师在后续为您安排专属测评与预约规划：'
-              : currentLang.startsWith('en')
-              ? 'To help our advisor assist you more effectively, we recommend registering your details and preferences below:'
-              : 'Untuk membantu konsultan kami melayani Anda lebih baik, kami menyarankan Anda mengisi detail bidang dan kontak Anda di bawah:',
-            timestamp: new Date(),
-            isComplete: true,
-          });
-        }
-        return nextMsgs;
-      });
-    } else {
-      setMessages((prev) => [...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
-      setIsLoading(true);
-    }
-
+    const activeHumanMode = retry ? draft('homepage_widget',retry.id)?.action==='handoff' : isHumanMode || /转人工|人工客服|真人客服|找真人|跟真人|联系老师|安排顾问联系|advisor follow-up|tindak lanjut konsultan|talk to (a )?human|speak to (a )?human|human agent|live agent|speak to.*advisor|bicara langsung/i.test(text);
+    const extraSystemMsg: Message | null = null;
+    setMessages(prev=>[...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
+    setIsLoading(true);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 70000); // Increased client-side timeout to 70 seconds to align with server-side 60s limit
 
@@ -1011,77 +858,17 @@ export default function AIChatbot() {
       let reply = '';
       let receivedSuggestions: string[] = [];
 
-      if (!activeHumanMode) {
         const botMsgId='reply-'+userMsg.id;
         setMessages(prev=>[...prev.filter(m=>m.id!==botMsgId),{id:botMsgId,role:'assistant',content:'',timestamp:new Date(),isComplete:true}]);
-        const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historyContext,isHumanMode:false,stream:true}),signal:controller.signal},'homepage_widget');
+        const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historyContext,isHumanMode:activeHumanMode,language:currentLang.slice(0,2),stream:!activeHumanMode}),signal:controller.signal},'homepage_widget');
         const result=await finishChat(res,'homepage_widget',userMsg.id,e=>{
           if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply&&!e.chunk)reply=e.reply;
           setMessages(prev=>prev.map(m=>m.id===userMsg.id&&e.saved?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:reply}:m));
         });
+        if(activeHumanMode){toggleHumanMode(true);if(result.status==='contact_required')setShowForm(true);}
         if(result.modelUsed)setActiveModelUsed(result.modelUsed);
         setMessages(prev=>prev.map(m=>m.id===userMsg.id?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:result.reply,isComplete:true}:m));
         setSuggestedPrompts(result.suggestedPrompts || []);
-
-      } else {
-        // Human Mode with realistic counselor delay
-        const res = await chatFetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            messages: historyContext,
-            isHumanMode: true,
-            counselorId: activeCounselorId,
-            studentContext: studentContext || getStudentContext(),
-            stream: false
-          }),
-          signal: controller.signal
-        }, 'homepage_widget');
-
-        if (!res.ok) {
-          let serverErrorMsg = '';
-          try {
-            const errData = await res.json();
-            serverErrorMsg = errData.error || errData.details || '';
-          } catch (_) {}
-          throw new Error(serverErrorMsg || 'Network error generating response');
-        }
-
-        const data = await res.json();
-        if (data.modelUsed) {
-          setActiveModelUsed(data.modelUsed);
-        }
-        reply = (data.reply || '').trim() || (currentLang.startsWith('zh') ? '对不起，系统当前繁忙，请稍后重新发送您的问题。' : 'Maaf, sistem sedang sibuk. Silakan coba sebentar lagi.');
-        receivedSuggestions = data.suggestedPrompts || [];
-
-        const len = reply.length;
-        const hasMarkdownLists = (reply.match(/^[\s*-+•\d+\.]/gm) || []).length >= 2;
-        const hasHeaders = reply.includes('#') || reply.includes('**');
-        const hasUrlsOrContacts = reply.includes('http') || reply.includes('+62') || reply.includes('@uper');
-        const isCopyPaste = len > 220 || (len > 120 && (hasMarkdownLists || hasHeaders || hasUrlsOrContacts));
-
-        let delayTime = 1500;
-        if (isCopyPaste) {
-          delayTime = Math.min(2500, 1000 + len * 2);
-        } else {
-          const msPerChar = len < 40 ? 45 : len < 90 ? 35 : 25;
-          delayTime = Math.min(5500, 600 + len * msPerChar);
-        }
-        await new Promise((resolve) => setTimeout(resolve, delayTime));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Math.random().toString(36).substring(7),
-            role: 'assistant',
-            content: reply,
-            timestamp: new Date(),
-            isComplete: false
-          }
-        ]);
-        setSuggestedPrompts(receivedSuggestions);
-      }
-
       // Contextual lead form suggestion check - trigger exactly at 3, 6, 10, 20, 30, 45 exchanges
       const userMsgsCount = messagesToContext.filter(m => m.role === 'user').length;
       const triggerTurns = [3, 6, 10, 20, 30, 45];
@@ -1099,10 +886,10 @@ export default function AIChatbot() {
                 id: promptId,
                 role: 'assistant',
                 content: currentLang.startsWith('zh')
-                  ? '💡 **[顾问贴士]** 想要获得更高效、个性化的留学解答，并接收由 AI 生成的本次对话深度分析总结邮件，建议您在下面登记您的个人信息。专属教育顾问将在24小时内携测评方案与您主动触达：'
+                  ? '💡 **[顾问贴士]** 请登记联系信息，咨询记录将保存到 CRM，顾问按跟进安排联系您。这不是实时人工聊天：'
                   : currentLang.startsWith('en')
-                  ? '💡 **[Advisor Tip]** To obtain highly personalized consultation answers and receive an automated AI dialogue summary emailed to you, we recommend registering your details below. An expert will reach out within 24 hours!'
-                  : '💡 **[Perhatian]** Untuk memudahkan analisis mendalam serta mendapatkan ringkasan percakapan yang disusun AI ini ke email Anda, silakan mengisi formulir kontak di bawah ini. Konsultan kami akan segera menghubungi Anda dalam 24 jam!',
+                  ? '💡 **[Advisor Tip]** Register your contact details below. Your consultation is saved to CRM for advisor follow-up according to the schedule. This is not live agent chat.'
+                  : '💡 **[Perhatian]** Isi kontak di bawah. Konsultasi tersimpan di CRM untuk tindak lanjut sesuai jadwal, bukan chat langsung dengan admin.',
                 timestamp: new Date(),
                 isComplete: true,
               }
@@ -1131,93 +918,8 @@ export default function AIChatbot() {
     }
   };
 
-  const handleInitiateHumanMode = async (preferredId?: string) => {
-    const initialId = preferredId || detectBestCounselorId(messages, formInterest);
-
-    if (!initialId) {
-      // Ambiguous! Ask user to select from choice menu card.
-      setIsLoading(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'select_project_counselor',
-          role: 'assistant',
-          content: currentLang.startsWith('zh')
-            ? '为了您可以分配最合适的专业领域老师，请选择您想要咨询的具体项目：'
-            : currentLang.startsWith('en')
-            ? 'To connect you with the right specialist advisor, please select the specific program you want to consult about:'
-            : 'Agar kami dapat menghubungkan Anda dengan konsultan spesialis yang tepat, silakan pilih program yang ingin Anda tanyakan:',
-          timestamp: new Date(),
-          isComplete: true,
-        }
-      ]);
-      return;
-    }
-
-    setIsLoading(true);
-    const targetCounselor = UPER_COUNSELORS.find(c => c.id === initialId) || UPER_COUNSELORS[0];
-    
-    // Step 1: Establish Connection
-    setSwitchingStep(
-      currentLang.startsWith('zh') 
-        ? `正在发起人工服务申请，呼叫雅加达总部专属顾问 ${targetCounselor.nameCn}...` 
-        : currentLang.startsWith('en')
-        ? `Calling helper line, connecting to ${targetCounselor.name} at Jakarta HQ...`
-        : `Menghubungkan ke layanan akademik, memanggil Kak ${targetCounselor.name}...`
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-
-    // Step 2: Counselor accepted, syncing history
-    setSwitchingStep(
-      currentLang.startsWith('zh') 
-        ? `专属领域教师已接入会话，正连线 ${targetCounselor.nameCn}...` 
-        : currentLang.startsWith('en')
-        ? `Academic specialist accepted. Swapping dialogue with ${targetCounselor.name}...`
-        : `Hubungan diterima. Mengarahkan obrolan ke spesialis Kak ${targetCounselor.name}...`
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1600));
-
-    // Step 3: Complete Connection
-    setActiveCounselorId(initialId);
-    try {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('uper_chat_counselor_id', initialId);
-      }
-    } catch (_) {}
-
-    toggleHumanMode(true);
-    setSwitchingStep('');
-    setIsLoading(false);
-
-    setMessages((prev) => {
-      const nextMsgs = [...prev];
-      nextMsgs.push({
-        id: 'sys_' + Math.random().toString(36).substring(7),
-        role: 'assistant',
-        content: currentLang.startsWith('zh') 
-          ? targetCounselor.connectedText.zh
-          : currentLang.startsWith('en')
-          ? targetCounselor.connectedText.en
-          : targetCounselor.connectedText.id,
-        timestamp: new Date(),
-        isComplete: true,
-      });
-
-      if (!leadSubmitted) {
-        nextMsgs.push({
-          id: 'inline_lead_form_prompt_handover',
-          role: 'assistant',
-          content: currentLang.startsWith('zh')
-            ? '为了顾问老师能更高效、精准地协助您，建议您先登记一下联系信息与咨询意愿，以便老师在后续为您安排专属测评与预约规划：'
-            : currentLang.startsWith('en')
-            ? 'To help our advisor assist you more effectively, we highly recommend registering your details and program preferences below:'
-            : 'Untuk membantu konsultan kami melayani Anda lebih baik, kami sangat menyarankan Anda mengisi detail bidang dan kontak Anda di bawah:',
-          timestamp: new Date(),
-          isComplete: true,
-        });
-      }
-      return nextMsgs;
-    });
+  const handleInitiateHumanMode = async (_preferredId?: string) => {
+    await handleSend(currentLang.startsWith('zh')?'请安排顾问联系我':currentLang.startsWith('en')?'Please arrange advisor follow-up':'Mohon tindak lanjut konsultan');
   };
 
   const currentStarterPrompts = getStarterPrompts();
@@ -1364,31 +1066,13 @@ export default function AIChatbot() {
                 : 'bg-slate-900 text-white'
             }`}>
               <div className="flex items-center gap-3 select-none">
-                {isHumanMode ? (
-                  <div className="relative animate-fade-in">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${getCurrentCounselor().gradient} flex items-center justify-center border border-white/10 shadow-md`}>
-                      <span className="font-extrabold text-sm text-white">{getCurrentCounselor().avatarChar}</span>
-                    </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                  </div>
-                ) : (
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
-                    isApple 
-                      ? 'bg-slate-100 border-slate-200/60' 
-                      : 'bg-primary-600/25 border-primary-500/20'
-                  }`}>
-                    <Sparkles className={`w-5.5 h-5.5 ${isApple ? 'text-slate-800' : 'text-primary-400'}`} />
-                  </div>
-                )}
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 border border-slate-200"><Sparkles className="w-5 h-5 text-primary-500" /></div>
                 <div>
                   <h3 className={`font-bold text-sm tracking-tight flex items-center gap-1.5 whitespace-nowrap ${
                     isApple ? 'text-slate-850 font-semibold' : 'text-white'
                   }`}>
                     {isHumanMode ? (
-                      <span>{currentLang.startsWith('zh') ? getCurrentCounselor().nameCn : getCurrentCounselor().name}</span>
+                      <span>{currentLang.startsWith('zh')?'顾问跟进申请':currentLang.startsWith('en')?'Advisor follow-up':'Tindak lanjut konsultan'}</span>
                     ) : (
                       <span>UPER AI Assistant</span>
                     )}
@@ -1401,10 +1085,10 @@ export default function AIChatbot() {
                   }`}>
                     {isHumanMode ? (
                       currentLang.startsWith('zh') 
-                        ? getCurrentCounselor().role.zh 
+                        ? '非实时人工聊天 · 消息保存至 CRM'
                         : currentLang.startsWith('en') 
-                        ? getCurrentCounselor().role.en 
-                        : getCurrentCounselor().role.id
+                        ? 'Not live agent chat · Messages saved to CRM'
+                        : 'Bukan chat langsung · Pesan tersimpan di CRM'
                     ) : (
                       currentLang.startsWith('zh') 
                         ? '智能顾问 • 24小时在线' 
@@ -1454,10 +1138,10 @@ export default function AIChatbot() {
                           ? 'bg-slate-900 hover:bg-slate-850 text-white border-slate-950 shadow-none' 
                           : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white border-amber-500/20'
                       }`}
-                      title={currentLang.startsWith('zh') ? '转客服人员' : currentLang.startsWith('en') ? 'Speak to Human' : 'Bicara Konsultan'}
+                      title={currentLang.startsWith('zh') ? '提交顾问跟进申请' : currentLang.startsWith('en') ? 'Request advisor follow-up' : 'Bicara Konsultan'}
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>{currentLang.startsWith('zh') ? '转为人工' : currentLang.startsWith('en') ? 'Live Help' : 'Chat Konsultan'}</span>
+                      <span>{currentLang.startsWith('zh') ? '申请顾问跟进' : currentLang.startsWith('en') ? 'Advisor follow-up' : 'Chat Konsultan'}</span>
                     </button>
                   )
                 )}
@@ -1755,7 +1439,7 @@ export default function AIChatbot() {
                                     <div className="flex-1 min-w-0">
                                       <p className="text-xs font-bold text-slate-800 leading-tight flex items-center gap-1.5 justify-between">
                                         <span>
-                                          {currentLang.startsWith('zh') ? `${c.nameCn} (${c.name})` : `Counselor ${c.name}`}
+                                          {currentLang.startsWith('zh')?c.role.zh:currentLang.startsWith('en')?c.role.en:c.role.id}
                                         </span>
                                         <span className="text-[9px] text-primary-600 font-bold uppercase tracking-wider block shrink-0 bg-primary-50 px-1.5 py-0.5 rounded">
                                           {c.id.toUpperCase()}
@@ -1808,7 +1492,7 @@ export default function AIChatbot() {
                             idx === messages.length - 1 && !m.isComplete ? (
                               <TypewriterText 
                                 text={m.content}
-                                isHuman={isHumanMode && !m.id.startsWith('sys_')}
+                                isHuman={false}
                                 onComplete={() => markMessageComplete(m.id)}
                                 onUpdate={() => scrollToBottom('auto')}
                               />
@@ -1823,7 +1507,7 @@ export default function AIChatbot() {
                         <p className={`text-[10px] mt-1.5 text-right font-mono ${
                           m.role === 'user' ? 'text-primary-200/80' : 'text-slate-400'
                         }`}>
-                          {m.role === 'assistant' && !m.id.startsWith('sys_') && (isHumanMode ? `${getCurrentCounselor().name} • ` : 'UPER AI • ')}
+                          {m.role === 'assistant' && !m.id.startsWith('sys_') && 'UPER • '}
                           {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
@@ -1838,7 +1522,7 @@ export default function AIChatbot() {
                         <span className="text-xs text-slate-400 font-medium whitespace-pre-line animate-pulse">
                           {switchingStep || (
                             isHumanMode ? (
-                              currentLang.startsWith('zh') ? getCurrentCounselor().typingText.zh : currentLang.startsWith('en') ? getCurrentCounselor().typingText.en : getCurrentCounselor().typingText.id
+                              currentLang.startsWith('zh')?'正在保存跟进申请…':currentLang.startsWith('en')?'Saving follow-up request…':'Menyimpan permintaan tindak lanjut…'
                             ) : (
                               currentLang.startsWith('zh') ? 'UPER AI 正在思考中...' : currentLang.startsWith('en') ? 'UPER AI is typing...' : 'UPER AI sedang mengetik...'
                             )
@@ -1926,7 +1610,7 @@ export default function AIChatbot() {
                   {/* Powered by dynamic model badge footer */}
                   <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400/80 select-none">
                     <Sparkles className="w-3 h-3 text-primary-500 animate-pulse" />
-                    <span>Powered by {formatModelName(activeModelUsed)}</span>
+                    <span>{isHumanMode?(currentLang.startsWith('zh')?'CRM 顾问跟进登记':currentLang.startsWith('en')?'CRM advisor follow-up':'Tindak lanjut konsultan CRM'):`Powered by ${formatModelName(activeModelUsed)}`}</span>
                   </div>
                 </div>
               </>
