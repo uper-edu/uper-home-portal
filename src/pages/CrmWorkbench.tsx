@@ -1,3 +1,4 @@
+import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
 import { CrmLanguageSelect } from "../components/crm/CrmLanguageSelect";
 import { crmId } from "../utils/crmIndonesian";
 import { CrmLeadFilters } from "../components/crm/CrmLeadFilters";
@@ -1182,26 +1183,18 @@ function CrmWorkspace({
       <label>
         {t("Customer owner", "客户负责人")}
         {canAssign ? (
-          <select
-            aria-label={t("Assign customer owner", "分配客户负责人")}
+          <CrmSingleSelect
+            label={t("Assign customer owner", "分配客户负责人")}
             value={lead.owner || ""}
-            onChange={(e) =>
-              handleUpdateLeadField(lead.id, { owner: e.target.value })
-            }
-          >
-            <option value="">{t("Unassigned", "未分配")}</option>
-            {lead.owner && !salesEmployees.some((e) => e.id === lead.owner) && (
-              <option value={lead.owner}>
-                {lead.owner}
-                {t(" (historical owner)", "（历史归属）")}
-              </option>
-            )}
-            {salesEmployees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {employeeLabel(e)}
-              </option>
-            ))}
-          </select>
+            onChange={(owner) => handleUpdateLeadField(lead.id, { owner })}
+            lang={lang} isLight={isLight} searchable
+            options={[
+              { value: "", label: t("Unassigned", "未分配") },
+              ...(lead.owner && !salesEmployees.some((e) => e.id === lead.owner)
+                ? [{ value: lead.owner, label: lead.owner + t(" (historical owner)", "（历史归属）") }] : []),
+              ...salesEmployees.map((e) => ({ value: e.id, label: employeeLabel(e) })),
+            ]}
+          />
         ) : (
           <span>
             {employees.find((e) => e.id === lead.owner)?.displayName ||
@@ -1212,22 +1205,13 @@ function CrmWorkspace({
       </label>
       <label>
         {t("Sales stage", "销售阶段")}
-        <select
-          aria-label={t("Update sales stage", "修改销售阶段")}
-          disabled={!canEditLead(lead)}
-          value={lead.currentStage || "New"}
-          onChange={(e) =>
-            handleUpdateLeadField(lead.id, {
-              currentStage: e.target.value as StageType,
-            })
-          }
-        >
-          {STAGE_OPTIONS.map((stage) => (
-            <option key={stage.value} value={stage.value}>
-              {t(stage.labelEn, stage.labelZh)}
-            </option>
-          ))}
-        </select>
+        <CrmSingleSelect
+          label={t("Update sales stage", "修改销售阶段")}
+          disabled={!canEditLead(lead)} value={lead.currentStage || "New"}
+          onChange={(currentStage) => handleUpdateLeadField(lead.id, { currentStage: currentStage as StageType })}
+          lang={lang} isLight={isLight}
+          options={STAGE_OPTIONS.map((stage) => ({ value: stage.value, label: t(stage.labelEn, stage.labelZh) }))}
+        />
       </label>
     </div>
   );
@@ -2359,12 +2343,12 @@ function CrmWorkspace({
         </div>
 
         {/* ROW 2: Fixed, Always-on-Second-Row Navigation Pills & Actions */}
-        <div className="px-4 sm:px-6 py-2 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+        <div className="px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2.5">
           {/* Left Cluster of Row 2: Module Switcher Pills + Preferences Group (Language & Theme) */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0 max-w-full">
             {/* 1. Module Switcher Pills (左侧功能页区) */}
             <div
-              className={`flex items-center p-1 rounded-xl border shrink-0 ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
+              className={`crm-header-module-tabs flex items-center p-1 rounded-xl border shrink-0 max-w-full overflow-x-auto no-scrollbar ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
             >
               {/* 1. Marketing Campaigns (Placed first for campaign-first workflow) */}
               <button
@@ -2443,7 +2427,7 @@ function CrmWorkspace({
 
             {/* 2. Unified Preferences Group: Language & Theme Switcher (常驻在左侧三个功能页区的右侧) */}
             <div
-              className={`flex items-center p-1 rounded-xl border shrink-0 ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
+              className={`crm-header-preferences flex items-center p-1 rounded-xl border shrink-0 ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
             >
               {/* Language Switcher */}
               <CrmLanguageSelect lang={lang} onChange={setLang} isLight={isLight} />

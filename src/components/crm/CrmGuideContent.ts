@@ -21,6 +21,11 @@ export const guideSections = [
     title: ["Accounts and permissions", "Akun dan izin akses", "账号与权限"],
     body: [
       [
+        "In Profile, Customer owner and Sales stage use the same option style as the main list. Search is available for owners; the fixed stage list has no search. Selecting a different value saves it immediately through the existing permission checks; selecting the current value makes no change. Escape closes without saving.",
+        "Di Profil, Penanggung jawab pelanggan dan Tahap penjualan memakai gaya pilihan yang sama dengan daftar utama. Penanggung jawab dapat dicari; daftar tahap tetap tidak memiliki pencarian. Memilih nilai berbeda langsung menyimpannya melalui pemeriksaan izin yang berlaku; memilih nilai saat ini tidak mengubah data. Escape menutup tanpa menyimpan.",
+        "客户资料中的负责人和销售阶段使用与主列表一致的选项样式。负责人可搜索，固定阶段列表无搜索。选择不同值会按现有权限立即保存；选择当前值不改动数据，Escape 关闭不保存。",
+      ],
+      [
         "CRM requires staff sign-in. Suki and Robert are CRM Leaders; Fadhil, Zainul and Wigar are Sales; Tester has both roles. Use the top account menu to change your own password or sign out.",
         "CRM mewajibkan login staf. Suki dan Robert adalah Pengelola CRM; Fadhil, Zainul, dan Wigar adalah staf penjualan; Tester memiliki kedua peran. Gunakan menu akun di bagian atas untuk mengubah kata sandi sendiri atau keluar.",
         "访问 CRM 需要员工登录。Suki、Robert 为 CRM 管理者；Fadhil、Zainul、Wigar 为销售；Tester 同时具有两种角色。顶部账号菜单提供修改自己的密码和退出入口。",
@@ -186,9 +191,9 @@ export const guideSections = [
     ],
     body: [
       [
-        "Use the language dropdown beside the theme control to select English, Indonesian or Chinese. It uses the same single-select interaction as Owner, without a search box. Escape closes it; arrow keys move between options. Original names, notes and conversations are preserved.",
-        "Pilih bahasa Inggris, Indonesia, atau Mandarin melalui menu bahasa di sebelah tombol tema. Menu ini memakai pola pilihan tunggal yang sama dengan Penanggung jawab, tanpa kotak pencarian. Escape menutup menu; tombol panah berpindah antaropsi. Nama, catatan, dan percakapan asli tetap dipertahankan.",
-        "通过主题按钮旁的语言下拉选择英文、印尼文或中文。样式与负责人单选一致，无搜索框；按 Escape 关闭，方向键移动选项。姓名、备注和对话原文保持不变。",
+        "Use EN, ID or Chinese beside the theme control to switch directly between English, Indonesian and Chinese. The selected language is highlighted. Arrow keys change language; Home and End select the first and last choices. Original names, notes and conversations are preserved.",
+        "Gunakan EN, ID, atau Mandarin di sebelah tombol tema untuk langsung memilih bahasa Inggris, Indonesia, atau Mandarin. Pilihan aktif disorot. Tombol panah mengganti bahasa; Home dan End memilih opsi pertama dan terakhir. Nama, catatan, dan percakapan asli tetap dipertahankan.",
+        "点击主题按钮旁的 EN、ID 或中文直接切换语言，当前语言高亮显示。方向键切换语言，Home 和 End 选择首末项。姓名、备注和对话原文保持不变。",
       ],
       [
         "Delivery records show a localized status summary. Expand Original technical receipt to inspect the provider response in its original language; this evidence is not automatically translated.",

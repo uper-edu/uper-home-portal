@@ -395,24 +395,7 @@
   right: 0;
 }
 
-/* Language uses the same control, popover and selected-state tokens as Owner. */
-.crm-language-select {
-  position: relative;
-  display: inline-block;
-  flex-shrink: 0;
-  container-type: normal;
-  max-width: 100%;
-}
-.crm-language-select .crm-filter-dimension-button {
-  min-width: 110px;
-}
-.crm-language-select .crm-filter-popover {
-  left: auto;
-  right: 0;
-  width: max-content;
-  min-width: 190px;
-  max-width: min(280px, calc(100vw - 32px));
-}
-
-.crm-language-menu { container-type: normal; }
-.crm-language-menu .crm-filter-popover { position: static; width: 100%; max-width: none; }
+.crm-detail-choice, .crm-detail-choice-popup { container-type: normal; }
+.crm-detail-choice-popup .crm-filter-popover { position: static; width: 100%; max-width: none; }
+.crm-detail-choice-popup .crm-filter-options { max-height: min(250px, 40vh); }
+.crm-detail-choice button:disabled { opacity: .55; cursor: not-allowed; }

@@ -234,3 +234,37 @@ test("static bilingual labels have Indonesian entries and templates have no extr
     assert.doesNotMatch(id, /[\u4e00-\u9fff]/, en);
   }
 });
+
+test("language preference presents three visible exclusive choices without a filter popup", async () => {
+  const { CrmLanguageSelect } = await import("../src/components/crm/CrmLanguageSelect.tsx");
+  for (const lang of ["en", "id", "zh"] as const) {
+    const html = renderToStaticMarkup(React.createElement(CrmLanguageSelect, { lang, onChange() {}, isLight: false }));
+    assert.match(html, /role="radiogroup"/);
+    assert.equal((html.match(/role="radio"/g) || []).length, 3);
+    assert.equal((html.match(/aria-checked="true"/g) || []).length, 1);
+    assert.equal((html.match(/tabindex="0"/g) || []).length, 1);
+    assert.match(html, /data-theme="dark"/);
+    assert.ok(html.includes(`aria-label="${{en: "English", id: "Bahasa Indonesia", zh: "中文"}[lang]}" title=`));
+    assert.doesNotMatch(html, /<select|listbox|aria-expanded|crm-filter/);
+  }
+});
+
+test("customer edit choices preserve owner labels, stale values and disabled stage permissions", async () => {
+  const { CrmSingleSelect } = await import("../src/components/crm/CrmSingleSelect.tsx");
+  for (const lang of ["en", "id", "zh"] as const) {
+    const html = renderToStaticMarkup(React.createElement(CrmSingleSelect, {
+      label: "TEST Owner", value: "old-owner", options: [{ value: "", label: "Unassigned" }, { value: "old-owner", label: "Robert 原名" }],
+      onChange() { throw new Error("Rendering must not write data"); }, lang, isLight: false, searchable: true,
+    }));
+    assert.match(html, /Robert 原名/);
+    assert.match(html, /crm-filter-dimension-button/);
+    assert.match(html, /aria-haspopup="dialog"/);
+    assert.doesNotMatch(html, /<select/);
+    const disabled = renderToStaticMarkup(React.createElement(CrmSingleSelect, {
+      label: "TEST Stage", value: "Historical stage", options: [], onChange() {}, lang, isLight: true, disabled: true,
+    }));
+    assert.match(disabled, /disabled=""/);
+    assert.match(disabled, /Historical stage/);
+    assert.match(disabled, /aria-expanded="false"/);
+  }
+});

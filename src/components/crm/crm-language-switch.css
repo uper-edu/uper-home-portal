@@ -1,0 +1,74 @@
+.crm-language-switch {
+  --cl-text: #64748b;
+  --cl-active: #0f766e;
+  --cl-surface: #fff;
+  --cl-hover: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 5px;
+  color: var(--cl-text);
+}
+.crm-language-switch[data-theme="dark"] {
+  --cl-text: #94a3b8;
+  --cl-active: #5eead4;
+  --cl-surface: #334155;
+  --cl-hover: #334155;
+}
+.crm-language-symbol {
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+.crm-language-choices {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.crm-language-choice {
+  height: 28px;
+  min-width: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--cl-text);
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    color 120ms;
+}
+.crm-language-choice:hover {
+  background: var(--cl-hover);
+}
+.crm-language-choice[aria-checked="true"] {
+  background: var(--cl-surface);
+  color: var(--cl-active);
+  box-shadow: 0 1px 3px #0f172a14;
+}
+.crm-language-choice:focus-visible {
+  outline: 2px solid var(--cl-active);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .crm-language-choice {
+    transition: none;
+  }
+}
+
+.crm-header-module-tabs,
+.crm-header-preferences {
+  min-height: 38px;
+}
+.crm-header-preferences {
+  height: 38px;
+}
+.crm-header-module-tabs > button,
+.crm-header-preferences > button {
+  min-height: 28px;
+}
+.crm-header-module-tabs > button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
