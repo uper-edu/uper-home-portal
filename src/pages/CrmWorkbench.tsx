@@ -1,3 +1,4 @@
+import {crmValue,crmError,crmLocale,type CrmLanguage} from '../utils/crmLanguage';
 import CrmAccess, {CrmAccountControls,type CrmEmployee} from "../components/CrmAccess";
 import {crmMessageTimestamp,crmMessageTimeLabel,compareCrmEventTimes} from '../utils/crmMessageTime';
 import { LeadActivity, LeadPendingAction } from '../components/LeadAttention';
@@ -110,8 +111,8 @@ export const STAGE_OPTIONS: { value: StageType; labelEn: string; labelZh: string
   { value: 'Lost', labelEn: 'Lost', labelZh: '已流失' }
 ];
 
-export default function CrmWorkbench() { return <CrmAccess>{employee=><CrmWorkspace key={employee.id} employee={employee}/>}</CrmAccess>; }
-function CrmWorkspace({employee}:{employee:CrmEmployee}) {
+export default function CrmWorkbench() { return <CrmAccess>{(employee,lang,setLang)=><CrmWorkspace key={employee.id} employee={employee} lang={lang} setLang={setLang}/>}</CrmAccess>; }
+function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLanguage;setLang:(lang:CrmLanguage)=>void}) {
   const canManage=employee.permissions.includes("notifications.manage");
   const canAssign=employee.permissions.includes("crm.assign");
   const [crmModule, setCrmModule] = useState<'leads' | 'campaigns' | 'policy' | 'docs'>(() => {
@@ -124,6 +125,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
     } catch {}
     return 'leads';
   });
+  useEffect(() => { document.title = (lang === 'zh' ? {leads:'销售线索',campaigns:'营销活动中心',policy:'销售运营设置',docs:'CRM 使用手册'} : {leads:'Leads CRM',campaigns:'Marketing Campaigns',policy:'Sales Operations Settings',docs:'CRM User Guide'})[crmModule] + ' | UPER'; }, [crmModule,lang]);
   const [policyConfig, setPolicyConfig] = useState<CrmPolicyConfig>(DEFAULT_CRM_POLICY_CONFIG);
   const [notificationNavigationRequest, setNotificationNavigationRequest] = useState(0);
   const [policyControls, setPolicyControls] = useState<PolicyActionControls | null>(null);
@@ -159,26 +161,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'logs' | 'engagement' | 'milestone'>('all');
   const [copiedObjectionIdx, setCopiedObjectionIdx] = useState<number | null>(null);
 
-  // Language State: 'en' (default) vs 'zh'
-  const [lang, setLang] = useState<'en' | 'zh'>(() => {
-    try {
-      const saved = safeStorage.getItem('uper_crm_lang');
-      if (saved === 'en' || saved === 'zh') return saved;
-    } catch {
-      // fallback
-    }
-    return 'en'; // Default to English
-  });
-
-  const toggleLang = () => {
-    const next = lang === 'en' ? 'zh' : 'en';
-    setLang(next);
-    try {
-      safeStorage.setItem('uper_crm_lang', next);
-    } catch {
-      // fallback
-    }
-  };
+  const toggleLang = () => setLang(lang === 'en' ? 'zh' : 'en');
 
   // Translation helper
   const t = (enText: string, zhText: string) => (lang === 'zh' ? zhText : enText);
@@ -313,7 +296,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
   const [employees,setEmployees] = useState<Array<{id:string;displayName?:string;roles?:string[];active?:boolean}>>([]);
   useEffect(()=>{fetch('/api/portal/employees').then(r=>r.json()).then(setEmployees).catch(()=>{});},[]);
   const salesEmployees=employees.filter(e=>e.active===true && e.roles?.includes('sales'));
-  const employeeLabel=(e:typeof employees[number])=>`${e.displayName||e.id} · ${e.roles?.map(r=>r==='crm_leader'?'CRM Leader':'Sales').join(' + ')||''}`;
+  const employeeLabel=(e:typeof employees[number])=>`${e.displayName||e.id} · ${e.roles?.map(r=>r==='crm_leader'?t('CRM Leader','CRM 管理者'):t('Sales','销售')).join(' + ')||''}`;
   useEffect(()=>{if(!canManage && crmModule==='policy')setCrmModule('leads');},[canManage,crmModule]);
   const [channel, setChannel] = useState<'WhatsApp' | 'Phone Call' | 'Campus Visit' | 'Email' | 'Other'>('WhatsApp');
   const [connectStatus, setConnectStatus] = useState<ConnectStatusType>('Connected');
@@ -537,9 +520,9 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
         badgeStyle: isLight 
           ? 'bg-blue-50 text-blue-700 border-blue-200' 
           : 'bg-blue-950/60 text-blue-300 border-blue-800',
-        title: t(`Student submitted inquiry: ${selectedLead.goal}`, `学员提交留资需求：${selectedLead.goal}`),
-        subtitle: `${t('Source:', '场景:')} ${selectedLead.entryPoint} · ${t('Campaign:', '战役:')} ${selectedLead.campaign || t('Direct', '官网直访')} · ${t('Mode:', '意向模式:')} ${selectedLead.mode}`,
-        content: `${t('Self-reported:', '自报基础:')} ${selectedLead.reportedLevel} · ${t('City:', '意向城市:')} ${selectedLead.city} · ${t('Status:', '身份:')} ${selectedLead.currentStatus} · ${t('Hook:', '引流钩子:')} ${selectedLead.hookType} (${selectedLead.hookContext})`
+        title: t(`Student submitted inquiry: ${crmValue(selectedLead.goal,lang)}`, `学员提交留资需求：${crmValue(selectedLead.goal,lang)}`),
+        subtitle: `${t('Source:', '场景:')} ${crmValue(selectedLead.entryPoint,lang)} · ${t('Campaign:', '战役:')} ${selectedLead.campaign || t('Direct', '官网直访')} · ${t('Mode:', '意向模式:')} ${crmValue(selectedLead.mode,lang)}`,
+        content: `${t('Self-reported:', '自报基础:')} ${crmValue(selectedLead.reportedLevel,lang)} · ${t('City:', '意向城市:')} ${selectedLead.city} · ${t('Status:', '身份:')} ${crmValue(selectedLead.currentStatus,lang)} · ${t('Hook:', '引流钩子:')} ${crmValue(selectedLead.hookType,lang)} (${crmValue(selectedLead.hookContext,lang)})`
       });
     }
 
@@ -584,8 +567,8 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
           ? 'bg-purple-50 text-purple-700 border-purple-200' 
           : 'bg-purple-950/60 text-purple-300 border-purple-800',
         title: t(
-          `Completed Diagnostic: ${selectedLead.quizScore}/${selectedLead.quizMaxScore ?? '?'} (${selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState})`,
-          `完成摸底测评：${selectedLead.quizScore}/${selectedLead.quizMaxScore ?? '?'} 分 (分班参考: ${selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState})`
+          `Completed Diagnostic: ${selectedLead.quizScore}/${selectedLead.quizMaxScore ?? '?'} (${crmValue(selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState,lang)})`,
+          `完成摸底测评：${selectedLead.quizScore}/${selectedLead.quizMaxScore ?? '?'} 分 (分班参考: ${crmValue(selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState,lang)})`
         ),
         subtitle: breakdownText,
         content: selectedLead.quizResultSummary || t('Diagnostic results synced to consultant dashboard for personalized curriculum recommendation.', '测评明细已生成，可为学员精准匹配对应的课程分级与班型。')
@@ -612,7 +595,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
           `High Intent Detected: ${translateBuyingSignal(sig)}`,
           `触发高意向购买信号：${translateBuyingSignal(sig)}`
         ),
-        subtitle: t('Protocol Engine auto-escalated priority to Hot (24h response SLA required)', 'R1 智能分层引擎自动提升评级为 Hot（需 24h 内快速破冰）')
+        subtitle: t('Protocol Engine auto-escalated priority to Hot (24h response SLA required)', "R1 智能分层引擎自动提升评级为 高意向（需 24h 内快速破冰）")
       });
     });
 
@@ -627,15 +610,15 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
           actorType: 'consultant',
           staffName: log.staffName,
           icon: log.channel === 'WhatsApp' ? '💬' : log.channel === 'Phone Call' ? '📞' : log.channel === 'Campus Visit' ? '🏫' : '📋',
-          badgeText: `${t('Consultant Touch', '顾问跟进')} · ${log.channel}`,
+          badgeText: `${t('Consultant Touch', '顾问跟进')} · ${crmValue(log.channel,lang)}`,
           badgeStyle: isConnected
             ? isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-950/60 text-emerald-300 border-emerald-800'
             : isLight ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-950/60 text-amber-300 border-amber-800',
-          title: `${log.staffName} · ${log.channel} (${log.connectStatus})`,
-          subtitle: `${t('Stage:', '阶段推进:')} ${log.previousStage} ➔ ${log.newStage}`,
+          title: `${log.staffName} · ${crmValue(log.channel,lang)} (${crmValue(log.connectStatus,lang)})`,
+          subtitle: `${t('Stage:', '阶段推进:')} ${crmValue(log.previousStage,lang)} ➔ ${crmValue(log.newStage,lang)}`,
           content: log.summary,
           connectStatus: log.connectStatus,
-          stageTransition: `${log.previousStage} ➔ ${log.newStage}`,
+          stageTransition: `${crmValue(log.previousStage,lang)} ➔ ${crmValue(log.newStage,lang)}`,
           nextAction: log.nextAction,
           nextFollowUpAt: log.nextFollowUpAt
         });
@@ -657,8 +640,8 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
           : 'bg-amber-950/60 text-amber-300 border-amber-700',
         title: selectedLead.currentStage === 'Trial Attended'
           ? t(`Attended trial lesson at ${selectedLead.city || 'PIK Campus'}`, `已到访 ${selectedLead.city || 'PIK 校区'} 参加试听课`)
-          : t(`Booked trial class session (${selectedLead.mode})`, `预约试听课程 (${selectedLead.mode})`),
-        subtitle: `${t('Mode:', '授课模式:')} ${selectedLead.mode} · ${t('City/Campus:', '校区城市:')} ${selectedLead.city}`
+          : t(`Booked trial class session (${crmValue(selectedLead.mode,lang)})`, `预约试听课程 (${crmValue(selectedLead.mode,lang)})`),
+        subtitle: `${t('Mode:', '授课模式:')} ${crmValue(selectedLead.mode,lang)} · ${t('City/Campus:', '校区城市:')} ${selectedLead.city}`
       });
     }
 
@@ -676,8 +659,8 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
           : 'bg-indigo-950/60 text-indigo-300 border-indigo-800',
         title: t(`Enrolled in Course: ${selectedLead.enrolledClass || 'Chinese Core Curriculum'}`, `正式入班签约：${selectedLead.enrolledClass || '中文核心签约班'}`),
         subtitle: selectedLead.revenue 
-          ? `${t('Tuition Paid:', '实缴学费:')} Rp ${selectedLead.revenue.toLocaleString()} · ${t('Mode:', '模式:')} ${selectedLead.mode}` 
-          : `${t('Mode:', '模式:')} ${selectedLead.mode} · ${t('City:', '城市:')} ${selectedLead.city}`,
+          ? `${t('Tuition Paid:', '实缴学费:')} Rp ${selectedLead.revenue.toLocaleString()} · ${t('Mode:', '模式:')} ${crmValue(selectedLead.mode,lang)}`
+          : `${t('Mode:', '模式:')} ${crmValue(selectedLead.mode,lang)} · ${t('City:', '城市:')} ${selectedLead.city}`,
         content: t('Welcome package dispatched, class group created, teacher assigned.', '入学材料已发放，班级群已建立，授课师资对接完成。')
       });
     }
@@ -857,20 +840,20 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
     items.forEach(item => {
       if (item.tag === '学费价格') {
         item.answer = lang === 'zh'
-          ? `“针对${lead.fullName}同学（身份：${lead.currentStatus}）的目标【${lead.goal}】（${lead.mode}模式 / ${lead.city}），UPER采用中印双师制+小班精细化分层授课，折算单课时仅约 Rp 85,000。目前本期开班有【早鸟名额减免 Rp 300,000】，今天帮您锁定名额，还可以赠送 2 次课后难点回放辅导与官方真题库。”`
-          : `"Tailored for ${lead.fullName} (${lead.currentStatus}) targeting ${lead.goal} via ${lead.mode} in ${lead.city}, UPER offers dual-instructor small classes (~Rp 85k/hr) with official materials. Early bird discount of Rp 300k available if locked today!"`;
+          ? `“针对${lead.fullName}同学（身份：${crmValue(lead.currentStatus,lang)}）的目标【${crmValue(lead.goal,lang)}】（${crmValue(lead.mode,lang)}模式 / ${lead.city}），UPER采用中印双师制+小班精细化分层授课，折算单课时仅约 Rp 85,000。目前本期开班有【早鸟名额减免 Rp 300,000】，今天帮您锁定名额，还可以赠送 2 次课后难点回放辅导与官方真题库。”`
+          : `"Tailored for ${lead.fullName} (${crmValue(lead.currentStatus,lang)}) targeting ${crmValue(lead.goal,lang)} via ${crmValue(lead.mode,lang)} in ${lead.city}, UPER offers dual-instructor small classes (~Rp 85k/hr) with official materials. Early bird discount of Rp 300k available if locked today!"`;
       } else if (item.tag === '模式效果') {
         item.answer = lang === 'zh'
-          ? `“${lead.fullName}同学选择的【${lead.mode}】模式（${lead.city}）完美匹配我们的精品小班制。每班仅限 6~8 人，强制开麦视频互动。若您在${lead.city}，还可随时预约到线下 PIK 校区面授试听，线上线下无缝切换，完全不用担心效果。”`
-          : `"For ${lead.fullName}'s chosen ${lead.mode} mode in ${lead.city}, our 6-8 person interactive small classes ensure high engagement. You can also mix with on-site visits at our PIK campus anytime."`;
+          ? `“${lead.fullName}同学选择的【${crmValue(lead.mode,lang)}】模式（${lead.city}）完美匹配我们的精品小班制。每班仅限 6~8 人，强制开麦视频互动。若您在${lead.city}，还可随时预约到线下 PIK 校区面授试听，线上线下无缝切换，完全不用担心效果。”`
+          : `"For ${lead.fullName}'s chosen ${crmValue(lead.mode,lang)} mode in ${lead.city}, our 6-8 person interactive small classes ensure high engagement. You can also mix with on-site visits at our PIK campus anytime."`;
       } else if (item.tag === '时间安排') {
         item.answer = lang === 'zh'
           ? `“考虑到${lead.fullName}同学身处【${lead.city}】且日程较满，我们专门开设了【周末集训班】与【平日晚间黄金班】。每次课均配有云端高清回放与助教 1v1 课后答疑，完美适配您的个人节奏。”`
           : `"Given ${lead.fullName}'s busy schedule in ${lead.city}, we offer weekend and weekday evening tracks with cloud replays and dedicated 1v1 TA catch-up."`;
       } else if (item.tag === '决策商量') {
         item.answer = lang === 'zh'
-          ? `“非常理解！学习是${lead.fullName}及其家庭的重要投资。我已将《UPER 课程分级大纲与印尼中资名企薪酬前景指南》发送至您的 WhatsApp。由于当前【${lead.goal}】班级仅剩 3 个席位，我为您保留 48 小时早鸟特权，您看周五下午我们再沟通如何？”`
-          : `"Understood! I've sent the UPER Syllabus & Career Guide to your WhatsApp. Since only 3 seats remain for ${lead.goal}, I will hold your 48h priority slot and follow up on Friday."`;
+          ? `“非常理解！学习是${lead.fullName}及其家庭的重要投资。我已将《UPER 课程分级大纲与印尼中资名企薪酬前景指南》发送至您的 WhatsApp。由于当前【${crmValue(lead.goal,lang)}】班级仅剩 3 个席位，我为您保留 48 小时早鸟特权，您看周五下午我们再沟通如何？”`
+          : `"Understood! I've sent the UPER Syllabus & Career Guide to your WhatsApp. Since only 3 seats remain for ${crmValue(lead.goal,lang)}, I will hold your 48h priority slot and follow up on Friday."`;
       }
     });
 
@@ -1047,7 +1030,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
             <Link to="/" className="flex items-center gap-2 shrink-0 group hover:opacity-95 transition-opacity" title={t('Back to UPER Homepage', '返回 UPER 官网首页')}>
               <img 
                 src="/uper-logo-mark.svg" 
-                alt="UPER Logo" 
+                alt={t("UPER logo", "UPER 标志")}
                 width="34"
                 height="34"
                 className="h-[32px] w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
@@ -1175,7 +1158,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                 title={lang === 'en' ? 'Switch to Chinese Interface' : '切换至英文界面'}
               >
                 <Globe className="w-3.5 h-3.5 text-primary-500" />
-                <span>{lang === 'en' ? '中文 (ZH)' : 'English (EN)'}</span>
+                <span>{t('Chinese', '英文')}</span>
               </button>
 
               <div className={`h-4 w-px mx-0.5 ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
@@ -1383,7 +1366,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
               }`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-xs font-semibold ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>
-                    🔥 {t('Hot Leads', 'Hot 高意向')}
+                    🔥 {t('Hot Leads', "高意向")}
                   </span>
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
@@ -1449,7 +1432,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
               }`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                    🏫 {t('Warm-Offline', 'Warm-线下')}
+                    🏫 {t('Warm-Offline', "中意向 · 线下")}
                   </span>
                   <span className={`w-2 h-2 rounded-full ${isLight ? 'bg-amber-400' : 'bg-amber-500'}`} />
                 </div>
@@ -1469,7 +1452,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
               }`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                    🌐 {t('Warm-Online', 'Warm-线上')}
+                    🌐 {t('Warm-Online', "中意向 · 线上")}
                   </span>
                   <span className={`w-2 h-2 rounded-full ${isLight ? 'bg-blue-400' : 'bg-blue-500'}`} />
                 </div>
@@ -1502,9 +1485,9 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
               </div>
             </div>
 
-            {leadActionError&&<p role="alert" className="text-xs text-rose-500">{leadActionError}</p>}
+            {leadActionError&&<p role="alert" className="text-xs text-rose-500">{crmError(leadActionError,lang)}</p>}
             <div className="flex gap-2 flex-wrap" aria-label={t('Work queue','工作队列')}>
-              {([{id:'all',en:'All accessible leads',zh:'全部可见线索'},{id:'mine',en:'My pending follow-up',zh:'我的待办'},{id:'unread',en:'Unread activity',zh:'未读动态'},{id:'unassigned',en:'Unassigned',zh:'待分配'},{id:'overdue',en:'Overdue',zh:'已逾期'}] as const).map(f=><button key={f.id} type="button" aria-pressed={attentionFilter===f.id} onClick={()=>setAttentionFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-xs font-medium ${attentionFilter===f.id?'bg-primary-600 text-white border-primary-600':isLight?'bg-white text-slate-600 border-slate-200':'bg-slate-900 text-slate-300 border-slate-700'}`}>{t(f.en,f.zh)}</button>)}
+              {([{id:'all',en:dataScope==='all'?'All leads (any owner)':'All accessible leads',zh:dataScope==='all'?'全部线索（不限归属）':'全部可见线索'},{id:'mine',en:'My pending follow-up',zh:'我的待办'},{id:'unread',en:'Unread activity',zh:'未读动态'},{id:'unassigned',en:'Unassigned',zh:'待分配'},{id:'overdue',en:'Overdue',zh:'已逾期'}] as const).map(f=><button key={f.id} type="button" aria-pressed={attentionFilter===f.id} onClick={()=>setAttentionFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-xs font-medium ${attentionFilter===f.id?'bg-primary-600 text-white border-primary-600':isLight?'bg-white text-slate-600 border-slate-200':'bg-slate-900 text-slate-300 border-slate-700'}`}>{t(f.en,f.zh)}</button>)}
             </div>
         {/* Filter Bar: Row 1 (Tier + Advanced Filters Toggle) -> Collapsible 6 Dropdowns -> Bottom Row (Search + Column Switcher) */}
         <div className={`rounded-2xl p-3.5 space-y-3 transition-colors ${
@@ -1517,8 +1500,8 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
               {[
                 { id: 'All', label: t('All Leads', '全部线索') },
                 { id: 'Hot', label: t('🔥 Hot', '🔥 高意向') },
-                { id: 'Warm-Offline', label: t('🏫 Warm-Offline', '🏫 Warm-线下') },
-                { id: 'Warm-Online', label: t('🌐 Warm-Online', '🌐 Warm-线上') },
+                { id: 'Warm-Offline', label: t('🏫 Warm-Offline', "🏫 中意向 · 线下") },
+                { id: 'Warm-Online', label: t('🌐 Warm-Online', "🌐 中意向 · 线上") },
                 { id: 'School', label: t('🏢 School (B2B)', '🏢 院校合作(B2B)') },
                 { id: 'Cold-Nurture', label: t('❄️ Cold-Nurture', '❄️ 培育池') }
               ].map(tab => (
@@ -1856,7 +1839,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                     <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
                       {t('All', '全部')}
                     </option>
-                    <option value="">未分配</option>{Array.from(new Set(leads.map(l=>l.owner).filter(o=>o&&!employees.some(e=>e.id===o)))).map(owner=><option key={owner} value={owner}>{owner}（历史归属）</option>)}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
+                    <option value="">{t('Unassigned','未分配')}</option>{Array.from(new Set(leads.map(l=>l.owner).filter(o=>o&&!employees.some(e=>e.id===o)))).map(owner=><option key={owner} value={owner}>{owner}{t(' (historical owner)','（历史归属）')}</option>)}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
                   </select>
                   <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
                     isLight ? 'text-slate-400' : 'text-slate-500'
@@ -2108,7 +2091,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                                 ? isLight ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-purple-950 text-purple-300'
                                 : isLight ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-slate-800 text-slate-300'
                             }`}>
-                              {lead.currentStatus}
+                              {crmValue(lead.currentStatus,lang)}
                             </span>
                           </td>
 
@@ -2134,8 +2117,8 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
 
                           {/* 4. 目标与定级结果 (Academic Goal & Placement) */}
                           <td className={`py-3 px-3 max-w-[220px] border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
-                            <span className={`block truncate font-medium text-xs ${isLight ? 'text-slate-800' : 'text-slate-300'}`} title={lead.goal}>
-                              {lead.goal}
+                            <span className={`block truncate font-medium text-xs ${isLight ? 'text-slate-800' : 'text-slate-300'}`} title={crmValue(lead.goal,lang)}>
+                              {crmValue(lead.goal,lang)}
                             </span>
                             <div className="mt-1">
                               {lead.levelConfirmed || typeof lead.quizScore === 'number' || lead.levelSource === 'assessment' ? (
@@ -2157,7 +2140,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                                     ? 'bg-amber-50 border-amber-200/90 text-amber-800' 
                                     : 'bg-amber-950/80 border-amber-800/90 text-amber-300'
                                 }`}>
-                                  <span>{lead.reportedLevel}</span>
+                                  <span>{crmValue(lead.reportedLevel,lang)}</span>
                                   <span className="opacity-70">({t('Self-reported', '自述')})</span>
                                   <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">· {t('Test Req', '待测评')}</span>
                                 </span>
@@ -2175,7 +2158,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                           <td className={`py-3 px-3 max-w-[240px] border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
                             <div className="flex items-center gap-1.5 whitespace-nowrap">
                               <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide border shadow-2xs ${getTierBadge(lead.tier)}`}>
-                                {lead.tier}
+                                {crmValue(lead.tier,lang)}
                               </span>
                               <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${sla.color}`}>
                                 {sla.text}
@@ -2227,7 +2210,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                           {/* 7. 当前阶段 (Stage) */}
                           <td className={`py-3 px-2.5 whitespace-nowrap border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`} onClick={(e) => e.stopPropagation()}>
                             <select
-                              value={lead.currentStage}
+                              value={crmValue(lead.currentStage,lang)}
                               disabled={!canEditLead(lead)}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { currentStage: e.target.value as StageType });
@@ -2285,7 +2268,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                             >
-                              <option value="">未分配</option>{lead.owner && !salesEmployees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
+                              <option value="">{t('Unassigned','未分配')}</option>{lead.owner && !salesEmployees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}{t(' (historical owner)','（历史归属）')}</option>}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
                             </select>}
                           </td>
                         </tr>
@@ -2394,7 +2377,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                             <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                               isLight ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-slate-800 text-slate-300'
                             }`}>
-                              {lead.currentStatus}
+                              {crmValue(lead.currentStatus,lang)}
                             </span>
                           </td>
 
@@ -2425,13 +2408,13 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                                 ? 'bg-blue-100 text-blue-800'
                                 : 'bg-slate-100 text-slate-600'
                             }`}>
-                              {lead.mode}
+                              {crmValue(lead.mode,lang)}
                             </span>
                           </td>
 
                           {/* 8. 目标 */}
-                          <td className="py-3 px-3 max-w-[180px] truncate" title={lead.goal}>
-                            {lead.goal}
+                          <td className="py-3 px-3 max-w-[180px] truncate" title={crmValue(lead.goal,lang)}>
+                            {crmValue(lead.goal,lang)}
                           </td>
 
                           {/* 9. 测评定级 */}
@@ -2455,7 +2438,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                                   ? 'bg-amber-50 border-amber-200/90 text-amber-800' 
                                   : 'bg-amber-950/80 border-amber-800/90 text-amber-300'
                               }`}>
-                                <span>{lead.reportedLevel}</span>
+                                <span>{crmValue(lead.reportedLevel,lang)}</span>
                                 <span className="opacity-70">({t('Self-reported', '自述')})</span>
                                 <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">· {t('Test Req', '待测评')}</span>
                               </span>
@@ -2471,7 +2454,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                           {/* 10. Tier评级 (纯粹聚焦销售优先度) */}
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10.5px] font-bold tracking-wide border shadow-2xs ${getTierBadge(lead.tier)}`}>
-                              {lead.tier}
+                              {crmValue(lead.tier,lang)}
                             </span>
                           </td>
 
@@ -2513,7 +2496,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                           {/* 13. 推进阶段 - 精准对齐紧凑 11px 字号 */}
                           <td className="py-3 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                             <select
-                              value={lead.currentStage}
+                              value={crmValue(lead.currentStage,lang)}
                               disabled={!canEditLead(lead)}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { currentStage: e.target.value as StageType });
@@ -2569,7 +2552,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                             >
-                              <option value="">未分配</option>{lead.owner && !salesEmployees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
+                              <option value="">{t('Unassigned','未分配')}</option>{lead.owner && !salesEmployees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}{t(' (historical owner)','（历史归属）')}</option>}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
                             </select>}
                           </td>
                         </tr>
@@ -2600,7 +2583,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${getTierBadge(selectedLead.tier)}`}>
-                    {selectedLead.tier}
+                    {crmValue(selectedLead.tier,lang)}
                   </span>
                   {(() => {
                     const badge = getAssessmentBadge(selectedLead);
@@ -2613,18 +2596,18 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
                     isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-800 border-slate-700 text-slate-300'
                   }`}>
-                    {selectedLead.currentStage}
+                    {crmValue(selectedLead.currentStage,lang)}
                   </span>
                   <span className={`font-mono text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{selectedLead.id.replace(/^UPER-/, '')}</span>
                   <span className={`text-[10px] font-mono ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                    SLA: {new Date(selectedLead.slaDueTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {t('Response deadline:','响应截止：')} {new Date(selectedLead.slaDueTime).toLocaleTimeString(crmLocale(lang), { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2 mt-1.5 flex-wrap">
                   <h2 className={`text-lg font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {selectedLead.fullName}
                   </h2>
-                  <span className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>({selectedLead.currentStatus})</span>
+                  <span className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>({crmValue(selectedLead.currentStatus,lang)})</span>
                   <span className={`text-xs font-mono font-medium ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                     · {selectedLead.whatsapp}
                   </span>
@@ -2755,8 +2738,8 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                     <div className="grid grid-cols-2 gap-2.5 text-xs">
                       <div><span className={isLight ? 'text-slate-500' : 'text-slate-500'}>{t('Name:', '姓名:')}</span> <b className={isLight ? 'text-slate-900 font-semibold' : 'text-slate-200 font-semibold'}>{selectedLead.fullName}</b></div>
                       <div><span className={isLight ? 'text-slate-500' : 'text-slate-500'}>WhatsApp:</span> <b className="text-emerald-600 font-bold font-mono">{selectedLead.whatsapp}</b></div>
-                      <div><span className={isLight ? 'text-slate-500' : 'text-slate-500'}>Email:</span> <b className={isLight ? 'text-slate-900' : 'text-slate-200'}>{selectedLead.email}</b></div>
-                      <div><span className={isLight ? 'text-slate-500' : 'text-slate-500'}>{t('Status:', '身份:')}</span> <b className={isLight ? 'text-slate-900' : 'text-slate-200'}>{selectedLead.currentStatus}</b></div>
+                      <div><span className={isLight ? 'text-slate-500' : 'text-slate-500'}>{t('Email:','电子邮件：')}</span> <b className={isLight ? 'text-slate-900' : 'text-slate-200'}>{selectedLead.email}</b></div>
+                      <div><span className={isLight ? 'text-slate-500' : 'text-slate-500'}>{t('Status:', '身份:')}</span> <b className={isLight ? 'text-slate-900' : 'text-slate-200'}>{crmValue(selectedLead.currentStatus,lang)}</b></div>
                       {selectedLead.parentContact && (
                         <div><span className={isLight ? 'text-slate-500' : 'text-slate-500'}>{t('Parent Contact:', '家长联系方式:')}</span> <b className="text-amber-600 font-bold font-mono">{selectedLead.parentContact}</b></div>
                       )}
@@ -2774,7 +2757,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                     </h3>
                     <div className="space-y-2 text-xs">
                       <div>
-                        <span className={isLight ? 'text-slate-500' : 'text-slate-500'}>{t('Goal:', '目标需求:')}</span> <b className={isLight ? 'text-primary-700' : 'text-indigo-300'}>{selectedLead.goal}</b>
+                        <span className={isLight ? 'text-slate-500' : 'text-slate-500'}>{t('Goal:', '目标需求:')}</span> <b className={isLight ? 'text-primary-700' : 'text-indigo-300'}>{crmValue(selectedLead.goal,lang)}</b>
                       </div>
                       {selectedLead.goals && selectedLead.goals.length > 1 && (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
@@ -2788,10 +2771,10 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
-                        <div><span className="text-slate-500">{t('Self-Reported:', '自报基础:')}</span> <b className={isLight ? 'text-slate-800' : 'text-slate-200'}>{selectedLead.reportedLevel}</b></div>
-                        <div><span className="text-slate-500">{t('Level State:', '状态判断:')}</span> <b className={isLight ? 'text-slate-800' : 'text-slate-200'}>{selectedLead.levelState}</b></div>
+                        <div><span className="text-slate-500">{t('Self-Reported:', '自报基础:')}</span> <b className={isLight ? 'text-slate-800' : 'text-slate-200'}>{crmValue(selectedLead.reportedLevel,lang)}</b></div>
+                        <div><span className="text-slate-500">{t('Level State:', '状态判断:')}</span> <b className={isLight ? 'text-slate-800' : 'text-slate-200'}>{crmValue(selectedLead.levelState,lang)}</b></div>
                         <div><span className="text-slate-500">{t('Target City:', '意向城市:')}</span> <b className={isLight ? 'text-slate-800' : 'text-slate-200'}>{selectedLead.city}</b></div>
-                        <div><span className="text-slate-500">{t('Course Mode:', '授课模式:')}</span> <b className={isLight ? 'text-slate-800' : 'text-slate-200'}>{selectedLead.mode}</b></div>
+                        <div><span className="text-slate-500">{t('Course Mode:', '授课模式:')}</span> <b className={isLight ? 'text-slate-800' : 'text-slate-200'}>{crmValue(selectedLead.mode,lang)}</b></div>
                       </div>
                     </div>
                   </div>
@@ -2811,7 +2794,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                             {t('Diagnostic Score & Confirmed Level:', '摸底得分与判定级别:')}
                           </span>
                           <span className="font-bold font-mono text-emerald-600 text-sm">
-                            {selectedLead.quizScore} / {selectedLead.quizMaxScore ?? '?'} ({selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState})
+                            {selectedLead.quizScore} / {selectedLead.quizMaxScore ?? '?'} ({crmValue(selectedLead.latestAssessment?.levelConfirmed || selectedLead.levelConfirmed || selectedLead.levelState,lang)})
                           </span>
                         </div>
                         {selectedLead.quizBreakdown && (
@@ -2838,7 +2821,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                       </div>
                     ) : (
                       <p className={`text-xs italic ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                        {t(`Bypassed per rule (${selectedLead.flag}). Level State is ${selectedLead.levelState}.`, `根据规则免测 (${selectedLead.flag})。水平状态判定为 ${selectedLead.levelState}。`)}
+                        {t(`Bypassed per rule (${crmValue(selectedLead.flag,lang)}). Level State is ${crmValue(selectedLead.levelState,lang)}.`, `根据规则免测 (${crmValue(selectedLead.flag,lang)})。水平状态判定为 ${crmValue(selectedLead.levelState,lang)}。`)}
                       </p>
                     )}
                   </div>
@@ -2851,9 +2834,9 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                       <Building className="w-3.5 h-3.5 text-blue-500" />
                       <span>{t('Attribution & Source', '渠道归因与引流场景')}</span>
                     </h3>
-                    <div><span className="text-slate-500">{t('Entry Point:', '进线入口:')}</span> <span className={isLight ? 'text-slate-800' : 'text-slate-300'}>{selectedLead.entryPoint}</span></div>
+                    <div><span className="text-slate-500">{t('Entry Point:', '进线入口:')}</span> <span className={isLight ? 'text-slate-800' : 'text-slate-300'}>{crmValue(selectedLead.entryPoint,lang)}</span></div>
                     <div><span className="text-slate-500">{t('Campaign:', '推广战役:')}</span> <span className={isLight ? 'text-slate-800' : 'text-slate-300'}>{selectedLead.campaign || t('Direct Web', '官网自然访问')}</span></div>
-                    <div><span className="text-slate-500">{t('Hook Context:', '诱饵钩子:')}</span> <span className={isLight ? 'text-slate-800' : 'text-slate-300'}>{selectedLead.hookType} ({selectedLead.hookContext})</span></div>
+                    <div><span className="text-slate-500">{t('Hook Context:', '诱饵钩子:')}</span> <span className={isLight ? 'text-slate-800' : 'text-slate-300'}>{crmValue(selectedLead.hookType,lang)} ({crmValue(selectedLead.hookContext,lang)})</span></div>
                   </div>
                 </div>
               )}
@@ -2977,9 +2960,9 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                               }`}
                             >
                               <option value="WhatsApp">WhatsApp</option>
-                              <option value="Phone Call">{t('Phone Call', 'Phone Call (电话)')}</option>
-                              <option value="Campus Visit">{t('Campus Visit', 'Campus Visit (校区接待)')}</option>
-                              <option value="Email">Email</option>
+                              <option value="Phone Call">{t('Phone Call', "电话")}</option>
+                              <option value="Campus Visit">{t('Campus Visit', "校区接待")}</option>
+                              <option value="Email">{t('Email','电子邮件')}</option>
                               <option value="Other">{t('Other', '其他')}</option>
                             </select>
                           </div>
@@ -3025,7 +3008,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                             >
                               {STAGE_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
-                                  {opt.value} ({t(opt.labelEn, opt.labelZh)})
+                                  {t(opt.labelEn, opt.labelZh)}
                                 </option>
                               ))}
                             </select>
@@ -3034,7 +3017,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
 
                         <div>
                           <label className={`block font-medium mb-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                            {t('Buying Signal (Triggers R1 auto-promotion to Hot)', '是否有购买信号 - 触发R1自动升级Hot')}
+                            {t('Buying Signal (Triggers R1 auto-promotion to Hot)', "是否有购买信号 - 触发R1自动升级高意向")}
                           </label>
                           <select
                             value={buyingSignalDetected}
@@ -3236,7 +3219,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                                         {t('Next:', '下一步:')} <span className={isLight ? 'text-slate-800 font-semibold' : 'text-slate-200 font-semibold'}>{ev.nextAction}</span>
                                         {ev.nextFollowUpAt && (
                                           <span className="text-slate-400 font-mono">
-                                            ({new Date(ev.nextFollowUpAt).toLocaleDateString([], { month: 'numeric', day: 'numeric' })})
+                                            ({new Date(ev.nextFollowUpAt).toLocaleDateString(crmLocale(lang), { month: 'numeric', day: 'numeric' })})
                                           </span>
                                         )}
                                       </span>
@@ -3261,7 +3244,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                   }`}>
                     <span className={`font-bold text-xs flex items-center gap-1.5 ${isLight ? 'text-indigo-900' : 'text-indigo-300'}`}>
                       <Lightbulb className="w-3.5 h-3.5" />
-                      <span>{t('Target Strategy:', '核心转化攻坚策略:')} {selectedLead.tier} · {selectedLead.flag}</span>
+                      <span>{t('Target Strategy:', '核心转化攻坚策略:')} {crmValue(selectedLead.tier,lang)} · {crmValue(selectedLead.flag,lang)}</span>
                     </span>
                     <p className={`text-[11px] mt-1.5 leading-relaxed ${isLight ? 'text-indigo-800' : 'text-indigo-200/80'}`}>
                       {selectedLead.tier === 'Hot'
@@ -3269,7 +3252,7 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                         : selectedLead.tier === 'Warm-Offline'
                         ? t('Jakarta local candidate: prioritize invitation for face-to-face consultation at PIK campus or offline free trial session.', '雅加达本地客户，重点邀约到 PIK 校区面谈或参加线下免费试听课。')
                         : selectedLead.tier === 'Warm-Online'
-                        ? t('Online remote student: if level state is partial, first step is booking diagnostic test.', '线上客户，若水平未知（PARTIAL）则第一步必须先约测评定级。')
+                        ? t('Online remote student: if level state is partial, first step is booking diagnostic test.', "线上客户，若水平未知（待测评）则第一步必须先约测评定级。")
                         : t('Institutional or school representative: route to B2B partnership workflow.', '学校老师或机构客户，转 B2B 合作流程。')}
                     </p>
                   </div>
@@ -3344,8 +3327,8 @@ function CrmWorkspace({employee}:{employee:CrmEmployee}) {
                         </span>
                         <span>
                           {t(
-                            `Prioritized based on ${selectedLead.fullName}'s intent (${selectedLead.buyingSignal || 'General'}) and mode (${selectedLead.mode} in ${selectedLead.city}).`,
-                            `已根据 ${selectedLead.fullName} 的身份（${selectedLead.currentStatus}）、购买信号（${selectedLead.buyingSignal || '无'}）及授课模式（${selectedLead.mode} / ${selectedLead.city}）自动定制话术切入点并重新排序。`
+                            `Prioritized based on ${selectedLead.fullName}'s intent (${selectedLead.buyingSignal || 'General'}) and mode (${crmValue(selectedLead.mode,lang)} in ${selectedLead.city}).`,
+                            `已根据 ${selectedLead.fullName} 的身份（${crmValue(selectedLead.currentStatus,lang)}）、购买信号（${selectedLead.buyingSignal || '无'}）及授课模式（${crmValue(selectedLead.mode,lang)} / ${selectedLead.city}）自动定制话术切入点并重新排序。`
                           )}
                         </span>
                       </div>

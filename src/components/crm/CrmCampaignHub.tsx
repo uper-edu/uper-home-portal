@@ -1,3 +1,4 @@
+import {crmValue,crmError,crmLocale} from '../../utils/crmLanguage';
 import React, { useState, useEffect, useMemo } from 'react';
 import QRCode from 'qrcode';
 import { 
@@ -615,7 +616,7 @@ export function CrmCampaignHub({
             {summaryMetrics.totalLeads}
           </div>
           <span className={`text-[11px] font-medium leading-tight truncate ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-            {summaryMetrics.totalHot} {t('Hot Quality Leads', '位 Hot 极高意向')}
+            {summaryMetrics.totalHot} {t('Hot Quality Leads', "位 高意向 极高意向")}
           </span>
         </div>
 
@@ -667,7 +668,7 @@ export function CrmCampaignHub({
           </div>
           <div className={`text-xl sm:text-2xl font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
             {summaryMetrics.totalRevenue > 0 
-              ? `Rp ${(summaryMetrics.totalRevenue / 1000000).toFixed(1)}M` 
+              ? `Rp ${(summaryMetrics.totalRevenue / 1000000).toFixed(1)}${t('M','百万')}`
               : 'Rp 0'}
           </div>
           <span className={`text-[11px] font-medium leading-tight truncate ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -1028,18 +1029,14 @@ export function CrmCampaignHub({
                 {qrDataUrl ? (
                   <img 
                     src={qrDataUrl} 
-                    alt="Tracking QR Code" 
+                    alt={t("Tracking QR code","活动追踪二维码")}
                     className="w-48 h-48 sm:w-56 sm:h-56 mx-auto object-contain"
                   />
                 ) : (
-                  <div className="w-48 h-48 flex items-center justify-center text-slate-400 text-xs">
-                    Generating QR Code...
-                  </div>
+                  <div className="w-48 h-48 flex items-center justify-center text-slate-400 text-xs">{t("Generating QR code…","正在生成二维码…")}</div>
                 )}
                 <div className="mt-2 text-[11px] font-bold text-slate-800 uppercase tracking-widest flex items-center justify-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  UPER Verified Campaign Portal
-                </div>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />{t("UPER campaign portal","UPER 活动页面")}</div>
               </div>
 
               {/* Clean Short Link Box */}
@@ -1354,23 +1351,23 @@ export function CrmCampaignHub({
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
                                 lead.tier === 'Hot' ? 'bg-amber-500/20 text-amber-600' : 'bg-slate-500/10 text-slate-500'
                               }`}>
-                                {lead.tier}
+                                {crmValue(lead.tier,lang)}
                               </span>
                               <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary-500/10 text-primary-600 font-medium">
-                                {lead.currentStage}
+                                {crmValue(lead.currentStage,lang)}
                               </span>
                             </div>
                             <div className="text-[11px] text-slate-400 flex items-center gap-2">
                               <span>WA: {lead.whatsapp}</span>
                               <span>•</span>
-                              <span className="truncate">{lead.goal}</span>
+                              <span className="truncate">{crmValue(lead.goal,lang)}</span>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
                             {lead.revenue ? (
                               <span className="text-xs font-mono font-bold text-emerald-600">
-                                Rp {(lead.revenue / 1000000).toFixed(1)}M
+                                Rp {(lead.revenue / 1000000).toFixed(1)}{t('M','百万')}
                               </span>
                             ) : null}
 
@@ -1436,7 +1433,7 @@ export function CrmCampaignHub({
                       <div className="flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-amber-500" />
                         <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          {t('Social Media Promo Copy (IG / TikTok / 小红书)', '社媒招募与推广文案')}
+                          {t('Social media copy (Instagram / TikTok / Xiaohongshu)', '社媒招募与推广文案')}
                         </span>
                       </div>
                       <button
@@ -1537,9 +1534,7 @@ export function CrmCampaignHub({
                       <div className="w-8 h-8 rounded-lg bg-primary-600 text-white font-bold flex items-center justify-center text-sm">
                         UP
                       </div>
-                      <span className="font-extrabold text-sm tracking-wider uppercase text-slate-900">
-                        UPER Education · Official Event
-                      </span>
+                      <span className="font-extrabold text-sm tracking-wider uppercase text-slate-900">{t("UPER Education · Official event","UPER 教育官方活动")}</span>
                     </div>
 
                     <div>
@@ -1556,20 +1551,16 @@ export function CrmCampaignHub({
                       {qrDataUrl && (
                         <img 
                           src={qrDataUrl} 
-                          alt="Tent QR Code" 
+                          alt={t("Table display QR code","桌牌二维码")}
                           className="w-48 h-48 mx-auto object-contain"
                         />
                       )}
-                      <div className="mt-2 text-[11px] font-bold text-primary-700 uppercase tracking-widest">
-                        Scan to Join & Placement Diagnostic
-                      </div>
+                      <div className="mt-2 text-[11px] font-bold text-primary-700 uppercase tracking-widest">{t("Scan to register and assess your level","扫码报名并进行水平测评")}</div>
                     </div>
 
                     {/* Key Highlights */}
                     <div className="text-left bg-primary-50/50 p-4 rounded-2xl border border-primary-100 space-y-2">
-                      <div className="text-xs font-bold text-primary-900 uppercase tracking-wider">
-                        ✨ 现场扫码专属特权 / Exclusive On-Site Benefits:
-                      </div>
+                      <div className="text-xs font-bold text-primary-900 uppercase tracking-wider">{t("Exclusive on-site benefits","现场扫码专属福利")}</div>
                       <ul className="text-xs text-slate-700 space-y-1.5">
                         {activeDetailCampaign.aiAssets.deskTentBullets?.map((bullet, idx) => (
                           <li key={idx} className="flex items-center gap-2">
@@ -1580,8 +1571,7 @@ export function CrmCampaignHub({
                       </ul>
                     </div>
 
-                    <div className="text-[10px] text-slate-400 border-t pt-3 font-mono">
-                      Tracking Link: https://uperedu.com/chat?c={activeDetailCampaign.code}
+                    <div className="text-[10px] text-slate-400 border-t pt-3 font-mono">{t("Tracking link: https://uperedu.com/chat?c=","活动链接：https://uperedu.com/chat?c=")}{activeDetailCampaign.code}
                     </div>
                   </div>
                 </div>
@@ -1595,7 +1585,7 @@ export function CrmCampaignHub({
                     <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
                       <div className="text-xs text-slate-400 font-semibold mb-1">{t('QR Scans', '扫码总数')}</div>
                       <div className="text-xl font-bold font-mono">{activeDetailCampaign.stats.impressions || 0}</div>
-                      <div className="text-[10px] text-slate-400 mt-1">100% Top of Funnel</div>
+                      <div className="text-[10px] text-slate-400 mt-1">{t("100% of inquiries","咨询入口占比 100%")}</div>
                     </div>
 
                     <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
@@ -1622,8 +1612,7 @@ export function CrmCampaignHub({
                       <div className="text-xs text-slate-400 font-semibold mb-1">{t('Enrolled Students', '签约入班')}</div>
                       <div className="text-xl font-bold font-mono text-primary-600">{activeDetailCampaign.stats.enrolledCount || 0}</div>
                       <div className="text-[10px] text-primary-500 font-semibold mt-1">
-                        {activeDetailCampaign.stats.conversionRate}% Overall Conversion
-                      </div>
+                        {activeDetailCampaign.stats.conversionRate}{t("% overall conversion","% 总体转化率")}</div>
                     </div>
                   </div>
 
@@ -1639,14 +1628,14 @@ export function CrmCampaignHub({
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                         <span className="text-xs text-slate-400 block">{t('Budget Spent', '活动总预算/花费')}</span>
                         <span className="text-lg font-bold font-mono text-slate-700 dark:text-slate-300">
-                          Rp {(activeDetailCampaign.stats.budgetCost / 1000000).toFixed(1)}M
+                          Rp {(activeDetailCampaign.stats.budgetCost / 1000000).toFixed(1)}{t('M','百万')}
                         </span>
                       </div>
 
                       <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
                         <span className="text-xs text-emerald-700 dark:text-emerald-300 block">{t('Generated GMV Revenue', '产生的学费产值')}</span>
                         <span className="text-lg font-bold font-mono text-emerald-700 dark:text-emerald-300">
-                          Rp {(activeDetailCampaign.stats.totalRevenue / 1000000).toFixed(1)}M
+                          Rp {(activeDetailCampaign.stats.totalRevenue / 1000000).toFixed(1)}{t('M','百万')}
                         </span>
                       </div>
 
@@ -1751,7 +1740,7 @@ export function CrmCampaignHub({
                       type="text"
                       value={formNameEn}
                       onChange={(e) => setFormNameEn(e.target.value)}
-                      placeholder="e.g. Seminar Karir Bahasa Mandarin Kampus Jakarta 2026"
+                      placeholder={t("Example: Mandarin career seminar","示例：中文职业发展讲座")}
                       className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none ${
                         isLight ? 'bg-slate-50 border-slate-200 focus:bg-white focus:border-primary-500 text-slate-900' : 'bg-slate-800 border-slate-700 focus:border-primary-400 text-white'
                       }`}
@@ -1781,7 +1770,7 @@ export function CrmCampaignHub({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        {t('Delivery Medium', '举办媒介形态 (Delivery Medium)')}
+                        {t('Delivery Medium', "举办媒介形态 ")}
                       </label>
                       <select
                         value={formLocationType}
@@ -1791,9 +1780,9 @@ export function CrmCampaignHub({
                         }`}
                       >
                         <option value="" disabled>{t('-- Select Medium --', '-- 请选择举办媒介形态 --')}</option>
-                        <option value="offline">{t('📍 Offline (On-site)', '📍 线下活动 (Offline)')}</option>
-                        <option value="online">{t('🌐 Online (Virtual)', '🌐 线上活动 (Online)')}</option>
-                        <option value="hybrid">{t('🔀 Hybrid Mode', '🔀 线上线下混合 (Hybrid)')}</option>
+                        <option value="offline">{t('📍 Offline (On-site)', "📍 线下活动 ")}</option>
+                        <option value="online">{t('🌐 Online (Virtual)', "🌐 线上活动 ")}</option>
+                        <option value="hybrid">{t('🔀 Hybrid Mode', "🔀 线上线下混合 ")}</option>
                       </select>
                     </div>
                   </div>
@@ -1821,7 +1810,7 @@ export function CrmCampaignHub({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        {t('Default Hook Type', '默认触点 Hook')}
+                        {t('Default Hook Type', "默认获客入口")}
                       </label>
                       <select
                         value={formHook}
@@ -1830,12 +1819,12 @@ export function CrmCampaignHub({
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-800 border-slate-700 text-slate-200'
                         }`}
                       >
-                        <option value="" disabled>{t('-- Select Hook Type --', '-- 请选择默认触点 Hook --')}</option>
-                        <option value="hsk_assessment">hsk_assessment (HSK定级测评)</option>
-                        <option value="trial_class">trial_class (试听体验课)</option>
-                        <option value="consultation">consultation (1v1顾问咨询)</option>
-                        <option value="scholarship_materials">scholarship_materials (奖学金资料包)</option>
-                        <option value="webinar">webinar (公开讲座)</option>
+                        <option value="" disabled>{t('-- Select Hook Type --', "-- 请选择默认获客入口 --")}</option>
+                        <option value="hsk_assessment">{t("HSK placement assessment","汉语水平定级测评")}</option>
+                        <option value="trial_class">{t("Trial class","试听体验课")}</option>
+                        <option value="consultation">{t("Individual consultation","一对一顾问咨询")}</option>
+                        <option value="scholarship_materials">{t("Scholarship materials","奖学金资料包")}</option>
+                        <option value="webinar">{t("Public webinar","公开讲座")}</option>
                       </select>
                     </div>
                   </div>
@@ -1849,7 +1838,7 @@ export function CrmCampaignHub({
                         type="text"
                         value={formOrganizer}
                         onChange={(e) => setFormOrganizer(e.target.value)}
-                        placeholder="e.g. Marketing Ops & B2B Division"
+                        placeholder={t("Example: Marketing and business development","示例：营销与业务拓展团队")}
                         className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none ${
                           isLight ? 'bg-slate-50 border-slate-200 focus:bg-white focus:border-primary-500 text-slate-900' : 'bg-slate-800 border-slate-700 focus:border-primary-400 text-white'
                         }`}
@@ -1944,7 +1933,7 @@ export function CrmCampaignHub({
                         type="text"
                         value={formCity}
                         onChange={(e) => setFormCity(e.target.value)}
-                        placeholder="Jakarta / Bandung / Surabaya"
+                        placeholder={t("Example: Jakarta","示例：雅加达")}
                         className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none ${
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
                         }`}
@@ -1959,7 +1948,7 @@ export function CrmCampaignHub({
                         type="text"
                         value={formVenue}
                         onChange={(e) => setFormVenue(e.target.value)}
-                        placeholder="Binus Anggrek Auditorium 3F"
+                        placeholder={t("Example: campus auditorium","示例：大学报告厅")}
                         className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none ${
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
                         }`}
@@ -1975,7 +1964,7 @@ export function CrmCampaignHub({
                       type="text"
                       value={formAudienceInput}
                       onChange={(e) => setFormAudienceInput(e.target.value)}
-                      placeholder="印尼大学生, 在职白领, HSK备考人群, 赴华奖学金意向人群"
+                      placeholder={t("University students, working professionals, HSK candidates","大学生、在职人士、汉语水平考试备考者")}
                       className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none ${
                         isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
                       }`}
@@ -1990,7 +1979,7 @@ export function CrmCampaignHub({
                       rows={2}
                       value={formTopicsInput}
                       onChange={(e) => setFormTopicsInput(e.target.value)}
-                      placeholder="中资企业印尼高薪就业绿色通道, 现场免费 1v1 HSK 等级测评, 早鸟 8 折优惠"
+                      placeholder={t("Career advice, free level assessment, early registration offer","职业咨询、免费水平测评、提前报名优惠")}
                       className={`w-full px-3.5 py-2 rounded-xl text-xs border outline-none ${
                         isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
                       }`}
@@ -2019,7 +2008,7 @@ export function CrmCampaignHub({
                         type="text"
                         value={formCode}
                         onChange={(e) => setFormCode(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                        placeholder="e.g. seminar_2026"
+                        placeholder={t("Example: seminar_2026","示例：seminar_2026")}
                         className="px-2.5 py-1.5 rounded-lg border border-emerald-300 font-mono font-bold text-xs text-emerald-800 dark:text-emerald-200 bg-white dark:bg-slate-800 outline-none flex-1"
                       />
                     </div>
@@ -2081,9 +2070,9 @@ export function CrmCampaignHub({
                           <option value="youtube">youtube</option>
                           <option value="linkedin">linkedin</option>
                           <option value="whatsapp">whatsapp</option>
-                          <option value="campus_offline">campus_offline</option>
-                          <option value="enterprise_offline">enterprise_offline</option>
-                          <option value="edufair">edufair</option>
+                          <option value="campus_offline">{t("Campus event","校园活动")}</option>
+                          <option value="enterprise_offline">{t("Enterprise event","企业活动")}</option>
+                          <option value="edufair">{t("Education fair","教育展会")}</option>
                         </select>
                       </div>
 
@@ -2099,12 +2088,12 @@ export function CrmCampaignHub({
                           }`}
                         >
                           <option value="" disabled>{t('-- Select UTM Medium --', '-- 请选择媒介形态 --')}</option>
-                          <option value="cpc">cpc</option>
-                          <option value="social">social</option>
-                          <option value="qr_poster">qr_poster</option>
-                          <option value="flyer">flyer</option>
-                          <option value="email">email</option>
-                          <option value="referral">referral</option>
+                          <option value="cpc">{t("Paid clicks","按点击付费")}</option>
+                          <option value="social">{t("Social media","社交媒体")}</option>
+                          <option value="qr_poster">{t("QR poster","二维码海报")}</option>
+                          <option value="flyer">{t("Flyer","传单")}</option>
+                          <option value="email">{t("Email","电子邮件")}</option>
+                          <option value="referral">{t("Referral","转介绍")}</option>
                         </select>
                       </div>
                     </div>
@@ -2188,7 +2177,7 @@ export function CrmCampaignHub({
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-700/60">
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                             <Award className="w-4 h-4 text-blue-500" />
-                            <span>{t('Poster & Masterclass Title (海报主副标题)', 'Poster & Masterclass Title (海报主副标题)')}</span>
+                            <span>{t('Poster heading and subheading', "海报主标题与副标题")}</span>
                           </span>
                           <div className="flex items-center gap-2">
                             <div className="flex items-center p-0.5 bg-slate-200/70 dark:bg-slate-700 rounded-lg">
@@ -2198,18 +2187,14 @@ export function CrmCampaignHub({
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'id' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇮🇩 ID
-                              </button>
+                              >{t("Indonesian content","印尼语内容")}</button>
                               <button
                                 type="button"
                                 onClick={() => handleSwitchPreviewLang('en')}
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'en' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇬🇧 EN
-                              </button>
+                              >{t("English content","英语内容")}</button>
                             </div>
                             <button
                               type="button"
@@ -2264,18 +2249,14 @@ export function CrmCampaignHub({
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'id' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇮🇩 ID
-                              </button>
+                              >{t("Indonesian content","印尼语内容")}</button>
                               <button
                                 type="button"
                                 onClick={() => handleSwitchPreviewLang('en')}
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'en' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇬🇧 EN
-                              </button>
+                              >{t("English content","英语内容")}</button>
                             </div>
                             <button
                               type="button"
@@ -2291,7 +2272,7 @@ export function CrmCampaignHub({
                           rows={6}
                           value={formSocialCopy}
                           onChange={(e) => setFormSocialCopy(e.target.value)}
-                          placeholder="Ingin tembus kerja di perusahaan multinasional Tiongkok..."
+                          placeholder={t("Enter promotional copy for the selected content language","输入所选内容语言的推广文案")}
                           className={`w-full p-3.5 rounded-xl text-xs border outline-none font-sans leading-relaxed ${
                             isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
                           }`}
@@ -2315,18 +2296,14 @@ export function CrmCampaignHub({
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'id' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇮🇩 ID
-                              </button>
+                              >{t("Indonesian content","印尼语内容")}</button>
                               <button
                                 type="button"
                                 onClick={() => handleSwitchPreviewLang('en')}
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'en' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇬🇧 EN
-                              </button>
+                              >{t("English content","英语内容")}</button>
                             </div>
                             <button
                               type="button"
@@ -2342,7 +2319,7 @@ export function CrmCampaignHub({
                           rows={6}
                           value={formWhatsappInvite}
                           onChange={(e) => setFormWhatsappInvite(e.target.value)}
-                          placeholder="Halo Rekan-rekan! Kami mengundang Anda menghadiri seminar resmi UPER..."
+                          placeholder={t("Enter an invitation for the selected content language","输入所选内容语言的邀请文案")}
                           className={`w-full p-3.5 rounded-xl text-xs border outline-none font-sans leading-relaxed ${
                             isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
                           }`}
@@ -2366,18 +2343,14 @@ export function CrmCampaignHub({
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'id' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇮🇩 ID
-                              </button>
+                              >{t("Indonesian content","印尼语内容")}</button>
                               <button
                                 type="button"
                                 onClick={() => handleSwitchPreviewLang('en')}
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'en' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇬🇧 EN
-                              </button>
+                              >{t("English content","英语内容")}</button>
                             </div>
                             <button
                               type="button"
@@ -2393,7 +2366,7 @@ export function CrmCampaignHub({
                           rows={4}
                           value={formWelcomeGreeting}
                           onChange={(e) => setFormWelcomeGreeting(e.target.value)}
-                          placeholder="Halo! Terima kasih telah mengunjungi UPER..."
+                          placeholder={t("Enter a greeting for the selected content language","输入所选内容语言的欢迎语")}
                           className={`w-full p-3.5 rounded-xl text-xs border outline-none font-sans leading-relaxed ${
                             isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'
                           }`}
@@ -2417,18 +2390,14 @@ export function CrmCampaignHub({
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'id' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇮🇩 ID
-                              </button>
+                              >{t("Indonesian content","印尼语内容")}</button>
                               <button
                                 type="button"
                                 onClick={() => handleSwitchPreviewLang('en')}
                                 className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                                   previewLang === 'en' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                              >
-                                🇬🇧 EN
-                              </button>
+                              >{t("English content","英语内容")}</button>
                             </div>
                             <button
                               type="button"

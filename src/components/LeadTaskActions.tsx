@@ -1,3 +1,4 @@
+import {crmValue,crmError,crmLocale} from '../utils/crmLanguage';
 import { useEffect, useState } from "react";
 export default function LeadTaskActions({
   leadId,
@@ -37,7 +38,7 @@ export default function LeadTaskActions({
       </h3>
       {error && (
         <p role="alert" className="text-xs text-rose-500">
-          {error}
+          {crmError(error,lang)}
         </p>
       )}
       {tasks
@@ -49,7 +50,7 @@ export default function LeadTaskActions({
           >
             <div>
               <p>
-                {task.kind} ·{" "}
+                {crmValue(task.kind,lang)} ·{" "}
                 {task.owner_id || (lang === "zh" ? "待分配" : "Unassigned")}
               </p>
               <p
@@ -60,7 +61,7 @@ export default function LeadTaskActions({
                 }
               >
                 {lang === "zh" ? "截止" : "Due"}:{" "}
-                {new Date(task.due_at).toLocaleString()}
+                {new Date(task.due_at).toLocaleString(crmLocale(lang))}
               </p>
             </div>
             <button

@@ -1,3 +1,4 @@
+import {crmValue} from '../../utils/crmLanguage';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BookOpen, 
@@ -131,7 +132,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
     { 
       id: 'chapter-4', 
       titleEn: '4. Level & Assessment Flags', 
-      titleZh: '4. Level状态与测评Flag判定', 
+      titleZh: '4. 中文水平状态与测评标签判定',
       icon: Award,
       keywords: ['level', 'state', 'zero', 'partial', 'known', 'assessment needed', 'skip assessment', 'hsk', 'diagnostic', '定级', '水平', '测评', '初学', '零基础', '标签']
     },
@@ -247,7 +248,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
           chapterId: ch.id,
           chapterTitle: lang === 'zh' ? ch.titleZh : ch.titleEn,
           snippet: matchedKw.length > 0 
-            ? `${t('Matched keywords', '关联关键词')}: ${matchedKw.slice(0, 3).join(', ')}`
+            ? t('Matched handbook section','匹配手册章节')
             : `${t('Direct Chapter Match', '直接匹配章节标题')}`,
           tag: t('Chapter', '章节')
         });
@@ -256,14 +257,14 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
 
     // Special dictionary fields index
     const fields = [
-      { name: 'buyingSignal', desc: 'Asked price / schedule / payment 购买信号' },
-      { name: 'slaDueTime', desc: 'First Response SLA timestamp 首响应倒计时' },
-      { name: 'nextFollowUpAt', desc: 'Scheduled appointment timestamp 约定回访' },
-      { name: 'touchCount', desc: 'Cumulative follow-up attempts 跟进次数' },
-      { name: 'levelState', desc: 'ZERO / PARTIAL / KNOWN 学术状态' },
-      { name: 'hookType', desc: 'HSK / Trial / Scholarship 获客诱饵' },
-      { name: 'connectStatus', desc: 'Connected / No Response 接通状态' },
-      { name: 'owner', desc: 'Sales A / B / B2B 归属顾问' }
+      { name: 'buyingSignal', desc: t('Asked price, schedule or payment','咨询价格、排期或付款') },
+      { name: 'slaDueTime', desc: t('First response timestamp','首响应截止时间') },
+      { name: 'nextFollowUpAt', desc: t('Scheduled follow-up timestamp','约定回访时间') },
+      { name: 'touchCount', desc: t('Cumulative follow-up count','累计跟进次数') },
+      { name: 'levelState', desc: t('Beginner / Needs assessment / Reported level','零基础／待测评／自报等级') },
+      { name: 'hookType', desc: t('Assessment, trial or scholarship acquisition hook','测评、试听或奖学金获客入口') },
+      { name: 'connectStatus', desc: t('Connected or no response','已接通或未接通') },
+      { name: 'owner', desc: t('Assigned staff member','负责员工') }
     ];
 
     fields.forEach(f => {
@@ -271,7 +272,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
         results.push({
           chapterId: 'chapter-8',
           chapterTitle: lang === 'zh' ? '第 8 章：标准数据字典' : '8. Standard Data Dictionary',
-          snippet: `Field: ${f.name} (${f.desc})`,
+          snippet: `${t('Field','字段')}：${f.name} (${f.desc})`,
           tag: t('Field', '字典字段')
         });
       }
@@ -417,9 +418,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 <h2 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   {t('CRM Operations Manual', 'CRM 业务与数据手册')}
                 </h2>
-                <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                  v2.3 · Enterprise Knowledge Base
-                </span>
+                <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>{t("v2.3 · CRM handbook","版本 2.3 · 客户管理手册")}</span>
               </div>
             </div>
             {/* Live Scroll Indicator */}
@@ -668,38 +667,38 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
         }`}>
           <div className="flex items-center gap-2 font-bold text-xs">
             <BookOpen className="w-4 h-4 text-amber-600" />
-            <span>{t('Core Concepts & Glossary Quick Reference', '核心专有名词与底层概念速查手册 (Glossary)')}</span>
+            <span>{t('Core Concepts & Glossary Quick Reference', "核心专有名词与底层概念速查手册 ")}</span>
           </div>
           <p className="text-[11px] leading-relaxed opacity-90">
             {t(
               'Before exploring the system mechanics, please familiarize yourself with these core terminology definitions used throughout UPER CRM:',
-              '在深入了解算法规则与作业 SOP 之前，建议先掌握本系统频繁使用的 6 大底层核心专有名词定义：'
+              "在深入了解算法规则与作业 操作规范 之前，建议先掌握本系统频繁使用的 6 大底层核心专有名词定义："
             )}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
             <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-white border-amber-200/60' : 'bg-slate-950 border-amber-900/40'}`}>
-              <div className="font-bold text-xs text-primary-600 dark:text-primary-400 mb-0.5">Tier (线索评级)</div>
-              <div className="text-[10.5px] opacity-80">{t('Commercial value & priority classification (Hot, Warm, Cold)', '商业价值与跟进紧迫度分级 (Hot/Warm/Cold)')}</div>
+              <div className="font-bold text-xs text-primary-600 dark:text-primary-400 mb-0.5">{t("Lead tier","线索评级")}</div>
+              <div className="text-[10.5px] opacity-80">{t('Commercial value & priority classification (Hot, Warm, Cold)', "商业价值与跟进紧迫度分级 (高、中、低意向)")}</div>
             </div>
             <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-white border-amber-200/60' : 'bg-slate-950 border-amber-900/40'}`}>
-              <div className="font-bold text-xs text-rose-600 dark:text-rose-400 mb-0.5">Buying Signal (购买信号)</div>
+              <div className="font-bold text-xs text-rose-600 dark:text-rose-400 mb-0.5">{t("Buying signal","购买信号")}</div>
               <div className="text-[10.5px] opacity-80">{t('Expressed intent like pricing, schedule, or enrollment', '客户主动释放的购买动机（如问学费、排期、分期）')}</div>
             </div>
             <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-white border-amber-200/60' : 'bg-slate-950 border-amber-900/40'}`}>
-              <div className="font-bold text-xs text-amber-600 dark:text-amber-400 mb-0.5">SLA (服务响应时效)</div>
+              <div className="font-bold text-xs text-amber-600 dark:text-amber-400 mb-0.5">{t("Response deadline","服务响应时限")}</div>
               <div className="text-[10.5px] opacity-80">{t('Mandatory time window for first outreach or follow-up', '硬性规定的首响应或回访时间倒计时红线')}</div>
             </div>
             <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-white border-amber-200/60' : 'bg-slate-950 border-amber-900/40'}`}>
-              <div className="font-bold text-xs text-indigo-600 dark:text-indigo-400 mb-0.5">Cadence (跟进时效节奏)</div>
+              <div className="font-bold text-xs text-indigo-600 dark:text-indigo-400 mb-0.5">{t("Follow-up cadence","跟进节奏")}</div>
               <div className="text-[10.5px] opacity-80">{t('Configurable outreach frequency & watchdog interval', '基于策略配置的跟进频率建议与看门狗频次')}</div>
             </div>
             <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-white border-amber-200/60' : 'bg-slate-950 border-amber-900/40'}`}>
-              <div className="font-bold text-xs text-purple-600 dark:text-purple-400 mb-0.5">Flag (风控与特征标签)</div>
+              <div className="font-bold text-xs text-purple-600 dark:text-purple-400 mb-0.5">{t("Risk and feature flags","风险与特征标签")}</div>
               <div className="text-[10.5px] opacity-80">{t('Special lead markers like Urgent, VIP, or Reactivated', '辅助决策的特殊特征标签（加急、VIP、复活潜客）')}</div>
             </div>
             <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-white border-amber-200/60' : 'bg-slate-950 border-amber-900/40'}`}>
-              <div className="font-bold text-xs text-emerald-600 dark:text-emerald-400 mb-0.5">Level State (学术状态)</div>
-              <div className="text-[10.5px] opacity-80">{t('Student HSK baseline: ZERO, KNOWN, or PARTIAL', '学员中文水平判定：零基础(ZERO)、已知(KNOWN)或需测评')}</div>
+              <div className="font-bold text-xs text-emerald-600 dark:text-emerald-400 mb-0.5">{t("Level status","学术状态")}</div>
+              <div className="text-[10.5px] opacity-80">{t('Student HSK baseline: ZERO, KNOWN, or PARTIAL', "学员中文水平判定：零基础(零基础)、已知(已知等级)或需测评")}</div>
             </div>
           </div>
         </div>
@@ -783,7 +782,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
             <p>
               {t(
                 'Prior to initiating outreach, consultants should review the marketing hook type and context to personalize their introductory conversation effectively:',
-                '顾问在发起首次沟通前，应当核实学员提交表单时所对应的内容诱饵（Hook Type）与渠道场景（Hook Context），以便切中核心关注点开展专业沟通：'
+                "顾问在发起首次沟通前，应当核实学员提交表单时所对应的内容诱饵与渠道场景，以便切中核心关注点开展专业沟通："
               )}
             </p>
 
@@ -791,7 +790,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
               {/* Hook Type */}
               <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
                 <h4 className="font-bold text-xs text-indigo-700 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
-                  <span>{t('🪝 Marketing Hook Types', '🪝 核心诱饵类型 (Hook Type)')}</span>
+                  <span>{t('🪝 Marketing Hook Types', "🪝 核心诱饵类型 ")}</span>
                 </h4>
                 <div className="space-y-1.5 text-[11px]">
                   <div><code>hsk_assessment</code>：{t('10-question placement test quiz with diagnostic score breakdown.', '10题水平自测诊断试卷，完成后期望获取详细能力分析；')}</div>
@@ -799,14 +798,14 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <div><code>scholarship_materials</code>：{t('Download comprehensive Tsinghua/Peking university scholarship application guide.', '申请赴华清北等知名高校奖学金申报指南；')}</div>
                   <div><code>webinar</code>：{t('Registration for career seminar on Chinese enterprise recruitment in Indonesia.', '报名中资在印尼高薪就业与商务华文公开课；')}</div>
                   <div><code>download_guide</code>：{t('Download beginner vocabulary and pronunciation reference whitepaper.', '下载零基础初学者华文常用词汇与语法速成手册；')}</div>
-                  <div><code>referral</code>：{t('Direct recommendation by enrolled alumni or partner schools.', '在读学员或合作院校推荐转入。')}</div>
+                  <div><code>{t("Referral","转介绍")}</code>：{t('Direct recommendation by enrolled alumni or partner schools.', '在读学员或合作院校推荐转入。')}</div>
                 </div>
               </div>
 
               {/* Hook Context */}
               <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
                 <h4 className="font-bold text-xs text-indigo-700 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
-                  <span>{t('📍 Acquisition Contexts', '📍 触点场景渠道 (Hook Context)')}</span>
+                  <span>{t('📍 Acquisition Contexts', "📍 触点场景渠道 ")}</span>
                 </h4>
                 <div className="space-y-1.5 text-[11px]">
                   <div><code>campus_career_talk</code>：{t('On-campus academic fairs and university career presentations (UI, Binus, Trisakti).', '印尼各大高校（UI、Binus、Trisakti等）校园宣讲会；')}</div>
@@ -988,7 +987,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
               <p className="text-[11px] leading-relaxed">
                 {t(
                   'Leads often express multiple buying signals over time (e.g. asking price first, then schedule, then installments). Uper CRM records all historical signals into an accumulating intent cloud (buyingSignals[]), automatically re-sorting and tailoring objection-handling scripts in the Sales Playbook to match each individual student profile.',
-                  '在跟进与互动深入过程中，学员往往会分阶段释放多重购买信号（如：先问学费、再问排期、最后问分期）。系统支持复合信号历史累加（buyingSignals[] 标签云），并在“转化攻坚”Tab 中实现千人千面的动态话术推荐与优先级智能排序。'
+                  "在跟进与互动深入过程中，学员往往会分阶段释放多重购买信号（如：先问学费、再问排期、最后问分期）。系统支持复合信号历史累加（buyingSignals[] 标签云），并在“转化攻坚”页面 中实现千人千面的动态话术推荐与优先级智能排序。"
                 )}
               </p>
             </div>
@@ -1007,12 +1006,12 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 </span>
                 <div>
                   <div className="font-bold text-rose-900 dark:text-rose-200 text-xs">
-                    {t('Buying Signal Override (Buying Signal ≠ None yet) ➔ Tier: Hot', '人工购买信号覆盖 (Buying Signal ≠ None yet) ➔ 一律判定为 Hot')}
+                    {t('Buying Signal Override (Buying Signal ≠ None yet) ➔ Tier: Hot', "人工购买信号覆盖 (存在明确购买信号) ➔ 一律判定为 高意向")}
                   </div>
                   <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                     {t(
                       'Triggered when customer inquiries specifically about tuition pricing, class schedules, installment payments, readiness to enroll, or indicates an exam plan within 3 months. Overrides all baseline classifications to Hot with highest urgency.',
-                      '当探测到咨询学费政策（Asked price）、班级排期（Asked schedule）、分期付款（Asked payment）、明确表达报读意向（Ready to enroll）或考期在3个月内时，具有最高优先级，强制判定为 S级 Hot。'
+                      "当探测到咨询学费政策（咨询价格）、班级排期（咨询排期）、分期付款（咨询付款）、明确表达报读意向（准备报名）或考期在3个月内时，具有最高优先级，强制判定为 S级 高意向。"
                     )}
                   </div>
                 </div>
@@ -1024,12 +1023,12 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 </span>
                 <div>
                   <div className="font-bold text-amber-900 dark:text-amber-200 text-xs">
-                    {t('Trial Attendance Milestone (Trial Attended) ➔ Tier: Hot', '试听完课里程碑达成 (Trial Attended) ➔ 一律直升 Hot')}
+                    {t('Trial Attendance Milestone (Trial Attended) ➔ Tier: Hot', "试听完课里程碑达成 (已出席试听) ➔ 一律直升 高意向")}
                   </div>
                   <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                     {t(
                       'When a prospective student completes a trial session, their intent reaches its peak conversion probability. System automatically promotes the lead to Hot to enforce immediate post-class consultation within 4 hours.',
-                      '学员出席并完成试听课程体验后，其时间投入度与真实意向达到峰值，系统无条件升为 Hot，进入完课后 4 小时内沟通促成正式签约的关键转化窗口期。'
+                      "学员出席并完成试听课程体验后，其时间投入度与真实意向达到峰值，系统无条件升为 高意向，进入完课后 4 小时内沟通促成正式签约的关键转化窗口期。"
                     )}
                   </div>
                 </div>
@@ -1041,12 +1040,12 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 </span>
                 <div>
                   <div className="font-bold text-purple-900 dark:text-purple-200 text-xs">
-                    {t('Institutional Profile (Current Status = Teacher or school staff) ➔ Tier: School', '机构身份优先 (Current Status = Teacher or school staff) ➔ 优先进入 School')}
+                    {t('Institutional Profile (Current Status = Teacher or school staff) ➔ Tier: School', "机构身份优先 (客户身份为教师或学校职员) ➔ 优先进入 院校合作")}
                   </div>
                   <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                     {t(
                       'Identified as international school curriculum contracting, teacher certification, or corporate group training. Routed directly to dedicated B2B sales management.',
-                      '判定为国际学校校内课程外包、师资认证培训或企业员工团体培训大宗方案，系统自动划归 School 类别并分派给 B2B 专属顾问。'
+                      "判定为国际学校校内课程外包、师资认证培训或企业员工团体培训大宗方案，系统自动划归 院校合作 类别并分派给 B2B 专属顾问。"
                     )}
                   </div>
                 </div>
@@ -1058,12 +1057,12 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 </span>
                 <div>
                   <div className="font-bold text-blue-900 dark:text-blue-200 text-xs">
-                    {t('Core Triad Baseline Matrix (Goal × Level State × City/Mode)', '核心三问打底基准模型 (Goal × Level State × City/Mode)')}
+                    {t('Core Triad Baseline Matrix (Goal × Level State × City/Mode)', "核心三问打底基准模型 (目标 × 水平状态 × 城市／授课模式)")}
                   </div>
                   <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                     {t(
                       'Strong Objectives (China Career, JV Employment, Scholarships, HSK Certification): KNOWN level qualifies as Hot; Jakarta domicile with offline preference qualifies as Warm-Offline; Non-Jakarta or Zoom preference qualifies as Warm-Online. Broad interest objectives default to Cold-Nurture.',
-                      '明确目标客群（赴华中资就业、知名大学留学、HSK认证考试）：现有基础明确（KNOWN）直升 Hot；居住于雅加达且意向线下授课归入 Warm-Offline；外岛或线上直播需求归入 Warm-Online。泛兴趣客群归入 Cold-Nurture。'
+                      "明确目标客群（赴华中资就业、知名大学留学、HSK认证考试）：现有基础明确（已知等级）直升 高意向；居住于雅加达且意向线下授课归入 中意向线下客户；外岛或线上直播需求归入 中意向线上客户。泛兴趣客群归入 培育池。"
                     )}
                   </div>
                 </div>
@@ -1080,7 +1079,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                     {t(
                       'When a Warm lead completes placement assessment or books a trial session, the system automatically advances their classification to Hot.',
-                      '原处于 Warm 级的潜客一旦完成测评测验生成成绩单，或成功锁定试听班级排期，系统自动晋升其评级至 Hot。'
+                      "原处于 中意向 级的潜客一旦完成测评测验生成成绩单，或成功锁定试听班级排期，系统自动晋升其评级至 高意向。"
                     )}
                   </div>
                 </div>
@@ -1092,12 +1091,12 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 </span>
                 <div>
                   <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    {t('Rollback Circuit Breaker (Connect Status = No Response & Touch Count ≥ 3) ➔ Cold-Nurture', '止损回滚熔断保护 (未接通且触达 ≥ 3 次) ➔ 降档至 Cold-Nurture')}
+                    {t('Rollback Circuit Breaker (Connect Status = No Response & Touch Count ≥ 3) ➔ Cold-Nurture', "止损回滚熔断保护 (未接通且触达 ≥ 3 次) ➔ 降档至 培育池")}
                   </div>
                   <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                     {t(
                       'To protect institutional brand equity and prevent customer complaints, leads with 3 consecutive unanswered attempts are demoted to Cold-Nurture and removed from daily urgent call queues.',
-                      '为维护机构教育品牌声誉并避免客户反感，连续 3 次外呼未接通的潜客自动降级至 Cold-Nurture，移出日常外呼队列并暂停催促。'
+                      "为维护机构教育品牌声誉并避免客户反感，连续 3 次外呼未接通的潜客自动降级至 培育池，移出日常外呼队列并暂停催促。"
                     )}
                   </div>
                 </div>
@@ -1139,9 +1138,9 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 </thead>
                 <tbody className={`divide-y ${isLight ? 'divide-slate-200 bg-white' : 'divide-slate-800 bg-slate-900'}`}>
                   <tr>
-                    <td className="p-2.5 font-bold">Complete beginner</td>
-                    <td className="p-2.5 font-mono text-slate-600">ZERO</td>
-                    <td className="p-2.5 font-bold text-slate-500">Skip Assessment</td>
+                    <td className="p-2.5 font-bold">{t("Complete beginner","零基础")}</td>
+                    <td className="p-2.5 font-mono text-slate-600">{t("Beginner","零基础")}</td>
+                    <td className="p-2.5 font-bold text-slate-500">{t("Skip assessment","无需测评")}</td>
                     <td className="p-2.5">
                       {t(
                         'Direct placement into basic phonetics / Pinyin foundation courses. Avoid quiz assessments to reduce initial friction for zero-base beginners.',
@@ -1150,9 +1149,9 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                     </td>
                   </tr>
                   <tr>
-                    <td className="p-2.5 font-bold">Beginner / Not sure</td>
-                    <td className="p-2.5 font-mono text-amber-600 font-bold">PARTIAL</td>
-                    <td className="p-2.5 font-bold text-amber-600">Assessment Needed</td>
+                    <td className="p-2.5 font-bold">{t("Beginner / Not sure","初学或等级不确定")}</td>
+                    <td className="p-2.5 font-mono text-amber-600 font-bold">{t("Assessment needed","待测评")}</td>
+                    <td className="p-2.5 font-bold text-amber-600">{t("Assessment needed","需要测评")}</td>
                     <td className="p-2.5">
                       {t(
                         'Diagnostic quiz required. Essential engagement vehicle. Dispatch test link, analyze vocabulary and grammar score report, and deliver targeted curriculum advice.',
@@ -1162,8 +1161,8 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   </tr>
                   <tr>
                     <td className="p-2.5 font-bold">HSK 1 / HSK 2 / HSK 3 / HSK 4+</td>
-                    <td className="p-2.5 font-mono text-emerald-600 font-bold">KNOWN</td>
-                    <td className="p-2.5 font-bold text-slate-500">Skip Assessment</td>
+                    <td className="p-2.5 font-mono text-emerald-600 font-bold">{t("Level reported","已自报等级")}</td>
+                    <td className="p-2.5 font-bold text-slate-500">{t("Skip assessment","无需测评")}</td>
                     <td className="p-2.5">
                       {t(
                         'Bypass testing. Verified official certification exists. Formulate accelerated course trajectory aimed at the next certification milestone.',
@@ -1227,7 +1226,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <td className="p-2.5 text-slate-500">
                     ⏱️ {t(
                       'First Response SLA active (Hot ≤3h, Warm ≤24h, Cold ≤48h). Non-business hours roll over to next morning 10:00.',
-                      '激活首响应 SLA（Hot ≤3h，Warm ≤24h，Cold ≤48h）；非营业时段顺延至次日 10:00。'
+                      "激活首响应 SLA（高意向 ≤3h，中意向 ≤24h，低意向 ≤48h）；非营业时段顺延至次日 10:00。"
                     )}
                   </td>
                 </tr>
@@ -1257,7 +1256,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <td className="p-2.5 text-slate-500">
                     ⏱️ {t(
                       'FRT archived. Specify next appointment date (nextFollowUpAt) or trigger 24h inactivity watchdog for Hot.',
-                      '首响应时效履约归档。必须登记预约下次沟通时间，否则 Hot 生源超 24h 触发停滞预警。'
+                      "首响应时效履约归档。必须登记预约下次沟通时间，否则 高意向 生源超 24h 触发停滞预警。"
                     )}
                   </td>
                 </tr>
@@ -1287,7 +1286,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <td className="p-2.5 text-slate-500">
                     ⏱️ {t(
                       'Cadence follow-up within 24 hours. Automatic score generation triggers R5 promotion to Hot.',
-                      '发送后 24 小时内跟进提醒；测验提交出分后系统自动执行 R5 规则升档至 Hot。'
+                      "发送后 24 小时内跟进提醒；测验提交出分后系统自动执行 R5 规则升档至 高意向。"
                     )}
                   </td>
                 </tr>
@@ -1365,7 +1364,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <td className="p-2.5">
                     {t(
                       'Student successfully attended and completed the trial experience class. Purchase intent reaches peak.',
-                      '学员已出席并完成试听课程体验，意向度与时间投入达峰值，系统无条件升至 Hot。'
+                      "学员已出席并完成试听课程体验，意向度与时间投入达峰值，系统无条件升至 高意向。"
                     )}
                   </td>
                   <td className="p-2.5 font-medium text-slate-700 dark:text-slate-200">
@@ -1468,24 +1467,24 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className={`p-4 rounded-xl border ${isLight ? 'bg-rose-50/50 border-rose-200' : 'bg-rose-950/20 border-rose-900'}`}>
                 <h4 className="font-bold text-xs text-rose-800 dark:text-rose-400 mb-1.5 flex items-center gap-1.5">
-                  <span>{t('⚡ Stage 1: First Response SLA (FRT)', '⚡ 阶段 1：首响应时效 (First Response SLA)')}</span>
+                  <span>{t('⚡ Stage 1: First Response SLA (FRT)', "⚡ 阶段 1：首响应时效 ")}</span>
                 </h4>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 mb-2">
                   {t(
                     'Active when lead is uncontacted (Touch Count = 0). Measures speed to lead according to Tier:',
-                    '学员刚入库、尚未联系（Touch = 0）时生效。根据客户 Tier 评级承诺响应窗口：'
+                    "学员刚入库、尚未联系（跟进次数为 0）时生效。根据客户 等级 评级承诺响应窗口："
                   )}
                 </p>
                 <ul className="space-y-1 text-[11px] list-disc list-inside">
-                  <li><b>Hot (Tier 1)</b>：{t('Default 3 Hours mandatory outreach window.', '缺省 3 小时 内必须完成首联。')}</li>
-                  <li><b>Warm (Tier 2/3)</b>：{t('Default 24 Hours outreach window.', '缺省 24 小时 响应。')}</li>
-                  <li><b>Cold / School</b>：{t('Default 48 Hours outreach window.', '缺省 48 小时 响应。')}</li>
+                  <li><b>{t("Hot (Tier 1)","高意向（等级 1）")}</b>：{t('Default 3 Hours mandatory outreach window.', '缺省 3 小时 内必须完成首联。')}</li>
+                  <li><b>{t("Warm (Tier 2/3)","中意向（等级 2／3）")}</b>：{t('Default 24 Hours outreach window.', '缺省 24 小时 响应。')}</li>
+                  <li><b>{t("Cold / School","培育池／院校")}</b>：{t('Default 48 Hours outreach window.', '缺省 48 小时 响应。')}</li>
                 </ul>
               </div>
 
               <div className={`p-4 rounded-xl border ${isLight ? 'bg-blue-50/50 border-blue-200' : 'bg-blue-950/20 border-blue-900'}`}>
                 <h4 className="font-bold text-xs text-blue-800 dark:text-blue-400 mb-1.5 flex items-center gap-1.5">
-                  <span>{t('📅 Stage 2: Scheduled Appointment Cadence', '📅 阶段 2：约定下次联系时钟 (Next Cadence)')}</span>
+                  <span>{t('📅 Stage 2: Scheduled Appointment Cadence', "📅 阶段 2：约定下次联系时钟 ")}</span>
                 </h4>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 mb-2">
                   {t(
@@ -1495,7 +1494,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 </p>
                 <ul className="space-y-1 text-[11px] list-disc list-inside">
                   <li><b>{t('Scheduled Follow-up', '有约定时间')}</b>：{t('Counts down to agreed appointment timestamp.', '精准倒计时至约定时间，超期才报警。')}</li>
-                  <li><b>{t('Inactivity Watchdog', '未设具体时间')}</b>：{t('Alerts after 24h/48h of inactivity.', '看门狗启动，Hot 超过 24h 自动提示需跟进。')}</li>
+                  <li><b>{t('Inactivity Watchdog', '未设具体时间')}</b>：{t('Alerts after 24h/48h of inactivity.', "看门狗启动，高意向 超过 24h 自动提示需跟进。")}</li>
                   <li><b>{t('Unanswered Call Retry', '未接通呼叫')}</b>：{t('Enforces 4-hour cooling interval before next dial.', '自动触发 4 小时冷却，避免同一天内密集呼叫。')}</li>
                 </ul>
               </div>
@@ -1558,7 +1557,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 {t('Following each communication, slide out the lead drawer and complete the following 3 fields:', '每次沟通完毕后，展开右侧跟进详情抽屉，必须完整填报以下 3 项关键字段：')}
               </p>
               <ol className="list-decimal list-inside space-y-1 text-[11px]">
-                <li><b>{t('Connect Status', '接通状态 (connectStatus)')}</b>：{t('Record Connected, No Response, or Wrong Number accurately.', '准确登记 Connected（已接通）、No Response（未接通）或 Wrong Number（号码有误）；')}</li>
+                <li><b>{t('Connect Status', '接通状态 (connectStatus)')}</b>：{t('Record Connected, No Response, or Wrong Number accurately.', "准确登记 已接通、未接通或号码有误；")}</li>
                 <li><b>{t('Scheduled Follow-up Date', '预约下次沟通时间 (nextFollowUpAt)')}</b>：{t('Specify date and time to drive the appointment countdown clock.', '如与客户达成后续沟通意向，必须选定精准预约时点，以驱动履约倒计时时钟；')}</li>
                 <li><b>{t('Next Action Memo', '下次回访待办内容 (nextAction)')}</b>：{t('State exact deliverable (e.g., Send weekend PIK class schedule).', '明确登记核心待办事项（如“发送周六PIK校区排期与试听指引”），实时在工作台看板展示。')}</li>
               </ol>
@@ -1646,7 +1645,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                     {dictSearch ? (
                       <>{t('Keyword:', '关键字:')} <b>"{dictSearch}"</b> · </>
                     ) : null}
-                    {t('Category:', '分类:')} <b>{dictCategory === 'all' ? t('All', '全部') : dictCategory}</b> · {
+                    {t('Category:', '分类:')} <b>{dictCategory === 'all' ? t('All', '全部') : crmValue(dictCategory,lang)}</b> · {
                       (() => {
                         const q = dictSearch.trim().toLowerCase();
                         const rawSections = [
@@ -1670,8 +1669,8 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                               { name: 'email', type: 'string', format: 'user@domain.com', defEn: 'Student contact email address; secondary index.', defZh: '电子邮箱地址，作为第二校验合并索引。' },
                               { name: 'parentContact', type: 'string (optional)', format: '+62 8xx-xxxx-xxxx', defEn: 'Parent or legal guardian contact for minor or high-school applicants.', defZh: '未成年或中学生申请人的家长联络方式。' },
                               { name: 'currentStatus', type: 'CurrentStatusType', format: 'Working professional / Fresh graduate / University student / High school student / Teacher or school staff / Other', defEn: 'Demographic profile segment; triggers R3 School tiering rule if institutional.', defZh: '学员社会身份画像，若为教职工或学校人员则触发 R3 机构分级。' },
-                              { name: 'city', type: 'CityType', format: 'Jakarta / Other', defEn: 'Geographic territory (Jakarta Jabodetabek vs outer island regions).', defZh: '所在城市地理分类（雅加达大都会区 vs 印尼其他省市外岛）。' },
-                              { name: 'mode', type: 'ModeType', format: 'Offline / Online / Not sure', defEn: 'Preferred instruction mode (PIK physical campus vs Zoom interactive live).', defZh: '意向授课交付模式（PIK校区线下实体面授 vs Zoom远程互动直播）。' }
+                              { name: 'city', type: 'CityType', format: 'Jakarta / Other', defEn: 'Geographic territory (Jakarta Jabodetabek vs outer island regions).', defZh: '所在城市地理分类（雅加达大都会区与印尼其他省市外岛）。' },
+                              { name: 'mode', type: 'ModeType', format: 'Offline / Online / Not sure', defEn: 'Preferred instruction mode (PIK physical campus vs Zoom interactive live).', defZh: '意向授课交付模式（PIK校区线下实体面授与Zoom远程互动直播）。' }
                             ]
                           },
                           {
@@ -1706,7 +1705,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                               { name: 'buyingSignal', type: 'BuyingSignalType', format: 'Asked price / Asked schedule / Asked payment / Ready to enroll / None yet', defEn: 'Detected buying intent signal; triggers R1 Hot upgrade.', defZh: '交互过程中捕获的核心商业购买信号，触发 R1 升档。' },
                               { name: 'buyingSignals', type: 'BuyingSignalType[] (opt)', format: 'Array of BuyingSignalType', defEn: 'Historical record of all detected buying signals across touches.', defZh: '多轮沟通中捕获的历史商业购买信号汇总。' },
                               { name: 'touchCount', type: 'number', format: '0, 1, 2, 3...', defEn: 'Cumulative contact attempts; ≥3 unanswered attempts triggers R6 demotion.', defZh: '累计跟进次数，连续 3 次未接通触发 R6 熔断保护。' },
-                              { name: 'owner', type: 'string', format: 'Sales A / Sales B / B2B owner / Online Ops', defEn: 'Responsible course consultant or account executive.', defZh: '当前归属的课程顾问或业务责任人。' },
+                              { name: 'owner', type: 'string', format: t('Staff account ID; historical values preserved', '员工账号标识；保留历史归属值'), defEn: 'Responsible course consultant or account executive.', defZh: '当前归属的课程顾问或业务责任人。' },
                               { name: 'nextAction', type: 'string (optional)', format: 'text', defEn: 'Specific actionable task description displayed on the workbench.', defZh: '顾问填写的下次回访具体待办备忘事项说明。' },
                               { name: 'nextFollowUpAt', type: 'string (ISO 8601)', format: 'YYYY-MM-DDTHH:mm:ssZ', defEn: 'Scheduled callback timestamp for Stage 2 cadence countdown clock.', defZh: '约定下次回访时间戳，驱动履约倒计时时钟。' },
                               { name: 'reminderSent', type: 'boolean (optional)', format: 'true / false', defEn: 'Whether 4-hour pre-class reminder message has been dispatched.', defZh: '开课前 4 小时就绪提醒发送标记。' },
@@ -1764,7 +1763,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 dotColor: 'bg-blue-500',
                 textColor: 'text-blue-600 dark:text-blue-400',
                 titleEn: '1. Ingestion Touchpoints & Marketing Channel Attributes',
-                titleZh: '1. 渠道触点与营销来源实体 (Ingestion & Source Attributes)',
+                titleZh: '1. 渠道触点与营销来源实体',
                 fields: [
                   { name: 'id', type: 'string', format: 'UPER-YYYYMMDD-XXX', defEn: 'Global unique lead record identifier; sequential business primary key.', defZh: '线索全局唯一业务流水编号，以系统日期与序列号生成，构成主索引。' },
                   { name: 'entryPoint', type: 'string', format: '/assessment, /trial, /contact, etc.', defEn: 'Initial landing URL path where the inquiry originated.', defZh: '线索初次接入的门户网站落地页路径。' },
@@ -1780,15 +1779,15 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 dotColor: 'bg-indigo-500',
                 textColor: 'text-indigo-600 dark:text-indigo-400',
                 titleEn: '2. Student Profile & Demographic Attributes',
-                titleZh: '2. 学员客户基础档案实体 (Student Profile & Demographics)',
+                titleZh: '2. 学员客户基础档案实体',
                 fields: [
                   { name: 'fullName', type: 'string', format: 'text', defEn: 'Student full legal name or preferred honorific.', defZh: '学员真实姓名或常用称谓。' },
                   { name: 'whatsapp', type: 'string', format: '+62 812-xxxx-xxxx', defEn: 'Standardized WhatsApp contact number; primary deduplication key.', defZh: '国际标准格式 WhatsApp 号码，系统唯一去重主键与一键外呼依据。' },
                   { name: 'email', type: 'string', format: 'user@domain.com', defEn: 'Student contact email address; secondary index.', defZh: '电子邮箱地址，作为第二校验合并索引。' },
                   { name: 'parentContact', type: 'string (optional)', format: '+62 8xx-xxxx-xxxx', defEn: 'Parent or legal guardian contact for minor or high-school applicants.', defZh: '未成年或中学生申请人的家长联络方式。' },
                   { name: 'currentStatus', type: 'CurrentStatusType', format: 'Working professional / Fresh graduate / University student / High school student / Teacher or school staff / Other', defEn: 'Demographic profile segment; triggers R3 School tiering rule if institutional.', defZh: '学员社会身份画像，若为教职工或学校人员则触发 R3 机构分级。' },
-                  { name: 'city', type: 'CityType', format: 'Jakarta / Other', defEn: 'Geographic territory (Jakarta Jabodetabek vs outer island regions).', defZh: '所在城市地理分类（雅加达大都会区 vs 印尼其他省市外岛）。' },
-                  { name: 'mode', type: 'ModeType', format: 'Offline / Online / Not sure', defEn: 'Preferred instruction mode (PIK physical campus vs Zoom interactive live).', defZh: '意向授课交付模式（PIK校区线下实体面授 vs Zoom远程互动直播）。' }
+                  { name: 'city', type: 'CityType', format: 'Jakarta / Other', defEn: 'Geographic territory (Jakarta Jabodetabek vs outer island regions).', defZh: '所在城市地理分类（雅加达大都会区与印尼其他省市外岛）。' },
+                  { name: 'mode', type: 'ModeType', format: 'Offline / Online / Not sure', defEn: 'Preferred instruction mode (PIK physical campus vs Zoom interactive live).', defZh: '意向授课交付模式（PIK校区线下实体面授与Zoom远程互动直播）。' }
                 ]
               },
               {
@@ -1796,7 +1795,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 dotColor: 'bg-amber-500',
                 textColor: 'text-amber-600 dark:text-amber-400',
                 titleEn: '3. Academic Intent & Placement Diagnostic Attributes',
-                titleZh: '3. 意向诊断与学术指标 (Academic Intent & Diagnostics)',
+                titleZh: '3. 意向诊断与学术指标',
                 fields: [
                   { name: 'goal', type: 'GoalType', format: 'Work in China / Work at JV / Study in China / HSK certification / Improve skills / Other', defEn: 'Primary learning objective driving R4 baseline tier deduction.', defZh: '核心学习目标诉求，区分明确考证就业需求与泛兴趣需求。' },
                   { name: 'goals', type: 'GoalType[] (optional)', format: 'Array of GoalType', defEn: 'Collection of multiple selected academic objectives.', defZh: '多选学习目标集合，支持多重意向学员全面画像。' },
@@ -1816,7 +1815,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 dotColor: 'bg-emerald-500',
                 textColor: 'text-emerald-600 dark:text-emerald-400',
                 titleEn: '4. Qualification Tiers, Flags & Cadence Governance',
-                titleZh: '4. 评级推演、行为标签与履约管控 (Tiers, Flags & Cadence)',
+                titleZh: '4. 评级推演、行为标签与履约管控',
                 fields: [
                   { name: 'tier', type: 'TierType', format: 'Hot / Warm-Offline / Warm-Online / School / Cold-Nurture', defEn: 'Current active lead qualification tier driving SLA priorities.', defZh: '当前生效的客户商业优先级分层评级，驱动首响应时效窗口。' },
                   { name: 'tierPredicted', type: 'TierType', format: 'Hot / Warm-Offline / Warm-Online / School / Cold-Nurture', defEn: 'Initial qualification tier predicted by the R1~R6 rule engine.', defZh: '算法规则链初次计算给出的系统推荐评级。' },
@@ -1831,7 +1830,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   { name: 'buyingSignal', type: 'BuyingSignalType', format: 'Asked price / Asked schedule / Asked payment / Ready to enroll / None yet', defEn: 'Detected buying intent signal; triggers R1 Hot upgrade.', defZh: '交互过程中捕获的核心商业购买信号，触发 R1 升档。' },
                   { name: 'buyingSignals', type: 'BuyingSignalType[] (opt)', format: 'Array of BuyingSignalType', defEn: 'Historical record of all detected buying signals across touches.', defZh: '多轮沟通中捕获的历史商业购买信号汇总。' },
                   { name: 'touchCount', type: 'number', format: '0, 1, 2, 3...', defEn: 'Cumulative contact attempts; ≥3 unanswered attempts triggers R6 demotion.', defZh: '累计跟进次数，连续 3 次未接通触发 R6 熔断保护。' },
-                  { name: 'owner', type: 'string', format: 'Sales A / Sales B / B2B owner / Online Ops', defEn: 'Responsible course consultant or account executive.', defZh: '当前归属的课程顾问或业务责任人。' },
+                  { name: 'owner', type: 'string', format: t('Staff account ID; historical values preserved', '员工账号标识；保留历史归属值'), defEn: 'Responsible course consultant or account executive.', defZh: '当前归属的课程顾问或业务责任人。' },
                   { name: 'nextAction', type: 'string (optional)', format: 'text', defEn: 'Specific actionable task description displayed on the workbench.', defZh: '顾问填写的下次回访具体待办备忘事项说明。' },
                   { name: 'nextFollowUpAt', type: 'string (ISO 8601)', format: 'YYYY-MM-DDTHH:mm:ssZ', defEn: 'Scheduled callback timestamp for Stage 2 cadence countdown clock.', defZh: '约定下次回访时间戳，驱动履约倒计时时钟。' },
                   { name: 'reminderSent', type: 'boolean (optional)', format: 'true / false', defEn: 'Whether 4-hour pre-class reminder message has been dispatched.', defZh: '开课前 4 小时就绪提醒发送标记。' },
@@ -1843,7 +1842,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 dotColor: 'bg-rose-500',
                 textColor: 'text-rose-600 dark:text-rose-400',
                 titleEn: '5. Business Outcomes, Follow-up Logs & System Metadata',
-                titleZh: '5. 业务转化结果、回访工单明细与系统元数据 (Outcomes & Logs)',
+                titleZh: '5. 业务转化结果、回访工单明细与系统元数据',
                 fields: [
                   { name: 'outcome', type: 'OutcomeType (optional)', format: 'Enrolled / Paid / Hold / Lost', defEn: 'Final commercial conversion conclusion.', defZh: '最终业务成单或终止状态。' },
                   { name: 'enrolledClass', type: 'string (optional)', format: 'text', defEn: 'Official course or cohort identifier upon confirmed enrollment.', defZh: '正式注册报读的班级代码与课程规格。' },
@@ -1991,7 +1990,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 id: 'faq-1',
                 qEn: 'Q1: Why does a lead show an overdue alert even after initial contact?',
                 qZh: 'Q1：为什么在完成初次沟通后，系统界面仍然显示超时预警？',
-                tag: 'SLA & 预约',
+                tag: t('Response deadlines and appointments', '响应时限与预约'),
                 ansEn: 'Explanation: Please verify that you recorded a Scheduled Follow-up Date (nextFollowUpAt) in the lead drawer. If you spoke with the student and agreed to reconnect tomorrow but did not set a scheduled timestamp, the system defaults to the inactivity watchdog rule (24h alert for Hot leads). Specifying the appointment date transitions the lead to an active appointment countdown.',
                 ansZh: '解答：请确认顾问是否在跟进抽屉中完整登记了“预约下次沟通时间（nextFollowUpAt）”。若顾问已与学员完成通话并约定后续再访，但未在记录中选定具体预约时间戳，系统因缺少履约目标时间，超出时限后将自动触发停滞看门狗预警。顾问只需在跟进抽屉中选定预约时点并保存，系统即自动转入准确的预约履约倒计时。'
               },
@@ -1999,7 +1998,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 id: 'faq-2',
                 qEn: 'Q2: How are inquiries submitted late at night (e.g., 23:00 WIB) evaluated?',
                 qZh: 'Q2：晚间非营业时段（如 23:00 WIB）提交的生源，次日是否会计入超时考核？',
-                tag: '营业时段',
+                tag: t('Working hours', '营业时段'),
                 ansEn: 'Explanation: The system incorporates operating business hours (09:00 ~ 20:00 WIB). Inquiries arriving outside these hours automatically enter grace period protection, extending first response compliance to 10:00 AM the following morning without impacting consultant performance metrics.',
                 ansZh: '解答：系统内置标准营业时间（09:00 ~ 20:00 WIB）。非营业时段进来的表单自动获得免打扰宽限保护，只要在次日上午 10:00 前完成首访沟通即为完全合规，不影响顾问的考勤与履约率统计。'
               },
@@ -2007,7 +2006,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 id: 'faq-3',
                 qEn: 'Q3: How to open exported CSV files in Excel or spreadsheet software without encoding issues?',
                 qZh: 'Q3：导出的 CSV 文件如何在各类表格软件中正常打开且避免字符编码异常？',
-                tag: '数据导出',
+                tag: t('Data export', '数据导出'),
                 ansEn: 'Explanation: The CSV export utilizes standard UTF-8 with BOM encoding. When opened in Microsoft Excel, Apple Numbers, or cloud spreadsheets, both Indonesian and Chinese characters render cleanly without character corruption.',
                 ansZh: '解答：系统导出的 CSV 采用国际标准 UTF-8 带 BOM 编码。直接在 Microsoft Excel、Apple Numbers 或各类在线云端表格中打开，印尼语和中文字符均可清晰呈现，杜绝乱码。'
               },
@@ -2015,17 +2014,17 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 id: 'faq-4',
                 qEn: 'Q4: How does the R6 circuit breaker demotion activate and how to revive dormant leads?',
                 qZh: 'Q4：R6 熔断降档机制是如何触发的？流失或未接通潜客如何重新激活？',
-                tag: '算法熔断',
+                tag: t('Retry limits', '算法熔断'),
                 ansEn: 'Explanation: When an advisor records 3 consecutive "No Response" outreach attempts without successful engagement, the system automatically triggers rule R6, moving the customer to Cold-Nurture and pausing daily call alarms to prevent annoyance. If the student submits a new inquiry form, re-takes the quiz diagnostic, or message WhatsApp, the system automatically tags them as a Revived Lead and starts an urgent 30-minute response window.',
-                ansZh: '解答：当顾问连续 3 次外呼触达均标记为“未接通 (No Response)”且无双向建联时，系统自动执行 R6 熔断规则，将其降级至 Cold-Nurture 并移出日常紧急外呼队列。若该学员后续在官网重新提交表单、重新参加测评或通过 WhatsApp 主动留言，系统将自动标记为“复活潜客”，并启动高优先级的 30 分钟首响应窗口。'
+                ansZh: '解答：当顾问连续 3 次外呼触达均标记为“未接通”且无双向建联时，系统自动执行 R6 熔断规则，将其降级至培育池 并移出日常紧急外呼队列。若该学员后续在官网重新提交表单、重新参加测评或通过 WhatsApp 主动留言，系统将自动标记为“复活潜客”，并启动高优先级的 30 分钟首响应窗口。'
               },
               {
                 id: 'faq-5',
                 qEn: 'Q5: How can a lead be reassigned to a different course consultant or B2B specialist?',
                 qZh: 'Q5：如何将线索快速流转分派给其他学术顾问或 B2B 大宗负责人？',
-                tag: '线索流转',
-                ansEn: 'Explanation: In both the Standard View and Expanded View tables, the last column displays a dedicated Attribution Advisor (Owner) selector. Advisors or managers can directly select "Sales A", "Sales B", "B2B owner", or "Online Ops" from the dropdown. Alternatively, click any row to open the Follow-up Drawer and update the Advisor field in the Overview tab with immediate real-time sync.',
-                ansZh: '解答：在工作台的“标准 9 列视图”和“宽表 17 列视图”中，最后一列均设有独立的“归属顾问 (Owner)”快捷下拉选框。顾问或管理人员可直接将责任人切换为 Sales A、Sales B、B2B owner 或 Online Ops。此外，也可点击任意行打开侧边抽屉，在基本信息中修改顾问归属，修改即刻全系统实时同步。'
+                tag: t('Lead assignment', '线索流转'),
+                ansEn: 'CRM Leaders can assign leads to an active sales account using the owner selector in the list or lead drawer. Sales staff can see their own and unassigned leads, and may only claim an unassigned lead for themselves. They cannot transfer their leads to another person. Staff names appear exactly as entered; role labels follow the interface language.',
+                ansZh: '解答：CRM 管理者可在列表或客户抽屉的负责人选框中，将客户分配给有效的销售账号。销售人员只能查看自己的客户和未分配客户，并只能将未分配客户认领到自己名下，不能转交给其他人员。员工姓名始终按原输入显示，角色标签随界面语言切换。'
               }
             ].map(faq => {
               const isExpanded = expandedFaqIds.includes(faq.id);
@@ -2150,7 +2149,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-bold text-[11px] text-rose-700 dark:text-rose-400">🔥 {t('Template 1: Tuition & Schedule Inquiry', '范本 1：学费与排期咨询沟通')}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 font-bold">HSK / Ready</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 font-bold">{t("HSK course advice","汉语课程建议")}</span>
                     </div>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono leading-relaxed bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-800 mb-3 select-all">
                       {`Halo Kak${studentNameVar ? ` ${studentNameVar.trim()}` : ''}! Saya konsultan dari UPER Education. Terima kasih telah menghubungi kami. Terkait rencana belajar Mandarin & info biaya/jadwal kelas akselerasi, boleh tahu saat ini Kakak sudah pernah belajar Mandarin sebelumnya atau dari dasar (nol)? 😊`}
@@ -2187,7 +2186,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-bold text-[11px] text-amber-700 dark:text-amber-400">🏫 {t('Template 2: PIK Campus Visit Invitation', '范本 2：雅加达 PIK 校区面访邀约')}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 font-bold">Offline PIK</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 font-bold">{t("PIK campus visit","PIK 校区面谈")}</span>
                     </div>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono leading-relaxed bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-800 mb-3 select-all">
                       {`Halo Kak${studentNameVar ? ` ${studentNameVar.trim()}` : ''}! Kami melihat Kakak berdomisili di area Jabodetabek. Kampus UPER berlokasi di PIK, Jakarta Utara. Kami mengundang Kakak untuk konsultasi tatap muka & trial class gratis di kampus kami pada hari Sabtu ini jam 10:00 WIB. Apakah jadwal tersebut cocok? 🏫`}
@@ -2224,7 +2223,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-bold text-[11px] text-blue-700 dark:text-blue-400">📝 {t('Template 3: Placement Quiz Diagnostic Advice', '范本 3：测评出分后学习规划建议')}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 font-bold">HSK Diagnostic</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 font-bold">{t("HSK assessment","汉语水平测评")}</span>
                     </div>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono leading-relaxed bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-800 mb-3 select-all">
                       {`Halo Kak${studentNameVar ? ` ${studentNameVar.trim()}` : ''}! Hasil tes asesmen HSK Kakak di UPER sudah keluar. Tim akademik kami telah menganalisis skor Kakak dan menyiapkan silabus rekomendasi yang paling efisien untuk mencapai target HSK dalam 3 bulan. Kapan Kakak ada waktu luang 5 menit via telepon? 📚`}
@@ -2261,7 +2260,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400">⏰ {t('Template 4: Pre-Class Milestone Reminder', '范本 4：开课前 4 小时就绪提醒')}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold">Milestone</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold">{t("Milestone","里程碑")}</span>
                     </div>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono leading-relaxed bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-800 mb-3 select-all">
                       {`Pengingat: Halo Kak${studentNameVar ? ` ${studentNameVar.trim()}` : ''}! Kelas trial Mandarin Kakak di UPER akan dimulai 4 jam lagi. Berikut link Zoom & passcode (atau lokasi Google Maps Kampus PIK). Mohon bergabung 5 menit lebih awal ya. Sampai jumpa di kelas! 🎓`}
@@ -2298,7 +2297,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-bold text-[11px] text-purple-700 dark:text-purple-400">✨ {t('Template 5: Dormant / Lost Lead Reactivation', '范本 5：沉睡潜客福利唤醒')}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 font-bold">Cold Nurture</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 font-bold">{t("Cold nurture","培育池")}</span>
                     </div>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono leading-relaxed bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-800 mb-3 select-all">
                       {`Halo Kak${studentNameVar ? ` ${studentNameVar.trim()}` : ''}! UPER Education minggu ini sedang ada program beasiswa potongan biaya kelas akselerasi HSK & materi persiapan studi ke Tiongkok terbaru. Apakah Kakak masih tertarik untuk meningkatkan kemampuan Mandarin tahun ini? Kami kirimkan info lengkapnya ya! 🎁`}
@@ -2391,7 +2390,7 @@ export const CrmUserGuide: React.FC<CrmUserGuideProps> = ({ isLight, lang, onNav
                 <div className={`p-3.5 rounded-xl border space-y-1.5 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
                   <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <span>⚙️</span>
-                    <span>{t('3. RevOps Protocol Automation Engine', '3. 营收运营规则自动化 (RevOps)')}</span>
+                    <span>{t('3. RevOps Protocol Automation Engine', "3. 营收运营规则自动化 (营收运营)")}</span>
                   </div>
                   <p className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                     {t(

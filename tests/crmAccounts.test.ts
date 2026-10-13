@@ -31,6 +31,11 @@ if(process.env.CRM_ACCOUNTS_TEST_DATABASE_URL){
   for(const [id,owner] of [['account-a','Fadhil'],['account-b','Zainul'],['account-unassigned',null],['account-legacy','Old Sales']]){await pool.query('INSERT INTO portal_leads(id,profile) VALUES($1,$2)',[id,{id,fullName:'TEST '+id,owner,team:'sales',tier:'Hot',currentStage:'New',phone:'00000000',entryPoint:'standalone_chat',slaDueTime:due,followUpLogs:[]}]);await pool.query("INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES($1,$2,'new_lead',$3,$4)",['task-'+id,id,owner,due]);}
   await initializeLocalAccounts();assert.equal((await pool.query("SELECT profile->>'owner' owner FROM portal_leads WHERE id='account-legacy'")).rows[0].owner,'Old Sales');
  });
+ await t.test('all CRM Leaders including dual-role Tester see every owner and team',async()=>{
+  await pool.query("UPDATE portal_leads SET profile=jsonb_set(profile,'{team}','\"other-team\"') WHERE id='account-legacy'");
+  try { for(const name of ['Suki','Robert','Tester']) {const r=await request('/api/crm/leads',cookies[name]);assert.equal(r.status,200);assert.equal(r.data.dataScope,'all');assert.deepEqual(r.data.leads.map((l:any)=>l.id).sort(),['account-a','account-b','account-legacy','account-unassigned']);for(const id of ['account-a','account-b','account-legacy','account-unassigned'])assert.equal((await request('/api/crm/leads/'+id,cookies[name])).status,200);}}
+  finally {await pool.query("UPDATE portal_leads SET profile=jsonb_set(profile,'{team}','\"sales\"') WHERE id='account-legacy'");}
+ });
  await t.test('Sales sees own and unassigned leads; foreign access, export and settings are denied',async()=>{
   const r=await request('/api/crm/leads',cookies.Fadhil);assert.deepEqual(r.data.leads.map((l:any)=>l.id).sort(),['account-a','account-unassigned']);assert.equal((await request('/api/crm/leads',cookies.Suki)).data.total,4);
   for(const suffix of ['', '/conversations','/tasks'])assert.equal((await request('/api/crm/leads/account-b'+suffix,cookies.Fadhil)).status,404);

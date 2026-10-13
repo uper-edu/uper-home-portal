@@ -1,3 +1,4 @@
+import {crmValue,crmLocale} from '../utils/crmLanguage';
 import type { CrmLeadRecord } from "../types/crmLead";
 export function LeadActivity({
   lead,
@@ -84,7 +85,7 @@ export function LeadPendingAction({
           ? "历史待办待确认 · "
           : "Historical task pending review · "
         : ""}
-      {label} · {new Date(task.dueAt).toLocaleString()}
+      {label} · {new Date(task.dueAt).toLocaleString(crmLocale(lang))}
       <span className="block">
         {task.ownerId || (lang === "zh" ? "待分配" : "Unassigned")}
       </span>

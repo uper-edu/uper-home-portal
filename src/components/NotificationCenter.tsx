@@ -1,3 +1,4 @@
+import {crmValue,crmError,crmDeliveryResult} from '../utils/crmLanguage';
 import SearchableChoices from "./SearchableChoices";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -174,6 +175,7 @@ export default function NotificationCenter({
     states: [],
     teams: [],
   });
+  useEffect(()=>setNotice(''),[lang]);
   const [routing, setRouting] = useState<any>(null);
   const [globalCalendar, setGlobalCalendar] = useState({
     timezone: "Asia/Jakarta",
@@ -245,7 +247,7 @@ export default function NotificationCenter({
       ({
         simulation: t("模拟模式 · 不真实发送", "Simulation · no live delivery"),
         missing_webhook: t(
-          "未连接 · 缺少 Webhook",
+          "未连接 · 缺少 机器人连接",
           "Not connected · missing Webhook",
         ),
         missing_signing_secret: t(
@@ -393,7 +395,7 @@ export default function NotificationCenter({
           if (!config.secretRef?.trim())
             throw Error(
               t(
-                "真实发送需要 Webhook 配置引用",
+                "真实发送需要 机器人连接 配置引用",
                 "Live delivery requires a Webhook reference",
               ),
             );
@@ -483,7 +485,7 @@ export default function NotificationCenter({
             </h3>
             <p className={`text-xs mt-1 ${muted}`}>
               {t(
-                "配置事件、收件人与发送时间；客户跟进仍在 Leads 列表处理。通知策略和渠道分别使用本区域的保存按钮。",
+                "配置事件、收件人与发送时间；客户跟进仍在 客户列表处理。通知策略和渠道分别使用本区域的保存按钮。",
                 "Configure events, recipients and delivery timing. Handle follow-ups in Leads. Save notification policies and channels using the buttons in this section.",
               )}
             </p>
@@ -552,7 +554,7 @@ export default function NotificationCenter({
                     "此账号没有通知管理权限，请联系管理员。",
                     "This account has no notification management permission.",
                   )
-                : error}
+                : crmError(error,lang)}
             </p>
           )}
           {notice && (
@@ -574,7 +576,7 @@ export default function NotificationCenter({
                       )
                     : tab === "notification-channels"
                       ? t(
-                          "站内提醒显示在 Leads。Lark 用于群通知；Email / SMS 尚未接入。",
+                          "站内提醒显示在客户列表。Lark 用于群通知；邮件／短信 尚未接入。",
                           "In-app reminders appear in Leads. Lark sends group notifications; Email / SMS are not connected.",
                         )
                       : tab === "notification-jobs"
@@ -613,13 +615,13 @@ export default function NotificationCenter({
                   </h4>
                   <p>
                     {t(
-                      "站内客户通知默认通知有效 Owner；未分配或 Owner 无效时通知有权处理该客户团队的 CRM Leader。只改变收件人，不修改客户归属。",
+                      "站内客户通知默认通知有效 负责人；未分配或 负责人 无效时通知有权处理该客户团队的 CRM 管理者。只改变收件人，不修改客户归属。",
                       "In-app lead notifications go to a valid Owner; otherwise to authorized CRM Leaders for that lead team. Routing does not assign ownership.",
                     )}
                   </p>
                   <p className={muted}>
                     {t(
-                      "CRM Leader 来自可信平台角色及权限，不把所有管理员当作 Leader。Lark 仍发往策略指定群。明确团队/主管策略及运营异常、每日汇总保留原目标。找不到接收者时记录路由异常。",
+                      "CRM 管理者 来自可信平台角色及权限，不把所有管理员当作 管理者。Lark 仍发往策略指定群。明确团队/主管策略及运营异常、每日汇总保留原目标。找不到接收者时记录路由异常。",
                       "CRM Leaders come from trusted roles and permissions, not administrator status. Lark keeps its configured group destination. Explicit team/supervisor policies, operational incidents and summaries retain their targets. Missing recipients produce a routing incident.",
                     )}
                   </p>
@@ -628,7 +630,7 @@ export default function NotificationCenter({
                     {routing.identityMode === "local" ? (lang === "zh" ? "本地员工账号" : "Local staff accounts") : routing.identityMode === "mock"
                       ? t("本地模拟", "Local mock")
                       : t("平台", "Platform")}{" "}
-                    · {t("有效 CRM Leader", "Eligible CRM Leaders")}：
+                    · {t("有效 CRM 管理者", "Eligible CRM Leaders")}：
                     {routing.leaders.map((e: any) => e.id).join(", ") ||
                       t("未配置", "None configured")}
                   </p>
@@ -874,7 +876,7 @@ export default function NotificationCenter({
                                     }
                                   />
                                   {c === "inapp"
-                                    ? t("Leads 站内提醒", "Leads reminder")
+                                    ? t("客户列表站内提醒", "Leads reminder")
                                     : "Lark"}
                                 </label>
                               ))}
@@ -1238,7 +1240,7 @@ export default function NotificationCenter({
                                           name: "TEST 客户",
                                           owner: "TEST 顾问",
                                           due: t(
-                                            "TEST 截止时间",
+                                            "测试截止时间",
                                             "TEST deadline",
                                           ),
                                         }) as Record<string, string>
@@ -1417,11 +1419,11 @@ export default function NotificationCenter({
                           >
                             {channel.mode === "simulation"
                               ? t(
-                                  "只生成模拟发送记录，不向 Lark 发消息，无需 Webhook。已有连接信息保留，但在模拟模式中不使用。",
+                                  "只生成模拟发送记录，不向 Lark 发消息，无需 机器人连接。已有连接信息保留，但在模拟模式中不使用。",
                                   "Records simulated deliveries only. No messages sent to Lark; no Webhook required. Existing connection settings are retained but unused.",
                                 )
                               : t(
-                                  "将向 Webhook 对应的群发送。切换模式影响引用此渠道的待发任务；保存配置本身不发送测试消息。",
+                                  "将向 机器人连接 对应的群发送。切换模式影响引用此渠道的待发任务；保存配置本身不发送测试消息。",
                                   "Sends to the group identified by the Webhook. Mode changes affect pending jobs. Saving does not send a test message.",
                                 )}
                           </p>
@@ -1433,13 +1435,13 @@ export default function NotificationCenter({
                             <>
                               {text(
                                 t(
-                                  "Webhook 配置引用（必填）",
+                                  "机器人连接 配置引用（必填）",
                                   "Webhook configuration reference (required)",
                                 ),
                                 channel.secretRef || "",
                                 (v) => setChannel({ ...channel, secretRef: v }),
                                 t(
-                                  "填写服务端环境变量名，例如 LARK_GROUP_CRM。变量中的 Webhook URL 决定目标群；不要在此填写 URL 或密钥。",
+                                  "填写服务端环境变量名，例如 LARK_GROUP_CRM。变量中的 机器人地址 决定目标群；不要在此填写 地址或密钥。",
                                   "Enter a server environment variable such as LARK_GROUP_CRM. Its Webhook URL determines the target group; never enter a URL or secret here.",
                                 ),
                               )}
@@ -1602,7 +1604,7 @@ export default function NotificationCenter({
                             {row
                               .config!.channels.map((c) =>
                                 c === "inapp"
-                                  ? t("Leads 提醒", "Leads reminder")
+                                  ? t("客户列表提醒", "Leads reminder")
                                   : "Lark · " +
                                     (channels.find(
                                       (x) => x.id === row.config!.group,
@@ -1701,10 +1703,10 @@ export default function NotificationCenter({
                             <summary className="cursor-pointer">
                               {t("技术信息", "Technical information")}
                             </summary>
-                            <p>ID：{row.id}</p>
+                            <p>{t("标识：","ID:")}{row.id}</p>
                             {row.config!.mode === "live" && (
                               <p>
-                                {t("Webhook 配置引用", "Webhook reference")}：
+                                {t("机器人连接 配置引用", "Webhook reference")}：
                                 {row.config!.secretRef}
                               </p>
                             )}
@@ -1809,7 +1811,8 @@ export default function NotificationCenter({
                                     {row.version}
                                   </td>
                                   <td className="p-3 max-w-xs break-words">
-                                    {row.result || "—"}
+                                    {row.result ? crmDeliveryResult(row.result,row.state,lang) : "—"}
+                                    {row.result && lang === 'zh' && <details className="mt-1 text-xs"><summary className="cursor-pointer">{t('原始技术回执', 'Original technical receipt')}</summary><pre className="whitespace-pre-wrap mt-1">{row.result}</pre></details>}
                                     {row.state === "pending" && (
                                       <button
                                         className={`${button} block mt-2`}
@@ -1959,7 +1962,7 @@ export default function NotificationCenter({
                             >
                               <h4 className="font-bold">Lark · {c.id}</h4>
                               <p>
-                                {t("Webhook 配置", "Webhook configured")}：
+                                {t("机器人连接 配置", "Webhook configured")}：
                                 {c.webhookConfigured
                                   ? t("是", "Yes")
                                   : t("否", "No")}

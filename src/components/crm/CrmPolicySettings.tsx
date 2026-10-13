@@ -1,3 +1,4 @@
+import {crmLocale,crmValue} from '../../utils/crmLanguage';
 import React, { useState, useEffect, useMemo } from 'react';
 import type { CrmPolicyConfig, TimeUnit, TimeDuration } from '../../types/crmPolicyConfig.ts';
 import { DEFAULT_CRM_POLICY_CONFIG, durationToMs } from '../../types/crmPolicyConfig.ts';
@@ -100,9 +101,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
               </span>
             )}
           </label>
-          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-            {t(titleZh, titleEn)}
-          </div>
+
         </div>
 
         {/* Clean Numerical Indicator (Zero-Pill Discipline) */}
@@ -119,7 +118,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
       </div>
 
       <p className={`text-[11px] mb-3 leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-        {t(descZh, descEn)}
+        {t(descEn, descZh)}
       </p>
 
       <div className="flex items-center gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/60">
@@ -153,9 +152,9 @@ const DurationField: React.FC<DurationFieldProps> = ({
               : 'bg-slate-900 border-slate-700 text-slate-200 hover:border-slate-600'
           }`}
         >
-          <option value="minutes">{t('Minutes · 分钟', '分钟 · Minutes')}</option>
-          <option value="hours">{t('Hours · 小时', '小时 · Hours')}</option>
-          <option value="days">{t('Days · 天', '天 · Days')}</option>
+          <option value="minutes">{t('Minutes', '分钟')}</option>
+          <option value="hours">{t('Hours', '小时')}</option>
+          <option value="days">{t('Days', '天')}</option>
         </select>
 
         {isModified && (
@@ -214,7 +213,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     const updateLiveClock = () => {
       const now = new Date();
       try {
-        const timeStr = new Intl.DateTimeFormat('en-US', {
+        const timeStr = new Intl.DateTimeFormat(crmLocale(lang), {
           timeZone: formData.businessHours.timezone || 'Asia/Jakarta',
           year: 'numeric',
           month: 'short',
@@ -229,7 +228,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         setIsCurrentlyWorking(isWithinBusinessHours(now, formData));
 
         // Calculate minutes of day in target timezone (0..1440)
-        const parts = new Intl.DateTimeFormat('en-US', {
+        const parts = new Intl.DateTimeFormat(crmLocale(lang), {
           timeZone: formData.businessHours.timezone || 'Asia/Jakarta',
           hour: '2-digit',
           minute: '2-digit',
@@ -239,14 +238,14 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         const m = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
         setCurrentMinutesInDay(h * 60 + m);
       } catch (e) {
-        setCurrentTimeStr(now.toLocaleTimeString());
+        setCurrentTimeStr(now.toLocaleTimeString(crmLocale(lang)));
       }
     };
 
     updateLiveClock();
     const interval = setInterval(updateLiveClock, 1000);
     return () => clearInterval(interval);
-  }, [formData.businessHours]);
+  }, [formData.businessHours,lang]);
 
   // Dirty State Calculation: Compare formData with policyConfig
   const modifiedFieldsCount = useMemo(() => {
@@ -332,13 +331,13 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
     // 2. Determine target SLA duration in minutes
     let targetDuration: TimeDuration = formData.firstResponseSla.hot;
-    let tierTitle = t('Tier 1: Hot (High Intent)', 'Tier 1: Hot (高意向)');
+    let tierTitle = t('Tier 1: Hot (High Intent)', "等级 1：高意向");
     if (simTier === 'warm') {
       targetDuration = formData.firstResponseSla.warm;
-      tierTitle = t('Tier 2: Warm (Standard Intent)', 'Tier 2: Warm (常规意向)');
+      tierTitle = t('Tier 2: Warm (Standard Intent)', "等级 2：常规意向");
     } else if (simTier === 'cold') {
       targetDuration = formData.firstResponseSla.cold;
-      tierTitle = t('Tier 3: Cold / School (Nurture/B2B)', 'Tier 3: Cold/院校 (低意向/合作)');
+      tierTitle = t('Tier 3: Cold / School (Nurture/B2B)', "等级 3：低意向／院校合作");
     } else if (simTier === 'reactivated') {
       targetDuration = formData.reactivation.reactivatedResponse;
       tierTitle = t('Dormant Reactivation', '沉睡客户复活响应');
@@ -359,26 +358,26 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         `Lead enters 30 minutes before ${formData.businessHours.endTime}. Friday consumes 30m of the SLA window. At ${formData.businessHours.endTime}, the timer freezes overnight. On Saturday 09:00, timer resumes for the remaining ${(targetMinutes - 30 > 0 ? (targetMinutes - 30) / 60 : 0).toFixed(1)} hours.`,
         `线索在距离停止外呼前 30 分钟入库。周五当晚消耗 30 分钟 SLA 倒计时；${formData.businessHours.endTime} 准时冻结时钟进入免打扰。周六早晨 09:00 自动唤醒，继续消耗剩余 ${(targetMinutes - 30 > 0 ? (targetMinutes - 30) / 60 : 0).toFixed(1)} 小时。`
       );
-      finalDeadline = `Sat ${targetMinutes <= 30 ? '20:00' : '11:30'}`;
+      finalDeadline = `${t('Saturday','周六')} ${targetMinutes <= 30 ? '20:00' : '11:30'}`;
     } else if (simPresetTime === 'sat_night') {
       explanation = t(
         `Lead enters after ${formData.businessHours.endTime}. System tags lead with Off-Hours status and suppresses notification sounds. If Sunday is a day off, the timer rolls over until Monday morning at ${formData.businessHours.nextDayGraceTime}.`,
         `线索在 ${formData.businessHours.endTime} 后入库，系统标记为夜间免打扰状态。${isSundayOff ? '因周日为公休休息日，' : ''}该线索将顺延至下个工作日早晨，必须在 ${formData.businessHours.nextDayGraceTime} 宽限截止前发起 WhatsApp 首访。`
       );
-      finalDeadline = `${isSundayOff ? 'Monday' : 'Sunday'} ${formData.businessHours.nextDayGraceTime}`;
+      finalDeadline = `${isSundayOff ? t('Monday','周一') : t('Sunday','周日')} ${formData.businessHours.nextDayGraceTime}`;
       graceNote = t('Grace Deadline Triggered', '已激活早间宽限预警');
     } else if (simPresetTime === 'sun_afternoon') {
       explanation = t(
         `Sunday is an official rest day (workDays policy). Consultant is not penalized. Countdown automatically locks until Monday 09:00 morning opening.`,
         `周日为团队法定公休日（依据工作日设置），销售不计超期考核。倒计时自动锁定，顺延至周一早晨 09:00 营业开始后正式计时。`
       );
-      finalDeadline = `Monday ${formData.businessHours.nextDayGraceTime}`;
+      finalDeadline = `${t('Monday','周一')} ${formData.businessHours.nextDayGraceTime}`;
     } else {
       explanation = t(
         `Lead arrives during active business hours. Continuous real-time countdown active on the workbench lead drawer.`,
         `正常营业时段进线。工作台与跟进抽屉开启毫秒级实时倒计时，到期前 30 分钟亮起橙色警报。`
       );
-      finalDeadline = `Today + ${targetDuration.value} ${targetDuration.unit}`;
+      finalDeadline = `${t('Today','今天')} + ${targetDuration.value} ${targetDuration.unit==='minutes'?t('minutes','分钟'):targetDuration.unit==='hours'?t('hours','小时'):t('days','天')}`;
     }
 
     return {
@@ -660,7 +659,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               {t('24-Hour Regional Day Plan (WIB UTC+7)', '24 小时外呼作息时段带 (雅加达 WIB)')}
             </span>
             <span className="text-[11px] text-slate-500 font-mono">
-              {businessBarInfo.dailyHours} {t('hrs/day', '小时/天')} · {businessBarInfo.weeklyWorkDays} {t('days/week', '天/周')} ({businessBarInfo.weeklyHours}h {t('total', '工时')})
+              {businessBarInfo.dailyHours} {t('hrs/day', '小时/天')} · {businessBarInfo.weeklyWorkDays} {t('days/week', '天/周')} ({businessBarInfo.weeklyHours} {t('h','小时')} {t('total', '工时')})
             </span>
           </div>
 
@@ -823,10 +822,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 >
                   <div className="flex items-center gap-1 font-bold text-rose-600">
                     <Flame className="w-3.5 h-3.5" />
-                    <span>Hot (Tier 1)</span>
+                    <span>{t("Hot (Tier 1)","高意向（等级 1）")}</span>
                   </div>
                   <div className="text-[10px] font-mono opacity-80 mt-0.5">
-                    {formData.firstResponseSla.hot.value} {formData.firstResponseSla.hot.unit}
+                    {formData.firstResponseSla.hot.value} {crmValue(formData.firstResponseSla.hot.unit,lang)}
                   </div>
                 </button>
 
@@ -841,10 +840,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 >
                   <div className="flex items-center gap-1 font-bold text-amber-600">
                     <Zap className="w-3.5 h-3.5" />
-                    <span>Warm (Tier 2)</span>
+                    <span>{t("Warm (Tier 2)","中意向（等级 2）")}</span>
                   </div>
                   <div className="text-[10px] font-mono opacity-80 mt-0.5">
-                    {formData.firstResponseSla.warm.value} {formData.firstResponseSla.warm.unit}
+                    {formData.firstResponseSla.warm.value} {crmValue(formData.firstResponseSla.warm.unit,lang)}
                   </div>
                 </button>
 
@@ -859,10 +858,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 >
                   <div className="flex items-center gap-1 font-bold text-slate-500">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Cold (Tier 3)</span>
+                    <span>{t("Cold (Tier 3)","低意向（等级 3）")}</span>
                   </div>
                   <div className="text-[10px] font-mono opacity-80 mt-0.5">
-                    {formData.firstResponseSla.cold.value} {formData.firstResponseSla.cold.unit}
+                    {formData.firstResponseSla.cold.value} {crmValue(formData.firstResponseSla.cold.unit,lang)}
                   </div>
                 </button>
 
@@ -880,7 +879,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     <span>{t('Reactivation', '复活学员')}</span>
                   </div>
                   <div className="text-[10px] font-mono opacity-80 mt-0.5">
-                    {formData.reactivation.reactivatedResponse.value} {formData.reactivation.reactivatedResponse.unit}
+                    {formData.reactivation.reactivatedResponse.value} {crmValue(formData.reactivation.reactivatedResponse.unit,lang)}
                   </div>
                 </button>
               </div>
@@ -966,7 +965,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               {/* Final SLA Deadline Badge */}
               <div className="text-left md:text-right shrink-0">
                 <div className="text-[11px] text-slate-400 font-medium">
-                  {t('Calculated SLA Breach Point (违规红线):', '推演违规红线截止点:')}
+                  {t('Calculated response deadline:', '推演违规红线截止点:')}
                 </div>
                 <div className="text-base font-bold font-mono text-rose-600 dark:text-rose-400">
                   {simulationResult.finalDeadline}
@@ -1022,9 +1021,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               <p className="text-[11px] text-slate-500 leading-snug">
                 {t('Phone format normalization (+62), deduplication with dormant recovery check.', '清洗归一印尼手机号，自动比对去重并检测沉睡复活潜客。')}
               </p>
-              <div className="mt-2 text-[10px] font-mono text-primary-600">
-                Chapter 2 Hooks
-              </div>
+              <div className="mt-2 text-[10px] font-mono text-primary-600">{t("Chapter 2 · Acquisition hooks","第 2 章：获客入口")}</div>
             </div>
 
             {/* Step 2 */}
@@ -1035,11 +1032,9 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 2. {t('R1~R6 Tiering', 'R1~R6 意向推演')}
               </div>
               <p className="text-[11px] text-slate-500 leading-snug">
-                {t('Algorithmic qualification into Hot, Warm, Cold with buying signal weights.', '依据购课意向强弱信号自动分档至 Hot、Warm、Cold。')}
+                {t('Algorithmic qualification into Hot, Warm, Cold with buying signal weights.', "依据购课意向强弱信号自动分档至 高、中、低意向。")}
               </p>
-              <div className="mt-2 text-[10px] font-mono text-amber-600">
-                Chapter 3 Rules
-              </div>
+              <div className="mt-2 text-[10px] font-mono text-amber-600">{t("Chapter 3 · Rules","第 3 章：评级规则")}</div>
             </div>
 
             {/* Step 3 */}
@@ -1053,7 +1048,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 {t('Mandatory golden response window (Hot ≤3h, Warm ≤24h, Cold ≤48h).', '首响黄金时效倒计时，非营业时段自动顺延至次日 10:00。')}
               </p>
               <div className="mt-2 text-[10px] font-mono font-bold">
-                {formData.firstResponseSla.hot.value}h / {formData.firstResponseSla.warm.value}h
+                {formData.firstResponseSla.hot.value}{t('h','小时')} / {formData.firstResponseSla.warm.value}{t('h','小时')}
               </div>
             </div>
 
@@ -1067,9 +1062,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               <p className="text-[11px] opacity-80 leading-snug">
                 {t('Cooling interval between calls; max 3 misses automatically moves lead to cold pool.', '未接通冷却等待 4 小时；累计 3 次未接自动熔断流转至冷池。')}
               </p>
-              <div className="mt-2 text-[10px] font-mono font-bold">
-                Max {formData.noResponseCadence.maxRetriesBeforeNurture} Retries
-              </div>
+              <div className="mt-2 text-[10px] font-mono font-bold">{t("Max","最多")}{formData.noResponseCadence.maxRetriesBeforeNurture}{t("Retries","次重试")}</div>
             </div>
 
             {/* Step 5 */}
@@ -1082,9 +1075,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               <p className="text-[11px] opacity-80 leading-snug">
                 {t('Trial pre-course reminder (4h prior) & post-trial golden closing follow-up (4h after).', '开课前 4 小时导航提醒，完课后 4 小时黄金关单回访。')}
               </p>
-              <div className="mt-2 text-[10px] font-mono font-bold">
-                -4h / +4h / +2h
-              </div>
+              <div className="mt-2 text-[10px] font-mono font-bold">{t("−4 h / +4 h / +2 h","提前 4 小时／延后 4 小时／延后 2 小时")}</div>
             </div>
 
             {/* Step 6 */}
@@ -1098,7 +1089,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 {t('Archived lead re-engagement triggers high-priority break-in within 30 minutes.', '老潜客重新做题或咨询，提速至 30 分钟内专属顾问回访。')}
               </p>
               <div className="mt-2 text-[10px] font-mono font-bold">
-                {formData.reactivation.reactivatedResponse.value} {formData.reactivation.reactivatedResponse.unit}
+                {formData.reactivation.reactivatedResponse.value} {crmValue(formData.reactivation.reactivatedResponse.unit,lang)}
               </div>
             </div>
           </div>
@@ -1116,7 +1107,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          {t('All 6 SLA Modules', '全部 6 大 SLA 模块 (17项配置)')}
+          {t('All 7 Modules', '全部 7 个模块')}
         </button>
 
         <button
@@ -1247,10 +1238,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-800 text-slate-200'
                   }`}
                 >
-                  <option value="Asia/Jakarta">Asia/Jakarta (WIB - UTC+7 · 印尼雅加达/西印尼)</option>
-                  <option value="Asia/Makassar">Asia/Makassar (WITA - UTC+8 · 中印尼/巴厘岛)</option>
-                  <option value="Asia/Shanghai">Asia/Shanghai (CST - UTC+8 · 中国北京时间)</option>
-                  <option value="Asia/Singapore">Asia/Singapore (SGT - UTC+8 · 新加坡)</option>
+                  <option value="Asia/Jakarta">{t("Jakarta (UTC+7)","雅加达（UTC+7）")}</option>
+                  <option value="Asia/Makassar">{t("Makassar (UTC+8)","望加锡（UTC+8）")}</option>
+                  <option value="Asia/Shanghai">{t("Shanghai (UTC+8)","上海（UTC+8）")}</option>
+                  <option value="Asia/Singapore">{t("Singapore (UTC+8)","新加坡（UTC+8）")}</option>
                 </select>
               </div>
 
@@ -1385,7 +1376,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 isLight={isLight}
                 lang={lang}
                 titleEn="Tier 1 (Hot) First Response SLA"
-                titleZh="Tier 1 (Hot) 首访响应时限"
+                titleZh="等级 1 (高意向) 首访响应时限"
                 descEn="Golden response window for urgent, high-intent students (e.g. asked tuition, starting soon)."
                 descZh="高意向学员提交咨询后，顾问发起首次电话或 WhatsApp 沟通的黄金承诺时限。"
                 duration={formData.firstResponseSla.hot}
@@ -1402,7 +1393,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 isLight={isLight}
                 lang={lang}
                 titleEn="Tier 2 (Warm) First Response SLA"
-                titleZh="Tier 2 (Warm) 首访响应时限"
+                titleZh="等级 2 (中意向) 首访响应时限"
                 descEn="Standard interest students seeking general consultation or trial placement."
                 descZh="常规意向咨询、申请试听学员的首次建联响应窗口。"
                 duration={formData.firstResponseSla.warm}
@@ -1419,7 +1410,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 isLight={isLight}
                 lang={lang}
                 titleEn="Tier 3 (Cold / School) SLA"
-                titleZh="Tier 3 (Cold/院校) 首访响应时限"
+                titleZh="等级 3 (低意向/院校) 首访响应时限"
                 descEn="Inquiries requesting broad brochures, general school inquiries or low initial intent."
                 descZh="学校合作或通用材料下载类线索的建联时限。"
                 duration={formData.firstResponseSla.cold}
@@ -1486,7 +1477,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                       {t('Max Retries Before Cold Nurture', '最大允许未接重试次数')}
                     </label>
                     <div className="text-[10px] text-slate-400 font-mono">
-                      {t('最大重试触达次数', 'Max Retries Before Nurture')}
+                      {t('Max retries before nurture', '最大重试触达次数')}
                     </div>
                   </div>
                   <div className="text-right">
@@ -1520,7 +1511,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                       isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-slate-900 border-slate-700 text-slate-200'
                     }`}
                   />
-                  <span className="text-xs text-slate-500">{t('Attempts / Touches (次)', '次 · Attempts')}</span>
+                  <span className="text-xs text-slate-500">{t('Attempts', '次')}</span>
                 </div>
               </div>
             </div>
@@ -1554,7 +1545,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 isLight={isLight}
                 lang={lang}
                 titleEn="Hot Lead Inactivity Alert"
-                titleZh="Hot 高意向学员防停滞报警阈值"
+                titleZh="高意向学员防停滞报警阈值"
                 descEn="Alert if no follow-up occurs within this duration for Hot leads."
                 descZh="高意向客户初访后若未排定下次具体时间，超过该时限未有新跟进则亮起停滞预警。"
                 duration={formData.inactivityWatchdog.hotInactivity}
@@ -1571,7 +1562,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 isLight={isLight}
                 lang={lang}
                 titleEn="Warm Lead Inactivity Alert"
-                titleZh="Warm 常规意向学员防停滞报警阈值"
+                titleZh="中意向 常规意向学员防停滞报警阈值"
                 descEn="Alert threshold for active intermediate interest leads."
                 descZh="常规意向客户初访后若未设定下次跟进时间，最大允许沉默时长。"
                 duration={formData.inactivityWatchdog.warmInactivity}
