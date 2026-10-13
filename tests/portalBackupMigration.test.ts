@@ -423,7 +423,7 @@ if (process.env.PORTAL_MIGRATION_TEST_DATABASE_URL) {
         await client.query("SELECT setval('message_sequence',1000,true)");
         allData = await hashes(client);
         const saved = run("scripts/portal-backup.ts", ["backup", backup]);
-        assert.equal(Object.keys(saved.rows).length, 17);
+        assert.equal(Object.keys(saved.rows).length, backupTables.length);
         assert.equal(saved.rows.hsk_attempts, 1);
         assert.deepEqual(await hashes(client), allData);
         assert.equal((await fs.stat(backup)).mode & 0o777, 0o600);

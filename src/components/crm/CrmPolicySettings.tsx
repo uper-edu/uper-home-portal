@@ -45,6 +45,7 @@ export interface CrmPolicySettingsProps {
   onSavePolicy: (updated: CrmPolicyConfig) => Promise<boolean>;
   onResetPolicy: () => Promise<boolean>;
   onNavigateTab?: (tab: 'leads' | 'docs') => void;
+  onNavigateNotifications?: () => void;
   onActionControlsChange?: (controls: PolicyActionControls | null) => void;
 }
 
@@ -182,7 +183,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   onSavePolicy,
   onResetPolicy,
   onNavigateTab,
-  onActionControlsChange
+  onActionControlsChange,
+  onNavigateNotifications
 }) => {
   const [formData, setFormData] = useState<CrmPolicyConfig>(policyConfig);
   const [isSaving, setIsSaving] = useState(false);
@@ -193,7 +195,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [isCurrentlyWorking, setIsCurrentlyWorking] = useState(true);
 
   // Active section filter or layout mode
-  const [activeCategory, setActiveCategory] = useState<'all' | 'schedule' | 'first_response' | 'retry' | 'watchdog' | 'milestone' | 'reactivation'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'schedule' | 'first_response' | 'retry' | 'watchdog' | 'milestone' | 'reactivation' | 'notifications'>('all');
   const [showCascadeDiagram, setShowCascadeDiagram] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
 
@@ -559,7 +561,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   ];
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 pb-12 w-full mx-auto">
+    <form onSubmit={handleSave} className="space-y-6 w-full mx-auto">
       {/* 1. Header & Live Status Banner */}
       <div className={`p-5 rounded-2xl border transition-all ${
         isLight ? 'bg-white border-slate-200/90 shadow-xs' : 'bg-slate-900 border-slate-800 shadow-md'
@@ -572,10 +574,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               </span>
               <div>
                 <h2 className={`font-bold text-base md:text-lg ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  {t('SLA & Sales Policy Engine', 'SLA 时效与业务跟进策略配置中心')}
+                  {t('Sales Operations Settings', '销售运营设置')}
                 </h2>
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span>{t('Real-time Cadence Automation', '全域线索实时流转引擎')}</span>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <span>{t('Configure working hours, response deadlines, follow-up rules and notifications.', '配置工作时间、响应时限、跟进规则与通知。')}</span>
                   <span aria-hidden="true">·</span>
                   <span className="font-mono text-[11px]">{formData.businessHours.timezone}</span>
                   <span aria-hidden="true">·</span>
@@ -754,9 +756,14 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             )}
           </div>
 
-          <div className="text-[11px] text-slate-500">
-            {t('Parameters instantly drive workbench SLA countdown timers', '此处参数修改后实时驱动销售工作台倒计时引擎')}
-          </div>
+          <section aria-label={t('Saving and activation', '保存与生效说明')} className={`rounded-xl border p-3 space-y-2 text-xs leading-relaxed ${isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-950 border-slate-800 text-slate-300'}`}>
+            <h3 className={`font-semibold ${isLight ? 'text-slate-800' : 'text-slate-100'}`}>{t('Saving and activation', '保存与生效说明')}</h3>
+            <p><strong>{t('Save Policies / Reset Defaults', '保存策略 / 恢复官方设置')}：</strong> {t('Apply only to working hours, response deadlines and follow-up rules. Edits take effect after Save Policies succeeds; existing follow-up deadlines are not recalculated.', '仅用于工作时间、响应时限和跟进规则。修改在保存成功后生效；不会重新计算已有跟进任务的截止时间。')}</p>
+            <p><strong>{t('Notification settings', '通知配置')}：</strong> {t('Save each notification policy and channel in its own section. Save Policies does not save notification edits. Inactive drafts do not send notifications; enabling a policy applies to new events.', '通知策略和渠道在各自区域单独保存；顶部“保存策略”不会保存通知修改。停用草稿不发送通知，策略启用后仅应用于新事件。')}</p>
+            <p role="status" className={modifiedFieldsCount > 0 ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}>
+              {modifiedFieldsCount > 0 ? t(`${modifiedFieldsCount} unsaved change${modifiedFieldsCount > 1 ? 's' : ''} to working hours or follow-up rules. Use Save Policies in the top-right toolbar.`, `工作时间或跟进规则有 ${modifiedFieldsCount} 项未保存修改，请使用右上角“保存策略”。`) : t('No unsaved changes to working hours or follow-up rules.', '工作时间与跟进规则没有待保存修改。')}
+            </p>
+          </section>
         </div>
       </div>
 
@@ -1109,7 +1116,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          {t('All 6 Policy Modules', '全部 6 大策略模块 (17项配置)')}
+          {t('All 6 SLA Modules', '全部 6 大 SLA 模块 (17项配置)')}
         </button>
 
         <button
@@ -1182,6 +1189,14 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           }`}
         >
           {t('6. Reactivation', '6. 沉睡复活响应')}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveCategory('notifications'); onNavigateNotifications?.(); }}
+          aria-pressed={activeCategory === 'notifications'}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeCategory === 'notifications' ? 'bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+        >
+          {t('7. Notification settings & delivery audit', '7. 通知设置与发送审计')}
         </button>
       </div>
 
@@ -1711,12 +1726,12 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               }`}>
                 <div className="font-semibold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{t('Sales Ops Rule of Thumb', '销售运营黄金法则')}</span>
+                  <span>{t('Reactivation follow-up guidance', '客户重新激活跟进说明')}</span>
                 </div>
                 <p>
                   {t(
-                    'Dormant leads that re-activate convert 3x higher than cold leads. A 30-minute response window allows consultants ample time to review past notes while capturing peak intent.',
-                    '老客户一旦出现新行为复活，其成交概率是普通冷线索的 3 倍以上。30 分钟时效能让顾问在翻阅历史跟进纪要后从容发起高水准回访。'
+                    'When a dormant lead makes a new inquiry, review prior conversations and follow-up history, then respond within the configured response window.',
+                    '沉睡客户再次咨询时，先查看历史对话与跟进记录，再按此处配置的响应时限进行回访。'
                   )}
                 </p>
               </div>
@@ -1726,44 +1741,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
       </div>
 
-      {/* Clean In-flow Policy Sync Status Banner (Controls relocated to top-right header area) */}
-      <div className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-        modifiedFieldsCount > 0
-          ? isLight ? 'bg-amber-50/70 border-amber-200 text-slate-900' : 'bg-amber-950/20 border-amber-800/40 text-white'
-          : isLight ? 'bg-white border-slate-200/90 text-slate-700' : 'bg-slate-900 border-slate-800 text-slate-300'
-      }`}>
-        <div className="flex items-center gap-2.5 text-xs">
-          {modifiedFieldsCount > 0 ? (
-            <>
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
-              <span className="font-semibold text-amber-800 dark:text-amber-300">
-                {t(
-                  `You have ${modifiedFieldsCount} unsaved policy change${modifiedFieldsCount > 1 ? 's' : ''}. Please click the 'Save' button in the top-right header bar to apply.`,
-                  `当前共有 ${modifiedFieldsCount} 项策略修改待生效。请点击页面右上角常驻功能区的「保存」按钮同步至 CRM 工作台。`
-                )}
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-              <span className="font-medium text-slate-600 dark:text-slate-300">
-                {t(
-                  'All policies are synchronized with the live CRM Cadence & SLA engine. Save and Reset controls are accessible in the top-right toolbar.',
-                  '全部时效与跟进策略与 CRM 实时引擎保持同步。可随时在页面右上角功能区保存或恢复官方设置。'
-                )}
-              </span>
-            </>
-          )}
-        </div>
-
-        {modifiedFieldsCount > 0 && (
-          <div className="flex items-center gap-2 shrink-0 text-xs">
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold">
-              {modifiedFieldsCount} {t('Pending', '项待保存')}
-            </span>
-          </div>
-        )}
-      </div>
     </form>
   );
 };

@@ -1,3 +1,4 @@
+import CrmAccess, {CrmAccountControls,type CrmEmployee} from "../components/CrmAccess";
 import {crmMessageTimestamp,crmMessageTimeLabel,compareCrmEventTimes} from '../utils/crmMessageTime';
 import { LeadActivity, LeadPendingAction } from '../components/LeadAttention';
 import LeadTaskActions from '../components/LeadTaskActions';
@@ -109,18 +110,22 @@ export const STAGE_OPTIONS: { value: StageType; labelEn: string; labelZh: string
   { value: 'Lost', labelEn: 'Lost', labelZh: '已流失' }
 ];
 
-export default function CrmWorkbench() {
+export default function CrmWorkbench() { return <CrmAccess>{employee=><CrmWorkspace key={employee.id} employee={employee}/>}</CrmAccess>; }
+function CrmWorkspace({employee}:{employee:CrmEmployee}) {
+  const canManage=employee.permissions.includes("notifications.manage");
+  const canAssign=employee.permissions.includes("crm.assign");
   const [crmModule, setCrmModule] = useState<'leads' | 'campaigns' | 'policy' | 'docs'>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab === 'docs' || tab === 'policy' || tab === 'leads' || tab === 'campaigns') {
+      if (tab === 'docs' || (tab === 'policy' && canManage) || tab === 'leads' || tab === 'campaigns') {
         return tab;
       }
     } catch {}
     return 'leads';
   });
   const [policyConfig, setPolicyConfig] = useState<CrmPolicyConfig>(DEFAULT_CRM_POLICY_CONFIG);
+  const [notificationNavigationRequest, setNotificationNavigationRequest] = useState(0);
   const [policyControls, setPolicyControls] = useState<PolicyActionControls | null>(null);
   const [leads, setLeads] = useState<CrmLeadRecord[]>([]);
   const [stats, setStats] = useState({
@@ -136,7 +141,7 @@ export default function CrmWorkbench() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [dataScope,setDataScope] = useState<'own'|'team'|'all'>('all');
-  const [attentionFilter,setAttentionFilter] = useState<'all'|'mine'|'unread'|'unassigned'|'overdue'>('all');
+  const [attentionFilter,setAttentionFilter] = useState<'all'|'mine'|'unread'|'unassigned'|'overdue'>(employee.scope==='own'?'mine':'all');
   const [leadActionError,setLeadActionError] = useState('');
   const [selectedTierTab, setSelectedTierTab] = useState<string>('All');
   const [selectedStage, setSelectedStage] = useState<string>('All');
@@ -304,9 +309,12 @@ export default function CrmWorkbench() {
   };
 
   // Follow-up form state
-  const [staffName, setStaffName] = useState('');
-  const [employees,setEmployees] = useState<Array<{id:string}>>([]);
+  const staffName = employee.id;
+  const [employees,setEmployees] = useState<Array<{id:string;displayName?:string;roles?:string[];active?:boolean}>>([]);
   useEffect(()=>{fetch('/api/portal/employees').then(r=>r.json()).then(setEmployees).catch(()=>{});},[]);
+  const salesEmployees=employees.filter(e=>e.active===true && e.roles?.includes('sales'));
+  const employeeLabel=(e:typeof employees[number])=>`${e.displayName||e.id} · ${e.roles?.map(r=>r==='crm_leader'?'CRM Leader':'Sales').join(' + ')||''}`;
+  useEffect(()=>{if(!canManage && crmModule==='policy')setCrmModule('leads');},[canManage,crmModule]);
   const [channel, setChannel] = useState<'WhatsApp' | 'Phone Call' | 'Campus Visit' | 'Email' | 'Other'>('WhatsApp');
   const [connectStatus, setConnectStatus] = useState<ConnectStatusType>('Connected');
   const [newStage, setNewStage] = useState<StageType>('Contacted');
@@ -447,7 +455,7 @@ export default function CrmWorkbench() {
   // Submit follow-up log
   const handleSaveFollowUpLog = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLead || !notesSummary.trim()) return;
+    if (!selectedLead || !notesSummary.trim() || !canEditLead(selectedLead)) return;
 
     setIsSubmittingLog(true);
     try {
@@ -705,6 +713,13 @@ export default function CrmWorkbench() {
     };
   }, [journeyTimelineEvents]);
 
+  const canEditLead=(lead:CrmLeadRecord)=>employee.scope!=='own'||lead.owner===employee.id;
+  const [claiming,setClaiming]=useState<string|null>(null);
+  const claimLead=async(leadId:string)=>{
+    setClaiming(leadId);setLeadActionError('');
+    try{const r=await fetch(`/api/crm/leads/${leadId}/claim`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const d=await r.json();if(!r.ok)throw Error(d.error);if(selectedLead?.id===leadId)setSelectedLead(d.lead);await fetchLeads(true);}
+    catch(e){setLeadActionError((e as Error).message);await fetchLeads(true);}finally{setClaiming(null);}
+  };
   // Quick update owner or confirmed tier
   const handleUpdateLeadField = async (leadId: string, updates: Partial<CrmLeadRecord>) => {
     try {
@@ -1027,7 +1042,7 @@ export default function CrmWorkbench() {
           : 'bg-slate-900/95 backdrop-blur-md border-slate-800 shadow-md'
       }`}>
         {/* ROW 1: Brand & Module Context Title */}
-        <div className="px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80">
           <div className="flex items-center gap-3 min-w-0">
             <Link to="/" className="flex items-center gap-2 shrink-0 group hover:opacity-95 transition-opacity" title={t('Back to UPER Homepage', '返回 UPER 官网首页')}>
               <img 
@@ -1056,7 +1071,7 @@ export default function CrmWorkbench() {
                     : crmModule === 'leads' 
                       ? t('Telemarketing & Advisory CRM', '电销跟进与学术顾问 CRM')
                       : crmModule === 'policy'
-                        ? t('SLA & Sales Policy Engine', 'SLA 时效与跟进策略配置中心')
+                        ? t('Sales Operations Settings', '销售运营设置')
                         : t('CRM User Guide & Handbook', 'CRM 在线使用手册与操作指南')}
                 </h1>
                 <span className="text-slate-300 dark:text-slate-600 select-none hidden md:inline">·</span>
@@ -1070,17 +1085,13 @@ export default function CrmWorkbench() {
                   : crmModule === 'leads' 
                     ? t('Standard Enterprise Data Model & R1~R6 Tier Protocol Engine', '标准数据字典与 R1~R6 智能分层引擎')
                     : crmModule === 'policy'
-                      ? t('Configure Business Hours, First Response SLAs, Retries & Automation Triggers', '全域线索作息日历、首响应分级时限与止损策略配置中心')
+                      ? t('Configure working hours, response deadlines, follow-up rules and notifications.', '配置工作时间、响应时限、跟进规则与通知。')
                       : t('Comprehensive System Architecture, Rules, Data Dictionary & WhatsApp Scripts', '全景业务架构、推演算法、标准数据字典与金牌话术库')}
               </p>
             </div>
           </div>
 
-          {/* Row 1 Right: Quiet system status indicator */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0 text-xs text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-mono text-[11px]">Jakarta WIB UTC+7</span>
-          </div>
+          <CrmAccountControls lang={lang} isLight={isLight} />
         </div>
 
         {/* ROW 2: Fixed, Always-on-Second-Row Navigation Pills & Actions */}
@@ -1120,7 +1131,7 @@ export default function CrmWorkbench() {
               </button>
 
               {/* 3. SLA & Sales Policy */}
-              <button
+              {canManage && <button
                 type="button"
                 onClick={() => setCrmModule('policy')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -1130,8 +1141,8 @@ export default function CrmWorkbench() {
                 }`}
               >
                 <Settings className="w-3.5 h-3.5 text-indigo-500" />
-                <span>{t('SLA & Policy', 'SLA策略配置')}</span>
-              </button>
+                <span>{t('Sales Operations', '销售运营')}</span>
+              </button>}
 
               {/* 4. User Guide & Handbook */}
               <button
@@ -1214,13 +1225,13 @@ export default function CrmWorkbench() {
                   <span>{t('Refresh', '刷新数据')}</span>
                 </button>
 
-                <a
+                {employee.permissions.includes('crm.export') && <a
                   href="/api/crm/export"
                   className="flex items-center gap-1.5 h-8 px-3.5 bg-primary-600 hover:bg-primary-500 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-900/20 transition-all cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>{t('Export CSV Data (.CSV)', '导出标准数据 (.CSV)')}</span>
-                </a>
+                </a>}
               </>
             )}
 
@@ -1276,8 +1287,8 @@ export default function CrmWorkbench() {
                     {policyControls?.isSaving
                       ? t('Saving...', '保存中...')
                       : policyControls?.isDirty
-                        ? t(`Save (${policyControls.modifiedCount})`, `保存 (${policyControls.modifiedCount})`)
-                        : t('Save Policies', '保存配置')}
+                        ? t(`Save Policies (${policyControls.modifiedCount})`, `保存策略 (${policyControls.modifiedCount})`)
+                        : t('Save Policies', '保存策略')}
                   </span>
                 </button>
               </>
@@ -1320,7 +1331,7 @@ export default function CrmWorkbench() {
             }}
             onNavigateTab={(tab) => setCrmModule(tab)}
           />
-        ) : crmModule === 'policy' ? (
+        ) : crmModule === 'policy' && canManage ? (
           <>
           <CrmPolicySettings
             isLight={isLight}
@@ -1329,9 +1340,10 @@ export default function CrmWorkbench() {
             onSavePolicy={handleSavePolicy}
             onResetPolicy={handleResetPolicy}
             onNavigateTab={(tab) => setCrmModule(tab)}
+            onNavigateNotifications={() => setNotificationNavigationRequest(value => value + 1)}
             onActionControlsChange={setPolicyControls}
           />
-          <NotificationCenter isLight={isLight} lang={lang} />
+          <NotificationCenter isLight={isLight} lang={lang} navigationRequest={notificationNavigationRequest} />
           </>
         ) : crmModule === 'docs' ? (
           <CrmUserGuide
@@ -1492,7 +1504,7 @@ export default function CrmWorkbench() {
 
             {leadActionError&&<p role="alert" className="text-xs text-rose-500">{leadActionError}</p>}
             <div className="flex gap-2 flex-wrap" aria-label={t('Work queue','工作队列')}>
-              {([{id:'all',en:'All accessible leads',zh:'全部可见线索'},{id:'mine',en:'My pending follow-up',zh:'我的待办'},{id:'unread',en:'Unread activity',zh:'未读动态'},{id:'unassigned',en:'Unassigned',zh:'待分配'},{id:'overdue',en:'Overdue',zh:'已逾期'}] as const).filter(f=>f.id!=='unassigned'||dataScope!=='own').map(f=><button key={f.id} type="button" aria-pressed={attentionFilter===f.id} onClick={()=>setAttentionFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-xs font-medium ${attentionFilter===f.id?'bg-primary-600 text-white border-primary-600':isLight?'bg-white text-slate-600 border-slate-200':'bg-slate-900 text-slate-300 border-slate-700'}`}>{t(f.en,f.zh)}</button>)}
+              {([{id:'all',en:'All accessible leads',zh:'全部可见线索'},{id:'mine',en:'My pending follow-up',zh:'我的待办'},{id:'unread',en:'Unread activity',zh:'未读动态'},{id:'unassigned',en:'Unassigned',zh:'待分配'},{id:'overdue',en:'Overdue',zh:'已逾期'}] as const).map(f=><button key={f.id} type="button" aria-pressed={attentionFilter===f.id} onClick={()=>setAttentionFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-xs font-medium ${attentionFilter===f.id?'bg-primary-600 text-white border-primary-600':isLight?'bg-white text-slate-600 border-slate-200':'bg-slate-900 text-slate-300 border-slate-700'}`}>{t(f.en,f.zh)}</button>)}
             </div>
         {/* Filter Bar: Row 1 (Tier + Advanced Filters Toggle) -> Collapsible 6 Dropdowns -> Bottom Row (Search + Column Switcher) */}
         <div className={`rounded-2xl p-3.5 space-y-3 transition-colors ${
@@ -1844,7 +1856,7 @@ export default function CrmWorkbench() {
                     <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
                       {t('All', '全部')}
                     </option>
-                    <option value="">未分配</option>{Array.from(new Set(leads.map(l=>l.owner).filter(o=>o&&!employees.some(e=>e.id===o)))).map(owner=><option key={owner} value={owner}>{owner}（历史归属）</option>)}{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
+                    <option value="">未分配</option>{Array.from(new Set(leads.map(l=>l.owner).filter(o=>o&&!employees.some(e=>e.id===o)))).map(owner=><option key={owner} value={owner}>{owner}（历史归属）</option>)}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
                   </select>
                   <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
                     isLight ? 'text-slate-400' : 'text-slate-500'
@@ -2088,7 +2100,7 @@ export default function CrmWorkbench() {
                                 </div>
                               </div>
                             </div>
-                            <LeadActivity lead={lead} lang={lang} onOpen={()=>handleOpenLeadDrawer(lead,'chat')} />
+                            <LeadActivity lead={lead} lang={lang} onOpen={()=>handleOpenLeadDrawer(lead,lead.attention?.latest?.source==='crm_assignment'?'activities':'chat')} />
                             <span className={`inline-block mt-0.5 px-1.5 py-0.2 text-[9px] rounded font-medium ${
                               lead.currentStatus === 'Working professional'
                                 ? isLight ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-blue-950 text-blue-300'
@@ -2216,6 +2228,7 @@ export default function CrmWorkbench() {
                           <td className={`py-3 px-2.5 whitespace-nowrap border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`} onClick={(e) => e.stopPropagation()}>
                             <select
                               value={lead.currentStage}
+                              disabled={!canEditLead(lead)}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { currentStage: e.target.value as StageType });
                                 e.currentTarget.blur();
@@ -2257,9 +2270,9 @@ export default function CrmWorkbench() {
 
                           {/* 9. 归属顾问 (Owner) */}
                           <td className={`py-3 px-3 text-left whitespace-nowrap w-[130px] border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`} onClick={(e) => e.stopPropagation()}>
-                            <select
+                            {!canAssign && !lead.owner && employee.roles.includes('sales') ? <button type="button" disabled={claiming===lead.id} onClick={()=>claimLead(lead.id)} className="text-xs rounded-lg border border-primary-300 px-3 py-1 text-primary-700">{claiming===lead.id?t('Claiming…','认领中…'):t('Claim for myself','认领给自己')}</button> : <select
                               value={lead.owner || ''}
-                              disabled={dataScope==='own'}
+                              disabled={!canAssign}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { owner: e.target.value });
                                 e.currentTarget.blur();
@@ -2272,8 +2285,8 @@ export default function CrmWorkbench() {
                                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                             >
-                              <option value="">未分配</option>{lead.owner && !employees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
-                            </select>
+                              <option value="">未分配</option>{lead.owner && !salesEmployees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
+                            </select>}
                           </td>
                         </tr>
                       );
@@ -2368,7 +2381,7 @@ export default function CrmWorkbench() {
                             <div className="truncate max-w-[130px]" title={lead.fullName}>
                               {lead.fullName}
                             </div>
-                            <LeadActivity lead={lead} lang={lang} onOpen={()=>handleOpenLeadDrawer(lead,'chat')} />
+                            <LeadActivity lead={lead} lang={lang} onOpen={()=>handleOpenLeadDrawer(lead,lead.attention?.latest?.source==='crm_assignment'?'activities':'chat')} />
                           </td>
 
                           {/* 3. 提交时间 */}
@@ -2501,6 +2514,7 @@ export default function CrmWorkbench() {
                           <td className="py-3 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                             <select
                               value={lead.currentStage}
+                              disabled={!canEditLead(lead)}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { currentStage: e.target.value as StageType });
                                 e.currentTarget.blur();
@@ -2540,9 +2554,9 @@ export default function CrmWorkbench() {
 
                           {/* 16. 归属顾问 (Owner) - 纯净左对齐，无右箭头 */}
                           <td className="py-3 px-3 text-left whitespace-nowrap w-[130px]" onClick={(e) => e.stopPropagation()}>
-                            <select
+                            {!canAssign && !lead.owner && employee.roles.includes('sales') ? <button type="button" disabled={claiming===lead.id} onClick={()=>claimLead(lead.id)} className="text-xs rounded-lg border border-primary-300 px-3 py-1 text-primary-700">{claiming===lead.id?t('Claiming…','认领中…'):t('Claim for myself','认领给自己')}</button> : <select
                               value={lead.owner || ''}
-                              disabled={dataScope==='own'}
+                              disabled={!canAssign}
                               onChange={(e) => {
                                 handleUpdateLeadField(lead.id, { owner: e.target.value });
                                 e.currentTarget.blur();
@@ -2555,8 +2569,8 @@ export default function CrmWorkbench() {
                                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                             >
-                              <option value="">未分配</option>{lead.owner && !employees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
-                            </select>
+                              <option value="">未分配</option>{lead.owner && !salesEmployees.some(e=>e.id===lead.owner) && <option value={lead.owner}>{lead.owner}（历史归属）</option>}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
+                            </select>}
                           </td>
                         </tr>
                       );
@@ -2847,7 +2861,8 @@ export default function CrmWorkbench() {
               {/* TAB 2: 📋 动态与时间轴 (Unified Customer Journey Timeline & Activities) */}
               {activeDrawerTab === 'activities' && (
                 <div className="space-y-4">
-                  <LeadTaskActions key={selectedLead.id} leadId={selectedLead.id} isLight={isLight} lang={lang} onChange={()=>fetchLeads(true)} />
+                  {!canEditLead(selectedLead) && <p className="text-xs text-slate-500">{t('Claim this unassigned lead before updating it or recording follow-up.','请先认领此未分配客户，再修改资料或记录跟进。')}</p>}
+                  <LeadTaskActions readOnly={!canEditLead(selectedLead)} key={selectedLead.id} leadId={selectedLead.id} isLight={isLight} lang={lang} onChange={()=>fetchLeads(true)} />
                   {/* Top Action Bar: Add Follow-up Toggle + Timeline Filter */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <button
@@ -2935,17 +2950,14 @@ export default function CrmWorkbench() {
                               {t('Staff / Consultant', '顾问责任人')}
                             </label>
                             <select
-                              value={staffName}
-                              onChange={(e) => {
-                                setStaffName(e.target.value);
-                                e.currentTarget.blur();
-                              }}
+                              value={employee.id}
+                              disabled
                               style={{ outline: 'none', boxShadow: 'none' }}
                               className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${
                                 isLight ? 'bg-white border border-slate-200 text-slate-800' : 'bg-slate-900 border border-slate-800 text-slate-200'
                               }`}
                             >
-                              <option value="">未分配</option>{employees.map(e=><option key={e.id} value={e.id}>{e.id}</option>)}
+                              {employees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
                             </select>
                           </div>
 
@@ -3099,7 +3111,7 @@ export default function CrmWorkbench() {
                         <div className="flex items-center gap-2 pt-1">
                           <button
                             type="submit"
-                            disabled={isSubmittingLog || !notesSummary.trim()}
+                            disabled={isSubmittingLog || !notesSummary.trim() || !selectedLead || !canEditLead(selectedLead)}
                             className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-500 active:scale-[0.99] disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md shadow-primary-900/20 flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <Send className="w-3.5 h-3.5" />

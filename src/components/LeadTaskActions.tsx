@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 export default function LeadTaskActions({
   leadId,
+  readOnly = false,
   isLight,
   lang,
   onChange,
 }: {
   leadId: string;
+  readOnly?: boolean;
   isLight: boolean;
   lang: "zh" | "en";
   onChange: () => void;
@@ -63,9 +65,10 @@ export default function LeadTaskActions({
             </div>
             <button
               type="button"
-              disabled={busy === task.id}
+              disabled={readOnly || busy === task.id}
               className="border rounded-lg px-3 py-1.5"
               onClick={async () => {
+                if(readOnly)return;
                 setBusy(task.id);
                 try {
                   const r = await fetch(

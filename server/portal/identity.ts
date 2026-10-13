@@ -1,6 +1,10 @@
 import type { Request } from "express";
+import {localEmployee,localDirectory} from "./localAuth.ts";
 export interface Employee {
   id: string;
+  displayName?: string;
+  roles?: string[];
+  active?: boolean;
   teams: string[];
   permissions: string[];
   scope: "all" | "team" | "own";
@@ -12,6 +16,8 @@ export interface PlatformAdapter {
 const fixtures: Employee[] = [
   {
     id: "test-admin",
+    roles: ["crm_leader", "sales"],
+    active: true,
     teams: ["sales", "ops", "supervisors"],
     permissions: [
       "crm.read",
@@ -24,6 +30,8 @@ const fixtures: Employee[] = [
   },
   {
     id: "test-sales",
+    roles: ["sales"],
+    active: true,
     teams: ["sales"],
     permissions: ["crm.read", "crm.write"],
     scope: "own",
@@ -31,6 +39,7 @@ const fixtures: Employee[] = [
 ];
 export const platform: PlatformAdapter = {
   async authenticate(req) {
+    if (process.env.PLATFORM_MODE === "local") return localEmployee(req);
     if (process.env.PLATFORM_MODE !== "mock") return null;
     const loopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
       req.socket.remoteAddress || "",
@@ -52,14 +61,14 @@ export const platform: PlatformAdapter = {
     );
   },
   async employees() {
-    return process.env.PLATFORM_MODE === "mock" ? fixtures : [];
+    return process.env.PLATFORM_MODE === "local" ? localDirectory() : process.env.PLATFORM_MODE === "mock" ? fixtures : [];
   },
 };
-export function allowed(e: Employee, profile: any) {
+export function allowed(e: Employee, profile: any, access: "read" | "write" = "read") {
   return (
     e.scope === "all" ||
     (e.scope === "own"
-      ? profile.owner === e.id
+      ? profile.owner === e.id || (access === "read" && !profile.owner && e.roles?.includes("sales") && e.teams.includes(profile.team || "sales"))
       : e.teams.includes(profile.team))
   );
 }

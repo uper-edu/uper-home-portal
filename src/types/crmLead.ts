@@ -68,7 +68,7 @@ export interface ChatTranscriptMessage {
 export interface LeadAttention {
   unreadCount: number;
   observedAt: string;
-  latest?: {type:string;at:string};
+  latest?: {type:string;at:string;source?:string};
   tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string}>;
   isMine: boolean;
 }

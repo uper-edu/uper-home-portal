@@ -36,3 +36,9 @@ ALTER TABLE notification_jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz;
 ALTER TABLE notification_rules ADD COLUMN IF NOT EXISTS effective_at timestamptz NOT NULL DEFAULT '1970-01-01 UTC';
 UPDATE notification_rules SET effective_at='1970-01-01 UTC' WHERE effective_at='-infinity';
 ALTER TABLE notification_rules ALTER COLUMN effective_at SET DEFAULT '1970-01-01 UTC';
+
+-- Local staff identity; kept separate from customer records.
+CREATE TABLE IF NOT EXISTS crm_users(id text PRIMARY KEY, login_id text NOT NULL, display_name text NOT NULL, password_hash text NOT NULL, roles jsonb NOT NULL, teams jsonb NOT NULL, active boolean NOT NULL DEFAULT true);
+CREATE UNIQUE INDEX IF NOT EXISTS crm_users_login ON crm_users(lower(login_id));
+CREATE TABLE IF NOT EXISTS crm_sessions(token_hash text PRIMARY KEY, user_id text NOT NULL REFERENCES crm_users(id), expires_at timestamptz NOT NULL);
+CREATE TABLE IF NOT EXISTS crm_login_limits(key text PRIMARY KEY, failures integer NOT NULL DEFAULT 0, window_start timestamptz NOT NULL DEFAULT now());

@@ -21,7 +21,7 @@ export function LeadActivity({
     "task.overdue": ["Follow-up overdue", "跟进逾期"],
     "ai.failed": ["AI response failed", "AI 回复失败"],
   };
-  const label =
+  const label = a.latest.source==='crm_assignment' ? (lang==='zh'?'归属已更新':'Ownership updated') :
     labels[a.latest.type]?.[lang === "zh" ? 1 : 0] ||
     (lang === "zh" ? "客户动态" : "Customer activity");
   return (

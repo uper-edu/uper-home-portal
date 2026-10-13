@@ -20,7 +20,12 @@ export const backupTables = [
   "portal_settings",
   "identity_candidates",
   "lead_read_marks",
+  "crm_users",
+  "crm_sessions",
+  "crm_login_limits",
 ] as const;
+const optionalTables = ["hsk_attempts","crm_users","crm_sessions","crm_login_limits"];
+const covered = (tables:string[]) => Array.isArray(tables) && new Set(tables).size===tables.length && tables.every(t=>(backupTables as readonly string[]).includes(t)) && backupTables.filter(t=>!optionalTables.includes(t)).every(t=>tables.includes(t));
 const digest = (value: unknown) =>
   crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const sequenceTables = {
@@ -43,12 +48,7 @@ export async function backupPortal(file: string) {
         "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
       )
     ).rows.map((r) => r.tablename);
-    const expected = [...backupTables].sort();
-    if (
-      JSON.stringify(actual) !== JSON.stringify(expected) &&
-      JSON.stringify(actual) !==
-        JSON.stringify(expected.filter((t) => t !== "hsk_attempts"))
-    )
+    if (!covered(actual))
       throw Error(
         "Portal table coverage mismatch; review schema before backup",
       );
@@ -127,21 +127,21 @@ export async function restorePortal(file: string) {
   if (snapshot.version === 2) {
     if (
       digest(payload) !== sha256 ||
-      JSON.stringify(snapshot.tables) !== JSON.stringify(backupTables)
+      !covered(snapshot.tables)
     )
       throw Error("Backup integrity or table coverage check failed");
   } else if (snapshot.version === 1) {
     if (digest(snapshot.data) !== sha256)
       throw Error("Backup integrity check failed");
     // Old snapshots predate the independent HSK table. Explicitly report that limit.
-    const legacy = backupTables.filter((t) => t !== "hsk_attempts");
+    const legacy = Object.keys(snapshot.data);
     if (
-      JSON.stringify(Object.keys(snapshot.data).sort()) !==
-      JSON.stringify([...legacy].sort())
+      !covered(legacy) || legacy.includes("hsk_attempts")
     )
       throw Error("Legacy backup table coverage mismatch");
     snapshot.data.hsk_attempts = [];
   } else throw Error("Unsupported backup version");
+  for(const table of optionalTables)if(snapshot.data[table]===undefined && (snapshot.version===1 || !snapshot.tables?.includes(table)))snapshot.data[table]=[];
   for (const table of backupTables)
     if (!Array.isArray(snapshot.data?.[table]))
       throw Error("Missing backup table");
@@ -182,13 +182,14 @@ export async function restorePortal(file: string) {
       if (
         snapshot.version === 2 &&
         !(
-          table === "hsk_attempts" &&
+          optionalTables.includes(table) &&
           !snapshot.sourceTables?.includes(table) &&
           snapshot.data[table].length === 0
         ) &&
         JSON.stringify(columns) !== JSON.stringify(snapshot.columns?.[table])
       )
         throw Error("Backup schema columns mismatch");
+      const jsonColumns=new Set((await c.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND data_type IN ('json','jsonb')",[table])).rows.map(r=>r.column_name));
       for (const row of snapshot.data[table]) {
         if (!row || typeof row !== "object" || Array.isArray(row))
           throw Error("Invalid backup row");
@@ -197,7 +198,7 @@ export async function restorePortal(file: string) {
           throw Error("Unknown backup column");
         await c.query(
           `INSERT INTO ${table} (${keys.map((k) => '"' + k + '"').join(",")}) VALUES(${keys.map((_, i) => "$" + (i + 1)).join(",")})`,
-          keys.map((k) => row[k]),
+          keys.map((k) => jsonColumns.has(k) && row[k]!==null ? JSON.stringify(row[k]) : row[k]),
         );
       }
     }

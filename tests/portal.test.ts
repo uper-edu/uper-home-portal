@@ -457,7 +457,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
       },
     );
     await t.test(
-      "sales can only access assigned leads; manager sees all; reassignment immediately revokes access",
+      "sales sees own and unassigned leads; manager sees all; reassignment immediately revokes access",
       async () => {
         const mine = crypto.randomUUID(),
           other = crypto.randomUUID();
@@ -482,7 +482,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         try {
           const sales = (await request("/api/crm/leads")).data;
           assert.equal(sales.dataScope, "own");
-          assert.ok(sales.leads.every((l: any) => l.owner === "test-sales"));
+          assert.ok(sales.leads.every((l: any) => l.owner === "test-sales" || !l.owner));
           assert.ok(!sales.leads.some((l: any) => l.id === other));
           assert.equal(sales.stats.total, sales.leads.length);
           for (const path of [

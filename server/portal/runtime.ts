@@ -1,7 +1,8 @@
+import {initializeLocalAccounts,mountLocalAuth} from "./localAuth.ts";
 import {normalizeCrmMessage} from '../../src/utils/crmMessageTime.ts';
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import type { Express, Request, Response } from "express";
-import {validWebhook} from "./notificationDelivery.ts";
+import {validWebhook,channelConnection,groupRateLimit,CRM_LEADER_ROLE} from "./notificationDelivery.ts";
 import crypto from "node:crypto";
 import { DEFAULT_CRM_POLICY_CONFIG } from "../../src/types/crmPolicyConfig.ts";
 import { pool, tx, id, event, initialize } from "./store.ts";
@@ -12,6 +13,7 @@ import {
   validate,
   sla,
   schedule,
+  withCalendarMode, resolveCalendar, globalWorkCalendar,
   type Rule,
 } from "./policy.ts";
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
@@ -88,7 +90,7 @@ async function leadAccess(req: Request, permission = "crm.read") {
       req.params.id || req.body.leadId,
     ])
   ).rows[0];
-  if (!l || !allowed(e, l.profile)) fail(404, "Lead not found");
+  if (!l || !allowed(e, l.profile, permission === "crm.read" ? "read" : "write")) fail(404, "Lead not found");
   return { e, l };
 }
 export async function mountPortal(app: Express) {
@@ -107,6 +109,8 @@ export async function mountPortal(app: Express) {
     return;
   }
   await initialize();
+  await initializeLocalAccounts();
+  mountLocalAuth(app,req=>platform.authenticate(req));
   for (const r of defaultRules)
     await pool.query(
       "INSERT INTO notification_rules(id,version,config,enabled) VALUES($1,1,$2,true) ON CONFLICT DO NOTHING",
@@ -117,6 +121,7 @@ export async function mountPortal(app: Express) {
     [{ ...defaults, hotHours: 3, warmHours: 24, coldHours: 48 }],
   );
   app.use("/api", (req, res, next) => {
+    if(process.env.PLATFORM_MODE==='local' && req.path.startsWith('/crm') && !['GET','HEAD','OPTIONS'].includes(req.method) && req.headers.origin!==`${req.protocol}://${req.get('host')}`){res.status(403).json({error:'Origin mismatch'});return;}
     if (
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
       req.headers.origin &&
@@ -426,7 +431,7 @@ export async function mountPortal(app: Express) {
           `SELECT l.id,clock_timestamp()::text AS observed_at,
         (SELECT count(*) FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id
          WHERE i.employee_id=$1 AND o.lead_id=l.id AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=$1 AND lead_id=l.id),'-infinity'::timestamptz)) AS unread_count,
-        (SELECT jsonb_build_object('type',o.type,'at',o.created_at) FROM outbox o WHERE o.lead_id=l.id ORDER BY o.created_at DESC LIMIT 1) AS latest,
+        (SELECT jsonb_build_object('type',o.type,'at',o.created_at,'source',o.payload->>'source') FROM outbox o WHERE o.lead_id=l.id ORDER BY o.created_at DESC LIMIT 1) AS latest,
         (SELECT jsonb_agg(jsonb_build_object('id',t.id,'kind',t.kind,'ownerId',t.owner_id,'status',t.status,'dueAt',t.due_at) ORDER BY t.due_at) FROM followup_tasks t WHERE t.lead_id=l.id AND (t.status IN ('open','overdue') OR (t.status='migration_hold' AND l.profile->>'currentStage' NOT IN ('Enrolled','Lost')))) AS tasks
         FROM portal_leads l`,
           [e.id],
@@ -539,6 +544,22 @@ export async function mountPortal(app: Express) {
       );
     }),
   );
+  app.post('/api/crm/leads/:id/claim',wrap(async(req,res)=>{
+    const {l,e}=await leadAccess(req);
+    if(!e.roles?.includes('sales') || !e.permissions.includes('crm.write'))fail(403,'Sales claim permission required');
+    const lead=await tx(async c=>{
+      const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[l.id])).rows[0]?.profile;
+      if(!current)fail(404,'Lead not found');
+      if(current.owner)fail(409,'Lead has already been assigned; refresh the list');
+      if(!allowed(e,current))fail(404,'Lead not found');
+      const next={...current,owner:e.id};
+      await c.query('UPDATE portal_leads SET profile=$2 WHERE id=$1',[l.id,next]);
+      await c.query("UPDATE followup_tasks SET owner_id=$2 WHERE lead_id=$1 AND status IN ('open','overdue','migration_hold')",[l.id,e.id]);
+      await c.query("INSERT INTO portal_audit(actor,action,data) VALUES($1,'lead.claim',$2)",[e.id,{id:l.id,owner:e.id}]);
+      await event(c,'conversation.updated',l.id,{source:'crm_assignment',assignmentChanged:true});
+      return next;
+    });res.json({success:true,lead});
+  }));
   app.patch(
     "/api/crm/leads/:id",
     wrap(async (req, res) => {
@@ -546,14 +567,15 @@ export async function mountPortal(app: Express) {
       const directory=await platform.employees();
       const next=await tx(async c=>{
         const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[l.id])).rows[0]?.profile;
-        if(!current || !allowed(e,current))fail(404,'Lead not found');
+        if(!current || !allowed(e,current,"write"))fail(404,'Lead not found');
         const next={...current};
         for(const k of ['owner','currentStage','tier','nextAction'])if(req.body[k]!==undefined)next[k]=req.body[k];
         if(next.owner!==current.owner && !e.permissions.includes('crm.assign'))fail(403,'Lead assignment permission required');
-        if(next.owner && !directory.some(person=>person.id===next.owner))fail(400,'Unknown employee');
+        if(next.owner!==current.owner && next.owner && !directory.some(person=>person.id===next.owner && person.active===true && person.roles?.includes('sales')))fail(400,'Owner must be an active Sales employee');
         await c.query('UPDATE portal_leads SET profile=$2 WHERE id=$1',[l.id,next]);
         await c.query("UPDATE followup_tasks SET owner_id=$2 WHERE lead_id=$1 AND status IN ('open','overdue','migration_hold')",[l.id,next.owner]);
         await c.query('INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)',[e.id,'lead.update',{id:l.id,changes:req.body}]);
+        if(next.owner!==current.owner)await event(c,'conversation.updated',l.id,{source:'crm_assignment',assignmentChanged:true});
         return next;
       });
       res.json({ success: true, lead: next });
@@ -584,11 +606,12 @@ export async function mountPortal(app: Express) {
           [req.params.id],
         )
       ).rows[0];
-      if (!t || !allowed(e, t.profile)) fail(404, "Task not found");
-      await pool.query(
-        "UPDATE followup_tasks SET status='open' WHERE id=$1 AND status='migration_hold'",
-        [t.id],
-      );
+      if (!t || !allowed(e, t.profile,"write")) fail(404, "Task not found");
+      await tx(async c=>{
+        const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[t.lead_id])).rows[0]?.profile;
+        if(!current || !allowed(e,current,"write"))fail(404,'Task not found');
+        await c.query("UPDATE followup_tasks SET status='open' WHERE id=$1 AND status='migration_hold'",[t.id]);
+      });
       res.json({ success: true });
     }),
   );
@@ -602,8 +625,10 @@ export async function mountPortal(app: Express) {
           [req.params.id],
         )
       ).rows[0];
-      if (!t || !allowed(e, t.profile)) fail(404, "Task not found");
+      if (!t || !allowed(e, t.profile,"write")) fail(404, "Task not found");
       await tx(async c=>{
+        const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[t.lead_id])).rows[0]?.profile;
+        if(!current || !allowed(e,current,"write"))fail(404,'Task not found');
         await c.query("UPDATE followup_tasks SET status='completed' WHERE id=$1",[t.id]);
         await c.query("UPDATE notification_jobs SET state='cancelled',result='Task completed',completed_at=now() WHERE state='pending' AND snapshot->'payload'->>'taskId'=$1",[t.id]);
       });
@@ -641,18 +666,41 @@ export async function mountPortal(app: Express) {
       res.json({ success: true });
     }),
   );
+  app.get('/api/crm/notification-routing',wrap(async(req,res)=>{
+    await staff(req,'notifications.manage');
+    const employees=await platform.employees();
+    res.json({mode:'owner_then_crm_leader',leaderRole:CRM_LEADER_ROLE,identityMode:process.env.PLATFORM_MODE || 'disabled',leaders:employees.filter(e=>e.active===true && e.roles?.includes(CRM_LEADER_ROLE) && e.permissions.includes('crm.read') && e.permissions.includes('crm.assign')).map(e=>({id:e.id,teams:e.teams,scope:e.scope})),unresolved:'audit_and_operations_event',scope:'owner_based_lead_notifications'});
+  }));
+  app.get('/api/crm/notification-options',wrap(async(req,res)=>{
+    await staff(req,'notifications.manage');
+    const options={sources:['homepage_widget','standalone_chat','legacy_unknown'],tiers:['Unqualified','Hot','Warm-Offline','Warm-Online','School','Cold-Nurture'],states:['New','Contacted','Assessment Booked','Assessment Done','Trial Booked','Trial Attended','Enrolled','Lost'],teams:[] as string[]};
+    const actualSources=(await pool.query("SELECT DISTINCT payload->>'source' value FROM outbox WHERE payload ? 'source' UNION SELECT DISTINCT source value FROM conversations")).rows.map(r=>r.value).filter(v=>typeof v==='string' && v.length>0 && v.length<=100);
+    options.sources=Array.from(new Set([...options.sources,...actualSources]));
+    const employees=await platform.employees();options.teams=Array.from(new Set(employees.flatMap(e=>e.teams)));
+    // Historical values remain selectable and are never silently dropped.
+    const rules=(await pool.query('SELECT config FROM notification_rules')).rows;
+    const leads=(await pool.query("SELECT profile->>'tier' tier,profile->>'currentStage' state,profile->>'team' team FROM portal_leads")).rows;
+    for(const key of ['sources','tiers','states','teams'] as const){const legacy=rules.flatMap(r=>Array.isArray(r.config[key])?r.config[key]:[]);const current=key==='sources'?[]:leads.map(l=>l[key==='tiers'?'tier':key==='states'?'state':'team']);options[key]=Array.from(new Set([...options[key],...legacy,...current].filter(v=>typeof v==='string' && v.length>0 && v.length<=100)));}
+    res.json(options);
+  }));
+  app.get('/api/crm/notification-calendar',wrap(async(req,res)=>{
+    await staff(req,'notifications.manage');const value=(await pool.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0]?.value;res.json(globalWorkCalendar(value));
+  }));
   app.get(
     "/api/crm/notification-rules",
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
-      res.json((await pool.query("SELECT * FROM notification_rules")).rows);
+      res.json((await pool.query("SELECT * FROM notification_rules")).rows.map(row=>({...row,config:withCalendarMode(row.config)})));
     }),
   );
   app.post(
     "/api/crm/notification-rules/:id",
     wrap(async (req, res) => {
       const e = await staff(req, "notifications.manage");
-      try { validate(req.body.config); } catch(e) { fail(400,(e as Error).message); }
+      if(!req.body.config || typeof req.body.config!=='object' || Array.isArray(req.body.config))fail(400,'Invalid policy');
+      const config=withCalendarMode(req.body.config);
+      const calendar=(await pool.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0]?.value;
+      try { validate(resolveCalendar(config,calendar)); } catch(e) { fail(400,(e as Error).message); }
       await tx(async (c) => {
         await c.query(
           "SELECT id FROM notification_rules WHERE id=$1 FOR UPDATE",
@@ -666,12 +714,12 @@ export async function mountPortal(app: Express) {
         const version = (old?.version || 0) + 1;
         await c.query(
           "INSERT INTO notification_rules(id,version,config,enabled,effective_at) VALUES($1,$2,$3,$4,clock_timestamp()) ON CONFLICT(id) DO UPDATE SET version=$2,config=$3,enabled=$4,effective_at=clock_timestamp()",
-          [req.params.id, version, req.body.config, req.body.enabled === true],
+          [req.params.id, version, config, req.body.enabled === true],
         );
         await c.query("INSERT INTO rule_versions VALUES($1,$2,$3)", [
           req.params.id,
           version,
-          req.body.config,
+          config,
         ]);
         await c.query(
           "INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)",
@@ -685,15 +733,18 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-simulate",
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
-      try { validate(req.body.config); } catch(e) { fail(400,(e as Error).message); }
+      if(!req.body.config || typeof req.body.config!=='object' || Array.isArray(req.body.config))fail(400,'Invalid policy');
+      const config=withCalendarMode(req.body.config);
+      const calendar=(await pool.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0]?.value;
+      try { validate(resolveCalendar(config,calendar)); } catch(e) { fail(400,(e as Error).message); }
+      const effective=resolveCalendar(config,calendar);
+      const at=new Date(req.body.at || Date.now());
+      const eventTime=config.event==='daily.digest' ? schedule(at,{...effective,timing:'digest',businessOnly:false,quiet:undefined},'lark') : at;
       res.json({
-        sendAt: req.body.config.channels.map((channel: string) => ({
+        calendar:globalWorkCalendar(calendar),
+        sendAt: config.channels.map((channel: string) => ({
           channel,
-          at: schedule(
-            new Date(req.body.at || Date.now()),
-            req.body.config,
-            channel as any,
-          ),
+          at: schedule(eventTime,config.event==='daily.digest'?{...effective,timing:'immediate'}:effective,channel as any),
         })),
         simulation: true,
       });
@@ -727,9 +778,9 @@ export async function mountPortal(app: Express) {
     await staff(req,'notifications.manage');
     const channels=(await pool.query('SELECT * FROM notification_channels')).rows.map(row=>{
       const config=row.config;
-      return {id:row.id,team:config.team,mode:config.mode,webhookConfigured:validWebhook(process.env[config.secretRef]),signingSecretConfigured:!config.signingSecretRef || !!process.env[config.signingSecretRef],designatedTestGroup:process.env.LARK_TEST_GROUP===row.id,realReceiptVerified:false};
+      return {id:row.id,team:config.team,mode:config.mode,webhookConfigured:validWebhook(process.env[config.secretRef]),signingSecretConfigured:!(config.signingEnabled ?? !!config.signingSecretRef) || !!process.env[config.signingSecretRef],designatedTestGroup:process.env.LARK_TEST_GROUP===row.id,realReceiptVerified:false};
     });
-    res.json({identity:{mode:process.env.PLATFORM_MODE || 'disabled',adapter:'local-fixtures-only',realPlatformVerified:false},channels,releaseReady:false,required:['Real platform identity/directory/scope contract','Designated Lark group receipt with event/job IDs']});
+    res.json({identity:{mode:process.env.PLATFORM_MODE || 'disabled',adapter:process.env.PLATFORM_MODE==='local'?'local-staff-accounts':'local-fixtures-only',realPlatformVerified:false},channels,releaseReady:false,required:['Real platform identity/directory/scope contract','Designated Lark group receipt with event/job IDs']});
   }));
   app.get(
     "/api/crm/notification-jobs",
@@ -749,8 +800,7 @@ export async function mountPortal(app: Express) {
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
       res.json({
-        channels: (await pool.query("SELECT * FROM notification_channels"))
-          .rows,
+        channels: await Promise.all((await pool.query("SELECT * FROM notification_channels")).rows.map(async row=>({...row,connection:channelConnection(row.id,row.config),rateLimit:await groupRateLimit(pool,row.id,row.config),usage:(await pool.query("SELECT count(*)::int AS total,count(*) FILTER (WHERE enabled)::int AS enabled FROM notification_rules WHERE config->>'group'=$1 AND config->'channels' ? 'lark'",[row.id])).rows[0]}))),
         unconnected: ["email", "sms"],
       });
     }),
@@ -759,21 +809,27 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-channels/:id",
     wrap(async (req, res) => {
       const e = await staff(req, "notifications.manage");
-      const { team, secretRef, mode, signingSecretRef } = req.body;
-      if (
-        !/^[A-Z0-9_]{1,80}$/.test(secretRef) ||
-        !["simulation", "live"].includes(mode) ||
-        typeof team !== "string" ||
-        (signingSecretRef!==undefined && !/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))
-      )
-        fail(400, "Invalid channel config");
-      await pool.query(
-        "INSERT INTO notification_channels VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET config=$2",
-        [req.params.id, { team, secretRef, mode, signingSecretRef }],
-      );
+      const { team, secretRef, mode, signingSecretRef, signingEnabled, groupName, teamName, maxPerHour } = req.body;
+      const previous=(await pool.query("SELECT config FROM notification_channels WHERE id=$1",[req.params.id])).rows[0]?.config;
+      const ref=secretRef ?? previous?.secretRef;
+      const signing=signingEnabled ?? previous?.signingEnabled ?? !!(signingSecretRef ?? previous?.signingSecretRef);
+      const signingRef=signingSecretRef ?? previous?.signingSecretRef;
+      if (!['simulation','live'].includes(mode) ||
+        (secretRef!==undefined && (typeof secretRef!=='string'||!/^[A-Z0-9_]{1,80}$/.test(secretRef))) ||
+        (signingSecretRef!==undefined && (typeof signingSecretRef!=='string'||!/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))) ||
+        (mode==='live' && (typeof ref!=='string' || !/^[A-Z0-9_]{1,80}$/.test(ref))) ||
+        (signingEnabled!==undefined && typeof signingEnabled!=='boolean') ||
+        (mode==='live' && signing && (typeof signingRef!=='string' || !/^[A-Z0-9_]{1,80}$/.test(signingRef))) ||
+        (maxPerHour!==undefined && (!Number.isInteger(maxPerHour)||maxPerHour<0||maxPerHour>10080)) ||
+        (groupName!==undefined && (typeof groupName!=='string'||!groupName.trim()||groupName.length>100)) ||
+        (!previous && !groupName?.trim()) ||
+        (team!==undefined && (typeof team!=='string'||team.length>100)) ||
+        (teamName!==undefined && (typeof teamName!=='string'||teamName.length>100)))fail(400,'Invalid channel config');
+      const limit=maxPerHour ?? (await groupRateLimit(pool,String(req.params.id),previous)).maxPerHour;
+      await pool.query("INSERT INTO notification_channels VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET config=$2",[req.params.id,{...previous,team:team ?? previous?.team,teamName:teamName ?? previous?.teamName,groupName:groupName?.trim() || previous?.groupName,mode,maxPerHour:limit,secretRef:ref,signingSecretRef:signingRef,signingEnabled:signing}]);
       await pool.query(
         "INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)",
-        [e.id, "channel.save", { id: req.params.id, team, mode }],
+        [e.id, "channel.save", { id: req.params.id, team, mode,maxPerHour:limit }],
       );
       res.json({ success: true });
     }),
@@ -874,6 +930,7 @@ export async function mountPortal(app: Express) {
             [l.id],
           )
         ).rows[0].profile;
+        if(!current || !allowed(e,current,"write"))fail(404,'Lead not found');
         const profile = {
           ...current,
           followUpLogs: [...(current.followUpLogs || []), log],
@@ -942,9 +999,7 @@ export async function mountPortal(app: Express) {
       next();
       return;
     }
-    r.status(501).json({
-      error: "Legacy administrative endpoint disabled; use portal APIs",
-    });
+    staff(q).then(()=>r.status(501).json({error:"Legacy administrative endpoint disabled; use portal APIs"})).catch(e=>r.status(e.status||503).json({error:e.message}));
   });
 }
 export { wrap, own, fail, visitor };

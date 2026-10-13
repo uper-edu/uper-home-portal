@@ -25,7 +25,7 @@ if(process.env.PORTAL_POLICY_TEST_DATABASE_URL){
  const {pool}=await import('../server/portal/store');const {mountPortal}=await import('../server/portal/runtime');const {tick}=await import('../server/portal/worker');
  const app=express();app.use(express.json());await mountPortal(app);const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.on('listening',r));const base=`http://127.0.0.1:${(server.address() as any).port}`;
  async function api(path:string,body?:any,method?:string){const r=await fetch(base+path,{method:method||(body?'POST':'GET'),headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()};}
- const rule=(x:any={})=>({...defaults,businessOnly:false,channels:['inapp'],...x});
+ const rule=(x:any={})=>({...defaults,calendarMode:'custom' as const,businessOnly:false,channels:['inapp'],...x});
  async function reset(){await pool.query('TRUNCATE notification_inbox,notification_jobs,outbox,followup_tasks,portal_leads,notification_rules,notification_channels,rule_versions,portal_audit CASCADE');delete process.env.MOCK_EMPLOYEE_ID;}
  async function lead(owner='test-admin'){const id=crypto.randomUUID();await pool.query('INSERT INTO portal_leads(id,profile) VALUES($1,$2)',[id,{id,fullName:'Policy QA',owner,team:'sales',tier:'Hot',currentStage:'New'}]);return id;}
  async function event(id:string|null,type='lead.created',payload:any={}){const eid=crypto.randomUUID();await pool.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES($1,$2,$3,$4)",[eid,type,id,payload]);return eid;}

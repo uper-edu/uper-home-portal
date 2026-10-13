@@ -1,15 +1,16 @@
-import {recipients,priority,retryAfter,validWebhook,larkCard} from "./notificationDelivery.ts";
+import {recipients,priority,retryAfter,validWebhook,larkCard,groupRateLimit,resolveRecipients} from "./notificationDelivery.ts";
 import { pool, tx, id, event, connection } from "./store.ts";
 import { platform } from "./identity.ts";
-import { schedule, local, defaults, type Rule } from "./policy.ts";
+import { schedule, local, defaults, withCalendarMode, resolveCalendar, type Rule } from "./policy.ts";
 export async function tick(clock=new Date()) {
   await tx(async (c) => {
+    const globalCalendar=(await c.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0]?.value;
     await c.query(
       "UPDATE messages SET status='interrupted',error='process_interrupted' WHERE status='generating' AND pg_try_advisory_xact_lock(hashtext(conversation_id))",
     );
     const digestRules=(await c.query("SELECT * FROM notification_rules WHERE enabled=true AND config->>'event'='daily.digest' AND effective_at<=$1",[clock])).rows;
     for(const row of digestRules){
-      const digestRule=row.config as Rule;
+      const digestRule=resolveCalendar(row.config as Rule,globalCalendar);
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:digestRule.timezone}).format(clock);
       const l=local(clock,digestRule);
       if(digestRule.days.includes(l.day) && l.time>=digestRule.digestTime){
@@ -50,7 +51,8 @@ export async function tick(clock=new Date()) {
         await c.query("SELECT * FROM notification_rules WHERE enabled=true AND effective_at<=(SELECT created_at FROM outbox WHERE id=$1)",[ev.id])
       ).rows;
       for (const rule of rules) {
-        const r = rule.config as Rule;
+        const r = withCalendarMode(rule.config as Rule);
+        const effective=resolveCalendar(r,globalCalendar);
         if (
           r.event !== ev.type ||
           (ev.type==='daily.digest' && ev.payload.ruleId!==rule.id) ||
@@ -61,7 +63,12 @@ export async function tick(clock=new Date()) {
         )
           continue;
         for (const channel of r.channels) {
-          const targets=channel==='lark'?[r.group]:recipients(r,lead,employees,ev.lead_id);
+          const route=channel==='inapp'?resolveRecipients(r,lead,employees,ev.lead_id):null;
+          const targets=route?route.ids:[r.group];
+          if(route && !targets.length){
+            await c.query("INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',$1)",[{eventId:ev.id,ruleId:rule.id,reason:route.reason}]);
+            if(ev.type!=='notification.failed')await event(c,'notification.failed',null,{reason:route.reason,eventId:ev.id,ruleId:rule.id});
+          }
           for (const recipient of targets) {
             const key = id();
             await c.query(
@@ -76,12 +83,14 @@ export async function tick(clock=new Date()) {
                 schedule(
                   new Date(ev.created_at),
                   ev.type === "daily.digest"
-                    ? { ...r, timing: "immediate" }
-                    : r,
+                    ? { ...effective, timing: "immediate" }
+                    : effective,
                   channel,
                 ),
                 {
+                  routingReason:route?.reason,
                   priority: priority(ev.type,ev.payload,lead),
+                  plannedCalendar:{timezone:effective.timezone,start:effective.start,end:effective.end,days:effective.days},
                   rule: r,
                   event: ev.type,
                   leadId: ev.lead_id,
@@ -133,7 +142,9 @@ export async function tick(clock=new Date()) {
     } } catch(e) { lease?.release(); throw e; }
   }
   try {
-    const r = job.snapshot.rule as Rule;
+    const storedRule=job.snapshot.rule as Rule;
+    const globalCalendar=(await pool.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0]?.value;
+    const r=resolveCalendar({...storedRule,calendarMode:storedRule.calendarMode || 'custom'},globalCalendar);
     const lead =
       (
         await pool.query("SELECT profile FROM portal_leads WHERE id=$1", [
@@ -143,6 +154,7 @@ export async function tick(clock=new Date()) {
     if(job.channel==='inapp'){
       const targets=recipients(r,lead,await platform.employees(),job.snapshot.leadId);
       if(!targets.includes(job.recipient)){
+        if(!targets.length)await tx(async c=>{await c.query("INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',$1)",[{jobId:job.id,reason:'no_authorized_recipient'}]);if(job.snapshot.event!=='notification.failed')await event(c,'notification.failed',null,{jobId:job.id,reason:'no_authorized_recipient'});});
         await tx(async c=>{
           for(const recipient of targets)await c.query("INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES($1,$2,$3,$4,'inapp',$5,$6,$7) ON CONFLICT DO NOTHING",[id(),job.event_id,job.rule_id,job.version,recipient,clock,job.snapshot]);
           await c.query("UPDATE notification_jobs SET state='cancelled',result='Recipient changed or no longer authorized',completed_at=$2 WHERE id=$1",[job.id,clock]);
@@ -209,18 +221,12 @@ export async function tick(clock=new Date()) {
         [job.recipient,clock],
       )
     ).rows[0].count;
-    if (Number(count) >= r.maxPerHour) {
-      await pool.query(
-        "UPDATE notification_jobs SET state='pending',due_at=now()+interval '1 hour' WHERE id=$1",
-        [job.id],
-      );
+    const config=(await pool.query("SELECT config FROM notification_channels WHERE id=$1",[job.recipient])).rows[0]?.config;
+    const limit=await groupRateLimit(pool,job.recipient,config);
+    if (Number(count) >= limit.maxPerHour) {
+      await pool.query("UPDATE notification_jobs SET state='pending',due_at=$2,result='Group hourly limit reached' WHERE id=$1",[job.id,new Date(clock.getTime()+3600000)]);
       return;
     }
-    const config = (
-      await pool.query("SELECT config FROM notification_channels WHERE id=$1", [
-        job.recipient,
-      ])
-    ).rows[0]?.config;
     if (!config || config.mode !== "live") {
       await pool.query(
         "UPDATE notification_jobs SET state='simulated',result='No live channel configured',completed_at=$2 WHERE id=$1",
@@ -231,7 +237,7 @@ export async function tick(clock=new Date()) {
     const url = process.env[config.secretRef];
     if (
       !validWebhook(url) ||
-      (config.signingSecretRef && !process.env[config.signingSecretRef]) ||
+      ((config.signingEnabled ?? !!config.signingSecretRef) && !process.env[config.signingSecretRef]) ||
       ((process.env.PLATFORM_MODE === "mock" || process.env.APP_ENV === "test" || process.env.NODE_ENV !== "production") &&
         process.env.LARK_TEST_GROUP !== job.recipient)
     ) {
@@ -253,7 +259,7 @@ export async function tick(clock=new Date()) {
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(larkCard(text+(job.snapshot.payload.counts?'\n'+JSON.stringify(job.snapshot.payload.counts):''),job.snapshot.leadId,config.signingSecretRef?process.env[config.signingSecretRef]:undefined,clock)),
+        body: JSON.stringify(larkCard(text+(job.snapshot.payload.counts?'\n'+JSON.stringify(job.snapshot.payload.counts):''),job.snapshot.leadId,(config.signingEnabled ?? !!config.signingSecretRef)?process.env[config.signingSecretRef]:undefined,clock)),
         signal: AbortSignal.timeout(10000),
       });
       serverWait = retryAfter(response.headers.get("retry-after"),clock);

@@ -1865,7 +1865,7 @@ ${cmsUrls.join('\n')}
     });
   });
 
-  const server = app.listen(PORT, process.env.PLATFORM_MODE === 'mock' ? '127.0.0.1' : '0.0.0.0', () => {
+  const server = app.listen(PORT, ['mock','local'].includes(process.env.PLATFORM_MODE || '') ? '127.0.0.1' : '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 

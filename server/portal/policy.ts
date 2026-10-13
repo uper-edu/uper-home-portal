@@ -1,5 +1,6 @@
 export type Channel = "inapp" | "lark" | "email" | "sms";
 export interface Rule {
+  calendarMode?: "inherit" | "custom";
   quiet?: { start:string; end:string };
   teams?: string[];
   event: string;
@@ -25,6 +26,7 @@ export interface Rule {
   language: "zh" | "en" | "id";
 }
 export const defaults: Rule = {
+  calendarMode: "inherit",
   event: "lead.created",
   channels: ["inapp", "lark"],
   recipient: "owner",
@@ -61,6 +63,7 @@ const events = [
   "daily.digest",
 ];
 export function validate(r: Rule) {
+  if(r.calendarMode!==undefined && !["inherit","custom"].includes(r.calendarMode))throw Error("Invalid calendar mode");
   if (
     !events.includes(r.event) ||
     !Array.isArray(r.channels) ||
@@ -167,3 +170,16 @@ export const defaultRules = events.map(
           : "immediate",
     }) as Rule,
 );
+
+export function withCalendarMode(r:Rule):Rule {
+  const same=r.timezone===defaults.timezone && r.start===defaults.start && r.end===defaults.end && JSON.stringify([...(Array.isArray(r.days)?r.days:[])].sort())===JSON.stringify([...defaults.days].sort());
+  return {...r,calendarMode:r.calendarMode ?? (same?'inherit':'custom')};
+}
+export function globalWorkCalendar(value:any){
+  const fallback={timezone:defaults.timezone,start:defaults.start,end:defaults.end,days:defaults.days};
+  try{const calendar={timezone:value.timezone,start:value.start,end:value.end,days:value.days};validate({...defaults,...calendar,calendarMode:'custom'});return {...calendar,source:'sla' as const};}catch{return {...fallback,source:'fallback' as const};}
+}
+export function resolveCalendar(r:Rule,global:any):Rule {
+  const normalized=withCalendarMode(r);
+  return normalized.calendarMode==='inherit'?{...normalized,...globalWorkCalendar(global)}:normalized;
+}
