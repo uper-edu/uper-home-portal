@@ -196,6 +196,23 @@ export async function restoreHskAttempts() {
   return (await restoreHskHistory()).results;
 }
 
+/** Idempotent system introduction. It does not fabricate a learner-authored message. */
+export async function assessmentConsultation(attemptId: string, lang: "zh" | "en" | "id") {
+  const conversationId = await conversation("standalone_chat");
+  return checked(await fetch("/api/chat", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({conversationId, assessmentAttemptId: attemptId, lang, stream: true}),
+  }));
+}
+
+export async function profileConsultation(lang: "zh" | "en" | "id") {
+  const conversationId = await conversation("standalone_chat");
+  return checked(await fetch('/api/chat', {
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({conversationId,consultationStart:true,lang,stream:true}),
+  }));
+}
+
 export async function finishChat(
   res: Response,
   source: ChatSource,

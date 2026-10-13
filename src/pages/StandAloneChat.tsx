@@ -22,9 +22,11 @@ import remarkGfm from 'remark-gfm';
 import GFormOnboardingModal from '../components/GFormOnboardingModal';
 import HskAssessmentReport from '../components/HskAssessmentReport';
 import {type HskResult, chooseText} from '../data/hskAssessment';
-import {saveHskAttempt, restoreHskAttempts} from '../services/portalChat';
-import {writeHskResult,readHskHistory} from '../services/hskAttemptStorage';
+import {saveHskAttempt, restoreHskAttempts, assessmentConsultation, profileConsultation} from '../services/portalChat';
+import {writeHskResult,readHskHistory,readHskDraft} from '../services/hskAttemptStorage';
 import HSKPlacementAssessment from '../components/HSKPlacementAssessment';
+import {hskWhatsAppDraft} from '../services/hskWhatsApp';
+import HskAssessmentWelcome from '../components/HskAssessmentWelcome';
 import { LeadProfile, calculateLeadTier } from '../types/leadSystem';
 import {
   getStudentContext,
@@ -41,6 +43,7 @@ interface ChatMessage {
   timestamp: Date;
   suggestedPrompts?: string[];
   isAssessmentCard?: boolean;
+  isProfileWelcome?: boolean;
   isAssessmentResult?: boolean;
   assessmentData?: HskResult & { whatsapp?: string };
 }
@@ -62,9 +65,17 @@ export default function StandAloneChat() {
     Promise.all([restoreChat('standalone_chat').catch(()=>[]),restoreHskAttempts().catch(()=>readHskHistory(initialContext?.preferredLanguage||'en'))]).then(([rows,attempts])=>{
       if(!active)return;
       const latest=attempts[0] || safeHskResult(initialContext?.assessment?.result, initialContext?.preferredLanguage || 'en');
-      if(latest)writeHskResult(latest);
+      if(latest){writeHskResult(latest);if(!readHskDraft())setIsTakingAssessment(false);}
       const unavailable = !latest && initialContext?.assessment?.result;
-      if(rows.length || latest || unavailable)setMessages([...rows,...(latest?[{id:`assessment-${latest.attempt.attemptId}`,role:'assistant' as const,content:latest.summary,timestamp:new Date(latest.attempt.completedAt!),isAssessmentResult:true,assessmentData:latest}]:unavailable?[{id:'assessment-unavailable',role:'assistant' as const,content:chooseText(initialContext?.preferredLanguage || 'en','历史报告待核对','Historical report needs review','Laporan lama perlu ditinjau'),timestamp:new Date(),isAssessmentResult:true,assessmentData:unavailable}]:[])]);
+      const failedIntro=latest&&rows.some((r:any)=>r.request_id==='hsk-intro-'+latest.attempt.attemptId&&['failed','interrupted'].includes(r.status));
+      const failedProfileIntro=rows.some((r:any)=>r.request_id?.startsWith('profile-intro-')&&['failed','interrupted'].includes(r.status));
+      const visibleRows=rows.filter((r:any)=>!(latest&&r.request_id?.startsWith('profile-intro-')) && !((r.request_id?.startsWith('hsk-intro-')||r.request_id?.startsWith('profile-intro-'))&&['failed','interrupted'].includes(r.status)));
+      const cards:ChatMessage[]=latest?[{id:`assessment-${latest.attempt.attemptId}`,role:'assistant',content:latest.summary,timestamp:new Date(latest.attempt.completedAt!),isAssessmentResult:true,assessmentData:latest}]:unavailable?[{id:'assessment-unavailable',role:'assistant',content:chooseText(initialContext?.preferredLanguage || 'en','历史报告待核对','Historical report needs review','Laporan lama perlu ditinjau'),timestamp:new Date(),isAssessmentResult:true,assessmentData:unavailable}]:[];
+      const introIndex=latest?visibleRows.findIndex((r:any)=>r.id==='reply-hsk-intro-'+latest.attempt.attemptId):-1;
+      const profileCards:ChatMessage[]=!latest&&rows.some((r:any)=>r.request_id?.startsWith('profile-intro-'))?[{id:'profile-welcome',role:'assistant',content:'',timestamp:new Date(),isProfileWelcome:true}]:[];
+      if(rows.length||cards.length)setMessages(introIndex<0?[...profileCards,...visibleRows,...cards]:[...visibleRows.slice(0,introIndex),...cards,...visibleRows.slice(introIndex)]);
+      if(failedIntro)setConsultationError(latest);
+      if(failedProfileIntro&&!latest)setProfileConsultationError(true);
     });
     return()=>{active=false;};
   },[]);
@@ -92,7 +103,9 @@ export default function StandAloneChat() {
 
   const handleAssessmentCancel = () => {
     setIsTakingAssessment(false);
-    saveStudentContext({ chatAssessmentStatus: 'skipped' });
+    saveStudentContext({ chatAssessmentStatus: readHskDraft()?'paused':'skipped' });
+    setMessages(prev=>[...prev.filter(m=>!m.isAssessmentCard && m.id!=='msg-resume' && !m.isProfileWelcome),{id:'profile-welcome',role:'assistant',content:'',timestamp:new Date(),isProfileWelcome:true}]);
+    void beginProfileConsultation();
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -103,7 +116,11 @@ export default function StandAloneChat() {
 
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!isTakingAssessment) scrollToBottom();
+    if (!isTakingAssessment) {
+      const last=messages.at(-1);
+      if(last?.isAssessmentResult || last?.id.startsWith('reply-hsk-intro-'))mainRef.current?.querySelector('[data-hsk-welcome]')?.scrollIntoView({behavior:'auto',block:'start'});
+      else scrollToBottom();
+    }
   }, [messages, isTyping, isTakingAssessment]);
   useEffect(() => {
     if (isTakingAssessment) mainRef.current?.scrollTo({ top: 0 });
@@ -130,7 +147,7 @@ export default function StandAloneChat() {
     const launchMsg: ChatMessage = {
       id: `msg-voluntary-${Date.now()}`,
       role: 'assistant',
-      content: chooseText(lang,'中文分班诊断已开启。快测11题，仅供筛查；完整测评50题（21听力、21阅读、8识字选择）。这是所提供试卷的数字化改编，不是官方认证考试。请在下方选择模式。','The Mandarin diagnostic is ready. Screening has 11 items; the full diagnostic has 50 (21 listening, 21 reading, 8 character choices). This is an adaptation of the supplied paper, not an official certification exam. Choose a mode below.','Diagnostik Mandarin siap. Skrining berisi 11 soal; tes lengkap berisi 50 (21 menyimak, 21 membaca, 8 pilihan karakter). Ini adaptasi tes yang disediakan, bukan ujian sertifikasi resmi. Pilih mode di bawah.'),
+      content: chooseText(lang,'请选择50题完整测评，或15题快速测评以获得初步学习起点建议。','Choose the full 50-item assessment, or the 15-item quick assessment for an initial learning starting point.','Pilih tes lengkap 50 soal, atau tes singkat 15 soal untuk rekomendasi titik awal belajar.'),
       timestamp: new Date(),
       isAssessmentCard: true
     };
@@ -304,8 +321,40 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
       setProfile(updatedProfile);
       saveStudentContext({leadProfile:updatedProfile,chatAssessmentStatus:'completed',assessment:{completed:true,result,score:result.score,total:result.maxScore,maxScore:result.maxScore,questionCount:result.questionCount,levelConfirmed:result.levelConfirmed,summary:result.summary,breakdown:result.breakdown,saveStatus:result.saveStatus,completedAt:result.attempt.completedAt}});
     }
-    setMessages(prev=>[...prev.filter(m=>m.id!==`assessment-${result.attempt.attemptId}`),{id:`assessment-${result.attempt.attemptId}`,role:'assistant',content:result.summary,timestamp:new Date(),isAssessmentResult:true,assessmentData:result,
-      suggestedPrompts:lang==='zh'?['哪些错题值得优先复习？','如何安排教师复核或试听？','适合我的课程什么时候开班？']:lang==='id'?['Soal salah mana yang perlu dipelajari dulu?','Bagaimana menjadwalkan peninjauan guru atau kelas percobaan?','Kapan kelas yang sesuai dimulai?']:['Which missed items should I review first?','How can I arrange a teacher review or trial lesson?','When does a suitable course start?']}]);
+    setProfileConsultationError(false);
+    setMessages(prev=>[...prev.filter(m=>!m.isAssessmentResult && !m.isAssessmentCard && !m.isProfileWelcome && !m.id.startsWith('reply-profile-intro') && m.id!=='msg-resume'),{id:`assessment-${result.attempt.attemptId}`,role:'assistant',content:result.summary,timestamp:new Date(),isAssessmentResult:true,assessmentData:result,
+      suggestedPrompts:[]}]);
+    if(result.saveStatus==='saved')void beginAssessmentConsultation(result);
+  };
+  const [consultationError,setConsultationError]=useState<HskResult|null>(null);
+  const [profileConsultationError,setProfileConsultationError]=useState(false);
+  const consultationRunning=useRef(new Set<string>());
+  const beginAssessmentConsultation=async(result:HskResult)=>{
+    const attemptId=result.attempt.attemptId;
+    const botId='reply-hsk-intro-'+attemptId;
+    if(consultationRunning.current.has(attemptId)||messages.some(m=>m.id===botId&&m.content))return;
+    consultationRunning.current.add(attemptId);setConsultationError(null);setIsTyping(true);
+    setMessages(prev=>[...prev.filter(m=>m.id!==botId),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
+    let reply='';
+    try{
+      const res=await assessmentConsultation(attemptId,lang);
+      const response=await finishChat(res,'standalone_chat','hsk-intro-'+attemptId,e=>{if(e.reset)reply='';if(e.chunk)reply+=e.chunk;setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:reply}:m));});
+      setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply}:m));
+    }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setConsultationError(result);}
+    finally{consultationRunning.current.delete(attemptId);setIsTyping(false);}
+  };
+  const beginProfileConsultation=async()=>{
+    const botId='reply-profile-intro';
+    if(consultationRunning.current.has(botId)||messages.some(m=>m.id.startsWith(botId)&&m.content))return;
+    consultationRunning.current.add(botId);setProfileConsultationError(false);setIsTyping(true);
+    setMessages(prev=>[...prev.filter(m=>m.id!==botId),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
+    let reply='';
+    try{
+      const res=await profileConsultation(lang);
+      const response=await finishChat(res,'standalone_chat','profile-intro',e=>{if(e.reset)reply='';if(e.chunk)reply+=e.chunk;setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:reply}:m));});
+      setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply}:m));
+    }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setProfileConsultationError(true);}
+    finally{consultationRunning.current.delete(botId);setIsTyping(false);}
   };
   const [savingReport,setSavingReport]=useState(false);
   const retryReport=async(result:HskResult)=>{
@@ -336,6 +385,8 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
     }finally{setIsTyping(false);}
   };
 
+  const whatsappDraft=hskWhatsAppDraft(profile,messages.filter(m=>m.isAssessmentResult).at(-1)?.assessmentData,lang);
+  const hasResults=messages.some(m=>m.isAssessmentResult);
   return (
     <div className="flex flex-col h-dvh bg-slate-100 text-slate-900 font-sans">
       {/* Onboarding Profile Modal (GForm First) */}
@@ -367,9 +418,12 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
                   AI
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 truncate max-w-[200px] sm:max-w-none">
+              <div className="flex items-center gap-2 text-[11px]">
+              <p className="text-slate-400 truncate max-w-[160px] sm:max-w-none">
                 {profile ? profile.fullName : chooseText(lang,'课程咨询与分班参考','Course consultation and placement reference','Konsultasi kursus dan referensi penempatan')}
               </p>
+              {hasResults && <button type="button" className="text-slate-200 underline underline-offset-2 min-h-11 -my-3 shrink-0" onClick={()=>mainRef.current?.querySelector('[data-hsk-result-anchor]')?.scrollIntoView({behavior:'smooth',block:'start'})}>{chooseText(lang,'测评结果','Assessment results','Hasil tes')}</button>}
+              </div>
             </div>
           </div>
         </div>
@@ -378,14 +432,16 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         {/* Right Action: Voluntary HSK Test, Language Switcher & WhatsApp Link */}
         <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Voluntary Assessment Quick Launcher Button */}
-          {!isTakingAssessment && (
+          {!isTakingAssessment && !hasResults && (
             <button
               type="button"
-              onClick={handleStartVoluntaryAssessment}
+              onClick={()=>{
+                handleStartVoluntaryAssessment();
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer"
             >
               <Award className="w-3.5 h-3.5 text-white" />
-              <span>{lang === 'en' ? 'Take HSK Test' : lang === 'zh' ? 'HSK 摸底测验' : 'Ikuti Tes HSK'}</span>
+              <span>{readHskDraft()?chooseText(lang,'继续测评','Resume assessment','Lanjutkan tes'):chooseText(lang,'HSK 摸底测验','Take HSK Test','Ikuti Tes HSK')}</span>
             </button>
           )}
 
@@ -424,14 +480,15 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
           </div>
 
           {!isTakingAssessment && <a
-            href="https://wa.me/6281116612062?text=Hello%20UPER%2C%20I%20am%20using%20the%20AI%20Advisory%20Portal%20and%20would%20like%20to%20speak%20with%20an%20academic%20consultant."
+            href={whatsappDraft.url}
+            title={chooseText(lang,'带上基本信息和测评摘要，在WhatsApp中编辑后手动发送','Includes your profile and assessment summary; edit and send manually in WhatsApp','Membawa profil dan ringkasan tes; edit lalu kirim sendiri di WhatsApp')}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={chooseText(lang,'通过WhatsApp联系顾问','Contact an advisor on WhatsApp','Hubungi konsultan via WhatsApp')}
+            aria-label={chooseText(lang,'通过WhatsApp联系真人顾问','Contact a human advisor on WhatsApp','Hubungi konsultan manusia via WhatsApp')}
             className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
-            <MessageCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">{chooseText(lang,'联系顾问','Advisor','Konsultan')}</span>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="w-5 h-5 shrink-0"><path d="M20 11.8a8 8 0 0 1-11.8 7L4 20l1.2-4.2A8 8 0 1 1 20 11.8Z" stroke="currentColor" strokeWidth="1.8"/><path d="M8.5 7.5c-.6.6-.8 1.3-.4 2.3 1 2.5 3 4.5 5.5 5.4 1 .4 1.7.1 2.2-.5l.5-1.1-2.1-1-1 1c-1.4-.6-2.7-1.8-3.3-3.2l.8-1-1-2Z" fill="currentColor"/></svg>
+            <span className="text-left leading-tight"><span className="block">{chooseText(lang,'联系真人顾问','Human advisor','Konsultan manusia')}</span><span className="block text-[10px] font-normal opacity-90">WhatsApp</span></span>
           </a>}
         </div>
       </header>
@@ -458,10 +515,10 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
                   ? 'bg-primary-600 text-white rounded-tr-sm shadow-md shadow-primary-600/20'
                   : 'bg-white text-slate-800 rounded-tl-sm border border-slate-200/80 shadow-sm'
               }`}>
-                {msg.isAssessmentResult && msg.assessmentData ? (
+                {msg.isProfileWelcome ? <HskAssessmentWelcome profile={profile} lang={lang} completed={false}/> : msg.isAssessmentResult && msg.assessmentData ? (
                   <div className="space-y-4">
-                    <HskAssessmentReport result={msg.assessmentData} lang={lang} saving={savingReport} onRetry={()=>void retryReport(msg.assessmentData!)}/>
-                    <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-primary-300 px-4 text-primary-700 font-semibold">{chooseText(lang,'主动联系顾问','Contact an advisor','Hubungi konsultan')}</a>
+                    <HskAssessmentWelcome profile={profile} lang={lang}/>
+                    <div data-hsk-result-anchor className="scroll-mt-4"><HskAssessmentReport result={msg.assessmentData} lang={lang} saving={savingReport} onRetry={()=>void retryReport(msg.assessmentData!)}/></div>
                   </div>
                 ) : (
                   <div className="prose prose-sm max-w-none text-inherit prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5">
@@ -506,6 +563,8 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         )}
 
         {/* AI Typing Indicator */}
+        {!isTakingAssessment && consultationError && <p role="alert" className="text-sm">{chooseText(lang,'咨询暂不可用，测评结果已保存。','Consultation is temporarily unavailable; your results are saved.','Konsultasi belum tersedia; hasil tes tersimpan.')} <button className="underline min-h-11" onClick={()=>void beginAssessmentConsultation(consultationError)}>{chooseText(lang,'重试咨询','Retry consultation','Coba konsultasi lagi')}</button></p>}
+        {!isTakingAssessment && profileConsultationError && <p role="alert" className="text-sm">{chooseText(lang,'咨询暂不可用，请重试。','Consultation is temporarily unavailable. Please retry.','Konsultasi belum tersedia. Silakan coba lagi.')} <button className="underline min-h-11" onClick={()=>void beginProfileConsultation()}>{chooseText(lang,'重试咨询','Retry consultation','Coba konsultasi lagi')}</button></p>}
         {!isTakingAssessment && isTyping && (
           <div className="flex items-center gap-2 text-xs text-slate-500 pl-10">
             <div className="flex gap-1">

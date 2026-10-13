@@ -83,13 +83,13 @@ const unknown = (r: HskResult) => ({
 test("archived v2 bank equals the verified current bank and is recursively frozen", () => {
   const version = requireHskVersion(HSK_EXAM_VERSION, HSK_SCORING_VERSION);
   assert.deepEqual(
-    JSON.parse(JSON.stringify(version.questions)),
-    JSON.parse(JSON.stringify(getExamQuestions("full"))),
+    JSON.parse(JSON.stringify(version.questions.map(({isExpressSelected,...q})=>q))),
+    JSON.parse(JSON.stringify(getExamQuestions("full").map(({isExpressSelected,...q})=>q))),
   );
   assert.deepEqual(version.fullPassCounts, FULL_HSK_PASS_COUNTS);
   assert.ok(Object.isFrozen(version));
   assert.ok(Object.isFrozen(version.questions[0].options[0]));
-  assert.equal(getVersionQuestions("express").length, 11);
+  assert.equal(getVersionQuestions("express").length, 15);
   assert.throws(() => requireHskVersion(HSK_EXAM_VERSION, "unavailable-rule"));
 });
 test("archived grades and report content do not follow mutable authoring-bank or live threshold changes", () => {
@@ -106,7 +106,7 @@ test("archived grades and report content do not follow mutable authoring-bank or
     assert.equal(gradeHskAttempt(r.attempt).score, 100);
     assert.match(gradeHskAttempt(r.attempt).levelConfirmed, /HSK 3/);
     const html = renderToStaticMarkup(
-      React.createElement(HskAssessmentReport, { result: r, lang: "zh" }),
+      React.createElement(HskAssessmentReport, { result: r, lang: "zh", detailed: true }),
     );
     assert.doesNotMatch(html, /New authoring text/);
     assert.match(html, /HSK 1 ≥11/);

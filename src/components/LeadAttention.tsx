@@ -1,3 +1,4 @@
+import {isOverdueTask} from '../utils/crmLeadFilters';
 import {crmValue,crmLocale} from '../utils/crmLanguage';
 import type { CrmLeadRecord } from "../types/crmLead";
 export function LeadActivity({
@@ -62,11 +63,9 @@ export function LeadPendingAction({
   lang: "en" | "zh";
   timezone?: string;
 }) {
-  const task = lead.attention?.tasks[0];
+  const task = lead.attention?.tasks.find(t=>['open','overdue'].includes(t.status)) || lead.attention?.tasks[0];
   if (!task) return null;
-  const overdue =
-    task.status !== "migration_hold" &&
-    (task.status === "overdue" || Date.parse(task.dueAt) < Date.now());
+  const overdue = isOverdueTask(task,Date.now());
   const label =
     (
       {
@@ -87,7 +86,7 @@ export function LeadPendingAction({
           ? "历史待办待确认 · "
           : "Historical task pending review · "
         : ""}
-      {label} · {new Date(task.dueAt).toLocaleString(crmLocale(lang),{timeZone:timezone})} ({timezone})
+      {label} · {task.status==='migration_hold' ? (lang==='zh'?'截止时间待确认':'Deadline pending review') : <>{new Date(task.dueAt).toLocaleString(crmLocale(lang),{timeZone:timezone})} ({timezone})</>}
       <span className="block">
         {task.ownerId || (lang === "zh" ? "待分配" : "Unassigned")}
       </span>

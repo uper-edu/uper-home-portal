@@ -1,6 +1,7 @@
 import pg from "pg";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import { DEFAULT_CRM_POLICY_CONFIG } from '../../src/types/crmPolicyConfig.ts';
 export const id = () => crypto.randomUUID();
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -48,5 +49,7 @@ export async function initialize() {
   await tx(async c=>{
     await c.query("SELECT pg_advisory_xact_lock(hashtext('portal-schema'))");
     await c.query(await fs.readFile(new URL("./schema.sql", import.meta.url), "utf8"));
+    const numbering = await fs.readFile(new URL("./leadNumbers.sql", import.meta.url), "utf8");
+    await c.query(numbering.replaceAll('__DEFAULT_OPERATING_TIMEZONE__',DEFAULT_CRM_POLICY_CONFIG.businessHours.timezone.replaceAll("'","''")));
   });
 }

@@ -189,7 +189,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         assert.equal(result.attempt.plays[1], 2);
         assert.equal(result.attempt.activeSeconds[1], 19);
         assert.equal(result.skippedCount, 1);
-        assert.equal(result.unansweredCount, 10);
+        assert.equal(result.unansweredCount, 14);
         assert.equal(result.score, 0);
         assert.equal(
           (await request("/api/portal/assessments")).data.results[0].attempt

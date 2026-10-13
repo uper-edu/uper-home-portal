@@ -1,150 +1,246 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  getVersionQuestions as getExamQuestions,
+  getVersionQuestions,
   displayVersionOptions,
+  requireHskVersion,
+  HSK_EXAM_VERSION,
+  HSK_SCORING_VERSION,
 } from "../data/hskAssessmentVersions";
-import { type HskHistoryProblem } from "../data/hskReportHistory";
 import {
   chooseText,
   gradeHskAttempt,
   newHskAttempt,
   stripSourceLabel,
   type HskAttempt,
-  type HskLanguage,
-  type HskMode,
   type HskResult,
+  type HskMode,
+  type HskLanguage,
 } from "../data/hskAssessment";
 import {
-  requireHskVersion,
-  HSK_EXAM_VERSION,
-  HSK_SCORING_VERSION,
-} from "../data/hskAssessmentVersions";
-import { hskExample, hskInstruction } from "../data/hskInstructions";
-import {
-  clearHskDraft,
   readHskDraft,
-  readHskHistory,
-  readHskHistoryState,
   writeHskDraft,
+  clearHskDraft,
   writeHskResult,
+  readHskHistoryState,
 } from "../services/hskAttemptStorage";
 import { saveHskAttempt, restoreHskHistory } from "../services/portalChat";
+import { HskPlayback, type PlaybackStatus } from "../services/hskPlayback";
 import { HskExamImage } from "./HskExamVisuals";
 import { HskPinyinText } from "./HskPinyinText";
-import HskAssessmentReport from "./HskAssessmentReport";
 import { HskQuestionPrompt } from "./HskQuestionPrompt";
+import HskAssessmentReport from "./HskAssessmentReport";
+import { hskInstruction } from "../data/hskInstructions";
 interface Props {
   onComplete: (result: HskResult) => void;
   onCancel?: () => void;
   studentName: string;
   lang?: HskLanguage;
 }
-const formatSeconds = (n: number) =>
-  `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, "0")}`;
 export default function HSKPlacementAssessment({
   onComplete,
   onCancel,
-  studentName,
   lang = "en",
 }: Props) {
   const t = (zh: string, en: string, id: string) =>
     chooseText(lang, zh, en, id);
-  const [mode, setMode] = useState<HskMode>("express");
-  const [draft, setDraft] = useState(readHskDraft);
+  const [draft] = useState(readHskDraft);
+  const continuing =
+    !!draft &&
+    !!requireHskVersion(draft.attempt.examVersion, draft.attempt.scoringVersion)
+      .administration;
+  const [mode, setMode] = useState<HskMode>(
+    continuing ? draft!.attempt.mode : "full",
+  );
   const [attempt, setAttempt] = useState<HskAttempt | null>(null);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [reviewing, setReviewing] = useState(false);
-  const [result, setResult] = useState<HskResult | null>(null);
-  const [history, setHistory] = useState(() => readHskHistory(lang));
-  const [historyProblems, setHistoryProblems] = useState<HskHistoryProblem[]>(
-    () => readHskHistoryState(lang).problems,
-  );
-  const [historyStorageAvailable, setHistoryStorageAvailable] = useState(
-    () => readHskHistoryState(lang).storageAvailable,
-  );
-  const [saving, setSaving] = useState(false);
-  const [storageAvailable, setStorageAvailable] = useState(true);
-  const [audioState, setAudioState] = useState<
-    "idle" | "playing" | "finished" | "error"
-  >("idle");
+  const [index, setIndex] = useState(0);
+  const [complete, setComplete] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [audioTime, setAudioTime] = useState(0);
-  const [exitConfirm, setExitConfirm] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const headingRef = useRef<HTMLHeadingElement | null>(null);
-  const mountedRef = useRef(true);
-  const savingRef = useRef(false);
-  const qs = attempt
-    ? getExamQuestions(
+  const [optionsNeedScroll, setOptionsNeedScroll] = useState(false);
+  const pictureGrid = useRef<HTMLDivElement | null>(null),
+    answerNav = useRef<HTMLDivElement | null>(null);
+  const [status, setStatus] = useState<PlaybackStatus>("loading");
+  const [pending, setPending] = useState<HskResult | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [storageOK, setStorageOK] = useState(true);
+  const [history, setHistory] = useState(() => readHskHistoryState(lang));
+  const [historical, setHistorical] = useState<HskResult | null>(null);
+  const media = useRef<HTMLAudioElement | null>(null),
+    player = useRef<HskPlayback | null>(null);
+  const key = useRef("");
+  const pausedRef = useRef(false),
+    mounted = useRef(true),
+    savingRef = useRef(false);
+  const leaveRef = useRef<
+    (key: string, reason: "next" | "skip" | "timeout") => void
+  >(() => {});
+  const questionRef = useRef<HTMLHeadingElement>(null);
+  const questions = attempt
+    ? getVersionQuestions(
         attempt.mode,
         attempt.examVersion,
         attempt.scoringVersion,
       )
-    : getExamQuestions(mode);
-  // The mode picker can be shown after a longer completed attempt.
-  const q = qs[currentIdx] ?? qs[0];
-  const options = displayVersionOptions(
-    q,
-    requireHskVersion(
-      attempt?.examVersion || HSK_EXAM_VERSION,
-      attempt?.scoringVersion || HSK_SCORING_VERSION,
-    ),
-  );
-  const example = hskExample(q);
-  const selected = attempt?.answers[q.id];
-  const audioAsset = requireHskVersion(
+    : getVersionQuestions(mode);
+  const q = questions[index] || questions[0];
+  const version = requireHskVersion(
     attempt?.examVersion || HSK_EXAM_VERSION,
     attempt?.scoringVersion || HSK_SCORING_VERSION,
-  ).audioAssets[String(q.id)];
-  const sectionLabel =
-    q.section === "listening"
-      ? t("听力", "Listening", "Menyimak")
-      : q.section === "reading"
-        ? t("阅读", "Reading", "Membaca")
-        : t("识字选择", "Character choices", "Pilihan karakter");
-  const stopAudio = () => {
-    audioRef.current?.pause();
-  };
+  );
+  const asset = version.audioAssets[String(q.id)];
+  const selected = attempt?.answers[q.id];
   useEffect(() => {
-    mountedRef.current = true;
+    const grid = pictureGrid.current,
+      nav = answerNav.current;
+    if (!attempt || complete || q.format !== "image_select" || !grid || !nav) {
+      setOptionsNeedScroll(false);
+      return;
+    }
+    const main = grid.closest("main");
+    const check = () => {
+      const bottom = grid.getBoundingClientRect().bottom;
+      const limit = Math.min(
+        nav.getBoundingClientRect().top,
+        main?.getBoundingClientRect().bottom || window.innerHeight,
+      );
+      setOptionsNeedScroll(bottom > limit + 1);
+    };
+    const observer = typeof ResizeObserver==='undefined' ? undefined : new ResizeObserver(check);
+    observer?.observe(grid);
+    observer?.observe(nav);
+    window.addEventListener("resize", check);
+    main?.addEventListener("scroll", check);
+    check();
     return () => {
-      mountedRef.current = false;
-      audioRef.current?.pause();
+      observer?.disconnect();
+      window.removeEventListener("resize", check);
+      main?.removeEventListener("scroll", check);
+    };
+  }, [attempt?.attemptId, index, complete, paused]);
+  const button =
+    "min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-primary-600 disabled:opacity-50";
+  useEffect(() => {
+    mounted.current = true;
+    media.current = new Audio();
+    return () => {
+      mounted.current = false;
+      player.current?.stop();
     };
   }, []);
   useEffect(() => {
     let active = true;
-    const local = readHskHistoryState(lang);
-    setHistory(local.results);
-    setHistoryProblems(local.problems);
-    setHistoryStorageAvailable(local.storageAvailable);
     restoreHskHistory(lang)
-      .then((state) => {
-        if (active) {
-          setHistory(state.results);
-          setHistoryProblems(state.problems);
-          setHistoryStorageAvailable(state.storageAvailable);
-        }
+      .then((h) => {
+        if (active) setHistory(h);
       })
       .catch(() => {});
     return () => {
       active = false;
     };
   }, [lang]);
+  const activate = (a: HskAttempt, i: number, position = 0, auto = true) => {
+    const item = getVersionQuestions(a.mode, a.examVersion, a.scoringVersion)[
+      i
+    ];
+    const runKey = a.attemptId + ":" + i;
+    key.current = runKey;
+    player.current?.stop();
+    setAudioTime(position);
+    setPaused(!auto);
+    pausedRef.current = !auto;
+    if (item.section !== "listening" || !media.current) return;
+    const audio = requireHskVersion(a.examVersion, a.scoringVersion)
+      .audioAssets[String(item.id)];
+    player.current = new HskPlayback(media.current, {
+      status: (s) => {
+        if (mounted.current && key.current === runKey) setStatus(s);
+      },
+      time: (s) => {
+        if (mounted.current && key.current === runKey) setAudioTime(s);
+      },
+      started: () => {
+        if (key.current === runKey)
+          setAttempt((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  plays: {
+                    ...prev.plays,
+                    [item.id]: Math.max(1, prev.plays[item.id] || 0),
+                  },
+                }
+              : prev,
+          );
+      },
+      ended: () => leaveRef.current(runKey, "timeout"),
+      failed: () => {
+        if (key.current === runKey)
+          setAttempt((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  audioFailures: [...new Set([...prev.audioFailures, item.id])],
+                }
+              : prev,
+          );
+      },
+    });
+    player.current.load(audio.src, Math.min(position, audio.durationSec), auto);
+  };
+  leaveRef.current = (runKey, reason) => {
+    if (!attempt || complete || pausedRef.current || key.current !== runKey)
+      return;
+    const seconds = Math.min(
+      asset?.durationSec || 0,
+      player.current?.position || 0,
+    );
+    key.current = "";
+    player.current?.stop();
+    setAttempt((prev) =>
+      prev
+        ? {
+            ...prev,
+            answers:
+              reason === "skip"
+                ? { ...prev.answers, [q.id]: null }
+                : prev.answers,
+            navigation: { ...prev.navigation, [q.id]: reason },
+            audioPositions:
+              q.section === "listening"
+                ? { ...prev.audioPositions, [q.id]: seconds }
+                : prev.audioPositions,
+          }
+        : prev,
+    );
+    if (index === questions.length - 1) setComplete(true);
+    else setIndex((i) => i + 1);
+  };
   useEffect(() => {
-    if (!attempt || result) return;
-    const saved = writeHskDraft({ attempt, currentIdx, reviewing });
-    setStorageAvailable(saved);
-    const unload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", unload);
-    return () => window.removeEventListener("beforeunload", unload);
-  }, [attempt, currentIdx, reviewing, result]);
+    if (!attempt || complete) return;
+    const nextKey = attempt.attemptId + ":" + index;
+    if (key.current !== nextKey) activate(attempt, index);
+    questionRef.current?.focus();
+  }, [attempt?.attemptId, index, complete]);
   useEffect(() => {
-    if (!attempt || reviewing || result) return;
-    const tick = window.setInterval(() => {
-      if (document.visibilityState === "visible")
+    if (!attempt || pending) return;
+    setStorageOK(
+      writeHskDraft({
+        attempt,
+        currentIdx: index,
+        reviewing: complete,
+        audioPositionSec: audioTime,
+        paused,
+      }),
+    );
+  }, [attempt, index, complete, audioTime, paused, pending]);
+  useEffect(() => {
+    if (!attempt || complete || paused) return;
+    const tick = setInterval(() => {
+      if (
+        document.visibilityState === "visible" &&
+        (q.section !== "listening" || status === "playing")
+      )
         setAttempt((prev) =>
           prev
             ? {
@@ -158,648 +254,435 @@ export default function HSKPlacementAssessment({
         );
     }, 1000);
     return () => clearInterval(tick);
-  }, [attempt?.attemptId, q.id, reviewing, result]);
-  useEffect(() => {
-    setAudioState("idle");
-    setAudioTime(0);
-    headingRef.current?.focus();
-    const audio = audioRef.current;
-    return () => {
-      audio?.pause();
-    };
-  }, [q.id, reviewing, result, attempt?.attemptId]);
+  }, [attempt?.attemptId, index, complete, paused, status]);
+  const pause = () => {
+    if (pausedRef.current || !attempt || complete) return;
+    pausedRef.current = true;
+    setPaused(true);
+    player.current?.pause();
+    setAttempt((prev) =>
+      prev ? { ...prev, pauseCount: (prev.pauseCount || 0) + 1 } : prev,
+    );
+  };
   useEffect(() => {
     const hidden = () => {
-      if (document.visibilityState === "hidden") stopAudio();
+      if (document.visibilityState === "hidden") pause();
     };
     document.addEventListener("visibilitychange", hidden);
     return () => document.removeEventListener("visibilitychange", hidden);
-  }, []);
-  const start = (resume = false) => {
-    if (resume && draft) {
-      setAttempt(draft.attempt);
-      setCurrentIdx(draft.currentIdx);
-      setReviewing(draft.reviewing);
-      setMode(draft.attempt.mode);
-    } else {
-      setAttempt(newHskAttempt(mode, crypto.randomUUID()));
-      setCurrentIdx(0);
-      setReviewing(false);
-    }
-    setResult(null);
-    setExitConfirm(false);
+  }, [attempt?.attemptId, complete]);
+  const resume = () => {
+    pausedRef.current = false;
+    setPaused(false);
+    if (q.section === "listening") player.current?.resume();
   };
-  const move = (index: number) => {
-    stopAudio();
-    setCurrentIdx(index);
-    setReviewing(false);
+  const start = (restore = false) => {
+    const old = restore && continuing ? draft : null;
+    const a = old ? old.attempt : newHskAttempt(mode, crypto.randomUUID());
+    const i = old ? old.currentIdx : 0;
+    setAttempt(a);
+    setIndex(i);
+    setComplete(old?.reviewing || false);
+    setPending(null);
+    if (!old?.reviewing) activate(a, i, old?.audioPositionSec || 0, true);
   };
-  const skip = () => {
-    stopAudio();
-    setAttempt((prev) =>
-      prev ? { ...prev, answers: { ...prev.answers, [q.id]: null } } : prev,
-    );
-    if (currentIdx === qs.length - 1) setReviewing(true);
-    else move(currentIdx + 1);
-  };
-  const next = () => {
-    stopAudio();
-    if (currentIdx === qs.length - 1) setReviewing(true);
-    else move(currentIdx + 1);
-  };
-  const persist = async (local: HskResult) => {
-    if (savingRef.current) return;
+  const submit = async () => {
+    if (!attempt || savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
+    setSaveError(false);
+    player.current?.stop();
+    const local =
+      pending ||
+      gradeHskAttempt(
+        { ...attempt, completedAt: new Date().toISOString() },
+        lang,
+      );
+    setPending(local);
+    writeHskResult(local);
     try {
       const saved = await saveHskAttempt(local.attempt, lang);
-      const locallyStored = writeHskResult(saved);
-      if (mountedRef.current) {
-        setResult(saved);
-        setStorageAvailable(locallyStored);
-      }
+      writeHskResult(saved);
+      clearHskDraft();
+      if (mounted.current) onComplete(saved);
     } catch {
-      /* Keep the complete local report and retry the same idempotency key. */
+      if (mounted.current) setSaveError(true);
     } finally {
       savingRef.current = false;
-      if (mountedRef.current) {
-        setSaving(false);
-        const state = readHskHistoryState(lang);
-        setHistory(state.results);
-        setHistoryProblems(state.problems);
-        setHistoryStorageAvailable(state.storageAvailable);
-      }
+      if (mounted.current) setSaving(false);
     }
   };
-  const submit = () => {
-    if (!attempt) return;
-    stopAudio();
-    const completed = { ...attempt, completedAt: new Date().toISOString() };
-    const local = gradeHskAttempt(completed, lang);
-    const saved = writeHskResult(local);
-    setStorageAvailable(saved);
-    if (saved) clearHskDraft();
-    setResult(local);
-    void persist(local);
-  };
-  const exit = () => {
-    stopAudio();
-    setExitConfirm(false);
-    onCancel?.();
-  };
-  const playback = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audioState === "playing") {
-      audio.pause();
-      setAudioState("idle");
-      return;
-    }
-    audio.currentTime = 0;
-    setAudioTime(0);
-    audio.play().catch(() => {
-      if (audioRef.current === audio) audioFailure();
-    });
-  };
-  const audioFailure = () => {
-    setAudioState("error");
-    setAttempt((prev) =>
-      prev
-        ? {
-            ...prev,
-            audioFailures: [...new Set([...prev.audioFailures, q.id])],
-          }
-        : prev,
-    );
-  };
-  const panelClass = `my-3 mx-auto w-full ${attempt && q.format === "image_select" && !reviewing && !result ? "max-w-4xl" : "max-w-3xl"} rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-4 text-slate-900`;
-  const buttonClass =
-    "min-h-11 rounded-xl border border-slate-300 px-4 py-2 font-semibold text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50 disabled:cursor-not-allowed";
-  if (result)
+  if (historical)
     return (
-      <div className={panelClass}>
-        {!storageAvailable && (
-          <p role="alert">
-            {t(
-              "报告未能写入此浏览器，请保持本页打开；服务端保存状态见下方，尚未保存时可重试。",
-              "The browser could not store this report. Keep this page open; see its server save status below and retry if unsaved.",
-              "Browser gagal menyimpan laporan. Biarkan halaman terbuka; lihat status server di bawah dan coba lagi jika belum tersimpan.",
-            )}
-          </p>
-        )}
-        <HskAssessmentReport
-          result={result}
-          lang={lang}
-          saving={saving}
-          onRetry={() => void persist(result)}
-        />
-        <button
-          type="button"
-          className={`${buttonClass} bg-primary-700 text-white`}
-          onClick={() =>
-            onComplete({
-              ...gradeHskAttempt(result.attempt, lang),
-              saveStatus: result.saveStatus,
-            })
-          }
-        >
-          {t("回到咨询", "Return to consultation", "Kembali ke konsultasi")}
+      <section className="mx-auto max-w-3xl rounded-2xl bg-white p-4 space-y-4">
+        <HskAssessmentReport result={historical} lang={lang} />
+        <button className={button} onClick={() => onComplete(historical)}>
+          {t("进入咨询", "Continue to consultation", "Lanjut ke konsultasi")}
         </button>
-        <button
-          type="button"
-          className={`${buttonClass} ml-2`}
-          onClick={() => {
-            setAttempt(null);
-            setResult(null);
-            setCurrentIdx(0);
-            setReviewing(false);
-            setDraft(readHskDraft());
-          }}
-        >
-          {t("再次测评", "Take another assessment", "Ikuti tes lagi")}
-        </button>
-      </div>
+      </section>
     );
   if (!attempt)
     return (
       <section
-        className={panelClass}
-        aria-label={t(
-          "选择测评模式",
-          "Select assessment mode",
-          "Pilih mode tes",
-        )}
+        aria-label={t("选择测评模式", "Choose assessment", "Pilih tes")}
+        className="mx-auto max-w-3xl rounded-2xl bg-white p-4 sm:p-6 space-y-4"
       >
-        <div>
-          <p className="text-xs text-primary-700 font-semibold">UPER</p>
-          <h2 className="text-xl font-bold">
-            {t(
-              "中文分班诊断",
-              "Mandarin placement diagnostic",
-              "Diagnostik penempatan Mandarin",
-            )}
-          </h2>
-          <p className="mt-2 text-sm">
-            {studentName} ·{" "}
-            {t(
-              "依据所提供的HSK1–3测评卷改编，非官方认证考试。",
-              "Adapted from the supplied HSK1–3 diagnostic paper. This is not an official certification exam.",
-              "Diadaptasi dari tes diagnostik HSK1–3 yang disediakan. Ini bukan ujian sertifikasi resmi.",
-            )}
-          </p>
-        </div>
-        <fieldset className="space-y-3">
-          <legend className="mb-2 font-semibold">
-            {t("选择模式", "Choose a mode", "Pilih mode")}
+        <h2 className="text-xl font-bold">
+          {t("中文分班测评", "Mandarin assessment", "Tes bahasa Mandarin")}
+        </h2>
+        <fieldset className="space-y-2">
+          <legend className="sr-only">
+            {t("选择模式", "Choose mode", "Pilih mode")}
           </legend>
-          {(["express", "full"] as const).map((value) => {
-            const list = getExamQuestions(value);
-            const minAudio = list
-              .filter((q) => q.section === "listening")
-              .reduce(
-                (sum, q) =>
-                  sum +
-                  requireHskVersion(HSK_EXAM_VERSION, HSK_SCORING_VERSION)
-                    .audioAssets[String(q.id)].durationSec,
-                0,
-              );
-            return (
-              <label
-                key={value}
-                className={`block rounded-xl border p-3 cursor-pointer ${mode === value ? "border-primary-600 bg-primary-50" : "border-slate-300"}`}
-              >
-                <span className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="hsk-mode"
-                    value={value}
-                    checked={mode === value}
-                    onChange={() => setMode(value)}
-                  />
-                  <strong>
-                    {value === "full"
-                      ? t(
-                          "完整分班诊断",
-                          "Full placement diagnostic",
-                          "Diagnostik penempatan lengkap",
-                        )
-                      : t("快测筛查", "Quick screening", "Skrining cepat")}{" "}
-                    · {list.length} {t("题", "items", "soal")} ·{" "}
-                    {list.length * 2} {t("分", "points", "poin")}
-                  </strong>
-                </span>
-                <p className="mt-2 text-sm">
-                  {value === "full"
+          {(continuing
+            ? [draft!.attempt.mode]
+            : (["full", "express"] as HskMode[])
+          ).map((m) => (
+            <label
+              key={m}
+              className={`flex gap-3 rounded-xl border p-3 cursor-pointer ${mode === m ? "border-primary-600 bg-primary-50" : "border-slate-300"}`}
+            >
+              {!continuing && (
+                <input
+                  type="radio"
+                  name="hsk-mode"
+                  checked={mode === m}
+                  onChange={() => setMode(m)}
+                  className="mt-1"
+                />
+              )}
+              <span>
+                <strong>
+                  {m === "express"
                     ? t(
-                        "21听力＋21阅读＋8识字选择。沿用逐题星级和已确认的门槛。原卷建议45分钟，本版不设时限。",
-                        "21 listening + 21 reading + 8 character choices. Source star levels and confirmed thresholds are retained. The paper suggests 45 minutes; this adaptation has no time limit.",
-                        "21 menyimak + 21 membaca + 8 pilihan karakter. Tingkat bintang dan ambang yang dikonfirmasi dipertahankan. Tes sumber menyarankan 45 menit; adaptasi ini tanpa batas waktu.",
+                        `快速测评 · ${continuing ? getVersionQuestions("express", draft!.attempt.examVersion, draft!.attempt.scoringVersion).length : 15}题`,
+                        `Quick assessment · ${continuing ? getVersionQuestions("express", draft!.attempt.examVersion, draft!.attempt.scoringVersion).length : 15} items`,
+                        `Tes singkat · ${continuing ? getVersionQuestions("express", draft!.attempt.examVersion, draft!.attempt.scoringVersion).length : 15} soal`,
                       )
                     : t(
-                        "仅抽样听力和阅读，每级3–4题。提供表现参考，不确定等级；建议后续完成完整测评。",
-                        "A small listening and reading sample, with 3–4 items per level. It reports performance without assigning a level; follow with the full diagnostic.",
-                        "Sampel kecil menyimak dan membaca, 3–4 soal per tingkat. Menampilkan hasil tanpa menetapkan tingkat; lanjutkan dengan tes lengkap.",
+                        "完整测评 · 50题",
+                        "Full assessment · 50 items",
+                        "Tes lengkap · 50 soal",
                       )}
-                </p>
-                <p className="mt-2 text-xs text-slate-600">
-                  {t(
-                    "全部录音完整播放一遍合计",
-                    "All clips played in full once total",
-                    "Total jika semua klip diputar lengkap sekali",
-                  )}{" "}
-                  {formatSeconds(minAudio)} ·{" "}
-                  {t(
-                    "总耗时取决于作答、重听与复查",
-                    "Total time varies with answers, replays and review",
-                    "Waktu total bergantung pada jawaban, pemutaran ulang dan peninjauan",
-                  )}
-                </p>
-              </label>
-            );
-          })}
+                </strong>
+                <span className="block text-sm text-slate-600">
+                  {m === "express"
+                    ? t(
+                        continuing &&
+                          !requireHskVersion(
+                            draft!.attempt.examVersion,
+                            draft!.attempt.scoringVersion,
+                          ).screeningPolicy
+                          ? "约5–8分钟 · 听力与阅读"
+                          : "约6–10分钟 · 听力、阅读与识字",
+                        continuing &&
+                          !requireHskVersion(
+                            draft!.attempt.examVersion,
+                            draft!.attempt.scoringVersion,
+                          ).screeningPolicy
+                          ? "About 5–8 minutes · listening and reading"
+                          : "About 6–10 minutes · listening, reading and characters",
+                        continuing &&
+                          !requireHskVersion(
+                            draft!.attempt.examVersion,
+                            draft!.attempt.scoringVersion,
+                          ).screeningPolicy
+                          ? "Sekitar 5–8 menit · menyimak dan membaca"
+                          : "Sekitar 6–10 menit · menyimak, membaca dan karakter",
+                      )
+                    : t(
+                        "约25–35分钟 · 听力、阅读与识字",
+                        "About 25–35 minutes · listening, reading and characters",
+                        "Sekitar 25–35 menit · menyimak, membaca dan karakter",
+                      )}
+                </span>
+              </span>
+            </label>
+          ))}
         </fieldset>
-        <p className="text-sm rounded-xl bg-slate-50 p-3">
+        <ul className="list-disc pl-5 text-sm space-y-2">
+          <li>
+            {t(
+              "请开启声音。开始后，听力每题播放两遍，包含作答停顿；结束后自动进入下一题。",
+              "Turn sound on. After you start, each listening item plays twice with an answer pause, then advances automatically.",
+              "Aktifkan suara. Setelah mulai, setiap soal audio diputar dua kali dengan jeda menjawab, lalu lanjut otomatis.",
+            )}
+          </li>
+          <li>
+            {t(
+              "可提前下一题或跳过；离题后不能返回修改。",
+              "You may advance or skip early; answers lock when you leave an item.",
+              "Boleh lanjut atau lewati lebih awal; jawaban terkunci setelah meninggalkan soal.",
+            )}
+          </li>
+          <li>
+            {t(
+              "阅读与识字题不设逐题时限，未答计0分。",
+              "Reading and character items have no item timer; blanks score zero.",
+              "Soal membaca dan karakter tanpa batas per soal; kosong bernilai nol.",
+            )}
+          </li>
+        </ul>
+        <p className="text-xs text-slate-500">
           {t(
-            "题图直接截自PDF；书写题改为汉字选择。不限时，记录答题用时与播放次数；允许跳过，跳过和未答均记0分。录音来源与判分依据见报告说明。",
-            "Images are direct PDF crops; writing is adapted to character choices. There is no time limit. Active time and playback starts are recorded. Skipped and unanswered items score zero. Audio provenance and grading limitations are described in the report.",
-            "Gambar dipotong langsung dari PDF; menulis diadaptasi menjadi pilihan karakter. Tanpa batas waktu. Waktu aktif dan pemutaran dicatat. Soal dilewati dan belum dijawab bernilai nol. Sumber audio dan batas penilaian dijelaskan pada laporan.",
+            "预计耗时为初始估算；结果用于学习与分班参考。",
+            "Time is an initial estimate; results guide learning and placement.",
+            "Waktu merupakan perkiraan awal; hasil untuk panduan belajar dan penempatan.",
           )}
         </p>
-        <p className="text-xs text-slate-600">
-          {t(
-            "图片选项使用中性朗读标签以避免泄露答案；本版未提供等效的非视觉测评，请需要辅助的学习者联系教师。",
-            "Picture choices have neutral labels to avoid revealing answers. An equivalent nonvisual assessment is not provided; learners needing accommodation can contact a teacher.",
-            "Pilihan gambar memakai label netral agar tidak membocorkan jawaban. Tes nonvisual setara belum tersedia; peserta yang membutuhkan bantuan dapat menghubungi guru.",
-          )}
-        </p>
-        {draft && (
-          <div className="rounded-xl bg-amber-50 p-3 border border-amber-200">
-            <p>
-              {t(
-                "发现未完成的作答",
-                "An unfinished attempt was found",
-                "Ditemukan tes yang belum selesai",
-              )}{" "}
-              · {draft.currentIdx + 1}/
-              {
-                getExamQuestions(
-                  draft.attempt.mode,
-                  draft.attempt.examVersion,
-                  draft.attempt.scoringVersion,
-                ).length
-              }
-            </p>
-            <button
-              type="button"
-              className={`${buttonClass} mt-2`}
-              onClick={() => start(true)}
-            >
-              {t("继续上次作答", "Resume attempt", "Lanjutkan tes")}
-            </button>
-          </div>
-        )}
-        <div className="flex flex-wrap gap-2">
+        {continuing ? (
           <button
-            type="button"
-            className={`${buttonClass} bg-primary-700 text-white`}
+            className={button + " bg-primary-700 text-white"}
+            onClick={() => start(true)}
+          >
+            {t(
+              "继续未完成测评",
+              "Continue unfinished assessment",
+              "Lanjutkan tes sebelumnya",
+            )}
+          </button>
+        ) : (
+          <button
+            className={button + " bg-primary-700 text-white"}
             onClick={() => start()}
           >
-            {draft
-              ? t(
-                  "开始新作答（替换草稿）",
-                  "Start new attempt (replace draft)",
-                  "Mulai tes baru (ganti draf)",
-                )
-              : t("开始测评", "Start assessment", "Mulai tes")}
+            {t("开始测评", "Start assessment", "Mulai tes")}
           </button>
-          {onCancel && (
-            <button type="button" className={buttonClass} onClick={onCancel}>
-              {t("返回咨询", "Return to chat", "Kembali ke chat")}
-            </button>
-          )}
-        </div>
-        {!historyStorageAvailable && (
-          <p role="alert" className="text-sm text-amber-800">
-            {t(
-              "浏览器历史存储不可用，当前可见报告不会因此改变；请保持本页打开。",
-              "Browser history storage is unavailable. Visible reports remain available; keep this page open.",
-              "Penyimpanan riwayat browser tidak tersedia. Laporan yang terlihat tetap tersedia; biarkan halaman terbuka.",
-            )}
-          </p>
         )}
-        {historyProblems.length > 0 && (
-          <details className="rounded-xl border border-amber-200 p-3">
-            <summary className="cursor-pointer font-semibold">
-              {t(
-                "历史记录待核对",
-                "History records needing review",
-                "Catatan riwayat perlu ditinjau",
-              )}{" "}
-              ({historyProblems.length})
-            </summary>
-            <p className="mt-2 text-sm">
-              {t(
-                "以下记录已隔离保留，不影响其他报告或新测评。",
-                "These records are retained separately and do not affect other reports or new assessments.",
-                "Catatan ini dipertahankan terpisah dan tidak memengaruhi laporan lain atau tes baru.",
-              )}
-            </p>
-            {historyProblems.map((problem) => (
-              <div key={problem.key} className="mt-3">
-                {problem.reason === "invalid_container" ||
-                problem.reason === "recovery_backup" ? (
-                  <p role="status">
-                    {problem.reason === "recovery_backup"
-                      ? t(
-                          "损坏的历史存储已备份保留。",
-                          "Damaged history storage has been backed up and retained.",
-                          "Penyimpanan riwayat rusak telah dicadangkan dan dipertahankan.",
-                        )
-                      : t(
-                          "历史存储格式损坏；保存新报告前会先备份原始内容，备份失败不会覆盖它。",
-                          "History storage is malformed. Its original content will be backed up before saving a new report; failed backup prevents overwrite.",
-                          "Format riwayat rusak. Isi asli akan dicadangkan sebelum laporan baru disimpan; kegagalan pencadangan mencegah penimpaan.",
-                        )}
-                  </p>
-                ) : (
-                  <HskAssessmentReport result={problem.record} lang={lang} />
-                )}
-              </div>
-            ))}
-          </details>
+        {onCancel && (
+          <button className={button} onClick={onCancel}>
+            {continuing?t("暂停测评，进入AI咨询","Pause assessment & start AI consultation","Jeda tes & mulai konsultasi AI"):t("跳过测评，进入AI咨询","Skip assessment & start AI consultation","Lewati tes & mulai konsultasi AI")}
+          </button>
         )}
-        {history.length > 0 && (
-          <details>
-            <summary className="cursor-pointer font-semibold">
-              {t("查看历史作答", "View attempt history", "Lihat riwayat tes")} (
-              {history.length})
+        {!!history.results.length && (
+          <details className="text-sm">
+            <summary className="cursor-pointer min-h-11">
+              {t("历史结果", "Past results", "Hasil sebelumnya")}
             </summary>
-            <div className="mt-2 space-y-2">
-              {history.map((r) => (
+            <div className="space-y-2">
+              {history.results.map((r) => (
                 <button
-                  type="button"
                   key={r.attempt.attemptId}
-                  className={`${buttonClass} w-full text-left`}
-                  onClick={() => setResult(r)}
+                  className={button + " block w-full text-left"}
+                  onClick={() => setHistorical(r)}
                 >
-                  {r.attempt.mode === "full"
-                    ? t("完整测评", "Full diagnostic", "Tes lengkap")
-                    : t("快测", "Screening", "Skrining")}{" "}
-                  · {r.score}/{r.maxScore} ·{" "}
-                  {new Date(r.attempt.completedAt!).toLocaleString(
-                    lang === "id" ? "id-ID" : lang === "zh" ? "zh-CN" : "en-US",
+                  {r.correctCount}/{r.questionCount} ·{" "}
+                  {new Date(r.attempt.completedAt!).toLocaleDateString(
+                    lang === "zh" ? "zh-CN" : lang === "id" ? "id-ID" : "en-US",
                   )}
                 </button>
               ))}
             </div>
           </details>
         )}
-      </section>
-    );
-  if (reviewing)
-    return (
-      <section className={panelClass}>
-        <h2 ref={headingRef} tabIndex={-1} className="text-xl font-bold">
-          {t(
-            "提交前复查",
-            "Review before submitting",
-            "Tinjau sebelum mengirim",
-          )}
-        </h2>
-        <p className="text-sm">
-          {t(
-            "选择任一题返回检查。跳过和未答均为0分，提交后本次作答锁定。",
-            "Select an item to review it. Skipped and unanswered items score zero. Submitting locks this attempt.",
-            "Pilih soal untuk memeriksanya. Soal dilewati dan belum dijawab bernilai nol. Jawaban dikunci setelah dikirim.",
-          )}
-        </p>
-        <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">
-          {qs.map((question, index) => {
-            const v = attempt.answers[question.id];
-            return (
-              <button
-                type="button"
-                key={question.id}
-                onClick={() => move(index)}
-                aria-label={`${t("原卷题号", "Source item", "Soal sumber")} ${question.id}: ${v === null ? t("跳过", "Skipped", "Dilewati") : v === undefined ? t("未答", "Unanswered", "Belum dijawab") : t("已答", "Answered", "Sudah dijawab")}`}
-                className={`min-h-11 border rounded-lg text-sm ${v === null ? "bg-amber-50 border-amber-300" : v === undefined ? "bg-white border-slate-300" : "bg-primary-50 border-primary-400"}`}
-              >
-                {question.id}
-                <span className="block text-xs">
-                  {v === null ? "—" : v === undefined ? "?" : "✓"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <p>
-          {t("已答", "Answered", "Sudah dijawab")}{" "}
-          {Object.values(attempt.answers).filter((v) => v !== null).length} ·{" "}
-          {t("跳过", "Skipped", "Dilewati")}{" "}
-          {Object.values(attempt.answers).filter((v) => v === null).length} ·{" "}
-          {t("未答", "Unanswered", "Belum dijawab")}{" "}
-          {qs.length - Object.keys(attempt.answers).length}
-        </p>
-        <button
-          type="button"
-          className={`${buttonClass} bg-primary-700 text-white`}
-          onClick={submit}
-        >
-          {t(
-            "提交并生成报告",
-            "Submit and generate report",
-            "Kirim dan buat laporan",
-          )}
-        </button>
-        <button
-          type="button"
-          className={`${buttonClass} ml-2`}
-          onClick={() => move(currentIdx)}
-        >
-          {t("继续检查", "Continue review", "Lanjutkan peninjauan")}
-        </button>
-      </section>
-    );
-  return (
-    <section className={panelClass}>
-      <div className="flex flex-wrap justify-between gap-2">
-        <h2
-          ref={headingRef}
-          tabIndex={-1}
-          aria-live="polite"
-          className="font-bold"
-        >
-          {sectionLabel} · {t("第", "Item", "Soal")} {currentIdx + 1}/
-          {qs.length}
-          {attempt.mode === "express" && (
-            <span className="block text-xs font-normal text-slate-500">
-              {t("对应原卷题号", "Source item", "Nomor soal sumber")} {q.id}
-            </span>
-          )}
-        </h2>
-        <span className="text-xs text-slate-600">
-          {t(
-            "本题页面时长",
-            "Time with this item visible",
-            "Waktu tampilan soal",
-          )}
-          : {formatSeconds(attempt.activeSeconds[q.id] || 0)}
-        </span>
-      </div>
-      <progress
-        className="w-full h-2 accent-primary-600"
-        value={Object.keys(attempt.answers).length}
-        max={qs.length}
-        aria-label={t(
-          "已答或跳过的题数",
-          "Items answered or skipped",
-          "Soal dijawab atau dilewati",
+        {!!history.problems.length && (
+          <details className="text-sm">
+            <summary className="cursor-pointer min-h-11">
+              {t(
+                "历史记录待核对",
+                "Historical records need review",
+                "Catatan lama perlu ditinjau",
+              )}{" "}
+              ({history.problems.length})
+            </summary>
+            <p>
+              {t(
+                "异常记录已隔离保留，不影响本次测评。",
+                "Unavailable records are retained separately and do not affect this assessment.",
+                "Catatan bermasalah tetap disimpan terpisah dan tidak memengaruhi tes.",
+              )}
+            </p>
+          </details>
         )}
-      />
-      {!storageAvailable && (
-        <p role="alert" className="text-sm text-amber-800">
+      </section>
+    );
+  if (complete)
+    return (
+      <section className="mx-auto max-w-3xl rounded-2xl bg-white p-4 space-y-4">
+        <h2>{t("测评已完成", "Assessment complete", "Tes selesai")}</h2>
+        <p>
+          {t("已作答", "Answered", "Dijawab")}{" "}
+          {Object.values(attempt.answers).filter((v) => v !== null).length} ·{" "}
+          {t("未作答", "Unanswered", "Belum dijawab")}{" "}
+          {questions.length -
+            Object.values(attempt.answers).filter((v) => v !== null).length}
+        </p>
+        <p className="text-sm text-slate-600">
           {t(
-            "草稿未能保存，刷新会丢失进度，请保持本页打开。",
-            "Draft saving failed. Refreshing will lose progress; keep this page open.",
-            "Draf gagal disimpan. Memuat ulang akan menghilangkan kemajuan; biarkan halaman terbuka.",
+            "未作答题计0分。",
+            "Unanswered items score zero.",
+            "Soal belum dijawab bernilai nol.",
           )}
         </p>
-      )}
-      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm">
-        <p>{hskInstruction(q, lang)}</p>
-        <details
-          key={q.pageHeader}
-          open={
-            currentIdx === 0 || qs[currentIdx - 1]?.pageHeader !== q.pageHeader
-          }
+        <button
+          disabled={saving}
+          className={button + " bg-primary-700 text-white"}
+          onClick={() => void submit()}
         >
-          <summary className="mt-2 cursor-pointer text-primary-700 font-semibold">
-            {t("非计分示例", "Unscored example", "Contoh tanpa nilai")} ·{" "}
-            {example.source
-              ? t("原卷示例", "Source example", "Contoh sumber")
-              : t("操作示例", "Interaction example", "Contoh penggunaan")}
-          </summary>
-          <p className="mt-2 whitespace-pre-line font-serif">{example.text}</p>
-          {example.imageKey && (
-            <HskExamImage
-              id={example.imageKey}
-              examVersion={attempt.examVersion}
-              scoringVersion={attempt.scoringVersion}
-              className="w-36 h-24"
-              lang={lang}
-            />
-          )}
-        </details>
-      </div>
-      {q.section === "listening" && (
-        <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 space-y-2">
-          <audio
-            key={q.id}
-            ref={audioRef}
-            src={audioAsset.src}
-            preload="none"
-            onPlay={() => {
-              setAudioState("playing");
-              setAttempt((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      plays: {
-                        ...prev.plays,
-                        [q.id]: (prev.plays[q.id] || 0) + 1,
-                      },
-                    }
-                  : prev,
-              );
-            }}
-            onPause={() =>
-              setAudioState((prev) => (prev === "playing" ? "idle" : prev))
-            }
-            onEnded={() => setAudioState("finished")}
-            onTimeUpdate={() =>
-              setAudioTime(audioRef.current?.currentTime || 0)
-            }
-            onError={audioFailure}
-          />
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <button type="button" className={buttonClass} onClick={playback}>
-              {audioState === "playing"
-                ? t("停止播放", "Stop playback", "Hentikan audio")
-                : (attempt.plays[q.id] || 0) > 0
-                  ? t("重新播放", "Replay audio", "Putar ulang")
-                  : t("播放录音", "Play audio", "Putar audio")}
-            </button>
-            <span className="text-xs">
-              {formatSeconds(audioTime)} /{" "}
-              {formatSeconds(audioAsset.durationSec)} ·{" "}
-              {t("播放启动", "Starts", "Mulai putar")}{" "}
-              {attempt.plays[q.id] || 0}
-            </span>
-          </div>
-          <p className="text-xs text-indigo-900">
+          {saving
+            ? t("正在提交…", "Submitting…", "Mengirim…")
+            : saveError
+              ? t("重试提交", "Retry submission", "Coba kirim lagi")
+              : t(
+                  "提交并进入咨询",
+                  "Submit and continue to consultation",
+                  "Kirim dan lanjut ke konsultasi",
+                )}
+        </button>
+        {saveError && (
+          <p role="alert">
             {t(
-              "原始MP3直接切片，保留原停顿和重复。录音内部分题号与PDF不同，请以页面题号作答。",
-              "Direct source-MP3 crop, retaining original pauses and repeats. Some spoken numbers differ from the PDF; answer the item shown on this page.",
-              "Potongan langsung MP3 sumber, dengan jeda dan pengulangan asli. Sebagian nomor lisan berbeda dari PDF; ikuti nomor soal di halaman ini.",
+              "结果暂存，服务端保存未完成，请重试。",
+              "Results are stored locally; server saving failed. Please retry.",
+              "Hasil tersimpan lokal; penyimpanan server gagal. Coba lagi.",
             )}
           </p>
-          <p role="status" className="text-xs">
-            {audioState === "error"
-              ? t(
-                  "录音未能播放，请重试或跳过。不会用合成语音替代。",
-                  "Audio could not play. Retry or skip. No synthetic fallback is used.",
-                  "Audio tidak dapat diputar. Coba lagi atau lewati. Tidak ada pengganti sintetis.",
-                )
-              : audioState === "playing"
-                ? t(
-                    "播放中；停止或结束后可切题",
-                    "Playing; stop or finish before moving on",
-                    "Sedang diputar; hentikan atau selesaikan sebelum pindah",
-                  )
-                : audioState === "finished"
-                  ? t(
-                      "播放结束，可选择答案",
-                      "Playback finished; choose an answer",
-                      "Audio selesai; pilih jawaban",
-                    )
-                  : t(
-                      "点击按钮播放。不限重听次数，并记录播放次数。",
-                      "Use the button to play. Replays are unlimited and recorded.",
-                      "Gunakan tombol untuk memutar. Pemutaran ulang tidak dibatasi dan dicatat.",
-                    )}
-          </p>
+        )}
+      </section>
+    );
+  const remaining = Math.max(
+    0,
+    Math.ceil((asset?.durationSec || 0) - audioTime),
+  );
+  const pictureChoices = q.format === "image_select";
+  return (
+    <section
+      className={`mx-auto max-w-3xl rounded-2xl bg-white ${pictureChoices ? `hsk-picture-question p-3 sm:p-6 ${q.section==='reading'?'space-y-1.5':'space-y-2'}` : "p-4 sm:p-6 space-y-4"}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h2 ref={questionRef} tabIndex={-1} className="font-bold">
+          {t("第", "Item", "Soal")} {index + 1}/{questions.length} ·{" "}
+          {q.section === "listening"
+            ? t("听力", "Listening", "Menyimak")
+            : q.section === "reading"
+              ? t("阅读", "Reading", "Membaca")
+              : t("识字选择", "Characters", "Karakter")}
+        </h2>
+        <button
+          className="min-h-11 text-sm underline"
+          onClick={paused ? resume : pause}
+        >
+          {paused
+            ? t("继续测评", "Continue assessment", "Lanjutkan tes")
+            : t("暂停测评", "Pause assessment", "Jeda tes")}
+        </button>
+      </div>
+      <progress
+        className="block w-full h-1 accent-primary-600"
+        aria-label={t("测评进度", "Assessment progress", "Kemajuan tes")}
+        value={index}
+        max={questions.length}
+      />
+      {q.section === "listening" ? (
+        <div
+          className={`rounded-xl bg-slate-50 ${pictureChoices ? "p-2 space-y-1" : "p-3 space-y-2"}`}
+        >
+          <div role="status" className="flex justify-between text-sm">
+            <span>
+              {paused
+                ? t("已暂停", "Paused", "Dijeda")
+                : status === "loading"
+                  ? t("正在加载录音…", "Loading audio…", "Memuat audio…")
+                  : status === "blocked"
+                    ? t(
+                        "点击继续以播放录音",
+                        "Tap continue to enable audio",
+                        "Ketuk lanjut untuk memutar audio",
+                      )
+                    : status === "error"
+                      ? t(
+                          "录音加载失败",
+                          "Audio unavailable",
+                          "Audio tidak tersedia",
+                        )
+                      : audioTime >=
+                          (asset.answerPauseStartSec ?? asset.durationSec)
+                        ? t("作答时间", "Answer time", "Waktu menjawab")
+                        : t("录音播放中", "Audio playing", "Audio diputar")}
+            </span>
+            <span>
+              {t("剩余", "Remaining", "Sisa")} {remaining}
+              {t("秒", "s", "d")}
+            </span>
+          </div>
+          <progress
+            className={`${pictureChoices?'block h-1.5':''} w-full accent-primary-600`}
+            aria-label={t(
+              "听力作答时间",
+              "Listening answer window",
+              "Waktu menjawab audio",
+            )}
+            value={audioTime}
+            max={asset.durationSec}
+          />
+          {!paused && (status === "blocked" || status === "error") && (
+            <button
+              className={button}
+              onClick={() =>
+                status === "error"
+                  ? player.current?.retry()
+                  : player.current?.resume()
+              }
+            >
+              {status === "error"
+                ? t("重试加载", "Retry audio", "Coba muat audio")
+                : t("继续播放", "Continue audio", "Lanjutkan audio")}
+            </button>
+          )}
         </div>
+      ) : (
+        <>
+          <p
+            className={`${pictureChoices ? "text-xs" : "text-sm"} text-slate-600`}
+          >
+            {pictureChoices ? t('选对应图片，每题独立。','Choose the matching picture. Each item is independent.','Pilih gambar yang cocok. Setiap soal berdiri sendiri.') : hskInstruction(q, lang)}
+          </p>
+          <HskQuestionPrompt question={q} lang={lang} compact={pictureChoices}/>
+        </>
       )}
-      {q.section !== "listening" && (
-        <HskQuestionPrompt question={q} lang={lang} />
+      {paused && !pictureChoices && (
+        <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm">
+          {t(
+            "测评已暂停，点击继续后从中断处恢复。",
+            "Paused. Continue from where you stopped.",
+            "Tes dijeda. Lanjutkan dari posisi terakhir.",
+          )}
+        </p>
       )}
-      <fieldset>
-        <legend className="sr-only">
-          {t("选择一个答案", "Choose one answer", "Pilih satu jawaban")}
+      <fieldset disabled={paused}>
+        <legend
+          className={pictureChoices ? `mb-1 text-xs ${optionsNeedScroll?'text-amber-800 font-semibold':'text-slate-500'}` : "sr-only"}
+        >
+          {pictureChoices
+            ? optionsNeedScroll
+              ? t(
+                  `共${q.options.length}个选项 · 下滑查看全部`,
+                  `All ${q.options.length} options · Scroll to see all`,
+                  `${q.options.length} pilihan · Gulir untuk melihat semua`,
+                )
+              : t(
+                  `共${q.options.length}个选项，请看完后选择`,
+                  `All ${q.options.length} options`,
+                  `${q.options.length} pilihan`,
+                )
+            : t("选择一个答案", "Choose one answer", "Pilih satu jawaban")}
         </legend>
         <div
-          className={`grid gap-2 ${q.format === "image_select" ? "grid-cols-2 sm:grid-cols-3" : q.format === "writing_pinyin" ? "grid-cols-3" : q.format === "word_bank" ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1"}`}
+          ref={pictureGrid}
+          data-option-count={q.options.length}
+          className={`grid ${pictureChoices ? "hsk-picture-grid grid-cols-3 gap-1.5 sm:gap-3" : `gap-3 ${q.section === "writing" ? "grid-cols-3" : q.format === "word_bank" ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1"}`}`}
         >
-          {options.map((opt) => (
-            <div
+          {displayVersionOptions(q, version).map((opt) => (
+            <label
               key={opt.id}
-              className={`relative block rounded-xl border p-3 min-h-12 cursor-pointer focus-within:ring-2 focus-within:ring-primary-600 ${selected === opt.id ? "border-primary-600 bg-primary-50" : "border-slate-300 bg-white hover:bg-slate-50"}`}
+              htmlFor={`hsk-q-${q.id}-${opt.id}`}
+              className={`relative rounded-xl border ${pictureChoices ? "p-1.5 pt-5 sm:p-3 sm:pt-6" : "p-3"} cursor-pointer focus-within:ring-2 focus-within:ring-primary-600 ${selected === opt.id ? "border-primary-600 bg-primary-50" : "border-slate-300"}`}
             >
               <input
                 type="radio"
                 className="sr-only"
                 name={`hsk-q-${q.id}`}
                 id={`hsk-q-${q.id}-${opt.id}`}
-                aria-label={
-                  opt.imageKey
-                    ? t(
-                        `图片选项${opt.label}`,
-                        `Picture option ${opt.label}`,
-                        `Pilihan gambar ${opt.label}`,
-                      )
-                    : undefined
-                }
-                value={opt.id}
                 checked={selected === opt.id}
                 onChange={() =>
                   setAttempt((prev) =>
@@ -811,50 +694,54 @@ export default function HSKPlacementAssessment({
                       : prev,
                   )
                 }
+                aria-label={
+                  opt.imageKey
+                    ? t(
+                        `图片选项${opt.label}`,
+                        `Picture option ${opt.label}`,
+                        `Pilihan gambar ${opt.label}`,
+                      )
+                    : undefined
+                }
               />
               {opt.imageKey ? (
                 <>
                   <HskExamImage
                     id={opt.imageKey}
+                    className="w-full h-[clamp(80px,16dvh,144px)] sm:h-[clamp(80px,16dvh,160px)]"
                     examVersion={attempt.examVersion}
                     scoringVersion={attempt.scoringVersion}
-                    lang={lang}
                     label={t(
                       `图片选项${opt.label}`,
                       `Picture option ${opt.label}`,
                       `Pilihan gambar ${opt.label}`,
                     )}
-                    className="w-full h-28 sm:h-36"
+                    lang={lang}
                   />
-                  <label
-                    htmlFor={`hsk-q-${q.id}-${opt.id}`}
-                    className="block min-h-11 text-center content-center font-semibold cursor-pointer"
-                  >
-                    {t("选择", "Choose", "Pilih")} {opt.label}
-                  </label>
+                  <span className="absolute top-0.5 left-1.5 text-sm font-bold">
+                    {opt.label}
+                  </span>
                 </>
               ) : (
-                <label
-                  htmlFor={`hsk-q-${q.id}-${opt.id}`}
-                  className="flex min-h-11 items-start gap-2 cursor-pointer"
-                >
-                  <span className="text-sm font-mono font-semibold pt-1">
-                    {opt.label}.
-                  </span>
+                <span className="flex gap-2">
+                  <span className="font-semibold">{opt.label}.</span>
                   {opt.tokens ? (
                     <HskPinyinText
                       tokens={opt.tokens}
                       size={q.section === "writing" ? "lg" : "base"}
-                      className="min-w-0"
                     />
                   ) : (
                     <span
-                      className={`font-serif whitespace-pre-line ${q.section === "writing" ? "text-2xl font-bold" : "text-base"}`}
+                      className={
+                        q.section === "writing"
+                          ? "text-2xl font-bold"
+                          : "text-base font-serif"
+                      }
                     >
                       {stripSourceLabel(opt.text)}
                     </span>
                   )}
-                </label>
+                </span>
               )}
               {selected === opt.id && (
                 <span
@@ -864,90 +751,36 @@ export default function HSKPlacementAssessment({
                   ✓
                 </span>
               )}
-            </div>
+            </label>
           ))}
         </div>
       </fieldset>
-      <div className="flex flex-wrap gap-2">
+      <div ref={answerNav} className="sticky bottom-0 bg-white py-2 flex gap-2">
         <button
-          type="button"
-          className={buttonClass}
-          disabled={currentIdx === 0 || audioState === "playing"}
-          onClick={() => move(currentIdx - 1)}
+          className={button + " bg-primary-700 text-white flex-1"}
+          disabled={paused || selected == null}
+          onClick={() => leaveRef.current(key.current, "next")}
         >
-          {t("上一题", "Previous", "Sebelumnya")}
-        </button>
-        <button
-          type="button"
-          className={`${buttonClass} bg-primary-700 text-white`}
-          disabled={
-            selected === undefined ||
-            selected === null ||
-            audioState === "playing"
-          }
-          onClick={next}
-        >
-          {currentIdx === qs.length - 1
-            ? t("提交前复查", "Review answers", "Tinjau jawaban")
+          {index === questions.length - 1
+            ? t("完成测评", "Finish assessment", "Selesaikan tes")
             : t("下一题", "Next", "Berikutnya")}
         </button>
-        <button type="button" className={buttonClass} onClick={skip}>
-          {t("不知道 / 跳过", "Not sure / skip", "Tidak tahu / lewati")}
-        </button>
-      </div>
-      <div className="flex gap-4 text-xs">
         <button
-          type="button"
-          className="underline min-h-11"
-          disabled={audioState === "playing"}
-          onClick={() => setReviewing(true)}
+          className={button}
+          disabled={paused}
+          onClick={() => leaveRef.current(key.current, "skip")}
         >
-          {t("查看作答清单", "Review answer list", "Tinjau daftar jawaban")}
+          {t("跳过", "Skip", "Lewati")}
         </button>
-        {onCancel && (
-          <button
-            type="button"
-            className="underline min-h-11"
-            onClick={() => {
-              stopAudio();
-              setExitConfirm(true);
-            }}
-          >
-            {t("保存并退出", "Save and leave", "Simpan dan keluar")}
-          </button>
-        )}
       </div>
-      {exitConfirm && (
-        <div
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"
-        >
-          <p>
-            {storageAvailable
-              ? t(
-                  "草稿已保存在此浏览器，返回可继续。确认退出？",
-                  "The draft is saved in this browser and can be resumed. Leave now?",
-                  "Draf tersimpan di browser ini dan dapat dilanjutkan. Keluar sekarang?",
-                )
-              : t(
-                  "草稿保存失败，退出可能丢失进度。",
-                  "Draft saving failed; leaving may lose progress.",
-                  "Draf gagal disimpan; keluar dapat menghilangkan kemajuan.",
-                )}
-          </p>
-          <div className="mt-2 flex gap-2">
-            <button type="button" className={buttonClass} onClick={exit}>
-              {t("确认退出", "Leave", "Keluar")}
-            </button>
-            <button
-              type="button"
-              className={buttonClass}
-              onClick={() => setExitConfirm(false)}
-            >
-              {t("继续作答", "Keep working", "Lanjutkan")}
-            </button>
-          </div>
-        </div>
+      {!storageOK && (
+        <p role="alert" className="text-xs text-amber-800">
+          {t(
+            "浏览器无法保存进度，请保持本页打开。",
+            "Your browser cannot save progress. Keep this page open.",
+            "Browser tidak dapat menyimpan kemajuan. Tetap buka halaman ini.",
+          )}
+        </p>
       )}
     </section>
   );

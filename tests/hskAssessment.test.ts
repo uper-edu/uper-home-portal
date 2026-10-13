@@ -231,7 +231,7 @@ import HSKPlacementAssessment from "../src/components/HSKPlacementAssessment";
 test("Express derives 11 items / 22 points and never assigns a pass level from 3–4 items", () => {
   const qs = getExamQuestions("express");
   assert.equal(qs.length, 11);
-  const attempt = newHskAttempt("express", randomUUID());
+  const attempt = {...newHskAttempt("express", randomUUID()),examVersion:"pdf-e80a3cbaabc5-audio-1d13ab13-sequential-v3"};
   for (const q of qs)
     attempt.answers[q.id] = q.options.find((o) => o.isCorrect)!.id;
   const result = gradeHskAttempt(attempt, "en");
@@ -368,7 +368,7 @@ test("reports keep localized point units, limits and actual save status; screen 
   for (const lang of ["zh", "en", "id"] as const) {
     const result = gradeHskAttempt(attempt, lang);
     const html = renderToStaticMarkup(
-      React.createElement(HskAssessmentReport, { result, lang }),
+      React.createElement(HskAssessmentReport, { result, lang, detailed: true }),
     );
     assert.ok(html.includes("0/100"));
     assert.ok(html.includes("0/50"));
@@ -387,7 +387,7 @@ test("reports keep localized point units, limits and actual save status; screen 
     }),
   );
   assert.equal((html.match(/type="radio"/g) || []).length, 2);
-  assert.match(html, /11.*items/);
+  assert.match(html, /15.*items/);
   assert.ok(!html.includes("10 Questions"));
 });
 

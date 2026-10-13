@@ -1,4 +1,8 @@
+import {CrmLeadFilters} from '../components/crm/CrmLeadFilters';
+import {defaultLeadFilters,filterQuery,isOverdueTask,type LeadFilters} from '../utils/crmLeadFilters';
 import {crmValue,crmError,crmLocale,type CrmLanguage} from '../utils/crmLanguage';
+import {leadDisplayNumber} from '../utils/leadNumber';
+import {formatCrmOperatingTime} from '../utils/crmOperatingTime';
 import CrmAccess, {CrmAccountControls,type CrmEmployee} from "../components/CrmAccess";
 import {crmMessageTimestamp,crmMessageTimeLabel,compareCrmEventTimes} from '../utils/crmMessageTime';
 import { LeadActivity, LeadPendingAction } from '../components/LeadAttention';
@@ -143,17 +147,15 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
   });
   const [isLoading, setIsLoading] = useState(true);
   const [dataScope,setDataScope] = useState<'own'|'team'|'all'>('all');
-  const [attentionFilter,setAttentionFilter] = useState<'all'|'mine'|'unread'|'unassigned'|'overdue'>(employee.scope==='own'?'mine':'all');
   const [leadActionError,setLeadActionError] = useState('');
-  const [selectedTierTab, setSelectedTierTab] = useState<string>('All');
-  const [selectedStage, setSelectedStage] = useState<string>('All');
-  const [selectedOwner, setSelectedOwner] = useState<string>('All');
-  const [selectedConnectStatus, setSelectedConnectStatus] = useState<string>('All');
-  const [selectedMode, setSelectedMode] = useState<string>('All');
-  const [selectedBuyingSignal, setSelectedBuyingSignal] = useState<string>('All');
-  const [selectedSlaStatus, setSelectedSlaStatus] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [filters,setFilters]=useState<LeadFilters>(()=>defaultLeadFilters(employee.scope));
+  const [appliedSearch,setAppliedSearch]=useState('');
+  const [ownerOptions,setOwnerOptions]=useState<string[]>([]);
+  const [filterTimezone,setFilterTimezone]=useState('Asia/Jakarta');
+  const [showOverview,setShowOverview]=useState(false);
+  const requestVersion=useRef(0);
+  const queryKey=filterQuery({...filters,search:appliedSearch});
+  useEffect(()=>{const timer=setTimeout(()=>setAppliedSearch(filters.search),filters.search?300:0);return ()=>clearTimeout(timer);},[filters.search]);
   const [selectedLead, setSelectedLead] = useState<CrmLeadRecord | null>(null);
   const responseDeadline = selectedLead?.attention ? selectedLead.attention.tasks.filter(task=>['open','overdue'].includes(task.status)).sort((a,b)=>Date.parse(a.dueAt)-Date.parse(b.dueAt))[0]?.dueAt : selectedLead?.slaDueTime;
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -201,87 +203,10 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
     return 'standard';
   });
 
-  // Dynamic Overdue Count based on live policy config & cadence rules
-  const dynamicOverdueCount = leads.filter(l => l.attention ? l.attention.tasks.some(t=>t.status==='overdue'||Date.parse(t.dueAt)<Date.now()) : evaluateLeadCadence(l, policyConfig, lang).isOverdue).length;
-
-  // Filtered Leads accounting for Stage, Owner, Search and all Telesales filters
-  const filteredLeads = useMemo(() => {
-    return leads.filter((lead) => {
-      if(attentionFilter==='mine'&&(!lead.attention?.isMine||!lead.attention.tasks.length))return false;
-      if(attentionFilter==='unread'&&!lead.attention?.unreadCount)return false;
-      if(attentionFilter==='unassigned'&&lead.owner)return false;
-      if(attentionFilter==='overdue'&&!lead.attention?.tasks.some(t=>t.status==='overdue'||Date.parse(t.dueAt)<Date.now()))return false;
-
-      if (selectedConnectStatus !== 'All' && lead.connectStatus !== selectedConnectStatus) {
-        return false;
-      }
-      if (selectedMode !== 'All' && lead.mode !== selectedMode) {
-        return false;
-      }
-      if (selectedBuyingSignal !== 'All' && lead.buyingSignal !== selectedBuyingSignal) {
-        return false;
-      }
-      if (selectedSlaStatus !== 'All') {
-        const cadence = evaluateLeadCadence(lead, policyConfig, lang);
-        if (selectedSlaStatus === 'overdue' && !cadence.isOverdue) return false;
-        if (selectedSlaStatus === 'due_today' && (cadence.statusType !== 'scheduled' || cadence.isOverdue)) return false;
-        if (selectedSlaStatus === 'first_response' && cadence.statusType !== 'first_response') return false;
-        if (selectedSlaStatus === 'stale' && cadence.statusType !== 'stale_alert') return false;
-      }
-      return true;
-    }).sort((a,b)=>{
-      if(attentionFilter==='mine'||attentionFilter==='overdue'){const due=(l:CrmLeadRecord)=>Math.min(...(l.attention?.tasks||[]).map(t=>Date.parse(t.dueAt)));return due(a)-due(b);}
-      if(attentionFilter==='unread')return Date.parse(b.attention?.latest?.at||'1970-01-01')-Date.parse(a.attention?.latest?.at||'1970-01-01');
-      return 0;
-    });
-  }, [leads, attentionFilter, selectedConnectStatus, selectedMode, selectedBuyingSignal, selectedSlaStatus, policyConfig, lang]);
-
-  // Check if any filters or search query are active
-  const hasActiveFilters = Boolean(
-    attentionFilter !== 'all' ||
-    selectedTierTab !== 'All' ||
-    selectedStage !== 'All' ||
-    selectedSlaStatus !== 'All' ||
-    selectedConnectStatus !== 'All' ||
-    selectedMode !== 'All' ||
-    selectedBuyingSignal !== 'All' ||
-    selectedOwner !== 'All' ||
-    searchQuery.trim().length > 0
-  );
-
-  // Count active dropdowns in advanced filters (6 dropdowns)
-  const activeAdvancedFiltersCount = [
-    selectedStage !== 'All',
-    selectedSlaStatus !== 'All',
-    selectedConnectStatus !== 'All',
-    selectedMode !== 'All',
-    selectedBuyingSignal !== 'All',
-    selectedOwner !== 'All'
-  ].filter(Boolean).length;
-
-  const handleResetAdvancedFilters = () => {
-    setSelectedStage('All');
-    setSelectedSlaStatus('All');
-    setSelectedConnectStatus('All');
-    setSelectedMode('All');
-    setSelectedBuyingSignal('All');
-    setSelectedOwner('All');
-  };
-
-  const handleResetAllFilters = () => {
-    const needManualFetch = selectedTierTab === 'All' && selectedStage === 'All' && selectedOwner === 'All' && searchQuery.trim().length > 0;
-    setAttentionFilter('all'); setSelectedTierTab('All');
-    setSelectedStage('All');
-    setSelectedSlaStatus('All');
-    setSelectedConnectStatus('All');
-    setSelectedMode('All');
-    setSelectedBuyingSignal('All');
-    setSelectedOwner('All');
-    setSearchQuery('');
-    if (needManualFetch) {
-      setTimeout(() => fetchLeads(), 0);
-    }
-  };
+  const dynamicOverdueCount=stats.overdueSla;
+  const filteredLeads=leads;
+  const hasActiveFilters=filterQuery(filters)!==filterQuery(defaultLeadFilters('all'));
+  const handleResetAllFilters=()=>setFilters(defaultLeadFilters('all'));
 
   const handleSetViewMode = (mode: 'standard' | 'expanded') => {
     setViewMode(mode);
@@ -311,19 +236,17 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
 
   // Fetch leads from backend
   const fetchLeads = async (quiet = false) => {
+    const version=++requestVersion.current;
     if(!quiet) setIsLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (selectedTierTab !== 'All') params.append('tier', selectedTierTab);
-      if (selectedStage !== 'All') params.append('stage', selectedStage);
-      if (selectedOwner !== 'All') params.append('owner', selectedOwner);
-      if (searchQuery.trim()) params.append('search', searchQuery.trim());
-
-      const res = await fetch(`/api/crm/leads?${params.toString()}`);
+      const res = await fetch(`/api/crm/leads?${queryKey}`);
+      if(version!==requestVersion.current)return;
       if(!res.ok){const error=await res.json();throw Error(error.error||String(res.status));}
       if (res.ok) {
         const data = await res.json();
+        if(version!==requestVersion.current)return;
         setLeadActionError('');
+        setOwnerOptions(data.ownerOptions || []);setFilterTimezone(data.timezone || 'Asia/Jakarta');
         setLeads(data.leads || []);
         if(data.dataScope)setDataScope(data.dataScope);
         if (data.stats) setStats(prev=>({...prev,...data.stats}));
@@ -335,9 +258,10 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
         }
       }
     } catch (err) {
+      if(version!==requestVersion.current)return;
       console.error('Failed to load CRM leads:', err); setLeadActionError((err as Error).message);
     } finally {
-      setIsLoading(false);
+      if(version===requestVersion.current)setIsLoading(false);
     }
   };
 
@@ -345,8 +269,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
   useEffect(()=>{fetchLeadsRef.current=fetchLeads;});
   useEffect(() => {
     fetchLeads();
-    const timer=setInterval(()=>fetchLeadsRef.current(true),5000); return ()=>clearInterval(timer);
-  }, [selectedTierTab, selectedStage, selectedOwner, selectedLead?.id]);
+    const timer=setInterval(()=>fetchLeadsRef.current(true),5000); return ()=>{clearInterval(timer);requestVersion.current++;};
+  }, [queryKey, selectedLead?.id]);
 
   // Load SLA & Cadence Policy Configuration
   const fetchPolicyConfig = async () => {
@@ -407,10 +331,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
   };
 
   // Handle Search submit / debounce
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchLeads();
-  };
+
 
   // Open drawer for a lead
   const handleOpenLeadDrawer = (lead: CrmLeadRecord, tab: 'profile' | 'activities' | 'playbook' | 'chat' = 'profile') => {
@@ -726,7 +647,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
 
   // Config-driven Dynamic Cadence & SLA calculation
   const getSlaDisplay = (lead: CrmLeadRecord) => {
-    if(lead.attention){const task=lead.attention.tasks[0];const overdue=!!task&&(task.status==='overdue'||Date.parse(task.dueAt)<Date.now());return {text:task?(task.status==='migration_hold'?t('Historical task: review required','历史待办待确认'):overdue?t('Overdue','已逾期'):t('Follow-up pending','待跟进')):t('No pending follow-up','暂无待办'),color:overdue?'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800':'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',isOverdue:overdue,suggestedAction:lead.nextAction||'',statusType:task?'scheduled':'none'};}
+    if(lead.attention){const task=lead.attention.tasks.find(t=>['open','overdue'].includes(t.status)) || lead.attention.tasks[0];const overdue=!!task&&isOverdueTask(task,Date.now());return {text:task?(task.status==='migration_hold'?t('Historical task: review required','历史待办待确认'):overdue?t('Overdue','已逾期'):t('Follow-up pending','待跟进')):t('No pending follow-up','暂无待办'),color:overdue?'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800':'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',isOverdue:overdue,suggestedAction:lead.nextAction||'',statusType:task?'scheduled':'none'};}
 
     const cadence = evaluateLeadCadence(lead, policyConfig, lang);
     return { 
@@ -809,19 +730,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
     return { count, countLabel, statusText, statusColor };
   };
 
-  // Unified Global CRM Timestamp Formatter (Uniform format: YYYY-MM-DD HH:mm:ss)
-  const formatCrmDateTime = (isoString?: string): string => {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return isoString;
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    const ss = String(d.getSeconds()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
-  };
+  const formatCrmDateTime = (isoString?: string) => formatCrmOperatingTime(isoString,policyConfig.businessHours.timezone);
 
   // Smart next action recommendation using policy configuration
   const getDisplayNextAction = (lead: CrmLeadRecord): string => {
@@ -1337,6 +1246,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
           />
         ) : (
           <>
+            <button type="button" aria-expanded={showOverview} onClick={()=>setShowOverview(!showOverview)} className="text-sm font-semibold text-slate-600 dark:text-slate-300">{t('Business overview · current results','业务概览 · 当前筛选结果')} {showOverview?'−':'+'}</button>
+            {showOverview&&<div>
             {/* KPI Dashboard Grid with Standardized Height and Pixel-Perfect Alignment */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* Card 1: Total */}
@@ -1486,475 +1397,9 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
               </div>
             </div>
 
+            </div>}
             {leadActionError&&<p role="alert" className="text-xs text-rose-500">{crmError(leadActionError,lang)}</p>}
-            <div className="flex gap-2 flex-wrap" aria-label={t('Work queue','工作队列')}>
-              {([{id:'all',en:dataScope==='all'?'All leads (any owner)':'All accessible leads',zh:dataScope==='all'?'全部线索（不限归属）':'全部可见线索'},{id:'mine',en:'My pending follow-up',zh:'我的待办'},{id:'unread',en:'Unread activity',zh:'未读动态'},{id:'unassigned',en:'Unassigned',zh:'待分配'},{id:'overdue',en:'Overdue',zh:'已逾期'}] as const).map(f=><button key={f.id} type="button" aria-pressed={attentionFilter===f.id} onClick={()=>setAttentionFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-xs font-medium ${attentionFilter===f.id?'bg-primary-600 text-white border-primary-600':isLight?'bg-white text-slate-600 border-slate-200':'bg-slate-900 text-slate-300 border-slate-700'}`}>{t(f.en,f.zh)}</button>)}
-            </div>
-        {/* Filter Bar: Row 1 (Tier + Advanced Filters Toggle) -> Collapsible 6 Dropdowns -> Bottom Row (Search + Column Switcher) */}
-        <div className={`rounded-2xl p-3.5 space-y-3 transition-colors ${
-          isLight ? 'bg-white border border-slate-200/90 shadow-2xs' : 'bg-slate-900 border border-slate-800'
-        }`}>
-          {/* ROW 1: Tier Category Tabs (Left) + 「高级筛选 ▼」 Button (Right) */}
-          <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-            {/* Left: Tier Tabs with horizontal scroll */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0">
-              {[
-                { id: 'All', label: t('All Leads', '全部线索') },
-                { id: 'Hot', label: t('🔥 Hot', '🔥 高意向') },
-                { id: 'Warm-Offline', label: t('🏫 Warm-Offline', "🏫 中意向 · 线下") },
-                { id: 'Warm-Online', label: t('🌐 Warm-Online', "🌐 中意向 · 线上") },
-                { id: 'School', label: t('🏢 School (B2B)', '🏢 院校合作(B2B)') },
-                { id: 'Cold-Nurture', label: t('❄️ Cold-Nurture', '❄️ 培育池') }
-              ].map(tab => (
-                <button
-                  type="button"
-                  key={tab.id}
-                  onClick={() => setSelectedTierTab(tab.id)}
-                  className={`flex items-center h-8.5 px-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
-                    selectedTierTab === tab.id
-                      ? 'bg-primary-600 text-white shadow-2xs shadow-primary-900/20'
-                      : isLight 
-                        ? 'bg-slate-100 hover:bg-slate-200/90 text-slate-600'
-                        : 'bg-slate-800/70 hover:bg-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Right: 「高级筛选 ▼」 Button (Default collapsed, toggles 6 dropdown filters) */}
-            <button
-              type="button"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={`flex items-center gap-1.5 h-8.5 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
-                showAdvancedFilters
-                  ? isLight
-                    ? 'bg-primary-50 text-primary-700 border-primary-300 shadow-2xs'
-                    : 'bg-primary-950/60 text-primary-300 border-primary-700 shadow-xs'
-                  : activeAdvancedFiltersCount > 0
-                    ? isLight
-                      ? 'bg-primary-50/70 text-primary-700 border-primary-300 shadow-2xs'
-                      : 'bg-primary-950/40 text-primary-300 border-primary-700/80'
-                    : isLight
-                      ? 'bg-slate-100 hover:bg-slate-200/90 text-slate-700 border-slate-200'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-              }`}
-              title={t('Toggle 6 dimension advanced filter dropdowns', '展开/收起 6 大维度高级筛选下拉框')}
-            >
-              <Filter className={`w-3.5 h-3.5 ${showAdvancedFilters || activeAdvancedFiltersCount > 0 ? 'text-primary-600 dark:text-primary-400' : ''}`} />
-              <span>{t('Advanced Filters', '高级筛选')}</span>
-              {activeAdvancedFiltersCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary-600 text-white leading-tight">
-                  {activeAdvancedFiltersCount}
-                </span>
-              )}
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvancedFilters ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-
-          {/* COLLAPSIBLE SECTION: 6 Advanced Filter Dropdowns (Default Collapsed) */}
-          {showAdvancedFilters && (
-            <div className={`pt-3 border-t transition-all ${
-              isLight ? 'border-slate-100' : 'border-slate-800/80'
-            }`}>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 w-full">
-                {/* 1. Stage Filter (Synchronized with STAGE_OPTIONS) */}
-                <div className={`relative flex items-center h-8.5 rounded-xl border transition-all focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200/80 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800 ${
-                  selectedStage !== 'All'
-                    ? isLight 
-                      ? 'bg-white border-slate-300 shadow-2xs' 
-                      : 'bg-slate-900 border-slate-700'
-                    : isLight 
-                      ? 'bg-slate-50/80 border-slate-200/90 hover:border-slate-300 hover:bg-white' 
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                }`}>
-                  <span className={`pl-2.5 pr-1 text-xs font-medium shrink-0 whitespace-nowrap select-none ${
-                    selectedStage !== 'All' 
-                      ? isLight ? 'text-slate-800 font-semibold' : 'text-slate-200 font-semibold'
-                      : isLight ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
-                    {t('Stage:', '阶段:')}
-                  </span>
-                  <select
-                    value={selectedStage}
-                    onChange={(e) => {
-                      setSelectedStage(e.target.value);
-                      e.currentTarget.blur();
-                    }}
-                    onBlur={(e) => e.currentTarget.blur()}
-                    style={{ fontSize: '12px', outline: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
-                    className={`w-full h-full pl-0.5 pr-7 appearance-none !text-xs font-sans bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none border-none ring-0 cursor-pointer truncate ${
-                      selectedStage !== 'All'
-                        ? isLight ? 'text-slate-900 font-semibold' : 'text-white font-semibold'
-                        : isLight ? 'text-slate-600 font-medium' : 'text-slate-400 font-medium'
-                    }`}
-                  >
-                    <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('All', '全部')}
-                    </option>
-                    {STAGE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value} style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                        {t(opt.labelEn, opt.labelZh)}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
-                    isLight ? 'text-slate-400' : 'text-slate-500'
-                  }`} />
-                </div>
-
-                {/* 2. Cadence & SLA Filter */}
-                <div className={`relative flex items-center h-8.5 rounded-xl border transition-all focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200/80 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800 ${
-                  selectedSlaStatus !== 'All'
-                    ? isLight 
-                      ? 'bg-white border-slate-300 shadow-2xs' 
-                      : 'bg-slate-900 border-slate-700'
-                    : isLight 
-                      ? 'bg-slate-50/80 border-slate-200/90 hover:border-slate-300 hover:bg-white' 
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                }`}>
-                  <span className={`pl-2.5 pr-1 text-xs font-medium shrink-0 whitespace-nowrap select-none ${
-                    selectedSlaStatus !== 'All' 
-                      ? isLight ? 'text-slate-800 font-semibold' : 'text-slate-200 font-semibold'
-                      : isLight ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
-                    {t('Cadence:', '时效:')}
-                  </span>
-                  <select
-                    value={selectedSlaStatus}
-                    onChange={(e) => {
-                      setSelectedSlaStatus(e.target.value);
-                      e.currentTarget.blur();
-                    }}
-                    onBlur={(e) => e.currentTarget.blur()}
-                    style={{ fontSize: '12px', outline: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
-                    className={`w-full h-full pl-0.5 pr-7 appearance-none !text-xs font-sans bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none border-none ring-0 cursor-pointer truncate ${
-                      selectedSlaStatus !== 'All'
-                        ? isLight ? 'text-slate-900 font-semibold' : 'text-white font-semibold'
-                        : isLight ? 'text-slate-600 font-medium' : 'text-slate-400 font-medium'
-                    }`}
-                  >
-                    <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('All', '全部')}
-                    </option>
-                    <option value="overdue" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Overdue', '仅看逾期')}
-                    </option>
-                    <option value="due_today" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Due Today', '今日约定')}
-                    </option>
-                    <option value="first_response" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('FRT Due', '待首访响应')}
-                    </option>
-                    <option value="stale" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Stale', '停滞回访')}
-                    </option>
-                  </select>
-                  <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
-                    isLight ? 'text-slate-400' : 'text-slate-500'
-                  }`} />
-                </div>
-
-                {/* 3. Connect Status Filter */}
-                <div className={`relative flex items-center h-8.5 rounded-xl border transition-all focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200/80 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800 ${
-                  selectedConnectStatus !== 'All'
-                    ? isLight 
-                      ? 'bg-white border-slate-300 shadow-2xs' 
-                      : 'bg-slate-900 border-slate-700'
-                    : isLight 
-                      ? 'bg-slate-50/80 border-slate-200/90 hover:border-slate-300 hover:bg-white' 
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                }`}>
-                  <span className={`pl-2.5 pr-1 text-xs font-medium shrink-0 whitespace-nowrap select-none ${
-                    selectedConnectStatus !== 'All' 
-                      ? isLight ? 'text-slate-800 font-semibold' : 'text-slate-200 font-semibold'
-                      : isLight ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
-                    {t('Connect:', '接通:')}
-                  </span>
-                  <select
-                    value={selectedConnectStatus}
-                    onChange={(e) => {
-                      setSelectedConnectStatus(e.target.value);
-                      e.currentTarget.blur();
-                    }}
-                    onBlur={(e) => e.currentTarget.blur()}
-                    style={{ fontSize: '12px', outline: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
-                    className={`w-full h-full pl-0.5 pr-7 appearance-none !text-xs font-sans bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none border-none ring-0 cursor-pointer truncate ${
-                      selectedConnectStatus !== 'All'
-                        ? isLight ? 'text-slate-900 font-semibold' : 'text-white font-semibold'
-                        : isLight ? 'text-slate-600 font-medium' : 'text-slate-400 font-medium'
-                    }`}
-                  >
-                    <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('All', '全部')}
-                    </option>
-                    <option value="Connected" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Connected', '已建联/沟通中')}
-                    </option>
-                    <option value="No Response" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('No Response', '未接通/需重试')}
-                    </option>
-                    <option value="Interested" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Interested', '意向强烈')}
-                    </option>
-                    <option value="Wrong Number" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Invalid', '空号/错号')}
-                    </option>
-                  </select>
-                  <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
-                    isLight ? 'text-slate-400' : 'text-slate-500'
-                  }`} />
-                </div>
-
-                {/* 4. Campus Mode Filter */}
-                <div className={`relative flex items-center h-8.5 rounded-xl border transition-all focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200/80 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800 ${
-                  selectedMode !== 'All'
-                    ? isLight 
-                      ? 'bg-white border-slate-300 shadow-2xs' 
-                      : 'bg-slate-900 border-slate-700'
-                    : isLight 
-                      ? 'bg-slate-50/80 border-slate-200/90 hover:border-slate-300 hover:bg-white' 
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                }`}>
-                  <span className={`pl-2.5 pr-1 text-xs font-medium shrink-0 whitespace-nowrap select-none ${
-                    selectedMode !== 'All' 
-                      ? isLight ? 'text-slate-800 font-semibold' : 'text-slate-200 font-semibold'
-                      : isLight ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
-                    {t('Mode:', '模式:')}
-                  </span>
-                  <select
-                    value={selectedMode}
-                    onChange={(e) => {
-                      setSelectedMode(e.target.value);
-                      e.currentTarget.blur();
-                    }}
-                    onBlur={(e) => e.currentTarget.blur()}
-                    style={{ fontSize: '12px', outline: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
-                    className={`w-full h-full pl-0.5 pr-7 appearance-none !text-xs font-sans bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none border-none ring-0 cursor-pointer truncate ${
-                      selectedMode !== 'All'
-                        ? isLight ? 'text-slate-900 font-semibold' : 'text-white font-semibold'
-                        : isLight ? 'text-slate-600 font-medium' : 'text-slate-400 font-medium'
-                    }`}
-                  >
-                    <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('All', '全部')}
-                    </option>
-                    <option value="Offline" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Offline (PIK Campus)', '线下面授 (PIK)')}
-                    </option>
-                    <option value="Online" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Online (Live Cohort)', '线上直播班')}
-                    </option>
-                  </select>
-                  <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
-                    isLight ? 'text-slate-400' : 'text-slate-500'
-                  }`} />
-                </div>
-
-                {/* 5. Buying Signal Filter */}
-                <div className={`relative flex items-center h-8.5 rounded-xl border transition-all focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200/80 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800 ${
-                  selectedBuyingSignal !== 'All'
-                    ? isLight 
-                      ? 'bg-white border-slate-300 shadow-2xs' 
-                      : 'bg-slate-900 border-slate-700'
-                    : isLight 
-                      ? 'bg-slate-50/80 border-slate-200/90 hover:border-slate-300 hover:bg-white' 
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                }`}>
-                  <span className={`pl-2.5 pr-1 text-xs font-medium shrink-0 whitespace-nowrap select-none ${
-                    selectedBuyingSignal !== 'All' 
-                      ? isLight ? 'text-slate-800 font-semibold' : 'text-slate-200 font-semibold'
-                      : isLight ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
-                    {t('Buying Signal:', '购买信号:')}
-                  </span>
-                  <select
-                    value={selectedBuyingSignal}
-                    onChange={(e) => {
-                      setSelectedBuyingSignal(e.target.value);
-                      e.currentTarget.blur();
-                    }}
-                    onBlur={(e) => e.currentTarget.blur()}
-                    style={{ fontSize: '12px', outline: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
-                    className={`w-full h-full pl-0.5 pr-7 appearance-none !text-xs font-sans bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none border-none ring-0 cursor-pointer truncate ${
-                      selectedBuyingSignal !== 'All'
-                        ? isLight ? 'text-slate-900 font-semibold' : 'text-white font-semibold'
-                        : isLight ? 'text-slate-600 font-medium' : 'text-slate-400 font-medium'
-                    }`}
-                  >
-                    <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('All', '全部')}
-                    </option>
-                    <option value="Asked price" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Asked tuition', '咨询学费')}
-                    </option>
-                    <option value="Asked schedule" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Asked schedule', '咨询时间')}
-                    </option>
-                    <option value="Asked payment" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Installments', '分期付款')}
-                    </option>
-                    <option value="Ready to enroll" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('Ready enroll', '准备报名')}
-                    </option>
-                  </select>
-                  <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
-                    isLight ? 'text-slate-400' : 'text-slate-500'
-                  }`} />
-                </div>
-
-                {/* 6. Owner Filter */}
-                <div className={`relative flex items-center h-8.5 rounded-xl border transition-all focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200/80 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800 ${
-                  selectedOwner !== 'All'
-                    ? isLight 
-                      ? 'bg-white border-slate-300 shadow-2xs' 
-                      : 'bg-slate-900 border-slate-700'
-                    : isLight 
-                      ? 'bg-slate-50/80 border-slate-200/90 hover:border-slate-300 hover:bg-white' 
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                }`}>
-                  <span className={`pl-2.5 pr-1 text-xs font-medium shrink-0 whitespace-nowrap select-none ${
-                    selectedOwner !== 'All' 
-                      ? isLight ? 'text-slate-800 font-semibold' : 'text-slate-200 font-semibold'
-                      : isLight ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
-                    {t('Owner:', '顾问:')}
-                  </span>
-                  <select
-                    value={selectedOwner}
-                    onChange={(e) => {
-                      setSelectedOwner(e.target.value);
-                      e.currentTarget.blur();
-                    }}
-                    onBlur={(e) => e.currentTarget.blur()}
-                    style={{ fontSize: '12px', outline: 'none', boxShadow: 'none', backgroundColor: 'transparent' }}
-                    className={`w-full h-full pl-0.5 pr-7 appearance-none !text-xs font-sans bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none border-none ring-0 cursor-pointer truncate ${
-                      selectedOwner !== 'All'
-                        ? isLight ? 'text-slate-900 font-semibold' : 'text-white font-semibold'
-                        : isLight ? 'text-slate-600 font-medium' : 'text-slate-400 font-medium'
-                    }`}
-                  >
-                    <option value="All" style={{ fontSize: '12px' }} className={isLight ? 'bg-white text-slate-800 !text-xs' : 'bg-slate-900 text-slate-200 !text-xs'}>
-                      {t('All', '全部')}
-                    </option>
-                    <option value="">{t('Unassigned','未分配')}</option>{Array.from(new Set(leads.map(l=>l.owner).filter(o=>o&&!employees.some(e=>e.id===o)))).map(owner=><option key={owner} value={owner}>{owner}{t(' (historical owner)','（历史归属）')}</option>)}{salesEmployees.map(e=><option key={e.id} value={e.id}>{employeeLabel(e)}</option>)}
-                  </select>
-                  <ChevronDown className={`w-3.5 h-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 ${
-                    isLight ? 'text-slate-400' : 'text-slate-500'
-                  }`} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* BOTTOM ROW: Search (Left) + Column Mode Switcher (Right, without 'Frozen' in label) */}
-          <div className={`pt-2.5 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-            isLight ? 'border-slate-100' : 'border-slate-800/80'
-          }`}>
-            {/* Left: Search Box Form + Match Count Tag + Optional Reset */}
-            <div className="flex items-center gap-2 flex-1 max-w-2xl w-full flex-wrap sm:flex-nowrap">
-              <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 flex-1 min-w-[220px]">
-                <div className="relative flex-1">
-                  <Search className={`w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
-                  <input
-                    type="text"
-                    placeholder={t('Search name, phone / WhatsApp, lead ID...', '搜索姓名、手机 / WhatsApp、线索ID...')}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`w-full h-8.5 pl-9 pr-7 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-700 focus:border-slate-400 transition-colors ${
-                      isLight 
-                        ? 'bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white' 
-                        : 'bg-slate-950 border border-slate-800 text-slate-200'
-                    }`}
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer p-0.5"
-                      title={t('Clear search', '清除搜索')}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  className={`h-8.5 px-3.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer shrink-0 ${
-                    isLight
-                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shadow-2xs'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                  }`}
-                >
-                  {t('Search', '搜索')}
-                </button>
-              </form>
-
-              {/* Match count badge */}
-              <div className={`flex items-center gap-1.5 px-2.5 h-8.5 rounded-xl text-[11px] font-mono border shrink-0 ${
-                isLight ? 'bg-slate-50 border-slate-200/80 text-slate-600' : 'bg-slate-800/60 border-slate-700/60 text-slate-300'
-              }`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>{t(`Showing ${filteredLeads.length} leads`, `共匹配 ${filteredLeads.length} 条线索`)}</span>
-              </div>
-
-              {/* Reset all filters button if any active */}
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleResetAllFilters}
-                  className={`flex items-center gap-1 h-8.5 px-2.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer shrink-0 ${
-                    isLight 
-                      ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200 shadow-2xs' 
-                      : 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border-amber-800/60'
-                  }`}
-                  title={t('Reset all filter criteria', '清空所有筛选条件')}
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>{t('Reset', '重置')}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Right: Column Count Switcher Capsule (Text without "Frozen") */}
-            <div className={`flex items-center p-0.5 rounded-xl border shrink-0 self-end sm:self-auto ${
-              isLight ? 'bg-slate-100 border-slate-200/90' : 'bg-slate-800 border-slate-700'
-            }`}>
-              {/* Standard 9-col */}
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('standard')}
-                className={`flex items-center gap-1.5 h-7.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  viewMode === 'standard'
-                    ? isLight ? 'bg-white text-primary-700 shadow-2xs font-bold' : 'bg-primary-600 text-white shadow-sm font-bold'
-                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title={t('Standard View: 9 columns optimized for screen with frozen columns', '标准视图：9列整屏适配，首两列吸附冻结')}
-              >
-                <LayoutList className="w-3.5 h-3.5" />
-                <span>{t('9 Cols', '9列')}</span>
-              </button>
-
-              {/* Expanded 14-col */}
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('expanded')}
-                className={`flex items-center gap-1.5 h-7.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  viewMode === 'expanded'
-                    ? isLight ? 'bg-white text-primary-700 shadow-2xs font-bold' : 'bg-primary-600 text-white shadow-sm font-bold'
-                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title={t('Expanded View: 14 columns full spreadsheet with frozen columns', '宽表明细：14列全字段明细，首两列平滑冻结')}
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                <span>{t('14 Cols', '14列')}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+            <CrmLeadFilters isLight={isLight} value={filters} onChange={setFilters} lang={lang} scope={employee.scope} owners={Array.from(new Set([...employees.filter(e=>e.active!==false).map(e=>e.id),...ownerOptions])).map(id=>({id,label:employees.find(e=>e.id===id)?.displayName || id}))} count={filteredLeads.length} loading={isLoading || appliedSearch!==filters.search} timezone={filterTimezone} viewMode={viewMode} onViewMode={handleSetViewMode}/>
 
         {/* Lead Table Container with strict horizontal gesture containment to prevent back/forward swipe navigation */}
         <div className={`rounded-2xl overflow-hidden transition-colors ${
@@ -1977,7 +1422,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                     <th className={`py-3 px-3 text-left whitespace-nowrap sticky left-0 z-20 w-[115px] min-w-[115px] border-b ${
                       isLight ? 'bg-slate-50 border-slate-200/90' : 'bg-slate-800 border-slate-700'
                     }`}>
-                      {t('Lead ID & Date', '线索编号 & 提交')}
+                      {t('Lead number & Date', '业务编号 & 提交')}
+                      <span className="block text-[10px] normal-case font-normal opacity-70">{policyConfig.businessHours.timezone}</span>
                     </th>
                     {/* Fixed Column 2: Student & WhatsApp with Right Divider Shadow */}
                     <th className={`py-3 px-3 text-left whitespace-nowrap sticky left-[115px] z-20 w-[190px] min-w-[190px] border-b border-r shadow-[4px_0_10px_-2px_rgba(0,0,0,0.08)] dark:shadow-[4px_0_12px_-2px_rgba(0,0,0,0.5)] ${
@@ -1987,7 +1433,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                     </th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('City & Mode', '城市与授课模式')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Goal & Placement', '目标与测评定级')}</th>
-                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Tier & Next Action', '生源分层 & 下一步待办')}</th>
+                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Customer group & Next action', '客户分组与下一步待办')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Buying Signal', '购买信号')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Current Stage', '推进阶段')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Follow-up Count', '跟进次数')}</th>
@@ -2028,7 +1474,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                             <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md inline-block ${
                               isLight ? 'bg-slate-100 text-slate-700 border border-slate-200/70' : 'bg-slate-800 text-slate-300 border border-slate-700/60'
                             }`}>
-                              {lead.id.replace(/^UPER-/, '')}
+                              {leadDisplayNumber(lead)}
                             </span>
                             <span className={`text-[10px] font-mono block mt-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                               {formatCrmDateTime(lead.submittedAt)}
@@ -2308,7 +1754,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Mode', '授课模式')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Goal', '学习目标')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Placement Level', '测评定级')}</th>
-                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Tier', '生源分层')}</th>
+                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Customer group', '客户分组')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('SLA Status', 'SLA倒计时')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Next Action', '下一步动作')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Buying Signal', '购买信号')}</th>
@@ -2352,7 +1798,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                             <span className={`px-1.5 py-0.5 rounded-md inline-block ${
                               isLight ? 'bg-slate-100 border border-slate-200/70' : 'bg-slate-800 border border-slate-700/60'
                             }`}>
-                              {lead.id.replace(/^UPER-/, '')}
+                              {leadDisplayNumber(lead)}
                             </span>
                           </td>
 
@@ -2599,7 +2045,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                   }`}>
                     {crmValue(selectedLead.currentStage,lang)}
                   </span>
-                  <span className={`font-mono text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{selectedLead.id.replace(/^UPER-/, '')}</span>
+                  <span className={`font-mono text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{leadDisplayNumber(selectedLead)}</span>
                   <span className={`text-[10px] font-mono ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                     {responseDeadline ? <>{t('Response deadline:','响应截止：')} {new Date(responseDeadline).toLocaleString(crmLocale(lang), {timeZone:policyConfig.businessHours.timezone})} ({policyConfig.businessHours.timezone})</> : t('No active response deadline','当前无响应待办')}
                   </span>

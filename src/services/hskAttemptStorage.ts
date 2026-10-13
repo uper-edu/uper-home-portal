@@ -33,6 +33,7 @@ export function readHskDraft(): HskDraft | null {
       attempt,
       currentIdx: raw.currentIdx,
       reviewing: raw.reviewing === true,
+      ...(raw.audioPositionSec !== undefined && Number.isFinite(raw.audioPositionSec) && raw.audioPositionSec >= 0 ? { audioPositionSec: raw.audioPositionSec, paused: true } : {}),
     };
   } catch {
     return null;

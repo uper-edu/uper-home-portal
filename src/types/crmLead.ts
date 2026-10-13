@@ -77,7 +77,8 @@ export interface CrmLeadRecord {
   attention?: LeadAttention;
 
   // ① 场景来源
-  id: string; // leadId (e.g. UPER-20260930-001)
+  id: string; // Immutable internal ID (UUID for new leads; imported IDs stay unchanged).
+  businessNumber?: string; // CRM display number, YYYYMMDD-NNN, daily in Operating Timezone.
   entryPoint: string;
   campaign: string;
   placement: string;

@@ -1,0 +1,392 @@
+{
+  "packetCopyVerified": true,
+  "sourcePacketCount": 26747,
+  "kind": "source_recording_crops",
+  "sourceFilename": "HSK测评听力音频.mp3",
+  "sourceAudioUsed": true,
+  "sourceAudioSha256": "1d13ab138e86993ee00f8de4129737bdf995d80606d2e8eda1d839003d1ed8fa",
+  "sourceAudioDurationSec": 698.697143,
+  "method": "reviewed_announcement_prefix_frame_removal",
+  "verification": "local_ASR_assisted_semantic_comparison_not_publisher_answer_sheet",
+  "recordedNumberPolicy": "Remove all spoken numbers; preserve both utterances and all following pauses.",
+  "assets": {
+    "1": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q1.mp3",
+      "startSec": 7.2,
+      "endSec": 23.3,
+      "durationSec": 14.785306122449102,
+      "recordedNumber": 1,
+      "sha256": "0cc221eacdb37a6a42a0f96c512fe65189e463356a1df430b05a1647595bb91b",
+      "sourceFirstPacket": 327,
+      "sourcePacketCount": 566,
+      "removedPrefixSec": 1.3061224489795924,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.09,
+        2.11
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 5.99
+    },
+    "2": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q2.mp3",
+      "startSec": 23.35,
+      "endSec": 39.5,
+      "durationSec": 14.367346938775627,
+      "recordedNumber": 2,
+      "sha256": "e6752cda8743eb13d0c2a7011ee2944cd78b62b4a937a55bc97013bb509cd665",
+      "sourceFirstPacket": 964,
+      "sourcePacketCount": 550,
+      "removedPrefixSec": 1.802448979591839,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.6,
+        2.65
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 5.49
+    },
+    "3": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q3.mp3",
+      "startSec": 39.7,
+      "endSec": 56.8,
+      "durationSec": 15.1248979591838,
+      "recordedNumber": 3,
+      "sha256": "29ac0cea4c1602e7dff51219bb5f5affa4ebd6dd86b0eccb580ee30937a8a5b7",
+      "sourceFirstPacket": 1597,
+      "sourcePacketCount": 579,
+      "removedPrefixSec": 1.9853061224489825,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.76,
+        2.82
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 6.15
+    },
+    "4": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q4.mp3",
+      "startSec": 62.6,
+      "endSec": 85.0,
+      "durationSec": 21.054693877551216,
+      "recordedNumber": 6,
+      "sha256": "b5d1806621764e85dcb1da07ef41ef155dbfd580a8a2565e4da2fdc7134147de",
+      "sourceFirstPacket": 2449,
+      "sourcePacketCount": 806,
+      "removedPrefixSec": 1.3322448979591843,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.11,
+        2.15
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 7.88
+    },
+    "5": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q5.mp3",
+      "startSec": 85.4,
+      "endSec": 101.5,
+      "durationSec": 14.15836734693889,
+      "recordedNumber": 7,
+      "sha256": "eebd67a103258a61640106633692e9514df7f0672c735d961c9440209c024f1a",
+      "sourceFirstPacket": 3345,
+      "sourcePacketCount": 542,
+      "removedPrefixSec": 1.9330612244897987,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.71,
+        2.78
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 5.61
+    },
+    "6": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q6.mp3",
+      "startSec": 108.3,
+      "endSec": 142.5,
+      "durationSec": 32.54857142857176,
+      "recordedNumber": 16,
+      "sha256": "e751843e32e5a4b16213dc9b6880166e407501b599ffe48251a622d0550733ef",
+      "sourceFirstPacket": 4211,
+      "sourcePacketCount": 1246,
+      "removedPrefixSec": 1.6718367346938794,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.46,
+        2.56
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 18.74
+    },
+    "7": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q7.mp3",
+      "startSec": 143.1,
+      "endSec": 171.5,
+      "durationSec": 26.67102040816353,
+      "recordedNumber": 17,
+      "sha256": "96ef027a5157a5d6c71377305d7db4f0b424212170bc11716da07df138e398d3",
+      "sourceFirstPacket": 5546,
+      "sourcePacketCount": 1021,
+      "removedPrefixSec": 1.7240816326530632,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.52,
+        2.58
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 19.73
+    },
+    "8": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q8.mp3",
+      "startSec": 172.1,
+      "endSec": 199.1,
+      "durationSec": 25.417142857143105,
+      "recordedNumber": 6,
+      "sha256": "9faae50d055d078f73f8af01541a0901ec6563219508eb28230feff1c92e45cc",
+      "sourceFirstPacket": 6650,
+      "sourcePacketCount": 973,
+      "removedPrefixSec": 1.5673469387755117,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.36,
+        2.37
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 14.63
+    },
+    "9": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q9.mp3",
+      "startSec": 199.6,
+      "endSec": 226.1,
+      "durationSec": 24.97306122449004,
+      "recordedNumber": 7,
+      "sha256": "c313e73549183e479c4810708e41e0a43efda71621b26a044a65adbf49e419c1",
+      "sourceFirstPacket": 7701,
+      "sourcePacketCount": 956,
+      "removedPrefixSec": 1.5412244897959197,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.34,
+        2.4
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 14.29
+    },
+    "10": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q10.mp3",
+      "startSec": 226.5,
+      "endSec": 249.5,
+      "durationSec": 21.498775510204283,
+      "recordedNumber": 8,
+      "sha256": "5255cf85a69937b8103a4a2e4301f1e1d04f1ae580a79ba5dd8033c5b9aad40b",
+      "sourceFirstPacket": 8730,
+      "sourcePacketCount": 823,
+      "removedPrefixSec": 1.5151020408163278,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.3,
+        2.32
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 13.26
+    },
+    "11": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q11.mp3",
+      "startSec": 255.4,
+      "endSec": 297.8,
+      "durationSec": 40.69877551020451,
+      "recordedNumber": 16,
+      "sha256": "c29e8d196ed45e6407b6b36f44e81746ea21093293f3f02eba786e1e65a83795",
+      "sourceFirstPacket": 9844,
+      "sourcePacketCount": 1558,
+      "removedPrefixSec": 1.7240816326530632,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.52,
+        2.51
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 26.82
+    },
+    "12": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q12.mp3",
+      "startSec": 298.1,
+      "endSec": 339.1,
+      "durationSec": 39.20979591836776,
+      "recordedNumber": 17,
+      "sha256": "f55565a2613c0af81f1893d1509e104ff5d69529e45b042fa1a72b4bcc5f328a",
+      "sourceFirstPacket": 11482,
+      "sourcePacketCount": 1501,
+      "removedPrefixSec": 1.802448979591839,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.59,
+        2.65
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 25.22
+    },
+    "13": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q13.mp3",
+      "startSec": 339.3,
+      "endSec": 374.5,
+      "durationSec": 33.48897959183708,
+      "recordedNumber": 18,
+      "sha256": "cc45ea341872f8ee931ff7ac8dd02ebb258c393efdc28c1f77eb983f858dd21d",
+      "sourceFirstPacket": 13056,
+      "sourcePacketCount": 1282,
+      "removedPrefixSec": 1.7240816326530632,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.5,
+        2.56
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 22.36
+    },
+    "14": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q14.mp3",
+      "startSec": 381.3,
+      "endSec": 417.2,
+      "durationSec": 34.06367346938811,
+      "recordedNumber": 11,
+      "sha256": "de2ec587c9fd2afbc9f1af3340e08926613a69bf29b042002a182ca0df21c169",
+      "sourceFirstPacket": 14668,
+      "sourcePacketCount": 1304,
+      "removedPrefixSec": 1.828571428571431,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.62,
+        2.67
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 22.96
+    },
+    "15": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q15.mp3",
+      "startSec": 417.3,
+      "endSec": 457.3,
+      "durationSec": 38.32163265306163,
+      "recordedNumber": 12,
+      "sha256": "01c2714a706a97c62cdb336d75e3c013ab1d61201e63e8adb2df6e8bad2dcef0",
+      "sourceFirstPacket": 16040,
+      "sourcePacketCount": 1467,
+      "removedPrefixSec": 1.6718367346938794,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.46,
+        2.47
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 27.13
+    },
+    "16": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q16.mp3",
+      "startSec": 457.5,
+      "endSec": 493.4,
+      "durationSec": 34.37714285714321,
+      "recordedNumber": 13,
+      "sha256": "27aab04b71348c8715ab00d92f9730e75e9c48c99b897281b52286dac238199a",
+      "sourceFirstPacket": 17573,
+      "sourcePacketCount": 1316,
+      "removedPrefixSec": 1.5151020408163278,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.31,
+        2.35
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 23.41
+    },
+    "17": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q17.mp3",
+      "startSec": 493.6,
+      "endSec": 528.1,
+      "durationSec": 32.705306122449315,
+      "recordedNumber": 14,
+      "sha256": "9157f466d08da4ac339622ea85f78420c49c3ec1051447083123016f22ba5e0e",
+      "sourceFirstPacket": 18966,
+      "sourcePacketCount": 1252,
+      "removedPrefixSec": 1.802448979591839,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.58,
+        2.62
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 26.95
+    },
+    "18": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q18.mp3",
+      "startSec": 534.5,
+      "endSec": 574.2,
+      "durationSec": 37.85142857142897,
+      "recordedNumber": 21,
+      "sha256": "37b15d269f38a7a7759c1236ee578de487ace731a7ccf206dd301cc14e42a4fc",
+      "sourceFirstPacket": 20534,
+      "sourcePacketCount": 1449,
+      "removedPrefixSec": 1.8546938775510229,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.63,
+        2.69
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 26.59
+    },
+    "19": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q19.mp3",
+      "startSec": 574.3,
+      "endSec": 618.9,
+      "durationSec": 42.89306122449025,
+      "recordedNumber": 22,
+      "sha256": "9dfc2e82d40f989e0e9bc489cffbae8699c94fcb1657a8843bd0e8ad66b5d095",
+      "sourceFirstPacket": 22052,
+      "sourcePacketCount": 1642,
+      "removedPrefixSec": 1.7240816326530632,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.5,
+        2.72
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 31.66
+    },
+    "20": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q20.mp3",
+      "startSec": 618.9,
+      "endSec": 657.1,
+      "durationSec": 36.231836734694255,
+      "recordedNumber": 23,
+      "sha256": "d6fee01303674e3443989ba697a73ccd769566bed2e8da59c07d16993709ad20",
+      "sourceFirstPacket": 23769,
+      "sourcePacketCount": 1387,
+      "removedPrefixSec": 1.9591836734693906,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.75,
+        2.78
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 25.0
+    },
+    "21": {
+      "src": "/audio/source-1d13ab138e86-sequential-v3/q21.mp3",
+      "startSec": 657.1,
+      "endSec": 698.0,
+      "durationSec": 38.896326530612654,
+      "recordedNumber": 24,
+      "sha256": "567f56228b9b559a4a262bff1078fe13279eeec6ce95030ef9ccaee60b260bb0",
+      "sourceFirstPacket": 25233,
+      "sourcePacketCount": 1489,
+      "removedPrefixSec": 2.0114285714285742,
+      "spokenRepeats": 2,
+      "announcementQuietGapSec": [
+        1.79,
+        2.93
+      ],
+      "tailAndRepeatsUnchanged": true,
+      "answerPauseStartSec": 33.07
+    }
+  }
+}

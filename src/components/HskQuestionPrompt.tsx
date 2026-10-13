@@ -10,17 +10,19 @@ import { HskPinyinText } from "./HskPinyinText";
 export function HskQuestionPrompt({
   question,
   lang,
+  compact = false,
 }: {
   question: RealHskQuestion;
   lang: HskLanguage;
+  compact?: boolean;
 }) {
   const text = stripSourceLabel(question.promptText);
   if (question.format !== "passage_comprehension")
     return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div className={`rounded-xl border border-slate-200 bg-slate-50 ${compact?'p-2':'p-3'}`}>
         <HskPinyinText
           tokens={question.promptTokens || [{ hanzi: text }]}
-          size="lg"
+          size={compact?'base':'lg'}
         />
       </div>
     );

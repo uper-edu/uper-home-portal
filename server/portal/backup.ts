@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 import pg from "pg";
 import { pool, tx, initialize } from "./store.ts";
 export const backupTables = [
+  "portal_settings",
+  "lead_daily_counters",
   "portal_leads",
   "visitor_sessions",
   "conversations",
@@ -17,14 +19,13 @@ export const backupTables = [
   "notification_jobs",
   "notification_inbox",
   "portal_audit",
-  "portal_settings",
   "identity_candidates",
   "lead_read_marks",
   "crm_users",
   "crm_sessions",
   "crm_login_limits",
 ] as const;
-const optionalTables = ["hsk_attempts","crm_users","crm_sessions","crm_login_limits"];
+const optionalTables = ["lead_daily_counters","hsk_attempts","crm_users","crm_sessions","crm_login_limits"];
 const covered = (tables:string[]) => Array.isArray(tables) && new Set(tables).size===tables.length && tables.every(t=>(backupTables as readonly string[]).includes(t)) && backupTables.filter(t=>!optionalTables.includes(t)).every(t=>tables.includes(t));
 const digest = (value: unknown) =>
   crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -141,6 +142,12 @@ export async function restorePortal(file: string) {
       throw Error("Legacy backup table coverage mismatch");
     snapshot.data.hsk_attempts = [];
   } else throw Error("Unsupported backup version");
+  // One local prerelease used the old date-column name. Verify the snapshot first,
+  // then translate that known rename without changing numbers or counter values.
+  if(snapshot.columns?.lead_daily_counters?.includes('jakarta_date')){
+    snapshot.columns.lead_daily_counters=snapshot.columns.lead_daily_counters.map((c:string)=>c==='jakarta_date'?'business_date':c);
+    snapshot.data.lead_daily_counters=snapshot.data.lead_daily_counters.map(({jakarta_date,...r}:any)=>({...r,business_date:jakarta_date}));
+  }
   for(const table of optionalTables)if(snapshot.data[table]===undefined && (snapshot.version===1 || !snapshot.tables?.includes(table)))snapshot.data[table]=[];
   for (const table of backupTables)
     if (!Array.isArray(snapshot.data?.[table]))
@@ -186,11 +193,18 @@ export async function restorePortal(file: string) {
           !snapshot.sourceTables?.includes(table) &&
           snapshot.data[table].length === 0
         ) &&
-        JSON.stringify(columns) !== JSON.stringify(snapshot.columns?.[table])
+        JSON.stringify(columns) !== JSON.stringify(snapshot.columns?.[table]) &&
+        !(['portal_leads','messages'].includes(table) &&
+          JSON.stringify(columns.filter(c=>!((table==='portal_leads' && c==='business_number' || table==='messages' && c==='metadata') && !snapshot.columns?.[table]?.includes(c)))) === JSON.stringify(snapshot.columns?.[table]))
       )
-        throw Error("Backup schema columns mismatch");
+        throw Error("Backup schema columns mismatch: " + table);
       const jsonColumns=new Set((await c.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND data_type IN ('json','jsonb')",[table])).rows.map(r=>r.column_name));
-      for (const row of snapshot.data[table]) {
+      const rows = table === 'portal_leads' && !snapshot.columns?.[table]?.includes('business_number')
+        ? [...snapshot.data[table]].sort((a,b)=>{
+          const stamp=(r:any)=>{const submitted=Date.parse(r.profile?.submittedAt);return Number.isFinite(submitted)?submitted:Date.parse(r.created_at);};
+          return stamp(a)-stamp(b) || String(a.id).localeCompare(String(b.id));
+        }) : snapshot.data[table];
+      for (const row of rows) {
         if (!row || typeof row !== "object" || Array.isArray(row))
           throw Error("Invalid backup row");
         const keys = Object.keys(row);
@@ -232,6 +246,8 @@ export async function restorePortal(file: string) {
     version: snapshot.version,
     legacyHskCoverage:
       snapshot.version === 1 ? "not present in original backup" : undefined,
+    businessNumberUpgrade: !snapshot.columns?.portal_leads?.includes('business_number')
+      ? 'Assigned daily business numbers using Operating Timezone; original internal IDs retained' : undefined,
     rows: Object.fromEntries(
       backupTables.map((t) => [t, snapshot.data[t].length]),
     ),

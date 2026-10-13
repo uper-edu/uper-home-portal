@@ -1,4 +1,5 @@
 import { scoreStarsV2 } from "./hskVersions/score-stars-v2";
+import {deriveScreeningPlacement, screeningGuidance, type HskScreeningPlacement} from "./hskScreeningPlacement";
 import type { RealHskQuestion } from "./hskQuizQuestions";
 import {
   HSK_EXAM_VERSION,
@@ -20,11 +21,16 @@ export interface HskAttempt {
   activeSeconds: Record<number, number>;
   plays: Record<number, number>;
   audioFailures: number[];
+  navigation?: Record<number, "next" | "skip" | "timeout">;
+  audioPositions?: Record<number, number>;
+  pauseCount?: number;
 }
 export interface HskDraft {
   attempt: HskAttempt;
   currentIdx: number;
   reviewing: boolean;
+  audioPositionSec?: number;
+  paused?: boolean;
 }
 export interface HskResult {
   attempt: HskAttempt;
@@ -51,6 +57,7 @@ export interface HskResult {
     { correct: number; total: number; skipped: number }
   >;
   thresholds: { level: string; reached: boolean; missing: number[] }[];
+  screeningPlacement?: HskScreeningPlacement;
   /** Saved means server recomputed answers, not verified language proficiency. */
   saveStatus: "local" | "saved";
 }
@@ -81,6 +88,9 @@ export function newHskAttempt(mode: HskMode, attemptId: string): HskAttempt {
     activeSeconds: {},
     plays: {},
     audioFailures: [],
+    navigation: {},
+    audioPositions: {},
+    pauseCount: 0,
   };
 }
 /** Treat both saved drafts and network payloads as untrusted. */
@@ -150,6 +160,17 @@ export function validateHskAttempt(input: unknown): HskAttempt {
   )
     invalid();
   // Normalize key order and ignore extra client fields (score, claimed level, etc.).
+  const sequential = requireHskVersion(a.examVersion, a.scoringVersion).administration;
+  if (sequential) {
+    for (const value of [a.navigation,a.audioPositions]) if (value !== undefined && (!value || typeof value !== "object" || Array.isArray(value))) invalid();
+    if (a.pauseCount !== undefined && (!Number.isInteger(a.pauseCount) || a.pauseCount < 0 || a.pauseCount > 10000)) invalid();
+    for (const [key, reason] of Object.entries(a.navigation || {}))
+      if (!ids.has(key) || !["next", "skip", "timeout"].includes(reason)) invalid();
+    for (const [key, seconds] of Object.entries(a.audioPositions || {})) {
+      const asset = requireHskVersion(a.examVersion, a.scoringVersion).audioAssets[key];
+      if (!asset || !Number.isFinite(seconds) || seconds < 0 || seconds > asset.durationSec + 0.1) invalid();
+    }
+  }
   const ordered = <T>(v: Record<number, T>) =>
     Object.fromEntries(
       qs.filter((q) => Object.hasOwn(v, q.id)).map((q) => [q.id, v[q.id]]),
@@ -165,6 +186,7 @@ export function validateHskAttempt(input: unknown): HskAttempt {
     activeSeconds: ordered(a.activeSeconds),
     plays: ordered(a.plays),
     audioFailures: [...a.audioFailures].sort((a, b) => a - b),
+    ...(sequential ? { navigation: ordered(a.navigation || {}), audioPositions: ordered(a.audioPositions || {}), pauseCount: a.pauseCount || 0 } : {}),
   };
 }
 export function gradeHskAttempt(
@@ -220,6 +242,9 @@ export function gradeHskAttempt(
     breakdown.hsk2Correct,
     breakdown.hsk3Correct,
   ];
+  const screeningPlacement = attempt.mode === "express" && version.screeningPolicy
+    ? deriveScreeningPlacement(counts, qs.length-skippedCount-unansweredCount, attempt.audioFailures, version.screeningPolicy.passCountPerLevel)
+    : undefined;
   const thresholds =
     attempt.mode === "express"
       ? []
@@ -237,7 +262,7 @@ export function gradeHskAttempt(
           missing: required.map((v, j) => Math.max(0, v - counts[j])),
         }));
   const label =
-    attempt.mode === "express"
+    screeningPlacement ? screeningGuidance(screeningPlacement,lang).stage : attempt.mode === "express"
       ? chooseText(
           lang,
           "快测：暂不定级",
@@ -264,7 +289,9 @@ export function gradeHskAttempt(
       "This describes performance on the HSK1–3 items of this adapted paper only; higher levels were not assessed. Audio is cropped directly from the supplied MP3; listening keys follow its meaning. No publisher answer sheet has been provided. Speaking and handwriting were not tested; no official score, vocabulary size or scholarship eligibility is inferred.",
       "Hasil ini hanya menunjukkan jawaban pada soal HSK1–3 dalam tes adaptasi ini; tingkat yang lebih tinggi tidak diuji. Audio dipotong langsung dari MP3 yang diberikan; kunci menyimak mengikuti makna rekaman. Kunci jawaban dari penerbit belum tersedia. Berbicara dan tulisan tangan tidak diuji; hasil tidak membuktikan nilai resmi, jumlah kosakata, atau kelayakan beasiswa.",
     ) +
-    (attempt.mode === "express"
+    (screeningPlacement
+      ? "\n\n" + Object.values(screeningGuidance(screeningPlacement,lang)).filter(Boolean).join(" · ")
+      : attempt.mode === "express"
       ? "\n\n" +
         chooseText(
           lang,
@@ -287,6 +314,7 @@ export function gradeHskAttempt(
     breakdown,
     sections,
     thresholds,
+    ...(screeningPlacement ? {screeningPlacement} : {}),
     saveStatus: "local",
   };
 }

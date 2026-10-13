@@ -1,3 +1,4 @@
+import {parseLeadFilters,filterAndSummarize} from '../../src/utils/crmLeadFilters.ts';
 import {taskDeadline,leadTier,ensureFollowup,followupReply,type FollowupAction} from './followup.ts';
 import {initializeLocalAccounts,mountLocalAuth} from "./localAuth.ts";
 import {normalizeCrmMessage} from '../../src/utils/crmMessageTime.ts';
@@ -298,10 +299,18 @@ export async function mountPortal(app: Express) {
         "buyingSignal",
       ])
         if (b[k] !== undefined) profile[k] = b[k];
-      await c.query(
-        "INSERT INTO portal_leads(id,profile) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET profile=excluded.profile",
+      for(const k of ['goals','buyingSignals'])if(b[k]!==undefined){
+        if(!Array.isArray(b[k]) || b[k].length>8 || b[k].some((v:unknown)=>typeof v!=='string' || v.length>160))fail(400,'Invalid consultation preferences');
+        profile[k]=b[k];
+      }
+      if([profile.goal,...(profile.goals || [])].includes('Prepare for HSK certification') && typeof b.hskExamPlan==='string')profile.hskExamPlan=b.hskExamPlan.slice(0,160);
+      const numbered = await c.query(
+        locked.lead_id
+          ? "UPDATE portal_leads SET profile=$2 WHERE id=$1 RETURNING business_number"
+          : "INSERT INTO portal_leads(id,profile) VALUES($1,$2) RETURNING business_number",
         [leadId, profile],
       );
+      profile.businessNumber = numbered.rows[0].business_number;
       await c.query("UPDATE visitor_sessions SET lead_id=$1 WHERE id=$2", [
         leadId,
         v.id,
@@ -428,16 +437,7 @@ export async function mountPortal(app: Express) {
       ).rows
         .map((r) => ({...r.profile,chatTranscript:(r.profile.chatTranscript || []).map(normalizeCrmMessage)}))
         .filter((p) => allowed(e, p))
-        .filter(
-          (p) =>
-            (!req.query.search ||
-              JSON.stringify(p)
-                .toLowerCase()
-                .includes(String(req.query.search).toLowerCase())) &&
-            (!req.query.owner || p.owner === req.query.owner) &&
-            (!req.query.tier || p.tier === req.query.tier) &&
-            (!req.query.stage || p.currentStage === req.query.stage),
-        );
+;
       const attention = (
         await pool.query(
           `SELECT l.id,clock_timestamp()::text AS observed_at,
@@ -462,32 +462,12 @@ export async function mountPortal(app: Express) {
             (a?.tasks || []).some((t) => t.ownerId === e.id),
         };
       }
-      res.json({
-        leads,
-        total: leads.length,
-        dataScope: e.scope,
-        employeeId: e.id,
-        stats: {
-          total: leads.length,
-          hot: leads.filter((p) => p.tier === "Hot").length,
-          warmOffline: leads.filter((p) => p.tier === "Warm-Offline").length,
-          warmOnline: leads.filter((p) => p.tier === "Warm-Online").length,
-          school: leads.filter((p) => p.tier === "School").length,
-          coldNurture: leads.filter((p) => p.tier === "Cold-Nurture").length,
-          overdueSla: leads.filter(
-            (p) =>
-              p.slaDueTime && new Date(p.slaDueTime).getTime() < Date.now(),
-          ).length,
-          enrolled: leads.filter((p) => p.currentStage === "Enrolled").length,
-          conversionRate:
-            (leads.length
-              ? (100 *
-                  leads.filter((p) => p.currentStage === "Enrolled").length) /
-                leads.length
-              : 0
-            ).toFixed(1) + "%",
-        },
-      });
+      let filters;try {filters=parseLeadFilters(req.query);}catch {fail(400,'Invalid lead filters');}
+      const settings=(await pool.query("SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')")).rows;
+      const timezone=settings.find(r=>r.id==='sla')?.value.timezone || 'Asia/Jakarta';
+      const config={...DEFAULT_CRM_POLICY_CONFIG,...settings.find(r=>r.id==='crm_policy')?.value};
+      const result=filterAndSummarize(leads,filters,e.id,timezone,Date.now(),config);
+      res.json({...result,dataScope:e.scope,employeeId:e.id,timezone,ownerOptions:[...new Set(leads.map(l=>l.owner).filter(Boolean))]});
     }),
   );
   app.post(

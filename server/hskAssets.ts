@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import images from "../src/data/hskPdfImages.json" with { type: "json" };
-import audio from "../src/data/hskAudioManifest.json" with { type: "json" };
+import audio from "../src/data/hskSequentialAudioManifest.json" with { type: "json" };
 /** Reviewed assets are immutable to learners. No request value becomes a filesystem path. */
 export function mountHskAssets(app: Express) {
   for (const route of [

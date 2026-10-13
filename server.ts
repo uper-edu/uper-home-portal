@@ -168,7 +168,7 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
   await mountPortal(app);
-  if (process.env.DATABASE_URL) { mountChat(app); startWorker(); }
+  if (process.env.DATABASE_URL) { mountChat(app); if (process.env.PORTAL_WORKER_ENABLED !== 'false') startWorker(); }
   else if (process.env.LEGACY_CHAT_TEST !== 'true') app.post('/api/chat', (_q, r) => { r.status(503).json({error:'Database required; message not saved'}); });
 
   // Static directory for versioned source HSK audio assets

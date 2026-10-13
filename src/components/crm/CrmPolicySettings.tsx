@@ -1169,8 +1169,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 </label>
                 <p className={`text-[11px] mb-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   {t(
-                    'Regional timezone for business clock and SLA countdowns (Western Indonesia WIB).',
-                    '雅加达与印尼全境标准时区（西印尼时间 WIB UTC+7）。'
+                    'Timezone for the business clock, SLA deadlines and new lead-number dates. Existing lead numbers stay unchanged.',
+                    '用于业务时钟、SLA截止时间和新线索业务编号的日期。已生成的业务编号保持不变。'
                   )}
                 </p>
                 <select

@@ -25,7 +25,7 @@ export interface UnifiedAssessmentData {
 export interface UnifiedStudentContext {
   leadProfile?: LeadProfile | null;
   assessment?: UnifiedAssessmentData | null;
-  chatAssessmentStatus?: 'pending' | 'skipped' | 'completed' | 'not_required';
+  chatAssessmentStatus?: 'pending' | 'paused' | 'skipped' | 'completed' | 'not_required';
   preferredLanguage?: 'en' | 'id' | 'zh';
   lastUpdated: string;
 }

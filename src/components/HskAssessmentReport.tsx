@@ -9,17 +9,20 @@ import {
   displayVersionOptions,
 } from "../data/hskAssessmentVersions";
 import { inspectHskReport } from "../data/hskReportHistory";
+import {learnerAssessmentGuidance} from "../data/hskLearnerGuidance";
 import { HskExamImage } from "./HskExamVisuals";
 export default function HskAssessmentReport({
   result: stored,
   lang,
   onRetry,
   saving = false,
+  detailed = false,
 }: {
   result: unknown;
   lang: HskLanguage;
   onRetry?: () => void;
   saving?: boolean;
+  detailed?: boolean;
 }) {
   const t = (zh: string, en: string, id: string) =>
     chooseText(lang, zh, en, id);
@@ -97,6 +100,18 @@ export default function HskAssessmentReport({
       </section>
     );
   const { result, version } = view;
+  const guidance = learnerAssessmentGuidance(result,lang);
+  if (!detailed) return <section aria-label={t("测评结果","Assessment results","Hasil tes")} className="space-y-4 scroll-mt-4">
+    <h3 className="text-lg font-bold">{result.attempt.mode === "express" ? t("HSK 1–3快速测评结果","HSK 1–3 quick assessment results","Hasil tes singkat HSK 1–3") : t("HSK 1–3完整测评结果","HSK 1–3 full assessment results","Hasil tes lengkap HSK 1–3")}</h3>
+    {guidance && <div className="rounded-xl border border-primary-200 bg-primary-50 p-3 space-y-1"><p className="text-xs text-slate-600">{t("建议学习起点","Suggested learning start","Titik awal yang disarankan")}</p><p className="font-semibold">{guidance.start}</p>{guidance.review && <p className="text-sm text-amber-800">{guidance.review}</p>}</div>}
+    <p className="rounded-xl bg-primary-50 p-3"><strong className="text-xl">{result.correctCount}/{result.questionCount}</strong> {t("题正确","items correct","soal benar")}<span className="block text-sm mt-1">{t("已作答","Answered","Dijawab")}: {result.questionCount-result.skippedCount-result.unansweredCount} · {t("未作答","Unanswered","Belum dijawab")}: {result.skippedCount+result.unansweredCount}</span></p>
+    <table className="w-full text-left"><caption className="text-left font-semibold pb-2">{t("题型表现","By section","Per bagian")}</caption><tbody>{Object.entries(result.sections).filter(([,v])=>v.total>0).map(([key,v])=><tr key={key} className="border-t border-slate-200"><th className="py-2 font-normal">{key==="listening"?t("听力","Listening","Menyimak"):key==="reading"?t("阅读","Reading","Membaca"):t("识字选择","Character recognition","Pengenalan karakter")}</th><td className="text-right">{v.correct}/{v.total}</td></tr>)}</tbody></table>
+    <table className="w-full text-left"><caption className="text-left font-semibold pb-2">{t("原卷星级表现","By source star level","Per tingkat bintang")}</caption><tbody>{[1,2,3].map(n=><tr key={n} className="border-t border-slate-200"><th className="py-2 font-normal">{"★".repeat(n)}</th><td className="text-right">{result.breakdown[`hsk${n}Correct` as keyof typeof result.breakdown]}/{result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown]}</td></tr>)}</tbody></table>
+    <p className="text-xs text-slate-500">{t("学习起点参考，非官方HSK成绩。","Learning guidance, not an official HSK score.","Panduan belajar, bukan nilai HSK resmi.")}</p>
+    {!guidance && !!result.attempt.audioFailures.length && <p role="alert" className="text-sm text-amber-800">{t("部分听力未正常播放，建议请顾问进一步确认听力基础。","Some listening audio did not play correctly. Ask an advisor to help check your listening.","Sebagian audio tidak diputar dengan benar. Minta konsultan membantu memeriksa kemampuan menyimak.")}</p>}
+    {result.saveStatus!=="saved" && <p role="status" className="text-xs text-amber-800">{saving?t("正在同步结果…","Syncing results…","Menyinkronkan hasil…"):t("结果暂未同步，请重试。","Results have not synced. Please retry.","Hasil belum tersinkron. Silakan coba lagi.")}</p>}
+    {result.saveStatus!=="saved" && onRetry && <button type="button" disabled={saving} onClick={onRetry} className="min-h-11 underline">{t("重试保存","Retry saving","Coba simpan lagi")}</button>}
+  </section>;
   const qs = getVersionQuestions(
     result.attempt.mode,
     result.attempt.examVersion,

@@ -242,15 +242,15 @@ if (process.env.PORTAL_MIGRATION_TEST_DATABASE_URL) {
         assert.equal(repeated.skippedLeads, 3);
         assert.deepEqual(await hashes(client), first);
         for (const lead of fixtures) {
-          assert.deepEqual(
-            (
+          const importedProfile = (
               await client.query(
                 "SELECT profile FROM portal_leads WHERE id=$1",
                 [lead.id],
               )
-            ).rows[0].profile,
-            lead,
-          );
+            ).rows[0].profile;
+          const {businessNumber,...originalFields}=importedProfile;
+          assert.match(businessNumber,/^\d{8}-\d{3,}$/);
+          assert.deepEqual(originalFields,lead);
           const messages = (
             await client.query(
               "SELECT request_id,content,error,created_at::text stamp FROM messages WHERE conversation_id=$1 ORDER BY sequence",

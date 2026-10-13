@@ -9,7 +9,6 @@ import {
   MapPin, 
   Sparkles, 
   Check,
-  CheckCircle2, 
   HelpCircle, 
   Globe2,
   Languages
@@ -128,6 +127,11 @@ export default function GFormOnboardingModal({
   
   const [selectedGoals, setSelectedGoals] = useState<GoalType[]>([]);
   const [reportedLevel, setReportedLevel] = useState<ReportedLevelType | null>(null);
+  const nextLabel = !reportedLevel
+    ? {en:'Continue',zh:'继续',id:'Lanjut'}[lang]
+    : determineLevelState(reportedLevel) === 'PARTIAL'
+    ? {en:'Continue to assessment',zh:'进入测评',id:'Lanjut ke tes'}[lang]
+    : {en:'Start AI consultation',zh:'开始 AI 咨询',id:'Mulai konsultasi AI'}[lang];
   const [city, setCity] = useState<CityType | null>(null);
   const [cityDetail, setCityDetail] = useState('');
   const [mode, setMode] = useState<ModeType | null>(null);
@@ -458,10 +462,10 @@ export default function GFormOnboardingModal({
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
                   {lang === 'en'
-                    ? "We'll send your HSK level report and class recommendation here."
+                    ? "We'll send your assessment results and learning recommendations here."
                     : lang === 'zh'
-                    ? '用于发送官方评估报告与 HSK 核心词汇备考资料。'
-                    : 'Untuk pengiriman sertifikat diagnostik & modul kosakata resmi.'}
+                    ? '用于发送测评结果与学习建议。'
+                    : 'Untuk pengiriman hasil tes dan rekomendasi belajar.'}
                 </p>
               </div>
 
@@ -544,8 +548,7 @@ export default function GFormOnboardingModal({
                 onClick={handleNextStep}
                 className="w-full mt-2 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm shadow-md shadow-primary-600/20 transition-all flex items-center justify-center gap-2"
               >
-                <span>{lang === 'en' ? 'Next: Goals & Level →' : lang === 'zh' ? '下一步：目标与基础 →' : 'Lanjut ke Tujuan & Level →'}</span>
-                <CheckCircle2 className="w-4 h-4" />
+                <span>{lang === 'en' ? 'Next: Goals & Level' : lang === 'zh' ? '下一步：目标与基础' : 'Lanjut ke Tujuan & Level'}</span>
               </button>
             </div>
           ) : (
@@ -883,8 +886,7 @@ export default function GFormOnboardingModal({
                   type="submit"
                   className="w-2/3 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-primary-600/25 transition-all flex items-center justify-center gap-1.5"
                 >
-                  <span>{lang === 'en' ? 'Start AI Consultation & Test' : lang === 'zh' ? '提交并开启 AI 咨询与测评' : 'Mulai Konsultasi & Tes AI'}</span>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{nextLabel}</span>
                 </button>
               </div>
             </div>
