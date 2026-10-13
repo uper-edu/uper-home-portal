@@ -4,7 +4,7 @@ import { customerFields } from "../../utils/crmWorkspace";
 const fieldId = [
   "Nomor prospek",
   "Nama",
-  "Pemilik",
+  "Penanggung jawab",
   "Tanggal pendaftaran",
   "Identitas pelanggan",
   "WhatsApp",
@@ -109,7 +109,7 @@ export function CrmUserGuide({ isLight, lang, onNavigateTab }: Props) {
               <a href="#crm-guide-fields" className="text-sm hover:underline">
                 {t(
                   "Visible fields reference",
-                  "Referensi bidang tampilan",
+                  "Referensi kolom tampilan",
                   "显示字段参考",
                 )}
               </a>
@@ -150,14 +150,14 @@ export function CrmUserGuide({ isLight, lang, onNavigateTab }: Props) {
             <h3 className="font-bold text-lg">
               {t(
                 "Visible fields reference",
-                "Referensi bidang tampilan",
+                "Referensi kolom tampilan",
                 "显示字段参考",
               )}
             </h3>
             <p className="text-sm mt-2 mb-4">
               {t(
                 "These are display fields, not a database schema. The same record supplies both views. Technical keys are shown for troubleshooting.",
-                "Ini adalah bidang tampilan, bukan skema database. Catatan yang sama menyediakan kedua tampilan. Kunci teknis ditampilkan untuk pemecahan masalah.",
+                "Ini adalah kolom tampilan, bukan skema database. Catatan yang sama menyediakan kedua tampilan. Kunci teknis ditampilkan untuk pemecahan masalah.",
                 "以下为显示字段，并非数据库全部字段；两种视图使用同一记录。技术标识用于排错。",
               )}
             </p>

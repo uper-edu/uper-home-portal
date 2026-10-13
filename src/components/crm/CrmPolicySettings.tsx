@@ -449,7 +449,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       );
     } else if (simTier === "reactivated") {
       targetDuration = formData.reactivation.reactivatedResponse;
-      tierTitle = t("Dormant Reactivation", "沉睡客户复活响应");
+      tierTitle = t("Dormant Reactivation", "沉睡客户重新咨询响应");
     }
     let finalDeadline = "";
     try {
@@ -561,7 +561,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       !window.confirm(
         t(
           "Reset all SLA & Cadence policies to standard recommended defaults?",
-          "是否确认将所有时效与策略恢复为官方推荐默认值？",
+          "是否确认将所有时效与策略恢复为默认值？",
         ),
       )
     ) {
@@ -704,7 +704,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isLight ? "hover:bg-white text-slate-700" : "hover:bg-slate-700 text-slate-200"}`}
                 title={t(
                   "Standard Recommended Policy (Hot 3h, Warm 24h, Mon-Sat)",
-                  "官方标准稳健模式",
+                  "标准预设模式",
                 )}
               >
                 {t("Standard", "标准稳健")}
@@ -767,8 +767,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               className={`font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}
             >
               {t(
-                "24-Hour Regional Day Plan (WIB UTC+7)",
-                "24 小时外呼作息时段带 (雅加达 WIB)",
+                "24-hour work calendar",
+                "24 小时工作日历",
               )}
             </span>
             <span className="text-[11px] text-slate-500 font-mono">
@@ -825,7 +825,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1 font-mono">
             <span>00:00 {t("Midnight", "午夜")}</span>
             <span className="text-rose-500 font-semibold">
-              {t("Current Target Time:", "当前当地时间:")} {currentTimeStr}
+              {t("Current local time:", "当前当地时间:")} {currentTimeStr}
             </span>
             <span>24:00 {t("End of Day", "日终")}</span>
           </div>
@@ -874,13 +874,13 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 onClick={() => onNavigateTab("docs")}
                 className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200" : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"}`}
                 title={t(
-                  "View SLA & Cadence definitions in Handbook Chapter 6",
-                  "查阅在线手册第 6 章 SLA 业务规范与指标定义",
+                  "View the Sales Operations chapter in the online guide",
+                  "查看在线手册的销售运营章节",
                 )}
               >
                 <BookOpen className="w-3.5 h-3.5 text-blue-500" />
                 <span>
-                  {t("Handbook Rules (Ch. 6)", "手册 SLA 规范 (第6章)")}
+                  {t("Sales Operations guide", "销售运营指南")}
                 </span>
               </button>
             )}
@@ -897,7 +897,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             </h3>
             <p>
               <strong>
-                {t("Save Policies / Reset Defaults", "保存策略 / 恢复官方设置")}
+                {t("Save Policies / Reset Defaults", "保存策略 / 恢复默认设置")}
                 ：
               </strong>{" "}
               {t(
@@ -1064,7 +1064,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 >
                   <div className="flex items-center gap-1 font-bold text-indigo-600">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{t("Reactivation", "复活学员")}</span>
+                    <span>{t("Reactivation", "重新咨询客户")}</span>
                   </div>
                   <div className="text-[10px] font-mono opacity-80 mt-0.5">
                     {formData.reactivation.reactivatedResponse.value}{" "}
@@ -1185,7 +1185,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               {/* Final SLA Deadline Badge */}
               <div className="text-left md:text-right shrink-0">
                 <div className="text-[11px] text-slate-400 font-medium">
-                  {t("Calculated response deadline:", "推演违规红线截止点:")}
+                  {t("Calculated response deadline:", "计算出的响应截止时间:")}
                 </div>
                 <div className="text-base font-bold font-mono text-rose-600 dark:text-rose-400">
                   {simulationResult.finalDeadline}
@@ -1250,12 +1250,12 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               </div>
               <p className="text-[11px] text-slate-500 leading-snug">
                 {t(
-                  "Phone format normalization (+62), deduplication with dormant recovery check.",
-                  "清洗归一印尼手机号，自动比对去重并检测沉睡复活潜客。",
+                  "Contact capture and visitor linkage. Matching contact details alone do not establish identity.",
+                  "记录联系信息并关联访客；联系方式相同不能单独证明身份。",
                 )}
               </p>
               <div className="mt-2 text-[10px] font-mono text-primary-600">
-                {t("Chapter 2 · Acquisition hooks", "第 2 章：获客入口")}
+                {t("See the conversations chapter", "参阅聊天与转人工章节")}
               </div>
             </div>
 
@@ -1273,7 +1273,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 )}
               </p>
               <div className="mt-2 text-[10px] font-mono text-amber-600">
-                {t("Chapter 3 · Rules", "第 3 章：评级规则")}
+                {t("See the customer workspace chapter", "参阅客户工作区章节")}
               </div>
             </div>
 
@@ -1286,8 +1286,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               </div>
               <p className="text-[11px] opacity-80 leading-snug">
                 {t(
-                  "Mandatory golden response window (Hot ≤3h, Warm ≤24h, Cold ≤48h).",
-                  "首响黄金时效倒计时，非营业时段自动顺延至次日 10:00。",
+                  "Configured first-response deadlines; outside-hours requests and deadlines roll forward using the saved work calendar.",
+                  "首次响应采用已配置的时限；非工作时间的请求与截止时间按已保存工作日历顺延。",
                 )}
               </p>
               <div className="mt-2 text-[10px] font-mono font-bold">
@@ -1327,8 +1327,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               </div>
               <p className="text-[11px] opacity-80 leading-snug">
                 {t(
-                  "Trial pre-course reminder (4h prior) & post-trial golden closing follow-up (4h after).",
-                  "开课前 4 小时导航提醒，完课后 4 小时黄金关单回访。",
+                  "Trial reminders and post-trial follow-ups use the configured intervals.",
+                  "试听前提醒与课后回访采用已配置的时间间隔。",
                 )}
               </p>
               <div className="mt-2 text-[10px] font-mono font-bold">
@@ -1348,8 +1348,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               </div>
               <p className="text-[11px] opacity-80 leading-snug">
                 {t(
-                  "Archived lead re-engagement triggers high-priority break-in within 30 minutes.",
-                  "老潜客重新做题或咨询，提速至 30 分钟内专属顾问回访。",
+                  "Re-engaged dormant leads use the configured response deadline.",
+                  "沉睡客户重新咨询后，按配置的响应时限安排回访。",
                 )}
               </p>
               <div className="mt-2 text-[10px] font-mono font-bold">
@@ -1420,7 +1420,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
           }`}
         >
-          {t("4. Watchdog Alerts", "4. 防停滞看门狗")}
+          {t("4. Watchdog Alerts", "4. 未联系提醒")}
         </button>
 
         <button
@@ -1444,7 +1444,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
           }`}
         >
-          {t("6. Reactivation", "6. 沉睡复活响应")}
+          {t("6. Reactivation", "6. 沉睡客户重新咨询")}
         </button>
         <button
           type="button"
@@ -1686,7 +1686,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 descZh="高优先级响应时限。申请顾问跟进、预约及报名均使用此时限，不受原客户等级限制。"
                 duration={formData.firstResponseSla.hot}
                 originalDuration={policyConfig.firstResponseSla.hot}
-                recommendedText={t("Default: 3 Hours", "官方推荐: 3 小时")}
+                recommendedText={t("Default: 3 Hours", "默认: 3 小时")}
                 accentColor="text-rose-600 dark:text-rose-400 font-bold"
                 onChange={(newDuration) =>
                   setFormData({
@@ -1708,7 +1708,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 descZh="常规意向咨询、申请试听学员的首次建联响应窗口。"
                 duration={formData.firstResponseSla.warm}
                 originalDuration={policyConfig.firstResponseSla.warm}
-                recommendedText={t("Default: 24 Hours", "官方推荐: 24 小时")}
+                recommendedText={t("Default: 24 Hours", "默认: 24 小时")}
                 accentColor="text-amber-600 dark:text-amber-400 font-bold"
                 onChange={(newDuration) =>
                   setFormData({
@@ -1730,7 +1730,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 descZh="学校合作或通用材料下载类线索的建联时限。"
                 duration={formData.firstResponseSla.cold}
                 originalDuration={policyConfig.firstResponseSla.cold}
-                recommendedText={t("Default: 48 Hours", "官方推荐: 48 小时")}
+                recommendedText={t("Default: 48 Hours", "默认: 48 小时")}
                 accentColor="text-slate-600 dark:text-slate-400"
                 onChange={(newDuration) =>
                   setFormData({
@@ -1785,7 +1785,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 descZh="学员初次电话未接后，建议等待的下一次重呼间隔，避免密集呼叫引起反感。"
                 duration={formData.noResponseCadence.retryInterval}
                 originalDuration={policyConfig.noResponseCadence.retryInterval}
-                recommendedText={t("Default: 4 Hours", "官方推荐: 4 小时")}
+                recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
                 accentColor="text-purple-600 dark:text-purple-400"
                 onChange={(newDuration) =>
                   setFormData({
@@ -1886,7 +1886,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 >
                   {t(
                     "4. Inactivity Watchdog Thresholds",
-                    "4. 已建联客户防停滞看门狗",
+                    "4. 已联系客户的未联系时长",
                   )}
                 </h3>
                 <p
@@ -1910,7 +1910,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 descZh="高意向客户初访后若未排定下次具体时间，超过该时限未有新跟进则亮起停滞预警。"
                 duration={formData.inactivityWatchdog.hotInactivity}
                 originalDuration={policyConfig.inactivityWatchdog.hotInactivity}
-                recommendedText={t("Default: 24 Hours", "官方推荐: 24 小时")}
+                recommendedText={t("Default: 24 Hours", "默认: 24 小时")}
                 accentColor="text-rose-600 dark:text-rose-400 font-bold"
                 onChange={(newDuration) =>
                   setFormData({
@@ -1927,14 +1927,14 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 isLight={isLight}
                 lang={lang}
                 titleEn="Warm Lead Inactivity Alert"
-                titleZh="中意向 常规意向学员防停滞报警阈值"
+                titleZh="中意向客户未联系提醒时长"
                 descEn="Alert threshold for active intermediate interest leads."
                 descZh="常规意向客户初访后若未设定下次跟进时间，最大允许沉默时长。"
                 duration={formData.inactivityWatchdog.warmInactivity}
                 originalDuration={
                   policyConfig.inactivityWatchdog.warmInactivity
                 }
-                recommendedText={t("Default: 48 Hours", "官方推荐: 48 小时")}
+                recommendedText={t("Default: 48 Hours", "默认: 48 小时")}
                 accentColor="text-amber-600 dark:text-amber-400"
                 onChange={(newDuration) =>
                   setFormData({
@@ -1958,7 +1958,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 originalDuration={
                   policyConfig.inactivityWatchdog.coldInactivity
                 }
-                recommendedText={t("Default: 7 Days", "官方推荐: 7 天")}
+                recommendedText={t("Default: 7 Days", "默认: 7 天")}
                 accentColor="text-slate-600 dark:text-slate-400"
                 onChange={(newDuration) =>
                   setFormData({
@@ -2013,7 +2013,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 descZh="约定试听课开始前几小时，自动提示顾问发送 Zoom 会议号或 PIK 校区导航。"
                 duration={formData.milestones.trialReminderBefore}
                 originalDuration={policyConfig.milestones.trialReminderBefore}
-                recommendedText={t("Default: 4 Hours", "官方推荐: 4 小时")}
+                recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
                 accentColor="text-emerald-600 dark:text-emerald-400"
                 onChange={(newDuration) =>
                   setFormData({
@@ -2035,7 +2035,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 descZh="试听结束后几小时内电话回访体验，解答疑问并促成学费预缴。"
                 duration={formData.milestones.trialFollowUpAfter}
                 originalDuration={policyConfig.milestones.trialFollowUpAfter}
-                recommendedText={t("Default: 4 Hours", "官方推荐: 4 小时")}
+                recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
                 accentColor="text-emerald-600 dark:text-emerald-400"
                 onChange={(newDuration) =>
                   setFormData({
@@ -2054,12 +2054,12 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleEn="Assessment Result Track Recommendation"
                 titleZh="智能测评完成后的推荐定级时效"
                 descEn="Time after student finishes test quiz to review score report and advise matched HSK syllabus."
-                descZh="学员在前端测完 10 道题出分后，顾问必须在几小时内核对报告并推荐适配课程班型。"
+                descZh="学员完成测评后，顾问应在此时限内核对报告并推荐适配课程。"
                 duration={formData.milestones.assessmentFollowUpAfter}
                 originalDuration={
                   policyConfig.milestones.assessmentFollowUpAfter
                 }
-                recommendedText={t("Default: 2 Hours", "官方推荐: 2 小时")}
+                recommendedText={t("Default: 2 Hours", "默认: 2 小时")}
                 accentColor="text-emerald-600 dark:text-emerald-400"
                 onChange={(newDuration) =>
                   setFormData({
@@ -2090,7 +2090,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 >
                   {t(
                     "6. Dormant Lead Re-activation",
-                    "6. 沉睡老客户复活响应机制",
+                    "6. 沉睡客户重新咨询响应",
                   )}
                 </h3>
                 <p
@@ -2109,12 +2109,12 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 isLight={isLight}
                 lang={lang}
                 titleEn="Re-activated Dormant Lead SLA"
-                titleZh="沉睡老学员新行为复活响应时限"
+                titleZh="沉睡客户重新咨询响应时限"
                 descEn="Urgent window within which a consultant must respond when an archived lead re-engages."
                 descZh="老客户在新周期有了主动意向后，销售必须在多长时间内优先跟进，趁热打铁促成转化。"
                 duration={formData.reactivation.reactivatedResponse}
                 originalDuration={policyConfig.reactivation.reactivatedResponse}
-                recommendedText={t("Default: 30 Minutes", "官方推荐: 30 分钟")}
+                recommendedText={t("Default: 30 Minutes", "默认: 30 分钟")}
                 accentColor="text-indigo-600 dark:text-indigo-400 font-bold"
                 onChange={(newDuration) =>
                   setFormData({

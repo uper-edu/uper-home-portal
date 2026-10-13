@@ -106,3 +106,131 @@ test("notification search control and guide render all three languages", () => {
     );
   }
 });
+
+test("work-calendar weekdays, durations and guidance render without language leakage", async () => {
+  const { CrmPolicySettings } =
+    await import("../src/components/crm/CrmPolicySettings.tsx");
+  const { DEFAULT_CRM_POLICY_CONFIG } =
+    await import("../src/types/crmPolicyConfig.ts");
+  for (const lang of ["en", "id", "zh"] as const) {
+    const html = renderToStaticMarkup(
+      React.createElement(CrmPolicySettings, {
+        lang,
+        isLight: true,
+        policyConfig: DEFAULT_CRM_POLICY_CONFIG,
+        onSavePolicy: async () => true,
+        onResetPolicy: async () => true,
+      }),
+    );
+    if (lang !== "zh") assert.doesNotMatch(html, /[\u4e00-\u9fff]/);
+    if (lang === "id") {
+      assert.match(html, />Sen</);
+      assert.match(html, />Kam</);
+      assert.doesNotMatch(
+        html,
+        />Mon<|>Tue<|>Wed<|>Thu<|>Fri<|>Sat<|>Sun<|>h<|Prospek Panas|Pemeliharaan Dingin/,
+      );
+    }
+    assert.doesNotMatch(html, /Ch\. 6|第6章|10 道题|官方推荐/);
+  }
+});
+test("provider receipt stays separate from all three localized delivery summaries", async () => {
+  const { crmDeliveryResult } = await import("../src/utils/crmLanguage.ts");
+  for (const lang of ["en", "id", "zh"] as const) {
+    for (const state of [
+      "failed",
+      "unknown",
+      "accepted",
+      "simulated",
+      "cancelled",
+      "pending",
+      "sending",
+    ]) {
+      const label = crmDeliveryResult(
+        "UNTRANSLATED VENDOR 保留的供应商原始内容",
+        state,
+        lang,
+      );
+      assert.ok(!label.includes("UNTRANSLATED"));
+      assert.ok(!label.includes("保留的供应商原始内容"));
+      if (lang !== "zh") assert.doesNotMatch(label, /[\u4e00-\u9fff]/);
+    }
+  }
+  assert.equal(crmValue("inapp", "zh"), "站内通知");
+  assert.equal(crmValue("inapp", "id"), "Notifikasi dalam aplikasi");
+});
+test("static bilingual labels have Indonesian entries and templates have no extra tokens", async () => {
+  const fs = await import("node:fs");
+  const ts = await import("typescript");
+  const files = [
+    "src/components/crm/CrmPolicySettings.tsx",
+    "src/components/crm/CrmCampaignHub.tsx",
+    "src/components/crm/CrmLeadFilters.tsx",
+    "src/components/crm/CrmLeadWorkspace.tsx",
+    "src/components/crm/CrmCustomerDetails.tsx",
+    "src/pages/CrmWorkbench.tsx",
+    "src/components/CrmAccess.tsx",
+    "src/utils/crmLanguage.ts",
+    "src/components/NotificationCenter.tsx",
+  ];
+  for (const file of files) {
+    const ast = ts.createSourceFile(
+      file,
+      fs.readFileSync(file, "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const visit = (node: import("typescript").Node) => {
+      const parent = node.parent;
+      if (ts.isCallExpression(node) && node.expression.getText(ast) === "t") {
+        const argument =
+          node.arguments[file.endsWith("NotificationCenter.tsx") ? 1 : 0];
+        const checkBranch = (branch: import("typescript").Node) => {
+          if (ts.isConditionalExpression(branch)) {
+            checkBranch(branch.whenTrue);
+            checkBranch(branch.whenFalse);
+          } else if (
+            ts.isStringLiteralLike(branch) &&
+            /[A-Za-z]/.test(branch.text) &&
+            !/[\u4e00-\u9fff]/.test(branch.text)
+          )
+            assert.ok(
+              Object.hasOwn(dictionary, branch.text),
+              `${file}: ${branch.text}`,
+            );
+        };
+        if (argument) checkBranch(argument);
+      }
+      if (ts.isStringLiteralLike(node)) {
+        const relevant =
+          (ts.isCallExpression(parent) &&
+            parent.expression.getText(ast) === "t" &&
+            parent.arguments[
+              file.endsWith("NotificationCenter.tsx") ? 1 : 0
+            ] === node) ||
+          (ts.isJsxAttribute(parent) && /En$/.test(parent.name.getText(ast))) ||
+          (ts.isArrayLiteralExpression(parent) &&
+            parent.elements.some((x) =>
+              /[\u4e00-\u9fff]/.test(x.getText(ast)),
+            ));
+        if (
+          relevant &&
+          /[A-Za-z]/.test(node.text) &&
+          !/[\u4e00-\u9fff]/.test(node.text)
+        )
+          assert.ok(
+            Object.hasOwn(dictionary, node.text),
+            `${file}: ${node.text}`,
+          );
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+  }
+  for (const [en, id] of Object.entries(dictionary)) {
+    const tokens = (text: string) =>
+      [...new Set(text.match(/\{\d+\}/g) || [])].sort();
+    assert.deepEqual(tokens(id), tokens(en), en);
+    assert.doesNotMatch(id, /[\u4e00-\u9fff]/, en);
+  }
+});

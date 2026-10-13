@@ -1,7 +1,7 @@
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useState } from "react";
 import type { CrmLeadRecord, ChatTranscriptMessage } from "../../types/crmLead";
-import { crmValue, crmError, type CrmLanguage } from "../../utils/crmLanguage";
+import { crmValue, crmError, crmLocale, type CrmLanguage } from "../../utils/crmLanguage";
 import { crmAssessmentSummary } from "../../utils/crmAssessment";
 import { crmMessageTimeLabel } from "../../utils/crmMessageTime";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
@@ -161,7 +161,7 @@ export function CrmCustomerProfile({
             [
               t("Recorded amount", "登记金额"),
               typeof lead.revenue === "number"
-                ? `Rp ${lead.revenue.toLocaleString(lang === "id" ? crmId("en-GB") : lang === "zh" ? "zh-CN" : "en-GB")}`
+                ? `Rp ${lead.revenue.toLocaleString(crmLocale(lang))}`
                 : "—",
             ],
             [

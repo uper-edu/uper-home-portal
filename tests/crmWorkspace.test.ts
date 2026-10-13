@@ -90,7 +90,8 @@ test("worklist scans four zones, retaining original names, one next task, its ac
   assert.doesNotMatch(html, /<table|1970|原始备注 unchanged/);
   assert.equal(JSON.stringify(l), before);
 });
-test("field table and worklist preserve the same assessment conclusion and real task deadline without treating a memo as a task", () => {
+test("field table and worklist preserve the same assessment conclusion and real task deadline without treating a memo as a task", (context) => {
+  context.mock.method(Date, "now", () => Date.parse("2026-10-13T01:00:00Z"));
   const l = lead({
     levelSource: "trial",
     levelConfirmed: "HSK 2",

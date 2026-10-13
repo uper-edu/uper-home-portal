@@ -829,7 +829,7 @@ export default function NotificationCenter({
                                     t(
                                       rule.event === "daily.digest"
                                         ? "统计团队中有权查看汇总的员工"
-                                        : "全局路由：Owner → CRM Leader",
+                                        : "全局路由：负责人 → CRM 管理者",
                                       rule.event === "daily.digest"
                                         ? "Authorized summary team members"
                                         : "Global routing: Owner → CRM Leader",
@@ -1271,11 +1271,11 @@ export default function NotificationCenter({
                                       (
                                         ({
                                           event: rule.event,
-                                          name: "TEST 客户",
-                                          owner: "TEST 顾问",
+                                          name: t("测试客户", "Sample customer"),
+                                          owner: t("测试顾问", "Sample advisor"),
                                           due: t(
                                             "测试截止时间",
-                                            "TEST deadline",
+                                            "Sample deadline",
                                           ),
                                         }) as Record<string, string>
                                       )[key],
@@ -1834,7 +1834,7 @@ export default function NotificationCenter({
                                     </p>
                                   </td>
                                   <td className="p-3">
-                                    {row.channel}
+                                    {crmValue(row.channel, lang)}
                                     <br />
                                     {row.recipient}
                                   </td>
@@ -1863,7 +1863,7 @@ export default function NotificationCenter({
                                           lang,
                                         )
                                       : "—"}
-                                    {row.result && lang === "zh" && (
+                                    {row.result && (
                                       <details className="mt-1 text-xs">
                                         <summary className="cursor-pointer">
                                           {t(

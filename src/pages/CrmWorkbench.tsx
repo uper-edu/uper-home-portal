@@ -740,7 +740,7 @@ function CrmWorkspace({
           `Student submitted inquiry: ${crmValue(selectedLead.goal, lang)}`,
           `学员提交留资需求：${crmValue(selectedLead.goal, lang)}`,
         ),
-        subtitle: `${t("Source:", "场景:")} ${crmValue(selectedLead.entryPoint, lang)} · ${t("Campaign:", "战役:")} ${selectedLead.campaign || t("Direct", "官网直访")} · ${t("Mode:", "意向模式:")} ${crmValue(selectedLead.mode, lang)}`,
+        subtitle: `${t("Source:", "场景:")} ${crmValue(selectedLead.entryPoint, lang)} · ${t("Campaign:", "活动:")} ${selectedLead.campaign || t("Direct", "官网直访")} · ${t("Mode:", "意向模式:")} ${crmValue(selectedLead.mode, lang)}`,
         content: `${t("Self-reported:", "自报基础:")} ${crmValue(selectedLead.reportedLevel, lang)} · ${t("City:", "意向城市:")} ${customerCity(selectedLead.city, lang)} · ${t("Status:", "身份:")} ${crmValue(selectedLead.currentStatus, lang)} · ${t("Hook:", "引流钩子:")} ${crmValue(selectedLead.hookType, lang)} (${crmValue(selectedLead.hookContext, lang)})`,
       });
     }
@@ -917,7 +917,7 @@ function CrmWorkspace({
           `正式入班签约：${selectedLead.enrolledClass || "中文核心签约班"}`,
         ),
         subtitle: selectedLead.revenue
-          ? `${t("Recorded amount:", "登记金额:")} Rp ${selectedLead.revenue.toLocaleString()} · ${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)}`
+          ? `${t("Recorded amount:", "登记金额:")} Rp ${selectedLead.revenue.toLocaleString(crmLocale(lang))} · ${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)}`
           : `${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)} · ${t("City:", "城市:")} ${selectedLead.city}`,
         content: t(
           "Enrollment record; payment and attendance are recorded separately.",
@@ -2310,8 +2310,8 @@ function CrmWorkspace({
                       : crmModule === "policy"
                         ? t("Sales Operations Settings", "销售运营设置")
                         : t(
-                            "CRM User Guide & Handbook",
-                            "CRM 在线使用手册与操作指南",
+                            "CRM operating guide",
+                            "CRM 操作指南",
                           )}
                 </h1>
                 <span className="text-slate-300 dark:text-slate-600 select-none hidden md:inline">
@@ -2348,8 +2348,8 @@ function CrmWorkspace({
                           "配置工作时间、响应时限、跟进规则与通知。",
                         )
                       : t(
-                          "Comprehensive System Architecture, Rules, Data Dictionary & WhatsApp Scripts",
-                          "全景业务架构、推演算法、标准数据字典与金牌话术库",
+                          "Workflows for accounts, customer follow-up, assessments and notifications.",
+                          "账号权限、客户跟进、测评与通知的操作说明。",
                         )}
               </p>
             </div>
@@ -2446,7 +2446,7 @@ function CrmWorkspace({
               className={`flex items-center p-1 rounded-xl border shrink-0 ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
             >
               {/* Language Switcher */}
-              <CrmLanguageSelect lang={lang} onChange={setLang} />
+              <CrmLanguageSelect lang={lang} onChange={setLang} isLight={isLight} />
 
               <div
                 className={`h-4 w-px mx-0.5 ${isLight ? "bg-slate-200" : "bg-slate-700"}`}
@@ -2554,13 +2554,13 @@ function CrmWorkspace({
                   }`}
                   title={t(
                     "Reset all policies to factory default recommendations",
-                    "恢复系统官方标准推荐配置",
+                    "恢复系统默认配置",
                   )}
                 >
                   <RotateCcw
                     className={`w-3.5 h-3.5 ${policyControls?.isResetting ? "animate-spin" : ""}`}
                   />
-                  <span>{t("Reset Defaults", "恢复官方设置")}</span>
+                  <span>{t("Reset Defaults", "恢复默认设置")}</span>
                 </button>
 
                 <button

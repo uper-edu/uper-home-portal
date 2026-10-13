@@ -686,7 +686,7 @@ export function CrmCampaignHub({
             className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
           >
             {summaryMetrics.activeCount}{" "}
-            {t("Active & Live", "场正在招募推进中")}
+            {t("Active & Live", "场进行中")}
           </span>
         </div>
 
@@ -711,7 +711,7 @@ export function CrmCampaignHub({
             className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
           >
             {summaryMetrics.totalHot}{" "}
-            {t("Hot Quality Leads", "位 高意向 极高意向")}
+            {t("Hot Quality Leads", "位高意向客户")}
           </span>
         </div>
 
@@ -2179,7 +2179,7 @@ export function CrmCampaignHub({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      {t("Campaign Name (English)", "活动名称 (英文)")}{" "}
+                      {t("Campaign name (Chinese display)", "活动名称（中文显示）")}{" "}
                       <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -2187,8 +2187,8 @@ export function CrmCampaignHub({
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder={t(
-                        "e.g. 2026 Jakarta Campus Chinese Career Seminar (Binus)",
-                        "例如：2026 Jakarta Campus Chinese Career Seminar (Binus)",
+                        "Example: campus Mandarin career seminar",
+                        "示例：校园中文职业发展讲座",
                       )}
                       className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none ${isLight ? "bg-slate-50 border-slate-200 focus:bg-white focus:border-primary-500 text-slate-900" : "bg-slate-800 border-slate-700 focus:border-primary-400 text-white"}`}
                     />
@@ -2196,7 +2196,7 @@ export function CrmCampaignHub({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      {t("Campaign Name (Indonesian)", "活动名称 (印尼文)")}
+                      {t("Campaign name (English / Indonesian display)", "活动名称（英文／印尼文显示）")}
                     </label>
                     <input
                       type="text"

@@ -6,7 +6,7 @@ export const guideSections = [
     body: [
       [
         "The worklist has four areas: customer identity and owner, learning needs, sales progress, and follow-up. Open a customer to work in the same-page panel. Wide screens keep the customer queue; narrow screens focus on the panel.",
-        "Daftar kerja memiliki empat area: identitas dan pemilik pelanggan, kebutuhan belajar, perkembangan penjualan, serta tindak lanjut. Buka pelanggan untuk bekerja di panel pada halaman yang sama. Layar lebar tetap menampilkan antrean pelanggan; layar kecil berfokus pada panel.",
+        "Daftar kerja memiliki empat area: identitas dan penanggung jawab pelanggan, kebutuhan belajar, perkembangan penjualan, serta tindak lanjut. Buka pelanggan untuk bekerja di panel pada halaman yang sama. Layar lebar tetap menampilkan antrean pelanggan; layar kecil berfokus pada panel.",
         "工作列表分为客户身份与负责人、学习需求、销售进展、跟进安排四区。打开客户后在同页面板处理；宽屏保留客户队列，窄屏集中显示处理面板。",
       ],
       [
@@ -22,12 +22,12 @@ export const guideSections = [
     body: [
       [
         "CRM requires staff sign-in. Suki and Robert are CRM Leaders; Fadhil, Zainul and Wigar are Sales; Tester has both roles. Use the top account menu to change your own password or sign out.",
-        "CRM mewajibkan login staf. Suki dan Robert adalah Pemimpin CRM; Fadhil, Zainul, dan Wigar adalah staf penjualan; Tester memiliki kedua peran. Gunakan menu akun di bagian atas untuk mengubah kata sandi sendiri atau keluar.",
+        "CRM mewajibkan login staf. Suki dan Robert adalah Pengelola CRM; Fadhil, Zainul, dan Wigar adalah staf penjualan; Tester memiliki kedua peran. Gunakan menu akun di bagian atas untuk mengubah kata sandi sendiri atau keluar.",
         "访问 CRM 需要员工登录。Suki、Robert 为 CRM 管理者；Fadhil、Zainul、Wigar 为销售；Tester 同时具有两种角色。顶部账号菜单提供修改自己的密码和退出入口。",
       ],
       [
         "Leaders can view all leads and assign active Sales owners. Sales default to their own leads and may view eligible unassigned leads. Sales can claim an unassigned lead only for themselves and cannot transfer their leads to another salesperson. Sales Operations settings are restricted to Leaders; the server enforces these permissions.",
-        "Pemimpin dapat melihat semua prospek dan menetapkan pemilik staf penjualan yang aktif. staf penjualan secara default melihat prospek sendiri dan dapat melihat prospek belum ditugaskan yang memenuhi cakupan akses. staf penjualan hanya dapat mengambil prospek untuk dirinya sendiri dan tidak dapat memindahkan prospek ke staf penjualan lain. Pengaturan Operasional Penjualan dibatasi untuk Pemimpin; server menerapkan izin ini.",
+        "Pemimpin dapat melihat semua prospek dan menetapkan staf penjualan aktif sebagai penanggung jawab. Staf penjualan secara default melihat prospek sendiri dan dapat melihat prospek belum ditugaskan yang memenuhi cakupan akses. Staf penjualan hanya dapat mengambil prospek untuk dirinya sendiri dan tidak dapat memindahkan prospek ke staf penjualan lain. Pengaturan Operasional Penjualan dibatasi untuk Pemimpin; server menerapkan izin ini.",
         "管理者可以查看全部客户，并分配给有效销售账号。销售默认查看本人客户，也能查看权限范围内的未分配客户；只能认领给自己，不能将客户转给其他销售。销售运营配置仅管理者可修改，权限同时由服务端校验。",
       ],
     ],
@@ -36,18 +36,18 @@ export const guideSections = [
     key: "filters",
     title: [
       "Filters and field table",
-      "Filter dan tabel bidang",
+      "Filter dan tabel kolom",
       "筛选与辅助字段表",
     ],
     body: [
       [
-        "Use search, Owner, Tasks and Unread by me for daily work. More filters provides customer group, sales stage, contact status, follow-up situation, learning format and buying signal. Values within one category use OR; categories combine with AND. Only Owner has a search box. Reset restores your role default.",
-        "Gunakan pencarian, Pemilik, Tugas, dan Belum dibaca oleh saya untuk pekerjaan harian. Filter lainnya menyediakan kelompok pelanggan, tahap penjualan, status kontak, situasi tindak lanjut, format belajar, dan sinyal pembelian. Pilihan dalam satu kategori memakai OR; antarkategori memakai AND. Hanya Pemilik memiliki kotak pencarian. Atur ulang mengembalikan tampilan default peran Anda.",
+        "Use search, Owner, Tasks and Unread by me for daily work. More filters provides customer group, sales stage, contact status, follow-up situation, learning format and buying signal. Values within one category use logika atau; categories combine with logika dan. Only Owner has a search box. Reset restores your role default.",
+        "Gunakan pencarian, Penanggung jawab, Tugas, dan Belum dibaca oleh saya untuk pekerjaan harian. Filter lainnya menyediakan kelompok pelanggan, tahap penjualan, status kontak, situasi tindak lanjut, format belajar, dan sinyal pembelian. Pilihan dalam satu kategori memakai logika atau; antarkategori memakai logika dan. Hanya Penanggung jawab memiliki kotak pencarian. Atur ulang mengembalikan tampilan default peran Anda.",
         "日常使用搜索、负责人、跟进任务和仅我未读；更多筛选包含客户分组、销售阶段、联系状态、跟进情形、授课方式和购买信号。同类多选为“或”，不同维度之间为“且”。仅负责人下拉保留搜索；重置恢复角色默认视图。",
       ],
       [
         "Due today uses the configured operating timezone and includes unfinished tasks due on that calendar day. Overdue requires an unfinished task with a real deadline earlier than now. Historical tasks awaiting review are excluded from both. The field table uses the same filtered records; choose fields without changing business data. Name and lead number remain visible.",
-        "Jatuh tempo hari ini memakai zona waktu operasional yang dikonfigurasi dan mencakup tugas belum selesai yang jatuh tempo pada hari kalender tersebut. Terlambat memerlukan tugas belum selesai dengan tenggat nyata sebelum waktu sekarang. Tugas historis yang menunggu peninjauan tidak masuk keduanya. Tabel bidang memakai catatan hasil filter yang sama; pilih bidang tanpa mengubah data bisnis. Nama dan nomor prospek tetap terlihat.",
+        "Jatuh tempo hari ini memakai zona waktu operasional yang dikonfigurasi dan mencakup tugas belum selesai yang jatuh tempo pada hari kalender tersebut. Terlambat memerlukan tugas belum selesai dengan tenggat nyata sebelum waktu sekarang. Tugas historis yang menunggu peninjauan tidak masuk keduanya. Tabel kolom memakai catatan hasil filter yang sama; pilih kolom tanpa mengubah data bisnis. Nama dan nomor prospek tetap terlihat.",
         "今天到期使用配置的运营时区，包含当天截止的未完成任务；逾期要求未完成任务的真实截止时间早于现在。历史待办待确认不计入这两项。字段表使用相同筛选结果；选择显示字段不改变业务数据，姓名和客户编号始终保留。",
       ],
     ],
@@ -62,7 +62,7 @@ export const guideSections = [
     body: [
       [
         "The list action, state and deadline come from the same persisted task. A task owner may differ from the customer owner. Additional tasks open in the panel. Manual notes are kept separately and do not become system tasks.",
-        "Tindakan, status, dan tenggat pada daftar berasal dari tugas tersimpan yang sama. Pemilik tugas dapat berbeda dari pemilik pelanggan. Tugas tambahan dibuka dalam panel. Catatan manual disimpan terpisah dan tidak menjadi tugas sistem.",
+        "Tindakan, status, dan tenggat pada daftar berasal dari tugas tersimpan yang sama. Penanggung jawab tugas dapat berbeda dari penanggung jawab pelanggan. Tugas tambahan dibuka dalam panel. Catatan manual disimpan terpisah dan tidak menjadi tugas sistem.",
         "列表动作、状态、截止时间来自同一条持久任务；任务负责人可以不同于客户负责人。其他任务在面板查看。人工备注独立保留，不被当作系统任务。",
       ],
       [
@@ -76,7 +76,7 @@ export const guideSections = [
     key: "chat",
     title: [
       "Conversations and human requests",
-      "Percakapan dan permintaan bantuan manusia",
+      "Percakapan dan permintaan bantuan konsultan",
       "聊天与转人工",
     ],
     body: [
@@ -87,7 +87,7 @@ export const guideSections = [
       ],
       [
         "A human request creates a follow-up request, not a live human chat session. Its actual waiting or completion state is shown. Messages with missing historical timestamps show Unknown time; placeholder dates are not evidence of contact time. Failed or interrupted AI replies are identified separately.",
-        "Permintaan bantuan manusia membuat permintaan tindak lanjut, bukan sesi chat manusia langsung. Status menunggu atau selesai yang sebenarnya ditampilkan. Pesan historis tanpa waktu ditampilkan sebagai Waktu tidak diketahui; tanggal pengganti bukan bukti waktu kontak. Balasan AI yang gagal atau terputus ditandai terpisah.",
+        "Permintaan bantuan konsultan membuat permintaan tindak lanjut, bukan sesi percakapan langsung dengan konsultan. Status menunggu atau selesai yang sebenarnya ditampilkan. Pesan historis tanpa waktu ditampilkan sebagai Waktu tidak diketahui; tanggal pengganti bukan bukti waktu kontak. Balasan AI yang gagal atau terputus ditandai terpisah.",
         "转人工建立跟进请求，不代表真人已经加入在线对话；显示实际等待或完成状态。历史消息缺失时间显示未知时间，占位日期不代表真实联系时间。AI 失败或中断回复单独标记。",
       ],
     ],
@@ -142,7 +142,7 @@ export const guideSections = [
     body: [
       [
         "Configure the business event, searchable multi-select conditions, recipients, delivery timing, and reliability controls. Customer notifications go to the valid Owner; unassigned or invalid Owners route to CRM Leaders globally. Draft rules do not send. Enabled changes apply to new events; queued jobs retain their saved rule version.",
-        "Konfigurasikan peristiwa bisnis, kondisi pilihan jamak yang dapat dicari, penerima, waktu pengiriman, dan kontrol keandalan. Notifikasi pelanggan ditujukan ke Pemilik yang valid; Pemilik tidak valid atau belum ditugaskan dialihkan secara global ke Pemimpin CRM. Aturan draf tidak mengirim. Perubahan yang diaktifkan berlaku untuk peristiwa baru; tugas antrean mempertahankan versi aturan tersimpan.",
+        "Konfigurasikan peristiwa bisnis, kondisi pilihan jamak yang dapat dicari, penerima, waktu pengiriman, dan kontrol keandalan. Notifikasi pelanggan ditujukan ke Penanggung jawab yang valid; Penanggung jawab tidak valid atau belum ditugaskan dialihkan secara global ke Pengelola CRM. Aturan draf tidak mengirim. Perubahan yang diaktifkan berlaku untuk peristiwa baru; tugas antrean mempertahankan versi aturan tersimpan.",
         "配置业务事件、可搜索多选触发条件、接收对象、发送时间和可靠性控制。客户通知发送给有效 Owner；未分配或 Owner 无效时全局路由给 CRM 管理者。草稿不发送；启用后的修改作用于新事件，待发任务保留已保存的策略版本。",
       ],
       [
@@ -166,6 +166,11 @@ export const guideSections = [
     ],
     body: [
       [
+        "The campaign's Chinese display name and its English / Indonesian display name are separate saved fields. Their labels identify where each field is displayed; saving does not translate either name automatically.",
+        "Nama tampilan Mandarin dan nama tampilan Inggris / Indonesia pada kampanye disimpan sebagai dua kolom terpisah. Label menunjukkan tempat masing-masing nama ditampilkan; penyimpanan tidak menerjemahkan nama secara otomatis.",
+        "活动的中文显示名称和英文／印尼文显示名称是两个独立保存字段；标签说明各自显示位置。保存不会自动翻译名称。",
+      ],
+      [
         "Use Marketing Campaigns to review campaign information and related leads. First customer source and each conversation source serve different attribution purposes. Customer-entered campaign names and descriptions retain their original wording. Campaign activity does not bypass CRM visibility permissions.",
         "Gunakan Kampanye Pemasaran untuk meninjau informasi kampanye dan prospek terkait. Sumber pertama pelanggan dan sumber setiap percakapan memiliki fungsi atribusi berbeda. Nama dan deskripsi kampanye yang dimasukkan tetap memakai teks aslinya. Aktivitas kampanye tidak melewati izin visibilitas CRM.",
         "营销活动模块用于查看活动信息及相关客户。客户首次来源与每次会话来源承担不同归因用途；输入的活动名称与描述保留原文。营销活动入口不绕过 CRM 数据权限。",
@@ -181,13 +186,23 @@ export const guideSections = [
     ],
     body: [
       [
+        "Use the language dropdown beside the theme control to select English, Indonesian or Chinese. It uses the same single-select interaction as Owner, without a search box. Escape closes it; arrow keys move between options. Original names, notes and conversations are preserved.",
+        "Pilih bahasa Inggris, Indonesia, atau Mandarin melalui menu bahasa di sebelah tombol tema. Menu ini memakai pola pilihan tunggal yang sama dengan Penanggung jawab, tanpa kotak pencarian. Escape menutup menu; tombol panah berpindah antaropsi. Nama, catatan, dan percakapan asli tetap dipertahankan.",
+        "通过主题按钮旁的语言下拉选择英文、印尼文或中文。样式与负责人单选一致，无搜索框；按 Escape 关闭，方向键移动选项。姓名、备注和对话原文保持不变。",
+      ],
+      [
+        "Delivery records show a localized status summary. Expand Original technical receipt to inspect the provider response in its original language; this evidence is not automatically translated.",
+        "Catatan pengiriman menampilkan ringkasan status sesuai bahasa antarmuka. Buka Respons teknis asli untuk memeriksa respons penyedia dalam bahasa aslinya; bukti ini tidak diterjemahkan otomatis.",
+        "发送记录显示当前语言的状态摘要；展开原始技术回执可查看服务返回的原文，此证据不自动翻译。",
+      ],
+      [
         "Start with your role default view, check unread activity and overdue tasks, claim eligible unassigned leads, record contact, and complete or schedule the next task. Refresh after an ownership conflict. A failed save is not a successful follow-up; keep the draft and retry after checking the error.",
         "Mulai dari tampilan default peran, periksa aktivitas belum dibaca dan tugas terlambat, ambil prospek belum ditugaskan yang memenuhi syarat, catat kontak, lalu selesaikan atau jadwalkan tugas berikutnya. Muat ulang setelah konflik kepemilikan. Penyimpanan gagal bukan tindak lanjut yang berhasil; pertahankan draf dan coba lagi setelah memeriksa kesalahan.",
         "从角色默认视图开始，检查未读与逾期任务，认领适用的未分配客户，记录联系，完成或安排下一项任务。归属冲突后刷新。保存失败不算完成跟进，保留草稿并根据错误重试。",
       ],
       [
         "Language preferences change system labels and documentation, not names, transcripts or notes. If a deadline or assessment is missing, inspect its source instead of inventing a value. Use delivery audit for notification issues and contact a CRM Leader for access or configuration issues.",
-        "Preferensi bahasa mengubah label sistem dan dokumentasi, bukan nama, transkrip, atau catatan. Jika tenggat atau asesmen tidak tersedia, periksa sumbernya dan jangan membuat nilai sendiri. Gunakan audit pengiriman untuk masalah notifikasi dan hubungi Pemimpin CRM untuk masalah akses atau konfigurasi.",
+        "Preferensi bahasa mengubah label sistem dan dokumentasi, bukan nama, transkrip, atau catatan. Jika tenggat atau asesmen tidak tersedia, periksa sumbernya dan jangan membuat nilai sendiri. Gunakan audit pengiriman untuk masalah notifikasi dan hubungi Pengelola CRM untuk masalah akses atau konfigurasi.",
         "语言偏好改变系统标签和文档，不改变姓名、对话与备注。缺失截止时间或测评时，应核查来源，不猜造数值。通知问题查看发送审计；权限和配置问题联系 CRM 管理者。",
       ],
     ],

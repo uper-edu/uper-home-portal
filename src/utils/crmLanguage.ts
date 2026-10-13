@@ -24,6 +24,9 @@ export function useCrmLanguage() {
   return [lang, setLang] as const;
 }
 const values: Record<string, [string, string]> = {
+  inapp: ["In-app notification", "站内通知"],
+  lark: ["Lark", "Lark"],
+  sms: ["SMS", "短信"],
   minutes: ["minutes", "分钟"],
   hours: ["hours", "小时"],
   days: ["days", "天"],
@@ -202,28 +205,49 @@ export function crmDeliveryResult(
   state: string,
   lang: CrmLanguage,
 ) {
-  if (lang === "id") return crmId(result || "Delivery result recorded.");
-  if (lang === "en") return result;
-  const known: Record<string, string> = {
-    "Group hourly limit reached": "达到群每小时发送上限，已顺延。",
-    "Recipient changed or no longer authorized": "接收人已变更或失去访问权限。",
-    "Task completed": "跟进任务已完成。",
-    "Lease expired": "任务领取租约已过期。",
-    "No live channel configured": "没有启用真实发送渠道，本次为模拟发送。",
+  const known: Record<string, [string, string]> = {
+    "Group hourly limit reached": [
+      "Group hourly limit reached; delivery deferred.",
+      "达到群每小时发送上限，已顺延。",
+    ],
+    "Recipient changed or no longer authorized": [
+      "Recipient changed or no longer authorized.",
+      "接收人已变更或失去访问权限。",
+    ],
+    "Task completed": ["Follow-up task completed.", "跟进任务已完成。"],
+    "Lease expired": ["Task lease expired.", "任务领取租约已过期。"],
+    "No live channel configured": [
+      "No live channel configured; delivery simulated.",
+      "没有启用真实发送渠道，本次为模拟发送。",
+    ],
   };
-  return (
-    known[result] ||
-    (
-      {
-        accepted: "接口已接受；不代表员工已读或已跟进。",
-        simulated: "模拟完成，未实际发送。",
-        failed: "发送失败，原始回执已记录。",
-        unknown: "结果未知，需要人工核查。",
-        cancelled: "本次通知已取消。",
-        pending: "等待发送，执行详情已记录。",
-        sending: "正在发送。",
-      } as Record<string, string>
-    )[state] ||
-    "执行结果已记录。"
-  );
+  const summaries: Record<string, [string, string]> = {
+    accepted: [
+      "API accepted; this does not mean read or followed up.",
+      "接口已接受；不代表员工已读或已跟进。",
+    ],
+    simulated: [
+      "Simulation completed; no message sent.",
+      "模拟完成，未实际发送。",
+    ],
+    failed: [
+      "Delivery failed; original receipt recorded.",
+      "发送失败，原始回执已记录。",
+    ],
+    unknown: [
+      "Delivery outcome unknown; manual review required.",
+      "结果未知，需要人工核查。",
+    ],
+    cancelled: ["Notification cancelled.", "本次通知已取消。"],
+    pending: [
+      "Awaiting delivery; execution details recorded.",
+      "等待发送，执行详情已记录。",
+    ],
+    sending: ["Sending.", "正在发送。"],
+  };
+  // Vendor receipts can be in any language. Keep them in the explicitly labelled
+  // original-receipt disclosure, rather than leaking them into system summaries.
+  const text = known[result] ||
+    summaries[state] || ["Delivery result recorded.", "执行结果已记录。"];
+  return lang === "id" ? crmId(text[0]) : text[lang === "zh" ? 1 : 0];
 }
