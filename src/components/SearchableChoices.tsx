@@ -1,3 +1,4 @@
+import { crmId } from "../utils/crmIndonesian";
 import { useState } from "react";
 export interface Choice {
   value: string;
@@ -9,6 +10,7 @@ export default function SearchableChoices({
   choices,
   onChange,
   zh,
+  lang = zh ? "zh" : "en",
   isLight,
   multiple = true,
 }: {
@@ -17,6 +19,7 @@ export default function SearchableChoices({
   choices: Choice[];
   onChange: (values: string[]) => void;
   zh: boolean;
+  lang?: "en" | "zh" | "id";
   isLight: boolean;
   multiple?: boolean;
 }) {
@@ -27,7 +30,12 @@ export default function SearchableChoices({
       .filter((v) => !choices.some((c) => c.value === v))
       .map((v) => ({
         value: v,
-        label: (zh ? "历史值：" : "Historical value: ") + v,
+        label:
+          (lang === "id"
+            ? crmId("Historical value: ")
+            : zh
+              ? "历史值："
+              : "Historical value: ") + v,
       })),
   ];
   const matched = all.filter((c) =>
@@ -38,8 +46,8 @@ export default function SearchableChoices({
       <span className="text-xs font-semibold">{title}</span>
       <details className="relative" name="notification-choice">
         <summary
-        role="button"
-        aria-label={title}
+          role="button"
+          aria-label={title}
           className={`cursor-pointer list-none flex justify-between items-center min-h-9 px-3 py-2 rounded-lg border text-xs ${isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-700"}`}
         >
           <span>
@@ -47,9 +55,11 @@ export default function SearchableChoices({
               ? values
                   .map((v) => all.find((c) => c.value === v)?.label || v)
                   .join("、")
-              : zh
-                ? "全部"
-                : "All"}
+              : lang === "id"
+                ? crmId("All")
+                : zh
+                  ? "全部"
+                  : "All"}
           </span>
           <span aria-hidden="true">▾</span>
         </summary>
@@ -57,10 +67,19 @@ export default function SearchableChoices({
           className={`absolute z-20 top-full left-0 right-0 mt-1 p-2 border rounded-xl shadow-lg ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-700"}`}
         >
           <input
-            aria-label={title + (zh ? " 搜索" : " search")}
+            aria-label={
+              title +
+              (lang === "id" ? crmId(" search") : zh ? " 搜索" : " search")
+            }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={zh ? "搜索选项" : "Search options"}
+            placeholder={
+              lang === "id"
+                ? crmId("Search options")
+                : zh
+                  ? "搜索选项"
+                  : "Search options"
+            }
             className={`w-full h-8 px-2 mb-2 rounded-lg border text-xs ${isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-700"}`}
           />
           {multiple && (
@@ -69,7 +88,11 @@ export default function SearchableChoices({
               onClick={() => onChange([])}
               className="text-xs text-primary-600 mb-2"
             >
-              {zh ? "清除筛选（全部）" : "Clear filter (all)"}
+              {lang === "id"
+                ? crmId("Clear filter (all)")
+                : zh
+                  ? "清除筛选（全部）"
+                  : "Clear filter (all)"}
             </button>
           )}
           <div className="max-h-48 overflow-y-auto">
@@ -97,7 +120,11 @@ export default function SearchableChoices({
             ))}
             {!matched.length && (
               <p className="text-xs p-2">
-                {zh ? "没有匹配选项" : "No matching options"}
+                {lang === "id"
+                  ? crmId("No matching options")
+                  : zh
+                    ? "没有匹配选项"
+                    : "No matching options"}
               </p>
             )}
           </div>
@@ -111,7 +138,7 @@ export default function SearchableChoices({
               key={v}
               onClick={() => onChange(values.filter((x) => x !== v))}
               aria-label={
-                (zh ? "移除 " : "Remove ") +
+                (lang === "id" ? crmId("Remove ") : zh ? "移除 " : "Remove ") +
                 (all.find((c) => c.value === v)?.label || v)
               }
               className="text-[11px] rounded bg-primary-500/10 px-2 py-1"

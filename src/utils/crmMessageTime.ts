@@ -1,3 +1,4 @@
+import { crmId } from "./crmIndonesian";
 /** Legacy storage dates can be placeholders. Only original evidence establishes time. */
 export interface CrmMessageTimeInput {
   timestamp?: unknown;
@@ -64,19 +65,25 @@ export function normalizeCrmMessage<T extends CrmMessageTimeInput>(message: T) {
 }
 export function crmMessageTimeLabel(
   message: CrmMessageTimeInput,
-  lang: "zh" | "en",
+  lang: "zh" | "en" | "id",
   format: (timestamp: string) => string,
 ) {
   const timestamp = crmMessageTimestamp(message);
   return timestamp
     ? format(timestamp)
-    : lang === "zh"
-      ? "未知时间"
-      : "Unknown time";
+    : lang === "id"
+      ? crmId("Unknown time")
+      : lang === "zh"
+        ? "未知时间"
+        : "Unknown time";
 }
 export function compareCrmEventTimes(
-  a: { timestamp: string },
-  b: { timestamp: string },
+  a: {
+    timestamp: string;
+  },
+  b: {
+    timestamp: string;
+  },
 ) {
   const first = Date.parse(a.timestamp),
     second = Date.parse(b.timestamp);

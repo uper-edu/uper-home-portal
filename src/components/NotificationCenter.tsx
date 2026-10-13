@@ -1,4 +1,10 @@
-import {crmValue,crmError,crmDeliveryResult} from '../utils/crmLanguage';
+import { crmId } from "../utils/crmIndonesian";
+import {
+  crmLocale,
+  crmValue,
+  crmError,
+  crmDeliveryResult,
+} from "../utils/crmLanguage";
 import SearchableChoices from "./SearchableChoices";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -15,7 +21,6 @@ import {
   Play,
   X,
 } from "lucide-react";
-
 type Tab =
   | "notification-rules"
   | "notification-channels"
@@ -46,7 +51,10 @@ interface Rule {
   retries: number[];
   template: string;
   language: string;
-  quiet?: { start: string; end: string };
+  quiet?: {
+    start: string;
+    end: string;
+  };
 }
 interface Channel {
   maxPerHour?: number;
@@ -137,12 +145,12 @@ export default function NotificationCenter({
   navigationRequest = 0,
 }: {
   isLight: boolean;
-  lang: "zh" | "en";
+  lang: "zh" | "en" | "id";
   navigationRequest?: number;
 }) {
   const panelRef = useRef<HTMLElement>(null);
   const zh = lang === "zh",
-    t = (a: string, b: string) => (zh ? a : b);
+    t = (a: string, b: string) => (lang === "id" ? crmId(b) : zh ? a : b);
   const [open, setOpen] = useState(false),
     [tab, setTab] = useState<Tab>("notification-rules"),
     [rows, setRows] = useState<Row[]>([]),
@@ -175,7 +183,7 @@ export default function NotificationCenter({
     states: [],
     teams: [],
   });
-  useEffect(()=>setNotice(''),[lang]);
+  useEffect(() => setNotice(""), [lang]);
   const [routing, setRouting] = useState<any>(null);
   const [globalCalendar, setGlobalCalendar] = useState({
     timezone: "Asia/Jakarta",
@@ -185,7 +193,10 @@ export default function NotificationCenter({
     source: "fallback",
   });
   const [simulation, setSimulation] = useState<
-      { channel: string; at: string }[]
+      {
+        channel: string;
+        at: string;
+      }[]
     >([]),
     [simulateAt, setSimulateAt] = useState(""),
     [filter, setFilter] = useState("all"),
@@ -240,8 +251,11 @@ export default function NotificationCenter({
     return () => clearInterval(timer);
   }, [open, load]);
   const format = (value: string | undefined) =>
-    value ? new Date(value).toLocaleString(zh ? "zh-CN" : "en-US") : "—";
-  const label = (name: string) => eventNames[name]?.[zh ? 0 : 1] || name;
+    value ? new Date(value).toLocaleString(crmLocale(lang)) : "—";
+  const label = (name: string) =>
+    (lang === "id"
+      ? crmId(eventNames[name]?.[1])
+      : eventNames[name]?.[zh ? 0 : 1]) || name;
   const connectionLabel = (row: Row) =>
     (
       ({
@@ -267,7 +281,7 @@ export default function NotificationCenter({
     t("配置状态未确认", "Configuration status unverified");
   const groupLabel = (row: Row) =>
     `${row.config?.groupName || t("未命名群", "Unnamed group")} · ${connectionLabel(row)}`;
-  const calendarSummary = `${globalCalendar.timezone} · ${globalCalendar.start}–${globalCalendar.end} · ${globalCalendar.days.map((d) => (zh ? ["日", "一", "二", "三", "四", "五", "六"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])[d]).join(", ")}`;
+  const calendarSummary = `${globalCalendar.timezone} · ${globalCalendar.start}–${globalCalendar.end} · ${globalCalendar.days.map((d) => (zh ? ["日", "一", "二", "三", "四", "五", "六"] : lang === "id" ? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])[d]).join(", ")}`;
   const timed = rule.channels.includes("lark") || rule.event === "daily.digest";
   const field = (title: string, child: React.ReactNode, hint?: string) => (
     <label className="block space-y-1.5">
@@ -554,7 +568,7 @@ export default function NotificationCenter({
                     "此账号没有通知管理权限，请联系管理员。",
                     "This account has no notification management permission.",
                   )
-                : crmError(error,lang)}
+                : crmError(error, lang)}
             </p>
           )}
           {notice && (
@@ -627,9 +641,15 @@ export default function NotificationCenter({
                   </p>
                   <p>
                     {t("身份目录", "Identity directory")}：
-                    {routing.identityMode === "local" ? (lang === "zh" ? "本地员工账号" : "Local staff accounts") : routing.identityMode === "mock"
-                      ? t("本地模拟", "Local mock")
-                      : t("平台", "Platform")}{" "}
+                    {routing.identityMode === "local"
+                      ? lang === "id"
+                        ? crmId("Local staff accounts")
+                        : lang === "zh"
+                          ? "本地员工账号"
+                          : "Local staff accounts"
+                      : routing.identityMode === "mock"
+                        ? t("本地模拟", "Local mock")
+                        : t("平台", "Platform")}{" "}
                     · {t("有效 CRM 管理者", "Eligible CRM Leaders")}：
                     {routing.leaders.map((e: any) => e.id).join(", ") ||
                       t("未配置", "None configured")}
@@ -702,10 +722,15 @@ export default function NotificationCenter({
                             title={t("业务事件", "Business event")}
                             values={[rule.event]}
                             choices={Object.entries(eventNames).map(
-                              ([value, n]) => ({ value, label: n[zh ? 0 : 1] }),
+                              ([value, n]) => ({
+                                value,
+                                label:
+                                  lang === "id" ? crmId(n[1]) : n[zh ? 0 : 1],
+                              }),
                             )}
                             onChange={(values) => patch({ event: values[0] })}
                             zh={zh}
+                            lang={lang}
                             isLight={isLight}
                             multiple={false}
                           />
@@ -772,7 +797,9 @@ export default function NotificationCenter({
                                   (value) => ({
                                     value,
                                     label:
-                                      labels[value]?.[zh ? 0 : 1] ||
+                                      (lang === "id"
+                                        ? crmId(labels[value]?.[1])
+                                        : labels[value]?.[zh ? 0 : 1]) ||
                                       t(
                                         `历史或目录值：${value}`,
                                         `Historical or directory value: ${value}`,
@@ -781,6 +808,7 @@ export default function NotificationCenter({
                                 )}
                                 onChange={(values) => patch({ [key]: values })}
                                 zh={zh}
+                                lang={lang}
                                 isLight={isLight}
                               />
                             );
@@ -799,8 +827,12 @@ export default function NotificationCenter({
                                   [
                                     "owner",
                                     t(
-                                      rule.event==='daily.digest'?"统计团队中有权查看汇总的员工":"全局路由：Owner → CRM Leader",
-                                      rule.event==='daily.digest'?"Authorized summary team members":"Global routing: Owner → CRM Leader",
+                                      rule.event === "daily.digest"
+                                        ? "统计团队中有权查看汇总的员工"
+                                        : "全局路由：Owner → CRM Leader",
+                                      rule.event === "daily.digest"
+                                        ? "Authorized summary team members"
+                                        : "Global routing: Owner → CRM Leader",
                                     ),
                                   ],
                                   ["team", t("指定团队", "Team")],
@@ -833,6 +865,7 @@ export default function NotificationCenter({
                                   }
                                   multiple={false}
                                   zh={zh}
+                                  lang={lang}
                                   isLight={isLight}
                                 />
                               )}
@@ -851,6 +884,7 @@ export default function NotificationCenter({
                                 }
                                 multiple={false}
                                 zh={zh}
+                                lang={lang}
                                 isLight={isLight}
                               />
                             )}
@@ -1374,15 +1408,12 @@ export default function NotificationCenter({
                         {simulation.map((s) => (
                           <p key={s.channel} className="text-xs">
                             {s.channel} ·{" "}
-                            {new Date(s.at).toLocaleString(
-                              zh ? "zh-CN" : "en-US",
-                              {
-                                timeZone:
-                                  rule.calendarMode === "inherit"
-                                    ? globalCalendar.timezone
-                                    : rule.timezone,
-                              },
-                            )}{" "}
+                            {new Date(s.at).toLocaleString(crmLocale(lang), {
+                              timeZone:
+                                rule.calendarMode === "inherit"
+                                  ? globalCalendar.timezone
+                                  : rule.timezone,
+                            })}{" "}
                             ·{" "}
                             {rule.calendarMode === "inherit"
                               ? globalCalendar.timezone
@@ -1614,17 +1645,22 @@ export default function NotificationCenter({
                               .join(" + ")}{" "}
                             ·{" "}
                             {row.config!.channels.includes("inapp")
-                              ? row.config!.event === "daily.digest" ? t(`汇总统计团队：${row.config!.team}`,`Summary team: ${row.config!.team}`) : row.config!.recipient === "owner"
+                              ? row.config!.event === "daily.digest"
                                 ? t(
-                                    `客户负责人；未分配或负责人无效时转 CRM Leader`,
-                                    `Lead owner; invalid/unassigned owner → CRM Leader`,
+                                    `汇总统计团队：${row.config!.team}`,
+                                    `Summary team: ${row.config!.team}`,
                                   )
-                                : row.config!.recipient === "supervisor"
-                                  ? t("主管团队", "Supervisor team")
-                                  : t(
-                                      `接收团队：${row.config!.team}`,
-                                      `Recipient team: ${row.config!.team}`,
+                                : row.config!.recipient === "owner"
+                                  ? t(
+                                      `客户负责人；未分配或负责人无效时转 CRM Leader`,
+                                      `Lead owner; invalid/unassigned owner → CRM Leader`,
                                     )
+                                  : row.config!.recipient === "supervisor"
+                                    ? t("主管团队", "Supervisor team")
+                                    : t(
+                                        `接收团队：${row.config!.team}`,
+                                        `Recipient team: ${row.config!.team}`,
+                                      )
                               : t("仅群通知", "Group delivery only")}
                           </p>
                           <p className={`text-xs ${muted}`}>
@@ -1703,11 +1739,14 @@ export default function NotificationCenter({
                             <summary className="cursor-pointer">
                               {t("技术信息", "Technical information")}
                             </summary>
-                            <p>{t("标识：","ID:")}{row.id}</p>
+                            <p>
+                              {t("标识：", "ID:")}
+                              {row.id}
+                            </p>
                             {row.config!.mode === "live" && (
                               <p>
-                                {t("机器人连接 配置引用", "Webhook reference")}：
-                                {row.config!.secretRef}
+                                {t("机器人连接 配置引用", "Webhook reference")}
+                                ：{row.config!.secretRef}
                               </p>
                             )}
                           </details>
@@ -1739,7 +1778,10 @@ export default function NotificationCenter({
                             ["all", t("全部状态", "All states")],
                             ...Object.entries(stateNames).map(
                               ([v, n]) =>
-                                [v, n[zh ? 0 : 1]] as [string, string],
+                                [
+                                  v,
+                                  lang === "id" ? crmId(n[1]) : n[zh ? 0 : 1],
+                                ] as [string, string],
                             ),
                           ],
                           setFilter,
@@ -1800,8 +1842,11 @@ export default function NotificationCenter({
                                     <span
                                       className={`whitespace-nowrap ${row.state === "failed" || row.state === "unknown" ? "text-rose-500" : row.state === "accepted" ? "text-emerald-600" : muted}`}
                                     >
-                                      {stateNames[row.state]?.[zh ? 0 : 1] ||
-                                        row.state}
+                                      {(lang === "id"
+                                        ? crmId(stateNames[row.state]?.[1])
+                                        : stateNames[row.state]?.[
+                                            zh ? 0 : 1
+                                          ]) || row.state}
                                     </span>
                                   </td>
                                   <td className="p-3 whitespace-nowrap">
@@ -1811,8 +1856,26 @@ export default function NotificationCenter({
                                     {row.version}
                                   </td>
                                   <td className="p-3 max-w-xs break-words">
-                                    {row.result ? crmDeliveryResult(row.result,row.state,lang) : "—"}
-                                    {row.result && lang === 'zh' && <details className="mt-1 text-xs"><summary className="cursor-pointer">{t('原始技术回执', 'Original technical receipt')}</summary><pre className="whitespace-pre-wrap mt-1">{row.result}</pre></details>}
+                                    {row.result
+                                      ? crmDeliveryResult(
+                                          row.result,
+                                          row.state,
+                                          lang,
+                                        )
+                                      : "—"}
+                                    {row.result && lang === "zh" && (
+                                      <details className="mt-1 text-xs">
+                                        <summary className="cursor-pointer">
+                                          {t(
+                                            "原始技术回执",
+                                            "Original technical receipt",
+                                          )}
+                                        </summary>
+                                        <pre className="whitespace-pre-wrap mt-1">
+                                          {row.result}
+                                        </pre>
+                                      </details>
+                                    )}
                                     {row.state === "pending" && (
                                       <button
                                         className={`${button} block mt-2`}

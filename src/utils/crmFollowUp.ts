@@ -1,15 +1,13 @@
+import { crmId } from "./crmIndonesian";
 import type { CrmLeadRecord, LeadAttention } from "../types/crmLead";
 import { calendarDay } from "./crmLeadFilters";
 import { formatCrmOperatingTime } from "./crmOperatingTime";
-
 export type FollowUpTask = LeadAttention["tasks"][number];
-
 export function confirmedTaskDeadline(task: FollowUpTask): number | null {
   if (task.status === "migration_hold") return null;
   const value = Date.parse(task.dueAt);
   return Number.isFinite(value) && value > 0 ? value : null;
 }
-
 export function pendingFollowUps(tasks: FollowUpTask[]): FollowUpTask[] {
   const pending = tasks.filter((task) =>
     ["open", "overdue", "migration_hold"].includes(task.status),
@@ -29,14 +27,14 @@ export function pendingFollowUps(tasks: FollowUpTask[]): FollowUpTask[] {
     );
   });
 }
-
 export function describeFollowUpTask(
   task: FollowUpTask,
-  lang: "zh" | "en",
+  lang: "zh" | "en" | "id",
   timezone: string,
   now = Date.now(),
 ) {
-  const t = (en: string, zh: string) => (lang === "zh" ? zh : en);
+  const t = (en: string, zh: string) =>
+    lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const actions: Record<string, [string, string]> = {
     consultation: ["Contact and qualify", "联系客户并确认需求"],
     handoff: ["Arrange advisor contact", "安排顾问联系"],
@@ -66,7 +64,9 @@ export function describeFollowUpTask(
   return {
     task,
     action:
-      actions[task.kind]?.[lang === "zh" ? 1 : 0] ??
+      (lang === "id"
+        ? crmId(actions[task.kind]?.[0])
+        : actions[task.kind]?.[lang === "zh" ? 1 : 0]) ??
       t("Follow up with customer", "联系客户跟进"),
     timing,
     deadline,
@@ -79,10 +79,9 @@ export function describeFollowUpTask(
           : "normal",
   };
 }
-
 export function leadFollowUp(
   lead: Pick<CrmLeadRecord, "attention" | "nextAction" | "owner">,
-  lang: "zh" | "en",
+  lang: "zh" | "en" | "id",
   timezone: string,
   now = Date.now(),
 ) {

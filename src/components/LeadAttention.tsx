@@ -1,12 +1,16 @@
+import { crmLocale } from "../utils/crmLanguage";
+import { crmId } from "../utils/crmIndonesian";
 import type { CrmLeadRecord } from "../types/crmLead";
 export function LeadActivity({
   lead,
   lang,
   onOpen,
+  timezone,
 }: {
   lead: CrmLeadRecord;
-  lang: "en" | "zh";
+  lang: "en" | "zh" | "id";
   onOpen: () => void;
+  timezone?: string;
 }) {
   const a = lead.attention;
   if (!a?.latest) return null;
@@ -21,9 +25,21 @@ export function LeadActivity({
     "task.overdue": ["Follow-up overdue", "跟进逾期"],
     "ai.failed": ["AI response failed", "AI 回复失败"],
   };
-  const label = a.latest.source==='crm_assignment' ? (lang==='zh'?'归属已更新':'Ownership updated') :
-    labels[a.latest.type]?.[lang === "zh" ? 1 : 0] ||
-    (lang === "zh" ? "客户动态" : "Customer activity");
+  const label =
+    a.latest.source === "crm_assignment"
+      ? lang === "id"
+        ? crmId("Ownership updated")
+        : lang === "zh"
+          ? "归属已更新"
+          : "Ownership updated"
+      : (lang === "id"
+          ? crmId(labels[a.latest.type]?.[0])
+          : labels[a.latest.type]?.[lang === "zh" ? 1 : 0]) ||
+        (lang === "id"
+          ? crmId("Customer activity")
+          : lang === "zh"
+            ? "客户动态"
+            : "Customer activity");
   return (
     <button
       type="button"
@@ -32,22 +48,20 @@ export function LeadActivity({
         onOpen();
       }}
       className={`mt-1 flex items-center gap-1 text-[10px] max-w-full ${a.unreadCount ? "text-blue-600 dark:text-blue-300 font-semibold" : "text-slate-500 dark:text-slate-400"}`}
-      aria-label={`${a.unreadCount ? (lang === "zh" ? "未读" : "Unread") + " · " : ""}${label}`}
+      aria-label={`${a.unreadCount ? (lang === "id" ? crmId("Unread") : lang === "zh" ? "未读" : "Unread") + " · " : ""}${label}`}
     >
       <span>
         {a.unreadCount ? "● " : ""}
         {label}
       </span>
       <time className="font-normal" dateTime={a.latest.at}>
-        {new Date(a.latest.at).toLocaleString(
-          lang === "zh" ? "zh-CN" : "en-GB",
-          {
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          },
-        )}
+        {new Date(a.latest.at).toLocaleString(crmLocale(lang), {
+          timeZone: timezone,
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
       </time>
     </button>
   );

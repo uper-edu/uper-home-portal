@@ -1,3 +1,4 @@
+import { crmId } from "../../utils/crmIndonesian";
 import { useEffect, useRef, useState } from "react";
 import {
   defaultLeadFilters,
@@ -8,23 +9,24 @@ import {
   type LeadFilters,
 } from "../../utils/crmLeadFilters";
 import "./crm-lead-filters.css";
-
+import type { CustomerView } from "../../utils/crmWorkspace";
 type SingleField = "owner" | "task" | "sort" | "columns";
-
 interface Props {
   value: LeadFilters;
   onChange: (value: LeadFilters) => void;
-  lang: "zh" | "en";
+  lang: "zh" | "en" | "id";
   scope: string;
   isLight?: boolean;
-  owners: Array<{ id: string; label: string }>;
+  owners: Array<{
+    id: string;
+    label: string;
+  }>;
   count: number;
   loading: boolean;
   timezone: string;
-  viewMode: "standard" | "expanded";
-  onViewMode: (mode: "standard" | "expanded") => void;
+  viewMode: CustomerView;
+  onViewMode: (mode: CustomerView) => void;
 }
-
 export function CrmLeadFilters({
   value: f,
   onChange,
@@ -43,7 +45,8 @@ export function CrmLeadFilters({
   const [ownerSearch, setOwnerSearch] = useState("");
   const activeField = useRef<HTMLDivElement | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
-  const t = (en: string, zh: string) => (lang === "zh" ? zh : en);
+  const t = (en: string, zh: string) =>
+    lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const update = (patch: Partial<LeadFilters>) => onChange({ ...f, ...patch });
   const dimLabel = (k: Dimension) =>
     t(filterDimensions[k].en, filterDimensions[k].zh);
@@ -61,7 +64,6 @@ export function CrmLeadFilters({
     setOpen(null);
     setOwnerSearch("");
   };
-
   useEffect(() => {
     if (!open) return;
     const dismiss = (event: PointerEvent) => {
@@ -79,7 +81,6 @@ export function CrmLeadFilters({
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [open]);
   useEffect(() => setOwnerSearch(""), [lang]);
-
   const singleSelect = ({
     id,
     label,
@@ -94,7 +95,10 @@ export function CrmLeadFilters({
     accessibleLabel?: string;
     title?: string;
     value: string;
-    options: Array<{ value: string; label: string }>;
+    options: Array<{
+      value: string;
+      label: string;
+    }>;
     onSelect: (value: string) => void;
   }) => {
     const isOpen = open === id;
@@ -243,7 +247,6 @@ export function CrmLeadFilters({
       </div>
     );
   };
-
   return (
     <div className="crm-filter-area" data-theme={isLight ? "light" : "dark"}>
       <section
@@ -476,10 +479,12 @@ export function CrmLeadFilters({
         <p role="status" aria-live="polite">
           {loading
             ? t("Updating results…", "正在更新结果…")
-            : t(
-                `${count} ${count === 1 ? "customer matches" : "customers match"}`,
-                `匹配 ${count} 位客户`,
-              )}
+            : lang === "id"
+              ? `${count} pelanggan cocok`
+              : t(
+                  `${count} ${count === 1 ? "customer matches" : "customers match"}`,
+                  `匹配 ${count} 位客户`,
+                )}
         </p>
         {singleSelect({
           id: "sort",
@@ -497,13 +502,13 @@ export function CrmLeadFilters({
         })}
         {singleSelect({
           id: "columns",
-          label: t("Columns", "显示列"),
+          label: t("View", "视图"),
           value: viewMode,
           options: [
-            { value: "standard", label: t("Standard", "标准") },
-            { value: "expanded", label: t("Expanded", "详细") },
+            { value: "worklist", label: t("Worklist", "工作列表") },
+            { value: "table", label: t("Data table", "字段表") },
           ],
-          onSelect: (value) => onViewMode(value as "standard" | "expanded"),
+          onSelect: (value) => onViewMode(value as CustomerView),
         })}
       </div>
     </div>

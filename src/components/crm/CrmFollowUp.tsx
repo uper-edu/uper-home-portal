@@ -1,7 +1,7 @@
+import { crmId } from "../../utils/crmIndonesian";
 import React from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
 import { leadFollowUp } from "../../utils/crmFollowUp";
-
 export function CrmFollowUp({
   lead,
   lang,
@@ -10,16 +10,22 @@ export function CrmFollowUp({
   employees,
   onOpen,
   now,
+  compact = false,
 }: {
   lead: CrmLeadRecord;
-  lang: "zh" | "en";
+  lang: "zh" | "en" | "id";
   timezone: string;
   isLight: boolean;
-  employees: Array<{ id: string; displayName?: string }>;
+  employees: Array<{
+    id: string;
+    displayName?: string;
+  }>;
   onOpen: () => void;
   now?: number;
+  compact?: boolean;
 }) {
-  const t = (en: string, zh: string) => (lang === "zh" ? zh : en);
+  const t = (en: string, zh: string) =>
+    lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const summary = leadFollowUp(lead, lang, timezone, now);
   const task = summary.next?.task;
   const taskOwner = task?.ownerId;
@@ -56,13 +62,26 @@ export function CrmFollowUp({
             : t("Follow-up unavailable", "跟进信息暂不可用")}
         </div>
       )}
-      {summary.note && (
-        <div className="crm-followup-note" title={summary.note}>
-          <span className="crm-followup-secondary">
-            {t("Note: ", "跟进备注：")}
-          </span>
-          {summary.note}
-        </div>
+      {summary.note && compact ? (
+        <button
+          type="button"
+          className="crm-followup-more"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+        >
+          {t("Manual note available", "有人工备注")}
+        </button>
+      ) : (
+        summary.note && (
+          <div className="crm-followup-note" title={summary.note}>
+            <span className="crm-followup-secondary">
+              {t("Note: ", "跟进备注：")}
+            </span>
+            {summary.note}
+          </div>
+        )
       )}
       {summary.additionalCount > 0 && (
         <button
@@ -73,10 +92,12 @@ export function CrmFollowUp({
             onOpen();
           }}
         >
-          {t(
-            `+${summary.additionalCount} more ${summary.additionalCount === 1 ? "task" : "tasks"}`,
-            `另有 ${summary.additionalCount} 项`,
-          )}
+          {lang === "id"
+            ? `+${summary.additionalCount} tugas lainnya`
+            : t(
+                `+${summary.additionalCount} more ${summary.additionalCount === 1 ? "task" : "tasks"}`,
+                `另有 ${summary.additionalCount} 项`,
+              )}
         </button>
       )}
     </div>
