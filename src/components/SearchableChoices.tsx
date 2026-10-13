@@ -1,5 +1,5 @@
 import { crmId } from "../utils/crmIndonesian";
-import { useState } from "react";
+import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 export interface Choice {
   value: string;
   label: string;
@@ -23,127 +23,48 @@ export default function SearchableChoices({
   isLight: boolean;
   multiple?: boolean;
 }) {
-  const [query, setQuery] = useState("");
+  const t = (en: string, chinese: string) =>
+    lang === "id" ? crmId(en) : lang === "zh" ? chinese : en;
   const all = [
     ...choices,
     ...values
-      .filter((v) => !choices.some((c) => c.value === v))
-      .map((v) => ({
-        value: v,
-        label:
-          (lang === "id"
-            ? crmId("Historical value: ")
-            : zh
-              ? "历史值："
-              : "Historical value: ") + v,
+      .filter((value) => !choices.some((choice) => choice.value === value))
+      .map((value) => ({
+        value,
+        label: t("Historical value: ", "历史值：") + value,
       })),
   ];
-  const matched = all.filter((c) =>
-    (c.label + " " + c.value).toLowerCase().includes(query.toLowerCase()),
-  );
   return (
     <div className="space-y-1.5 min-w-0">
       <span className="text-xs font-semibold">{title}</span>
-      <details className="relative" name="notification-choice">
-        <summary
-          role="button"
-          aria-label={title}
-          className={`cursor-pointer list-none flex justify-between items-center min-h-9 px-3 py-2 rounded-lg border text-xs ${isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-700"}`}
-        >
-          <span>
-            {values.length
-              ? values
-                  .map((v) => all.find((c) => c.value === v)?.label || v)
-                  .join("、")
-              : lang === "id"
-                ? crmId("All")
-                : zh
-                  ? "全部"
-                  : "All"}
-          </span>
-          <span aria-hidden="true">▾</span>
-        </summary>
-        <div
-          className={`absolute z-20 top-full left-0 right-0 mt-1 p-2 border rounded-xl shadow-lg ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-700"}`}
-        >
-          <input
-            aria-label={
-              title +
-              (lang === "id" ? crmId(" search") : zh ? " 搜索" : " search")
-            }
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={
-              lang === "id"
-                ? crmId("Search options")
-                : zh
-                  ? "搜索选项"
-                  : "Search options"
-            }
-            className={`w-full h-8 px-2 mb-2 rounded-lg border text-xs ${isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-700"}`}
-          />
-          {multiple && (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="text-xs text-primary-600 mb-2"
-            >
-              {lang === "id"
-                ? crmId("Clear filter (all)")
-                : zh
-                  ? "清除筛选（全部）"
-                  : "Clear filter (all)"}
-            </button>
-          )}
-          <div className="max-h-48 overflow-y-auto">
-            {matched.map((c) => (
-              <label
-                key={c.value}
-                className="flex items-start gap-2 py-2 px-1 text-xs cursor-pointer"
-              >
-                <input
-                  type={multiple ? "checkbox" : "radio"}
-                  name={title}
-                  checked={values.includes(c.value)}
-                  onChange={() =>
-                    onChange(
-                      multiple
-                        ? values.includes(c.value)
-                          ? values.filter((v) => v !== c.value)
-                          : [...values, c.value]
-                        : [c.value],
-                    )
-                  }
-                />
-                <span>{c.label}</span>
-              </label>
-            ))}
-            {!matched.length && (
-              <p className="text-xs p-2">
-                {lang === "id"
-                  ? crmId("No matching options")
-                  : zh
-                    ? "没有匹配选项"
-                    : "No matching options"}
-              </p>
-            )}
-          </div>
-        </div>
-      </details>
+      <CrmSingleSelect
+        label={title}
+        value={values[0] || ""}
+        options={all}
+        onChange={(value) => onChange([value])}
+        multiple={multiple}
+        values={values}
+        onValuesChange={onChange}
+        emptyLabel={t("All", "全部")}
+        searchable
+        searchByValue
+        lang={lang}
+        isLight={isLight}
+      />
       {multiple && values.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {values.map((v) => (
+          {values.map((value) => (
             <button
               type="button"
-              key={v}
-              onClick={() => onChange(values.filter((x) => x !== v))}
+              key={value}
+              onClick={() => onChange(values.filter((item) => item !== value))}
               aria-label={
-                (lang === "id" ? crmId("Remove ") : zh ? "移除 " : "Remove ") +
-                (all.find((c) => c.value === v)?.label || v)
+                t("Remove ", "移除 ") +
+                (all.find((choice) => choice.value === value)?.label || value)
               }
               className="text-[11px] rounded bg-primary-500/10 px-2 py-1"
             >
-              {all.find((c) => c.value === v)?.label || v} ×
+              {all.find((choice) => choice.value === value)?.label || value} ×
             </button>
           ))}
         </div>

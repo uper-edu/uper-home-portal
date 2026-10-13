@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @import "./components/hsk-picture-layout.css";
 @import "./components/crm/crm-language-switch.css";
+@import "./components/crm/crm-lead-filters.css";
 @variant dark (.never-match-this-class-to-disable-dark-mode &);
 @plugin "@tailwindcss/typography";
 

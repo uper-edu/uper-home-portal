@@ -1,3 +1,4 @@
+import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import { crmValue, crmError, crmLocale } from "../../utils/crmLanguage";
 import React, { useState, useEffect, useMemo } from "react";
@@ -839,15 +840,7 @@ export function CrmCampaignHub({
           </div>
 
           {/* Type Filter */}
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className={`h-8 px-2.5 rounded-xl text-xs font-medium border outline-none cursor-pointer ${
-              isLight
-                ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
-            }`}
-          >
+          <CrmSelect label={t("All Event Types", "所有活动形态")} value={selectedType} onChange={(value) => setSelectedType(value)} lang={lang} isLight={isLight} className="min-w-[160px]">
             <option value="All">{t("All Event Types", "所有活动形态")}</option>
             {CAMPAIGN_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -858,18 +851,10 @@ export function CrmCampaignHub({
                     : opt.labelEn}
               </option>
             ))}
-          </select>
+          </CrmSelect>
 
           {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className={`h-8 px-2.5 rounded-xl text-xs font-medium border outline-none cursor-pointer ${
-              isLight
-                ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
-            }`}
-          >
+          <CrmSelect label={t("All Statuses", "所有状态")} value={selectedStatus} onChange={(value) => setSelectedStatus(value)} lang={lang} isLight={isLight} className="min-w-[160px]">
             <option value="All">{t("All Statuses", "所有状态")}</option>
             {CAMPAIGN_STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -880,7 +865,7 @@ export function CrmCampaignHub({
                     : opt.labelEn}
               </option>
             ))}
-          </select>
+          </CrmSelect>
 
           {/* Refresh button */}
           <button
@@ -2215,13 +2200,8 @@ export function CrmCampaignHub({
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         {t("Activity Type", "场景活动类型")}
                       </label>
-                      <select
-                        value={formType}
-                        onChange={(e) =>
-                          setFormType(e.target.value as CampaignType)
-                        }
-                        className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none cursor-pointer ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-800 border-slate-700 text-slate-200"}`}
-                      >
+                      <CrmSelect label={t("Activity Type", "场景活动类型")} value={formType} onChange={(value) =>
+                          setFormType(value as CampaignType)} lang={lang} isLight={isLight}>
                         <option value="" disabled>
                           {t(
                             "-- Select Activity Type --",
@@ -2237,22 +2217,17 @@ export function CrmCampaignHub({
                                 : opt.labelEn}
                           </option>
                         ))}
-                      </select>
+                      </CrmSelect>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         {t("Delivery Medium", "举办媒介形态 ")}
                       </label>
-                      <select
-                        value={formLocationType}
-                        onChange={(e) =>
+                      <CrmSelect label={t("Delivery Medium", "举办媒介形态 ")} value={formLocationType} onChange={(value) =>
                           setFormLocationType(
-                            e.target.value as CampaignLocationType,
-                          )
-                        }
-                        className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none cursor-pointer ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-800 border-slate-700 text-slate-200"}`}
-                      >
+                            value as CampaignLocationType,
+                          )} lang={lang} isLight={isLight}>
                         <option value="" disabled>
                           {t("-- Select Medium --", "-- 请选择举办媒介形态 --")}
                         </option>
@@ -2265,7 +2240,7 @@ export function CrmCampaignHub({
                         <option value="hybrid">
                           {t("🔀 Hybrid Mode", "🔀 线上线下混合 ")}
                         </option>
-                      </select>
+                      </CrmSelect>
                     </div>
                   </div>
 
@@ -2274,13 +2249,8 @@ export function CrmCampaignHub({
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         {t("Status", "活动状态")}
                       </label>
-                      <select
-                        value={formStatus}
-                        onChange={(e) =>
-                          setFormStatus(e.target.value as CampaignStatus)
-                        }
-                        className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none cursor-pointer ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-800 border-slate-700 text-slate-200"}`}
-                      >
+                      <CrmSelect label={t("Status", "活动状态")} value={formStatus} onChange={(value) =>
+                          setFormStatus(value as CampaignStatus)} lang={lang} isLight={isLight}>
                         <option value="" disabled>
                           {t("-- Select Status --", "-- 请选择活动状态 --")}
                         </option>
@@ -2293,20 +2263,15 @@ export function CrmCampaignHub({
                                 : opt.labelEn}
                           </option>
                         ))}
-                      </select>
+                      </CrmSelect>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         {t("Default Hook Type", "默认获客入口")}
                       </label>
-                      <select
-                        value={formHook}
-                        onChange={(e) =>
-                          setFormHook(e.target.value as HookType)
-                        }
-                        className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none cursor-pointer ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-800 border-slate-700 text-slate-200"}`}
-                      >
+                      <CrmSelect label={t("Default Hook Type", "默认获客入口")} value={formHook} onChange={(value) =>
+                          setFormHook(value as HookType)} lang={lang} isLight={isLight}>
                         <option value="" disabled>
                           {t(
                             "-- Select Hook Type --",
@@ -2328,7 +2293,7 @@ export function CrmCampaignHub({
                         <option value="webinar">
                           {t("Public webinar", "公开讲座")}
                         </option>
-                      </select>
+                      </CrmSelect>
                     </div>
                   </div>
 
@@ -2581,11 +2546,7 @@ export function CrmCampaignHub({
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                           utm_source ({t("Source", "渠道来源")})
                         </label>
-                        <select
-                          value={formSource}
-                          onChange={(e) => setFormSource(e.target.value)}
-                          className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none cursor-pointer ${isLight ? "bg-white border-slate-200 text-slate-900" : "bg-slate-800 border-slate-700 text-white"}`}
-                        >
+                        <CrmSelect label={t("Source", "渠道来源")} value={formSource} onChange={(value) => setFormSource(value)} lang={lang} isLight={isLight}>
                           <option value="" disabled>
                             {t(
                               "-- Select UTM Source --",
@@ -2608,18 +2569,14 @@ export function CrmCampaignHub({
                           <option value="edufair">
                             {t("Education fair", "教育展会")}
                           </option>
-                        </select>
+                        </CrmSelect>
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                           utm_medium ({t("Medium", "物料媒介")})
                         </label>
-                        <select
-                          value={formMedium}
-                          onChange={(e) => setFormMedium(e.target.value)}
-                          className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none cursor-pointer ${isLight ? "bg-white border-slate-200 text-slate-900" : "bg-slate-800 border-slate-700 text-white"}`}
-                        >
+                        <CrmSelect label={t("Medium", "媒介形态")} value={formMedium} onChange={(value) => setFormMedium(value)} lang={lang} isLight={isLight}>
                           <option value="" disabled>
                             {t(
                               "-- Select UTM Medium --",
@@ -2642,7 +2599,7 @@ export function CrmCampaignHub({
                           <option value="referral">
                             {t("Referral", "转介绍")}
                           </option>
-                        </select>
+                        </CrmSelect>
                       </div>
                     </div>
                   )}

@@ -399,3 +399,8 @@
 .crm-detail-choice-popup .crm-filter-popover { position: static; width: 100%; max-width: none; }
 .crm-detail-choice-popup .crm-filter-options { max-height: min(250px, 40vh); }
 .crm-detail-choice button:disabled { opacity: .55; cursor: not-allowed; }
+.crm-detail-choice-popup .crm-filter-option:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.crm-detail-choice-popup .crm-filter-option input { flex-shrink: 0; }

@@ -1,3 +1,4 @@
+import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import {
   sla as responseDeadline,
@@ -166,24 +167,15 @@ const DurationField: React.FC<DurationFieldProps> = ({
           />
         </div>
 
-        <select
-          value={duration.unit}
-          onChange={(e) =>
+        <CrmSelect label={t(titleEn, titleZh) + " · " + t("Time unit", "时间单位")} value={duration.unit} onChange={(value) =>
             onChange({
               value: duration.value,
-              unit: e.target.value as TimeUnit,
-            })
-          }
-          className={`h-8 text-xs rounded-lg px-2.5 border outline-none font-medium cursor-pointer transition-all ${
-            isLight
-              ? "bg-white border-slate-300 text-slate-800 hover:border-slate-400"
-              : "bg-slate-900 border-slate-700 text-slate-200 hover:border-slate-600"
-          }`}
-        >
+              unit: value as TimeUnit,
+            })} lang={lang} isLight={isLight} className="w-28">
           <option value="minutes">{t("Minutes", "分钟")}</option>
           <option value="hours">{t("Hours", "小时")}</option>
           <option value="days">{t("Days", "天")}</option>
-        </select>
+        </CrmSelect>
 
         {isModified && (
           <button
@@ -1509,19 +1501,14 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     "用于业务时钟、SLA截止时间和新线索业务编号的日期。已生成的业务编号保持不变。",
                   )}
                 </p>
-                <select
-                  value={formData.businessHours.timezone}
-                  onChange={(e) =>
+                <CrmSelect label={t("Operating Timezone", "运营时区")} value={formData.businessHours.timezone} onChange={(value) =>
                     setFormData({
                       ...formData,
                       businessHours: {
                         ...formData.businessHours,
-                        timezone: e.target.value,
+                        timezone: value,
                       },
-                    })
-                  }
-                  className={`w-full text-xs rounded-xl px-3 py-2 border outline-none font-medium ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-200"}`}
-                >
+                    })} lang={lang} isLight={isLight}>
                   <option value="Asia/Jakarta">
                     {t("Jakarta (UTC+7)", "雅加达（UTC+7）")}
                   </option>
@@ -1534,7 +1521,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                   <option value="Asia/Singapore">
                     {t("Singapore (UTC+8)", "新加坡（UTC+8）")}
                   </option>
-                </select>
+                </CrmSelect>
               </div>
 
               {/* Start and End Hours */}

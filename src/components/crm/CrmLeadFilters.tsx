@@ -8,7 +8,6 @@ import {
   type Dimension,
   type LeadFilters,
 } from "../../utils/crmLeadFilters";
-import "./crm-lead-filters.css";
 import type { CustomerView } from "../../utils/crmWorkspace";
 type SingleField = "owner" | "task" | "sort" | "columns";
 interface Props {

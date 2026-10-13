@@ -1,3 +1,4 @@
+import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
 import {
   crmLocale,
@@ -329,17 +330,7 @@ export default function NotificationCenter({
   ) =>
     field(
       title,
-      <select
-        className={input}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map(([v, title]) => (
-          <option key={v} value={v}>
-            {title}
-          </option>
-        ))}
-      </select>,
+      <CrmSingleSelect label={title} value={value} options={options.map(([value, label]) => ({ value, label }))} onChange={onChange} lang={lang} isLight={isLight} />,
     );
   const number = (
     title: string,

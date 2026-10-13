@@ -80,8 +80,8 @@ test("notification search control and guide render all three languages", () => {
       isLight: true,
     }),
   );
-  assert.ok(search.includes(crmId("Search options")));
-  assert.ok(!search.includes('placeholder="Search options"'));
+  assert.match(search, /aria-haspopup="dialog"/);
+  assert.doesNotMatch(search, /<details|<select/);
   for (const lang of ["en", "id", "zh"] as const) {
     const html = renderToStaticMarkup(
       React.createElement(CrmUserGuide, { lang, isLight: true }),
@@ -267,4 +267,19 @@ test("customer edit choices preserve owner labels, stale values and disabled sta
     assert.match(disabled, /Historical stage/);
     assert.match(disabled, /aria-expanded="false"/);
   }
+});
+
+test("standard option declarations retain disabled prompts, dynamic options and original names", async () => {
+  const { crmSelectChoices, CrmSelect } = await import("../src/components/crm/CrmSelect.tsx");
+  const children = [React.createElement("option", {value: "", disabled: true, key: "prompt"}, "Choose a type"), React.createElement(React.Fragment, {key: "fragment"}, [React.createElement("option", {value: "active", key: "active"}, "Robert 原名"), React.createElement("option", {value: "archived", key: "archived"}, "Archived")])];
+  assert.deepEqual(crmSelectChoices(children), [{value: "", label: "Choose a type", disabled: true}, {value: "active", label: "Robert 原名", disabled: undefined}, {value: "archived", label: "Archived", disabled: undefined}]);
+  const html = renderToStaticMarkup(React.createElement(CrmSelect, {label: "TEST", value: "active", onChange() {throw Error("Render cannot save");}, lang: "id", isLight: true}, children));
+  assert.match(html, /Robert 原名/);
+  assert.doesNotMatch(html, /<select/);
+});
+test("CRM module entry points contain no native selectors or independent notification dropdown skin", async () => {
+  const fs = await import("node:fs");
+  for (const file of ["src/pages/CrmWorkbench.tsx", "src/components/crm/CrmCampaignHub.tsx", "src/components/crm/CrmPolicySettings.tsx", "src/components/NotificationCenter.tsx", "src/components/SearchableChoices.tsx"])
+    assert.doesNotMatch(fs.readFileSync(file, "utf8"), /<select\b/, file);
+  assert.doesNotMatch(fs.readFileSync("src/components/SearchableChoices.tsx", "utf8"), /<details\b/);
 });

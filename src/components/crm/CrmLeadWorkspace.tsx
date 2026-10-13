@@ -1,6 +1,7 @@
+import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronDown, PanelRightOpen } from "lucide-react";
+import { PanelRightOpen } from "lucide-react";
 import type { CrmLeadRecord } from "../../types/crmLead";
 import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
 import { leadDisplayNumber } from "../../utils/leadNumber";
@@ -66,8 +67,6 @@ export function CrmLeadWorkspace({
       return [...defaultCustomerFields];
     }
   });
-  const [chooser, setChooser] = useState(false);
-  const chooserRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const header = document.querySelector("[data-crm-header]");
     if (!header) return;
@@ -78,14 +77,6 @@ export function CrmLeadWorkspace({
     observer.observe(header);
     return () => observer.disconnect();
   }, []);
-  useEffect(() => {
-    if (!chooser) return;
-    const close = (e: PointerEvent) => {
-      if (!chooserRef.current?.contains(e.target as Node)) setChooser(false);
-    };
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, [chooser]);
   const updateFields = (values: CustomerField[]) => {
     const next = validCustomerFields(values);
     setFields(next);
@@ -196,67 +187,14 @@ export function CrmLeadWorkspace({
             <span className="crm-work-muted">
               {t("Data table", "字段表")} · {timezone}
             </span>
-            <div
-              ref={chooserRef}
-              className="crm-field-chooser"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setChooser(false);
-                  chooserRef.current?.querySelector("button")?.focus();
-                }
-              }}
-            >
-              <button
-                type="button"
-                className="crm-work-button"
-                aria-expanded={chooser}
-                aria-controls="crm-field-options"
-                onClick={() => setChooser(!chooser)}
-              >
-                {t("Choose fields", "选择字段")} ({fields.length}){" "}
-                <ChevronDown size={15} />
-              </button>
-              {chooser && (
-                <div
-                  id="crm-field-options"
-                  className="crm-field-options"
-                  role="group"
-                  aria-label={t("Visible fields", "显示字段")}
-                >
-                  {customerFields.map((f) => (
-                    <label key={f[0]}>
-                      <input
-                        type="checkbox"
-                        checked={fields.includes(f[0])}
-                        disabled={f[0] === "name" || f[0] === "number"}
-                        onChange={() =>
-                          updateFields(
-                            fields.includes(f[0])
-                              ? fields.filter((k) => k !== f[0])
-                              : [...fields, f[0]],
-                          )
-                        }
-                      />
-                      {lang === "id" ? crmId(f[1]) : f[lang === "zh" ? 2 : 1]}
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    className="crm-work-link"
-                    onClick={() => updateFields([...defaultCustomerFields])}
-                  >
-                    {t("Default fields", "默认字段")}
-                  </button>
-                  <button
-                    type="button"
-                    className="crm-work-link"
-                    onClick={() => setChooser(false)}
-                  >
-                    {t("Done", "完成")}
-                  </button>
-                </div>
-              )}
-            </div>
+            <CrmSingleSelect
+              label={t("Visible fields", "显示字段")} value="" multiple values={fields}
+              options={customerFields.map((field) => ({ value: field[0], label: lang === "id" ? crmId(field[1]) : field[lang === "zh" ? 2 : 1], disabled: field[0] === "name" || field[0] === "number" }))}
+              onChange={() => {}} onValuesChange={(values) => updateFields(values as CustomerField[])}
+              lang={lang} isLight={isLight} className="min-w-[180px]"
+              displayValue={t("Choose fields", "选择字段") + ` (${fields.length})`}
+              footer={(close) => <><button type="button" onClick={() => updateFields([...defaultCustomerFields])}>{t("Default fields", "默认字段")}</button><button type="button" onClick={close}>{t("Done", "完成")}</button></>}
+            />
           </div>
         )}
         {loading && !leads.length ? (

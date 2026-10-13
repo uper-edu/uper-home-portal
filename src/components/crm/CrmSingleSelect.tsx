@@ -5,6 +5,7 @@ import type { CrmLanguage } from "../../utils/crmLanguage";
 export interface CrmChoice {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 /** Reuses the CRM filter trigger, popover, option and focus styles for editing. */
 export function CrmSingleSelect({
@@ -15,7 +16,15 @@ export function CrmSingleSelect({
   lang,
   isLight,
   searchable = false,
+  searchByValue = false,
   disabled = false,
+  className = "",
+  multiple = false,
+  values = [],
+  onValuesChange,
+  emptyLabel,
+  displayValue,
+  footer,
 }: {
   label: string;
   value: string;
@@ -24,7 +33,15 @@ export function CrmSingleSelect({
   lang: CrmLanguage;
   isLight: boolean;
   searchable?: boolean;
+  searchByValue?: boolean;
   disabled?: boolean;
+  className?: string;
+  multiple?: boolean;
+  values?: string[];
+  onValuesChange?: (values: string[]) => void;
+  emptyLabel?: string;
+  displayValue?: string;
+  footer?: (close: () => void) => React.ReactNode;
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -34,11 +51,12 @@ export function CrmSingleSelect({
   const [position, setPosition] = useState({ top: 0, left: 0, width: 240 });
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
+  const selectedValues = multiple ? values : [value];
   const selected = options.find((option) => option.value === value);
   const visible = options.filter(
     (option) =>
       !searchable ||
-      option.label
+      (option.label + (searchByValue ? " " + option.value : ""))
         .toLocaleLowerCase()
         .includes(query.trim().toLocaleLowerCase()),
   );
@@ -77,7 +95,7 @@ export function CrmSingleSelect({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [open, query]);
+  }, [open, query, visible.length]);
   useEffect(() => {
     if (!open) return;
     const dismiss = (event: PointerEvent) => {
@@ -90,8 +108,12 @@ export function CrmSingleSelect({
     document.addEventListener("pointerdown", dismiss);
     (
       popup.current?.querySelector<HTMLElement>("input") ||
-      popup.current?.querySelector<HTMLElement>('[aria-selected="true"]') ||
-      popup.current?.querySelector<HTMLElement>('[role="option"]')
+      popup.current?.querySelector<HTMLElement>(
+        '[aria-selected="true"]:not(:disabled)',
+      ) ||
+      popup.current?.querySelector<HTMLElement>(
+        '[role="option"]:not(:disabled)',
+      )
     )?.focus();
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [open]);
@@ -113,8 +135,9 @@ export function CrmSingleSelect({
     )
       return;
     const items = Array.from(
-      popup.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ||
-        [],
+      popup.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="option"]:not(:disabled)',
+      ) || [],
     );
     if (!items.length) return;
     const current = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -131,7 +154,7 @@ export function CrmSingleSelect({
   };
   return (
     <div
-      className="crm-filter-area crm-detail-choice"
+      className={"crm-filter-area crm-detail-choice " + className}
       data-theme={isLight ? "light" : "dark"}
     >
       <button
@@ -156,7 +179,17 @@ export function CrmSingleSelect({
         }}
       >
         <span className="crm-filter-dimension-value">
-          {selected?.label || value || t("Unavailable option", "选项已失效")}
+          {displayValue ??
+            (multiple
+              ? values.length
+                ? values
+                    .map((v) => options.find((o) => o.value === v)?.label || v)
+                    .join(lang === "zh" ? "、" : ", ")
+                : emptyLabel || t("All", "全部")
+              : selected?.label ||
+                value ||
+                emptyLabel ||
+                t("Unavailable option", "选项已失效"))}
         </span>
         <span aria-hidden="true">⌄</span>
       </button>
@@ -196,30 +229,63 @@ export function CrmSingleSelect({
               <div
                 role="listbox"
                 aria-label={label}
+                aria-multiselectable={multiple || undefined}
                 className="crm-filter-options"
               >
                 {visible.map((option) => (
                   <button
                     type="button"
                     role="option"
-                    aria-selected={option.value === value}
+                    aria-selected={selectedValues.includes(option.value)}
+                    disabled={option.disabled}
                     key={option.value}
                     className="crm-filter-option crm-filter-single-option"
                     onClick={() => {
-                      if (option.value !== value) onChange(option.value);
-                      close();
+                      if (multiple)
+                        onValuesChange?.(
+                          values.includes(option.value)
+                            ? values.filter((v) => v !== option.value)
+                            : [...values, option.value],
+                        );
+                      else {
+                        if (option.value !== value) onChange(option.value);
+                        close();
+                      }
                     }}
                   >
-                    <span
-                      className="crm-filter-selection-mark"
-                      aria-hidden="true"
-                    >
-                      {option.value === value ? "✓" : ""}
-                    </span>
+                    {multiple ? (
+                      <input
+                        type="checkbox"
+                        checked={values.includes(option.value)}
+                        disabled={option.disabled}
+                        readOnly
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        style={{ pointerEvents: "none" }}
+                      />
+                    ) : (
+                      <span
+                        className="crm-filter-selection-mark"
+                        aria-hidden="true"
+                      >
+                        {option.value === value ? "✓" : ""}
+                      </span>
+                    )}
                     <span>{option.label}</span>
                   </button>
                 ))}
               </div>
+              {multiple && (
+                <div className="crm-filter-popover-footer">
+                  {footer ? (
+                    footer(close)
+                  ) : (
+                    <button type="button" onClick={() => onValuesChange?.([])}>
+                      {t("Clear filter (all)", "清除筛选（全部）")}
+                    </button>
+                  )}
+                </div>
+              )}
               {!visible.length && (
                 <p className="crm-filter-no-options" role="status">
                   {t("No matching options", "无匹配选项")}

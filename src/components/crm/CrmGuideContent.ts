@@ -5,6 +5,11 @@ export const guideSections = [
     title: ["Customer workspace", "Ruang kerja pelanggan", "客户工作区"],
     body: [
       [
+        "CRM uses a shared option-panel style across filters, customer edits, campaign setup, Sales Operations and notifications. A checkmark identifies a single choice; checkboxes identify multiple choices. Escape closes without changing the current draft. Disabled prompts and mandatory table fields cannot be selected or cleared.",
+        "CRM memakai gaya panel pilihan yang sama pada filter, penyuntingan pelanggan, kampanye, Operasional Penjualan, dan notifikasi. Tanda centang menandai satu pilihan; kotak centang menandai pilihan jamak. Escape menutup tanpa mengubah draf. Opsi petunjuk yang nonaktif dan kolom tabel wajib tidak dapat dipilih atau dihapus.",
+        "CRM 的筛选、客户编辑、营销活动、销售运营和通知统一使用标准选项面板。单选以勾号标记，多选以复选框标记。Escape 关闭，不改变当前草稿；禁用占位项不可选择，字段表的姓名和客户编号不能取消。",
+      ],
+      [
         "The worklist has four areas: customer identity and owner, learning needs, sales progress, and follow-up. Open a customer to work in the same-page panel. Wide screens keep the customer queue; narrow screens focus on the panel.",
         "Daftar kerja memiliki empat area: identitas dan penanggung jawab pelanggan, kebutuhan belajar, perkembangan penjualan, serta tindak lanjut. Buka pelanggan untuk bekerja di panel pada halaman yang sama. Layar lebar tetap menampilkan antrean pelanggan; layar kecil berfokus pada panel.",
         "工作列表分为客户身份与负责人、学习需求、销售进展、跟进安排四区。打开客户后在同页面板处理；宽屏保留客户队列，窄屏集中显示处理面板。",
@@ -150,6 +155,11 @@ export const guideSections = [
       "通知策略、渠道与发送审计",
     ],
     body: [
+      [
+        "Notification events and trigger conditions keep their searchable choices and historical values. Multiple selections stay open until you finish; clearing removes the filter, not the customer data. Fixed schedule, calendar, recipient and channel-mode choices use the same panel without search. A choice does not activate a draft; use its save controls.",
+        "Peristiwa dan kondisi notifikasi tetap dapat dicari dan mempertahankan nilai historis. Panel pilihan jamak tetap terbuka; mengosongkan pilihan menghapus filter, bukan data pelanggan. Jadwal, kalender, penerima, dan mode kanal memakai panel yang sama tanpa pencarian. Pilihan tidak mengaktifkan draf; gunakan tombol simpan yang sesuai.",
+        "通知事件与触发条件保留搜索及历史值，多选面板选择后保持打开；清除只取消筛选条件，不删除客户数据。发送安排、工作日历、接收对象和渠道模式等固定选项使用相同面板，无搜索。选择本身不会启用草稿，仍须使用对应保存按钮。",
+      ],
       [
         "Configure the business event, searchable multi-select conditions, recipients, delivery timing, and reliability controls. Customer notifications go to the valid Owner; unassigned or invalid Owners route to CRM Leaders globally. Draft rules do not send. Enabled changes apply to new events; queued jobs retain their saved rule version.",
         "Konfigurasikan peristiwa bisnis, kondisi pilihan jamak yang dapat dicari, penerima, waktu pengiriman, dan kontrol keandalan. Notifikasi pelanggan ditujukan ke Penanggung jawab yang valid; Penanggung jawab tidak valid atau belum ditugaskan dialihkan secara global ke Pengelola CRM. Aturan draf tidak mengirim. Perubahan yang diaktifkan berlaku untuk peristiwa baru; tugas antrean mempertahankan versi aturan tersimpan.",

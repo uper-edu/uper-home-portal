@@ -1236,5 +1236,6 @@
   "Opening a customer marks activity as read. Completing follow-up stops related overdue reminders.": "Membuka pelanggan menandai aktivitas sebagai sudah dibaca. Menyelesaikan tindak lanjut menghentikan pengingat keterlambatan yang terkait.",
   "Current local time:": "Waktu setempat:",
   "CRM operating guide": "Panduan operasional CRM",
-  "Workflows for accounts, customer follow-up, assessments and notifications.": "Panduan akun, tindak lanjut pelanggan, asesmen, dan notifikasi."
+  "Workflows for accounts, customer follow-up, assessments and notifications.": "Panduan akun, tindak lanjut pelanggan, asesmen, dan notifikasi.",
+  "Time unit": "Satuan waktu"
 }
