@@ -64,6 +64,8 @@ import { TierType, BuyingSignalType } from '../types/leadSystem';
 import type { CrmPolicyConfig } from '../types/crmPolicyConfig';
 import { DEFAULT_CRM_POLICY_CONFIG } from '../types/crmPolicyConfig';
 import { CrmFollowUp } from '../components/crm/CrmFollowUp';
+import { CrmGoalAssessment } from '../components/crm/CrmGoalAssessment';
+import '../components/crm/crm-assessment.css';
 import '../components/crm/crm-followup.css';
 import { CrmPolicySettings, PolicyActionControls } from '../components/crm/CrmPolicySettings';
 import { CrmUserGuide } from '../components/crm/CrmUserGuide';
@@ -1413,7 +1415,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                       {t('Student & WhatsApp', '学员 & WhatsApp')}
                     </th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('City & Mode', '城市与授课模式')}</th>
-                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Goal & Placement', '目标与测评定级')}</th>
+                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Goal & assessment', '学习目标与测评')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Customer group', '客户分组')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Follow-up', '跟进安排')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Buying Signal', '购买信号')}</th>
@@ -1543,43 +1545,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                             </span>
                           </td>
 
-                          {/* 4. 目标与定级结果 (Academic Goal & Placement) */}
-                          <td className={`py-3 px-3 max-w-[220px] border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
-                            <span className={`block truncate font-medium text-xs ${isLight ? 'text-slate-800' : 'text-slate-300'}`} title={crmValue(lead.goal,lang)}>
-                              {crmValue(lead.goal,lang)}
-                            </span>
-                            <div className="mt-1">
-                              {lead.levelConfirmed || typeof lead.quizScore === 'number' || lead.levelSource === 'assessment' ? (
-                                <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-semibold border ${
-                                  isLight 
-                                    ? 'bg-indigo-50 border-indigo-200/90 text-indigo-700' 
-                                    : 'bg-indigo-950/80 border-indigo-800/90 text-indigo-300'
-                                }`}>
-                                  <span className="text-emerald-500 font-bold">✓</span>
-                                  <span>{lead.levelConfirmed || lead.reportedLevel}</span>
-                                  <span className="opacity-75">{lead.levelSource==='trial' ? t('Teacher placement','教师定级') : lead.latestAssessment ? t('Paper result','本卷参考') : lead.levelSource==='assessment' ? t('Legacy unverified','历史未核验') : t('Confirmed','已定级')}</span>
-                                  {typeof lead.quizScore === 'number' && (
-                                    <span className="font-mono font-bold opacity-90">· {t('Paper','本卷')} {lead.quizScore}/{lead.quizMaxScore ?? '?'}{t('pts', '分')}</span>
-                                  )}
-                                </span>
-                              ) : lead.reportedLevel && lead.reportedLevel !== 'Beginner' ? (
-                                <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${
-                                  isLight 
-                                    ? 'bg-amber-50 border-amber-200/90 text-amber-800' 
-                                    : 'bg-amber-950/80 border-amber-800/90 text-amber-300'
-                                }`}>
-                                  <span>{crmValue(lead.reportedLevel,lang)}</span>
-                                  <span className="opacity-70">({t('Self-reported', '自述')})</span>
-                                  <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">· {t('Test Req', '待测评')}</span>
-                                </span>
-                              ) : (
-                                <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${
-                                  isLight ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-slate-800 border-slate-700 text-slate-400'
-                                }`}>
-                                  {lead.reportedLevel === 'Beginner' ? t('Beginner / Zero-base', '零基础') : t('Unknown', '未知')}
-                                </span>
-                              )}
-                            </div>
+                          <td className={`py-3 px-3 border-b ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
+                            <CrmGoalAssessment lead={lead} lang={lang} isLight={isLight} />
                           </td>
 
                           {/* Customer classification and pending work are independent. */}
@@ -1722,7 +1689,7 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('City', '所在城市')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Mode', '授课模式')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Goal', '学习目标')}</th>
-                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Placement Level', '测评定级')}</th>
+                    <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Assessment', '测评结果')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Customer group', '客户分组')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Follow-up', '跟进安排')}</th>
                     <th className={`py-3 px-3 text-left whitespace-nowrap border-b ${isLight ? 'border-slate-200/90' : 'border-slate-800'}`}>{t('Buying Signal', '购买信号')}</th>
@@ -1831,38 +1798,8 @@ function CrmWorkspace({employee,lang,setLang}:{employee:CrmEmployee;lang:CrmLang
                             {crmValue(lead.goal,lang)}
                           </td>
 
-                          {/* 9. 测评定级 */}
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            {lead.levelConfirmed || typeof lead.quizScore === 'number' || lead.levelSource === 'assessment' ? (
-                              <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-semibold border ${
-                                isLight 
-                                  ? 'bg-indigo-50 border-indigo-200/90 text-indigo-700' 
-                                  : 'bg-indigo-950/80 border-indigo-800/90 text-indigo-300'
-                              }`}>
-                                <span className="text-emerald-500 font-bold">✓</span>
-                                <span>{lead.levelConfirmed || lead.reportedLevel}</span>
-                                <span className="opacity-75">{lead.levelSource==='trial' ? t('Teacher placement','教师定级') : lead.latestAssessment ? t('Paper result','本卷参考') : lead.levelSource==='assessment' ? t('Legacy unverified','历史未核验') : t('Confirmed','已定级')}</span>
-                                {typeof lead.quizScore === 'number' && (
-                                  <span className="font-mono font-bold opacity-90">· {t('Paper','本卷')} {lead.quizScore}/{lead.quizMaxScore ?? '?'}{t('pts', '分')}</span>
-                                )}
-                              </span>
-                            ) : lead.reportedLevel && lead.reportedLevel !== 'Beginner' ? (
-                              <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${
-                                isLight 
-                                  ? 'bg-amber-50 border-amber-200/90 text-amber-800' 
-                                  : 'bg-amber-950/80 border-amber-800/90 text-amber-300'
-                              }`}>
-                                <span>{crmValue(lead.reportedLevel,lang)}</span>
-                                <span className="opacity-70">({t('Self-reported', '自述')})</span>
-                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">· {t('Test Req', '待测评')}</span>
-                              </span>
-                            ) : (
-                              <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${
-                                isLight ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-slate-800 border-slate-700 text-slate-400'
-                              }`}>
-                                {lead.reportedLevel === 'Beginner' ? t('Beginner / Zero-base', '零基础') : t('Unknown', '未知')}
-                              </span>
-                            )}
+                          <td className="py-3 px-3">
+                            <CrmGoalAssessment lead={lead} lang={lang} isLight={isLight} showGoal={false} />
                           </td>
 
                           {/* 10. Tier评级 (纯粹聚焦销售优先度) */}

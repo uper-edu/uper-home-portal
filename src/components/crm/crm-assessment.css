@@ -1,0 +1,27 @@
+.crm-goal-assessment {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 220px;
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  color: #334155;
+}
+.crm-assessment-goal {
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f172a;
+}
+.crm-assessment-conclusion {
+  font-size: 11px;
+  font-weight: 500;
+}
+.crm-assessment-detail {
+  font-size: 10.5px;
+  color: #64748b;
+}
+.crm-goal-assessment[data-theme="dark"] { color: #cbd5e1; }
+.crm-goal-assessment[data-theme="dark"] .crm-assessment-goal { color: #f1f5f9; }
+.crm-goal-assessment[data-theme="dark"] .crm-assessment-detail { color: #94a3b8; }
