@@ -8,6 +8,7 @@ import {
   CrmUserGuide,
   resolveGuideAnchor,
   operationGroups,
+  crmDocumentationFields,
 } from "../src/components/crm/CrmUserGuide.tsx";
 import { systemChapters } from "../src/components/crm/CrmSystemGuide.ts";
 import { guideSections } from "../src/components/crm/CrmGuideContent.ts";
@@ -94,10 +95,14 @@ for (const lang of ["en", "id", "zh"] as const)
     );
     const text = html.replace(/<[^>]+>/g, " ");
     if (lang !== "zh") assert.doesNotMatch(text, /[\u4e00-\u9fff]/);
-    assert.equal((html.match(/id="crm-guide-/g) || []).length, 10);
+    assert.equal((html.match(/id="crm-guide-/g) || []).length, 1);
+    assert.ok(
+      html.includes("crm-doc-nav-system") &&
+        html.includes("crm-doc-nav-operations"),
+    );
     assert.match(html, /<ol class="crm-doc-flow"/);
     assert.match(html, /<caption/);
-    assert.match(html, /aria-pressed="true"/);
+    assert.match(html, /aria-expanded="true"/);
     assert.doesNotMatch(html, /<details open=""/);
     assert.ok(
       text.includes(
@@ -169,5 +174,100 @@ test("Four published natural-duration calendar examples execute correctly", () =
     assert.equal(
       sla(new Date(input), 3, calendar).toISOString(),
       new Date(expected).toISOString(),
+    );
+});
+
+import {
+  CrmGuideDiagram,
+  executionRules,
+  ruleDefinitions,
+  slaSamples,
+} from "../src/components/crm/CrmGuideDiagrams.tsx";
+test("CRM display dictionary excludes CMS and public submission objects without modifying the full source index", () => {
+  assert.ok(crmDocumentationFields.length < dictionary.length);
+  assert.equal(
+    new Set(
+      crmDocumentationFields
+        .filter((r) => r.layer === "storage")
+        .map((r) => r.object),
+    ).size,
+    25,
+  );
+  for (const row of crmDocumentationFields)
+    assert.ok(
+      !["cms_collections", "cms_media", "site_submissions"].includes(
+        row.object,
+      ),
+    );
+  assert.ok(dictionary.some((r) => r.object === "cms_media"));
+});
+test("Rule definition numbering and actual execution remain distinct", () => {
+  assert.deepEqual(
+    ruleDefinitions.map((r) => r.id),
+    ["R1", "R2", "R3", "R4", "R5", "R6"],
+  );
+  assert.deepEqual(executionRules, ["R6", "R1", "R2", "R3", "R4", "R5"]);
+  const html = renderToStaticMarkup(
+    React.createElement(CrmGuideDiagram, { kind: "classification", col: 0 }),
+  );
+  assert.deepEqual(
+    [...html.matchAll(/data-rule="(R\d)"/g)].map((match) => match[1]),
+    executionRules,
+  );
+  assert.match(html, /Stop this prediction/);
+  assert.match(html, /No → continue checking/);
+});
+for (const lang of ["en", "id", "zh"] as const)
+  for (const kind of [
+    "classification",
+    "acquisition",
+    "sla",
+    "notification",
+  ] as const)
+    test(`${kind} diagram uses accessible structure and ${lang} text`, () => {
+      const html = renderToStaticMarkup(
+        React.createElement(CrmGuideDiagram, {
+          kind,
+          col: lang === "zh" ? 2 : lang === "id" ? 1 : 0,
+        }),
+      );
+      assert.match(html, /<figure/);
+      assert.match(html, /<figcaption/);
+      assert.match(html, /<ol|<table/);
+      const text = html.replace(/<[^>]*>/g, " ");
+      if (lang !== "zh") assert.doesNotMatch(text, /[\u4e00-\u9fff]/);
+      assert.doesNotMatch(text, /100%|3倍|3x/);
+      if (kind === "sla") {
+        assert.equal((html.match(/aria-pressed=/g) || []).length, 4);
+        assert.match(html, /data-sla-sample="night"/);
+      }
+      if (kind === "acquisition")
+        assert.ok(
+          text.includes(
+            {
+              en: "not a strict conversion funnel",
+              id: "bukan corong konversi ketat",
+              zh: "不是严格转化漏斗",
+            }[lang],
+          ),
+        );
+      if (kind === "notification")
+        assert.ok(
+          text.includes(
+            { en: "API accepted", id: "Diterima API", zh: "接口接受" }[lang],
+          ),
+        );
+    });
+test("Every plotted SLA sample is validated by the unchanged server calendar function", () => {
+  const calendar = {
+    timezone: "Asia/Jakarta",
+    days: [1, 2, 3, 4, 5, 6],
+    start: "09:00",
+    end: "20:00",
+  };
+  for (const sample of slaSamples)
+    assert.equal(
+      sla(new Date(sample.input), 3, calendar).toISOString(),
+      new Date(sample.expected).toISOString(),
     );
 });

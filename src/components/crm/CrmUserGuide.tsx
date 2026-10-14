@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { guideSections, type GuideLanguage } from "./CrmGuideContent";
-import { systemChapters, type Words } from "./CrmSystemGuide";
+import { systemChapters } from "./CrmSystemGuide";
+import { CrmGuideDiagram, diagramSearchText } from "./CrmGuideDiagrams";
 import { dictionaryMeaning, dictionaryWriter } from "./CrmDictionaryMeaning";
 import dictionary from "./crmDictionary.json";
 export const oldChapterKeys = [
@@ -42,9 +43,13 @@ const concepts: Record<string, string> = {
   "failure-and-accessibility": "data-implementation",
   "process-and-marketing-metrics": "measurement",
 };
+export const crmDocumentationFields = dictionary.filter(
+  (row) =>
+    !["cms_collections", "cms_media", "site_submissions"].includes(row.object),
+);
 export function resolveGuideAnchor(hash: string) {
-  const value = hash.replace(/^#/, "");
-  const old = value.match(/^chapter-(\d+)$/);
+  const value = hash.replace(/^#/, ""),
+    old = value.match(/^chapter-(\d+)$/);
   let key = old
     ? oldChapterKeys[Number(old[1]) - 1]
     : value.replace(/^crm-guide-/, "");
@@ -53,6 +58,18 @@ export function resolveGuideAnchor(hash: string) {
   if (guideSections.some((s) => s.key === key))
     return { part: "operations", key };
   return null;
+}
+function localizedText(value: unknown, col: number): string {
+  if (Array.isArray(value)) {
+    if (value.length === 3 && value.every((v) => typeof v === "string"))
+      return value[col];
+    return value.map((v) => localizedText(v, col)).join(" ");
+  }
+  if (value && typeof value === "object")
+    return Object.values(value)
+      .map((v) => localizedText(v, col))
+      .join(" ");
+  return String(value ?? "");
 }
 export function CrmUserGuide({
   isLight,
@@ -66,43 +83,102 @@ export function CrmUserGuide({
   const col = lang === "zh" ? 2 : lang === "id" ? 1 : 0,
     t = (en: string, id: string, zh: string) => [en, id, zh][col];
   const initialHash = typeof window === "undefined" ? "" : window.location.hash;
-  const initialChapter = resolveGuideAnchor(initialHash);
-  const [part, setPart] = useState(() => initialChapter?.part || "system"),
-    [query, setQuery] = useState(""),
+  const [selectedKey, setSelectedKey] = useState(() => {
+    const direct = resolveGuideAnchor(initialHash);
+    if (direct) return direct.key;
+    try {
+      const saved = resolveGuideAnchor(
+        window.localStorage.getItem("uper_crm_docs_chapter") || "",
+      );
+      if (saved) return saved.key;
+    } catch {}
+    return "architecture";
+  });
+  const part = resolveGuideAnchor(selectedKey)!.part;
+  const [query, setQuery] = useState(""),
+    [searchMode, setSearchMode] = useState(false),
     [invalid, setInvalid] = useState(
-      () => !!initialHash && !initialChapter && initialHash !== "#crm-main",
-    ),
-    [target, setTarget] = useState(() => initialChapter?.key || "");
+      () =>
+        !!initialHash &&
+        initialHash !== "#crm-main" &&
+        !resolveGuideAnchor(initialHash),
+    );
+  const [expanded, setExpanded] = useState({
+      system: part === "system",
+      operations: part === "operations",
+    }),
+    [isNarrow, setIsNarrow] = useState(false),
+    [navOpen, setNavOpen] = useState(false),
+    [focusRequest, setFocusRequest] = useState(
+      resolveGuideAnchor(initialHash) ? 1 : 0,
+    );
+  const directoryButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)"),
+      change = () => {
+        setIsNarrow(media.matches);
+        setNavOpen(false);
+      };
+    change();
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
   useEffect(() => {
     const locate = () => {
       if (!location.hash || location.hash === "#crm-main") {
         setInvalid(false);
         return;
       }
-      const resolved = resolveGuideAnchor(location.hash);
-      setInvalid(!resolved);
-      if (resolved) {
-        setPart(resolved.part);
+      const next = resolveGuideAnchor(location.hash);
+      setInvalid(!next);
+      if (next) {
+        setSelectedKey(next.key);
         setQuery("");
-        setTarget(resolved.key);
+        setSearchMode(false);
+        setExpanded((v) => ({ ...v, [next.part]: true }));
+        setFocusRequest((v) => v + 1);
+        setNavOpen(false);
       }
     };
     window.addEventListener("hashchange", locate);
-    return () => window.removeEventListener("hashchange", locate);
+    window.addEventListener("popstate", locate);
+    return () => {
+      window.removeEventListener("hashchange", locate);
+      window.removeEventListener("popstate", locate);
+    };
   }, []);
   useEffect(() => {
-    if (!target) return;
-    const id = requestAnimationFrame(() => {
-      const el = document.getElementById("crm-guide-" + target);
-      el?.scrollIntoView({ block: "start" });
-      el?.focus({ preventScroll: true });
+    if (!focusRequest || searchMode) return;
+    const request = requestAnimationFrame(() => {
+      const node = document.getElementById("crm-guide-" + selectedKey);
+      node?.scrollIntoView({ block: "start" });
+      node?.focus({ preventScroll: true });
     });
-    return () => cancelAnimationFrame(id);
-  }, [target, part]);
-  const terms = query.trim().toLocaleLowerCase();
-  const includes = (data: unknown) =>
-    JSON.stringify(data).toLocaleLowerCase().includes(terms);
-  const fieldMatches = dictionary.filter((r) =>
+    return () => cancelAnimationFrame(request);
+  }, [selectedKey, focusRequest, searchMode]);
+  useEffect(() => {
+    if (!navOpen || !isNarrow) return;
+    const frame = requestAnimationFrame(() =>
+      document
+        .getElementById("crm-doc-chapter-nav")
+        ?.scrollIntoView({ block: "start" }),
+    );
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNavOpen(false);
+        directoryButton.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", close);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", close);
+    };
+  }, [navOpen, isNarrow]);
+  const terms = query.trim().toLocaleLowerCase(),
+    includes = (value: unknown) =>
+      JSON.stringify(value).toLocaleLowerCase().includes(terms);
+  const fieldMatches = crmDocumentationFields.filter((r) =>
     includes([
       r.key,
       r.object,
@@ -111,104 +187,92 @@ export function CrmUserGuide({
       dictionaryWriter(r)[col],
     ]),
   );
-  const system = systemChapters.filter(
+  const matchesSystem = systemChapters.filter(
     (s) =>
       includes([
         s.title[col],
         s.intro[col],
         s.technical[col],
-        s.blocks.map((b) => [b.title[col], b.items.map((i) => i[col])]),
+        s.blocks.map((b) => [
+          b.title[col],
+          b.items.map((i) => i[col]),
+          b.diagram ? localizedText(diagramSearchText[b.diagram], col) : "",
+        ]),
       ]) ||
       (s.key === "data-implementation" && fieldMatches.length > 0),
   );
-  const operations = operationGroups
-    .flat()
-    .map((key) => guideSections.find((s) => s.key === key)!)
-    .filter((s) => includes([s.title[col], s.body.map((r) => r[col])]));
-  const visible = terms
-    ? [
-        ...system.map((s) => ({ ...s, part: "system" })),
-        ...operations.map((s) => ({ ...s, part: "operations" })),
-      ]
-    : part === "system"
-      ? system.map((s) => ({ ...s, part }))
-      : operationGroups.map((group) => ({
-          ...guideSections.find((s) => s.key === group[0])!,
-          part,
-        }));
-  const link = (key: string) => "#crm-guide-" + key;
-  const choose = (key: string) => {
-    const resolved = resolveGuideAnchor(key);
-    if (resolved) {
-      setPart(resolved.part);
-      setQuery("");
-      setTarget("");
-      requestAnimationFrame(() => setTarget(resolved.key));
-    }
-  };
+  const matchesOperations = guideSections.filter((s) =>
+    includes([s.title[col], s.body.map((row) => row[col])]),
+  );
+  const resultKeys = new Set(
+    [...matchesSystem, ...matchesOperations].map((s) => s.key),
+  );
+  const navSystem = systemChapters.filter(
+    (s) => !terms || resultKeys.has(s.key),
+  );
+  const navOperations = operationGroups
+    .map((group) => {
+      const match = group.find((key) => resultKeys.has(key));
+      return {
+        key: terms ? match || group[0] : group[0],
+        group,
+        title:
+          guideSections.find((s) => s.key === (terms ? match : group[0]))
+            ?.title || guideSections.find((s) => s.key === group[0])!.title,
+      };
+    })
+    .filter((item) => !terms || item.group.some((key) => resultKeys.has(key)));
+  const system = systemChapters.filter((s) => s.key === selectedKey);
+  const selectedGroup =
+    operationGroups.find((group) => group.includes(selectedKey)) || [];
+  const operations = guideSections
+    .filter((s) => selectedGroup.includes(s.key))
+    .sort(
+      (a, b) => selectedGroup.indexOf(a.key) - selectedGroup.indexOf(b.key),
+    );
   const fieldsByObject: Record<string, typeof dictionary> = {};
   for (const row of fieldMatches)
     (fieldsByObject[`${row.layer}:${row.object}`] ??= []).push(row);
+  const link = (key: string) => "#crm-guide-" + key;
+  const choose = (key: string) => {
+    const next = resolveGuideAnchor(key);
+    if (!next) return;
+    setSelectedKey(next.key);
+    setInvalid(false);
+    setSearchMode(false);
+    setExpanded((v) => ({ ...v, [next.part]: true }));
+    setNavOpen(false);
+    setFocusRequest((v) => v + 1);
+    try {
+      window.localStorage.setItem("uper_crm_docs_chapter", next.key);
+    } catch {}
+    window.history.pushState(window.history.state, "", link(next.key));
+  };
+  const fullNavigation = [
+      ...systemChapters.map((s) => s.key),
+      ...operationGroups.map((group) => group[0]),
+    ],
+    position = fullNavigation.indexOf(
+      part === "system" ? selectedKey : selectedGroup[0] || selectedKey,
+    );
+  const chapterTitle = [...systemChapters, ...guideSections].find(
+    (s) => s.key === selectedKey,
+  )!.title[col];
+  const navResults = [
+    ...matchesSystem.map((s) => ({ ...s, part: "system" })),
+    ...matchesOperations.map((s) => ({ ...s, part: "operations" })),
+  ];
   return (
     <article className="crm-docs" data-theme={isLight ? "light" : "dark"}>
-      <header className="crm-doc-card">
-        <h2 className="text-xl font-bold">
-          {t("CRM documentation", "Dokumentasi CRM", "CRM 系统文档")}
-        </h2>
+      <header className="crm-doc-card crm-doc-intro">
+        <h2>{t("CRM documentation", "Dokumentasi CRM", "CRM 系统文档")}</h2>
         <p>
           {t(
-            "Understand the system, then handle customers confidently. Implementation reviewed: 14 October 2026.",
-            "Pahami sistem, lalu tangani pelanggan dengan yakin. Implementasi ditinjau: 14 Oktober 2026.",
-            "理解系统，再准确处理客户。实现核对日期：2026 年 10 月 14 日。",
+            "Customer acquisition, sales follow-up and operations. Concepts explain why; instructions explain how.",
+            "Akuisisi pelanggan, tindak lanjut penjualan, dan operasional. Konsep menjelaskan alasan; panduan menjelaskan cara.",
+            "聚焦客户获客、销售跟进与运营。系统说明解释逻辑，操作指南说明做法。",
           )}
         </p>
-        <div
-          className="crm-doc-tabs"
-          role="group"
-          aria-label={t(
-            "Documentation parts",
-            "Bagian dokumentasi",
-            "文档部分",
-          )}
-        >
-          {["system", "operations"].map((p, i) => (
-            <button
-              key={p}
-              aria-pressed={part === p}
-              onClick={() => {
-                setPart(p);
-                setQuery("");
-                setTarget("");
-                setInvalid(false);
-                window.history.replaceState(
-                  window.history.state,
-                  "",
-                  link(p === "system" ? "architecture" : "access"),
-                );
-              }}
-            >
-              {i === 0
-                ? t("System explanation", "Penjelasan sistem", "系统说明")
-                : t("Operating guide", "Panduan operasi", "操作指南")}
-            </button>
-          ))}
-        </div>
-        <label>
-          {t(
-            "Search both parts, rules and fields",
-            "Cari kedua bagian, aturan, dan kolom",
-            "搜索两部分、规则与字段",
-          )}
-          <input
-            className="crm-doc-search"
-            type="search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setTarget("");
-            }}
-          />
-        </label>
         <div className="crm-doc-links">
           <button onClick={() => onNavigateTab?.("leads")}>
             {t(
@@ -225,257 +289,404 @@ export function CrmUserGuide({
       {invalid && (
         <p role="status">
           {t(
-            "Chapter link not found. Choose a chapter below.",
-            "Tautan bab tidak ditemukan. Pilih bab di bawah.",
-            "章节链接不存在，请选择下方章节。",
+            "Chapter link not found. Choose a chapter from the directory.",
+            "Tautan bab tidak ditemukan. Pilih bab dari daftar isi.",
+            "章节链接不存在，请从目录选择章节。",
           )}
         </p>
       )}
+      <button
+        className="crm-doc-mobile-toggle"
+        ref={directoryButton}
+        aria-expanded={navOpen}
+        aria-controls="crm-doc-chapter-nav"
+        onClick={() => setNavOpen((v) => !v)}
+      >
+        {t("Chapters and search", "Bab dan pencarian", "章节目录与搜索")}{" "}
+        {navOpen ? "−" : "+"}
+      </button>
       <div className="crm-doc-layout">
         <nav
+          id="crm-doc-chapter-nav"
           className="crm-doc-card crm-doc-nav"
+          hidden={isNarrow && !navOpen}
           aria-label={t("Guide chapters", "Bab panduan", "文档章节")}
         >
-          {visible.map((s) => (
-            <a
-              key={s.key}
-              href={link(s.key)}
-              onClick={(event) => {
-                if (terms) {
-                  event.preventDefault();
-                  setPart(s.part);
-                  setTarget(s.key);
-                  window.history.replaceState(
-                    window.history.state,
-                    "",
-                    link(s.key),
-                  );
-                } else choose(s.key);
+          <label className="crm-doc-search-label">
+            {t(
+              "Search both parts, rules and fields",
+              "Cari kedua bagian, aturan, dan kolom",
+              "搜索两部分、规则与字段",
+            )}
+            <input
+              className="crm-doc-search"
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSearchMode(!!e.target.value.trim());
+              }}
+            />
+          </label>
+          {terms && (
+            <button
+              className="crm-doc-clear"
+              onClick={() => {
+                setQuery("");
+                setSearchMode(false);
               }}
             >
-              {terms && (
-                <small>
-                  {s.part === "system"
-                    ? t("System", "Sistem", "系统")
-                    : t("Operations", "Operasi", "操作")}{" "}
-                  ·{" "}
-                </small>
-              )}
-              {s.title[col]}
-            </a>
+              {t("Clear search", "Hapus pencarian", "清除搜索")}
+            </button>
+          )}
+          {(["system", "operations"] as const).map((root) => (
+            <section key={root} className="crm-doc-nav-group">
+              <button
+                type="button"
+                aria-expanded={!!terms || expanded[root]}
+                aria-controls={"crm-doc-nav-" + root}
+                onClick={() => setExpanded((v) => ({ ...v, [root]: !v[root] }))}
+              >
+                <span aria-hidden="true">
+                  {terms || expanded[root] ? "▾" : "▸"}
+                </span>
+                {root === "system"
+                  ? t("System explanation", "Penjelasan sistem", "系统说明")
+                  : t("Operating guide", "Panduan operasi", "操作指南")}
+              </button>
+              <ol id={"crm-doc-nav-" + root} hidden={!terms && !expanded[root]}>
+                {(root === "system"
+                  ? navSystem.map((s) => ({ ...s, group: [s.key] }))
+                  : navOperations
+                ).map((s, index) => (
+                  <li key={s.key}>
+                    <a
+                      href={link(s.key)}
+                      aria-label={s.title[col]}
+                      aria-current={
+                        s.group.includes(selectedKey) ? "page" : undefined
+                      }
+                      onClick={(e) => {
+                        e.preventDefault();
+                        choose(s.key);
+                      }}
+                    >
+                      <span className="crm-doc-nav-number" aria-hidden="true">
+                        {index + 1}.
+                      </span>
+                      {s.title[col]}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </section>
           ))}
         </nav>
-        <div className="min-w-0">
-          {visible.length === 0 && (
-            <p role="status">
-              {t(
-                "No matching chapters",
-                "Tidak ada bab yang cocok",
-                "没有匹配的章节",
+        <div className="crm-doc-content min-w-0">
+          {searchMode ? (
+            <section className="crm-doc-card">
+              <h3>
+                {t("Search results", "Hasil pencarian", "搜索结果")} ·{" "}
+                {navResults.length}
+              </h3>
+              {navResults.length === 0 && (
+                <p role="status">
+                  {t(
+                    "No matching chapters",
+                    "Tidak ada bab yang cocok",
+                    "没有匹配的章节",
+                  )}
+                </p>
               )}
-            </p>
-          )}
-          {(terms || part === "system") &&
-            system.map((s) => (
-              <section
-                className="crm-doc-card crm-doc-section"
-                tabIndex={-1}
-                id={"crm-guide-" + s.key}
-                key={s.key}
-              >
-                <h3>{s.title[col]}</h3>
-                <p>{s.intro[col]}</p>
-                {s.blocks.map((b, i) => (
-                  <div key={i}>
-                    <h4>{b.title[col]}</h4>
-                    {b.kind === "flow" ? (
-                      <ol className="crm-doc-flow" aria-label={b.title[col]}>
-                        {b.items.map((item, j) => (
-                          <li key={j}>
-                            <b>{j + 1}</b>
-                            {item[col]}
-                            {j < b.items.length - 1 && (
-                              <svg aria-hidden="true" viewBox="0 0 28 18">
-                                <path
-                                  d="M1 9H25M17 2L25 9L17 16"
-                                  stroke="currentColor"
-                                  fill="none"
-                                  strokeWidth="2"
-                                />
-                              </svg>
-                            )}
-                          </li>
-                        ))}
-                      </ol>
-                    ) : b.kind === "table" ? (
-                      <table className="crm-doc-table">
-                        <caption className="sr-only">{b.title[col]}</caption>
-                        <tbody>
-                          {b.items.map((item, j) => (
-                            <tr key={j}>
-                              <th scope="row">{j + 1}</th>
-                              <td>{item[col]}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <div className="crm-doc-example">
-                        {b.items.map((item, j) => (
-                          <p key={j}>{item[col]}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              <ul className="crm-doc-search-results">
+                {navResults.map((s) => (
+                  <li key={s.key}>
+                    <small>
+                      {s.part === "system"
+                        ? t(
+                            "System explanation",
+                            "Penjelasan sistem",
+                            "系统说明",
+                          )
+                        : t("Operating guide", "Panduan operasi", "操作指南")}
+                    </small>
+                    <a
+                      href={link(s.key)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        choose(s.key);
+                      }}
+                    >
+                      {s.title[col]}
+                    </a>
+                  </li>
                 ))}
-                <details open={!!terms}>
-                  <summary>
-                    {t(
-                      "Implementation and limitations",
-                      "Implementasi dan batasan",
-                      "技术实现与限制",
-                    )}
-                  </summary>
-                  <p>{s.technical[col]}</p>
-                  <small>
-                    {t(
-                      "Implementation references",
-                      "Referensi implementasi",
-                      "实现依据",
-                    )}
-                    : {s.sources.join(" · ")}
-                  </small>
-                  {s.key === "data-implementation" && (
-                    <div className="crm-doc-dict">
-                      <h4>
-                        {t(
-                          "Current contracts and storage fields",
-                          "Kontrak dan kolom penyimpanan saat ini",
-                          "当前契约与存储字段",
-                        )}{" "}
-                        · {fieldMatches.length}/{dictionary.length}
-                      </h4>
-                      <p>
-                        {t(
-                          "Search above to locate fields. Expand an object to read its fields. Types and internal values remain code identifiers; optional means omission/null in the declaration, not permission to skip a required business step. Nested JSON properties use dotted paths. Descriptions are guidance; the source declaration defines the contract.",
-                          "Cari kolom melalui pencarian di atas. Buka objek untuk membaca kolomnya. Tipe dan nilai internal tetap berupa kode; opsional berarti kosong/null dalam deklarasi, bukan izin melewati langkah wajib. Properti JSON bertingkat memakai jalur bertitik. Deskripsi adalah panduan; deklarasi sumber menentukan kontrak.",
-                          "通过顶部搜索定位字段，展开对象查看字段。类型及内部取值保留代码标识；可选表示声明允许缺省／空值，不表示可跳过必需业务步骤。嵌套 JSON 使用点路径。说明供理解，具体契约以源码声明为准。",
-                        )}
-                      </p>
-                      {Object.entries(fieldsByObject).map(([object, rows]) => (
-                        <details open={!!terms} key={object}>
-                          <summary>
-                            {rows[0].layer === "storage"
-                              ? t("Storage", "Penyimpanan", "存储")
-                              : t("Contract", "Kontrak", "契约")}{" "}
-                            · {rows[0].object} · {rows.length}
-                          </summary>
-                          <p>{dictionaryWriter(rows[0])[col]}</p>
-                          <div
-                            className="crm-doc-table-scroll"
-                            tabIndex={0}
-                            aria-label={t(
-                              "Scrollable field table",
-                              "Tabel kolom dapat digeser",
-                              "可滚动字段表",
-                            )}
-                          >
+              </ul>
+            </section>
+          ) : (
+            <>
+              <p className="crm-doc-breadcrumb">
+                {part === "system"
+                  ? t("System explanation", "Penjelasan sistem", "系统说明")
+                  : t("Operating guide", "Panduan operasi", "操作指南")}{" "}
+                <span aria-hidden="true">›</span> {chapterTitle}
+              </p>
+              {part === "system" &&
+                system.map((s) => (
+                  <section
+                    className="crm-doc-card crm-doc-section"
+                    tabIndex={-1}
+                    id={"crm-guide-" + s.key}
+                    key={s.key}
+                  >
+                    <h3>{s.title[col]}</h3>
+                    <p>{s.intro[col]}</p>
+                    {[...s.blocks]
+                      .sort(
+                        (a, b) =>
+                          Number(b.kind === "diagram") -
+                          Number(a.kind === "diagram"),
+                      )
+                      .map((b, i) => (
+                        <div key={i}>
+                          {b.kind !== "diagram" && <h4>{b.title[col]}</h4>}
+                          {b.kind === "diagram" ? (
+                            <CrmGuideDiagram kind={b.diagram!} col={col} />
+                          ) : b.kind === "flow" ? (
+                            <ol
+                              className="crm-doc-flow"
+                              aria-label={b.title[col]}
+                            >
+                              {b.items.map((item, j) => (
+                                <li key={j}>
+                                  <b>{j + 1}</b>
+                                  {item[col]}
+                                  {j < b.items.length - 1 && (
+                                    <svg aria-hidden="true" viewBox="0 0 28 18">
+                                      <path
+                                        d="M1 9H25M17 2L25 9L17 16"
+                                        stroke="currentColor"
+                                        fill="none"
+                                        strokeWidth="2"
+                                      />
+                                    </svg>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                          ) : b.kind === "table" ? (
                             <table className="crm-doc-table">
                               <caption className="sr-only">
-                                {rows[0].object}
+                                {b.title[col]}
                               </caption>
-                              <thead>
-                                <tr>
-                                  {[
-                                    t(
-                                      "Field and meaning",
-                                      "Kolom dan makna",
-                                      "字段与含义",
-                                    ),
-                                    t(
-                                      "Type / values",
-                                      "Tipe / nilai",
-                                      "类型／取值",
-                                    ),
-                                    t("Optional", "Opsional", "可选"),
-                                    t(
-                                      "Declaration source",
-                                      "Sumber deklarasi",
-                                      "声明来源",
-                                    ),
-                                  ].map((v) => (
-                                    <th scope="col" key={v}>
-                                      {v}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
                               <tbody>
-                                {rows.map((r) => (
-                                  <tr key={r.key}>
-                                    <th scope="row">
-                                      <code>{r.key}</code>
-                                      <p>{dictionaryMeaning(r)[col]}</p>
-                                    </th>
-                                    <td>
-                                      <code>{r.type}</code>
-                                    </td>
-                                    <td>
-                                      {r.optional
-                                        ? t("Yes", "Ya", "是")
-                                        : t("No", "Tidak", "否")}
-                                    </td>
-                                    <td>{r.source}</td>
+                                {b.items.map((item, j) => (
+                                  <tr key={j}>
+                                    <th scope="row">{j + 1}</th>
+                                    <td>{item[col]}</td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
-                          </div>
-                        </details>
+                          ) : (
+                            <div className="crm-doc-example">
+                              {b.items.map((item, j) => (
+                                <p key={j}>{item[col]}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    <details open={!!terms}>
+                      <summary>
+                        {t(
+                          "Implementation and limitations",
+                          "Implementasi dan batasan",
+                          "技术实现与限制",
+                        )}
+                      </summary>
+                      <p>{s.technical[col]}</p>
+                      <small>
+                        {t(
+                          "Implementation references",
+                          "Referensi implementasi",
+                          "实现依据",
+                        )}
+                        : {s.sources.join(" · ")}
+                      </small>
+                      {s.key === "data-implementation" && (
+                        <div className="crm-doc-dict">
+                          <h4>
+                            {t(
+                              "CRM contracts and storage fields",
+                              "Kontrak dan kolom penyimpanan CRM",
+                              "CRM 契约与存储字段",
+                            )}{" "}
+                            · {fieldMatches.length}/
+                            {crmDocumentationFields.length}
+                          </h4>
+                          <p>
+                            {t(
+                              "Use the chapter-directory search to locate fields. Expand an object to read its fields. Types and internal values remain code identifiers; optional means omission/null in the declaration, not permission to skip a required business step. Nested JSON properties use dotted paths. Descriptions are guidance; the source declaration defines the contract.",
+                              "Gunakan pencarian daftar isi untuk menemukan kolom. Buka objek untuk membaca kolomnya. Tipe dan nilai internal tetap berupa kode; opsional berarti kosong/null dalam deklarasi, bukan izin melewati langkah wajib. Properti JSON bertingkat memakai jalur bertitik. Deskripsi adalah panduan; deklarasi sumber menentukan kontrak.",
+                              "通过目录搜索定位字段，展开对象查看字段。类型及内部取值保留代码标识；可选表示声明允许缺省／空值，不表示可跳过必需业务步骤。嵌套 JSON 使用点路径。说明供理解，具体契约以源码声明为准。",
+                            )}
+                          </p>
+                          {Object.entries(fieldsByObject).map(
+                            ([object, rows]) => (
+                              <details open={!!terms} key={object}>
+                                <summary>
+                                  {rows[0].layer === "storage"
+                                    ? t("Storage", "Penyimpanan", "存储")
+                                    : t("Contract", "Kontrak", "契约")}{" "}
+                                  · {rows[0].object} · {rows.length}
+                                </summary>
+                                <p>{dictionaryWriter(rows[0])[col]}</p>
+                                <div
+                                  className="crm-doc-table-scroll"
+                                  tabIndex={0}
+                                  aria-label={t(
+                                    "Scrollable field table",
+                                    "Tabel kolom dapat digeser",
+                                    "可滚动字段表",
+                                  )}
+                                >
+                                  <table className="crm-doc-table">
+                                    <caption className="sr-only">
+                                      {rows[0].object}
+                                    </caption>
+                                    <thead>
+                                      <tr>
+                                        {[
+                                          t(
+                                            "Field and meaning",
+                                            "Kolom dan makna",
+                                            "字段与含义",
+                                          ),
+                                          t(
+                                            "Type / values",
+                                            "Tipe / nilai",
+                                            "类型／取值",
+                                          ),
+                                          t("Optional", "Opsional", "可选"),
+                                          t(
+                                            "Declaration source",
+                                            "Sumber deklarasi",
+                                            "声明来源",
+                                          ),
+                                        ].map((v) => (
+                                          <th scope="col" key={v}>
+                                            {v}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {rows.map((r) => (
+                                        <tr key={r.key}>
+                                          <th scope="row">
+                                            <code>{r.key}</code>
+                                            <p>{dictionaryMeaning(r)[col]}</p>
+                                          </th>
+                                          <td>
+                                            <code>{r.type}</code>
+                                          </td>
+                                          <td>
+                                            {r.optional
+                                              ? t("Yes", "Ya", "是")
+                                              : t("No", "Tidak", "否")}
+                                          </td>
+                                          <td>{r.source}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </details>
+                            ),
+                          )}
+                        </div>
+                      )}
+                    </details>
+                    <div className="crm-doc-links">
+                      <a
+                        href={link(s.related)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          choose(s.related);
+                        }}
+                      >
+                        {t(
+                          "Related operating instructions",
+                          "Petunjuk operasi terkait",
+                          "相关操作说明",
+                        )}
+                      </a>
+                    </div>
+                  </section>
+                ))}
+              {part === "operations" &&
+                operations.map((s) => (
+                  <section
+                    id={"crm-guide-" + s.key}
+                    tabIndex={-1}
+                    key={s.key}
+                    className="crm-doc-card crm-doc-section"
+                  >
+                    <h3>{s.title[col]}</h3>
+                    <div className="crm-doc-instructions">
+                      {s.body.map((row, i) => (
+                        <div key={i}>
+                          <span aria-hidden="true">{i + 1}</span>
+                          <p>{row[col]}</p>
+                        </div>
                       ))}
                     </div>
-                  )}
-                </details>
-                <div className="crm-doc-links">
-                  <a href={link(s.related)} onClick={() => choose(s.related)}>
-                    {t(
-                      "Related operating instructions",
-                      "Petunjuk operasi terkait",
-                      "相关操作说明",
-                    )}
-                  </a>
-                </div>
-              </section>
-            ))}
-          {(terms || part === "operations") &&
-            operations.map((s) => (
-              <section
-                id={"crm-guide-" + s.key}
-                tabIndex={-1}
-                key={s.key}
-                className="crm-doc-card crm-doc-section"
-              >
-                <h3>{s.title[col]}</h3>
-                <div className="crm-doc-instructions">
-                  {s.body.map((row, i) => (
-                    <div key={i}>
-                      <span aria-hidden="true">{i + 1}</span>
-                      <p>{row[col]}</p>
-                    </div>
-                  ))}
-                </div>
-                <a
-                  href={link(concepts[s.key] || "architecture")}
-                  onClick={() => choose(concepts[s.key] || "architecture")}
+                    <a
+                      href={link(concepts[s.key] || "architecture")}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        choose(concepts[s.key] || "architecture");
+                      }}
+                    >
+                      {t(
+                        "Related system concepts",
+                        "Konsep sistem terkait",
+                        "相关系统概念",
+                      )}
+                    </a>
+                  </section>
+                ))}
+
+              <div className="crm-doc-page-controls">
+                <button
+                  disabled={position <= 0}
+                  onClick={() => {
+                    setQuery("");
+                    choose(fullNavigation[position - 1]);
+                  }}
                 >
+                  {t("Previous chapter", "Bab sebelumnya", "上一章")}
+                </button>
+                <small>
                   {t(
-                    "Related system concepts",
-                    "Konsep sistem terkait",
-                    "相关系统概念",
+                    "Print / PDF exports the current chapter.",
+                    "Cetak / PDF mengekspor bab saat ini.",
+                    "打印／PDF 导出当前章节。",
                   )}
-                </a>
-              </section>
-            ))}
+                </small>
+                <button
+                  disabled={position >= fullNavigation.length - 1}
+                  onClick={() => {
+                    setQuery("");
+                    choose(fullNavigation[position + 1]);
+                  }}
+                >
+                  {t("Next chapter", "Bab berikutnya", "下一章")}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </article>

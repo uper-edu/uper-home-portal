@@ -1,6 +1,7 @@
 export type Words = readonly [string, string, string];
 export type GuideBlock = {
-  kind: "flow" | "table" | "example";
+  kind: "flow" | "table" | "example" | "diagram";
+  diagram?: "classification" | "acquisition" | "sla" | "notification";
   title: Words;
   items: Words[];
 };
@@ -69,9 +70,9 @@ export const systemChapters: SystemChapter[] = [
             "CRM：客户、任务、活动与销售运营",
           ),
           w(
-            "CMS: website content and media; access requires CMS Operator",
-            "CMS: konten dan media situs; akses memerlukan Operator CMS",
-            "CMS：网站内容与媒体，须具有 CMS 操作员权限",
+            "CMS independently manages website content. Its operating instructions belong to the Content management workspace.",
+            "CMS mengelola konten situs secara terpisah. Petunjuk operasinya tersedia di ruang Manajemen konten.",
+            "CMS 独立管理网站内容；具体操作说明在内容管理工作区查阅。",
           ),
           w(
             "Static JSON: questions and translations; MySQL: business records",
@@ -176,7 +177,8 @@ export const systemChapters: SystemChapter[] = [
     ),
     blocks: [
       {
-        kind: "flow",
+        kind: "diagram",
+        diagram: "acquisition",
         title: w("Business swimlane", "Alur tanggung jawab", "业务泳道"),
         items: [
           w(
@@ -247,7 +249,8 @@ export const systemChapters: SystemChapter[] = [
     ),
     blocks: [
       {
-        kind: "flow",
+        kind: "diagram",
+        diagram: "classification",
         title: w(
           "Full evaluation: early matches stop; baseline then adjustment",
           "Evaluasi lengkap: kecocokan awal berhenti; dasar lalu penyesuaian",
@@ -467,7 +470,8 @@ export const systemChapters: SystemChapter[] = [
         ],
       },
       {
-        kind: "example",
+        kind: "diagram",
+        diagram: "sla",
         title: w(
           "Sample calendar: Jakarta, Mon–Sat 09:00–20:00, 3 natural hours",
           "Kalender contoh: Jakarta, Sen–Sab 09:00–20:00, 3 jam berlalu",
@@ -519,7 +523,8 @@ export const systemChapters: SystemChapter[] = [
     ),
     blocks: [
       {
-        kind: "flow",
+        kind: "diagram",
+        diagram: "notification",
         title: w("Execution pipeline", "Alur eksekusi", "执行链"),
         items: [
           w(
@@ -761,9 +766,9 @@ export const systemChapters: SystemChapter[] = [
       "数据字典与技术实现",
     ),
     intro: w(
-      "Display fields, business contracts and database columns are different layers. Expand the dictionary for the current contracts and storage schemas; field counts are derived, not fixed.",
-      "Kolom tampilan, kontrak bisnis, dan kolom database adalah lapisan berbeda. Buka kamus untuk kontrak dan skema saat ini; jumlah kolom dihitung, bukan tetap.",
-      "显示字段、业务契约与数据库列属于不同层。展开字典查看当前契约和存储结构，字段数按内容统计，不写死。",
+      "Display fields, business contracts and database columns are different layers. Expand the CRM-scoped dictionary; fields belonging to other modules are excluded. Counts are derived, not fixed.",
+      "Kolom tampilan, kontrak bisnis, dan kolom database adalah lapisan berbeda. Buka kamus khusus CRM; kolom modul lain tidak ditampilkan. Jumlah kolom dihitung, bukan tetap.",
+      "显示字段、业务契约与数据库列属于不同层。展开字典查看 CRM 契约与存储字段；不展示其他模块的业务字段，数量按内容统计。",
     ),
     blocks: [
       {

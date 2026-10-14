@@ -157,9 +157,9 @@ export const guideSections = [
         "客户资料中的负责人和销售阶段使用与主列表一致的选项样式。负责人可搜索，固定阶段列表无搜索。选择不同值会按现有权限立即保存；选择当前值不改动数据，Escape 关闭不保存。",
       ],
       [
-        "CRM requires staff sign-in. Suki, Robert, Ethan and Monite are CRM Managers; Fadhil, Zainul and Wigar are Sales; Tester has CRM Manager and Sales roles. Robert, Ethan and Monite also have CMS Operator access; Fenny is a CMS Operator only. Use the top account menu to change your own password or sign out.",
-        "CRM mewajibkan login staf. Suki, Robert, Ethan, dan Monite adalah Manajer CRM; Fadhil, Zainul, dan Wigar adalah staf penjualan; Tester memiliki peran Manajer CRM dan Sales. Robert, Ethan, dan Monite juga memiliki akses Operator CMS; Fenny hanya Operator CMS. Gunakan menu akun di bagian atas untuk mengubah kata sandi sendiri atau keluar.",
-        "访问 CRM 需要员工登录。Suki、Robert、Ethan、Monite 为 CRM 管理者；Fadhil、Zainul、Wigar 为销售；Tester 同时具有 CRM 管理者与销售角色。Robert、Ethan、Monite 同时具有 CMS 操作员权限，Fenny 仅为 CMS 操作员。顶部账号菜单提供修改自己的密码和退出入口。",
+        "CRM requires staff sign-in. CRM Managers manage visibility, assignment and operations; Sales handle customers within their scope. Current roles appear in the account menu; the staff directory, not this manual, is the source of current membership. Use the account menu to change your own password or sign out.",
+        "CRM mewajibkan login staf. Manajer CRM mengelola visibilitas, penugasan, dan operasional; staf penjualan menangani pelanggan dalam cakupannya. Peran saat ini terlihat di menu akun; daftar staf, bukan panduan ini, menjadi sumber keanggotaan terbaru. Gunakan menu akun untuk mengubah kata sandi sendiri atau keluar.",
+        "访问 CRM 须员工登录。CRM 管理者负责可见范围、分配与运营，销售处理权限范围内的客户。当前角色在账号菜单查看，人员名单以员工目录为准，不由手册写死。账号菜单提供修改自己的密码和退出入口。",
       ],
       [
         "Managers can view all leads and assign active Sales owners. Sales default to their own leads and may view eligible unassigned leads. Sales can claim an unassigned lead only for themselves and cannot transfer their leads to another salesperson. Sales Operations settings are restricted to Managers; the server enforces these permissions.",
@@ -337,14 +337,14 @@ export const guideSections = [
     ],
     body: [
       [
-        "CMS and CRM share a header. Open Sales management or Content management in the workspace menu; only permitted workspaces are shown. View website opens a separate tab. The account menu shows your current workspace role, with all roles, Change password and Sign out inside. No permissions change when switching workspaces.",
-        "CMS dan CRM memakai header yang sama. Buka Manajemen penjualan atau Manajemen konten dari menu ruang kerja; hanya ruang kerja yang diizinkan ditampilkan. Lihat situs membuka tab baru. Menu akun menampilkan peran pada ruang kerja aktif, dengan semua peran, Ubah kata sandi, dan Keluar di dalam menu. Berpindah ruang kerja tidak mengubah izin.",
-        "CMS 和 CRM 使用统一头部。从工作区菜单进入销售管理或内容管理，仅显示有权限的入口。查看网站会打开新标签页。账号菜单显示当前工作区角色；完整角色、修改密码和退出在菜单内。切换工作区不会改变权限。",
+        "Use the Sales management workspace for CRM. The account menu shows your current role, password change and sign-out. View website opens a separate tab. Other workspaces have independent permissions and their own operating documentation.",
+        "Gunakan ruang Manajemen penjualan untuk CRM. Menu akun menampilkan peran saat ini, perubahan kata sandi, dan keluar. Lihat situs membuka tab baru. Ruang lain memiliki izin dan dokumentasi operasinya sendiri.",
+        "CRM 位于销售管理工作区。账号菜单显示当前角色、修改密码和退出，查看网站会打开新标签页。其他工作区的权限及操作说明独立管理。",
       ],
       [
-        "Interface language and theme are shared across CMS and CRM on this browser. On narrow screens open Language and appearance; sales module navigation stays on a single horizontally scrollable row. Refresh, export and policy actions are beside the page content, not in the global header. Saving policies does not save notification configuration or an unfinished follow-up.",
-        "Bahasa antarmuka dan tema digunakan bersama CMS dan CRM pada browser ini. Pada layar kecil buka Bahasa dan tampilan; navigasi modul penjualan tetap dalam satu baris yang dapat digeser. Muat ulang, ekspor, dan tindakan kebijakan berada di dekat konten halaman, bukan di header global. Menyimpan kebijakan tidak menyimpan konfigurasi notifikasi atau tindak lanjut yang belum selesai.",
-        "同一浏览器中的 CMS 和 CRM 沿用相同界面语言和主题。窄屏中打开语言与外观；销售模块导航保持单行并支持横向滚动。刷新、导出和策略操作位于页面内容旁，不放在全局头部。保存策略不会保存通知配置或未完成的跟进记录。",
+        "Choose the interface language and theme from CRM header preferences. On narrow screens open Language and appearance; sales module navigation stays on a single horizontally scrollable row. Refresh, export and policy actions are beside the page content, not in the global header. Saving policies does not save notification configuration or an unfinished follow-up.",
+        "Pilih bahasa antarmuka dan tema dari preferensi header CRM. Pada layar kecil buka Bahasa dan tampilan; navigasi modul penjualan tetap dalam satu baris yang dapat digeser. Muat ulang, ekspor, dan tindakan kebijakan berada di dekat konten halaman, bukan di header global. Menyimpan kebijakan tidak menyimpan konfigurasi notifikasi atau tindak lanjut yang belum selesai.",
+        "从 CRM 头部偏好区选择界面语言及主题。窄屏中打开语言与外观；销售模块导航保持单行并支持横向滚动。刷新、导出和策略操作位于页面内容旁，不放在全局头部。保存策略不会保存通知配置或未完成的跟进记录。",
       ],
       [
         "Use EN, ID or Chinese in the header preferences to switch directly between English, Indonesian and Chinese. The selected language is highlighted. Arrow keys change language; Home and End select the first and last choices. Original names, notes and conversations are preserved.",
