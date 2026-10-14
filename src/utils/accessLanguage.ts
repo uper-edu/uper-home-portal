@@ -119,9 +119,9 @@ export const accessGuide: [string, string, string][] = [
     "用户标识人员，角色定义职责，权限授权操作，数据范围限制每项操作处理本人或全部客户；有认领权限的销售使用共享未分配客户池，团队不参与授权。",
   ],
   [
-    "Access Administrator does not automatically gain customer or CMS access. Grant separate business roles when needed. Existing account IDs, passwords, ownership and deadlines are retained.",
-    "Administrator akses tidak otomatis memperoleh akses pelanggan atau CMS. Tetapkan peran bisnis secara terpisah. ID akun, kata sandi, kepemilikan, dan tenggat lama dipertahankan.",
-    "权限管理员不会自动获得客户或CMS访问权，需要时另行授予业务角色。已有账号ID、密码、客户归属和截止时间保留。",
+    "System Administrator does not automatically gain customer or CMS access. Grant separate business roles when needed. Existing account IDs, passwords, ownership and deadlines are retained. HR Recruiter currently permits viewing recruitment applications only; the title does not grant recruitment management or editing.",
+    "Administrator Sistem tidak otomatis memperoleh akses pelanggan atau CMS. Tetapkan peran bisnis secara terpisah. ID akun, kata sandi, kepemilikan, dan tenggat lama dipertahankan. Staf Rekrutmen saat ini hanya dapat melihat lamaran; nama peran tidak memberikan izin mengelola rekrutmen atau mengedit data.",
+    "系统管理员不会自动获得客户或CMS访问权，需要时另行授予业务角色。已有账号ID、密码、客户归属和截止时间保留。HR招聘专员目前仅可查看招聘申请，角色名称不代表拥有招聘管理或编辑权限。",
   ],
   [
     "Roles combine permissions per action, not through a single largest scope. Unknown permissions are denied. The server checks access on each request.",
@@ -154,9 +154,9 @@ export const accessGuide: [string, string, string][] = [
     "至少保留一位拥有完整权限管理能力的有效用户。审计记录操作者、原因和修改前后内容；权限变更不重放历史通知。",
   ],
   [
-    "Login email is an optional, unique alias maintained by an access administrator. Use Login ID or email with the same password; no second account is created. Email changes revoke sessions and retain customer ownership. Confirm the real address before assigning it; existing accounts are not given invented addresses.",
-    "Email login adalah alias opsional dan unik yang dikelola administrator akses. Gunakan ID login atau email dengan kata sandi yang sama; tidak ada akun kedua. Perubahan email mencabut sesi dan mempertahankan kepemilikan pelanggan. Periksa alamat asli sebelum menetapkannya; akun lama tidak diberi alamat rekaan.",
-    "登录邮箱由权限管理员维护，是可选且唯一的登录别名。登录ID或邮箱使用同一密码，不创建第二个账号。修改邮箱会撤销会话，保留客户归属。填写前应核对真实地址，不会给现有账号编造邮箱。",
+    "User cards separate account status, Login ID, email and roles. Select “+N more” to see additional roles; the control supports keyboard and touch. Login email is an optional, unique alias maintained by a system administrator. Use Login ID or email with the same password; no second account is created. Email changes revoke sessions and retain customer ownership. Confirm the real address before assigning it; existing accounts are not given invented addresses.",
+    "Kartu pengguna memisahkan status akun, ID login, email, dan peran. Pilih “+N lainnya” untuk melihat peran tambahan melalui papan ketik atau sentuhan. Email login adalah alias opsional dan unik yang dikelola administrator sistem. Gunakan ID login atau email dengan kata sandi yang sama; tidak ada akun kedua. Perubahan email mencabut sesi dan mempertahankan kepemilikan pelanggan. Periksa alamat asli sebelum menetapkannya; akun lama tidak diberi alamat rekaan.",
+    "用户卡片分别展示账号状态、登录ID、邮箱和角色；点击“另外N个角色”可查看其余角色，也支持键盘和触屏操作。登录邮箱由系统管理员维护，是可选且唯一的登录别名。登录ID或邮箱使用同一密码，不创建第二个账号。修改邮箱会撤销会话，保留客户归属。填写前应核对真实地址，不会给现有账号编造邮箱。",
   ],
   [
     "Retired custom team grants are removed conservatively and retained in audit for review; they never become all-customer access. Team-filtered policies and old team summaries stay inactive until an authorized operator explicitly confirms removing the historical restriction. Original policy snapshots and delivery history remain unchanged.",

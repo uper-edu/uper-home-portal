@@ -1,3 +1,4 @@
+import { AccessUserCard, AccessRoleCard } from "../components/AccessRecordCard";
 import { accessGuide, accessError } from "../utils/accessLanguage";
 import { Fragment, useEffect, useRef, useState } from "react";
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
@@ -420,7 +421,7 @@ export function AccessWorkspace({
                     </button>
                   )}
                 </div>
-                <div className="access-grid">
+                <div className="access-grid access-user-grid">
                   {data.users
                     .filter((u) =>
                       (u.displayName + " " + u.loginId + " " + (u.email || ""))
@@ -433,49 +434,27 @@ export function AccessWorkspace({
                         Number(a.id === employee.id),
                     )
                     .map((u) => (
-                      <section className="access-card" key={u.id}>
-                        <h2>
-                          {u.displayName}{" "}
-                          {u.id === employee.id && (
-                            <small>
-                              {t(
-                                "Signed-in user",
-                                "Pengguna yang sedang login",
-                                "当前登录用户",
-                              )}
-                            </small>
-                          )}
-                        </h2>
-                        <p>
-                          {u.loginId} ·{" "}
-                          {u.active
-                            ? t("Active", "Aktif", "已启用")
-                            : t("Disabled", "Nonaktif", "已停用")}
-                        </p>
-                        <p>
-                          {u.email ||
-                            t(
-                              "No login email",
-                              "Email login belum diisi",
-                              "未设置登录邮箱",
-                            )}
-                        </p>
-                        <p>
-                          {u.roles
-                            .map(
-                              (id) =>
-                                data.roles.find((r) => r.id === id)?.config
-                                  .names[col] || id,
-                            )
-                            .join(" · ") ||
-                            t("No roles", "Tanpa peran", "未授予角色")}
-                        </p>
-                        {(can("access.users") || can("access.sessions")) && (
-                          <button onClick={() => openUser(u)}>
-                            {t("Edit user", "Edit pengguna", "编辑用户")}
-                          </button>
-                        )}
-                      </section>
+                      <AccessUserCard
+                        key={u.id}
+                        name={u.displayName}
+                        active={u.active}
+                        current={u.id === employee.id}
+                        lang={lang}
+                        loginId={u.loginId}
+                        email={u.email}
+                        roles={u.roles.map((id) => ({
+                          id,
+                          label:
+                            data.roles.find((r) => r.id === id)?.config.names[
+                              col
+                            ] || id,
+                        }))}
+                        onEdit={
+                          can("access.users") || can("access.sessions")
+                            ? () => openUser(u)
+                            : undefined
+                        }
+                      />
                     ))}
                 </div>
               </>
@@ -496,24 +475,19 @@ export function AccessWorkspace({
                     </button>
                   )}
                 </div>
-                <div className="access-grid">
+                <div className="access-grid access-role-grid">
                   {data.roles.map((r) => (
-                    <section className="access-card" key={r.id}>
-                      <h2>{r.config.names[col]}</h2>
-                      <p>{r.config.description[col]}</p>
-                      <p>
-                        {r.enabled
-                          ? t("Active", "Aktif", "已启用")
-                          : t("Disabled", "Nonaktif", "已停用")}{" "}
-                        · {Object.keys(r.config.grants).length}{" "}
-                        {t("permissions", "izin", "项权限")}
-                      </p>
-                      {can("access.roles") && (
-                        <button onClick={() => openRole(r)}>
-                          {t("Edit role", "Edit peran", "编辑角色")}
-                        </button>
-                      )}
-                    </section>
+                    <AccessRoleCard
+                      key={r.id}
+                      name={r.config.names[col]}
+                      description={r.config.description[col]}
+                      active={r.enabled}
+                      permissionCount={Object.keys(r.config.grants).length}
+                      lang={lang}
+                      onEdit={
+                        can("access.roles") ? () => openRole(r) : undefined
+                      }
+                    />
                   ))}
                 </div>
               </>

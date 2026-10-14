@@ -16,7 +16,8 @@ export function adminRoleLabel(role: string, lang: 'en' | 'id' | 'zh') {
     crm_leader: ['CRM Manager', 'Manajer CRM', 'CRM 管理者'],
     cms_admin: ['CMS Operator', 'Operator CMS', 'CMS 操作员'],
     sales: ['Sales', 'Staf penjualan', '销售'],
-    access_admin: ['Access Administrator', 'Administrator akses', '权限管理员'],
+    hr_reader: ['HR Recruiter', 'Staf Rekrutmen', 'HR招聘专员'],
+    access_admin: ['System Administrator', 'Administrator Sistem', '系统管理员'],
   };
   return labels[role]?.[lang === 'zh' ? 2 : lang === 'id' ? 1 : 0] || role;
 }

@@ -53,6 +53,133 @@
   gap: 10px;
   align-content: start;
 }
+.access-user-card,
+.access-role-card {
+  gap: 14px;
+  align-content: stretch;
+  grid-template-rows: subgrid;
+}
+.access-user-card {
+  grid-row: span 5;
+}
+.access-role-card {
+  grid-row: span 4;
+}
+.access-record-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.access-record-identity {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-width: 0;
+}
+.access-record-identity h2 {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.access-current-user,
+.access-record-status {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 6px;
+  color: var(--access-muted);
+  background: var(--access-bg);
+}
+.access-record-status {
+  flex-shrink: 0;
+}
+.access-record-status[data-active="true"] {
+  color: #276343;
+  background: #edf6ef;
+}
+.access-page[data-theme="dark"] .access-record-status[data-active="true"] {
+  color: #b6dec3;
+  background: #233d32;
+}
+.access-record-field {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: min-content 1fr;
+  align-content: start;
+  gap: 5px;
+  line-height: 1.5;
+}
+.access-record-field dt {
+  font-size: 12px;
+  color: var(--access-muted);
+}
+.access-record-field dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.access-record-empty {
+  color: var(--access-muted);
+}
+.access-role-list {
+  display: flex;
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.access-role-chip {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--access-bg);
+  color: var(--access-ink);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.access-role-overflow {
+  margin-top: 6px;
+}
+.access-role-overflow summary {
+  width: fit-content;
+  cursor: pointer;
+  padding: 8px 4px;
+  min-height: 40px;
+  color: var(--access-muted);
+  font-size: 13px;
+}
+.access-role-overflow summary:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.access-role-overflow[open] .access-role-list {
+  margin-top: 4px;
+}
+.access-record-action {
+  display: flex;
+  align-items: end;
+  border-top: 1px solid var(--access-border);
+  padding-top: 14px;
+}
+.access-record-action button {
+  width: 100%;
+}
+.access-record-action button:hover {
+  background: var(--access-bg);
+}
+@supports not (grid-template-rows: subgrid) {
+  .access-user-card,
+  .access-role-card {
+    grid-row: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .access-record-action {
+    margin-top: auto;
+  }
+}
 .access-page button {
   min-height: 40px;
   padding: 8px 12px;

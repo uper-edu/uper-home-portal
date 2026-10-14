@@ -210,7 +210,7 @@ export const builtInRoles: Record<string, RoleConfig> = {
     grants: grants(["cms.manage"], "all"),
   },
   hr_reader: {
-    names: ["Recruitment reader", "Pembaca lamaran", "招聘查看员"],
+    names: ["HR Recruiter", "Staf Rekrutmen", "HR招聘专员"],
     description: [
       "Read recruitment submissions only",
       "Hanya melihat lamaran kerja",
@@ -219,7 +219,7 @@ export const builtInRoles: Record<string, RoleConfig> = {
     grants: grants(["applications.read"], "all"),
   },
   access_admin: {
-    names: ["Access Administrator", "Administrator akses", "权限管理员"],
+    names: ["System Administrator", "Administrator Sistem", "系统管理员"],
     description: [
       "Manage staff access; business data requires separate roles",
       "Kelola akses staf; data bisnis memerlukan peran lain",
