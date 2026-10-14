@@ -1,9 +1,10 @@
 import { crmId } from "../utils/crmIndonesian";
 import { crmError } from "../utils/crmLanguage";
 import { useEffect, useState } from "react";
-import { describeFollowUpTask, pendingFollowUps } from "../utils/crmFollowUp";
+import { describeFollowUpTask, pendingFollowUps,emptyFollowUpLabel } from "../utils/crmFollowUp";
 export default function LeadTaskActions({
-  leadId,
+  leadId,lead,
+  onProcess,
   readOnly = false,
   isLight,
   lang,
@@ -12,6 +13,8 @@ export default function LeadTaskActions({
   refreshKey,
 }: {
   leadId: string;
+  lead:any;
+  onProcess: (taskId:string)=>void;
   readOnly?: boolean;
   isLight: boolean;
   lang: "zh" | "en" | "id";
@@ -32,7 +35,7 @@ export default function LeadTaskActions({
       setTasks(data);
       setError("");
     } catch (e) {
-      if (!signal?.aborted) setError((e as Error).message);
+      if (!signal?.aborted) {setTasks([]);setError((e as Error).message);}
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -56,6 +59,7 @@ export default function LeadTaskActions({
       {error && (
         <p role="alert" className="text-xs text-rose-500">
           {crmError(error, lang)}
+          <button type="button" className="crm-work-link" onClick={()=>load()}>{lang==="id"?"Coba lagi":lang==="zh"?"重试":"Retry"}</button>
         </p>
       )}
       {loading && (
@@ -82,7 +86,7 @@ export default function LeadTaskActions({
           >
             <div>
               <p>
-                {display.action} ·{" "}
+                {lead.contactArrangement?.state&&lead.contactArrangement.state!=="active"?(lang==="zh"?"内部核实／复查":lang==="id"?"Tinjauan internal":"Internal review")+" · "+display.action:display.action} ·{" "}
                 {task.ownerId ||
                   (lang === "id"
                     ? crmId("Unassigned")
@@ -90,13 +94,7 @@ export default function LeadTaskActions({
                       ? "待分配"
                       : "Unassigned")}
               </p>
-              <p
-                className={
-                  display.tone === "overdue"
-                    ? "text-rose-500"
-                    : "text-slate-500"
-                }
-              >
+              <p className="crm-task-time" data-tone={display.tone}>
                 {display.timing}
                 {display.deadline !== null && ` (${timezone})`}
               </p>
@@ -107,6 +105,7 @@ export default function LeadTaskActions({
               className="border rounded-lg px-3 py-1.5"
               onClick={async () => {
                 if (readOnly) return;
+                if(task.status!=="migration_hold"){onProcess(task.id);return;}
                 setBusy(task.id);
                 try {
                   const r = await fetch(
@@ -134,10 +133,10 @@ export default function LeadTaskActions({
                     ? "启用历史待办"
                     : "Activate historical task"
                 : lang === "id"
-                  ? crmId("Complete follow-up")
+                  ? crmId("Record result")
                   : lang === "zh"
-                    ? "完成跟进"
-                    : "Complete follow-up"}
+                    ? "记录处理结果"
+                    : "Record result"}
             </button>
           </div>
         );
@@ -148,11 +147,7 @@ export default function LeadTaskActions({
           ["open", "overdue", "migration_hold"].includes(t.status),
         ) && (
           <p className="text-xs text-slate-500">
-            {lang === "id"
-              ? crmId("No pending follow-up")
-              : lang === "zh"
-                ? "暂无待跟进事项"
-                : "No pending follow-up"}
+            {emptyFollowUpLabel(lead,lang)}
           </p>
         )}
       <p className="text-[10px] text-slate-500 mt-2">

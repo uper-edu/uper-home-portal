@@ -35,14 +35,16 @@ export async function conversation(source: ChatSource) {
     await fetch("/api/portal/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, page: location.pathname }),
+      body: JSON.stringify({ source, page: location.pathname + location.search, campaign: new URLSearchParams(location.search).get("c") || "" }),
     }),
   );
   return (await res.json()).conversationId as string;
 }
 export async function registerContact(profile: object) {
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
-  const contact = { ...profile };
+  const contact: Record<string, unknown> = { ...profile };
+  const campaignId = new URLSearchParams(location.search).get("c");
+  if (campaignId) contact.campaignId = campaignId;
   for (const key of [
     "quizScore",
     "quizMaxScore",

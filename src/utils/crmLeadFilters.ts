@@ -1,3 +1,4 @@
+import {needsHandling} from "./crmContact.ts";
 import {
   DEFAULT_CRM_POLICY_CONFIG,
   durationToMs,
@@ -48,7 +49,7 @@ export const filterDimensions = {
     zh: "跟进情形",
     options: [
       ["first_contact", "Awaiting first contact", "待首次联系"],
-      ["stale", "Long time without contact", "长期未联系"],
+      ["stale", "Long time without a contact attempt", "长期未尝试联系"],
       ["retry", "No-response retry due", "未回复待重试"],
       ["historical", "Historical task pending review", "历史待办待确认"],
     ],
@@ -86,6 +87,7 @@ export const taskOptions: FilterOption[] = [
   ["none", "No unfinished tasks", "无未完成任务"],
 ];
 export interface LeadFilters {
+  workScope?: "action" | "all";
   ownership: "all" | "mine" | "unassigned" | "person";
   owner: string;
   task: string;
@@ -101,12 +103,13 @@ export interface LeadFilters {
 }
 export function defaultLeadFilters(scope: string): LeadFilters {
   return {
+    workScope: scope === "own" ? "action" : "all",
     ownership: scope === "own" ? "mine" : "all",
     owner: "",
     task: "all",
     unread: false,
     search: "",
-    sort: "newest",
+    sort: "priority",
     tier: [],
     stage: [],
     connect: [],
@@ -117,6 +120,7 @@ export function defaultLeadFilters(scope: string): LeadFilters {
 }
 export function filterQuery(f: LeadFilters) {
   const p = new URLSearchParams();
+  p.set("workScope",f.workScope||"all");
   p.set("ownership", f.ownership);
   if (f.owner) p.set("owner", f.owner);
   p.set("task", f.task);
@@ -136,6 +140,8 @@ export function parseLeadFilters(q: Record<string, unknown>): LeadFilters {
         ? "person"
         : "unassigned"
       : "all")) as LeadFilters["ownership"];
+  f.workScope = (scalar("workScope") || "all") as "action" | "all";
+  if(!["action","all"].includes(f.workScope))throw Error("Invalid lead filters");
   f.owner = scalar("owner");
   f.task = scalar("task") || "all";
   f.unread = scalar("unread") === "true";
@@ -144,7 +150,7 @@ export function parseLeadFilters(q: Record<string, unknown>): LeadFilters {
   if (
     !["all", "mine", "unassigned", "person"].includes(f.ownership) ||
     !taskOptions.some((o) => o[0] === f.task) ||
-    !["newest", "activity", "deadline"].includes(f.sort) ||
+    !["newest", "activity", "deadline", "priority"].includes(f.sort) ||
     f.search.length > 200
   )
     throw Error("Invalid lead filters");
@@ -289,10 +295,23 @@ export function filterAndSummarize(
   config?: CrmPolicyConfig,
 ) {
   const rows = leads.filter((l) =>
+    (f.workScope!=="action"||needsHandling(l,now,n=>calendarDay(n,timezone))) &&
     leadMatches(l, f, employeeId, timezone, now, config),
   );
   const time = (v: any) => (Number.isFinite(Date.parse(v)) ? Date.parse(v) : 0);
   rows.sort((a, b) => {
+    if(f.sort==="priority"){
+      const rank=(l:any)=>{const tasks=activeTasks(l).filter((t:any)=>t.status!=="migration_hold"&&time(t.dueAt)>0);
+        if(tasks.some((t:any)=>time(t.dueAt)<now))return 0;
+        if(tasks.some((t:any)=>calendarDay(time(t.dueAt),timezone)===calendarDay(now,timezone)))return 1;
+        if(tasks.some((t:any)=>["handoff","booking","enrollment"].includes(t.kind)))return 2;
+        if(tasks.length)return 3;
+        return ["Enrolled","Lost"].includes(l.currentStage)||l.followUpDisposition?.kind==="none"?5:4;};
+      const delta=rank(a)-rank(b);if(delta)return delta;
+      const due=(l:any)=>Math.min(...activeTasks(l).filter((t:any)=>t.status!=="migration_hold"&&time(t.dueAt)>0).map((t:any)=>time(t.dueAt)));
+      if(due(a)!==due(b))return due(a)<due(b)?-1:1;
+      return time(b.attention?.latest?.at)-time(a.attention?.latest?.at)||String(a.id).localeCompare(String(b.id));
+    }
     if (f.sort === "deadline") {
       const due = (l: any) =>
         Math.min(...activeTasks(l).map((t: any) => time(t.dueAt) || Infinity));

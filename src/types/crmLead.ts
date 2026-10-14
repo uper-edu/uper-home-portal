@@ -49,6 +49,10 @@ export interface FollowUpLog {
   buyingSignalDetected?: BuyingSignalType;
   summary: string;
   nextAction: string;
+  recordKind?: "contact" | "closure";
+  requestId?: string;
+  completeTaskIds?: string[];
+  disposition?: string;
   nextFollowUpAt?: string;
 }
 
@@ -70,10 +74,15 @@ export interface LeadAttention {
   unreadCount: number;
   observedAt: string;
   latest?: {type:string;at:string;source?:string};
-  tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string}>;
+  tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string;details?:{action?:string;purpose?:string;sourceMessageId?:string;sourceConversationId?:string}}>;
   isMine: boolean;
 }
 export interface CrmLeadRecord {
+  ownerChangedAt?: string;
+  attendanceRecords?: Array<{campaignId:string;confirmed:boolean;mode:"onsite"|"online";reason:string;actor:string;recordedAt:string}>;
+  communicationLanguage?: "en"|"id"|"zh"|"unknown";
+  contactArrangement?: {state: "active"|"waiting"|"nurture"|"stopped"; reason:string;reviewAt?:string;at:string;actor:string;version:number};
+  contactStats?: ReturnType<typeof import("../utils/crmContact").contactStatistics>;
   attention?: LeadAttention;
 
   // ① 场景来源
@@ -81,6 +90,7 @@ export interface CrmLeadRecord {
   businessNumber?: string; // CRM display number, YYYYMMDD-NNN, daily in Operating Timezone.
   entryPoint: string;
   campaign: string;
+  campaignId?: string;
   placement: string;
   hookType: HookType;
   hookContext: HookContextType;
@@ -138,6 +148,7 @@ export interface CrmLeadRecord {
 
   // ⑦ 任务与分配
   owner: string; // Sales A, Sales B, B2B owner, Online Ops
+  followUpDisposition?: {kind: string; reason: string; at: string; actor: string};
   nextAction?: string;
   nextFollowUpAt?: string;
   reminderSent?: boolean;

@@ -1,3 +1,5 @@
+import {CrmCampaignMeasures} from "./CrmCampaignMeasures";
+import { campaignChatLink, matchesCampaign } from "../../utils/crmCampaignLink";
 import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import { crmValue, crmError, crmLocale } from "../../utils/crmLanguage";
@@ -58,6 +60,7 @@ import {
 import type { CrmLeadRecord } from "../../types/crmLead";
 import type { HookType, HookContextType } from "../../types/leadSystem";
 interface CrmCampaignHubProps {
+  canManageCampaigns?: boolean;
   isLight: boolean;
   lang: "en" | "zh" | "id";
   leads: CrmLeadRecord[];
@@ -65,6 +68,7 @@ interface CrmCampaignHubProps {
   onNavigateTab?: (tab: "leads" | "campaigns" | "policy" | "docs") => void;
 }
 export function CrmCampaignHub({
+  canManageCampaigns=false,
   isLight,
   lang,
   leads,
@@ -75,6 +79,7 @@ export function CrmCampaignHub({
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const [campaigns, setCampaigns] = useState<CrmCampaignRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [campaignError,setCampaignError]=useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("All");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
@@ -216,13 +221,16 @@ export function CrmCampaignHub({
   // Fetch campaigns
   const fetchCampaigns = async () => {
     setIsLoading(true);
+    setCampaignError(false);
     try {
       const res = await fetch("/api/crm/campaigns");
+      if(!res.ok)throw Error('Campaign data unavailable');
       const data = await res.json();
       if (data?.campaigns) {
         setCampaigns(data.campaigns);
       }
     } catch (err) {
+      setCampaignError(true);
       console.error("[CAMPAIGN HUB] Failed to fetch campaigns:", err);
     } finally {
       setIsLoading(false);
@@ -234,7 +242,7 @@ export function CrmCampaignHub({
   // Generate QR Code data URL whenever activeQrCampaign changes
   useEffect(() => {
     if (activeQrCampaign) {
-      const url = `https://uperedu.com/chat?c=${activeQrCampaign.code}`;
+      const url = campaignChatLink(activeQrCampaign.code);
       QRCode.toDataURL(url, {
         width: 320,
         margin: 2,
@@ -253,43 +261,6 @@ export function CrmCampaignHub({
       setQrDataUrl("");
     }
   }, [activeQrCampaign]);
-  // Aggregate Executive KPI Metrics
-  const summaryMetrics = useMemo(() => {
-    const totalCount = campaigns.length;
-    const activeCount = campaigns.filter((c) => c.status === "active").length;
-    const totalLeads = campaigns.reduce(
-      (acc, c) => acc + (c.stats.leadsCount || 0),
-      0,
-    );
-    const totalHot = campaigns.reduce(
-      (acc, c) => acc + (c.stats.hotLeadsCount || 0),
-      0,
-    );
-    const totalAttended = campaigns.reduce(
-      (acc, c) => acc + (c.stats.attendedCount || 0),
-      0,
-    );
-    const totalEnrolled = campaigns.reduce(
-      (acc, c) => acc + (c.stats.enrolledCount || 0),
-      0,
-    );
-    const totalRevenue = campaigns.reduce(
-      (acc, c) => acc + (c.stats.totalRevenue || 0),
-      0,
-    );
-    const avgConversion =
-      totalLeads > 0 ? Math.round((totalEnrolled / totalLeads) * 100) : 0;
-    return {
-      totalCount,
-      activeCount,
-      totalLeads,
-      totalHot,
-      totalAttended,
-      totalEnrolled,
-      totalRevenue,
-      avgConversion,
-    };
-  }, [campaigns]);
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
     return campaigns.filter((c) => {
@@ -622,199 +593,36 @@ export function CrmCampaignHub({
       console.error("Delete error:", err);
     }
   };
-  // Matched Leads for Active Detail Drawer
+  const [campaignLeads,setCampaignLeads]=useState<CrmLeadRecord[]>([]);
+  const [campaignLeadError,setCampaignLeadError]=useState(false);
+  useEffect(()=>{if(!activeDetailCampaign)return;let alive=true;setCampaignLeadError(false);fetch('/api/crm/leads?ownership=all&workScope=all').then(async r=>{if(!r.ok)throw Error('unavailable');const d=await r.json();if(alive)setCampaignLeads(d.leads||[]);}).catch(()=>{if(alive){setCampaignLeads([]);setCampaignLeadError(true);}});return()=>{alive=false};},[activeDetailCampaign?.id]);
+  // Campaign cohort is independent of the worklist's current filters.
+
   const matchedLeadsForActiveCampaign = useMemo(() => {
     if (!activeDetailCampaign) return [];
-    const c = activeDetailCampaign;
-    const cId = c.id.toLowerCase();
-    const cCode = c.code.toLowerCase();
-    const cName = c.name.toLowerCase();
-    const cNameEn = c.nameEn.toLowerCase();
-    return leads.filter((l) => {
-      const camp = (l.campaign || "").trim().toLowerCase();
-      return (
-        camp === cId ||
-        camp === cCode ||
-        camp === cName ||
-        camp === cNameEn ||
-        (camp.includes("binus") && cId.includes("seminar_2026")) ||
-        (camp.includes("indonesia") && cId.includes("c_ui_career_2026")) ||
-        (camp.includes("beasiswa") && cId.includes("c_meta_beasiswa_2026")) ||
-        (camp.includes("partner") && cId.includes("c_b2b_schools"))
-      );
-    });
-  }, [activeDetailCampaign, leads]);
+    return campaignLeads.filter(l => matchesCampaign(l,activeDetailCampaign)&&campaigns.filter(c=>matchesCampaign(l,c)).length===1);
+  }, [activeDetailCampaign, campaignLeads,campaigns]);
   const getTypeIcon = (type: CampaignType) => {
     switch (type) {
       case "campus_seminar":
-        return <GraduationCap className="w-4 h-4 text-blue-500" />;
+        return <GraduationCap className="w-4 h-4 crm-campaign-muted" />;
       case "enterprise_roadshow":
-        return <Briefcase className="w-4 h-4 text-indigo-500" />;
+        return <Briefcase className="w-4 h-4 crm-campaign-muted" />;
       case "webinar_class":
-        return <Video className="w-4 h-4 text-emerald-500" />;
+        return <Video className="w-4 h-4 crm-campaign-muted" />;
       case "social_paid_ad":
-        return <Flame className="w-4 h-4 text-amber-500" />;
+        return <Flame className="w-4 h-4 crm-campaign-muted" />;
       case "community_referral":
-        return <Users className="w-4 h-4 text-purple-500" />;
+        return <Users className="w-4 h-4 crm-campaign-muted" />;
       case "education_fair":
-        return <Award className="w-4 h-4 text-rose-500" />;
+        return <Award className="w-4 h-4 crm-campaign-muted" />;
       default:
-        return <Sparkles className="w-4 h-4 text-slate-500" />;
+        return <Sparkles className="w-4 h-4 crm-campaign-muted" />;
     }
   };
   return (
-    <div className="space-y-5 animate-in fade-in duration-300">
-      {/* 1. Header Hero & Executive Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* Total Campaigns */}
-        <div
-          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${isLight ? "bg-white border-slate-200/90 shadow-2xs" : "bg-slate-900 border-slate-800"}`}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-semibold ${isLight ? "text-slate-600" : "text-slate-300"}`}
-            >
-              {t("Total Campaigns", "营销活动总数")}
-            </span>
-            <Target className="w-4 h-4 text-blue-500" />
-          </div>
-          <div
-            className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-slate-900" : "text-white"}`}
-          >
-            {summaryMetrics.totalCount}
-          </div>
-          <span
-            className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-          >
-            {summaryMetrics.activeCount}{" "}
-            {t("Active & Live", "场进行中")}
-          </span>
-        </div>
-
-        {/* Sourced Leads */}
-        <div
-          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${isLight ? "bg-white border-slate-200/90 shadow-2xs" : "bg-slate-900 border-slate-800"}`}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-semibold ${isLight ? "text-slate-600" : "text-slate-300"}`}
-            >
-              {t("Sourced Leads", "活动获客进线")}
-            </span>
-            <Users className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div
-            className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-indigo-600" : "text-indigo-400"}`}
-          >
-            {summaryMetrics.totalLeads}
-          </div>
-          <span
-            className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-          >
-            {summaryMetrics.totalHot}{" "}
-            {t("Hot Quality Leads", "位高意向客户")}
-          </span>
-        </div>
-
-        {/* Attended / Assessed */}
-        <div
-          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${isLight ? "bg-white border-slate-200/90 shadow-2xs" : "bg-slate-900 border-slate-800"}`}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-semibold ${isLight ? "text-slate-600" : "text-slate-300"}`}
-            >
-              {t("Attended / Assessed", "到场试听/测评")}
-            </span>
-            <Award className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div
-            className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-emerald-600" : "text-emerald-400"}`}
-          >
-            {summaryMetrics.totalAttended}
-          </div>
-          <span
-            className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-          >
-            {t("High Readiness Level", "已锁定真实学习意向")}
-          </span>
-        </div>
-
-        {/* Enrolled Students */}
-        <div
-          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${isLight ? "bg-emerald-50/40 border-emerald-200/70 shadow-2xs" : "bg-emerald-950/20 border-emerald-900/40"}`}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-semibold ${isLight ? "text-emerald-800" : "text-emerald-300"}`}
-            >
-              🎯 {t("Enrolled Students", "闭环签约入班")}
-            </span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div
-            className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-emerald-700" : "text-emerald-300"}`}
-          >
-            {summaryMetrics.totalEnrolled}
-          </div>
-          <span
-            className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-emerald-600/80" : "text-emerald-400/80"}`}
-          >
-            {t("Fully Closed Deals", "完成学费缴纳正式入班")}
-          </span>
-        </div>
-
-        {/* Total GMV Revenue */}
-        <div
-          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${isLight ? "bg-white border-slate-200/90 shadow-2xs" : "bg-slate-900 border-slate-800"}`}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-semibold ${isLight ? "text-slate-600" : "text-slate-300"}`}
-            >
-              {t("Campaign GMV", "活动转化产值")}
-            </span>
-            <DollarSign className="w-4 h-4 text-amber-500" />
-          </div>
-          <div
-            className={`text-xl sm:text-2xl font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-slate-900" : "text-white"}`}
-          >
-            {summaryMetrics.totalRevenue > 0
-              ? `Rp ${(summaryMetrics.totalRevenue / 1000000).toFixed(1)}${t("M", "百万")}`
-              : "Rp 0"}
-          </div>
-          <span
-            className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-          >
-            {t("Direct Sourced Revenue", "获客活动直接产值")}
-          </span>
-        </div>
-
-        {/* Lead-to-Enroll Conversion */}
-        <div
-          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${isLight ? "bg-amber-50/40 border-amber-200/70 shadow-2xs" : "bg-amber-950/20 border-amber-900/40"}`}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-semibold ${isLight ? "text-amber-800" : "text-amber-300"}`}
-            >
-              📈 {t("Lead-to-Enroll Rate", "平均签约转化率")}
-            </span>
-            <TrendingUp className="w-4 h-4 text-amber-500" />
-          </div>
-          <div
-            className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-amber-800" : "text-amber-300"}`}
-          >
-            {summaryMetrics.avgConversion}%
-          </div>
-          <span
-            className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-amber-700/80" : "text-amber-400/80"}`}
-          >
-            {t("Closed Loop Efficiency", "线索到最终签约效率")}
-          </span>
-        </div>
-      </div>
-
+    <div className="crm-campaigns space-y-5 animate-in fade-in duration-300" data-theme={isLight?"light":"dark"}>
+      {campaignError?<p role="alert">{t('Campaign metrics unavailable; refresh to retry.','营销指标暂不可用，请刷新重试。')}</p>:isLoading?<p role="status">{t('Loading campaign metrics…','正在加载营销指标…')}</p>:<CrmCampaignMeasures campaigns={filteredCampaigns} lang={lang} isLight={isLight}/>}
       {/* 2. Control Toolbar: Search, Filters & Action Button */}
       <div
         className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 ${isLight ? "bg-white border-slate-200/90 shadow-2xs" : "bg-slate-900 border-slate-800"}`}
@@ -826,6 +634,7 @@ export function CrmCampaignHub({
             <input
               type="text"
               value={searchQuery}
+              aria-label={t("Search campaigns", "搜索活动")}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t(
                 "Search campaigns, code, venue...",
@@ -884,14 +693,14 @@ export function CrmCampaignHub({
         {/* Right Actions: View switch & New Campaign */}
         <div className="flex items-center gap-2">
           {/* New Campaign Button */}
-          <button
+          {canManageCampaigns&&<button
             type="button"
             onClick={handleOpenCreateWizard}
-            className="flex items-center gap-1.5 h-8 px-3.5 bg-primary-600 hover:bg-primary-500 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-900/20 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 h-8 px-3.5 bg-primary-700 hover:bg-primary-800 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-900/20 transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t("New Campaign", "新建营销活动")}</span>
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -912,18 +721,18 @@ export function CrmCampaignHub({
               "发起一次获客活动，为宣讲会或投放生成专属唯一渠道短链，全自动闭环追踪潜客来源与签约产值。",
             )}
           </p>
-          <button
+          {canManageCampaigns&&<button
             type="button"
             onClick={handleOpenCreateWizard}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+            className="px-4 py-2 bg-primary-700 hover:bg-primary-800 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             {t("+ Create First Campaign", "+ 发起第一个营销活动")}
-          </button>
+          </button>}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCampaigns.map((camp) => {
-            const shortUrl = `https://uperedu.com/chat?c=${camp.code}`;
+            const shortUrl = campaignChatLink(camp.code);
             const typeConfig = CAMPAIGN_TYPE_OPTIONS.find(
               (o) => o.value === camp.type,
             );
@@ -956,7 +765,7 @@ export function CrmCampaignHub({
                     </div>
 
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusConfig?.badgeClass || "bg-slate-500/10 text-slate-500"}`}
+                      className="crm-campaign-status" data-state={camp.status}
                     >
                       {lang === "id"
                         ? crmId(statusConfig?.labelEn)
@@ -967,22 +776,22 @@ export function CrmCampaignHub({
                   </div>
 
                   {/* Campaign Title */}
-                  <h4
+                  <button type="button"
                     onClick={() => {
                       setActiveDetailCampaign(camp);
                       setDetailTab("overview");
                     }}
-                    className={`font-bold text-sm sm:text-base leading-snug cursor-pointer transition-colors line-clamp-2 ${isLight ? "text-slate-900 hover:text-primary-600" : "text-slate-100 hover:text-primary-400"}`}
+                    className={`crm-campaign-title text-left font-bold text-sm sm:text-base leading-snug cursor-pointer transition-colors line-clamp-2 ${isLight ? "text-slate-900 hover:text-primary-600" : "text-slate-100 hover:text-primary-400"}`}
                   >
                     {lang === "id"
                       ? camp.nameEn
                       : lang === "zh"
                         ? camp.name
                         : camp.nameEn}
-                  </h4>
+                  </button>
 
                   {/* Schedule & Location */}
-                  <div className="space-y-1 mt-2.5 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="crm-campaign-muted space-y-1 mt-2.5 text-xs">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                       <span className="truncate">
@@ -1005,10 +814,10 @@ export function CrmCampaignHub({
                     className={`mt-3 p-2 rounded-xl border flex items-center justify-between gap-2 ${isLight ? "bg-slate-50 border-slate-200/80" : "bg-slate-800/60 border-slate-700/60"}`}
                   >
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="text-[10px] uppercase font-bold text-slate-400">
+                      <span className="crm-campaign-muted text-xs">
                         ID:
                       </span>
-                      <code className="text-xs font-mono font-bold text-primary-600 dark:text-primary-400 truncate">
+                      <code className="crm-campaign-muted text-xs font-mono truncate">
                         ?c={camp.code}
                       </code>
                     </div>
@@ -1045,52 +854,9 @@ export function CrmCampaignHub({
                   </div>
                 </div>
 
-                {/* Card Middle: Closed-Loop Funnel Stats */}
-                <div
-                  className={`px-4 sm:px-5 py-3 border-t grid grid-cols-4 gap-2 text-center ${isLight ? "bg-slate-50/70 border-slate-100" : "bg-slate-800/40 border-slate-800"}`}
-                >
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-medium">
-                      {t("Scans", "扫码/打开")}
-                    </div>
-                    <div
-                      className={`text-xs sm:text-sm font-bold font-mono ${isLight ? "text-slate-700" : "text-slate-200"}`}
-                    >
-                      {camp.stats.impressions || 0}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-medium">
-                      {t("Leads", "进线留资")}
-                    </div>
-                    <div
-                      className={`text-xs sm:text-sm font-bold font-mono ${isLight ? "text-indigo-600" : "text-indigo-400"}`}
-                    >
-                      {camp.stats.leadsCount || 0}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-medium">
-                      {t("Attended", "到场/测评")}
-                    </div>
-                    <div
-                      className={`text-xs sm:text-sm font-bold font-mono ${isLight ? "text-emerald-600" : "text-emerald-400"}`}
-                    >
-                      {camp.stats.attendedCount || 0}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-medium">
-                      {t("Enrolled", "签约成交")}
-                    </div>
-                    <div
-                      className={`text-xs sm:text-sm font-bold font-mono ${isLight ? "text-primary-700" : "text-primary-300"}`}
-                    >
-                      {camp.stats.enrolledCount || 0}
-                    </div>
-                  </div>
+                <div className={`px-4 py-3 border-t grid grid-cols-2 sm:grid-cols-4 gap-3 text-center ${isLight?'bg-slate-50 border-slate-200 text-slate-700':'bg-slate-900 border-slate-700 text-slate-200'}`}>
+                  {[[t('Registered customers','已登记客户'),camp.stats.leadsCount],[t('Assessments saved','已保存测评'),camp.stats.assessedCount],[t('Confirmed participation','已确认参与'),camp.stats.confirmedAttendanceCount],[t('Enrollment recorded','已记录报名'),camp.stats.enrolledCount]].map(([label,value])=><div key={label}><p className="text-xs">{label}</p><strong className="text-sm tabular-nums">{value||0}</strong></div>)}
                 </div>
-
                 {/* Card Bottom: Quick Actions */}
                 <div
                   className={`p-3 px-4 sm:px-5 border-t flex items-center justify-between gap-2 ${isLight ? "bg-white border-slate-100" : "bg-slate-900 border-slate-800"}`}
@@ -1134,12 +900,12 @@ export function CrmCampaignHub({
                     >
                       <Users className="w-3 h-3 text-indigo-500" />
                       <span>
-                        {camp.stats.leadsCount || 0} {t("Leads", "线索")}
+                        {camp.stats.leadsCount || 0} {t("Registered leads", "已登记客户")}
                       </span>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  {canManageCampaigns&&<div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => handleOpenEditWizard(camp)}
@@ -1157,7 +923,7 @@ export function CrmCampaignHub({
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </div>
             );
@@ -1241,18 +1007,18 @@ export function CrmCampaignHub({
                   <input
                     type="text"
                     readOnly
-                    value={`https://uperedu.com/chat?c=${activeQrCampaign.code}`}
+                    value={campaignChatLink(activeQrCampaign.code)}
                     className={`w-full font-mono text-xs font-semibold bg-transparent outline-none ${isLight ? "text-primary-700" : "text-primary-400"}`}
                   />
                   <button
                     type="button"
                     onClick={() =>
                       handleCopy(
-                        `https://uperedu.com/chat?c=${activeQrCampaign.code}`,
+                        campaignChatLink(activeQrCampaign.code),
                         "modal-short-link",
                       )
                     }
-                    className="px-2.5 py-1 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold shrink-0 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-primary-700 hover:bg-primary-800 text-white text-xs font-bold shrink-0 cursor-pointer"
                   >
                     {copiedKey === "modal-short-link"
                       ? t("Copied!", "已复制")
@@ -1275,13 +1041,13 @@ export function CrmCampaignHub({
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-[11px] text-slate-500 truncate">
-                    {`https://uperedu.com/chat?c=${activeQrCampaign.code}&utm_source=${activeQrCampaign.boundUtm.utm_source}&utm_medium=${activeQrCampaign.boundUtm.utm_medium}`}
+                    {`${campaignChatLink(activeQrCampaign.code)}&utm_source=${encodeURIComponent(activeQrCampaign.boundUtm.utm_source)}&utm_medium=${encodeURIComponent(activeQrCampaign.boundUtm.utm_medium)}`}
                   </span>
                   <button
                     type="button"
                     onClick={() =>
                       handleCopy(
-                        `https://uperedu.com/chat?c=${activeQrCampaign.code}&utm_source=${activeQrCampaign.boundUtm.utm_source}&utm_medium=${activeQrCampaign.boundUtm.utm_medium}`,
+                        `${campaignChatLink(activeQrCampaign.code)}&utm_source=${encodeURIComponent(activeQrCampaign.boundUtm.utm_source)}&utm_medium=${encodeURIComponent(activeQrCampaign.boundUtm.utm_medium)}`,
                         "modal-full-utm",
                       )
                     }
@@ -1309,7 +1075,7 @@ export function CrmCampaignHub({
                   href={`/chat?c=${activeQrCampaign.code}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="py-2 px-3 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-500 text-white flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  className="py-2 px-3 rounded-xl text-xs font-bold bg-primary-700 hover:bg-primary-800 text-white flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>{t("Open Landing Page", "测试打开落地页")}</span>
@@ -1351,14 +1117,14 @@ export function CrmCampaignHub({
               </div>
 
               <div className="flex items-center gap-2">
-                <button
+                {canManageCampaigns&&<button
                   type="button"
                   onClick={() => handleOpenEditWizard(activeDetailCampaign)}
                   className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer ${isLight ? "bg-white border-slate-200 hover:bg-slate-100 text-slate-600" : "bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300"}`}
                   title={t("Edit campaign", "编辑活动")}
                 >
                   <Edit3 className="w-4 h-4" />
-                </button>
+                </button>}
 
                 <button
                   type="button"
@@ -1401,8 +1167,8 @@ export function CrmCampaignHub({
                 },
                 {
                   id: "analytics",
-                  labelZh: "漏斗与ROI分析",
-                  labelEn: "Funnel & ROI",
+                  labelZh: "统计与归因",
+                  labelEn: "Measures & attribution",
                   icon: BarChart3,
                 },
               ].map((tab) => {
@@ -1446,7 +1212,7 @@ export function CrmCampaignHub({
                         {t("Clean Short Tracking Link", "活动唯一追溯短链")}
                       </div>
                       <code className="text-xs font-mono font-bold text-slate-900 dark:text-white break-all">
-                        https://uperedu.com/chat?c={activeDetailCampaign.code}
+                        {campaignChatLink(activeDetailCampaign.code)}
                       </code>
                     </div>
 
@@ -1455,11 +1221,11 @@ export function CrmCampaignHub({
                         type="button"
                         onClick={() =>
                           handleCopy(
-                            `https://uperedu.com/chat?c=${activeDetailCampaign.code}`,
+                            campaignChatLink(activeDetailCampaign.code),
                             "drawer-short-copy",
                           )
                         }
-                        className="px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-primary-700 hover:bg-primary-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
                       >
                         {copiedKey === "drawer-short-copy" ? (
                           <Check className="w-3.5 h-3.5" />
@@ -1617,7 +1383,7 @@ export function CrmCampaignHub({
                     </span>
                   </div>
 
-                  {matchedLeadsForActiveCampaign.length === 0 ? (
+                  {campaignLeadError?<p role="alert">{t("Campaign customer list unavailable; reopen to retry.","活动客户列表暂不可用，请重新打开重试。")}</p>:matchedLeadsForActiveCampaign.length === 0 ? (
                     <div
                       className={`p-8 text-center rounded-2xl border ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
                     >
@@ -1677,7 +1443,7 @@ export function CrmCampaignHub({
                                   onNavigateTab("leads");
                                 }
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-primary-700 hover:bg-primary-800 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
                             >
                               <span>{t("View in CRM", "在CRM跟进")}</span>
                               <ArrowRight className="w-3 h-3" />
@@ -1884,7 +1650,7 @@ export function CrmCampaignHub({
                     <button
                       type="button"
                       onClick={() => window.print()}
-                      className="px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      className="px-3 py-1.5 rounded-xl bg-primary-700 hover:bg-primary-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
                       <Printer className="w-3.5 h-3.5" />
                       <span>{t("Print This Tent Card", "打印此立牌")}</span>
@@ -1950,132 +1716,16 @@ export function CrmCampaignHub({
 
                     <div className="text-[10px] text-slate-400 border-t pt-3 font-mono">
                       {t(
-                        "Tracking link: https://uperedu.com/chat?c=",
-                        "活动链接：https://uperedu.com/chat?c=",
+                        "Tracking link:",
+                        "活动链接：",
                       )}
-                      {activeDetailCampaign.code}
+                      {campaignChatLink(activeDetailCampaign.code)}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 5: FUNNEL & ROI ANALYTICS */}
-              {detailTab === "analytics" && (
-                <div className="space-y-4">
-                  {/* Funnel Metrics Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                    <div
-                      className={`p-4 rounded-2xl border ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
-                    >
-                      <div className="text-xs text-slate-400 font-semibold mb-1">
-                        {t("QR Scans", "扫码总数")}
-                      </div>
-                      <div className="text-xl font-bold font-mono">
-                        {activeDetailCampaign.stats.impressions || 0}
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-1">
-                        {t("100% of inquiries", "咨询入口占比 100%")}
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-4 rounded-2xl border ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
-                    >
-                      <div className="text-xs text-slate-400 font-semibold mb-1">
-                        {t("Sourced Leads", "进线留资")}
-                      </div>
-                      <div className="text-xl font-bold font-mono text-indigo-600">
-                        {activeDetailCampaign.stats.leadsCount || 0}
-                      </div>
-                      <div className="text-[10px] text-indigo-500 font-semibold mt-1">
-                        {activeDetailCampaign.stats.impressions > 0
-                          ? `${Math.round(((activeDetailCampaign.stats.leadsCount || 0) / activeDetailCampaign.stats.impressions) * 100)}% Lead Rate`
-                          : "0%"}
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-4 rounded-2xl border ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
-                    >
-                      <div className="text-xs text-slate-400 font-semibold mb-1">
-                        {t("Attended / Trial", "到场/试听")}
-                      </div>
-                      <div className="text-xl font-bold font-mono text-emerald-600">
-                        {activeDetailCampaign.stats.attendedCount || 0}
-                      </div>
-                      <div className="text-[10px] text-emerald-500 font-semibold mt-1">
-                        {activeDetailCampaign.stats.leadsCount > 0
-                          ? `${Math.round(((activeDetailCampaign.stats.attendedCount || 0) / activeDetailCampaign.stats.leadsCount) * 100)}% Attendance`
-                          : "0%"}
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-4 rounded-2xl border ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
-                    >
-                      <div className="text-xs text-slate-400 font-semibold mb-1">
-                        {t("Enrolled Students", "签约入班")}
-                      </div>
-                      <div className="text-xl font-bold font-mono text-primary-600">
-                        {activeDetailCampaign.stats.enrolledCount || 0}
-                      </div>
-                      <div className="text-[10px] text-primary-500 font-semibold mt-1">
-                        {activeDetailCampaign.stats.conversionRate}
-                        {t("% overall conversion", "% 总体转化率")}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Financial & ROI Performance */}
-                  <div
-                    className={`p-5 rounded-2xl border space-y-4 ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
-                  >
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      {t(
-                        "Campaign Financials & Investment Return (ROI)",
-                        "财务产值与投资回报率",
-                      )}
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                        <span className="text-xs text-slate-400 block">
-                          {t("Budget Spent", "活动总预算/花费")}
-                        </span>
-                        <span className="text-lg font-bold font-mono text-slate-700 dark:text-slate-300">
-                          Rp{" "}
-                          {(
-                            activeDetailCampaign.stats.budgetCost / 1000000
-                          ).toFixed(1)}
-                          {t("M", "百万")}
-                        </span>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
-                        <span className="text-xs text-emerald-700 dark:text-emerald-300 block">
-                          {t("Generated GMV Revenue", "产生的学费产值")}
-                        </span>
-                        <span className="text-lg font-bold font-mono text-emerald-700 dark:text-emerald-300">
-                          Rp{" "}
-                          {(
-                            activeDetailCampaign.stats.totalRevenue / 1000000
-                          ).toFixed(1)}
-                          {t("M", "百万")}
-                        </span>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                        <span className="text-xs text-amber-800 dark:text-amber-300 block">
-                          {t("Net ROI Return", "投产比 ROI")}
-                        </span>
-                        <span className="text-lg font-bold font-mono text-amber-800 dark:text-amber-300">
-                          {activeDetailCampaign.stats.roi}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {detailTab === "analytics" && <CrmCampaignMeasures campaigns={[activeDetailCampaign]} lang={lang} isLight={isLight} detail/>}
             </div>
           </div>
         </div>
@@ -2478,7 +2128,7 @@ export function CrmCampaignHub({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-500 font-mono">
-                        https://uperedu.com/chat?c=
+                        {campaignChatLink('')}
                       </span>
                       <input
                         type="text"
@@ -3082,7 +2732,7 @@ export function CrmCampaignHub({
                       }
                       setWizardStep((prev) => (prev + 1) as any);
                     }}
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-500 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 bg-primary-700 hover:bg-primary-800 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <span>{t("Next Step", "下一步")}</span>
                     <ChevronRight className="w-3.5 h-3.5" />

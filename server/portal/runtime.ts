@@ -1,3 +1,7 @@
+import {contactStatistics} from "../../src/utils/crmContact.ts";
+import {processMetrics} from "../../src/utils/crmProcessMetrics.ts";
+import {firstTouchAttribution} from "./attribution.ts";
+import {saveSalesWorkflow,WorkflowValidationError} from "./salesWorkflow.ts";
 import {parseLeadFilters,filterAndSummarize} from '../../src/utils/crmLeadFilters.ts';
 import {taskDeadline,leadTier,ensureFollowup,followupReply,type FollowupAction} from './followup.ts';
 import {initializeLocalAccounts,mountLocalAuth} from "./localAuth.ts";
@@ -19,6 +23,7 @@ import {
   type Rule,
 } from "./policy.ts";
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
+import {loadCampaigns} from "../campaignStorage.ts";
 import { mountHskAssessments } from "./assessments.ts";
 const cookieName = "uper_visitor";
 async function visitor(req: Request, res: Response) {
@@ -94,6 +99,45 @@ async function leadAccess(req: Request, permission = "crm.read") {
   ).rows[0];
   if (!l || !allowed(e, l.profile, permission === "crm.read" ? "read" : "write")) fail(404, "Lead not found");
   return { e, l };
+}
+async function visibleLeadProfiles(e:any){
+      const leads = (
+        await pool.query(
+          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'created_at',m.created_at,'source',c.source,'metadata',m.metadata,'status',m.status,'error',m.error) ORDER BY m.sequence) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
+        )
+      ).rows
+        .map((r) => ({...r.profile,chatTranscript:(r.profile.chatTranscript || []).map(normalizeCrmMessage)}))
+        .filter((p) => allowed(e, p))
+;
+      const attention = (
+        await pool.query(
+          `SELECT l.id,clock_timestamp()::text AS observed_at,
+        (SELECT count(*) FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id
+         WHERE i.employee_id=$1 AND o.lead_id=l.id AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=$1 AND lead_id=l.id),'-infinity'::timestamptz)) AS unread_count,
+        (SELECT jsonb_build_object('type',o.type,'at',o.created_at,'source',o.payload->>'source') FROM outbox o WHERE o.lead_id=l.id ORDER BY o.created_at DESC LIMIT 1) AS latest,
+        (SELECT jsonb_agg(jsonb_build_object('id',t.id,'kind',t.kind,'ownerId',t.owner_id,'status',t.status,'dueAt',t.due_at,'details',t.details) ORDER BY t.due_at) FROM followup_tasks t WHERE t.lead_id=l.id AND (t.status IN ('open','overdue') OR (t.status='migration_hold' AND l.profile->>'currentStage' NOT IN ('Enrolled','Lost')))) AS tasks,
+        (SELECT jsonb_agg(jsonb_build_object('id',t.id,'status',t.status,'dueAt',t.due_at)) FROM followup_tasks t WHERE t.lead_id=l.id AND t.status='completed') AS history
+        FROM portal_leads l`,
+          [e.id],
+        )
+      ).rows;
+      const byId = new Map(attention.map((a) => [a.id, a]));
+      for (const lead of leads) {
+        const a = byId.get(lead.id);
+        Object.defineProperty(lead,'_taskHistory',{value:a?.history || [],enumerable:false});
+        lead.contactStats = contactStatistics(lead);
+        lead.attention = {
+          unreadCount: Number(a?.unread_count || 0),
+          observedAt: a?.observed_at,
+          latest: a?.latest,
+          tasks: a?.tasks || [],
+          isMine:
+            lead.owner === e.id ||
+            (a?.tasks || []).some((t) => t.ownerId === e.id),
+        };
+      }
+
+ return leads;
 }
 export async function mountPortal(app: Express) {
   if (!process.env.DATABASE_URL) {
@@ -274,6 +318,7 @@ export async function mountPortal(app: Express) {
         ).rows[0]?.profile || {};
       const profile = {
         ...existing,
+        ...firstTouchAttribution(existing,b),
         ...(existing.quizScore !== undefined && !existing.assessmentProvenance
           ? { assessmentProvenance: "legacy_unverified" }
           : {}),
@@ -289,6 +334,7 @@ export async function mountPortal(app: Express) {
         submittedAt: existing.submittedAt || new Date().toISOString(),
         entryPoint: existing.entryPoint || b.entryPoint || "homepage_widget",
       };
+      if(!locked.lead_id){profile.ownerChangedAt=new Date().toISOString();profile.stageUpdatedAt=profile.submittedAt;}
       for (const k of [
         "currentStatus",
         "goal",
@@ -430,44 +476,14 @@ export async function mountPortal(app: Express) {
     "/api/crm/leads",
     wrap(async (req, res) => {
       const e = await staff(req);
-      const leads = (
-        await pool.query(
-          "SELECT l.profile || jsonb_build_object('chatTranscript',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'timestamp',m.created_at,'created_at',m.created_at,'source',c.source,'metadata',m.metadata,'status',m.status,'error',m.error) ORDER BY m.sequence) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=l.id),'[]'::jsonb)) AS profile FROM portal_leads l ORDER BY created_at DESC",
-        )
-      ).rows
-        .map((r) => ({...r.profile,chatTranscript:(r.profile.chatTranscript || []).map(normalizeCrmMessage)}))
-        .filter((p) => allowed(e, p))
-;
-      const attention = (
-        await pool.query(
-          `SELECT l.id,clock_timestamp()::text AS observed_at,
-        (SELECT count(*) FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id
-         WHERE i.employee_id=$1 AND o.lead_id=l.id AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=$1 AND lead_id=l.id),'-infinity'::timestamptz)) AS unread_count,
-        (SELECT jsonb_build_object('type',o.type,'at',o.created_at,'source',o.payload->>'source') FROM outbox o WHERE o.lead_id=l.id ORDER BY o.created_at DESC LIMIT 1) AS latest,
-        (SELECT jsonb_agg(jsonb_build_object('id',t.id,'kind',t.kind,'ownerId',t.owner_id,'status',t.status,'dueAt',t.due_at) ORDER BY t.due_at) FROM followup_tasks t WHERE t.lead_id=l.id AND (t.status IN ('open','overdue') OR (t.status='migration_hold' AND l.profile->>'currentStage' NOT IN ('Enrolled','Lost')))) AS tasks
-        FROM portal_leads l`,
-          [e.id],
-        )
-      ).rows;
-      const byId = new Map(attention.map((a) => [a.id, a]));
-      for (const lead of leads) {
-        const a = byId.get(lead.id);
-        lead.attention = {
-          unreadCount: Number(a?.unread_count || 0),
-          observedAt: a?.observed_at,
-          latest: a?.latest,
-          tasks: a?.tasks || [],
-          isMine:
-            lead.owner === e.id ||
-            (a?.tasks || []).some((t) => t.ownerId === e.id),
-        };
-      }
+      const leads=await visibleLeadProfiles(e);
       let filters;try {filters=parseLeadFilters(req.query);}catch {fail(400,'Invalid lead filters');}
       const settings=(await pool.query("SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')")).rows;
       const timezone=settings.find(r=>r.id==='sla')?.value.timezone || 'Asia/Jakarta';
       const config={...DEFAULT_CRM_POLICY_CONFIG,...settings.find(r=>r.id==='crm_policy')?.value};
-      const result=filterAndSummarize(leads,filters,e.id,timezone,Date.now(),config);
-      res.json({...result,dataScope:e.scope,employeeId:e.id,timezone,ownerOptions:[...new Set(leads.map(l=>l.owner).filter(Boolean))]});
+      const now=Date.now();
+      const result=filterAndSummarize(leads,filters,e.id,timezone,now,config);
+      res.json({...result,processMetrics:processMetrics(result.leads,now),dataScope:e.scope,employeeId:e.id,timezone,ownerOptions:[...new Set(leads.map(l=>l.owner).filter(Boolean))]});
     }),
   );
   app.post(
@@ -544,11 +560,32 @@ export async function mountPortal(app: Express) {
       if(!current)fail(404,'Lead not found');
       if(current.owner)fail(409,'Lead has already been assigned; refresh the list');
       if(!allowed(e,current))fail(404,'Lead not found');
-      const next={...current,owner:e.id};
+      const next={...current,owner:e.id,ownerChangedAt:new Date().toISOString()};
       await c.query('UPDATE portal_leads SET profile=$2 WHERE id=$1',[l.id,next]);
       await c.query("UPDATE followup_tasks SET owner_id=$2 WHERE lead_id=$1 AND status IN ('open','overdue','migration_hold')",[l.id,e.id]);
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES($1,'lead.claim',$2)",[e.id,{id:l.id,owner:e.id}]);
       await event(c,'conversation.updated',l.id,{source:'crm_assignment',assignmentChanged:true});
+      return next;
+    });res.json({success:true,lead});
+  }));
+  app.post('/api/crm/leads/:id/attendance',wrap(async(req,res)=>{
+    const {l,e}=await leadAccess(req,'crm.write');
+    const b=req.body;
+    if(typeof b.requestId!=='string' || b.requestId.length>100 || !b.requestId.trim())fail(400,'Attendance request ID required');
+    if(!loadCampaigns().some(c=>c.id===b.campaignId))fail(400,'Choose a valid campaign');
+    if(typeof b.confirmed!=='boolean' || !['onsite','online'].includes(b.mode) || typeof b.reason!=='string' || !b.reason.trim() || b.reason.length>2000)fail(400,'Choose participation mode and enter evidence');
+    const input={campaignId:b.campaignId,confirmed:b.confirmed,mode:b.mode,reason:b.reason.trim()};
+    const lead=await tx(async c=>{
+      const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[l.id])).rows[0]?.profile;
+      if(!current || !allowed(e,current,'write'))fail(404,'Lead not found');
+      const previous=(await c.query("SELECT data FROM portal_audit WHERE action='attendance.record' AND data->>'id'=$1 AND data->>'requestId'=$2",[l.id,b.requestId])).rows[0]?.data;
+      if(previous){if(JSON.stringify(previous.input)!==JSON.stringify(input)){
+        const equal=Object.keys(input).every(k=>previous.input[k]===input[k]);if(!equal)fail(409,'Attendance request conflict');
+      }return current;}
+      const record={...input,recordedAt:new Date().toISOString(),actor:e.id};
+      const next={...current,attendanceRecords:[...(current.attendanceRecords||[]).filter(a=>a.campaignId!==input.campaignId),record]};
+      await c.query('UPDATE portal_leads SET profile=$2 WHERE id=$1',[l.id,next]);
+      await c.query("INSERT INTO portal_audit(actor,action,data) VALUES($1,'attendance.record',$2)",[e.id,{id:l.id,requestId:b.requestId,input}]);
       return next;
     });res.json({success:true,lead});
   }));
@@ -560,14 +597,20 @@ export async function mountPortal(app: Express) {
       const next=await tx(async c=>{
         const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[l.id])).rows[0]?.profile;
         if(!current || !allowed(e,current,"write"))fail(404,'Lead not found');
+        if(req.body.communicationLanguage!==undefined && !["en","id","zh","unknown"].includes(req.body.communicationLanguage))fail(400,"Invalid communication language");
+        if(req.body.owner!==undefined && req.body.owner!==null && typeof req.body.owner!=='string')fail(400,'Owner must be an active Sales employee');
         const next={...current};
-        for(const k of ['owner','currentStage','tier','nextAction'])if(req.body[k]!==undefined)next[k]=req.body[k];
-        if(next.owner!==current.owner && !e.permissions.includes('crm.assign'))fail(403,'Lead assignment permission required');
-        if(next.owner!==current.owner && next.owner && !directory.some(person=>person.id===next.owner && person.active===true && person.roles?.includes('sales')))fail(400,'Owner must be an active Sales employee');
+        for(const k of ['owner','currentStage','tier','nextAction','communicationLanguage'])if(req.body[k]!==undefined)next[k]=req.body[k];
+        if(req.body.currentStage!==undefined && !['New','Contacted','Assessment Booked','Assessment Done','Trial Booked','Trial Attended','Enrolled','Lost'].includes(req.body.currentStage))fail(400,'Invalid sales stage');
+        const ownerChanged=(next.owner||null)!==(current.owner||null);
+        if(ownerChanged && !e.permissions.includes('crm.assign'))fail(403,'Lead assignment permission required');
+        if(ownerChanged && next.owner && !directory.some(person=>person.id===next.owner && person.active===true && person.roles?.includes('sales')))fail(400,'Owner must be an active Sales employee');
+        if(ownerChanged)next.ownerChangedAt=new Date().toISOString();
+        if(next.currentStage!==current.currentStage)next.stageUpdatedAt=new Date().toISOString();
         await c.query('UPDATE portal_leads SET profile=$2 WHERE id=$1',[l.id,next]);
-        await c.query("UPDATE followup_tasks SET owner_id=$2 WHERE lead_id=$1 AND status IN ('open','overdue','migration_hold')",[l.id,next.owner]);
+        if(ownerChanged)await c.query("UPDATE followup_tasks SET owner_id=$2 WHERE lead_id=$1 AND status IN ('open','overdue','migration_hold')",[l.id,next.owner]);
         await c.query('INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)',[e.id,'lead.update',{id:l.id,changes:req.body}]);
-        if(next.owner!==current.owner)await event(c,'conversation.updated',l.id,{source:'crm_assignment',assignmentChanged:true});
+        if(ownerChanged)await event(c,'conversation.updated',l.id,{source:'crm_assignment',assignmentChanged:true});
         return next;
       });
       res.json({ success: true, lead: next });
@@ -610,21 +653,8 @@ export async function mountPortal(app: Express) {
   app.post(
     "/api/crm/tasks/:id/complete",
     wrap(async (req, res) => {
-      const e = await staff(req, "crm.write");
-      const t = (
-        await pool.query(
-          "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id WHERE t.id=$1",
-          [req.params.id],
-        )
-      ).rows[0];
-      if (!t || !allowed(e, t.profile,"write")) fail(404, "Task not found");
-      await tx(async c=>{
-        const current=(await c.query('SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE',[t.lead_id])).rows[0]?.profile;
-        if(!current || !allowed(e,current,"write"))fail(404,'Task not found');
-        await c.query("UPDATE followup_tasks SET status='completed' WHERE id=$1",[t.id]);
-        await c.query("UPDATE notification_jobs SET state='cancelled',result='Task completed',completed_at=now() WHERE state='pending' AND snapshot->'payload'->>'taskId'=$1",[t.id]);
-      });
-      res.json({ success: true });
+      await staff(req, "crm.write");
+      fail(400,"Record a follow-up result and explicitly select the task");
     }),
   );
   app.get(
@@ -772,7 +802,8 @@ export async function mountPortal(app: Express) {
       const config=row.config;
       return {id:row.id,team:config.team,mode:config.mode,webhookConfigured:validWebhook(process.env[config.secretRef]),signingSecretConfigured:!(config.signingEnabled ?? !!config.signingSecretRef) || !!process.env[config.signingSecretRef],designatedTestGroup:process.env.LARK_TEST_GROUP===row.id,realReceiptVerified:false};
     });
-    res.json({identity:{mode:process.env.PLATFORM_MODE || 'disabled',adapter:process.env.PLATFORM_MODE==='local'?'local-staff-accounts':'local-fixtures-only',realPlatformVerified:false},channels,releaseReady:false,required:['Real platform identity/directory/scope contract','Designated Lark group receipt with event/job IDs']});
+    const missingReferences=(await pool.query("SELECT r.id,r.config->>'group' AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=r.config->>'group' WHERE r.config->'channels' ? 'lark' AND c.id IS NULL")).rows;
+    res.json({missingReferences,identity:{mode:process.env.PLATFORM_MODE || 'disabled',adapter:process.env.PLATFORM_MODE==='local'?'local-staff-accounts':'local-fixtures-only',realPlatformVerified:false},channels,releaseReady:false,required:['Real platform identity/directory/scope contract','Designated Lark group receipt with event/job IDs']});
   }));
   app.get(
     "/api/crm/notification-jobs",
@@ -860,6 +891,7 @@ export async function mountPortal(app: Express) {
         await pool.query("SELECT value FROM portal_settings WHERE id='sla'")
       ).rows[0].value;
       const b = req.body;
+      if (!b || typeof b !== 'object' || Array.isArray(b) || !Object.keys(b).length) fail(400,'Sales operations configuration required');
       const duration=(d:any)=>{if(!d || !['minutes','hours','days'].includes(d.unit)||!Number.isFinite(d.value)||d.value<=0)fail(400,'Invalid SLA duration');return d.value*(d.unit==='minutes'?1/60:d.unit==='days'?24:1);};
       const next = {
         ...old,
@@ -898,66 +930,13 @@ export async function mountPortal(app: Express) {
     }),
   );
   app.post(
-    ["/api/crm/leads/:id/follow-up", "/api/crm/leads/:id/logs"],
+    ["/api/crm/leads/:id/follow-up", "/api/crm/leads/:id/logs", "/api/crm/leads/:id/contact-arrangement"],
     wrap(async (req, res) => {
       const { l, e } = await leadAccess(req, "crm.write");
-      if (!req.body.summary?.trim()) fail(400, "Follow-up summary required");
-      if (
-        req.body.nextFollowUpAt &&
-        !Number.isFinite(Date.parse(req.body.nextFollowUpAt))
-      )
-        fail(400, "Invalid follow-up date");
-      const log = {
-        ...req.body,
-        staffName: e.id,
-        id: id(),
-        timestamp: new Date().toISOString(),
-        at: new Date().toISOString(),
-        previousStage: l.profile.currentStage,
-      };
-      const updated = await tx(async (c) => {
-        const current = (
-          await c.query(
-            "SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE",
-            [l.id],
-          )
-        ).rows[0].profile;
-        if(!current || !allowed(e,current,"write"))fail(404,'Lead not found');
-        const profile = {
-          ...current,
-          followUpLogs: [...(current.followUpLogs || []), log],
-          lastContactedAt: log.at,
-          touchCount: (current.touchCount || 0) + 1,
-          connectStatus: req.body.connectStatus || l.profile.connectStatus,
-          stageUpdatedAt: log.at,
-          nextFollowUpAt: req.body.nextFollowUpAt || l.profile.nextFollowUpAt,
-          currentStage: req.body.newStage || l.profile.currentStage,
-          nextAction: req.body.nextAction || l.profile.nextAction,
-        };
-        await c.query("UPDATE portal_leads SET profile=$2 WHERE id=$1", [
-          l.id,
-          profile,
-        ]);
-        await c.query(
-          "UPDATE followup_tasks SET status='completed' WHERE lead_id=$1 AND status IN ('open','overdue')",
-          [l.id],
-        );
-        if (
-          req.body.nextFollowUpAt &&
-          !["Enrolled", "Lost"].includes(profile.currentStage)
-        )
-          await c.query(
-            "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES($1,$2,'follow_up',$3,$4)",
-            [
-              id(),
-              l.id,
-              profile.owner || null,
-              new Date(req.body.nextFollowUpAt),
-            ],
-          );
-        return profile;
-      });
-      res.json({ success: true, lead: updated });
+      try {
+        const result=await tx(c=>saveSalesWorkflow(c,l.id,e.id,req.body,current=>allowed(e,current,"write")));
+        res.json({success:true,...result});
+      } catch(error){fail(error instanceof WorkflowValidationError?400:503,error instanceof WorkflowValidationError?error.message:"Follow-up service unavailable");}
     }),
   );
   app.post(
@@ -975,15 +954,17 @@ export async function mountPortal(app: Express) {
     "/api/crm/export",
     wrap(async (req, res) => {
       const e = await staff(req, "crm.export");
-      const rows = (await pool.query("SELECT profile FROM portal_leads")).rows
-        .map((r) => r.profile)
-        .filter((p) => allowed(e, p));
-      res.attachment("leads.json").json(rows);
+      const rows=await visibleLeadProfiles(e);
+      let filters;try{filters=parseLeadFilters(req.query);}catch{fail(400,'Invalid lead filters');}
+      const settings=(await pool.query("SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')")).rows;
+      const timezone=settings.find(r=>r.id==='sla')?.value.timezone||'Asia/Jakarta';
+      const config={...DEFAULT_CRM_POLICY_CONFIG,...settings.find(r=>r.id==='crm_policy')?.value};
+      res.attachment("leads.json").json(filterAndSummarize(rows,filters,e.id,timezone,Date.now(),config).leads);
     }),
   );
   app.use("/api/crm/campaigns", (req, res, next) => {
     staff(req, req.method === "GET" ? "crm.read" : "notifications.manage")
-      .then(() => next())
+      .then(e => {res.locals.crmEmployee=e;next();})
       .catch((e) => res.status(e.status || 503).json({ error: e.message }));
   });
   app.use("/api/crm", (q, r, next) => {

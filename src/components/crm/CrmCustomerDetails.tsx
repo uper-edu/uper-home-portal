@@ -86,9 +86,9 @@ export function CrmCustomerProfile({
       <section>
         <h3>{t("Ownership and sales progress", "客户归属与销售进展")}</h3>
         {ownership}
-        <Facts
+        <p>{t("Customer group", "客户分组")}：{crmValue(lead.tier, lang)}</p>
+        <details><summary>{t("Classification evidence", "分组依据")}</summary><Facts
           items={[
-            [t("Customer group", "客户分组"), crmValue(lead.tier, lang)],
             [
               t("Classification source", "分组来源"),
               (lang === "id"
@@ -117,7 +117,7 @@ export function CrmCustomerProfile({
                 ) || t("None recorded", "尚未记录"),
             ],
           ]}
-        />
+        /></details>
       </section>
       <section>
         <h3>{t("Learning needs", "学习需求")}</h3>
@@ -141,19 +141,20 @@ export function CrmCustomerProfile({
         />
       </section>
       <section>
-        <h3>{t("Attribution", "来源归因")}</h3>
+        <details><summary>{t("Attribution", "来源归因")}</summary>
         <Facts
           items={[
             [t("First source", "首次来源"), crmValue(lead.entryPoint, lang)],
             [t("Campaign", "营销活动"), lead.campaign],
+            [t("Campaign ID", "活动标识"), (lead as any).campaignId],
             [t("Placement", "投放位置"), crmValue(lead.placement, lang)],
             [t("Entry offer", "引导内容"), crmValue(lead.hookType, lang)],
             [t("Entry context", "入口场景"), crmValue(lead.hookContext, lang)],
           ]}
-        />
+        /></details>
       </section>
       <section>
-        <h3>{t("Recorded outcome", "已登记业务结果")}</h3>
+        <details open={Boolean(lead.outcome)}><summary>{t("Recorded outcome", "已登记业务结果")}</summary>
         <Facts
           items={[
             [t("Outcome", "结果"), customerOutcome(lead.outcome, lang)],
@@ -164,16 +165,14 @@ export function CrmCustomerProfile({
                 ? `Rp ${lead.revenue.toLocaleString(crmLocale(lang))}`
                 : "—",
             ],
-            [
-              t("Attendance confirmed", "已确认出席"),
-              lead.attendanceConfirmed === undefined
-                ? t("Not recorded", "未记录")
-                : lead.attendanceConfirmed
+            ...(lead.attendanceConfirmed===undefined?[]:[[
+              t("Legacy attendance flag (unscoped)", "历史出席标记（未关联活动）"),
+              lead.attendanceConfirmed
                   ? t("Yes", "是")
                   : t("No", "否"),
-            ],
+            ] as [string,React.ReactNode]]),
           ]}
-        />
+        /></details>
       </section>
     </div>
   );
@@ -204,7 +203,10 @@ export function CrmCustomerAssessment({ lead, lang, timezone }: DetailProps) {
       <section>
         <h3>{t("Current placement evidence", "当前定级依据")}</h3>
         <p>{summary.conclusion}</p>
+        {summary.kind==="teacher"&&<Facts items={[[t("Teacher","教师"),t("Not recorded","未记录")],[t("Placement date","定级时间"),t("Not recorded","未记录")]]}/>}
+
         <p className="crm-work-muted">{summary.detail}</p>
+        <p>{summary.kind==="teacher"?t("Review teacher evidence before discussing course options","先查看教师定级依据，再讨论课程选择"):summary.kind==="assessment"?t("Use the assessment as a reference; confirm learning needs with an advisor","测评仅作参考，请与顾问确认学习需求"):t("Confirm learning experience and consider an assessment","确认学习经历，必要时建议测评")}</p>
         {summary.kind === "assessment" && (
           <p className="crm-work-muted">
             {t(
@@ -220,7 +222,7 @@ export function CrmCustomerAssessment({ lead, lang, timezone }: DetailProps) {
       </section>
       {result && (
         <section>
-          <h3>{t("Latest assessment record", "最近一次测评记录")}</h3>
+          <details><summary>{t("Latest assessment record", "最近一次测评记录")}</summary>
           {summary.kind === "teacher" && (
             <>
               <p>{paper.conclusion}</p>
@@ -233,17 +235,14 @@ export function CrmCustomerAssessment({ lead, lang, timezone }: DetailProps) {
                 t("Completed", "完成时间"),
                 knownDate(result.attempt?.completedAt, timezone, lang),
               ],
-              [t("Exam version", "试卷版本"), result.attempt?.examVersion],
-              [
-                t("Scoring version", "评分版本"),
-                result.attempt?.scoringVersion,
-              ],
+
               [t("Questions", "题目数量"), result.questionCount ?? "—"],
               [t("Correct answers", "正确题数"), result.correctCount ?? "—"],
               [t("Skipped", "跳过题数"), result.skippedCount ?? "—"],
               [t("Unanswered", "未作答题数"), result.unansweredCount ?? "—"],
             ]}
           />
+          <details><summary>{t("Technical evidence","技术与审计依据")}</summary><Facts items={[[t("Exam version","试卷版本"),result.attempt?.examVersion],[t("Scoring version","评分版本"),result.attempt?.scoringVersion]]}/></details>
           {sections.length > 0 && (
             <table className="crm-assessment-sections">
               <caption>{t("Section results", "分项结果")}</caption>
@@ -270,7 +269,7 @@ export function CrmCustomerAssessment({ lead, lang, timezone }: DetailProps) {
                 ))}
               </tbody>
             </table>
-          )}
+          )}</details>
         </section>
       )}
       {!result && summary.kind === "assessment" && (
@@ -316,12 +315,14 @@ export function CrmCustomerConversations({
   lead,
   lang,
   timezone,
-}: DetailProps) {
+  onAssociate,
+}: DetailProps & {onAssociate?: (message:any)=>void}) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const [data, setData] = useState<{
     messages: ConversationMessage[];
     conversations: Conversation[];
+    tasks: any[];
   } | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -338,13 +339,14 @@ export function CrmCustomerConversations({
     Promise.all([
       read(`/api/crm/leads/${encodeURIComponent(lead.id)}`),
       read(`/api/crm/leads/${encodeURIComponent(lead.id)}/conversations`),
+      read(`/api/crm/leads/${encodeURIComponent(lead.id)}/tasks`),
     ])
-      .then(([detail, conversations]) => {
+      .then(([detail, conversations, tasks]) => {
         if (!controller.signal.aborted)
           setData({
             messages:
               detail.chatTranscript || detail.lead?.chatTranscript || [],
-            conversations,
+            conversations,tasks,
           });
       })
       .catch((e) => {
@@ -379,8 +381,11 @@ export function CrmCustomerConversations({
         {t("No conversations recorded", "暂无对话记录")}
       </p>
     );
+  ids.sort((a,b)=>{const latest=(id:string)=>Math.max(0,...data.messages.filter(m=>(m.conversation_id||"legacy")===id).map(m=>Date.parse(m.timestamp)||0));return latest(b)-latest(a);});
+  const latestUser=data.messages.filter(m=>m.role==="user").sort((a,b)=>(Date.parse(b.timestamp)||0)-(Date.parse(a.timestamp)||0))[0];
   return (
     <div className="crm-customer-conversations">
+      {latestUser&&<button type="button" className="crm-work-button" onClick={()=>document.getElementById('crm-message-'+latestUser.id)?.scrollIntoView({block:'center'})}>{t("Latest customer message","最新客户消息")}</button>}
       {ids.map((id) => {
         const conversation = data.conversations.find((c) => c.id === id),
           messages = data.messages.filter(
@@ -397,14 +402,13 @@ export function CrmCustomerConversations({
             </h3>
             <div className="crm-work-muted">
               {t("Conversation", "会话")} ·{" "}
-              {id === "legacy"
-                ? t("Historical record", "历史记录")
-                : id.slice(0, 12)}{" "}
+              {crmMessageTimeLabel(messages[0],lang,value=>formatCrmOperatingTime(value,timezone))}{" "}
               · {messages.length}{" "}
               {t(messages.length === 1 ? "message" : "messages", "条消息")}
             </div>
+            <details><summary>{t("Conversation reference","会话标识")}</summary><code>{id}</code></details>
             {messages.map((m, i) => (
-              <article
+              <article id={'crm-message-'+m.id}
                 key={m.id || i}
                 className="crm-conversation-message"
                 data-role={m.role}
@@ -421,6 +425,8 @@ export function CrmCustomerConversations({
                   )}
                 </div>
                 <p>{m.content}</p>
+                {m.metadata?.followupAction&&<p className="crm-work-muted">{(()=>{const task=data.tasks.find(task=>task.id===m.metadata?.taskId);return !task?t("Follow-up status unavailable","跟进状态暂不可用"):task.status==="completed"?t("Follow-up completed","跟进事项已完成"):task.status==="cancelled"?t("Follow-up cancelled","跟进事项已取消"):task.status==="migration_hold"?t("Historical task: review required","历史待办待确认"):task.owner_id?t("Advisor follow-up assigned","已分配顾问跟进"):t("Advisor follow-up unassigned","顾问跟进待分配");})()}</p>}
+                {m.role==="user"&&m.id&&m.conversation_id&&onAssociate&&<button type="button" className="crm-work-link" onClick={()=>onAssociate(m)}>{t("Link to follow-up","关联到跟进")}</button>}
                 {["failed", "interrupted", "pending", "generating"].includes(
                   m.status || "",
                 ) && (

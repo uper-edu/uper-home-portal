@@ -34,9 +34,9 @@
 .crm-filter-main {
   display: grid;
   grid-template-columns:
-    minmax(220px, 1fr) minmax(180px, 0.7fr) minmax(180px, 0.7fr)
+    minmax(140px, .6fr) minmax(220px, 1fr) minmax(180px, 0.7fr) minmax(180px, 0.7fr)
     auto auto auto;
-  grid-template-areas: "search owner task unread more reset";
+  grid-template-areas: "scope search owner task unread more reset";
   align-items: center;
   gap: 8px;
 }
@@ -58,6 +58,7 @@
   height: var(--cf-control-height);
   padding: 0 10px;
 }
+.crm-filter-workscope { grid-area: scope; min-width:0; }
 .crm-filter-search {
   grid-area: search;
 }
@@ -289,7 +290,7 @@
   .crm-filter-main {
     grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto auto auto;
     grid-template-areas:
-      "search search search search search"
+      "scope search search search search"
       "owner task unread more reset";
   }
 }
@@ -297,6 +298,7 @@
   .crm-filter-main {
     grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
+      "scope scope scope"
       "search search search"
       "owner owner owner"
       "task task task"
@@ -307,7 +309,7 @@
   .crm-filter-main {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     grid-template-areas:
-      "search search search search search search"
+      "scope scope search search search search"
       "owner owner owner task task task"
       "unread unread more more reset reset";
   }
@@ -351,6 +353,7 @@
   .crm-filter-main {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
+      "scope scope"
       "search search"
       "owner owner"
       "task task"

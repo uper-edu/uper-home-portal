@@ -1,3 +1,4 @@
+import {clearStaffDrafts} from "../utils/crmDrafts";
 import { ArrowRight, LockKeyhole, Users, ListChecks, Bell } from "lucide-react";
 import "./crm/crm-sign-in.css";
 import { CrmLanguageSelect } from "./crm/CrmLanguageSelect";
@@ -98,7 +99,7 @@ async function auth(path: string, body?: any) {
     cache: "no-store",
   });
   const d = await r.json();
-  if (!r.ok) throw Error(d.error || "Authentication failed");
+  if (!r.ok) throw Object.assign(Error(d.error || "Authentication failed"),{status:r.status});
   return d;
 }
 export default function CrmAccess({
@@ -110,6 +111,7 @@ export default function CrmAccess({
     setLang: (value: CrmLanguage) => void,
   ) => React.ReactNode;
 }) {
+  const [connectionProblem,setConnectionProblem]=useState(false);
   const [lang, setLang] = useCrmLanguage();
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
@@ -133,10 +135,10 @@ export default function CrmAccess({
     if (!employee) return;
     const timer = setInterval(() => {
       auth("me")
-        .then((d) => setEmployee(d.employee))
-        .catch(() => {
-          setEmployee(null);
-          setChange(false);
+        .then((d) => {setEmployee(d.employee);setConnectionProblem(false);})
+        .catch((error:any) => {
+          if([401,403].includes(error.status)){setEmployee(null);setChange(false);}
+          else setConnectionProblem(true);
         });
     }, 60000);
     return () => clearInterval(timer);
@@ -251,6 +253,7 @@ export default function CrmAccess({
           setBusy(true);
           try {
             await auth("logout", {});
+            clearStaffDrafts(employee.id);
             setEmployee(null);
             setChange(false);
             setCurrent("");
@@ -265,6 +268,7 @@ export default function CrmAccess({
         },
       }}
     >
+      {connectionProblem&&<p role="status" className="p-3 border border-amber-500">{lang==='zh'?'连接暂不可用，工作区和草稿仍保留；请恢复连接后重试。':lang==='id'?'Koneksi sementara tidak tersedia. Ruang kerja dan draf tetap disimpan; coba lagi setelah tersambung.':'Connection temporarily unavailable. Your workspace and draft remain; retry after reconnecting.'}</p>}
       {children(employee, lang, setLang)}
       {change && (
         <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6">

@@ -33,6 +33,8 @@ import {
 } from './server/policyStorage.ts';
 import {
   getEnrichedCampaigns,
+  loadCampaigns,
+  getCurrentCampaigns,
   getCampaignByIdOrCode,
   saveCampaign,
   deleteCampaign,
@@ -1207,9 +1209,11 @@ Language: Please output the summary in standard Chinese and Indonesian dual-lang
   // ==========================================
   // Campaign & Channel Tracking Hub Endpoints
   // ==========================================
-  app.get(['/api/crm/campaigns', '/api/campaigns'], (req, res) => {
+  app.get(['/api/crm/campaigns', '/api/campaigns'], async (req, res) => {
     try {
-      const campaigns = getEnrichedCampaigns();
+      const campaigns = req.path.startsWith('/api/crm/')
+        ? await getCurrentCampaigns(res.locals.crmEmployee)
+        : loadCampaigns().map(({stats,...campaign})=>campaign);
       res.json({ success: true, campaigns });
     } catch (err: any) {
       console.error('[CAMPAIGN API ERROR] Fetch campaigns failed:', err);
@@ -1217,10 +1221,11 @@ Language: Please output the summary in standard Chinese and Indonesian dual-lang
     }
   });
 
-  app.get(['/api/crm/campaigns/:idOrCode', '/api/campaigns/:idOrCode'], (req, res) => {
+  app.get(['/api/crm/campaigns/:idOrCode', '/api/campaigns/:idOrCode'], async (req, res) => {
     try {
       const idOrCode = Array.isArray(req.params.idOrCode) ? req.params.idOrCode[0] : req.params.idOrCode;
-      const campaign = getCampaignByIdOrCode(idOrCode);
+      const campaigns=req.path.startsWith('/api/crm/') ? await getCurrentCampaigns(res.locals.crmEmployee) : loadCampaigns().map(({stats,...campaign})=>campaign);
+      const campaign = campaigns.find(c => [c.id,c.code,c.name,c.nameEn].some(v=>v?.toLowerCase()===idOrCode.toLowerCase()));
       if (!campaign) {
         return res.status(404).json({ error: 'Campaign not found' });
       }

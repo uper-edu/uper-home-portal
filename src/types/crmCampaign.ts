@@ -57,15 +57,20 @@ export interface CampaignAiAssets {
 }
 
 export interface CampaignClosedLoopStats {
-  impressions: number;       // 扫码/打开 PV/UV
+  impressions: number;       // 链接打开次数（含重复）；不是 UV 或到场
   leadsCount: number;        // 获客入库数 (Sourced Leads)
   hotLeadsCount: number;     // Hot 高意向数
-  attendedCount: number;     // 试听/到场出席数 (Trial Attended)
-  enrolledCount: number;     // 签约成交数 (Enrolled)
-  totalRevenue: number;      // 实际产生学费 GMV (IDR)
-  conversionRate: number;    // 转化率 % (enrolled / leadsCount)
+  assessedCount: number;     // 已保存服务端测评结果的客户记录数；不是活动到场人数
+  enrolledCount: number;     // 已记录报名；不证明已缴费或入班
+  totalRevenue: number;      // 已登记金额 IDR；缺失金额另报，不推定收款
+  conversionRate: number | null; // 首次归因登记客户的报名占比；无分母不可计算
+  assessmentRate?: number | null;
+  confirmedAttendanceCount?: number;
+  onsiteAttendanceCount?: number;
+  onlineAttendanceCount?: number;
+  revenueMissingCount?: number;
   budgetCost: number;        // 活动投入总预算 (IDR)
-  roi: number;               // 投资回报率 %
+  roi: number | null;        // 预算与登记金额不能证明实际利润
 }
 
 export interface CrmCampaignRecord {

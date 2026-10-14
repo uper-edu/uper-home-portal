@@ -43,3 +43,5 @@ CREATE TABLE IF NOT EXISTS crm_users(id text PRIMARY KEY, login_id text NOT NULL
 CREATE UNIQUE INDEX IF NOT EXISTS crm_users_login ON crm_users(lower(login_id));
 CREATE TABLE IF NOT EXISTS crm_sessions(token_hash text PRIMARY KEY, user_id text NOT NULL REFERENCES crm_users(id), expires_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS crm_login_limits(key text PRIMARY KEY, failures integer NOT NULL DEFAULT 0, window_start timestamptz NOT NULL DEFAULT now());
+
+ALTER TABLE followup_tasks ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}';

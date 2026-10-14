@@ -1,7 +1,7 @@
 import { crmId } from "../../utils/crmIndonesian";
 import React from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
-import { leadFollowUp } from "../../utils/crmFollowUp";
+import { leadFollowUp,emptyFollowUpLabel } from "../../utils/crmFollowUp";
 export function CrmFollowUp({
   lead,
   lang,
@@ -58,7 +58,7 @@ export function CrmFollowUp({
       ) : (
         <div className="crm-followup-secondary">
           {summary.loaded
-            ? t("No open tasks", "暂无待办")
+            ? emptyFollowUpLabel(lead,lang)
             : t("Follow-up unavailable", "跟进信息暂不可用")}
         </div>
       )}

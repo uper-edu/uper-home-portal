@@ -1,3 +1,11 @@
+import {CrmAttendanceEditor} from "../components/crm/CrmAttendanceEditor";
+import {CrmProcessOverview} from "../components/crm/CrmProcessOverview";
+import type {ProcessMetrics} from "../utils/crmProcessMetrics";
+import {draftsFor} from "../utils/crmDrafts";
+import {CrmOperationalIssues} from "../components/crm/CrmOperationalIssues";
+import {CrmContactPreview} from "../components/crm/CrmContactPreview";
+import {contactStatistics} from "../utils/crmContact";
+import {CrmWorkflowForm} from "../components/crm/CrmWorkflowForm";
 import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
 import { CrmLanguageSelect } from "../components/crm/CrmLanguageSelect";
 import { crmId } from "../utils/crmIndonesian";
@@ -101,6 +109,7 @@ import { crmAssessmentSummary } from "../utils/crmAssessment";
 import "../components/crm/crm-customer-workspace.css";
 import "../components/crm/crm-assessment.css";
 import "../components/crm/crm-followup.css";
+import "../components/crm/crm-process.css";
 import {
   CrmPolicySettings,
   PolicyActionControls,
@@ -109,46 +118,10 @@ import { CrmUserGuide } from "../components/crm/CrmUserGuide";
 import { CrmCampaignHub } from "../components/crm/CrmCampaignHub";
 // Proven Objection Handling Playbook for EdTech Advisory
 export const OBJECTION_HANDLING_ITEMS = [
-  {
-    tag: "学费价格",
-    tagEn: "Tuition & Price",
-    question: "学费觉得有点贵，有没有打折或者额外优惠？",
-    questionEn: "Tuition feels a bit high, any discounts or promos?",
-    answer:
-      "“UPER 采用中印双师制 + 小班精细化分层授课，折算单课时仅约 Rp 85,000，且已包含中方全套原版备考教材与 1v1 口语模考诊断。目前本期开班有【早鸟名额减免 Rp 300,000】，今天帮您锁定名额，还可以赠送 2 次课后难点回放辅导。”",
-    answerEn:
-      '"UPER offers dual-instructor small classes, breaking down to just ~Rp 85k/hr including original official exam materials and 1-on-1 speaking mock test. We currently have an Early Bird voucher (Rp 300k off) if locked today, plus 2 complimentary replay review sessions."',
-  },
-  {
-    tag: "模式效果",
-    tagEn: "Online vs Offline",
-    question: "线上课效果能保障吗？会不会听不懂或者容易走神？",
-    questionEn: "Will online classes be effective? Worried about losing focus.",
-    answer:
-      "“我们的线上直播班每班限定 6~8 人，全程强制开麦开视频互动，主讲老师随堂点名提问与发音纠偏，助教课后 1v1 跟进打卡作业。更重要的是，支持随堂永久回放；若后续您方便，还支持无缝平移至雅加达 PIK 校区面授班！”",
-    answerEn:
-      '"Our live Zoom cohorts cap at 6-8 students with mandatory camera & microphone interactions. Real-time pronunciation corrections and 1v1 TA homework coaching ensure high retention. Plus, lifetime replays and free transfer to our PIK campus anytime!"',
-  },
-  {
-    tag: "时间安排",
-    tagEn: "Busy Schedule",
-    question: "平时上班/上学很忙，如果加班缺课了怎么办？",
-    questionEn: "Very busy with work/school, what if I miss a class?",
-    answer:
-      "“我们专门为印尼中资企业职场人和学生开设了【周六/周日周末集训班】及【平日晚间黄金班】。每次课都会生成高清录播与板书笔记，助教提供专属补课指导；同时我们支持首周不满意免手续费退转班，完全没有后顾之忧。”",
-    answerEn:
-      '"We offer dedicated Saturday/Sunday weekend tracks and weekday evening classes. Every session generates cloud replays and whiteboard notes with 1v1 TA catch-up. Plus full flexibility guarantee during week 1."',
-  },
-  {
-    tag: "决策商量",
-    tagEn: "Need to Consult",
-    question: "我还需要跟家长/配偶商量一下，过几天再说。",
-    questionEn: "Need to discuss with parents/spouse first.",
-    answer:
-      "“非常理解，学习确实是家庭的一项重要规划！我先把我们为印尼学员定制的《UPER 课程分级大纲与印尼中资名企薪酬前景指南》PDF 发到您的 WhatsApp 上，方便您和家人一起参考。因为本期班级仅剩 3 个席位，我先为您保留 48 小时优惠名额，周五下午给您发条信息确认，您看可以吗？”",
-    answerEn:
-      '"Understood! I will send the course syllabus PDF and career outlook guide to your WhatsApp for family review. Since only 3 seats remain for this batch, I will hold your spot for 48h and follow up Friday afternoon."',
-  },
+{tag:"学费价格",tagEn:"Tuition & Price",question:"学费及优惠如何确认？",questionEn:"How can we confirm fees and offers?",answer:"先确认所选课程，再核实当前价格、付款方式和优惠条件。未核实前不承诺金额或优惠。",answerEn:"Confirm the course, then verify current fees, payment options and offer conditions before quoting."},
+{tag:"模式效果",tagEn:"Online vs Offline",question:"授课方式是否合适？",questionEn:"Which learning format fits?",answer:"了解客户设备、学习环境与偏好，再核实课程的授课方式和支持安排。",answerEn:"Check the customer's equipment, learning environment and preferences, then verify the course format and support."},
+{tag:"时间安排",tagEn:"Busy Schedule",question:"客户何时可以上课？",questionEn:"When can the customer attend?",answer:"记录可上课时间，查询实际课表，并核实缺课、补课和回放政策。",answerEn:"Record availability, check the actual timetable and verify absence, catch-up and replay policies."},
+{tag:"决策商量",tagEn:"Need to Consult",question:"还需要与谁商量？",questionEn:"Who else needs to be consulted?",answer:"确认需要的资料和参与决策的人，征得同意后安排下次联系。",answerEn:"Confirm the information and decision-makers involved, then agree on a follow-up time."},
 ];
 // Unified Global Stage Master Dictionary
 export const STAGE_OPTIONS: {
@@ -238,27 +211,23 @@ function CrmWorkspace({
   const [policyControls, setPolicyControls] =
     useState<PolicyActionControls | null>(null);
   const [leads, setLeads] = useState<CrmLeadRecord[]>([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    hot: 0,
-    warmOffline: 0,
-    warmOnline: 0,
-    school: 0,
-    coldNurture: 0,
-    overdueSla: 0,
-    enrolled: 0,
-    conversionRate: "0.0%",
-  });
   const [isLoading, setIsLoading] = useState(true);
   const [dataScope, setDataScope] = useState<"own" | "team" | "all">("all");
   const [leadActionError, setLeadActionError] = useState("");
-  const [filters, setFilters] = useState<LeadFilters>(() =>
-    defaultLeadFilters(employee.scope),
-  );
+  const draftCache=useRef<Record<string,any>>(draftsFor(employee.id));
+  const attendanceCache=useRef<Record<string,any>>(draftsFor(employee.id,'attendance'));
+  const [retainedDraft,setRetainedDraft]=useState<any>(null);
+  const [queueComplete,setQueueComplete]=useState(false);
+  const [administrative,setAdministrative]=useState(false);
+  const [contactPreview,setContactPreview]=useState(false);
+  const [contactScripts,setContactScripts]=useState<any>(undefined);
+  const [filters, setFilters] = useState<LeadFilters>(() => {try {return JSON.parse(localStorage.getItem('crm_filters_v2_'+employee.id)||'null')||defaultLeadFilters(employee.roles.includes('crm_leader')?'all':employee.scope);}catch{return defaultLeadFilters(employee.scope);}});
+  useEffect(()=>{localStorage.setItem('crm_filters_v2_'+employee.id,JSON.stringify(filters));},[filters,employee.id]);
   const [appliedSearch, setAppliedSearch] = useState("");
   const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
   const [filterTimezone, setFilterTimezone] = useState("Asia/Jakarta");
-  const [showOverview, setShowOverview] = useState(false);
+  const [showOverview, setShowOverview] = useState(employee.roles.includes("crm_leader"));
+  const [processOverview,setProcessOverview]=useState<ProcessMetrics|null>(null);
   const requestVersion = useRef(0);
   const queryKey = filterQuery({ ...filters, search: appliedSearch });
   useEffect(() => {
@@ -323,7 +292,6 @@ function CrmWorkspace({
     }
     return "worklist";
   });
-  const dynamicOverdueCount = stats.overdueSla;
   const filteredLeads = leads;
   const hasActiveFilters =
     filterQuery(filters) !== filterQuery(defaultLeadFilters("all"));
@@ -337,7 +305,6 @@ function CrmWorkspace({
     }
   };
   // Follow-up form state
-  const staffName = employee.id;
   const [employees, setEmployees] = useState<
     Array<{
       id: string;
@@ -360,38 +327,27 @@ function CrmWorkspace({
   useEffect(() => {
     if (!canManage && crmModule === "policy") setCrmModule("leads");
   }, [canManage, crmModule]);
-  const [channel, setChannel] = useState<
-    "WhatsApp" | "Phone Call" | "Campus Visit" | "Email" | "Other"
-  >("WhatsApp");
-  const [connectStatus, setConnectStatus] =
-    useState<ConnectStatusType>("Connected");
-  const [newStage, setNewStage] = useState<StageType>("Contacted");
-  const [buyingSignalDetected, setBuyingSignalDetected] =
-    useState<BuyingSignalType>("None yet");
-  const [notesSummary, setNotesSummary] = useState("");
-  const [nextAction, setNextAction] = useState("");
-  const [nextFollowUpAt, setNextFollowUpAt] = useState("");
+  const [workflowSource,setWorkflowSource]=useState<any>();
+  const [workflowTask,setWorkflowTask]=useState<string|undefined>();
+  const [workflowDirty,setWorkflowDirty]=useState(false);
+  const [attendanceDirty,setAttendanceDirty]=useState(false);
+  const [attendanceReset,setAttendanceReset]=useState(0);
+  const [profileSave,setProfileSave]=useState("");
+  const [workflowNotice,setWorkflowNotice]=useState<any>(null);
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const listScroll = useRef(0);
-  const hasDraft =
-    isAddLogOpen &&
-    (notesSummary.trim() !== "" ||
-      channel !== "WhatsApp" ||
-      connectStatus !== "Connected" ||
-      newStage !== (selectedLead?.currentStage || "Contacted") ||
-      buyingSignalDetected !== (selectedLead?.buyingSignal || "None yet") ||
-      nextAction !== (selectedLead?.nextAction || "") ||
-      nextFollowUpAt !== (selectedLead?.nextFollowUpAt || ""));
+  const hasDraft = (isAddLogOpen && workflowDirty)||Boolean(selectedLead&&attendanceDirty);
   const [pendingNavigation, setPendingNavigation] = useState<
     (() => void) | null
   >(null);
   const clearDraft = () => {
-    setNotesSummary("");
+    if(selectedLead){delete draftCache.current[selectedLead.id];delete attendanceCache.current[selectedLead.id];}
+    setAttendanceDirty(false);setAttendanceReset(n=>n+1);
+    setWorkflowDirty(false);
     setIsAddLogOpen(false);
-    setChannel("WhatsApp");
-    setConnectStatus("Connected");
   };
+  const resumeDraft=()=>{setPendingNavigation(null);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>(attendanceDirty?'.crm-attendance-editor textarea':'.crm-workflow-form textarea')?.focus());};
   const discardDraft = (proceed: () => void = () => {}) => {
     if (isSubmittingLog) return false;
     if (hasDraft) {
@@ -438,6 +394,7 @@ function CrmWorkspace({
       const res = await fetch(`/api/crm/leads?${queryKey}`);
       if (version !== requestVersion.current) return;
       if (!res.ok) {
+        if([401,403].includes(res.status)){setLeads([]);setOwnerOptions([]);}
         const error = await res.json();
         throw Error(error.error || String(res.status));
       }
@@ -449,7 +406,7 @@ function CrmWorkspace({
         setFilterTimezone(data.timezone || "Asia/Jakarta");
         setLeads(data.leads || []);
         if (data.dataScope) setDataScope(data.dataScope);
-        if (data.stats) setStats((prev) => ({ ...prev, ...data.stats }));
+        setProcessOverview(data.processMetrics || null);
         // Update selected lead if drawer is open
         setSelectedLead((current) => {
           if (!current) return current;
@@ -492,6 +449,9 @@ function CrmWorkspace({
         if (!active) return;
         if (!response.ok) {
           if ([401, 403, 404].includes(response.status)) {
+            const draft=draftCache.current[id] || (attendanceCache.current[id]&&{...attendanceCache.current[id],summary:attendanceCache.current[id].reason});
+            if(draft && (draft.summary||draft.action||draft.arrangementReason))setRetainedDraft({id,...draft});
+            setIsAddLogOpen(false);setWorkflowDirty(false);
             setSelectedLead(null);
             setIsDrawerOpen(false);
           }
@@ -511,6 +471,7 @@ function CrmWorkspace({
                   tasks: (data.tasks || []).map((task: any) => ({
                     id: task.id,
                     kind: task.kind,
+                    details: task.details,
                     ownerId: task.owner_id,
                     status: task.status,
                     dueAt: task.due_at,
@@ -599,18 +560,15 @@ function CrmWorkspace({
       !discardDraft(() => handleOpenLeadDrawer(lead, tab, true))
     )
       return;
+    if(retainedDraft?.id===lead.id)setRetainedDraft(null);
     if (!isDrawerOpen) listScroll.current = window.scrollY;
     if (selectedLead?.id === lead.id && isDrawerOpen) {
       setActiveDrawerTab(tab);
       return;
     }
-    setNotesSummary("");
+    setQueueComplete(false);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setWorkflowNotice("");setProfileSave("");setLeadActionError("");
     setIsAddLogOpen(false);
     setSelectedLead(lead);
-    setNewStage(lead.currentStage || "Contacted");
-    setBuyingSignalDetected(lead.buyingSignal || "None yet");
-    setNextAction(lead.nextAction || "");
-    setNextFollowUpAt(lead.nextFollowUpAt || "");
     setActiveDrawerTab(tab);
     setIsDrawerOpen(true);
     requestAnimationFrame(() => {
@@ -631,6 +589,14 @@ function CrmWorkspace({
         })
         .catch((e) => setLeadActionError(e.message));
     }
+  };
+  const processFromList=(lead:CrmLeadRecord,discarded=false)=>{
+    if(!canEditLead(lead))return;
+    if(!discarded&&!discardDraft(()=>processFromList(lead,true)))return;
+    handleOpenLeadDrawer(lead,"activities",true);
+    setAdministrative(false);setWorkflowSource(undefined);
+    setWorkflowTask(pendingFollowUps(lead.attention?.tasks||[])[0]?.id);
+    setIsAddLogOpen(true);
   };
   // Deep links from notifications fetch only the lead authorized by the server.
   useEffect(() => {
@@ -653,45 +619,6 @@ function CrmWorkspace({
       active = false;
     };
   }, []);
-  // Submit follow-up log
-  const handleSaveFollowUpLog = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead || !notesSummary.trim() || !canEditLead(selectedLead))
-      return;
-    setIsSubmittingLog(true);
-    try {
-      const res = await fetch(`/api/crm/leads/${selectedLead.id}/logs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          staffName,
-          channel,
-          connectStatus,
-          newStage,
-          buyingSignalDetected,
-          summary: notesSummary.trim(),
-          nextAction: nextAction.trim(),
-          nextFollowUpAt: nextFollowUpAt || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw Error(data.error || String(res.status));
-      if (data.lead) {
-        setLeadActionError("");
-        setSelectedLead((current) =>
-          current?.id === data.lead.id ? { ...current, ...data.lead } : current,
-        );
-        setNotesSummary("");
-        setIsAddLogOpen(false);
-        setActiveDrawerTab("activities");
-        fetchLeads();
-      }
-    } catch (err) {
-      setLeadActionError((err as Error).message);
-    } finally {
-      setIsSubmittingLog(false);
-    }
-  };
   // Helper for translating buying signal (hoisted function)
   function translateBuyingSignal(signal?: BuyingSignalType): string {
     if (!signal || signal === "None yet") return t("No signal", "无信号");
@@ -709,7 +636,7 @@ function CrmWorkspace({
       id: string;
       timestamp: string;
       category: "engagement" | "follow_up" | "milestone";
-      actorType: "client" | "consultant" | "system";
+      actorType: "client" | "consultant" | "system" | "record";
       actorName?: string;
       icon: string;
       badgeText: string;
@@ -805,23 +732,20 @@ function CrmWorkspace({
           ? [selectedLead.buyingSignal]
           : [];
     signalsList.forEach((sig, sIdx) => {
+      const sourceLog=[...(selectedLead.followUpLogs || [])].reverse().find(log=>log.buyingSignalDetected===sig);
       events.push({
         id: `signal-${selectedLead.id}-${sIdx}`,
         timestamp:
-          selectedLead.tierUpdatedAt ||
-          selectedLead.stageUpdatedAt ||
-          selectedLead.submittedAt,
+          sourceLog?.timestamp || selectedLead.submittedAt,
         category: "engagement",
-        actorType: "system",
-        icon: "🔥",
+        actorType: sourceLog ? "consultant" : "client",
+        staffName: sourceLog?.staffName,
+        icon: "💡",
         badgeText: t("Buying Signal", "购买信号"),
         badgeStyle: isLight
-          ? "bg-rose-50 text-rose-700 border-rose-200"
-          : "bg-rose-950/60 text-rose-300 border-rose-800",
-        title: t(
-          `High Intent Detected: ${translateBuyingSignal(sig)}`,
-          `触发高意向购买信号：${translateBuyingSignal(sig)}`,
-        ),
+          ? "bg-slate-50 text-slate-700 border-slate-200"
+          : "bg-slate-800 text-slate-300 border-slate-700",
+        title: t("Buying Signal", "购买信号") + ": " + translateBuyingSignal(sig),
         subtitle: t(
           "Recorded buying signal; follow the task deadline.",
           "已记录购买信号，跟进时限以任务截止时间为准。",
@@ -846,7 +770,7 @@ function CrmWorkspace({
                 : log.channel === "Campus Visit"
                   ? "🏫"
                   : "📋",
-          badgeText: `${t("Consultant Touch", "顾问跟进")} · ${crmValue(log.channel, lang)}`,
+          badgeText: log.recordKind === "closure" ? t("Administrative record", "非联系处理记录") : `${t("Consultant Touch", "顾问跟进")} · ${crmValue(log.channel, lang)}`,
           badgeStyle: isConnected
             ? isLight
               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -854,11 +778,11 @@ function CrmWorkspace({
             : isLight
               ? "bg-amber-50 text-amber-700 border-amber-200"
               : "bg-amber-950/60 text-amber-300 border-amber-800",
-          title: `${log.staffName} · ${crmValue(log.channel, lang)} (${crmValue(log.connectStatus, lang)})`,
-          subtitle: `${t("Stage:", "阶段推进:")} ${crmValue(log.previousStage, lang)} ➔ ${crmValue(log.newStage, lang)}`,
+          title: log.recordKind === "closure" ? `${log.staffName} · ${t("Administrative record", "非联系处理记录")}` : `${log.staffName} · ${crmValue(log.channel, lang)} (${crmValue(log.connectStatus, lang)})`,
+          subtitle: log.newStage && log.previousStage!==log.newStage ? `${t("Stage:", "阶段推进:")} ${crmValue(log.previousStage, lang)} ➔ ${crmValue(log.newStage, lang)}` : undefined,
           content: log.summary,
           connectStatus: log.connectStatus,
-          stageTransition: `${crmValue(log.previousStage, lang)} ➔ ${crmValue(log.newStage, lang)}`,
+          stageTransition: log.newStage && log.previousStage!==log.newStage ? `${crmValue(log.previousStage, lang)} ➔ ${crmValue(log.newStage, lang)}` : undefined,
           nextAction: log.nextAction,
           nextFollowUpAt: log.nextFollowUpAt,
         });
@@ -875,8 +799,7 @@ function CrmWorkspace({
           selectedLead.currentStage === "Trial Attended"
             ? "milestone"
             : "engagement",
-        actorType: "client",
-        actorName: selectedLead.fullName,
+        actorType: "record",
         icon: "🏫",
         badgeText:
           selectedLead.currentStage === "Trial Attended"
@@ -885,38 +808,27 @@ function CrmWorkspace({
         badgeStyle: isLight
           ? "bg-amber-50 text-amber-700 border-amber-300"
           : "bg-amber-950/60 text-amber-300 border-amber-700",
-        title:
-          selectedLead.currentStage === "Trial Attended"
-            ? t(
-                `Attended trial lesson at ${selectedLead.city || "PIK Campus"}`,
-                `已到访 ${selectedLead.city || "PIK 校区"} 参加试听课`,
-              )
-            : t(
-                `Booked trial class session (${crmValue(selectedLead.mode, lang)})`,
-                `预约试听课程 (${crmValue(selectedLead.mode, lang)})`,
-              ),
-        subtitle: `${t("Mode:", "授课模式:")} ${crmValue(selectedLead.mode, lang)} · ${t("City/Campus:", "校区城市:")} ${selectedLead.city}`,
+        title: `${t("Recorded trial stage:", "已记录试听阶段：")} ${crmValue(selectedLead.currentStage, lang)}`,
+        content: t("A trial stage is not a campaign check-in, campus visit or class confirmation.", "试听阶段不等于活动签到、到访校区或班级确认。"),
       });
     }
-    // 7. Official Enrollment & Class Confirmation Milestone
+    // 7. Recorded enrollment status; never infer a signed contract or class.
     if (
-      selectedLead.currentStage === "Enrolled" ||
-      selectedLead.enrolledClass
+      selectedLead.currentStage === "Enrolled"
     ) {
       events.push({
         id: `milestone-${selectedLead.id}`,
         timestamp: selectedLead.stageUpdatedAt || "",
         category: "milestone",
-        actorType: "system",
+        actorType: "record",
         icon: "🎓",
-        badgeText: t("Enrolled Milestone", "已报名签约"),
+        badgeText: t("Enrollment status recorded", "报名状态已记录"),
         badgeStyle: isLight
-          ? "bg-indigo-50 text-indigo-700 border-indigo-300"
-          : "bg-indigo-950/60 text-indigo-300 border-indigo-800",
-        title: t(
-          `Enrolled in Course: ${selectedLead.enrolledClass || "Chinese Core Curriculum"}`,
-          `正式入班签约：${selectedLead.enrolledClass || "中文核心签约班"}`,
-        ),
+          ? "bg-slate-50 text-slate-700 border-slate-300"
+          : "bg-slate-800 text-slate-200 border-slate-600",
+        title: selectedLead.enrolledClass
+          ? `${t("Recorded class:", "登记班级：")} ${selectedLead.enrolledClass}`
+          : t("Class not recorded; enrollment status only.", "未登记班级；仅有报名状态。"),
         subtitle: selectedLead.revenue
           ? `${t("Recorded amount:", "登记金额:")} Rp ${selectedLead.revenue.toLocaleString(crmLocale(lang))} · ${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)}`
           : `${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)} · ${t("City:", "城市:")} ${selectedLead.city}`,
@@ -994,6 +906,7 @@ function CrmWorkspace({
     updates: Partial<CrmLeadRecord>,
   ) => {
     if (!discardDraft()) return;
+    setProfileSave("saving");
     try {
       const res = await fetch(`/api/crm/leads/${leadId}`, {
         method: "PATCH",
@@ -1003,7 +916,7 @@ function CrmWorkspace({
       const data = await res.json();
       if (!res.ok) throw Error(data.error || String(res.status));
       if (data.lead) {
-        setLeadActionError("");
+        setLeadActionError("");setProfileSave("saved");
         if (selectedLead && selectedLead.id === leadId)
           setSelectedLead((current) =>
             current ? { ...current, ...data.lead } : current,
@@ -1011,7 +924,7 @@ function CrmWorkspace({
         fetchLeads();
       }
     } catch (err) {
-      setLeadActionError((err as Error).message);
+      setProfileSave("");setLeadActionError((err as Error).message);
     }
   };
   // Generate customized WhatsApp Link & text
@@ -1020,18 +933,8 @@ function CrmWorkspace({
       .replace(/\D/g, "")
       .replace(/^0/, "62");
     const studentName = lead.fullName || "Kak";
-    let customGreeting = `Halo ${studentName}! Saya ${staffName || "konsultan"} dari UPER Education. `;
-    if (lead.tier === "Hot") {
-      if (lead.levelConfirmed && lead.levelConfirmed !== "Below HSK 1") {
-        customGreeting += `Terima kasih telah mengikuti asesmen HSK di UPER (Hasil: ${lead.levelConfirmed}, Skor: ${lead.quizScore || "-"} poin). Kami telah menyiapkan rekomendasi kelas akselerasi & jadwal terdekat untuk Anda:`;
-      } else {
-        customGreeting += `Terima kasih telah mengisi formulir minat di UPER Education. Terkait rencana Anda untuk ${lead.goal}, kami telah menyiapkan rincian jadwal dan paket kelas:`;
-      }
-    } else if (lead.tier === "Warm-Offline") {
-      customGreeting += `Kami melihat Anda berdomisili di area ${lead.city || "Jabodetabek"} dan berminat kelas offline. Kami mengundang Anda untuk konsultasi tatap muka & trial class gratis di kampus UPER (PIK, Jakarta Utara):`;
-    } else {
-      customGreeting += `Terima kasih telah menghubungi UPER Education. Terkait minat belajar Mandarin untuk ${lead.goal}, ada yang bisa kami bantu jelaskan terlebih dahulu?`;
-    }
+    const advisor=employee.displayName||employee.id;
+    const customGreeting = selectedLead?.communicationLanguage ? (selectedLead.communicationLanguage==='zh'?`您好，${studentName}！我是 UPER Education 的 ${advisor}。` : selectedLead.communicationLanguage==='id'?`Halo ${studentName}! Saya ${advisor} dari UPER Education.`:`Hello ${studentName}! I'm ${advisor} from UPER Education.`) : t('Choose the customer language in contact preview','请在联系预览中选择客户语言');
     return {
       url: `https://wa.me/${cleanPhone}?text=${encodeURIComponent(customGreeting)}`,
       greetingText: customGreeting,
@@ -1039,21 +942,7 @@ function CrmWorkspace({
   };
   // Tier Badge Color
   const getTierBadge = (tier: TierType) => {
-    switch (tier) {
-      case "Hot":
-        return "bg-rose-600 text-white border-rose-600 shadow-2xs";
-      case "Warm-Offline":
-        return "bg-amber-600 text-white border-amber-600 shadow-2xs";
-      case "Warm-Online":
-        return "bg-blue-600 text-white border-blue-600 shadow-2xs";
-      case "School":
-        return "bg-purple-600 text-white border-purple-600 shadow-2xs";
-      case "Cold-Nurture":
-      default:
-        return isLight
-          ? "bg-slate-100 text-slate-700 border-slate-300"
-          : "bg-slate-800 text-slate-300 border-slate-700";
-    }
+    return isLight ? "bg-slate-100 text-slate-700 border-slate-300" : "bg-slate-800 text-slate-300 border-slate-700";
   };
   // Format Touches and Connect Status with bilingual support
   const formatTouchesDisplay = (lead: CrmLeadRecord) => {
@@ -1068,7 +957,7 @@ function CrmWorkspace({
         count >= 3
           ? t("No answer (3 follow-ups)", "未接(已跟进3次)")
           : t("No response", "未接通");
-      statusColor = count >= 3 ? "text-rose-500 font-bold" : "text-amber-500";
+      statusColor = isLight ? "text-slate-600" : "text-slate-300";
     } else if (lead.connectStatus === "Wrong Number") {
       statusText = t("Invalid number", "空号错号");
       statusColor = "text-rose-400";
@@ -1088,95 +977,7 @@ function CrmWorkspace({
     formatCrmOperatingTime(isoString, policyConfig.businessHours.timezone);
   // Dynamic, lead-tailored Objection Handling Playbook generator (Fully Personalized per Lead)
   const getPersonalizedObjections = (lead: CrmLeadRecord | null) => {
-    if (!lead) return OBJECTION_HANDLING_ITEMS;
-    let items = OBJECTION_HANDLING_ITEMS.map((item) => ({ ...item }));
-    // Deeply tailor all answer contents dynamically based on lead profile
-    items.forEach((item) => {
-      if (item.tag === "学费价格") {
-        item.answer =
-          lang === "id"
-            ? crmId(
-                `"Tailored for ${lead.fullName} (${crmValue(lead.currentStatus, lang)}) targeting ${crmValue(lead.goal, lang)} via ${crmValue(lead.mode, lang)} in ${lead.city}, UPER offers dual-instructor small classes (~Rp 85k/hr) with official materials. Early bird discount of Rp 300k available if locked today!"`,
-              )
-            : lang === "zh"
-              ? `“针对${lead.fullName}同学（身份：${crmValue(lead.currentStatus, lang)}）的目标【${crmValue(lead.goal, lang)}】（${crmValue(lead.mode, lang)}模式 / ${lead.city}），UPER采用中印双师制+小班精细化分层授课，折算单课时仅约 Rp 85,000。目前本期开班有【早鸟名额减免 Rp 300,000】，今天帮您锁定名额，还可以赠送 2 次课后难点回放辅导与官方真题库。”`
-              : `"Tailored for ${lead.fullName} (${crmValue(lead.currentStatus, lang)}) targeting ${crmValue(lead.goal, lang)} via ${crmValue(lead.mode, lang)} in ${lead.city}, UPER offers dual-instructor small classes (~Rp 85k/hr) with official materials. Early bird discount of Rp 300k available if locked today!"`;
-      } else if (item.tag === "模式效果") {
-        item.answer =
-          lang === "id"
-            ? crmId(
-                `"For ${lead.fullName}'s chosen ${crmValue(lead.mode, lang)} mode in ${lead.city}, our 6-8 person interactive small classes ensure high engagement. You can also mix with on-site visits at our PIK campus anytime."`,
-              )
-            : lang === "zh"
-              ? `“${lead.fullName}同学选择的【${crmValue(lead.mode, lang)}】模式（${lead.city}）完美匹配我们的精品小班制。每班仅限 6~8 人，强制开麦视频互动。若您在${lead.city}，还可随时预约到线下 PIK 校区面授试听，线上线下无缝切换，完全不用担心效果。”`
-              : `"For ${lead.fullName}'s chosen ${crmValue(lead.mode, lang)} mode in ${lead.city}, our 6-8 person interactive small classes ensure high engagement. You can also mix with on-site visits at our PIK campus anytime."`;
-      } else if (item.tag === "时间安排") {
-        item.answer =
-          lang === "id"
-            ? crmId(
-                `"Given ${lead.fullName}'s busy schedule in ${lead.city}, we offer weekend and weekday evening tracks with cloud replays and dedicated 1v1 TA catch-up."`,
-              )
-            : lang === "zh"
-              ? `“考虑到${lead.fullName}同学身处【${lead.city}】且日程较满，我们专门开设了【周末集训班】与【平日晚间黄金班】。每次课均配有云端高清回放与助教 1v1 课后答疑，完美适配您的个人节奏。”`
-              : `"Given ${lead.fullName}'s busy schedule in ${lead.city}, we offer weekend and weekday evening tracks with cloud replays and dedicated 1v1 TA catch-up."`;
-      } else if (item.tag === "决策商量") {
-        item.answer =
-          lang === "id"
-            ? crmId(
-                `"Understood! I've sent the UPER Syllabus & Career Guide to your WhatsApp. Since only 3 seats remain for ${crmValue(lead.goal, lang)}, I will hold your 48h priority slot and follow up on Friday."`,
-              )
-            : lang === "zh"
-              ? `“非常理解！学习是${lead.fullName}及其家庭的重要投资。我已将《UPER 课程分级大纲与印尼中资名企薪酬前景指南》发送至您的 WhatsApp。由于当前【${crmValue(lead.goal, lang)}】班级仅剩 3 个席位，我为您保留 48 小时早鸟特权，您看周五下午我们再沟通如何？”`
-              : `"Understood! I've sent the UPER Syllabus & Career Guide to your WhatsApp. Since only 3 seats remain for ${crmValue(lead.goal, lang)}, I will hold your 48h priority slot and follow up on Friday."`;
-      }
-    });
-    // If chat transcript has user questions, dynamically inject a custom targeted objection item
-    if (lead.chatTranscript && lead.chatTranscript.length > 0) {
-      const userMsgs = lead.chatTranscript.filter((m) => m.role === "user");
-      if (userMsgs.length > 0) {
-        const lastUserQ = userMsgs[userMsgs.length - 1].content;
-        items.unshift({
-          tag: "专属进线提问",
-          tagEn: "Intake Inquiry",
-          question: `学员进线提问：“${lastUserQ}”`,
-          questionEn: `Student intake inquiry: "${lastUserQ}"`,
-          answer:
-            lang === "id"
-              ? crmId(
-                  `"Regarding your inquiry about '${lastUserQ}': UPER's expert academic team customizes your path based on your level to ensure high success rate and practical fluency!"`,
-                )
-              : lang === "zh"
-                ? `“针对您刚刚关注的【${lastUserQ}】问题：UPER 设有专属教研团队与资深导师。我们会根据您的测试水平（${lead.quizScore !== undefined ? lead.quizScore + "分" : "待测"}）为您量身定制学习路径，确保高通过率与实用性！”`
-                : `"Regarding your inquiry about '${lastUserQ}': UPER's expert academic team customizes your path based on your level to ensure high success rate and practical fluency!"`,
-          answerEn: `"Regarding your inquiry about '${lastUserQ}': UPER's expert academic team customizes your path based on your level to ensure high success rate and practical fluency!"`,
-        });
-      }
-    }
-    // Reorder based on buying signal & tier
-    if (
-      lead.buyingSignal === "Asked price" ||
-      lead.buyingSignal === "Asked payment"
-    ) {
-      items.sort((a, b) =>
-        a.tag === "学费价格" ? -1 : b.tag === "学费价格" ? 1 : 0,
-      );
-    } else if (lead.buyingSignal === "Asked schedule") {
-      items.sort((a, b) =>
-        a.tag === "时间安排" ? -1 : b.tag === "时间安排" ? 1 : 0,
-      );
-    } else if (
-      lead.buyingSignal === "Ready to enroll" ||
-      lead.buyingSignal === "Ready to enrol"
-    ) {
-      items.sort((a, b) =>
-        a.tag === "模式效果" ? -1 : b.tag === "模式效果" ? 1 : 0,
-      );
-    } else if (lead.tier === "Hot") {
-      items.sort((a, b) =>
-        a.tag === "学费价格" ? -1 : b.tag === "学费价格" ? 1 : 0,
-      );
-    }
-    return items;
+    return OBJECTION_HANDLING_ITEMS.map(item=>({...item,answer:lang==="id"?crmId(item.answerEn):lang==="zh"?item.answer:item.answerEn}));
   };
   const ownershipControls = (lead: CrmLeadRecord) => (
     <div className="crm-customer-edit-fields">
@@ -1215,6 +1016,17 @@ function CrmWorkspace({
       </label>
     </div>
   );
+  const changeCustomerTab=(tab:typeof activeDrawerTab,keyboard=false)=>{
+    const finish=()=>{
+      setActiveDrawerTab(tab);
+      requestAnimationFrame(()=>{
+        document.getElementById("crm-customer-panel")?.scrollIntoView({block:"start"});
+        if(keyboard)document.getElementById(`crm-customer-tab-${tab}`)?.focus({preventScroll:true});
+      });
+    };
+    if(!discardDraft(finish))return;
+    finish();
+  };
   const leadPanel =
     isDrawerOpen && selectedLead ? (
       <section
@@ -1250,15 +1062,11 @@ function CrmWorkspace({
                 </button>
               )}
             {selectedLead.whatsapp && (
-              <a
-                href={getWhatsAppAction(selectedLead).url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="crm-work-button"
-              >
+              <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{setContactScripts(undefined);setContactPreview(true);}} className="crm-work-button">
                 <MessageCircle size={15} /> WhatsApp
-              </a>
+              </button>
             )}
+            {[-1,1].map(offset=>{const index=filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+offset;return <button key={offset} className="crm-work-button" disabled={filteredLeads.findIndex(l=>l.id===selectedLead.id)<0||!filteredLeads[index]} onClick={()=>filteredLeads[index]&&handleOpenLeadDrawer(filteredLeads[index],activeDrawerTab === "playbook" ? "activities" : activeDrawerTab)}>{offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户")}</button>;})}
             <button
               type="button"
               className="crm-work-button"
@@ -1268,6 +1076,7 @@ function CrmWorkspace({
             </button>
           </div>
         </header>
+        <div className="crm-panel-next"><CrmFollowUp lead={selectedLead} lang={lang} timezone={filterTimezone} isLight={isLight} employees={employees} onOpen={()=>setActiveDrawerTab("activities")} compact /></div>
         <div
           className="crm-customer-tabs"
           role="tablist"
@@ -1291,7 +1100,14 @@ function CrmWorkspace({
                 activeDrawerTab === id ||
                 (id === "activities" && activeDrawerTab === "playbook")
               }
-              onClick={() => setActiveDrawerTab(id)}
+              tabIndex={activeDrawerTab === id || (id === "activities" && activeDrawerTab === "playbook") ? 0 : -1}
+              onClick={() => changeCustomerTab(id)}
+              onKeyDown={e=>{
+                const ids=["activities","chat","profile","assessment"] as const;
+                const index=ids.indexOf(id);
+                const next=e.key==="ArrowRight"?ids[(index+1)%ids.length]:e.key==="ArrowLeft"?ids[(index+ids.length-1)%ids.length]:e.key==="Home"?ids[0]:e.key==="End"?ids[ids.length-1]:undefined;
+                if(next){e.preventDefault();changeCustomerTab(next,true);}
+              }}
             >
               {t(en, zh)}
             </button>
@@ -1308,13 +1124,17 @@ function CrmWorkspace({
               {crmError(leadActionError, lang)}
             </p>
           )}
+          {profileSave&&activeDrawerTab==="profile"&&<p role="status">{profileSave==="saving"?t("Saving...","保存中..."):t("Saved","已保存")}</p>}
           {activeDrawerTab === "profile" && (
+            <>
             <CrmCustomerProfile
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
-              ownership={ownershipControls(selectedLead)}
+              ownership={<>{ownershipControls(selectedLead)}<CrmSingleSelect label={lang==='zh'?'客户沟通语言':lang==='id'?'Bahasa komunikasi pelanggan':'Customer communication language'} value={selectedLead.communicationLanguage||'unknown'} options={[{value:'unknown',label:lang==='zh'?'未确认':lang==='id'?'Belum dikonfirmasi':'Unconfirmed'},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight} disabled={!canEditLead(selectedLead)} onChange={v=>handleUpdateLeadField(selectedLead.id,{communicationLanguage:v as any})}/></>}
             />
+            {canEditLead(selectedLead)&&<CrmAttendanceEditor key={`${selectedLead.id}:${attendanceReset}`} lead={selectedLead} staffId={employee.id} onDirty={setAttendanceDirty} onBusy={setIsSubmittingLog} lang={lang} isLight={isLight} timezone={filterTimezone} onUpdated={lead=>{setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}/>}
+            </>
           )}
           {activeDrawerTab === "assessment" && (
             <CrmCustomerAssessment
@@ -1325,6 +1145,7 @@ function CrmWorkspace({
           )}
           {activeDrawerTab === "chat" && (
             <CrmCustomerConversations
+              onAssociate={canEditLead(selectedLead)?(message:any)=>{if(!discardDraft())return;setWorkflowSource(message);setWorkflowTask(undefined);setIsAddLogOpen(true);setActiveDrawerTab("activities");}:undefined}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
@@ -1349,37 +1170,8 @@ function CrmWorkspace({
                   )}
                 </p>
               )}
-              <div className="crm-customer-context">
-                <div>
-                  <h3>{t("Last contact", "最近联系")}</h3>
-                  <p>
-                    {selectedLead.lastContactedAt
-                      ? formatCrmOperatingTime(
-                          selectedLead.lastContactedAt,
-                          filterTimezone,
-                        )
-                      : t("No contact recorded", "尚无联系记录")}
-                  </p>
-                  <p className="crm-work-muted">
-                    {crmValue(selectedLead.connectStatus, lang)} ·{" "}
-                    {selectedLead.touchCount || 0} {t("contacts", "次联系")}
-                  </p>
-                </div>
-                {selectedLead.nextAction && (
-                  <div>
-                    <h3>{t("Manual note", "人工备注")}</h3>
-                    <p>{selectedLead.nextAction}</p>
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                className="crm-work-link crm-customer-playbook"
-                onClick={() => setActiveDrawerTab("playbook")}
-              >
-                {t("Sales playbook", "销售话术参考")}
-              </button>
-              <LeadTaskActions
+              <LeadTaskActions lead={selectedLead}
+                onProcess={(taskId:string)=>{if(!discardDraft())return;setWorkflowSource(undefined);setAdministrative(false);setWorkflowTask(taskId);setIsAddLogOpen(true);}}
                 timezone={policyConfig.businessHours.timezone}
                 readOnly={!canEditLead(selectedLead)}
                 key={selectedLead.id}
@@ -1399,6 +1191,27 @@ function CrmWorkspace({
                 lang={lang}
                 onChange={() => fetchLeads(true)}
               />
+              {contactPreview&&<CrmContactPreview key={"contact-preview-"+selectedLead.id} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} scripts={contactScripts} onClose={()=>setContactPreview(false)} onUpdated={(lead:any)=>setSelectedLead(lead)}/>}
+              <div className="crm-customer-context">
+                <div>
+                  {(()=>{const stats=contactStatistics(selectedLead);const render=(log:any,label:string)=><div><h3>{label}</h3>{log?<><p>{crmValue(log.connectStatus,lang)} · {log.channel} · {log.staffName} · {formatCrmOperatingTime(log.timestamp||log.at,filterTimezone)}</p><details><summary>{log.summary?.slice(0,150)}</summary><p className="whitespace-pre-wrap">{log.summary}</p></details>{log.sourceMessageId&&<button className="crm-work-link" onClick={()=>setActiveDrawerTab('chat')}>{t('Linked customer message','关联客户消息')}</button>}</>:<p>{t('No contact recorded','尚无联系记录')}</p>}</div>;return <>{render(stats.lastAttempt,t('Latest contact attempt','最近联系尝试'))}<p>{t('Attempts','尝试次数')}：{stats.attemptCount} · {t('Connected or replied','接通或回复次数')}：{stats.connectedCount}</p>{stats.lastConnected&&stats.lastConnected.id!==stats.lastAttempt?.id&&render(stats.lastConnected,t('Latest connected or replied','最近接通或回复'))}</>;})()}
+                  {selectedLead.contactArrangement&&<p>{t('Contact arrangement','联系安排')}：{t(({active:"Active follow-up",waiting:"Waiting for review",nurture:"Nurture review",stopped:"Proactive contact stopped"})[selectedLead.contactArrangement.state],({active:"正常跟进",waiting:"等待复查",nurture:"培育复查",stopped:"停止主动联系"})[selectedLead.contactArrangement.state])} · {selectedLead.contactArrangement.reason}</p>}
+                </div>
+                {selectedLead.nextAction && (
+                  <div>
+                    <h3>{t("Manual note", "人工备注")}</h3>
+                    <p>{selectedLead.nextAction}</p>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="crm-work-link crm-customer-playbook"
+                onClick={() => setActiveDrawerTab("playbook")}
+              >
+                {t("Sales playbook", "销售话术参考")}
+              </button>
+              <button className="crm-work-button" disabled={!canEditLead(selectedLead)} onClick={()=>{if(!discardDraft())return;setAdministrative(true);setWorkflowTask(undefined);setIsAddLogOpen(true);}}>{t('Update contact arrangement','更新联系安排')}</button>
               {/* Top Action Bar: Add Follow-up Toggle + Timeline Filter */}
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <button
@@ -1408,12 +1221,7 @@ function CrmWorkspace({
                     if (isAddLogOpen) {
                       discardDraft();
                     } else {
-                      setNewStage(selectedLead.currentStage || "Contacted");
-                      setBuyingSignalDetected(
-                        selectedLead.buyingSignal || "None yet",
-                      );
-                      setNextAction(selectedLead.nextAction || "");
-                      setNextFollowUpAt(selectedLead.nextFollowUpAt || "");
+                      setAdministrative(false);setWorkflowTask(undefined);setWorkflowSource(undefined);
                       setIsAddLogOpen(true);
                     }
                   }}
@@ -1505,218 +1313,8 @@ function CrmWorkspace({
                 </div>
               </div>
 
-              {/* Collapsible Follow-up Logging Form */}
-              {isAddLogOpen && (
-                <div
-                  className={`p-4 rounded-2xl border space-y-3 transition-all ${isLight ? "bg-slate-50/90 border-slate-200/90 shadow-2xs" : "bg-slate-950 border-slate-800"}`}
-                >
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-200/70 dark:border-slate-800/70">
-                    <span
-                      className={`font-bold text-xs ${isLight ? "text-slate-900" : "text-white"}`}
-                    >
-                      ✍️ {t("Quick Follow-up Form", "记录顾问触达与跟进结果")}
-                    </span>
-                    <span
-                      className={`text-[10px] ${isLight ? "text-slate-500" : "text-slate-400"}`}
-                    >
-                      {t(
-                        "Saves this contact record to the customer timeline",
-                        "将本次联系记录保存到客户时间轴",
-                      )}
-                    </span>
-                  </div>
-
-                  <form
-                    onSubmit={handleSaveFollowUpLog}
-                    className="space-y-3.5"
-                  >
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label
-                          className={`block font-medium mb-1 ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                        >
-                          {t("Staff / Consultant", "顾问责任人")}
-                        </label>
-                        <CrmSingleSelect
-                          label={t("Staff / Consultant", "顾问责任人")}
-                          value={employee.id} disabled onChange={() => {}}
-                          lang={lang} isLight={isLight}
-                          options={employees.map((e) => ({ value: e.id, label: employeeLabel(e) }))}
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          className={`block font-medium mb-1 ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                        >
-                          {t("Channel", "沟通方式")}
-                        </label>
-                        <CrmSingleSelect
-                          label={t("Channel", "沟通方式")} value={channel}
-                          onChange={(value) => setChannel(value as any)} lang={lang} isLight={isLight}
-                          options={[
-                            { value: "WhatsApp", label: "WhatsApp" },
-                            { value: "Phone Call", label: t("Phone Call", "电话") },
-                            { value: "Campus Visit", label: t("Campus Visit", "校区接待") },
-                            { value: "Email", label: t("Email", "电子邮件") },
-                            { value: "Other", label: t("Other", "其他") },
-                          ]}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label
-                          className={`block font-medium mb-1 ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                        >
-                          {t("Connect Status", "接通情况")}
-                        </label>
-                        <CrmSingleSelect
-                          label={t("Connect Status", "接通情况")} value={connectStatus}
-                          onChange={(value) => setConnectStatus(value as any)} lang={lang} isLight={isLight}
-                          options={[
-                            { value: "Connected", label: t("Connected / Replied", "已接通 / 已回复") },
-                            { value: "No Response", label: t("No Response / Unreachable", "未接通 / 未回应") },
-                            { value: "Wrong Number", label: t("Wrong / Invalid Number", "空号错号") },
-                            { value: "Interested", label: t("High Interest", "意向强烈") },
-                          ]}
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          className={`block font-medium mb-1 ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                        >
-                          {t("New Stage", "推进阶段")}
-                        </label>
-                        <CrmSingleSelect
-                          label={t("New Stage", "推进阶段")} value={newStage}
-                          onChange={(value) => setNewStage(value as any)} lang={lang} isLight={isLight}
-                          options={STAGE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelEn, opt.labelZh) }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label
-                        className={`block font-medium mb-1 ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                      >
-                        {t(
-                          "Buying signal observed in this follow-up",
-                          "本次跟进观察到的购买信号",
-                        )}
-                      </label>
-                      <CrmSingleSelect
-                        label={t("Buying signal observed in this follow-up", "本次跟进观察到的购买信号")}
-                        value={buyingSignalDetected} onChange={(value) => setBuyingSignalDetected(value as any)}
-                        lang={lang} isLight={isLight}
-                        options={[
-                          { value: "None yet", label: t("None yet", "暂未出现") },
-                          { value: "Asked price", label: t("Asked tuition/fees", "咨询学费政策") },
-                          { value: "Asked schedule", label: t("Asked schedule / start date", "询问开班时间") },
-                          { value: "Asked payment", label: t("Asked payment / installments", "询问付款方案/分期") },
-                          { value: "Ready to enroll", label: t("Ready to enroll", "准备报名") },
-                        ]}
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        className={`block font-medium mb-1 ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                      >
-                        {t(
-                          "Communication Notes & Client Feedback",
-                          "沟通记录与学员反馈",
-                        )}{" "}
-                        <span className="text-rose-500">*</span>
-                      </label>
-                      <textarea
-                        required
-                        rows={3}
-                        value={notesSummary}
-                        onChange={(e) => setNotesSummary(e.target.value)}
-                        placeholder={t(
-                          "e.g. Student works at a Chinese JV, interested in weekend class in PIK, planning to visit next week...",
-                          "例如：客户已在印尼中资企业上班，希望周六上课，对 HSK 2 进阶班很感兴趣，准备下周来 PIK 校区面谈...",
-                        )}
-                        className={`w-full rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${isLight ? "bg-white border border-slate-200 text-slate-900 focus:bg-white" : "bg-slate-900 border border-slate-800 text-slate-200"}`}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 items-end">
-                      <div>
-                        <label
-                          className={`block font-medium mb-1 text-xs ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                        >
-                          {t("Next Action", "下一步动作")}
-                        </label>
-                        <input
-                          type="text"
-                          value={nextAction}
-                          onChange={(e) => setNextAction(e.target.value)}
-                          placeholder={t(
-                            "e.g. Send Saturday schedule and campus location",
-                            "例如：发送周六班级课表与校区定位",
-                          )}
-                          style={{ fontSize: "12px" }}
-                          className={`w-full h-[38px] rounded-xl px-3 text-xs font-sans transition-colors outline-none focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${
-                            isLight
-                              ? "bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400"
-                              : "bg-slate-900 border border-slate-800 text-slate-200 placeholder:text-slate-500"
-                          }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          className={`block font-medium mb-1 text-xs ${isLight ? "text-slate-600" : "text-slate-400"}`}
-                        >
-                          {t("Next Follow-up Date", "下次跟进时间")}
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={nextFollowUpAt}
-                          onChange={(e) => setNextFollowUpAt(e.target.value)}
-                          style={{ fontSize: "12px" }}
-                          className={`w-full h-[38px] rounded-xl px-3 text-xs font-sans transition-colors outline-none focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-400 dark:focus:ring-slate-700 dark:focus:border-slate-600 ${
-                            isLight
-                              ? "bg-white border border-slate-200 text-slate-900"
-                              : "bg-slate-900 border border-slate-800 text-slate-200"
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="submit"
-                        disabled={
-                          isSubmittingLog ||
-                          !notesSummary.trim() ||
-                          !selectedLead ||
-                          !canEditLead(selectedLead)
-                        }
-                        className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-500 active:scale-[0.99] disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md shadow-primary-900/20 flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>
-                          {isSubmittingLog
-                            ? t("Saving...", "保存中...")
-                            : t("Save follow-up", "保存跟进记录")}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => discardDraft()}
-                        className={`py-2.5 px-3 rounded-xl border text-xs font-medium cursor-pointer transition-colors ${isLight ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"}`}
-                      >
-                        {t("Cancel", "取消")}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
+              {workflowNotice&&<p role="status">{t("Result saved","处理结果已保存")} · {t("Completed tasks","已完成任务")} {workflowNotice.completed} · {workflowNotice.created?t("Next task scheduled","已安排下一步任务"):t("Next arrangement recorded","已记录后续安排")}</p>}
+              {isAddLogOpen && <CrmWorkflowForm key={selectedLead.id+String(workflowTask)+String(administrative)} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} timezone={filterTimezone} initialDraft={draftCache.current[selectedLead.id]} onDraft={(draft:any)=>{draftCache.current[selectedLead.id]=draft;}} administrative={administrative} workCalendar={policyConfig.businessHours} selectedTask={workflowTask} sourceMessage={workflowSource} onDirty={()=>setWorkflowDirty(true)} onBusy={setIsSubmittingLog} onCancel={()=>discardDraft()} onSaved={async(data:any,next:boolean)=>{delete draftCache.current[selectedLead.id];if(retainedDraft?.id===selectedLead.id)setRetainedDraft(null);const candidates=filteredLeads.slice(filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+1);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setSelectedLead((current:any)=>({...current,...data.lead}));setIsAddLogOpen(false);setWorkflowNotice({completed:data.completedTaskIds.length,created:Boolean(data.createdTaskId)});fetchLeads(true);if(next){for(const candidate of candidates){const access=await fetch(`/api/crm/leads/${candidate.id}/tasks`);if([403,404].includes(access.status))continue;if(!access.ok){setLeadActionError(lang==='zh'?'记录已保存，下一位暂不可加载':lang==='id'?'Catatan disimpan; pelanggan berikutnya belum tersedia':'Record saved; next customer unavailable');return;}handleOpenLeadDrawer(candidate,'activities',true);return;}setIsDrawerOpen(false);setSelectedLead(null);setQueueComplete(true);}}}/>}
 
               {/* Unified Customer Journey Timeline */}
               <div className="pt-1">
@@ -1788,6 +1386,10 @@ function CrmWorkspace({
                                         ? isLight
                                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                           : "bg-emerald-950/60 text-emerald-300 border-emerald-800"
+                                        : ev.actorType === "record"
+                                          ? isLight
+                                            ? "bg-slate-50 text-slate-700 border-slate-200"
+                                            : "bg-slate-800 text-slate-200 border-slate-600"
                                         : isLight
                                           ? "bg-purple-50 text-purple-700 border-purple-200"
                                           : "bg-purple-950/60 text-purple-300 border-purple-800"
@@ -1797,7 +1399,9 @@ function CrmWorkspace({
                                     ? `👤 ${t("Client Action", "客户自主")}`
                                     : ev.actorType === "consultant"
                                       ? `👨‍💼 ${t("Consultant Touch", "顾问跟进")}`
-                                      : `🤖 ${t("System Intelligence", "智能判定")}`}
+                                      : ev.actorType === "record"
+                                        ? `📋 ${t("Recorded status", "记录状态")}`
+                                        : `🤖 ${t("System Intelligence", "智能判定")}`}
                                 </span>
 
                                 {/* Event Category Badge */}
@@ -1842,18 +1446,14 @@ function CrmWorkspace({
                             )}
 
                             {ev.content && (
-                              <p
-                                className={`text-xs leading-relaxed whitespace-pre-wrap pt-0.5 ${isLight ? "text-slate-700" : "text-slate-300"}`}
-                              >
-                                {ev.content}
-                              </p>
+                              <details><summary>{t("View original record","查看原始记录")}</summary><p className="whitespace-pre-wrap">{ev.content}</p></details>
                             )}
 
                             {(ev.nextAction || ev.stageTransition) && (
                               <div
                                 className={`flex items-center justify-between pt-2 border-t text-[10px] gap-2 flex-wrap ${isLight ? "border-slate-100 text-slate-500" : "border-slate-800 text-slate-400"}`}
                               >
-                                {ev.stageTransition && (
+                                {ev.stageTransition && !ev.subtitle?.includes(ev.stageTransition) && (
                                   <span className="flex items-center gap-1">
                                     {t("Stage:", "阶段推进:")}{" "}
                                     <b className="text-primary-600 font-medium">
@@ -1877,12 +1477,7 @@ function CrmWorkspace({
                                     {ev.nextFollowUpAt && (
                                       <span className="text-slate-400 font-mono">
                                         (
-                                        {new Date(
-                                          ev.nextFollowUpAt,
-                                        ).toLocaleDateString(crmLocale(lang), {
-                                          month: "numeric",
-                                          day: "numeric",
-                                        })}
+                                        {formatCrmOperatingTime(ev.nextFollowUpAt,filterTimezone).slice(0,16)}
                                         )
                                       </span>
                                     )}
@@ -1911,33 +1506,14 @@ function CrmWorkspace({
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
                   <span>
-                    {t("Target Strategy:", "核心转化攻坚策略:")}{" "}
-                    {crmValue(selectedLead.tier, lang)} ·{" "}
-                    {crmValue(selectedLead.flag, lang)}
+                    {t("Sales guidance", "销售指导")}{" "}
+                    {crmValue(selectedLead.tier, lang)}
                   </span>
                 </span>
                 <p
                   className={`text-[11px] mt-1.5 leading-relaxed ${isLight ? "text-indigo-800" : "text-indigo-200/80"}`}
                 >
-                  {selectedLead.tier === "Hot"
-                    ? t(
-                        "Direct class recommendation + tuition quote + remaining quota. Level is confirmed; do not force testing to avoid friction.",
-                        "直接给班级建议 + 报价 + 锁定剩余名额。水平已清，严禁硬推测验以免打退客户。",
-                      )
-                    : selectedLead.tier === "Warm-Offline"
-                      ? t(
-                          "Jakarta local candidate: prioritize invitation for face-to-face consultation at PIK campus or offline free trial session.",
-                          "雅加达本地客户，重点邀约到 PIK 校区面谈或参加线下免费试听课。",
-                        )
-                      : selectedLead.tier === "Warm-Online"
-                        ? t(
-                            "Online remote student: if level state is partial, first step is booking diagnostic test.",
-                            "线上客户，若水平未知（待测评）则第一步必须先约测评定级。",
-                          )
-                        : t(
-                            "Institutional or school representative: route to B2B partnership workflow.",
-                            "学校老师或机构客户，转 B2B 合作流程。",
-                          )}
+                  {t("Start with the current task and latest recorded request. Review saved assessment evidence and verify timetable and fees before proposing a course.","先查看当前任务和最近诉求，核对已有测评依据，并确认实际课表和费用后再提出课程建议。")}
                 </p>
               </div>
 
@@ -1960,8 +1536,7 @@ function CrmWorkspace({
                   <button
                     type="button"
                     onClick={() => {
-                      const wa = getWhatsAppAction(selectedLead);
-                      navigator.clipboard.writeText(wa.greetingText);
+                      setContactScripts(undefined);setContactPreview(true);setActiveDrawerTab('activities');
                       setCopiedScript(true);
                       setTimeout(() => setCopiedScript(false), 2000);
                     }}
@@ -1994,17 +1569,14 @@ function CrmWorkspace({
                   {getWhatsAppAction(selectedLead).greetingText}
                 </p>
 
-                <a
-                  href={getWhatsAppAction(selectedLead).url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{setContactScripts(undefined);setContactPreview(true);setActiveDrawerTab('activities');}}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>
                     {t("Open WhatsApp Directly", "立即唤起 WhatsApp 发起对话")}
                   </span>
-                </a>
+                </button>
               </div>
 
               {/* Battle-Tested Objection Handling Playbook */}
@@ -2015,7 +1587,7 @@ function CrmWorkspace({
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
                     <span>
-                      {t("Objection Handling Playbook", "高频异议化解金牌对策")}
+                      {t("Conversation checklist", "沟通核实清单")}
                     </span>
                   </span>
                   <span
@@ -2033,15 +1605,12 @@ function CrmWorkspace({
                   <div>
                     <span className="font-bold block mb-0.5">
                       {t(
-                        "Tailored for this specific student profile",
-                        "已针对该学员画像智能定制与排序",
+                        "Verify facts before advising the customer",
+                        "向客户提出建议前，先核实事实",
                       )}
                     </span>
                     <span>
-                      {t(
-                        `Prioritized based on ${selectedLead.fullName}'s intent (${selectedLead.buyingSignal || "General"}) and mode (${crmValue(selectedLead.mode, lang)} in ${selectedLead.city}).`,
-                        `已根据 ${selectedLead.fullName} 的身份（${crmValue(selectedLead.currentStatus, lang)}）、购买信号（${selectedLead.buyingSignal || "无"}）及授课模式（${crmValue(selectedLead.mode, lang)} / ${selectedLead.city}）自动定制话术切入点并重新排序。`,
-                      )}
+                      {t("Use recorded customer requests as evidence. Check current course availability; do not promise unverified fees, seats or outcomes.","依据客户已记录的诉求沟通，核查实际课程安排；不承诺未经核实的费用、席位或效果。")}
                     </span>
                   </div>
                 </div>
@@ -2071,7 +1640,7 @@ function CrmWorkspace({
                                 : lang === "zh"
                                   ? item.answer
                                   : item.answerEn;
-                            navigator.clipboard.writeText(text);
+                            setContactScripts({en:item.answerEn,id:crmId(item.answerEn),zh:item.answer});setContactPreview(true);setActiveDrawerTab("activities");
                             setCopiedObjectionIdx(idx);
                             setTimeout(() => setCopiedObjectionIdx(null), 2000);
                           }}
@@ -2132,7 +1701,7 @@ function CrmWorkspace({
         <div
           className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4"
           onKeyDown={(e) => {
-            if (e.key === "Escape") setPendingNavigation(null);
+            if (e.key === "Escape") resumeDraft();
             if (e.key === "Tab") {
               const buttons =
                 e.currentTarget.querySelectorAll<HTMLButtonElement>("button");
@@ -2154,7 +1723,7 @@ function CrmWorkspace({
             className={`max-w-sm w-full rounded-2xl p-6 shadow-xl ${isLight ? "bg-white text-slate-900" : "bg-slate-900 text-slate-100"}`}
           >
             <h2 id="crm-draft-title" className="font-semibold mb-2">
-              {t("Unsaved follow-up", "跟进内容尚未保存")}
+              {t("Unsaved changes", "修改尚未保存")}
             </h2>
             <p id="crm-draft-description" className="text-sm mb-5">
               {t(
@@ -2167,13 +1736,13 @@ function CrmWorkspace({
                 type="button"
                 autoFocus
                 className="border rounded-lg px-3 py-2 text-sm"
-                onClick={() => setPendingNavigation(null)}
+                onClick={resumeDraft}
               >
                 {t("Keep editing", "继续编辑")}
               </button>
               <button
                 type="button"
-                className="bg-rose-600 text-white rounded-lg px-3 py-2 text-sm"
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
                 onClick={() => {
                   const action = pendingNavigation;
                   setPendingNavigation(null);
@@ -2188,6 +1757,7 @@ function CrmWorkspace({
         </div>
       )}
       {/* Top Apple-Style / Dark Navigation Bar - Stable 2-Row Architecture */}
+      <a className="crm-skip-link" href="#crm-main">{lang==='zh'?'跳到工作区':lang==='id'?'Lewati ke ruang kerja':'Skip to workspace'}</a>
       <header
         data-crm-header
         className={`sticky top-0 z-30 transition-colors duration-200 border-b shadow-2xs ${
@@ -2264,13 +1834,13 @@ function CrmWorkspace({
               >
                 {crmModule === "campaigns"
                   ? t(
-                      "Campaign-to-Leads Closed-Loop Funnel, Unique UTM Short Links & AI Collateral Generator",
-                      "营销活动立项、唯一渠道短链追溯、多语种 AI 物料生成与线索闭环漏斗",
+                      "Plan campaigns and track registrations, participation and enrollment.",
+                      "规划活动，追踪登记、参与及报名。",
                     )
                   : crmModule === "leads"
                     ? t(
-                        "Standard Enterprise Data Model & R1~R6 Tier Protocol Engine",
-                        "标准数据字典与 R1~R6 智能分层引擎",
+                        "Prioritize customers, record outcomes and plan the next step.",
+                        "明确优先客户，记录沟通结果，安排下一步。",
                       )
                     : crmModule === "policy"
                       ? t(
@@ -2304,13 +1874,13 @@ function CrmWorkspace({
                   crmModule === "campaigns"
                     ? isLight
                       ? "bg-white text-primary-700 shadow-2xs font-bold"
-                      : "bg-primary-600 text-white shadow-sm"
+                      : "bg-primary-800 text-white shadow-sm"
                     : isLight
                       ? "text-slate-600 hover:text-slate-900"
                       : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <Target className="w-3.5 h-3.5 text-blue-500" />
+                <Target className="w-3.5 h-3.5" />
                 <span>{t("Marketing Campaigns", "营销活动中心")}</span>
               </button>
 
@@ -2322,7 +1892,7 @@ function CrmWorkspace({
                   crmModule === "leads"
                     ? isLight
                       ? "bg-white text-primary-700 shadow-2xs font-bold"
-                      : "bg-primary-600 text-white shadow-sm"
+                      : "bg-primary-800 text-white shadow-sm"
                     : isLight
                       ? "text-slate-600 hover:text-slate-900"
                       : "text-slate-400 hover:text-slate-200"
@@ -2341,13 +1911,13 @@ function CrmWorkspace({
                     crmModule === "policy"
                       ? isLight
                         ? "bg-white text-primary-700 shadow-2xs font-bold"
-                        : "bg-primary-600 text-white shadow-sm"
+                        : "bg-primary-800 text-white shadow-sm"
                       : isLight
                         ? "text-slate-600 hover:text-slate-900"
                         : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  <Settings className="w-3.5 h-3.5 text-indigo-500" />
+                  <Settings className="w-3.5 h-3.5" />
                   <span>{t("Sales Operations", "销售运营")}</span>
                 </button>
               )}
@@ -2360,13 +1930,13 @@ function CrmWorkspace({
                   crmModule === "docs"
                     ? isLight
                       ? "bg-white text-primary-700 shadow-2xs font-bold"
-                      : "bg-primary-600 text-white shadow-sm"
+                      : "bg-primary-800 text-white shadow-sm"
                     : isLight
                       ? "text-slate-600 hover:text-slate-900"
                       : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5 text-blue-500" />
+                <BookOpen className="w-3.5 h-3.5" />
                 <span>{t("User Guide & Docs", "在线使用手册")}</span>
               </button>
             </div>
@@ -2399,7 +1969,7 @@ function CrmWorkspace({
               >
                 {isLight ? (
                   <>
-                    <Moon className="w-3.5 h-3.5 text-indigo-600" />
+                    <Moon className="w-3.5 h-3.5" />
                     <span>{t("Dark", "深色")}</span>
                   </>
                 ) : (
@@ -2435,12 +2005,12 @@ function CrmWorkspace({
 
                 {employee.permissions.includes("crm.export") && (
                   <a
-                    href="/api/crm/export"
-                    className="flex items-center gap-1.5 h-8 px-3.5 bg-primary-600 hover:bg-primary-500 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-900/20 transition-all cursor-pointer"
+                    href={"/api/crm/export?"+queryKey}
+                    className="flex items-center gap-1.5 h-8 px-3.5 bg-primary-700 hover:bg-primary-800 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-900/20 transition-all cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>
-                      {t("Export CSV Data (.CSV)", "导出标准数据 (.CSV)")}
+                      {t("Export current results (.JSON)", "导出当前结果 (.JSON)")}
                     </span>
                   </a>
                 )}
@@ -2503,7 +2073,7 @@ function CrmWorkspace({
                   }
                   className={`flex items-center gap-1.5 h-8 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm ${
                     policyControls?.isDirty
-                      ? "bg-primary-600 hover:bg-primary-500 active:scale-95 text-white shadow-primary-900/20 ring-2 ring-primary-400/30"
+                      ? "bg-primary-700 hover:bg-primary-800 active:scale-95 text-white shadow-primary-900/20 ring-2 ring-primary-400/30"
                       : isLight
                         ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/90 shadow-2xs"
                         : "bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -2550,18 +2120,19 @@ function CrmWorkspace({
       </header>
 
       {/* Main Workspace Body */}
-      <div className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5">
+      <main id="crm-main" tabIndex={-1} className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5">
         {crmModule === "campaigns" ? (
           <CrmCampaignHub
+            canManageCampaigns={canManage}
             isLight={isLight}
             lang={lang}
             leads={leads}
-            onSelectLeadInCrm={(leadId) => {
-              const target = leads.find((l) => l.id === leadId);
-              if (target) {
-                setCrmModule("leads");
-                handleOpenLeadDrawer(target);
-              }
+            onSelectLeadInCrm={async(leadId) => {
+              try{
+                let target=leads.find(l=>l.id===leadId);
+                if(!target){const r=await fetch(`/api/crm/leads/${encodeURIComponent(leadId)}`);const data=await r.json();if(!r.ok)throw Error(data.error||'Lead not found');target={...data.lead,attention:{tasks:(data.tasks||[]).map((t:any)=>({id:t.id,kind:t.kind,status:t.status,dueAt:t.due_at,ownerId:t.owner_id,details:t.details})),unreadCount:0,isMine:false}};}
+                setCrmModule("leads");handleOpenLeadDrawer(target);
+              }catch(e){setLeadActionError((e as Error).message);}
             }}
             onNavigateTab={(tab) => changeModule(tab)}
           />
@@ -2597,246 +2168,25 @@ function CrmWorkspace({
               type="button"
               aria-expanded={showOverview}
               onClick={() => setShowOverview(!showOverview)}
-              className="text-sm font-semibold text-slate-600 dark:text-slate-300"
+              className="crm-process-toggle" data-theme={isLight?"light":"dark"}
             >
               {t(
-                "Business overview · current results",
-                "业务概览 · 当前筛选结果",
+                "Sales process · current results",
+                "销售过程 · 当前筛选结果",
               )}{" "}
               {showOverview ? "−" : "+"}
             </button>
-            {showOverview && (
-              <div>
-                {/* KPI Dashboard Grid with Standardized Height and Pixel-Perfect Alignment */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {/* Card 1: Total */}
-                  <div
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group ${
-                      isLight
-                        ? "bg-white border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-xs"
-                        : "bg-slate-900 border-slate-800 shadow-sm hover:border-slate-700 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-semibold ${isLight ? "text-slate-600" : "text-slate-300"}`}
-                      >
-                        {t("Total Inquiries", "咨询总量")}
-                      </span>
-                      <span
-                        className={`w-2 h-2 rounded-full ${isLight ? "bg-slate-300" : "bg-slate-600"}`}
-                      />
-                    </div>
-                    <div
-                      className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-slate-900" : "text-white"}`}
-                    >
-                      {stats.total}
-                    </div>
-                    <span
-                      className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-                    >
-                      {t("Deduplicated Leads", "去重线索总数")}
-                    </span>
-                  </div>
-
-                  {/* Card 2: Hot Leads */}
-                  <div
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group ${
-                      isLight
-                        ? "bg-amber-50/40 border-amber-200/70 shadow-2xs hover:border-amber-300 hover:shadow-xs"
-                        : "bg-amber-950/20 border-amber-900/40 shadow-sm hover:border-amber-800 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-semibold ${isLight ? "text-amber-800" : "text-amber-300"}`}
-                      >
-                        🔥 {t("Hot Leads", "高意向")}
-                      </span>
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                      </span>
-                    </div>
-                    <div
-                      className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-amber-800" : "text-amber-300"}`}
-                    >
-                      {stats.hot}
-                    </div>
-                    <span
-                      className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-amber-700/80" : "text-amber-400/80"}`}
-                    >
-                      {t("Configured SLA", "按配置响应")}
-                    </span>
-                  </div>
-
-                  {/* Card 3: Overdue SLA */}
-                  <div
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group ${
-                      dynamicOverdueCount > 0
-                        ? isLight
-                          ? "bg-rose-50/60 border-rose-300 shadow-2xs text-rose-900 hover:border-rose-400 hover:shadow-xs"
-                          : "bg-rose-950/30 border-rose-800/80 shadow-sm text-rose-200 hover:border-rose-700 hover:shadow-md"
-                        : isLight
-                          ? "bg-white border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-xs"
-                          : "bg-slate-900 border-slate-800 shadow-sm hover:border-slate-700 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-semibold ${
-                          dynamicOverdueCount > 0
-                            ? isLight
-                              ? "text-rose-800 font-bold"
-                              : "text-rose-300 font-bold"
-                            : isLight
-                              ? "text-slate-600"
-                              : "text-slate-300"
-                        }`}
-                      >
-                        ⚠️ {t("Overdue SLA", "逾期待办")}
-                      </span>
-                      {dynamicOverdueCount > 0 ? (
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
-                        </span>
-                      ) : (
-                        <span
-                          className={`w-2 h-2 rounded-full ${isLight ? "bg-slate-300" : "bg-slate-600"}`}
-                        />
-                      )}
-                    </div>
-                    <div
-                      className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${
-                        dynamicOverdueCount > 0
-                          ? isLight
-                            ? "text-rose-700 font-extrabold"
-                            : "text-rose-300"
-                          : isLight
-                            ? "text-slate-700 font-bold"
-                            : "text-slate-400"
-                      }`}
-                    >
-                      {dynamicOverdueCount}
-                    </div>
-                    <span
-                      className={`text-[11px] font-medium leading-tight truncate ${
-                        dynamicOverdueCount > 0
-                          ? isLight
-                            ? "text-rose-600 font-semibold"
-                            : "text-rose-400"
-                          : isLight
-                            ? "text-slate-400"
-                            : "text-slate-500"
-                      }`}
-                    >
-                      {dynamicOverdueCount > 0
-                        ? t("Immediate Action Needed", "需立即响应破冰")
-                        : t("All In Cadence", "当前无逾期待办")}
-                    </span>
-                  </div>
-
-                  {/* Card 4: Warm-Offline */}
-                  <div
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group ${
-                      isLight
-                        ? "bg-white border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-xs"
-                        : "bg-slate-900 border-slate-800 shadow-sm hover:border-slate-700 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}
-                      >
-                        🏫 {t("Warm-Offline", "中意向 · 线下")}
-                      </span>
-                      <span
-                        className={`w-2 h-2 rounded-full ${isLight ? "bg-amber-400" : "bg-amber-500"}`}
-                      />
-                    </div>
-                    <div
-                      className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-slate-900" : "text-white"}`}
-                    >
-                      {stats.warmOffline}
-                    </div>
-                    <span
-                      className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-                    >
-                      {t("Campus Trial Targets", "校区面谈试听目标")}
-                    </span>
-                  </div>
-
-                  {/* Card 5: Warm-Online */}
-                  <div
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group ${
-                      isLight
-                        ? "bg-white border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-xs"
-                        : "bg-slate-900 border-slate-800 shadow-sm hover:border-slate-700 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}
-                      >
-                        🌐 {t("Warm-Online", "中意向 · 线上")}
-                      </span>
-                      <span
-                        className={`w-2 h-2 rounded-full ${isLight ? "bg-blue-400" : "bg-blue-500"}`}
-                      />
-                    </div>
-                    <div
-                      className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-slate-900" : "text-white"}`}
-                    >
-                      {stats.warmOnline}
-                    </div>
-                    <span
-                      className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-                    >
-                      {t("Zoom Class Targets", "线上直播班级目标")}
-                    </span>
-                  </div>
-
-                  {/* Card 6: Enrolled */}
-                  <div
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group ${
-                      isLight
-                        ? "bg-white border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-xs"
-                        : "bg-slate-900 border-slate-800 shadow-sm hover:border-slate-700 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-semibold ${isLight ? "text-emerald-700" : "text-emerald-400"}`}
-                      >
-                        🎓 {t("Enrolled (Closed)", "已报名签约")}
-                      </span>
-                      <span
-                        className={`w-2 h-2 rounded-full ${isLight ? "bg-emerald-400" : "bg-emerald-500"}`}
-                      />
-                    </div>
-                    <div
-                      className={`text-2xl sm:text-[26px] font-bold font-mono tracking-tight tabular-nums my-1.5 ${isLight ? "text-emerald-700" : "text-emerald-400"}`}
-                    >
-                      {stats.enrolled}
-                    </div>
-                    <span
-                      className={`text-[11px] font-medium leading-tight truncate ${isLight ? "text-slate-400" : "text-slate-500"}`}
-                    >
-                      {t("Conv. Rate", "转化率")}:{" "}
-                      <strong className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {stats.conversionRate}
-                      </strong>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {showOverview && <CrmProcessOverview metrics={processOverview} error={Boolean(leadActionError)} lang={lang} isLight={isLight} timezone={filterTimezone} leader={canAssign} employees={employees}/>}
+            {retainedDraft&&<section className="crm-workflow-form" role="region" aria-label={lang==='zh'?'保留的未保存草稿':lang==='id'?'Draf belum tersimpan':'Retained unsaved draft'}><p role="alert">{lang==='zh'?'客户访问权限已变化，未保存草稿已保留；重新获得权限后打开客户可继续。':lang==='id'?'Akses pelanggan berubah. Draf disimpan di halaman ini; buka pelanggan setelah akses dipulihkan.':'Customer access changed. Your draft is retained on this page; reopen after access is restored.'}</p><textarea readOnly aria-label={lang==='zh'?'草稿内容':lang==='id'?'Isi draf':'Draft content'} value={[retainedDraft.summary,retainedDraft.action,retainedDraft.purpose,retainedDraft.date,retainedDraft.arrangementReason,retainedDraft.reviewDate].filter(Boolean).join('\n')}/><button type="button" className="crm-work-button" onClick={()=>{delete draftCache.current[retainedDraft.id];delete attendanceCache.current[retainedDraft.id];setRetainedDraft(null);}}>{lang==='zh'?'丢弃草稿':lang==='id'?'Buang draf':'Discard draft'}</button></section>}
+            {queueComplete&&<p role="status">{lang==='zh'?'已到当前列表末尾，请核对剩余待办':lang==='id'?'Akhir daftar tercapai; periksa tugas yang masih terbuka':'End of current list; review remaining tasks'}</p>}
             {leadActionError && (
               <p role="alert" className="text-xs text-rose-500">
                 {crmError(leadActionError, lang)}
               </p>
             )}
+            {canAssign&&<CrmOperationalIssues lang={lang} isLight={isLight}/>}
+            <details className="crm-detail-filter-disclosure" open={!isDrawerOpen} key={String(isDrawerOpen)}>
+              <summary hidden={!isDrawerOpen}>{t("Adjust customer filters","调整客户筛选")} · {filteredLeads.length}</summary>
             <CrmLeadFilters
               isLight={isLight}
               value={filters}
@@ -2859,7 +2209,7 @@ function CrmWorkspace({
               timezone={filterTimezone}
               viewMode={viewMode}
               onViewMode={handleSetViewMode}
-            />
+            /></details>
 
             <CrmLeadWorkspace
               leads={filteredLeads}
@@ -2871,14 +2221,17 @@ function CrmWorkspace({
               loading={isLoading}
               employeeId={employee.id}
               employees={employees}
+              onClaim={!canAssign&&employee.roles.includes("sales")?(lead)=>claimLead(lead.id):undefined}
               onOpen={handleOpenLeadDrawer}
+              onProcess={processFromList}
+              canProcess={canEditLead}
               onReset={() => setFilters(defaultLeadFilters(employee.scope))}
             >
               {leadPanel}
             </CrmLeadWorkspace>
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }

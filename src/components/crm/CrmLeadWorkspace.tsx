@@ -35,6 +35,9 @@ export interface LeadWorkspaceProps {
     id: string;
     displayName?: string;
   }>;
+  onClaim?: (lead:CrmLeadRecord)=>void;
+  onProcess?: (lead:CrmLeadRecord)=>void;
+  canProcess?: (lead:CrmLeadRecord)=>boolean;
   onOpen: (lead: CrmLeadRecord, tab?: CustomerTab) => void;
   onReset: () => void;
   children?: React.ReactNode;
@@ -49,7 +52,7 @@ export function CrmLeadWorkspace({
   loading,
   employeeId,
   employees,
-  onOpen,
+  onOpen,onClaim,onProcess,canProcess,
   onReset,
   children,
 }: LeadWorkspaceProps) {
@@ -152,7 +155,7 @@ export function CrmLeadWorkspace({
           "—"
         );
       case "contact":
-        return crmValue(lead.connectStatus, lang);
+        return lead.connectStatus==="Interested"?t("Historical interest record","历史意向记录"):crmValue(lead.connectStatus, lang);
       case "touches":
         return lead.touchCount ?? 0;
       case "lastContact":
@@ -295,6 +298,7 @@ export function CrmLeadWorkspace({
                       <div className="crm-work-muted">
                         {leadDisplayNumber(lead)} · {owner(lead)}
                       </div>
+                      {!lead.owner&&onClaim&&<button type="button" className="crm-work-link" onClick={()=>onClaim(lead)}>{t("Claim for myself","认领给自己")}</button>}
                       <LeadActivity
                         lead={lead}
                         lang={lang}
@@ -314,7 +318,7 @@ export function CrmLeadWorkspace({
                       />
                     </div>
                     <div className="crm-work-needs">
-                      <div>{assessment.goal}</div>
+                      <div>{assessment.goal}{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length>0&&<button type="button" className="crm-work-link" onClick={()=>onOpen(lead,"profile")}> · +{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length} {t("Other goals","其他目标")}</button>}</div>
                       <div className="crm-work-muted">
                         {customerCity(lead.city, lang)} ·{" "}
                         {crmValue(lead.mode, lang)}
@@ -336,7 +340,7 @@ export function CrmLeadWorkspace({
                       {signals.length > 0 && (
                         <button
                           type="button"
-                          className="crm-work-link crm-work-muted"
+                          className="crm-work-support-link"
                           onClick={() => onOpen(lead, "profile")}
                         >
                           {crmValue(signals[0], lang)}
@@ -344,7 +348,7 @@ export function CrmLeadWorkspace({
                         </button>
                       )}
                     </div>
-                    <div className="crm-work-next">{follow(lead, true)}</div>
+                    <div className="crm-work-next">{follow(lead, true)}<button type="button" className="crm-work-button" data-primary="true" disabled={canProcess?.(lead)===false} onClick={()=>onProcess?onProcess(lead):onOpen(lead,"activities")}>{t("Record result","记录处理结果")}</button></div>
                   </article>
                 );
               })}

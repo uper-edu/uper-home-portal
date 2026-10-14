@@ -1,3 +1,4 @@
+import {contactPaused} from "./crmContact";
 import { crmId } from "./crmIndonesian";
 import type { CrmLeadRecord, LeadAttention } from "../types/crmLead";
 import { calendarDay } from "./crmLeadFilters";
@@ -36,6 +37,7 @@ export function describeFollowUpTask(
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const actions: Record<string, [string, string]> = {
+    contact_review: ["Internal contact review", "内部联系复查"],
     consultation: ["Contact and qualify", "联系客户并确认需求"],
     handoff: ["Arrange advisor contact", "安排顾问联系"],
     booking: ["Confirm booking", "确认预约安排"],
@@ -64,10 +66,10 @@ export function describeFollowUpTask(
   return {
     task,
     action:
-      (lang === "id"
+      (task as any).details?.action || ((lang === "id"
         ? crmId(actions[task.kind]?.[0])
         : actions[task.kind]?.[lang === "zh" ? 1 : 0]) ??
-      t("Follow up with customer", "联系客户跟进"),
+      t("Follow up with customer", "联系客户跟进")),
     timing,
     deadline,
     tone: overdue
@@ -88,9 +90,15 @@ export function leadFollowUp(
   const tasks = pendingFollowUps(lead.attention?.tasks ?? []);
   return {
     loaded: !!lead.attention,
-    next: tasks[0] ? describeFollowUpTask(tasks[0], lang, timezone, now) : null,
+    next: tasks[0] ? {...describeFollowUpTask(tasks[0], lang, timezone, now),...(contactPaused(lead)?{action:(lang==='zh'?'内部核实／复查':lang==='id'?'Tinjauan internal':'Internal review')+' · '+describeFollowUpTask(tasks[0],lang,timezone,now).action}:{})} : null,
     additionalCount: Math.max(0, tasks.length - 1),
     // A lead-level memo is not a task description or proof of a scheduled task.
     note: lead.nextAction?.trim() ?? "",
   };
+}
+export function emptyFollowUpLabel(lead:any,lang:'en'|'id'|'zh'){
+ const t=(en:string,zh:string)=>lang==='id'?crmId(en):lang==='zh'?zh:en;
+ if(['Enrolled','Lost'].includes(lead.currentStage))return t('No unfinished follow-up','无未完成跟进事项');
+ if(lead.followUpDisposition?.kind==='none')return t('No next step planned','暂不安排')+' · '+lead.followUpDisposition.reason;
+ return t('Next step not scheduled','未安排下一步');
 }

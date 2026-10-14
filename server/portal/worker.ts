@@ -1,3 +1,4 @@
+import {contactPaused} from "../../src/utils/crmContact.ts";
 import {recipients,priority,retryAfter,validWebhook,larkCard,groupRateLimit,resolveRecipients} from "./notificationDelivery.ts";
 import { pool, tx, id, event, connection } from "./store.ts";
 import { platform } from "./identity.ts";
@@ -45,7 +46,7 @@ export async function tick(clock=new Date()) {
         : {};
       if(ev.payload.taskId){
         const task=(await c.query('SELECT status FROM followup_tasks WHERE id=$1',[ev.payload.taskId])).rows[0];
-        if(!task || task.status==='completed'){await c.query('UPDATE outbox SET processed_at=now() WHERE id=$1',[ev.id]);continue;}
+        if(!task || ['completed','cancelled'].includes(task.status)){await c.query('UPDATE outbox SET processed_at=now() WHERE id=$1',[ev.id]);continue;}
       }
       const rules = (
         await c.query("SELECT * FROM notification_rules WHERE enabled=true AND effective_at<=(SELECT created_at FROM outbox WHERE id=$1)",[ev.id])
@@ -168,7 +169,7 @@ export async function tick(clock=new Date()) {
           job.snapshot.payload.taskId,
         ])
       ).rows[0];
-    if (job.snapshot.payload.taskId && (!task || task.status === "completed")) {
+    if (job.snapshot.payload.taskId && (!task || ["completed","cancelled"].includes(task.status))) {
       await pool.query(
         "UPDATE notification_jobs SET state='cancelled',result='Task completed' WHERE id=$1",
         [job.id],
@@ -176,7 +177,7 @@ export async function tick(clock=new Date()) {
       return;
     }
     const content = {
-      event: job.snapshot.event,
+      event: contactPaused(lead)&&task ? "Internal review" : job.snapshot.event,
       name: lead.fullName || lead.name || "Anonymous",
       owner: lead.owner || "Unassigned",
       due: task?.due_at ? new Intl.DateTimeFormat(r.language==='zh'?'zh-CN':r.language==='id'?'id-ID':'en-US',{timeZone:r.timezone,dateStyle:'medium',timeStyle:'short'}).format(new Date(task.due_at)) : '',
@@ -227,7 +228,10 @@ export async function tick(clock=new Date()) {
       await pool.query("UPDATE notification_jobs SET state='pending',due_at=$2,result='Group hourly limit reached' WHERE id=$1",[job.id,new Date(clock.getTime()+3600000)]);
       return;
     }
-    if (!config || config.mode !== "live") {
+    if (!config) {
+      await tx(async c=>{await c.query("UPDATE notification_jobs SET state='failed',result='Missing notification channel',completed_at=$2 WHERE id=$1",[job.id,clock]);if(job.snapshot.event!=='notification.failed')await event(c,'notification.failed',null,{jobId:job.id});});return;
+    }
+    if (config.mode === "simulation") {
       await pool.query(
         "UPDATE notification_jobs SET state='simulated',result='No live channel configured',completed_at=$2 WHERE id=$1",
         [job.id,clock],
@@ -252,14 +256,14 @@ export async function tick(clock=new Date()) {
     let retry = false;
     let serverWait = 0;
     try {
-      const text = r.template.replace(
+      const text = (contactPaused(lead)&&task ? (r.language==="zh"?"内部核实／复查：{{name}}，负责人 {{owner}}，原期限 {{due}}。暂停主动联系。":r.language==="id"?"Tinjauan internal: {{name}}, penanggung jawab {{owner}}, tenggat awal {{due}}. Kontak proaktif dijeda.":"Internal review: {{name}}, owner {{owner}}, original deadline {{due}}. Proactive contact paused.") : r.template).replace(
         /\{\{(event|name|owner|due)\}\}/g,
         (_, k) => String(content[k]),
       );
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(larkCard(text+(job.snapshot.payload.counts?'\n'+JSON.stringify(job.snapshot.payload.counts):''),job.snapshot.leadId,(config.signingEnabled ?? !!config.signingSecretRef)?process.env[config.signingSecretRef]:undefined,clock)),
+        body: JSON.stringify(larkCard((r.language==="zh"?(job.snapshot.event==="notification.failed"?"[运营异常] ":"[销售通知] "):r.language==="id"?(job.snapshot.event==="notification.failed"?"[Operasional] ":"[Penjualan] "):(job.snapshot.event==="notification.failed"?"[Operations] ":"[Sales] "))+text+(job.snapshot.payload.counts?'\n'+JSON.stringify(job.snapshot.payload.counts):''),job.snapshot.leadId,(config.signingEnabled ?? !!config.signingSecretRef)?process.env[config.signingSecretRef]:undefined,clock)),
         signal: AbortSignal.timeout(10000),
       });
       serverWait = retryAfter(response.headers.get("retry-after"),clock);
@@ -285,7 +289,7 @@ export async function tick(clock=new Date()) {
           "UPDATE notification_jobs SET state=$2,result=$3,completed_at=$4 WHERE id=$1",
           [job.id, state, result,clock],
         );
-        if (state === "failed" && job.snapshot.event !== "notification.failed")
+        if (["failed","unknown"].includes(state) && job.snapshot.event !== "notification.failed")
           await event(c, "notification.failed", null, { jobId: job.id });
       });
     }

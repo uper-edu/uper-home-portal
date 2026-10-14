@@ -194,8 +194,8 @@ export async function restorePortal(file: string) {
           snapshot.data[table].length === 0
         ) &&
         JSON.stringify(columns) !== JSON.stringify(snapshot.columns?.[table]) &&
-        !(['portal_leads','messages'].includes(table) &&
-          JSON.stringify(columns.filter(c=>!((table==='portal_leads' && c==='business_number' || table==='messages' && c==='metadata') && !snapshot.columns?.[table]?.includes(c)))) === JSON.stringify(snapshot.columns?.[table]))
+        !(['portal_leads','messages','followup_tasks'].includes(table) &&
+          JSON.stringify(columns.filter(c=>!((table==='portal_leads' && c==='business_number' || table==='messages' && c==='metadata' || table==='followup_tasks' && c==='details') && !snapshot.columns?.[table]?.includes(c)))) === JSON.stringify(snapshot.columns?.[table]))
       )
         throw Error("Backup schema columns mismatch: " + table);
       const jsonColumns=new Set((await c.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND data_type IN ('json','jsonb')",[table])).rows.map(r=>r.column_name));

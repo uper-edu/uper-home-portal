@@ -116,7 +116,7 @@ export function CrmUserGuide({ isLight, lang, onNavigateTab }: Props) {
             </li>
           </ol>
         </nav>
-        <main className="space-y-5 min-w-0">
+        <div className="space-y-5 min-w-0" role="region" aria-label={t("Guide chapters","Bab panduan","手册章节")}>
           {!sections.length && (
             <p role="status">
               {t(
@@ -174,7 +174,7 @@ export function CrmUserGuide({ isLight, lang, onNavigateTab }: Props) {
               ))}
             </dl>
           </section>
-        </main>
+        </div>
       </div>
     </div>
   );

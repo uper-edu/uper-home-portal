@@ -1,3 +1,4 @@
+import {CrmSingleSelect} from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,7 +10,7 @@ import {
   type LeadFilters,
 } from "../../utils/crmLeadFilters";
 import type { CustomerView } from "../../utils/crmWorkspace";
-type SingleField = "owner" | "task" | "sort" | "columns";
+type SingleField = "owner" | "task" | "sort" | "columns" | "workScope";
 interface Props {
   value: LeadFilters;
   onChange: (value: LeadFilters) => void;
@@ -252,7 +253,9 @@ export function CrmLeadFilters({
         aria-label={t("Lead filters", "客户筛选")}
         className="crm-filter-panel"
       >
+
         <div className="crm-filter-main">
+        <CrmSingleSelect className="crm-filter-workscope" displayValue={(lang==='zh'?'范围':lang==='id'?'Lingkup':'Scope')+' · '+(f.workScope==='action'?(lang==='zh'?'需处理':lang==='id'?'Perlu ditangani':'Needs handling'):(lang==='zh'?'全部':lang==='id'?'Semua':'All'))} label={lang==='zh'?'工作范围':lang==='id'?'Lingkup kerja':'Work scope'} value={f.workScope||'all'} onChange={v=>update({workScope:v as 'all'|'action'})} options={[{value:'action',label:lang==='zh'?'需处理':lang==='id'?'Perlu ditangani':'Needs handling'},{value:'all',label:lang==='zh'?'全部':lang==='id'?'Semua':'All'}]} lang={lang} isLight={isLight}/>
           <input
             type="search"
             maxLength={200}
@@ -490,6 +493,7 @@ export function CrmLeadFilters({
           label: t("Sort", "排序"),
           value: f.sort,
           options: [
+            { value: "priority", label: t("Processing priority", "处理优先级") },
             { value: "newest", label: t("Newest customer", "最近登记") },
             { value: "activity", label: t("Latest activity", "最新动态") },
             {

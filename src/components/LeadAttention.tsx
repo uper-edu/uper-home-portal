@@ -22,7 +22,7 @@ export function LeadActivity({
     "handoff.requested": ["Advisor requested", "请求顾问"],
     "booking.requested": ["Booking requested", "预约请求"],
     "enrollment.requested": ["Enrollment requested", "报名请求"],
-    "task.overdue": ["Follow-up overdue", "跟进逾期"],
+    "task.overdue": ["Past overdue event", "历史逾期事件"],
     "ai.failed": ["AI response failed", "AI 回复失败"],
   };
   const label =
@@ -47,7 +47,8 @@ export function LeadActivity({
         e.stopPropagation();
         onOpen();
       }}
-      className={`mt-1 flex items-center gap-1 text-[10px] max-w-full ${a.unreadCount ? "text-blue-600 dark:text-blue-300 font-semibold" : "text-slate-500 dark:text-slate-400"}`}
+      className={`crm-lead-activity mt-1 flex items-center gap-1 max-w-full ${a.unreadCount ? "font-semibold" : ""}`}
+      data-unread={Boolean(a.unreadCount)}
       aria-label={`${a.unreadCount ? (lang === "id" ? crmId("Unread") : lang === "zh" ? "未读" : "Unread") + " · " : ""}${label}`}
     >
       <span>

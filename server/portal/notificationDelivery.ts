@@ -3,6 +3,7 @@ import {allowed,type Employee} from './identity.ts';
 import type {Rule} from './policy.ts';
 export const CRM_LEADER_ROLE='crm_leader';
 export function resolveRecipients(rule:Rule,lead:any,employees:Employee[],leadId?:string){
+ if(rule.event==='notification.failed')return {ids:employees.filter(e=>e.active && e.roles?.includes(CRM_LEADER_ROLE)&&e.permissions.includes('notifications.manage')).map(e=>e.id),reason:'operations_to_crm_leaders'};
  const profile={...lead,team:lead?.team || 'sales'};
  const visible=employees.filter(e=>e.active===true && e.permissions.includes('crm.read') && !(rule.event==='daily.digest' && e.scope==='own') && (!leadId || allowed(e,profile)));
  if(rule.recipient==='owner' && leadId){
@@ -19,7 +20,7 @@ export function retryAfter(value:string|null,now:Date){if(!value)return 0;const 
 export function validWebhook(value:string|undefined){try{const u=new URL(value || '');return u.protocol==='https:'&&u.hostname==='open.larksuite.com'&&!u.username&&!u.password&&!u.port&&/^\/open-apis\/bot\/v2\/hook\/[a-zA-Z0-9_-]+$/.test(u.pathname)&&!u.search&&!u.hash;}catch{return false;}}
 export function larkCard(text:string,leadId:string|undefined,secret:string|undefined,now:Date){
  const url=new URL('/crm',process.env.APP_URL || 'http://localhost:3000');if(leadId)url.searchParams.set('lead',leadId);
- const body:any={msg_type:'interactive',card:{config:{wide_screen_mode:true},header:{template:'blue',title:{tag:'plain_text',content:'UPER · '+(process.env.PLATFORM_MODE==='mock'?'TEST':process.env.NODE_ENV || 'DEV')}},elements:[{tag:'div',text:{tag:'lark_md',content:text}},{tag:'action',actions:[{tag:'button',text:{tag:'plain_text',content:'CRM'},url:url.toString(),type:'primary'}]}]}};
+ const body:any={msg_type:'interactive',card:{config:{wide_screen_mode:true},header:{template:'blue',title:{tag:'plain_text',content:'UPER · '+((process.env.PLATFORM_MODE==='mock'||process.env.APP_ENV==='test')?'TEST':process.env.NODE_ENV || 'DEV')}},elements:[{tag:'div',text:{tag:'lark_md',content:text}},{tag:'action',actions:[{tag:'button',text:{tag:'plain_text',content:'CRM'},url:url.toString(),type:'primary'}]}]}};
  if(secret){body.timestamp=String(Math.floor(now.getTime()/1000));body.sign=crypto.createHmac('sha256',body.timestamp+'\n'+secret).update('').digest('base64');}
  return body;
 }
