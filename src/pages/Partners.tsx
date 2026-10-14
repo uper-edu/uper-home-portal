@@ -56,16 +56,7 @@ function urlFor(source: any) {
 }
 
 // Fallback data in case Sanity is empty
-const FALLBACK_PARTNERS = [
-  { _id: 'pb-1', name: 'Tsinghua University', category: 'Chinese Universities', logo: 'https://picsum.photos/seed/thu/200/100' },
-  { _id: 'pb-2', name: 'Peking University', category: 'Chinese Universities', logo: 'https://picsum.photos/seed/pku2/200/100' },
-  { _id: 'pb-3', name: 'Tech Enterprise Co.', category: 'Chinese Enterprises', logo: 'https://picsum.photos/seed/tech1/200/100' },
-  { _id: 'pb-4', name: 'University of Indonesia', category: 'Indonesian Universities & Schools', subcategory: 'University', logo: 'https://picsum.photos/seed/indo_univ/200/100' },
-  { _id: 'pb-4b', name: 'Gadjah Mada University', category: 'Indonesian Universities & Schools', subcategory: 'University', logo: 'https://picsum.photos/seed/ugm/200/100' },
-  { _id: 'pb-5', name: 'Jakarta High School', category: 'Indonesian Universities & Schools', subcategory: 'High School', logo: 'https://picsum.photos/seed/pku/200/100' },
-  { _id: 'pb-6', name: 'Bandung Vocational', category: 'Indonesian Universities & Schools', subcategory: 'Vocational School', logo: 'https://picsum.photos/seed/vocational/200/100' },
-  { _id: 'pb-7', name: 'Global Edu Foundation', category: 'Indonesian Organizations', logo: 'https://picsum.photos/seed/edu1/200/100' },
-];
+const FALLBACK_PARTNERS = [];
 
 // Bento Scheme Design Architecture
 const bentoConfigs = [

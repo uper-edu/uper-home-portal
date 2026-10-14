@@ -1,3 +1,4 @@
+import CmsContentStatus from './components/CmsContentStatus';
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -42,6 +43,7 @@ const StyleGuide = lazyWithRetry(() => import('./pages/StyleGuide'));
 const StudioPage = lazyWithRetry(() => import('./pages/Studio'));
 const StandAloneChat = lazyWithRetry(() => import('./pages/StandAloneChat'));
 const CrmWorkbench = lazyWithRetry(() => import('./pages/CrmWorkbench'));
+const AccessWorkbench = lazyWithRetry(() => import('./pages/AccessWorkbench'));
 const CmsWorkbench = lazyWithRetry(() => import('./pages/CmsWorkbench'));
 
 function AnalyticsTracker() {
@@ -87,6 +89,7 @@ export default function App() {
       <HelmetProvider>
         <ErrorBoundary>
           <BrowserRouter>
+        <CmsContentStatus />
             <AnalyticsTracker />
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>}>
               <Routes>
@@ -98,6 +101,7 @@ export default function App() {
                 <Route path="crm" element={<CrmWorkbench />} />
                 
                 {/* Standalone Official Website CMS & Media Repository */}
+                <Route path="system" element={<AccessWorkbench />} />
                 <Route path="cms" element={<CmsWorkbench />} />
                 <Route path="CMS" element={<CmsWorkbench />} />
 

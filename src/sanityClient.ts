@@ -1,100 +1,11 @@
-import admissionsListJson from './data/content/admissionsList.json';
-import campaignsJson from './data/content/campaigns.json';
-import newsJson from './data/content/news.json';
-import newsPageJson from './data/content/newsPage.json';
-import partnersJson from './data/content/partners.json';
-import studentStoriesJson from './data/content/studentStories.json';
-import trendingProgramsJson from './data/content/trendingPrograms.json';
-
-/**
- * High-performance, zero-dependency Content Client
- * Replaces external Sanity API with instant local in-memory data
- */
-export const client = {
-  projectId: 'xtbhepdi',
-  dataset: 'production',
-  async fetch<R = any>(query: string, params?: any): Promise<R> {
-    const q = query.toLowerCase();
-
-    // 1. Admissions List
-    if (q.includes('admissionslist')) {
-      return (admissionsListJson as unknown) as R;
-    }
-
-    // 2. Campaigns
-    if (q.includes('campaign')) {
-      const campaigns = campaignsJson as any[];
-      if (params?.slug || q.includes('slug.current')) {
-        const targetSlug = params?.slug;
-        const found = campaigns.find(c => c.slug?.current === targetSlug || c.slug === targetSlug);
-        return (found || campaigns[0] || null) as unknown as R;
-      }
-      if (q.includes('isactive == true')) {
-        return (campaigns.filter(c => c.isActive !== false)) as unknown as R;
-      }
-      return (campaigns as unknown) as R;
-    }
-
-    // 3. News Pages Config
-    if (q.includes('newspage')) {
-      const sorted = [...(newsPageJson as any[])].sort((a, b) => (a.order || 0) - (b.order || 0));
-      return (sorted as unknown) as R;
-    }
-
-    // 4. News Articles
-    if (q.includes('news')) {
-      const allNews = newsJson as any[];
-      // Single article query by slug: *[_type == "news" && slug.current == $slug][0]
-      if (params?.slug || q.includes('slug.current')) {
-        const targetSlug = params?.slug;
-        const found = allNews.find(n => n.slug?.current === targetSlug || n.slug === targetSlug);
-        return (found || null) as unknown as R;
-      }
-
-      // Check for limit: [0...8]
-      const limitMatch = query.match(/\[0\.\.\.(\d+)\]/);
-      if (limitMatch) {
-        const count = parseInt(limitMatch[1], 10);
-        return (allNews.slice(0, count) as unknown) as R;
-      }
-
-      return (allNews as unknown) as R;
-    }
-
-    // 5. Partners
-    if (q.includes('partner')) {
-      let partners = partnersJson as any[];
-      if (q.includes('isactive == true')) {
-        partners = partners.filter(p => p.isActive !== false);
-      }
-      return (partners as unknown) as R;
-    }
-
-    // 6. Student Stories
-    if (q.includes('studentstory')) {
-      const stories = studentStoriesJson as any[];
-      const limitMatch = query.match(/\[0\.\.\.(\d+)\]/);
-      if (limitMatch) {
-        const count = parseInt(limitMatch[1], 10);
-        return (stories.slice(0, count) as unknown) as R;
-      }
-      return (stories as unknown) as R;
-    }
-
-    // 7. Trending Programs
-    if (q.includes('trendingprogram')) {
-      let programs = trendingProgramsJson as any[];
-      if (q.includes('isactive == true')) {
-        programs = programs.filter(p => p.isActive !== false);
-      }
-      return (programs as unknown) as R;
-    }
-
-    console.warn('[CONTENT CLIENT] Unmatched query pattern:', query);
-    return ([] as unknown) as R;
-  }
-};
-
+import {contentStatus} from './components/CmsContentStatus';
+/** MySQL CMS reads are authoritative; never fall back to stale compiled content. */
+export const client={projectId:'local',dataset:'mysql',async fetch<R=any>(query:string,params?:any):Promise<R>{
+ try{
+ const response=await fetch('/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,params}),cache:'no-store'});
+ const data=await response.json();if(!response.ok)throw Error(data.error||'Content unavailable');contentStatus(query,false);return data.result as R;
+ }catch(error){contentStatus(query,true);throw error;}
+}};
 /**
  * Pure TypeScript drop-in replacement for Sanity Image URL Builder
  * Converts any image source/ref to high-speed CDN or static asset URL

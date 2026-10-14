@@ -1,0 +1,1421 @@
+{
+  "DELETE FROM crm_sessions WHERE expires_at<=UTC_TIMESTAMP(6)": {
+    "sql": "DELETE FROM crm_sessions WHERE expires_at<=UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "DELETE FROM crm_sessions WHERE token_hash=:p1": {
+    "sql": "DELETE FROM crm_sessions WHERE token_hash=:p1",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "DELETE FROM crm_sessions WHERE user_id=:p1": {
+    "sql": "DELETE FROM crm_sessions WHERE user_id=:p1",
+    "sources": [
+      "server/portal/accessManagement.ts",
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "DELETE FROM crm_sessions WHERE user_id=:p1 AND token_hash<>:p2": {
+    "sql": "DELETE FROM crm_sessions WHERE user_id=:p1 AND token_hash<>:p2",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "DELETE FROM trial_campaigns WHERE id=:p1": {
+    "sql": "DELETE FROM trial_campaigns WHERE id=:p1",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO access_roles(id,config) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO access_roles(id,config) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO access_state(id,value) VALUES('policy',:p1) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO access_state(id,value) VALUES('policy',:p1) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO access_state(id,value) VALUES('teamless',:p1)": {
+    "sql": "INSERT INTO access_state(id,value) VALUES('teamless',:p1)",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)": {
+    "sql": "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "INSERT INTO cms_collections(name,items) VALUES(?,JSON_ARRAY()) ON DUPLICATE KEY UPDATE name=name": {
+    "sql": "INSERT INTO cms_collections(name,items) VALUES(?,JSON_ARRAY()) ON DUPLICATE KEY UPDATE name=name",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO cms_media(id,mime,content,uploaded_by) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO cms_media(id,mime,content,uploaded_by) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution)": {
+    "sql": "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution)",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution) VALUES(:p1,:p2,:p3,:p4,:p5)": {
+    "sql": "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution) VALUES(:p1,:p2,:p3,:p4,:p5)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution) VALUES(:p1,:p2,:p3,'legacy_unknown',:p4)": {
+    "sql": "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution) VALUES(:p1,:p2,:p3,'legacy_unknown',:p4)",
+    "sources": [
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO conversations(id,visitor_id,lead_id,source) VALUES(:p1,:p2,:p3,:p4)": {
+    "sql": "INSERT INTO conversations(id,visitor_id,lead_id,source) VALUES(:p1,:p2,:p3,:p4)",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO crm_login_limits(`key`) VALUES(:p1) ON DUPLICATE KEY UPDATE failures=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN 0 ELSE crm_login_limits.failures END,window_start=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN UTC_TIMESTAMP(6) ELSE crm_login_limits.window_start END": {
+    "sql": "INSERT INTO crm_login_limits(`key`) VALUES(:p1) ON DUPLICATE KEY UPDATE failures=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN 0 ELSE crm_login_limits.failures END,window_start=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN UTC_TIMESTAMP(6) ELSE crm_login_limits.window_start END",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "INSERT INTO crm_sessions VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 8 hour)": {
+    "sql": "INSERT INTO crm_sessions VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 8 hour)",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams,active,email) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)": {
+    "sql": "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams,active,email) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams) VALUES(:p1,:p1,:p1,:p2,:p3,:p4) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams) VALUES(:p1,:p1,:p1,:p2,:p3,:p4) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'consultation',:p3,:p4,:p5)": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'consultation',:p3,:p4,:p5)",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'contact_review',:p3,:p4,:p5)": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'contact_review',:p3,:p4,:p5)",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'follow_up',:p3,:p4,:p5)": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'follow_up',:p3,:p4,:p5)",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,status) VALUES(:p1,:p2,'legacy',:p3,:p4,'migration_hold')": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,status) VALUES(:p1,:p2,'legacy',:p3,:p4,'migration_hold')",
+    "sources": [
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at)": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at)",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,:p3,:p4,:p5)": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,:p3,:p4,:p5)",
+    "sources": [
+      "server/portal/followup.ts",
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO hsk_attempts(id,visitor_id,lead_id,input_hash,attempt,result) VALUES(:p1,:p2,:p3,:p4,:p5,:p6)": {
+    "sql": "INSERT INTO hsk_attempts(id,visitor_id,lead_id,input_hash,attempt,result) VALUES(:p1,:p2,:p3,:p4,:p5,:p6)",
+    "sources": [
+      "server/portal/assessments.ts"
+    ]
+  },
+  "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','')=:p4) ON DUPLICATE KEY UPDATE visitor_id=visitor_id": {
+    "sql": "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','')=:p4) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO lead_daily_counters(business_date,`last_value`) VALUES(:p1,1) ON DUPLICATE KEY UPDATE `last_value`=`last_value`+1": {
+    "sql": "INSERT INTO lead_daily_counters(business_date,`last_value`) VALUES(:p1,1) ON DUPLICATE KEY UPDATE `last_value`=`last_value`+1",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(CAST(:p3 AS DATETIME(6)),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))": {
+    "sql": "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(CAST(:p3 AS DATETIME(6)),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status,error,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,'legacy',:p6,:p7)": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status,error,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,'legacy',:p6,:p7)",
+    "sources": [
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'assistant',:p4,'completed',:p5)": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'assistant',:p4,'completed',:p5)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'assistant','','generating')": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'assistant','','generating')",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved')": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved')",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved'),(:p5,:p2,:p3,'assistant','','generating')": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved'),(:p5,:p2,:p3,'assistant','','generating')",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "INSERT INTO notification_channels VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE config=:p2": {
+    "sql": "INSERT INTO notification_channels VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE config=:p2",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO notification_inbox(id,employee_id,content) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO notification_inbox(id,employee_id,content) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES(:p1,:p2,:p3,:p4,'inapp',:p5,:p6,:p7) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES(:p1,:p2,:p3,:p4,'inapp',:p5,:p6,:p7) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "INSERT INTO notification_rules(id,version,config,enabled,effective_at) VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE version=:p2,config=:p3,enabled=:p4,effective_at=UTC_TIMESTAMP(6)": {
+    "sql": "INSERT INTO notification_rules(id,version,config,enabled,effective_at) VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE version=:p2,config=:p3,enabled=:p4,effective_at=UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,:p2,:p3,:p4)": {
+    "sql": "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,:p2,:p3,:p4)",
+    "sources": [
+      "cloud/mysql/site.mjs",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'contact.arrangement.changed',:p2,:p3)": {
+    "sql": "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'contact.arrangement.changed',:p2,:p3)",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "INSERT INTO outbox(id,type,payload,created_at) VALUES(:p1,'daily.digest',:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO outbox(id,type,payload,created_at) VALUES(:p1,'daily.digest',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/accessManagement.ts",
+      "server/portal/runtime.ts",
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.login','{}')": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.login','{}')",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.password_changed','{}')": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.password_changed','{}')",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.save',:p2)",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.claim',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.claim',:p2)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.mutation',?)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.mutation',?)",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',:p1)",
+    "sources": [
+      "scripts/crm-channel-map.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('system','access.bootstrap',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('system','access.bootstrap',:p1)",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('system','access.teamless.role',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('system','access.teamless.role',:p1)",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',:p1)",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.teamless.policy',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.teamless.policy',:p1)",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "INSERT INTO portal_leads(id,business_number,profile) VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO portal_leads(id,business_number,profile) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)": {
+    "sql": "INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)",
+    "sources": [
+      "server/portal/runtime.ts",
+      "cloud/mysql/site.mjs",
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('sla',:p1),('crm_policy',:p2) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('sla',:p1),('crm_policy',:p2) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO rule_versions VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO rule_versions VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/runtime.ts",
+      "server/portal/teamlessAccess.ts",
+      "scripts/crm-channel-map.ts"
+    ]
+  },
+  "INSERT INTO rule_versions VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO rule_versions VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'inquiry',:p2,:p3,:p4,:p5,:p6)": {
+    "sql": "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'inquiry',:p2,:p3,:p4,:p5,:p6)",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,payload,attachment,attachment_name) VALUES(?,'application',?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,payload,attachment,attachment_name) VALUES(?,'application',?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE config=VALUES(config),code=VALUES(code)": {
+    "sql": "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE config=VALUES(config),code=VALUES(code)",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "INSERT INTO visitor_sessions(id,expires_at)": {
+    "sql": "INSERT INTO visitor_sessions(id,expires_at)",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,UTC_TIMESTAMP(6)+INTERVAL 30 day)": {
+    "sql": "INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,UTC_TIMESTAMP(6)+INTERVAL 30 day)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO visitor_sessions(id,lead_id,expires_at) VALUES(:p1,:p2,'1970-01-01')": {
+    "sql": "INSERT INTO visitor_sessions(id,lead_id,expires_at) VALUES(:p1,:p2,'1970-01-01')",
+    "sources": [
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "SELECT * FROM access_roles": {
+    "sql": "SELECT * FROM access_roles",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT * FROM access_roles ORDER BY id": {
+    "sql": "SELECT * FROM access_roles ORDER BY id",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT * FROM access_roles WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM access_roles WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT * FROM conversations WHERE id=:p1": {
+    "sql": "SELECT * FROM conversations WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM conversations WHERE id=:p1 AND visitor_id=:p2": {
+    "sql": "SELECT * FROM conversations WHERE id=:p1 AND visitor_id=:p2",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM conversations WHERE lead_id=:p1": {
+    "sql": "SELECT * FROM conversations WHERE lead_id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM conversations WHERE visitor_id=:p1 AND source=:p2 AND updated_at>UTC_TIMESTAMP(6)-INTERVAL 30 minute ORDER BY updated_at DESC LIMIT 1": {
+    "sql": "SELECT * FROM conversations WHERE visitor_id=:p1 AND source=:p2 AND updated_at>UTC_TIMESTAMP(6)-INTERVAL 30 minute ORDER BY updated_at DESC LIMIT 1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM crm_users": {
+    "sql": "SELECT * FROM crm_users",
+    "sources": [
+      "server/portal/accessManagement.ts",
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT * FROM crm_users ORDER BY display_name": {
+    "sql": "SELECT * FROM crm_users ORDER BY display_name",
+    "sources": [
+      "server/portal/accessManagement.ts",
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT * FROM crm_users WHERE (login_key=lower(:p1) OR email_key=lower(:p1))": {
+    "sql": "SELECT * FROM crm_users WHERE (login_key=lower(:p1) OR email_key=lower(:p1))",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT * FROM crm_users WHERE active=true": {
+    "sql": "SELECT * FROM crm_users WHERE active=true",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT * FROM crm_users WHERE id=:p1": {
+    "sql": "SELECT * FROM crm_users WHERE id=:p1",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT * FROM crm_users WHERE id='Robert' FOR UPDATE": {
+    "sql": "SELECT * FROM crm_users WHERE id='Robert' FOR UPDATE",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks t WHERE status='open' AND due_at<:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE SKIP LOCKED": {
+    "sql": "SELECT * FROM followup_tasks t WHERE status='open' AND due_at<:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE SKIP LOCKED",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE id=:p1": {
+    "sql": "SELECT * FROM followup_tasks WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE lead_id=:p1": {
+    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND kind=:p2 AND status IN ('open','overdue') ORDER BY created_at LIMIT 1 FOR UPDATE": {
+    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND kind=:p2 AND status IN ('open','overdue') ORDER BY created_at LIMIT 1 FOR UPDATE",
+    "sources": [
+      "server/portal/followup.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE lead_id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at": {
+    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at",
+    "sources": [
+      "server/portal/runtime.ts",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT * FROM messages WHERE conversation_id=:p1 AND request_id=:p2": {
+    "sql": "SELECT * FROM messages WHERE conversation_id=:p1 AND request_id=:p2",
+    "sources": [
+      "server/portal/chat.ts",
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM messages WHERE conversation_id=:p1 ORDER BY sequence": {
+    "sql": "SELECT * FROM messages WHERE conversation_id=:p1 ORDER BY sequence",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM notification_channels": {
+    "sql": "SELECT * FROM notification_channels",
+    "sources": [
+      "server/portal/runtime.ts",
+      "server/mysqlApplication.ts"
+    ]
+  },
+  "SELECT * FROM notification_jobs j WHERE state='pending' AND due_at<=:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) ORDER BY due_at LIMIT 1 FOR UPDATE SKIP LOCKED": {
+    "sql": "SELECT * FROM notification_jobs j WHERE state='pending' AND due_at<=:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) ORDER BY due_at LIMIT 1 FOR UPDATE SKIP LOCKED",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM notification_jobs WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM notification_jobs WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM notification_rules": {
+    "sql": "SELECT * FROM notification_rules",
+    "sources": [
+      "server/portal/runtime.ts",
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT * FROM notification_rules WHERE enabled=true AND effective_at<=(SELECT created_at FROM outbox WHERE id=:p1)": {
+    "sql": "SELECT * FROM notification_rules WHERE enabled=true AND effective_at<=(SELECT created_at FROM outbox WHERE id=:p1)",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM notification_rules WHERE enabled=true AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.event')),'null')='daily.digest' AND effective_at<=:p1": {
+    "sql": "SELECT * FROM notification_rules WHERE enabled=true AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.event')),'null')='daily.digest' AND effective_at<=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE": {
+    "sql": "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE",
+    "sources": [
+      "scripts/crm-channel-map.ts"
+    ]
+  },
+  "SELECT * FROM outbox o WHERE processed_at IS NULL AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='event' AND h.id=o.id) ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED": {
+    "sql": "SELECT * FROM outbox o WHERE processed_at IS NULL AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='event' AND h.id=o.id) ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM portal_audit WHERE action NOT LIKE 'access.%' ORDER BY id DESC LIMIT 200": {
+    "sql": "SELECT * FROM portal_audit WHERE action NOT LIKE 'access.%' ORDER BY id DESC LIMIT 200",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM portal_leads WHERE id=:p1": {
+    "sql": "SELECT * FROM portal_leads WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT * FROM visitor_sessions WHERE id=:p1 AND expires_at>UTC_TIMESTAMP(6)": {
+    "sql": "SELECT * FROM visitor_sessions WHERE id=:p1 AND expires_at>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/assessments.ts",
+      "server/portal/runtime.ts",
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1)": {
+    "sql": "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1)",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT `last_value` AS n FROM lead_daily_counters WHERE business_date=:p1 FOR UPDATE": {
+    "sql": "SELECT `last_value` AS n FROM lead_daily_counters WHERE business_date=:p1 FOR UPDATE",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT 1": {
+    "sql": "SELECT 1",
+    "sources": [
+      "server/portal/runtime.ts",
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT attachment FROM site_submissions WHERE id=? AND kind='application'": {
+    "sql": "SELECT attachment FROM site_submissions WHERE id=? AND kind='application'",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT business_number FROM portal_leads WHERE id=:p1": {
+    "sql": "SELECT business_number FROM portal_leads WHERE id=:p1",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT config AS record FROM trial_campaigns WHERE code=:p1 OR id=:p2 FOR UPDATE": {
+    "sql": "SELECT config AS record FROM trial_campaigns WHERE code=:p1 OR id=:p2 FOR UPDATE",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "SELECT config FROM notification_channels WHERE id=:p1": {
+    "sql": "SELECT config FROM notification_channels WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts",
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT config FROM notification_rules": {
+    "sql": "SELECT config FROM notification_rules",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT config FROM trial_campaigns ORDER BY created_at DESC": {
+    "sql": "SELECT config FROM trial_campaigns ORDER BY created_at DESC",
+    "sources": [
+      "server/mysqlApplication.ts"
+    ]
+  },
+  "SELECT COUNT(*) AS count FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id WHERE i.employee_id=:p1 AND o.lead_id=:p2 AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=:p1 AND lead_id=:p2),'1000-01-01 00:00:00')": {
+    "sql": "SELECT COUNT(*) AS count FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id WHERE i.employee_id=:p1 AND o.lead_id=:p2 AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=:p1 AND lead_id=:p2),'1000-01-01 00:00:00')",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT COUNT(*) AS count FROM notification_jobs WHERE channel='lark' AND recipient=:p1 AND state IN ('accepted','simulated') AND COALESCE(completed_at,due_at)>CAST(:p2 AS DATETIME(6))-INTERVAL 1 hour": {
+    "sql": "SELECT COUNT(*) AS count FROM notification_jobs WHERE channel='lark' AND recipient=:p1 AND state IN ('accepted','simulated') AND COALESCE(completed_at,due_at)>CAST(:p2 AS DATETIME(6))-INTERVAL 1 hour",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))": {
+    "sql": "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT data FROM portal_audit WHERE action='attendance.record' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.id')),'null')=:p1 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId')),'null')=:p2": {
+    "sql": "SELECT data FROM portal_audit WHERE action='attendance.record' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.id')),'null')=:p1 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId')),'null')=:p2",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT data FROM portal_audit WHERE actor=? AND action='cms.mutation' AND data->>'$.requestId'=?": {
+    "sql": "SELECT data FROM portal_audit WHERE actor=? AND action='cms.mutation' AND data->>'$.requestId'=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT DISTINCT conversation_id FROM messages WHERE status='generating'": {
+    "sql": "SELECT DISTINCT conversation_id FROM messages WHERE status='generating'",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT DISTINCT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(payload,'$.source')),'null') value FROM outbox WHERE JSON_CONTAINS_PATH(payload,'one','$.\"source\"') UNION SELECT DISTINCT source value FROM conversations": {
+    "sql": "SELECT DISTINCT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(payload,'$.source')),'null') value FROM outbox WHERE JSON_CONTAINS_PATH(payload,'one','$.\"source\"') UNION SELECT DISTINCT source value FROM conversations",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT GET_LOCK(:p1,0) AS acquired": {
+    "sql": "SELECT GET_LOCK(:p1,0) AS acquired",
+    "sources": [
+      "server/portal/chat.ts",
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT GET_LOCK(:p1,5) AS acquired": {
+    "sql": "SELECT GET_LOCK(:p1,5) AS acquired",
+    "sources": [
+      "server/portal/localAuth.ts",
+      "server/portal/mysqlCampaignStorage.ts",
+      "server/portal/runtime.ts",
+      "cloud/mysql/site.mjs",
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "SELECT GET_LOCK(?,?) AS acquired": {
+    "sql": "SELECT GET_LOCK(?,?) AS acquired",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT GET_LOCK(?,0) acquired": {
+    "sql": "SELECT GET_LOCK(?,0) acquired",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT id FROM crm_users WHERE email_key=:p1": {
+    "sql": "SELECT id FROM crm_users WHERE email_key=:p1",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id FROM crm_users WHERE email_key=:p1 AND id<>:p2": {
+    "sql": "SELECT id FROM crm_users WHERE email_key=:p1 AND id<>:p2",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id FROM crm_users WHERE lower(login_id)=lower(:p1)": {
+    "sql": "SELECT id FROM crm_users WHERE lower(login_id)=lower(:p1)",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' AND status IN ('open','overdue') FOR UPDATE": {
+    "sql": "SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' AND status IN ('open','overdue') FOR UPDATE",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT id FROM notification_channels WHERE id='CRM_Leads_Update'": {
+    "sql": "SELECT id FROM notification_channels WHERE id='CRM_Leads_Update'",
+    "sources": [
+      "scripts/crm-channel-map.ts"
+    ]
+  },
+  "SELECT id FROM notification_rules WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT id FROM notification_rules WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT id FROM portal_leads WHERE id=:p1": {
+    "sql": "SELECT id FROM portal_leads WHERE id=:p1",
+    "sources": [
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "SELECT id FROM visitor_sessions WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT id FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT id,actor,action,data,created_at FROM portal_audit WHERE action LIKE 'access.%' ORDER BY id DESC LIMIT 200": {
+    "sql": "SELECT id,actor,action,data,created_at FROM portal_audit WHERE action LIKE 'access.%' ORDER BY id DESC LIMIT 200",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id,business_number,profile FROM portal_leads ORDER BY created_at DESC": {
+    "sql": "SELECT id,business_number,profile FROM portal_leads ORDER BY created_at DESC",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT id,config AS record FROM trial_campaigns WHERE id=:p1 OR code=:p1 FOR UPDATE": {
+    "sql": "SELECT id,config AS record FROM trial_campaigns WHERE id=:p1 OR code=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "SELECT id,input_hash,visitor_id FROM site_submissions WHERE kind='application' AND request_id=?": {
+    "sql": "SELECT id,input_hash,visitor_id FROM site_submissions WHERE kind='application' AND request_id=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT id,input_hash,visitor_id,lead_id FROM site_submissions WHERE kind='inquiry' AND request_id=:p1": {
+    "sql": "SELECT id,input_hash,visitor_id,lead_id FROM site_submissions WHERE kind='inquiry' AND request_id=:p1",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT id,kind,payload,lead_id,created_at,attachment IS NOT NULL has_attachment FROM site_submissions WHERE kind IN (?,?) ORDER BY created_at DESC LIMIT 200": {
+    "sql": "SELECT id,kind,payload,lead_id,created_at,attachment IS NOT NULL has_attachment FROM site_submissions WHERE kind IN (?,?) ORDER BY created_at DESC LIMIT 200",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT id,kind,status,due_at FROM followup_tasks WHERE owner_id=:p1 AND status IN ('open','overdue','migration_hold')": {
+    "sql": "SELECT id,kind,status,due_at FROM followup_tasks WHERE owner_id=:p1 AND status IN ('open','overdue','migration_hold')",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id,profile FROM portal_leads": {
+    "sql": "SELECT id,profile FROM portal_leads",
+    "sources": [
+      "cloud/mysql/site.mjs",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')": {
+    "sql": "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT items,items_text,revision FROM cms_collections WHERE name=?": {
+    "sql": "SELECT items,items_text,revision FROM cms_collections WHERE name=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT items,items_text,revision FROM cms_collections WHERE name=? FOR UPDATE": {
+    "sql": "SELECT items,items_text,revision FROM cms_collections WHERE name=? FOR UPDATE",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT j.*,EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) AS historicalHold FROM notification_jobs j ORDER BY due_at DESC LIMIT 200": {
+    "sql": "SELECT j.*,EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) AS historicalHold FROM notification_jobs j ORDER BY due_at DESC LIMIT 200",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT j.id FROM notification_jobs j WHERE j.channel='lark' AND j.recipient=:p1 AND j.state IN ('accepted','simulated') AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.leadId')),'null') <=> :p2 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.event')),'null')=:p3 AND COALESCE(j.completed_at,j.due_at)>CAST(:p4 AS DATETIME(6))-INTERVAL (:p5 * 60) SECOND AND COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.priority')),'null'),'normal')=:p6 LIMIT 1": {
+    "sql": "SELECT j.id FROM notification_jobs j WHERE j.channel='lark' AND j.recipient=:p1 AND j.state IN ('accepted','simulated') AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.leadId')),'null') <=> :p2 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.event')),'null')=:p3 AND COALESCE(j.completed_at,j.due_at)>CAST(:p4 AS DATETIME(6))-INTERVAL (:p5 * 60) SECOND AND COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.priority')),'null'),'normal')=:p6 LIMIT 1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null')=:p1 AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1": {
+    "sql": "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null')=:p1 AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1",
+    "sources": [
+      "server/portal/notificationDelivery.ts"
+    ]
+  },
+  "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1": {
+    "sql": "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1",
+    "sources": [
+      "scripts/portal-migrate.ts"
+    ]
+  },
+  "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence": {
+    "sql": "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence",
+    "sources": [
+      "server/portal/runtime.ts",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT m.id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND v.id=:p2 AND v.lead_id=:p3": {
+    "sql": "SELECT m.id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND v.id=:p2 AND v.lead_id=:p3",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "SELECT m.id,m.request_id,m.metadata,c.id conversation_id,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND m.role='assistant' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.followupAction')),'null') IN ('handoff','booking','enrollment') AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.taskId')),'null') IS NULL ORDER BY m.sequence": {
+    "sql": "SELECT m.id,m.request_id,m.metadata,c.id conversation_id,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND m.role='assistant' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.followupAction')),'null') IN ('handoff','booking','enrollment') AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.taskId')),'null') IS NULL ORDER BY m.sequence",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT mime,content FROM cms_media WHERE id=?": {
+    "sql": "SELECT mime,content FROM cms_media WHERE id=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT mime,content FROM cms_media WHERE legacy_name=?": {
+    "sql": "SELECT mime,content FROM cms_media WHERE legacy_name=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads": {
+    "sql": "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT password_hash FROM crm_users WHERE id=:p1": {
+    "sql": "SELECT password_hash FROM crm_users WHERE id=:p1",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT profile FROM portal_leads": {
+    "sql": "SELECT profile FROM portal_leads",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "SELECT profile FROM portal_leads WHERE id=:p1": {
+    "sql": "SELECT profile FROM portal_leads WHERE id=:p1",
+    "sources": [
+      "server/portal/chat.ts",
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/followup.ts",
+      "server/portal/runtime.ts",
+      "server/portal/salesWorkflow.ts",
+      "cloud/mysql/site.mjs",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT profile,created_at FROM portal_leads": {
+    "sql": "SELECT profile,created_at FROM portal_leads",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT r.id,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL": {
+    "sql": "SELECT r.id,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200": {
+    "sql": "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT RELEASE_LOCK(:p1)": {
+    "sql": "SELECT RELEASE_LOCK(:p1)",
+    "sources": [
+      "server/portal/chat.ts",
+      "server/portal/worker.ts",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT RELEASE_LOCK(?) AS released": {
+    "sql": "SELECT RELEASE_LOCK(?) AS released",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2": {
+    "sql": "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC LIMIT 20": {
+    "sql": "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC LIMIT 20",
+    "sources": [
+      "server/portal/assessments.ts",
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
+    "sql": "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "SELECT status FROM followup_tasks WHERE id=:p1": {
+    "sql": "SELECT status FROM followup_tasks WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts",
+      "server/portal/worker.ts"
+    ]
+  },
+  "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id": {
+    "sql": "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id WHERE t.id=:p1": {
+    "sql": "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id WHERE t.id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT type,created_at,payload FROM outbox WHERE lead_id=:p1 ORDER BY created_at DESC LIMIT 1": {
+    "sql": "SELECT type,created_at,payload FROM outbox WHERE lead_id=:p1 ORDER BY created_at DESC LIMIT 1",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT u.* FROM crm_sessions s JOIN crm_users u ON u.id=s.user_id WHERE s.token_hash=:p1 AND s.expires_at>UTC_TIMESTAMP(6) AND u.active=true": {
+    "sql": "SELECT u.* FROM crm_sessions s JOIN crm_users u ON u.id=s.user_id WHERE s.token_hash=:p1 AND s.expires_at>UTC_TIMESTAMP(6) AND u.active=true",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT updated_at FROM conversations WHERE lead_id=:p1 AND id<>:p2 ORDER BY updated_at DESC LIMIT 1": {
+    "sql": "SELECT updated_at FROM conversations WHERE lead_id=:p1 AND id<>:p2 ORDER BY updated_at DESC LIMIT 1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT UTC_TIMESTAMP(6) AS at": {
+    "sql": "SELECT UTC_TIMESTAMP(6) AS at",
+    "sources": [
+      "server/portal/followup.ts"
+    ]
+  },
+  "SELECT value FROM access_state WHERE id='policy' FOR UPDATE": {
+    "sql": "SELECT value FROM access_state WHERE id='policy' FOR UPDATE",
+    "sources": [
+      "server/portal/accessManagement.ts",
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT value FROM access_state WHERE id='teamless'": {
+    "sql": "SELECT value FROM access_state WHERE id='teamless'",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='crm_policy'": {
+    "sql": "SELECT value FROM portal_settings WHERE id='crm_policy'",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='sla'": {
+    "sql": "SELECT value FROM portal_settings WHERE id='sla'",
+    "sources": [
+      "server/portal/followup.ts",
+      "server/portal/runtime.ts",
+      "server/portal/worker.ts",
+      "cloud/mysql/site.mjs",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT version,config FROM notification_rules WHERE id=:p1": {
+    "sql": "SELECT version,config FROM notification_rules WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT visitor_id,input_hash,result FROM hsk_attempts WHERE id=:p1": {
+    "sql": "SELECT visitor_id,input_hash,result FROM hsk_attempts WHERE id=:p1",
+    "sources": [
+      "server/portal/assessments.ts"
+    ]
+  },
+  "UPDATE access_roles SET config=:p2,enabled=:p3,revision=revision+1 WHERE id=:p1": {
+    "sql": "UPDATE access_roles SET config=:p2,enabled=:p3,revision=revision+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE access_roles SET config=:p2,revision=revision+1 WHERE id=:p1": {
+    "sql": "UPDATE access_roles SET config=:p2,revision=revision+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "UPDATE access_state SET value=:p1 WHERE id='policy'": {
+    "sql": "UPDATE access_state SET value=:p1 WHERE id='policy'",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE cms_collections SET items=?,items_text=?,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE name=?": {
+    "sql": "UPDATE cms_collections SET items=?,items_text=?,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE name=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "UPDATE conversations SET lead_id=:p1 WHERE visitor_id=:p2": {
+    "sql": "UPDATE conversations SET lead_id=:p1 WHERE visitor_id=:p2",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE conversations SET updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE conversations SET updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/chat.ts",
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE crm_login_limits SET failures=0 WHERE `key`=:p1": {
+    "sql": "UPDATE crm_login_limits SET failures=0 WHERE `key`=:p1",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "UPDATE crm_login_limits SET failures=failures+1 WHERE `key` IN (:p1)": {
+    "sql": "UPDATE crm_login_limits SET failures=failures+1 WHERE `key` IN (:p1)",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "UPDATE crm_users SET display_name=:p2,roles=:p3,teams=:p4,active=:p5,email=:p6,access_revision=access_revision+1 WHERE id=:p1": {
+    "sql": "UPDATE crm_users SET display_name=:p2,roles=:p3,teams=:p4,active=:p5,email=:p6,access_revision=access_revision+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE crm_users SET password_hash=:p1 WHERE id=:p2 AND password_hash=:p3": {
+    "sql": "UPDATE crm_users SET password_hash=:p1 WHERE id=:p2 AND password_hash=:p3",
+    "sources": [
+      "server/portal/localAuth.ts"
+    ]
+  },
+  "UPDATE crm_users SET password_hash=:p2,access_revision=access_revision+1 WHERE id=:p1": {
+    "sql": "UPDATE crm_users SET password_hash=:p2,access_revision=access_revision+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE crm_users SET roles=:p1,access_revision=access_revision+1 WHERE id='Robert'": {
+    "sql": "UPDATE crm_users SET roles=:p1,access_revision=access_revision+1 WHERE id='Robert'",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')": {
+    "sql": "UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET status='cancelled' WHERE lead_id=:p1 AND kind='contact_review' AND status IN ('open','overdue')": {
+    "sql": "UPDATE followup_tasks SET status='cancelled' WHERE lead_id=:p1 AND kind='contact_review' AND status IN ('open','overdue')",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET status='completed' WHERE id=:p1": {
+    "sql": "UPDATE followup_tasks SET status='completed' WHERE id=:p1",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET status='open' WHERE id=:p1 AND status='migration_hold'": {
+    "sql": "UPDATE followup_tasks SET status='open' WHERE id=:p1 AND status='migration_hold'",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET status='overdue' WHERE id=:p1": {
+    "sql": "UPDATE followup_tasks SET status='overdue' WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE hsk_attempts SET lead_id=:p1 WHERE visitor_id=:p2 AND lead_id IS NULL": {
+    "sql": "UPDATE hsk_attempts SET lead_id=:p1 WHERE visitor_id=:p2 AND lead_id IS NULL",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5 WHERE id=:p1": {
+    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5 WHERE id=:p1",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2) WHERE id=:p1": {
+    "sql": "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2) WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE messages SET status='generating',content='',error=NULL,model=NULL WHERE id=:p1": {
+    "sql": "UPDATE messages SET status='generating',content='',error=NULL,model=NULL WHERE id=:p1",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "UPDATE messages SET status='interrupted',error='process_interrupted' WHERE status='generating' AND conversation_id=:p1": {
+    "sql": "UPDATE messages SET status='interrupted',error='process_interrupted' WHERE status='generating' AND conversation_id=:p1",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "UPDATE messages SET status='interrupted',error='request_interrupted' WHERE id=:p1 AND status='generating'": {
+    "sql": "UPDATE messages SET status='interrupted',error='request_interrupted' WHERE id=:p1 AND status='generating'",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "UPDATE notification_inbox SET read_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND employee_id=:p2": {
+    "sql": "UPDATE notification_inbox SET read_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND employee_id=:p2",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE notification_jobs j SET state=CASE WHEN channel='lark' THEN 'unknown' ELSE 'pending' END,result='Lease expired' WHERE state='sending' AND lease_until<UTC_TIMESTAMP(6) AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id)": {
+    "sql": "UPDATE notification_jobs j SET state=CASE WHEN channel='lark' THEN 'unknown' ELSE 'pending' END,result='Lease expired' WHERE state='sending' AND lease_until<UTC_TIMESTAMP(6) AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id)",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state=:p2,result=:p3,completed_at=:p4 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state=:p2,result=:p3,completed_at=:p4 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='accepted',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='accepted',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'": {
+    "sql": "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Merged within dedupe window' WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Merged within dedupe window' WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Recipient changed or no longer authorized',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Recipient changed or no longer authorized',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Retired team scope requires review',completed_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Retired team scope requires review',completed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Task completed' WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Task completed' WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Task completed',completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId')),'null')=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Task completed',completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId')),'null')=:p1",
+    "sources": [
+      "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='failed',result='Channel not configured or test group disallowed',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='failed',result='Channel not configured or test group disallowed',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='failed',result='Missing notification channel',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='failed',result='Missing notification channel',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Deferred by current working hours' WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Deferred by current working hours' WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Group hourly limit reached' WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Group hourly limit reached' WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='pending',due_at=UTC_TIMESTAMP(6)+INTERVAL (:p2 * 60) SECOND,result=:p3 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='pending',due_at=UTC_TIMESTAMP(6)+INTERVAL (:p2 * 60) SECOND,result=:p3 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='pending',due_at=UTC_TIMESTAMP(6)+INTERVAL 1 second WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='pending',due_at=UTC_TIMESTAMP(6)+INTERVAL 1 second WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='sending',lease_until=UTC_TIMESTAMP(6)+INTERVAL 1 minute,attempts=attempts+1 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='sending',lease_until=UTC_TIMESTAMP(6)+INTERVAL 1 minute,attempts=attempts+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='simulated',result='No live channel configured',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='simulated',result='No live channel configured',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_rules SET config=:p2,version=:p3,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE notification_rules SET config=:p2,version=:p3,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "scripts/crm-channel-map.ts"
+    ]
+  },
+  "UPDATE notification_rules SET version=:p2,config=:p3,enabled=:p4,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE notification_rules SET version=:p2,config=:p3,enabled=:p4,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE portal_leads SET created_at=": {
+    "sql": "UPDATE portal_leads SET created_at=",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "UPDATE portal_leads SET profile=:p2 WHERE id=:p1": {
+    "sql": "UPDATE portal_leads SET profile=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts",
+      "server/portal/salesWorkflow.ts",
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "UPDATE portal_settings SET value=:p1 WHERE id='sla'": {
+    "sql": "UPDATE portal_settings SET value=:p1 WHERE id='sla'",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE trial_campaigns SET config=:p2 WHERE id=:p1": {
+    "sql": "UPDATE trial_campaigns SET config=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "UPDATE visitor_sessions SET lead_id=:p1 WHERE id=:p2": {
+    "sql": "UPDATE visitor_sessions SET lead_id=:p1 WHERE id=:p2",
+    "sources": [
+      "server/portal/runtime.ts",
+      "cloud/mysql/site.mjs"
+    ]
+  }
+}

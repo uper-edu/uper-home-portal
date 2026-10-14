@@ -1,18 +1,10 @@
+import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
-if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
-  const u = new URL(process.env.CRM_FILTER_TEST_DATABASE_URL);
-  if (
-    u.hostname !== "127.0.0.1" ||
-    u.port !== "5448" ||
-    !/^\/uper_filters_test_[a-z0-9_]+$/.test(u.pathname)
-  )
-    throw Error("Isolated filters test database required");
-  process.env.DATABASE_URL = u.toString();
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const fixture = await setupNativeTest("crmFiltersPortal");
   process.env.PLATFORM_MODE = "local";
-  process.env.APP_ENV = "test";
-  process.env.PORT = "4376";
   const { pool } = await import("../server/portal/store.ts");
   const { mountPortal } = await import("../server/portal/runtime.ts");
   const app = express();
@@ -62,7 +54,7 @@ if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
       ["filter-historical", null, "Unqualified"],
     ];
     for (const [id, owner, tier] of data)
-      await pool.query("INSERT INTO portal_leads(id,profile) VALUES($1,$2)", [
+      await pool.query("INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)", [
         id,
         {
           id,
@@ -82,7 +74,7 @@ if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
       ["filter-task-review", "filter-historical", "migration_hold", -500000],
     ])
       await pool.query(
-        "INSERT INTO followup_tasks(id,lead_id,kind,status,due_at) VALUES($1,$2,'consultation',$3,now()+($4 * interval '1 hour'))",
+        "INSERT INTO followup_tasks(id,lead_id,kind,status,due_at) VALUES(:p1,:p2,'consultation',:p3,UTC_TIMESTAMP(6)+INTERVAL (:p4 * 3600) SECOND)",
         [id, lid, status, offset],
       );
     const snapshot = async () =>
@@ -90,43 +82,53 @@ if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
         (await pool.query("SELECT id,profile FROM portal_leads ORDER BY id"))
           .rows,
       );
-    const before = await snapshot();
+    let before = await snapshot();
     await t.test(
       "leader sees all; sales only own and unassigned even with forged owner",
       async () => {
         assert.equal((await request("/api/crm/leads")).status, 401);
         for (const name of ["Suki", "Robert", "Tester"])
           assert.equal(
-            (await request("/api/crm/leads", cookies[name])).data.total,
+            Number((await request("/api/crm/leads", cookies[name])).data.total),
             5,
           );
         assert.equal(
-          (await request("/api/crm/leads?ownership=mine", cookies.Fadhil)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?ownership=mine", cookies.Fadhil))
+              .data.total,
+          ),
           2,
         );
         assert.equal(
-          (await request("/api/crm/leads?ownership=all", cookies.Fadhil)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?ownership=all", cookies.Fadhil)).data
+              .total,
+          ),
           4,
         );
         assert.equal(
-          (
-            await request(
-              "/api/crm/leads?ownership=person&owner=Wigar",
-              cookies.Fadhil,
-            )
-          ).data.total,
+          Number(
+            (
+              await request(
+                "/api/crm/leads?ownership=person&owner=Wigar",
+                cookies.Fadhil,
+              )
+            ).data.total,
+          ),
           0,
         );
         assert.equal(
-          (await request("/api/crm/leads?ownership=mine", cookies.Wigar)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?ownership=mine", cookies.Wigar)).data
+              .total,
+          ),
           1,
         );
         assert.equal(
-          (await request("/api/crm/leads?ownership=mine", cookies.Zainul)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?ownership=mine", cookies.Zainul))
+              .data.total,
+          ),
           0,
         );
       },
@@ -135,12 +137,20 @@ if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
       "unassigned is explicit; summaries match multi-select result; invalid query rejected",
       async () => {
         assert.equal(
-          (await request("/api/crm/leads?ownership=unassigned", cookies.Robert))
-            .data.total,
+          Number(
+            (
+              await request(
+                "/api/crm/leads?ownership=unassigned",
+                cookies.Robert,
+              )
+            ).data.total,
+          ),
           2,
         );
         assert.equal(
-          (await request("/api/crm/leads?owner=", cookies.Robert)).data.total,
+          Number(
+            (await request("/api/crm/leads?owner=", cookies.Robert)).data.total,
+          ),
           2,
         );
         const r = (
@@ -149,8 +159,8 @@ if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
             cookies.Robert,
           )
         ).data;
-        assert.equal(r.total, 3);
-        assert.equal(r.stats.total, 3);
+        assert.equal(Number(r.total), 3);
+        assert.equal(Number(r.stats.total), 3);
         assert.equal(r.stats.hot, 2);
         assert.equal(r.stats.overdueSla, 1);
         assert.equal(
@@ -165,40 +175,55 @@ if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
         const overdue = (
           await request("/api/crm/leads?task=overdue", cookies.Robert)
         ).data;
-        assert.equal(overdue.total, 1);
+        assert.equal(Number(overdue.total), 1);
         assert.equal(overdue.leads[0].id, "filter-own");
         await pool.query(
-          "UPDATE followup_tasks SET due_at=now() WHERE id='filter-task'",
+          "UPDATE followup_tasks SET due_at=UTC_TIMESTAMP(6) WHERE id='filter-task'",
         );
         assert.equal(
-          (await request("/api/crm/leads?task=today", cookies.Robert)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?task=today", cookies.Robert)).data
+              .total,
+          ),
           1,
         );
         assert.equal(
           (
-            await request(
-              "/api/crm/tasks/filter-task/complete",
-              cookies.Fadhil,
-              {},
-            )
+            await request("/api/crm/leads/filter-own/logs", cookies.Fadhil, {
+              requestId: "TEST-filter-finish",
+              recordKind: "closure",
+              summary: "TEST complete filtered task",
+              completeTaskIds: ["filter-task"],
+              disposition: "none",
+              contactArrangement: {
+                state: "stopped",
+                reason: "TEST stop",
+                version: 0,
+              },
+            })
           ).status,
           200,
         );
         assert.equal(
-          (await request("/api/crm/leads?task=overdue", cookies.Robert)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?task=overdue", cookies.Robert)).data
+              .total,
+          ),
           0,
         );
         assert.equal(
-          (await request("/api/crm/leads?task=today", cookies.Robert)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?task=today", cookies.Robert)).data
+              .total,
+          ),
           0,
         );
+        const project=(rows:any[])=>rows.map(({id,profile})=>({id,owner:profile.owner,tier:profile.tier,currentStage:profile.currentStage}));
+        const saved=await snapshot();assert.deepEqual(project(JSON.parse(saved)),project(JSON.parse(before)));before=saved;
         const historic = (
           await request("/api/crm/leads?situation=historical", cookies.Robert)
         ).data;
-        assert.equal(historic.total, 1);
+        assert.equal(Number(historic.total), 1);
         assert.equal(historic.stats.overdueSla, 0);
       },
     );
@@ -209,23 +234,27 @@ if (process.env.CRM_FILTER_TEST_DATABASE_URL) {
           "INSERT INTO outbox(id,type,lead_id,payload) VALUES('filter-event','conversation.updated','filter-unassigned','{}')",
         );
         await pool.query(
-          "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,state,due_at,snapshot) VALUES('filter-job','filter-event','test',1,'inapp','Robert','accepted',now(),'{}')",
+          "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,state,due_at,snapshot) VALUES('filter-job','filter-event','test',1,'inapp','Robert','accepted',UTC_TIMESTAMP(6),'{}')",
         );
         await pool.query(
           "INSERT INTO notification_inbox(id,employee_id,content) VALUES('filter-job','Robert','{}')",
         );
         assert.equal(
-          (
-            await request(
-              "/api/crm/leads?unread=true&ownership=unassigned",
-              cookies.Robert,
-            )
-          ).data.total,
+          Number(
+            (
+              await request(
+                "/api/crm/leads?unread=true&ownership=unassigned",
+                cookies.Robert,
+              )
+            ).data.total,
+          ),
           1,
         );
         assert.equal(
-          (await request("/api/crm/leads?unread=true", cookies.Suki)).data
-            .total,
+          Number(
+            (await request("/api/crm/leads?unread=true", cookies.Suki)).data
+              .total,
+          ),
           0,
         );
         assert.equal(await snapshot(), before);

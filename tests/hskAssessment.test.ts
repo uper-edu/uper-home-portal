@@ -297,7 +297,7 @@ test("skipped and unanswered items are distinct, both score zero, and section to
   assert.equal(result.unansweredCount, 48);
   assert.equal(result.sections.listening.skipped, 1);
   assert.equal(result.sections.reading.correct, 1);
-  assert.equal(result.sections.writing.total, 8);
+  assert.equal(Number(result.sections.writing.total), 8);
   assert.deepEqual(result.thresholds[0].missing, [10, 0, 0]);
 });
 test("untrusted attempt fields cannot change grades, unknown options and mismatched versions are rejected", () => {

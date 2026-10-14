@@ -4,22 +4,29 @@ import { safeStorage } from "./safeStorage";
 export type CrmLanguage = "en" | "zh" | "id";
 export const crmLocale = (lang: CrmLanguage) =>
   lang === "id" ? "id-ID" : lang === "zh" ? "zh-CN" : "en-GB";
+export function readAdminLanguage(): CrmLanguage {
+  const stored = safeStorage.getItem("uper_admin_lang") || safeStorage.getItem("uper_crm_lang") || safeStorage.getItem("uper_cms_lang");
+  return stored === "zh" || stored === "id" ? stored : "en";
+}
 export function useCrmLanguage() {
-  const [lang, setState] = useState<CrmLanguage>(() => {
-    const stored = safeStorage.getItem("uper_crm_lang");
-    return stored === "zh" || stored === "id" ? stored : "en";
-  });
+  const [lang, setState] = useState<CrmLanguage>(readAdminLanguage);
   const setLang = (value: CrmLanguage) => {
     setState(value);
+    safeStorage.setItem("uper_admin_lang", value);
+    // Keep the existing CRM preference key for callers outside the workspaces.
     safeStorage.setItem("uper_crm_lang", value);
+    window.dispatchEvent(new Event("uper-admin-preferences"));
   };
   useEffect(() => {
+    const update = () => setState(readAdminLanguage());
+    window.addEventListener("storage", update);
+    window.addEventListener("uper-admin-preferences", update);
+    return () => { window.removeEventListener("storage", update); window.removeEventListener("uper-admin-preferences", update); };
+  }, []);
+  useEffect(() => {
     const previous = document.documentElement.lang;
-    document.documentElement.lang =
-      lang === "id" ? "id" : lang === "zh" ? "zh-CN" : "en";
-    return () => {
-      document.documentElement.lang = previous;
-    };
+    document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
+    return () => { document.documentElement.lang = previous; };
   }, [lang]);
   return [lang, setLang] as const;
 }
@@ -137,6 +144,7 @@ const values: Record<string, [string, string]> = {
 };
 // Only call this for system enums/labels, never names or customer free text.
 export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
+  if(value==='contact_form')return lang==='zh'?'联系表单':lang==='id'?'Formulir kontak':'Contact form';
   if (!value) return "—";
   const found = values[value];
   return found
@@ -147,6 +155,8 @@ export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
 }
 export function crmError(message: string, lang: CrmLanguage) {
   const known: Record<string, [string, string]> = {
+    "Confirm routing review before enabling": ["Confirm routing review before enabling", "请先确认历史通知范围复核，再启用策略"],
+    "Retired team filters require explicit review": ["Retired team filters require explicit review", "历史团队过滤条件须先明确复核"],
     "Choose a valid campaign": ["Choose a valid campaign", "请选择有效活动"],
     "Choose participation mode and enter evidence": ["Choose participation mode and enter evidence", "请选择参与方式并填写确认依据"],
     "Attendance request conflict": ["Attendance request conflict", "该提交已被使用，请核对参与记录后重新提交"],
@@ -160,6 +170,7 @@ export function crmError(message: string, lang: CrmLanguage) {
     "Sales operations configuration required":["Sales operations configuration required","请提供销售运营配置"],
     "Follow-up service unavailable":["Follow-up service unavailable","跟进保存服务暂不可用，请重试"],
     "Invalid buying signal":["Invalid buying signal","购买信号无效"],
+    "Owner cannot access and follow up this customer":["Owner cannot access and follow up this customer","该负责人无法在授权范围内查看及跟进此客户"],
     "Invalid sales stage":["Invalid sales stage","销售阶段无效"],
     "Invalid contact channel":["Invalid contact channel","联系渠道无效"],
     "Refresh CRM and use the updated follow-up form": ["Refresh CRM and use the updated follow-up form", "请刷新 CRM 并使用新版跟进表单"],
@@ -179,7 +190,8 @@ export function crmError(message: string, lang: CrmLanguage) {
       "Please sign in.",
       "请先登录。",
     ],
-    "Invalid login ID or password": [
+    "Invalid login ID, email or password": ["Invalid login ID, email or password", "登录ID、邮箱或密码不正确"],
+  "Invalid login ID or password": [
       "Invalid login ID or password.",
       "登录账号或密码错误。",
     ],
@@ -233,6 +245,8 @@ export function crmDeliveryResult(
   lang: CrmLanguage,
 ) {
   const known: Record<string, [string, string]> = {
+    "Confirm routing review before enabling": ["Confirm routing review before enabling", "请先确认历史通知范围复核，再启用策略"],
+    "Retired team filters require explicit review": ["Retired team filters require explicit review", "历史团队过滤条件须先明确复核"],
  "Contact arrangement reason required":["Contact arrangement reason required","请填写联系安排原因"],
  "Contact arrangement changed; refresh and review":["Contact arrangement changed; refresh and review","联系安排已变化，请刷新核对"],
  "Future review time required":["Future review time required","请选择未来复查时间"],

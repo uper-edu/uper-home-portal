@@ -11,39 +11,37 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-test("campaign storage stays empty after cleanup and never reintroduces example records", () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "uper-campaign-empty-"));
-  try {
-    const module = path.resolve("server/campaignStorage.ts");
-    const tsx = path.resolve("node_modules/tsx/dist/loader.mjs");
-    const run = () =>
-      spawnSync(
-        process.execPath,
-        [
-          "--import",
-          tsx,
-          "--input-type=module",
-          "-e",
-          `import {loadCampaigns} from ${JSON.stringify(module)}; console.log(JSON.stringify(loadCampaigns()));`,
-        ],
-        { cwd: dir, encoding: "utf8" },
+test(
+  "native campaign storage remains empty without seeding legacy examples",
+  { skip: !process.env.MYSQL_NATIVE_TEST_ENV },
+  async () => {
+    const { setupNativeTest } = await import("./helpers/mysql.mjs");
+    await setupNativeTest("campaignEmpty");
+    const { pool } = await import("../server/portal/store.ts");
+    const { loadCampaigns, saveCampaign, deleteCampaign } =
+      await import("../server/campaignStorage.ts");
+    try {
+      assert.deepEqual(loadCampaigns(), []);
+      assert.equal(
+        (await pool.query("SELECT id FROM trial_campaigns")).rows.length,
+        0,
       );
-    let result = run();
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout.trim(), "[]");
-    const file = path.join(dir, "data/campaigns_db.json");
-    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), []);
-    result = run();
-    assert.equal(result.status, 0);
-    assert.equal(result.stdout.trim(), "[]");
-    writeFileSync(file, "{}");
-    result = run();
-    assert.notEqual(result.status, 0);
-    assert.ok(result.stderr.includes("must contain an array"));
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+      await saveCampaign({
+        id: "TEST-empty",
+        code: "TEST-empty",
+        name: "TEST empty",
+      });
+      await deleteCampaign("TEST-empty");
+      assert.equal(
+        (await pool.query("SELECT id FROM trial_campaigns")).rows.length,
+        0,
+      );
+      assert.deepEqual(loadCampaigns(), []);
+    } finally {
+      await pool.end();
+    }
+  },
+);
 
 test("campaign links preserve local environment and safely encode the campaign ID", async () => {
   const { campaignChatLink } = await import("../src/utils/crmCampaignLink.ts");
@@ -99,37 +97,30 @@ test("campaign ID wins over a similar campaign name", async () => {
   assert.equal(matchesCampaign({ campaign: "a" }, campaign), true);
 });
 
-test("campaign statistics use supplied canonical leads, saved assessment evidence and recorded revenue only", () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "uper-campaign-stats-"));
-  try {
-    mkdirSync(path.join(dir, "data"));
-    writeFileSync(
-      path.join(dir, "data/campaigns_db.json"),
-      JSON.stringify([
-        {
-          id: "test-a",
-          code: "test-a",
-          name: "TEST",
-          nameEn: "TEST",
-          stats: { impressions: 0, totalRevenue: 999999, budgetCost: 0 },
-        },
-      ]),
-    );
-    const module = path.resolve("server/campaignStorage.ts");
-    const tsx = path.resolve("node_modules/tsx/dist/loader.mjs");
-    const source = `import {getEnrichedCampaigns} from ${JSON.stringify(module)}; console.log(JSON.stringify(getEnrichedCampaigns([{campaignId:'test-a',tier:'Hot',currentStage:'Enrolled',assessmentProvenance:'server_recomputed_adapted_paper',latestAssessment:{score:30}},{campaignId:'test-a',currentStage:'Trial Booked'},{campaignId:'test-a',currentStage:'Trial Attended',attendanceConfirmed:true},{campaignId:'unrelated',campaign:'TEST',revenue:100}])[0].stats));`;
-    const r = spawnSync(
-      process.execPath,
-      ["--import", tsx, "--input-type=module", "-e", source],
-      { cwd: dir, encoding: "utf8" },
-    );
-    assert.equal(r.status, 0, r.stderr);
-    const stats = JSON.parse(r.stdout);
-    assert.equal(stats.leadsCount, 3);
-    assert.equal(stats.assessedCount, 1);
-    assert.equal(stats.enrolledCount, 1);
-    assert.equal(stats.totalRevenue, 0);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+test("campaign statistics use saved assessment evidence and recorded revenue only", async () => {
+  const { campaignMetrics } =
+    await import("../src/utils/crmCampaignMetrics.ts");
+  const stats = campaignMetrics(
+    [
+      {
+        campaignId: "test-a",
+        tier: "Hot",
+        currentStage: "Enrolled",
+        assessmentProvenance: "server_recomputed_adapted_paper",
+        latestAssessment: { score: 30 },
+      },
+      { campaignId: "test-a", currentStage: "Trial Booked" },
+      {
+        campaignId: "test-a",
+        currentStage: "Trial Attended",
+        attendanceConfirmed: true,
+      },
+      { campaignId: "unrelated", campaign: "TEST", revenue: 100 },
+    ],
+    { id: "test-a", code: "test-a", name: "TEST", nameEn: "TEST" },
+  );
+  assert.equal(stats.leadsCount, 3);
+  assert.equal(stats.assessedCount, 1);
+  assert.equal(stats.enrolledCount, 1);
+  assert.equal(stats.totalRevenue, 0);
 });

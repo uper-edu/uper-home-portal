@@ -93,7 +93,7 @@ export async function saveSalesWorkflow(
   canWrite: (profile: any) => boolean,
 ) {
   const current = (
-    await c.query("SELECT profile FROM portal_leads WHERE id=$1 FOR UPDATE", [
+    await c.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE", [
       leadId,
     ])
   ).rows[0]?.profile;
@@ -129,7 +129,7 @@ export async function saveSalesWorkflow(
       throw new WorkflowValidationError("Future review time required");
   }
   const tasks = (
-    await c.query("SELECT * FROM followup_tasks WHERE lead_id=$1 FOR UPDATE", [
+    await c.query("SELECT * FROM followup_tasks WHERE lead_id=:p1 FOR UPDATE", [
       leadId,
     ])
   ).rows;
@@ -141,7 +141,11 @@ export async function saveSalesWorkflow(
       );
     return task;
   });
-  if(selected.some((t:any)=>t.kind==="contact_review")&&!body.contactArrangement)throw new WorkflowValidationError("Choose a contact arrangement");
+  if (
+    selected.some((t: any) => t.kind === "contact_review") &&
+    !body.contactArrangement
+  )
+    throw new WorkflowValidationError("Choose a contact arrangement");
   const remaining = tasks.filter(
     (t: any) =>
       !body.completeTaskIds.includes(t.id) &&
@@ -172,7 +176,7 @@ export async function saveSalesWorkflow(
   if (body.sourceMessageId) {
     const m = (
       await c.query(
-        "SELECT m.id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=$1 AND v.id=$2 AND v.lead_id=$3",
+        "SELECT m.id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND v.id=:p2 AND v.lead_id=:p3",
         [body.sourceMessageId, body.sourceConversationId, leadId],
       )
     ).rows[0];
@@ -180,12 +184,12 @@ export async function saveSalesWorkflow(
   }
   let cancelled = 0;
   for (const task of selected) {
-    await c.query("UPDATE followup_tasks SET status='completed' WHERE id=$1", [
+    await c.query("UPDATE followup_tasks SET status='completed' WHERE id=:p1", [
       task.id,
     ]);
     cancelled += (
       await c.query(
-        "UPDATE notification_jobs SET state='cancelled',result='Task completed',completed_at=now() WHERE state='pending' AND snapshot->'payload'->>'taskId'=$1",
+        "UPDATE notification_jobs SET state='cancelled',result='Task completed',completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId')),'null')=:p1",
         [task.id],
       )
     ).rowCount;
@@ -193,12 +197,12 @@ export async function saveSalesWorkflow(
   if (body.contactArrangement) {
     const a = body.contactArrangement;
     await c.query(
-      "UPDATE followup_tasks SET status='cancelled' WHERE lead_id=$1 AND kind='contact_review' AND status IN ('open','overdue')",
+      "UPDATE followup_tasks SET status='cancelled' WHERE lead_id=:p1 AND kind='contact_review' AND status IN ('open','overdue')",
       [leadId],
     );
     if (["waiting", "nurture"].includes(a.state))
       await c.query(
-        "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES($1,$2,'contact_review',$3,$4,$5)",
+        "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'contact_review',:p3,:p4,:p5)",
         [
           randomUUID(),
           leadId,
@@ -208,7 +212,7 @@ export async function saveSalesWorkflow(
         ],
       );
     await c.query(
-      "INSERT INTO outbox(id,type,lead_id,payload) VALUES($1,'contact.arrangement.changed',$2,$3)",
+      "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'contact.arrangement.changed',:p2,:p3)",
       [randomUUID(), leadId, { state: a.state }],
     );
   }
@@ -216,7 +220,7 @@ export async function saveSalesWorkflow(
   if (body.disposition === "schedule") {
     createdTaskId = randomUUID();
     await c.query(
-      "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES($1,$2,'follow_up',$3,$4,$5)",
+      "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'follow_up',:p3,:p4,:p5)",
       [
         createdTaskId,
         leadId,
@@ -320,12 +324,12 @@ export async function saveSalesWorkflow(
     )
       profile.tierUpdatedAt = at;
   }
-  await c.query("UPDATE portal_leads SET profile=$2 WHERE id=$1", [
+  await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1", [
     leadId,
     profile,
   ]);
   await c.query(
-    "INSERT INTO portal_audit(actor,action,data) VALUES($1,$2,$3)",
+    "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
     [
       actor,
       "followup.save",

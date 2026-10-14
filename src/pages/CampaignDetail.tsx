@@ -94,52 +94,7 @@ const ptComponents = {
   },
 };
 
-const FALLBACK_CAMPAIGNS_DETAILS = [
-  {
-    _id: 'camp-1',
-    title: 'Study Tour Tiongkok - Beijing & Shanghai',
-    subtitle: 'Kunjungi universitas top dunia seperti Tsinghua & Peking University dan rasakan pengalaman belajar yang sesungguhnya.',
-    image: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200',
-    buttonText: 'Daftar Sekarang',
-    buttonLink: '/tours',
-    slug: { current: 'study-tour-2026' },
-    countdownDate: '2026-08-31T23:59:59Z',
-    content: [
-      {
-        _key: 'b1',
-        _type: 'block',
-        children: [{ _key: 'b1c1', _type: 'span', text: 'Bergabunglah dalam perjalanan edukasi tak terlupakan bersama UPER! Program Study Tour Tiongkok ini dirancang khusus untuk memberikan wawasan mendalam mengenai atmosfer akademis di dua kota metropolitan terbesar Tiongkok: Beijing dan Shanghai.' }]
-      },
-      {
-        _key: 'b2',
-        _type: 'block',
-        children: [{ _key: 'b2c1', _type: 'span', text: 'Peserta akan diajak berkeliling kampus-kampus kelas dunia (Tsinghua University, Peking University, Fudan University, dan Shanghai Jiao Tong University), menghadiri seminar eksklusif, serta berinteraksi langsung dengan para mahasiswa dan dosen berprestasi.' }]
-      }
-    ]
-  },
-  {
-    _id: 'camp-2',
-    title: 'Program Persiapan Beasiswa CSCA 2026',
-    subtitle: 'Bimbingan intensif esai akademis, rencana studi, dan persiapan wawancara bersama alumni Tsinghua dan PKU.',
-    image: 'https://images.unsplash.com/photo-15222071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
-    buttonText: 'Pelajari Program',
-    buttonLink: '/csca',
-    slug: { current: 'prep-csca-2026' },
-    countdownDate: '2026-08-15T23:59:59Z',
-    content: [
-      {
-        _key: 'b1',
-        _type: 'block',
-        children: [{ _key: 'b1c1', _type: 'span', text: 'Program Persiapan Beasiswa CSCA (Chinese Scholarship Camp Academy) adalah bimbingan terpadu yang dirancang oleh tim mentor ahli UPER guna mendampingi para pelamar beasiswa Tiongkok dari tahap nol hingga kelulusan.' }]
-      },
-      {
-        _key: 'b2',
-        _type: 'block',
-        children: [{ _key: 'b2c1', _type: 'span', text: 'Kami membimbing Anda menyusun rencana studi (Study Plan) yang tajam, menulis Personal Statement yang memikat, memoles CV sesuai standar seleksi akademis, hingga memberikan latihan simulasi wawancara tatap muka 1-on-1.' }]
-      }
-    ]
-  }
-];
+const FALLBACK_CAMPAIGNS_DETAILS = [];
 
 export default function CampaignDetail() {
   const { isApple } = useDesignStyle();

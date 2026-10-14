@@ -50,7 +50,9 @@ interface Job {
 }
 
 export default function Careers() {
-  const { t } = useTranslation();
+  const submissionKey=useRef(crypto.randomUUID());
+  const { t, i18n } = useTranslation();
+  const localeText=(en:string,id:string,zh:string)=>i18n.language.startsWith('zh')?zh:i18n.language.startsWith('id')?id:en;
   const { isApple } = useDesignStyle();
   const inputFocusClass = isApple ? 'focus:border-[#0071e3] focus:ring-4 focus:ring-[#0071e3]/10' : 'focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10';
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
@@ -212,6 +214,7 @@ export default function Careers() {
       const roleTitle = appliedJob ? appliedJob.title : formData.roleId;
 
       const payload = {
+        requestId:submissionKey.current,
         fullName: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -234,8 +237,8 @@ export default function Careers() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        setSubmitSuccess(true);
+      if (response.ok && data.saved === true) {
+        setSubmitSuccess(true);submissionKey.current=crypto.randomUUID();
         trackFormSubmit('career_apply_form', true, { roleId: formData.roleId, roleTitle });
         setResumeFile(null);
         setFormData({
@@ -782,7 +785,7 @@ export default function Careers() {
                     {t('careers.form.successTitle', 'Application Received!')}
                   </h3>
                   <p className="text-slate-600 max-w-lg leading-relaxed">
-                    {t('careers.form.successDesc', "Excellent! Your application files have been securely transmitted to UPER Talent Operations.")}
+                    {localeText('Your application has been received and is available for authorized recruitment review.','Lamaran Anda telah diterima dan tersedia untuk ditinjau oleh petugas rekrutmen berwenang.','您的申请已收到，可由获授权的招聘人员审核。')}
                   </p>
                   <button 
                     onClick={() => setSubmitSuccess(false)}

@@ -1,0 +1,229 @@
+.access-page {
+  --access-bg: #f4f6f8;
+  --access-surface: #fff;
+  --access-ink: #172b45;
+  --access-muted: #435a75;
+  --access-border: #cbd5e1;
+  min-height: 100vh;
+  background: var(--access-bg);
+  color: var(--access-ink);
+  font-size: 14px;
+}
+.access-page[data-theme="dark"] {
+  --access-bg: #0f172a;
+  --access-surface: #172337;
+  --access-ink: #e2e8f0;
+  --access-muted: #bdcce0;
+  --access-border: #50627a;
+}
+.access-main {
+  max-width: 1400px;
+  margin: auto;
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+}
+.access-main h1 {
+  font-size: 24px;
+  font-weight: 700;
+}
+.access-page h2 {
+  font-size: 18px;
+  font-weight: 650;
+}
+.access-page h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+.access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+}
+.access-card,
+.access-panel {
+  background: var(--access-surface);
+  border: 1px solid var(--access-border);
+  border-radius: 16px;
+  padding: 20px;
+  min-width: 0;
+}
+.access-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.access-page button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+.access-page main button,
+.access-panel > button,
+.access-actions button {
+  border: 1px solid var(--access-border);
+  background: var(--access-surface);
+  color: var(--access-ink);
+}
+.access-page button:disabled {
+  opacity: 0.55;
+}
+.access-page button:focus-visible,
+.access-page input:focus-visible,
+.access-page textarea:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 3px;
+}
+.access-toolbar,
+.access-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.access-page label {
+  display: grid;
+  gap: 8px;
+  line-height: 1.5;
+}
+.access-page label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+}
+.access-page input:not([type="checkbox"]),
+.access-page textarea {
+  width: 100%;
+  border: 1px solid var(--access-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--access-surface);
+  color: var(--access-ink);
+  min-width: 0;
+}
+.access-page input[type="checkbox"] {
+  accent-color: #0d9488;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.access-page small {
+  display: block;
+  font-size: 12px;
+  color: var(--access-muted);
+}
+.access-page p,
+.access-page li {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.access-page li {
+  margin-bottom: 12px;
+}
+.access-page ol {
+  list-style: decimal;
+  padding-left: 24px;
+}
+.access-card pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.access-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #0008;
+  z-index: 70;
+  display: flex;
+  justify-content: flex-end;
+}
+.access-panel {
+  width: min(720px, 100%);
+  height: 100dvh;
+  overflow: auto;
+  border-radius: 16px 0 0 16px;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+.access-error {
+  color: #9f1239;
+  background: #fff1f2;
+  border: 1px solid #fda4af;
+  border-radius: 12px;
+  padding: 12px;
+}
+.access-notice {
+  color: #065f46;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  border-radius: 12px;
+  padding: 12px;
+}
+.access-page[data-theme="dark"] .access-error {
+  background: #450a0a;
+  color: #fecaca;
+}
+.access-page[data-theme="dark"] .access-notice {
+  background: #052e16;
+  color: #bbf7d0;
+}
+.access-languages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.access-permission {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 16px;
+  align-items: center;
+  border-top: 1px solid var(--access-border);
+  padding-top: 12px;
+}
+.access-impact {
+  border: 1px solid var(--access-border);
+  padding: 12px;
+  border-radius: 10px;
+}
+.access-actions {
+  position: sticky;
+  bottom: -20px;
+  margin: 0 -20px -20px;
+  padding: 16px 20px;
+  background: var(--access-surface);
+  border-top: 1px solid var(--access-border);
+}
+.access-actions > button:first-child {
+  background: #007b74;
+  color: #fff;
+  border-color: #007b74;
+}
+.access-panel .crm-single-select {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .access-main {
+    padding: 16px;
+  }
+  .access-panel {
+    border-radius: 0;
+    padding: 16px;
+  }
+  .access-languages {
+    grid-template-columns: 1fr;
+  }
+  .access-permission {
+    grid-template-columns: 1fr;
+  }
+  .access-actions {
+    margin: 0 -16px -16px;
+    padding: 12px 16px;
+    bottom: -16px;
+  }
+  .access-actions button {
+    flex: 1 1 150px;
+  }
+}

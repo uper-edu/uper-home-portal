@@ -1,3 +1,4 @@
+import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
@@ -83,15 +84,8 @@ test("connection labels distinguish simulation, credential absence, test restric
     delete process.env.LARK_TEST_GROUP;
   }
 });
-if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
-  const url = new URL(process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL);
-  if (
-    url.hostname !== "127.0.0.1" ||
-    url.port !== "5448" ||
-    !/^\/uper_calendar_[a-z0-9_]+$/.test(url.pathname)
-  )
-    throw Error("Disposable calendar database required");
-  process.env.DATABASE_URL = url.toString();
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const fixture = await setupNativeTest("notificationCalendar");
   process.env.PLATFORM_MODE = "mock";
   const { pool } = await import("../server/portal/store.ts");
   const { mountPortal } = await import("../server/portal/runtime.ts");
@@ -110,7 +104,7 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
     });
     return { status: res.status, data: await res.json() };
   }
-  await test("PostgreSQL calendar and channel acceptance", async (t) => {
+  await test("MySQL calendar and channel acceptance", async (t) => {
     t.after(async () => {
       await new Promise<void>((r) => server.close(() => r()));
       await pool.end();
@@ -118,11 +112,15 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
     await t.test(
       "global calendar changes preview and new jobs, custom policies and task deadlines remain unchanged",
       async () => {
-        await pool.query(
-          "TRUNCATE notification_channels,rule_versions,notification_rules,notification_jobs,notification_inbox,outbox,portal_leads,followup_tasks CASCADE",
+        await fixture.reset(
+          "notification_channels,rule_versions,notification_rules,notification_jobs,notification_inbox,outbox,portal_leads,followup_tasks",
         );
         await pool.query(
-          "INSERT INTO portal_leads(id,profile) VALUES('calendar-test-lead',$1)",
+          "INSERT INTO notification_channels(id,config) VALUES(:p1,:p2)",
+          [defaults.group, { mode: "simulation", groupName: "TEST calendar" }],
+        );
+        await pool.query(
+          "INSERT INTO portal_leads(id,profile) VALUES('calendar-test-lead',:p1)",
           [
             {
               fullName: "TEST 工作日历客户",
@@ -132,7 +130,7 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
           ],
         );
         await pool.query(
-          "INSERT INTO followup_tasks(id,lead_id,kind,due_at) VALUES('calendar-test-task','calendar-test-lead','consultation','2030-01-01T00:00:00Z')",
+          "INSERT INTO followup_tasks(id,lead_id,kind,due_at) VALUES('calendar-test-task','calendar-test-lead','consultation','2030-01-01 00:00:00')",
         );
         assert.equal(
           (
@@ -176,7 +174,7 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
           "UPDATE notification_rules SET effective_at='2026-01-01' WHERE id='calendar-inherit'",
         );
         await pool.query(
-          "INSERT INTO outbox(id,type,lead_id,payload,created_at) VALUES('calendar-new','lead.created','calendar-test-lead','{}','2026-10-12T09:00:00Z')",
+          "INSERT INTO outbox(id,type,lead_id,payload,created_at) VALUES('calendar-new','lead.created','calendar-test-lead','{}','2026-10-12 09:00:00')",
         );
         await tick(new Date("2026-10-12T09:00:00Z"));
         const job = (
@@ -217,14 +215,14 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
         assert.equal(job.due_at.toISOString(), "2026-10-13T03:00:00.000Z");
         const old = { ...defaults, calendarMode: undefined, dedupeMinutes: 0 };
         await pool.query(
-          "UPDATE notification_jobs SET snapshot=jsonb_set(snapshot,'{rule}',$1),due_at='2026-10-13T02:00:00Z' WHERE id=$2",
+          "UPDATE notification_jobs SET snapshot=JSON_SET(snapshot,'$.rule',CAST(:p1 AS JSON)),due_at='2026-10-13 02:00:00' WHERE id=:p2",
           [old, job.id],
         );
         await tick(new Date("2026-10-13T02:00:00Z"));
         assert.equal(
           (
             await pool.query(
-              "SELECT state FROM notification_jobs WHERE id=$1",
+              "SELECT state FROM notification_jobs WHERE id=:p1",
               [job.id],
             )
           ).rows[0].state,
@@ -235,8 +233,8 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
     await t.test(
       "daily summary uses global work days and timezone, inapp summary is scheduled by event generation",
       async () => {
-        await pool.query(
-          "TRUNCATE notification_channels,rule_versions,notification_rules,notification_jobs,notification_inbox,outbox CASCADE",
+        await fixture.reset(
+          "notification_channels,rule_versions,notification_rules,notification_jobs,notification_inbox,outbox",
         );
         await api("notification-rules/calendar-digest", {
           config: {
@@ -263,22 +261,24 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
         );
         await tick(new Date("2026-10-11T10:00:00Z"));
         assert.equal(
-          (await pool.query("SELECT count(*) n FROM outbox")).rows[0].n,
-          "0",
+          Number((await pool.query("SELECT count(*) n FROM outbox")).rows[0].n),
+          0,
         );
         await tick(new Date("2026-10-12T09:59:00Z"));
         assert.equal(
-          (await pool.query("SELECT count(*) n FROM outbox")).rows[0].n,
-          "0",
+          Number((await pool.query("SELECT count(*) n FROM outbox")).rows[0].n),
+          0,
         );
         await tick(new Date("2026-10-12T10:00:00Z"));
         assert.equal(
-          (
-            await pool.query(
-              "SELECT count(*) n FROM outbox WHERE type='daily.digest'",
-            )
-          ).rows[0].n,
-          "1",
+          Number(
+            (
+              await pool.query(
+                "SELECT count(*) n FROM outbox WHERE type='daily.digest'",
+              )
+            ).rows[0].n,
+          ),
+          1,
         );
       },
     );
@@ -333,8 +333,8 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
       async () => {
         const { groupRateLimit } =
           await import("../server/portal/notificationDelivery.ts");
-        await pool.query(
-          "TRUNCATE notification_channels,rule_versions,notification_rules,notification_jobs,notification_inbox,outbox,portal_leads CASCADE",
+        await fixture.reset(
+          "notification_channels,rule_versions,notification_rules,notification_jobs,notification_inbox,outbox,portal_leads",
         );
         const configs = [
           {
@@ -356,7 +356,7 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
         ];
         for (let i = 0; i < 2; i++)
           await pool.query(
-            "INSERT INTO notification_rules(id,version,config,enabled) VALUES($1,1,$2,false)",
+            "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,false)",
             ["limit-" + i, configs[i]],
           );
         assert.deepEqual(await groupRateLimit(pool, "limit-qa", {}), {
@@ -383,11 +383,11 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
         const clock = new Date();
         for (let i = 0; i < 2; i++) {
           await pool.query(
-            "INSERT INTO outbox(id,type,payload,processed_at) VALUES($1,'qa','{}',now())",
+            "INSERT INTO outbox(id,type,payload,processed_at) VALUES(:p1,'qa','{}',UTC_TIMESTAMP(6))",
             ["limit-event-" + i],
           );
           await pool.query(
-            "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES($1,$2,$3,1,'lark','limit-qa',$4,$5)",
+            "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES(:p1,:p2,:p3,1,'lark','limit-qa',:p4,:p5)",
             [
               "limit-job-" + i,
               "limit-event-" + i,
@@ -433,7 +433,7 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
           200,
         );
         await pool.query(
-          "UPDATE notification_jobs SET due_at=$1 WHERE id='limit-job-1'",
+          "UPDATE notification_jobs SET due_at=:p1 WHERE id='limit-job-1'",
           [clock],
         );
         await tick(clock);
@@ -555,13 +555,13 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
           signingSecretRef: "MODE_QA_SIGN",
           maxPerHour: 20,
         };
-        await pool.query("INSERT INTO notification_channels VALUES($1,$2)", [
+        await pool.query("INSERT INTO notification_channels VALUES(:p1,:p2)", [
           "mode-legacy",
           legacy,
         ]);
         const rule = { ...defaults, group: "mode-legacy" };
         await pool.query(
-          "INSERT INTO notification_rules(id,version,config,enabled) VALUES('mode-linked',1,$1,false) ON CONFLICT(id) DO UPDATE SET config=$1",
+          "INSERT INTO notification_rules(id,version,config,enabled) VALUES('mode-linked',1,:p1,false) ON DUPLICATE KEY UPDATE config=:p1",
           [rule],
         );
         assert.equal(
@@ -581,7 +581,7 @@ if (process.env.NOTIFICATION_CALENDAR_TEST_DATABASE_URL) {
         assert.equal(row.config.signingSecretRef, legacy.signingSecretRef);
         assert.equal(row.config.team, legacy.team);
         assert.equal(row.config.teamName, legacy.teamName);
-        assert.equal(row.usage.total, 1);
+        assert.equal(Number(row.usage.total), 1);
         assert.deepEqual(
           (
             await pool.query(

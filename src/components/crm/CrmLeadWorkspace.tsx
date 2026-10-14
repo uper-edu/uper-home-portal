@@ -36,6 +36,7 @@ export interface LeadWorkspaceProps {
     displayName?: string;
   }>;
   onClaim?: (lead:CrmLeadRecord)=>void;
+  canClaim?: (lead:CrmLeadRecord)=>boolean;
   onProcess?: (lead:CrmLeadRecord)=>void;
   canProcess?: (lead:CrmLeadRecord)=>boolean;
   onOpen: (lead: CrmLeadRecord, tab?: CustomerTab) => void;
@@ -52,7 +53,7 @@ export function CrmLeadWorkspace({
   loading,
   employeeId,
   employees,
-  onOpen,onClaim,onProcess,canProcess,
+  onOpen,onClaim,onProcess,canProcess,canClaim,
   onReset,
   children,
 }: LeadWorkspaceProps) {
@@ -298,7 +299,7 @@ export function CrmLeadWorkspace({
                       <div className="crm-work-muted">
                         {leadDisplayNumber(lead)} · {owner(lead)}
                       </div>
-                      {!lead.owner&&onClaim&&<button type="button" className="crm-work-link" onClick={()=>onClaim(lead)}>{t("Claim for myself","认领给自己")}</button>}
+                      {!lead.owner&&onClaim&&canClaim?.(lead)!==false&&<button type="button" className="crm-work-link" onClick={()=>onClaim(lead)}>{t("Claim for myself","认领给自己")}</button>}
                       <LeadActivity
                         lead={lead}
                         lang={lang}

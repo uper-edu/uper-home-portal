@@ -1,3 +1,4 @@
+import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
@@ -9,8 +10,8 @@ const leader: Employee = {
   roles: ["crm_leader"],
   active: true,
   teams: ["sales"],
-  permissions: ["crm.read", "crm.assign"],
-  scope: "team",
+  permissions: ["crm.read", "crm.assign", "notifications.manage"],
+  scope: "all",
 };
 const owner: Employee = {
   id: "owner-sales",
@@ -30,13 +31,13 @@ const admin: Employee = {
 const ops: Employee = {
   id: "leader-ops",
   active: true,
-  roles: ["crm_leader"],
+  roles: [],
   teams: ["ops"],
   permissions: ["crm.read", "crm.assign"],
   scope: "all",
 };
 const config = { ...defaults, channels: ["inapp"] as typeof defaults.channels };
-test("global Owner→CRM Leader routing uses explicit roles, activity, permissions and team data scope", () => {
+test("global Owner→CRM Leader routing uses explicit roles, activity, permissions without team matching", () => {
   const people = [leader, owner, admin, ops];
   const lead = { owner: owner.id, team: "sales" };
   assert.deepEqual(resolveRecipients(config, lead, people, "lead").ids, [
@@ -91,23 +92,16 @@ test("global Owner→CRM Leader routing uses explicit roles, activity, permissio
   assert.deepEqual(
     resolveRecipients({ ...config, recipient: "team", team: "ops" }, {}, people)
       .ids,
-    [ops.id],
+    [leader.id],
   );
   assert.deepEqual(
     resolveRecipients({ ...config, event: "daily.digest" }, {}, people).ids,
-    [leader.id, admin.id],
+    [leader.id],
   );
   assert.deepEqual(lead, { owner: owner.id, team: "sales" });
 });
-if (process.env.NOTIFICATION_ROUTING_TEST_DATABASE_URL) {
-  const u = new URL(process.env.NOTIFICATION_ROUTING_TEST_DATABASE_URL);
-  if (
-    u.hostname !== "127.0.0.1" ||
-    u.port !== "5448" ||
-    !/^\/uper_calendar_routing_[a-z0-9_]+$/.test(u.pathname)
-  )
-    throw Error("Isolated routing database required");
-  process.env.DATABASE_URL = u.toString();
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const fixture = await setupNativeTest("notificationRouting");
   process.env.PLATFORM_MODE = "mock";
   const { pool } = await import("../server/portal/store.ts");
   const { mountPortal } = await import("../server/portal/runtime.ts");
@@ -130,29 +124,29 @@ if (process.env.NOTIFICATION_ROUTING_TEST_DATABASE_URL) {
     });
     return { status: r.status, data: await r.json() };
   }
-  await test("PostgreSQL notification routing acceptance", async (t) => {
+  await test("MySQL notification routing acceptance", async (t) => {
     t.after(async () => {
       platform.employees = original;
       await new Promise<void>((r) => server.close(() => r()));
       await pool.end();
     });
     async function reset(profile: any = { team: "sales", owner: null }) {
-      await pool.query(
-        "TRUNCATE notification_rules,rule_versions,notification_jobs,notification_inbox,outbox,portal_leads,portal_audit CASCADE",
+      await fixture.reset(
+        "notification_rules,rule_versions,notification_jobs,notification_inbox,outbox,portal_leads,portal_audit",
       );
       people = [leader, owner, admin, ops];
       await pool.query(
-        "INSERT INTO portal_leads(id,profile) VALUES('routing-fixture',$1)",
+        "INSERT INTO portal_leads(id,profile) VALUES('routing-fixture',:p1)",
         [{ fullName: "TEST Routing", ...profile }],
       );
       await pool.query(
-        "INSERT INTO notification_rules(id,version,config,enabled) VALUES('routing-policy',1,$1,true)",
+        "INSERT INTO notification_rules(id,version,config,enabled) VALUES('routing-policy',1,:p1,true)",
         [config],
       );
     }
     async function emit(id: string) {
       await pool.query(
-        "INSERT INTO outbox(id,type,lead_id,payload) VALUES($1,'lead.created','routing-fixture','{}')",
+        "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'lead.created','routing-fixture','{}')",
         [id],
       );
       await tick();
@@ -190,10 +184,10 @@ if (process.env.NOTIFICATION_ROUTING_TEST_DATABASE_URL) {
       async () => {
         await reset({ team: "sales", owner: owner.id });
         await pool.query(
-          "INSERT INTO outbox(id,type,payload,processed_at) VALUES('routing-queued-event','qa','{}',now())",
+          "INSERT INTO outbox(id,type,payload,processed_at) VALUES('routing-queued-event','qa','{}',UTC_TIMESTAMP(6))",
         );
         await pool.query(
-          "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES('routing-queued','routing-queued-event','routing-policy',1,'inapp',$1,now()-interval '1 day',$2)",
+          "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES('routing-queued','routing-queued-event','routing-policy',1,'inapp',:p1,UTC_TIMESTAMP(6)-INTERVAL 1 day,:p2)",
           [
             owner.id,
             {
@@ -230,34 +224,42 @@ if (process.env.NOTIFICATION_ROUTING_TEST_DATABASE_URL) {
         people = [admin, ops];
         await emit("routing-unresolved");
         assert.equal(
-          (await pool.query("SELECT count(*) n FROM notification_inbox"))
-            .rows[0].n,
-          "0",
+          Number(
+            (await pool.query("SELECT count(*) n FROM notification_inbox"))
+              .rows[0].n,
+          ),
+          0,
         );
         assert.equal(
-          (
-            await pool.query(
-              "SELECT count(*) n FROM portal_audit WHERE action='notification.routing_unresolved'",
-            )
-          ).rows[0].n,
-          "1",
+          Number(
+            (
+              await pool.query(
+                "SELECT count(*) n FROM portal_audit WHERE action='notification.routing_unresolved'",
+              )
+            ).rows[0].n,
+          ),
+          1,
         );
         assert.equal(
-          (
-            await pool.query(
-              "SELECT count(*) n FROM outbox WHERE type='notification.failed'",
-            )
-          ).rows[0].n,
-          "1",
+          Number(
+            (
+              await pool.query(
+                "SELECT count(*) n FROM outbox WHERE type='notification.failed'",
+              )
+            ).rows[0].n,
+          ),
+          1,
         );
         await tick();
         assert.equal(
-          (
-            await pool.query(
-              "SELECT count(*) n FROM outbox WHERE type='notification.failed'",
-            )
-          ).rows[0].n,
-          "1",
+          Number(
+            (
+              await pool.query(
+                "SELECT count(*) n FROM outbox WHERE type='notification.failed'",
+              )
+            ).rows[0].n,
+          ),
+          1,
         );
       },
     );
@@ -266,7 +268,7 @@ if (process.env.NOTIFICATION_ROUTING_TEST_DATABASE_URL) {
       async () => {
         await reset();
         await pool.query(
-          "UPDATE notification_rules SET config=jsonb_set(config,'{tiers}','[\"Warm\",\"Hot\"]')",
+          "UPDATE notification_rules SET config=JSON_SET(config,'$.tiers',CAST('[\"Warm\",\"Hot\"]' AS JSON))",
         );
         const old = (await pool.query("SELECT config FROM notification_rules"))
           .rows[0].config;
@@ -278,7 +280,7 @@ if (process.env.NOTIFICATION_ROUTING_TEST_DATABASE_URL) {
         const route = await api("notification-routing");
         assert.deepEqual(
           route.data.leaders.map((x: any) => x.id),
-          [leader.id, ops.id],
+          [leader.id],
         );
         assert.deepEqual(
           (await pool.query("SELECT config FROM notification_rules")).rows[0]

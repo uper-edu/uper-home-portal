@@ -1,3 +1,4 @@
+import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
@@ -29,17 +30,17 @@ test("learner image/audio uploads are retired, including arbitrary path keys", a
       assert.equal(res.status, 410);
     }
     const res = await fetch(base + "/api/hsk-images-status");
-    assert.equal((await res.json()).total, 21);
+    assert.equal(Number((await res.json()).total), 21);
   } finally {
     await new Promise<void>((r) => server.close(() => r()));
   }
 });
-if (process.env.PORTAL_TEST_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.PORTAL_TEST_DATABASE_URL;
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const fixture = await setupNativeTest("hskPortal");
   process.env.PLATFORM_MODE = "mock";
   const { pool } = await import("../server/portal/store");
   const { mountPortal } = await import("../server/portal/runtime");
-  test("HSK attempt persistence and authoritative grading in isolated PostgreSQL", async (t) => {
+  test("HSK attempt persistence and authoritative grading in isolated MySQL", async (t) => {
     const app = express();
     app.use(express.json());
     await mountPortal(app);
@@ -90,13 +91,15 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         assert.equal(retry.status, 200);
         assert.match(retry.data.result.levelConfirmed, /门槛/);
         assert.equal(
-          (
-            await pool.query(
-              "SELECT count(*) AS n FROM hsk_attempts WHERE id=$1",
-              [a.attemptId],
-            )
-          ).rows[0].n,
-          "1",
+          Number(
+            (
+              await pool.query(
+                "SELECT count(*) AS n FROM hsk_attempts WHERE id=:p1",
+                [a.attemptId],
+              )
+            ).rows[0].n,
+          ),
+          1,
         );
         assert.equal(
           (
@@ -163,8 +166,10 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
       async () => {
         const history = (await request("/api/portal/assessments")).data.results;
         assert.equal(
-          history.find((r: any) => r.attempt.attemptId === a.attemptId).sections
-            .writing.total,
+          Number(
+            history.find((r: any) => r.attempt.attemptId === a.attemptId)
+              .sections.writing.total,
+          ),
           8,
         );
         assert.equal(
@@ -202,12 +207,13 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
       "an adapted diagnostic never overwrites an existing teacher placement",
       async () => {
         const leadId = (
-          await pool.query("SELECT lead_id FROM visitor_sessions WHERE id=$1", [
-            cookie.split("=")[1],
-          ])
+          await pool.query(
+            "SELECT lead_id FROM visitor_sessions WHERE id=:p1",
+            [cookie.split("=")[1]],
+          )
         ).rows[0].lead_id;
         await pool.query(
-          "UPDATE portal_leads SET profile=profile || $2::jsonb WHERE id=$1",
+          "UPDATE portal_leads SET profile=JSON_MERGE_PATCH(profile,:p2) WHERE id=:p1",
           [
             leadId,
             JSON.stringify({ levelConfirmed: "HSK 4", levelSource: "trial" }),
@@ -223,7 +229,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         assert.equal(saved.status, 200);
         assert.equal(saved.data.result.score, 0);
         const profile = (
-          await pool.query("SELECT profile FROM portal_leads WHERE id=$1", [
+          await pool.query("SELECT profile FROM portal_leads WHERE id=:p1", [
             leadId,
           ])
         ).rows[0].profile;
@@ -267,7 +273,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
           [damagedAttempt, null],
         ] as const)
           await pool.query(
-            "INSERT INTO hsk_attempts(id,visitor_id,input_hash,attempt,result) VALUES($1,$2,$3,$4,$5)",
+            "INSERT INTO hsk_attempts(id,visitor_id,input_hash,attempt,result) VALUES(:p1,:p2,:p3,:p4,:p5)",
             [
               attempt.attemptId,
               visitorId,
@@ -310,14 +316,14 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         assert.equal(registered.data.lead.levelSource, "trial");
         assert.equal(registered.data.lead.levelConfirmed, "HSK 4");
         const raw = (
-          await pool.query("SELECT result FROM hsk_attempts WHERE id=$1", [
+          await pool.query("SELECT result FROM hsk_attempts WHERE id=:p1", [
             legacyAttempt.attemptId,
           ])
         ).rows[0].result;
         assert.deepEqual(raw, legacy);
         assert.equal(
           (
-            await pool.query("SELECT result FROM hsk_attempts WHERE id=$1", [
+            await pool.query("SELECT result FROM hsk_attempts WHERE id=:p1", [
               damagedAttempt.attemptId,
             ])
           ).rows[0].result,

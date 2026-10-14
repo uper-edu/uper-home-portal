@@ -14,7 +14,7 @@ export function mountHskAssessments(app: Express) {
       const v = await visitor(req, res);
       const rows = (
         await pool.query(
-          "SELECT result FROM hsk_attempts WHERE visitor_id=$1 ORDER BY created_at DESC LIMIT 20",
+          "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC LIMIT 20",
           [v.id],
         )
       ).rows;
@@ -41,13 +41,13 @@ export function mountHskAssessments(app: Express) {
       const result = await tx(async (c) => {
         const visitorRow = (
           await c.query(
-            "SELECT * FROM visitor_sessions WHERE id=$1 FOR UPDATE",
+            "SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
             [v.id],
           )
         ).rows[0];
         const prior = (
           await c.query(
-            "SELECT visitor_id,input_hash,result FROM hsk_attempts WHERE id=$1",
+            "SELECT visitor_id,input_hash,result FROM hsk_attempts WHERE id=:p1",
             [attempt.attemptId],
           )
         ).rows[0];
@@ -65,7 +65,7 @@ export function mountHskAssessments(app: Express) {
           saveStatus: "saved" as const,
         };
         await c.query(
-          "INSERT INTO hsk_attempts(id,visitor_id,lead_id,input_hash,attempt,result) VALUES($1,$2,$3,$4,$5,$6)",
+          "INSERT INTO hsk_attempts(id,visitor_id,lead_id,input_hash,attempt,result) VALUES(:p1,:p2,:p3,:p4,:p5,:p6)",
           [
             attempt.attemptId,
             v.id,
@@ -76,25 +76,22 @@ export function mountHskAssessments(app: Express) {
           ],
         );
         if (visitorRow.lead_id) {
-          await c.query(
-            `UPDATE portal_leads SET profile=profile || $2::jsonb || CASE WHEN profile->>'levelSource'='trial' THEN '{}'::jsonb ELSE $3::jsonb END WHERE id=$1`,
-            [
-              visitorRow.lead_id,
-              JSON.stringify({
-                quizScore: calculated.score,
-                totalQuestions: calculated.questionCount,
-                quizMaxScore: calculated.maxScore,
-                assessmentProvenance: "server_recomputed_adapted_paper",
-                quizResultSummary: calculated.summary,
-                quizBreakdown: calculated.breakdown,
-                latestAssessment: calculated,
-              }),
-              JSON.stringify({
-                levelConfirmed: calculated.levelConfirmed,
-                levelSource: "assessment",
-              }),
-            ],
-          );
+          await c.mergeLeadProfile([
+            visitorRow.lead_id,
+            JSON.stringify({
+              quizScore: calculated.score,
+              totalQuestions: calculated.questionCount,
+              quizMaxScore: calculated.maxScore,
+              assessmentProvenance: "server_recomputed_adapted_paper",
+              quizResultSummary: calculated.summary,
+              quizBreakdown: calculated.breakdown,
+              latestAssessment: calculated,
+            }),
+            JSON.stringify({
+              levelConfirmed: calculated.levelConfirmed,
+              levelSource: "assessment",
+            }),
+          ]);
           await event(c, "assessment.completed", visitorRow.lead_id, {
             attemptId: attempt.attemptId,
             mode: attempt.mode,

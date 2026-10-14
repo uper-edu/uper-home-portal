@@ -64,26 +64,7 @@ function safeDate(dateString: string) {
   }
 }
 
-const FALLBACK_CAMPAIGNS = [
-  {
-    _id: 'camp-1',
-    title: 'Study Tour Tiongkok - Beijing & Shanghai',
-    subtitle: 'Kunjungi universitas top dunia seperti Tsinghua & Peking University dan rasakan pengalaman belajar yang sesungguhnya.',
-    image: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200',
-    buttonText: 'Daftar Sekarang',
-    buttonLink: '/tours',
-    slug: { current: 'study-tour-2026' }
-  },
-  {
-    _id: 'camp-2',
-    title: 'Program Persiapan Beasiswa CSCA 2026',
-    subtitle: 'Bimbingan intensif esai akademis, rencana studi, dan persiapan wawancara bersama alumni Tsinghua dan PKU.',
-    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
-    buttonText: 'Pelajari Program',
-    buttonLink: '/csca',
-    slug: { current: 'prep-csca-2026' }
-  }
-];
+const FALLBACK_CAMPAIGNS = [];
 
 const MarketingCampaign = () => {
   const { t } = useTranslation();
@@ -203,40 +184,7 @@ const MarketingCampaign = () => {
   );
 };
 
-const FALLBACK_NEWS = [
-  {
-    _id: 'news-1',
-    title: 'Peluang Beasiswa Penuh Pemerintah Tiongkok (CSC) 2026 Resmi Dibuka',
-    publishedAt: '2026-03-15T00:00:00Z',
-    slug: { current: 'csc-scholarship-2026-open' },
-    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'Simak panduan lengkap, persyaratan dokumen, dan strategi penulisan rencana studi untuk memenangkan beasiswa CSC di kampus impian Anda.'
-  },
-  {
-    _id: 'news-2',
-    title: 'Delegasi UPER Kunjungi Universitas Top di Beijing Pererat Kerja Sama Akademik',
-    publishedAt: '2026-02-28T00:00:00Z',
-    slug: { current: 'uper-visit-beijing-universities' },
-    image: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'UPER menandatangani MoU baru yang membuka jalur eksklusif beasiswa prestasi dan program pertukaran mahasiswa.'
-  },
-  {
-    _id: 'news-3',
-    title: 'Pentingnya Sertifikasi HSK 4 & 5 dalam Seleksi Akademik di Universitas Tiongkok',
-    publishedAt: '2026-02-10T00:00:00Z',
-    slug: { current: 'hsk-certification-importance' },
-    image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'Meskipun beberapa jurusan menawarkan kelas pengantar bahasa Inggris, penguasaan Mandarin yang dibuktikan dengan sertifikat HSK tetap menjadi poin plus.'
-  },
-  {
-    _id: 'news-4',
-    title: 'Sesi Pembekalan Keberangkatan (Departure Briefing) Mahasiswa UPER Angkatan 2026',
-    publishedAt: '2026-01-20T00:00:00Z',
-    slug: { current: 'departure-briefing-2026' },
-    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'Panduan lengkap mengenai persiapan visa JW202, asuransi kesehatan, tempat tinggal, hingga tips beradaptasi dengan budaya lokal.'
-  }
-];
+const FALLBACK_NEWS = [];
 
 const NewsSection = () => {
   const { t } = useTranslation();
@@ -398,40 +346,7 @@ const NewsSection = () => {
   );
 };
 
-const FALLBACK_STORIES = [
-  {
-    _id: 'story-1',
-    name: 'Michael Wijaya',
-    school: 'Tsinghua University (清华大学)',
-    program: 'Mechanical Engineering & Automation',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200',
-    quote: 'Dukungan penuh dari UPER dalam menyusun personal statement sangat berharga. Mentor UPER membantu saya menonjolkan proyek robotika saya, sehingga saya berhasil mendapatkan beasiswa penuh CSC Type B di Tsinghua!'
-  },
-  {
-    _id: 'story-2',
-    name: 'Amanda Sutanto',
-    school: 'Peking University (北京大学)',
-    program: 'International Economics and Trade',
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200',
-    quote: 'Proses wawancara di PKU sangat kompetitif. Berkat simulasi wawancara 1-on-1 dengan alumni UPER, saya bisa menjawab semua pertanyaan akademis dengan tenang dan percaya diri.'
-  },
-  {
-    _id: 'story-3',
-    name: 'Devin Henderson',
-    school: 'Zhejiang University (浙江大学)',
-    program: 'Computer Science and Technology',
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200&h=200',
-    quote: 'Kurikulum bridging CSCA dari UPER benar-benar mempersiapkan saya untuk menghadapi standar akademik ketat di Tiongkok. Transisi dari SMA ke kuliah tingkat tinggi menjadi sangat mulus!'
-  },
-  {
-    _id: 'story-4',
-    name: 'Clara Audrey',
-    school: 'Shanghai Jiao Tong University (上海交通大学)',
-    program: 'Biomedical Engineering',
-    image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200',
-    quote: 'Navigasi birokrasi visa dan JW202 sangat membingungkan pada awalnya. Tim UPER mengurus semua detail teknis sehingga saya bisa fokus penuh pada persiapan akademik saya.'
-  }
-];
+const FALLBACK_STORIES = [];
 
 const StudentStories = () => {
   const { t } = useTranslation();
@@ -1173,12 +1088,7 @@ const CorporateTraining = () => {
   );
 };
 
-const DEFAULT_PARTNER_CATEGORIES = [
-  { name: 'Chinese Universities', count: 2 },
-  { name: 'Chinese Enterprises', count: 1 },
-  { name: 'Indonesian Universities & Schools', count: 4 },
-  { name: 'Indonesian Organizations', count: 1 }
-];
+const DEFAULT_PARTNER_CATEGORIES = [];
 
 let cachedCategories: { name: string; count: number }[] | null = null;
 
@@ -1637,68 +1547,7 @@ const MainServices = () => {
   );
 };
 
-const FALLBACK_TRENDING_ITEMS = [
-  {
-    id: 'hsk-4-bootcamp',
-    category: '📚 HSK',
-    title: 'HSK 4 Intensive Bootcamp',
-    desc: 'Master HSK 4 efficiently. Study online or at our Jakarta center. Perfect for scholarship seekers.',
-    image: 'https://images.unsplash.com/photo-1546410531-ee4cb12b22d1?auto=format&fit=crop&q=80&w=800',
-    badge: '🔥 Enroll Now',
-    link: '/hsk',
-    meta: { term: '4 Weeks', start: 'Jun 10', seats: '8 Seats Left', price: 'IDR 2.5M' }
-  },
-  {
-    id: 'csca-scholarship',
-    category: '🏗️ CSCA',
-    title: 'CSCA Scholarship Prep',
-    desc: 'Expert preparation on our Jakarta Campus to help you secure prestigious Chinese university scholarships.',
-    image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=800',
-    badge: '⭐ Enroll Now',
-    link: '/csca',
-    meta: { term: '6 Weeks', start: 'Jun 20', seats: '10 Seats Left', price: 'IDR 3.8M' }
-  },
-  {
-    id: 'tour-beijing',
-    category: '✈️ Study Tour',
-    title: 'Beijing · Cultural Tour',
-    desc: 'Tsinghua Univ base. Explore Forbidden City, Great Wall, Hutong, and experience an actual HSK Trial.',
-    image: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&q=80&w=800',
-    badge: '🏃 Recruiting',
-    link: '/tours',
-    meta: { term: '10-12 Days', start: 'Flexible', seats: 'Need 12 More', price: 'IDR 15-18M' }
-  },
-  {
-    id: 'tour-hangzhou',
-    category: '✈️ Study Tour',
-    title: 'Hangzhou · Jiangnan Tour',
-    desc: 'Zhejiang University base. Discover West Lake, Longjing Tea, Alibaba HQ, and Songcheng Show.',
-    image: 'https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&q=80&w=800',
-    badge: '🏃 Recruiting',
-    link: '/tours',
-    meta: { term: '8-10 Days', start: 'Flexible', seats: 'Need 17 More', price: 'IDR 12-15M' }
-  },
-  {
-    id: 'tour-wuhan',
-    category: '✈️ Study Tour',
-    title: 'Wuhan · Chu Culture Tour',
-    desc: 'Wuhan University base. Visit Yellow Crane Tower, East Lake, Hubei Museum, and take a Yangtze Cruise.',
-    image: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?auto=format&fit=crop&q=80&w=800',
-    badge: '🏃 Recruiting',
-    link: '/tours',
-    meta: { term: '8-10 Days', start: 'Flexible', seats: 'Need 19 More', price: 'IDR 12-15M' }
-  },
-  {
-    id: 'hsk-3-foundation',
-    category: '📚 HSK',
-    title: 'HSK 3 Foundation',
-    desc: 'Solidify your basics with our upcoming HSK 3 foundation course. Register early to claim your spot.',
-    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
-    badge: '⏳ Coming Soon',
-    link: '/hsk',
-    meta: { term: 'TBA', start: 'Aug 1', seats: 'Notify Me', price: 'TBA' }
-  }
-];
+const FALLBACK_TRENDING_ITEMS = [];
 
 const TrendingSection = () => {
   const { t } = useTranslation();

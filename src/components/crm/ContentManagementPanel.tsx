@@ -1,3 +1,5 @@
+import { cmsText } from '../../utils/cmsLanguage';
+import type { CrmLanguage } from '../../utils/crmLanguage';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building2, 
@@ -27,7 +29,7 @@ import { urlFor } from '../../sanityClient';
 
 interface ContentManagementPanelProps {
   isLight: boolean;
-  lang: 'en' | 'zh';
+  lang: CrmLanguage;
 }
 
 export type CmsSection = 
@@ -140,6 +142,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
 ];
 
 export default function ContentManagementPanel({ isLight, lang }: ContentManagementPanelProps) {
+  const cmsRequestId=useRef('');
   const [activeSection, setActiveSection] = useState<CmsSection>('partners');
   const [items, setItems] = useState<any[]>([]);
   const [sectionCounts, setSectionCounts] = useState<Record<CmsSection, number>>({
@@ -169,7 +172,14 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const t = (en: string, zh: string) => (lang === 'zh' ? zh : en);
+  const t = (en: string, zh: string) => cmsText(en, zh, lang);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isModalOpen]);
 
   const allSectionItems = CMS_SECTION_GROUPS.flatMap(g => g.items);
   const currentActiveMeta = allSectionItems.find(s => s.id === activeSection) || allSectionItems[0];
@@ -217,6 +227,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   }, [activeSection]);
 
   const handleOpenAdd = () => {
+    cmsRequestId.current=crypto.randomUUID();
     let emptyItem: any = {};
     if (activeSection === 'partners') {
       emptyItem = {
@@ -309,6 +320,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   };
 
   const handleOpenEdit = (item: any) => {
+    cmsRequestId.current=crypto.randomUUID();
     setEditingItem(JSON.parse(JSON.stringify(item)));
     setIsModalOpen(true);
   };
@@ -335,11 +347,13 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
     try {
       const res = await fetch(`/api/cms/content/${section}/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({requestId:'delete-'+id+'-'+(items.find(i=>(i._id||i.id)===id)?._cmsVersion||0),itemVersion:items.find(i=>(i._id||i.id)===id)?._cmsVersion})
       });
       const data = await res.json();
       if (data.success) {
-        showNotification('success', t(`"${name}" was deleted successfully`, `已成功删除 "${name}"`));
+        showNotification('success', t("Item deleted", "已删除内容") + ": " + name);
         setItems(prev => prev.filter(i => (i._id || i.id) !== id));
         setSectionCounts(prev => ({
           ...prev,
@@ -347,10 +361,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         }));
         setDeleteConfirmTarget(null);
       } else {
-        showNotification('error', data.error || t('Delete failed', '删除失败'));
+        showNotification('error', t('Delete failed', '删除失败'));
       }
     } catch (err: any) {
-      showNotification('error', err.message || t('Delete failed', '删除失败'));
+      showNotification('error', t('Delete failed', '删除失败'));
     } finally {
       setIsDeleting(false);
     }
@@ -364,7 +378,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       const res = await fetch(`/api/cms/content/${activeSection}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item: editingItem })
+        body: JSON.stringify({ item: editingItem, requestId: cmsRequestId.current || (cmsRequestId.current=crypto.randomUUID()) })
       });
       const data = await res.json();
       if (data.success) {
@@ -373,10 +387,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         setEditingItem(null);
         fetchItems(activeSection);
       } else {
-        showNotification('error', data.error || t('Save failed', '保存失败'));
+        showNotification('error', t('Save failed', '保存失败'));
       }
     } catch (err: any) {
-      showNotification('error', err.message || t('Save failed', '保存失败'));
+      showNotification('error', t('Save failed', '保存失败'));
     }
   };
 
@@ -389,6 +403,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     try {
       const reader = new FileReader();
       reader.onload = async () => {
+        try {
         const base64Data = reader.result as string;
         const res = await fetch('/api/cms/upload', {
           method: 'POST',
@@ -428,14 +443,20 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
           });
           showNotification('success', t('Image uploaded successfully!', '图片上传成功！'));
         } else {
-          showNotification('error', uploadResult.error || t('Upload failed', '上传失败'));
+          showNotification('error', t('Upload failed', '上传失败'));
         }
-        setIsUploading(false);
+        } catch (error:any) {
+          showNotification('error',t('Upload failed; retry the image','上传失败，请重试图片'));
+        } finally {
+          setIsUploading(false);
+          if(fileInputRef.current)fileInputRef.current.value='';
+        }
       };
+      reader.onerror=()=>{setIsUploading(false);showNotification('error',t('Unable to read image','无法读取图片'));if(fileInputRef.current)fileInputRef.current.value='';};
       reader.readAsDataURL(file);
     } catch (err: any) {
       console.error('Upload error:', err);
-      showNotification('error', err.message || t('Upload failed', '上传失败'));
+      showNotification('error', t('Upload failed', '上传失败'));
       setIsUploading(false);
     }
   };
@@ -466,7 +487,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   });
 
   return (
-    <div className={`rounded-2xl border transition-all ${
+    <div data-cms-theme={isLight ? "light" : "dark"} className={`rounded-2xl border transition-all ${
       isLight ? 'bg-white border-slate-200/90 shadow-sm' : 'bg-slate-900 border-slate-800'
     }`}>
       {/* Toast Notification */}
@@ -491,19 +512,15 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className={`font-bold text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              <h1 className={`font-bold text-lg ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 {t('Website Content & Media Center', '官网全量内容与素材配置中心')}
-              </h2>
-              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
-                isLight ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-amber-950/40 text-amber-300 border-amber-800'
-              }`}>
-                CMS Engine
-              </span>
+              </h1>
+
             </div>
             <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               {t(
-                'Professional Master-Detail CMS Workspace · 7 Core Collections · Direct Local JSON Persistence',
-                '专业双栏 Master-Detail 内容工作台 · 完整管理 7 大核心业务数据表 · 实时本地双向持久化'
+                'Manage website content and images in seven collections.',
+                '管理七类网站内容与图片。'
               )}
             </p>
           </div>
@@ -515,7 +532,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
             isLight ? 'bg-white border-slate-200 text-slate-700 shadow-2xs' : 'bg-slate-900 border-slate-700 text-slate-300'
           }`}>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold">{t('Total Live Entities:', '全站在线素材与数据:')}</span>
+            <span className="font-semibold">{t('Total content:', '内容总数:')}</span>
             <span className="font-mono font-bold text-primary-600 dark:text-primary-400">
               {Object.values(sectionCounts).reduce((a, b) => a + b, 0)}
             </span>
@@ -523,6 +540,14 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         </div>
       </div>
 
+      <details className="p-4 border-t border-slate-200 dark:border-slate-800 text-sm">
+        <summary className="cursor-pointer font-semibold">{t('CMS operating guide', 'CMS 操作指南')}</summary>
+        <div className="mt-3 space-y-3 max-w-3xl leading-relaxed">
+          <section><h3 className="font-semibold">{t('Workspace and preferences', '工作区与偏好')}</h3><p>{t('Use the workspace menu to open the workspaces allowed by your staff permissions. Language and theme are shared with CRM. On narrow screens, open Language and appearance.', '从工作区菜单进入有权限的后台；语言与主题在 CMS 和 CRM 间沿用。窄屏中打开“语言与外观”调整偏好。')}</p></section>
+          <section><h3 className="font-semibold">{t('Content editing', '内容编辑')}</h3><p>{t('Choose a collection, search or refresh its records, then add or edit content. Save changes in the editor. Opening the website previews saved content; it does not save an open draft.', '选择内容集合，搜索或刷新记录，再新增或编辑内容。在编辑器中保存；查看网站只预览已保存的内容，不会保存尚未提交的草稿。')}</p></section>
+          <p>{t('Names and saved content remain in their original language. HSK questions and scoring are not changed by interface preferences.', '姓名及已保存内容保持原文；界面偏好不改变 HSK 题库和评分。')}</p>
+        </div>
+      </details>
       {/* Main Master-Detail Body */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-start min-h-[660px] divide-y lg:divide-y-0 lg:divide-x border-slate-100 dark:border-slate-800 relative">
         
@@ -538,7 +563,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-semibold ${
                 isLight ? 'bg-white text-slate-600 border-slate-200' : 'bg-slate-900 text-slate-400 border-slate-700'
               }`}>
-                7 {t('Models', '个模块')}
+                7 {t('collections', '类内容')}
               </span>
             </div>
 
@@ -613,19 +638,19 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
           }`}>
             <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>{t('Instant Site Sync', '即时热更新机制')}</span>
+              <span>{t('Website content updates', '网站内容更新')}</span>
             </span>
             <span>
               {t(
-                'Data mutations are saved directly to local JSON models and instantly reflected across all website pages.',
-                '此处修改或新增的图文数据，直接持久化写入本地 JSON 实体，官网前台即时同步热重载。'
+                'Saved content is stored in MySQL. Reload the website to see updates. HSK questions and scoring are managed separately.',
+                '内容保存到 MySQL，重新加载网站后可查看更新。HSK 题库和评分独立管理。'
               )}
             </span>
           </div>
         </aside>
 
         {/* RIGHT COLUMN: Detail Workspace Main Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 flex flex-col">
+        <section aria-label={t("Content editing", "内容编辑")} className="flex-1 min-w-0 p-4 sm:p-6 flex flex-col">
           {/* Active Category Header & Workspace Action Bar */}
           {(() => {
             const allItems = CMS_SECTION_GROUPS.flatMap(g => g.items);
@@ -822,7 +847,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
               </div>
             )}
           </div>
-        </main>
+        </section>
       </div>
 
       {/* Edit / Add Modal */}
@@ -844,6 +869,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
+                  aria-label={t('Close editor', '关闭编辑器')}
                   className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                     isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-slate-800 text-slate-500'
                   }`}
@@ -860,7 +886,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   <label className="block font-semibold mb-2 flex items-center justify-between">
                     <span>{t('Primary Image / Logo', '主图片 / Logo 封面')}</span>
                     <span className="text-[10px] text-primary-600 font-normal">
-                      {t('Local storage in public/images/uploads/', '直接保存至工程本地目录')}
+                      {t('PNG, JPEG or WebP up to 2 MB; stored in MySQL', 'PNG、JPEG 或 WebP，最大 2 MB；保存到 MySQL')}
                     </span>
                   </label>
 
@@ -872,7 +898,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       {getItemImageUrl(editingItem) ? (
                         <img 
                           src={getItemImageUrl(editingItem)} 
-                          alt="preview" 
+                          alt={t('Image preview', '图片预览')}
                           className="w-full h-full object-contain p-1"
                         />
                       ) : (
@@ -924,7 +950,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       {/* Manual URL input fallback */}
                       <input
                         type="text"
-                        placeholder="https://... 或 /images/uploads/..."
+                        placeholder={t('https://... or /images/uploads/...','https://... 或 /images/uploads/...')}
                         value={getItemImageUrl(editingItem)}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -969,7 +995,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         {editingItem.certificateImage ? (
                           <img 
                             src={urlFor(editingItem.certificateImage)?.url() || ''} 
-                            alt="certificate" 
+                            alt={t('Certificate preview', '证书预览')}
                             className="w-full h-full object-contain p-1"
                           />
                         ) : (
@@ -991,7 +1017,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         </button>
                         <input
                           type="text"
-                          placeholder="https://... 或 /images/uploads/..."
+                          placeholder={t('https://... or /images/uploads/...', 'https://... 或 /images/uploads/...')}
                           value={urlFor(editingItem.certificateImage)?.url() || ''}
                           onChange={(e) => setEditingItem({
                             ...editingItem,
@@ -1042,10 +1068,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       >
-                        <option value="Chinese Universities">Chinese Universities (中国高校)</option>
-                        <option value="Indonesian Universities & Schools">Indonesian Universities & Schools (印尼院校/中学)</option>
-                        <option value="Educational Institutions">Educational Institutions (教育机构)</option>
-                        <option value="Corporate Partners">Corporate Partners (企业伙伴)</option>
+                        <option value="Chinese Universities">{t('Chinese Universities', '中国高校')}</option>
+                        <option value="Indonesian Universities & Schools">{t('Indonesian Universities & Schools', '印尼院校及学校')}</option>
+                        <option value="Educational Institutions">{t('Educational Institutions', '教育机构')}</option>
+                        <option value="Corporate Partners">{t('Corporate Partners', '企业伙伴')}</option>
                       </select>
                     </div>
 
@@ -1053,7 +1079,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       <label className="block font-semibold mb-1">{t('Subcategory', '细分子类/备注')}</label>
                       <input
                         type="text"
-                        placeholder="e.g. 985/211 / High School"
+                        placeholder={t('Example: High school', '例如：中学')}
                         value={editingItem.subcategory || ''}
                         onChange={(e) => setEditingItem({ ...editingItem, subcategory: e.target.value })}
                         className={`w-full px-3 py-1.5 rounded-lg border ${
@@ -1091,7 +1117,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             ...editingItem,
                             slug: { ...(editingItem.slug || {}), current: e.target.value }
                           })}
-                          placeholder="e.g. beasiswa-kuliah-di-china-2026"
+                          placeholder={t('Example: study-in-china-2026', '例如：study-in-china-2026')}
                           className={`w-full px-3 py-1.5 rounded-lg border font-mono ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1164,7 +1190,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.category || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                          placeholder="e.g. 📚 HSK / 🎓 Dual Degree"
+                          placeholder={t('Example: HSK course', '例如：HSK 课程')}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1177,7 +1203,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.badge || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, badge: e.target.value })}
-                          placeholder="e.g. 📚 In Progress / 🔥 Hot"
+                          placeholder={t('Example: Open for registration', '例如：开放报名')}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1190,7 +1216,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.price || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
-                          placeholder="e.g. IDR 1.000.000"
+                          placeholder={t('Example: IDR 1,000,000', '例如：1,000,000 印尼盾')}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1203,7 +1229,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.term || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, term: e.target.value })}
-                          placeholder="e.g. 10 Weeks / 4 Years"
+                          placeholder={t('Example: 10 weeks', '例如：10 周')}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1216,7 +1242,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.startDate || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, startDate: e.target.value })}
-                          placeholder="e.g. July 15, 2026"
+                          placeholder={t('Example: 15 July 2026', '例如：2026 年 7 月 15 日')}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1229,7 +1255,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.seats || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, seats: e.target.value })}
-                          placeholder="e.g. 15 Seats"
+                          placeholder={t('Example: 15 places', '例如：15 个名额')}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1242,7 +1268,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.link || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, link: e.target.value })}
-                          placeholder="e.g. /hsk or /study-abroad"
+                          placeholder={t('Example: /hsk', '例如：/hsk')}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
@@ -1274,7 +1300,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         required
                         value={editingItem.school || ''}
                         onChange={(e) => setEditingItem({ ...editingItem, school: e.target.value })}
-                        placeholder="e.g. Marketing Manager, PT AVO Innovation"
+                        placeholder={t('Enter the institution name', '填写院校或企业名称')}
                         className={`w-full px-3 py-1.5 rounded-lg border ${
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
@@ -1307,7 +1333,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         required
                         value={editingItem.school || ''}
                         onChange={(e) => setEditingItem({ ...editingItem, school: e.target.value })}
-                        placeholder="e.g. Huazhong University of Science and Technology"
+                        placeholder={t('Enter the institution name', '填写院校或企业名称')}
                         className={`w-full px-3 py-1.5 rounded-lg border ${
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
@@ -1321,7 +1347,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         required
                         value={editingItem.program || ''}
                         onChange={(e) => setEditingItem({ ...editingItem, program: e.target.value })}
-                        placeholder="e.g. Computer Science and Technology"
+                        placeholder={t('Example: Computer science', '例如：计算机科学')}
                         className={`w-full px-3 py-1.5 rounded-lg border ${
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
@@ -1334,7 +1360,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         type="text"
                         value={editingItem.scholarship || ''}
                         onChange={(e) => setEditingItem({ ...editingItem, scholarship: e.target.value })}
-                        placeholder="e.g. Chinese Government Scholarship - Full Scholarship"
+                        placeholder={t('Example: Full scholarship', '例如：全额奖学金')}
                         className={`w-full px-3 py-1.5 rounded-lg border ${
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
@@ -1347,7 +1373,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         type="text"
                         value={editingItem.admissionDate || ''}
                         onChange={(e) => setEditingItem({ ...editingItem, admissionDate: e.target.value })}
-                        placeholder="e.g. September 2026 to July 2028"
+                        placeholder={t('Example: September 2026 to July 2028', '例如：2026 年 9 月至 2028 年 7 月')}
                         className={`w-full px-3 py-1.5 rounded-lg border ${
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}

@@ -32,22 +32,16 @@ test("workflow rejects old clients, ambiguous completion and naive dates", () =>
     /timezone/,
   );
 });
-if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
-  const u = new URL(process.env.CRM_WORKFLOW_TEST_DATABASE_URL);
-  if (
-    !["localhost", "127.0.0.1"].includes(u.hostname) ||
-    !u.pathname.includes("workflow_test")
-  )
-    throw Error("Independent workflow test database required");
-  test("PostgreSQL: selected completion, retry, failure rollback and permissions", async () => {
-    const { default: pg } = await import("pg");
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const { setupNativeTest } = await import("./helpers/mysql.mjs");
+  const fixture = await setupNativeTest("crmSalesWorkflow");
+  await test("MySQL: selected completion, retry, failure rollback and permissions", async () => {
     const { readFile } = await import("node:fs/promises");
-    const db = new pg.Client({ connectionString: u.toString() });
+    const db = await fixture.connect();
     await db.connect();
     try {
-      await db.query(await readFile("server/portal/schema.sql", "utf8"));
       await db.query(
-        "INSERT INTO portal_leads(id,profile) VALUES('workflow-customer',$1)",
+        "INSERT INTO portal_leads(id,profile) VALUES('workflow-customer',:p1)",
         [
           {
             owner: "Fadhil",
@@ -59,25 +53,25 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
       );
       for (const kind of ["handoff", "booking", "enrollment"])
         await db.query(
-          "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES($1,$2,$3,$4,$5)",
+          "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,:p3,:p4,:p5)",
           [kind, "workflow-customer", kind, "Fadhil", "2099-01-01"],
         );
       for (const kind of ["handoff", "booking", "enrollment"]) {
         await db.query(
-          "INSERT INTO outbox(id,type,lead_id,payload) VALUES($1,$2,$3,$4)",
+          "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,:p2,:p3,:p4)",
           ["event-" + kind, "task.overdue", "workflow-customer", {}],
         );
         await db.query(
-          "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES($1,$2,'test',1,'lark','test',now(),$3)",
+          "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot) VALUES(:p1,:p2,'test',1,'lark','test',UTC_TIMESTAMP(6),:p3)",
           ["job-" + kind, "event-" + kind, { payload: { taskId: kind } }],
         );
       }
       await db.query(
-        "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,state,due_at,snapshot) VALUES('accepted-handoff','event-handoff','test',1,'lark','accepted-test','accepted',now(),$1)",
+        "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,state,due_at,snapshot) VALUES('accepted-handoff','event-handoff','test',1,'lark','accepted-test','accepted',UTC_TIMESTAMP(6),:p1)",
         [{ payload: { taskId: "handoff" } }],
       );
       const due = (
-        await db.query("SELECT id,due_at::text FROM followup_tasks ORDER BY id")
+        await db.query("SELECT id,due_at FROM followup_tasks ORDER BY id")
       ).rows;
       const run = async (body: any, allow = true) => {
         await db.query("BEGIN");
@@ -172,7 +166,7 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
         )
       ).rows[0].profile;
       await db.query(
-        "CREATE FUNCTION workflow_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'TEST database failure'; END$$; CREATE TRIGGER workflow_fail BEFORE INSERT ON portal_audit FOR EACH ROW EXECUTE FUNCTION workflow_fail_audit()",
+        "CREATE TRIGGER workflow_fail BEFORE INSERT ON portal_audit FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='TEST database failure'",
       );
       try {
         await assert.rejects(
@@ -184,9 +178,7 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
           /database failure/,
         );
       } finally {
-        await db.query(
-          "DROP TRIGGER workflow_fail ON portal_audit; DROP FUNCTION workflow_fail_audit()",
-        );
+        await db.query("DROP TRIGGER workflow_fail");
       }
       assert.deepEqual(
         (
@@ -218,10 +210,7 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
         ).rows[0].profile.followUpLogs.length,
         2,
       );
-      const clients = [
-        new pg.Client({ connectionString: u.toString() }),
-        new pg.Client({ connectionString: u.toString() }),
-      ];
+      const clients = [await fixture.connect(), await fixture.connect()];
       await Promise.all(clients.map((v) => v.connect()));
       try {
         const attempts = await Promise.all(
@@ -258,20 +247,16 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
         1,
       );
       assert.deepEqual(
-        (
-          await db.query(
-            "SELECT id,due_at::text FROM followup_tasks ORDER BY id",
-          )
-        ).rows,
+        (await db.query("SELECT id,due_at FROM followup_tasks ORDER BY id"))
+          .rows,
         due,
       );
     } finally {
       await db.end();
     }
   });
-  test("PostgreSQL: preserve confirmed group and scores; accumulate new signals using existing rules", async () => {
-    const { default: pg } = await import("pg");
-    const db = new pg.Client({ connectionString: u.toString() });
+  await test("MySQL: preserve confirmed group and scores; accumulate new signals using existing rules", async () => {
+    const db = await fixture.connect();
     await db.connect();
     try {
       const base = {
@@ -292,12 +277,12 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
         quizMaxScore: 100,
         followUpLogs: [],
       };
-      await db.query("INSERT INTO portal_leads(id,profile) VALUES($1,$2)", [
+      await db.query("INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)", [
         base.id,
         base,
       ]);
       await db.query(
-        "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES($1,$2,'follow_up','Fadhil','2099-01-01')",
+        "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,'follow_up','Fadhil','2099-01-01')",
         ["classification-next-step", base.id],
       );
       const body = {
@@ -327,7 +312,7 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
         "Asked price",
       ]);
       await db.query(
-        "UPDATE portal_leads SET profile=profile-'tierConfirmed'-'tierSource' WHERE id=$1",
+        "UPDATE portal_leads SET profile=JSON_REMOVE(profile,'$.tierConfirmed','$.tierSource') WHERE id=:p1",
         [base.id],
       );
       await db.query("BEGIN");
@@ -371,6 +356,7 @@ if (process.env.CRM_WORKFLOW_TEST_DATABASE_URL) {
       await db.end();
     }
   });
+  await (await import("../server/portal/store.ts")).pool.end();
 }
 test("priority order is explained by current tasks, not old event labels", async () => {
   const { defaultLeadFilters, filterAndSummarize } =

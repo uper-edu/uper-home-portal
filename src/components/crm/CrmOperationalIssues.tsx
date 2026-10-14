@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { notificationHealth } from "../../utils/crmNotificationHealth";
 export function CrmOperationalIssues({ lang, isLight = true }: any) {
   const [issues, setIssues] = useState<{
     failed: number;
@@ -14,20 +15,7 @@ export function CrmOperationalIssues({ lang, isLight = true }: any) {
         ]);
         if (responses.some((r) => !r.ok)) throw Error();
         const [ready, jobs] = await Promise.all(responses.map((r) => r.json()));
-        if (active)
-          setIssues({
-            failed:
-              (ready.missingReferences?.length || 0) +
-              ready.channels.filter(
-                (c: any) =>
-                  c.mode === "live" &&
-                  (!c.webhookConfigured ||
-                    !c.designatedTestGroup ||
-                    !c.signingSecretConfigured),
-              ).length +
-              jobs.filter((j: any) => j.state === "failed").length,
-            review: jobs.filter((j: any) => j.state === "unknown").length,
-          });
+        if (active) setIssues(notificationHealth(ready, jobs));
       } catch {
         if (active) setIssues(null);
       }

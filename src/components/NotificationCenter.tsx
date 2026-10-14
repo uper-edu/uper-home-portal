@@ -33,12 +33,13 @@ interface Rule {
   event: string;
   channels: string[];
   recipient: string;
-  team: string;
+  team?: string;
   group: string;
   sources: string[];
   tiers: string[];
   states: string[];
   teams?: string[];
+  requiresRoutingReview?: boolean;
   timing: string;
   delayMinutes: number;
   digestTime: string;
@@ -79,12 +80,10 @@ const initialRule: Rule = {
   event: "lead.created",
   channels: ["inapp"],
   recipient: "owner",
-  team: "sales",
   group: "crm-test",
   sources: [],
   tiers: [],
   states: [],
-  teams: [],
   timing: "immediate",
   delayMinutes: 0,
   digestTime: "18:00",
@@ -144,10 +143,12 @@ export default function NotificationCenter({
   isLight,
   lang,
   navigationRequest = 0,
+  canEdit = true,
 }: {
   isLight: boolean;
   lang: "zh" | "en" | "id";
   navigationRequest?: number;
+  canEdit?: boolean;
 }) {
   const panelRef = useRef<HTMLElement>(null);
   const zh = lang === "zh",
@@ -171,9 +172,9 @@ export default function NotificationCenter({
   const [editor, setEditor] = useState<"rule" | "channel" | null>(null),
     [key, setKey] = useState(""),
     [existing, setExisting] = useState(false),
+    [routingReviewed, setRoutingReviewed] = useState(false),
     [rule, setRule] = useState<Rule>(initialRule),
     [channel, setChannel] = useState<Channel>({
-      team: "sales",
       secretRef: "",
       mode: "simulation",
       maxPerHour: 20,
@@ -182,7 +183,6 @@ export default function NotificationCenter({
     sources: [],
     tiers: [],
     states: [],
-    teams: [],
   });
   useEffect(() => setNotice(""), [lang]);
   const [routing, setRouting] = useState<any>(null);
@@ -330,7 +330,14 @@ export default function NotificationCenter({
   ) =>
     field(
       title,
-      <CrmSingleSelect label={title} value={value} options={options.map(([value, label]) => ({ value, label }))} onChange={onChange} lang={lang} isLight={isLight} />,
+      <CrmSingleSelect
+        label={title}
+        value={value}
+        options={options.map(([value, label]) => ({ value, label }))}
+        onChange={onChange}
+        lang={lang}
+        isLight={isLight}
+      />,
     );
   const number = (
     title: string,
@@ -385,6 +392,7 @@ export default function NotificationCenter({
         await api("notification-rules/" + encodeURIComponent(key), {
           config: rule,
           enabled,
+          confirmRoutingReset: routingReviewed,
         });
       } else {
         const config = { ...channel };
@@ -433,6 +441,7 @@ export default function NotificationCenter({
   }
   function edit(row?: Row) {
     setNotice("");
+    setRoutingReviewed(false);
     setSimulation([]);
     setSimulateAt("");
     setExisting(!!row);
@@ -453,7 +462,6 @@ export default function NotificationCenter({
                 row.rateLimit?.maxPerHour ?? row.config?.maxPerHour ?? 20,
             } as Channel)
           : {
-              team: "sales",
               secretRef: "",
               mode: "simulation",
               maxPerHour: 20,
@@ -604,6 +612,7 @@ export default function NotificationCenter({
                   !editor && (
                     <button
                       className={`${primary} flex items-center gap-1`}
+                      disabled={!canEdit}
                       onClick={() => edit()}
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -620,14 +629,14 @@ export default function NotificationCenter({
                   </h4>
                   <p>
                     {t(
-                      "站内客户通知默认通知有效 负责人；未分配或 负责人 无效时通知有权处理该客户团队的 CRM 管理者。只改变收件人，不修改客户归属。",
-                      "In-app lead notifications go to a valid Owner; otherwise to authorized CRM Leaders for that lead team. Routing does not assign ownership.",
+                      "站内客户通知默认通知有效负责人；未分配或负责人无效时通知有权处理该客户的 CRM 管理者。只改变收件人，不修改客户归属。",
+                      "In-app lead notifications go to a valid Owner; otherwise to authorized CRM Managers. Routing does not assign ownership.",
                     )}
                   </p>
                   <p className={muted}>
                     {t(
-                      "CRM 管理者 来自可信平台角色及权限，不把所有管理员当作 管理者。Lark 仍发往策略指定群。明确团队/主管策略及运营异常、每日汇总保留原目标。找不到接收者时记录路由异常。",
-                      "CRM Leaders come from trusted roles and permissions, not administrator status. Lark keeps its configured group destination. Explicit team/supervisor policies, operational incidents and summaries retain their targets. Missing recipients produce a routing incident.",
+                      "CRM 管理者 来自可信平台角色及权限，不把所有管理员当作 管理者。Lark 仍发往策略指定群。运营异常和每日汇总按管理者权限接收。找不到接收者时记录路由异常。",
+                      "CRM Managers come from trusted roles and permissions, not administrator status. Lark keeps its configured group destination. Operational incidents and summaries use manager permissions. Missing recipients produce a routing incident.",
                     )}
                   </p>
                   <p>
@@ -641,7 +650,7 @@ export default function NotificationCenter({
                       : routing.identityMode === "mock"
                         ? t("本地模拟", "Local mock")
                         : t("平台", "Platform")}{" "}
-                    · {t("有效 CRM 管理者", "Eligible CRM Leaders")}：
+                    · {t("有效 CRM 管理者", "Eligible CRM Managers")}：
                     {routing.leaders.map((e: any) => e.id).join(", ") ||
                       t("未配置", "None configured")}
                   </p>
@@ -733,152 +742,116 @@ export default function NotificationCenter({
                               "One event per policy; filters allow multiple selections. Empty means all. Values within a field use OR; different fields use AND.",
                             )}
                           </p>
-                          {(
-                            ["sources", "tiers", "states", "teams"] as const
-                          ).map((key) => {
-                            const labels: Record<string, [string, string]> = {
-                              homepage_widget: [
-                                "主页助手",
-                                "Homepage assistant",
-                              ],
-                              standalone_chat: ["独立聊天", "Standalone chat"],
-                              legacy_unknown: [
-                                "历史来源未知",
-                                "Unknown legacy source",
-                              ],
-                              Unqualified: ["待确认等级", "Unqualified"],
-                              Hot: ["高意向", "Hot"],
-                              "Warm-Offline": [
-                                "常规意向·线下",
-                                "Warm · offline",
-                              ],
-                              "Warm-Online": ["常规意向·线上", "Warm · online"],
-                              School: ["院校合作", "School partnership"],
-                              "Cold-Nurture": ["培育客户", "Cold nurture"],
-                              New: ["待初访", "New"],
-                              Contacted: ["已建联", "Contacted"],
-                              "Assessment Booked": [
-                                "已约测评",
-                                "Assessment booked",
-                              ],
-                              "Assessment Done": [
-                                "测评完成",
-                                "Assessment completed",
-                              ],
-                              "Trial Booked": ["已约试听", "Trial booked"],
-                              "Trial Attended": ["试听出席", "Trial attended"],
-                              Enrolled: ["已报名", "Enrolled"],
-                              Lost: ["已流失", "Lost"],
-                              sales: ["销售团队", "Sales team"],
-                              ops: ["运营团队", "Operations team"],
-                              supervisors: ["主管团队", "Supervisor team"],
-                            };
-                            const titles = {
-                              sources: t("客户来源", "Lead sources"),
-                              tiers: t("客户等级", "Lead tiers"),
-                              states: t("客户阶段", "Lead stages"),
-                              teams: t("客户所属团队", "Lead team"),
-                            };
-                            return (
-                              <SearchableChoices
-                                key={key}
-                                title={titles[key]}
-                                values={rule[key] || []}
-                                choices={(filterOptions[key] || []).map(
-                                  (value) => ({
-                                    value,
-                                    label:
-                                      (lang === "id"
-                                        ? crmId(labels[value]?.[1])
-                                        : labels[value]?.[zh ? 0 : 1]) ||
-                                      t(
-                                        `历史或目录值：${value}`,
-                                        `Historical or directory value: ${value}`,
-                                      ),
-                                  }),
-                                )}
-                                onChange={(values) => patch({ [key]: values })}
-                                zh={zh}
-                                lang={lang}
-                                isLight={isLight}
-                              />
-                            );
-                          })}
+                          {(["sources", "tiers", "states"] as const).map(
+                            (key) => {
+                              const labels: Record<string, [string, string]> = {
+                                homepage_widget: [
+                                  "主页助手",
+                                  "Homepage assistant",
+                                ],
+                                standalone_chat: [
+                                  "独立聊天",
+                                  "Standalone chat",
+                                ],
+                                legacy_unknown: [
+                                  "历史来源未知",
+                                  "Unknown legacy source",
+                                ],
+                                Unqualified: ["待确认等级", "Unqualified"],
+                                Hot: ["高意向", "Hot"],
+                                "Warm-Offline": [
+                                  "常规意向·线下",
+                                  "Warm · offline",
+                                ],
+                                "Warm-Online": [
+                                  "常规意向·线上",
+                                  "Warm · online",
+                                ],
+                                School: ["院校合作", "School partnership"],
+                                "Cold-Nurture": ["培育客户", "Cold nurture"],
+                                New: ["待初访", "New"],
+                                Contacted: ["已建联", "Contacted"],
+                                "Assessment Booked": [
+                                  "已约测评",
+                                  "Assessment booked",
+                                ],
+                                "Assessment Done": [
+                                  "测评完成",
+                                  "Assessment completed",
+                                ],
+                                "Trial Booked": ["已约试听", "Trial booked"],
+                                "Trial Attended": [
+                                  "试听出席",
+                                  "Trial attended",
+                                ],
+                                Enrolled: ["已报名", "Enrolled"],
+                                Lost: ["已流失", "Lost"],
+                              };
+                              const titles = {
+                                sources: t("客户来源", "Lead sources"),
+                                tiers: t("客户等级", "Lead tiers"),
+                                states: t("客户阶段", "Lead stages"),
+                              };
+                              return (
+                                <SearchableChoices
+                                  key={key}
+                                  title={titles[key]}
+                                  values={rule[key] || []}
+                                  choices={(filterOptions[key] || []).map(
+                                    (value) => ({
+                                      value,
+                                      label:
+                                        (lang === "id"
+                                          ? crmId(labels[value]?.[1])
+                                          : labels[value]?.[zh ? 0 : 1]) ||
+                                        t(
+                                          `历史或目录值：${value}`,
+                                          `Historical or directory value: ${value}`,
+                                        ),
+                                    }),
+                                  )}
+                                  onChange={(values) =>
+                                    patch({ [key]: values })
+                                  }
+                                  zh={zh}
+                                  lang={lang}
+                                  isLight={isLight}
+                                />
+                              );
+                            },
+                          )}
                         </>,
                       )}
                       {section(
                         t("2 · 通知对象", "2 · Notification recipients"),
                         <>
-                          {rule.channels.includes("inapp") && (
-                            <>
-                              {select(
-                                t("站内收件人", "In-app recipients"),
-                                rule.recipient,
-                                [
-                                  [
-                                    "owner",
-                                    t(
-                                      rule.event === "daily.digest"
-                                        ? "统计团队中有权查看汇总的员工"
-                                        : "全局路由：负责人 → CRM 管理者",
-                                      rule.event === "daily.digest"
-                                        ? "Authorized summary team members"
-                                        : "Global routing: Owner → CRM Leader",
-                                    ),
-                                  ],
-                                  ["team", t("指定团队", "Team")],
-                                  [
-                                    "supervisor",
-                                    t("主管团队", "Supervisor team"),
-                                  ],
-                                ],
-                                (v) => patch({ recipient: v }),
-                              )}
-                              {rule.recipient === "team" && (
-                                <SearchableChoices
-                                  title={t("接收团队", "Recipient team")}
-                                  values={[rule.team]}
-                                  choices={(filterOptions.teams || []).map(
-                                    (value) => ({
-                                      value,
-                                      label:
-                                        value === "sales"
-                                          ? t("销售团队", "Sales team")
-                                          : value === "ops"
-                                            ? t("运营团队", "Operations team")
-                                            : value === "supervisors"
-                                              ? t("主管团队", "Supervisor team")
-                                              : value,
-                                    }),
-                                  )}
-                                  onChange={(values) =>
-                                    patch({ team: values[0] })
-                                  }
-                                  multiple={false}
-                                  zh={zh}
-                                  lang={lang}
-                                  isLight={isLight}
-                                />
-                              )}
-                            </>
-                          )}
-                          {rule.event === "daily.digest" &&
-                            rule.recipient !== "team" && (
-                              <SearchableChoices
-                                title={t("汇总统计团队", "Summary team")}
-                                values={[rule.team]}
-                                choices={(filterOptions.teams || []).map(
-                                  (value) => ({ value, label: value }),
+                          <p className="sm:col-span-2 lg:col-span-3">
+                            {rule.event.includes("failed") ||
+                            rule.event === "daily.digest"
+                              ? t(
+                                  "运营异常及汇总通知 CRM 管理者；全量汇总仅对有全量查看权限的管理者开放。",
+                                  "Operational incidents and summaries go to CRM Managers. Full summaries require access to all customers.",
+                                )
+                              : t(
+                                  "客户通知按全局路由：有效负责人 → 有权处理客户的 CRM 管理者。",
+                                  "Customer notifications follow global routing: valid Owner → authorized CRM Manager.",
                                 )}
-                                onChange={(values) =>
-                                  patch({ team: values[0] })
+                          </p>
+                          {rule.requiresRoutingReview && (
+                            <label className="sm:col-span-2 lg:col-span-3">
+                              <input
+                                type="checkbox"
+                                checked={routingReviewed}
+                                onChange={(e) =>
+                                  setRoutingReviewed(e.target.checked)
                                 }
-                                multiple={false}
-                                zh={zh}
-                                lang={lang}
-                                isLight={isLight}
                               />
-                            )}
+                              {t(
+                                "复核并确认移除历史团队限制，再启用本策略。原条件保留在历史版本。",
+                                "Review and confirm removal of retired team restrictions before enabling. Original conditions remain in version history.",
+                              )}
+                            </label>
+                          )}
                           {field(
                             t("通知渠道", "Delivery channels"),
                             <div className="flex gap-4 py-2 text-xs">
@@ -1262,8 +1235,14 @@ export default function NotificationCenter({
                                       (
                                         ({
                                           event: rule.event,
-                                          name: t("测试客户", "Sample customer"),
-                                          owner: t("测试顾问", "Sample advisor"),
+                                          name: t(
+                                            "测试客户",
+                                            "Sample customer",
+                                          ),
+                                          owner: t(
+                                            "测试顾问",
+                                            "Sample advisor",
+                                          ),
                                           due: t(
                                             "测试截止时间",
                                             "Sample deadline",
@@ -1370,7 +1349,7 @@ export default function NotificationCenter({
                           </div>
                           <button
                             className={`${button} flex gap-1 items-center`}
-                            disabled={busy}
+                            disabled={!canEdit || busy}
                             onClick={async () => {
                               setBusy(true);
                               try {
@@ -1552,7 +1531,7 @@ export default function NotificationCenter({
                     {editor === "rule" && (
                       <button
                         className={button}
-                        disabled={busy}
+                        disabled={!canEdit || busy}
                         onClick={() => void save(false)}
                       >
                         {t("保存为停用草稿", "Save inactive draft")}
@@ -1560,7 +1539,7 @@ export default function NotificationCenter({
                     )}
                     <button
                       className={`${primary} flex items-center gap-1`}
-                      disabled={busy}
+                      disabled={!canEdit || busy}
                       onClick={() => void save(true)}
                     >
                       <Save className="w-3.5 h-3.5" />
@@ -1608,10 +1587,6 @@ export default function NotificationCenter({
                               [t("来源", "Source"), row.config!.sources],
                               [t("等级", "Tier"), row.config!.tiers],
                               [t("状态", "State"), row.config!.states],
-                              [
-                                t("客户团队", "Lead team"),
-                                row.config!.teams || [],
-                              ],
                             ]
                               .filter(
                                 ([, values]) => (values as string[]).length,
@@ -1636,23 +1611,25 @@ export default function NotificationCenter({
                               .join(" + ")}{" "}
                             ·{" "}
                             {row.config!.channels.includes("inapp")
-                              ? row.config!.event === "daily.digest"
+                              ? row.config!.event.includes("failed") ||
+                                row.config!.event === "daily.digest"
                                 ? t(
-                                    `汇总统计团队：${row.config!.team}`,
-                                    `Summary team: ${row.config!.team}`,
+                                    "有权限的 CRM 管理者",
+                                    "Authorized CRM Managers",
                                   )
-                                : row.config!.recipient === "owner"
-                                  ? t(
-                                      `客户负责人；未分配或负责人无效时转 CRM Leader`,
-                                      `Lead owner; invalid/unassigned owner → CRM Leader`,
-                                    )
-                                  : row.config!.recipient === "supervisor"
-                                    ? t("主管团队", "Supervisor team")
-                                    : t(
-                                        `接收团队：${row.config!.team}`,
-                                        `Recipient team: ${row.config!.team}`,
-                                      )
+                                : t(
+                                    "有效负责人 → CRM 管理者",
+                                    "Valid Owner → CRM Manager",
+                                  )
                               : t("仅群通知", "Group delivery only")}
+                            {row.config!.requiresRoutingReview && (
+                              <strong>
+                                {t(
+                                  "历史范围待复核，保持停用",
+                                  "Historical scope needs review; remains inactive",
+                                )}
+                              </strong>
+                            )}
                           </p>
                           <p className={`text-xs ${muted}`}>
                             {!row.config!.channels.includes("lark") &&
@@ -1680,7 +1657,11 @@ export default function NotificationCenter({
                               </>
                             )}
                           </p>
-                          <button className={button} onClick={() => edit(row)}>
+                          <button
+                            className={button}
+                            disabled={!canEdit}
+                            onClick={() => edit(row)}
+                          >
                             {t("编辑策略", "Edit policy")}
                           </button>
                         </article>
@@ -1741,7 +1722,11 @@ export default function NotificationCenter({
                               </p>
                             )}
                           </details>
-                          <button className={button} onClick={() => edit(row)}>
+                          <button
+                            className={button}
+                            disabled={!canEdit}
+                            onClick={() => edit(row)}
+                          >
                             {t("编辑渠道", "Edit channel")}
                           </button>
                         </article>
@@ -1847,6 +1832,15 @@ export default function NotificationCenter({
                                     {row.version}
                                   </td>
                                   <td className="p-3 max-w-xs break-words">
+                                    {row.historicalHold && (
+                                      <p className={muted}>
+                                        {lang === "zh"
+                                          ? "历史迁移记录 · 不自动重发"
+                                          : lang === "id"
+                                            ? "Catatan migrasi lama · tidak dikirim ulang otomatis"
+                                            : "Historical migration record · no automatic resend"}
+                                      </p>
+                                    )}
                                     {row.result
                                       ? crmDeliveryResult(
                                           row.result,
@@ -1900,7 +1894,9 @@ export default function NotificationCenter({
                           <div className="flex gap-2">
                             <button
                               className={primary}
-                              disabled={busy || !cancelReason.trim()}
+                              disabled={
+                                !canEdit || busy || !cancelReason.trim()
+                              }
                               onClick={async () => {
                                 setBusy(true);
                                 try {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Phone, Mail, MessageCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +7,9 @@ import { trackFormSubmit, trackConsultationClick } from '../utils/analytics';
 import { useDesignStyle } from '../utils/theme';
 
 export default function Contact() {
-  const { t } = useTranslation();
+  const submissionKey=useRef(crypto.randomUUID());
+  const { t, i18n } = useTranslation();
+  const localeText=(en:string,id:string,zh:string)=>i18n.language.startsWith('zh')?zh:i18n.language.startsWith('id')?id:en;
   const { isApple } = useDesignStyle();
   const focusRingClass = isApple ? 'focus:ring-[#0071e3]' : 'focus:ring-primary-500';
   
@@ -69,13 +71,13 @@ export default function Contact() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({...formData,requestId:submissionKey.current}),
         });
 
         const data = await response.json();
 
-        if (response.ok) {
-          setIsSuccess(true);
+        if (response.ok && data.saved === true) {
+          setIsSuccess(true);submissionKey.current=crypto.randomUUID();
           trackFormSubmit('contact_inquiry_form', true, { interest: formData.interest });
           setFormData({
             fullName: '',
@@ -312,13 +314,13 @@ export default function Contact() {
                     <CheckCircle2 className="w-10 h-10" />
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900 mb-2">{t("contactPage.thankYou", "Thank you!")}</h3>
-                  <p className="text-slate-600">{t("contactPage.successMessage", "Your message has been successfully sent. Our educational consultants will get back to you soon.")}</p>
+                  <p className="text-slate-600">{localeText('Your inquiry has been received. Our team will review it and follow up.','Pertanyaan Anda telah diterima. Tim kami akan meninjau dan menindaklanjutinya.','您的咨询已收到，团队将审核并跟进。')}</p>
                 </motion.div>
               )}
             </AnimatePresence>
 
             <h3 className="text-3xl font-bold mb-6 text-slate-900">{t("contactPage.sendMessage", "Send us a message")}</h3>
-            <p className="text-slate-500 mb-8">{t("contactPage.fillForm", "Fill out the form below and our educational consultants will get back to you within 24 hours.")}</p>
+            <p className="text-slate-500 mb-8">{localeText('Complete the form so our team can review your inquiry.','Lengkapi formulir agar tim kami dapat meninjau pertanyaan Anda.','请填写表单，便于团队审核您的咨询。')}</p>
             
             <form className="space-y-6" onSubmit={handleSubmit} noValidate>
               {submitError && (

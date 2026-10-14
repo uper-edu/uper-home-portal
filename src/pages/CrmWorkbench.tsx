@@ -1,4 +1,8 @@
+import {eligibleOwner,permittedRecord,canClaimRecord} from '../utils/accessControl';
 import '../components/crm/crm-documentation.css';
+import { adminRoleLabel } from "../utils/adminWorkspace";
+import { AdminHeader, adminText } from "../components/AdminHeader";
+import { useAdminTheme } from "../utils/adminPreferences";
 import {CrmAttendanceEditor} from "../components/crm/CrmAttendanceEditor";
 import {CrmProcessOverview} from "../components/crm/CrmProcessOverview";
 import type {ProcessMetrics} from "../utils/crmProcessMetrics";
@@ -8,7 +12,6 @@ import {CrmContactPreview} from "../components/crm/CrmContactPreview";
 import {contactStatistics} from "../utils/crmContact";
 import {CrmWorkflowForm} from "../components/crm/CrmWorkflowForm";
 import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
-import { CrmLanguageSelect } from "../components/crm/CrmLanguageSelect";
 import { crmId } from "../utils/crmIndonesian";
 import { CrmLeadFilters } from "../components/crm/CrmLeadFilters";
 import {
@@ -146,14 +149,14 @@ export const STAGE_OPTIONS: {
 export default function CrmWorkbench() {
   return (
     <CrmAccess>
-      {(employee, lang, setLang) => (
+      {(employee, lang, setLang) => employee.permissions.includes("crm.read") ? (
         <CrmWorkspace
           key={employee.id}
           employee={employee}
           lang={lang}
           setLang={setLang}
         />
-      )}
+      ) : <main className="p-8"><CrmAccountControls lang={lang} isLight={true}/><h1>{lang === "zh" ? "无 CRM 访问权限" : lang === "id" ? "Tidak memiliki akses CRM" : "CRM access denied"}</h1>{employee.permissions.includes("cms.manage") && <a href="/cms">{adminText(lang,"Content management","Manajemen konten","内容管理")}</a>}</main>}
     </CrmAccess>
   );
 }
@@ -166,7 +169,7 @@ function CrmWorkspace({
   lang: CrmLanguage;
   setLang: (lang: CrmLanguage) => void;
 }) {
-  const canManage = employee.permissions.includes("notifications.manage");
+  const canManage = employee.permissions.includes("notifications.manage") || employee.permissions.includes("crm.operations.manage") || employee.permissions.includes("notifications.read");
   const canAssign = employee.permissions.includes("crm.assign");
   const [crmModule, setCrmModule] = useState<
     "leads" | "campaigns" | "policy" | "docs"
@@ -228,7 +231,7 @@ function CrmWorkspace({
   const [appliedSearch, setAppliedSearch] = useState("");
   const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
   const [filterTimezone, setFilterTimezone] = useState("Asia/Jakarta");
-  const [showOverview, setShowOverview] = useState(employee.roles.includes("crm_leader"));
+  const [showOverview, setShowOverview] = useState(employee.permissions.includes("crm.leader"));
   const [processOverview,setProcessOverview]=useState<ProcessMetrics|null>(null);
   const requestVersion = useRef(0);
   const queryKey = filterQuery({ ...filters, search: appliedSearch });
@@ -262,26 +265,7 @@ function CrmWorkspace({
   // Translation helper
   const t = (enText: string, zhText: string) =>
     lang === "id" ? crmId(enText) : lang === "zh" ? zhText : enText;
-  // Theme State: 'light' (Apple Style) vs 'dark'
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    try {
-      const saved = safeStorage.getItem("uper_crm_theme");
-      if (saved === "dark" || saved === "light") return saved;
-    } catch {
-      // fallback
-    }
-    return "light"; // Default to Apple Light theme
-  });
-  const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    try {
-      safeStorage.setItem("uper_crm_theme", next);
-    } catch {
-      // fallback
-    }
-  };
-  const isLight = theme === "light";
+  const { isLight, toggleTheme } = useAdminTheme();
   // Presentation preference only; it never changes the server-side filter query.
   const [viewMode, setViewMode] = useState<CustomerView>(() => {
     try {
@@ -313,19 +297,21 @@ function CrmWorkspace({
       displayName?: string;
       roles?: string[];
       active?: boolean;
+      permissions?: string[];
+      roleLabels?: Record<string,[string,string,string]>;
     }>
   >([]);
   useEffect(() => {
     fetch("/api/portal/employees")
       .then((r) => r.json())
-      .then(setEmployees)
+      .then(d=>setEmployees(d.filter((person:any)=>person.permissions?.includes('crm.read'))))
       .catch(() => {});
   }, []);
   const salesEmployees = employees.filter(
-    (e) => e.active === true && e.roles?.includes("sales"),
+    (e) => eligibleOwner(e as any),
   );
   const employeeLabel = (e: (typeof employees)[number]) =>
-    `${e.displayName || e.id} · ${e.roles?.map((r) => (r === "crm_leader" ? t("CRM Leader", "CRM 管理者") : t("Sales", "销售"))).join(" + ") || ""}`;
+    `${e.displayName || e.id} · ${e.roles?.map((role) => (e.roleLabels?.[role]?.[lang === "zh"?2:lang === "id"?1:0]||adminRoleLabel(role, lang))).join(" + ") || ""}`;
   useEffect(() => {
     if (!canManage && crmModule === "policy") setCrmModule("leads");
   }, [canManage, crmModule]);
@@ -380,14 +366,14 @@ function CrmWorkspace({
     if (discardDraft(finish)) finish();
   };
   useEffect(() => {
-    if (!hasDraft) return;
+    if (!hasDraft && !policyControls?.isDirty) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [hasDraft]);
+  }, [hasDraft, policyControls?.isDirty]);
   // Fetch leads from backend
   const fetchLeads = async (quiet = false) => {
     const version = ++requestVersion.current;
@@ -593,7 +579,7 @@ function CrmWorkspace({
     }
   };
   const processFromList=(lead:CrmLeadRecord,discarded=false)=>{
-    if(!canEditLead(lead))return;
+    if(!canEditLead(lead,'crm.followup'))return;
     if(!discarded&&!discardDraft(()=>processFromList(lead,true)))return;
     handleOpenLeadDrawer(lead,"activities",true);
     setAdministrative(false);setWorkflowSource(undefined);
@@ -875,8 +861,7 @@ function CrmWorkspace({
         .length,
     };
   }, [journeyTimelineEvents]);
-  const canEditLead = (lead: CrmLeadRecord) =>
-    employee.scope !== "own" || lead.owner === employee.id;
+  const canEditLead = (lead:CrmLeadRecord,permission='crm.write') => permittedRecord(employee,lead,permission);
   const [claiming, setClaiming] = useState<string | null>(null);
   const claimLead = async (leadId: string) => {
     if (!discardDraft()) return;
@@ -985,7 +970,7 @@ function CrmWorkspace({
     <div className="crm-customer-edit-fields">
       <label>
         {t("Customer owner", "客户负责人")}
-        {canAssign ? (
+        {canAssign && permittedRecord(employee,lead,"crm.assign") ? (
           <CrmSingleSelect
             label={t("Assign customer owner", "分配客户负责人")}
             value={lead.owner || ""}
@@ -1048,9 +1033,7 @@ function CrmWorkspace({
             </p>
           </div>
           <div className="crm-customer-panel-actions">
-            {!canAssign &&
-              !selectedLead.owner &&
-              employee.roles.includes("sales") && (
+            {canClaimRecord(employee,selectedLead) && !permittedRecord(employee,selectedLead,"crm.assign") && (
                 <button
                   type="button"
                   className="crm-work-button"
@@ -1135,7 +1118,7 @@ function CrmWorkspace({
               timezone={filterTimezone}
               ownership={<>{ownershipControls(selectedLead)}<CrmSingleSelect label={lang==='zh'?'客户沟通语言':lang==='id'?'Bahasa komunikasi pelanggan':'Customer communication language'} value={selectedLead.communicationLanguage||'unknown'} options={[{value:'unknown',label:lang==='zh'?'未确认':lang==='id'?'Belum dikonfirmasi':'Unconfirmed'},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight} disabled={!canEditLead(selectedLead)} onChange={v=>handleUpdateLeadField(selectedLead.id,{communicationLanguage:v as any})}/></>}
             />
-            {canEditLead(selectedLead)&&<CrmAttendanceEditor key={`${selectedLead.id}:${attendanceReset}`} lead={selectedLead} staffId={employee.id} onDirty={setAttendanceDirty} onBusy={setIsSubmittingLog} lang={lang} isLight={isLight} timezone={filterTimezone} onUpdated={lead=>{setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}/>}
+            {canEditLead(selectedLead,"crm.attendance")&&<CrmAttendanceEditor key={`${selectedLead.id}:${attendanceReset}`} lead={selectedLead} staffId={employee.id} onDirty={setAttendanceDirty} onBusy={setIsSubmittingLog} lang={lang} isLight={isLight} timezone={filterTimezone} onUpdated={lead=>{setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}/>}
             </>
           )}
           {activeDrawerTab === "assessment" && (
@@ -1147,7 +1130,7 @@ function CrmWorkspace({
           )}
           {activeDrawerTab === "chat" && (
             <CrmCustomerConversations
-              onAssociate={canEditLead(selectedLead)?(message:any)=>{if(!discardDraft())return;setWorkflowSource(message);setWorkflowTask(undefined);setIsAddLogOpen(true);setActiveDrawerTab("activities");}:undefined}
+              onAssociate={canEditLead(selectedLead,"crm.followup")?(message:any)=>{if(!discardDraft())return;setWorkflowSource(message);setWorkflowTask(undefined);setIsAddLogOpen(true);setActiveDrawerTab("activities");}:undefined}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
@@ -1164,7 +1147,7 @@ function CrmWorkspace({
           )}
           {activeDrawerTab === "activities" && (
             <div className="space-y-4">
-              {!canEditLead(selectedLead) && (
+              {!canEditLead(selectedLead,"crm.followup") && (
                 <p className="text-xs text-slate-500">
                   {t(
                     "Claim this unassigned lead before updating it or recording follow-up.",
@@ -1175,7 +1158,7 @@ function CrmWorkspace({
               <LeadTaskActions lead={selectedLead}
                 onProcess={(taskId:string)=>{if(!discardDraft())return;setWorkflowSource(undefined);setAdministrative(false);setWorkflowTask(taskId);setIsAddLogOpen(true);}}
                 timezone={policyConfig.businessHours.timezone}
-                readOnly={!canEditLead(selectedLead)}
+                readOnly={!canEditLead(selectedLead,"crm.followup")}
                 key={selectedLead.id}
                 refreshKey={JSON.stringify(
                   selectedLead.attention?.tasks
@@ -1213,12 +1196,12 @@ function CrmWorkspace({
               >
                 {t("Sales playbook", "销售话术参考")}
               </button>
-              <button className="crm-work-button" disabled={!canEditLead(selectedLead)} onClick={()=>{if(!discardDraft())return;setAdministrative(true);setWorkflowTask(undefined);setIsAddLogOpen(true);}}>{t('Update contact arrangement','更新联系安排')}</button>
+              <button className="crm-work-button" disabled={!canEditLead(selectedLead,"crm.followup")} onClick={()=>{if(!discardDraft())return;setAdministrative(true);setWorkflowTask(undefined);setIsAddLogOpen(true);}}>{t('Update contact arrangement','更新联系安排')}</button>
               {/* Top Action Bar: Add Follow-up Toggle + Timeline Filter */}
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <button
                   type="button"
-                  disabled={!canEditLead(selectedLead)}
+                  disabled={!canEditLead(selectedLead,"crm.followup")}
                   onClick={() => {
                     if (isAddLogOpen) {
                       discardDraft();
@@ -1759,231 +1742,22 @@ function CrmWorkspace({
         </div>
       )}
       {/* Top Apple-Style / Dark Navigation Bar - Stable 2-Row Architecture */}
-      <a className="crm-skip-link" href="#crm-main">{lang==='zh'?'跳到工作区':lang==='id'?'Lewati ke ruang kerja':'Skip to workspace'}</a>
-      <header
-        data-crm-header
-        className={`sticky top-0 z-30 transition-colors duration-200 border-b shadow-2xs ${
-          isLight
-            ? "bg-white/90 backdrop-blur-md border-slate-200/90"
-            : "bg-slate-900/95 backdrop-blur-md border-slate-800 shadow-md"
-        }`}
-      >
-        {/* ROW 1: Brand & Module Context Title */}
-        <div className="px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link
-              to="/"
-              className="flex items-center gap-2 shrink-0 group hover:opacity-95 transition-opacity"
-              title={t("Back to UPER Homepage", "返回 UPER 官网首页")}
-            >
-              <img
-                src="/uper-logo-mark.svg"
-                alt={t("UPER logo", "UPER 标志")}
-                width="34"
-                height="34"
-                className="h-[32px] w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-              />
-              <span
-                className={`font-extrabold text-[20px] tracking-[0.03em] leading-none font-sans ${isLight ? "text-slate-900 font-extrabold" : "text-white"}`}
-              >
-                UPER
-              </span>
-            </Link>
+      <a className="admin-skip-link" href="#crm-main">{lang==='zh'?'跳到工作区':lang==='id'?'Lewati ke ruang kerja':'Skip to workspace'}</a>
+      <AdminHeader workspace="crm" employee={employee} lang={lang} setLang={setLang} isLight={isLight} toggleTheme={toggleTheme}
+        navigation={<>
+          <button type="button" aria-current={crmModule === "campaigns" ? "page" : undefined} onClick={() => changeModule("campaigns")}><Target size={16}/>{t("Marketing Campaigns", "营销活动中心")}</button>
+          <button type="button" aria-current={crmModule === "leads" ? "page" : undefined} onClick={() => changeModule("leads")}><Users size={16}/>{t("Leads CRM", "销售线索")}</button>
+          {canManage && <button type="button" aria-current={crmModule === "policy" ? "page" : undefined} onClick={() => changeModule("policy")}><Settings size={16}/>{t("Sales Operations", "销售运营")}</button>}
+          <button type="button" aria-current={crmModule === "docs" ? "page" : undefined} onClick={() => changeModule("docs")}><BookOpen size={16}/>{lang==='zh'?'系统文档':lang==='id'?'Dokumentasi':'Documentation'}</button>
+        </>}/>
 
-            <div
-              className={`h-5 w-px ${isLight ? "bg-slate-200" : "bg-slate-800"} hidden sm:block mx-0.5 shrink-0`}
-            />
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1
-                  className={`text-sm sm:text-base font-bold tracking-tight truncate ${isLight ? "text-slate-900 font-extrabold" : "text-white"}`}
-                >
-                  {crmModule === "campaigns"
-                    ? t(
-                        "Marketing Campaign & Tracking Hub",
-                        "营销活动中心与渠道追溯看板",
-                      )
-                    : crmModule === "leads"
-                      ? t(
-                          "Telemarketing & Advisory CRM",
-                          "电销跟进与学术顾问 CRM",
-                        )
-                      : crmModule === "policy"
-                        ? t("Sales Operations Settings", "销售运营设置")
-                        : (lang === "zh" ? "CRM 系统文档" : lang === "id" ? "Dokumentasi CRM" : "CRM documentation")}
-                </h1>
-                <span className="text-slate-300 dark:text-slate-600 select-none hidden md:inline">
-                  ·
-                </span>
-                <span
-                  className={`text-[11px] font-mono hidden md:inline ${isLight ? "text-slate-500" : "text-slate-400"}`}
-                >
-                  {crmModule === "campaigns"
-                    ? t("Campaign Hub v2.5", "营销活动 v2.5")
-                    : crmModule === "leads"
-                      ? t("2026 Enterprise", "2026 企业版")
-                      : crmModule === "policy"
-                        ? t("Policy v2.0", "策略 v2.0")
-                        : t("Handbook v2.0", "手册 v2.0")}
-                </span>
-              </div>
-              <p
-                className={`text-[11px] truncate ${isLight ? "text-slate-500" : "text-slate-400"}`}
-              >
-                {crmModule === "campaigns"
-                  ? t(
-                      "Plan campaigns and track registrations, participation and enrollment.",
-                      "规划活动，追踪登记、参与及报名。",
-                    )
-                  : crmModule === "leads"
-                    ? t(
-                        "Prioritize customers, record outcomes and plan the next step.",
-                        "明确优先客户，记录沟通结果，安排下一步。",
-                      )
-                    : crmModule === "policy"
-                      ? t(
-                          "Configure working hours, response deadlines, follow-up rules and notifications.",
-                          "配置工作时间、响应时限、跟进规则与通知。",
-                        )
-                      : t(
-                          "Workflows for accounts, customer follow-up, assessments and notifications.",
-                          "账号权限、客户跟进、测评与通知的操作说明。",
-                        )}
-              </p>
-            </div>
+      {/* Main Workspace Body */}
+      <main id="crm-main" tabIndex={-1} className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5">
+        <div className="admin-page-toolbar" data-theme={isLight ? "light" : "dark"}>
+          <div><h1>{crmModule === "leads" ? adminText(lang, "Customer follow-up", "Tindak lanjut pelanggan", "客户跟进") : crmModule === "campaigns" ? t("Marketing Campaigns", "营销活动中心") : crmModule === "policy" ? t("Sales Operations Settings", "销售运营设置") : adminText(lang, "CRM documentation", "Dokumentasi CRM", "CRM 系统文档")}</h1>
+            {crmModule === "leads" && <p>{t("Prioritize customers, record outcomes and plan the next step.", "明确优先客户，记录沟通结果，安排下一步。")}</p>}
           </div>
-
-          <CrmAccountControls lang={lang} isLight={isLight} />
-        </div>
-
-        {/* ROW 2: Fixed, Always-on-Second-Row Navigation Pills & Actions */}
-        <div className="px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2.5">
-          {/* Left Cluster of Row 2: Module Switcher Pills + Preferences Group (Language & Theme) */}
-          <div className="flex flex-wrap items-center gap-2.5 min-w-0 max-w-full">
-            {/* 1. Module Switcher Pills (左侧功能页区) */}
-            <div
-              className={`crm-header-module-tabs flex items-center p-1 rounded-xl border shrink-0 max-w-full overflow-x-auto no-scrollbar ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
-            >
-              {/* 1. Marketing Campaigns (Placed first for campaign-first workflow) */}
-              <button
-                type="button"
-                onClick={() => changeModule("campaigns")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  crmModule === "campaigns"
-                    ? isLight
-                      ? "bg-white text-primary-700 shadow-2xs font-bold"
-                      : "bg-primary-800 text-white shadow-sm"
-                    : isLight
-                      ? "text-slate-600 hover:text-slate-900"
-                      : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <Target className="w-3.5 h-3.5" />
-                <span>{t("Marketing Campaigns", "营销活动中心")}</span>
-              </button>
-
-              {/* 2. Leads CRM */}
-              <button
-                type="button"
-                onClick={() => changeModule("leads")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  crmModule === "leads"
-                    ? isLight
-                      ? "bg-white text-primary-700 shadow-2xs font-bold"
-                      : "bg-primary-800 text-white shadow-sm"
-                    : isLight
-                      ? "text-slate-600 hover:text-slate-900"
-                      : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>{t("Leads CRM", "销售线索")}</span>
-              </button>
-
-              {/* 3. SLA & Sales Policy */}
-              {canManage && (
-                <button
-                  type="button"
-                  onClick={() => changeModule("policy")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    crmModule === "policy"
-                      ? isLight
-                        ? "bg-white text-primary-700 shadow-2xs font-bold"
-                        : "bg-primary-800 text-white shadow-sm"
-                      : isLight
-                        ? "text-slate-600 hover:text-slate-900"
-                        : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>{t("Sales Operations", "销售运营")}</span>
-                </button>
-              )}
-
-              {/* 4. User Guide & Handbook */}
-              <button
-                type="button"
-                onClick={() => changeModule("docs")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  crmModule === "docs"
-                    ? isLight
-                      ? "bg-white text-primary-700 shadow-2xs font-bold"
-                      : "bg-primary-800 text-white shadow-sm"
-                    : isLight
-                      ? "text-slate-600 hover:text-slate-900"
-                      : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>{(lang === "zh" ? "系统文档" : lang === "id" ? "Dokumentasi" : "Documentation")}</span>
-              </button>
-            </div>
-
-            {/* 2. Unified Preferences Group: Language & Theme Switcher (常驻在左侧三个功能页区的右侧) */}
-            <div
-              className={`crm-header-preferences flex items-center p-1 rounded-xl border shrink-0 ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
-            >
-              {/* Language Switcher */}
-              <CrmLanguageSelect lang={lang} onChange={setLang} isLight={isLight} />
-
-              <div
-                className={`h-4 w-px mx-0.5 ${isLight ? "bg-slate-200" : "bg-slate-700"}`}
-              />
-
-              {/* Theme Switcher */}
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  isLight
-                    ? "hover:bg-white/90 text-slate-700 hover:shadow-2xs"
-                    : "hover:bg-slate-700/90 text-slate-200"
-                }`}
-                title={
-                  isLight
-                    ? t("Switch to Dark Mode", "切换至深色模式")
-                    : t("Switch to Apple Light Mode", "切换至浅色模式")
-                }
-              >
-                {isLight ? (
-                  <>
-                    <Moon className="w-3.5 h-3.5" />
-                    <span>{t("Dark", "深色")}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sun className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{t("Light", "浅色")}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Right of Row 2: Contextual Business Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Contextual Actions in Leads: Refresh & Export */}
+          <div className="admin-page-actions">            {/* Contextual Actions in Leads: Refresh & Export */}
             {crmModule === "leads" && (
               <>
                 <button
@@ -2005,7 +1779,7 @@ function CrmWorkspace({
                 {employee.permissions.includes("crm.export") && (
                   <a
                     href={"/api/crm/export?"+queryKey}
-                    className="flex items-center gap-1.5 h-8 px-3.5 bg-primary-700 hover:bg-primary-800 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-900/20 transition-all cursor-pointer"
+                    className={`flex items-center gap-1.5 h-8 px-3.5 rounded-xl text-xs font-semibold border ${isLight ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"}`}
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>
@@ -2017,7 +1791,7 @@ function CrmWorkspace({
             )}
 
             {/* Contextual Actions in Policy: Reset Defaults & Save Changes */}
-            {crmModule === "policy" && (
+            {crmModule === "policy" && employee.permissions.includes("crm.operations.manage") && (
               <>
                 {policyControls?.isDirty && (
                   <button
@@ -2113,16 +1887,11 @@ function CrmWorkspace({
                 <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                 <span>{t("Print / PDF", "打印/PDF")}</span>
               </button>
-            )}
-          </div>
+            )}</div>
         </div>
-      </header>
-
-      {/* Main Workspace Body */}
-      <main id="crm-main" tabIndex={-1} className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5">
         {crmModule === "campaigns" ? (
           <CrmCampaignHub
-            canManageCampaigns={canManage}
+            canManageCampaigns={employee.permissions.includes("campaigns.manage")}
             isLight={isLight}
             lang={lang}
             leads={leads}
@@ -2137,7 +1906,7 @@ function CrmWorkspace({
           />
         ) : crmModule === "policy" && canManage ? (
           <>
-            <CrmPolicySettings
+            {employee.permissions.includes("crm.operations.manage") && <CrmPolicySettings
               isLight={isLight}
               lang={lang}
               policyConfig={policyConfig}
@@ -2148,12 +1917,13 @@ function CrmWorkspace({
                 setNotificationNavigationRequest((value) => value + 1)
               }
               onActionControlsChange={setPolicyControls}
-            />
-            <NotificationCenter
+            />}
+            {employee.permissions.includes("notifications.read") && <NotificationCenter
               isLight={isLight}
               lang={lang}
               navigationRequest={notificationNavigationRequest}
-            />
+              canEdit={employee.permissions.includes("notifications.manage")}
+            />}
           </>
         ) : crmModule === "docs" ? (
           <CrmUserGuide
@@ -2220,10 +1990,11 @@ function CrmWorkspace({
               loading={isLoading}
               employeeId={employee.id}
               employees={employees}
-              onClaim={!canAssign&&employee.roles.includes("sales")?(lead)=>claimLead(lead.id):undefined}
+              onClaim={employee.permissions.includes("crm.claim")?(lead)=>claimLead(lead.id):undefined}
+              canClaim={lead=>canClaimRecord(employee,lead)&&!permittedRecord(employee,lead,"crm.assign")}
               onOpen={handleOpenLeadDrawer}
               onProcess={processFromList}
-              canProcess={canEditLead}
+              canProcess={lead=>canEditLead(lead,"crm.followup")}
               onReset={() => setFilters(defaultLeadFilters(employee.scope))}
             >
               {leadPanel}

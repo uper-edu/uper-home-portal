@@ -1,16 +1,10 @@
+import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import crypto from "node:crypto";
-if (process.env.CRM_TIME_TEST_DATABASE_URL) {
-  const url = new URL(process.env.CRM_TIME_TEST_DATABASE_URL);
-  if (
-    url.hostname !== "127.0.0.1" ||
-    url.port !== "5448" ||
-    !/^\/uper_crm_time_[a-z0-9_]+$/.test(url.pathname)
-  )
-    throw Error("Dedicated disposable CRM time database required");
-  process.env.DATABASE_URL = url.toString();
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const fixture = await setupNativeTest("crmMessageTimePortal");
   process.env.PLATFORM_MODE = "mock";
   const { pool } = await import("../server/portal/store.ts");
   const { mountPortal } = await import("../server/portal/runtime.ts");
@@ -26,7 +20,7 @@ if (process.env.CRM_TIME_TEST_DATABASE_URL) {
       await pool.end();
     });
     await pool.query(
-      "INSERT INTO portal_leads(id,profile) VALUES('crm-time-test-lead',$1)",
+      "INSERT INTO portal_leads(id,profile) VALUES('crm-time-test-lead',:p1)",
       [
         {
           id: "crm-time-test-lead",
@@ -98,22 +92,19 @@ if (process.env.CRM_TIME_TEST_DATABASE_URL) {
     ];
     for (const f of fixtures)
       await pool.query(
-        "INSERT INTO messages(id,conversation_id,request_id,role,content,status,error,created_at) VALUES($1,'crm-time-legacy',$1,'user',$2,'legacy',$3,$4)",
+        "INSERT INTO messages(id,conversation_id,request_id,role,content,status,error,created_at) VALUES(:p1,'crm-time-legacy',:p1,'user',:p2,'legacy',:p3,:p4)",
         [f.id, f.text, JSON.stringify(f.metadata), f.created],
       );
     await pool.query(
-      "INSERT INTO messages(id,conversation_id,request_id,role,content,status,created_at) VALUES('known-modern','crm-time-modern','known-modern','assistant','TEST 现代消息','completed','2026-10-12T01:23:45Z')",
+      "INSERT INTO messages(id,conversation_id,request_id,role,content,status,created_at) VALUES('known-modern','crm-time-modern','known-modern','assistant','TEST 现代消息','completed','2026-10-12 01:23:45')",
     );
     const snapshot = async () =>
       crypto
         .createHash("sha256")
         .update(
           JSON.stringify(
-            (
-              await pool.query(
-                "SELECT row_to_json(m)::text data FROM messages m ORDER BY sequence",
-              )
-            ).rows,
+            (await pool.query("SELECT m.* FROM messages m ORDER BY sequence"))
+              .rows,
           ),
         )
         .digest("hex");

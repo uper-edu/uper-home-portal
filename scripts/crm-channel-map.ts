@@ -1,4 +1,3 @@
-import pg from "pg";
 export async function mapCrmChannels(db: any, apply = false) {
   const channel = (
     await db.query(
@@ -8,7 +7,7 @@ export async function mapCrmChannels(db: any, apply = false) {
   if (!channel) throw Error("CRM Bot channel required");
   const rules = (
     await db.query(
-      "SELECT * FROM notification_rules WHERE config->>'group' IN ('sales','ops') AND config->'channels' ? 'lark' ORDER BY id FOR UPDATE",
+      "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE",
     )
   ).rows;
   if (apply)
@@ -16,16 +15,16 @@ export async function mapCrmChannels(db: any, apply = false) {
       const config = { ...r.config, group: channel.id };
       const version = r.version + 1;
       await db.query(
-        "UPDATE notification_rules SET config=$2,version=$3,effective_at=clock_timestamp() WHERE id=$1",
+        "UPDATE notification_rules SET config=:p2,version=:p3,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
         [r.id, config, version],
       );
-      await db.query("INSERT INTO rule_versions VALUES($1,$2,$3)", [
+      await db.query("INSERT INTO rule_versions VALUES(:p1,:p2,:p3)", [
         r.id,
         version,
         config,
       ]);
       await db.query(
-        "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',$1)",
+        "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',:p1)",
         [{ ruleId: r.id, from: r.config.group, to: channel.id, version }],
       );
     }
@@ -38,8 +37,9 @@ export async function mapCrmChannels(db: any, apply = false) {
   }));
 }
 if (process.argv[1]?.endsWith("crm-channel-map.ts")) {
-  const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
-  await db.connect();
+  const { connection, pool } = await import("../server/portal/store.ts");
+  const lease = await connection(),
+    db = lease.client;
   try {
     await db.query("BEGIN");
     console.log(
@@ -49,6 +49,7 @@ if (process.argv[1]?.endsWith("crm-channel-map.ts")) {
     );
     await db.query(process.argv.includes("--apply") ? "COMMIT" : "ROLLBACK");
   } finally {
-    await db.end();
+    await lease.release();
+    await pool.end();
   }
 }

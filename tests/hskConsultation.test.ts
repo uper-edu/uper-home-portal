@@ -1,15 +1,13 @@
+import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { newHskAttempt } from "../src/data/hskAssessment";
 import { getVersionQuestions } from "../src/data/hskAssessmentVersions";
-if (process.env.PORTAL_TEST_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.PORTAL_TEST_DATABASE_URL;
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const fixture = await setupNativeTest("hskConsultation");
   process.env.PLATFORM_MODE = "mock";
-  process.env.OPENAI_API_KEY = "local-fixture";
-  process.env.OPENAI_MODEL = "local-fixture";
-  delete process.env.DEEPSEEK_API_KEY;
   const { pool } = await import("../server/portal/store");
   const { mountPortal } = await import("../server/portal/runtime");
   const { mountChat } = await import("../server/portal/chat");
@@ -22,18 +20,21 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
       const instruction = JSON.stringify(req.body.messages);
       const system = req.body.messages[0].content;
       assert.match(instruction, /system-triggered introduction/);
-      if(system.includes("The learner just submitted a saved assessment")){
+      if (system.includes("The learner just submitted a saved assessment")) {
         assert.match(instruction, /characterRecognition/);
         assert.match(instruction, /handwriting and speaking were not assessed/);
         assert.match(instruction, /listening needs verification/);
       }
-      assert.match(system,/Consultation profile and focus/);
-      assert.doesNotMatch(system,/consult-context@example.invalid|weekly study availability/);
+      assert.match(system, /Consultation profile and focus/);
+      assert.doesNotMatch(
+        system,
+        /consult-context@example.invalid|weekly study availability/,
+      );
       const tail = req.body.messages.at(-1).content;
-      assert.match(tail,/Produce the new assistant turn/);
-      if(tail.includes('The learner just submitted a saved assessment')){
-        assert.match(tail,/HSK 3 consolidation/);
-        assert.match(tail,/selfReportedBeforeAssessment/);
+      assert.match(tail, /Produce the new assistant turn/);
+      if (tail.includes("The learner just submitted a saved assessment")) {
+        assert.match(tail, /HSK 3 consolidation/);
+        assert.match(tail, /selfReportedBeforeAssessment/);
       }
       if (
         instruction.includes('"mode":"express"') ||
@@ -47,10 +48,11 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         choices: [
           {
             message: {
-              content:
-                system.includes('"topic":"fees"') ? 'Which course would you like the fee details for?'
-                  : system.includes('"topic":"work_scenarios"') ? 'Which work situation would you most like to handle in Mandarin?'
-                  : 'Which practical situation would you most like to use Mandarin in?',
+              content: system.includes('"topic":"fees"')
+                ? "Which course would you like the fee details for?"
+                : system.includes('"topic":"work_scenarios"')
+                  ? "Which work situation would you most like to handle in Mandarin?"
+                  : "Which practical situation would you most like to use Mandarin in?",
             },
             finish_reason: "stop",
           },
@@ -59,6 +61,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
     });
     const upstream = provider.listen(0, "127.0.0.1");
     await new Promise<void>((r) => upstream.on("listening", r));
+    process.env.OPENAI_API_KEY = "TEST-local-stub";
     process.env.OPENAI_API_BASE_URL = `http://127.0.0.1:${(upstream.address() as any).port}/completion`;
     const app = express();
     app.use(express.json());
@@ -82,7 +85,23 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
       return { status: r.status, data: await r.json() };
     };
     try {
-      assert.equal((await api('/api/portal/register',{fullName:'TEST CONSULT CONTEXT',email:'consult-context@example.invalid',goal:'Work in China',buyingSignal:'Which level is right',buyingSignals:['Which level is right'],goals:['Work in China'],reportedLevel:'Beginner',city:'Jakarta',mode:'Offline',hskExamPlan:'Within 6 months'})).status,200);
+      assert.equal(
+        (
+          await api("/api/portal/register", {
+            fullName: "TEST CONSULT CONTEXT",
+            email: "consult-context@example.invalid",
+            goal: "Work in China",
+            buyingSignal: "Which level is right",
+            buyingSignals: ["Which level is right"],
+            goals: ["Work in China"],
+            reportedLevel: "Beginner",
+            city: "Jakarta",
+            mode: "Offline",
+            hskExamPlan: "Within 6 months",
+          })
+        ).status,
+        200,
+      );
       const a = newHskAttempt("full", randomUUID());
       a.completedAt = new Date().toISOString();
       for (const q of getVersionQuestions("full"))
@@ -110,7 +129,7 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
       assert.equal(calls, 1);
       const rows = (
         await pool.query(
-          "SELECT role,request_id,status FROM messages WHERE conversation_id=$1",
+          "SELECT role,request_id,status FROM messages WHERE conversation_id=:p1",
           [conv],
         )
       ).rows;
@@ -129,14 +148,47 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         ).status,
         404,
       );
-      const profileIntro={conversationId:conv,consultationStart:true,lang:'en'};
-      const profileFirst=await api('/api/chat',profileIntro);
-      assert.equal(profileFirst.status,200);assert.match(profileFirst.data.reply,/Which work situation/);
-      const profileCalls=calls;
-      assert.equal((await api('/api/chat',profileIntro)).data.reply,profileFirst.data.reply);assert.equal(calls,profileCalls);
-      assert.equal((await api('/api/chat',profileIntro,'other=unregistered')).status,404);
-      assert.equal((await pool.query("SELECT count(*) n FROM messages WHERE conversation_id=$1 AND role='user'",[conv])).rows[0].n,'0');
-      assert.equal((await api('/api/portal/register',{fullName:'TEST CONSULT CONTEXT',email:'consult-context@example.invalid',goal:'Work in China',buyingSignal:'Which level is right',buyingSignals:['Asked price','Asked schedule']})).status,200);
+      const profileIntro = {
+        conversationId: conv,
+        consultationStart: true,
+        lang: "en",
+      };
+      const profileFirst = await api("/api/chat", profileIntro);
+      assert.equal(profileFirst.status, 200);
+      assert.match(profileFirst.data.reply, /Which work situation/);
+      const profileCalls = calls;
+      assert.equal(
+        (await api("/api/chat", profileIntro)).data.reply,
+        profileFirst.data.reply,
+      );
+      assert.equal(calls, profileCalls);
+      assert.equal(
+        (await api("/api/chat", profileIntro, "other=unregistered")).status,
+        404,
+      );
+      assert.equal(
+        Number(
+          (
+            await pool.query(
+              "SELECT count(*) n FROM messages WHERE conversation_id=:p1 AND role='user'",
+              [conv],
+            )
+          ).rows[0].n,
+        ),
+        0,
+      );
+      assert.equal(
+        (
+          await api("/api/portal/register", {
+            fullName: "TEST CONSULT CONTEXT",
+            email: "consult-context@example.invalid",
+            goal: "Work in China",
+            buyingSignal: "Which level is right",
+            buyingSignals: ["Asked price", "Asked schedule"],
+          })
+        ).status,
+        200,
+      );
       const quick = newHskAttempt("express", randomUUID());
       quick.completedAt = new Date().toISOString();
       for (const q of getVersionQuestions("express"))
@@ -150,12 +202,14 @@ if (process.env.PORTAL_TEST_DATABASE_URL) {
         3,
       );
       const quickPayload = { ...payload, assessmentAttemptId: quick.attemptId };
-      const quickReply=await api("/api/chat", quickPayload);assert.equal(quickReply.status,200);assert.match(quickReply.data.reply,/fee details/);
+      const quickReply = await api("/api/chat", quickPayload);
+      assert.equal(quickReply.status, 200);
+      assert.match(quickReply.data.reply, /fee details/);
       assert.equal((await api("/api/chat", quickPayload)).status, 200);
       assert.equal(calls, 3);
       const quickRows = (
         await pool.query(
-          "SELECT role,status FROM messages WHERE request_id=$1",
+          "SELECT role,status FROM messages WHERE request_id=:p1",
           ["hsk-intro-" + quick.attemptId],
         )
       ).rows;

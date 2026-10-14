@@ -4,11 +4,12 @@ export type Channel = "inapp" | "lark" | "email" | "sms";
 export interface Rule {
   calendarMode?: "inherit" | "custom";
   quiet?: { start:string; end:string };
-  teams?: string[];
+  teams?: string[]; // historical snapshots only; never matched by the worker
+  requiresRoutingReview?: boolean;
   event: string;
   channels: Channel[];
-  recipient: "owner" | "team" | "supervisor";
-  team: string;
+  recipient: "owner" | "managers" | "team" | "supervisor";
+  team?: string;
   group: string;
   sources: string[];
   tiers: string[];
@@ -32,7 +33,6 @@ export const defaults: Rule = {
   event: "lead.created",
   channels: ["inapp", "lark"],
   recipient: "owner",
-  team: "sales",
   group: "sales",
   sources: [],
   tiers: [],
@@ -74,13 +74,13 @@ export function validate(r: Rule) {
   )
     throw Error("Only inapp and lark are connected");
   if (
-    !["owner", "team", "supervisor"].includes(r.recipient) ||
+    !["owner", "managers"].includes(r.recipient) ||
     !["immediate", "delay", "digest"].includes(r.timing)
   )
     throw Error("Invalid policy");
   for(const values of [r.sources,r.tiers,r.states,r.teams || []])if(!Array.isArray(values)||values.length>30||values.some(v=>typeof v!=='string'||v.length>100))throw Error('Invalid filters');
   if(r.quiet && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.quiet.start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.quiet.end)||r.quiet.start===r.quiet.end))throw Error('Invalid quiet hours');
-  for(const value of [r.team,r.group])if(typeof value!=='string'||!value.trim()||value.length>100)throw Error('Invalid team/group');
+  for(const value of [r.group])if(typeof value!=='string'||!value.trim()||value.length>100)throw Error('Invalid team/group');
   new Intl.DateTimeFormat("en", { timeZone: r.timezone });
   for (const t of [r.start, r.end, r.digestTime])
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw Error("Invalid time");
@@ -127,13 +127,7 @@ export const defaultRules = events.map(
       event,
       channels:
         event === "conversation.updated" ? ["inapp"] : defaults.channels,
-      recipient:
-        event === "task.overdue"
-          ? "supervisor"
-          : event.includes("failed")
-            ? "team"
-            : "owner",
-      team: event.includes("failed") ? "ops" : "sales",
+      recipient: event.includes("failed") || event === "daily.digest" ? "managers" : "owner",
       group: event.includes("failed") ? "ops" : "sales",
       timing:
         event === "assessment.completed" || event === "daily.digest"

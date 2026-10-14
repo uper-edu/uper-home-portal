@@ -2242,6 +2242,14 @@
   {
     "layer": "contract",
     "object": "Rule",
+    "key": "requiresRoutingReview",
+    "type": "boolean",
+    "optional": true,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
     "key": "event",
     "type": "string",
     "optional": false,
@@ -2259,7 +2267,7 @@
     "layer": "contract",
     "object": "Rule",
     "key": "recipient",
-    "type": "\"owner\" | \"team\" | \"supervisor\"",
+    "type": "\"owner\" | \"managers\" | \"team\" | \"supervisor\"",
     "optional": false,
     "source": "server/portal/policy.ts"
   },
@@ -2268,7 +2276,7 @@
     "object": "Rule",
     "key": "team",
     "type": "string",
-    "optional": false,
+    "optional": true,
     "source": "server/portal/policy.ts"
   },
   {
@@ -2428,6 +2436,30 @@
     "object": "Employee",
     "key": "roles",
     "type": "string[]",
+    "optional": true,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "grants",
+    "type": "Record<string, AccessScope[]>",
+    "optional": true,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "roleLabels",
+    "type": "Record<string, AccessWords>",
+    "optional": true,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "rolePermissions",
+    "type": "Record<string, string[]>",
     "optional": true,
     "source": "server/portal/identity.ts"
   },

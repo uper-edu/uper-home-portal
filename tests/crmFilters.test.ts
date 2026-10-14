@@ -184,7 +184,7 @@ test("summary and sorting use final filtered customers, not number of tasks; unr
     "Asia/Jakarta",
     now,
   );
-  assert.equal(result.total, 1);
+  assert.equal(Number(result.total), 1);
   assert.equal(result.stats.overdueSla, 1);
   assert.equal(result.stats.hot, 1);
 });

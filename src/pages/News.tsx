@@ -163,52 +163,9 @@ const BannerCarousel = ({ carouselItems, isLoading, fallbackTitle, fallbackSubti
   );
 };
 
-const FALLBACK_NEWS = [
-  {
-    _id: 'news-1',
-    title: 'Peluang Beasiswa Penuh Pemerintah Tiongkok (CSC) 2026 Resmi Dibuka',
-    publishedAt: '2026-03-15T00:00:00Z',
-    slug: { current: 'csc-scholarship-2026-open' },
-    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'Simak panduan lengkap, persyaratan dokumen, dan strategi penulisan rencana studi untuk memenangkan beasiswa CSC di kampus impian Anda.',
-    keywords: ['csc', 'scholarship', 'beasiswa', 'china', 'tiongkok']
-  },
-  {
-    _id: 'news-2',
-    title: 'Delegasi UPER Kunjungi Universitas Top di Beijing Pererat Kerja Sama Akademik',
-    publishedAt: '2026-02-28T00:00:00Z',
-    slug: { current: 'uper-visit-beijing-universities' },
-    image: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'UPER menandatangani MoU baru yang membuka jalur eksklusif beasiswa prestasi dan program pertukaran mahasiswa.',
-    keywords: ['beijing', 'universitas', 'china', 'tiongkok']
-  },
-  {
-    _id: 'news-3',
-    title: 'Pentingnya Sertifikasi HSK 4 & 5 dalam Seleksi Akademik di Universitas Tiongkok',
-    publishedAt: '2026-02-10T00:00:00Z',
-    slug: { current: 'hsk-certification-importance' },
-    image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'Meskipun beberapa jurusan menawarkan kelas pengantar bahasa Inggris, penguasaan Mandarin yang dibuktikan dengan sertifikat HSK tetap menjadi poin plus.',
-    keywords: ['hsk', 'mandarin', 'sertifikasi', 'china']
-  },
-  {
-    _id: 'news-4',
-    title: 'Sesi Pembekalan Keberangkatan (Departure Briefing) Mahasiswa UPER Angkatan 2026',
-    publishedAt: '2026-01-20T00:00:00Z',
-    slug: { current: 'departure-briefing-2026' },
-    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=800',
-    excerpt: 'Panduan lengkap mengenai persiapan visa JW202, asuransi kesehatan, tempat tinggal, hingga tips beradaptasi dengan budaya lokal.',
-    keywords: ['departure', 'briefing', 'beasiswa']
-  }
-];
+const FALLBACK_NEWS = [];
 
-const FALLBACK_NEWS_PAGE = [
-  {
-    title: 'Update & Wawasan Terbaru dari UPER',
-    subtitle: 'Ikuti perkembangan terbaru mengenai program pendidikan, beasiswa, dan kisah sukses mahasiswa di Tiongkok.',
-    coverImage: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200'
-  }
-];
+const FALLBACK_NEWS_PAGE = [];
 
 export default function News() {
   const { t } = useTranslation();

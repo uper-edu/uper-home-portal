@@ -104,78 +104,7 @@ function getShortLink(urlStr: string) {
   }
 }
 
-const FALLBACK_NEWS_DETAILS = [
-  {
-    _id: 'news-1',
-    title: 'Peluang Beasiswa Penuh Pemerintah Tiongkok (CSC) 2026 Resmi Dibuka',
-    publishedAt: '2026-03-15T00:00:00Z',
-    slug: { current: 'csc-scholarship-2026-open' },
-    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=800',
-    summary: 'Simak panduan lengkap, persyaratan dokumen, dan strategi penulisan rencana studi untuk memenangkan beasiswa CSC di kampus impian Anda.',
-    body: [
-      {
-        _key: 'b1',
-        _type: 'block',
-        children: [{ _key: 'b1c1', _type: 'span', text: 'UPER (Universal Prestasi Nusantara) dengan bangga mengumumkan bahwa gerbang pendaftaran Beasiswa Pemerintah Tiongkok (CSC) untuk tahun akademik 2026 telah dibuka secara resmi! Ini adalah kesempatan emas bagi mahasiswa Indonesia untuk menempuh pendidikan sarjana, magister, atau doktoral di universitas-universitas terbaik di dunia, seperti Tsinghua University, Peking University, Zhejiang University, dan Shanghai Jiao Tong University.' }]
-      },
-      {
-        _key: 'b2',
-        _type: 'block',
-        children: [{ _key: 'b2c1', _type: 'span', text: 'Program beasiswa CSC mencakup seluruh biaya kuliah, akomodasi asrama gratis di lingkungan kampus, asuransi kesehatan komprehensif, serta uang saku bulanan yang sangat memadai untuk kebutuhan sehari-hari mahasiswa.' }]
-      }
-    ]
-  },
-  {
-    _id: 'news-2',
-    title: 'Delegasi UPER Kunjungi Universitas Top di Beijing Pererat Kerja Sama Akademik',
-    publishedAt: '2026-02-28T00:00:00Z',
-    slug: { current: 'uper-visit-beijing-universities' },
-    image: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=800',
-    summary: 'UPER menandatangani MoU baru yang membuka jalur eksklusif beasiswa prestasi dan program pertukaran mahasiswa.',
-    body: [
-      {
-        _key: 'b1',
-        _type: 'block',
-        children: [{ _key: 'b1c1', _type: 'span', text: 'Dalam upaya memperluas jaringan kemitraan global dan membuka lebih banyak peluang masa depan bagi generasi muda Indonesia, delegasi resmi UPER telah melakukan kunjungan diplomatik ke sejumlah perguruan tinggi papan atas di Beijing, Tiongkok.' }]
-      },
-      {
-        _key: 'b2',
-        _type: 'block',
-        children: [{ _key: 'b2c1', _type: 'span', text: 'Kunjungan strategis ini menghasilkan beberapa kesepakatan penting, termasuk program jalur rekomendasi khusus, percepatan proses admisi, serta pembentukan beasiswa talenta berprestasi (Achievement Scholarships) yang ditujukan khusus bagi siswa lulusan terbaik bimbingan UPER.' }]
-      }
-    ]
-  },
-  {
-    _id: 'news-3',
-    title: 'Pentingnya Sertifikasi HSK 4 & 5 dalam Seleksi Akademik di Universitas Tiongkok',
-    publishedAt: '2026-02-10T00:00:00Z',
-    slug: { current: 'hsk-certification-importance' },
-    image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=800',
-    summary: 'Meskipun beberapa jurusan menawarkan kelas pengantar bahasa Inggris, penguasaan Mandarin yang dibuktikan dengan sertifikat HSK tetap menjadi poin plus.',
-    body: [
-      {
-        _key: 'b1',
-        _type: 'block',
-        children: [{ _key: 'b1c1', _type: 'span', text: 'Sertifikasi Hanyu Shuiping Kaoshi (HSK) merupakan salah satu pilar penentu keberhasilan saat melamar ke universitas di Tiongkok. UPER menyediakan program pembekalan bahasa yang intensif dari level pemula hingga mahir untuk membantu para peserta melampaui skor target minimum dengan percaya diri.' }]
-      }
-    ]
-  },
-  {
-    _id: 'news-4',
-    title: 'Sesi Pembekalan Keberangkatan (Departure Briefing) Mahasiswa UPER Angkatan 2026',
-    publishedAt: '2026-01-20T00:00:00Z',
-    slug: { current: 'departure-briefing-2026' },
-    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=800',
-    summary: 'Panduan lengkap mengenai persiapan visa JW202, asuransi kesehatan, tempat tinggal, hingga tips beradaptasi dengan budaya lokal.',
-    body: [
-      {
-        _key: 'b1',
-        _type: 'block',
-        children: [{ _key: 'b1c1', _type: 'span', text: 'Sebelum resmi bertolak ke universitas tujuan masing-masing di Tiongkok, UPER menyelenggarakan sesi pembekalan keberangkatan komprehensif bagi seluruh mahasiswa angkatan 2026 guna memastikan transisi kehidupan dan akademis berjalan mulus tanpa kendala.' }]
-      }
-    ]
-  }
-];
+const FALLBACK_NEWS_DETAILS = [];
 
 export default function NewsDetail() {
   const { t } = useTranslation();

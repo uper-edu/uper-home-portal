@@ -1,3 +1,5 @@
+import { adminRoleLabel } from "../utils/adminWorkspace";
+import { cmsText } from '../utils/cmsLanguage';
 import {clearStaffDrafts} from "../utils/crmDrafts";
 import { ArrowRight, LockKeyhole, Users, ListChecks, Bell } from "lucide-react";
 import "./crm/crm-sign-in.css";
@@ -17,6 +19,9 @@ export interface CrmEmployee {
   scope: string;
   active: boolean;
   teams: string[];
+  grants?: Record<string,Array<"own"|"team"|"all">>;
+  roleLabels?: Record<string,[string,string,string]>;
+  rolePermissions?: Record<string,string[]>;
 }
 const AccountContext = createContext<{
   employee: CrmEmployee;
@@ -28,42 +33,42 @@ const AccountContext = createContext<{
 export function CrmAccountControls({
   lang,
   isLight,
+  workspace,
 }: {
   lang: "zh" | "en" | "id";
   isLight: boolean;
+  workspace?: "crm" | "cms" | "system";
 }) {
   const account = useContext(AccountContext);
   if (!account) return null;
   const { employee } = account;
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
+  const roleLabel = (role: string) => employee.roleLabels?.[role]?.[lang === "zh"?2:lang === "id"?1:0] || adminRoleLabel(role, lang);
+  const preferredRole = workspace === 'system' ? 'access_admin' : workspace === 'cms' ? 'cms_admin' : employee.roles.includes('crm_leader') ? 'crm_leader' : 'sales';
+  const currentRole = employee.roles.includes(preferredRole) && (!employee.rolePermissions || employee.rolePermissions[preferredRole]?.includes(workspace==='system'?'access.read':workspace==='cms'?'cms.manage':'crm.read')) ? preferredRole : employee.roles.find(role=>employee.rolePermissions?.[role]?.includes(workspace==='system'?'access.read':workspace==='cms'?'cms.manage':'crm.read')) || employee.roles[0] || '';
   return (
     <details
       className="relative shrink-0 ml-auto"
       aria-label={t("Account menu", "账号菜单")}
     >
       <summary
-        className={`list-none cursor-pointer flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-800 border-slate-700 text-slate-100"}`}
+        className={workspace ? "admin-account-summary" : `list-none cursor-pointer flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-800 border-slate-700 text-slate-100"}`}
       >
-        <span className="flex flex-col gap-0.5">
-          <span className="font-semibold">
+        <span className={workspace ? "admin-account-identity" : "flex flex-col gap-0.5"}>
+          <span className="admin-account-name font-semibold">
             {employee.displayName || employee.id}
           </span>
-          <span className={isLight ? "text-slate-500" : "text-slate-400"}>
-            {employee.roles
-              .map((r) =>
-                r === "crm_leader"
-                  ? t("CRM Leader", "CRM 管理者")
-                  : t("Sales", "销售"),
-              )
-              .join(" + ")}
+          <span className={workspace ? "admin-account-role" : isLight ? "text-slate-500" : "text-slate-400"}>
+            {workspace ? roleLabel(currentRole) : employee.roles.map(roleLabel).join(" + ")}
           </span>
         </span>
         <span aria-hidden="true">▾</span>
       </summary>
       <div
-        className={`absolute right-0 top-full mt-2 z-40 min-w-44 rounded-xl border shadow-lg p-1 text-xs ${isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-900 border-slate-700 text-slate-100"}`}
+        className={workspace ? "admin-account-popover" : `absolute right-0 top-full mt-2 z-40 min-w-44 rounded-xl border shadow-lg p-1 text-xs ${isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-900 border-slate-700 text-slate-100"}`}
       >
+        {workspace && <div className="admin-account-context"><strong>{employee.displayName || employee.id}</strong>{employee.roles.map(roleLabel).join(" · ")}</div>}
         <button
           type="button"
           className="block w-full text-left rounded-lg px-3 py-2 hover:bg-primary-500/10"
@@ -104,7 +109,9 @@ async function auth(path: string, body?: any) {
 }
 export default function CrmAccess({
   children,
+  workspace = "crm",
 }: {
+  workspace?: "crm" | "cms" | "system";
   children: (
     employee: CrmEmployee,
     lang: CrmLanguage,
@@ -112,6 +119,8 @@ export default function CrmAccess({
   ) => React.ReactNode;
 }) {
   const [connectionProblem,setConnectionProblem]=useState(false);
+  const isCms = workspace === "cms", isSystem=workspace==='system';
+  const st=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
   const [lang, setLang] = useCrmLanguage();
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
@@ -143,9 +152,10 @@ export default function CrmAccess({
     }, 60000);
     return () => clearInterval(timer);
   }, [employee?.id]);
+  useEffect(()=>{const refresh=()=>auth('me').then(d=>setEmployee(d.employee)).catch(e=>{if([401,403].includes(e.status))setEmployee(null);});window.addEventListener('uper-access-changed',refresh);return()=>window.removeEventListener('uper-access-changed',refresh);},[]);
   useEffect(() => {
-    if (!employee) document.title = t("CRM sign in | UPER", "CRM 登录 | UPER");
-  }, [employee, lang]);
+    if (!employee) document.title = isSystem ? st("System sign in | UPER","Login sistem | UPER","系统登录 | UPER") : isCms ? cmsText("CMS sign in | UPER", "CMS 登录 | UPER", lang) : t("CRM sign in | UPER", "CRM 登录 | UPER");
+  }, [employee, lang, isCms, isSystem]);
   const field =
     "w-full p-3 rounded-lg border border-slate-300 bg-white text-slate-900";
   if (loading)
@@ -166,13 +176,13 @@ export default function CrmAccess({
         </header>
         <div className="crm-sign-in-layout">
           <section className="crm-sign-in-intro" aria-labelledby="crm-sign-in-intro-title">
-            <span className="crm-sign-in-eyebrow">{t("Sales workspace", "销售工作区")}</span>
-            <h2 id="crm-sign-in-intro-title">{t("Every customer. A clear next step.", "每一位客户，都有清晰的下一步。")}</h2>
-            <p>{t("Keep customer conversations, ownership and follow-up in one place.", "在同一个工作区管理客户对话、负责人和跟进安排。")}</p>
+            <span className="crm-sign-in-eyebrow">{isSystem ? st("System workspace","Ruang sistem","系统工作区") : isCms ? cmsText("Content workspace", "内容工作区", lang) : t("Sales workspace", "销售工作区")}</span>
+            <h2 id="crm-sign-in-intro-title">{isSystem ? st("Clear responsibilities. Controlled access.","Tanggung jawab jelas. Akses terkendali.","职责清晰，授权有据。") : isCms ? cmsText("Keep website content clear and current.", "让网站内容清晰、及时。", lang) : t("Every customer. A clear next step.", "每一位客户，都有清晰的下一步。")}</h2>
+            <p>{isSystem ? st("Manage users, roles and access audit in one workspace.","Kelola pengguna, peran, dan audit akses dalam satu ruang.","在同一个工作区管理用户、角色与权限审计。") : isCms ? cmsText("Manage website content and images in one workspace.", "在同一个工作区管理网站内容与图片。", lang) : t("Keep customer conversations, ownership and follow-up in one place.", "在同一个工作区管理客户对话、负责人和跟进安排。")}</p>
             <ul className="crm-sign-in-features">
-              <li><Users size={20} aria-hidden="true" /><span>{t("Customer records & conversations", "客户资料与对话")}</span></li>
-              <li><ListChecks size={20} aria-hidden="true" /><span>{t("Ownership & follow-up", "客户归属与跟进")}</span></li>
-              <li><Bell size={20} aria-hidden="true" /><span>{t("Reminders & sales operations", "提醒与销售运营")}</span></li>
+              <li><Users size={20} aria-hidden="true" /><span>{isSystem ? st("Staff accounts","Akun staf","员工账号") : isCms ? cmsText("Content collections", "内容集合", lang) : t("Customer records & conversations", "客户资料与对话")}</span></li>
+              <li><ListChecks size={20} aria-hidden="true" /><span>{isSystem ? st("Roles and data scopes","Peran dan cakupan data","角色及数据范围") : isCms ? cmsText("Images and media", "图片与素材", lang) : t("Ownership & follow-up", "客户归属与跟进")}</span></li>
+              <li><Bell size={20} aria-hidden="true" /><span>{isSystem ? st("Access change audit","Audit perubahan akses","权限变更审计") : isCms ? cmsText("Website content updates", "网站内容更新", lang) : t("Reminders & sales operations", "提醒与销售运营")}</span></li>
             </ul>
           </section>
         <form
@@ -193,15 +203,16 @@ export default function CrmAccess({
           }}
         >
           <div className="crm-sign-in-lock"><LockKeyhole size={22} aria-hidden="true" /></div>
-          <h1>{t("CRM sign in", "CRM 登录")}</h1>
+          <h1>{isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</h1>
           <p className="crm-sign-in-subtitle">{t("Use your staff account", "请使用员工账号登录")}</p>
           <label className="crm-sign-in-label">
-            {t("Login ID", "登录账号")}
+            {st("Login ID or email", "ID login atau email", "登录ID或邮箱")}
             <input
               className="crm-sign-in-input"
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
+              maxLength={254}
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
               required
@@ -235,7 +246,7 @@ export default function CrmAccess({
           <p className="crm-sign-in-footnote">{t("Staff access only. Your role determines what you can view and manage.", "仅供员工访问。可查看的数据与操作权限由账号角色决定。")}</p>
         </form>
         </div>
-        <footer className="crm-sign-in-footer">UPER · {t("Customer relationship management", "客户关系管理")}</footer>
+        <footer className="crm-sign-in-footer">UPER · {isSystem ? st("System management","Manajemen sistem","系统管理") : isCms ? cmsText("Content management", "内容管理", lang) : t("Customer relationship management", "客户关系管理")}</footer>
       </main>
     );
   return (

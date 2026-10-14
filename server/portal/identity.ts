@@ -1,9 +1,18 @@
+import {
+  canClaimRecord,
+  permittedRecord,
+  type AccessScope,
+  type AccessWords,
+} from "../../src/utils/accessControl.ts";
 import type { Request } from "express";
-import {localEmployee,localDirectory} from "./localAuth.ts";
+
 export interface Employee {
   id: string;
   displayName?: string;
   roles?: string[];
+  grants?: Record<string, AccessScope[]>;
+  roleLabels?: Record<string, AccessWords>;
+  rolePermissions?: Record<string, string[]>;
   active?: boolean;
   teams: string[];
   permissions: string[];
@@ -39,7 +48,8 @@ const fixtures: Employee[] = [
 ];
 export const platform: PlatformAdapter = {
   async authenticate(req) {
-    if (process.env.PLATFORM_MODE === "local") return localEmployee(req);
+    if (process.env.PLATFORM_MODE === "local")
+      return (await import("./localAuth.ts")).localEmployee(req);
     if (process.env.PLATFORM_MODE !== "mock") return null;
     const loopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
       req.socket.remoteAddress || "",
@@ -61,14 +71,29 @@ export const platform: PlatformAdapter = {
     );
   },
   async employees() {
-    return process.env.PLATFORM_MODE === "local" ? localDirectory() : process.env.PLATFORM_MODE === "mock" ? fixtures : [];
+    return process.env.PLATFORM_MODE === "local"
+      ? (await import("./localAuth.ts")).localDirectory()
+      : process.env.PLATFORM_MODE === "mock"
+        ? fixtures
+        : [];
   },
 };
-export function allowed(e: Employee, profile: any, access: "read" | "write" = "read") {
+export function allowed(
+  e: Employee,
+  profile: any,
+  access: "read" | "write" = "read",
+) {
+  const permission = access === "read" ? "crm.read" : "crm.write";
+  if (e.active === false) return false;
+  if (e.grants)
+    return (
+      permittedRecord(e, profile, permission) ||
+      (access === "read" && canClaimRecord(e, profile))
+    );
   return (
-    e.scope === "all" ||
-    (e.scope === "own"
-      ? profile.owner === e.id || (access === "read" && !profile.owner && e.roles?.includes("sales") && e.teams.includes(profile.team || "sales"))
-      : e.teams.includes(profile.team))
+    e.permissions.includes(permission) &&
+    (e.scope === "all" ||
+      profile.owner === e.id ||
+      (access === "read" && !profile.owner && e.roles?.includes("sales")))
   );
 }
