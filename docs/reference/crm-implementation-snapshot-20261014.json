@@ -1,0 +1,1244 @@
+{
+  "asOf": "2026-10-14",
+  "scope": "Static source/schema metadata from the accepted local MySQL implementation. No runtime records, credentials, or executable migration. Backend synchronization is separate.",
+  "references": [
+    {
+      "path": "server/mysqlApplication.ts",
+      "sha256": "6e203df730329157ac7c8cbd39ba81de4170b8ab80c93ba413993146209c4bcd"
+    },
+    {
+      "path": "server/portal/identity.ts",
+      "sha256": "d6dd445824be09e0bef12591ba0b3252589111fa124c641a3f8bf667a963946e"
+    },
+    {
+      "path": "server/portal/runtime.ts",
+      "sha256": "a1e521ec11381f3357524d53d67617d6f7c4a700fad91888fb0788b9b60e548c"
+    },
+    {
+      "path": "cloud/mysql/schema.sql",
+      "sha256": "d12365c0afca2f9e149fae38946b0b8afdaca805932e08481e6bbf0798e647d6"
+    },
+    {
+      "path": "server/portal/attribution.ts",
+      "sha256": "756ee46204d6c1948b48f0522b880cef545bc99718d698598701fe584d2c1b69"
+    },
+    {
+      "path": "src/utils/crmCampaignMetrics.ts",
+      "sha256": "fb25e040534124226195f1650c09719b49da5019f2b750e9568503842ac67e2e"
+    },
+    {
+      "path": "src/types/leadSystem.ts",
+      "sha256": "0d654587b34a11938f8ed4bf268c6ef1922f8ef70711f50929efa74973b4e3d0"
+    },
+    {
+      "path": "src/types/crmLead.ts",
+      "sha256": "a798c778c977bf962b40e056171d1ed16054e65631e2df1e54519f757354f7a5"
+    },
+    {
+      "path": "server/portal/salesWorkflow.ts",
+      "sha256": "aaa3d9ef6ac100d44438cf9219f4b48348a3ee871072f5df51ad8019cfe60ca7"
+    },
+    {
+      "path": "src/utils/crmContact.ts",
+      "sha256": "bf769dc3ec021c0473ae566583cc3d7e10187c06eac7a0b2d2721300c3323967"
+    },
+    {
+      "path": "server/portal/policy.ts",
+      "sha256": "ed0683fc7bfb4a60b37acb834cde1321120a8eb873ea29eff7b50f65b9d72816"
+    },
+    {
+      "path": "server/portal/followup.ts",
+      "sha256": "8623e9d98d2674ba115aadbd95a7e93c094c2391978808f13dfe65d9d1e4cf10"
+    },
+    {
+      "path": "server/portal/worker.ts",
+      "sha256": "3a30253b2a1cccad536c0aa9f1b54576e43a58444e0547b30783e3a7065810f7"
+    },
+    {
+      "path": "server/portal/notificationDelivery.ts",
+      "sha256": "c2281f6afcddff6f139078583ad11c60e80bb8eeb97c7469f4da5a37fe1f7b10"
+    },
+    {
+      "path": "src/utils/crmProcessMetrics.ts",
+      "sha256": "8c86014f4bfc601e26a06ed9337cede216a1ac5f931fee4bfefef7641c28e543"
+    },
+    {
+      "path": "server/portal/chat.ts",
+      "sha256": "7c13ecaa46d7ec3dc966a819dbf70a7c502e2c0628836fba56e0063ccaeff156"
+    },
+    {
+      "path": "server/portal/assessments.ts",
+      "sha256": "6aacd3aaaa0cf2cd57a65c8ab41c0deeeec3afd992240a638590a905a4755ff0"
+    },
+    {
+      "path": "src/types/crmCampaign.ts",
+      "sha256": "c31622479af907a00acc17868b63ff7fc42479841e9789c0a7cd20d0f25b75a7"
+    },
+    {
+      "path": "src/types/crmPolicyConfig.ts",
+      "sha256": "23f8527e3ba2ae4cae1848becbaec3e03705d0b08963e0adc7fac035266e234d"
+    },
+    {
+      "path": "cloud/mysql/migrate.mjs",
+      "sha256": "d2060588127c59dd3288a282359070aa0ab8f40970407118c2d9a28eeda86df5"
+    },
+    {
+      "path": "cloud/mysql/schema-v2.sql",
+      "sha256": "3e71c70d70e96319ee0c62f77b35ff6602dfe81fe0a436d06945986df3189736"
+    }
+  ],
+  "storageFields": [
+    {
+      "layer": "storage",
+      "object": "trial_schema_versions",
+      "key": "version",
+      "type": "INT",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_schema_versions",
+      "key": "state",
+      "type": "VARCHAR(16)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_schema_versions",
+      "key": "updated_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_settings",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_settings",
+      "key": "value",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "lead_daily_counters",
+      "key": "business_date",
+      "type": "CHAR(8)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "lead_daily_counters",
+      "key": "last_value",
+      "type": "BIGINT UNSIGNED",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_leads",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_leads",
+      "key": "business_number",
+      "type": "VARCHAR(64)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_leads",
+      "key": "profile",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_leads",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "visitor_sessions",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "visitor_sessions",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "visitor_sessions",
+      "key": "expires_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "conversations",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "conversations",
+      "key": "visitor_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "conversations",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "conversations",
+      "key": "source",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "conversations",
+      "key": "attribution",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "conversations",
+      "key": "updated_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "conversation_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "request_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "role",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "content",
+      "type": "LONGTEXT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "status",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "model",
+      "type": "VARCHAR(100)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "error",
+      "type": "TEXT",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "metadata",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "messages",
+      "key": "sequence",
+      "type": "BIGINT UNSIGNED",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "ai_attempts",
+      "key": "id",
+      "type": "BIGINT UNSIGNED",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "ai_attempts",
+      "key": "message_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "ai_attempts",
+      "key": "model",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "ai_attempts",
+      "key": "content",
+      "type": "LONGTEXT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "ai_attempts",
+      "key": "error",
+      "type": "TEXT",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "ai_attempts",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "kind",
+      "type": "VARCHAR(64)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "owner_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "status",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "due_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "details",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "followup_tasks",
+      "key": "open_kind",
+      "type": "VARCHAR(64)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "outbox",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "outbox",
+      "key": "type",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "outbox",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "outbox",
+      "key": "payload",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "outbox",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "outbox",
+      "key": "processed_at",
+      "type": "DATETIME(6)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_rules",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_rules",
+      "key": "version",
+      "type": "INT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_rules",
+      "key": "config",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_rules",
+      "key": "enabled",
+      "type": "BOOLEAN",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_rules",
+      "key": "effective_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "rule_versions",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "rule_versions",
+      "key": "version",
+      "type": "INT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "rule_versions",
+      "key": "config",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_channels",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_channels",
+      "key": "config",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "event_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "rule_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "version",
+      "type": "INT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "channel",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "recipient",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "state",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "due_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "attempts",
+      "type": "INT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "lease_until",
+      "type": "DATETIME(6)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "result",
+      "type": "TEXT",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "snapshot",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_jobs",
+      "key": "completed_at",
+      "type": "DATETIME(6)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_inbox",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_inbox",
+      "key": "employee_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_inbox",
+      "key": "content",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_inbox",
+      "key": "read_at",
+      "type": "DATETIME(6)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_audit",
+      "key": "id",
+      "type": "BIGINT UNSIGNED",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_audit",
+      "key": "actor",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_audit",
+      "key": "action",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_audit",
+      "key": "data",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "portal_audit",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "identity_candidates",
+      "key": "visitor_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "identity_candidates",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "identity_candidates",
+      "key": "candidate_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "lead_read_marks",
+      "key": "employee_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "lead_read_marks",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "lead_read_marks",
+      "key": "seen_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "hsk_attempts",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "hsk_attempts",
+      "key": "visitor_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "hsk_attempts",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "hsk_attempts",
+      "key": "input_hash",
+      "type": "VARCHAR(64)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "hsk_attempts",
+      "key": "attempt",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "hsk_attempts",
+      "key": "result",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "hsk_attempts",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "login_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "display_name",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "password_hash",
+      "type": "TEXT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "roles",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "teams",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "active",
+      "type": "BOOLEAN",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_users",
+      "key": "login_key",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_sessions",
+      "key": "token_hash",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_sessions",
+      "key": "user_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_sessions",
+      "key": "expires_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_login_limits",
+      "key": "key",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_login_limits",
+      "key": "failures",
+      "type": "INT",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_login_limits",
+      "key": "window_start",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_campaigns",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_campaigns",
+      "key": "code",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_campaigns",
+      "key": "config",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_campaigns",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_members",
+      "key": "site_user_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_members",
+      "key": "employee_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_members",
+      "key": "mode",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "trial_members",
+      "key": "active",
+      "type": "BOOLEAN",
+      "optional": false,
+      "source": "cloud/mysql/schema.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_collections",
+      "key": "name",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_collections",
+      "key": "revision",
+      "type": "BIGINT UNSIGNED",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_collections",
+      "key": "items",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_collections",
+      "key": "updated_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_media",
+      "key": "id",
+      "type": "CHAR(64)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_media",
+      "key": "mime",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_media",
+      "key": "content",
+      "type": "MEDIUMBLOB",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_media",
+      "key": "uploaded_by",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_media",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "kind",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "request_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "input_hash",
+      "type": "CHAR(64)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "visitor_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "payload",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "attachment",
+      "type": "MEDIUMBLOB",
+      "optional": true,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "attachment_name",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "site_submissions",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/schema-v2.sql"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_migration_holds",
+      "key": "kind",
+      "type": "VARCHAR(16)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_migration_holds",
+      "key": "id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_migration_holds",
+      "key": "held_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "notification_migration_holds",
+      "key": "reason",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_media",
+      "key": "legacy_name",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "cms_collections",
+      "key": "items_text",
+      "type": "LONGTEXT",
+      "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    }
+  ]
+}

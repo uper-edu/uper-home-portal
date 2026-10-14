@@ -1,3 +1,4 @@
+import '../components/crm/crm-documentation.css';
 import {CrmAttendanceEditor} from "../components/crm/CrmAttendanceEditor";
 import {CrmProcessOverview} from "../components/crm/CrmProcessOverview";
 import type {ProcessMetrics} from "../utils/crmProcessMetrics";
@@ -171,6 +172,7 @@ function CrmWorkspace({
     "leads" | "campaigns" | "policy" | "docs"
   >(() => {
     try {
+      if (/^#(?:crm-guide-|chapter-)/.test(window.location.hash)) return "docs";
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
       if (
@@ -191,13 +193,13 @@ function CrmWorkspace({
             leads: "销售线索",
             campaigns: "营销活动中心",
             policy: "销售运营设置",
-            docs: "CRM 使用手册",
+            docs: "CRM 系统文档",
           }
         : {
             leads: "Leads CRM",
             campaigns: "Marketing Campaigns",
             policy: "Sales Operations Settings",
-            docs: "CRM User Guide",
+            docs: lang === "id" ? "Dokumentasi CRM" : "CRM documentation",
           };
     document.title =
       (lang === "id" ? crmId(titles[crmModule]) : titles[crmModule]) +
@@ -1809,10 +1811,7 @@ function CrmWorkspace({
                         )
                       : crmModule === "policy"
                         ? t("Sales Operations Settings", "销售运营设置")
-                        : t(
-                            "CRM operating guide",
-                            "CRM 操作指南",
-                          )}
+                        : (lang === "zh" ? "CRM 系统文档" : lang === "id" ? "Dokumentasi CRM" : "CRM documentation")}
                 </h1>
                 <span className="text-slate-300 dark:text-slate-600 select-none hidden md:inline">
                   ·
@@ -1937,7 +1936,7 @@ function CrmWorkspace({
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>{t("User Guide & Docs", "在线使用手册")}</span>
+                <span>{(lang === "zh" ? "系统文档" : lang === "id" ? "Dokumentasi" : "Documentation")}</span>
               </button>
             </div>
 

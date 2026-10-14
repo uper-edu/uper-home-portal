@@ -89,18 +89,18 @@ test("notification search control and guide render all three languages", () => {
     assert.ok(
       html.includes(
         {
-          en: "CRM operating guide",
-          id: "Panduan operasional CRM",
-          zh: "CRM 操作指南",
+          en: "CRM documentation",
+          id: "Dokumentasi CRM",
+          zh: "CRM 系统文档",
         }[lang],
       ),
     );
     assert.ok(
       html.includes(
         {
-          en: "Notification rules, channels and delivery audit",
-          id: "Aturan notifikasi, kanal, dan audit pengiriman",
-          zh: "通知策略、渠道与发送审计",
+          en: "Notification execution and audit",
+          id: "Eksekusi notifikasi dan audit",
+          zh: "通知执行与发送审计",
         }[lang],
       ),
     );

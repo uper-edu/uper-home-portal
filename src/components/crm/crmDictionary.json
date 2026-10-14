@@ -1,0 +1,3618 @@
+[
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "timestamp",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "staffName",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "channel",
+    "type": "'WhatsApp' | 'Phone Call' | 'Campus Visit' | 'Email' | 'Other'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "connectStatus",
+    "type": "'Connected' | 'No Response' | 'Wrong Number' | 'Interested'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "previousStage",
+    "type": "'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "newStage",
+    "type": "'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "buyingSignalDetected",
+    "type": "'Asked price' | 'Asked schedule' | 'Asked payment' | 'Ready to enroll' | 'Ready to enrol' | 'None yet'",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "summary",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "nextAction",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "recordKind",
+    "type": "\"contact\" | \"closure\"",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "requestId",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "completeTaskIds",
+    "type": "string[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "disposition",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "nextFollowUpAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "role",
+    "type": "'user' | 'assistant' | 'system'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "content",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "timestamp",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "timestampKnown",
+    "type": "boolean",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "created_at",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "status",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "source",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "error",
+    "type": "string | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "originalTimestamp",
+    "type": "unknown",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "metadata",
+    "type": "{ followupAction?: string; taskId?: string | null; language?: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "metadata.followupAction",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "metadata.taskId",
+    "type": "string | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "metadata.language",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "unreadCount",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "observedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "latest",
+    "type": "{ type: string; at: string; source?: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "latest.type",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "latest.at",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "latest.source",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks",
+    "type": "Array<{ id: string; kind: string; ownerId: string | null; status: string; dueAt: string; details?: { action?: string; purpose?: string; sourceMessageId?: string; sourceConversationId?: string; }; }>",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.kind",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.ownerId",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.status",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.dueAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.details",
+    "type": "{ action?: string; purpose?: string; sourceMessageId?: string; sourceConversationId?: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.details.action",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.details.purpose",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.details.sourceMessageId",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.details.sourceConversationId",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "isMine",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "ownerChangedAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceRecords",
+    "type": "Array<{ campaignId: string; confirmed: boolean; mode: \"onsite\" | \"online\"; reason: string; actor: string; recordedAt: string; }>",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceRecords.campaignId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceRecords.confirmed",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceRecords.mode",
+    "type": "\"onsite\" | \"online\"",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceRecords.reason",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceRecords.actor",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceRecords.recordedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "communicationLanguage",
+    "type": "\"en\" | \"id\" | \"zh\" | \"unknown\"",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactArrangement",
+    "type": "{ state: \"active\" | \"waiting\" | \"nurture\" | \"stopped\"; reason: string; reviewAt?: string; at: string; actor: string; version: number; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactArrangement.state",
+    "type": "\"active\" | \"waiting\" | \"nurture\" | \"stopped\"",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactArrangement.reason",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactArrangement.reviewAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactArrangement.at",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactArrangement.actor",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactArrangement.version",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactStats",
+    "type": "ReturnType<typeof import(\"../utils/crmContact\").contactStatistics>",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attention",
+    "type": "LeadAttention",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "businessNumber",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "entryPoint",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "campaign",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "campaignId",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "placement",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "hookType",
+    "type": "'hsk_assessment' | 'trial_class' | 'consultation' | 'scholarship_materials' | 'webinar' | 'mbti_test' | 'download_guide' | 'referral'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "hookContext",
+    "type": "'campus_career_talk' | 'school_talk' | 'paid_social' | 'organic_dm' | 'website' | 'webinar' | 'expo' | 'referral'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "submittedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "fullName",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "whatsapp",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "email",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "currentStatus",
+    "type": "'Working professional' | 'Fresh graduate' | 'University student' | 'High school student' | 'Teacher or school staff' | 'Other'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "parentContact",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "goal",
+    "type": "'Work in China' | 'Work at a Chinese or China-Indonesia joint venture company in Indonesia' | 'Study in China or scholarship' | 'Prepare for HSK certification' | 'Improve my Mandarin skills' | 'Other'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "goals",
+    "type": "GoalType[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "reportedLevel",
+    "type": "'Complete beginner' | 'Beginner' | 'Not sure' | 'HSK 1' | 'HSK 2' | 'HSK 3' | 'HSK 4+'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "levelState",
+    "type": "'KNOWN' | 'PARTIAL' | 'ZERO'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "city",
+    "type": "'Jakarta' | 'Other'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "mode",
+    "type": "'Offline' | 'Online' | 'Not sure'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "levelConfirmed",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "levelSource",
+    "type": "'self' | 'assessment' | 'trial' | 'mixed'",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizScore",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizMaxScore",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "latestAssessment",
+    "type": "import('../data/hskAssessment').HskResult",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "assessmentProvenance",
+    "type": "'server_recomputed_adapted_paper' | 'legacy_unverified'",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "totalQuestions",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizBreakdown",
+    "type": "{ hsk1Correct?: number; hsk1Total?: number; hsk2Correct?: number; hsk2Total?: number; hsk3Correct?: number; hsk3Total?: number; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizBreakdown.hsk1Correct",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizBreakdown.hsk1Total",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizBreakdown.hsk2Correct",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizBreakdown.hsk2Total",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizBreakdown.hsk3Correct",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizBreakdown.hsk3Total",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "quizResultSummary",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "tier",
+    "type": "'Hot' | 'Warm-Offline' | 'Warm-Online' | 'School' | 'Cold-Nurture'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "tierPredicted",
+    "type": "'Hot' | 'Warm-Offline' | 'Warm-Online' | 'School' | 'Cold-Nurture'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "tierConfirmed",
+    "type": "'Hot' | 'Warm-Offline' | 'Warm-Online' | 'School' | 'Cold-Nurture'",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "tierSource",
+    "type": "'predicted' | 'sales_confirmed' | 'behaviour_override' | 'buying_signal'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "tierUpdatedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "flag",
+    "type": "'Skip Assessment' | 'Assessment Needed'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "slaDueTime",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "currentStage",
+    "type": "'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "stageUpdatedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "buyingSignal",
+    "type": "'Asked price' | 'Asked schedule' | 'Asked payment' | 'Ready to enroll' | 'Ready to enrol' | 'None yet'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "buyingSignals",
+    "type": "BuyingSignalType[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "connectStatus",
+    "type": "'Connected' | 'No Response' | 'Wrong Number' | 'Interested'",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "touchCount",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "owner",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "followUpDisposition",
+    "type": "{ kind: string; reason: string; at: string; actor: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "followUpDisposition.kind",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "followUpDisposition.reason",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "followUpDisposition.at",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "followUpDisposition.actor",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "nextAction",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "nextFollowUpAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "reminderSent",
+    "type": "boolean",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "attendanceConfirmed",
+    "type": "boolean",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "outcome",
+    "type": "'Enrolled' | 'Paid' | 'Hold' | 'Lost'",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrolledClass",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "revenue",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "followUpLogs",
+    "type": "FollowUpLog[]",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "chatTranscript",
+    "type": "ChatTranscriptMessage[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "lastContactedAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "updatedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "entryPoint",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "campaign",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "placement",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "hookType",
+    "type": "'hsk_assessment' | 'trial_class' | 'consultation' | 'scholarship_materials' | 'webinar' | 'mbti_test' | 'download_guide' | 'referral'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "hookContext",
+    "type": "'campus_career_talk' | 'school_talk' | 'paid_social' | 'organic_dm' | 'website' | 'webinar' | 'expo' | 'referral'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "submittedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "fullName",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "whatsapp",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "email",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "currentStatus",
+    "type": "'Working professional' | 'Fresh graduate' | 'University student' | 'High school student' | 'Teacher or school staff' | 'Other'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "parentContact",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "goal",
+    "type": "'Work in China' | 'Work at a Chinese or China-Indonesia joint venture company in Indonesia' | 'Study in China or scholarship' | 'Prepare for HSK certification' | 'Improve my Mandarin skills' | 'Other'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "goals",
+    "type": "GoalType[]",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "reportedLevel",
+    "type": "'Complete beginner' | 'Beginner' | 'Not sure' | 'HSK 1' | 'HSK 2' | 'HSK 3' | 'HSK 4+'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "levelState",
+    "type": "'KNOWN' | 'PARTIAL' | 'ZERO'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "city",
+    "type": "'Jakarta' | 'Other'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "cityDetail",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "mode",
+    "type": "'Offline' | 'Online' | 'Not sure'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "levelConfirmed",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "levelSource",
+    "type": "'self' | 'assessment' | 'trial' | 'mixed'",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "buyingSignal",
+    "type": "'Asked price' | 'Asked schedule' | 'Asked payment' | 'Ready to enroll' | 'Ready to enrol' | 'None yet'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "buyingSignals",
+    "type": "BuyingSignalType[]",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "nextStepInterest",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "hskExamPlan",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "tier",
+    "type": "'Hot' | 'Warm-Offline' | 'Warm-Online' | 'School' | 'Cold-Nurture'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "flag",
+    "type": "'Skip Assessment' | 'Assessment Needed'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "tierSource",
+    "type": "'predicted' | 'sales_confirmed' | 'behaviour_override' | 'buying_signal'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizScore",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizMaxScore",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "latestAssessment",
+    "type": "import(\"../data/hskAssessment\").HskResult",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "assessmentProvenance",
+    "type": "\"server_recomputed_adapted_paper\" | \"legacy_unverified\"",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "totalQuestions",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizResultSummary",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizBreakdown",
+    "type": "{ hsk1Correct?: number; hsk1Total?: number; hsk2Correct?: number; hsk2Total?: number; hsk3Correct?: number; hsk3Total?: number; }",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizBreakdown.hsk1Correct",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizBreakdown.hsk1Total",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizBreakdown.hsk2Correct",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizBreakdown.hsk2Total",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizBreakdown.hsk3Correct",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "quizBreakdown.hsk3Total",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "chatTranscript",
+    "type": "Array<{ id: string; role: 'user' | 'assistant' | 'system'; content: string; timestamp: string; }>",
+    "optional": true,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "chatTranscript.id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "chatTranscript.role",
+    "type": "'user' | 'assistant' | 'system'",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "chatTranscript.content",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadProfile",
+    "key": "chatTranscript.timestamp",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/leadSystem.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "utm_source",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "utm_medium",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "utm_campaign",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "utm_term",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "utm_content",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "defaultHook",
+    "type": "'hsk_assessment' | 'trial_class' | 'consultation' | 'scholarship_materials' | 'webinar' | 'mbti_test' | 'download_guide' | 'referral'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "defaultContext",
+    "type": "'campus_career_talk' | 'school_talk' | 'paid_social' | 'organic_dm' | 'website' | 'webinar' | 'expo' | 'referral'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BoundUtmConfig",
+    "key": "defaultLang",
+    "type": "'en' | 'id' | 'zh'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "posterHeading",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "posterSubheading",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "socialCopy",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "whatsappInvitation",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "chatWelcomeGreeting",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "presentationOutline",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "deskTentBullets",
+    "type": "string[]",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets",
+    "type": "{ posterHeading: string; posterSubheading: string; socialCopy: string; whatsappInvitation: string; chatWelcomeGreeting: string; presentationOutline: string; deskTentBullets: string[]; }",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets.posterHeading",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets.posterSubheading",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets.socialCopy",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets.whatsappInvitation",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets.chatWelcomeGreeting",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets.presentationOutline",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "idAssets.deskTentBullets",
+    "type": "string[]",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets",
+    "type": "{ posterHeading: string; posterSubheading: string; socialCopy: string; whatsappInvitation: string; chatWelcomeGreeting: string; presentationOutline: string; deskTentBullets: string[]; }",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets.posterHeading",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets.posterSubheading",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets.socialCopy",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets.whatsappInvitation",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets.chatWelcomeGreeting",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets.presentationOutline",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
+    "key": "enAssets.deskTentBullets",
+    "type": "string[]",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "impressions",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "leadsCount",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "hotLeadsCount",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "assessedCount",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "enrolledCount",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "totalRevenue",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "conversionRate",
+    "type": "number | null",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "assessmentRate",
+    "type": "number | null",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "confirmedAttendanceCount",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "onsiteAttendanceCount",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "onlineAttendanceCount",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "revenueMissingCount",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "budgetCost",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignClosedLoopStats",
+    "key": "roi",
+    "type": "number | null",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "code",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "name",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "nameEn",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "type",
+    "type": "'campus_seminar' | 'enterprise_roadshow' | 'webinar_class' | 'social_paid_ad' | 'community_referral' | 'education_fair' | 'other'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "status",
+    "type": "'planning' | 'active' | 'completed' | 'archived'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "organizer",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "startDate",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "endDate",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "startTime",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "endTime",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "scheduleNotes",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "locationType",
+    "type": "'offline' | 'online' | 'hybrid'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "city",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "venue",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "address",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "onlineLink",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "targetAudience",
+    "type": "string[]",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "keyTopics",
+    "type": "string[]",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "speakers",
+    "type": "Array<{ name: string; title: string; bio?: string; }>",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "speakers.name",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "speakers.title",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "speakers.bio",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "boundUtm",
+    "type": "BoundUtmConfig",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "aiAssets",
+    "type": "CampaignAiAssets",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "stats",
+    "type": "CampaignClosedLoopStats",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "createdAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "updatedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "TimeDuration",
+    "key": "value",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "TimeDuration",
+    "key": "unit",
+    "type": "'minutes' | 'hours' | 'days'",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BusinessHoursPolicy",
+    "key": "timezone",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BusinessHoursPolicy",
+    "key": "startTime",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BusinessHoursPolicy",
+    "key": "endTime",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BusinessHoursPolicy",
+    "key": "workDays",
+    "type": "number[]",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "BusinessHoursPolicy",
+    "key": "nextDayGraceTime",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FirstResponseSlaPolicy",
+    "key": "hot",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FirstResponseSlaPolicy",
+    "key": "warm",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FirstResponseSlaPolicy",
+    "key": "cold",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "NoResponseCadencePolicy",
+    "key": "retryInterval",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "NoResponseCadencePolicy",
+    "key": "maxRetriesBeforeNurture",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "InactivityWatchdogPolicy",
+    "key": "hotInactivity",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "InactivityWatchdogPolicy",
+    "key": "warmInactivity",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "InactivityWatchdogPolicy",
+    "key": "coldInactivity",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "MilestoneCadencePolicy",
+    "key": "trialReminderBefore",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "MilestoneCadencePolicy",
+    "key": "trialFollowUpAfter",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "MilestoneCadencePolicy",
+    "key": "assessmentFollowUpAfter",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ReactivationPolicy",
+    "key": "reactivatedResponse",
+    "type": "TimeDuration",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "version",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "updatedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "businessHours",
+    "type": "BusinessHoursPolicy",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "firstResponseSla",
+    "type": "FirstResponseSlaPolicy",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "noResponseCadence",
+    "type": "NoResponseCadencePolicy",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "inactivityWatchdog",
+    "type": "InactivityWatchdogPolicy",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "milestones",
+    "type": "MilestoneCadencePolicy",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "reactivation",
+    "type": "ReactivationPolicy",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "calendarMode",
+    "type": "\"inherit\" | \"custom\"",
+    "optional": true,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "quiet",
+    "type": "{ start: string; end: string; }",
+    "optional": true,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "quiet.start",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "quiet.end",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "teams",
+    "type": "string[]",
+    "optional": true,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "event",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "channels",
+    "type": "Channel[]",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "recipient",
+    "type": "\"owner\" | \"team\" | \"supervisor\"",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "team",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "group",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "sources",
+    "type": "string[]",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "tiers",
+    "type": "string[]",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "states",
+    "type": "string[]",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "timing",
+    "type": "\"immediate\" | \"delay\" | \"digest\"",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "delayMinutes",
+    "type": "number",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "digestTime",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "businessOnly",
+    "type": "boolean",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "timezone",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "days",
+    "type": "number[]",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "start",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "end",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "dedupeMinutes",
+    "type": "number",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "maxPerHour",
+    "type": "number",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "retries",
+    "type": "number[]",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "template",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "language",
+    "type": "\"zh\" | \"en\" | \"id\"",
+    "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "id",
+    "type": "string",
+    "optional": false,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "displayName",
+    "type": "string",
+    "optional": true,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "roles",
+    "type": "string[]",
+    "optional": true,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "active",
+    "type": "boolean",
+    "optional": true,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "teams",
+    "type": "string[]",
+    "optional": false,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "permissions",
+    "type": "string[]",
+    "optional": false,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
+    "key": "scope",
+    "type": "\"all\" | \"team\" | \"own\"",
+    "optional": false,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_schema_versions",
+    "key": "version",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_schema_versions",
+    "key": "state",
+    "type": "VARCHAR(16)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_schema_versions",
+    "key": "updated_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_settings",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_settings",
+    "key": "value",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "lead_daily_counters",
+    "key": "business_date",
+    "type": "CHAR(8)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "lead_daily_counters",
+    "key": "last_value",
+    "type": "BIGINT UNSIGNED",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_leads",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_leads",
+    "key": "business_number",
+    "type": "VARCHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_leads",
+    "key": "profile",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_leads",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "visitor_sessions",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "visitor_sessions",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "visitor_sessions",
+    "key": "expires_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "conversations",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "conversations",
+    "key": "visitor_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "conversations",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "conversations",
+    "key": "source",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "conversations",
+    "key": "attribution",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "conversations",
+    "key": "updated_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "conversation_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "request_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "role",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "content",
+    "type": "LONGTEXT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "status",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "model",
+    "type": "VARCHAR(100)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "error",
+    "type": "TEXT",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "metadata",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "messages",
+    "key": "sequence",
+    "type": "BIGINT UNSIGNED",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "ai_attempts",
+    "key": "id",
+    "type": "BIGINT UNSIGNED",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "ai_attempts",
+    "key": "message_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "ai_attempts",
+    "key": "model",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "ai_attempts",
+    "key": "content",
+    "type": "LONGTEXT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "ai_attempts",
+    "key": "error",
+    "type": "TEXT",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "ai_attempts",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "kind",
+    "type": "VARCHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "owner_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "status",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "due_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "details",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "open_kind",
+    "type": "VARCHAR(64)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "outbox",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "outbox",
+    "key": "type",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "outbox",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "outbox",
+    "key": "payload",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "outbox",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "outbox",
+    "key": "processed_at",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_rules",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_rules",
+    "key": "version",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_rules",
+    "key": "config",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_rules",
+    "key": "enabled",
+    "type": "BOOLEAN",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_rules",
+    "key": "effective_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "rule_versions",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "rule_versions",
+    "key": "version",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "rule_versions",
+    "key": "config",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_channels",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_channels",
+    "key": "config",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "event_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "rule_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "version",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "channel",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "recipient",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "state",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "due_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "attempts",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "lease_until",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "result",
+    "type": "TEXT",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "snapshot",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_jobs",
+    "key": "completed_at",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_inbox",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_inbox",
+    "key": "employee_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_inbox",
+    "key": "content",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_inbox",
+    "key": "read_at",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_audit",
+    "key": "id",
+    "type": "BIGINT UNSIGNED",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_audit",
+    "key": "actor",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_audit",
+    "key": "action",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_audit",
+    "key": "data",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "portal_audit",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "identity_candidates",
+    "key": "visitor_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "identity_candidates",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "identity_candidates",
+    "key": "candidate_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "lead_read_marks",
+    "key": "employee_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "lead_read_marks",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "lead_read_marks",
+    "key": "seen_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "hsk_attempts",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "hsk_attempts",
+    "key": "visitor_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "hsk_attempts",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "hsk_attempts",
+    "key": "input_hash",
+    "type": "VARCHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "hsk_attempts",
+    "key": "attempt",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "hsk_attempts",
+    "key": "result",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "hsk_attempts",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "login_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "display_name",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "password_hash",
+    "type": "TEXT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "roles",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "teams",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "active",
+    "type": "BOOLEAN",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "login_key",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_sessions",
+    "key": "token_hash",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_sessions",
+    "key": "user_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_sessions",
+    "key": "expires_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_login_limits",
+    "key": "key",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_login_limits",
+    "key": "failures",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_login_limits",
+    "key": "window_start",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_campaigns",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_campaigns",
+    "key": "code",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_campaigns",
+    "key": "config",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_campaigns",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_members",
+    "key": "site_user_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_members",
+    "key": "employee_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_members",
+    "key": "mode",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "trial_members",
+    "key": "active",
+    "type": "BOOLEAN",
+    "optional": false,
+    "source": "cloud/mysql/schema.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_collections",
+    "key": "name",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_collections",
+    "key": "revision",
+    "type": "BIGINT UNSIGNED",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_collections",
+    "key": "items",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_collections",
+    "key": "updated_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_media",
+    "key": "id",
+    "type": "CHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_media",
+    "key": "mime",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_media",
+    "key": "content",
+    "type": "MEDIUMBLOB",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_media",
+    "key": "uploaded_by",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_media",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "kind",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "request_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "input_hash",
+    "type": "CHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "visitor_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "payload",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "attachment",
+    "type": "MEDIUMBLOB",
+    "optional": true,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "attachment_name",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "site_submissions",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/schema-v2.sql"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_migration_holds",
+    "key": "kind",
+    "type": "VARCHAR(16)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_migration_holds",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_migration_holds",
+    "key": "held_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "notification_migration_holds",
+    "key": "reason",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_media",
+    "key": "legacy_name",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "cms_collections",
+    "key": "items_text",
+    "type": "LONGTEXT",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  }
+]

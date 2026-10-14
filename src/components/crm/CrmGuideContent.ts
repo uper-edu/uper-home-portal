@@ -1,27 +1,116 @@
 export type GuideLanguage = "en" | "id" | "zh";
 export const guideSections = [
- {key:'process-and-marketing-metrics',title:['Sales process and campaign measurement','Proses penjualan dan pengukuran kampanye','销售过程与营销统计'],body:[
- ['The process overview uses the current filtered customers within your access scope. Leaders see it expanded and can inspect groups by current owner; sales can expand their own scope. It is a lifetime cohort snapshot, not a daily employee ranking. Contact attempts are auxiliary; human two-way communication, unresolved tasks and valid future arrangements are the main signals.','Ringkasan proses memakai pelanggan terfilter dalam cakupan akses Anda. Leader melihatnya terbuka dan dapat meninjau kelompok berdasarkan penanggung jawab saat ini; sales dapat membuka cakupannya sendiri. Ini adalah kondisi kelompok sejak pendaftaran, bukan peringkat harian karyawan. Upaya kontak adalah pendukung; komunikasi manusia dua arah, tugas belum selesai, dan rencana lanjutan yang valid menjadi sinyal utama.','过程概览只使用权限内当前筛选客户。管理者默认展开，可按当前负责人查看；销售可自行展开。它是自登记以来的客户群快照，不是员工每日排名。联系尝试仅为辅助，重点看人工双向沟通、未完成事项和有效后续安排。'],
- ['First human contact is elapsed time from registration to the first submitted contact record, including unanswered attempts. The first successful two-way contact is measured separately. AI replies, administrative records and missing times do not count. Record submission time is not an exact call time. Unassigned wait needs a recorded ownership change. Current stage duration needs a stage timestamp and excludes closed customers. Missing evidence is not zero. These are natural elapsed durations, not working-hour SLA calculations.','Kontak staf pertama adalah durasi sejak pendaftaran hingga catatan kontak pertama dikirim, termasuk upaya tanpa balasan. Kontak dua arah berhasil pertama diukur terpisah. Balasan AI, catatan administratif, dan waktu hilang tidak dihitung. Waktu pengiriman catatan bukan waktu telepon tepat. Waktu belum ditugaskan memerlukan perubahan penanggung jawab tercatat. Durasi tahap saat ini memerlukan waktu tahap dan mengecualikan pelanggan tertutup. Bukti hilang bukan nol. Durasi ini adalah waktu berlalu alami, bukan perhitungan SLA jam kerja.','首条人工联系按登记到首条人工联系记录提交的自然时长计算，包含未接通尝试；首次有效双向沟通另计。AI 回复、非联系记录及缺失时间不计入。记录提交时间不是精确通话发生时间。未分配时长须有归属变化时间，当前阶段停留须有阶段时间且不含关闭客户。缺失证据不是零。这些自然时长不等于按工作日历计算的 SLA。'],
- ['Current overdue means an unfinished task with a real past deadline. A historical overdue event or a completed task is not current overdue. Late completion uses the processing record time and is shown separately. Unknown or historical tasks go to evidence review, not a fabricated no-task count.','Terlambat saat ini berarti tugas belum selesai dengan tenggat nyata yang telah lewat. Peristiwa terlambat historis atau tugas selesai bukan keterlambatan saat ini. Penyelesaian terlambat memakai waktu catatan pemrosesan dan ditampilkan terpisah. Tugas historis atau tidak diketahui masuk tinjauan bukti, bukan jumlah tanpa tugas yang direkayasa.','当前逾期是有真实过去期限的未完成任务；历史逾期事件及已完成任务不计入。逾期后处理使用处理记录提交时间，单独呈现。时间未知或历史任务进入证据待核实，不假装没有任务。'],
- ['Campaigns count saved registrations, server assessment evidence, staff-confirmed participation and enrollment separately. Participation is recorded in Profile with a campaign, onsite/online mode and check-in or meeting evidence; it never follows automatically from a questionnaire, test or trial stage. A correction requires a reason and retains its audit; repeated saves do not duplicate attendance.','Kampanye menghitung pendaftaran tersimpan, bukti asesmen server, partisipasi terkonfirmasi staf, dan pendaftaran kelas secara terpisah. Partisipasi dicatat di Profil dengan kampanye, mode di lokasi/daring, serta bukti check-in atau pertemuan; tidak otomatis mengikuti kuesioner, tes, atau tahap uji coba. Koreksi memerlukan alasan dan menyimpan audit; penyimpanan berulang tidak menggandakan kehadiran.','活动分别统计已保存登记、服务端测评证据、员工确认参与和报名。参与在客户资料中选择活动、现场／线上方式并填写签到或会议依据；问卷、测评及试听阶段都不会自动确认出席。纠正须说明原因并保留审计，重复提交不重复计数。'],
- ['Enrollment share uses enrollment records divided by first-attributed saved customers; with no denominator it is not calculable. Repeated link opens are not unique visitors or QR attendance. Cross-campaign participation counts campaign-customer pairs, and can include customers acquired elsewhere. Recorded amounts and planned budget are not verified collections, actual spend, profit or ROI. A saved sales stage alone does not confirm a signed contract, assigned class, campus visit or payment; the timeline states the recorded status and does not invent missing class information. Campaign summary and cards use the same campaign search, type and status filters. Customer counts follow access permissions and do not inherit worklist filters. Public onboarding links expose campaign content, not CRM metrics.','Proporsi pendaftaran kelas memakai catatan pendaftaran kelas dibagi pelanggan tersimpan dengan atribusi pertama; tanpa penyebut, rasio tidak dapat dihitung. Pembukaan tautan berulang bukan pengunjung unik atau kehadiran QR. Partisipasi lintas kampanye menghitung pasangan kampanye-pelanggan dan dapat mencakup pelanggan dari kampanye lain. Nominal tercatat dan anggaran rencana bukan penerimaan terverifikasi, pengeluaran aktual, laba, atau ROI. Tahap penjualan tersimpan saja tidak membuktikan kontrak, kelas yang ditetapkan, kunjungan kampus, atau pembayaran; linimasa menampilkan status tercatat tanpa mengarang informasi kelas yang hilang. Ringkasan dan kartu kampanye memakai filter pencarian, jenis, dan status kampanye yang sama. Jumlah pelanggan mengikuti izin akses dan tidak mewarisi filter daftar kerja. Tautan onboarding publik menampilkan konten kampanye, bukan metrik CRM.','报名占比以报名记录除以首次归因登记客户；无分母时不可计算。重复链接访问不是独立访客或扫码到场。跨活动参与计活动—客户对，可包含从其他活动获客的客户。登记金额和计划预算不等于已核验收款、实际花费、利润或 ROI。仅保存销售阶段不能证明签约、班级分配、校区到访或缴费；时间轴只展示已记录状态，不补造缺失班级。营销汇总与活动卡片使用同一组活动搜索、类型及状态筛选；客户计数遵守权限，不继承工作列表筛选；公开问卷入口仅返回活动内容，不返回 CRM 指标。'],
- ]},
- {key:'visual-status',title:['Status colors and action priority','Warna status dan prioritas tindakan','状态颜色与操作优先级'],body:[
- ['Teal highlights primary actions and selection. Red means current overdue or failure; amber means due today or review; blue means unread new information; green means completed or confirmed. Customer group and historical context stay neutral. Buying signals open evidence in Profile and are not instructions to contact urgently.','Hijau kebiruan menandai tindakan utama dan pilihan. Merah berarti terlambat saat ini atau gagal; kuning berarti jatuh tempo hari ini atau perlu ditinjau; biru berarti informasi baru belum dibaca; hijau berarti selesai atau terkonfirmasi. Kelompok pelanggan dan konteks historis tetap netral. Sinyal pembelian membuka bukti di Profil, bukan instruksi menghubungi segera.','青绿色突出主操作与选中；红色表示当前逾期或失败，琥珀色表示今天到期或待核实，蓝色表示未读新信息，绿色表示完成或确认。客户分组及历史信息保持中性。购买信号仅打开资料依据，不等于立即联系指令。'],
- ]},
- {key:'failure-and-accessibility',title:['Recovery and keyboard access','Pemulihan dan akses keyboard','异常恢复与键盘操作'],body:[
- ['A failed save retains the draft and keeps the current customer. If the server accepted it but the reply was lost, retry without changing the draft; the same request is not saved twice.','Penyimpanan gagal mempertahankan draf dan pelanggan saat ini. Jika server menerima tetapi balasan hilang, coba lagi tanpa mengubah draf; permintaan yang sama tidak disimpan dua kali.','保存失败保留草稿和当前客户。服务器已保存但响应丢失时，保留原内容重试，同一请求不会重复保存。'],
- ['Temporary connection failure does not sign you out. If access changes, old customer details close and your own draft remains in this page memory. Reopen after access returns to continue. Refreshing or closing the page clears unsaved memory; explicit sign-out clears your drafts.','Gangguan koneksi sementara tidak mengeluarkan akun. Saat akses berubah, detail pelanggan ditutup dan draf sendiri tetap dalam memori halaman. Buka kembali setelah akses pulih. Memuat ulang/menutup halaman menghapus draf belum tersimpan; keluar akun menghapus draf Anda.','临时断线不会退出登录。权限变化会关闭旧客户资料，自己的草稿保留在当前页内存中；恢复权限后重新打开客户可继续。刷新或关闭页面会清除未保存的内存草稿，主动退出会清除自己的草稿。'],
- ['Use Tab and Shift+Tab to move between controls, arrow keys to navigate choices and tabs, Enter to select, and Escape to close a choice or contact preview. Errors receive focus. Mobile navigation wraps so all modules remain visible.','Gunakan Tab/Shift+Tab untuk berpindah kontrol, panah untuk pilihan dan tab, Enter untuk memilih, Escape untuk menutup pilihan atau pratinjau kontak. Fokus berpindah ke pesan kesalahan. Navigasi seluler membungkus agar semua modul terlihat.','使用Tab／Shift+Tab切换控件，方向键切换选项和页签，Enter选择，Escape关闭选项或联系预览；错误提示获得焦点。手机导航换行呈现全部模块。']
- ]},
- {key:'efficient-followup',title:['Daily sales work','Pekerjaan penjualan harian','日常销售跟进'],body:[
- ['Sales start in their own Needs handling queue; Leaders see all customers. Reset restores role defaults. Reading clears unread marks, not tasks.','Staf penjualan mulai dari antrean Perlu ditangani miliknya; Pengelola melihat semua pelanggan. Reset memulihkan tampilan peran. Membaca hanya menghapus tanda belum dibaca, bukan tugas.','销售默认进入本人需处理队列，管理者查看全部客户。重置恢复角色默认；读取只清除未读，不完成任务。'],
- ['Choose a contact result explicitly. Attempts and connected/replied records are separate; summaries retain staff original wording. Save and next advances only after server confirmation.','Pilih hasil kontak secara eksplisit. Percobaan dan kontak yang tersambung/dibalas dihitung terpisah; ringkasan mempertahankan teks asli staf. Simpan dan lanjut berpindah hanya setelah konfirmasi server.','联系结果必须主动选择；尝试与接通／回复分别统计，摘要保留员工原文。保存并下一位只在服务器确认后跳转。'],
- ['Customer language is independent of the interface. Preview and edit before WhatsApp or copying. Opening does not prove sending or contact.','Bahasa pelanggan terpisah dari antarmuka. Tinjau dan edit sebelum WhatsApp atau menyalin. Membuka tidak membuktikan pengiriman atau kontak.','客户沟通语言独立于界面；WhatsApp与复制前预览编辑，打开不代表发送或联系。'],
- ['Waiting and nurturing require a reason and review time. Stopping requires a reason. Existing deadlines remain; reminders become internal review. Restore contact with a reason, never automatically.','Menunggu dan pembinaan memerlukan alasan dan waktu tinjauan. Penghentian memerlukan alasan. Tenggat lama tetap; pengingat menjadi tinjauan internal. Pulihkan kontak dengan alasan, tidak otomatis.','等待和培育须填写原因与复查时间，停止须说明原因。原截止时间保留，提醒转内部复查；恢复须说明原因，不自动恢复。'],
- ['Missing Lark channels are configuration failures. Simulation is explicit; API acceptance is not group receipt. Sales and operations use CRM Bot with distinct labels.','Kanal Lark yang hilang adalah kegagalan konfigurasi. Simulasi dipilih eksplisit; penerimaan API bukan penerimaan grup. Penjualan dan operasional memakai CRM Bot dengan label berbeda.','缺失Lark渠道是配置失败；模拟须明确选择，接口接受不等于群内实收。销售与运营使用CRM Bot，并区分标签。']
- ]},
+  {
+    key: "process-and-marketing-metrics",
+    title: [
+      "Sales process and campaign measurement",
+      "Proses penjualan dan pengukuran kampanye",
+      "销售过程与营销统计",
+    ],
+    body: [
+      [
+        "The process overview uses the current filtered customers within your access scope. Managers see it expanded and can inspect groups by current owner; sales can expand their own scope. It is a lifetime cohort snapshot, not a daily employee ranking. Contact attempts are auxiliary; human two-way communication, unresolved tasks and valid future arrangements are the main signals.",
+        "Ringkasan proses memakai pelanggan terfilter dalam cakupan akses Anda. Manajer melihatnya terbuka dan dapat meninjau kelompok berdasarkan penanggung jawab saat ini; sales dapat membuka cakupannya sendiri. Ini adalah kondisi kelompok sejak pendaftaran, bukan peringkat harian karyawan. Upaya kontak adalah pendukung; komunikasi manusia dua arah, tugas belum selesai, dan rencana lanjutan yang valid menjadi sinyal utama.",
+        "过程概览只使用权限内当前筛选客户。管理者默认展开，可按当前负责人查看；销售可自行展开。它是自登记以来的客户群快照，不是员工每日排名。联系尝试仅为辅助，重点看人工双向沟通、未完成事项和有效后续安排。",
+      ],
+      [
+        "First human contact is elapsed time from registration to the first submitted contact record, including unanswered attempts. The first successful two-way contact is measured separately. AI replies, administrative records and missing times do not count. Record submission time is not an exact call time. Unassigned wait needs a recorded ownership change. Current stage duration needs a stage timestamp and excludes closed customers. Missing evidence is not zero. These are natural elapsed durations, not working-hour SLA calculations.",
+        "Kontak staf pertama adalah durasi sejak pendaftaran hingga catatan kontak pertama dikirim, termasuk upaya tanpa balasan. Kontak dua arah berhasil pertama diukur terpisah. Balasan AI, catatan administratif, dan waktu hilang tidak dihitung. Waktu pengiriman catatan bukan waktu telepon tepat. Waktu belum ditugaskan memerlukan perubahan penanggung jawab tercatat. Durasi tahap saat ini memerlukan waktu tahap dan mengecualikan pelanggan tertutup. Bukti hilang bukan nol. Durasi ini adalah waktu berlalu alami, bukan perhitungan SLA jam kerja.",
+        "首条人工联系按登记到首条人工联系记录提交的自然时长计算，包含未接通尝试；首次有效双向沟通另计。AI 回复、非联系记录及缺失时间不计入。记录提交时间不是精确通话发生时间。未分配时长须有归属变化时间，当前阶段停留须有阶段时间且不含关闭客户。缺失证据不是零。这些自然时长不等于按工作日历计算的 SLA。",
+      ],
+      [
+        "Current overdue means an unfinished task with a real past deadline. A historical overdue event or a completed task is not current overdue. Late completion uses the processing record time and is shown separately. Unknown or historical tasks go to evidence review, not a fabricated no-task count.",
+        "Terlambat saat ini berarti tugas belum selesai dengan tenggat nyata yang telah lewat. Peristiwa terlambat historis atau tugas selesai bukan keterlambatan saat ini. Penyelesaian terlambat memakai waktu catatan pemrosesan dan ditampilkan terpisah. Tugas historis atau tidak diketahui masuk tinjauan bukti, bukan jumlah tanpa tugas yang direkayasa.",
+        "当前逾期是有真实过去期限的未完成任务；历史逾期事件及已完成任务不计入。逾期后处理使用处理记录提交时间，单独呈现。时间未知或历史任务进入证据待核实，不假装没有任务。",
+      ],
+      [
+        "Campaigns count saved registrations, server assessment evidence, staff-confirmed participation and enrollment separately. Participation is recorded in Profile with a campaign, onsite/online mode and check-in or meeting evidence; it never follows automatically from a questionnaire, test or trial stage. A correction requires a reason and retains its audit; repeated saves do not duplicate attendance.",
+        "Kampanye menghitung pendaftaran tersimpan, bukti asesmen server, partisipasi terkonfirmasi staf, dan pendaftaran kelas secara terpisah. Partisipasi dicatat di Profil dengan kampanye, mode di lokasi/daring, serta bukti check-in atau pertemuan; tidak otomatis mengikuti kuesioner, tes, atau tahap uji coba. Koreksi memerlukan alasan dan menyimpan audit; penyimpanan berulang tidak menggandakan kehadiran.",
+        "活动分别统计已保存登记、服务端测评证据、员工确认参与和报名。参与在客户资料中选择活动、现场／线上方式并填写签到或会议依据；问卷、测评及试听阶段都不会自动确认出席。纠正须说明原因并保留审计，重复提交不重复计数。",
+      ],
+      [
+        "Enrollment share uses enrollment records divided by first-attributed saved customers; with no denominator it is not calculable. Repeated link opens are not unique visitors or QR attendance. Cross-campaign participation counts campaign-customer pairs, and can include customers acquired elsewhere. Recorded amounts and planned budget are not verified collections, actual spend, profit or ROI. A saved sales stage alone does not confirm a signed contract, assigned class, campus visit or payment; the timeline states the recorded status and does not invent missing class information. Campaign summary and cards use the same campaign search, type and status filters. Customer counts follow access permissions and do not inherit worklist filters. Public onboarding links expose campaign content, not CRM metrics.",
+        "Proporsi pendaftaran kelas memakai catatan pendaftaran kelas dibagi pelanggan tersimpan dengan atribusi pertama; tanpa penyebut, rasio tidak dapat dihitung. Pembukaan tautan berulang bukan pengunjung unik atau kehadiran QR. Partisipasi lintas kampanye menghitung pasangan kampanye-pelanggan dan dapat mencakup pelanggan dari kampanye lain. Nominal tercatat dan anggaran rencana bukan penerimaan terverifikasi, pengeluaran aktual, laba, atau ROI. Tahap penjualan tersimpan saja tidak membuktikan kontrak, kelas yang ditetapkan, kunjungan kampus, atau pembayaran; linimasa menampilkan status tercatat tanpa mengarang informasi kelas yang hilang. Ringkasan dan kartu kampanye memakai filter pencarian, jenis, dan status kampanye yang sama. Jumlah pelanggan mengikuti izin akses dan tidak mewarisi filter daftar kerja. Tautan onboarding publik menampilkan konten kampanye, bukan metrik CRM.",
+        "报名占比以报名记录除以首次归因登记客户；无分母时不可计算。重复链接访问不是独立访客或扫码到场。跨活动参与计活动—客户对，可包含从其他活动获客的客户。登记金额和计划预算不等于已核验收款、实际花费、利润或 ROI。仅保存销售阶段不能证明签约、班级分配、校区到访或缴费；时间轴只展示已记录状态，不补造缺失班级。营销汇总与活动卡片使用同一组活动搜索、类型及状态筛选；客户计数遵守权限，不继承工作列表筛选；公开问卷入口仅返回活动内容，不返回 CRM 指标。",
+      ],
+    ],
+  },
+  {
+    key: "visual-status",
+    title: [
+      "Status colors and action priority",
+      "Warna status dan prioritas tindakan",
+      "状态颜色与操作优先级",
+    ],
+    body: [
+      [
+        "Teal highlights primary actions and selection. Red means current overdue or failure; amber means due today or review; blue means unread new information; green means completed or confirmed. Customer group and historical context stay neutral. Buying signals open evidence in Profile and are not instructions to contact urgently.",
+        "Hijau kebiruan menandai tindakan utama dan pilihan. Merah berarti terlambat saat ini atau gagal; kuning berarti jatuh tempo hari ini atau perlu ditinjau; biru berarti informasi baru belum dibaca; hijau berarti selesai atau terkonfirmasi. Kelompok pelanggan dan konteks historis tetap netral. Sinyal pembelian membuka bukti di Profil, bukan instruksi menghubungi segera.",
+        "青绿色突出主操作与选中；红色表示当前逾期或失败，琥珀色表示今天到期或待核实，蓝色表示未读新信息，绿色表示完成或确认。客户分组及历史信息保持中性。购买信号仅打开资料依据，不等于立即联系指令。",
+      ],
+    ],
+  },
+  {
+    key: "failure-and-accessibility",
+    title: [
+      "Recovery and keyboard access",
+      "Pemulihan dan akses keyboard",
+      "异常恢复与键盘操作",
+    ],
+    body: [
+      [
+        "A failed save retains the draft and keeps the current customer. If the server accepted it but the reply was lost, retry without changing the draft; the same request is not saved twice.",
+        "Penyimpanan gagal mempertahankan draf dan pelanggan saat ini. Jika server menerima tetapi balasan hilang, coba lagi tanpa mengubah draf; permintaan yang sama tidak disimpan dua kali.",
+        "保存失败保留草稿和当前客户。服务器已保存但响应丢失时，保留原内容重试，同一请求不会重复保存。",
+      ],
+      [
+        "Temporary connection failure does not sign you out. If access changes, old customer details close and your own draft remains in this page memory. Reopen after access returns to continue. Refreshing or closing the page clears unsaved memory; explicit sign-out clears your drafts.",
+        "Gangguan koneksi sementara tidak mengeluarkan akun. Saat akses berubah, detail pelanggan ditutup dan draf sendiri tetap dalam memori halaman. Buka kembali setelah akses pulih. Memuat ulang/menutup halaman menghapus draf belum tersimpan; keluar akun menghapus draf Anda.",
+        "临时断线不会退出登录。权限变化会关闭旧客户资料，自己的草稿保留在当前页内存中；恢复权限后重新打开客户可继续。刷新或关闭页面会清除未保存的内存草稿，主动退出会清除自己的草稿。",
+      ],
+      [
+        "Use Tab and Shift+Tab to move between controls, arrow keys to navigate choices and tabs, Enter to select, and Escape to close a choice or contact preview. Errors receive focus. Mobile module navigation stays on one row; scroll horizontally to reach other modules.",
+        "Gunakan Tab/Shift+Tab untuk berpindah kontrol, panah untuk pilihan dan tab, Enter untuk memilih, Escape untuk menutup pilihan atau pratinjau kontak. Fokus berpindah ke pesan kesalahan. Navigasi modul pada layar kecil tetap satu baris; geser untuk membuka modul lainnya.",
+        "使用Tab／Shift+Tab切换控件，方向键切换选项和页签，Enter选择，Escape关闭选项或联系预览；错误提示获得焦点。手机模块导航保持单行；横向滚动可进入其他模块。",
+      ],
+    ],
+  },
+  {
+    key: "efficient-followup",
+    title: ["Daily sales work", "Pekerjaan penjualan harian", "日常销售跟进"],
+    body: [
+      [
+        "Sales start in their own Needs handling queue; Managers see all customers. Reset restores role defaults. Reading clears unread marks, not tasks.",
+        "Staf penjualan mulai dari antrean Perlu ditangani miliknya; Pengelola melihat semua pelanggan. Reset memulihkan tampilan peran. Membaca hanya menghapus tanda belum dibaca, bukan tugas.",
+        "销售默认进入本人需处理队列，管理者查看全部客户。重置恢复角色默认；读取只清除未读，不完成任务。",
+      ],
+      [
+        "Choose a contact result explicitly. Attempts and connected/replied records are separate; summaries retain staff original wording. Save and next advances only after server confirmation.",
+        "Pilih hasil kontak secara eksplisit. Percobaan dan kontak yang tersambung/dibalas dihitung terpisah; ringkasan mempertahankan teks asli staf. Simpan dan lanjut berpindah hanya setelah konfirmasi server.",
+        "联系结果必须主动选择；尝试与接通／回复分别统计，摘要保留员工原文。保存并下一位只在服务器确认后跳转。",
+      ],
+      [
+        "Customer language is independent of the interface. Preview and edit before WhatsApp or copying. Opening does not prove sending or contact.",
+        "Bahasa pelanggan terpisah dari antarmuka. Tinjau dan edit sebelum WhatsApp atau menyalin. Membuka tidak membuktikan pengiriman atau kontak.",
+        "客户沟通语言独立于界面；WhatsApp与复制前预览编辑，打开不代表发送或联系。",
+      ],
+      [
+        "Waiting and nurturing require a reason and review time. Stopping requires a reason. Existing deadlines remain; reminders become internal review. Restore contact with a reason, never automatically.",
+        "Menunggu dan pembinaan memerlukan alasan dan waktu tinjauan. Penghentian memerlukan alasan. Tenggat lama tetap; pengingat menjadi tinjauan internal. Pulihkan kontak dengan alasan, tidak otomatis.",
+        "等待和培育须填写原因与复查时间，停止须说明原因。原截止时间保留，提醒转内部复查；恢复须说明原因，不自动恢复。",
+      ],
+      [
+        "Missing Lark channels are configuration failures. Simulation is explicit; API acceptance is not group receipt. Sales and operations use CRM Bot with distinct labels.",
+        "Kanal Lark yang hilang adalah kegagalan konfigurasi. Simulasi dipilih eksplisit; penerimaan API bukan penerimaan grup. Penjualan dan operasional memakai CRM Bot dengan label berbeda.",
+        "缺失Lark渠道是配置失败；模拟须明确选择，接口接受不等于群内实收。销售与运营使用CRM Bot，并区分标签。",
+      ],
+      [
+        "The home-page alert counts current notification problems. Historical failures frozen during migration remain in Delivery records with their original status and reason; they are not automatically replayed and do not imply a current channel outage.",
+        "Peringatan di halaman utama menghitung masalah notifikasi saat ini. Kegagalan lama yang dibekukan saat migrasi tetap tercatat dalam Riwayat pengiriman beserta status dan alasannya; tidak dikirim ulang otomatis dan tidak berarti kanal sedang bermasalah.",
+        "首页告警统计当前通知问题。迁移时冻结的历史失败仍在发送记录中保留原状态和原因，不会自动重发，也不代表当前渠道失效。",
+      ],
+    ],
+  },
   {
     key: "workspace",
     title: ["Customer workspace", "Ruang kerja pelanggan", "客户工作区"],
@@ -68,13 +157,13 @@ export const guideSections = [
         "客户资料中的负责人和销售阶段使用与主列表一致的选项样式。负责人可搜索，固定阶段列表无搜索。选择不同值会按现有权限立即保存；选择当前值不改动数据，Escape 关闭不保存。",
       ],
       [
-        "CRM requires staff sign-in. Suki and Robert are CRM Leaders; Fadhil, Zainul and Wigar are Sales; Tester has both roles. Use the top account menu to change your own password or sign out.",
-        "CRM mewajibkan login staf. Suki dan Robert adalah Pengelola CRM; Fadhil, Zainul, dan Wigar adalah staf penjualan; Tester memiliki kedua peran. Gunakan menu akun di bagian atas untuk mengubah kata sandi sendiri atau keluar.",
-        "访问 CRM 需要员工登录。Suki、Robert 为 CRM 管理者；Fadhil、Zainul、Wigar 为销售；Tester 同时具有两种角色。顶部账号菜单提供修改自己的密码和退出入口。",
+        "CRM requires staff sign-in. Suki, Robert, Ethan and Monite are CRM Managers; Fadhil, Zainul and Wigar are Sales; Tester has CRM Manager and Sales roles. Robert, Ethan and Monite also have CMS Operator access; Fenny is a CMS Operator only. Use the top account menu to change your own password or sign out.",
+        "CRM mewajibkan login staf. Suki, Robert, Ethan, dan Monite adalah Manajer CRM; Fadhil, Zainul, dan Wigar adalah staf penjualan; Tester memiliki peran Manajer CRM dan Sales. Robert, Ethan, dan Monite juga memiliki akses Operator CMS; Fenny hanya Operator CMS. Gunakan menu akun di bagian atas untuk mengubah kata sandi sendiri atau keluar.",
+        "访问 CRM 需要员工登录。Suki、Robert、Ethan、Monite 为 CRM 管理者；Fadhil、Zainul、Wigar 为销售；Tester 同时具有 CRM 管理者与销售角色。Robert、Ethan、Monite 同时具有 CMS 操作员权限，Fenny 仅为 CMS 操作员。顶部账号菜单提供修改自己的密码和退出入口。",
       ],
       [
-        "Leaders can view all leads and assign active Sales owners. Sales default to their own leads and may view eligible unassigned leads. Sales can claim an unassigned lead only for themselves and cannot transfer their leads to another salesperson. Sales Operations settings are restricted to Leaders; the server enforces these permissions.",
-        "Pemimpin dapat melihat semua prospek dan menetapkan staf penjualan aktif sebagai penanggung jawab. Staf penjualan secara default melihat prospek sendiri dan dapat melihat prospek belum ditugaskan yang memenuhi cakupan akses. Staf penjualan hanya dapat mengambil prospek untuk dirinya sendiri dan tidak dapat memindahkan prospek ke staf penjualan lain. Pengaturan Operasional Penjualan dibatasi untuk Pemimpin; server menerapkan izin ini.",
+        "Managers can view all leads and assign active Sales owners. Sales default to their own leads and may view eligible unassigned leads. Sales can claim an unassigned lead only for themselves and cannot transfer their leads to another salesperson. Sales Operations settings are restricted to Managers; the server enforces these permissions.",
+        "Manajer CRM dapat melihat semua prospek dan menetapkan staf penjualan aktif sebagai penanggung jawab. Staf penjualan secara default melihat prospek sendiri dan dapat melihat prospek belum ditugaskan yang memenuhi cakupan akses. Staf penjualan hanya dapat mengambil prospek untuk dirinya sendiri dan tidak dapat memindahkan prospek ke staf penjualan lain. Pengaturan Operasional Penjualan dibatasi untuk Manajer CRM; server menerapkan izin ini.",
         "管理者可以查看全部客户，并分配给有效销售账号。销售默认查看本人客户，也能查看权限范围内的未分配客户；只能认领给自己，不能将客户转给其他销售。销售运营配置仅管理者可修改，权限同时由服务端校验。",
       ],
     ],
@@ -198,8 +287,8 @@ export const guideSections = [
         "通知事件与触发条件保留搜索及历史值，多选面板选择后保持打开；清除只取消筛选条件，不删除客户数据。发送安排、工作日历、接收对象和渠道模式等固定选项使用相同面板，无搜索。选择本身不会启用草稿，仍须使用对应保存按钮。",
       ],
       [
-        "Configure the business event, searchable multi-select conditions, recipients, delivery timing, and reliability controls. Customer notifications go to the valid Owner; unassigned or invalid Owners route to CRM Leaders globally. Draft rules do not send. Enabled changes apply to new events; queued jobs retain their saved rule version.",
-        "Konfigurasikan peristiwa bisnis, kondisi pilihan jamak yang dapat dicari, penerima, waktu pengiriman, dan kontrol keandalan. Notifikasi pelanggan ditujukan ke Penanggung jawab yang valid; Penanggung jawab tidak valid atau belum ditugaskan dialihkan secara global ke Pengelola CRM. Aturan draf tidak mengirim. Perubahan yang diaktifkan berlaku untuk peristiwa baru; tugas antrean mempertahankan versi aturan tersimpan.",
+        "Configure the business event, searchable multi-select conditions, recipients, delivery timing, and reliability controls. Customer notifications go to the valid Owner; unassigned or invalid Owners route to CRM Managers globally. Draft rules do not send. Enabled changes apply to new events; queued jobs retain their saved rule version.",
+        "Konfigurasikan peristiwa bisnis, kondisi pilihan jamak yang dapat dicari, penerima, waktu pengiriman, dan kontrol keandalan. Notifikasi pelanggan ditujukan ke Penanggung jawab yang valid; Penanggung jawab tidak valid atau belum ditugaskan dialihkan secara global ke Manajer CRM. Aturan draf tidak mengirim. Perubahan yang diaktifkan berlaku untuk peristiwa baru; tugas antrean mempertahankan versi aturan tersimpan.",
         "配置业务事件、可搜索多选触发条件、接收对象、发送时间和可靠性控制。客户通知发送给有效 Owner；未分配或 Owner 无效时全局路由给 CRM 管理者。草稿不发送；启用后的修改作用于新事件，待发任务保留已保存的策略版本。",
       ],
       [
@@ -248,9 +337,19 @@ export const guideSections = [
     ],
     body: [
       [
-        "Use EN, ID or Chinese beside the theme control to switch directly between English, Indonesian and Chinese. The selected language is highlighted. Arrow keys change language; Home and End select the first and last choices. Original names, notes and conversations are preserved.",
-        "Gunakan EN, ID, atau Mandarin di sebelah tombol tema untuk langsung memilih bahasa Inggris, Indonesia, atau Mandarin. Pilihan aktif disorot. Tombol panah mengganti bahasa; Home dan End memilih opsi pertama dan terakhir. Nama, catatan, dan percakapan asli tetap dipertahankan.",
-        "点击主题按钮旁的 EN、ID 或中文直接切换语言，当前语言高亮显示。方向键切换语言，Home 和 End 选择首末项。姓名、备注和对话原文保持不变。",
+        "CMS and CRM share a header. Open Sales management or Content management in the workspace menu; only permitted workspaces are shown. View website opens a separate tab. The account menu shows your current workspace role, with all roles, Change password and Sign out inside. No permissions change when switching workspaces.",
+        "CMS dan CRM memakai header yang sama. Buka Manajemen penjualan atau Manajemen konten dari menu ruang kerja; hanya ruang kerja yang diizinkan ditampilkan. Lihat situs membuka tab baru. Menu akun menampilkan peran pada ruang kerja aktif, dengan semua peran, Ubah kata sandi, dan Keluar di dalam menu. Berpindah ruang kerja tidak mengubah izin.",
+        "CMS 和 CRM 使用统一头部。从工作区菜单进入销售管理或内容管理，仅显示有权限的入口。查看网站会打开新标签页。账号菜单显示当前工作区角色；完整角色、修改密码和退出在菜单内。切换工作区不会改变权限。",
+      ],
+      [
+        "Interface language and theme are shared across CMS and CRM on this browser. On narrow screens open Language and appearance; sales module navigation stays on a single horizontally scrollable row. Refresh, export and policy actions are beside the page content, not in the global header. Saving policies does not save notification configuration or an unfinished follow-up.",
+        "Bahasa antarmuka dan tema digunakan bersama CMS dan CRM pada browser ini. Pada layar kecil buka Bahasa dan tampilan; navigasi modul penjualan tetap dalam satu baris yang dapat digeser. Muat ulang, ekspor, dan tindakan kebijakan berada di dekat konten halaman, bukan di header global. Menyimpan kebijakan tidak menyimpan konfigurasi notifikasi atau tindak lanjut yang belum selesai.",
+        "同一浏览器中的 CMS 和 CRM 沿用相同界面语言和主题。窄屏中打开语言与外观；销售模块导航保持单行并支持横向滚动。刷新、导出和策略操作位于页面内容旁，不放在全局头部。保存策略不会保存通知配置或未完成的跟进记录。",
+      ],
+      [
+        "Use EN, ID or Chinese in the header preferences to switch directly between English, Indonesian and Chinese. The selected language is highlighted. Arrow keys change language; Home and End select the first and last choices. Original names, notes and conversations are preserved.",
+        "Gunakan EN, ID, atau Mandarin pada preferensi header untuk langsung memilih bahasa Inggris, Indonesia, atau Mandarin. Pilihan aktif disorot. Tombol panah mengganti bahasa; Home dan End memilih opsi pertama dan terakhir. Nama, catatan, dan percakapan asli tetap dipertahankan.",
+        "点击头部偏好区的 EN、ID 或中文直接切换语言，当前语言高亮显示。方向键切换语言，Home 和 End 选择首末项。姓名、备注和对话原文保持不变。",
       ],
       [
         "Delivery records show a localized status summary. Expand Original technical receipt to inspect the provider response in its original language; this evidence is not automatically translated.",
@@ -263,8 +362,8 @@ export const guideSections = [
         "从角色默认视图开始，检查未读与逾期任务，认领适用的未分配客户，记录联系，完成或安排下一项任务。归属冲突后刷新。保存失败不算完成跟进，保留草稿并根据错误重试。",
       ],
       [
-        "Language preferences change system labels and documentation, not names, transcripts or notes. If a deadline or assessment is missing, inspect its source instead of inventing a value. Use delivery audit for notification issues and contact a CRM Leader for access or configuration issues.",
-        "Preferensi bahasa mengubah label sistem dan dokumentasi, bukan nama, transkrip, atau catatan. Jika tenggat atau asesmen tidak tersedia, periksa sumbernya dan jangan membuat nilai sendiri. Gunakan audit pengiriman untuk masalah notifikasi dan hubungi Pengelola CRM untuk masalah akses atau konfigurasi.",
+        "Language preferences change system labels and documentation, not names, transcripts or notes. If a deadline or assessment is missing, inspect its source instead of inventing a value. Use delivery audit for notification issues and contact a CRM Manager for access or configuration issues.",
+        "Preferensi bahasa mengubah label sistem dan dokumentasi, bukan nama, transkrip, atau catatan. Jika tenggat atau asesmen tidak tersedia, periksa sumbernya dan jangan membuat nilai sendiri. Gunakan audit pengiriman untuk masalah notifikasi dan hubungi Manajer CRM untuk masalah akses atau konfigurasi.",
         "语言偏好改变系统标签和文档，不改变姓名、对话与备注。缺失截止时间或测评时，应核查来源，不猜造数值。通知问题查看发送审计；权限和配置问题联系 CRM 管理者。",
       ],
     ],
