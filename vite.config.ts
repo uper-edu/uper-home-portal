@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import {frontendEnvironment} from './server/environment.mjs';
+import {publicBuildIdentity} from './server/runtimeVersion.mjs';
 
 const preventFetchOverwritePlugin = () => {
   return {
@@ -24,7 +25,7 @@ export default defineConfig(({mode}) => {
   return {
     // Vite must not silently merge legacy .env / .env.local files across targets.
     envDir: false,
-    define: Object.fromEntries(Object.entries(env).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)])),
+    define: {...Object.fromEntries(Object.entries(env).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)])),__UPER_BUILD__:process.env.UPER_BUILD_IDENTITY?JSON.stringify(publicBuildIdentity(JSON.parse(process.env.UPER_BUILD_IDENTITY))):'null'},
     plugins: [react(), tailwindcss(), preventFetchOverwritePlugin()],
     build: {
       outDir: 'dist',

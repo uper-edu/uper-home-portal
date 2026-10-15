@@ -2,6 +2,7 @@ import {permittedRecord} from '../../src/utils/accessControl.ts';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import {transaction} from './database.mjs';
+import {runtimeEnvironment} from '../../server/runtimeVersion.mjs';
 import {collections,collectionFor,projectContent} from './content-query.mjs';
 const id=()=>crypto.randomUUID();
 const digest=value=>crypto.createHash('sha256').update(typeof value==='string'||Buffer.isBuffer(value)?value:JSON.stringify(value)).digest('hex');
@@ -9,7 +10,7 @@ const fail=(status,message)=>{throw Object.assign(Error(message),{status});};
 const requestKey=b=>{if(typeof b.requestId!=='string'||!b.requestId.trim()||b.requestId.length>100)fail(400,'Request ID required; refresh the page and retry');return b.requestId;};
 const validCollection=name=>{if(!collections.includes(name))fail(400,'Invalid collection');return name;};
 const text=(b,key,max,required=false)=>{const value=b[key]??'';if(typeof value!=='string'||value.length>max||(required&&!value.trim()))fail(400,'Invalid '+key);return value.trim();};
-export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskDeadline}){
+export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskDeadline,runtimeVersion}){
   for(const name of collections)await db.execute('INSERT INTO cms_collections(name,items) VALUES(?,JSON_ARRAY()) ON DUPLICATE KEY UPDATE name=name',[name]);
   const wrap=fn=>(q,r,next)=>Promise.resolve(fn(q,r,next)).catch(e=>r.status(e.status||503).json({error:e.status&&e.status<500?e.message:'Storage unavailable; operation not saved'}));
   const staff=async q=>{const employee=await platform.authenticate(q);if(!employee)fail(401,'Login required');if(!employee.permissions.includes('cms.manage'))fail(403,'CMS management permission required');return employee;};
@@ -58,7 +59,7 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
   app.get('/images/uploads/:asset',wrap(async(q,r)=>{if(!/^[a-zA-Z0-9_.-]{1,191}$/.test(q.params.asset))fail(404,'Image not found');const hash=/^[a-f0-9]{64}\.webp$/.test(q.params.asset);const [rows]=await db.execute(hash?'SELECT mime,content FROM cms_media WHERE id=?':'SELECT mime,content FROM cms_media WHERE legacy_name=?',[hash?q.params.asset.slice(0,-5):q.params.asset]);if(!rows[0])fail(404,'Image not found');r.set({'Content-Type':rows[0].mime,'X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=31536000, immutable'}).send(rows[0].content);}));
   const queryContent=wrap(async(q,r)=>{const query=q.method==='POST'?q.body.query:q.query.query;let params=q.method==='POST'?q.body.params:q.query.params,name;try{if(typeof params==='string')params=JSON.parse(params);name=collectionFor(query);}catch(e){e.status=400;throw e;}const row=await collection(name);let result;try{result=projectContent(row.items.filter(item=>item.isActive!==false),query,params);}catch(e){e.status=400;throw e;}r.setHeader('Cache-Control','no-store');r.json({result});});
   for(const route of ['/api/content','/api/sanity']){app.get(route,queryContent);app.post(route,queryContent);}
-  app.get('/api/health',wrap(async(_q,r)=>{await db.query("SELECT 1");r.json({status:'ok',database:'mysql',dataset:'synthetic'});}));
+  app.get('/api/health',wrap(async(_q,r)=>{await db.query("SELECT 1");r.setHeader('Cache-Control','no-store');r.json({status:'ok',database:'mysql',dataset:process.env.TRIAL_DATASET||'unknown',environment:runtimeEnvironment(),...(runtimeVersion?{version:runtimeVersion}:{})});}));
   app.get('/api/ai-model-info',(_q,r)=>r.json({success:true,activeModel:process.env.OPENAI_API_KEY?process.env.OPENAI_MODEL||'gpt-4o':'deepseek-chat',provider:process.env.OPENAI_API_KEY?'openai':'deepseek',hasOpenAiKey:!!process.env.OPENAI_API_KEY,hasDeepseekKey:!!process.env.DEEPSEEK_API_KEY}));
   app.post('/api/log',(_q,r)=>r.status(204).send()); // Never persist arbitrary browser payloads or credentials.
   app.get('/sitemap.xml',wrap(async(_q,r)=>{const base=(process.env.APP_URL||'http://127.0.0.1:4412').replace(/\/$/,'');const news=(await collection('news')).items.filter(x=>x.isActive!==false);const campaigns=(await collection('campaigns')).items.filter(x=>x.isActive!==false);const routes=['/','/contact','/careers','/news',...news.map(x=>'/news/'+encodeURIComponent(x.slug?.current||x.slug||x._id)),...campaigns.map(x=>'/campaign/'+encodeURIComponent(x.slug?.current||x.slug||x._id))];const escape=x=>x.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));r.type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+routes.map(route=>'<url><loc>'+escape(base+route)+'</loc></url>').join('')+'</urlset>');}));

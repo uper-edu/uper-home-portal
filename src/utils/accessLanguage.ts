@@ -114,6 +114,9 @@ export function accessError(value: string, lang: CrmLanguage) {
   );
 }
 export const accessGuide: [string, string, string][] = [
+  ['Open the account menu to check the environment and running version. Dirty builds are labeled. If page and server versions differ, save your work before refreshing. Health reports the actual dataset. Retired name-password resets are unavailable; normal password rules apply without changing existing accounts.',
+  'Buka menu akun untuk memeriksa lingkungan dan versi berjalan. Build dengan perubahan yang belum dikomit ditandai. Jika versi halaman dan server berbeda, simpan pekerjaan sebelum memuat ulang. Pemeriksaan kesehatan melaporkan dataset sebenarnya. Reset berdasarkan nama tidak tersedia; aturan kata sandi biasa berlaku tanpa mengubah akun yang ada.',
+  '打开账号菜单可查看环境和运行版本，含未提交改动的构建会明确标注。页面与服务版本不同时，先保存工作再刷新。健康接口显示实际数据集。已取消姓名密码重置例外，恢复常规密码规则，不改变现有账号。'],
   ['In the company test environment, full system administrators can open Test environment & accounts and copy links and preset accounts as plain text. Roles are current; only a verified initial password is displayed. Later-created accounts and changed passwords are excluded. This page does not reset accounts or grant access.',
   'Di lingkungan uji perusahaan, administrator sistem dengan izin lengkap dapat membuka Lingkungan uji & akun dan menyalin tautan serta akun bawaan sebagai teks biasa. Peran mengikuti konfigurasi terkini; hanya kata sandi awal yang terverifikasi ditampilkan. Akun tambahan dan kata sandi yang telah diubah tidak disertakan. Halaman ini tidak mereset akun atau memberikan akses.',
   '在公司测试环境中，拥有完整系统管理权限的管理员可进入“测试环境和账号”，复制入口和预置账号的纯文本。角色读取当前配置，仅显示核实仍有效的初始密码；不列出后来新增的账号，不显示已修改的密码。此页面不会重置账号或授予权限。'],

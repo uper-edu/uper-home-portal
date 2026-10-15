@@ -64,6 +64,9 @@ export const systemChapters: SystemChapter[] = [
         kind: "table",
         title: w("Workspace boundaries", "Batas ruang kerja", "工作区边界"),
         items: [
+          w('The account menu shows the environment and build version shared with CMS and System management. Save your work before refreshing if versions differ; source mode and uncommitted builds are labeled explicitly.',
+          'Menu akun menampilkan lingkungan dan versi build yang sama dengan CMS dan manajemen sistem. Simpan pekerjaan sebelum memuat ulang jika versi berbeda; mode sumber dan perubahan yang belum dikomit ditandai jelas.',
+          '账号菜单显示与CMS及系统管理共用的环境和构建版本。版本不一致时先保存工作再刷新；源码模式和未提交构建会明确标注。'),
           w(
             "CRM: customers, tasks, campaigns and sales operations",
             "CRM: pelanggan, tugas, kampanye, operasional penjualan",

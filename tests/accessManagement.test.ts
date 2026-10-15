@@ -222,7 +222,7 @@ for (const lang of ["en", "id", "zh"] as const)
     );
     if (lang !== "zh")
       assert.doesNotMatch(html.replace(/<[^>]+>/g, ""), /[\u4e00-\u9fff]/);
-    assert.equal(accessGuide.length, 11);
+    assert.equal(accessGuide.length, 12);
     assert.ok(accessError("access_last_administrator", lang));
     assert.doesNotMatch(html, /<select/);
   });

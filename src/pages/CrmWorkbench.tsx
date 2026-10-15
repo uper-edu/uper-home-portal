@@ -1034,7 +1034,7 @@ function CrmWorkspace({
                 </button>
               )}
             {selectedLead.whatsapp && (
-              <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{setContactScripts(undefined);setContactPreview(true);}} className="crm-work-button">
+              <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{setContactScripts(undefined);setContactPreview(true);setActiveDrawerTab('activities');}} className="crm-work-button">
                 <MessageCircle size={15} /> WhatsApp
               </button>
             )}

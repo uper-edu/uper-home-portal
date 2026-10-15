@@ -59,6 +59,10 @@ System management's test directory is available only to fully authorized system 
 
 The permanent read-only `organic` campaign groups new registrations from `/chat`, `/chat?c=home` and `/chat?c=organic`. Other campaign IDs remain independent, and existing first-touch attribution is preserved. This is an entry-based source bucket, not verified search-engine traffic. The shareable test directory calls the campaign entry “Campaign attribution”.
 
+## Running identity and safe maintenance
+
+The shared account menu, `/api/version`, health and response headers identify the environment and build. Packages embed the full commit, source digest, dirty state and build time; mixed front/backend packages fail startup. Source mode is explicitly labeled. Health uses the actual dataset. See [runtime identity and cutover checklist](docs/runtime-version-and-policy-cutover-20261015.md). The retired name-password exception is removed; existing account passwords are not reset. The targeted legacy-test policy retirement tool requires preview, confirmation and stopped services, holds unsent historical work and never replays notifications.
+
 ## Data boundary
 
 Customer profiles, employee accounts, visitor sessions, conversations, messages, assessments, follow-up tasks and notification delivery records persist in MySQL. Static question banks, public content and translations may remain JSON assets. Data migrations, backups, restores and environment cutovers require their own reviewed procedure; changing code does not normally require restoring the entire database.

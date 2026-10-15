@@ -1,3 +1,4 @@
+import {RuntimeVersionStatus} from './RuntimeVersionStatus';
 import {PageMetadata} from './PageMetadata';
 import {managementRequest,clearAccessPasswords} from "../utils/accessOperationClient";
 import {AccessOperationStatus} from "./AccessOperationStatus";
@@ -90,6 +91,7 @@ export function CrmAccountControls({
         >
           {t("Sign out", "退出登录")}
         </button>
+        <RuntimeVersionStatus lang={lang}/>
         {account.error && (
           <p role="alert" className="text-rose-600 p-2">
             {account.error}

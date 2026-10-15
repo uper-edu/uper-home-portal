@@ -106,7 +106,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  const client=()=>{const jar=new Map<string,string>();return{async call(route:string,body?:any,options:any={}){return new Promise<any>((resolve,reject)=>{
   const req=https.request({hostname:'127.0.0.1',servername:'home.prototype.uperedu.com',port:proxyPort,ca,method:options.method||(body?'POST':'GET'),path:route,headers:{Host:'home.prototype.uperedu.com',Origin:companyOrigin,'Content-Type':'application/json',Cookie:[...jar.values()].join('; '),...options.headers}},r=>{for(const c of r.headers['set-cookie']||[]){const v=c.split(';')[0];jar.set(v.split('=')[0],v);}let text='';r.on('data',x=>text+=x);r.on('end',()=>{let data:any;try{data=JSON.parse(text);}catch{data=text;}resolve({status:r.statusCode,data,headers:r.headers});});});req.on('error',reject);if(body)req.write(JSON.stringify(body));req.end();});}};};
  const anon=client(),manager=client(),sales=client(),other=client(),cms=client();
- assert.equal((await anon.call('/api/health')).status,200);
+ const health=await anon.call('/api/health');assert.equal(health.status,200);assert.equal(health.data.environment,'test');assert.equal(health.data.dataset,'synthetic');const version=await anon.call('/api/version');assert.equal(version.data.mode,'package');assert.equal(version.data.consistent,true);assert.equal(version.data.backend.buildId,health.data.version.backend.buildId);assert.equal(version.headers['x-uper-build'],version.data.backend.buildId);
  for(const route of ['/','/chat','/crm','/cms','/system'])for(const lang of ['en','id','zh']){const r=await anon.call(route+'?lang='+lang);assert.equal(r.status,200,route);assert.match(r.headers['x-robots-tag'],/noindex/);assert.match(r.data,/name="robots" content="noindex/);assert.doesNotMatch(r.data,/rel="canonical"|application\/ld\+json/);}
  assert.equal((await anon.call('/robots.txt')).data,'User-agent: *\nDisallow: /\n');assert.equal((await anon.call('/sitemap.xml')).status,404);
  const bad=await anon.call('/api/crm/auth/login',{loginId:'Robert',password:passwords.Robert},{headers:{Origin:'https://evil.invalid'}});assert.equal(bad.status,403);
@@ -116,6 +116,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  assert.equal((await sales.call('/api/admin/access')).status,403);
  assert.equal((await sales.call('/api/cms/content/news',{items:[],revision:0},{method:'PUT'})).status,403);
  assert.equal((await cms.call('/api/crm/leads')).status,403);
+ const monite=(await manager.call('/api/admin/access')).data.users.find((u:any)=>u.id==='Monite');assert.equal((await manager.call('/api/admin/access/users/Monite/password',{temporaryPassword:'Monite',revision:monite.revision,operationId:crypto.randomUUID(),reason:'TEST retired exception must not allow short password'})).status,400);
  // The API consumes CMS writes through /api/content; authenticated read-only public content stays public.
  const conversation=(await anon.call('/api/portal/conversations',{source:'standalone_chat',campaign:'TEST-company-trial'})).data.conversationId;assert.ok(conversation);
  const reg=await anon.call('/api/portal/register',{fullName:'TEST Company Trial Learner',phone:'000771122',email:'company-trial@example.invalid'});assert.equal(reg.status,200,JSON.stringify(reg.data));const leadId=reg.data.lead.id;

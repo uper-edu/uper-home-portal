@@ -417,3 +417,8 @@
 [data-cms-theme="dark"] .dark\:bg-primary-950 {
   background: #042f2e;
 }
+
+.admin-runtime-version{display:flex;flex-direction:column;gap:.3rem;border-top:1px solid var(--admin-border,#cbd5e1);padding:.65rem .75rem;font-size:12px;line-height:1.5;overflow-wrap:anywhere;min-width:0;}
+.admin-runtime-version code{font-size:12px;overflow-wrap:anywhere;white-space:normal;}
+.admin-runtime-version [role="alert"]{color:var(--admin-warning,#b45309);}
+[data-theme="dark"] .admin-runtime-version [role="alert"]{color:#fcd34d;}
