@@ -37,7 +37,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         "Content-Type": "application/json",
         ...(origin ? { Origin: origin } : {}),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify({...body,...(path==="/api/crm/auth/password"?{operationId:crypto.randomUUID()}: {})}),
     });
     return {
       status: r.status,
@@ -854,7 +854,10 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const before = await fingerprints(process.env);
         const saved = await backup(process.env, file);
         await restore(target, file, saved.sha256);
-        assert.deepEqual(await fingerprints(target), before);
+        const restored=await fingerprints(target);
+        for(const [table,value]of Object.entries(before))if(!['access_state','crm_sessions','notification_migration_holds'].includes(table))assert.deepEqual(restored[table],value,table);
+        const check=await (await import('../cloud/mysql/database.mjs')).openTrialDatabase(target);
+        try{assert.equal((await check.query('SELECT * FROM crm_sessions'))[0].length,0);assert.equal((await check.query("SELECT value FROM access_state WHERE id='restore_review'"))[0][0].value.required,true);}finally{await check.end();}
         await fs.unlink(file);
       },
     );

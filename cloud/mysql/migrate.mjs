@@ -2,8 +2,10 @@ import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { openTrialDatabase, withLock } from './database.mjs';
 
-export async function migrate(pool, name, {allowOfflineCopy=false}={}) {
+export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false}={}) {
   return withLock(pool, 'schema:' + name, async connection => {
+    const [guards]=await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'access_restore_guard_%'",[name]);
+    if(guards.length&&!allowRestoreGuard)throw Error('Interrupted restore: security review barrier not finalized');
     const [version] = await connection.query('SELECT VERSION() AS version');
     if (!/^8\./.test(version[0].version) || /MariaDB/i.test(version[0].version)) {
       throw Error('This schema requires standard MySQL 8; validate the company version before continuing');
@@ -80,12 +82,23 @@ async function applyAccessMigration(connection){
 
 async function applyStaffEmailMigration(connection){
  const [versions]=await connection.query('SELECT * FROM trial_schema_versions WHERE version=7');
- if(versions[0]?.state==='ready')return {version:7,state:'ready',alreadyApplied:true};
+ if(versions[0]?.state==='ready')return applyAccessReliabilityMigration(connection);
  if(versions.length)throw Error('Incomplete staff email migration; inspect before retrying');
  await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(7,'applying')");
  await connection.query("ALTER TABLE crm_users ADD COLUMN email VARCHAR(254) NULL, ADD COLUMN email_key VARCHAR(254) GENERATED ALWAYS AS (NULLIF(LOWER(TRIM(email)),'')) STORED UNIQUE");
  await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=7");
- return {version:7,state:'ready'};
+ return applyAccessReliabilityMigration(connection);
+}
+
+async function applyAccessReliabilityMigration(connection){
+ const [versions]=await connection.query('SELECT * FROM trial_schema_versions WHERE version=8');
+ if(versions[0]?.state==='ready')return {version:8,state:'ready',alreadyApplied:true};
+ if(versions.length)throw Error('Incomplete access reliability migration');
+ await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(8,'applying')");
+ await connection.query("CREATE TABLE access_operations(actor_id VARCHAR(191) NOT NULL,operation_id VARCHAR(100) NOT NULL,action VARCHAR(100) NOT NULL,fingerprint CHAR(64) NOT NULL,result JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),PRIMARY KEY(actor_id,operation_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
+ await connection.query("CREATE TABLE access_handovers(id CHAR(36) PRIMARY KEY,user_id VARCHAR(191) NOT NULL,revision BIGINT NOT NULL DEFAULT 1,state VARCHAR(24) NOT NULL DEFAULT 'pending',causes JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),INDEX handover_user(user_id,state)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
+ await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=8");
+ return {version:8,state:'ready'};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

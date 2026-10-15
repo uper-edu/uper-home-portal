@@ -1,5 +1,7 @@
 import { projectEmployee } from "../../src/utils/accessControl.ts";
 import crypto from "node:crypto";
+import { validMutationOrigin } from "./accessTransport.ts";
+import { restoreState } from "./accessRecoveryState.ts";
 import { promisify } from "node:util";
 import type { Express, Request, Response } from "express";
 import { pool, tx } from "./store.ts";
@@ -53,7 +55,11 @@ export async function localEmployee(req: Request) {
       [digest(t)],
     )
   ).rows[0];
-  return row ? employee(row) : null;
+  if (!row) return null;
+  const restore = await restoreState();
+  if (restore?.required && !restore.recoveryAdmins?.includes(row.id))
+    return null;
+  return employee(row);
 }
 export async function localDirectory() {
   const rows = (
@@ -105,10 +111,7 @@ export function mountLocalAuth(
       r.status(403).json({ error: "Local login unavailable" });
       return false;
     }
-    if (
-      q.headers.origin !== `${q.protocol}://${q.get("host")}` ||
-      !q.is("application/json")
-    ) {
+    if (!validMutationOrigin(q)) {
       r.status(403).json({ error: "Origin or content type rejected" });
       return false;
     }
@@ -126,19 +129,37 @@ export function mountLocalAuth(
         r.status(400).json({ error: "Invalid login input" });
         return;
       }
-      const ip = digest(q.socket.remoteAddress || "unknown");
+      const ip = digest(q.ip || q.socket.remoteAddress || "unknown");
       const result = await tx(async (c) => {
         // Serialize attempts per source IP, so concurrent requests cannot bypass limits.
         await c.query("SELECT GET_LOCK(:p1,5) AS acquired", [
           "crm-login:" + ip,
         ]);
-        const row = (
+        let row = (
           await c.query(
             "SELECT * FROM crm_users WHERE (login_key=lower(:p1) OR email_key=lower(:p1))",
             [name],
           )
         ).rows[0];
-        const key = digest(ip + ":" + (row?.id || name.toLowerCase()));
+        await c.query("SELECT GET_LOCK(:p1,5) AS acquired", [
+          "crm-account-login:" + (row?.id || name.toLowerCase()),
+        ]);
+        // A lookup can precede a concurrent reset or disable. Re-read the locked
+        // account after serializing aliases; do not authenticate a stale snapshot.
+        if (row) {
+          row = (
+            await c.query("SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE", [
+              row.id,
+            ])
+          ).rows[0];
+          if (
+            row &&
+            row.login_key !== name.toLowerCase() &&
+            row.email_key !== name.toLowerCase()
+          )
+            row = undefined;
+        }
+        const key = digest("account:" + (row?.id || name.toLowerCase()));
         for (const k of [ip, key])
           await c.query(
             "INSERT INTO crm_login_limits(`key`) VALUES(:p1) ON DUPLICATE KEY UPDATE failures=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN 0 ELSE crm_login_limits.failures END,window_start=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN UTC_TIMESTAMP(6) ELSE crm_login_limits.window_start END",
@@ -146,7 +167,7 @@ export function mountLocalAuth(
           );
         const limits = (
           await c.query(
-            "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1)",
+            "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1) FOR UPDATE",
             [[ip, key]],
           )
         ).rows;
@@ -164,6 +185,9 @@ export function mountLocalAuth(
           );
           return { status: 401 };
         }
+        const restore = await restoreState(c);
+        if (restore?.required && !restore.recoveryAdmins?.includes(row.id))
+          return { status: 423 };
         const t = crypto.randomBytes(32).toString("hex");
         await c.query(
           "DELETE FROM crm_sessions WHERE expires_at<=UTC_TIMESTAMP(6)",
@@ -180,8 +204,19 @@ export function mountLocalAuth(
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.login','{}')",
           [row.id],
         );
-        return { status: 200, t, user: await employee(row) };
+        return {
+          status: 200,
+          t,
+          user: projectEmployee(
+            row,
+            (await c.query("SELECT * FROM access_roles ORDER BY id")).rows,
+          ),
+        };
       });
+      if (result.status === 423) {
+        r.status(423).json({ error: "access_restore_required" });
+        return;
+      }
       if (result.status === 429) {
         r.setHeader("Retry-After", "900");
         r.status(429).json({ error: "Too many failed attempts; retry later" });

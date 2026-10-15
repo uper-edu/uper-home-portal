@@ -1,3 +1,4 @@
+import {AccessHandoverPanel} from "../components/AccessSafetyPanel";
 import {eligibleOwner,permittedRecord,canClaimRecord} from '../utils/accessControl';
 import '../components/crm/crm-documentation.css';
 import { adminRoleLabel } from "../utils/adminWorkspace";
@@ -419,7 +420,10 @@ function CrmWorkspace({
   useEffect(() => {
     fetchLeads();
     const timer = setInterval(() => fetchLeadsRef.current(true), 5000);
+    const accessChanged=()=>void fetchLeadsRef.current(true);
+    window.addEventListener('uper-access-changed',accessChanged);
     return () => {
+      window.removeEventListener('uper-access-changed',accessChanged);
       clearInterval(timer);
       requestVersion.current++;
     };
@@ -1753,6 +1757,7 @@ function CrmWorkspace({
 
       {/* Main Workspace Body */}
       <main id="crm-main" tabIndex={-1} className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5">
+        {employee.permissions.includes("crm.assign")&&<AccessHandoverPanel actor={employee} lang={lang} isLight={isLight}/>}
         <div className="admin-page-toolbar" data-theme={isLight ? "light" : "dark"}>
           <div><h1>{crmModule === "leads" ? adminText(lang, "Customer follow-up", "Tindak lanjut pelanggan", "客户跟进") : crmModule === "campaigns" ? t("Marketing Campaigns", "营销活动中心") : crmModule === "policy" ? t("Sales Operations Settings", "销售运营设置") : adminText(lang, "CRM documentation", "Dokumentasi CRM", "CRM 系统文档")}</h1>
             {crmModule === "leads" && <p>{t("Prioritize customers, record outcomes and plan the next step.", "明确优先客户，记录沟通结果，安排下一步。")}</p>}

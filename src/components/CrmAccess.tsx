@@ -1,3 +1,5 @@
+import {managementRequest,clearAccessPasswords} from "../utils/accessOperationClient";
+import {AccessOperationStatus} from "./AccessOperationStatus";
 import { adminRoleLabel } from "../utils/adminWorkspace";
 import { cmsText } from '../utils/cmsLanguage';
 import {clearStaffDrafts} from "../utils/crmDrafts";
@@ -264,7 +266,7 @@ export default function CrmAccess({
           setBusy(true);
           try {
             await auth("logout", {});
-            clearStaffDrafts(employee.id);
+            clearStaffDrafts(employee.id);clearAccessPasswords(employee.id);
             setEmployee(null);
             setChange(false);
             setCurrent("");
@@ -290,7 +292,7 @@ export default function CrmAccess({
               setBusy(true);
               setError("");
               try {
-                await auth("password", {
+                await managementRequest(employee.id,"/api/crm/auth/password", {
                   currentPassword: current,
                   newPassword: next,
                 });
@@ -304,6 +306,7 @@ export default function CrmAccess({
               }
             }}
           >
+            <AccessOperationStatus actor={employee.id} lang={lang} onResolved={()=>setError('')}/>
             <h2 className="font-bold">
               {t("Change your password", "修改自己的密码")}
             </h2>

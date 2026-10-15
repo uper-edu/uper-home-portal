@@ -51,6 +51,8 @@ export async function setupNativeTest(label) {
     TRIAL_DATASET: "synthetic",
     PORTAL_DATABASE_DRIVER: "mysql",
     APP_ENV: "test",
+    ACCESS_ALLOW_TEST_PASSWORDS: "true",
+    ACCESS_OPERATION_KEY: randomBytes(32).toString("hex"),
     PORTAL_NOTIFICATION_MODE: "simulation",
     PORTAL_WORKER_ENABLED: "false",
   });

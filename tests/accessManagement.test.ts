@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import test from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
@@ -286,7 +287,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     const r = await fetch(base + path, {
       method,
       headers: { cookie, Origin: origin, "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? JSON.stringify({ ...body, ...((path.startsWith("/api/admin/access/") && !path.endsWith("/preview") || path === "/api/crm/auth/password") ? { operationId: body.operationId || crypto.randomUUID() } : {}) }) : undefined,
     });
     return {
       status: r.status,

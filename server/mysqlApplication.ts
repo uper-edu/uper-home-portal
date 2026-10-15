@@ -1,3 +1,4 @@
+import { configureAccessTransport } from "./portal/accessTransport.ts";
 import express from 'express';
 import path from 'node:path';
 import {mountHskAssets} from './hskAssets.ts';
@@ -14,6 +15,7 @@ import {campaignsContext} from '../cloud/mysql/campaign-context.mjs';
 import {loadCampaigns,getCurrentCampaigns,saveCampaign,deleteCampaign,trackCampaignImpression,synthesizeCampaignAiAssets} from './campaignStorage.ts';
 export async function startMysqlApplication(){
 if(process.env.PORTAL_DATABASE_DRIVER!=='mysql')throw Error('Explicit MySQL driver required');
+if(process.env.ACCESS_ALLOW_TEST_PASSWORDS==='true'&&(process.env.TRIAL_DATASET!=='synthetic'||process.env.APP_ENV!=='test'))throw Error('Fixed test credentials are forbidden outside isolated synthetic tests');
 const activeLocal=process.env.TRIAL_DATASET==='local-crm'&&process.env.PORTAL_LOCAL_CUTOVER==='true';
 if(!activeLocal&&process.env.TRIAL_DATASET!=='synthetic')throw Error('Migration-copy databases cannot run the application');
 if(process.env.PLATFORM_MODE!=='local')throw Error('Local acceptance only; server deployment requires a separate gate');
@@ -33,7 +35,7 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
     process.env.DEEPSEEK_API_BASE_URL='http://127.0.0.1:4413/deepseek';
   }
 }
-const app=express();app.use(express.json({limit:'16mb'}));
+const app=express();configureAccessTransport(app);app.use(express.json({limit:'16mb'}));
 let failContent=process.env.TRIAL_CONTENT_FAILURE_ONCE==='true';
 app.post(['/api/content','/api/sanity'],(_q,r,next)=>{if(!failContent)return next();failContent=false;r.status(503).json({error:'TEST content storage unavailable'});});
 app.use((_q,r,next)=>{r.setHeader('X-Content-Type-Options','nosniff');r.setHeader('Referrer-Policy','same-origin');next();});

@@ -1,4 +1,10 @@
 {
+  "DELETE FROM crm_sessions": {
+    "sql": "DELETE FROM crm_sessions",
+    "sources": [
+      "server/portal/accessRecovery.ts"
+    ]
+  },
   "DELETE FROM crm_sessions WHERE expires_at<=UTC_TIMESTAMP(6)": {
     "sql": "DELETE FROM crm_sessions WHERE expires_at<=UTC_TIMESTAMP(6)",
     "sources": [
@@ -30,6 +36,18 @@
       "server/portal/mysqlCampaignStorage.ts"
     ]
   },
+  "INSERT INTO access_handovers(id,user_id,causes) VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO access_handovers(id,user_id,causes) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
+  "INSERT INTO access_operations(actor_id,operation_id,action,fingerprint,result) VALUES(:p1,:p2,:p3,:p4,:p5)": {
+    "sql": "INSERT INTO access_operations(actor_id,operation_id,action,fingerprint,result) VALUES(:p1,:p2,:p3,:p4,:p5)",
+    "sources": [
+      "server/portal/accessOperations.ts"
+    ]
+  },
   "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)": {
     "sql": "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)",
     "sources": [
@@ -46,6 +64,12 @@
     "sql": "INSERT INTO access_state(id,value) VALUES('policy',:p1) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO access_state(id,value) VALUES('restore_review',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)": {
+    "sql": "INSERT INTO access_state(id,value) VALUES('restore_review',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)",
+    "sources": [
+      "server/portal/accessRecoveryState.ts"
     ]
   },
   "INSERT INTO access_state(id,value) VALUES('teamless',:p1)": {
@@ -282,8 +306,27 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
     "sources": [
       "server/portal/accessManagement.ts",
+      "server/portal/accessRecovery.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.handover.required',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.handover.required',:p2)",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.handover.update',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.handover.update',:p2)",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.operation.closed',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.operation.closed',:p2)",
+    "sources": [
+      "server/portal/accessOperations.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)": {
@@ -434,6 +477,30 @@
       "scripts/portal-migrate.ts"
     ]
   },
+  "SELECT * FROM access_handovers ORDER BY created_at DESC": {
+    "sql": "SELECT * FROM access_handovers ORDER BY created_at DESC",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
+  "SELECT * FROM access_handovers WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM access_handovers WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
+  "SELECT * FROM access_handovers WHERE user_id=:p1 AND state='pending' FOR UPDATE": {
+    "sql": "SELECT * FROM access_handovers WHERE user_id=:p1 AND state='pending' FOR UPDATE",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
+  "SELECT * FROM access_operations WHERE actor_id=:p1 AND operation_id=:p2": {
+    "sql": "SELECT * FROM access_operations WHERE actor_id=:p1 AND operation_id=:p2",
+    "sources": [
+      "server/portal/accessOperations.ts"
+    ]
+  },
   "SELECT * FROM access_roles": {
     "sql": "SELECT * FROM access_roles",
     "sources": [
@@ -443,7 +510,9 @@
   "SELECT * FROM access_roles ORDER BY id": {
     "sql": "SELECT * FROM access_roles ORDER BY id",
     "sources": [
-      "server/portal/accessManagement.ts"
+      "server/portal/accessHandovers.ts",
+      "server/portal/accessManagement.ts",
+      "server/portal/localAuth.ts"
     ]
   },
   "SELECT * FROM access_roles WHERE id=:p1 FOR UPDATE": {
@@ -486,6 +555,7 @@
   "SELECT * FROM crm_users ORDER BY display_name": {
     "sql": "SELECT * FROM crm_users ORDER BY display_name",
     "sources": [
+      "server/portal/accessHandovers.ts",
       "server/portal/accessManagement.ts",
       "server/portal/localAuth.ts"
     ]
@@ -511,7 +581,8 @@
   "SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE",
     "sources": [
-      "server/portal/accessManagement.ts"
+      "server/portal/accessManagement.ts",
+      "server/portal/localAuth.ts"
     ]
   },
   "SELECT * FROM crm_users WHERE id='Robert' FOR UPDATE": {
@@ -530,6 +601,12 @@
     "sql": "SELECT * FROM followup_tasks WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM followup_tasks WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/accessHandovers.ts"
     ]
   },
   "SELECT * FROM followup_tasks WHERE lead_id=:p1": {
@@ -555,6 +632,12 @@
     "sources": [
       "server/portal/runtime.ts",
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE owner_id=:p1 AND status IN ('open','overdue','migration_hold')": {
+    "sql": "SELECT * FROM followup_tasks WHERE owner_id=:p1 AND status IN ('open','overdue','migration_hold')",
+    "sources": [
+      "server/portal/accessHandovers.ts"
     ]
   },
   "SELECT * FROM messages WHERE conversation_id=:p1 AND request_id=:p2": {
@@ -626,11 +709,23 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT * FROM portal_leads": {
+    "sql": "SELECT * FROM portal_leads",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
   "SELECT * FROM portal_leads WHERE id=:p1": {
     "sql": "SELECT * FROM portal_leads WHERE id=:p1",
     "sources": [
       "server/portal/runtime.ts",
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT * FROM portal_leads WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM portal_leads WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/accessHandovers.ts"
     ]
   },
   "SELECT * FROM visitor_sessions WHERE id=:p1 AND expires_at>UTC_TIMESTAMP(6)": {
@@ -647,8 +742,8 @@
       "cloud/mysql/site.mjs"
     ]
   },
-  "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1)": {
-    "sql": "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1)",
+  "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1) FOR UPDATE": {
+    "sql": "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1) FOR UPDATE",
     "sources": [
       "server/portal/localAuth.ts"
     ]
@@ -755,6 +850,7 @@
   "SELECT GET_LOCK(:p1,5) AS acquired": {
     "sql": "SELECT GET_LOCK(:p1,5) AS acquired",
     "sources": [
+      "server/portal/accessOperations.ts",
       "server/portal/localAuth.ts",
       "server/portal/mysqlCampaignStorage.ts",
       "server/portal/runtime.ts",
@@ -1077,7 +1173,15 @@
     "sql": "SELECT value FROM access_state WHERE id='policy' FOR UPDATE",
     "sources": [
       "server/portal/accessManagement.ts",
+      "server/portal/accessOperations.ts",
       "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT value FROM access_state WHERE id='restore_review'": {
+    "sql": "SELECT value FROM access_state WHERE id='restore_review'",
+    "sources": [
+      "server/portal/accessManagement.ts",
+      "server/portal/accessRecoveryState.ts"
     ]
   },
   "SELECT value FROM access_state WHERE id='teamless'": {
@@ -1095,6 +1199,7 @@
   "SELECT value FROM portal_settings WHERE id='sla'": {
     "sql": "SELECT value FROM portal_settings WHERE id='sla'",
     "sources": [
+      "server/portal/accessHandovers.ts",
       "server/portal/followup.ts",
       "server/portal/runtime.ts",
       "server/portal/worker.ts",
@@ -1112,6 +1217,18 @@
     "sql": "SELECT visitor_id,input_hash,result FROM hsk_attempts WHERE id=:p1",
     "sources": [
       "server/portal/assessments.ts"
+    ]
+  },
+  "UPDATE access_handovers SET causes=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE access_handovers SET causes=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/accessHandovers.ts"
+    ]
+  },
+  "UPDATE access_handovers SET state=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE access_handovers SET state=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/accessHandovers.ts"
     ]
   },
   "UPDATE access_roles SET config=:p2,enabled=:p3,revision=revision+1 WHERE id=:p1": {
@@ -1185,6 +1302,12 @@
     "sql": "UPDATE crm_users SET roles=:p1,access_revision=access_revision+1 WHERE id='Robert'",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET owner_id=:p2 WHERE id=:p1": {
+    "sql": "UPDATE followup_tasks SET owner_id=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/accessHandovers.ts"
     ]
   },
   "UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')": {
@@ -1394,6 +1517,7 @@
   "UPDATE portal_leads SET profile=:p2 WHERE id=:p1": {
     "sql": "UPDATE portal_leads SET profile=:p2 WHERE id=:p1",
     "sources": [
+      "server/portal/accessHandovers.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts",
       "cloud/mysql/runtime.mjs"

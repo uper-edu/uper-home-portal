@@ -1,5 +1,7 @@
 import { normalizeStaffEmail } from "../../src/utils/staffEmail.ts";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import { validMutationOrigin } from "./accessTransport.ts";
 import type { Express, Request } from "express";
 import { pool, tx } from "./store.ts";
 import { platform } from "./identity.ts";
@@ -29,8 +31,21 @@ export async function roleRows(db: any = pool) {
     (r: any) => ({ ...r, enabled: !!r.enabled, revision: Number(r.revision) }),
   );
 }
+function initialPassword(name: string) {
+  if(process.env.ACCESS_ALLOW_TEST_PASSWORDS==='true'){
+    if(process.env.TRIAL_DATASET!=='synthetic'||process.env.APP_ENV!=='test')throw Error('Test credentials require isolated synthetic test mode');
+    return name;
+  }
+  const file=process.env.ACCESS_INITIAL_PASSWORDS_FILE;
+  if(!file||fs.statSync(file).mode&0o077)throw Error('Private 0600 initial-password file required for first initialization');
+  const password=JSON.parse(fs.readFileSync(file,'utf8'))[name];
+  if(typeof password!=='string'||password.length<12||password.length>200||password.toLowerCase()===name.toLowerCase())throw Error('Strong initial credential required');
+  return password;
+}
 export async function initializeAccessAccounts() {
   await tx(async (c) => {
+    const restored=(await c.query("SELECT value FROM access_state WHERE id='restore_review'")).rows[0]?.value;
+    if(restored?.required)return;
     await c.query(
       "INSERT INTO access_state(id,value) VALUES('policy',:p1) ON DUPLICATE KEY UPDATE id=id",
       [JSON.stringify({ initialized: false })],
@@ -51,7 +66,7 @@ export async function initializeAccessAccounts() {
         "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams) VALUES(:p1,:p1,:p1,:p2,:p3,:p4) ON DUPLICATE KEY UPDATE id=id",
         [
           name,
-          await hashPassword(name),
+          await hashPassword(initialPassword(name)),
           JSON.stringify(roles),
           JSON.stringify([]),
         ],
@@ -104,8 +119,7 @@ async function guard(req: Request, permission: string, mutation = false) {
   if (!e.permissions.includes(permission)) error(403, "Permission denied");
   if (
     mutation &&
-    (req.headers.origin !== `${req.protocol}://${req.get("host")}` ||
-      !req.is("application/json"))
+    !validMutationOrigin(req)
   )
     error(403, "access_origin_rejected");
   return e;

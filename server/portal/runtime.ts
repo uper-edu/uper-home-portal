@@ -1,3 +1,8 @@
+import { mountAccessOperations } from "./accessOperations.ts";
+import { mountAccessHandovers } from "./accessHandovers.ts";
+import { mountAccessRecovery } from "./accessRecovery.ts";
+import { accessRestoreGate } from "./accessRecoveryState.ts";
+import { trustedOrigin } from "./accessTransport.ts";
 import {initializeTeamlessAccess} from "./teamlessAccess.ts";
 import {mountAccessManagement} from './accessManagement.ts';
 import {eligibleOwner,permittedRecord,canClaimRecord} from '../../src/utils/accessControl.ts';
@@ -195,7 +200,11 @@ export async function mountPortal(app: Express) {
   }
   await initialize();
   await initializeLocalAccounts();
+  app.use(accessRestoreGate);
+  mountAccessOperations(app);
   mountLocalAuth(app, (req) => platform.authenticate(req));
+  mountAccessHandovers(app);
+  mountAccessRecovery(app);
   mountAccessManagement(app);
   for (const r of defaultRules)
     await pool.query(
@@ -212,7 +221,7 @@ export async function mountPortal(app: Express) {
       process.env.PLATFORM_MODE === "local" &&
       req.path.startsWith("/crm") &&
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
-      req.headers.origin !== `${req.protocol}://${req.get("host")}`
+      req.headers.origin !== trustedOrigin(req)
     ) {
       res.status(403).json({ error: "Origin mismatch" });
       return;
@@ -220,7 +229,7 @@ export async function mountPortal(app: Express) {
     if (
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
       req.headers.origin &&
-      req.headers.origin !== `${req.protocol}://${req.get("host")}`
+      req.headers.origin !== trustedOrigin(req)
     ) {
       res.status(403).json({ error: "Origin mismatch" });
       return;

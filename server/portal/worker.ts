@@ -1,3 +1,5 @@
+import { restoreState } from "./accessRecoveryState.ts";
+import { retryLeaseRecovery } from "./notificationLeaseRecovery.ts";
 import { contactPaused } from "../../src/utils/crmContact.ts";
 import {
   recipients,
@@ -19,6 +21,7 @@ import {
   type Rule,
 } from "./policy.ts";
 export async function tick(clock = new Date()) {
+  if((await restoreState())?.required)return;
   await tx(async (c) => {
     const globalCalendar = (
       await c.query("SELECT value FROM portal_settings WHERE id='sla'")
@@ -183,9 +186,9 @@ export async function tick(clock = new Date()) {
       );
     }
   });
-  await pool.query(
+  await retryLeaseRecovery(()=>pool.query(
     "UPDATE notification_jobs j SET state=CASE WHEN channel='lark' THEN 'unknown' ELSE 'pending' END,result='Lease expired' WHERE state='sending' AND lease_until<UTC_TIMESTAMP(6) AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id)",
-  );
+  ));
   const job = await tx(async (c) => {
     const row = (
       await c.query(

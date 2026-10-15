@@ -1,3 +1,4 @@
+import {accessError} from "./accessLanguage";
 import { crmId } from "./crmIndonesian";
 import { useEffect, useState } from "react";
 import { safeStorage } from "./safeStorage";
@@ -154,6 +155,7 @@ export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
     : value;
 }
 export function crmError(message: string, lang: CrmLanguage) {
+  if(message.startsWith("access_"))return accessError(message,lang);
   const known: Record<string, [string, string]> = {
     "Confirm routing review before enabling": ["Confirm routing review before enabling", "请先确认历史通知范围复核，再启用策略"],
     "Retired team filters require explicit review": ["Retired team filters require explicit review", "历史团队过滤条件须先明确复核"],

@@ -1,3 +1,4 @@
+import {accessSafetyErrors} from "./accessSafetyLanguage";
 import type { CrmLanguage } from "./crmLanguage";
 const accessErrors: Record<string, [string, string, string]> = {
   access_invalid_email: [
@@ -108,7 +109,7 @@ const accessErrors: Record<string, [string, string, string]> = {
 };
 export function accessError(value: string, lang: CrmLanguage) {
   return (
-    accessErrors[value]?.[lang === "zh" ? 2 : lang === "id" ? 1 : 0] ||
+    (accessSafetyErrors[value] || accessErrors[value])?.[lang === "zh" ? 2 : lang === "id" ? 1 : 0] ||
     accessErrors.access_unavailable[lang === "zh" ? 2 : lang === "id" ? 1 : 0]
   );
 }

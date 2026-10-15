@@ -1,6 +1,11 @@
+import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
+import { managementRequest } from "../utils/accessOperationClient";
+import { AccessOperationStatus } from "../components/AccessOperationStatus";
+import { AccessSafetyPanel } from "../components/AccessSafetyPanel";
 import { AccessUserCard, AccessRoleCard } from "../components/AccessRecordCard";
 import { accessGuide, accessError } from "../utils/accessLanguage";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { BookOpen, Eye, History, ShieldCheck, Users } from "lucide-react";
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
 import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
@@ -14,6 +19,13 @@ import {
 } from "../utils/accessControl";
 import "../components/crm/crm-lead-filters.css";
 import "./access-management.css";
+const moduleIcons = {
+  users: Users,
+  roles: ShieldCheck,
+  preview: Eye,
+  audit: History,
+  guide: BookOpen,
+};
 type User = {
   id: string;
   loginId: string;
@@ -30,7 +42,7 @@ type Role = {
   enabled: boolean;
   revision: number;
 };
-async function api(path = "", body?: any) {
+async function apiRequest(path = "", body?: any) {
   const r = await fetch("/api/admin/access" + path, {
     method: body ? "POST" : "GET",
     headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -67,6 +79,7 @@ export function AccessWorkspace({
   const { isLight, toggleTheme } = useAdminTheme(),
     col = lang === "zh" ? 2 : lang === "id" ? 1 : 0,
     t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
+  const [discarding, setDiscarding] = useState(false);
   const [tab, setTab] = useState("users"),
     [data, setData] = useState<{ users: User[]; roles: Role[] } | null>(null),
     [err, setErr] = useState(""),
@@ -86,6 +99,11 @@ export function AccessWorkspace({
   const panel = useRef<HTMLElement>(null),
     priorFocus = useRef<HTMLElement | null>(null);
   const can = (permission: string) => employee.permissions.includes(permission);
+  useEffect(() => setNotice(""), [lang]);
+  const api = (path = "", body?: any) =>
+    body && !path.endsWith("/preview")
+      ? managementRequest(employee.id, "/api/admin/access" + path, body)
+      : apiRequest(path, body);
   const load = async () => {
     setErr("");
     try {
@@ -93,6 +111,24 @@ export function AccessWorkspace({
     } catch (e) {
       setErr((e as Error).message);
     }
+  };
+  const operationResolved = () => {
+    setErr("");
+    void api()
+      .then((current) => {
+        setData(current);
+        if (role) setLatest(current.roles.find((r: Role) => r.id === role.id));
+        else if (user)
+          setLatest(
+            current.users.find((u: User) =>
+              user.id
+                ? u.id === user.id
+                : u.loginId.toLowerCase() === user.loginId.toLowerCase(),
+            ),
+          );
+      })
+      .catch((e) => setErr(e.message));
+    window.dispatchEvent(new Event("uper-access-changed"));
   };
   useEffect(() => {
     if (can("access.read")) void load();
@@ -127,17 +163,14 @@ export function AccessWorkspace({
     return () => window.removeEventListener("beforeunload", protect);
   }, [dirty]);
   const close = () => {
-    if (
-      dirty &&
-      !window.confirm(
-        t(
-          "Discard unsaved changes?",
-          "Buang perubahan yang belum disimpan?",
-          "放弃尚未保存的修改？",
-        ),
-      )
-    )
+    if (dirty) {
+      setDiscarding(true);
       return;
+    }
+    resetEditor();
+  };
+  const resetEditor = () => {
+    setDiscarding(false);
     setUser(null);
     setRole(null);
     setPassword("");
@@ -147,6 +180,7 @@ export function AccessWorkspace({
     setImpact(null);
   };
   const openUser = (u: User | null) => {
+    setDiscarding(false);
     setLatest(null);
     setRole(null);
     setUser(
@@ -267,7 +301,41 @@ export function AccessWorkspace({
     system: ["Access administration", "Administrasi akses", "权限管理"],
   };
   const auditLabels: Record<string, [string, string, string]> = {
-    "access.teamless.role": ["Retired team permissions reviewed", "Izin tim lama ditinjau", "历史团队授权复核"],
+    "access.operation.closed": [
+      "Uncommitted operation closed",
+      "Operasi belum tersimpan ditutup",
+      "未提交操作已关闭",
+    ],
+    "access.handover.required": [
+      "Staff handover required",
+      "Serah terima staf diperlukan",
+      "需要人员交接",
+    ],
+    "access.handover.update": [
+      "Staff handover updated",
+      "Serah terima staf diperbarui",
+      "人员交接已更新",
+    ],
+    "access.restore.review": [
+      "Restored authorization reviewed",
+      "Izin hasil pemulihan ditinjau",
+      "恢复授权已复核",
+    ],
+    "access.restore.release": [
+      "Restore review released",
+      "Tinjauan pemulihan diselesaikan",
+      "恢复复核已放行",
+    ],
+    "access.recovery": [
+      "Offline administrator recovery",
+      "Pemulihan administrator luring",
+      "离线管理员恢复",
+    ],
+    "access.teamless.role": [
+      "Retired team permissions reviewed",
+      "Izin tim lama ditinjau",
+      "历史团队授权复核",
+    ],
     "access.bootstrap": [
       "Access initialization",
       "Inisialisasi akses",
@@ -329,25 +397,36 @@ export function AccessWorkspace({
               ["guide", "Guide", "Panduan", "使用指南"],
             ]
               .filter((a) => a[0] !== "audit" || can("access.audit"))
-              .map((a) => (
-                <button
-                  key={a[0]}
-                  aria-current={tab === a[0] ? "page" : undefined}
-                  onClick={() => {
-                    if (user || role) {
-                      close();
-                      return;
-                    }
-                    setTab(a[0]);
-                  }}
-                >
-                  {a[col + 1]}
-                </button>
-              ))}
+              .map((a) => {
+                const Icon = moduleIcons[a[0] as keyof typeof moduleIcons];
+                return (
+                  <button
+                    type="button"
+                    key={a[0]}
+                    aria-current={tab === a[0] ? "page" : undefined}
+                    onClick={() => {
+                      if (user || role) {
+                        close();
+                        return;
+                      }
+                      setTab(a[0]);
+                    }}
+                  >
+                    <Icon size={16} aria-hidden="true" />
+                    {a[col + 1]}
+                  </button>
+                );
+              })}
           </>
         }
       />
       <main id="access-main" className="access-main" tabIndex={-1}>
+        <AccessOperationStatus
+          actor={employee.id}
+          lang={lang}
+          onResolved={operationResolved}
+        />
+        <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight} />
         <div className="admin-page-toolbar">
           <div>
             <h1>{t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
@@ -402,6 +481,12 @@ export function AccessWorkspace({
                     <li key={i}>{text[col]}</li>
                   ))}
                 </ol>
+                {accessSafetyGuide.map((section) => (
+                  <section className="access-impact" key={section.title[0]}>
+                    <h3>{section.title[col]}</h3>
+                    <p>{section.body[col]}</p>
+                  </section>
+                ))}
               </section>
             ) : null}
             {data && tab === "users" && (
@@ -626,6 +711,32 @@ export function AccessWorkspace({
                 {t("Close", "Tutup", "关闭")}
               </button>
             </div>
+            {discarding && (
+              <section role="alert" className="access-impact">
+                <p>
+                  {t(
+                    "Discard unsaved changes?",
+                    "Buang perubahan yang belum disimpan?",
+                    "放弃尚未保存的修改？",
+                  )}
+                </p>
+                <button onClick={() => setDiscarding(false)}>
+                  {t("Keep editing", "Lanjutkan mengedit", "继续编辑")}
+                </button>
+                <button onClick={resetEditor}>
+                  {t(
+                    "Discard draft and close",
+                    "Buang draf dan tutup",
+                    "放弃草稿并关闭",
+                  )}
+                </button>
+              </section>
+            )}
+            <AccessOperationStatus
+              actor={employee.id}
+              lang={lang}
+              onResolved={operationResolved}
+            />
             {err && (
               <p role="alert" className="access-error">
                 {errorText}

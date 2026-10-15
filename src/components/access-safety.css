@@ -1,0 +1,99 @@
+.access-safety-surface {
+  --access-surface: #fff;
+  --access-bg: #f4f6f8;
+  --access-border: #cbd5e1;
+  --access-ink: #172b45;
+  color: var(--access-ink);
+  background: var(--access-surface);
+  border: 1px solid var(--access-border);
+  border-radius: 16px;
+  padding: 20px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.access-safety-surface[data-theme="dark"] {
+  --access-surface: #172337;
+  --access-bg: #0f172a;
+  --access-ink: #e2e8f0;
+  --access-border: #50627a;
+}
+.access-safety-surface summary {
+  cursor: pointer;
+  font-weight: 650;
+  padding: 8px 0;
+}
+.access-safety-surface details > * + *,
+.access-safety-surface .access-impact > * + * {
+  margin-top: 12px;
+}
+.access-safety-surface .access-impact,
+.access-operation-status {
+  border: 1px solid var(--access-border, #94a3b8);
+  border-radius: 12px;
+  padding: 14px;
+  overflow-wrap: anywhere;
+}
+.access-safety-surface label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: start;
+}
+.access-safety-surface input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: #0d9488;
+}
+.access-safety-surface textarea {
+  width: 100%;
+  min-height: 80px;
+  border: 1px solid var(--access-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--access-surface);
+  color: inherit;
+}
+.access-safety-surface button,
+.access-operation-status button {
+  border: 1px solid var(--access-border, #94a3b8);
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: inherit;
+}
+.access-safety-surface button:disabled {
+  opacity: 0.55;
+}
+.access-safety-surface :focus-visible,
+.access-operation-status button:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 3px;
+}
+.access-operation-status small {
+  overflow-wrap: anywhere;
+  display: block;
+}
+.access-operation-status label {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+.access-operation-status input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--access-border, #94a3b8);
+  border-radius: 10px;
+  color: inherit;
+  background: transparent;
+}
+.access-operation-status button:disabled {
+  opacity: 0.55;
+}
+@media (max-width: 480px) {
+  .access-safety-surface {
+    padding: 14px;
+  }
+}
