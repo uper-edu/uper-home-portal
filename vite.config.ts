@@ -1,7 +1,8 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig} from 'vite';
+import {frontendEnvironment} from './server/environment.mjs';
 
 const preventFetchOverwritePlugin = () => {
   return {
@@ -19,8 +20,11 @@ const preventFetchOverwritePlugin = () => {
 };
 
 export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+  const env = frontendEnvironment(mode);
   return {
+    // Vite must not silently merge legacy .env / .env.local files across targets.
+    envDir: false,
+    define: Object.fromEntries(Object.entries(env).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)])),
     plugins: [react(), tailwindcss(), preventFetchOverwritePlugin()],
     build: {
       outDir: 'dist',
