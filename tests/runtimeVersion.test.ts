@@ -27,3 +27,9 @@ test('Health reports local-crm/dev instead of hard-coded synthetic and never emi
  t.after(()=>{for(const[k,v]of Object.entries(saved))if(v===undefined)delete process.env[k];else process.env[k]=v;});
  const app=express();await mountSite(app,{db:{execute:async()=>[[]],query:async()=>[[{ok:1}]]},platform:{}});const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));t.after(()=>new Promise<void>(r=>server.close(()=>r())));const response=await fetch('http://127.0.0.1:'+(server.address() as any).port+'/api/health');const health=await response.json();assert.equal(health.environment,'dev');assert.equal(health.dataset,'local-crm');assert.equal(response.headers.get('cache-control'),'no-store');assert.ok(!JSON.stringify(health).includes('MYSQL'));
 });
+
+for(const lang of ['en','id','zh'] as const)test('Code links to the canonical commit independently from Build in '+lang,()=>{
+ const commit='a'.repeat(40);const html=renderToStaticMarkup(React.createElement(VersionDetails,{lang,version:{environment:'test',backend:{gitCommit:commit,buildId:'test-package',dirty:false}}}));
+ assert.match(html,/<dt>Code<\/dt>/);assert.match(html,/<dt>Build<\/dt>/);assert.ok(html.includes('https://github.com/uper-edu/uper-home-portal/commit/'+commit));assert.match(html,/rel="noopener noreferrer"/);assert.match(html,/test-package/);assert.ok(html.includes(lang==='zh'?'无未提交改动':lang==='id'?'Tanpa perubahan yang belum dikomit':'No uncommitted changes'));
+ const unknown=renderToStaticMarkup(React.createElement(VersionDetails,{lang,failed:true,version:{environment:'unknown',backend:{gitCommit:'javascript:bad',dirty:null}}}));assert.doesNotMatch(unknown,/<a /);assert.doesNotMatch(unknown,/javascript:/);
+});
