@@ -418,12 +418,31 @@
   background: #042f2e;
 }
 
-.admin-runtime-version{display:flex;flex-direction:column;gap:.3rem;border-top:1px solid var(--ah-border,#cbd5e1);padding:.65rem .75rem;font-size:12px;line-height:1.5;overflow-wrap:anywhere;min-width:0;}
-.admin-runtime-version code{font-size:12px;overflow-wrap:anywhere;white-space:normal;}
-.admin-runtime-version [role="alert"]{color:var(--admin-warning,#b45309);}
-[data-theme="dark"] .admin-runtime-version [role="alert"]{color:#fcd34d;}
-.admin-runtime-fields{display:grid;grid-template-columns:minmax(0,5.5rem) minmax(0,1fr);gap:.4rem .5rem;margin:0;}
-.admin-runtime-fields dt{color:var(--ah-muted,#64748b);font-weight:400;}
-.admin-runtime-fields dd{margin:0;min-width:0;}
-.admin-runtime-fields a{color:var(--ah-active,#0f766e);text-decoration:underline;text-underline-offset:3px;}
-.admin-runtime-fields a:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:2px;}
+.admin-header .admin-runtime-trigger{border-top:1px solid var(--ah-border);border-radius:0 0 8px 8px;justify-content:space-between;margin-top:4px;min-height:64px;}
+.admin-runtime-trigger-text{display:flex;flex-direction:column;gap:3px;min-width:0;overflow-wrap:anywhere;}
+.admin-runtime-trigger-text small{font-size:12px;line-height:1.5;color:var(--ah-muted);}
+.runtime-version-dialog{--rv-bg:#fff;--rv-text:#0f172a;--rv-muted:#475569;--rv-border:#cbd5e1;--rv-active:#0f766e;background:var(--rv-bg);color:var(--rv-text);border:1px solid var(--rv-border);border-radius:16px;padding:0;width:560px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);margin:auto;overflow:hidden;box-shadow:0 24px 64px #02061755;}
+.runtime-version-dialog[data-theme="dark"]{--rv-bg:#0f172a;--rv-text:#f1f5f9;--rv-muted:#cbd5e1;--rv-border:#475569;--rv-active:#5eead4;color-scheme:dark;}
+.runtime-version-dialog[open]{display:flex;flex-direction:column;}
+.runtime-version-dialog::backdrop{background:#02061799;}
+.runtime-dialog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--rv-border);flex-shrink:0;}
+.runtime-dialog-header h2{font-size:18px;line-height:1.4;font-weight:700;margin:0;}
+.runtime-dialog-close{display:flex;align-items:center;justify-content:center;flex-shrink:0;min-height:44px;min-width:44px;font-size:26px;border-radius:10px;border:1px solid var(--rv-border);background:var(--rv-bg);color:var(--rv-text);cursor:pointer;}
+.runtime-dialog-content{overflow-y:auto;overscroll-behavior:contain;min-height:0;padding:16px;line-height:1.6;font-size:14px;}
+.runtime-environment{margin:0 0 16px;color:var(--rv-muted);}
+.runtime-version-section+ .runtime-version-section{border-top:1px solid var(--rv-border);margin-top:16px;padding-top:16px;}
+.runtime-version-section h3{font-size:16px;font-weight:700;margin:0 0 10px;}
+.runtime-version-section dl{margin:0;display:grid;grid-template-columns:minmax(0,7rem) minmax(0,1fr);gap:10px 12px;align-items:start;}
+.runtime-version-section dt{color:var(--rv-muted);}
+.runtime-version-section dd{margin:0;min-width:0;overflow-wrap:anywhere;}
+.runtime-value-actions{display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
+.runtime-code-link{display:inline-flex;align-items:center;gap:4px;min-height:44px;max-width:100%;color:var(--rv-active);text-decoration:underline;text-underline-offset:3px;}
+.runtime-version-section code{font-size:12px;white-space:normal;overflow-wrap:anywhere;min-width:0;}
+.runtime-copy{min-height:44px;min-width:56px;border:1px solid var(--rv-border);border-radius:8px;padding:6px 12px;background:var(--rv-bg);color:var(--rv-active);cursor:pointer;}
+.runtime-version-dialog :is(button,a):focus-visible,.admin-runtime-trigger:focus-visible{outline:2px solid currentColor;outline-offset:3px;}
+.runtime-version-note{font-size:12px;color:var(--rv-muted);margin:16px 0 0;}
+.runtime-dialog-content [role="alert"]{color:#b45309;}
+.runtime-version-dialog[data-theme="dark"] [role="alert"]{color:#fcd34d;}
+.runtime-copy-feedback{padding:0 16px 12px;margin:0;font-size:13px;flex-shrink:0;}
+.runtime-copy-feedback:empty{padding-bottom:0;}
+@media(max-width:600px){.runtime-version-section dl{grid-template-columns:1fr;gap:4px;}.runtime-version-section dd{margin-bottom:10px;}.runtime-value-actions{flex-direction:row;align-items:center;gap:10px;}.runtime-value-actions>:first-child{flex:1;}.runtime-copy{flex-shrink:0;}.runtime-dialog-header h2{font-size:17px;}}

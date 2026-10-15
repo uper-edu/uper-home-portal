@@ -1,10 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import express from 'express';import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
 import {runtimeEnvironment,buildIdentity,createRuntimeVersion,mountRuntimeVersion,publicBuildIdentity} from '../server/runtimeVersion.mjs';
 import {mountSite} from '../cloud/mysql/site.mjs';
-import {VersionDetails} from '../src/components/RuntimeVersionStatus';
+import {VersionDetails,versionTime} from '../src/components/RuntimeVersionStatus';
 function fixture(t:any){const root=fs.mkdtempSync(path.join(process.cwd(),'.local-backups/version-fixture-'));fs.mkdirSync(path.join(root,'src'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));return root;}
 test('Version identity follows source and public build config, excludes private files and records dirty state',t=>{
- const root=fixture(t);fs.writeFileSync(path.join(root,'src/main.ts'),'export const value=1');const a=buildIdentity('test',root,{VITE_LABEL:'TEST'});assert.equal(a.dirty,true);
+ const root=fixture(t);fs.writeFileSync(path.join(root,'src/main.ts'),'export const value=1');const a=buildIdentity('test',root,{VITE_LABEL:'TEST'});assert.equal(a.dirty,true);assert.ok(Number.isFinite(Date.parse(a.gitCommittedAt)));
  fs.writeFileSync(path.join(root,'.env.test'),'OPENAI_API_KEY=TEST-PRIVATE');fs.mkdirSync(path.join(root,'data'));fs.writeFileSync(path.join(root,'data/customer.json'),'TEST-PRIVATE-CUSTOMER');assert.equal(buildIdentity('test',root,{VITE_LABEL:'TEST'}).buildId,a.buildId);
  fs.writeFileSync(path.join(root,'src/main.ts'),'export const value=2');assert.notEqual(buildIdentity('test',root,{VITE_LABEL:'TEST'}).buildId,a.buildId);assert.notEqual(buildIdentity('test',root,{VITE_LABEL:'OTHER'}).buildId,buildIdentity('test',root,{VITE_LABEL:'TEST'}).buildId);assert.notEqual(buildIdentity('dev',root,{VITE_LABEL:'TEST'}).buildId,a.buildId);
  assert.ok(!JSON.stringify(publicBuildIdentity({...a,password:'TEST-PRIVATE',serverPath:'/private/test'})).includes('TEST-PRIVATE'));
@@ -30,6 +30,11 @@ test('Health reports local-crm/dev instead of hard-coded synthetic and never emi
 
 for(const lang of ['en','id','zh'] as const)test('Code links to the canonical commit independently from Build in '+lang,()=>{
  const commit='a'.repeat(40);const html=renderToStaticMarkup(React.createElement(VersionDetails,{lang,version:{environment:'test',backend:{gitCommit:commit,buildId:'test-package',dirty:false}}}));
- assert.match(html,/<dt>Code<\/dt>/);assert.match(html,/<dt>Build<\/dt>/);assert.ok(html.includes('https://github.com/uper-edu/uper-home-portal/commit/'+commit));assert.match(html,/rel="noopener noreferrer"/);assert.match(html,/test-package/);assert.ok(html.includes(lang==='zh'?'无未提交改动':lang==='id'?'Tanpa perubahan yang belum dikomit':'No uncommitted changes'));
+ assert.match(html,/<h3>Code<\/h3>/);assert.match(html,/<h3>Build<\/h3>/);assert.ok(html.includes('https://github.com/uper-edu/uper-home-portal/commit/'+commit));assert.match(html,/rel="noopener noreferrer"/);assert.match(html,/test-package/);assert.ok(html.includes(lang==='zh'?'无未提交改动':lang==='id'?'Tanpa perubahan yang belum dikomit':'No uncommitted changes'));
  const unknown=renderToStaticMarkup(React.createElement(VersionDetails,{lang,failed:true,version:{environment:'unknown',backend:{gitCommit:'javascript:bad',dirty:null}}}));assert.doesNotMatch(unknown,/<a /);assert.doesNotMatch(unknown,/javascript:/);
+ const source=renderToStaticMarkup(React.createElement(VersionDetails,{lang,version:{mode:'source',environment:'dev',backend:{gitCommit:commit,dirty:false}}}));assert.ok(source.includes(lang==='zh'?'启动时无未提交改动':lang==='id'?'saat mulai':'at startup'));assert.ok(html.includes(lang==='zh'?'构建时无未提交改动':lang==='id'?'saat build':'at build'));
+});
+
+test('Commit and build times remain separate, use explicit UTC and never infer missing dates',()=>{
+ for(const lang of ['en','id','zh'] as const){assert.equal(versionTime('2026-10-15T03:00:00-07:00',lang),'2026-10-15 10:00:00 UTC');assert.equal(versionTime('2026-10-15T03:00:00-07:00',lang,true),'2026-10-15 10:00 UTC');const html=renderToStaticMarkup(React.createElement(VersionDetails,{lang,version:{environment:'test',backend:{gitCommit:'a'.repeat(40),gitCommittedAt:'2026-10-15T01:00:00Z',builtAt:'2026-10-15T02:00:00Z',buildId:'build-id',dirty:false}}}));assert.ok(html.includes('2026-10-15 01:00:00 UTC'));assert.ok(html.includes('2026-10-15 02:00:00 UTC'));assert.ok(!versionTime(null,lang).includes('1970'));}
 });

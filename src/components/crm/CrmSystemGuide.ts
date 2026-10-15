@@ -64,9 +64,9 @@ export const systemChapters: SystemChapter[] = [
         kind: "table",
         title: w("Workspace boundaries", "Batas ruang kerja", "工作区边界"),
         items: [
-          w('The account menu shared with CMS and System management separates Code (linked GitHub commit) and Build (environment-specific package), with environment and captured source state. Save your work before refreshing if versions differ; source mode and uncommitted builds are labeled explicitly.',
-          'Menu akun bersama CMS dan manajemen sistem memisahkan Code (tautan commit GitHub) dan Build (paket sesuai lingkungan), serta menampilkan lingkungan dan status kode yang dicatat. Simpan pekerjaan sebelum memuat ulang jika versi berbeda; mode sumber dan perubahan yang belum dikomit ditandai jelas.',
-          '与CMS及系统管理共用的账号菜单分开显示Code（GitHub提交链接）与Build（对应环境的构建包），并显示环境和已记录的源码状态。版本不一致时先保存工作再刷新；源码模式和未提交构建会明确标注。'),
+          w('The account menu shared with CMS and System management shows the environment, last four characters of the Build ID and build time. Open Version and environment for full Code/Build details, separate commit/build times in UTC, GitHub link and copy buttons, with environment and source state captured at build time (or startup in source mode), not live Git status. Save your work before refreshing if versions differ; source mode and uncommitted builds are labeled explicitly.',
+          'Menu akun bersama CMS dan manajemen sistem menampilkan lingkungan, empat karakter terakhir ID Build dan waktu build. Buka Versi dan lingkungan untuk detail Code/Build lengkap, waktu commit dan build dalam UTC, tautan GitHub dan tombol salin, serta lingkungan dan status kode saat build (atau saat mulai dalam mode sumber), bukan status Git secara langsung. Simpan pekerjaan sebelum memuat ulang jika versi berbeda; mode sumber dan perubahan yang belum dikomit ditandai jelas.',
+          '与CMS及系统管理共用的账号菜单显示环境、Build末4位及构建时间；点击“版本与环境”查看完整Code/Build、各自提交和构建时间（UTC）、GitHub链接及复制按钮，并显示环境及构建时（源码模式为启动时）的源码状态，而非实时Git状态。版本不一致时先保存工作再刷新；源码模式和未提交构建会明确标注。'),
           w(
             "CRM: customers, tasks, campaigns and sales operations",
             "CRM: pelanggan, tugas, kampanye, operasional penjualan",

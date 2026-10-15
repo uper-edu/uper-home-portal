@@ -91,7 +91,7 @@ export function CrmAccountControls({
         >
           {t("Sign out", "退出登录")}
         </button>
-        <RuntimeVersionStatus lang={lang}/>
+        <RuntimeVersionStatus lang={lang} isLight={isLight}/>
         {account.error && (
           <p role="alert" className="text-rose-600 p-2">
             {account.error}
