@@ -131,7 +131,7 @@ export function larkCard(
           tag: "plain_text",
           content:
             "UPER · " +
-            (process.env.PLATFORM_MODE === "mock" ||
+            (process.env.PORTAL_DEPLOYMENT === 'company-trial' || process.env.PLATFORM_MODE === "mock" ||
             process.env.APP_ENV === "test"
               ? "TEST"
               : process.env.NODE_ENV || "DEV"),
@@ -169,6 +169,7 @@ export function channelConnection(id: string, config: any) {
     !(config.signingEnabled ?? !!config.signingSecretRef) ||
     !!process.env[config.signingSecretRef];
   const testMode =
+    process.env.PORTAL_DEPLOYMENT === 'company-trial' ||
     process.env.PLATFORM_MODE === "mock" ||
     process.env.APP_ENV === "test" ||
     process.env.NODE_ENV !== "production";

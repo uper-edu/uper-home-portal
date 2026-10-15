@@ -23,6 +23,13 @@ export function BrowserMetadataGuide({ lang }: { lang: SiteLanguage }) {
         )}
       </p>
       <p>
+        {metadataWords([
+          'The company trial uses home.prototype.uperedu.com for all workspaces and consultation. Its entire site is excluded from search indexing and access may require the company VPN. Trial customers are synthetic; staff still need an authorized account and retain their normal role boundaries. Simulated notifications do not prove receipt in CRM Bot.',
+          'Uji coba perusahaan memakai home.prototype.uperedu.com untuk semua ruang kerja dan konsultasi. Seluruh situs tidak diindeks dan akses dapat memerlukan VPN perusahaan. Pelanggan uji adalah data sintetis; staf tetap memerlukan akun berwenang dengan batas peran yang sama. Notifikasi simulasi bukan bukti penerimaan di CRM Bot.',
+          '公司试用的各工作区与咨询入口统一使用home.prototype.uperedu.com。整个测试站禁止搜索索引，访问可能需要公司VPN。客户使用模拟数据，员工仍须使用已授权账号并遵守原角色权限；模拟通知不代表CRM Bot群已实收。',
+        ],lang)}
+      </p>
+      <p>
         {metadataWords(
           [
             "CRM, CMS, system management and private consultation pages are not indexed. Search controls do not replace sign-in or authorization. Public content uses its own title and canonical URL; structured data describes published content, not sales results or guarantees.",

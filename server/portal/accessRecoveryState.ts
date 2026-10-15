@@ -25,6 +25,11 @@ export async function accessRestoreGate(q: any, r: any, next: any) {
   if (!q.path.startsWith("/api/")) return next();
   try {
     const state = await restoreState();
+    if(process.env.PORTAL_DEPLOYMENT==='company-trial' && state?.required && q.path==='/api/health' && q.method==='GET'){
+      r.setHeader('Cache-Control','no-store');
+      r.json({status:'ok',businessReady:false,reviewRequired:true});
+      return;
+    }
     if (
       state?.required &&
       !q.path.startsWith("/api/admin/access") &&

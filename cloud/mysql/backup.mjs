@@ -2,20 +2,30 @@ import fs from 'node:fs/promises';
 import {openSync,closeSync} from 'node:fs';
 import {spawn} from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import {openTrialDatabase,validateTrialDatabase} from './database.mjs';
+import {withCompanyMaintenance} from './company-maintenance.mjs';
 
-function cli(env,program,args,stdio){
+async function cli(env,program,args,stdio){
   const {url,name}=validateTrialDatabase(env);
   const executable=path.join(env.MYSQL_BIN_DIRECTORY,program);
-  const connection=env.MYSQL_TRIAL_SOCKET?['--socket='+env.MYSQL_TRIAL_SOCKET]:['--host='+url.hostname,'--port='+(url.port||3306)];
-  if(!env.MYSQL_TRIAL_SOCKET&&!['localhost','127.0.0.1'].includes(url.hostname))throw Error('Remote backup requires an explicit verified TLS CLI configuration');
-  return new Promise((resolve,reject)=>{
-    const child=spawn(executable,['--no-defaults',...connection,'--user='+decodeURIComponent(url.username),...args,name],{env:{...process.env,MYSQL_PWD:decodeURIComponent(url.password)},stdio});
+  const connection=env.MYSQL_TRIAL_SOCKET?['--socket='+env.MYSQL_TRIAL_SOCKET]:['--protocol=TCP','--host='+url.hostname,'--port='+(url.port||3306)];
+  const tlsRequired=!env.MYSQL_TRIAL_SOCKET && (env.PORTAL_DEPLOYMENT==='company-trial'||!['localhost','127.0.0.1'].includes(url.hostname));
+  let privateDirectory;const tls=[];
+  if(tlsRequired){
+    if(!env.MYSQL_CA_PEM)throw Error('Remote backup requires a trusted CA');
+    privateDirectory=await fs.mkdtemp(path.join(os.tmpdir(),'uper-mysql-cli-'));
+    await fs.chmod(privateDirectory,0o700);
+    const ca=path.join(privateDirectory,'ca.pem');await fs.writeFile(ca,env.MYSQL_CA_PEM,{mode:0o600});
+    tls.push('--ssl-mode=VERIFY_IDENTITY','--ssl-ca='+ca);
+  }
+  try{return await new Promise((resolve,reject)=>{
+    const child=spawn(executable,['--no-defaults',...connection,...tls,'--user='+decodeURIComponent(url.username),...args,name],{env:{...process.env,MYSQL_PWD:decodeURIComponent(url.password)},stdio});
     let error='';child.stderr.on('data',chunk=>{error+=chunk.toString();});
     child.on('error',()=>reject(Error('Unable to launch MySQL backup tool')));
     child.on('exit',code=>code===0?resolve():reject(Error('MySQL backup operation failed: '+error.replaceAll(decodeURIComponent(url.password),'[REDACTED]').slice(0,500))));
-  });
+  });}finally{if(privateDirectory)await fs.rm(privateDirectory,{recursive:true,force:true});}
 }
 export async function backup(env,filename){
   const fd=openSync(filename,'wx',0o600);
@@ -24,7 +34,10 @@ export async function backup(env,filename){
   const bytes=await fs.readFile(filename);
   return {sha256:crypto.createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length};
 }
-export async function restore(env,filename,expectedHash){
+export async function restore(env,filename,expectedHash,options={}){
+  return withCompanyMaintenance(env,options,()=>restoreData(env,filename,expectedHash));
+}
+async function restoreData(env,filename,expectedHash){
   const data=await fs.readFile(filename);
   if(crypto.createHash('sha256').update(data).digest('hex')!==expectedHash)throw Error('Backup checksum mismatch');
   if(/^(?:CREATE DATABASE|USE |GRANT |CREATE USER|ALTER USER)/mi.test(data.toString()))throw Error('Backup may only restore tables in the selected trial database');

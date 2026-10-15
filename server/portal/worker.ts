@@ -392,6 +392,10 @@ export async function tick(clock = new Date()) {
       });
       return;
     }
+    if (process.env.PORTAL_DEPLOYMENT === 'company-trial' && process.env.PORTAL_NOTIFICATION_MODE === 'simulation' && config.mode !== 'simulation') {
+      await pool.query("UPDATE notification_jobs SET state='failed',result='Company trial simulation mode blocks live channel',completed_at=:p2 WHERE id=:p1",[job.id,clock]);
+      return;
+    }
     if (config.mode === "simulation") {
       await pool.query(
         "UPDATE notification_jobs SET state='simulated',result='No live channel configured',completed_at=:p2 WHERE id=:p1",
@@ -404,7 +408,7 @@ export async function tick(clock = new Date()) {
       !validWebhook(url) ||
       ((config.signingEnabled ?? !!config.signingSecretRef) &&
         !process.env[config.signingSecretRef]) ||
-      ((process.env.PLATFORM_MODE === "mock" ||
+      ((process.env.PORTAL_DEPLOYMENT === 'company-trial' || process.env.PLATFORM_MODE === "mock" ||
         process.env.APP_ENV === "test" ||
         process.env.NODE_ENV !== "production") &&
         process.env.LARK_TEST_GROUP !== job.recipient)

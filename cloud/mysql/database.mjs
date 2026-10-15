@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isIP } from 'node:net';
 
 // No fallback to DATABASE_URL: this runtime must never connect to local CRM.
 export function validateTrialDatabase(env) {
@@ -19,12 +20,16 @@ export async function openTrialDatabase(env) {
   const { default: mysql } = await import('mysql2/promise');
   const local = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
   if (env.MYSQL_TRIAL_SOCKET && !local) throw Error('Unix socket requires a local database URL');
-  if (!local && !env.MYSQL_CA_PEM) throw Error('Remote MySQL requires a trusted CA certificate');
+  const tlsRequired = !local || env.PORTAL_DEPLOYMENT === 'company-trial';
+  // mysql2 omits TLS hostname checks for numeric IP hosts; use a certificate-matching DNS name.
+  if (tlsRequired && isIP(url.hostname.replace(/^\[|\]$/g,''))) throw Error('Verified MySQL TLS requires a DNS hostname, not an IP address');
+  if (tlsRequired && !env.MYSQL_CA_PEM) throw Error('Remote MySQL requires a trusted CA certificate');
+  if (env.PORTAL_DEPLOYMENT === 'company-trial' && env.MYSQL_TRIAL_SOCKET) throw Error('Company trial requires verified TCP TLS, not a local socket');
   return mysql.createPool({
     host: url.hostname, port: Number(url.port || 3306), user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password), database: name,
     socketPath: env.MYSQL_TRIAL_SOCKET || undefined,
-    ssl: local ? undefined : { ca: env.MYSQL_CA_PEM, rejectUnauthorized: true },
+    ssl: tlsRequired ? { ca: env.MYSQL_CA_PEM, rejectUnauthorized: true, verifyIdentity: true } : undefined,
     connectionLimit: 8, connectTimeout: 10000, timezone: 'Z',
     supportBigNumbers: true, bigNumberStrings: true, dateStrings: true,
     multipleStatements: false,

@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import readline from "node:readline/promises";
 import net from "node:net";
 import { openTrialDatabase, withLock } from "./database.mjs";
+import {assertCompanyMaintenance,companyRecoveryResource} from './company-maintenance.mjs';
 import {
   builtInRoles,
   projectEmployee,
@@ -220,7 +221,10 @@ export async function emergencyAuthorizationPreview(env, input) {
     await db.end();
   }
 }
-export async function prepareEmergencyAuthorization(env, input) {
+export async function prepareEmergencyAuthorization(env,input){
+  return prepareEmergencyAuthorizationOn(env,input);
+}
+async function prepareEmergencyAuthorizationOn(env, input) {
   assertRecoveryMode(env);
   await assertMaintenanceOffline(env, input);
   if (!input.authorizationFile)
@@ -229,7 +233,7 @@ export async function prepareEmergencyAuthorization(env, input) {
   try {
     return await withLock(
       db,
-      "emergency-approval:" + input.authorizationId,
+      companyRecoveryResource(env,"emergency-approval:" + input.authorizationId),
       async (c) => {
         await c.beginTransaction();
         let committed = false;
@@ -373,6 +377,7 @@ export async function queryEmergencyAuthorization(env, operationId) {
   }
 }
 function assertRecoveryMode(env) {
+  if(env.PORTAL_DEPLOYMENT==='company-trial'){assertCompanyMaintenance(env);return;}
   const synthetic =
     env.TRIAL_DATASET === "synthetic" &&
     env.APP_ENV === "test" &&
@@ -387,6 +392,11 @@ function assertRecoveryMode(env) {
     );
 }
 async function assertMaintenanceOffline(env, input) {
+  if(env.PORTAL_DEPLOYMENT==='company-trial'){
+    assertCompanyMaintenance(env);
+    if(input.servicesStopped!==true)throw Error('Explicit stopped application and workers confirmation required');
+    return; // The enclosing database runtime lease verifies mutual exclusion across containers.
+  }
   if (env.TRIAL_DATASET === "synthetic" && env.APP_ENV === "test") return;
   if (input.servicesStopped !== true)
     throw Error(
@@ -636,7 +646,10 @@ export async function closeRecoveryOperation(env, input) {
     await db.end();
   }
 }
-export async function recoverAdministrator(env, input, password) {
+export async function recoverAdministrator(env,input,password){
+  return recoverAdministratorOn(env,input,password);
+}
+async function recoverAdministratorOn(env, input, password) {
   const grant = await authorization(env, input, false);
   await assertMaintenanceOffline(env, input);
   if (
@@ -658,7 +671,7 @@ export async function recoverAdministrator(env, input, password) {
     }),
     db = await openTrialDatabase(env);
   try {
-    return await withLock(db, "recovery:" + grant.id, async (c) => {
+    return await withLock(db, companyRecoveryResource(env,"recovery:" + grant.id), async (c) => {
       await c.beginTransaction();
       let committed = false;
       try {
@@ -733,8 +746,17 @@ export async function recoverAdministrator(env, input, password) {
         const [states] = await c.query(
           "SELECT value FROM access_state WHERE id='restore_review' FOR UPDATE",
         );
-        if (states[0]?.value.required) {
-          const state = states[0].value;
+        let reviewState=states[0]?.value;
+        if(env.PORTAL_DEPLOYMENT==='company-trial' && !reviewState?.required){
+          reviewState={required:true,restoreId:crypto.randomUUID(),reviewed:[],reset:[],recoveryAdmins:[],backupSha256:null,origin:'company-administrator-recovery'};
+          await c.execute("INSERT INTO access_state(id,value) VALUES('restore_review',?) ON DUPLICATE KEY UPDATE value=VALUES(value)",[JSON.stringify(reviewState)]);
+          await c.query("DELETE FROM crm_sessions");
+          await c.query("INSERT INTO notification_migration_holds(kind,id,reason) SELECT 'job',id,'security_restore_review' FROM notification_jobs WHERE state IN ('pending','sending','unknown') ON DUPLICATE KEY UPDATE id=notification_migration_holds.id");
+          await c.query("INSERT INTO notification_migration_holds(kind,id,reason) SELECT 'event',id,'security_restore_review' FROM outbox WHERE processed_at IS NULL ON DUPLICATE KEY UPDATE id=notification_migration_holds.id");
+          await c.query("INSERT INTO notification_migration_holds(kind,id,reason) SELECT 'task',id,'security_restore_review' FROM followup_tasks WHERE status IN ('open','overdue','migration_hold') ON DUPLICATE KEY UPDATE id=notification_migration_holds.id");
+        }
+        if (reviewState?.required) {
+          const state = reviewState;
           state.recoveryAdmins = [
             ...new Set([...(state.recoveryAdmins || []), input.userId]),
           ];
@@ -756,7 +778,7 @@ export async function recoverAdministrator(env, input, password) {
           approvalReference: grant.approvalReference || null,
           reason: input.reason,
           confirmation: input.confirmation,
-          restoreId: preview.restoreId,
+          restoreId: reviewState?.restoreId || preview.restoreId,
           at: new Date().toISOString(),
           addedRole,
         };

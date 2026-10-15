@@ -1,4 +1,6 @@
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
+import {companyConfiguration} from './companyTrial.ts';
+import {acquireCompanyRuntimeLease} from '../cloud/mysql/company-maintenance.mjs';
 import { configureAccessTransport } from "./portal/accessTransport.ts";
 import express from 'express';
 import path from 'node:path';
@@ -15,12 +17,14 @@ import {leadTier,taskDeadline} from './portal/followup.ts';
 import {campaignsContext} from '../cloud/mysql/campaign-context.mjs';
 import {loadCampaigns,getCurrentCampaigns,saveCampaign,deleteCampaign,trackCampaignImpression,synthesizeCampaignAiAssets} from './campaignStorage.ts';
 export async function startMysqlApplication(){
+const company=companyConfiguration();
+const releaseCompanyLease=company?await acquireCompanyRuntimeLease(nativePool,process.env,()=>{console.error('Company runtime lease lost; stopping');process.exit(1);}):null;
 if(process.env.PORTAL_DATABASE_DRIVER!=='mysql')throw Error('Explicit MySQL driver required');
 if(process.env.ACCESS_ALLOW_TEST_PASSWORDS==='true'&&(process.env.TRIAL_DATASET!=='synthetic'||process.env.APP_ENV!=='test'))throw Error('Fixed test credentials are forbidden outside isolated synthetic tests');
 const activeLocal=process.env.TRIAL_DATASET==='local-crm'&&process.env.PORTAL_LOCAL_CUTOVER==='true';
 if(!activeLocal&&process.env.TRIAL_DATASET!=='synthetic')throw Error('Migration-copy databases cannot run the application');
 if(process.env.PLATFORM_MODE!=='local')throw Error('Local acceptance only; server deployment requires a separate gate');
-const port=Number(process.env.PORT || 4412);
+const port=company?.port || Number(process.env.PORT || 4412);
 if(!Number.isInteger(port)||port<1024||port>65535||(port===3000&&!activeLocal))throw Error('Independent local MySQL port required; 3000 cutover not authorized');
 const faults=process.env.PORTAL_FAULT_TEST==='true';
 if(!faults && ['TRIAL_MODEL_STUB','TRIAL_PRIMARY_FAILURE','TRIAL_CONTENT_FAILURE_ONCE','TRIAL_FOLLOWUP_FAILURE_ONCE'].some(k=>process.env[k]==='true'))throw Error('Fault injection requires explicit local test mode');
@@ -37,6 +41,10 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
   }
 }
 const app=express();mountMetadataHeaders(app);configureAccessTransport(app);app.use(express.json({limit:'16mb'}));
+if(company){
+ app.get('/robots.txt',(_q,r)=>r.type('text').send('User-agent: *\nDisallow: /\n'));
+ app.get(['/sitemap.xml','/llms.txt','/llms-full.txt'],(_q,r)=>r.status(404).end());
+}
 let failContent=process.env.TRIAL_CONTENT_FAILURE_ONCE==='true';
 app.post(['/api/content','/api/sanity'],(_q,r,next)=>{if(!failContent)return next();failContent=false;r.status(503).json({error:'TEST content storage unavailable'});});
 app.use((_q,r,next)=>{r.setHeader('X-Content-Type-Options','nosniff');r.setHeader('Referrer-Policy','same-origin');next();});
@@ -64,15 +72,15 @@ if(process.env.TRIAL_FRONTEND_DIRECTORY){
   mountMetadataHtml(app,directory,nativePool);
 }
 app.use((e:any,_q:any,r:any,_next:any)=>r.status(e.status||503).json({error:e.status===413?'Request too large':'Request could not be processed'}));
-if(process.env.PORTAL_WORKER_ENABLED==='true'&&!activeLocal){
+if(process.env.PORTAL_WORKER_ENABLED==='true'&&!activeLocal&&!(company&&process.env.PORTAL_NOTIFICATION_MODE==='configured')){
  if(process.env.PORTAL_NOTIFICATION_MODE!=='simulation')throw Error('This local acceptance requires simulated notifications');
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
  if(channels.some(c=>c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
 }
 const timer=process.env.PORTAL_WORKER_ENABLED==='true'?startWorker():null;
-const server=app.listen(port,'127.0.0.1',()=>console.log({mysqlReady:true,port,workerEnabled:!!timer}));
+const server=app.listen(port,company?.host || '127.0.0.1',()=>console.log({mysqlReady:true,port,workerEnabled:!!timer}));
 let closing=false;
-async function shutdown(){if(closing)return;closing=true;if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{await pool.end();process.exit(0);});}
+async function shutdown(){if(closing)return;closing=true;if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{if(releaseCompanyLease)await releaseCompanyLease();await pool.end();process.exit(0);});}
 process.once('SIGINT',shutdown);process.once('SIGTERM',shutdown);
 return {app,server};
 }

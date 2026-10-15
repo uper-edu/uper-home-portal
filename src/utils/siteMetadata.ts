@@ -380,8 +380,9 @@ export function resolveMetadata(
         lang,
       ) + " | UPER";
   }
+  const trial = typeof window !== 'undefined' && window.location.hostname === 'home.prototype.uperedu.com';
   const indexable =
-    !privatePage && known && !options.notFound && !options.unavailable;
+    !trial && !privatePage && known && !options.notFound && !options.unavailable;
   const canonical = indexable ? publicUrl(path, lang, !dynamic) : undefined;
   const alternates =
     indexable && !dynamic

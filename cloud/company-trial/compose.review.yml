@@ -1,0 +1,24 @@
+# REVIEW ONLY. Merge through uper-server-deploy after separate deployment authorization.
+services:
+  api:
+    image: home-api:REPLACE_WITH_RELEASE
+    container_name: home-api
+    restart: always
+    env_file: /opt/project/home/api/.env
+    mem_limit: 512m
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - /opt/project/home/api/data:/data
+    networks:
+      - backend
+    # No host port mapping. Only nginx on backend may reach port 8080.
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: '3'
+networks:
+  backend:
+    external: true

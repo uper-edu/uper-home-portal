@@ -1,0 +1,40 @@
+import { isIP } from 'node:net';
+
+export const companyOrigin = 'https://home.prototype.uperedu.com';
+export const isCompanyTrial = (env = process.env) => env.PORTAL_DEPLOYMENT === 'company-trial';
+/** Explicit deployment gate. Local cutover and test-fault switches never grant server access. */
+export function companyConfiguration(env = process.env) {
+  if (!isCompanyTrial(env)) return null;
+  if (env.NODE_ENV !== 'production' || env.APP_ENV !== 'production' ||
+      env.TRIAL_DATASET !== 'synthetic' || env.PLATFORM_MODE !== 'local' ||
+      env.PORTAL_DATABASE_DRIVER !== 'mysql' || env.PORTAL_LOCAL_CUTOVER === 'true' ||
+      env.ACCESS_RECOVERY_MAINTENANCE === 'true' ||
+      env.PORTAL_MIGRATION_REHEARSAL === 'true' || env.ACCESS_ALLOW_TEST_PASSWORDS === 'true')
+    throw Error('Company trial requires production transport, database accounts and an isolated synthetic dataset');
+  if (['PORTAL_FAULT_TEST','TRIAL_MODEL_STUB','TRIAL_PRIMARY_FAILURE','TRIAL_CONTENT_FAILURE_ONCE','TRIAL_FOLLOWUP_FAILURE_ONCE'].some(k => env[k] === 'true'))
+    throw Error('Local fault injection is forbidden in company deployment');
+  if (env.APP_URL !== companyOrigin || env.ACCESS_PUBLIC_ORIGIN !== companyOrigin)
+    throw Error('Company trial requires the approved canonical HTTPS origin');
+  if (!env.ACCESS_TRUSTED_PROXIES || (env.ACCESS_OPERATION_KEY || '').length < 32 ||
+      !env.TRIAL_FRONTEND_DIRECTORY || env.MYSQL_TRIAL_SOCKET || !env.MYSQL_CA_PEM)
+    throw Error('Company trial requires explicit proxy peers, stable private key, frontend directory and verified MySQL TLS');
+  const peers=env.ACCESS_TRUSTED_PROXIES.split(',').map(p=>p.trim()).filter(Boolean);
+  if(!peers.length || peers.some(p=>!exactPrivateProxy(p)))throw Error('Company trial requires exact private proxy peers, never wildcard networks');
+  if(!['true','false'].includes(env.PORTAL_WORKER_ENABLED || ''))throw Error('Company trial worker must be explicitly enabled or paused');
+  if (!['simulation','configured'].includes(env.PORTAL_NOTIFICATION_MODE || ''))
+    throw Error('Explicit company notification mode required');
+  if (env.PORTAL_NOTIFICATION_MODE === 'configured' && env.LARK_TEST_GROUP !== 'CRM_Leads_Update')
+    throw Error('Company trial live notifications are restricted to the designated CRM Bot channel');
+  const port = Number(env.PORT || '8080');
+  if (!Number.isInteger(port) || port < 1024 || port > 65535 || port === 3000)
+    throw Error('Company trial requires a distinct unprivileged container port');
+  return { port, host: '0.0.0.0' };
+}
+export function exactPrivateProxy(value: string) {
+  const ip = value.startsWith('::ffff:') ? value.slice(7) : value;
+  if (!isIP(ip)) return false;
+  if (ip === '::1') return true;
+  if (isIP(ip) !== 4) return false;
+  const [a,b] = ip.split('.').map(Number);
+  return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}

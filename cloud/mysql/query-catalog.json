@@ -1470,6 +1470,12 @@
       "server/portal/worker.ts"
     ]
   },
+  "UPDATE notification_jobs SET state='failed',result='Company trial simulation mode blocks live channel',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='failed',result='Company trial simulation mode blocks live channel',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
   "UPDATE notification_jobs SET state='failed',result='Missing notification channel',completed_at=:p2 WHERE id=:p1": {
     "sql": "UPDATE notification_jobs SET state='failed',result='Missing notification channel',completed_at=:p2 WHERE id=:p1",
     "sources": [

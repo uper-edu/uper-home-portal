@@ -268,6 +268,8 @@ export function mountAccessOperations(app: any) {
           });
           const restore = await restoreState(c);
           if (restore?.required) {
+            if(process.env.PORTAL_DEPLOYMENT==='company-trial' && !(await accessDirectory(c)).some((user:any)=>fullAdministrator(user)&&restore.recoveryAdmins?.includes(user.id)))
+              fail(409,'access_restore_recovery_administrator');
             if (action.action === "password.reset") {
               const userId = q.path.split("/")[5];
               restore.reset = [...new Set([...(restore.reset || []), userId])];

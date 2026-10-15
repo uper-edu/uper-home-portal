@@ -68,7 +68,7 @@ export function injectMetadata(html: string, meta: Metadata) {
 }
 export function mountMetadataHeaders(app: Express) {
   app.use((q, r, next) => {
-    if (isPrivatePath(q.path)) {
+    if (process.env.PORTAL_DEPLOYMENT === 'company-trial' || isPrivatePath(q.path)) {
       r.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
       if (!q.path.startsWith("/api/"))
         r.setHeader("Cache-Control", "private, no-store");
@@ -130,6 +130,9 @@ export function mountMetadataHtml(app: Express, directory: string, db: any) {
         }
       }
       const meta = resolveMetadata(route, lang, options);
+      if(process.env.PORTAL_DEPLOYMENT === 'company-trial'){
+        meta.indexable=false;meta.canonical=undefined;meta.alternates=[];meta.schema=[];meta.image=undefined;
+      }
       r.setHeader("Cache-Control", "private, no-store");
       if (!meta.indexable) r.setHeader("X-Robots-Tag", robotsFor(meta));
       const template = await fs.readFile(

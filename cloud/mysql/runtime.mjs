@@ -4,7 +4,7 @@ import { bindSql, validateSql } from "./sql.mjs";
 import { migrate } from "./migrate.mjs";
 const raw = await openTrialDatabase(process.env);
 export const nativePool = raw;
-const database = new URL(process.env.MYSQL_TRIAL_URL).pathname.slice(1);
+const database = decodeURIComponent(new URL(process.env.MYSQL_TRIAL_URL).pathname.slice(1));
 export const id = () => crypto.randomUUID();
 function result(rows) {
   return {
