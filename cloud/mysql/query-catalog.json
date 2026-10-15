@@ -460,6 +460,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
   "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE config=VALUES(config),code=VALUES(code)": {
     "sql": "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE config=VALUES(config),code=VALUES(code)",
     "sources": [
@@ -566,6 +572,12 @@
       "server/portal/accessHandovers.ts",
       "server/portal/accessManagement.ts",
       "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT * FROM crm_users ORDER BY id": {
+    "sql": "SELECT * FROM crm_users ORDER BY id",
+    "sources": [
+      "server/portal/accessManagement.ts"
     ]
   },
   "SELECT * FROM crm_users WHERE (login_key=lower(:p1) OR email_key=lower(:p1))": {
@@ -805,6 +817,12 @@
     "sql": "SELECT config FROM trial_campaigns ORDER BY created_at DESC",
     "sources": [
       "server/mysqlApplication.ts"
+    ]
+  },
+  "SELECT config FROM trial_campaigns WHERE id=:p1 AND code=:p1": {
+    "sql": "SELECT config FROM trial_campaigns WHERE id=:p1 AND code=:p1",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
     ]
   },
   "SELECT COUNT(*) AS count FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id WHERE i.employee_id=:p1 AND o.lead_id=:p2 AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=:p1 AND lead_id=:p2),'1000-01-01 00:00:00')": {

@@ -102,6 +102,8 @@ async function applyAccessReliabilityMigration(connection){
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const {loadPortalEnvironment}=await import('../../server/environment.mjs');
+  loadPortalEnvironment();
   const pool = await openTrialDatabase(process.env);
   try { console.log(await migrate(pool, new URL(process.env.MYSQL_TRIAL_URL).pathname.slice(1))); }
   finally { await pool.end(); }

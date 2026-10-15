@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawn} from 'node:child_process';
+import {environmentName,loadPortalEnvironment} from '../server/environment.mjs';
+const target=environmentName(process.argv[2]||'dev');
+loadPortalEnvironment({target});
+const server=path.resolve('build',target,'runtime/server.mjs');
+if(!fs.existsSync(server))throw Error('Build this environment first: npm run build:'+target);
+const child=spawn(process.execPath,[server],{env:{...process.env,PORTAL_PACKAGE_ENV:target},stdio:'inherit'});
+for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>child.kill(signal));
+child.on('exit',code=>process.exit(code??1));

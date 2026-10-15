@@ -1,4 +1,6 @@
 import { backupPortal, restorePortal } from "../server/portal/backup.ts";
+import {loadPortalEnvironment} from '../server/environment.mjs';
+loadPortalEnvironment();
 const [mode, file, checksum] = process.argv.slice(2);
 if (
   !["backup", "restore"].includes(mode) ||

@@ -1,47 +1,66 @@
 # UPER Home Portal
 
-React/TypeScript website with an Express backend, CRM/CMS workbenches, HSK placement entry, and OpenAI chat with DeepSeek fallback.
+React/TypeScript website with an Express backend, MySQL persistence, CRM/CMS and system-management workspaces, HSK placement entry, and OpenAI chat with DeepSeek fallback.
 
 ## Local development
 
-Requires Node.js 24 or newer, npm, and a PostgreSQL database. Configure DATABASE_URL in .env before starting. For restricted localhost testing use PLATFORM_MODE=mock; real employee identity and permissions must come from the education management platform before remote CRM access.
+Requires Node.js 24 or newer, npm and MySQL 8. Environment names are `dev`, `test` and `prod`; each uses its own private configuration and data source.
 
 ```sh
 npm ci --ignore-scripts
-cp .env.example .env
-# Fill local credentials in .env; do not commit them.
+cp -n .env.dev.example .env.dev
+chmod 600 .env.dev
+# Fill the private local database connection and other required values before starting.
 npm run dev
 ```
 
-The locked `msedge-tts` package includes a pnpm-only installation guard. The npm workflow above skips dependency lifecycle scripts; the isolated snapshot was tested and built with this installation. On macOS arm64, run `node node_modules/@embedded-postgres/darwin-arm64/scripts/hydrate-symlinks.js` before initializing a fresh embedded cluster. A separately managed PostgreSQL service avoids the optional embedded setup.
+The locked `msedge-tts` package includes a pnpm-only installation guard, so the npm workflow skips dependency lifecycle scripts. No embedded PostgreSQL setup is required.
 
-The server listens on port 3000 (overridable with PORT). Mock employee mode binds to 127.0.0.1 and rejects proxied authentication. The local starter can restart an already initialized macOS arm64 PostgreSQL cluster in data/postgres-local; other environments use their separately managed database. Routes include `/`, `/chat`, `/crm`, and `/cms`.
+Development normally listens on localhost:3000. Do not start another process or overwrite the database connection when an existing local3000 service is running. Routes include `/`, `/chat`, `/crm`, `/cms` and `/system`; staff permissions and customer ownership apply to the management APIs. Mock employee fixtures are for isolated localhost tests only.
 
-## AI configuration
+## Environment configuration and builds
 
-Set `OPENAI_API_KEY`, `OPENAI_MODEL` (default `gpt-4o`), and `DEFAULT_AI_PROVIDER=openai`. Set a valid `DEEPSEEK_API_KEY` to enable automatic fallback to `deepseek-chat`. The application retries with the backup if the primary fails, records failed attempts, and saves the final reply before confirming completion. The model info endpoint confirms loaded configuration, not live provider health.
+Only placeholder templates belong in Git: `.env.dev.example`, `.env.test.example` and `.env.prod.example`. Actual `.env.dev`, `.env.test` and `.env.prod` files stay private and are not included in release packages. The old `.env` is not automatically merged by the new environment loader.
 
-The server loads `.env` first, otherwise `.env.prod`. Keep both private. Consultation chat is saved directly to CRM rather than deferred email submission. Unrelated contact/careers forms still use their existing SMTP handlers.
+```sh
+npm run build:dev
+npm run build:test
+# Start a prepared environment only after its private configuration is ready:
+npm run start:dev
+```
 
-## Checks and production run
+`npm run build` is the development build. Outputs are `build/<environment>/web` and `build/<environment>/runtime`. Frontend builds consume only public `VITE_` variables; server credentials are injected at runtime. Production configuration is reserved and startup remains blocked until explicitly provisioned. See [environment configuration](docs/environment-configuration.md) for file creation, secret custody and environment isolation.
+
+## AI and notification configuration
+
+Configure `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-4o`) privately. A valid `DEEPSEEK_API_KEY` enables fallback to `deepseek-chat`. Provider attempts and the final consultation response are persisted; a configuration endpoint does not prove live provider health. Unrelated contact/careers forms retain their SMTP handlers.
+
+Sales Operations manages notification rules, channels and delivery audit. Opening a customer or reading messages does not complete follow-up tasks. Lark starts in simulation for a new environment and requires explicit approval and a configured server-side Webhook before live sending. Email/SMS delivery is not connected. Environment templates deliberately do not embed the current server's secrets or activate live delivery.
+
+## Checks
 
 ```sh
 npm test
 npm run lint
 npm run build
-npm start
 ```
 
-`lint` includes all server modules. Tests use temporary directories and mock provider credentials. Set PORTAL_TEST_DATABASE_URL to a separate disposable PostgreSQL database to include CRM integration tests; production secrets and customer records are never required.
+Database integration tests use disposable synthetic databases. The native test harness requires its explicitly designated independent MySQL socket and MySQL CLI directory; never point it at local3000 or a company business schema. See `tests/helpers/mysql.mjs` and the company acceptance reports for the exact harness and evidence boundaries.
 
-## Data and migration boundary
+## Company test deployment
 
-This organizational repository starts from a clean source snapshot. It intentionally does not include the previous personal repository's Git history, real environment files, or runtime customer data. Public website content in `src/data/content/` and static learning assets are retained.
+The approved unified origin is `https://home.prototype.uperedu.com`, with frontend and API served together. The company test environment has its own synthetic MySQL schema and private `.env.test`; it does not use local3000 customer data or credentials. Staff APIs retain login, role and customer-scope checks. Server builds are prepared locally and released through the project adapter for the `uper-server-deploy` skill. A GitHub sync does not authorize deployment.
 
-Customer profiles, visitor sessions, conversations, messages, follow-up tasks and notification jobs now live in PostgreSQL. Legacy campaign JSON, local database clusters, reports and backups remain under ignored local paths. See docs/portal-operations.md for dry-run migration, integrity checks and backup/restore procedures. Do not use Git to synchronize customer records.
+- [Company deployment acceptance](docs/company-host-deployment-20261015.md)
+- [Browser acceptance and remaining limitations](docs/company-browser-acceptance-20261015.md)
+- [Live automatic Lark acceptance and historical queue isolation](docs/company-lark-live-acceptance-20261015.md)
 
-CRM routes enforce employee permissions and lead scope through the platform adapter. The bundled identity fixtures are localhost-only; real platform integration is pending. CMS and remaining legacy/public form boundaries require a separate deployment security review. Syncing this source does not authorize deployment.
+System management's test directory is available only to fully authorized system administrators in the explicitly enabled synthetic company environment. It lists preset test accounts, current roles and only a verified still-valid initial password; later-created users and changed passwords are excluded. No actual initial password is stored in source.
 
-The repaired assessment entry resumes pending/skipped/completed status on reload; individual question progress is not persisted.
+The permanent read-only `organic` campaign groups new registrations from `/chat`, `/chat?c=home` and `/chat?c=organic`. Other campaign IDs remain independent, and existing first-touch attribution is preserved. This is an entry-based source bucket, not verified search-engine traffic. The shareable test directory calls the campaign entry “Campaign attribution”.
 
-Notification rules, channels and delivery audit appear under SLA & Policy. Daily reminders appear as activity badges and tasks in Leads. Reading a lead does not complete follow-up. Internal inbox and Lark adapters are implemented; Lark defaults to simulation until a designated group is configured. Email/SMS are disconnected. See docs/portal-validation.md for acceptance boundaries.
+## Data boundary
+
+Customer profiles, employee accounts, visitor sessions, conversations, messages, assessments, follow-up tasks and notification delivery records persist in MySQL. Static question banks, public content and translations may remain JSON assets. Data migrations, backups, restores and environment cutovers require their own reviewed procedure; changing code does not normally require restoring the entire database.
+
+Do not commit private environment files, keys, runtime customer records, logs, local databases or backups. Stage only reviewed source, placeholder templates and documentation. This repository's canonical remote is `uper-edu/uper-home-portal`.

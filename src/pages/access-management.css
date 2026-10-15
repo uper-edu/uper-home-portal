@@ -354,3 +354,6 @@
     flex: 1 1 150px;
   }
 }
+.test-directory textarea{width:100%;box-sizing:border-box;resize:vertical;line-height:1.7;min-height:24rem;font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;}
+.test-directory .access-actions button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;}
+.test-directory p{overflow-wrap:anywhere;}

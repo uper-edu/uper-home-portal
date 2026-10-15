@@ -1,11 +1,7 @@
-import fs from "node:fs";
 import { spawn } from "node:child_process";
-import dotenv from "dotenv";
+import { loadPortalEnvironment } from '../server/environment.mjs';
 import { prepareLocalMysql } from "./local-mysql.mjs";
-if (process.env.PORTAL_ENV_FILE)
-  dotenv.config({ path: process.env.PORTAL_ENV_FILE, quiet: true });
-else if (!process.env.MYSQL_TRIAL_URL && fs.existsSync(".env"))
-  dotenv.config({ path: ".env", quiet: true });
+loadPortalEnvironment({target:process.argv[2] || process.env.PORTAL_ENV || 'dev'});
 if (process.env.PORTAL_DATABASE_DRIVER !== "mysql")
   throw Error("Explicit MySQL configuration required");
 await prepareLocalMysql();

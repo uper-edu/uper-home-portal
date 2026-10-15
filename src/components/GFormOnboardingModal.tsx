@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import {organicCampaignName,canonicalCampaignId} from '../utils/organicCampaign';
 import { 
   User, 
   Phone, 
@@ -48,11 +49,11 @@ export default function GFormOnboardingModal({
     hook: HookType;
     context: HookContextType;
   }>({
-    entry: 'campus',
-    campaign: 'seminar_2026',
-    placement: 'qr_scanner',
+    entry: 'organic',
+    campaign: 'organic',
+    placement: 'website',
     hook: 'hsk_assessment',
-    context: 'campus_career_talk'
+    context: 'website'
   });
 
   const [campaignMeta, setCampaignMeta] = useState<{
@@ -68,14 +69,14 @@ export default function GFormOnboardingModal({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
-      const shortCode = sp.get('c') || sp.get('cid') || sp.get('campaign');
+      const shortCode = canonicalCampaignId(sp.get('c') || sp.get('cid') || sp.get('campaign'));
 
       setUrlParams({
-        entry: sp.get('entry') || 'campus',
-        campaign: shortCode || 'seminar_2026',
-        placement: sp.get('placement') || 'qr_scanner',
+        entry: sp.get('entry') || (shortCode==='organic'?'organic':'campus'),
+        campaign: shortCode,
+        placement: sp.get('placement') || (shortCode==='organic'?'website':'qr_scanner'),
         hook: (sp.get('hook') as HookType) || 'hsk_assessment',
-        context: (sp.get('context') as HookContextType) || 'campus_career_talk'
+        context: (sp.get('context') as HookContextType) || (shortCode==='organic'?'website':'campus_career_talk')
       });
 
       const urlLang = sp.get('lang');
@@ -313,7 +314,7 @@ export default function GFormOnboardingModal({
           <div className="flex items-center justify-between mb-2">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-300 uppercase tracking-widest bg-primary-800/40 px-2.5 py-1 rounded-full border border-primary-500/20">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              UPER Seminar Profile
+              {lang==='zh'?'UPER学习者资料':lang==='id'?'Profil pembelajar UPER':'UPER Learner Profile'}
             </span>
 
             {/* Language Switcher */}
@@ -352,10 +353,10 @@ export default function GFormOnboardingModal({
             <div className="mb-3 p-2.5 bg-emerald-500/15 border border-emerald-400/30 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-200">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-300 font-bold text-[10px] uppercase tracking-wider">
-                  {lang === 'zh' ? '专属活动通道' : lang === 'en' ? 'Event Channel' : 'Saluran Khusus Acara'}
+                  {campaignMeta.id==='organic'?(lang==='zh'?'自然流量入口':lang==='id'?'Trafik organik':'Organic entry'):(lang === 'zh' ? '专属活动通道' : lang === 'en' ? 'Event Channel' : 'Saluran Khusus Acara')}
                 </span>
                 <span className="font-semibold text-white">
-                  {lang === 'zh' ? campaignMeta.name : (campaignMeta.nameEn || campaignMeta.name)}
+                  {campaignMeta.id==='organic'?organicCampaignName(lang):lang === 'zh' ? campaignMeta.name : (campaignMeta.nameEn || campaignMeta.name)}
                 </span>
               </div>
               {campaignMeta.venue && (

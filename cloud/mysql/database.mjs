@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isIP } from 'node:net';
+import {mysqlTlsRequired} from './transport.mjs';
 
 // No fallback to DATABASE_URL: this runtime must never connect to local CRM.
 export function validateTrialDatabase(env) {
@@ -20,7 +21,7 @@ export async function openTrialDatabase(env) {
   const { default: mysql } = await import('mysql2/promise');
   const local = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
   if (env.MYSQL_TRIAL_SOCKET && !local) throw Error('Unix socket requires a local database URL');
-  const tlsRequired = !local || env.PORTAL_DEPLOYMENT === 'company-trial';
+  const tlsRequired = mysqlTlsRequired(env);
   // mysql2 omits TLS hostname checks for numeric IP hosts; use a certificate-matching DNS name.
   if (tlsRequired && isIP(url.hostname.replace(/^\[|\]$/g,''))) throw Error('Verified MySQL TLS requires a DNS hostname, not an IP address');
   if (tlsRequired && !env.MYSQL_CA_PEM) throw Error('Remote MySQL requires a trusted CA certificate');

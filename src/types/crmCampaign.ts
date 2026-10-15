@@ -74,6 +74,8 @@ export interface CampaignClosedLoopStats {
 }
 
 export interface CrmCampaignRecord {
+  systemManaged?: boolean;
+  nameId?: string;
   id: string;                // e.g. 'seminar_2026', 'c_ui_career_2026'
   code: string;              // Short code used in URL parameter "?c=..."
   name: string;              // 中文名称

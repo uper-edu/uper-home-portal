@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import {internalMysqlDirect} from '../cloud/mysql/transport.mjs';
 
 export const companyOrigin = 'https://home.prototype.uperedu.com';
 export const isCompanyTrial = (env = process.env) => env.PORTAL_DEPLOYMENT === 'company-trial';
@@ -15,9 +16,10 @@ export function companyConfiguration(env = process.env) {
     throw Error('Local fault injection is forbidden in company deployment');
   if (env.APP_URL !== companyOrigin || env.ACCESS_PUBLIC_ORIGIN !== companyOrigin)
     throw Error('Company trial requires the approved canonical HTTPS origin');
+  const direct=internalMysqlDirect(env);
   if (!env.ACCESS_TRUSTED_PROXIES || (env.ACCESS_OPERATION_KEY || '').length < 32 ||
-      !env.TRIAL_FRONTEND_DIRECTORY || env.MYSQL_TRIAL_SOCKET || !env.MYSQL_CA_PEM)
-    throw Error('Company trial requires explicit proxy peers, stable private key, frontend directory and verified MySQL TLS');
+      !env.TRIAL_FRONTEND_DIRECTORY || env.MYSQL_TRIAL_SOCKET || (!direct && !env.MYSQL_CA_PEM))
+    throw Error('Company trial requires explicit proxy peers, stable private key, frontend directory and an approved MySQL transport');
   const peers=env.ACCESS_TRUSTED_PROXIES.split(',').map(p=>p.trim()).filter(Boolean);
   if(!peers.length || peers.some(p=>!exactPrivateProxy(p)))throw Error('Company trial requires exact private proxy peers, never wildcard networks');
   if(!['true','false'].includes(env.PORTAL_WORKER_ENABLED || ''))throw Error('Company trial worker must be explicitly enabled or paused');

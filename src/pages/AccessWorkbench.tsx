@@ -7,7 +7,8 @@ import { AccessSafetyPanel } from "../components/AccessSafetyPanel";
 import { AccessUserCard, AccessRoleCard } from "../components/AccessRecordCard";
 import { accessGuide, accessError } from "../utils/accessLanguage";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { BookOpen, Eye, History, ShieldCheck, Users } from "lucide-react";
+import { BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
+import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
 import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
@@ -27,6 +28,7 @@ const moduleIcons = {
   preview: Eye,
   audit: History,
   guide: BookOpen,
+  test: FlaskConical,
 };
 type User = {
   id: string;
@@ -83,7 +85,7 @@ export function AccessWorkspace({
     t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   const [discarding, setDiscarding] = useState(false);
   const [tab, setTab] = useState("users"),
-    [data, setData] = useState<{ users: User[]; roles: Role[] } | null>(null),
+    [data, setData] = useState<{ users: User[]; roles: Role[]; testDirectoryAvailable?:boolean } | null>(null),
     [err, setErr] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
@@ -407,8 +409,10 @@ export function AccessWorkspace({
               ["preview", "Access preview", "Pratinjau akses", "权限预览"],
               ["audit", "Change audit", "Audit perubahan", "变更审计"],
               ["guide", "Guide", "Panduan", "使用指南"],
+              ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
               .filter((a) => a[0] !== "audit" || can("access.audit"))
+              .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
                 const Icon = moduleIcons[a[0] as keyof typeof moduleIcons];
                 return (
@@ -479,6 +483,7 @@ export function AccessWorkspace({
             {!data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
+            {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
             {tab === "guide" ? (
               <section className="access-card">
                 <h2>

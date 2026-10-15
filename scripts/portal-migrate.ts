@@ -1,4 +1,6 @@
 import fs from "node:fs/promises";
+import {loadPortalEnvironment} from '../server/environment.mjs';
+loadPortalEnvironment();
 let pool: any;
 import { inspectMigration, fingerprint } from "../server/portal/migration.ts";
 import { defaults, validate } from "../server/portal/policy.ts";

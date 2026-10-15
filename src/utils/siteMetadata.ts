@@ -143,6 +143,7 @@ export const moduleNames: Record<string, Record<string, Words>> = {
     roles: ["Roles & Permissions", "Peran & Izin", "角色权限"],
     preview: ["Access Preview", "Pratinjau Akses", "权限预览"],
     audit: ["Change Audit", "Audit Perubahan", "变更审计"],
+    test: ["Test Environment & Accounts", "Lingkungan Uji & Akun", "测试环境和账号"],
     guide: ["Guide", "Panduan", "使用指南"],
   },
   cms: {

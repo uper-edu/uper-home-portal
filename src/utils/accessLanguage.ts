@@ -114,6 +114,9 @@ export function accessError(value: string, lang: CrmLanguage) {
   );
 }
 export const accessGuide: [string, string, string][] = [
+  ['In the company test environment, full system administrators can open Test environment & accounts and copy links and preset accounts as plain text. Roles are current; only a verified initial password is displayed. Later-created accounts and changed passwords are excluded. This page does not reset accounts or grant access.',
+  'Di lingkungan uji perusahaan, administrator sistem dengan izin lengkap dapat membuka Lingkungan uji & akun dan menyalin tautan serta akun bawaan sebagai teks biasa. Peran mengikuti konfigurasi terkini; hanya kata sandi awal yang terverifikasi ditampilkan. Akun tambahan dan kata sandi yang telah diubah tidak disertakan. Halaman ini tidak mereset akun atau memberikan akses.',
+  '在公司测试环境中，拥有完整系统管理权限的管理员可进入“测试环境和账号”，复制入口和预置账号的纯文本。角色读取当前配置，仅显示核实仍有效的初始密码；不列出后来新增的账号，不显示已修改的密码。此页面不会重置账号或授予权限。'],
   [
     "Users identify people; roles describe duties; permissions authorize actions; scopes limit each action to own or all customers. Eligible sales use a shared unassigned pool; teams do not control access.",
     "Pengguna mengidentifikasi orang; peran menjelaskan tugas; izin mengatur tindakan; cakupan membatasi tindakan pada pelanggan sendiri atau semua pelanggan. Sales yang berwenang memakai kumpulan pelanggan tanpa penanggung jawab bersama; tim tidak mengatur akses.",

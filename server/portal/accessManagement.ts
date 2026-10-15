@@ -2,6 +2,7 @@ import { normalizeStaffEmail } from "../../src/utils/staffEmail.ts";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { validMutationOrigin } from "./accessTransport.ts";
+import {canReadTestDirectory,testDirectoryEnabled,testDirectoryOrigin,testDirectoryUsers} from './testDirectory.ts';
 import type { Express, Request } from "express";
 import { pool, tx } from "./store.ts";
 import { platform } from "./identity.ts";
@@ -172,7 +173,7 @@ export function mountAccessManagement(app: Express) {
   app.get(
     "/api/admin/access",
     wrap(async (q: any, r: any) => {
-      await guard(q, "access.read");
+      const employee=await guard(q, "access.read");
       r.setHeader("Cache-Control", "no-store");
       const roles = await roleRows();
       r.json({
@@ -184,9 +185,20 @@ export function mountAccessManagement(app: Express) {
         })),
         roles,
         catalog: permissionCatalog,
+        testDirectoryAvailable:testDirectoryEnabled() && canReadTestDirectory(employee),
       });
     }),
   );
+  app.get('/api/admin/access/test-directory',wrap(async(q:any,r:any)=>{
+    const employee=await guard(q,'access.read');
+    if(!canReadTestDirectory(employee))error(403,'Permission denied');
+    if(!testDirectoryEnabled())error(404,'Not found');
+    r.setHeader('Cache-Control','no-store, private');
+    r.setHeader('Pragma','no-cache');
+    const rows=(await pool.query('SELECT * FROM crm_users ORDER BY id')).rows;
+    r.json({origin:testDirectoryOrigin,generatedAt:new Date().toISOString(),
+      users:await testDirectoryUsers(rows,await roleRows(),process.env.PORTAL_TEST_DIRECTORY_INITIAL_PASSWORD)});
+  }));
   app.get(
     "/api/admin/access/audit",
     wrap(async (q: any, r: any) => {

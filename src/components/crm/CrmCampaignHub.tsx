@@ -1,3 +1,4 @@
+import {isOrganicCampaign,organicCampaignName} from '../../utils/organicCampaign';
 import {CrmCampaignMeasures} from "./CrmCampaignMeasures";
 import { campaignChatLink, matchesCampaign } from "../../utils/crmCampaignLink";
 import { CrmSelect } from "./CrmSelect";
@@ -783,7 +784,7 @@ export function CrmCampaignHub({
                     }}
                     className={`crm-campaign-title text-left font-bold text-sm sm:text-base leading-snug cursor-pointer transition-colors line-clamp-2 ${isLight ? "text-slate-900 hover:text-primary-600" : "text-slate-100 hover:text-primary-400"}`}
                   >
-                    {lang === "id"
+                    {isOrganicCampaign(camp)?organicCampaignName(lang):lang === "id"
                       ? camp.nameEn
                       : lang === "zh"
                         ? camp.name
@@ -791,7 +792,7 @@ export function CrmCampaignHub({
                   </button>
 
                   {/* Schedule & Location */}
-                  <div className="crm-campaign-muted space-y-1 mt-2.5 text-xs">
+                  {isOrganicCampaign(camp)?<p className="crm-campaign-muted mt-2.5 text-xs">{lang==="zh"?"系统预置 · 长期有效 · 不可编辑或删除":lang==="id"?"Bawaan sistem · Selalu aktif · Tidak dapat diubah atau dihapus":"System preset · Always active · Cannot edit or delete"}</p>:<div className="crm-campaign-muted space-y-1 mt-2.5 text-xs">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                       <span className="truncate">
@@ -809,6 +810,7 @@ export function CrmCampaignHub({
                     </div>
                   </div>
 
+                  }
                   {/* Tracking Short Code Pill */}
                   <div
                     className={`mt-3 p-2 rounded-xl border flex items-center justify-between gap-2 ${isLight ? "bg-slate-50 border-slate-200/80" : "bg-slate-800/60 border-slate-700/60"}`}
@@ -905,7 +907,7 @@ export function CrmCampaignHub({
                     </button>
                   </div>
 
-                  {canManageCampaigns&&<div className="flex items-center gap-1">
+                  {canManageCampaigns&&!isOrganicCampaign(camp)&&<div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => handleOpenEditWizard(camp)}
@@ -1108,7 +1110,7 @@ export function CrmCampaignHub({
                   </span>
                 </div>
                 <h3 className="font-bold text-base sm:text-lg leading-tight">
-                  {lang === "id"
+                  {isOrganicCampaign(activeDetailCampaign)?organicCampaignName(lang):lang === "id"
                     ? activeDetailCampaign.nameEn
                     : lang === "zh"
                       ? activeDetailCampaign.name
@@ -1117,7 +1119,7 @@ export function CrmCampaignHub({
               </div>
 
               <div className="flex items-center gap-2">
-                {canManageCampaigns&&<button
+                {canManageCampaigns&&!isOrganicCampaign(activeDetailCampaign)&&<button
                   type="button"
                   onClick={() => handleOpenEditWizard(activeDetailCampaign)}
                   className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer ${isLight ? "bg-white border-slate-200 hover:bg-slate-100 text-slate-600" : "bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300"}`}

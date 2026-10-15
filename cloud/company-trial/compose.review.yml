@@ -4,7 +4,7 @@ services:
     image: home-api:REPLACE_WITH_RELEASE
     container_name: home-api
     restart: always
-    env_file: /opt/project/home/api/.env
+    env_file: /opt/project/home/api/.env.test
     mem_limit: 512m
     read_only: true
     tmpfs:

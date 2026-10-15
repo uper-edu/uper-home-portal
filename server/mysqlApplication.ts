@@ -1,3 +1,5 @@
+import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
+import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
 import {companyConfiguration} from './companyTrial.ts';
 import {acquireCompanyRuntimeLease} from '../cloud/mysql/company-maintenance.mjs';
@@ -55,11 +57,11 @@ app.post('/api/crm/leads/:id/logs',(_q,r,next)=>{
 });
 mountHskAssets(app);
 app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
-await mountPortal(app);mountChat(app);
+await mountPortal(app);await ensureOrganicCampaign();mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline});
 const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>r.status(e.status||503).json({error:e.status&&e.status<500?e.message:'Storage unavailable; operation not saved'}));
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
-app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const campaign=list.find(c=>[c.id,c.code,c.name,c.nameEn].includes(q.params.idOrCode));if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
+app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const campaign=list.find(c=>[c.id,c.code,c.name,c.nameEn].includes(canonicalCampaignId(q.params.idOrCode)));if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
 app.post('/api/crm/campaigns',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,__actor:r.locals.crmEmployee.id})})));
 app.put('/api/crm/campaigns/:id',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,id:q.params.id,__actor:r.locals.crmEmployee.id})})));
 app.delete('/api/crm/campaigns/:id',wrap(async(q:any,r:any)=>r.json({success:await deleteCampaign(q.params.id)})));

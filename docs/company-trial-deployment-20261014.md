@@ -1,3 +1,5 @@
+> Historical design dated 2026-10-14. Current deployment and environment policy: [2026-10-15 acceptance](company-host-deployment-20261015.md) and [environment configuration](environment-configuration.md). The approved test-only internal MySQL direct mode supersedes the TLS-only requirement below; shared certificates were not changed. Server environment is now `.env.test`.
+
 # Company trial deployment — local adaptation and release checklist
 
 Target: `https://home.prototype.uperedu.com`, including `/chat`, `/crm`, `/cms`, `/system` and `/api`. This is the user-approved same-origin exception to the company tool's default split-domain setup. No Sites, Google Cloud or Redis dependency is introduced. This document does not authorize server execution or external testers.

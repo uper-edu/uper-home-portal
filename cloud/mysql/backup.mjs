@@ -6,13 +6,15 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import {openTrialDatabase,validateTrialDatabase} from './database.mjs';
 import {withCompanyMaintenance} from './company-maintenance.mjs';
+import {mysqlTlsRequired,internalMysqlDirect} from './transport.mjs';
 
 async function cli(env,program,args,stdio){
   const {url,name}=validateTrialDatabase(env);
   const executable=path.join(env.MYSQL_BIN_DIRECTORY,program);
   const connection=env.MYSQL_TRIAL_SOCKET?['--socket='+env.MYSQL_TRIAL_SOCKET]:['--protocol=TCP','--host='+url.hostname,'--port='+(url.port||3306)];
-  const tlsRequired=!env.MYSQL_TRIAL_SOCKET && (env.PORTAL_DEPLOYMENT==='company-trial'||!['localhost','127.0.0.1'].includes(url.hostname));
+  const tlsRequired=!env.MYSQL_TRIAL_SOCKET && mysqlTlsRequired(env);
   let privateDirectory;const tls=[];
+  if(internalMysqlDirect(env))tls.push('--ssl-mode=DISABLED');
   if(tlsRequired){
     if(!env.MYSQL_CA_PEM)throw Error('Remote backup requires a trusted CA');
     privateDirectory=await fs.mkdtemp(path.join(os.tmpdir(),'uper-mysql-cli-'));

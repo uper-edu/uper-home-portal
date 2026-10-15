@@ -1762,6 +1762,22 @@
   {
     "layer": "contract",
     "object": "CrmCampaignRecord",
+    "key": "systemManaged",
+    "type": "boolean",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "nameId",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
     "key": "id",
     "type": "string",
     "optional": false,
