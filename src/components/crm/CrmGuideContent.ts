@@ -116,6 +116,11 @@ export const guideSections = [
     title: ["Customer workspace", "Ruang kerja pelanggan", "客户工作区"],
     body: [
       [
+        "Browser tab titles show the current module, Sales Management and UPER. Switching interface language updates titles and descriptions; customer names, messages and notes stay original and do not appear in tab titles. CRM and its sign-in pages are not indexed. Search controls never replace sign-in and permissions. Public website titles and canonical links are separate from staff documentation.",
+        "Judul tab menampilkan modul aktif, Manajemen Penjualan, dan UPER. Pergantian bahasa antarmuka memperbarui judul dan deskripsi; nama, pesan, dan catatan pelanggan tetap asli dan tidak muncul pada judul tab. CRM dan halaman loginnya tidak diindeks. Kontrol pencarian tidak menggantikan login dan izin. Judul serta tautan kanonis situs publik terpisah dari dokumentasi staf.",
+        "浏览器标签标题依次显示当前功能、销售管理与UPER。切换界面语言时同步更新标题和说明；客户姓名、消息和备注保持原文，不进入标签标题。CRM及登录页禁止搜索索引；搜索控制不能替代登录和权限校验。公开网站的标题与规范链接独立于员工文档。",
+      ],
+      [
         "Use Processing priority to order current work without changing classifications or deadlines. The customer panel keeps the next task visible across tabs. Arrow keys, Home and End switch tabs; unsaved follow-up drafts require a choice before leaving. Previous and next customer preserve the selected tab. Profile evidence and assessment technical details are expandable. Conversations retain source messages and can link an original message to follow-up; they do not provide live human chat.",
         "Gunakan Prioritas penanganan untuk mengurutkan pekerjaan saat ini tanpa mengubah klasifikasi atau tenggat. Panel pelanggan tetap menampilkan tugas berikutnya pada semua tab. Tombol panah, Home, dan End berpindah tab; draf tindak lanjut belum tersimpan memerlukan pilihan sebelum keluar. Pelanggan sebelumnya dan berikutnya mempertahankan tab yang dipilih. Dasar profil dan detail teknis asesmen dapat dibuka sesuai kebutuhan. Percakapan mempertahankan pesan sumber dan dapat menautkannya ke tindak lanjut; fitur ini bukan obrolan langsung dengan staf.",
         "可使用处理优先级排序当前工作，不改变分类或截止时间。客户面板在各页签保留下一步任务摘要。方向键及 Home、End 可切换页签，离开未保存的跟进草稿时须明确选择；上一位、下一位客户保留当前页签。客户资料依据和测评技术详情按需展开。对话保留来源原文，可关联到跟进；此处不提供实时人工坐席聊天。",

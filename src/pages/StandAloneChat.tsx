@@ -1,3 +1,4 @@
+import {PageMetadata} from '../components/PageMetadata';
 import { safeHskResult } from "../data/hskReportHistory";
 import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
 import { chatFetch, registerContact, restoreChat, finishChat } from '../services/portalChat';
@@ -389,6 +390,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
   const hasResults=messages.some(m=>m.isAssessmentResult);
   return (
     <div className="flex flex-col h-dvh bg-slate-100 text-slate-900 font-sans">
+      <PageMetadata lang={lang}/>
       {/* Onboarding Profile Modal (GForm First) */}
       <GFormOnboardingModal
         isOpen={showOnboardingModal}

@@ -1,4 +1,29 @@
 export const accessSafetyErrors: Record<string, [string, string, string]> = {
+  access_recovery_authorization_invalid: [
+    "Recovery authorization is missing, invalid or for another environment.",
+    "Izin pemulihan hilang, tidak valid, atau untuk lingkungan lain.",
+    "恢复授权缺失、无效或不属于当前环境。",
+  ],
+  access_recovery_authorization_expired: [
+    "Recovery authorization expired. Request a new approval.",
+    "Izin pemulihan kedaluwarsa. Minta persetujuan baru.",
+    "恢复授权已过期，请重新申请授权。",
+  ],
+  access_recovery_backup_required: [
+    "Specify the exact backup checksum for a restored target.",
+    "Tentukan checksum cadangan yang tepat untuk tujuan hasil pemulihan.",
+    "请为恢复目标指定准确的备份校验值。",
+  ],
+  access_restore_stale: [
+    "Account authorization changed. Reload and verify it again.",
+    "Izin akun berubah. Muat ulang dan verifikasi kembali.",
+    "账号授权已变化，请刷新后重新核对。",
+  ],
+  access_restore_two_administrators: [
+    "Two active complete System Administrators are required before release.",
+    "Dua Administrator Sistem aktif dengan izin lengkap diperlukan sebelum akses dibuka.",
+    "放行前须有两位有效且拥有完整权限的系统管理员。",
+  ],
   access_operation_cancelled: [
     "This operation was closed before committing. Reload the current record before starting a new operation.",
     "Operasi ini ditutup sebelum tersimpan. Muat ulang data terbaru sebelum memulai operasi baru.",
@@ -84,9 +109,9 @@ export const accessSafetyGuide = [
   {
     title: ["Administrator recovery", "Pemulihan administrator", "管理员恢复"],
     body: [
-      "Another authorized administrator can reset a password without changing roles. If none can sign in, use the offline tool: preview the exact existing account and environment, confirm the change, privately enter a strong password, and retain an independent recovery record. There is no recovery web endpoint or universal password. Recovery adds no new CRM or CMS roles. Explicitly re-enabling an account reactivates its retained roles; verify them in the preview. Current offline execution is limited to independent synthetic rehearsals; real maintenance requires separate approval.",
-      "Administrator lain yang berwenang dapat mereset kata sandi tanpa mengubah peran. Jika semua tidak dapat login, gunakan alat luring: pratinjau akun dan lingkungan yang tepat, konfirmasi, masukkan kata sandi kuat secara privat, lalu simpan catatan pemulihan terpisah. Tidak ada endpoint web pemulihan atau kata sandi universal. Pemulihan tidak menambah peran CRM atau CMS baru. Mengaktifkan akun kembali memulihkan peran yang dipertahankan; verifikasi dalam pratinjau. Eksekusi luring saat ini hanya untuk latihan sintetis independen; pemeliharaan lingkungan sebenarnya memerlukan persetujuan terpisah.",
-      "其他有权管理员可重置密码，角色不变。全部管理员无法登录时，使用离线工具：预览已有账号与环境、确认差异、隐藏输入强密码并保留独立恢复记录。没有网页绕过登录入口或通用密码；恢复不新增CRM或CMS角色；明确重新启用账号会恢复其保留角色，须在预览中核对。当前离线执行仅限独立模拟演练；真实环境维护须单独批准。",
+      "Another authorized administrator can reset a password without changing roles. If none can sign in, use the offline tool: preview the exact existing account and environment, confirm the change, privately enter a strong password, and retain an independent recovery record. There is no unauthenticated password-recovery endpoint or universal password. Recovery adds no new CRM or CMS roles. Explicitly re-enabling an account reactivates its retained roles; verify them in the preview. Offline execution requires a private signed one-hour authorization for the exact account, target and permitted re-enabling/system-access restoration. A trusted host operator uses the same operation ID to preview, apply and query; a missing receipt is unconfirmed. The authorization does not execute recovery. Real maintenance additionally requires an explicit private maintenance configuration. Keep two complete System Administrators; Ethan is the selected second administrator, with the live assignment applied only during an approved cutover.",
+      "Administrator lain yang berwenang dapat mereset kata sandi tanpa mengubah peran. Jika semua tidak dapat login, gunakan alat luring: pratinjau akun dan lingkungan yang tepat, konfirmasi, masukkan kata sandi kuat secara privat, lalu simpan catatan pemulihan terpisah. Tidak ada endpoint pemulihan tanpa autentikasi atau kata sandi universal. Pemulihan tidak menambah peran CRM atau CMS baru. Mengaktifkan akun kembali memulihkan peran yang dipertahankan; verifikasi dalam pratinjau. Eksekusi luring memerlukan izin bertanda tangan privat yang berlaku satu jam untuk akun, tujuan, dan pengaktifan atau pemulihan akses sistem yang diizinkan. Operator host tepercaya memakai ID operasi yang sama untuk pratinjau, pelaksanaan, dan pemeriksaan; bukti yang belum ditemukan berarti belum pasti. Izin tidak menjalankan pemulihan. Pemeliharaan nyata juga memerlukan konfigurasi pemeliharaan privat eksplisit. Pertahankan dua Administrator Sistem lengkap; Ethan dipilih sebagai administrator kedua dan penetapan nyata hanya dilakukan saat peralihan disetujui.",
+      "其他有权管理员可重置密码，角色不变。全部管理员无法登录时，使用离线工具：预览已有账号与环境、确认差异、隐藏输入强密码并保留独立恢复记录。没有网页绕过登录入口或通用密码；恢复不新增CRM或CMS角色；明确重新启用账号会恢复其保留角色，须在预览中核对。离线执行须有一小时有效的私密签名授权，绑定账号、目标环境及允许的重新启用／恢复系统管理权限。可信主机操作员沿用同一操作ID预览、执行和查询；未找到凭证不代表未提交。授权文件本身不执行恢复。实际维护还须使用明确的私密维护配置。应保留两位完整系统管理员；第二管理员指定为Ethan，真实账号授权仅在获批切换时执行。",
     ],
   },
   {
@@ -96,9 +121,9 @@ export const accessSafetyGuide = [
       "备份恢复安全复核",
     ],
     body: [
-      "Restored databases remain locked for business use. Old staff sessions are cleared and historical notifications are held. Compare the latest trusted authorization checkpoint; without one, explicitly review every account. Active accounts require fresh passwords. Release only after every account is reviewed. Releasing access does not replay held notifications.",
-      "Basis data hasil pemulihan tetap dikunci untuk bisnis. Sesi staf lama dihapus dan notifikasi historis ditahan. Bandingkan checkpoint izin terpercaya terbaru; bila tidak ada, tinjau setiap akun. Akun aktif memerlukan kata sandi baru. Buka akses setelah semua akun ditinjau. Pembukaan akses tidak mengirim ulang notifikasi tertahan.",
-      "数据库恢复后业务访问保持锁定，清除旧员工会话，暂停历史通知。核对最新可信授权清单；没有可信清单时逐人明确复核。启用账号须重置凭据，全部账号复核通过后才能解除限制；解除限制不重放历史通知。",
+      "Restored databases remain locked for business use. Old staff sessions are cleared and historical notifications are held. Compare the latest trusted authorization checkpoint; without one, explicitly review every account. Active accounts require fresh passwords. Release only after every account is reviewed. Release also requires two active complete System Administrators and a fresh authorization snapshot for every account. Releasing access does not replay held notifications.",
+      "Basis data hasil pemulihan tetap dikunci untuk bisnis. Sesi staf lama dihapus dan notifikasi historis ditahan. Bandingkan checkpoint izin terpercaya terbaru; bila tidak ada, tinjau setiap akun. Akun aktif memerlukan kata sandi baru. Buka akses setelah semua akun ditinjau. Pembukaan akses juga memerlukan dua Administrator Sistem aktif lengkap dan snapshot izin terbaru tiap akun. Pembukaan akses tidak mengirim ulang notifikasi tertahan.",
+      "数据库恢复后业务访问保持锁定，清除旧员工会话，暂停历史通知。核对最新可信授权清单；没有可信清单时逐人明确复核。启用账号须重置凭据，全部账号复核通过后才能解除限制；放行还要求两位有效完整系统管理员及逐人最新授权快照；解除限制不重放历史通知。",
     ],
   },
   {
@@ -135,6 +160,18 @@ export const accessSafetyGuide = [
       "Access is disabled immediately. Customers and tasks keep original ownership and deadlines until an authorized CRM Manager explicitly transfers selected work. System administration alone does not grant customer access. Partial transfers show remaining work; confirm completion after a fresh check. Re-enabling staff does not reclaim transferred customers. Each handover keeps its own recipient, selections and reason; saving one does not clear another draft.",
       "Akses dinonaktifkan segera. Kepemilikan pelanggan dan tugas serta tenggat tetap sampai Manajer CRM berwenang mengalihkan pekerjaan terpilih. Administrasi sistem saja tidak memberi akses pelanggan. Pengalihan sebagian menampilkan pekerjaan tersisa; konfirmasi setelah pemeriksaan baru. Mengaktifkan staf kembali tidak mengambil pelanggan yang sudah dialihkan. Setiap serah terima memiliki penerima, pilihan dan alasan tersendiri; menyimpan satu tidak menghapus draf lainnya.",
       "停用立即撤销访问。客户、任务原归属和截止时间保留，由有权CRM管理者明确交接所选事项。系统管理权限本身不授予客户访问权。部分交接显示剩余事项，重新核对后确认完成；重新启用员工不会取回已交出的客户。每份交接的接收人、勾选及原因分别保存，提交一份不清除其他草稿。",
+    ],
+  },
+  {
+    title: [
+      "Emergency recovery without pre-issued authorization",
+      "Pemulihan darurat tanpa izin sebelumnya",
+      "未预先准备授权的应急恢复",
+    ],
+    body: [
+      "If no administrator can sign in and no valid pre-issued file exists, a trusted host operator must use an independently trusted authorization checkpoint and its separately retained hash, an external approval reference, named approver, and exact-state confirmation. Only an existing complete administrator from that checkpoint can be selected. Missing or untrusted evidence fails closed. The tool records approval evidence; it does not verify the human approver's identity or provide dual approval. Signing a file does not reset a password; use its operation ID for execution and result queries.",
+      "Jika semua administrator tidak dapat login dan tidak ada berkas izin yang masih berlaku, operator host tepercaya memerlukan checkpoint izin independen beserta hash yang disimpan terpisah, referensi persetujuan eksternal, nama pemberi persetujuan, dan konfirmasi keadaan yang tepat. Hanya akun administrator lengkap yang ada dalam checkpoint dapat dipilih. Bukti yang hilang atau tidak tepercaya ditolak. Alat mencatat bukti persetujuan, bukan memverifikasi identitas manusia atau menyediakan persetujuan dua orang. Penerbitan izin tidak mereset kata sandi; gunakan ID operasinya untuk pelaksanaan dan pemeriksaan hasil.",
+      "全部管理员无法登录且没有有效预授权文件时，可信主机操作员须提供独立可信授权清单及分开保管的校验值、外部审批编号、审批人和精确状态确认。只能选择该清单中已有的完整系统管理员；证据缺失或不可信时拒绝执行。工具记录审批依据，不代替人工身份核验或双人审批。签发授权不会重置密码，后续执行和查询继续使用同一操作ID。",
     ],
   },
 ];

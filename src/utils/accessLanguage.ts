@@ -150,9 +150,9 @@ export const accessGuide: [string, string, string][] = [
     "已有密码不可查看。重置使用管理员指定的新密码并撤销会话，请安全交付，用户随后可自行修改；审计不记录密码。",
   ],
   [
-    "At least one active user must retain all access-management permissions. Audit records identify the operator, reason and before/after changes. Changes do not replay historical notifications.",
-    "Setidaknya satu pengguna aktif harus tetap memiliki seluruh izin pengelolaan akses. Audit mencatat pelaksana, alasan, dan perubahan sebelum/sesudah. Perubahan tidak mengirim ulang notifikasi lama.",
-    "至少保留一位拥有完整权限管理能力的有效用户。审计记录操作者、原因和修改前后内容；权限变更不重放历史通知。",
+    "The last-complete-administrator protection remains active. Keep two complete System Administrators for continuity; restore release requires two. Audit identifies the operator, reason and before/after changes. Changes do not replay historical notifications.",
+    "Perlindungan administrator lengkap terakhir tetap berlaku. Pertahankan dua Administrator Sistem lengkap; pembukaan akses setelah pemulihan memerlukan dua. Audit mencatat pelaksana, alasan, dan perubahan sebelum/sesudah. Perubahan tidak mengirim ulang notifikasi lama.",
+    "最后一位完整系统管理员保护仍生效；日常应安排两位完整系统管理员，恢复放行必须有两位。审计记录操作者、原因和修改前后内容；权限变更不重放历史通知。",
   ],
   [
     "User cards separate account status, Login ID, email and roles. Select “+N more” to see additional roles; the control supports keyboard and touch. Login email is an optional, unique alias maintained by a system administrator. Use Login ID or email with the same password; no second account is created. Email changes revoke sessions and retain customer ownership. Confirm the real address before assigning it; existing accounts are not given invented addresses.",

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link, Outlet, useLocation, useNavigationType } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
 import { Globe2, ArrowRight, Menu, X, MapPin, User, Phone, MessageCircle, FileText, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Helmet } from 'react-helmet-async';
 import AIChatbot from './AIChatbot';
 import { BackToTop } from './ui/BackToTop';
 import { trackLanguageSwitch } from '../utils/analytics';
@@ -119,7 +118,12 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
     };
   }, [mobileMenuOpen]);
 
+  const navigateLanguage = useNavigate();
   const switchLanguage = (code: string) => {
+    const url = new URL(window.location.href);
+    if (code === "id") url.searchParams.delete("lang"); else url.searchParams.set("lang", code);
+    url.searchParams.delete("lng");
+    navigateLanguage(url.pathname + url.search + url.hash, {replace:true});
     i18n.changeLanguage(code);
     trackLanguageSwitch(code);
   };
@@ -819,20 +823,7 @@ export default function Layout() {
 
   return (
     <div className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
-      <Helmet prioritizeSeoTags>
-        <html lang={i18n.language} />
-        <title>{t('meta.title', 'UPER - University Partnership Education')}</title>
-        <meta name="description" content={t('meta.description', 'Study abroad in China, HSK training, CSCA coaching, and enterprise training solutions.')} />
-        <meta name="keywords" content="UPER, UPER Education, kuliah di China, beasiswa China, beasiswa kuliah di Tiongkok, study tour ke China, kursus HSK Jakarta PIK, persiapan CSCA, study in China agent Jakarta, Chinese Government Scholarship CSC" />
-        <meta property="og:title" content={t('meta.title', 'UPER - University Partnership Education')} />
-        <meta property="og:description" content={t('meta.description', 'Study abroad in China, HSK training, CSCA coaching, and enterprise training solutions.')} />
-        
-        {/* Advanced GEO Tags & Local SEO for PIK Head Office, North Jakarta */}
-        <meta name="geo.region" content="ID-JK" />
-        <meta name="geo.placename" content="Jakarta Utara" />
-        <meta name="geo.position" content="-6.1219;106.7410" />
-        <meta name="ICBM" content="-6.1219, 106.7410" />
-      </Helmet>
+
       <Navbar onOpenAppearance={() => setAppearanceOpen(true)} />
       <main className="flex-grow">
         <motion.div

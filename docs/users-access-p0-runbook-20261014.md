@@ -1,5 +1,7 @@
 # Users & access P0: implementation and recovery runbook
 
+> Recovery execution steps below are historical P0 behavior. The current implementation requires signed, scoped authorization and durable result reconciliation. Use the [P1 recovery and release runbook](./users-access-recovery-p1-runbook-20261014.md). P1 is independently tested; it has not been switched to local 3000.
+
 Status: independent synthetic MySQL implementation. This change does not authorize local 3000 cutover, GitHub push, or server deployment. No team-based authorization has been reintroduced.
 
 ## Business contract

@@ -1,3 +1,4 @@
+import {PageMetadata} from './PageMetadata';
 import {managementRequest,clearAccessPasswords} from "../utils/accessOperationClient";
 import {AccessOperationStatus} from "./AccessOperationStatus";
 import { adminRoleLabel } from "../utils/adminWorkspace";
@@ -155,20 +156,18 @@ export default function CrmAccess({
     return () => clearInterval(timer);
   }, [employee?.id]);
   useEffect(()=>{const refresh=()=>auth('me').then(d=>setEmployee(d.employee)).catch(e=>{if([401,403].includes(e.status))setEmployee(null);});window.addEventListener('uper-access-changed',refresh);return()=>window.removeEventListener('uper-access-changed',refresh);},[]);
-  useEffect(() => {
-    if (!employee) document.title = isSystem ? st("System sign in | UPER","Login sistem | UPER","系统登录 | UPER") : isCms ? cmsText("CMS sign in | UPER", "CMS 登录 | UPER", lang) : t("CRM sign in | UPER", "CRM 登录 | UPER");
-  }, [employee, lang, isCms, isSystem]);
+
   const field =
     "w-full p-3 rounded-lg border border-slate-300 bg-white text-slate-900";
   if (loading)
     return (
-      <div className="p-10 text-center">
+      <div className="p-10 text-center"><PageMetadata lang={lang} options={{state:"checking"}}/>
         {t("Checking login…", "正在验证登录…")}
       </div>
     );
   if (!employee)
     return (
-      <main className="crm-sign-in">
+      <main className="crm-sign-in"><PageMetadata lang={lang} options={{state:"login"}}/>
         <header className="crm-sign-in-header">
           <a href="/" className="crm-sign-in-brand" aria-label="UPER">
             <img src="/uper-logo-mark.svg" alt="" />

@@ -1,3 +1,6 @@
+import {RouteMetadata,MetadataProvider,applyPageMetadata} from './components/PageMetadata';
+import {normalizeSiteLanguage,resolveMetadata} from './utils/siteMetadata';
+import {useTranslation} from 'react-i18next';
 import CmsContentStatus from './components/CmsContentStatus';
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -57,6 +60,9 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
     this.state = { hasError: false, error: null };
   }
   static getDerivedStateFromError(error: Error) { return { hasError: true, error }; }
+  componentDidCatch() {
+    applyPageMetadata(document, resolveMetadata(window.location.pathname, normalizeSiteLanguage(document.documentElement.lang), {unavailable:true}));
+  }
   render() {
     if (this.state.hasError) {
       return (
@@ -83,12 +89,19 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
+function SiteNotFound() {
+  const {i18n}=useTranslation();
+  const lang=normalizeSiteLanguage(i18n.resolvedLanguage||i18n.language);
+  return <main className="pt-32 pb-20 px-6 text-center"><h1>{lang==='zh'?'页面未找到':lang==='id'?'Halaman Tidak Ditemukan':'Page Not Found'}</h1><a href="/">{lang==='zh'?'返回首页':lang==='id'?'Kembali ke beranda':'Return home'}</a></main>;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <HelmetProvider>
         <ErrorBoundary>
           <BrowserRouter>
+        <MetadataProvider><RouteMetadata />
         <CmsContentStatus />
             <AnalyticsTracker />
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>}>
@@ -122,9 +135,10 @@ export default function App() {
                   <Route path="news/:slug" element={<NewsDetail />} />
                   <Route path="campaign/:slug" element={<CampaignDetail />} />
                   <Route path="style-guide" element={<StyleGuide />} />
+                  <Route path="*" element={<SiteNotFound/>}/>
                 </Route>
               </Routes>
-            </Suspense>
+            </Suspense></MetadataProvider>
           </BrowserRouter>
         </ErrorBoundary>
       </HelmetProvider>

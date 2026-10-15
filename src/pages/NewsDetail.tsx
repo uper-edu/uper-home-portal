@@ -113,10 +113,12 @@ export default function NewsDetail() {
   const navigate = useNavigate();
   const [newsItem, setNewsItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [metadataUnavailable, setMetadataUnavailable] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     if (slug) {
+      setMetadataUnavailable(false);
       client.fetch(`*[_type == "news" && slug.current == $slug][0]`, { slug })
         .then((data) => {
           if (data) {
@@ -128,7 +130,8 @@ export default function NewsDetail() {
           setLoading(false);
         })
         .catch((err) => {
-          console.error("Error fetching news:", err);
+          setMetadataUnavailable(true);
+        console.error("Error fetching news:", err);
           const fallbackItem = FALLBACK_NEWS_DETAILS.find((item: any) => item.slug?.current === slug);
           setNewsItem(fallbackItem || null);
           setLoading(false);
@@ -138,10 +141,10 @@ export default function NewsDetail() {
 
   useEffect(() => {
     if (!newsItem) return;
-    const imagesList = (newsItem.images && newsItem.images.length > 0) 
-      ? newsItem.images 
+    const imagesList = (newsItem.images && newsItem.images.length > 0)
+      ? newsItem.images
       : ((newsItem.image || newsItem.mainImage) ? [newsItem.image || newsItem.mainImage].filter(Boolean) : []);
-    
+
     if (imagesList.length <= 1) return;
 
     const timer = setInterval(() => {
@@ -154,7 +157,7 @@ export default function NewsDetail() {
   if (loading) {
     return (
       <article className="pt-32 pb-24 min-h-screen">
-        <SEO title={t("details.loading", "Loading...")} description="Loading news article" />
+
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <Skeleton className="h-6 w-32 mb-8" />
           <Skeleton className="h-4 w-40 mb-4" />
@@ -177,6 +180,7 @@ export default function NewsDetail() {
   if (!newsItem) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
+        <SEO title="" description="" notFound={!metadataUnavailable} unavailable={metadataUnavailable}/>
         <h1 className="text-3xl font-bold text-slate-900 mb-4">{t("details.notFound", "News not found")}</h1>
         <button onClick={() => navigate(-1)} className={`font-semibold flex items-center gap-2 transition-colors ${
           isApple ? 'text-[#0071e3] hover:text-[#0077ed]' : 'text-primary-600 hover:text-primary-700'
@@ -189,9 +193,11 @@ export default function NewsDetail() {
 
   return (
     <article className="pt-32 pb-24 min-h-screen">
-      <SEO 
-        title={newsItem.title} 
-        description={newsItem.summary || newsItem.title} 
+      <SEO
+        type={"article"}
+        lastUpdated={newsItem._updatedAt}
+        title={newsItem.title}
+        description={newsItem.summary || newsItem.title}
         image={newsItem.images?.length > 0 ? urlFor(newsItem.images[0])?.width(1200).height(630).url() : (newsItem.image ? urlFor(newsItem.image)?.width(1200).height(630).url() : undefined)}
       />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -200,7 +206,7 @@ export default function NewsDetail() {
         }`}>
           <ArrowLeft className="w-4 h-4" /> {t("details.allNews", "Back to all news")}
         </button>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -209,7 +215,7 @@ export default function NewsDetail() {
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-8 leading-tight">
             {newsItem.title}
           </h1>
-          
+
           {(() => {
             const imagesList = (newsItem.images && newsItem.images.length > 0) ? newsItem.images : ((newsItem.image || newsItem.mainImage) ? [newsItem.image || newsItem.mainImage].filter(Boolean) : []);
             if (imagesList.length === 0) return null;
@@ -222,14 +228,14 @@ export default function NewsDetail() {
                 isApple ? 'border border-slate-200/50 shadow-none' : 'shadow-lg'
               }`}>
                 <AnimatePresence>
-                  <motion.img 
+                  <motion.img
                     key={currentImageIndex}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    src={urlFor(imagesList[currentImageIndex])?.width(1200).url() || ''} 
-                    alt={`${newsItem.title} - ${currentImageIndex + 1}`} 
+                    src={urlFor(imagesList[currentImageIndex])?.width(1200).url() || ''}
+                    alt={`${newsItem.title} - ${currentImageIndex + 1}`}
                     className="absolute inset-0 w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -237,13 +243,13 @@ export default function NewsDetail() {
 
                 {imagesList.length > 1 && (
                   <>
-                    <button 
+                    <button
                       onClick={(e) => { e.preventDefault(); prevImage(); }}
                       className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-slate-800 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white transition-all transform hover:scale-110 z-10"
                     >
                       <ChevronLeft className="w-6 h-6" />
                     </button>
-                    <button 
+                    <button
                       onClick={(e) => { e.preventDefault(); nextImage(); }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-slate-800 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white transition-all transform hover:scale-110 z-10"
                     >
@@ -283,13 +289,13 @@ export default function NewsDetail() {
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   {t('news.externalSource', 'External Press / Coverage')}:
                 </span>
-                <a 
-                  href={newsItem.source} 
-                  target="_blank" 
+                <a
+                  href={newsItem.source}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl border transition-all font-mono shadow-xs ${
-                    isApple 
-                      ? 'text-slate-800 bg-slate-100 border-slate-200/50 hover:bg-slate-200' 
+                    isApple
+                      ? 'text-slate-800 bg-slate-100 border-slate-200/50 hover:bg-slate-200'
                       : 'text-indigo-600 bg-indigo-50/50 hover:bg-indigo-150 border-indigo-100/60 hover:border-indigo-200'
                   }`}
                 >
@@ -299,7 +305,7 @@ export default function NewsDetail() {
               </div>
             )}
           </div>
-          
+
           <div className={`prose prose-lg prose-slate max-w-none prose-headings:font-display prose-img:rounded-xl ${
             isApple ? 'prose-a:text-[#0071e3] hover:prose-a:text-[#0077ed]' : 'prose-a:text-primary-600 hover:prose-a:text-primary-700'
           }`}>

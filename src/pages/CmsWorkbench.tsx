@@ -1,4 +1,4 @@
-import { Helmet } from "react-helmet-async";
+import {PageMetadata} from "../components/PageMetadata";
 import CrmAccess, {
   CrmAccountControls,
   type CrmEmployee,
@@ -21,16 +21,7 @@ function CmsWorkspace({
     <div
       className={`min-h-screen flex flex-col font-sans ${isLight ? "bg-[#f5f5f7] text-slate-900" : "bg-slate-950 text-slate-100"}`}
     >
-      <Helmet>
-        <title>
-          {adminText(
-            lang,
-            "Content management | UPER",
-            "Manajemen konten | UPER",
-            "内容管理 | UPER",
-          )}
-        </title>
-      </Helmet>
+
       <a className="admin-skip-link" href="#cms-main">
         {adminText(
           lang,
@@ -64,7 +55,7 @@ export default function CmsWorkbench() {
         employee.permissions.includes("cms.manage") ? (
           <CmsWorkspace employee={employee} lang={lang} setLang={setLang} />
         ) : (
-          <main className="p-8">
+          <main className="p-8"><PageMetadata lang={lang} options={{state:"denied"}}/>
             <CrmAccountControls lang={lang} isLight={true} />
             <h1>
               {adminText(

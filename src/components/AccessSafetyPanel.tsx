@@ -8,6 +8,7 @@ import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 import { managementRequest } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "./AccessOperationStatus";
 import { accessError } from "../utils/accessLanguage";
+import { AccessRecoveryPreparation } from "./AccessRecoveryPreparation";
 async function read(url: string) {
   const r = await fetch(url, { cache: "no-store" });
   const data = await r.json();
@@ -303,6 +304,7 @@ export function AccessSafetyPanel({
   isLight: boolean;
 }) {
   const [state, setState] = useState<any>(null),
+    [released, setReleased] = useState(false),
     [error, setError] = useState(""),
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false),
@@ -318,6 +320,7 @@ export function AccessSafetyPanel({
   const load = async () => {
     try {
       setState(await read("/api/admin/access/restore"));
+      setConfirmed(false);
       setError("");
     } catch (e) {
       setError((e as Error).message);
@@ -335,13 +338,22 @@ export function AccessSafetyPanel({
     setBusy(true);
     setError("");
     try {
-      await managementRequest(actor.id, "/api/admin/access/restore/" + path, {
-        restoreId: state.restoreId,
-        reason,
-        ...body,
-      });
-      await load();
-      window.dispatchEvent(new Event("uper-access-changed"));
+      const saved = await managementRequest(
+        actor.id,
+        "/api/admin/access/restore/" + path,
+        {
+          restoreId: state.restoreId,
+          reason,
+          ...body,
+        },
+      );
+      if (saved.released) {
+        setReleased(true);
+        setState(null);
+      } else {
+        await load();
+        window.dispatchEvent(new Event("uper-access-changed"));
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -351,6 +363,26 @@ export function AccessSafetyPanel({
   return (
     <>
       {error && <p role="alert">{accessError(error, lang)}</p>}
+      {released && (
+        <p role="status">
+          {t(
+            "Review released. Sign in again with your new credentials.",
+            "Tinjauan selesai. Login kembali dengan kredensial baru.",
+            "复核已放行，请使用新凭据重新登录。",
+          )}
+          <button onClick={() => window.location.reload()}>
+            {t("Sign in again", "Login kembali", "重新登录")}
+          </button>
+        </p>
+      )}
+      {full && !released && (
+        <AccessRecoveryPreparation
+          actor={actor.id}
+          lang={lang}
+          isLight={isLight}
+          queryOnly={!!state?.required}
+        />
+      )}
       {state?.required && (
         <section
           className="access-card access-safety-surface"
@@ -368,12 +400,37 @@ export function AccessSafetyPanel({
               "恢复待复核，业务访问已锁定",
             )}
           </h2>
+          <button type="button" disabled={busy} onClick={() => void load()}>
+            {t("Refresh review", "Muat ulang tinjauan", "刷新复核")}
+          </button>
           <p>
             {t(
               "Compare the latest trusted authorization checkpoint, or explicitly review every account. Active accounts require a fresh password reset. Old notifications remain held.",
               "Bandingkan checkpoint izin terpercaya terbaru atau tinjau setiap akun secara eksplisit. Akun aktif harus direset kata sandinya. Notifikasi lama tetap ditahan.",
               "请核对最新可信授权清单；没有可信清单时须逐人明确复核。启用账号必须先重置凭据，历史通知继续保持暂停。",
             )}
+          </p>
+          <p>
+            {t(
+              "Complete system administrators",
+              "Administrator sistem lengkap",
+              "完整系统管理员",
+            )}
+            ：{state.administratorCount} / 2
+          </p>
+          <p>
+            {t(
+              "Historical notifications stay held after release",
+              "Notifikasi historis tetap ditahan setelah akses dibuka",
+              "放行后历史通知仍保持暂停",
+            )}
+            ：
+            {state.historicalNotificationHolds
+              ?.map(
+                (h: any) =>
+                  `${h.kind === "job" ? t("Notifications", "Notifikasi", "通知") : h.kind === "event" ? t("Events", "Peristiwa", "事件") : t("Tasks", "Tugas", "任务")}: ${h.count}`,
+              )
+              .join(" · ")}
           </p>
           <label>
             {t(
@@ -402,6 +459,15 @@ export function AccessSafetyPanel({
           {state.users.map((u: any) => (
             <p key={u.id}>
               {u.name} ·{" "}
+              {u.roles
+                .map(
+                  (id: string) =>
+                    u.roleLabels?.[id]?.[
+                      lang === "zh" ? 2 : lang === "id" ? 1 : 0
+                    ] || id,
+                )
+                .join(" · ")}{" "}
+              ·{" "}
               {u.reviewed
                 ? t("Reviewed", "Ditinjau", "已复核")
                 : u.reset || !u.active
@@ -426,6 +492,7 @@ export function AccessSafetyPanel({
                   onClick={() =>
                     void action("review", {
                       userId: u.id,
+                      authorizationStamp: u.authorizationStamp,
                       confirmAuthorization: true,
                     })
                   }
@@ -444,7 +511,8 @@ export function AccessSafetyPanel({
               busy ||
               !reason.trim() ||
               !confirmed ||
-              state.users.some((u: any) => !u.reviewed)
+              state.users.some((u: any) => !u.reviewed) ||
+              state.administratorCount < 2
             }
             onClick={() => void action("release", {})}
           >

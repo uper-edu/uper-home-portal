@@ -29,7 +29,6 @@ import {
   Languages
 } from 'lucide-react';
 import { SEO } from '../components/SEO';
-import { Helmet } from 'react-helmet-async';
 import { trackFormSubmit } from '../utils/analytics';
 import { useDesignStyle } from '../utils/theme';
 
@@ -270,49 +269,26 @@ export default function Careers() {
   const jobPostingsSchema = useMemo(() => {
     if (!jobs || jobs.length === 0) return null;
     return {
-      "@context": "https://schema.org",
-      "@graph": jobs.map(job => ({
-        "@type": "JobPosting",
-        "title": job.title,
-        "description": job.description + " Requirements: " + job.requirements.join(' '),
-        "datePosted": "2026-05-30T00:00:00Z",
-        "validThrough": "2027-12-31T23:59:59Z",
-        "employmentType": job.type.includes('Part-time') ? 'PART_TIME' : 'FULL_TIME',
-        "hiringOrganization": {
-          "@type": "Organization",
-          "name": "UPER Education",
-          "sameAs": "https://uper.id"
-        },
-        "jobLocation": {
-          "@type": "Place",
-          "address": {
-            "@type": "PostalAddress",
-            "streetAddress": "Ruko Golf Island Blok E, Pantai Indah Kapuk",
-            "addressLocality": "North Jakarta",
-            "addressRegion": "Jakarta",
-            "postalCode": "14470",
-            "addressCountry": "ID"
-          }
-        }
-      }))
+      "@type": "ItemList",
+      "name": t('nav.careers', 'Careers'),
+      "itemListElement": jobs.map((job, index) => ({
+        "@type": "ListItem",
+        "position": index + 1,
+        "name": job.title,
+      })),
     };
-  }, [jobs]);
+  }, [jobs, t]);
 
   return (
     <div className="pt-32 pb-24 min-h-screen font-sans">
       <SEO 
+        schemaData={jobPostingsSchema || undefined}
         title={t('meta.careers.title', 'Join UPER | Work With Us & Careers in Global Education')} 
         description={t('meta.careers.description', 'Explore career opportunities at UPER. Lead the digital bridge linking Southeast Asian elites to elite universities in China. Join our Jakarta PIK hub.')} 
       />
 
       {/* Structured JobPostings Metadata for Official Authority validation */}
-      {jobPostingsSchema && (
-        <Helmet>
-          <script type="application/ld+json">
-            {JSON.stringify(jobPostingsSchema)}
-          </script>
-        </Helmet>
-      )}
+
 
       {/* Header section with modern design language */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

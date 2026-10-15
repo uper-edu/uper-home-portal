@@ -1,3 +1,5 @@
+import {BrowserMetadataGuide} from '../BrowserMetadataGuide';
+import {PageMetadata} from '../PageMetadata';
 import { cmsText } from '../../utils/cmsLanguage';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import React, { useState, useEffect, useRef } from 'react';
@@ -502,6 +504,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         </div>
       )}
 
+      <PageMetadata lang={lang} options={{module:activeSection}}/>
       {/* Panel Top Header Bar */}
       <div className={`p-4 sm:p-5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${
         isLight ? 'border-slate-100 bg-slate-50/50' : 'border-slate-800/80 bg-slate-950/40'
@@ -543,6 +546,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       <details className="p-4 border-t border-slate-200 dark:border-slate-800 text-sm">
         <summary className="cursor-pointer font-semibold">{t('CMS operating guide', 'CMS 操作指南')}</summary>
         <div className="mt-3 space-y-3 max-w-3xl leading-relaxed">
+          <BrowserMetadataGuide lang={lang}/>
           <section><h3 className="font-semibold">{t('Workspace and preferences', '工作区与偏好')}</h3><p>{t('Use the workspace menu to open the workspaces allowed by your staff permissions. Language and theme are shared with CRM. On narrow screens, open Language and appearance.', '从工作区菜单进入有权限的后台；语言与主题在 CMS 和 CRM 间沿用。窄屏中打开“语言与外观”调整偏好。')}</p></section>
           <section><h3 className="font-semibold">{t('Content editing', '内容编辑')}</h3><p>{t('Choose a collection, search or refresh its records, then add or edit content. Save changes in the editor. Opening the website previews saved content; it does not save an open draft.', '选择内容集合，搜索或刷新记录，再新增或编辑内容。在编辑器中保存；查看网站只预览已保存的内容，不会保存尚未提交的草稿。')}</p></section>
           <p>{t('Names and saved content remain in their original language. HSK questions and scoring are not changed by interface preferences.', '姓名及已保存内容保持原文；界面偏好不改变 HSK 题库和评分。')}</p>

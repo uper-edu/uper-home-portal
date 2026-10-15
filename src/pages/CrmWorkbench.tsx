@@ -1,3 +1,4 @@
+import {PageMetadata} from '../components/PageMetadata';
 import {AccessHandoverPanel} from "../components/AccessSafetyPanel";
 import {eligibleOwner,permittedRecord,canClaimRecord} from '../utils/accessControl';
 import '../components/crm/crm-documentation.css';
@@ -157,7 +158,7 @@ export default function CrmWorkbench() {
           lang={lang}
           setLang={setLang}
         />
-      ) : <main className="p-8"><CrmAccountControls lang={lang} isLight={true}/><h1>{lang === "zh" ? "无 CRM 访问权限" : lang === "id" ? "Tidak memiliki akses CRM" : "CRM access denied"}</h1>{employee.permissions.includes("cms.manage") && <a href="/cms">{adminText(lang,"Content management","Manajemen konten","内容管理")}</a>}</main>}
+      ) : <main className="p-8"><PageMetadata lang={lang} options={{state:"denied"}}/><CrmAccountControls lang={lang} isLight={true}/><h1>{lang === "zh" ? "无 CRM 访问权限" : lang === "id" ? "Tidak memiliki akses CRM" : "CRM access denied"}</h1>{employee.permissions.includes("cms.manage") && <a href="/cms">{adminText(lang,"Content management","Manajemen konten","内容管理")}</a>}</main>}
     </CrmAccess>
   );
 }
@@ -190,25 +191,7 @@ function CrmWorkspace({
     } catch {}
     return "leads";
   });
-  useEffect(() => {
-    const titles =
-      lang === "zh"
-        ? {
-            leads: "销售线索",
-            campaigns: "营销活动中心",
-            policy: "销售运营设置",
-            docs: "CRM 系统文档",
-          }
-        : {
-            leads: "Leads CRM",
-            campaigns: "Marketing Campaigns",
-            policy: "Sales Operations Settings",
-            docs: lang === "id" ? "Dokumentasi CRM" : "CRM documentation",
-          };
-    document.title =
-      (lang === "id" ? crmId(titles[crmModule]) : titles[crmModule]) +
-      " | UPER";
-  }, [crmModule, lang]);
+
   const [policyConfig, setPolicyConfig] = useState<CrmPolicyConfig>(
     DEFAULT_CRM_POLICY_CONFIG,
   );
@@ -1686,6 +1669,7 @@ function CrmWorkspace({
     <div
       className={`min-h-screen flex flex-col font-sans transition-colors duration-200 select-text ${isLight ? "bg-[#f5f5f7] text-[#1d1d1f]" : "bg-slate-950 text-slate-100"}`}
     >
+      <PageMetadata lang={lang} options={{module:crmModule}}/>
       {pendingNavigation && (
         <div
           className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4"

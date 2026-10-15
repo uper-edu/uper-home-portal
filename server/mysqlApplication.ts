@@ -1,3 +1,4 @@
+import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
 import { configureAccessTransport } from "./portal/accessTransport.ts";
 import express from 'express';
 import path from 'node:path';
@@ -35,7 +36,7 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
     process.env.DEEPSEEK_API_BASE_URL='http://127.0.0.1:4413/deepseek';
   }
 }
-const app=express();configureAccessTransport(app);app.use(express.json({limit:'16mb'}));
+const app=express();mountMetadataHeaders(app);configureAccessTransport(app);app.use(express.json({limit:'16mb'}));
 let failContent=process.env.TRIAL_CONTENT_FAILURE_ONCE==='true';
 app.post(['/api/content','/api/sanity'],(_q,r,next)=>{if(!failContent)return next();failContent=false;r.status(503).json({error:'TEST content storage unavailable'});});
 app.use((_q,r,next)=>{r.setHeader('X-Content-Type-Options','nosniff');r.setHeader('Referrer-Policy','same-origin');next();});
@@ -59,8 +60,8 @@ app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/im
 app.use('/api',(_q,r)=>r.status(404).json({error:'API endpoint not found'}));
 if(process.env.TRIAL_FRONTEND_DIRECTORY){
   const directory=path.resolve(process.env.TRIAL_FRONTEND_DIRECTORY);
-  app.use(express.static(directory));
-  app.get('/{*path}',(_q,r)=>r.sendFile('index.html',{root:directory}));
+  app.use(express.static(directory,{index:false}));
+  mountMetadataHtml(app,directory,nativePool);
 }
 app.use((e:any,_q:any,r:any,_next:any)=>r.status(e.status||503).json({error:e.status===413?'Request too large':'Request could not be processed'}));
 if(process.env.PORTAL_WORKER_ENABLED==='true'&&!activeLocal){

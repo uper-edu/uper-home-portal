@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { tx, pool } from "./store.ts";
 import { operationContext } from "./operationContext.ts";
 import { platform } from "./identity.ts";
+import { recoveryReceiptState } from "./recoveryAuthorization.ts";
 import { validMutationOrigin } from "./accessTransport.ts";
 import { accessDirectory, reconcileHandovers } from "./accessHandovers.ts";
 import {
@@ -78,7 +79,16 @@ export function mountAccessOperations(app: any) {
       )
         fail(403, "Permission denied");
       r.json({
-        state: row.result.cancelled ? "cancelled" : "committed",
+        state:
+          row.actor_id === "offline-recovery"
+            ? recoveryReceiptState(
+                row.result,
+                process.env,
+                (await restoreState())?.restoreId || null,
+              )
+            : row.result.cancelled
+              ? "cancelled"
+              : "committed",
         operationId: row.operation_id,
         result: row.result,
       });

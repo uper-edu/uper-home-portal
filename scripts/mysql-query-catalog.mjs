@@ -7,6 +7,7 @@ const sources = fs
   .map((n) => "server/portal/" + n)
   .concat([
     "server/mysqlApplication.ts",
+    "server/siteMetadata.ts",
     "cloud/mysql/site.mjs",
     "cloud/mysql/runtime.mjs",
     "scripts/portal-migrate.ts",

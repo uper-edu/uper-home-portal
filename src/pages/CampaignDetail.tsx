@@ -103,8 +103,10 @@ export default function CampaignDetail() {
   const { t } = useTranslation();
   const [campaign, setCampaign] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [metadataUnavailable, setMetadataUnavailable] = useState(false);
 
   useEffect(() => {
+    setMetadataUnavailable(false);
     client.fetch(`*[_type == "campaign" && slug.current == $slug][0]`, { slug })
       .then((data) => {
         if (data) {
@@ -116,6 +118,7 @@ export default function CampaignDetail() {
         setLoading(false);
       })
       .catch((err) => {
+        setMetadataUnavailable(true);
         console.error("Error fetching campaign details:", err);
         const fallbackItem = FALLBACK_CAMPAIGNS_DETAILS.find((item: any) => item.slug?.current === slug);
         setCampaign(fallbackItem || null);
@@ -126,7 +129,7 @@ export default function CampaignDetail() {
   if (loading) {
     return (
       <div className="min-h-screen pt-32 pb-20 flex items-center justify-center">
-        <SEO title={t("details.loading")} description="Loading campaign details" />
+
         <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${isApple ? 'border-slate-800' : 'border-primary-600'}`}></div>
       </div>
     );
@@ -135,6 +138,7 @@ export default function CampaignDetail() {
   if (!campaign) {
     return (
       <div className="min-h-screen pt-32 pb-20 flex flex-col items-center justify-center text-center px-4">
+        <SEO title="" description="" notFound={!metadataUnavailable} unavailable={metadataUnavailable}/>
         <h1 className="text-4xl font-bold text-slate-900 mb-4">{t("details.notFound")}</h1>
         <p className="text-lg text-slate-600 mb-8">{t("details.campaignNotFoundDesc")}</p>
         <button onClick={() => navigate(-1)} className={`px-8 py-3 rounded-full font-medium transition-colors text-white ${
@@ -148,32 +152,34 @@ export default function CampaignDetail() {
 
   return (
     <div className="min-h-screen pt-24 pb-20">
-      <SEO 
-        title={campaign.title} 
-        description={campaign.subtitle || campaign.title} 
+      <SEO
+        type={"website"}
+        lastUpdated={campaign._updatedAt}
+        title={campaign.title}
+        description={campaign.subtitle || campaign.title}
         image={campaign.image ? urlFor(campaign.image)?.width(1200).height(630).url() : undefined}
       />
       {/* Hero Section */}
       <div className="relative h-[40vh] md:h-[60vh] w-full bg-slate-900">
-        <img 
-          src={urlFor(campaign.image)?.width(2000).url() || "https://images.unsplash.com/photo-1555899434-94d1368aa7af?auto=format&fit=crop&q=80&w=2000"} 
-          alt={campaign.title} 
+        <img
+          src={urlFor(campaign.image)?.width(2000).url() || "https://images.unsplash.com/photo-1555899434-94d1368aa7af?auto=format&fit=crop&q=80&w=2000"}
+          alt={campaign.title}
           className="absolute inset-0 w-full h-full object-cover opacity-60"
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
-        
+
         <div className="absolute inset-0 flex items-end pb-12 md:pb-20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-8 transition-colors">
               <ArrowLeft className="w-5 h-5" /> {t("details.back")}
             </button>
-            
+
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/20 backdrop-blur-md border border-primary-500/30 text-sm font-bold text-primary-100 uppercase tracking-wider mb-4">
               <Sparkles className="w-4 h-4 text-yellow-300" />
               <span>{t("details.specialCampaign")}</span>
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
               {campaign.title}
             </h1>
@@ -186,19 +192,19 @@ export default function CampaignDetail() {
 
       {/* Content Section */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className={`bg-white rounded-3xl p-8 md:p-12 -mt-32 relative z-10 transition-all duration-300 ${
-            isApple 
-              ? 'border border-slate-200/50 shadow-none' 
+            isApple
+              ? 'border border-slate-200/50 shadow-none'
               : 'border border-slate-100 shadow-xl shadow-slate-200/50'
           }`}
         >
           {campaign.countdownDate && (
             <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl mb-10 font-medium border transition-all duration-300 ${
-              isApple 
-                ? 'bg-slate-100 text-slate-800 border-slate-200/60' 
+              isApple
+                ? 'bg-slate-100 text-slate-800 border-slate-200/60'
                 : 'bg-primary-50 text-primary-600 border-transparent'
             }`}>
               <Calendar className="w-6 h-6" />
@@ -216,13 +222,13 @@ export default function CampaignDetail() {
 
           {campaign.buttonLink && (
             <div className="mt-12 pt-12 border-t border-slate-100 text-center">
-              <a 
-                href={campaign.buttonLink} 
-                target="_blank" 
+              <a
+                href={campaign.buttonLink}
+                target="_blank"
                 rel="noopener noreferrer"
                 className={`inline-flex items-center justify-center gap-2 text-white px-10 py-4 rounded-full font-bold transition-all text-lg ${
-                  isApple 
-                    ? 'bg-[#0071e3] hover:bg-[#0077ed] shadow-none' 
+                  isApple
+                    ? 'bg-[#0071e3] hover:bg-[#0077ed] shadow-none'
                     : 'bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-500/30'
                 }`}
               >

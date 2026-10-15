@@ -1,3 +1,5 @@
+import {BrowserMetadataGuide} from '../components/BrowserMetadataGuide';
+import {PageMetadata} from '../components/PageMetadata';
 import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
 import { managementRequest } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
@@ -133,13 +135,7 @@ export function AccessWorkspace({
   useEffect(() => {
     if (can("access.read")) void load();
   }, [employee.id]);
-  useEffect(() => {
-    document.title = t(
-      "Users & access | UPER",
-      "Pengguna & akses | UPER",
-      "用户与权限 | UPER",
-    );
-  }, [lang]);
+
   useEffect(() => {
     if (tab === "audit" && can("access.audit"))
       api("/audit")
@@ -301,6 +297,21 @@ export function AccessWorkspace({
     system: ["Access administration", "Administrasi akses", "权限管理"],
   };
   const auditLabels: Record<string, [string, string, string]> = {
+    "access.recovery.emergency_authorize": [
+      "Emergency recovery authorization recorded",
+      "Persetujuan pemulihan darurat dicatat",
+      "应急恢复授权已记录",
+    ],
+    "access.recovery.authorize": [
+      "Recovery authorization issued",
+      "Izin pemulihan diterbitkan",
+      "恢复授权已签发",
+    ],
+    "access.recovery.closed": [
+      "Uncommitted recovery closed",
+      "Pemulihan belum tersimpan ditutup",
+      "未提交恢复已关闭",
+    ],
     "access.operation.closed": [
       "Uncommitted operation closed",
       "Operasi belum tersimpan ditutup",
@@ -377,6 +388,7 @@ export function AccessWorkspace({
     data?.users.find((u) => u.id === previewUserId) || data?.users[0];
   return (
     <div className="access-page" data-theme={isLight ? "light" : "dark"}>
+      <PageMetadata lang={lang} options={{module:tab,state:can("access.read")?undefined:"denied"}}/>
       <a className="admin-skip-link" href="#access-main">
         {t("Skip to workspace", "Lewati ke ruang kerja", "跳到工作区")}
       </a>
@@ -476,6 +488,7 @@ export function AccessWorkspace({
                     "权限逻辑与操作指南",
                   )}
                 </h2>
+                <BrowserMetadataGuide lang={lang}/>
                 <ol>
                   {accessGuide.map((text, i) => (
                     <li key={i}>{text[col]}</li>

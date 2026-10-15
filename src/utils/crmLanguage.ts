@@ -24,11 +24,7 @@ export function useCrmLanguage() {
     window.addEventListener("uper-admin-preferences", update);
     return () => { window.removeEventListener("storage", update); window.removeEventListener("uper-admin-preferences", update); };
   }, []);
-  useEffect(() => {
-    const previous = document.documentElement.lang;
-    document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
-    return () => { document.documentElement.lang = previous; };
-  }, [lang]);
+
   return [lang, setLang] as const;
 }
 const values: Record<string, [string, string]> = {

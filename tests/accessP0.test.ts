@@ -15,7 +15,7 @@ import {
 } from "../src/utils/accessSafetyLanguage.ts";
 for (const lang of [0, 1, 2])
   test("P0 guidance and errors are complete for language " + lang, () => {
-    assert.equal(accessSafetyGuide.length, 5);
+    assert.equal(accessSafetyGuide.length, 6);
     for (const s of accessSafetyGuide) {
       assert.ok(s.title[lang]);
       assert.ok(s.body[lang].length > 80);
@@ -67,6 +67,28 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   const privateDir = await fs.mkdtemp(
     path.join(os.tmpdir(), "uper-access-p0-"),
   );
+  const authorizeRecovery = async (
+    input: any,
+    env: any = process.env,
+    backupSha256?: string,
+  ) => {
+    const operationId = crypto.randomUUID(),
+      reply = await admin.call("/api/admin/access/recovery/authorize", {
+        operationId,
+        userId: input.userId,
+        reason: input.reason,
+        enableAccount: !!input.enable,
+        restoreSystemAccess: true,
+        targetDatabase: new URL(env.MYSQL_TRIAL_URL).pathname.slice(1),
+        backupSha256,
+      });
+    assert.equal(reply.status, 200, JSON.stringify(reply.data));
+    const file = path.join(privateDir, operationId + ".authorization.json");
+    await fs.writeFile(file, JSON.stringify(reply.data.authorization), {
+      mode: 0o600,
+    });
+    input.authorizationFile = file;
+  };
   await test("Independent MySQL P0 security and management acceptance", async (t) => {
     t.after(async () => {
       await new Promise<void>((r) => server.close(() => r()));
@@ -624,13 +646,14 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           reason: "TEST approved offline recovery",
           enable: true,
         };
+        await authorizeRecovery(input);
         await assert.rejects(
           recoveryPreview({ ...process.env, PORT: "3000" }, input),
           /restricted/,
         );
         await assert.rejects(
           recoveryPreview(process.env, { ...input, enable: false }),
-          /Disabled/,
+          /scope mismatch/,
         );
         await pool.query(
           "INSERT INTO crm_login_limits(`key`,failures) VALUES(:p1,5) ON DUPLICATE KEY UPDATE failures=5",
@@ -662,13 +685,19 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           await fs.readFile(file, "utf8"),
           /TEST-new-recovery-password|password_hash/,
         );
-        await assert.rejects(
-          recoverAdministrator(
-            process.env,
-            { ...input, confirmation: preview.confirmation, recordFile: file },
-            "TEST-new-recovery-password",
-          ),
-          /confirmation/,
+        assert.equal(
+          (
+            await recoverAdministrator(
+              process.env,
+              {
+                ...input,
+                confirmation: preview.confirmation,
+                recordFile: file,
+              },
+              "TEST-new-recovery-password",
+            )
+          ).replayed,
+          true,
         );
         const account = client();
         assert.equal(
@@ -754,6 +783,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             reason: "TEST restore recovery",
             enable: true,
           };
+          await authorizeRecovery(input, env, saved.sha256);
           const pre = await recoveryPreview(env, input);
           await recoverAdministrator(
             env,
@@ -830,6 +860,8 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
                 restoreId: restoreInfo.restoreId,
                 userId: u.id,
                 confirmAuthorization: true,
+                authorizationStamp: state.users.find((x: any) => x.id === u.id)
+                  .authorizationStamp,
                 reason: "TEST manual independent authorization review",
               }),
             );

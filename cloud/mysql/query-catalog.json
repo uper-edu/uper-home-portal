@@ -45,7 +45,8 @@
   "INSERT INTO access_operations(actor_id,operation_id,action,fingerprint,result) VALUES(:p1,:p2,:p3,:p4,:p5)": {
     "sql": "INSERT INTO access_operations(actor_id,operation_id,action,fingerprint,result) VALUES(:p1,:p2,:p3,:p4,:p5)",
     "sources": [
-      "server/portal/accessOperations.ts"
+      "server/portal/accessOperations.ts",
+      "server/portal/accessRecovery.ts"
     ]
   },
   "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)": {
@@ -329,6 +330,12 @@
       "server/portal/accessOperations.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.recovery.authorize',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.recovery.authorize',:p2)",
+    "sources": [
+      "server/portal/accessRecovery.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)",
     "sources": [
@@ -498,7 +505,8 @@
   "SELECT * FROM access_operations WHERE actor_id=:p1 AND operation_id=:p2": {
     "sql": "SELECT * FROM access_operations WHERE actor_id=:p1 AND operation_id=:p2",
     "sources": [
-      "server/portal/accessOperations.ts"
+      "server/portal/accessOperations.ts",
+      "server/portal/accessRecovery.ts"
     ]
   },
   "SELECT * FROM access_roles": {
@@ -582,6 +590,7 @@
     "sql": "SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/accessManagement.ts",
+      "server/portal/accessRecovery.ts",
       "server/portal/localAuth.ts"
     ]
   },
@@ -973,6 +982,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT items,items_text FROM cms_collections WHERE name=?": {
+    "sql": "SELECT items,items_text FROM cms_collections WHERE name=?",
+    "sources": [
+      "server/siteMetadata.ts"
+    ]
+  },
   "SELECT items,items_text,revision FROM cms_collections WHERE name=?": {
     "sql": "SELECT items,items_text,revision FROM cms_collections WHERE name=?",
     "sources": [
@@ -1001,6 +1016,12 @@
     "sql": "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null')=:p1 AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1",
     "sources": [
       "server/portal/notificationDelivery.ts"
+    ]
+  },
+  "SELECT kind,COUNT(*) AS count FROM notification_migration_holds GROUP BY kind": {
+    "sql": "SELECT kind,COUNT(*) AS count FROM notification_migration_holds GROUP BY kind",
+    "sources": [
+      "server/portal/accessRecovery.ts"
     ]
   },
   "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1": {
@@ -1174,6 +1195,7 @@
     "sources": [
       "server/portal/accessManagement.ts",
       "server/portal/accessOperations.ts",
+      "server/portal/accessRecovery.ts",
       "server/portal/teamlessAccess.ts"
     ]
   },

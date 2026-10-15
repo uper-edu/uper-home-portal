@@ -6,7 +6,6 @@ import { Search, ChevronDown, Check, HelpCircle, MessageCircle, ArrowRight, Book
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SEO } from '../components/SEO';
-import { Helmet } from 'react-helmet-async';
 import { hskFaqsByLang } from '../data/hskFaqs';
 import { cscaFaqsByLang } from '../data/cscaFaqs';
 import { trackFAQExpand } from '../utils/analytics';
@@ -347,6 +346,7 @@ export default function FAQ() {
   return (
     <div className="pt-32 pb-24 min-h-screen">
       <SEO 
+        schemaData={faqJsonLd || undefined}
         title={t('meta.faq.title', 'UPER FAQs | China Scholarships & HSK Exam Q&A')} 
         description={t('meta.faq.description', 'Got questions about studying in China, obtaining scholarships, starting HSK courses, or joining UPER study tours? Find authoritative answers here.')} 
         canonicalUrl="https://uperedu.com/faq"
@@ -357,13 +357,7 @@ export default function FAQ() {
       />
 
       {/* JSON-LD FAQPage Schema for Search & AI Engines crawl */}
-      {faqJsonLd && (
-        <Helmet>
-          <script type="application/ld+json">
-            {JSON.stringify(faqJsonLd)}
-          </script>
-        </Helmet>
-      )}
+
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
