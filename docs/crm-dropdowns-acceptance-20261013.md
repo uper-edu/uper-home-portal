@@ -1,5 +1,7 @@
 # CRM single-select dropdowns — 2026-10-13
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 ## Change
 
 Owner, Tasks, Sort and Columns now share a custom single-select popup with the existing multi-select filters' typography, spacing, rounded border, shadow and light/dark colors. Each selected value has a checkmark and highlight. Selecting an option applies it immediately and closes the popup.
@@ -13,7 +15,6 @@ Application source changes: `src/components/crm/CrmLeadFilters.tsx` and `src/com
 ## Acceptance
 
 - Existing filter rules: **5/5 tests passed**. Independent and root TypeScript checks passed; production builds and whitespace checks passed.
-- Used the independent PostgreSQL-backed preview on `127.0.0.1:4376`, with synthetic customers and Fadhil/Robert test accounts.
 - Sales default: four owned synthetic customers. Selecting Unassigned produced zero for the current fixture; Reset restored the four owned customers.
 - Leader default: five synthetic customers. Searching Owner for `fadh`, navigating to Fadhil and confirming with Enter returned four customers. Personal names were not translated.
 - Tasks: Arrow Down opened the popup, moved focus without selecting, and Enter applied the chosen task filter. Escape closed it and returned focus.
@@ -36,7 +37,5 @@ Private screenshots and comparison results are in `.local-backups/crm-dropdowns-
 ## GitHub sync verification
 
 On 2026-10-13, the live canonical remote `uper-edu/uper-home-portal` was checked: `main` already contained the dropdown source changes in commit `8c5c072e5a057f8f60babca8309259c2c9666f8a`. The remaining change for this sync is this acceptance document only.
-
-An isolated snapshot of that commit passed `npm test` (99 passed, 0 failed), `npm run lint`, and `npm run build`. `git diff --check` also passed. No environment files or runtime customer records were copied into the snapshot, and no database integration opt-in variables were supplied. The 99 tests therefore do not constitute a new PostgreSQL integration run; the earlier independent database and browser acceptance is recorded above.
 
 The sync does not rebuild or restart local 3000, change HSK source, migrate customer data, or deploy a public environment.

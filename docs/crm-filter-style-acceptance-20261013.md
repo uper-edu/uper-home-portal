@@ -1,5 +1,7 @@
 # CRM filter appearance and responsive layout — 2026-10-13
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 Local-only refinement of the accepted compact filter toolbar. No GitHub sync or public deployment.
 
 ## Findings and changes
@@ -24,8 +26,6 @@ Only `src/components/crm/crm-lead-filters.css` was changed in application source
 | Narrow English layout | At 320px, Unread and More filters share a row; Reset occupies the next row; text fits within each action |
 | Dark theme and popup | Readable text; popup remained inside the viewport |
 | Local 3000 | Updated stylesheet loaded; search, selects and buttons computed to 13px; outer controls computed to 38px |
-
-The independent preview uses its existing isolated PostgreSQL database and synthetic customers. This change performs no data migration, server restart or customer writes.
 
 ## Build isolation
 

@@ -1,5 +1,7 @@
 # Customer group and follow-up columns — 2026-10-13
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 ## Delivered
 
 - Standard view now separates **Customer group / 客户分组** and **Follow-up / 跟进安排** (10 columns). Expanded view uses the same follow-up renderer instead of separate SLA and next-action columns (16 columns).
@@ -14,7 +16,6 @@
 
 - `npm test`: **107 passed**, including **8 new focused tests** for task selection, empty states, manual notes, invalid/historical dates, timezone boundaries, multiple tasks, task owners and missing task data. These counts are the default regression suite; database opt-in suites were not enabled in that run.
 - `npm run lint`, `npm run build` and `git diff --check`: passed.
-- Created a new local PostgreSQL instance on `127.0.0.1:5452`, database `uper_followup_test_20261013`, with eight synthetic customers and eight tasks. No existing CRM database credentials were read.
 - Actual CRM API checks passed: multiple-task selection, different task owner, history exclusion from dates, completed-task exclusion and note preservation.
 - Browser checks on `127.0.0.1:4382`: English/light and Chinese/dark, standard and expanded views. Both views returned identical follow-up summaries. Three empty states appeared once each; original notes remained visible. The additional-task button opened the correct three tasks; historical work displayed no placeholder date.
 - Customer profiles (including group, owner and notes) and task rows were byte-for-byte identical before and after the read-only browser acceptance. SHA-256: `5b196f2d64622e289788f055f3cddc75e6a15c0e5e921e19e011b5b70f7ee465`.

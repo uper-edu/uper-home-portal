@@ -1,5 +1,7 @@
 # 六账号、角色权限及全局通知路由验收
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 日期：2026-10-12（America/Vancouver）。状态：独立本地候选版本通过；未切换真实 CRM，未部署公网，未同步 GitHub。
 
 ## 运行边界与交付物
@@ -32,17 +34,13 @@ Owner 选项仅包含 Fadhil、Zainul、Wigar、Tester，并展示角色；Suki/
 
 对以 Owner 为接收对象的客户业务通知：有效 Owner 接收；未分配、历史账号不在目录或 Owner 停用/无访问权限时，发给可访问该客户的 CRM Leader。本地目录的接收者为 Suki、Robert、Tester。Tester 双角色仅生成一份通知。保留已有策略、版本和渠道；运营事件、明确团队通知及主管升级继续执行其既定路由。Lark 仍按已配置群发送；员工身份目录不由群机器人替代。
 
-本次站内通知以真实 PostgreSQL 持久任务/收件记录验收。Lark 没有实际发送，独立预览没有 Webhook/API Key。未声称真实平台联调或公网认证通过。
+当次站内通知验收使用模拟角色；未实际发送Lark，也未验证真实平台联调或公网认证。
 
 ## 验收证据
 
 | 验证 | 结果 |
 |---|---|
 | 根目录测试脚本对应的测试全集 | 60/60 |
-| 六账号 PostgreSQL 集成测试 | 12/12（含父测试；11 个独立场景） |
-| 通知策略 PostgreSQL 回归 | 22/22 |
-| 聊天、跟进 PostgreSQL 回归 | 13/13（含 OpenAI→DeepSeek 模型桩故障、20 并发会话/100 条消息） |
-| 全局路由 PostgreSQL 回归 | 6/6 |
 | TypeScript 类型检查 | 通过 |
 | Vite 生产构建 | 通过；保留既有大分块提示 |
 | 根目录差异检查、候选补丁应用/空白检查 | 通过 |
@@ -51,8 +49,6 @@ Owner 选项仅包含 Fadhil、Zainul、Wigar、Tester，并展示角色；Suki/
 环境缺少 npm 命令，执行了 package.json 中对应的实际命令：`node --import tsx --test tests/*.test.ts tests/*.test.mjs`、`node node_modules/typescript/bin/tsc --noEmit`、`node node_modules/vite/bin/vite.js build`。未改动 lesson 内容或评分规则。
 
 六账号测试覆盖：六人的准确角色、无强制首次改密、Cookie 恢复、密码非明文、匿名/伪造身份/跨站请求拒绝、销售越权客户详情/聊天/任务/分配/配置/导出、Leader 分配至有效销售、保留历史归属与 SLA、跟进操作人防冒用、通知 Inbox 的 Owner/Leader 实际接收对象与未读提醒、双角色去重、停用与角色变化即时生效、自助改密/退出/其他会话失效、并发登录限流与过期会话。
-
-备份新增 3 张身份表，共 20 张；修复 PostgreSQL 驱动对 JSON 数组误编码的问题。新备份可恢复员工与业务记录；旧 17 表备份可恢复且不会凭空生成员工、改写历史归属。数据库备份始终是私密文件，不进入代码包。
 
 浏览器确认：未登录显示登录页；Fadhil 仅看到自己的客户且 Owner 禁用；Robert 可看到全部 4 条模拟客户及 Sales Operations；Owner 选项显示销售角色与 Tester 双角色；历史归属独立保留；模拟 Intake Chat 两条消息可见。截图保存在上述交付包。
 

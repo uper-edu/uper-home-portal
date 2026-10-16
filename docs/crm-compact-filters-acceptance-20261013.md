@@ -1,5 +1,7 @@
 # CRM compact filters acceptance — 2026-10-13
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 Local only. No GitHub push or public deployment.
 
 ## Change
@@ -20,7 +22,6 @@ Source changes are limited to `CrmLeadFilters.tsx`, its scoped `crm-lead-filters
 | Verification | Result |
 | --- | --- |
 | Isolated regression suite | 75/75 passed; database suites use separate opt-in runs |
-| Fresh synthetic PostgreSQL database on 5448 | 5/5 passed: six accounts, scoped access, forged ownership, explicit unassigned, multi-value combinations, today/overdue, completion, unread and profile preservation |
 | Candidate and root TypeScript checks | Passed |
 | Isolated production builds | Passed |
 | Whitespace/diff check | Passed |

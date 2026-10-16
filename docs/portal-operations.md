@@ -1,64 +1,29 @@
-# Portal persistence and notifications
+# MySQL portal operations
 
-## Run locally
+## Configuration and startup
 
-Requires Node >=24 and PostgreSQL. Install with `npm ci`. Set server-only `DATABASE_URL`; the application initializes the additive schema in `server/portal/schema.sql`. For local QA set `PLATFORM_MODE=mock`, `MOCK_EMPLOYEE_ID=test-admin`, `PORT=4341`. Start with `npm run dev`. Do not expose this mock environment through a public proxy. Proxy headers and non-local Host values reject mock authentication. Production has no mock identity fallback: implement `PlatformAdapter` against the education management platform before opening CRM access.
+Use Node.js 24+, MySQL 8 and the explicit dev/test/prod environment loader. Follow [environment configuration and the migration baseline](environment-configuration.md); use only the root placeholder templates. Actual credentials stay private. Reuse an existing environment file without overwriting its database connection or stable operation key.
 
-The macOS arm64 optional PostgreSQL binary is for isolated developer tests, not a production database service. Use a separate database for integration tests:
+Local3000 uses its existing MySQL database. Do not start another process, replace its build output or migrate/restore data as part of a documentation update. Company testing uses its own synthetic schema and the unified home domain. Production remains separately gated.
 
-```
-PORTAL_TEST_DATABASE_URL=postgresql://... npm run test:portal
-npm test
-npm run lint
-npm run build
-```
+## Permissions and notifications
 
-Without `DATABASE_URL`, CRM and new consultation APIs fail closed with 503. The legacy model-only route is accessible solely via the explicit `LEGACY_CHAT_TEST=true` regression switch; never set it in deployed environments. Existing public preview is a separate checkout and has not been upgraded.
+CRM, CMS and system management use persisted staff accounts and server-side permissions. Workspace access does not grant other business roles. Customer ownership and shared-pool claim rules apply at the API; filters cannot expand access. Current user/role configuration is authoritative, not a historical account list.
 
-## Configure notifications
+Sales Operations manages notification policies, channels and delivery audit. Owner routes fall back to CRM Manager when necessary. CRM Bot uses channel `CRM_Leads_Update` and server variable `LARK_GROUP_CRM`; browser responses must never contain the Webhook. Reading messages or opening contact tools does not complete business tasks.
 
-Daily work stays in CRM → Leads: activity badges, unread/my-pending/unassigned/overdue filters, deadlines, and follow-up actions in the customer timeline. Notification policy/channel/delivery administration is under SLA & Policy → 通知设置与发送审计. Inbox and follow-up are separate: reading does not complete a task. Edit policies with validated JSON fields; saving a draft disables that rule, enabling applies to future events. Pending jobs keep their rule snapshot and version. The simulator does not send. Send logs distinguish `pending`, `sending`, `accepted`, `simulated`, `unknown`, `failed`, `cancelled`. Unknown external results require investigation; automatic retries could duplicate a delivered message.
+New environments start with workers paused or explicitly simulated. Real sending requires its own reviewed configuration and TEST receipt check. Distinguish pending, sending, accepted, simulated, unknown, failed and cancelled; accepted does not prove human receipt. Unknown external outcomes must be investigated before retrying. Historical holds and cancelled work remain protected after restart, recovery and channel fixes.
 
-Channel IDs represent Lark groups, e.g. `sales`. Channel config: `{"team":"sales","secretRef":"LARK_WEBHOOK_URL","mode":"simulation"}`. `secretRef` references a server environment variable; it does not hold the secret. The old `LARK_WEBHOOK_URL` variable can be reused. Local/test live sends additionally require `LARK_TEST_GROUP=sales`. Only official HTTPS Lark webhook URLs are permitted. No usable webhook was found in current environment files.
+## Backup, restore and release
 
-Credentials never travel to the browser. Email/SMS remain disconnected. No production group is contacted automatically. To enable actual delivery, configure an explicitly designated test group, verify a synthetic event and CRM link, then review live-mode configuration. There is no provider receipt proving human reading.
+Use the current MySQL backup implementation in [cloud/mysql/backup.mjs](../cloud/mysql/backup.mjs) and the reviewed [administrator recovery and release procedure](company-trial-recovery-20261014.md). Maintenance requires explicit authorization and a private configuration; do not run examples against a live database without the applicable maintenance steps.
 
-## Migration and rollback
+Backups and detailed reconciliation remain private. Restore only into an explicitly selected empty target, validate integrity and reconcile identities, ownership, raw text, scores, task deadlines and configuration. Restore/recovery revokes old sessions and installs a review gate; verify active accounts and two eligible administrators before release. Release does not replay historical notifications.
 
-Back up JSON and PostgreSQL first. Dry run:
+Ordinary code rollback retains the current MySQL database and accepted writes. Database restoration is a separate operation. Imported unknown message times remain unknown; placeholders must not enter real due/overdue calculations. Import and restore must not generate historical notification floods.
 
-```
-npm run migrate:portal -- data/leads_db.json
-```
+## Monitoring and acceptance
 
-Review counts, SHA-256, missing/duplicate IDs, invalid dates. During a maintenance window stop consultation writes. Apply against the selected database:
+Track database readiness, pending-job age, failed/unknown deliveries, interrupted AI responses, task state and runtime identity. Health during recovery review can return 200 with businessReady=false; it is not business release. Follow [validation](portal-validation.md) for isolated checks and evidence boundaries.
 
-```
-npm run migrate:portal -- data/leads_db.json --apply
-```
-
-Imports preserve customer IDs and original profile/follow-up JSON. Historical messages use `legacy_unknown`; original message IDs and timestamps are preserved in metadata. Missing dates use an import placeholder, never a claim of a known conversation time. Imported follow-up tasks enter `migration_hold` until staff explicitly review and activate them, preserving deadlines without sending historical overdue alerts. The importer creates no outbox events and repeated imports do not duplicate rows. Candidate duplicates require review; imports do not auto-merge them. Do not leave JSON and PostgreSQL dual writes active.
-
-Back up with `pg_dump` and restore into a separate PostgreSQL database with `pg_restore`/`psql`; reconcile counts before switching. After new writes begin, rollback must use a database-compatible application version or a complete export including new records. Returning to stale JSON loses accepted writes.
-
-## Monitoring and boundaries
-
-Monitor oldest pending outbox/job age, failed and unknown deliveries, overdue tasks, database errors and interrupted AI replies. Worker leases expire after one minute; external sends become unknown, internal jobs can retry. Advisory locks serialize generation per conversation and external sends per group. Health and job monitoring must be linked to the eventual deployment's operations system.
-
-Remaining integration/release work: real platform authentication and employee lookup; approved Lark test group receipt; backup/restore drill in the target hosting environment; complete UI acceptance across both chat surfaces and all rule branches. The notification editor now uses grouped forms and delivery tables; see docs/notification-settings-guide.md. No public release is authorized by this local implementation.
-
-A tested application-level snapshot utility is available: `DATABASE_URL=... node --import tsx scripts/portal-backup.ts backup /absolute/backup.json` and `restore /absolute/backup.json`. Restore requires empty destination tables, verifies SHA-256 and restores foreign keys in dependency order; it never overwrites existing records. It covers this portal schema only, not full PostgreSQL roles/extensions. Keep production pg_dump backups as well.
-
-## Employee data scope
-
-The platform adapter supplies stable employee ID, permissions and data scope. Sales use `own` (only assigned customers); sales managers use `all`. The server applies scope to leads, details, conversations, tasks, export and statistics; changing filters cannot expand access. Assignment requires `crm.assign`, independently of ordinary follow-up editing. Reassignment immediately changes the next authorized response. Per-employee read watermarks clear only activity already observed; later events remain unread. Viewing never completes follow-up. Real education-platform integration remains pending.
-
-## Local 3000 startup
-
-The configured local instance uses persistent data/postgres-local on 127.0.0.1:5449. `npm run dev` invokes scripts/local-start.mjs to ensure that local PostgreSQL is running before starting the application. Keep migration reconciliation reports private and outside Git. New consultation writes go to PostgreSQL; keep source JSON in protected local backups.
-
-## Backup and migration acceptance update (2026-10-12)
-
-Application snapshots now use v2, cover 17 portal tables including HSK attempts, preserve timestamp microseconds and sequence state, and reject unknown source tables. Snapshot creation is read-only and does not initialize the schema. Restore checks integrity before initialization, refuses occupied destinations, and rolls back partial imports. v1 imports explicitly report their missing independent HSK coverage. See docs/portal-backup-migration-acceptance-20261012.md for evidence and limits.
-
-Migration dry-run reports contact-match candidates and anomalies. Unknown message dates use an explicitly marked epoch placeholder; original source text and metadata remain available. Apply stores per-lead source fingerprints; re-importing the same source retains newer database writes. Changed sources, existing ID conflicts, and early imports without fingerprints require manual review. Historical tasks remain migration_hold and retain deadlines; imports create no events. Run restores into isolated databases with outbound delivery disabled, reconcile all tables, inspect interrupted/unknown jobs, then authorize worker activation. Native full-database backup, offsite retention and target-host recovery remain deployment gates.
+Target-host configuration and limitations are recorded in [company deployment acceptance](company-host-deployment-20261015.md), [browser acceptance](company-browser-acceptance-20261015.md) and [live notification acceptance](company-lark-live-acceptance-20261015.md). Read each report with its date; a prior receipt or local test is not proof of current host or provider health.

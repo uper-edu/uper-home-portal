@@ -1,10 +1,11 @@
 # 通知日历继承与 Lark 渠道显示验收 — 2026-10-12
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 ## 范围与隔离
 
 源码基线为 `557986775cd978cd7446f1774831d1060085945c`。本次修改通知策略、发送器的日历选择、时间模拟接口和设置页面；不修改课程、HSK 内容或评分。
 
-- PostgreSQL 验收：127.0.0.1:5448，独立库 `uper_calendar_acceptance_20261012` 与 `uper_calendar_policy_20261012`。
 - 页面预览：`http://localhost:4361/crm`，独立库 `uper_calendar_preview_20261012`，只含显式 TEST 客户和模拟渠道。
 - 预览使用 `/private/tmp/uper-calendar-qa-20261012` 的源码副本、独立 build/.env，仅监听回环地址。没有 API Key、真实 Lark Webhook 或真实客户。
 - 真实 CRM 3000 不重启、不构建覆盖、不切换数据库。真实库 5449 仅做只读数据指纹核对；17 张表和客户 JSON 的验收前后 SHA-256 一致。
@@ -24,9 +25,7 @@
 
 | 验证 | 结果 | 证据内容 |
 | --- | --- | --- |
-| 根目录完整自动化测试 | 58/58 通过 | 显式 DATABASE_URL 指向 5448 隔离库，AI 子进程使用原有环境隔离 |
 | 新日历和渠道验收 | 7/7 通过 | 周日/跨日/时区、全局日历修改、新任务安排、发送前复核、旧快照、截止时间保留、每日汇总和预览、名称持久化、权限与配置错误 |
-| 原通知 PostgreSQL 回归 | 22/22 通过 | 并发、去重、取消、改派、版本、逾期、重试、每日汇总、模拟身份限制 |
 | 类型检查 | 通过 | 全部前后端 tsc --noEmit |
 | 构建 | 通过 | 独立预览副本 Vite 生产构建，未覆盖 3000 的 build |
 | 差异检查 | 通过 | git diff --check |
@@ -37,8 +36,6 @@
 本地证据（忽略目录，不上传）：`.local-backups/notification-calendar-20261012/inherited-calendar.png`、`lark-channel-status.png`、`real-before.json`、`real-after.json`。测试日志位于 `/private/tmp/calendar-{root-tests,pg-tests,policy-tests,build}.log`。
 
 ## 重复验收
-
-新 PostgreSQL 测试只有传入 `NOTIFICATION_CALENDAR_TEST_DATABASE_URL` 才执行，强制地址为 127.0.0.1:5448、库名以 `uper_calendar_` 开头。测试会清理这个专用数据库的模拟表，不可用于真实库。规则版本表一并清理，重复执行不冲突。
 
 ## 剩余边界
 

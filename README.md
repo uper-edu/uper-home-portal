@@ -14,7 +14,7 @@ chmod 600 .env.dev
 npm run dev
 ```
 
-The locked `msedge-tts` package includes a pnpm-only installation guard, so the npm workflow skips dependency lifecycle scripts. No embedded PostgreSQL setup is required.
+The locked `msedge-tts` package includes a pnpm-only installation guard, so the npm workflow skips dependency lifecycle scripts.
 
 Development normally listens on localhost:3000. Do not start another process or overwrite the database connection when an existing local3000 service is running. Routes include `/`, `/chat`, `/crm`, `/cms` and `/system`; staff permissions and customer ownership apply to the management APIs. Mock employee fixtures are for isolated localhost tests only.
 
@@ -65,6 +65,6 @@ The shared account menu, `/api/version`, health and response headers identify th
 
 ## Data boundary
 
-Customer profiles, employee accounts, visitor sessions, conversations, messages, assessments, follow-up tasks and notification delivery records persist in MySQL. Static question banks, public content and translations may remain JSON assets. Data migrations, backups, restores and environment cutovers require their own reviewed procedure; changing code does not normally require restoring the entire database.
+Customer profiles, employee accounts, visitor sessions, conversations, messages, assessments, follow-up tasks and notification delivery records persist in MySQL. Static question banks, public content and translations may remain JSON assets. Data migrations, backups, restores and environment cutovers require their own reviewed procedure; changing code does not normally require restoring the entire database. See the [MySQL migration and acceptance baseline](docs/environment-configuration.md#mysql-迁移与验收基线) for data-preservation results, notification isolation and evidence limits; [operations](docs/portal-operations.md) and [validation](docs/portal-validation.md) provide current entry points.
 
 Do not commit private environment files, keys, runtime customer records, logs, local databases or backups. Stage only reviewed source, placeholder templates and documentation. This repository's canonical remote is `uper-edu/uper-home-portal`.

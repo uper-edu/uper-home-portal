@@ -1,10 +1,10 @@
 # 通知条件下拉与全局路由验收 — 2026-10-12
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 ## 交付与隔离
 
 完整实现保存在独立源码副本 `/private/tmp/uper-routing-qa-20261012`，预览为 http://localhost:4363/crm。正式运行中的 3000 使用 Vite 热更新，因此本次未覆盖真实目录的 src/server 文件；避免 UI 提前更新、API 尚未切换的混用。可应用源码补丁、候选文件副本和 SHA-256 清单保存在忽略目录 `.local-backups/notification-routing-20261012/`，`git apply --check` 通过。没有部署公网、没有 GitHub 推送。
-
-5448 为新独立 PostgreSQL 集群 `/private/tmp/uper-routing-postgres`，只监听回环。数据库分别为 uper_calendar_routing_test_20261012、uper_calendar_routing_policy_20261012、uper_calendar_routing_preview_20261012。预览只有 TEST 模拟客户、模拟角色，没有 API Key 或 Webhook。真实数据库 5449 的 17 张表与客户 JSON 在 UI 验证窗口前后的指纹一致。
 
 ## 可搜索选择
 
@@ -32,8 +32,6 @@
 
 | 项目 | 结果 |
 | --- | --- |
-| 新路由单元与 PostgreSQL 验收 | 6/6 通过 |
-| 原通知 PostgreSQL 回归 | 22/22 通过 |
 | 完整自动化测试 | 59/59 通过 |
 | 全部类型检查与独立副本构建 | 通过 |
 | 可应用补丁检查 | git apply --check 通过 |

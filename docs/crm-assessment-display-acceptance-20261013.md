@@ -1,5 +1,7 @@
 # CRM goal and assessment display — 2026-10-13
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 ## Change
 
 - Standard view uses **Goal & assessment / 学习目标与测评**, with three vertically stacked fields: goal, conclusion, and assessment source with score. Long content wraps within its field. The fixed green tick, repeated “Paper” labels and horizontal result badge are removed.
@@ -13,7 +15,6 @@
 
 - `npm test`: **115 passed**, including eight focused display tests covering full and quick assessments, teacher precedence, consistent score provenance, historical and malformed records, self-reported levels, localization and shared rendering. The default regression suite includes HSK scoring/media/version tests; database opt-in suites were not enabled in that command.
 - TypeScript check, production build and `git diff --check`: passed. Build ran in an isolated source snapshot without environment files or customer data.
-- A new PostgreSQL database, `uper_assessment_display_20261013`, on the separate test cluster at loopback port 5452 held **12 synthetic customers**. The preview at port 4383 used the real CRM authentication and list API. No external senders or AI credentials were configured.
 - Browser checks covered English/light, Chinese/dark, standard and expanded views. All 12 standard summaries had three fields; their last two fields matched the expanded view. No result tick, repeated source text, or mixed system-language prose remained.
 - Synthetic customer profiles, including owners, classifications and saved assessments, were byte-for-byte unchanged after validation. Before/after SHA-256: `02a098ebd9ea746391af5de68d388fd37d6c813be1af7a9d36d6a7e29dc82af1`. No conversations, messages, follow-up tasks, business events or notification jobs were created by browsing.
 - All 59 protected data-definition/server source files and 122 static assets remained identical. After normalizing build-generated asset names, 24 non-CRM JavaScript modules were unchanged; only the CRM module changed. The new styles are scoped to the assessment component.

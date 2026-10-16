@@ -1,5 +1,7 @@
 # CRM unified filters: local 3000 verification
 
+> 历史功能验收摘要：已移除退役数据库的环境、启动／恢复步骤及专项测试结果。其余结果仅代表当次功能版本，不构成当前MySQL验收；现行配置与数据保护结论见[环境配置与验收基线](environment-configuration.md#mysql-迁移与验收基线)。
+
 Date: 2026-10-13. Local only; no GitHub push or public deployment.
 
 ## Delivered interface
@@ -20,7 +22,6 @@ This task changed only the CRM filter component and this report. It did not repl
 | Check | Result |
 | --- | --- |
 | Isolated candidate regression suite | 75/75 passed; DB-dependent suites require their separate opt-in runs |
-| Fresh synthetic PostgreSQL database, port 5448 | 5/5 passed, including six-account authentication, role scoping, forged owner access, explicit unassigned, today/overdue, completion, employee-specific unread and profile preservation |
 | Controlled-clock filter cases | Passed; operating timezone controls today, completed/cancelled/historical-hold tasks are excluded from overdue |
 | Candidate lint and production build | Passed |
 | Shared checkout type check and diff whitespace check | Passed |
