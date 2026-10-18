@@ -165,7 +165,7 @@ test("task owner is shown only when different, keeping the original name", () =>
 test("missing task data is not reported as no pending work", () => {
   assert.match(
     render({ owner: "Fadhil", nextAction: "Keep this note" } as CrmLeadRecord),
-    /Follow-up unavailable/,
+    /Follow-up information unavailable/,
   );
   assert.doesNotMatch(
     render({ owner: "Fadhil" } as CrmLeadRecord),

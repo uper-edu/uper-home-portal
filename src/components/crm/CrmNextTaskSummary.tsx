@@ -26,7 +26,7 @@ export function CrmNextTaskSummary({
         {summary.next?.action ||
           (summary.loaded
             ? emptyFollowUpLabel(lead, lang)
-            : t("Follow-up unavailable", "跟进信息暂不可用"))}
+            : t("Follow-up information unavailable", "跟进信息暂不可用"))}
       </span>
       {view && (
         <span className="crm-next-task-time">

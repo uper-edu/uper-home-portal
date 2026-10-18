@@ -1,4 +1,6 @@
 .crm-docs {
+  --doc-header-height: 116px;
+  --doc-toggle-height: 46px;
   --doc-surface: #fff;
   --doc-ink: #172b45;
   --doc-border: #cbd5e1;
@@ -65,10 +67,15 @@
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 20px;
   margin-top: 20px;
-  align-items: start;
+  align-items: stretch;
+  height: max(240px, calc(100dvh - var(--doc-header-height) - 24px));
 }
 .crm-doc-nav {
-  position: static;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
   padding: 16px;
 }
 .crm-doc-nav-group {
@@ -145,9 +152,18 @@
 }
 .crm-doc-content {
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+}
+.crm-doc-nav,
+.crm-doc-content {
+  scroll-behavior: auto;
 }
 .crm-doc-section {
-  scroll-margin-top: 140px;
+  scroll-margin-top: 0;
   margin-bottom: 16px;
 }
 .crm-docs details {
@@ -583,10 +599,25 @@
 @media (max-width: 900px) {
   .crm-doc-layout {
     grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    margin-top: 12px;
+  }
+  .crm-doc-content {
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+  .crm-doc-layout,
+  .crm-doc-content,
+  .crm-doc-section {
+    scroll-margin-top: calc(
+      var(--doc-header-height) + var(--doc-toggle-height) + 24px
+    );
   }
   .crm-doc-nav {
-    position: static;
-    max-height: none;
+    max-height: max(
+      180px,
+      calc(100dvh - var(--doc-header-height) - var(--doc-toggle-height) - 36px)
+    );
   }
   .crm-doc-mobile-toggle {
     display: block;
@@ -638,9 +669,6 @@
   .crm-notification-routing dl > div {
     grid-template-columns: minmax(0, 1fr);
   }
-  .crm-doc-section {
-    scroll-margin-top: 130px;
-  }
 }
 @media print {
   .crm-doc-nav,
@@ -652,6 +680,12 @@
   }
   .crm-doc-layout {
     display: block;
+    height: auto;
+  }
+  .crm-doc-content {
+    overflow: visible;
+    height: auto;
+    scrollbar-gutter: auto;
   }
   .crm-docs {
     --doc-surface: #fff;
@@ -684,17 +718,15 @@
 @media (max-width: 900px) {
   .crm-doc-mobile-toggle {
     position: sticky;
-    top: 116px;
+    top: calc(var(--doc-header-height) + 8px);
+    scroll-margin-top: calc(var(--doc-header-height) + 8px);
     z-index: 20;
     width: 100%;
     text-align: left;
   }
   .crm-doc-nav {
-    scroll-margin-top: 172px;
-  }
-}
-@media (max-width: 900px) {
-  .crm-doc-section {
-    scroll-margin-top: 178px;
+    scroll-margin-top: calc(
+      var(--doc-header-height) + var(--doc-toggle-height) + 24px
+    );
   }
 }

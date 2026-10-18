@@ -187,3 +187,32 @@ test("priority summary and task list agree for every stage, including closed his
     assert.doesNotMatch(html,/\(1\)|确认试听/);
   }
 });
+
+test("Task wording distinguishes work, deadlines, history and unavailable data without changing task semantics", async () => {
+  const { emptyFollowUpLabel } = await import('../src/utils/crmFollowUp.ts');
+  const { CrmFollowUp } = await import('../src/components/crm/CrmFollowUp.tsx');
+  const cases = [
+    { status:'open', due_at:'2026-10-18T02:00:00Z', labels:['To do','Perlu ditindaklanjuti','待处理'], tone:'normal' },
+    { status:'open', due_at:'2026-10-17T12:00:00Z', labels:['Due today','Jatuh tempo hari ini','今天到期'], tone:'today' },
+    { status:'overdue', due_at:'2026-10-17T09:00:00Z', labels:['Overdue','Terlambat','已逾期'], tone:'overdue' },
+    { status:'completed', due_at:'2026-10-17T09:00:00Z', labels:['Completed','Selesai','已完成'], tone:'complete' },
+    { status:'cancelled', due_at:'2026-10-17T09:00:00Z', labels:['Cancelled','Dibatalkan','已取消'], tone:'normal' },
+    { status:'migration_hold', due_at:'1970-01-01T00:00:00Z', labels:['Historical task: review required','Tugas lama perlu dikonfirmasi','历史待办待确认'], tone:'review' },
+  ];
+  for (const [index,lang] of (['en','id','zh'] as const).entries()) {
+    for (const c of cases) {
+      const input={...task,...c,scheduled_at:null};const before=JSON.stringify(input);
+      const view=presentFollowUpTask(input,lang,'Asia/Jakarta',now);
+      assert.equal(view.status,c.labels[index]);assert.equal(view.tone,c.tone);
+      assert.equal(JSON.stringify(input),before);
+      assert.equal(view.active,['open','overdue'].includes(c.status));
+    }
+    const undecided=emptyFollowUpLabel({currentStage:'New'},lang);
+    const deferred=emptyFollowUpLabel({currentStage:'New',followUpDisposition:{kind:'none',reason:'original reason'}},lang);
+    assert.notEqual(undecided,deferred);assert.ok(deferred.includes('original reason'));
+    const closed=emptyFollowUpLabel({currentStage:'Lost'},lang);assert.notEqual(closed,undecided);
+    const failure=renderToStaticMarkup(React.createElement(CrmFollowUp,{lead:{currentStage:'New'} as any,lang,timezone:'Asia/Jakarta',employees:[],isLight:true,onOpen(){}}));
+    assert.ok(failure.includes(['Follow-up information unavailable','Informasi tindak lanjut sementara tidak tersedia','跟进信息暂不可用'][index]));
+    assert.ok(!failure.includes(closed));
+  }
+});

@@ -18,7 +18,13 @@ export const oldChapterKeys = [
 ];
 export const operationGroups = [
   ["access"],
-  ["workspace", "efficient-followup", "filters", "visual-status", "buying-evidence-sources"],
+  [
+    "workspace",
+    "efficient-followup",
+    "filters",
+    "visual-status",
+    "buying-evidence-sources",
+  ],
   ["followup"],
   ["chat"],
   ["assessment"],
@@ -113,6 +119,35 @@ export function CrmUserGuide({
       resolveGuideAnchor(initialHash) ? 1 : 0,
     );
   const directoryButton = useRef<HTMLButtonElement>(null);
+  const guide = useRef<HTMLElement>(null);
+  const layout = useRef<HTMLDivElement>(null);
+  const directory = useRef<HTMLElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const lastFocusRequest = useRef(0);
+  useEffect(() => {
+    const header = document.querySelector(
+      "[data-admin-header], [data-crm-header]",
+    );
+    const measure = () => {
+      guide.current?.style.setProperty(
+        "--doc-header-height",
+        `${Math.ceil(header?.getBoundingClientRect().height || 0)}px`,
+      );
+      guide.current?.style.setProperty(
+        "--doc-toggle-height",
+        `${Math.ceil(directoryButton.current?.getBoundingClientRect().height || 0)}px`,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    if (header) observer.observe(header);
+    if (directoryButton.current) observer.observe(directoryButton.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 900px)"),
       change = () => {
@@ -148,25 +183,76 @@ export function CrmUserGuide({
     };
   }, []);
   useEffect(() => {
-    if (!focusRequest || searchMode) return;
+    if (!focusRequest || lastFocusRequest.current === focusRequest) return;
     const request = requestAnimationFrame(() => {
+      lastFocusRequest.current = focusRequest;
+      const pane = content.current;
       const node = document.getElementById("crm-guide-" + selectedKey);
-      node?.scrollIntoView({ block: "start" });
-      node?.focus({ preventScroll: true });
+      if (!pane || !layout.current) return;
+      const narrow = window.matchMedia("(max-width: 900px)").matches;
+      if (narrow) {
+        // The closed directory toggle remains above the chapter on small screens.
+        pane.scrollIntoView({ block: "start", behavior: "instant" });
+      } else {
+        const header = document.querySelector(
+          "[data-admin-header], [data-crm-header]",
+        );
+        const offset = (header?.getBoundingClientRect().bottom || 0) + 12;
+        const delta = layout.current.getBoundingClientRect().top - offset;
+        if (Math.abs(delta) > 2)
+          window.scrollBy({ top: delta, behavior: "instant" });
+        pane.scrollTop = 0;
+      }
+      // Direct subsection links still locate the requested subsection, within the pane.
+      if (
+        !searchMode &&
+        node &&
+        node !== pane.querySelector(".crm-doc-section")
+      ) {
+        if (narrow)
+          node.scrollIntoView({ block: "start", behavior: "instant" });
+        else
+          pane.scrollTop =
+            node.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+      }
+      (searchMode ? pane : node)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(request);
   }, [selectedKey, focusRequest, searchMode]);
   useEffect(() => {
+    if (query.trim()) {
+      if (content.current) content.current.scrollTop = 0;
+      return;
+    }
+    const nav = directory.current;
+    if (!nav) return;
+    const revealSelection = () => {
+      const selected = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!selected || nav.hidden || !selected.getClientRects().length) return;
+      const bounds = nav.getBoundingClientRect(),
+        item = selected.getBoundingClientRect();
+      // Move only the directory, and only as far as needed to reveal the selection.
+      if (item.top < bounds.top + 8) nav.scrollTop += item.top - bounds.top - 8;
+      else if (item.bottom > bounds.bottom - 8)
+        nav.scrollTop += item.bottom - bounds.bottom + 8;
+    };
+    const frame = requestAnimationFrame(revealSelection);
+    const observer = new ResizeObserver(revealSelection);
+    observer.observe(nav);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [selectedKey, expanded, lang, query, isNarrow, navOpen]);
+  useEffect(() => {
     if (!navOpen || !isNarrow) return;
     const frame = requestAnimationFrame(() =>
-      document
-        .getElementById("crm-doc-chapter-nav")
-        ?.scrollIntoView({ block: "start" }),
+      layout.current?.scrollIntoView({ block: "start", behavior: "instant" }),
     );
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setNavOpen(false);
-        directoryButton.current?.focus();
+        directoryButton.current?.focus({ preventScroll: true });
       }
     };
     window.addEventListener("keydown", close);
@@ -238,6 +324,7 @@ export function CrmUserGuide({
     const next = resolveGuideAnchor(key);
     if (!next) return;
     setSelectedKey(next.key);
+    setQuery("");
     setInvalid(false);
     setSearchMode(false);
     setExpanded((v) => ({ ...v, [next.part]: true }));
@@ -263,7 +350,11 @@ export function CrmUserGuide({
     ...matchesOperations.map((s) => ({ ...s, part: "operations" })),
   ];
   return (
-    <article className="crm-docs" data-theme={isLight ? "light" : "dark"}>
+    <article
+      ref={guide}
+      className="crm-docs"
+      data-theme={isLight ? "light" : "dark"}
+    >
       <header className="crm-doc-card crm-doc-intro">
         <h2>{t("CRM documentation", "Dokumentasi CRM", "CRM 系统文档")}</h2>
         <p>
@@ -305,8 +396,9 @@ export function CrmUserGuide({
         {t("Chapters and search", "Bab dan pencarian", "章节目录与搜索")}{" "}
         {navOpen ? "−" : "+"}
       </button>
-      <div className="crm-doc-layout">
+      <div ref={layout} className="crm-doc-layout">
         <nav
+          ref={directory}
           id="crm-doc-chapter-nav"
           className="crm-doc-card crm-doc-nav"
           hidden={isNarrow && !navOpen}
@@ -337,6 +429,21 @@ export function CrmUserGuide({
               }}
             >
               {t("Clear search", "Hapus pencarian", "清除搜索")}
+            </button>
+          )}
+          {terms && isNarrow && (
+            <button
+              className="crm-doc-clear"
+              onClick={() => {
+                setNavOpen(false);
+                setFocusRequest((v) => v + 1);
+              }}
+            >
+              {t(
+                "View search results",
+                "Lihat hasil pencarian",
+                "查看搜索结果",
+              )}
             </button>
           )}
           {(["system", "operations"] as const).map((root) => (
@@ -382,7 +489,13 @@ export function CrmUserGuide({
             </section>
           ))}
         </nav>
-        <div className="crm-doc-content min-w-0">
+        <div
+          ref={content}
+          className="crm-doc-content min-w-0"
+          role="region"
+          tabIndex={0}
+          aria-label={t("Chapter content", "Isi bab", "章节正文")}
+        >
           {searchMode ? (
             <section className="crm-doc-card">
               <h3>

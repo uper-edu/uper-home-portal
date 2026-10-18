@@ -143,7 +143,7 @@ test("compact assessment comes from the existing evidence presenter, with score 
   }
 });
 test("missing tasks and historical dates do not become an empty or overdue task; unavailable times stay unknown", () => {
-  assert.match(render(lead({ attention: undefined })), /Follow-up unavailable/);
+  assert.match(render(lead({ attention: undefined })), /Follow-up information unavailable/);
   const l = lead({
     attention: {
       tasks: [

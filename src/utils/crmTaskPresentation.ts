@@ -114,10 +114,10 @@ export function presentFollowUpTask(
           ? t("Historical task: review required", "历史待办待确认")
           : active
             ? display.tone === "overdue"
-              ? t("Pending · Overdue", "待处理 · 已逾期")
+              ? t("Overdue", "已逾期")
               : display.tone === "today"
-                ? t("Pending · Due today", "待处理 · 今天到期")
-                : t("Pending follow-up", "待跟进")
+                ? t("Due today", "今天到期")
+                : t("To do", "待处理")
             : t("Follow-up status unavailable", "跟进状态暂不可用");
   return {
     ...display,

@@ -99,7 +99,7 @@ export function leadFollowUp(
 }
 export function emptyFollowUpLabel(lead:any,lang:'en'|'id'|'zh'){
  const t=(en:string,zh:string)=>lang==='id'?crmId(en):lang==='zh'?zh:en;
- if(['Enrolled','Lost'].includes(lead.currentStage))return t('No unfinished follow-up','无未完成跟进事项');
- if(lead.followUpDisposition?.kind==='none')return t('No next step planned','暂不安排')+' · '+lead.followUpDisposition.reason;
+ if(['Enrolled','Lost'].includes(lead.currentStage))return t('No open follow-up tasks','无未完成跟进事项');
+ if(lead.followUpDisposition?.kind==='none')return t('No next step for now','暂不安排')+' · '+lead.followUpDisposition.reason;
  return t('Next step not scheduled','未安排下一步');
 }

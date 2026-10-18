@@ -72,7 +72,7 @@ export function CrmFollowUp({
         <div className="crm-followup-secondary">
           {summary.loaded
             ? emptyFollowUpLabel(lead, lang)
-            : t("Follow-up unavailable", "跟进信息暂不可用")}
+            : t("Follow-up information unavailable", "跟进信息暂不可用")}
         </div>
       )}
       {summary.note && compact ? (
