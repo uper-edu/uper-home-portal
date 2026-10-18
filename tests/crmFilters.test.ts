@@ -127,6 +127,7 @@ test("multi-values OR within fields, AND across fields; signals, unknowns and sc
         tier: "Unqualified",
         mode: null,
         buyingSignals: ["Ready to enrol"],
+        buyingEvidence:[{id:"sales-1",kind:"sales",value:"Ready to enroll",at:"2026-01-01T00:00:00Z"}],
       }),
       { tier: ["__unknown"], mode: ["__unknown"], signal: ["Ready to enroll"] },
     ),

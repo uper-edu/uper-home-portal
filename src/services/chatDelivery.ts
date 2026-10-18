@@ -1,6 +1,6 @@
 // Browser drafts are scoped by an opaque server visitor tag, never used as identity.
 export type Delivery = 'pending' | 'unsaved' | 'unknown' | 'saved' | 'failed' | 'interrupted';
-export interface PendingMessage { id:string; content:string; conversationId:string; timestamp:string; delivery:Delivery; action?:'handoff' }
+export interface PendingMessage { id:string; content:string; conversationId:string; timestamp:string; delivery:Delivery; action?:'handoff'|'booking'|'enrollment' }
 let scope='';
 export function setDraftScope(value:string){scope=value;}
 function key(source:string){return `uper_chat_drafts:${scope}:${source}`;}

@@ -1,3 +1,4 @@
+import {trustError} from "./crmTrustLanguage";
 import {accessError} from "./accessLanguage";
 import { crmId } from "./crmIndonesian";
 import { useEffect, useState } from "react";
@@ -81,6 +82,7 @@ const values: Record<string, [string, string]> = {
   "Teacher or school staff": ["Teacher or school staff", "教师或学校职员"],
   "Complete beginner": ["Complete beginner", "零基础"],
   Beginner: ["Beginner", "初学者"],
+  "Beginner / Zero-base": ["Beginner", "零基础"],
   "Not sure": ["Not sure", "不确定"],
   "Beginner / Not sure": ["Beginner / Not sure", "初学或等级不确定"],
   ZERO: ["Beginner", "零基础"],
@@ -151,6 +153,8 @@ export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
     : value;
 }
 export function crmError(message: string, lang: CrmLanguage) {
+  if(["Stage change reason required","Stage changed; refresh and review"].includes(message))return trustError(message,lang);
+  if(message==="Record-only cannot complete tasks or change contact arrangements")return lang==='zh'?'仅记录模式不能完成任务或修改联系安排':lang==='id'?'Mode catat saja tidak dapat menyelesaikan tugas atau mengubah pengaturan kontak':message;
   if(message.startsWith("access_"))return accessError(message,lang);
   const known: Record<string, [string, string]> = {
     "Confirm routing review before enabling": ["Confirm routing review before enabling", "请先确认历史通知范围复核，再启用策略"],
@@ -173,6 +177,9 @@ export function crmError(message: string, lang: CrmLanguage) {
     "Invalid contact channel":["Invalid contact channel","联系渠道无效"],
     "Refresh CRM and use the updated follow-up form": ["Refresh CRM and use the updated follow-up form", "请刷新 CRM 并使用新版跟进表单"],
     "Invalid task selection": ["Invalid task selection", "任务选择无效"],
+    "Choose a contact channel": ["Choose a contact channel", "请选择沟通方式"],
+    "Choose a task outcome": ["Choose a task outcome", "请选择此任务处理结果"],
+    "Task outcome does not match completion": ["Task outcome does not match completion", "任务处理结果与完成项不一致，请重新选择"],
     "Choose a contact result": ["Choose a contact result", "请选择联系结果"],
     "Choose the next arrangement": ["Choose the next arrangement", "请选择后续安排"],
     "Explain why no next step is planned": ["Explain why no next step is planned", "请说明暂不安排的原因"],
@@ -256,6 +263,9 @@ export function crmDeliveryResult(
     "Invalid contact channel":["Invalid contact channel","联系渠道无效"],
     "Refresh CRM and use the updated follow-up form": ["Refresh CRM and use the updated follow-up form", "请刷新 CRM 并使用新版跟进表单"],
     "Invalid task selection": ["Invalid task selection", "任务选择无效"],
+    "Choose a contact channel": ["Choose a contact channel", "请选择沟通方式"],
+    "Choose a task outcome": ["Choose a task outcome", "请选择此任务处理结果"],
+    "Task outcome does not match completion": ["Task outcome does not match completion", "任务处理结果与完成项不一致，请重新选择"],
     "Choose a contact result": ["Choose a contact result", "请选择联系结果"],
     "Choose the next arrangement": ["Choose the next arrangement", "请选择后续安排"],
     "Explain why no next step is planned": ["Explain why no next step is planned", "请说明暂不安排的原因"],

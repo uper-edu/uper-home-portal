@@ -331,7 +331,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
               "/api/crm/leads/account-legacy",
               cookies.Suki,
               "PATCH",
-              { currentStage: "Contacted" },
+              { currentStage: "Contacted", expectedStage:"New",stageReason:"TEST confirmed conversation" },
             )
           ).status,
           200,

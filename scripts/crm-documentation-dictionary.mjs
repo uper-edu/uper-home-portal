@@ -111,7 +111,7 @@ function sqlFields(file, sql) {
     }
   }
 }
-const snapshotPath = "docs/reference/crm-implementation-snapshot-20261014.json";
+const snapshotPath = "docs/reference/crm-implementation-snapshot-20261017.json";
 const snapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
 // A documentation-only checkout need not contain the separately approved MySQL runtime.
 // The default is always the dated declaration snapshot, never a database or backup.
@@ -138,6 +138,18 @@ if (
       optional: !m[4].includes("NOT NULL"),
       source: "cloud/mysql/migrate.mjs",
     });
+  const migrationAst=ts.createSourceFile('migrate.mjs',fs.readFileSync('cloud/mysql/migrate.mjs','utf8'),ts.ScriptTarget.Latest,true);
+  function changes(node){
+    if(ts.isStringLiteral(node)){
+      const alter=node.text.match(/^ALTER TABLE (\w+) (.*)$/s);
+      if(alter){
+        for(const drop of alter[2].matchAll(/DROP COLUMN (\w+)/g))records.delete(`storage:${alter[1]}:${drop[1]}`);
+        for(const add of alter[2].matchAll(/ADD COLUMN (\w+) ([A-Z]+(?:\(\d+\))?)([^,]*)/g))put({layer:'storage',object:alter[1],key:add[1],type:add[2],optional:!add[3].includes('NOT NULL'),source:'cloud/mysql/migrate.mjs'});
+      }
+    }
+    ts.forEachChild(node,changes);
+  }
+  changes(migrationAst);
   const storageFields = [...records.values()].filter(
     (row) => row.layer === "storage",
   );

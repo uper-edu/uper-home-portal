@@ -20,6 +20,8 @@ function result(rows) {
             "created_at",
             "updated_at",
             "due_at",
+            "original_due_at",
+            "scheduled_at",
             "expires_at",
             "effective_at",
             "processed_at",
@@ -261,7 +263,7 @@ export async function connection() {
         : sql.startsWith("INSERT INTO visitor_sessions(id,expires_at)")
           ? "visitor_sessions"
           : sql.startsWith(
-                "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at)",
+                "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at",
               )
             ? "followup_tasks"
             : null;
@@ -398,6 +400,9 @@ export async function connection() {
               ownerId: t.owner_id,
               status: t.status,
               dueAt: t.due_at,
+              originalDueAt: t.original_due_at,
+              scheduledAt: t.scheduled_at,
+              timingKind: t.timing_kind,
               details: t.details,
             })),
           history: tasks

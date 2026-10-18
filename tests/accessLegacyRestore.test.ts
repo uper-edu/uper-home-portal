@@ -16,6 +16,9 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       await fs.rm(dir, { recursive: true, force: true });
     });
     for (const table of [
+      "crm_facts",
+      "crm_operations",
+      "crm_engagements",
       "access_operations",
       "access_handovers",
       "access_roles",
@@ -25,6 +28,8 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     await source.query(
       "ALTER TABLE crm_users DROP COLUMN email_key, DROP COLUMN email, DROP COLUMN access_revision",
     );
+    await source.query("ALTER TABLE identity_candidates DROP COLUMN decision,DROP COLUMN decided_by,DROP COLUMN reason,DROP COLUMN decided_at");
+    await source.query("ALTER TABLE followup_tasks DROP INDEX task_request,DROP COLUMN revision,DROP COLUMN original_due_at,DROP COLUMN scheduled_at,DROP COLUMN timing_kind,DROP COLUMN request_key,ADD COLUMN open_kind VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status='open' THEN kind ELSE NULL END) STORED,ADD UNIQUE KEY open_task(lead_id,open_kind)");
     await source.query("DELETE FROM trial_schema_versions WHERE version>=6");
     await source.execute(
       "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams) VALUES(?,?,?,?,?,?)",

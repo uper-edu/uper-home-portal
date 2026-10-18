@@ -1,3 +1,4 @@
+import { worklistSignal, evidenceForLead, buyingEvidenceLabel, evidenceHeading } from "../../utils/crmBuyingEvidence";
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useRef, useState } from "react";
@@ -8,7 +9,6 @@ import { leadDisplayNumber } from "../../utils/leadNumber";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import { safeStorage } from "../../utils/safeStorage";
 import {
-  buyingSignals,
   customerCity,
   customerOutcome,
   customerFields,
@@ -35,6 +35,7 @@ export interface LeadWorkspaceProps {
     id: string;
     displayName?: string;
   }>;
+  onSignal?: (lead:CrmLeadRecord,id:string)=>void;
   onClaim?: (lead:CrmLeadRecord)=>void;
   canClaim?: (lead:CrmLeadRecord)=>boolean;
   onProcess?: (lead:CrmLeadRecord)=>void;
@@ -53,7 +54,7 @@ export function CrmLeadWorkspace({
   loading,
   employeeId,
   employees,
-  onOpen,onClaim,onProcess,canProcess,canClaim,
+  onSignal,onOpen,onClaim,onProcess,canProcess,canClaim,
   onReset,
   children,
 }: LeadWorkspaceProps) {
@@ -150,8 +151,8 @@ export function CrmLeadWorkspace({
         return crmValue(lead.currentStage, lang);
       case "signal":
         return (
-          buyingSignals(lead)
-            .map((s) => crmValue(s, lang))
+          evidenceForLead(lead)
+            .map((s) => `${evidenceHeading(s.kind,lang)}: ${buyingEvidenceLabel(s,lang)}`)
             .join(lang === "id" ? crmId(", ") : lang === "zh" ? "、" : ", ") ||
           "—"
         );
@@ -266,7 +267,7 @@ export function CrmLeadWorkspace({
             >
               {leads.map((lead) => {
                 const assessment = workspaceAssessment(lead, lang),
-                  signals = buyingSignals(lead);
+                  signal = worklistSignal(lead);
                 return (
                   <article
                     className="crm-work-row"
@@ -338,14 +339,14 @@ export function CrmLeadWorkspace({
                       <span className="crm-work-group">
                         {crmValue(lead.tier, lang)}
                       </span>
-                      {signals.length > 0 && (
+                      {signal && (
                         <button
                           type="button"
                           className="crm-work-support-link"
-                          onClick={() => onOpen(lead, "profile")}
+                          onClick={() => onSignal ? onSignal(lead,signal.evidence.id) : onOpen(lead, "profile")}
                         >
-                          {crmValue(signals[0], lang)}
-                          {signals.length > 1 && ` +${signals.length - 1}`}
+                          {evidenceHeading(signal.evidence.kind,lang)} · {buyingEvidenceLabel(signal.evidence,lang)}
+                          {signal.more > 0 && ` +${signal.more}`}
                         </button>
                       )}
                     </div>

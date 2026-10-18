@@ -73,6 +73,11 @@ export async function tick(clock = new Date()) {
       ]);
       await event(c, "task.overdue", task.lead_id, { taskId: task.id });
     }
+    const appointments=(await c.query("SELECT * FROM followup_tasks t WHERE status IN ('open','overdue') AND scheduled_at<=:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE",[clock])).rows;
+    for(const t of appointments){
+      const key='appointment:'+t.id+':'+(t.details.noticeRevision||0);
+      await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'task.appointment_due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",[key,t.lead_id,{taskId:t.id,source:'crm',taskNoticeVersion:t.details.noticeRevision||0}]);
+    }
     const events = (
       await c.query(
         "SELECT * FROM outbox o WHERE processed_at IS NULL AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='event' AND h.id=o.id) ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED",
@@ -89,7 +94,7 @@ export async function tick(clock = new Date()) {
         : {};
       if (ev.payload.taskId) {
         const task = (
-          await c.query("SELECT status FROM followup_tasks WHERE id=:p1", [
+          await c.query("SELECT * FROM followup_tasks WHERE id=:p1", [
             ev.payload.taskId,
           ])
         ).rows[0];
@@ -101,6 +106,7 @@ export async function tick(clock = new Date()) {
           continue;
         }
       }
+      if(ev.payload.taskId)ev.payload={...ev.payload,taskNoticeVersion:ev.payload.taskNoticeVersion||0};
       const rules = (
         await c.query(
           "SELECT * FROM notification_rules WHERE enabled=true AND effective_at<=(SELECT created_at FROM outbox WHERE id=:p1)",
@@ -295,7 +301,7 @@ export async function tick(clock = new Date()) {
       ).rows[0];
     if (
       job.snapshot.payload.taskId &&
-      (!task || ["completed", "cancelled"].includes(task.status))
+      (!task || ["completed", "cancelled"].includes(task.status)||Number(task.details?.noticeRevision||0)!==Number(job.snapshot.payload.taskNoticeVersion||0))
     ) {
       await pool.query(
         "UPDATE notification_jobs SET state='cancelled',result='Task completed' WHERE id=:p1",
@@ -308,7 +314,7 @@ export async function tick(clock = new Date()) {
         contactPaused(lead) && task ? "Internal review" : job.snapshot.event,
       name: lead.fullName || lead.name || "Anonymous",
       owner: lead.owner || "Unassigned",
-      due: task?.due_at
+      due: (job.snapshot.event==="task.rescheduled"||job.snapshot.event==="task.appointment_due")&&task?.scheduled_at ? new Intl.DateTimeFormat(r.language==="zh"?"zh-CN":r.language==="id"?"id-ID":"en-GB",{timeZone:r.timezone,dateStyle:"medium",timeStyle:"short"}).format(new Date(task.scheduled_at)) : task?.due_at
         ? new Intl.DateTimeFormat(
             r.language === "zh"
               ? "zh-CN"

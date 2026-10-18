@@ -374,7 +374,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
     setMessages(prev=>[...prev.filter(m=>m.id!==botMessageId && m.id!==userMessage.id),{...userMessage,delivery:'pending'},{id:botMessageId,role:'assistant',content:'',timestamp:new Date()}]);
     let reply='';
     try{
-      const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[userMessage],isHumanMode:false,stream:true})},'standalone_chat');
+      const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[userMessage],isHumanMode:false,language:lang,stream:true})},'standalone_chat');
       const result=await finishChat(res,'standalone_chat',userMessage.id,e=>{
         if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply && !e.chunk)reply=e.reply;
         setMessages(prev=>prev.map(m=>m.id===userMessage.id&&e.saved?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:reply}:m));

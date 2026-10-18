@@ -1,3 +1,4 @@
+import {engagement} from "./trustWorkflow.ts";
 import type { Express } from "express";
 import {
   pool,
@@ -142,6 +143,7 @@ export function mountChat(app: Express) {
               "UPDATE conversations SET updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
               [conv.id],
             );
+            if(conv.lead_id&&!introduction)await engagement(c,conv.lead_id,'message',conv.id+':'+messageId,{conversationId:conv.id,requestId:messageId,text:content});
             if (conv.lead_id)
               await event(c, "conversation.updated", conv.lead_id, {
                 source: conv.source,

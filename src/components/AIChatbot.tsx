@@ -839,7 +839,7 @@ export default function AIChatbot() {
       isComplete: true,
     };
 
-    const activeHumanMode = retry ? draft('homepage_widget',retry.id)?.action==='handoff' : isHumanMode || /转人工|人工客服|真人客服|找真人|跟真人|联系老师|安排顾问联系|advisor follow-up|tindak lanjut konsultan|talk to (a )?human|speak to (a )?human|human agent|live agent|speak to.*advisor|bicara langsung/i.test(text);
+    const activeHumanMode = retry ? draft('homepage_widget',retry.id)?.action==='handoff' : isHumanMode;
     const extraSystemMsg: Message | null = null;
     setMessages(prev=>[...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
     setIsLoading(true);
@@ -865,7 +865,8 @@ export default function AIChatbot() {
           if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply&&!e.chunk)reply=e.reply;
           setMessages(prev=>prev.map(m=>m.id===userMsg.id&&e.saved?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:reply}:m));
         });
-        if(activeHumanMode){toggleHumanMode(true);if(result.status==='contact_required')setShowForm(true);}
+        if(activeHumanMode)toggleHumanMode(true);
+        if(result.status==='contact_required')setShowForm(true);
         if(result.modelUsed)setActiveModelUsed(result.modelUsed);
         setMessages(prev=>prev.map(m=>m.id===userMsg.id?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:result.reply,isComplete:true}:m));
         setSuggestedPrompts(result.suggestedPrompts || []);

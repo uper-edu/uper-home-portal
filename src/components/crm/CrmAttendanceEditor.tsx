@@ -1,13 +1,13 @@
+import { CrmDisclosure } from "./CrmDisclosure";
 import { useEffect, useRef, useState } from "react";
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmError, type CrmLanguage } from "../../utils/crmLanguage";
-import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import { draftsFor } from "../../utils/crmDrafts";
+import { supportsParticipationRecord } from "../../utils/crmParticipation";
 export function CrmAttendanceEditor({
   lead,
   lang,
   isLight,
-  timezone,
   onUpdated,
   staffId,
   onDirty,
@@ -27,6 +27,10 @@ export function CrmAttendanceEditor({
   const cache = draftsFor(staffId, "attendance"),
     draft = cache[lead.id] || {};
   const [campaigns, setCampaigns] = useState<any[]>([]),
+    [expanded, setExpanded] = useState(false),
+    [loading, setLoading] = useState(false),
+    [loaded, setLoaded] = useState(false),
+    [retry, setRetry] = useState(0),
     [campaignId, setCampaign] = useState(
       draft.campaignId || lead.campaignId || "",
     ),
@@ -38,20 +42,29 @@ export function CrmAttendanceEditor({
   const request = useRef(draft.requestId || crypto.randomUUID()),
     errorFocus = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
+    if (!expanded || loaded) return;
     let alive = true;
+    setLoading(true);
+    setFailed(false);
+    setStatus("");
     fetch("/api/crm/campaigns")
       .then(async (r) => {
         if (!r.ok) throw Error("Failed to fetch");
         const d = await r.json();
         if (alive) {
+          setLoading(false);
           setCampaigns(d.campaigns || []);
-          const first = (d.campaigns || []).find((c) =>
+          setLoaded(true);
+          const available = (d.campaigns || []).filter(
+            (c) =>
+              supportsParticipationRecord(c) ||
+              (lead.attendanceRecords || []).some((r) => r.campaignId === c.id),
+          );
+          const first = available.find((c) =>
             [c.id, c.code].includes(lead.campaignId),
           );
           setCampaign((current) =>
-            (d.campaigns || []).some((c) => c.id === current)
-              ? current
-              : first?.id || "",
+            available.some((c) => c.id === current) ? current : first?.id || "",
           );
         }
       })
@@ -60,11 +73,14 @@ export function CrmAttendanceEditor({
           setFailed(true);
           setStatus(e.message);
         }
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
     };
-  }, [lead.id]);
+  }, [lead.id, expanded, loaded, retry]);
   useEffect(() => {
     if (failed) errorFocus.current?.focus();
   }, [failed, status]);
@@ -121,109 +137,185 @@ export function CrmAttendanceEditor({
   const record = lead.attendanceRecords?.find(
     (a) => a.campaignId === campaignId,
   );
+  const selected = campaigns.find((c) => c.id === campaignId);
+  const eligible = campaigns.filter(supportsParticipationRecord);
+  const available = campaigns.filter(
+    (c) =>
+      supportsParticipationRecord(c) ||
+      (lead.attendanceRecords || []).some((r) => r.campaignId === c.id),
+  );
   return (
-    <details className="crm-attendance-editor">
-      <summary>
-        {t(
-          "Confirm campaign participation",
-          "Konfirmasi partisipasi kampanye",
-          "确认活动参与",
-        )}
-      </summary>
-      <p className="crm-work-muted">
-        {t(
-          "Use check-in or meeting evidence; questionnaire, assessment and trial stage do not confirm campaign attendance.",
-          "Gunakan bukti check-in atau pertemuan; kuesioner, asesmen, dan tahap uji coba tidak mengonfirmasi kehadiran kampanye.",
-          "以签到或会议记录为依据；问卷、测评和试听阶段不自动证明活动出席。",
-        )}
-      </p>
-      <CrmSingleSelect
-        label={t("Campaign", "Kampanye", "活动")}
-        value={campaignId}
-        onChange={(v) => {
-          setCampaign(v);
-          request.current = crypto.randomUUID();
+    <>
+      <CrmDisclosure
+        heading={
+          <>
+            {t(
+              "Record event participation (optional)",
+              "Catat partisipasi acara (opsional)",
+              "记录活动参与（可选）",
+            )}
+          </>
+        }
+        className="crm-attendance-editor"
+        open={expanded}
+        onToggle={(event) => {
+          if (event.target === event.currentTarget)
+            setExpanded(event.currentTarget.open);
         }}
-        options={[
-          {
-            value: "",
-            label: t("Choose campaign", "Pilih kampanye", "请选择活动"),
-          },
-          ...campaigns.map((c) => ({
-            value: c.id,
-            label: lang === "en" ? c.nameEn || c.name : c.name || c.nameEn,
-          })),
-        ]}
-        lang={lang}
-        isLight={isLight}
-        searchable
-      />
-      <CrmSingleSelect
-        label={t("Participation mode", "Mode partisipasi", "参与方式")}
-        value={mode}
-        onChange={(v) => {
-          setMode(v);setFailed(false);setStatus("");
-          request.current = crypto.randomUUID();
-        }}
-        options={[
-          { value: "", label: t("Choose mode", "Pilih mode", "请选择方式") },
-          { value: "onsite", label: t("Onsite", "Di lokasi", "现场") },
-          { value: "online", label: t("Online", "Daring", "线上") },
-        ]}
-        lang={lang}
-        isLight={isLight}
-      />
-      <label>
-        {t("Evidence / reason", "Bukti / alasan", "确认依据／原因")}
-        <textarea
-          value={reason}
-          onChange={(e) => {
-            setReason(e.target.value);setFailed(false);setStatus("");
-            request.current = crypto.randomUUID();
-          }}
-          rows={3}
-        />
-      </label>
-      {record && (
+      >
         <p className="crm-work-muted">
-          {record.confirmed
-            ? t("Confirmed", "Terkonfirmasi", "已确认")
-            : t("Withdrawn", "Ditarik", "已撤销")}{" "}
-          ·{" "}
-          {record.mode === "onsite"
-            ? t("Onsite", "Di lokasi", "现场")
-            : t("Online", "Daring", "线上")}{" "}
-          · {record.actor} · {t("Recorded", "Dicatat", "记录时间")}{" "}
-          {formatCrmOperatingTime(record.recordedAt, timezone)} ({timezone}) ·{" "}
-          {record.reason}
+          {t(
+            "Optional, for seminars, webinars, roadshows or fairs. Record only known participation; campaign format and acquisition attribution do not confirm attendance.",
+            "Opsional, untuk seminar, webinar, roadshow, atau pameran. Catat hanya partisipasi yang diketahui; format dan atribusi kampanye tidak membuktikan kehadiran.",
+            "仅在需要时记录宣讲、讲座、路演或展会参与；活动形式与获客归因不自动证明个人出席。",
+          )}
         </p>
-      )}
+        {loading && (
+          <p role="status">
+            {t("Loading events…", "Memuat acara…", "正在加载活动…")}
+          </p>
+        )}
+        {loaded && !eligible.length && (
+          <p className="crm-work-muted">
+            {t(
+              "No event campaigns available for participation records.",
+              "Belum ada kampanye acara untuk catatan partisipasi.",
+              "暂无可记录参与的活动类 Campaign。",
+            )}
+          </p>
+        )}
+        {!loading && available.length > 0 && (
+          <>
+            <CrmSingleSelect
+              label={t("Campaign", "Kampanye", "活动")}
+              value={campaignId}
+              onChange={(v) => {
+                setCampaign(v);
+                request.current = crypto.randomUUID();
+              }}
+              options={[
+                {
+                  value: "",
+                  label: t("Choose campaign", "Pilih kampanye", "请选择活动"),
+                },
+                ...available.map((c) => ({
+                  value: c.id,
+                  label:
+                    lang === "id"
+                      ? c.nameId || c.nameEn || c.code || c.id
+                      : lang === "en"
+                        ? c.nameEn || c.code || c.id
+                        : c.name || c.code || c.id,
+                })),
+              ]}
+              lang={lang}
+              isLight={isLight}
+              searchable
+            />
+            {selected && (
+              <>
+                <CrmSingleSelect
+                  label={t(
+                    "Participation mode",
+                    "Mode partisipasi",
+                    "参与方式",
+                  )}
+                  value={mode}
+                  onChange={(v) => {
+                    setMode(v);
+                    setFailed(false);
+                    setStatus("");
+                    request.current = crypto.randomUUID();
+                  }}
+                  options={[
+                    {
+                      value: "",
+                      label: t("Choose mode", "Pilih mode", "请选择方式"),
+                    },
+                    {
+                      value: "onsite",
+                      label: t("Onsite", "Di lokasi", "现场"),
+                    },
+                    { value: "online", label: t("Online", "Daring", "线上") },
+                  ]}
+                  lang={lang}
+                  isLight={isLight}
+                />
+                <label>
+                  {t("Evidence / reason", "Bukti / alasan", "确认依据／原因")}
+                  <textarea
+                    value={reason}
+                    onChange={(e) => {
+                      setReason(e.target.value);
+                      setFailed(false);
+                      setStatus("");
+                      request.current = crypto.randomUUID();
+                    }}
+                    rows={3}
+                  />
+                </label>
+                {!supportsParticipationRecord(selected) && (
+                  <p className="crm-work-muted">
+                    {t(
+                      "This campaign has a historical participation record. You can withdraw its confirmation, but cannot create a new event confirmation here.",
+                      "Kampanye ini memiliki catatan partisipasi historis. Konfirmasi dapat ditarik, tetapi konfirmasi acara baru tidak dapat dibuat di sini.",
+                      "此 Campaign 仅保留历史参与记录，可撤销确认，不在此新增活动确认。",
+                    )}
+                  </p>
+                )}
+                <div className="flex gap-2 flex-wrap">
+                  {supportsParticipationRecord(selected) && (
+                    <button
+                      className="crm-work-button"
+                      data-primary="true"
+                      type="button"
+                      disabled={busy || !mode || !reason.trim()}
+                      onClick={() => save(true)}
+                    >
+                      {t(
+                        "Confirm participation",
+                        "Konfirmasi partisipasi",
+                        "确认参与",
+                      )}
+                    </button>
+                  )}
+                  {record?.confirmed && (
+                    <button
+                      className="crm-work-button"
+                      type="button"
+                      disabled={busy || !mode || !reason.trim()}
+                      onClick={() => save(false)}
+                    >
+                      {t(
+                        "Withdraw confirmation",
+                        "Tarik konfirmasi",
+                        "撤销确认",
+                      )}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </CrmDisclosure>
       {status && (
         <p ref={errorFocus} tabIndex={-1} role={failed ? "alert" : "status"}>
           {failed ? crmError(status, lang) : status}
         </p>
       )}
-      <div className="flex gap-2 flex-wrap">
+      {failed && !loaded && !loading && (
         <button
           className="crm-work-button"
-          data-primary="true"
           type="button"
-          disabled={busy}
-          onClick={() => save(true)}
+          onClick={() => {
+            setExpanded(true);
+            setRetry((v) => v + 1);
+          }}
         >
-          {t("Confirm participation", "Konfirmasi partisipasi", "确认参与")}
+          {t("Retry", "Coba lagi", "重试")}
         </button>
-        {record?.confirmed && (
-          <button
-            className="crm-work-button"
-            type="button"
-            disabled={busy}
-            onClick={() => save(false)}
-          >
-            {t("Withdraw confirmation", "Tarik konfirmasi", "撤销确认")}
-          </button>
-        )}
-      </div>
-    </details>
+      )}
+    </>
   );
 }

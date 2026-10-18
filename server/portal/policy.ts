@@ -52,6 +52,9 @@ export const defaults: Rule = {
   language: "zh",
 };
 const events = [
+  "task.created",
+  "task.rescheduled",
+  "task.appointment_due",
   "conversation.updated",
   "lead.created",
   "conversation.reactivated",

@@ -1,3 +1,4 @@
+import { actualSignalValues } from "./crmBuyingEvidence.ts";
 import {needsHandling} from "./crmContact.ts";
 import {
   DEFAULT_CRM_POLICY_CONFIG,
@@ -72,6 +73,7 @@ export const filterDimensions = {
       ["Asked schedule", "Asked about schedule", "咨询课程时间"],
       ["Asked payment", "Asked about payment", "咨询付款方式"],
       ["Ready to enroll", "Ready to enroll", "准备报名"],
+      ["Booking requested", "Trial booking requested", "请求预约试听"],
       ["None yet", "No signal yet", "尚无信号"],
       ["__unknown", "Not recorded", "未填写"],
     ],
@@ -241,9 +243,7 @@ export function leadMatches(
     stage: lead.currentStage,
     connect: lead.connectStatus,
     mode: lead.mode,
-    signal: [lead.buyingSignal, ...(lead.buyingSignals || [])]
-      .filter(Boolean)
-      .map((v) => (v === "Ready to enrol" ? "Ready to enroll" : v)),
+    signal: actualSignalValues(lead),
   };
   for (const k of dimensions.filter((k) => k !== "situation")) {
     const v = Array.isArray(values[k])
@@ -253,7 +253,7 @@ export function leadMatches(
         : [];
     if (
       f[k].length &&
-      !f[k].some((x) => (x === "__unknown" ? !v.length : v.includes(x)))
+      !f[k].some((x) => (x === "__unknown" || (k === "signal" && x === "None yet") ? !v.length : v.includes(x)))
     )
       return false;
   }

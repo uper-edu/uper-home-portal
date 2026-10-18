@@ -64,9 +64,11 @@ export const systemChapters: SystemChapter[] = [
         kind: "table",
         title: w("Workspace boundaries", "Batas ruang kerja", "工作区边界"),
         items: [
-          w('The account menu shared with CMS and System management shows the environment, last four characters of the Build ID and build time. Open Version and environment for full Code/Build details, separate commit/build times in UTC, GitHub link and copy buttons, with environment and source state captured at build time (or startup in source mode), not live Git status. Save your work before refreshing if versions differ; source mode and uncommitted builds are labeled explicitly.',
-          'Menu akun bersama CMS dan manajemen sistem menampilkan lingkungan, empat karakter terakhir ID Build dan waktu build. Buka Versi dan lingkungan untuk detail Code/Build lengkap, waktu commit dan build dalam UTC, tautan GitHub dan tombol salin, serta lingkungan dan status kode saat build (atau saat mulai dalam mode sumber), bukan status Git secara langsung. Simpan pekerjaan sebelum memuat ulang jika versi berbeda; mode sumber dan perubahan yang belum dikomit ditandai jelas.',
-          '与CMS及系统管理共用的账号菜单显示环境、Build末4位及构建时间；点击“版本与环境”查看完整Code/Build、各自提交和构建时间（UTC）、GitHub链接及复制按钮，并显示环境及构建时（源码模式为启动时）的源码状态，而非实时Git状态。版本不一致时先保存工作再刷新；源码模式和未提交构建会明确标注。'),
+          w(
+            "The account menu shared with CMS and System management shows the environment, last four characters of the Build ID and build time. Open Version and environment for full Code/Build details, separate commit/build times in UTC, GitHub link and copy buttons, with environment and source state captured at build time (or startup in source mode), not live Git status. Save your work before refreshing if versions differ; source mode and uncommitted builds are labeled explicitly.",
+            "Menu akun bersama CMS dan manajemen sistem menampilkan lingkungan, empat karakter terakhir ID Build dan waktu build. Buka Versi dan lingkungan untuk detail Code/Build lengkap, waktu commit dan build dalam UTC, tautan GitHub dan tombol salin, serta lingkungan dan status kode saat build (atau saat mulai dalam mode sumber), bukan status Git secara langsung. Simpan pekerjaan sebelum memuat ulang jika versi berbeda; mode sumber dan perubahan yang belum dikomit ditandai jelas.",
+            "与CMS及系统管理共用的账号菜单显示环境、Build末4位及构建时间；点击“版本与环境”查看完整Code/Build、各自提交和构建时间（UTC）、GitHub链接及复制按钮，并显示环境及构建时（源码模式为启动时）的源码状态，而非实时Git状态。版本不一致时先保存工作再刷新；源码模式和未提交构建会明确标注。",
+          ),
           w(
             "CRM: customers, tasks, campaigns and sales operations",
             "CRM: pelanggan, tugas, kampanye, operasional penjualan",
@@ -205,9 +207,9 @@ export const systemChapters: SystemChapter[] = [
             "销售：认领／分配 → 联系 → 安排下一步",
           ),
           w(
-            "Staff: confirm participation [participation count] and record enrollment [enrollment count]",
-            "Staf: konfirmasi partisipasi [jumlah partisipasi] dan catat pendaftaran kelas [jumlah pendaftaran kelas]",
-            "员工：确认参与【参与数】与记录报名【报名数】",
+            "Staff: optionally record evidenced event participation [participation count]; record enrollment separately [enrollment count]",
+            "Staf: bila perlu catat partisipasi acara berbukti [jumlah partisipasi]; catat pendaftaran kelas terpisah [jumlah pendaftaran kelas]",
+            "员工：按需记录有依据的活动参与【参与数】；另记报名【报名数】",
           ),
         ],
       },
@@ -444,6 +446,53 @@ export const systemChapters: SystemChapter[] = [
     blocks: [
       {
         kind: "flow",
+        title: w("Follow-up workspace", "Ruang kerja tindak lanjut", "跟进工作区"),
+        items: [
+          w("Communication overview: contact arrangement, human communication and newer customer messages", "Ringkasan komunikasi: pengaturan kontak, komunikasi staf dan pesan pelanggan setelahnya", "沟通概况：联系安排、最近人工沟通与此后客户新消息"),
+          w("Tasks: saved action, deadlines and one processing entry", "Tugas: tindakan, tenggat, dan satu pintu pemrosesan", "跟进任务：已保存动作、期限与统一处理入口"),
+          w("On-demand form: contact, information or task operation; protect the draft", "Formulir sesuai kebutuhan: kontak, informasi, atau tindakan tugas; lindungi draf", "按需处理区：联系、信息或任务操作；保护草稿"),
+          w("Timeline: operating date and time to seconds; identify customer, sales and system sources", "Linimasa: tanggal operasional dan waktu hingga detik; bedakan sumber pelanggan, sales dan sistem", "跟进时间轴：运营日期与时分秒；区分客户、销售及系统来源"),
+        ],
+      },
+      {
+        kind: "flow",
+        title: w("Facts to handling", "Dari fakta ke penanganan", "事实到处理"),
+        items: [
+          w(
+            "Customer message / assessment / questionnaire → preserve source",
+            "Pesan / asesmen / kuesioner → simpan sumber",
+            "客户消息／测评／问卷 → 保留来源",
+          ),
+          w(
+            "Known visitor → continue; conflicting identity → separate safely",
+            "Pengunjung dikenal → lanjut; identitas bentrok → pisahkan aman",
+            "已知访客 → 自动续记；身份冲突 → 安全分开",
+          ),
+          w(
+            "Sales records freely → optionally links evidence to a task",
+            "Sales bebas mencatat → boleh menautkan bukti ke tugas",
+            "销售随时记录 → 按需关联任务",
+          ),
+          w(
+            "Same request → supplement; independent request → independent task",
+            "Permintaan sama → tambah bukti; permintaan mandiri → tugas mandiri",
+            "同一事项 → 补充；独立事项 → 新任务",
+          ),
+          w(
+            "Reschedule retains original deadline; replace retains old task",
+            "Jadwal ulang mempertahankan tenggat awal; penggantian menyimpan tugas lama",
+            "改期保留原期限；替代保留原任务",
+          ),
+          w(
+            "Explicit completion → only selected tasks and their queued notices",
+            "Penyelesaian eksplisit → hanya tugas terpilih dan notifikasi antreannya",
+            "明确完成 → 仅选定任务及其待发通知",
+          ),
+        ],
+      },
+
+      {
+        kind: "flow",
         title: w(
           "Task state and handling",
           "Status dan penanganan tugas",
@@ -648,9 +697,11 @@ export const systemChapters: SystemChapter[] = [
         kind: "example",
         title: w("Denominators matter", "Penyebut penting", "分母决定意义"),
         items: [
-          w('Organic traffic is a permanent, read-only system campaign with ID organic. /chat, /chat?c=home and /chat?c=organic are attributed to it for new registrations. Other campaign IDs remain separate; existing first-touch attribution is retained. Link opens are not unique visitors or confirmed attendance.',
-          'Trafik organik adalah kampanye bawaan permanen yang hanya dapat dibaca dengan ID organic. /chat, /chat?c=home dan /chat?c=organic diatribusikan ke kampanye ini untuk registrasi baru. ID kampanye lain tetap terpisah; atribusi pertama yang sudah tersimpan dipertahankan. Pembukaan tautan bukan pengunjung unik atau kehadiran terkonfirmasi.',
-          '自然流量使用永久只读的系统活动organic。新登记客户从/chat、/chat?c=home、/chat?c=organic进入时统一归入该活动；其他活动ID独立统计，已有首次归因保留。链接打开次数不等于独立访客或确认到场。'),
+          w(
+            "Organic traffic is a permanent, read-only system campaign with ID organic. /chat, /chat?c=home and /chat?c=organic are attributed to it for new registrations. Other campaign IDs remain separate; existing first-touch attribution is retained. Link opens are not unique visitors or confirmed attendance.",
+            "Trafik organik adalah kampanye bawaan permanen yang hanya dapat dibaca dengan ID organic. /chat, /chat?c=home dan /chat?c=organic diatribusikan ke kampanye ini untuk registrasi baru. ID kampanye lain tetap terpisah; atribusi pertama yang sudah tersimpan dipertahankan. Pembukaan tautan bukan pengunjung unik atau kehadiran terkonfirmasi.",
+            "自然流量使用永久只读的系统活动organic。新登记客户从/chat、/chat?c=home、/chat?c=organic进入时统一归入该活动；其他活动ID独立统计，已有首次归因保留。链接打开次数不等于独立访客或确认到场。",
+          ),
           w(
             "Two enrolled out of ten first-attributed registrations gives 20% enrollment share. This is not profit, payment confirmation or a causal marketing conversion claim.",
             "Dua pendaftaran kelas dari sepuluh registrasi atribusi pertama menghasilkan proporsi 20%. Ini bukan laba, konfirmasi pembayaran, atau bukti sebab-akibat pemasaran.",
@@ -714,9 +765,9 @@ export const systemChapters: SystemChapter[] = [
         title: w("Assessment sources", "Sumber asesmen", "测评依据类型"),
         items: [
           w(
-            "Self-reported: customer claim, not a test result",
-            "Dilaporkan sendiri: pernyataan pelanggan, bukan hasil tes",
-            "自报：客户提供的基础，不是测评结果",
+            "Self-reported: customer evidence under Assessment evidence and history, not a test result; do not assume it predates the test",
+            "Laporan pelanggan: bukti di Bukti dan riwayat asesmen, bukan hasil asesmen; jangan menganggapnya mendahului tes",
+            "自报：收在测评依据与历史记录，不是测评结果；不假定早于测评",
           ),
           w(
             "Quick: tentative learning starting point",
@@ -724,9 +775,9 @@ export const systemChapters: SystemChapter[] = [
             "快速测评：暂定学习起点",
           ),
           w(
-            "Full: saved paper thresholds and sections, not a certificate",
-            "Lengkap: ambang dan bagian tes tersimpan, bukan sertifikat",
-            "完整测评：本卷门槛与分项结果，不是证书",
+            "Full: saved HSK criteria met on this assessment, not a complete proficiency claim or official certificate",
+            "Lengkap: kriteria HSK tersimpan pada asesmen terpenuhi, bukan klaim kemampuan lengkap atau sertifikat resmi",
+            "完整测评：本卷已保存 HSK 标准的达成情况，不代表完整能力或官方证书",
           ),
           w(
             "Teacher placement: separately recorded evidence; missing teacher/time remains missing",
@@ -777,6 +828,26 @@ export const systemChapters: SystemChapter[] = [
       "显示字段、业务契约与数据库列属于不同层。展开字典查看 CRM 契约与存储字段；不展示其他模块的业务字段，数量按内容统计。",
     ),
     blocks: [
+      {
+        kind: "example",
+        title: w(
+          "System request receipts",
+          "Konfirmasi permintaan sistem",
+          "系统请求回执",
+        ),
+        items: [
+          w(
+            "Request acknowledgements are stored in MySQL messages, linked by conversation_id to conversations. content keeps the original response; metadata.followupAction identifies handoff, booking or enrollment and metadata.taskId links the follow-up task. Older acknowledgements can have assistant as the stored role; request metadata distinguishes them from AI answers. Conversations shows a compact reference to the single Follow-up task workbench and keeps original confirmations together in an expandable history. metadata.taskOperation records created or supplemented for new requests; older operations use saved source identifiers when sufficient, otherwise remain unknown. Current status comes from followup_tasks, never from the historical response text. Presentation changes do not relocate or rewrite these records.",
+            "Konfirmasi permintaan tersimpan di messages pada MySQL, ditautkan ke conversations melalui conversation_id. content menyimpan respons asli; metadata.followupAction menandai handoff, booking, atau enrollment dan metadata.taskId menautkan tugas. Konfirmasi lama dapat memiliki peran assistant; metadata permintaan membedakannya dari jawaban AI. Percakapan menampilkan referensi ringkas ke daftar tugas tunggal di Tindak lanjut dan menyimpan konfirmasi asli bersama dalam riwayat yang dapat dibuka. metadata.taskOperation mencatat created atau supplemented untuk permintaan baru; operasi lama memakai referensi sumber jika cukup, atau tetap tidak diketahui. Status saat ini berasal dari followup_tasks, bukan teks respons historis. Perubahan tampilan tidak memindahkan atau menulis ulang catatan.",
+            "请求回执保存在MySQL的messages中，通过conversation_id关联conversations。content保留原始回复，metadata.followupAction标识转人工、预约或报名请求，metadata.taskId关联跟进任务。部分旧回执的存储角色是assistant，界面依据请求元信息将其区分为系统事件，而非AI回答。对话页仅展示指向跟进页统一任务列表的引用，原始确认集中收在可展开历史中。新请求的metadata.taskOperation记录新建或补充；旧记录只在来源标识足够时判断，否则不猜测。当前状态读取followup_tasks，不从历史回复文字推断。展示调整不会搬移或改写这些记录。",
+          ),
+          w(
+            "Explicit request → saved source message and system acknowledgement → create or reuse a follow-up task → sales handles the task. An acknowledgement proves receipt only. Each new same-kind request adds task.request_evidence in crm_facts; an unfinished task keeps its deadline. Only a newly created request task emits handoff.requested, booking.requested or enrollment.requested in outbox for notification policy evaluation. Viewing messages does not complete tasks. Ordinary course questions stay in AI consultation and may become information for review, without an automatic booking or enrollment task.",
+            "Permintaan jelas → pesan sumber dan konfirmasi tersimpan → buat atau gunakan kembali tugas → sales menangani tugas. Konfirmasi hanya membuktikan penerimaan. Permintaan sejenis menambah task.request_evidence di crm_facts; tugas yang belum selesai mempertahankan tenggat. Hanya tugas permintaan baru yang menerbitkan handoff.requested, booking.requested, atau enrollment.requested di outbox untuk evaluasi kebijakan notifikasi. Membaca pesan tidak menyelesaikan tugas. Pertanyaan umum tetap menjadi konsultasi AI dan dapat menjadi informasi untuk ditinjau, tanpa tugas janji atau pendaftaran otomatis.",
+            "明确请求 → 保存客户原话和系统确认 → 新建或复用跟进任务 → 销售处理。确认消息只证明请求已收到。同类补充请求在crm_facts中追加task.request_evidence，未完成任务保留截止时间；只有新建请求任务才在outbox写入handoff.requested、booking.requested或enrollment.requested，供通知策略判断。查看消息不完成任务。普通课程咨询继续由AI回答，可形成待核实信息，不自动成为预约或报名任务。",
+          ),
+        ],
+      },
       {
         kind: "table",
         title: w("Write boundaries", "Batas penulisan", "写入边界"),

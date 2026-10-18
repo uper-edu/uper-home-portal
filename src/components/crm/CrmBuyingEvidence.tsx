@@ -1,0 +1,172 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  evidenceForLead,
+  buyingEvidenceLabel,
+  evidenceHeading,
+  type BuyingEvidence,
+} from "../../utils/crmBuyingEvidence";
+import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
+
+export function CrmBuyingEvidence({
+  lead,
+  lang,
+  timezone,
+  focus,
+  onSource,
+  onTask,
+}: any) {
+  const t = (en: string, id: string, zh: string) =>
+    lang === "zh" ? zh : lang === "id" ? id : en;
+  const rows = evidenceForLead(lead);
+  const root = useRef<HTMLDivElement>(null);
+  const [highlight, setHighlight] = useState<string>();
+  useEffect(() => {
+    if (!focus) return;
+    const frame = requestAnimationFrame(() => {
+      const target = Array.from(
+        root.current?.querySelectorAll<HTMLElement>("[data-signal-id]") || [],
+      ).find((el) => el.dataset.signalId === focus.id);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "center", behavior: "instant" });
+      setHighlight(focus.id);
+    });
+    const timer = setTimeout(() => setHighlight(undefined), 4500);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [focus, lead.id]);
+  const time = (e: BuyingEvidence) => {
+    if (!e.at)
+      return t("Time not recorded", "Waktu tidak tercatat", "时间未记录");
+    const at = /^\d{4}-\d\d-\d\d /.test(e.at)
+      ? e.at.replace(" ", "T") + "Z"
+      : e.at;
+    return formatCrmOperatingTime(at, timezone) + " · " + timezone;
+  };
+  return (
+    <div className="crm-buying-evidence" ref={root}>
+      {(["sales", "questionnaire", "legacy"] as const).map((group) => {
+        const entries = rows.filter((e) =>
+          group === "sales"
+            ? e.kind === "sales" || e.kind === "chat"
+            : e.kind === group,
+        );
+        if (!entries.length && group === "legacy") return null;
+        return (
+          <section
+            className="crm-signal-section"
+            key={group}
+            aria-label={evidenceHeading(group, lang)}
+          >
+            <h4>{evidenceHeading(group, lang)}</h4>
+            {!entries.length && (
+              <p className="crm-work-muted">
+                {t("None recorded", "Belum tercatat", "尚未记录")}
+              </p>
+            )}
+            {entries.map((e) => (
+              <article
+                key={e.id}
+                data-signal-id={e.id}
+                data-highlighted={highlight === e.id}
+                tabIndex={-1}
+                className="crm-signal-evidence-row"
+                aria-label={`${evidenceHeading(e.kind, lang)} · ${buyingEvidenceLabel(e, lang)}`}
+              >
+                <strong>{buyingEvidenceLabel(e, lang)}</strong>
+                <p className="crm-signal-meta">
+                  {e.kind === "questionnaire"
+                    ? t(
+                        "Customer questionnaire",
+                        "Kuesioner pelanggan",
+                        "客户问卷",
+                      )
+                    : e.kind === "chat"
+                      ? t(
+                          "Customer Chat request",
+                          "Permintaan Chat pelanggan",
+                          "客户 Chat 请求",
+                        )
+                      : e.kind === "sales"
+                        ? t("Sales record", "Catatan sales", "销售记录")
+                        : t(
+                            "Historical profile label",
+                            "Label profil historis",
+                            "历史资料标签",
+                          )}
+                  {e.kind === "sales" && e.actor ? ` · ${e.actor}` : ""} ·{" "}
+                  <time>{time(e)}</time>
+                </p>
+                {e.kind === "questionnaire" ? (
+                  <p className="crm-signal-original">
+                    {t("Saved answer", "Jawaban tersimpan", "保存的选项")}：
+                    {buyingEvidenceLabel(e, lang)}
+                  </p>
+                ) : e.original ? (
+                  <blockquote>{e.original}</blockquote>
+                ) : (
+                  <p className="crm-work-muted">
+                    {t(
+                      "Original evidence unavailable; no source or time inferred.",
+                      "Bukti asli tidak tersedia; sumber dan waktu tidak disimpulkan.",
+                      "原始依据不可用，不推断来源或时间。",
+                    )}
+                  </p>
+                )}
+                {(e.taskId || e.messageId) && (
+                  <div className="crm-signal-links">
+                    {e.messageId && e.conversationId && onSource && (
+                      <button
+                        className="crm-work-link"
+                        type="button"
+                        onClick={() => onSource(e)}
+                      >
+                        {e.kind === "sales"
+                          ? t(
+                              "View linked customer message",
+                              "Lihat pesan pelanggan terkait",
+                              "查看关联客户消息",
+                            )
+                          : t(
+                              "View original message",
+                              "Lihat pesan asli",
+                              "查看原始消息",
+                            )}
+                      </button>
+                    )}
+                    {e.taskId && onTask && (
+                      <button
+                        className="crm-work-link"
+                        type="button"
+                        onClick={() => onTask(e.taskId)}
+                      >
+                        {t(
+                          "View linked task",
+                          "Lihat tugas terkait",
+                          "查看关联任务",
+                        )}
+                      </button>
+                    )}
+                    {e.kind === "chat" && e.taskOperation && (
+                      <span className="crm-work-muted">
+                        {e.taskOperation === "created"
+                          ? t("Created task", "Tugas dibuat", "已创建任务")
+                          : t(
+                              "Added to existing task",
+                              "Ditambahkan ke tugas yang ada",
+                              "已补充已有任务",
+                            )}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </article>
+            ))}
+          </section>
+        );
+      })}
+    </div>
+  );
+}

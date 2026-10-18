@@ -1,7 +1,8 @@
+import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { crmId } from "../../utils/crmIndonesian";
 import React from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
-import { leadFollowUp,emptyFollowUpLabel } from "../../utils/crmFollowUp";
+import { leadFollowUp, emptyFollowUpLabel } from "../../utils/crmFollowUp";
 export function CrmFollowUp({
   lead,
   lang,
@@ -28,6 +29,7 @@ export function CrmFollowUp({
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const summary = leadFollowUp(lead, lang, timezone, now);
   const task = summary.next?.task;
+  const taskView = task && presentFollowUpTask(task, lang, timezone, now);
   const taskOwner = task?.ownerId;
   const ownerName =
     employees.find((person) => person.id === taskOwner)?.displayName ||
@@ -42,11 +44,22 @@ export function CrmFollowUp({
             data-tone={summary.next.tone}
             title={summary.next.deadline === null ? undefined : timezone}
           >
-            {summary.next.deadline === null ? (
-              summary.next.timing
-            ) : (
-              <time dateTime={task!.dueAt}>{summary.next.timing}</time>
-            )}
+            {taskView &&
+              ["overdue", "today", "review"].includes(taskView.tone) && (
+                <div>{taskView.status}</div>
+              )}
+            {taskView?.times.map((time, index) => (
+              <div key={index} data-tone={time.tone}>
+                {time.label} ·{" "}
+                {time.value ? (
+                  <time dateTime={time.value}>
+                    {taskView.formatTime(time.value)}
+                  </time>
+                ) : (
+                  taskView.formatTime(null)
+                )}
+              </div>
+            ))}
           </div>
           {taskOwner !== (lead.owner || null) && (
             <div className="crm-followup-secondary">
@@ -58,7 +71,7 @@ export function CrmFollowUp({
       ) : (
         <div className="crm-followup-secondary">
           {summary.loaded
-            ? emptyFollowUpLabel(lead,lang)
+            ? emptyFollowUpLabel(lead, lang)
             : t("Follow-up unavailable", "跟进信息暂不可用")}
         </div>
       )}

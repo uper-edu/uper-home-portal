@@ -1,3 +1,6 @@
+import {CrmFollowupContext} from "../components/crm/CrmFollowupContext";
+import { CrmDisclosure } from "../components/crm/CrmDisclosure";
+import {CrmTrustPanel,CrmStageEditor} from "../components/crm/CrmTrustPanel";
 import {PageMetadata} from '../components/PageMetadata';
 import {AccessHandoverPanel} from "../components/AccessSafetyPanel";
 import {eligibleOwner,permittedRecord,canClaimRecord} from '../utils/accessControl';
@@ -29,7 +32,7 @@ import {
 } from "../utils/crmLanguage";
 import { leadDisplayNumber } from "../utils/leadNumber";
 import { formatCrmOperatingTime } from "../utils/crmOperatingTime";
-import { confirmedTaskDeadline, pendingFollowUps } from "../utils/crmFollowUp";
+import { describeFollowUpTask, confirmedTaskDeadline, pendingFollowUps } from "../utils/crmFollowUp";
 import CrmAccess, {
   CrmAccountControls,
   type CrmEmployee,
@@ -40,9 +43,10 @@ import {
   compareCrmEventTimes,
 } from "../utils/crmMessageTime";
 import { LeadActivity } from "../components/LeadAttention";
-import LeadTaskActions from "../components/LeadTaskActions";
+import { projectPendingTasks } from "../utils/crmTaskPresentation";
+import { CrmNextTaskSummary } from "../components/crm/CrmNextTaskSummary";
 import NotificationCenter from "../components/NotificationCenter";
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
 import { safeStorage } from "../utils/safeStorage";
 import {
@@ -99,10 +103,9 @@ import {
   ConnectStatusType,
   OutcomeType,
 } from "../types/crmLead";
-import { TierType, BuyingSignalType } from "../types/leadSystem";
+import { TierType } from "../types/leadSystem";
 import type { CrmPolicyConfig } from "../types/crmPolicyConfig";
 import { DEFAULT_CRM_POLICY_CONFIG } from "../types/crmPolicyConfig";
-import { CrmFollowUp } from "../components/crm/CrmFollowUp";
 import { CrmLeadWorkspace } from "../components/crm/CrmLeadWorkspace";
 import {
   CrmCustomerProfile,
@@ -209,6 +212,7 @@ function CrmWorkspace({
   const [queueComplete,setQueueComplete]=useState(false);
   const [administrative,setAdministrative]=useState(false);
   const [contactPreview,setContactPreview]=useState(false);
+  const [contactPreviewDirty,setContactPreviewDirty]=useState(false);
   const [contactScripts,setContactScripts]=useState<any>(undefined);
   const [filters, setFilters] = useState<LeadFilters>(() => {try {return JSON.parse(localStorage.getItem('crm_filters_v2_'+employee.id)||'null')||defaultLeadFilters(employee.roles.includes('crm_leader')?'all':employee.scope);}catch{return defaultLeadFilters(employee.scope);}});
   useEffect(()=>{localStorage.setItem('crm_filters_v2_'+employee.id,JSON.stringify(filters));},[filters,employee.id]);
@@ -227,8 +231,9 @@ function CrmWorkspace({
     return () => clearTimeout(timer);
   }, [filters.search]);
   const [selectedLead, setSelectedLead] = useState<CrmLeadRecord | null>(null);
+  const [detailRefreshVersion, setDetailRefreshVersion] = useState(0);
   const responseTask = pendingFollowUps(
-    selectedLead?.attention?.tasks || [],
+    selectedLead?.attention?.tasks || [], selectedLead?.currentStage,
   )[0];
   const responseDeadline =
     responseTask && confirmedTaskDeadline(responseTask) !== null
@@ -238,9 +243,6 @@ function CrmWorkspace({
   const [activeDrawerTab, setActiveDrawerTab] =
     useState<CustomerTab>("activities");
   const [isAddLogOpen, setIsAddLogOpen] = useState(false);
-  const [timelineFilter, setTimelineFilter] = useState<
-    "all" | "logs" | "engagement" | "milestone"
-  >("all");
   const [copiedObjectionIdx, setCopiedObjectionIdx] = useState<number | null>(
     null,
   );
@@ -299,27 +301,45 @@ function CrmWorkspace({
   useEffect(() => {
     if (!canManage && crmModule === "policy") setCrmModule("leads");
   }, [canManage, crmModule]);
+  const [taskFocus,setTaskFocus]=useState<{id:string;token:number}>();
+  const [conversationReturn,setConversationReturn]=useState<any>();
+  const [taskOpening,setTaskOpening]=useState(false);
   const [workflowSource,setWorkflowSource]=useState<any>();
   const [workflowTask,setWorkflowTask]=useState<string|undefined>();
   const [workflowDirty,setWorkflowDirty]=useState(false);
+  const [trustDirty,setTrustDirty]=useState(false);
+  const [trustReset,setTrustReset]=useState(0);
+  const [followupCommand,setFollowupCommand]=useState<any>();
   const [attendanceDirty,setAttendanceDirty]=useState(false);
   const [attendanceReset,setAttendanceReset]=useState(0);
   const [profileSave,setProfileSave]=useState("");
+  const [signalFocus,setSignalFocus]=useState<{id:string;token:number}|undefined>();
   const [workflowNotice,setWorkflowNotice]=useState<any>(null);
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
-  const [copiedScript, setCopiedScript] = useState(false);
   const listScroll = useRef(0);
-  const hasDraft = (isAddLogOpen && workflowDirty)||Boolean(selectedLead&&attendanceDirty);
+  const tabViewport = useRef<{pageY:number; keyboard:boolean; tab:string} | null>(null);
+  useLayoutEffect(() => {
+    const pending = tabViewport.current;
+    if (!pending) return;
+    tabViewport.current = null;
+    // Ordinary tab changes keep the shell anchored. Task/message links own explicit scrolling.
+    const content = document.getElementById("crm-customer-content");
+    if (content) content.scrollTop = 0;
+    window.scrollTo({top:pending.pageY, behavior:"instant"});
+    if (pending.keyboard) document.getElementById(`crm-customer-tab-${pending.tab}`)?.focus({preventScroll:true});
+  }, [activeDrawerTab]);
+
+  const hasDraft = contactPreviewDirty||trustDirty||(isAddLogOpen && workflowDirty)||Boolean(selectedLead&&attendanceDirty);
   const [pendingNavigation, setPendingNavigation] = useState<
     (() => void) | null
   >(null);
   const clearDraft = () => {
     if(selectedLead){delete draftCache.current[selectedLead.id];delete attendanceCache.current[selectedLead.id];}
     setAttendanceDirty(false);setAttendanceReset(n=>n+1);
-    setWorkflowDirty(false);
-    setIsAddLogOpen(false);
+    setWorkflowDirty(false);setTrustDirty(false);setTrustReset(v=>v+1);
+    setIsAddLogOpen(false);setFollowupCommand(undefined);setContactPreview(false);setContactPreviewDirty(false);
   };
-  const resumeDraft=()=>{setPendingNavigation(null);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>(attendanceDirty?'.crm-attendance-editor textarea':'.crm-workflow-form textarea')?.focus());};
+  const resumeDraft=()=>{setPendingNavigation(null);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>(contactPreviewDirty?'.crm-contact-preview textarea':attendanceDirty?'.crm-attendance-editor textarea':'.crm-followup-processing textarea, .crm-workflow-form textarea')?.focus());};
   const discardDraft = (proceed: () => void = () => {}) => {
     if (isSubmittingLog) return false;
     if (hasDraft) {
@@ -443,14 +463,7 @@ function CrmWorkspace({
                     observedAt: "",
                     isMine: false,
                   }),
-                  tasks: (data.tasks || []).map((task: any) => ({
-                    id: task.id,
-                    kind: task.kind,
-                    details: task.details,
-                    ownerId: task.owner_id,
-                    status: task.status,
-                    dueAt: task.due_at,
-                  })),
+                  tasks: projectPendingTasks(data.tasks||[],data.lead?.currentStage||current.currentStage),
                 },
               }
             : current,
@@ -465,7 +478,7 @@ function CrmWorkspace({
       active = false;
       clearInterval(timer);
     };
-  }, [isDrawerOpen, selectedLead?.id]);
+  }, [isDrawerOpen, selectedLead?.id, detailRefreshVersion]);
   // Load SLA & Cadence Policy Configuration
   const fetchPolicyConfig = async () => {
     try {
@@ -541,7 +554,7 @@ function CrmWorkspace({
       setActiveDrawerTab(tab);
       return;
     }
-    setQueueComplete(false);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setWorkflowNotice("");setProfileSave("");setLeadActionError("");
+    setTaskFocus(undefined);setConversationReturn(undefined);setQueueComplete(false);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setWorkflowNotice("");setProfileSave("");setLeadActionError("");
     setIsAddLogOpen(false);
     setSelectedLead(lead);
     setActiveDrawerTab(tab);
@@ -569,9 +582,8 @@ function CrmWorkspace({
     if(!canEditLead(lead,'crm.followup'))return;
     if(!discarded&&!discardDraft(()=>processFromList(lead,true)))return;
     handleOpenLeadDrawer(lead,"activities",true);
-    setAdministrative(false);setWorkflowSource(undefined);
-    setWorkflowTask(pendingFollowUps(lead.attention?.tasks||[])[0]?.id);
-    setIsAddLogOpen(true);
+    const next=pendingFollowUps(lead.attention?.tasks||[],lead.currentStage)[0];
+    if(next)openTaskWorkflow(next,lead,true);else {setAdministrative(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setIsAddLogOpen(true);}
   };
   // Deep links from notifications fetch only the lead authorized by the server.
   useEffect(() => {
@@ -594,16 +606,6 @@ function CrmWorkspace({
       active = false;
     };
   }, []);
-  // Helper for translating buying signal (hoisted function)
-  function translateBuyingSignal(signal?: BuyingSignalType): string {
-    if (!signal || signal === "None yet") return t("No signal", "无信号");
-    if (signal === "Asked price") return t("Asked tuition", "问学费");
-    if (signal === "Asked schedule") return t("Asked schedule", "问排期");
-    if (signal === "Asked payment") return t("Asked installments", "问分期");
-    if (signal === "Ready to enroll" || signal === "Ready to enrol")
-      return t("Ready to enroll", "准备报名");
-    return signal;
-  }
   // Generate unified Customer Journey & Touch Timeline events
   const journeyTimelineEvents = useMemo(() => {
     if (!selectedLead) return [];
@@ -622,9 +624,11 @@ function CrmWorkspace({
       staffName?: string;
       channel?: string;
       connectStatus?: string;
+      buyingSignalDetected?: string;
       stageTransition?: string;
       nextAction?: string;
       nextFollowUpAt?: string;
+      taskEvidence?: any;
     }[] = [];
     // 1. Initial Intake / Ingestion Event (Client Form Submission)
     if (selectedLead.submittedAt) {
@@ -699,34 +703,8 @@ function CrmWorkspace({
         content: crmAssessmentSummary(selectedLead, lang).conclusion,
       });
     }
-    // 4. Buying Signals Events (Multi-Signal Accumulation & Intent Evolution)
-    const signalsList =
-      selectedLead.buyingSignals && selectedLead.buyingSignals.length > 0
-        ? selectedLead.buyingSignals.filter((s) => s !== "None yet")
-        : selectedLead.buyingSignal && selectedLead.buyingSignal !== "None yet"
-          ? [selectedLead.buyingSignal]
-          : [];
-    signalsList.forEach((sig, sIdx) => {
-      const sourceLog=[...(selectedLead.followUpLogs || [])].reverse().find(log=>log.buyingSignalDetected===sig);
-      events.push({
-        id: `signal-${selectedLead.id}-${sIdx}`,
-        timestamp:
-          sourceLog?.timestamp || selectedLead.submittedAt,
-        category: "engagement",
-        actorType: sourceLog ? "consultant" : "client",
-        staffName: sourceLog?.staffName,
-        icon: "💡",
-        badgeText: t("Buying Signal", "购买信号"),
-        badgeStyle: isLight
-          ? "bg-slate-50 text-slate-700 border-slate-200"
-          : "bg-slate-800 text-slate-300 border-slate-700",
-        title: t("Buying Signal", "购买信号") + ": " + translateBuyingSignal(sig),
-        subtitle: t(
-          "Recorded buying signal; follow the task deadline.",
-          "已记录购买信号，跟进时限以任务截止时间为准。",
-        ),
-      });
-    });
+    // Buying signals belong to their saved questionnaire/contact evidence.
+    // Current profile values are not independent historical events.
     // 5. Follow-up Logs by Consultants
     if (selectedLead.followUpLogs && selectedLead.followUpLogs.length > 0) {
       selectedLead.followUpLogs.forEach((log) => {
@@ -756,7 +734,9 @@ function CrmWorkspace({
           title: log.recordKind === "closure" ? `${log.staffName} · ${t("Administrative record", "非联系处理记录")}` : `${log.staffName} · ${crmValue(log.channel, lang)} (${crmValue(log.connectStatus, lang)})`,
           subtitle: log.newStage && log.previousStage!==log.newStage ? `${t("Stage:", "阶段推进:")} ${crmValue(log.previousStage, lang)} ➔ ${crmValue(log.newStage, lang)}` : undefined,
           content: log.summary,
+          taskEvidence: log,
           connectStatus: log.connectStatus,
+          buyingSignalDetected: log.buyingSignalDetected,
           stageTransition: log.newStage && log.previousStage!==log.newStage ? `${crmValue(log.previousStage, lang)} ➔ ${crmValue(log.newStage, lang)}` : undefined,
           nextAction: log.nextAction,
           nextFollowUpAt: log.nextFollowUpAt,
@@ -826,7 +806,6 @@ function CrmWorkspace({
         if (id.startsWith("intake-")) return 1;
         if (id.startsWith("chat-inquiry-")) return 2;
         if (id.startsWith("quiz-")) return 3;
-        if (id.startsWith("signal-")) return 4;
         if (id.startsWith("trial-")) return 5;
         if (id.startsWith("log-")) return 6;
         if (id.startsWith("milestone-")) return 7;
@@ -835,19 +814,6 @@ function CrmWorkspace({
       return getWeight(a.id) - getWeight(b.id);
     });
   }, [selectedLead, isLight, lang]);
-  // Dynamic counts for timeline filter pills
-  const timelineCounts = useMemo(() => {
-    return {
-      all: journeyTimelineEvents.length,
-      logs: journeyTimelineEvents.filter((e) => e.category === "follow_up")
-        .length,
-      engagement: journeyTimelineEvents.filter(
-        (e) => e.category === "engagement",
-      ).length,
-      milestone: journeyTimelineEvents.filter((e) => e.category === "milestone")
-        .length,
-    };
-  }, [journeyTimelineEvents]);
   const canEditLead = (lead:CrmLeadRecord,permission='crm.write') => permittedRecord(employee,lead,permission);
   const [claiming, setClaiming] = useState<string | null>(null);
   const claimLead = async (leadId: string) => {
@@ -980,23 +946,40 @@ function CrmWorkspace({
       </label>
       <label>
         {t("Sales stage", "销售阶段")}
-        <CrmSingleSelect
-          label={t("Update sales stage", "修改销售阶段")}
-          disabled={!canEditLead(lead)} value={lead.currentStage || "New"}
-          onChange={(currentStage) => handleUpdateLeadField(lead.id, { currentStage: currentStage as StageType })}
-          lang={lang} isLight={isLight}
-          options={STAGE_OPTIONS.map((stage) => ({ value: stage.value, label: t(stage.labelEn, stage.labelZh) }))}
-        />
+        <CrmStageEditor key={trustReset} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} lead={lead} lang={lang} isLight={isLight} disabled={!canEditLead(lead)} onSaved={(updated:any)=>{setSelectedLead((v:any)=>v?.id===lead.id?({...v,...updated}):v);fetchLeads();}}/>
       </label>
     </div>
   );
+  const openTaskList=(taskId?:string,message?:any)=>{
+    const finish=()=>{if(message)setConversationReturn({conversationId:message.conversation_id,messageId:message.id,requestId:message.request_id,taskId,source:message.role==="user"?message:undefined});setTaskFocus({id:taskId||"",token:Date.now()});setActiveDrawerTab("activities");requestAnimationFrame(()=>{if(!taskId){const node=document.getElementById("crm-followup-tasks");node?.scrollIntoView({block:"start"});node?.focus({preventScroll:true});}});};
+    if(discardDraft(finish))finish();
+  };
+  const requestFollowupEdit=(command:any)=>{const finish=()=>{setWorkflowNotice(null);setFollowupCommand({...command,token:Date.now()});};if(discardDraft(finish))finish();};
+  const openContactPreview=(scripts?:any)=>{if(contactPreview){document.querySelector<HTMLElement>(".crm-contact-preview h3")?.focus();return;}const finish=()=>{setContactScripts(scripts);setContactPreview(true);setActiveDrawerTab("activities");};if(activeDrawerTab==="activities"||discardDraft(finish))finish();};
+  const startContactRecord=(admin=false)=>{const finish=()=>{setWorkflowNotice(null);setAdministrative(admin);setWorkflowTask(undefined);setWorkflowSource(undefined);setIsAddLogOpen(true);setActiveDrawerTab("activities");requestAnimationFrame(()=>document.getElementById("crm-followup-processing")?.scrollIntoView({block:"start"}));};if(discardDraft(finish))finish();};
+  const viewTaskSource=(task:any)=>{
+    const finish=()=>{const message=selectedLead?.chatTranscript?.find((m:any)=>m.role==="user"&&m.conversation_id===task.details.sourceConversationId&&(m.id===task.details.sourceMessageId||m.request_id===task.details.sourceMessageId));setConversationReturn({conversationId:task.details.sourceConversationId,messageId:message?.id,requestId:(message as any)?.request_id||task.details.sourceMessageId,taskId:task.id});setActiveDrawerTab("chat");};if(discardDraft(finish))finish();
+  };
+  const openTaskWorkflow=(task:any,lead=selectedLead,discarded=false)=>{
+    if(!lead||!canEditLead(lead,"crm.followup")||taskOpening)return;
+    const finish=async()=>{setWorkflowNotice(null);setTaskOpening(true);setIsSubmittingLog(true);setLeadActionError("");try{
+      const response=await fetch(`/api/crm/leads/${encodeURIComponent(lead.id)}`);const data=await response.json();if(!response.ok)throw Error(data.error);
+      const current=data.tasks?.find((value:any)=>value.id===task.id);if(!current||!["open","overdue"].includes(current.status))throw Error(t("Task changed; refresh and review","任务已变化，请刷新后核实"));
+      const refreshed={...lead,...data.lead,attention:{...lead.attention,tasks:projectPendingTasks(data.tasks||[],data.lead?.currentStage||lead.currentStage)}};
+      if(!canEditLead(refreshed,"crm.followup"))throw Error("Permission denied");
+      setSelectedLead((current:any)=>current?.id===lead.id?refreshed:current);
+      const original=(data.chatTranscript||[]).find((message:any)=>message.role==="user"&&message.conversation_id===current.details?.sourceConversationId&&(message.request_id===current.details?.sourceMessageId||message.id===current.details?.sourceMessageId));
+      setWorkflowSource(conversationReturn?.taskId===task.id&&conversationReturn.source?conversationReturn.source:original);setAdministrative(current.kind==="contact_review");setWorkflowTask(task.id);setIsAddLogOpen(true);setActiveDrawerTab("activities");requestAnimationFrame(()=>document.querySelector<HTMLFormElement>(".crm-workflow-form")?.scrollIntoView({block:"start"}));
+    }catch(error){setLeadActionError((error as Error).message);}finally{setTaskOpening(false);setIsSubmittingLog(false);}};
+    if(discarded||discardDraft(()=>void finish()))void finish();
+  };
   const changeCustomerTab=(tab:typeof activeDrawerTab,keyboard=false)=>{
+    if (tab === activeDrawerTab) return;
     const finish=()=>{
+      tabViewport.current = {pageY:window.scrollY, keyboard, tab};
+      setTaskFocus(undefined);
+      setConversationReturn(null);
       setActiveDrawerTab(tab);
-      requestAnimationFrame(()=>{
-        document.getElementById("crm-customer-panel")?.scrollIntoView({block:"start"});
-        if(keyboard)document.getElementById(`crm-customer-tab-${tab}`)?.focus({preventScroll:true});
-      });
     };
     if(!discardDraft(finish))return;
     finish();
@@ -1034,7 +1017,7 @@ function CrmWorkspace({
                 </button>
               )}
             {selectedLead.whatsapp && (
-              <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{setContactScripts(undefined);setContactPreview(true);setActiveDrawerTab('activities');}} className="crm-work-button">
+              <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{openContactPreview();}} className="crm-work-button">
                 <MessageCircle size={15} /> WhatsApp
               </button>
             )}
@@ -1048,7 +1031,7 @@ function CrmWorkspace({
             </button>
           </div>
         </header>
-        <div className="crm-panel-next"><CrmFollowUp lead={selectedLead} lang={lang} timezone={filterTimezone} isLight={isLight} employees={employees} onOpen={()=>setActiveDrawerTab("activities")} compact /></div>
+        <div className="crm-panel-next"><CrmNextTaskSummary lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>
         <div
           className="crm-customer-tabs"
           role="tablist"
@@ -1057,9 +1040,9 @@ function CrmWorkspace({
           {(
             [
               ["activities", "Follow-up", "跟进"],
-              ["chat", "Conversations", "对话"],
               ["profile", "Profile", "客户资料"],
               ["assessment", "Assessment", "测评"],
+              ["chat", "Conversations", "对话"],
             ] as const
           ).map(([id, en, zh]) => (
             <button
@@ -1075,7 +1058,7 @@ function CrmWorkspace({
               tabIndex={activeDrawerTab === id || (id === "activities" && activeDrawerTab === "playbook") ? 0 : -1}
               onClick={() => changeCustomerTab(id)}
               onKeyDown={e=>{
-                const ids=["activities","chat","profile","assessment"] as const;
+                const ids=["activities","profile","assessment","chat"] as const;
                 const index=ids.indexOf(id);
                 const next=e.key==="ArrowRight"?ids[(index+1)%ids.length]:e.key==="ArrowLeft"?ids[(index+ids.length-1)%ids.length]:e.key==="Home"?ids[0]:e.key==="End"?ids[ids.length-1]:undefined;
                 if(next){e.preventDefault();changeCustomerTab(next,true);}
@@ -1100,12 +1083,18 @@ function CrmWorkspace({
           {activeDrawerTab === "profile" && (
             <>
             <CrmCustomerProfile
+              signalFocus={signalFocus}
+              onSignalSource={e=>viewTaskSource({id:e.taskId,details:{sourceConversationId:e.conversationId,sourceMessageId:e.messageId}})}
+              onSignalTask={id=>openTaskList(id)}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
-              ownership={<>{ownershipControls(selectedLead)}<CrmSingleSelect label={lang==='zh'?'客户沟通语言':lang==='id'?'Bahasa komunikasi pelanggan':'Customer communication language'} value={selectedLead.communicationLanguage||'unknown'} options={[{value:'unknown',label:lang==='zh'?'未确认':lang==='id'?'Belum dikonfirmasi':'Unconfirmed'},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight} disabled={!canEditLead(selectedLead)} onChange={v=>handleUpdateLeadField(selectedLead.id,{communicationLanguage:v as any})}/></>}
+              ownership={ownershipControls(selectedLead)}
+              identity={<CrmTrustPanel key={selectedLead.id+trustReset+"identity"} mode="identity" modalSuspended={Boolean(pendingNavigation)} lead={selectedLead} lang={lang} isLight={isLight} timezone={filterTimezone} disabled={!canEditLead(selectedLead,"crm.followup")} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} onRefresh={()=>fetchLeads(true)} command={followupCommand} onRequestEdit={requestFollowupEdit}/> }
+              communication={<CrmSingleSelect label={lang==='zh'?'首选沟通语言':lang==='id'?'Bahasa komunikasi pilihan':'Preferred communication language'} value={selectedLead.communicationLanguage||'unknown'} options={[{value:'unknown',label:lang==='zh'?'未确认':lang==='id'?'Belum dikonfirmasi':'Unconfirmed'},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight} disabled={!canEditLead(selectedLead)} onChange={v=>handleUpdateLeadField(selectedLead.id,{communicationLanguage:v as any})}/>}
+              participation={canEditLead(selectedLead,"crm.attendance")&&<CrmAttendanceEditor key={`${selectedLead.id}:${attendanceReset}`} lead={selectedLead} staffId={employee.id} onDirty={setAttendanceDirty} onBusy={setIsSubmittingLog} lang={lang} isLight={isLight} timezone={filterTimezone} onUpdated={lead=>{setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}/>}
             />
-            {canEditLead(selectedLead,"crm.attendance")&&<CrmAttendanceEditor key={`${selectedLead.id}:${attendanceReset}`} lead={selectedLead} staffId={employee.id} onDirty={setAttendanceDirty} onBusy={setIsSubmittingLog} lang={lang} isLight={isLight} timezone={filterTimezone} onUpdated={lead=>{setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}/>}
+
             </>
           )}
           {activeDrawerTab === "assessment" && (
@@ -1117,357 +1106,26 @@ function CrmWorkspace({
           )}
           {activeDrawerTab === "chat" && (
             <CrmCustomerConversations
-              onAssociate={canEditLead(selectedLead,"crm.followup")?(message:any)=>{if(!discardDraft())return;setWorkflowSource(message);setWorkflowTask(undefined);setIsAddLogOpen(true);setActiveDrawerTab("activities");}:undefined}
+              isLight={isLight}
+              onOpenTask={(taskId:string,message:any)=>openTaskList(taskId,message)}
+              conversationContext={conversationReturn}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
             />
           )}
-          {activeDrawerTab === "playbook" && (
-            <button
-              type="button"
-              className="crm-work-link crm-customer-playbook"
-              onClick={() => setActiveDrawerTab("activities")}
+          {activeDrawerTab === "activities" && <div className="crm-followup-sections">
+            {!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
+            {conversationReturn&&<button type="button" className="crm-work-link" onClick={()=>changeCustomerTab("chat")}>{t("Return to conversation","返回对话")}</button>}
+            {taskOpening&&<p role="status">{t("Loading task context…","正在加载任务依据…")}</p>}
+            <CrmTrustPanel key={selectedLead.id+trustReset} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} timezone={filterTimezone} disabled={!canEditLead(selectedLead,"crm.followup")||taskOpening} onRefresh={()=>{setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}} focusTask={taskFocus} onProcess={(task:any)=>openTaskWorkflow(task)} onSource={(task:any)=>viewTaskSource(task)}
+              command={followupCommand} onRequestEdit={requestFollowupEdit} workflowOpen={isAddLogOpen} modalSuspended={Boolean(pendingNavigation)} workflowTask={workflowTask} onRecord={()=>startContactRecord()} onArrange={()=>startContactRecord(true)} onIdentity={()=>changeCustomerTab("profile")} journey={journeyTimelineEvents}
+              context={({data,error}:any)=><CrmFollowupContext lead={selectedLead} lang={lang} timezone={filterTimezone} onSource={viewTaskSource} tasks={data?.tasks} facts={data?.facts} taskError={error} onTask={openTaskList}/>}
             >
-              {t("Back to follow-up", "返回跟进")}
-            </button>
-          )}
-          {activeDrawerTab === "activities" && (
-            <div className="space-y-4">
-              {!canEditLead(selectedLead,"crm.followup") && (
-                <p className="text-xs text-slate-500">
-                  {t(
-                    "Claim this unassigned lead before updating it or recording follow-up.",
-                    "请先认领此未分配客户，再修改资料或记录跟进。",
-                  )}
-                </p>
-              )}
-              <LeadTaskActions lead={selectedLead}
-                onProcess={(taskId:string)=>{if(!discardDraft())return;setWorkflowSource(undefined);setAdministrative(false);setWorkflowTask(taskId);setIsAddLogOpen(true);}}
-                timezone={policyConfig.businessHours.timezone}
-                readOnly={!canEditLead(selectedLead,"crm.followup")}
-                key={selectedLead.id}
-                refreshKey={JSON.stringify(
-                  selectedLead.attention?.tasks
-                    .map((task) => [
-                      task.id,
-                      task.kind,
-                      task.status,
-                      task.dueAt,
-                      task.ownerId,
-                    ])
-                    .sort(),
-                )}
-                leadId={selectedLead.id}
-                isLight={isLight}
-                lang={lang}
-                onChange={() => fetchLeads(true)}
-              />
-              {contactPreview&&<CrmContactPreview key={"contact-preview-"+selectedLead.id} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} scripts={contactScripts} onClose={()=>setContactPreview(false)} onUpdated={(lead:any)=>setSelectedLead(lead)}/>}
-              <div className="crm-customer-context">
-                <div>
-                  {(()=>{const stats=contactStatistics(selectedLead);const render=(log:any,label:string)=><div><h3>{label}</h3>{log?<><p>{crmValue(log.connectStatus,lang)} · {log.channel} · {log.staffName} · {formatCrmOperatingTime(log.timestamp||log.at,filterTimezone)}</p><details><summary>{log.summary?.slice(0,150)}</summary><p className="whitespace-pre-wrap">{log.summary}</p></details>{log.sourceMessageId&&<button className="crm-work-link" onClick={()=>setActiveDrawerTab('chat')}>{t('Linked customer message','关联客户消息')}</button>}</>:<p>{t('No contact recorded','尚无联系记录')}</p>}</div>;return <>{render(stats.lastAttempt,t('Latest contact attempt','最近联系尝试'))}<p>{t('Attempts','尝试次数')}：{stats.attemptCount} · {t('Connected or replied','接通或回复次数')}：{stats.connectedCount}</p>{stats.lastConnected&&stats.lastConnected.id!==stats.lastAttempt?.id&&render(stats.lastConnected,t('Latest connected or replied','最近接通或回复'))}</>;})()}
-                  {selectedLead.contactArrangement&&<p>{t('Contact arrangement','联系安排')}：{t(({active:"Active follow-up",waiting:"Waiting for review",nurture:"Nurture review",stopped:"Proactive contact stopped"})[selectedLead.contactArrangement.state],({active:"正常跟进",waiting:"等待复查",nurture:"培育复查",stopped:"停止主动联系"})[selectedLead.contactArrangement.state])} · {selectedLead.contactArrangement.reason}</p>}
-                </div>
-                {selectedLead.nextAction && (
-                  <div>
-                    <h3>{t("Manual note", "人工备注")}</h3>
-                    <p>{selectedLead.nextAction}</p>
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                className="crm-work-link crm-customer-playbook"
-                onClick={() => setActiveDrawerTab("playbook")}
-              >
-                {t("Sales playbook", "销售话术参考")}
-              </button>
-              <button className="crm-work-button" disabled={!canEditLead(selectedLead,"crm.followup")} onClick={()=>{if(!discardDraft())return;setAdministrative(true);setWorkflowTask(undefined);setIsAddLogOpen(true);}}>{t('Update contact arrangement','更新联系安排')}</button>
-              {/* Top Action Bar: Add Follow-up Toggle + Timeline Filter */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <button
-                  type="button"
-                  disabled={!canEditLead(selectedLead,"crm.followup")}
-                  onClick={() => {
-                    if (isAddLogOpen) {
-                      discardDraft();
-                    } else {
-                      setAdministrative(false);setWorkflowTask(undefined);setWorkflowSource(undefined);
-                      setIsAddLogOpen(true);
-                    }
-                  }}
-                  className={`flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                    isAddLogOpen
-                      ? isLight
-                        ? "bg-primary-50 text-primary-700 border-primary-300 shadow-2xs"
-                        : "bg-primary-950/60 text-primary-300 border-primary-700"
-                      : isLight
-                        ? "bg-white hover:bg-slate-100 text-slate-700 border-slate-200/90 shadow-2xs"
-                        : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
-                  }`}
-                >
-                  <PlusCircle
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${isAddLogOpen ? "rotate-45 text-primary-600" : "text-primary-500"}`}
-                  />
-                  <span>
-                    {isAddLogOpen
-                      ? t("Close Follow-up Form", "收起跟进表单")
-                      : t("Log New Follow-up", "记录本次跟进")}
-                  </span>
-                </button>
+              {workflowNotice&&<p role="status">{t("Result saved","处理结果已保存")} · {t("Completed tasks","已完成任务")} {workflowNotice.completed}{workflowNotice.completedNames?` · ${workflowNotice.completedNames}`:""} · {workflowNotice.recordOnly||workflowNotice.kept?(lang==='zh'?'已保留原安排':lang==='id'?'Pengaturan awal dipertahankan':'Existing arrangements preserved'):workflowNotice.created?t("Next task scheduled","已安排下一步任务"):t("Next arrangement recorded","已记录后续安排")}</p>}
+              {isAddLogOpen && <CrmWorkflowForm key={selectedLead.id+String(workflowTask)+String(administrative)} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} timezone={filterTimezone} initialDraft={draftCache.current[selectedLead.id]} onDraft={(draft:any)=>{draftCache.current[selectedLead.id]=draft;}} administrative={administrative} workCalendar={policyConfig.businessHours} selectedTask={workflowTask} sourceMessage={workflowSource} onDirty={()=>setWorkflowDirty(true)} onBusy={setIsSubmittingLog} onCancel={()=>discardDraft()} onSaved={async(data:any,next:boolean)=>{delete draftCache.current[selectedLead.id];if(retainedDraft?.id===selectedLead.id)setRetainedDraft(null);const candidates=filteredLeads.slice(filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+1);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setSelectedLead((current:any)=>current?.id===selectedLead.id?({...current,...data.lead,attention:{...current.attention,tasks:(current.attention?.tasks||[]).filter((task:any)=>!data.completedTaskIds.includes(task.id))}}):current);setDetailRefreshVersion(v=>v+1);setIsAddLogOpen(false);setWorkflowNotice({completed:data.completedTaskIds.length,completedNames:data.completedTaskIds.map((id:string)=>{const task=(selectedLead.attention?.tasks||[]).find((task:any)=>task.id===id);return task?describeFollowUpTask(task,lang,filterTimezone).action:id;}).join("；"),kept:data.lead?.followUpDisposition?.kind==="keep",created:Boolean(data.createdTaskId),recordOnly:data.recordOnly});fetchLeads(true);if(next){for(const candidate of candidates){const access=await fetch(`/api/crm/leads/${candidate.id}/tasks`);if([403,404].includes(access.status))continue;if(!access.ok){setLeadActionError(lang==='zh'?'记录已保存，下一位暂不可加载':lang==='id'?'Catatan disimpan; pelanggan berikutnya belum tersedia':'Record saved; next customer unavailable');return;}handleOpenLeadDrawer(candidate,'activities',true);return;}setIsDrawerOpen(false);setSelectedLead(null);setQueueComplete(true);}}}/>}
 
-                {/* Timeline Category Filter */}
-                <div
-                  className={`flex items-center p-0.5 rounded-xl border text-[11px] ${isLight ? "bg-slate-100 border-slate-200/90" : "bg-slate-800 border-slate-700"}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setTimelineFilter("all")}
-                    className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                      timelineFilter === "all"
-                        ? isLight
-                          ? "bg-white text-slate-900 shadow-2xs font-bold"
-                          : "bg-slate-900 text-white shadow-xs font-bold"
-                        : isLight
-                          ? "text-slate-600 hover:text-slate-900"
-                          : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {t("All Activities", "全景动态")} ({timelineCounts.all})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTimelineFilter("logs")}
-                    className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                      timelineFilter === "logs"
-                        ? isLight
-                          ? "bg-white text-slate-900 shadow-2xs font-bold"
-                          : "bg-slate-900 text-white shadow-xs font-bold"
-                        : isLight
-                          ? "text-slate-600 hover:text-slate-900"
-                          : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {t("Follow-ups", "顾问跟进")} ({timelineCounts.logs})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTimelineFilter("engagement")}
-                    className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                      timelineFilter === "engagement"
-                        ? isLight
-                          ? "bg-white text-slate-900 shadow-2xs font-bold"
-                          : "bg-slate-900 text-white shadow-xs font-bold"
-                        : isLight
-                          ? "text-slate-600 hover:text-slate-900"
-                          : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {t("Student Inquiries", "学员互动")} (
-                    {timelineCounts.engagement})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTimelineFilter("milestone")}
-                    className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                      timelineFilter === "milestone"
-                        ? isLight
-                          ? "bg-white text-slate-900 shadow-2xs font-bold"
-                          : "bg-slate-900 text-white shadow-xs font-bold"
-                        : isLight
-                          ? "text-slate-600 hover:text-slate-900"
-                          : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {t("Milestones", "关键里程碑")} ({timelineCounts.milestone})
-                  </button>
-                </div>
-              </div>
-
-              {workflowNotice&&<p role="status">{t("Result saved","处理结果已保存")} · {t("Completed tasks","已完成任务")} {workflowNotice.completed} · {workflowNotice.created?t("Next task scheduled","已安排下一步任务"):t("Next arrangement recorded","已记录后续安排")}</p>}
-              {isAddLogOpen && <CrmWorkflowForm key={selectedLead.id+String(workflowTask)+String(administrative)} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} timezone={filterTimezone} initialDraft={draftCache.current[selectedLead.id]} onDraft={(draft:any)=>{draftCache.current[selectedLead.id]=draft;}} administrative={administrative} workCalendar={policyConfig.businessHours} selectedTask={workflowTask} sourceMessage={workflowSource} onDirty={()=>setWorkflowDirty(true)} onBusy={setIsSubmittingLog} onCancel={()=>discardDraft()} onSaved={async(data:any,next:boolean)=>{delete draftCache.current[selectedLead.id];if(retainedDraft?.id===selectedLead.id)setRetainedDraft(null);const candidates=filteredLeads.slice(filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+1);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setSelectedLead((current:any)=>({...current,...data.lead}));setIsAddLogOpen(false);setWorkflowNotice({completed:data.completedTaskIds.length,created:Boolean(data.createdTaskId)});fetchLeads(true);if(next){for(const candidate of candidates){const access=await fetch(`/api/crm/leads/${candidate.id}/tasks`);if([403,404].includes(access.status))continue;if(!access.ok){setLeadActionError(lang==='zh'?'记录已保存，下一位暂不可加载':lang==='id'?'Catatan disimpan; pelanggan berikutnya belum tersedia':'Record saved; next customer unavailable');return;}handleOpenLeadDrawer(candidate,'activities',true);return;}setIsDrawerOpen(false);setSelectedLead(null);setQueueComplete(true);}}}/>}
-
-              {/* Unified Customer Journey Timeline */}
-              <div className="pt-1">
-                {journeyTimelineEvents.length === 0 ? (
-                  <div
-                    className={`py-12 text-center rounded-2xl border border-dashed ${isLight ? "bg-slate-50/50 border-slate-200 text-slate-400" : "bg-slate-950/50 border-slate-800 text-slate-500"}`}
-                  >
-                    <History className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-50" />
-                    <p>
-                      {t(
-                        "No timeline events recorded yet.",
-                        "暂无旅程动态事件。",
-                      )}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="relative pl-7 sm:pl-9 space-y-4 before:absolute before:left-3.5 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                    {journeyTimelineEvents
-                      .filter((e) => {
-                        if (timelineFilter === "logs")
-                          return e.category === "follow_up";
-                        if (timelineFilter === "engagement")
-                          return e.category === "engagement";
-                        if (timelineFilter === "milestone")
-                          return e.category === "milestone";
-                        return true;
-                      })
-                      .map((ev) => (
-                        <div key={ev.id} className="relative group">
-                          {/* Left Node Icon */}
-                          <div
-                            className={`absolute -left-7 sm:-left-9 top-2 w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-xs border-2 z-10 transition-transform group-hover:scale-110 ${
-                              ev.category === "follow_up"
-                                ? isLight
-                                  ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-emerald-500/10"
-                                  : "bg-emerald-950 border-emerald-600 text-emerald-300"
-                                : ev.category === "milestone"
-                                  ? isLight
-                                    ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-indigo-500/10"
-                                    : "bg-indigo-950 border-indigo-600 text-indigo-300"
-                                  : isLight
-                                    ? "bg-sky-50 border-sky-400 text-sky-700 shadow-sky-500/10"
-                                    : "bg-sky-950 border-sky-600 text-sky-300"
-                            }`}
-                          >
-                            <span className="text-xs select-none">
-                              {ev.icon}
-                            </span>
-                          </div>
-
-                          {/* Event Card */}
-                          <div
-                            className={`p-3.5 rounded-xl border space-y-2 transition-all shadow-2xs ${
-                              isLight
-                                ? "bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-xs"
-                                : "bg-slate-900/90 border-slate-800 hover:border-slate-700"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between text-[11px] gap-2 flex-wrap">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {/* Action Initiator Tag */}
-                                <span
-                                  className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${
-                                    ev.actorType === "client"
-                                      ? isLight
-                                        ? "bg-sky-50 text-sky-700 border-sky-200"
-                                        : "bg-sky-950/60 text-sky-300 border-sky-800"
-                                      : ev.actorType === "consultant"
-                                        ? isLight
-                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                          : "bg-emerald-950/60 text-emerald-300 border-emerald-800"
-                                        : ev.actorType === "record"
-                                          ? isLight
-                                            ? "bg-slate-50 text-slate-700 border-slate-200"
-                                            : "bg-slate-800 text-slate-200 border-slate-600"
-                                        : isLight
-                                          ? "bg-purple-50 text-purple-700 border-purple-200"
-                                          : "bg-purple-950/60 text-purple-300 border-purple-800"
-                                  }`}
-                                >
-                                  {ev.actorType === "client"
-                                    ? `👤 ${t("Client Action", "客户自主")}`
-                                    : ev.actorType === "consultant"
-                                      ? `👨‍💼 ${t("Consultant Touch", "顾问跟进")}`
-                                      : ev.actorType === "record"
-                                        ? `📋 ${t("Recorded status", "记录状态")}`
-                                        : `🤖 ${t("System Intelligence", "智能判定")}`}
-                                </span>
-
-                                {/* Event Category Badge */}
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${ev.badgeStyle}`}
-                                >
-                                  {ev.badgeText}
-                                </span>
-
-                                {ev.staffName && (
-                                  <span
-                                    className={`font-bold text-xs ${isLight ? "text-slate-800" : "text-slate-200"}`}
-                                  >
-                                    {ev.staffName}
-                                  </span>
-                                )}
-                              </div>
-
-                              <span
-                                className={`font-mono text-[10.5px] flex items-center gap-1 ${isLight ? "text-slate-400" : "text-slate-500"}`}
-                              >
-                                <Clock className="w-3 h-3" />
-                                {ev.timestamp &&
-                                Number.isFinite(Date.parse(ev.timestamp))
-                                  ? formatCrmDateTime(ev.timestamp)
-                                  : t("Unknown time", "未知时间")}
-                              </span>
-                            </div>
-
-                            <div
-                              className={`font-semibold text-xs leading-snug ${isLight ? "text-slate-900" : "text-slate-100"}`}
-                            >
-                              {ev.title}
-                            </div>
-
-                            {ev.subtitle && (
-                              <div
-                                className={`text-[11px] ${isLight ? "text-slate-500" : "text-slate-400"}`}
-                              >
-                                {ev.subtitle}
-                              </div>
-                            )}
-
-                            {ev.content && (
-                              <details><summary>{t("View original record","查看原始记录")}</summary><p className="whitespace-pre-wrap">{ev.content}</p></details>
-                            )}
-
-                            {(ev.nextAction || ev.stageTransition) && (
-                              <div
-                                className={`flex items-center justify-between pt-2 border-t text-[10px] gap-2 flex-wrap ${isLight ? "border-slate-100 text-slate-500" : "border-slate-800 text-slate-400"}`}
-                              >
-                                {ev.stageTransition && !ev.subtitle?.includes(ev.stageTransition) && (
-                                  <span className="flex items-center gap-1">
-                                    {t("Stage:", "阶段推进:")}{" "}
-                                    <b className="text-primary-600 font-medium">
-                                      {ev.stageTransition}
-                                    </b>
-                                  </span>
-                                )}
-                                {ev.nextAction && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3 text-primary-500" />
-                                    {t("Next:", "下一步:")}{" "}
-                                    <span
-                                      className={
-                                        isLight
-                                          ? "text-slate-800 font-semibold"
-                                          : "text-slate-200 font-semibold"
-                                      }
-                                    >
-                                      {ev.nextAction}
-                                    </span>
-                                    {ev.nextFollowUpAt && (
-                                      <span className="text-slate-400 font-mono">
-                                        (
-                                        {formatCrmOperatingTime(ev.nextFollowUpAt,filterTimezone).slice(0,16)}
-                                        )
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: 🎯 转化攻坚 (Sales Playbook & Objection Handling) */}
-          {activeDrawerTab === "playbook" && (
+              {!isAddLogOpen&&<CrmDisclosure heading={t("Sales playbook","销售话术参考")}>
             <div className="space-y-4">
               {/* Strategy Guidance */}
               <div
@@ -1508,9 +1166,8 @@ function CrmWorkspace({
                   <button
                     type="button"
                     onClick={() => {
-                      setContactScripts(undefined);setContactPreview(true);setActiveDrawerTab('activities');
-                      setCopiedScript(true);
-                      setTimeout(() => setCopiedScript(false), 2000);
+                      openContactPreview();
+
                     }}
                     className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg cursor-pointer transition-all ${
                       isLight
@@ -1518,16 +1175,8 @@ function CrmWorkspace({
                         : "bg-slate-800 hover:bg-slate-700 text-slate-300"
                     }`}
                   >
-                    {copiedScript ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                    <span>
-                      {copiedScript
-                        ? t("Copied!", "已复制!")
-                        : t("Copy Text", "复制话术")}
-                    </span>
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>{t("Preview message", "预览话术")}</span>
                   </button>
                 </div>
 
@@ -1541,7 +1190,7 @@ function CrmWorkspace({
                   {getWhatsAppAction(selectedLead).greetingText}
                 </p>
 
-                <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{setContactScripts(undefined);setContactPreview(true);setActiveDrawerTab('activities');}}
+                <button type="button" disabled={selectedLead.contactArrangement?.state==='stopped'} onClick={()=>{openContactPreview();}}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
@@ -1612,7 +1261,7 @@ function CrmWorkspace({
                                 : lang === "zh"
                                   ? item.answer
                                   : item.answerEn;
-                            setContactScripts({en:item.answerEn,id:crmId(item.answerEn),zh:item.answer});setContactPreview(true);setActiveDrawerTab("activities");
+                            openContactPreview({en:item.answerEn,id:crmId(item.answerEn),zh:item.answer});
                             setCopiedObjectionIdx(idx);
                             setTimeout(() => setCopiedObjectionIdx(null), 2000);
                           }}
@@ -1661,7 +1310,11 @@ function CrmWorkspace({
                 </div>
               </div>
             </div>
-          )}
+              </CrmDisclosure>}
+            </CrmTrustPanel>
+            {contactPreview&&<CrmContactPreview key={"contact-preview-"+selectedLead.id} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} scripts={contactScripts} onDirty={setContactPreviewDirty} onClose={()=>{setContactPreview(false);setContactPreviewDirty(false);}} onUpdated={(lead:any)=>setSelectedLead(lead)}/>}
+          </div>}
+
         </div>
       </section>
     ) : null;
@@ -1887,7 +1540,7 @@ function CrmWorkspace({
             onSelectLeadInCrm={async(leadId) => {
               try{
                 let target=leads.find(l=>l.id===leadId);
-                if(!target){const r=await fetch(`/api/crm/leads/${encodeURIComponent(leadId)}`);const data=await r.json();if(!r.ok)throw Error(data.error||'Lead not found');target={...data.lead,attention:{tasks:(data.tasks||[]).map((t:any)=>({id:t.id,kind:t.kind,status:t.status,dueAt:t.due_at,ownerId:t.owner_id,details:t.details})),unreadCount:0,isMine:false}};}
+                if(!target){const r=await fetch(`/api/crm/leads/${encodeURIComponent(leadId)}`);const data=await r.json();if(!r.ok)throw Error(data.error||'Lead not found');target={...data.lead,attention:{tasks:projectPendingTasks(data.tasks||[],data.lead?.currentStage),unreadCount:0,isMine:false}};}
                 setCrmModule("leads");handleOpenLeadDrawer(target);
               }catch(e){setLeadActionError((e as Error).message);}
             }}
@@ -1981,6 +1634,7 @@ function CrmWorkspace({
               employees={employees}
               onClaim={employee.permissions.includes("crm.claim")?(lead)=>claimLead(lead.id):undefined}
               canClaim={lead=>canClaimRecord(employee,lead)&&!permittedRecord(employee,lead,"crm.assign")}
+              onSignal={(lead,id)=>{const finish=()=>{handleOpenLeadDrawer(lead,"profile",true);setSignalFocus({id,token:Date.now()});};if(discardDraft(finish))finish();}}
               onOpen={handleOpenLeadDrawer}
               onProcess={processFromList}
               canProcess={lead=>canEditLead(lead,"crm.followup")}

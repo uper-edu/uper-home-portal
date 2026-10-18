@@ -373,6 +373,102 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       },
     );
     await t.test(
+      "Repeated explicit booking/enrollment requests reuse one active task without moving its deadline",
+      async () => {
+        for (const kind of ["booking", "enrollment"] as const) {
+          const v = await visitor();
+          const registered = await contact(v);
+          const lid = registered.data.lead.id;
+          const first = await action(
+            v,
+            "first-" + kind,
+            "TEST explicit " + kind,
+            kind,
+          );
+          assert.equal(first.status, 200);
+          assert.equal(first.data.taskOperation, "created");
+          const original = (
+            await pool.query("SELECT * FROM followup_tasks WHERE id=:p1", [
+              first.data.taskId,
+            ])
+          ).rows[0];
+          const second = await action(
+            v,
+            "second-" + kind,
+            "TEST supplementary " + kind,
+            kind,
+          );
+          assert.equal(second.status, 200);
+          assert.equal(second.data.taskId, first.data.taskId);
+          assert.equal(second.data.taskOperation, "supplemented");
+          const after = (
+            await pool.query("SELECT * FROM followup_tasks WHERE id=:p1", [
+              first.data.taskId,
+            ])
+          ).rows[0];
+          assert.equal(String(after.due_at), String(original.due_at));
+          assert.equal(
+            String(after.original_due_at),
+            String(original.original_due_at),
+          );
+          assert.equal(
+            Number(
+              (
+                await pool.query(
+                  "SELECT count(*) n FROM followup_tasks WHERE lead_id=:p1 AND kind=:p2",
+                  [lid, kind],
+                )
+              ).rows[0].n,
+            ),
+            1,
+          );
+          const replay = await action(
+            v,
+            "first-" + kind,
+            "TEST explicit " + kind,
+            kind,
+          );
+          assert.equal(replay.status, 200);
+          assert.equal(replay.data.taskId, first.data.taskId);
+          assert.equal(replay.data.taskOperation, "created");
+          assert.equal(
+            Number(
+              (
+                await pool.query(
+                  "SELECT count(*) n FROM messages WHERE conversation_id=:p1",
+                  [v.conversationId],
+                )
+              ).rows[0].n,
+            ),
+            4,
+          );
+          const another = await request("/api/portal/conversations", v.cookie, {
+            source: "standalone_chat",
+          });
+          const cross = await action(
+            { ...v, conversationId: another.data.conversationId },
+            "cross-session-" + kind,
+            "TEST repeated across sessions " + kind,
+            kind,
+          );
+          assert.equal(cross.status, 200);
+          assert.equal(cross.data.taskId, first.data.taskId);
+          assert.equal(cross.data.taskOperation, "supplemented");
+          const preserved = (
+            await pool.query(
+              "SELECT due_at,original_due_at FROM followup_tasks WHERE id=:p1",
+              [first.data.taskId],
+            )
+          ).rows[0];
+          assert.equal(String(preserved.due_at), String(original.due_at));
+          assert.equal(
+            String(preserved.original_due_at),
+            String(original.original_due_at),
+          );
+        }
+      },
+    );
+    await t.test(
       "handoff, booking and enrollment all retain task links and cancel queued notifications on completion",
       async () => {
         const v = await visitor();

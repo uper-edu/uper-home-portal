@@ -2,6 +2,12 @@ import type { Words } from "./CrmSystemGuide";
 const w = (en: string, id: string, zh: string): Words => [en, id, zh];
 // Business descriptions supplement the generated declaration index; they contain no customer values.
 const meanings: Record<string, Words> = {
+  original_due_at:w("Original deadline retained across rescheduling","Tenggat awal dipertahankan saat jadwal ulang","改期后仍保留的原始截止时间"),
+  scheduled_at:w("Revised execution appointment, not a rewritten SLA","Janji pelaksanaan baru, bukan SLA yang ditulis ulang","改约执行时间，不重写原 SLA"),
+  timing_kind:w("Response deadline, appointment or internal review","Batas respons, janji, atau tinjauan internal","响应截止、约定执行或内部复查"),
+  request_key:w("Stable request identity; task type alone does not deduplicate","Identitas permintaan tetap; jenis tugas saja bukan dasar deduplikasi","稳定请求标识，不单凭任务类型去重"),
+  fingerprint:w("Submission digest detects changed retries","Ringkasan kiriman mendeteksi perubahan saat ulang","提交摘要，用于识别重试内容冲突"),
+
   maxretriesbeforenurture: w(
     "Configurable cadence/filter threshold; full classification separately uses its fixed threshold of 3",
     "Ambang ritme/filter yang dapat dikonfigurasi; klasifikasi lengkap memakai ambang tetap 3",

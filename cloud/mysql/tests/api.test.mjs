@@ -6,7 +6,7 @@ import {newHskAttempt} from '../../../src/data/hskAssessment.ts';
 import {getExamQuestions} from '../../../src/data/hskQuizQuestions.ts';
 
 test('real MySQL portal API: registration, access scope, claiming, handoff and selected-task follow-up', {skip:!process.env.MYSQL_API_TEST}, async()=>{
-  const base='http://127.0.0.1:4412';
+  const base=process.env.MYSQL_API_BASE||'http://127.0.0.1:4412';
   function browser(){const cookies=new Map();return async(path,body)=>{
     const response=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',Origin:base,Cookie:[...cookies].map(([k,v])=>k+'='+v).join(';')},body:body===undefined?undefined:JSON.stringify(body)});
     for(const header of response.headers.getSetCookie()){const [name,value]=header.split(';')[0].split('=');cookies.set(name,value);}
@@ -54,6 +54,7 @@ test('real MySQL portal API: registration, access scope, claiming, handoff and s
   assert.equal(handoff.json.status,'awaiting_advisor');
   const repeated=await learner('/api/portal/actions',action);
   assert.equal(repeated.json.taskId,handoff.json.taskId);
+  const supplement=await learner('/api/portal/actions',{...action,messageId:marker+'-supplement',content:'TEST supplementary human-request context'});assert.equal(supplement.json.taskId,handoff.json.taskId,'same conversation request supplements existing task');
   const detail=await sales('/api/crm/leads/'+lead.id);
   assert.equal(detail.json.chatTranscript.filter(m=>m.request_id===marker).length,2);
   assert.equal(detail.json.tasks.filter(t=>t.status==='open').length,2);

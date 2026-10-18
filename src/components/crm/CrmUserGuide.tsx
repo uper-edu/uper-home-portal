@@ -18,7 +18,7 @@ export const oldChapterKeys = [
 ];
 export const operationGroups = [
   ["access"],
-  ["workspace", "efficient-followup", "filters", "visual-status"],
+  ["workspace", "efficient-followup", "filters", "visual-status", "buying-evidence-sources"],
   ["followup"],
   ["chat"],
   ["assessment"],

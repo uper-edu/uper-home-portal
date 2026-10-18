@@ -13,7 +13,7 @@ import {
 import { systemChapters } from "../src/components/crm/CrmSystemGuide.ts";
 import { guideSections } from "../src/components/crm/CrmGuideContent.ts";
 import dictionary from "../src/components/crm/crmDictionary.json";
-import snapshot from "../docs/reference/crm-implementation-snapshot-20261014.json";
+import snapshot from "../docs/reference/crm-implementation-snapshot-20261017.json";
 const documentedSource = (source: string) =>
   fs.existsSync(source) ||
   snapshot.references.some(
@@ -50,7 +50,7 @@ test("Ten system chapters restore concepts; nine operating groups preserve every
   });
   assert.equal(resolveGuideAnchor("#chapter-55"), null);
 });
-test("Dictionary includes all 28 tables, nested properties, expanded enum values and latest schema fields", () => {
+test("Dictionary includes all 35 tables, nested properties, expanded enum values and latest schema fields", () => {
   execFileSync(process.execPath, [
     "scripts/crm-documentation-dictionary.mjs",
     "--check",
@@ -59,7 +59,7 @@ test("Dictionary includes all 28 tables, nested properties, expanded enum values
     new Set(
       dictionary.filter((r) => r.layer === "storage").map((r) => r.object),
     ).size,
-    28,
+    35,
   );
   assert.equal(
     dictionary.filter(
@@ -191,7 +191,7 @@ test("CRM display dictionary excludes CMS and public submission objects without 
         .filter((r) => r.layer === "storage")
         .map((r) => r.object),
     ).size,
-    25,
+    32,
   );
   for (const row of crmDocumentationFields)
     assert.ok(

@@ -1,3 +1,6 @@
+import { attachBuyingEvidence } from "./buyingEvidence.ts";
+import {mountTrustRoutes} from "./trustRoutes.ts";
+import {fact,contactsConflict,stageFact,engagement,normalizeContactPhone} from "./trustWorkflow.ts";
 import { mountAccessOperations } from "./accessOperations.ts";
 import { mountAccessHandovers } from "./accessHandovers.ts";
 import { mountAccessRecovery } from "./accessRecovery.ts";
@@ -124,7 +127,7 @@ function requestPermission(req:Request,original:string){
  }
  if(original==='crm.write'){
   if(req.method==='PATCH'&&path.includes('/leads/')&&Object.keys(req.body||{}).length===1&&Object.hasOwn(req.body,'owner'))return 'crm.assign';
-  if(/\/(?:logs|follow-up|contact-arrangement)$/.test(path)||path.includes('/tasks/'))return 'crm.followup';
+  if(/\/(?:logs|follow-up|contact-arrangement|information|task-actions|identity-actions|engagement-actions)$/.test(path)||path.includes('/tasks/'))return 'crm.followup';
   if(path.endsWith('/attendance'))return 'crm.attendance';
  }
  return original;
@@ -163,6 +166,8 @@ async function visibleLeadProfiles(e: any) {
     }))
     .filter((p) => allowed(e, p));
   const attention = (await pool.leadAttention([e.id])).rows;
+  const pending=(await pool.query("SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE state='pending' GROUP BY lead_id")).rows;
+  const pendingMap=new Map(pending.map((r:any)=>[r.lead_id,Number(r.n)]));
   const byId = new Map(attention.map((a) => [a.id, a]));
   for (const lead of leads) {
     const a = byId.get(lead.id);
@@ -172,6 +177,7 @@ async function visibleLeadProfiles(e: any) {
     });
     lead.contactStats = contactStatistics(lead);
     lead.attention = {
+      pendingEngagements: pendingMap.get(lead.id)||0,
       unreadCount: Number(a?.unread_count || 0),
       observedAt: a?.observed_at,
       latest: a?.latest,
@@ -181,6 +187,7 @@ async function visibleLeadProfiles(e: any) {
     };
   }
 
+  await attachBuyingEvidence(pool,leads);
   return leads;
 }
 export async function mountPortal(app: Express) {
@@ -208,8 +215,8 @@ export async function mountPortal(app: Express) {
   mountAccessManagement(app);
   for (const r of defaultRules)
     await pool.query(
-      "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
-      [r.event, r],
+      "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+      [r.event, r, !["task.created","task.rescheduled","task.appointment_due"].includes(r.event)],
     );
   await initializeTeamlessAccess();
   await pool.query(
@@ -260,6 +267,10 @@ export async function mountPortal(app: Express) {
       });
     }),
   );
+  app.post("/api/portal/new-person",wrap(async(req,res)=>{
+    res.append("Set-Cookie",`${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+    res.json({success:true});
+  }));
   app.post(
     "/api/portal/conversations",
     wrap(async (req, res) => {
@@ -376,6 +387,7 @@ export async function mountPortal(app: Express) {
             [leadId],
           )
         ).rows[0]?.profile || {};
+      if(contactsConflict(existing,b)) fail(409,"Contact identity changed; start a separate visitor session");
       const profile = {
         ...existing,
         ...firstTouchAttribution(existing, b),
@@ -441,8 +453,8 @@ export async function mountPortal(app: Express) {
         [leadId, v.id],
       );
       await c.query(
-        "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','')=:p4) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",
-        [v.id, leadId, email, phone.replace(/\D/g, "")],
+        "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p4,:p5,:p6)) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",
+        [v.id, leadId, email, normalizeContactPhone(phone),normalizeContactPhone(phone).startsWith("62")?"0"+normalizeContactPhone(phone).slice(2):normalizeContactPhone(phone),phone?"00"+normalizeContactPhone(phone):""],
       );
       if (!locked.lead_id) {
         const s = (
@@ -487,10 +499,12 @@ export async function mountPortal(app: Express) {
           message.metadata.language || "en",
         );
         await c.query(
-          "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2) WHERE id=:p1",
-          [message.id, outcome.taskId],
+          "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2,'$.taskOperation',:p3) WHERE id=:p1",
+          [message.id, outcome.taskId, outcome.taskOperation || null],
         );
       }
+      const priorMessages=(await c.query("SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND c.lead_id=:p2 AND m.role='user'",[v.id,leadId])).rows;
+      for(const m of priorMessages)await engagement(c,leadId,'message',m.source_conversation+':'+m.request_id,{conversationId:m.source_conversation,requestId:m.request_id,text:m.content,messageRecordedAt:m.created_at});
       // Link previously submitted anonymous attempts without trusting contact-supplied grades.
       await c.query(
         "UPDATE hsk_attempts SET lead_id=:p1 WHERE visitor_id=:p2 AND lead_id IS NULL",
@@ -502,6 +516,8 @@ export async function mountPortal(app: Express) {
           [v.id],
         )
       ).rows;
+      const attempts=(await c.query("SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2",[v.id,leadId])).rows;
+      for(const a of attempts.filter((r:any)=>r.result&&typeof r.result==='object'))await engagement(c,leadId,"assessment",a.id,{attemptId:a.id,mode:a.result.mode,score:a.result.score,maxScore:a.result.maxScore});
       const latest = latestRows
         .map((row) => safeHskResult(row.result))
         .find(Boolean);
@@ -527,6 +543,7 @@ export async function mountPortal(app: Express) {
           profile,
         ]);
       }
+      await fact(c,leadId,"questionnaire.submitted","visitor",{answers:b,previous:Object.fromEntries(["fullName","whatsapp","email","goal","goals","city","mode","reportedLevel"].map(k=>[k,existing[k]??null]))});
       return profile;
     });
     res.json({ success: true, lead: result });
@@ -602,8 +619,9 @@ export async function mountPortal(app: Express) {
                 : "awaiting_advisor";
             return {
               taskId: taskId || null,
+              taskOperation: answer.metadata.taskOperation,
               status,
-              reply: followupReply(lang, status),
+              reply: followupReply(lang, status, action),
             };
           }
           await db.query(
@@ -624,7 +642,7 @@ export async function mountPortal(app: Express) {
               c.id,
               messageId,
               result.reply,
-              { followupAction: action, taskId: result.taskId, language: lang },
+              { followupAction: action, taskId: result.taskId, language: lang, taskOperation: result.taskOperation },
             ],
           );
           await db.query(
@@ -732,6 +750,7 @@ export async function mountPortal(app: Express) {
           l.id,
         ])
       ).rows;
+      await attachBuyingEvidence(pool,[l.profile]);
       res.json({
         ...l.profile,
         lead: { ...l.profile, chatTranscript: transcript },
@@ -941,8 +960,12 @@ export async function mountPortal(app: Express) {
           fail(400, "Owner must be an active Sales employee");
         if(ownerChanged&&next.owner&&e.grants){const target=directory.find(person=>person.id===next.owner)!;const assigned={...current,owner:next.owner};if(!allowed(target,assigned,'read')||!permittedRecord(target,assigned,'crm.followup'))fail(400,'Owner cannot access and follow up this customer');}
         if (ownerChanged) next.ownerChangedAt = new Date().toISOString();
-        if (next.currentStage !== current.currentStage)
+        if (next.currentStage !== current.currentStage){
+          await stageFact(c,l.id,e.id,current,{newStage:next.currentStage,expectedStage:req.body.expectedStage,expectedStageRevision:req.body.expectedStageRevision},req.body.stageReason);
           next.stageUpdatedAt = new Date().toISOString();
+          next.stageRevision=(current.stageRevision||0)+1;
+        }
+        await fact(c,l.id,"profile.changed",e.id,{before:Object.fromEntries(Object.keys(req.body).filter(k=>k in current).map(k=>[k,current[k]])),changes:req.body});
         await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1", [
           l.id,
           next,
@@ -1595,6 +1618,7 @@ export async function mountPortal(app: Express) {
       res.json({ success: true });
     }),
   );
+  mountTrustRoutes(app,{wrap,leadAccess,requestAllowed});
   app.post(
     [
       "/api/crm/leads/:id/follow-up",
@@ -1612,8 +1636,8 @@ export async function mountPortal(app: Express) {
         res.json({ success: true, ...result });
       } catch (error) {
         fail(
-          error instanceof WorkflowValidationError ? 400 : 503,
-          error instanceof WorkflowValidationError
+          (error as any).status||(error instanceof WorkflowValidationError ? 400 : 503),
+          error instanceof WorkflowValidationError||(error as any).status
             ? error.message
             : "Follow-up service unavailable",
         );

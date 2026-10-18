@@ -178,8 +178,8 @@ test("profile includes ownership, source and outcome without inventing enrollmen
     }),
   );
   for (const label of [
-    "客户归属与销售进展",
-    "来源归因",
+    "销售进展",
+    "获客来源与活动记录",
     "登记金额",
     "Demo Campaign",
     "TEST PARENT",
@@ -214,7 +214,7 @@ test("assessment panel keeps teacher evidence separate and does not substitute r
     }),
   );
   assert.match(html, /Teacher placement/);
-  assert.match(html, /Latest assessment record/);
+  assert.match(html, /Latest assessment · separate evidence/);
   assert.match(html, /Full assessment · 100\/100 pts/);
   assert.match(html, /Unknown time/);
   assert.doesNotMatch(html, /2026-10-13/);

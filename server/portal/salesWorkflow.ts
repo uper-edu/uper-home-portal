@@ -1,3 +1,4 @@
+import {stageFact,fact} from "./trustWorkflow.ts";
 import { evaluateFullLeadTier } from "../../src/types/crmLead.ts";
 import { randomUUID } from "node:crypto";
 export class WorkflowValidationError extends Error {}
@@ -18,9 +19,23 @@ export function validateWorkflow(body: any) {
     new Set(body.completeTaskIds).size !== body.completeTaskIds.length
   )
     throw new WorkflowValidationError("Invalid task selection");
+  if (Object.hasOwn(body, "processingTaskId")) {
+    if (body.processingTaskId !== null && (typeof body.processingTaskId !== "string" || !body.processingTaskId))
+      throw new WorkflowValidationError("Invalid task selection");
+    if (body.completeTaskIds.some((id:string) => id !== body.processingTaskId) || body.completeTaskIds.length > 1)
+      throw new WorkflowValidationError("Invalid task selection");
+  }
   if (body.recordKind && !["contact", "closure"].includes(body.recordKind))
     throw new WorkflowValidationError("Invalid contact channel");
-  if (body.recordKind !== "closure" && (!body.channel || !body.connectStatus))
+  if (body.processingTaskId) {
+    if (!["keep", "complete"].includes(body.taskOutcome))
+      throw new WorkflowValidationError("Choose a task outcome");
+    if ((body.taskOutcome === "complete") !== body.completeTaskIds.includes(body.processingTaskId))
+      throw new WorkflowValidationError("Task outcome does not match completion");
+  }
+  if (body.recordKind !== "closure" && !body.channel)
+    throw new WorkflowValidationError("Choose a contact channel");
+  if (body.recordKind !== "closure" && !body.connectStatus)
     throw new WorkflowValidationError("Choose a contact result");
   if (
     body.newStage &&
@@ -61,9 +76,10 @@ export function validateWorkflow(body: any) {
     !["Connected", "No Response", "Wrong Number"].includes(body.connectStatus)
   )
     throw new WorkflowValidationError("Choose a contact result");
+  if(body.disposition==="record_only"&&(body.completeTaskIds.length||body.contactArrangement))throw new WorkflowValidationError("Record-only cannot complete tasks or change contact arrangements");
   if (body.disposition === "none" && !body.contactArrangement)
     throw new WorkflowValidationError("Choose a contact arrangement");
-  if (!["keep", "schedule", "none", "closed"].includes(body.disposition))
+  if (!["keep", "schedule", "none", "closed", "record_only"].includes(body.disposition))
     throw new WorkflowValidationError("Choose the next arrangement");
   if (
     body.disposition === "none" &&
@@ -108,6 +124,7 @@ export async function saveSalesWorkflow(
     return { lead: current, ...previous.result, replayed: true };
   }
   validateWorkflow(body);
+  await stageFact(c,leadId,actor,current,body,body.summary);
   if (body.contactArrangement) {
     const a = body.contactArrangement;
     if (
@@ -133,6 +150,11 @@ export async function saveSalesWorkflow(
       leadId,
     ])
   ).rows;
+  if (body.processingTaskId) {
+    const bound = tasks.find((task:any)=>task.id===body.processingTaskId);
+    if (!bound || !["open","overdue"].includes(bound.status) || (body.expectedTaskRevision !== undefined && Number(bound.revision) !== Number(body.expectedTaskRevision)))
+      throw new WorkflowValidationError("Selected task changed; refresh and review");
+  }
   const selected = body.completeTaskIds.map((taskId: string) => {
     const task = tasks.find((t: any) => t.id === taskId);
     if (!task || !["open", "overdue"].includes(task.status))
@@ -166,13 +188,6 @@ export async function saveSalesWorkflow(
     )
   )
     throw new WorkflowValidationError("Keep at least one valid task");
-  if (
-    body.disposition === "schedule" &&
-    remaining.some((t: any) => t.kind === "follow_up")
-  )
-    throw new WorkflowValidationError(
-      "Existing follow-up task must be retained or completed first",
-    );
   if (body.sourceMessageId) {
     const m = (
       await c.query(
@@ -184,7 +199,7 @@ export async function saveSalesWorkflow(
   }
   let cancelled = 0;
   for (const task of selected) {
-    await c.query("UPDATE followup_tasks SET status='completed' WHERE id=:p1", [
+    await c.query("UPDATE followup_tasks SET status='completed',revision=revision+1 WHERE id=:p1", [
       task.id,
     ]);
     cancelled += (
@@ -275,9 +290,10 @@ export async function saveSalesWorkflow(
         ? current.connectStatus
         : body.connectStatus || current.connectStatus,
     currentStage: stage,
+    stageRevision:stage===current.currentStage?(current.stageRevision||0):(current.stageRevision||0)+1,
     stageUpdatedAt:
       stage === current.currentStage ? current.stageUpdatedAt : at,
-    followUpDisposition: {
+    followUpDisposition: body.disposition==="record_only"?current.followUpDisposition:{
       kind: body.disposition,
       reason: body.noNextReason || "",
       at,
@@ -324,6 +340,7 @@ export async function saveSalesWorkflow(
     )
       profile.tierUpdatedAt = at;
   }
+  await fact(c,leadId,"followup.recorded",actor,{...body,result});
   await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1", [
     leadId,
     profile,

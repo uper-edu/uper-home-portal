@@ -21,8 +21,8 @@ const render = (value: CrmLeadRecord, lang: "en" | "zh", showGoal = true) => ren
 test("CRM uses saved full thresholds in the selected language, never stored prose or a total-score estimate", () => {
   const value = withResult(result("full"));
   const before = JSON.stringify(value);
-  assert.deepEqual(crmAssessmentSummary(value, "en"), {goal: "Work in China", conclusion: "HSK 3 paper threshold met · Provisional", detail: "Full assessment · 100/100 pts", kind: "assessment"});
-  assert.equal(crmAssessmentSummary(value, "zh").conclusion, "本卷 HSK 3 门槛达成 · 暂定");
+  assert.deepEqual(crmAssessmentSummary(value, "en"), {goal: "Work in China", conclusion: "HSK 3 criteria met on this assessment", detail: "Full assessment · 100/100 pts", kind: "assessment", evidenceIncomplete: false});
+  assert.equal(crmAssessmentSummary(value, "zh").conclusion, "达到本卷 HSK 3 设定标准");
   const below = withResult(result("full", false));
   // A mismatched score cannot upgrade saved threshold outcomes.
   below.latestAssessment!.score = 100;
@@ -41,7 +41,7 @@ test("Quick is a starting-point suggestion with its own denominator and review s
 
 test("teacher placement never borrows another assessment's score or conclusion", () => {
   const value = withResult(result("full"), {levelSource: "trial", levelConfirmed: "HSK 2", quizScore: 100, quizMaxScore: 100});
-  assert.deepEqual(crmAssessmentSummary(value, "en"), {goal: "Work in China", conclusion: "HSK 2", detail: "Teacher placement", kind: "teacher"});
+  assert.deepEqual(crmAssessmentSummary(value, "en"), {goal: "Work in China", conclusion: "HSK 2", detail: "Teacher placement", kind: "teacher", evidenceIncomplete: false});
   assert.doesNotMatch(render(value, "zh"), /100|暂定|✓/);
   value.levelConfirmed = undefined;
   assert.equal(crmAssessmentSummary(value, "zh").conclusion, "未记录定级结果");

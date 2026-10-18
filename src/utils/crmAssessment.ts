@@ -45,6 +45,7 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
         t("Placement not recorded", "未记录定级结果"),
       detail: t("Teacher placement", "教师定级"),
       kind: "teacher" as const,
+      evidenceIncomplete: false,
     };
   const result = record(lead.latestAssessment);
   const mode = record(result.attempt).mode;
@@ -70,6 +71,7 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
         : t(`${score} pts (maximum unknown)`, `${score} 分（满分未知）`)
       : t("Score unavailable", "暂无分数");
     let conclusion = t("Result pending review", "结果待复核");
+    let evidenceIncomplete = true;
     if (mode === "full" && Array.isArray(result.thresholds)) {
       const thresholds = result.thresholds.map(record);
       const levels = ["HSK 1", "HSK 2", "HSK 3"];
@@ -87,11 +89,12 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
         );
         // Corrupt, nonconsecutive threshold flags cannot support a placement claim.
         if (reached.every((level, index) => level === levels[index])) {
+          evidenceIncomplete = false;
           const level = reached.at(-1);
           conclusion = level
             ? t(
-                `${level} paper threshold met · Provisional`,
-                `本卷 ${level} 门槛达成 · 暂定`,
+                `${level} criteria met on this assessment`,
+                `达到本卷 ${level} 设定标准`,
               )
             : t("HSK 1 paper threshold not met", "未达到本卷 HSK 1 门槛");
         }
@@ -104,6 +107,7 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
         [1, 2, 3].includes(placement.suggestedStartLevel as number) &&
         typeof placement.needsReview === "boolean"
       ) {
+        evidenceIncomplete = false;
         conclusion =
           placement.stage === 3
             ? t(
@@ -125,6 +129,7 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
       conclusion,
       detail: `${source} · ${scoreText}`,
       kind: "assessment" as const,
+      evidenceIncomplete,
     };
   }
   const reported = levelText(lead.reportedLevel);
@@ -140,5 +145,6 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
       ? t("Self-reported · No assessment recorded", "自述基础 · 暂无测评记录")
       : t("No assessment recorded", "暂无测评记录"),
     kind: "self" as const,
+    evidenceIncomplete: false,
   };
 }

@@ -67,14 +67,14 @@ export interface ChatTranscriptMessage {
   source?: string;
   error?: string | null;
   originalTimestamp?: unknown;
-  metadata?: {followupAction?: string;taskId?: string|null;language?: string};
+  metadata?: {followupAction?: string;taskId?: string|null;language?: string;taskOperation?: "created"|"supplemented"};
 }
 
 export interface LeadAttention {
   unreadCount: number;
   observedAt: string;
   latest?: {type:string;at:string;source?:string};
-  tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string;details?:{action?:string;purpose?:string;sourceMessageId?:string;sourceConversationId?:string}}>;
+  tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string;originalDueAt?:string;scheduledAt?:string|null;timingKind?:string;details?:{action?:string;purpose?:string;sourceMessageId?:string;sourceConversationId?:string}}>;
   isMine: boolean;
 }
 export interface CrmLeadRecord {
@@ -140,9 +140,11 @@ export interface CrmLeadRecord {
 
   // ⑥ 跟进依据
   currentStage: StageType;
+  stageRevision?: number;
   stageUpdatedAt: string;
   buyingSignal: BuyingSignalType;
   buyingSignals?: BuyingSignalType[];
+  buyingEvidence?: import("../utils/crmBuyingEvidence").BuyingEvidence[];
   connectStatus?: ConnectStatusType;
   touchCount: number;
 

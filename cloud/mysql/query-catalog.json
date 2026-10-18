@@ -127,10 +127,28 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "INSERT INTO crm_engagements(id,lead_id,kind,source_id,data) VALUES(:p1,:p2,:p3,:p4,:p5) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO crm_engagements(id,lead_id,kind,source_id,data) VALUES(:p1,:p2,:p3,:p4,:p5) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
+  "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,:p3,:p4,:p5)": {
+    "sql": "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,:p3,:p4,:p5)",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
   "INSERT INTO crm_login_limits(`key`) VALUES(:p1) ON DUPLICATE KEY UPDATE failures=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN 0 ELSE crm_login_limits.failures END,window_start=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN UTC_TIMESTAMP(6) ELSE crm_login_limits.window_start END": {
     "sql": "INSERT INTO crm_login_limits(`key`) VALUES(:p1) ON DUPLICATE KEY UPDATE failures=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN 0 ELSE crm_login_limits.failures END,window_start=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN UTC_TIMESTAMP(6) ELSE crm_login_limits.window_start END",
     "sources": [
       "server/portal/localAuth.ts"
+    ]
+  },
+  "INSERT INTO crm_operations(actor,request_id,fingerprint,result) VALUES(:p1,:p2,:p3,:p4)": {
+    "sql": "INSERT INTO crm_operations(actor,request_id,fingerprint,result) VALUES(:p1,:p2,:p3,:p4)",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
     ]
   },
   "INSERT INTO crm_sessions VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 8 hour)": {
@@ -151,6 +169,12 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
+    ]
+  },
   "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'consultation',:p3,:p4,:p5)": {
     "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'consultation',:p3,:p4,:p5)",
     "sources": [
@@ -169,22 +193,27 @@
       "server/portal/salesWorkflow.ts"
     ]
   },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,original_due_at,request_key,details) VALUES(:p1,:p2,:p3,:p4,:p5,:p5,:p6,:p7)": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,original_due_at,request_key,details) VALUES(:p1,:p2,:p3,:p4,:p5,:p5,:p6,:p7)",
+    "sources": [
+      "server/portal/followup.ts"
+    ]
+  },
+  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,original_due_at,timing_kind,request_key,details) VALUES(:p1,:p2,'follow_up',:p3,:p4,:p4,:p5,:p6,:p7)": {
+    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,original_due_at,timing_kind,request_key,details) VALUES(:p1,:p2,'follow_up',:p3,:p4,:p4,:p5,:p6,:p7)",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
   "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,status) VALUES(:p1,:p2,'legacy',:p3,:p4,'migration_hold')": {
     "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,status) VALUES(:p1,:p2,'legacy',:p3,:p4,'migration_hold')",
     "sources": [
       "scripts/portal-migrate.ts"
     ]
   },
-  "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at)": {
-    "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at)",
-    "sources": [
-      "cloud/mysql/runtime.mjs"
-    ]
-  },
   "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,:p3,:p4,:p5)": {
     "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,:p3,:p4,:p5)",
     "sources": [
-      "server/portal/followup.ts",
       "server/portal/runtime.ts"
     ]
   },
@@ -194,8 +223,8 @@
       "server/portal/assessments.ts"
     ]
   },
-  "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','')=:p4) ON DUPLICATE KEY UPDATE visitor_id=visitor_id": {
-    "sql": "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','')=:p4) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",
+  "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p4,:p5,:p6)) ON DUPLICATE KEY UPDATE visitor_id=visitor_id": {
+    "sql": "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p4,:p5,:p6)) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -278,8 +307,8 @@
       "server/portal/runtime.ts"
     ]
   },
-  "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id": {
-    "sql": "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
+  "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -295,6 +324,12 @@
     "sql": "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'contact.arrangement.changed',:p2,:p3)",
     "sources": [
       "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'task.appointment_due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'task.appointment_due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/worker.ts"
     ]
   },
   "INSERT INTO outbox(id,type,payload,created_at) VALUES(:p1,'daily.digest',:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
@@ -559,6 +594,30 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2 FOR UPDATE": {
+    "sql": "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2 FOR UPDATE",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
+  "SELECT * FROM crm_engagements WHERE lead_id=:p1 ORDER BY created_at DESC": {
+    "sql": "SELECT * FROM crm_engagements WHERE lead_id=:p1 ORDER BY created_at DESC",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
+  "SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC": {
+    "sql": "SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
+  "SELECT * FROM crm_operations WHERE actor=:p1 AND request_id=:p2": {
+    "sql": "SELECT * FROM crm_operations WHERE actor=:p1 AND request_id=:p2",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
   "SELECT * FROM crm_users": {
     "sql": "SELECT * FROM crm_users",
     "sources": [
@@ -612,6 +671,12 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "SELECT * FROM followup_tasks t WHERE status IN ('open','overdue') AND scheduled_at<=:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE": {
+    "sql": "SELECT * FROM followup_tasks t WHERE status IN ('open','overdue') AND scheduled_at<=:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
   "SELECT * FROM followup_tasks t WHERE status='open' AND due_at<:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE SKIP LOCKED": {
     "sql": "SELECT * FROM followup_tasks t WHERE status='open' AND due_at<:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE SKIP LOCKED",
     "sources": [
@@ -622,6 +687,12 @@
     "sql": "SELECT * FROM followup_tasks WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 FOR UPDATE": {
+    "sql": "SELECT * FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 FOR UPDATE",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
     ]
   },
   "SELECT * FROM followup_tasks WHERE id=:p1 FOR UPDATE": {
@@ -636,8 +707,8 @@
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND kind=:p2 AND status IN ('open','overdue') ORDER BY created_at LIMIT 1 FOR UPDATE": {
-    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND kind=:p2 AND status IN ('open','overdue') ORDER BY created_at LIMIT 1 FOR UPDATE",
+  "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND (request_key=:p2 OR kind=:p3) AND status IN ('open','overdue') ORDER BY created_at LIMIT 1 FOR UPDATE": {
+    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND (request_key=:p2 OR kind=:p3) AND status IN ('open','overdue') ORDER BY created_at LIMIT 1 FOR UPDATE",
     "sources": [
       "server/portal/followup.ts"
     ]
@@ -655,10 +726,22 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at,id": {
+    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at,id",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
   "SELECT * FROM followup_tasks WHERE owner_id=:p1 AND status IN ('open','overdue','migration_hold')": {
     "sql": "SELECT * FROM followup_tasks WHERE owner_id=:p1 AND status IN ('open','overdue','migration_hold')",
     "sources": [
       "server/portal/accessHandovers.ts"
+    ]
+  },
+  "SELECT * FROM identity_candidates WHERE lead_id=:p1 AND candidate_id=:p2 AND decision='pending' FOR UPDATE": {
+    "sql": "SELECT * FROM identity_candidates WHERE lead_id=:p1 AND candidate_id=:p2 AND decision='pending' FOR UPDATE",
+    "sources": [
+      "server/portal/trustRoutes.ts"
     ]
   },
   "SELECT * FROM messages WHERE conversation_id=:p1 AND request_id=:p2": {
@@ -867,6 +950,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT f.*,m.id AS message_id,m.content AS message_content,m.created_at AS message_at FROM crm_facts f LEFT JOIN conversations c ON c.lead_id=f.lead_id AND c.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.conversationId')) LEFT JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND (m.request_id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId')) OR m.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId'))) WHERE JSON_CONTAINS(:p1,JSON_QUOTE(f.lead_id)) AND f.kind IN ('questionnaire.submitted','followup.recorded','task.request_evidence') ORDER BY f.created_at DESC,f.id": {
+    "sql": "SELECT f.*,m.id AS message_id,m.content AS message_content,m.created_at AS message_at FROM crm_facts f LEFT JOIN conversations c ON c.lead_id=f.lead_id AND c.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.conversationId')) LEFT JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND (m.request_id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId')) OR m.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId'))) WHERE JSON_CONTAINS(:p1,JSON_QUOTE(f.lead_id)) AND f.kind IN ('questionnaire.submitted','followup.recorded','task.request_evidence') ORDER BY f.created_at DESC,f.id",
+    "sources": [
+      "server/portal/buyingEvidence.ts"
+    ]
+  },
   "SELECT GET_LOCK(:p1,0) AS acquired": {
     "sql": "SELECT GET_LOCK(:p1,0) AS acquired",
     "sources": [
@@ -897,6 +986,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT i.*,l.profile FROM identity_candidates i JOIN portal_leads l ON l.id=i.candidate_id WHERE i.lead_id=:p1": {
+    "sql": "SELECT i.*,l.profile FROM identity_candidates i JOIN portal_leads l ON l.id=i.candidate_id WHERE i.lead_id=:p1",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
   "SELECT id FROM crm_users WHERE email_key=:p1": {
     "sql": "SELECT id FROM crm_users WHERE email_key=:p1",
     "sources": [
@@ -913,6 +1008,12 @@
     "sql": "SELECT id FROM crm_users WHERE lower(login_id)=lower(:p1)",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 AND status IN ('open','overdue')": {
+    "sql": "SELECT id FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 AND status IN ('open','overdue')",
+    "sources": [
+      "server/portal/trustRoutes.ts"
     ]
   },
   "SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' AND status IN ('open','overdue') FOR UPDATE": {
@@ -994,6 +1095,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2": {
+    "sql": "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')": {
     "sql": "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')",
     "sources": [
@@ -1046,6 +1153,18 @@
     "sql": "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1",
     "sources": [
       "scripts/portal-migrate.ts"
+    ]
+  },
+  "SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE state='pending' GROUP BY lead_id": {
+    "sql": "SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE state='pending' GROUP BY lead_id",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND c.lead_id=:p2 AND m.role='user'": {
+    "sql": "SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND c.lead_id=:p2 AND m.role='user'",
+    "sources": [
+      "server/portal/runtime.ts"
     ]
   },
   "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence": {
@@ -1110,6 +1229,7 @@
       "server/portal/followup.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts",
+      "server/portal/trustWorkflow.ts",
       "cloud/mysql/site.mjs",
       "cloud/mysql/runtime.mjs"
     ]
@@ -1146,6 +1266,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2": {
+    "sql": "SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
   "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2": {
     "sql": "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
     "sources": [
@@ -1168,8 +1294,7 @@
   "SELECT status FROM followup_tasks WHERE id=:p1": {
     "sql": "SELECT status FROM followup_tasks WHERE id=:p1",
     "sources": [
-      "server/portal/runtime.ts",
-      "server/portal/worker.ts"
+      "server/portal/runtime.ts"
     ]
   },
   "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id": {
@@ -1308,6 +1433,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "UPDATE crm_engagements SET state=:p2,task_id=:p3,version=version+1 WHERE id=:p1": {
+    "sql": "UPDATE crm_engagements SET state=:p2,task_id=:p3,version=version+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
   "UPDATE crm_login_limits SET failures=0 WHERE `key`=:p1": {
     "sql": "UPDATE crm_login_limits SET failures=0 WHERE `key`=:p1",
     "sources": [
@@ -1356,14 +1487,32 @@
       "server/portal/runtime.ts"
     ]
   },
+  "UPDATE followup_tasks SET revision=revision+1 WHERE id=:p1": {
+    "sql": "UPDATE followup_tasks SET revision=revision+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET scheduled_at=:p2,revision=revision+1,details=JSON_SET(details,'$.noticeRevision',COALESCE(JSON_EXTRACT(details,'$.noticeRevision'),0)+1) WHERE id=:p1": {
+    "sql": "UPDATE followup_tasks SET scheduled_at=:p2,revision=revision+1,details=JSON_SET(details,'$.noticeRevision',COALESCE(JSON_EXTRACT(details,'$.noticeRevision'),0)+1) WHERE id=:p1",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
   "UPDATE followup_tasks SET status='cancelled' WHERE lead_id=:p1 AND kind='contact_review' AND status IN ('open','overdue')": {
     "sql": "UPDATE followup_tasks SET status='cancelled' WHERE lead_id=:p1 AND kind='contact_review' AND status IN ('open','overdue')",
     "sources": [
       "server/portal/salesWorkflow.ts"
     ]
   },
-  "UPDATE followup_tasks SET status='completed' WHERE id=:p1": {
-    "sql": "UPDATE followup_tasks SET status='completed' WHERE id=:p1",
+  "UPDATE followup_tasks SET status='cancelled',revision=revision+1,details=JSON_SET(details,'$.resolution',:p2,'$.replacedBy',:p3) WHERE id=:p1": {
+    "sql": "UPDATE followup_tasks SET status='cancelled',revision=revision+1,details=JSON_SET(details,'$.resolution',:p2,'$.replacedBy',:p3) WHERE id=:p1",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
+  "UPDATE followup_tasks SET status='completed',revision=revision+1 WHERE id=:p1": {
+    "sql": "UPDATE followup_tasks SET status='completed',revision=revision+1 WHERE id=:p1",
     "sources": [
       "server/portal/salesWorkflow.ts"
     ]
@@ -1386,14 +1535,20 @@
       "server/portal/runtime.ts"
     ]
   },
+  "UPDATE identity_candidates SET decision=:p3,decided_by=:p4,reason=:p5,decided_at=UTC_TIMESTAMP(6) WHERE lead_id=:p1 AND candidate_id=:p2": {
+    "sql": "UPDATE identity_candidates SET decision=:p3,decided_by=:p4,reason=:p5,decided_at=UTC_TIMESTAMP(6) WHERE lead_id=:p1 AND candidate_id=:p2",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
   "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5 WHERE id=:p1": {
     "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5 WHERE id=:p1",
     "sources": [
       "server/portal/chat.ts"
     ]
   },
-  "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2) WHERE id=:p1": {
-    "sql": "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2) WHERE id=:p1",
+  "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2,'$.taskOperation',:p3) WHERE id=:p1": {
+    "sql": "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2,'$.taskOperation',:p3) WHERE id=:p1",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -1450,6 +1605,12 @@
     "sql": "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId')),'null')=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId')),'null')=:p1",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
     ]
   },
   "UPDATE notification_jobs SET state='cancelled',result='Merged within dedupe window' WHERE id=:p1": {
@@ -1566,6 +1727,7 @@
       "server/portal/accessHandovers.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts",
+      "server/portal/trustRoutes.ts",
       "cloud/mysql/runtime.mjs"
     ]
   },

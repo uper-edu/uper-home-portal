@@ -1,3 +1,4 @@
+import {engagement,fact} from "./trustWorkflow.ts";
 import type { Express } from "express";
 import { createHash } from "node:crypto";
 import {
@@ -92,6 +93,8 @@ export function mountHskAssessments(app: Express) {
               levelSource: "assessment",
             }),
           ]);
+          await engagement(c,visitorRow.lead_id,"assessment",attempt.attemptId,{attemptId:attempt.attemptId,mode:attempt.mode,score:calculated.score,maxScore:calculated.maxScore});
+          await fact(c,visitorRow.lead_id,"assessment.submitted","visitor",{attemptId:attempt.attemptId,mode:attempt.mode,score:calculated.score,maxScore:calculated.maxScore});
           await event(c, "assessment.completed", visitorRow.lead_id, {
             attemptId: attempt.attemptId,
             mode: attempt.mode,

@@ -1,12 +1,22 @@
+import { CrmBuyingEvidence } from "./CrmBuyingEvidence";
+import { CrmDisclosure } from "./CrmDisclosure";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useState } from "react";
-import type { CrmLeadRecord, ChatTranscriptMessage } from "../../types/crmLead";
-import { crmValue, crmError, crmLocale, type CrmLanguage } from "../../utils/crmLanguage";
-import { crmAssessmentSummary } from "../../utils/crmAssessment";
-import { crmMessageTimeLabel } from "../../utils/crmMessageTime";
+import type { CrmLeadRecord } from "../../types/crmLead";
+import {
+  crmValue,
+  crmError,
+  crmLocale,
+  type CrmLanguage,
+} from "../../utils/crmLanguage";
+import { CrmConversationTimeline } from "./CrmConversationTimeline";
+import type {
+  ConversationMessage,
+  ConversationRecord,
+  ConversationTask,
+} from "../../utils/crmConversations";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import {
-  buyingSignals,
   customerCity,
   customerOutcome,
 } from "../../utils/crmWorkspace";
@@ -44,8 +54,16 @@ export function CrmCustomerProfile({
   lang,
   timezone,
   ownership,
+  communication,
+  participation, identity, signalFocus, onSignalSource, onSignalTask,
 }: DetailProps & {
   ownership: React.ReactNode;
+  communication?: React.ReactNode;
+  participation?: React.ReactNode;
+  identity?: React.ReactNode;
+  signalFocus?: {id:string;token:number};
+  onSignalSource?: (e:any)=>void;
+  onSignalTask?: (id:string)=>void;
 }) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
@@ -55,10 +73,105 @@ export function CrmCustomerProfile({
     behaviour_override: ["Customer activity", "客户行为"],
     buying_signal: ["Buying signal", "购买信号"],
   };
+  const hasValue = (value: unknown) =>
+    typeof value === "string" && Boolean(value.trim());
+  const sourceItems: Array<[string, React.ReactNode]> = [
+    ...(hasValue(lead.entryPoint)
+      ? [
+          [
+            t("Acquisition entry", "获客入口"),
+            crmValue(lead.entryPoint, lang),
+          ] as [string, React.ReactNode],
+        ]
+      : []),
+    ...(hasValue(lead.campaign)
+      ? [
+          [t("Campaign", "营销活动"), lead.campaign] as [
+            string,
+            React.ReactNode,
+          ],
+        ]
+      : hasValue(lead.campaignId)
+        ? [
+            [
+              t("Campaign", "营销活动"),
+              t("Campaign name not recorded", "活动名称未记录"),
+            ] as [string, React.ReactNode],
+          ]
+        : []),
+  ];
+  if (hasValue(lead.submittedAt))
+    sourceItems.push([
+      t("Registered", "登记时间"),
+      knownDate(lead.submittedAt, timezone, lang),
+    ]);
+  const outcomeItems: Array<[string, React.ReactNode]> = [
+    ...(hasValue(lead.outcome)
+      ? [
+          [t("Outcome", "结果"), customerOutcome(lead.outcome, lang)] as [
+            string,
+            React.ReactNode,
+          ],
+        ]
+      : []),
+    ...(hasValue(lead.enrolledClass)
+      ? [
+          [t("Enrolled class", "报名班级"), lead.enrolledClass] as [
+            string,
+            React.ReactNode,
+          ],
+        ]
+      : []),
+    ...(typeof lead.revenue === "number" && Number.isFinite(lead.revenue)
+      ? [
+          [
+            t("Recorded amount", "登记金额"),
+            `Rp ${lead.revenue.toLocaleString(crmLocale(lang))}`,
+          ] as [string, React.ReactNode],
+        ]
+      : []),
+  ];
+  const trackingItems: Array<[string, React.ReactNode]> = [
+    ...(hasValue(lead.campaignId)
+      ? [
+          [t("Campaign ID", "活动标识"), lead.campaignId] as [
+            string,
+            React.ReactNode,
+          ],
+        ]
+      : []),
+    ...(hasValue(lead.placement)
+      ? [
+          [
+            t("Link placement", "链接投放位置"),
+            crmValue(lead.placement, lang),
+          ] as [string, React.ReactNode],
+        ]
+      : []),
+    ...(hasValue(lead.hookType)
+      ? [
+          [
+            t("Acquisition content", "获客引导内容"),
+            crmValue(lead.hookType, lang),
+          ] as [string, React.ReactNode],
+        ]
+      : []),
+    ...(hasValue(lead.hookContext)
+      ? [
+          [
+            t("Acquisition context", "获客场景"),
+            crmValue(lead.hookContext, lang),
+          ] as [string, React.ReactNode],
+        ]
+      : []),
+  ];
+  const activityRecords = (lead.attendanceRecords || []).filter(
+    (record) => record && typeof record === "object",
+  );
   return (
-    <div className="crm-customer-sections">
+    <div className="crm-customer-sections crm-customer-profile">
       <section>
-        <h3>{t("Contact and identity", "联系方式与客户身份")}</h3>
+        <h3>{t("Customer and contact details", "客户与联系方式")}</h3>
         <Facts
           items={[
             [t("Name", "姓名"), lead.fullName],
@@ -77,47 +190,12 @@ export function CrmCustomerProfile({
                 ]
               : []),
             [
-              t("Registered", "登记时间"),
-              knownDate(lead.submittedAt, timezone, lang),
+              t("Preferred communication language", "首选沟通语言"),
+              communication || t("Not recorded", "未记录"),
             ],
           ]}
         />
-      </section>
-      <section>
-        <h3>{t("Ownership and sales progress", "客户归属与销售进展")}</h3>
-        {ownership}
-        <p>{t("Customer group", "客户分组")}：{crmValue(lead.tier, lang)}</p>
-        <details><summary>{t("Classification evidence", "分组依据")}</summary><Facts
-          items={[
-            [
-              t("Classification source", "分组来源"),
-              (lang === "id"
-                ? crmId(tierSources[lead.tierSource]?.[0])
-                : tierSources[lead.tierSource]?.[lang === "zh" ? 1 : 0]) ||
-                t("Not recorded", "未记录"),
-            ],
-            [
-              t("Sales-confirmed group", "人工确认分组"),
-              crmValue(lead.tierConfirmed, lang),
-            ],
-            [
-              t("Predicted group", "规则预测分组"),
-              crmValue(lead.tierPredicted, lang),
-            ],
-            [
-              t("Group updated", "分组更新时间"),
-              knownDate(lead.tierUpdatedAt, timezone, lang),
-            ],
-            [
-              t("Buying signals", "购买信号"),
-              buyingSignals(lead)
-                .map((s) => crmValue(s, lang))
-                .join(
-                  lang === "id" ? crmId(", ") : lang === "zh" ? "、" : ", ",
-                ) || t("None recorded", "尚未记录"),
-            ],
-          ]}
-        /></details>
+        {identity}
       </section>
       <section>
         <h3>{t("Learning needs", "学习需求")}</h3>
@@ -141,188 +219,170 @@ export function CrmCustomerProfile({
         />
       </section>
       <section>
-        <details><summary>{t("Attribution", "来源归因")}</summary>
-        <Facts
-          items={[
-            [t("First source", "首次来源"), crmValue(lead.entryPoint, lang)],
-            [t("Campaign", "营销活动"), lead.campaign],
-            [t("Campaign ID", "活动标识"), (lead as any).campaignId],
-            [t("Placement", "投放位置"), crmValue(lead.placement, lang)],
-            [t("Entry offer", "引导内容"), crmValue(lead.hookType, lang)],
-            [t("Entry context", "入口场景"), crmValue(lead.hookContext, lang)],
-          ]}
-        /></details>
-      </section>
-      <section>
-        <details open={Boolean(lead.outcome)}><summary>{t("Recorded outcome", "已登记业务结果")}</summary>
-        <Facts
-          items={[
-            [t("Outcome", "结果"), customerOutcome(lead.outcome, lang)],
-            [t("Enrolled class", "报名班级"), lead.enrolledClass],
-            [
-              t("Recorded amount", "登记金额"),
-              typeof lead.revenue === "number"
-                ? `Rp ${lead.revenue.toLocaleString(crmLocale(lang))}`
-                : "—",
-            ],
-            ...(lead.attendanceConfirmed===undefined?[]:[[
-              t("Legacy attendance flag (unscoped)", "历史出席标记（未关联活动）"),
-              lead.attendanceConfirmed
-                  ? t("Yes", "是")
-                  : t("No", "否"),
-            ] as [string,React.ReactNode]]),
-          ]}
-        /></details>
-      </section>
-    </div>
-  );
-}
-export function CrmCustomerAssessment({ lead, lang, timezone }: DetailProps) {
-  const t = (en: string, zh: string) =>
-    lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
-  const summary = crmAssessmentSummary(lead, lang);
-  const result =
-    lead.latestAssessment &&
-    typeof lead.latestAssessment === "object" &&
-    !Array.isArray(lead.latestAssessment)
-      ? lead.latestAssessment
-      : undefined;
-  const paper =
-    lead.levelSource === "trial" && result
-      ? crmAssessmentSummary(
-          { ...lead, levelSource: "assessment", levelConfirmed: undefined },
-          lang,
-        )
-      : summary;
-  const sections =
-    result?.sections && typeof result.sections === "object"
-      ? Object.entries(result.sections)
-      : [];
-  return (
-    <div className="crm-customer-sections">
-      <section>
-        <h3>{t("Current placement evidence", "当前定级依据")}</h3>
-        <p>{summary.conclusion}</p>
-        {summary.kind==="teacher"&&<Facts items={[[t("Teacher","教师"),t("Not recorded","未记录")],[t("Placement date","定级时间"),t("Not recorded","未记录")]]}/>}
+        <h3>{t("Sales progress", "销售进展")}</h3>
+        {ownership}
 
-        <p className="crm-work-muted">{summary.detail}</p>
-        <p>{summary.kind==="teacher"?t("Review teacher evidence before discussing course options","先查看教师定级依据，再讨论课程选择"):summary.kind==="assessment"?t("Use the assessment as a reference; confirm learning needs with an advisor","测评仅作参考，请与顾问确认学习需求"):t("Confirm learning experience and consider an assessment","确认学习经历，必要时建议测评")}</p>
-        {summary.kind === "assessment" && (
-          <p className="crm-work-muted">
-            {t(
-              "Internal assessment reference; not an official HSK certificate.",
-              "内部测评参考，不代表官方 HSK 证书。",
-            )}
-          </p>
+        {outcomeItems.length > 0 && (
+          <section className="crm-profile-outcome">
+            <h4>{t("Recorded outcome", "已登记业务结果")}</h4>
+            <Facts items={outcomeItems} />
+          </section>
         )}
       </section>
-      <section>
-        <h3>{t("Self-reported level", "客户自报水平")}</h3>
-        <p>{crmValue(lead.reportedLevel, lang)}</p>
+      <section className="crm-profile-group">
+        <h3 className="crm-profile-group-heading">
+          {t("Customer group", "客户分组")}
+        </h3>
+        <Facts
+          items={[
+            [
+              t("Current group", "当前分组"),
+              hasValue(lead.tier)
+                ? crmValue(lead.tier, lang)
+                : t("Not recorded", "未记录"),
+            ],
+            [
+              t("Classification source", "分组来源"),
+              (lang === "id"
+                ? crmId(tierSources[lead.tierSource]?.[0])
+                : tierSources[lead.tierSource]?.[lang === "zh" ? 1 : 0]) ||
+                t("Not recorded", "未记录"),
+            ],
+            ...(hasValue(lead.tierConfirmed)
+              ? [
+                  [
+                    t("Sales-confirmed group", "人工确认分组"),
+                    crmValue(lead.tierConfirmed, lang),
+                  ] as [string, React.ReactNode],
+                ]
+              : []),
+            ...(hasValue(lead.tierPredicted)
+              ? [
+                  [
+                    t("Rule-calculated group", "规则计算分组"),
+                    crmValue(lead.tierPredicted, lang),
+                  ] as [string, React.ReactNode],
+                ]
+              : []),
+            [
+              t("Group updated", "分组更新时间"),
+              knownDate(lead.tierUpdatedAt, timezone, lang),
+            ],
+          ]}
+        />
+        <CrmBuyingEvidence lead={lead} lang={lang} timezone={timezone} focus={signalFocus} onSource={onSignalSource} onTask={onSignalTask}/>
       </section>
-      {result && (
-        <section>
-          <details><summary>{t("Latest assessment record", "最近一次测评记录")}</summary>
-          {summary.kind === "teacher" && (
-            <>
-              <p>{paper.conclusion}</p>
-              <p className="crm-work-muted">{paper.detail}</p>
-            </>
-          )}
-          <Facts
-            items={[
-              [
-                t("Completed", "完成时间"),
-                knownDate(result.attempt?.completedAt, timezone, lang),
-              ],
-
-              [t("Questions", "题目数量"), result.questionCount ?? "—"],
-              [t("Correct answers", "正确题数"), result.correctCount ?? "—"],
-              [t("Skipped", "跳过题数"), result.skippedCount ?? "—"],
-              [t("Unanswered", "未作答题数"), result.unansweredCount ?? "—"],
-            ]}
-          />
-          <details><summary>{t("Technical evidence","技术与审计依据")}</summary><Facts items={[[t("Exam version","试卷版本"),result.attempt?.examVersion],[t("Scoring version","评分版本"),result.attempt?.scoringVersion]]}/></details>
-          {sections.length > 0 && (
-            <table className="crm-assessment-sections">
-              <caption>{t("Section results", "分项结果")}</caption>
-              <thead>
-                <tr>
-                  <th>{t("Section", "项目")}</th>
-                  <th>{t("Correct / Total", "正确／总题数")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sections.map(([key, value]) => (
-                  <tr key={key}>
-                    <td>
-                      {{
-                        listening: t("Listening", "听力"),
-                        reading: t("Reading", "阅读"),
-                        writing: t("Writing", "书写"),
-                      }[key] || key}
-                    </td>
-                    <td>
-                      {value?.correct ?? "—"} / {value?.total ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}</details>
-        </section>
-      )}
-      {!result && summary.kind === "assessment" && (
-        <section>
-          <p className="crm-work-muted">
-            {t(
-              "Historical record: structured attempt details are unavailable.",
-              "历史测评缺少完整的结构化作答记录。",
+      <section>
+        <CrmDisclosure
+          heading={
+            <>{t("Acquisition and activity records", "获客来源与活动记录")}</>
+          }
+          className="crm-acquisition-records"
+        >
+          <div className="crm-acquisition-body">
+            {sourceItems.length > 0 ? (
+              <div>
+                <h4>{t("Acquisition source", "获客来源")}</h4>
+                <Facts items={sourceItems} />
+              </div>
+            ) : (
+              <p className="crm-work-muted">
+                {t("Acquisition source not recorded", "获客来源未记录")}
+              </p>
             )}
-          </p>
-        </section>
-      )}
-      {!result && lead.quizBreakdown && (
-        <section>
-          <h3>{t("Historical section counts", "历史分项题数")}</h3>
-          <Facts
-            items={([1, 2, 3] as const).map((n) => [
-              `HSK ${n}`,
-              `${lead.quizBreakdown?.[`hsk${n}Correct`] ?? "—"} / ${lead.quizBreakdown?.[`hsk${n}Total`] ?? "—"}`,
-            ])}
-          />
-        </section>
-      )}
-      {lead.quizResultSummary && (
-        <details className="crm-customer-original">
-          <summary>{t("Original saved notes", "已保存的原始说明")}</summary>
-          <p>{lead.quizResultSummary}</p>
-        </details>
-      )}
+            {trackingItems.length > 0 && (
+              <section className="crm-detail-subsection ">
+                <h4>{t("Source tracking details", "来源追踪详情")}</h4>
+                <Facts items={trackingItems} />
+              </section>
+            )}
+            {(activityRecords.length > 0 ||
+              lead.attendanceConfirmed !== undefined) && (
+              <section className="crm-detail-subsection crm-participation-history">
+                <h4>{t("Saved activity records", "已保存活动记录")}</h4>
+                {activityRecords.map((record, index) => (
+                  <article key={record.campaignId || index}>
+                    <Facts
+                      items={[
+                        [t("Campaign ID", "活动标识"), record.campaignId],
+                        [
+                          t("Participation status", "参与记录状态"),
+                          record.confirmed === true
+                            ? t("Confirmed", "已确认")
+                            : record.confirmed === false
+                              ? t("Withdrawn", "已撤销")
+                              : t("Not recorded", "未记录"),
+                        ],
+                        [
+                          t("Participation mode", "参与方式"),
+                          record.mode === "onsite"
+                            ? t("Onsite", "现场")
+                            : record.mode === "online"
+                              ? t("Online", "线上")
+                              : t("Not recorded", "未记录"),
+                        ],
+                        [t("Recorded by", "记录人"), record.actor],
+                        [
+                          t("Recorded", "记录时间"),
+                          knownDate(record.recordedAt, timezone, lang),
+                        ],
+                        [
+                          t("Evidence / reason", "确认依据／原因"),
+                          <span className="crm-participation-note">
+                            {record.reason}
+                          </span>,
+                        ],
+                      ]}
+                    />
+                  </article>
+                ))}
+                {lead.attendanceConfirmed !== undefined && (
+                  <Facts
+                    items={[
+                      [
+                        t(
+                          "Legacy attendance flag (unscoped)",
+                          "历史出席标记（未关联活动）",
+                        ),
+                        lead.attendanceConfirmed
+                          ? t("Yes", "是")
+                          : t("No", "否"),
+                      ],
+                    ]}
+                  />
+                )}
+              </section>
+            )}
+          </div>
+        </CrmDisclosure>
+        {participation}
+      </section>
     </div>
   );
 }
-type Conversation = {
-  id: string;
-  source: string;
-  started_at?: string;
-  created_at?: string;
-};
-type ConversationMessage = ChatTranscriptMessage & {
-  conversation_id?: string;
-};
+export { CrmCustomerAssessment } from "./CrmAssessmentDetails";
 export function CrmCustomerConversations({
   lead,
   lang,
   timezone,
-  onAssociate,
-}: DetailProps & {onAssociate?: (message:any)=>void}) {
+  onOpenTask,
+  conversationContext,
+  isLight,
+}: DetailProps & {
+  isLight: boolean;
+  onOpenTask: (taskId: string, message: ConversationMessage) => void;
+  conversationContext?: {
+    conversationId?: string;
+    messageId?: string;
+    requestId?: string;
+  };
+}) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const [data, setData] = useState<{
     messages: ConversationMessage[];
-    conversations: Conversation[];
-    tasks: any[];
+    conversations: ConversationRecord[];
+    tasks: ConversationTask[];
   } | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -346,7 +406,8 @@ export function CrmCustomerConversations({
           setData({
             messages:
               detail.chatTranscript || detail.lead?.chatTranscript || [],
-            conversations,tasks,
+            conversations,
+            tasks,
           });
       })
       .catch((e) => {
@@ -369,80 +430,18 @@ export function CrmCustomerConversations({
     );
   if (!data)
     return <p role="status">{t("Loading conversations…", "正在加载对话…")}</p>;
-  const ids = [
-    ...new Set([
-      ...data.conversations.map((c) => c.id),
-      ...data.messages.map((m) => m.conversation_id || "legacy"),
-    ]),
-  ];
-  if (!data.messages.length)
-    return (
-      <p className="crm-work-muted">
-        {t("No conversations recorded", "暂无对话记录")}
-      </p>
-    );
-  ids.sort((a,b)=>{const latest=(id:string)=>Math.max(0,...data.messages.filter(m=>(m.conversation_id||"legacy")===id).map(m=>Date.parse(m.timestamp)||0));return latest(b)-latest(a);});
-  const latestUser=data.messages.filter(m=>m.role==="user").sort((a,b)=>(Date.parse(b.timestamp)||0)-(Date.parse(a.timestamp)||0))[0];
   return (
-    <div className="crm-customer-conversations">
-      {latestUser&&<button type="button" className="crm-work-button" onClick={()=>document.getElementById('crm-message-'+latestUser.id)?.scrollIntoView({block:'center'})}>{t("Latest customer message","最新客户消息")}</button>}
-      {ids.map((id) => {
-        const conversation = data.conversations.find((c) => c.id === id),
-          messages = data.messages.filter(
-            (m) => (m.conversation_id || "legacy") === id,
-          );
-        if (!messages.length) return null;
-        return (
-          <section key={id} className="crm-conversation">
-            <h3>
-              {crmValue(
-                conversation?.source || messages[0]?.source || "legacy_unknown",
-                lang,
-              )}
-            </h3>
-            <div className="crm-work-muted">
-              {t("Conversation", "会话")} ·{" "}
-              {crmMessageTimeLabel(messages[0],lang,value=>formatCrmOperatingTime(value,timezone))}{" "}
-              · {messages.length}{" "}
-              {t(messages.length === 1 ? "message" : "messages", "条消息")}
-            </div>
-            <details><summary>{t("Conversation reference","会话标识")}</summary><code>{id}</code></details>
-            {messages.map((m, i) => (
-              <article id={'crm-message-'+m.id}
-                key={m.id || i}
-                className="crm-conversation-message"
-                data-role={m.role}
-              >
-                <div className="crm-work-muted">
-                  {m.role === "user"
-                    ? lead.fullName
-                    : m.role === "system" || m.metadata?.followupAction
-                      ? t("UPER system", "UPER 系统")
-                      : t("UPER AI advisor", "UPER AI 顾问")}{" "}
-                  ·{" "}
-                  {crmMessageTimeLabel(m, lang, (value) =>
-                    formatCrmOperatingTime(value, timezone),
-                  )}
-                </div>
-                <p>{m.content}</p>
-                {m.metadata?.followupAction&&<p className="crm-work-muted">{(()=>{const task=data.tasks.find(task=>task.id===m.metadata?.taskId);return !task?t("Follow-up status unavailable","跟进状态暂不可用"):task.status==="completed"?t("Follow-up completed","跟进事项已完成"):task.status==="cancelled"?t("Follow-up cancelled","跟进事项已取消"):task.status==="migration_hold"?t("Historical task: review required","历史待办待确认"):task.owner_id?t("Advisor follow-up assigned","已分配顾问跟进"):t("Advisor follow-up unassigned","顾问跟进待分配");})()}</p>}
-                {m.role==="user"&&m.id&&m.conversation_id&&onAssociate&&<button type="button" className="crm-work-link" onClick={()=>onAssociate(m)}>{t("Link to follow-up","关联到跟进")}</button>}
-                {["failed", "interrupted", "pending", "generating"].includes(
-                  m.status || "",
-                ) && (
-                  <p className="crm-work-muted">
-                    {m.status === "failed"
-                      ? t("Reply failed", "回复失败")
-                      : m.status === "interrupted"
-                        ? t("Reply interrupted", "回复已中断")
-                        : t("Reply pending", "等待回复")}
-                  </p>
-                )}
-              </article>
-            ))}
-          </section>
-        );
-      })}
-    </div>
+    <CrmConversationTimeline
+      key={lead.id}
+      lead={lead}
+      lang={lang}
+      timezone={timezone}
+      isLight={isLight}
+      messages={data.messages}
+      conversations={data.conversations}
+      tasks={data.tasks}
+      onOpenTask={onOpenTask}
+      conversationContext={conversationContext}
+    />
   );
 }

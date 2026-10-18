@@ -547,3 +547,14 @@ body, .glass-card, button, a, div, section, input, select, textarea {
     display: none;
   }
 }
+
+.crm-trust-panel { display:grid; gap:12px; min-width:0; margin-block:16px; }
+.crm-trust-panel details,.crm-trust-panel article { border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:12px;padding:12px;min-width:0; }
+.crm-trust-panel article {margin-block:8px;overflow-wrap:anywhere;}
+.crm-trust-panel summary{cursor:pointer;font-weight:600;}
+.crm-trust-panel label {display:grid;gap:6px;}
+.crm-trust-panel textarea,.crm-trust-panel input{width:100%;min-width:0;background:transparent;color:inherit;border:1px solid color-mix(in srgb,currentColor 30%,transparent);border-radius:8px;padding:8px;}
+.crm-trust-panel button {border:1px solid color-mix(in srgb,currentColor 30%,transparent);border-radius:8px;padding:8px 12px;min-height:40px;}
+.crm-trust-panel button:focus-visible{outline:2px solid #0d9488;outline-offset:2px;}
+.crm-trust-panel button:disabled{opacity:.55;}
+.crm-trust-actions{display:flex;flex-wrap:wrap;gap:8px;}

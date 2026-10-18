@@ -9,9 +9,10 @@ export function confirmedTaskDeadline(task: FollowUpTask): number | null {
   const value = Date.parse(task.dueAt);
   return Number.isFinite(value) && value > 0 ? value : null;
 }
-export function pendingFollowUps(tasks: FollowUpTask[]): FollowUpTask[] {
+export function pendingFollowUps(tasks: FollowUpTask[], stage?: string): FollowUpTask[] {
   const pending = tasks.filter((task) =>
-    ["open", "overdue", "migration_hold"].includes(task.status),
+    ["open", "overdue", "migration_hold"].includes(task.status) &&
+      !(task.status === "migration_hold" && ["Enrolled", "Lost"].includes(stage || "")),
   );
   return pending.sort((a, b) => {
     // Historical placeholders must never outrank a real, dated task.
@@ -82,12 +83,12 @@ export function describeFollowUpTask(
   };
 }
 export function leadFollowUp(
-  lead: Pick<CrmLeadRecord, "attention" | "nextAction" | "owner">,
+  lead: Pick<CrmLeadRecord, "attention" | "nextAction" | "owner" | "currentStage">,
   lang: "zh" | "en" | "id",
   timezone: string,
   now = Date.now(),
 ) {
-  const tasks = pendingFollowUps(lead.attention?.tasks ?? []);
+  const tasks = pendingFollowUps(lead.attention?.tasks ?? [], lead.currentStage);
   return {
     loaded: !!lead.attention,
     next: tasks[0] ? {...describeFollowUpTask(tasks[0], lang, timezone, now),...(contactPaused(lead)?{action:(lang==='zh'?'内部核实／复查':lang==='id'?'Tinjauan internal':'Internal review')+' · '+describeFollowUpTask(tasks[0],lang,timezone,now).action}:{})} : null,

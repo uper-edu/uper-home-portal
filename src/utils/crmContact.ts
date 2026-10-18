@@ -34,6 +34,7 @@ export function needsHandling(
   day: (n: number) => string,
 ) {
   if (!lead.attention) return true;
+  if(lead.attention.pendingEngagements>0)return true;
   const tasks = (lead.attention.tasks || []).filter((t: any) =>
     ["open", "overdue", "migration_hold"].includes(t.status),
   );

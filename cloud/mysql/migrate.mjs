@@ -92,13 +92,31 @@ async function applyStaffEmailMigration(connection){
 
 async function applyAccessReliabilityMigration(connection){
  const [versions]=await connection.query('SELECT * FROM trial_schema_versions WHERE version=8');
- if(versions[0]?.state==='ready')return {version:8,state:'ready',alreadyApplied:true};
+ if(versions[0]?.state==='ready')return applyTrustMigration(connection);
  if(versions.length)throw Error('Incomplete access reliability migration');
  await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(8,'applying')");
  await connection.query("CREATE TABLE access_operations(actor_id VARCHAR(191) NOT NULL,operation_id VARCHAR(100) NOT NULL,action VARCHAR(100) NOT NULL,fingerprint CHAR(64) NOT NULL,result JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),PRIMARY KEY(actor_id,operation_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
  await connection.query("CREATE TABLE access_handovers(id CHAR(36) PRIMARY KEY,user_id VARCHAR(191) NOT NULL,revision BIGINT NOT NULL DEFAULT 1,state VARCHAR(24) NOT NULL DEFAULT 'pending',causes JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),INDEX handover_user(user_id,state)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
  await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=8");
- return {version:8,state:'ready'};
+ return applyTrustMigration(connection);
+}
+
+async function applyTrustMigration(connection){
+ const [versions]=await connection.query('SELECT * FROM trial_schema_versions WHERE version=9');
+ if(versions[0]?.state==='ready')return {version:9,state:'ready',alreadyApplied:true};
+ if(versions.length)throw Error('Incomplete CRM facts migration; inspect before retrying');
+ await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(9,'applying')");
+ const ddl=[
+ "CREATE TABLE crm_facts(id CHAR(36) PRIMARY KEY,lead_id VARCHAR(191) NOT NULL,kind VARCHAR(64) NOT NULL,actor VARCHAR(191) NOT NULL,data JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),INDEX fact_lead(lead_id,created_at),FOREIGN KEY(lead_id) REFERENCES portal_leads(id)) ENGINE=InnoDB",
+ "CREATE TABLE crm_operations(actor VARCHAR(191) NOT NULL,request_id VARCHAR(100) NOT NULL,fingerprint CHAR(64) NOT NULL,result JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),PRIMARY KEY(actor,request_id)) ENGINE=InnoDB",
+ "CREATE TABLE crm_engagements(id VARCHAR(191) PRIMARY KEY,lead_id VARCHAR(191) NOT NULL,kind VARCHAR(32) NOT NULL,source_id VARCHAR(191) NOT NULL,data JSON NOT NULL,state VARCHAR(24) NOT NULL DEFAULT 'pending',task_id VARCHAR(191),version INT NOT NULL DEFAULT 0,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),INDEX engagement_lead(lead_id,state),FOREIGN KEY(lead_id) REFERENCES portal_leads(id)) ENGINE=InnoDB",
+ "ALTER TABLE identity_candidates ADD COLUMN decision VARCHAR(16) NOT NULL DEFAULT 'pending',ADD COLUMN decided_by VARCHAR(191),ADD COLUMN reason TEXT,ADD COLUMN decided_at DATETIME(6)",
+ "ALTER TABLE followup_tasks DROP INDEX open_task, DROP COLUMN open_kind,ADD COLUMN revision INT NOT NULL DEFAULT 0,ADD COLUMN original_due_at DATETIME(6),ADD COLUMN scheduled_at DATETIME(6),ADD COLUMN timing_kind VARCHAR(24) NOT NULL DEFAULT 'response',ADD COLUMN request_key VARCHAR(191),ADD UNIQUE KEY task_request(lead_id,request_key)",
+ "UPDATE followup_tasks SET original_due_at=due_at"
+ ];
+ for(const sql of ddl)await connection.query(sql.replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
+ await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=9");
+ return {version:9,state:'ready'};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

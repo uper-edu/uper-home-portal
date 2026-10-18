@@ -1,3 +1,4 @@
+import { explicitChatRequest } from "../utils/chatRequestIntent";
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
 import {canonicalCampaignId} from '../utils/organicCampaign';
 import {
@@ -57,15 +58,15 @@ export async function registerContact(profile: object) {
   ])
     delete contact[key];
   await session();
-  return (
-    await checked(
-      await fetch("/api/portal/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(contact),
-      }),
-    )
-  ).json();
+  let response=await fetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
+  if(response.status===409&&(await response.clone().json()).error==='Contact identity changed; start a separate visitor session'){
+    const lang=String((profile as any).language||(profile as any).lang||document.documentElement.lang||'en');
+    const agreed=window.confirm(lang.startsWith('zh')?'联系方式与当前客户不同。是否作为另一位使用者开始？原客户记录将保留。':lang.startsWith('id')?'Kontak berbeda dari pelanggan saat ini. Mulai sebagai pengguna lain? Catatan lama tetap tersimpan.':'Contact details differ from the current customer. Start as another user? Existing records will be preserved.');
+    if(!agreed)throw Error(lang.startsWith('zh')?'未覆盖原客户，请核对联系方式。':lang.startsWith('id')?'Catatan lama tidak ditimpa. Periksa kontak.':'Existing customer was preserved. Review contact details.');
+    await checked(await fetch('/api/portal/new-person',{method:'POST'}));sessionReady=undefined;await session();
+    response=await fetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
+  }
+  return (await checked(response)).json();
 }
 export async function chatFetch(
   _url: string,
@@ -84,12 +85,13 @@ export async function chatFetch(
     timestamp: previous?.timestamp || new Date().toISOString(),
     delivery: "unknown" as const,
   };
-  saveDraft(source, {...queued,action:old.isHumanMode || previous?.action==='handoff'?'handoff':undefined});
+  const action = previous?.action || explicitChatRequest(user.content) || (old.isHumanMode ? 'handoff' : undefined);
+  saveDraft(source, {...queued,action});
   const conversationId =
     previous?.conversationId || (await conversation(source));
-  if (old.isHumanMode || previous?.action==='handoff') {
-    const pending={...queued,conversationId,action:'handoff' as const};saveDraft(source,pending);
-    const res=await fetch('/api/portal/actions',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,action:'handoff',language:old.language || 'en'})});
+  if (action) {
+    const pending={...queued,conversationId,action};saveDraft(source,pending);
+    const res=await fetch('/api/portal/actions',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,action,language:old.language || 'en'})});
     if(!res.ok){const error=await res.clone().json().catch(()=>({}));if(error.saved===false)saveDraft(source,{...pending,delivery:'unsaved'});await checked(res);}
     return res;
   }
@@ -158,7 +160,7 @@ export async function restoreChat(source: ChatSource) {
         ? draft(source, m.request_id)?.delivery || "saved"
         : undefined,
     timestamp: new Date(m.created_at),
-    action: m.role==='user' && data.messages.some((a:any)=>a.request_id===m.request_id && a.metadata?.followupAction==='handoff') ? 'handoff' : undefined,
+    action: m.role === 'user' ? data.messages.find((a:any) => a.request_id === m.request_id && ['handoff','booking','enrollment'].includes(a.metadata?.followupAction))?.metadata.followupAction : undefined,
     content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
   }));
   return [

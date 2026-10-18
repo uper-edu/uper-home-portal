@@ -203,7 +203,7 @@
     "layer": "contract",
     "object": "ChatTranscriptMessage",
     "key": "metadata",
-    "type": "{ followupAction?: string; taskId?: string | null; language?: string; }",
+    "type": "{ followupAction?: string; taskId?: string | null; language?: string; taskOperation?: \"created\" | \"supplemented\"; }",
     "optional": true,
     "source": "src/types/crmLead.ts"
   },
@@ -228,6 +228,14 @@
     "object": "ChatTranscriptMessage",
     "key": "metadata.language",
     "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "ChatTranscriptMessage",
+    "key": "metadata.taskOperation",
+    "type": "\"created\" | \"supplemented\"",
     "optional": true,
     "source": "src/types/crmLead.ts"
   },
@@ -283,7 +291,7 @@
     "layer": "contract",
     "object": "LeadAttention",
     "key": "tasks",
-    "type": "Array<{ id: string; kind: string; ownerId: string | null; status: string; dueAt: string; details?: { action?: string; purpose?: string; sourceMessageId?: string; sourceConversationId?: string; }; }>",
+    "type": "Array<{ id: string; kind: string; ownerId: string | null; status: string; dueAt: string; originalDueAt?: string; scheduledAt?: string | null; timingKind?: string; details?: { action?: string; purpose?: string; sourceMessageId?: string; sourceConversationId?: string; }; }>",
     "optional": false,
     "source": "src/types/crmLead.ts"
   },
@@ -325,6 +333,30 @@
     "key": "tasks.dueAt",
     "type": "string",
     "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.originalDueAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.scheduledAt",
+    "type": "string | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.timingKind",
+    "type": "string",
+    "optional": true,
     "source": "src/types/crmLead.ts"
   },
   {
@@ -866,6 +898,14 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "stageRevision",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "stageUpdatedAt",
     "type": "string",
     "optional": false,
@@ -884,6 +924,14 @@
     "object": "CrmLeadRecord",
     "key": "buyingSignals",
     "type": "BuyingSignalType[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "buyingEvidence",
+    "type": "import(\"../utils/crmBuyingEvidence\").BuyingEvidence[]",
     "optional": true,
     "source": "src/types/crmLead.ts"
   },
@@ -2873,14 +2921,6 @@
   },
   {
     "layer": "storage",
-    "object": "followup_tasks",
-    "key": "open_kind",
-    "type": "VARCHAR(64)",
-    "optional": true,
-    "source": "cloud/mysql/schema.sql"
-  },
-  {
-    "layer": "storage",
     "object": "outbox",
     "key": "id",
     "type": "VARCHAR(191)",
@@ -3649,6 +3689,318 @@
   },
   {
     "layer": "storage",
+    "object": "access_roles",
+    "key": "id",
+    "type": "VARCHAR(80)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_roles",
+    "key": "config",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_roles",
+    "key": "enabled",
+    "type": "BOOLEAN",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_roles",
+    "key": "revision",
+    "type": "BIGINT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_state",
+    "key": "id",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_state",
+    "key": "value",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_operations",
+    "key": "actor_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_operations",
+    "key": "operation_id",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_operations",
+    "key": "action",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_operations",
+    "key": "fingerprint",
+    "type": "CHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_operations",
+    "key": "result",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_operations",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_handovers",
+    "key": "id",
+    "type": "CHAR(36)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_handovers",
+    "key": "user_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_handovers",
+    "key": "revision",
+    "type": "BIGINT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_handovers",
+    "key": "state",
+    "type": "VARCHAR(24)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_handovers",
+    "key": "causes",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_handovers",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "access_handovers",
+    "key": "updated_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_facts",
+    "key": "id",
+    "type": "CHAR(36)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_facts",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_facts",
+    "key": "kind",
+    "type": "VARCHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_facts",
+    "key": "actor",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_facts",
+    "key": "data",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_facts",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_operations",
+    "key": "actor",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_operations",
+    "key": "request_id",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_operations",
+    "key": "fingerprint",
+    "type": "CHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_operations",
+    "key": "result",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_operations",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "kind",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "source_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "data",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "state",
+    "type": "VARCHAR(24)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "task_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "version",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_engagements",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
     "object": "cms_media",
     "key": "legacy_name",
     "type": "VARCHAR(191)",
@@ -3660,6 +4012,102 @@
     "object": "cms_collections",
     "key": "items_text",
     "type": "LONGTEXT",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "access_revision",
+    "type": "BIGINT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "email",
+    "type": "VARCHAR(254)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "identity_candidates",
+    "key": "decision",
+    "type": "VARCHAR(16)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_users",
+    "key": "email_key",
+    "type": "VARCHAR(254)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "identity_candidates",
+    "key": "decided_by",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "identity_candidates",
+    "key": "reason",
+    "type": "TEXT",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "identity_candidates",
+    "key": "decided_at",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "revision",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "original_due_at",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "scheduled_at",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "timing_kind",
+    "type": "VARCHAR(24)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "followup_tasks",
+    "key": "request_key",
+    "type": "VARCHAR(191)",
     "optional": true,
     "source": "cloud/mysql/migrate.mjs"
   }
