@@ -317,8 +317,19 @@ function CrmWorkspace({
   const [workflowNotice,setWorkflowNotice]=useState<any>(null);
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
   const listScroll = useRef(0);
+  const customerViewport = useRef(false);
   const tabViewport = useRef<{pageY:number; keyboard:boolean; tab:string} | null>(null);
   useLayoutEffect(() => {
+    if (customerViewport.current) {
+      customerViewport.current = false;
+      tabViewport.current = null;
+      const content = document.getElementById("crm-customer-content");
+      if (content) content.scrollTop = 0;
+      const panel = document.getElementById("crm-customer-panel");
+      panel?.scrollIntoView({ block: "start", behavior: "instant" });
+      panel?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+      return;
+    }
     const pending = tabViewport.current;
     if (!pending) return;
     tabViewport.current = null;
@@ -327,7 +338,7 @@ function CrmWorkspace({
     if (content) content.scrollTop = 0;
     window.scrollTo({top:pending.pageY, behavior:"instant"});
     if (pending.keyboard) document.getElementById(`crm-customer-tab-${pending.tab}`)?.focus({preventScroll:true});
-  }, [activeDrawerTab]);
+  }, [activeDrawerTab, selectedLead?.id]);
 
   const hasDraft = contactPreviewDirty||trustDirty||(isAddLogOpen && workflowDirty)||Boolean(selectedLead&&attendanceDirty);
   const [pendingNavigation, setPendingNavigation] = useState<
@@ -539,31 +550,28 @@ function CrmWorkspace({
   // Open drawer for a lead
   const handleOpenLeadDrawer = (
     lead: CrmLeadRecord,
-    tab: CustomerTab = "activities",
+    tab?: CustomerTab,
     discarded = false,
   ) => {
-    if (
-      !discarded &&
-      selectedLead?.id !== lead.id &&
-      !discardDraft(() => handleOpenLeadDrawer(lead, tab, true))
-    )
-      return;
-    if(retainedDraft?.id===lead.id)setRetainedDraft(null);
-    if (!isDrawerOpen) listScroll.current = window.scrollY;
-    if (selectedLead?.id === lead.id && isDrawerOpen) {
-      setActiveDrawerTab(tab);
+    const nextTab = tab ?? (isDrawerOpen ? activeDrawerTab : "activities");
+    const sameCustomer = isDrawerOpen && selectedLead?.id === lead.id;
+    // Selecting the current customer is a no-op, including its draft and reading position.
+    if (sameCustomer && nextTab === activeDrawerTab) return;
+    if (!discarded && !discardDraft(() => handleOpenLeadDrawer(lead, nextTab, true))) return;
+    if (sameCustomer) {
+      tabViewport.current = {pageY:window.scrollY, keyboard:false, tab:nextTab};
+      setTaskFocus(undefined);setConversationReturn(undefined);setSignalFocus(undefined);
+      setActiveDrawerTab(nextTab);
       return;
     }
-    setTaskFocus(undefined);setConversationReturn(undefined);setQueueComplete(false);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setWorkflowNotice("");setProfileSave("");setLeadActionError("");
+    if(retainedDraft?.id===lead.id)setRetainedDraft(null);
+    if (!isDrawerOpen) listScroll.current = window.scrollY;
+    setTaskFocus(undefined);setConversationReturn(undefined);setSignalFocus(undefined);setQueueComplete(false);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setWorkflowNotice("");setProfileSave("");setLeadActionError("");setTaskOpening(false);
     setIsAddLogOpen(false);
+    customerViewport.current = true;
     setSelectedLead(lead);
-    setActiveDrawerTab(tab);
+    setActiveDrawerTab(nextTab);
     setIsDrawerOpen(true);
-    requestAnimationFrame(() => {
-      const panel = document.getElementById("crm-customer-panel");
-      panel?.scrollIntoView({ block: "start" });
-      panel?.querySelector("h2")?.focus({ preventScroll: true });
-    });
     if (lead.attention?.unreadCount) {
       fetch(`/api/crm/leads/${lead.id}/read`, {
         method: "POST",
@@ -1021,7 +1029,7 @@ function CrmWorkspace({
                 <MessageCircle size={15} /> WhatsApp
               </button>
             )}
-            {[-1,1].map(offset=>{const index=filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+offset;return <button key={offset} className="crm-work-button" disabled={filteredLeads.findIndex(l=>l.id===selectedLead.id)<0||!filteredLeads[index]} onClick={()=>filteredLeads[index]&&handleOpenLeadDrawer(filteredLeads[index],activeDrawerTab === "playbook" ? "activities" : activeDrawerTab)}>{offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户")}</button>;})}
+            {[-1,1].map(offset=>{const index=filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+offset;return <button key={offset} className="crm-work-button" disabled={filteredLeads.findIndex(l=>l.id===selectedLead.id)<0||!filteredLeads[index]} onClick={()=>filteredLeads[index]&&handleOpenLeadDrawer(filteredLeads[index])}>{offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户")}</button>;})}
             <button
               type="button"
               className="crm-work-button"
@@ -1069,6 +1077,7 @@ function CrmWorkspace({
           ))}
         </div>
         <div
+          key={selectedLead.id}
           id="crm-customer-content"
           className="crm-customer-panel-body"
           role="tabpanel"

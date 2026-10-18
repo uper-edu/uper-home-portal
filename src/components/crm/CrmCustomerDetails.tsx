@@ -380,6 +380,7 @@ export function CrmCustomerConversations({
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const [data, setData] = useState<{
+    leadId: string;
     messages: ConversationMessage[];
     conversations: ConversationRecord[];
     tasks: ConversationTask[];
@@ -404,6 +405,7 @@ export function CrmCustomerConversations({
       .then(([detail, conversations, tasks]) => {
         if (!controller.signal.aborted)
           setData({
+            leadId: lead.id,
             messages:
               detail.chatTranscript || detail.lead?.chatTranscript || [],
             conversations,
@@ -428,7 +430,7 @@ export function CrmCustomerConversations({
         </button>
       </div>
     );
-  if (!data)
+  if (!data || data.leadId !== lead.id)
     return <p role="status">{t("Loading conversations…", "正在加载对话…")}</p>;
   return (
     <CrmConversationTimeline
