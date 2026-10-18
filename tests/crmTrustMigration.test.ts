@@ -50,7 +50,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       )
     )[0];
     const beforeEvents = (await db.query("SELECT * FROM outbox"))[0];
-    assert.equal((await migrate(db, fixture.name)).version, 9);
+    assert.equal((await migrate(db, fixture.name)).version, 10);
     assert.deepEqual(
       (await db.query("SELECT * FROM portal_leads"))[0],
       beforeLead,

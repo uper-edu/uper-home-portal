@@ -72,11 +72,11 @@ export default function GFormOnboardingModal({
       const shortCode = canonicalCampaignId(sp.get('c') || sp.get('cid') || sp.get('campaign'));
 
       setUrlParams({
-        entry: sp.get('entry') || (shortCode==='organic'?'organic':'campus'),
+        entry: sp.get('entry') || (shortCode==='organic'?'organic':'unverified_source'),
         campaign: shortCode,
-        placement: sp.get('placement') || (shortCode==='organic'?'website':'qr_scanner'),
+        placement: sp.get('placement') || (shortCode==='organic'?'website':'unrecorded'),
         hook: (sp.get('hook') as HookType) || 'hsk_assessment',
-        context: (sp.get('context') as HookContextType) || (shortCode==='organic'?'website':'campus_career_talk')
+        context: (sp.get('context') as HookContextType) || 'website'
       });
 
       const urlLang = sp.get('lang');
@@ -101,11 +101,11 @@ export default function GFormOnboardingModal({
                 startTime: c.startTime
               });
               setUrlParams({
-                entry: c.boundUtm?.utm_source || sp.get('entry') || 'campus',
+                entry: c.boundUtm?.utm_source || sp.get('entry') || 'unrecorded',
                 campaign: c.name || c.code || shortCode,
-                placement: c.boundUtm?.utm_medium || sp.get('placement') || 'qr_poster',
+                placement: c.boundUtm?.utm_medium || sp.get('placement') || 'unrecorded',
                 hook: (c.boundUtm?.defaultHook as HookType) || (sp.get('hook') as HookType) || 'hsk_assessment',
-                context: (c.boundUtm?.defaultContext as HookContextType) || (sp.get('context') as HookContextType) || 'campus_career_talk'
+                context: (c.boundUtm?.defaultContext as HookContextType) || (sp.get('context') as HookContextType) || 'website'
               });
               if (c.boundUtm?.defaultLang && !sp.get('lang')) {
                 setLang(c.boundUtm.defaultLang);

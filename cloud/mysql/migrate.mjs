@@ -103,7 +103,7 @@ async function applyAccessReliabilityMigration(connection){
 
 async function applyTrustMigration(connection){
  const [versions]=await connection.query('SELECT * FROM trial_schema_versions WHERE version=9');
- if(versions[0]?.state==='ready')return {version:9,state:'ready',alreadyApplied:true};
+ if(versions[0]?.state==='ready')return applyCampaignSourceMigration(connection);
  if(versions.length)throw Error('Incomplete CRM facts migration; inspect before retrying');
  await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(9,'applying')");
  const ddl=[
@@ -116,7 +116,22 @@ async function applyTrustMigration(connection){
  ];
  for(const sql of ddl)await connection.query(sql.replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
  await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=9");
- return {version:9,state:'ready'};
+ return applyCampaignSourceMigration(connection);
+}
+
+async function applyCampaignSourceMigration(c){
+ const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=10');
+ if(v[0]?.state==='ready')return {version:10,state:'ready',alreadyApplied:true};
+ if(v.length)throw Error('Incomplete campaign source migration');
+ await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(10,'applying')");
+ await c.query("CREATE TABLE campaign_source_reviews(id CHAR(64) PRIMARY KEY,raw_code VARCHAR(200) NOT NULL,status VARCHAR(16) NOT NULL, campaign_id VARCHAR(191),revision BIGINT NOT NULL DEFAULT 1,config JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),FOREIGN KEY(campaign_id) REFERENCES trial_campaigns(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
+ const {createHash}=await import('node:crypto');
+ const [campaigns]=await c.query('SELECT id,code,config FROM trial_campaigns');
+ const [leads]=await c.query('SELECT profile FROM portal_leads');
+ for(const {profile:p} of leads){const raw=String(p.campaignId||p.campaign||'').trim(),key=raw.toLowerCase();if(!key||['home','organic'].includes(key))continue;
+ if(campaigns.some(x=>[x.id,x.code,...(p.campaignId?[]:[x.config.name,x.config.nameEn])].some(v=>v?.trim().toLowerCase()===key)))continue;
+ await c.execute("INSERT INTO campaign_source_reviews(id,raw_code,status,config) VALUES(?,?,'pending',?) ON DUPLICATE KEY UPDATE id=id",[createHash('sha256').update(key).digest('hex'),raw.slice(0,200),JSON.stringify({legacyDetected:true})]);}
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=10");return {version:10,state:'ready'};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

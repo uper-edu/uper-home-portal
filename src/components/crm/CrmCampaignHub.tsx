@@ -1,3 +1,4 @@
+import {CrmCampaignSources} from "./CrmCampaignSources";
 import {isOrganicCampaign,organicCampaignName} from '../../utils/organicCampaign';
 import {CrmCampaignMeasures} from "./CrmCampaignMeasures";
 import { campaignChatLink, matchesCampaign } from "../../utils/crmCampaignLink";
@@ -624,6 +625,7 @@ export function CrmCampaignHub({
   return (
     <div className="crm-campaigns space-y-5 animate-in fade-in duration-300" data-theme={isLight?"light":"dark"}>
       {campaignError?<p role="alert">{t('Campaign metrics unavailable; refresh to retry.','营销指标暂不可用，请刷新重试。')}</p>:isLoading?<p role="status">{t('Loading campaign metrics…','正在加载营销指标…')}</p>:<CrmCampaignMeasures campaigns={filteredCampaigns} lang={lang} isLight={isLight}/>}
+      {canManageCampaigns&&<CrmCampaignSources lang={lang} isLight={isLight} campaigns={campaigns} onChanged={fetchCampaigns} onLead={onSelectLeadInCrm}/>}
       {/* 2. Control Toolbar: Search, Filters & Action Button */}
       <div
         className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 ${isLight ? "bg-white border-slate-200/90 shadow-2xs" : "bg-slate-900 border-slate-800"}`}

@@ -1,3 +1,4 @@
+import {listCampaignSources,reviewCampaignSource} from './portal/campaignSources.ts';
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
 import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
@@ -63,6 +64,8 @@ await mountPortal(app);await ensureOrganicCampaign();mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
 const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>r.status(e.status||503).json({error:e.status&&e.status<500?e.message:'Storage unavailable; operation not saved'}));
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
+app.get('/api/crm/campaigns/sources',wrap(async(q:any,r:any)=>r.json({sources:await listCampaignSources(r.locals.crmEmployee)})));
+app.post('/api/crm/campaigns/sources/:id/review',wrap(async(q:any,r:any)=>r.json(await reviewCampaignSource(q.params.id,q.body,r.locals.crmEmployee))));
 app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const campaign=list.find(c=>[c.id,c.code,c.name,c.nameEn].includes(canonicalCampaignId(q.params.idOrCode)));if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
 app.post('/api/crm/campaigns',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,__actor:r.locals.crmEmployee.id})})));
 app.put('/api/crm/campaigns/:id',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,id:q.params.id,__actor:r.locals.crmEmployee.id})})));

@@ -16,6 +16,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       await fs.rm(dir, { recursive: true, force: true });
     });
     for (const table of [
+      "campaign_source_reviews",
       "crm_facts",
       "crm_operations",
       "crm_engagements",

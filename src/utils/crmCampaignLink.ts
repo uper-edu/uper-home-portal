@@ -10,10 +10,11 @@ export function campaignChatLink(
   return url.toString();
 }
 export function matchesCampaign(
-  lead: { campaign?: string; campaignId?: string },
+  lead: { campaign?: string; campaignId?: string; attributionCampaignId?: string; campaignSourceStatus?: string },
   campaign: { id: string; code: string; name: string; nameEn?: string },
 ) {
-  const value = (lead.campaignId || lead.campaign || "").trim().toLowerCase();
+  if(lead.campaignSourceStatus==='invalid'||(lead.campaignSourceStatus==='pending'&&!lead.attributionCampaignId))return false;
+  const value = (lead.attributionCampaignId || lead.campaignId || lead.campaign || "").trim().toLowerCase();
   return (
     !!value &&
     [

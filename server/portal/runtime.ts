@@ -1,3 +1,4 @@
+import {recordCampaignSource} from './campaignSources.ts';
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
 import {fact,contactsConflict,stageFact,engagement,normalizeContactPhone} from "./trustWorkflow.ts";
@@ -437,6 +438,7 @@ export async function mountPortal(app: Express) {
         typeof b.hskExamPlan === "string"
       )
         profile.hskExamPlan = b.hskExamPlan.slice(0, 160);
+      await recordCampaignSource(c,profile);
       const numbered = await c.query(
         locked.lead_id
           ? "UPDATE portal_leads SET profile=:p2 WHERE id=:p1"
@@ -1686,7 +1688,7 @@ export async function mountPortal(app: Express) {
     }),
   );
   app.use("/api/crm/campaigns", (req, res, next) => {
-    staff(req, req.method === "GET" ? "crm.read" : "notifications.manage")
+    staff(req, req.method === "GET" && !req.path.startsWith("/sources") ? "crm.read" : "notifications.manage")
       .then((e) => {
         res.locals.crmEmployee = e;
         next();

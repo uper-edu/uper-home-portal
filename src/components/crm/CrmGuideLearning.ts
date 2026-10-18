@@ -978,6 +978,10 @@ Object.assign(guideLessons, {
     ),
     [
       n(
+        w("Review unknown sources", "Verifikasi sumber tidak dikenal", "核实未知来源"),
+        w("Only unknown codes with saved leads appear in Unverified sources. A manager records a reason to link an existing campaign, create one, or mark invalid. Original codes and customer facts remain; each decision is audited.", "Hanya kode tidak dikenal dengan prospek tersimpan muncul di Sumber belum diverifikasi. Manajer mencatat alasan untuk menautkan kampanye, membuat kampanye, atau menandai tidak valid. Kode asli dan fakta pelanggan tetap; tiap keputusan diaudit.", "待核实来源仅收录已生成客户的未知代码。管理者填写依据后可关联已有活动、创建活动或标记无效；原始代码与客户事实保留，每次决定留存审计。"),
+      ),
+      n(
         w("Create and save", "Buat dan simpan", "创建并保存活动"),
         w(
           "Enter campaign type, status and display names. Chinese and English/Indonesian names are separate saved fields.",
