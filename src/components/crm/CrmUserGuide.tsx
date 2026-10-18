@@ -1,3 +1,5 @@
+import { guideLessons } from "./CrmGuideLearning";
+import { LessonOpening } from "./CrmGuideLearningVisual";
 import React, { useEffect, useRef, useState } from "react";
 import { guideSections, type GuideLanguage } from "./CrmGuideContent";
 import { systemChapters } from "./CrmSystemGuide";
@@ -81,14 +83,20 @@ export function CrmUserGuide({
   isLight,
   lang,
   onNavigateTab,
+  initialChapter,
 }: {
   isLight: boolean;
   lang: GuideLanguage;
+  initialChapter?: string;
   onNavigateTab?: (tab: "leads" | "campaigns" | "policy" | "docs") => void;
 }) {
   const col = lang === "zh" ? 2 : lang === "id" ? 1 : 0,
     t = (en: string, id: string, zh: string) => [en, id, zh][col];
-  const initialHash = typeof window === "undefined" ? "" : window.location.hash;
+  const initialHash = initialChapter
+    ? "#crm-guide-" + initialChapter
+    : typeof window === "undefined"
+      ? ""
+      : window.location.hash;
   const [selectedKey, setSelectedKey] = useState(() => {
     const direct = resolveGuideAnchor(initialHash);
     if (direct) return direct.key;
@@ -116,7 +124,7 @@ export function CrmUserGuide({
     [isNarrow, setIsNarrow] = useState(false),
     [navOpen, setNavOpen] = useState(false),
     [focusRequest, setFocusRequest] = useState(
-      resolveGuideAnchor(initialHash) ? 1 : 0,
+      !initialChapter && resolveGuideAnchor(initialHash) ? 1 : 0,
     );
   const directoryButton = useRef<HTMLButtonElement>(null);
   const guide = useRef<HTMLElement>(null);
@@ -277,6 +285,7 @@ export function CrmUserGuide({
     (s) =>
       includes([
         s.title[col],
+        localizedText(guideLessons[s.key], col),
         s.intro[col],
         s.technical[col],
         s.blocks.map((b) => [
@@ -288,7 +297,11 @@ export function CrmUserGuide({
       (s.key === "data-implementation" && fieldMatches.length > 0),
   );
   const matchesOperations = guideSections.filter((s) =>
-    includes([s.title[col], s.body.map((row) => row[col])]),
+    includes([
+      s.title[col],
+      localizedText(guideLessons[s.key], col),
+      s.body.map((row) => row[col]),
+    ]),
   );
   const resultKeys = new Set(
     [...matchesSystem, ...matchesOperations].map((s) => s.key),
@@ -312,7 +325,7 @@ export function CrmUserGuide({
   const selectedGroup =
     operationGroups.find((group) => group.includes(selectedKey)) || [];
   const operations = guideSections
-    .filter((s) => selectedGroup.includes(s.key))
+    .filter((s) => s.key === selectedKey)
     .sort(
       (a, b) => selectedGroup.indexOf(a.key) - selectedGroup.indexOf(b.key),
     );
@@ -337,14 +350,13 @@ export function CrmUserGuide({
   };
   const fullNavigation = [
       ...systemChapters.map((s) => s.key),
-      ...operationGroups.map((group) => group[0]),
+      ...operationGroups.flat(),
     ],
-    position = fullNavigation.indexOf(
-      part === "system" ? selectedKey : selectedGroup[0] || selectedKey,
-    );
-  const chapterTitle = [...systemChapters, ...guideSections].find(
-    (s) => s.key === selectedKey,
-  )!.title[col];
+    position = fullNavigation.indexOf(selectedKey);
+  const chapterTitle = (
+    guideLessons[selectedKey] ||
+    [...systemChapters, ...guideSections].find((s) => s.key === selectedKey)!
+  ).title[col];
   const navResults = [
     ...matchesSystem.map((s) => ({ ...s, part: "system" })),
     ...matchesOperations.map((s) => ({ ...s, part: "operations" })),
@@ -364,18 +376,20 @@ export function CrmUserGuide({
             "聚焦客户获客、销售跟进与运营。系统说明解释逻辑，操作指南说明做法。",
           )}
         </p>
-        <div className="crm-doc-links">
-          <button onClick={() => onNavigateTab?.("leads")}>
-            {t(
-              "Open customer worklist",
-              "Buka daftar pelanggan",
-              "打开客户工作列表",
-            )}
-          </button>
-          <button onClick={() => onNavigateTab?.("campaigns")}>
-            {t("Open campaigns", "Buka kampanye", "打开营销活动")}
-          </button>
-        </div>
+        {onNavigateTab && (
+          <div className="crm-doc-links">
+            <button onClick={() => onNavigateTab("leads")}>
+              {t(
+                "Open customer worklist",
+                "Buka daftar pelanggan",
+                "打开客户工作列表",
+              )}
+            </button>
+            <button onClick={() => onNavigateTab?.("campaigns")}>
+              {t("Open campaigns", "Buka kampanye", "打开营销活动")}
+            </button>
+          </div>
+        )}
       </header>
       {invalid && (
         <p role="status">
@@ -470,9 +484,7 @@ export function CrmUserGuide({
                     <a
                       href={link(s.key)}
                       aria-label={s.title[col]}
-                      aria-current={
-                        s.group.includes(selectedKey) ? "page" : undefined
-                      }
+                      aria-current={s.key === selectedKey ? "page" : undefined}
                       onClick={(e) => {
                         e.preventDefault();
                         choose(s.key);
@@ -483,6 +495,32 @@ export function CrmUserGuide({
                       </span>
                       {s.title[col]}
                     </a>
+                    {root === "operations" &&
+                      !terms &&
+                      s.group.length > 1 &&
+                      s.group.includes(selectedKey) && (
+                        <ul className="crm-doc-subchapters">
+                          {s.group.slice(1).map((key) => (
+                            <li key={key}>
+                              <a
+                                href={link(key)}
+                                aria-current={
+                                  key === selectedKey ? "page" : undefined
+                                }
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  choose(key);
+                                }}
+                              >
+                                {
+                                  guideSections.find((row) => row.key === key)!
+                                    .title[col]
+                                }
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                   </li>
                 ))}
               </ol>
@@ -552,64 +590,77 @@ export function CrmUserGuide({
                     id={"crm-guide-" + s.key}
                     key={s.key}
                   >
-                    <h3>{s.title[col]}</h3>
-                    <p>{s.intro[col]}</p>
-                    {[...s.blocks]
-                      .sort(
-                        (a, b) =>
-                          Number(b.kind === "diagram") -
-                          Number(a.kind === "diagram"),
-                      )
+                    <h3>{(guideLessons[s.key]?.title || s.title)[col]}</h3>
+                    <LessonOpening chapterKey={s.key} col={col} />
+                    {s.blocks
+                      .filter((b) => b.kind === "diagram")
                       .map((b, i) => (
-                        <div key={i}>
-                          {b.kind !== "diagram" && <h4>{b.title[col]}</h4>}
-                          {b.kind === "diagram" ? (
-                            <CrmGuideDiagram kind={b.diagram!} col={col} />
-                          ) : b.kind === "flow" ? (
-                            <ol
-                              className="crm-doc-flow"
-                              aria-label={b.title[col]}
-                            >
-                              {b.items.map((item, j) => (
-                                <li key={j}>
-                                  <b>{j + 1}</b>
-                                  {item[col]}
-                                  {j < b.items.length - 1 && (
-                                    <svg aria-hidden="true" viewBox="0 0 28 18">
-                                      <path
-                                        d="M1 9H25M17 2L25 9L17 16"
-                                        stroke="currentColor"
-                                        fill="none"
-                                        strokeWidth="2"
-                                      />
-                                    </svg>
-                                  )}
-                                </li>
-                              ))}
-                            </ol>
-                          ) : b.kind === "table" ? (
-                            <table className="crm-doc-table">
-                              <caption className="sr-only">
-                                {b.title[col]}
-                              </caption>
-                              <tbody>
-                                {b.items.map((item, j) => (
-                                  <tr key={j}>
-                                    <th scope="row">{j + 1}</th>
-                                    <td>{item[col]}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <div className="crm-doc-example">
-                              {b.items.map((item, j) => (
-                                <p key={j}>{item[col]}</p>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <CrmGuideDiagram key={i} kind={b.diagram!} col={col} />
                       ))}
+                    <details className="crm-doc-reference">
+                      <summary>
+                        {t(
+                          "Detailed rules and examples",
+                          "Aturan rinci dan contoh",
+                          "规则细节与例外查阅",
+                        )}
+                      </summary>
+                      {s.blocks
+                        .filter((b) => b.kind !== "diagram")
+                        .map((b, i) => (
+                          <div key={i}>
+                            {b.kind !== "diagram" && <h4>{b.title[col]}</h4>}
+                            {b.kind === "diagram" ? (
+                              <CrmGuideDiagram kind={b.diagram!} col={col} />
+                            ) : b.kind === "flow" ? (
+                              <ol
+                                className="crm-doc-flow"
+                                aria-label={b.title[col]}
+                              >
+                                {b.items.map((item, j) => (
+                                  <li key={j}>
+                                    <b>{j + 1}</b>
+                                    {item[col]}
+                                    {j < b.items.length - 1 && (
+                                      <svg
+                                        aria-hidden="true"
+                                        viewBox="0 0 28 18"
+                                      >
+                                        <path
+                                          d="M1 9H25M17 2L25 9L17 16"
+                                          stroke="currentColor"
+                                          fill="none"
+                                          strokeWidth="2"
+                                        />
+                                      </svg>
+                                    )}
+                                  </li>
+                                ))}
+                              </ol>
+                            ) : b.kind === "table" ? (
+                              <table className="crm-doc-table">
+                                <caption className="sr-only">
+                                  {b.title[col]}
+                                </caption>
+                                <tbody>
+                                  {b.items.map((item, j) => (
+                                    <tr key={j}>
+                                      <th scope="row">{j + 1}</th>
+                                      <td>{item[col]}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <div className="crm-doc-example">
+                                {b.items.map((item, j) => (
+                                  <p key={j}>{item[col]}</p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </details>
                     <details open={!!terms}>
                       <summary>
                         {t(
@@ -746,15 +797,25 @@ export function CrmUserGuide({
                     key={s.key}
                     className="crm-doc-card crm-doc-section"
                   >
-                    <h3>{s.title[col]}</h3>
-                    <div className="crm-doc-instructions">
-                      {s.body.map((row, i) => (
-                        <div key={i}>
-                          <span aria-hidden="true">{i + 1}</span>
-                          <p>{row[col]}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <h3>{(guideLessons[s.key]?.title || s.title)[col]}</h3>
+                    <LessonOpening chapterKey={s.key} col={col} />
+                    <details className="crm-doc-reference">
+                      <summary>
+                        {t(
+                          "Details and exceptions",
+                          "Rincian dan pengecualian",
+                          "操作细节与例外查阅",
+                        )}
+                      </summary>
+                      <div className="crm-doc-instructions">
+                        {s.body.map((row, i) => (
+                          <div key={i}>
+                            <span aria-hidden="true">{i + 1}</span>
+                            <p>{row[col]}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                     <a
                       href={link(concepts[s.key] || "architecture")}
                       onClick={(e) => {

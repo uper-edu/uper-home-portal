@@ -25,6 +25,7 @@
 .crm-docs button,
 .crm-docs input {
   font: inherit;
+  color: var(--doc-ink);
 }
 .crm-docs :focus-visible {
   outline: 3px solid var(--doc-accent);
@@ -293,6 +294,7 @@
   margin: 16px 0;
 }
 .crm-business-diagram figcaption {
+  color: var(--doc-ink);
   font-weight: 650;
   margin-bottom: 16px;
 }
@@ -728,5 +730,664 @@
     scroll-margin-top: calc(
       var(--doc-header-height) + var(--doc-toggle-height) + 24px
     );
+  }
+}
+
+.crm-doc-intro {
+  padding: 16px 20px;
+}
+.crm-doc-intro h2 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.crm-doc-intro .crm-doc-links {
+  margin-top: 6px;
+}
+.crm-doc-subchapters {
+  list-style: none;
+  padding: 0 0 0 16px;
+  margin: 4px 0 12px;
+}
+.crm-doc-subchapters a {
+  font-size: 13px;
+  padding: 7px 10px;
+}
+.crm-doc-section > h3 {
+  font-size: clamp(22px, 2.4vw, 30px);
+  line-height: 1.35;
+  max-width: 32ch;
+  margin-bottom: 12px;
+}
+.crm-learning-answer {
+  color: var(--doc-muted);
+  max-width: 70ch;
+  margin: 0 0 24px;
+  font-size: 16px !important;
+}
+.crm-learning-figure,
+.crm-task-story {
+  margin: 24px 0;
+  border: 1px solid var(--doc-border);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--doc-soft);
+}
+.crm-learning-figure figcaption,
+.crm-task-story figcaption,
+.crm-guide-effects figcaption,
+.crm-learning-ratio figcaption {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--doc-border);
+  color: var(--doc-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.crm-learning-nodes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.crm-learning-nodes:has(li:nth-child(4)) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.crm-learning-nodes li {
+  position: relative;
+  min-width: 0;
+}
+.crm-learning-nodes button,
+.crm-learning-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 96px;
+  width: 100%;
+  border: 1px solid var(--doc-border);
+  background: var(--doc-surface);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: left;
+  color: var(--doc-ink);
+}
+.crm-learning-nodes button strong,
+.crm-learning-card strong {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.crm-learning-nodes button > span:not(.crm-learning-number),
+.crm-learning-card > span {
+  color: var(--doc-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.crm-learning-number {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--doc-border);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--doc-accent);
+  font-size: 12px;
+}
+.crm-learning-connector {
+  position: absolute;
+  right: -17px;
+  top: 38px;
+  color: var(--doc-muted);
+}
+.crm-learning-selected {
+  margin-top: 18px;
+  min-height: 90px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--doc-border);
+}
+.crm-learning-selected > strong {
+  color: var(--doc-accent);
+}
+.crm-learning-selected p {
+  margin: 6px 0 0;
+}
+.crm-learning-hub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  margin: 0 auto 18px;
+}
+.crm-learning-hub > strong {
+  font-size: 19px;
+}
+.crm-learning-hub > span {
+  color: var(--doc-muted);
+  font-size: 13px;
+}
+.crm-learning-relationship .crm-learning-nodes {
+  position: relative;
+  padding-top: 18px;
+}
+.crm-learning-relationship .crm-learning-nodes::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 18px;
+  left: 16%;
+  right: 16%;
+  border: 1px solid var(--doc-border);
+  border-bottom: none;
+}
+.crm-learning-value,
+.crm-learning-example,
+.crm-learning-boundary {
+  margin-top: 24px;
+  max-width: 76ch;
+}
+.crm-learning-opening h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.crm-learning-opening p {
+  margin: 0 0 10px;
+}
+.crm-learning-example {
+  padding: 16px 20px;
+  border: 1px dashed var(--doc-border);
+  border-radius: 8px;
+  background: var(--doc-soft);
+}
+.crm-learning-boundary {
+  color: var(--doc-muted);
+}
+.crm-learning-boundary h4 {
+  color: var(--doc-ink);
+}
+.crm-learning-ratio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin: 24px 0;
+}
+.crm-learning-waffle {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 5px;
+}
+.crm-learning-waffle span {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--doc-border);
+  border-radius: 3px;
+  color: var(--doc-muted);
+}
+.crm-learning-waffle [data-filled="true"] {
+  color: var(--doc-surface);
+  background: var(--doc-accent);
+  border-color: var(--doc-accent);
+}
+.crm-learning-ratio figcaption {
+  grid-column: 1/-1;
+}
+.crm-story-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--doc-border);
+}
+.crm-story-header > div {
+  display: grid;
+  gap: 4px;
+}
+.crm-story-header > div:last-child {
+  text-align: right;
+}
+.crm-story-header span {
+  font-size: 12px;
+  color: var(--doc-muted);
+}
+.crm-story-steps {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+.crm-story-steps button {
+  min-height: 48px;
+  width: 100%;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  text-align: left;
+  border-bottom: 2px solid var(--doc-border);
+  padding: 8px 4px;
+  font-size: 13px;
+  color: var(--doc-muted);
+}
+.crm-story-steps [aria-current="step"] {
+  color: var(--doc-accent);
+  border-color: var(--doc-accent);
+  font-weight: 700;
+}
+.crm-story-event {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0;
+}
+.crm-story-event > b {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  height: 28px;
+  border: 1px solid var(--doc-accent);
+  border-radius: 50%;
+  color: var(--doc-accent);
+}
+.crm-story-event h4 {
+  margin: 0 0 6px;
+}
+.crm-story-event p {
+  color: var(--doc-muted);
+}
+.crm-story-count {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.crm-story-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.crm-story-task {
+  background: var(--doc-surface);
+  padding: 16px;
+  border: 1px solid var(--doc-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.crm-story-task h4 {
+  margin: 0 0 10px;
+  min-height: 44px;
+}
+.crm-story-task p {
+  font-size: 13px;
+  margin: 0;
+}
+.crm-story-task[data-state="absent"] {
+  border-style: dashed;
+  background: transparent;
+  color: var(--doc-muted);
+}
+.crm-story-task[data-state="completed"] {
+  border-color: #188160;
+}
+.crm-story-evidence {
+  border-top: 1px solid var(--doc-border);
+  padding-top: 8px;
+}
+.crm-learning-status {
+  font-size: 13px;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+.crm-learning-status::before {
+  content: "○";
+}
+.crm-learning-status.complete::before {
+  content: "✓";
+}
+.crm-learning-status.today {
+  color: #945000;
+}
+.crm-learning-status.complete {
+  color: #146b4b;
+}
+.crm-learning-status.neutral {
+  color: var(--doc-muted);
+}
+.crm-docs[data-theme="dark"] .crm-learning-status.today {
+  color: #ffd485;
+}
+.crm-docs[data-theme="dark"] .crm-learning-status.complete {
+  color: #86efac;
+}
+.crm-story-notice {
+  margin: 20px 0;
+}
+.crm-story-notice p {
+  margin: 6px 0;
+}
+.crm-story-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.crm-story-controls button,
+.crm-learning-choices button,
+.crm-learning-choice,
+.crm-learning-plans button {
+  border: 1px solid var(--doc-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-height: 44px;
+  background: var(--doc-surface);
+  color: var(--doc-ink);
+}
+.crm-story-controls button:disabled {
+  opacity: 0.5;
+}
+.crm-learning-choices {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0 16px;
+}
+.crm-docs .crm-learning-nodes [aria-pressed="true"],
+.crm-docs .crm-learning-choices [aria-pressed="true"],
+.crm-docs .crm-learning-choice[aria-pressed="true"],
+.crm-docs .crm-learning-plans [aria-pressed="true"] {
+  border-color: var(--doc-accent);
+  outline: 1px solid var(--doc-accent);
+  color: var(--doc-accent);
+}
+.crm-learning-before-after {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.crm-learning-before-after > div {
+  border: 1px solid var(--doc-border);
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--doc-surface);
+  display: grid;
+  gap: 6px;
+}
+.crm-learning-before-after > div:last-child {
+  border-color: var(--doc-accent);
+}
+.crm-guide-practice {
+  margin: 32px 0;
+  border-top: 1px solid var(--doc-border);
+  padding-top: 24px;
+}
+.crm-guide-practice-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 1fr);
+  gap: 24px;
+  margin-top: 20px;
+}
+.crm-guide-practice form {
+  min-width: 0;
+  border: 1px solid var(--doc-border);
+  border-radius: 10px;
+  padding: 20px;
+  background: var(--doc-soft);
+}
+.crm-guide-practice fieldset {
+  border: none;
+  border-top: 1px solid var(--doc-border);
+  padding: 16px 0;
+  margin: 18px 0 0;
+  min-width: 0;
+}
+.crm-guide-practice legend {
+  font-weight: 650;
+  padding-right: 10px;
+}
+.crm-guide-practice label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.crm-guide-practice input,
+.crm-guide-practice textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid var(--doc-border);
+  border-radius: 8px;
+  background: var(--doc-surface);
+  color: var(--doc-ink);
+  padding: 10px;
+  font: inherit;
+}
+.crm-guide-practice textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+.crm-guide-practice small {
+  display: block;
+}
+.crm-guide-practice-label {
+  margin: 12px 0 6px;
+}
+.crm-learning-text-button {
+  color: var(--doc-accent);
+  text-decoration: underline;
+  padding: 6px 0;
+  text-align: left;
+}
+.crm-learning-plans {
+  display: grid;
+  gap: 10px;
+}
+.crm-learning-plans button {
+  text-align: left;
+  display: grid;
+  gap: 4px;
+}
+.crm-guide-effects > h4 {
+  margin-bottom: 18px;
+}
+.crm-guide-effects ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.crm-guide-effects li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--doc-border);
+}
+.crm-guide-effects li > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  height: 26px;
+  border: 1px solid var(--doc-border);
+  border-radius: 50%;
+  color: var(--doc-accent);
+}
+.crm-guide-effects li p {
+  margin: 6px 0 0;
+  color: var(--doc-muted);
+}
+.crm-guide-saved {
+  margin: 24px 0;
+  padding: 16px;
+  border: 1px solid var(--doc-accent);
+  border-radius: 8px;
+}
+.crm-guide-saved blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--doc-border);
+  overflow-wrap: anywhere;
+}
+.crm-learning-error {
+  padding: 10px;
+  border: 1px solid #be123c;
+  color: #9f1239;
+  border-radius: 8px;
+}
+.crm-docs[data-theme="dark"] .crm-learning-error {
+  color: #fda4af;
+}
+.crm-docs .crm-learning-primary {
+  background: var(--doc-accent);
+  color: var(--doc-surface);
+  border-color: var(--doc-accent);
+}
+.crm-doc-reference > summary {
+  font-size: 14px;
+}
+.crm-doc-reference .crm-doc-instructions > div {
+  border-top: 1px solid var(--doc-border);
+  padding: 12px 0;
+}
+@media (max-width: 1200px) {
+  .crm-learning-nodes:has(li:nth-child(4)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .crm-guide-practice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .crm-learning-figure,
+  .crm-task-story {
+    padding: 14px;
+  }
+  .crm-learning-nodes,
+  .crm-learning-nodes:has(li:nth-child(4)),
+  .crm-story-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .crm-learning-nodes button,
+  .crm-learning-card {
+    min-height: 64px;
+  }
+  .crm-learning-connector {
+    top: auto;
+    right: 50%;
+    bottom: -24px;
+    transform: rotate(90deg);
+  }
+  .crm-learning-nodes {
+    gap: 28px;
+  }
+  .crm-learning-relationship .crm-learning-nodes::before {
+    display: none;
+  }
+  .crm-story-steps button {
+    flex-direction: column;
+    align-items: flex-start;
+    font-size: 12px;
+  }
+  .crm-story-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .crm-story-header > div:last-child {
+    text-align: left;
+  }
+  .crm-story-task h4 {
+    min-height: 0;
+  }
+  .crm-learning-before-after {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .crm-learning-before-after > span {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+  .crm-guide-practice form {
+    padding: 14px;
+  }
+  .crm-learning-ratio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media print {
+  .crm-learning-nodes button,
+  .crm-story-task {
+    break-inside: avoid;
+  }
+  .crm-guide-practice form {
+    display: none;
+  }
+}
+
+.crm-learning-hint {
+  font-size: 12px !important;
+  color: var(--doc-muted);
+  margin: 0 0 12px;
+}
+
+.crm-guide-color-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.crm-guide-color-legend > div {
+  min-width: 0;
+}
+.crm-guide-color-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 14px;
+}
+.crm-guide-color-legend p {
+  font-size: 13px;
+  margin-top: 8px;
+  color: var(--doc-muted);
+}
+.crm-guide-color-chip.action {
+  color: var(--doc-accent);
+}
+.crm-guide-color-chip.overdue {
+  color: #9f1239;
+}
+.crm-guide-color-chip.review {
+  color: #945000;
+}
+.crm-guide-color-chip.new {
+  color: #1d4ed8;
+}
+.crm-guide-color-chip.done {
+  color: #146b4b;
+}
+.crm-guide-color-chip.category {
+  color: var(--doc-muted);
+}
+.crm-docs[data-theme="dark"] .crm-guide-color-chip.overdue {
+  color: #fda4af;
+}
+.crm-docs[data-theme="dark"] .crm-guide-color-chip.review {
+  color: #ffd485;
+}
+.crm-docs[data-theme="dark"] .crm-guide-color-chip.new {
+  color: #93c5fd;
+}
+.crm-docs[data-theme="dark"] .crm-guide-color-chip.done {
+  color: #86efac;
+}
+@media (max-width: 600px) {
+  .crm-guide-color-legend {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
