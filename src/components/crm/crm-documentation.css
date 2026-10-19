@@ -1559,8 +1559,32 @@
   cursor: pointer;
   font-weight: 650;
 }
-.crm-panorama-details:not([open]) { padding-bottom: 0; }
-.crm-panorama-grid dd a { color: var(--doc-accent); text-decoration: underline; }
-@media print { .crm-panorama-details { break-inside: avoid; } }
-.crm-panorama-concepts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media(max-width:600px) { .crm-panorama-concepts { grid-template-columns: 1fr; } }
+.crm-panorama-details:not([open]) {
+  padding-bottom: 0;
+}
+.crm-panorama-grid dd a {
+  color: var(--doc-accent);
+  text-decoration: underline;
+}
+@media print {
+  .crm-panorama-details {
+    break-inside: avoid;
+  }
+}
+.crm-panorama-concepts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 600px) {
+  .crm-panorama-concepts {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Chapter names remain primary; diagram viewpoints are explanatory subtitles. */
+.crm-docs .crm-learning-subtitle {
+  font-size: 1rem;
+  line-height: 1.65;
+  font-weight: 500;
+  color: var(--doc-muted);
+  margin: 0.5rem 0 0.75rem;
+}

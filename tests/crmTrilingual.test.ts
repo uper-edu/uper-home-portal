@@ -98,9 +98,9 @@ test("notification search control and guide render all three languages", () => {
     assert.ok(
       html.includes(
         {
-          en: "Notification execution and audit",
-          id: "Eksekusi notifikasi dan audit",
-          zh: "通知执行与发送审计",
+          en: "Notification routing, delivery and audit",
+          id: "Perutean, pengiriman, dan audit notifikasi",
+          zh: "通知路由、发送与审计",
         }[lang],
       ),
     );
@@ -236,33 +236,65 @@ test("static bilingual labels have Indonesian entries and templates have no extr
 });
 
 test("language preference presents three visible exclusive choices without a filter popup", async () => {
-  const { CrmLanguageSelect } = await import("../src/components/crm/CrmLanguageSelect.tsx");
+  const { CrmLanguageSelect } =
+    await import("../src/components/crm/CrmLanguageSelect.tsx");
   for (const lang of ["en", "id", "zh"] as const) {
-    const html = renderToStaticMarkup(React.createElement(CrmLanguageSelect, { lang, onChange() {}, isLight: false }));
+    const html = renderToStaticMarkup(
+      React.createElement(CrmLanguageSelect, {
+        lang,
+        onChange() {},
+        isLight: false,
+      }),
+    );
     assert.match(html, /role="radiogroup"/);
     assert.equal((html.match(/role="radio"/g) || []).length, 3);
     assert.equal((html.match(/aria-checked="true"/g) || []).length, 1);
     assert.equal((html.match(/tabindex="0"/g) || []).length, 1);
     assert.match(html, /data-theme="dark"/);
-    assert.ok(html.includes(`aria-label="${{en: "English", id: "Bahasa Indonesia", zh: "中文"}[lang]}" title=`));
+    assert.ok(
+      html.includes(
+        `aria-label="${{ en: "English", id: "Bahasa Indonesia", zh: "中文" }[lang]}" title=`,
+      ),
+    );
     assert.doesNotMatch(html, /<select|listbox|aria-expanded|crm-filter/);
   }
 });
 
 test("customer edit choices preserve owner labels, stale values and disabled stage permissions", async () => {
-  const { CrmSingleSelect } = await import("../src/components/crm/CrmSingleSelect.tsx");
+  const { CrmSingleSelect } =
+    await import("../src/components/crm/CrmSingleSelect.tsx");
   for (const lang of ["en", "id", "zh"] as const) {
-    const html = renderToStaticMarkup(React.createElement(CrmSingleSelect, {
-      label: "TEST Owner", value: "old-owner", options: [{ value: "", label: "Unassigned" }, { value: "old-owner", label: "Robert 原名" }],
-      onChange() { throw new Error("Rendering must not write data"); }, lang, isLight: false, searchable: true,
-    }));
+    const html = renderToStaticMarkup(
+      React.createElement(CrmSingleSelect, {
+        label: "TEST Owner",
+        value: "old-owner",
+        options: [
+          { value: "", label: "Unassigned" },
+          { value: "old-owner", label: "Robert 原名" },
+        ],
+        onChange() {
+          throw new Error("Rendering must not write data");
+        },
+        lang,
+        isLight: false,
+        searchable: true,
+      }),
+    );
     assert.match(html, /Robert 原名/);
     assert.match(html, /crm-filter-dimension-button/);
     assert.match(html, /aria-haspopup="dialog"/);
     assert.doesNotMatch(html, /<select/);
-    const disabled = renderToStaticMarkup(React.createElement(CrmSingleSelect, {
-      label: "TEST Stage", value: "Historical stage", options: [], onChange() {}, lang, isLight: true, disabled: true,
-    }));
+    const disabled = renderToStaticMarkup(
+      React.createElement(CrmSingleSelect, {
+        label: "TEST Stage",
+        value: "Historical stage",
+        options: [],
+        onChange() {},
+        lang,
+        isLight: true,
+        disabled: true,
+      }),
+    );
     assert.match(disabled, /disabled=""/);
     assert.match(disabled, /Historical stage/);
     assert.match(disabled, /aria-expanded="false"/);
@@ -270,16 +302,62 @@ test("customer edit choices preserve owner labels, stale values and disabled sta
 });
 
 test("standard option declarations retain disabled prompts, dynamic options and original names", async () => {
-  const { crmSelectChoices, CrmSelect } = await import("../src/components/crm/CrmSelect.tsx");
-  const children = [React.createElement("option", {value: "", disabled: true, key: "prompt"}, "Choose a type"), React.createElement(React.Fragment, {key: "fragment"}, [React.createElement("option", {value: "active", key: "active"}, "Robert 原名"), React.createElement("option", {value: "archived", key: "archived"}, "Archived")])];
-  assert.deepEqual(crmSelectChoices(children), [{value: "", label: "Choose a type", disabled: true}, {value: "active", label: "Robert 原名", disabled: undefined}, {value: "archived", label: "Archived", disabled: undefined}]);
-  const html = renderToStaticMarkup(React.createElement(CrmSelect, {label: "TEST", value: "active", onChange() {throw Error("Render cannot save");}, lang: "id", isLight: true}, children));
+  const { crmSelectChoices, CrmSelect } =
+    await import("../src/components/crm/CrmSelect.tsx");
+  const children = [
+    React.createElement(
+      "option",
+      { value: "", disabled: true, key: "prompt" },
+      "Choose a type",
+    ),
+    React.createElement(React.Fragment, { key: "fragment" }, [
+      React.createElement(
+        "option",
+        { value: "active", key: "active" },
+        "Robert 原名",
+      ),
+      React.createElement(
+        "option",
+        { value: "archived", key: "archived" },
+        "Archived",
+      ),
+    ]),
+  ];
+  assert.deepEqual(crmSelectChoices(children), [
+    { value: "", label: "Choose a type", disabled: true },
+    { value: "active", label: "Robert 原名", disabled: undefined },
+    { value: "archived", label: "Archived", disabled: undefined },
+  ]);
+  const html = renderToStaticMarkup(
+    React.createElement(
+      CrmSelect,
+      {
+        label: "TEST",
+        value: "active",
+        onChange() {
+          throw Error("Render cannot save");
+        },
+        lang: "id",
+        isLight: true,
+      },
+      children,
+    ),
+  );
   assert.match(html, /Robert 原名/);
   assert.doesNotMatch(html, /<select/);
 });
 test("CRM module entry points contain no native selectors or independent notification dropdown skin", async () => {
   const fs = await import("node:fs");
-  for (const file of ["src/pages/CrmWorkbench.tsx", "src/components/crm/CrmCampaignHub.tsx", "src/components/crm/CrmPolicySettings.tsx", "src/components/NotificationCenter.tsx", "src/components/SearchableChoices.tsx"])
+  for (const file of [
+    "src/pages/CrmWorkbench.tsx",
+    "src/components/crm/CrmCampaignHub.tsx",
+    "src/components/crm/CrmPolicySettings.tsx",
+    "src/components/NotificationCenter.tsx",
+    "src/components/SearchableChoices.tsx",
+  ])
     assert.doesNotMatch(fs.readFileSync(file, "utf8"), /<select\b/, file);
-  assert.doesNotMatch(fs.readFileSync("src/components/SearchableChoices.tsx", "utf8"), /<details\b/);
+  assert.doesNotMatch(
+    fs.readFileSync("src/components/SearchableChoices.tsx", "utf8"),
+    /<details\b/,
+  );
 });

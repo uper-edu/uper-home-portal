@@ -27,9 +27,9 @@ import {
 import { evaluateFullLeadTier } from "../src/types/crmLead.ts";
 import { calculateLeadTier } from "../src/types/leadSystem.ts";
 import { sla } from "../src/utils/workCalendar.ts";
-test("Ten system chapters restore concepts; nine operating groups preserve every existing section", () => {
+test("Ten system chapters restore concepts; ten operating groups preserve every existing section", () => {
   assert.equal(systemChapters.length, 10);
-  assert.equal(operationGroups.length, 9);
+  assert.equal(operationGroups.length, 10);
   assert.deepEqual(
     operationGroups.flat().sort(),
     guideSections.map((s) => s.key).sort(),
@@ -296,6 +296,86 @@ test("Unique architecture material moves to the appropriate operating and data c
           "external education-platform",
           "platform pendidikan eksternal",
           "外部教育平台",
+        ][col],
+      ),
+    );
+  }
+});
+
+for (const [col, lang] of (["en", "id", "zh"] as const).entries()) {
+  test(`Every chapter keeps the same navigation, breadcrumb and primary title in ${lang}`, () => {
+    const escaped = (text: string) =>
+      renderToStaticMarkup(React.createElement("span", null, text)).slice(
+        6,
+        -7,
+      );
+    for (const section of [...systemChapters, ...guideSections]) {
+      const html = renderToStaticMarkup(
+        React.createElement(CrmUserGuide, {
+          lang,
+          isLight: true,
+          initialChapter: section.key,
+        }),
+      );
+      const title = escaped(section.title[col]);
+      assert.ok(html.includes(`<h3>${title}</h3>`), section.key);
+      const breadcrumb = html.match(
+        /<p class="crm-doc-breadcrumb">([\s\S]*?)<\/p>/,
+      )![1];
+      assert.ok(breadcrumb.endsWith(title), section.key);
+      assert.ok(
+        html.includes(`aria-current="page"`) && html.includes(`>${title}</a>`),
+        section.key,
+      );
+    }
+  });
+}
+
+test("Metrics has a direct chapter entry; keyboard help remains under troubleshooting", () => {
+  assert.deepEqual(
+    operationGroups.find((g) => g.includes("process-and-marketing-metrics")),
+    ["process-and-marketing-metrics"],
+  );
+  assert.deepEqual(
+    operationGroups.find((g) => g.includes("failure-and-accessibility")),
+    ["support", "failure-and-accessibility"],
+  );
+});
+
+test("Operational details remain available in their destination chapters in all languages", () => {
+  const rows = (key: string, col: number) =>
+    guideSections
+      .find((s) => s.key === key)!
+      .body.map((r) => r[col])
+      .join(" ");
+  for (const col of [0, 1, 2]) {
+    assert.ok(
+      rows("followup", col).includes(
+        ["In Contact preview", "Di Pratinjau kontak", "联系预览提供"][col],
+      ),
+    );
+    assert.ok(
+      rows("workspace", col).includes(
+        [
+          "Customer owner and Sales stage",
+          "Penanggung jawab pelanggan dan Tahap penjualan",
+          "客户资料中的负责人和销售阶段",
+        ][col],
+      ) ||
+        rows("workspace", col).includes(
+          [
+            "owner and sales stage",
+            "penanggung jawab dan tahap penjualan",
+            "客户资料中的负责人和销售阶段",
+          ][col],
+        ),
+    );
+    assert.ok(
+      rows("support", col).includes(
+        [
+          "Temporary connection failure",
+          "Gangguan koneksi sementara",
+          "临时断线",
         ][col],
       ),
     );

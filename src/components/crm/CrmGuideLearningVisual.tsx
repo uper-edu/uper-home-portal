@@ -1,6 +1,10 @@
 import { CrmPanorama } from "./CrmPanorama";
 import React, { useEffect, useRef, useState } from "react";
-import { guideLessons, type GuideLesson } from "./CrmGuideLearning";
+import {
+  guideLessons,
+  guideChapterScopes,
+  type GuideLesson,
+} from "./CrmGuideLearning";
 import {
   exerciseWords,
   taskStories,
@@ -103,6 +107,12 @@ export function LessonOpening({
   const t = (en: string, id: string, zh: string) => words(col, en, id, zh);
   return (
     <div className="crm-learning-opening">
+      {guideChapterScopes[chapterKey] && (
+        <p className="crm-learning-answer">
+          {guideChapterScopes[chapterKey][col]}
+        </p>
+      )}
+      <p className="crm-learning-subtitle">{s.title[col]}</p>
       <p className="crm-learning-answer">{s.answer[col]}</p>
       {chapterKey === "tasks-sla" ? (
         <TaskStory col={col} />
@@ -677,7 +687,12 @@ export function FollowupPractice({ col }: Props) {
             <figcaption>{t("effectCaption")}</figcaption>
           </figure>
           {saved && (
-            <div ref={savedRef} tabIndex={-1} role="status" className="crm-guide-saved">
+            <div
+              ref={savedRef}
+              tabIndex={-1}
+              role="status"
+              className="crm-guide-saved"
+            >
               <strong>{t("savedTitle")}</strong>
               <p>{t("savedSummary")}</p>
               <p>{t(p.plan === "schedule" ? "savedNew" : "savedKeep")}</p>

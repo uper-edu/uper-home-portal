@@ -93,11 +93,11 @@ export const systemChapters: SystemChapter[] = [
   },
   {
     key: "acquisition",
-    title: w(
-      "Campaign-to-customer journey",
-      "Alur kampanye ke pelanggan",
-      "活动获客与完整闭环",
-    ),
+    title: [
+      "Acquisition flow and source attribution",
+      "Alur akuisisi dan atribusi sumber",
+      "获客流程与来源归因",
+    ],
     intro: w(
       "The campaign ID connects the entry link to saved attribution. Participation requires separate staff evidence.",
       "ID kampanye menghubungkan tautan masuk dengan atribusi tersimpan. Partisipasi memerlukan bukti staf tersendiri.",
@@ -369,12 +369,32 @@ export const systemChapters: SystemChapter[] = [
     blocks: [
       {
         kind: "flow",
-        title: w("Follow-up workspace", "Ruang kerja tindak lanjut", "跟进工作区"),
+        title: w(
+          "Follow-up workspace",
+          "Ruang kerja tindak lanjut",
+          "跟进工作区",
+        ),
         items: [
-          w("Communication overview: contact arrangement, human communication and newer customer messages", "Ringkasan komunikasi: pengaturan kontak, komunikasi staf dan pesan pelanggan setelahnya", "沟通概况：联系安排、最近人工沟通与此后客户新消息"),
-          w("Tasks: saved action, deadlines and one processing entry", "Tugas: tindakan, tenggat, dan satu pintu pemrosesan", "跟进任务：已保存动作、期限与统一处理入口"),
-          w("On-demand form: contact, information or task operation; protect the draft", "Formulir sesuai kebutuhan: kontak, informasi, atau tindakan tugas; lindungi draf", "按需处理区：联系、信息或任务操作；保护草稿"),
-          w("Timeline: operating date and time to seconds; identify customer, sales and system sources", "Linimasa: tanggal operasional dan waktu hingga detik; bedakan sumber pelanggan, sales dan sistem", "跟进时间轴：运营日期与时分秒；区分客户、销售及系统来源"),
+          w(
+            "Communication overview: contact arrangement, human communication and newer customer messages",
+            "Ringkasan komunikasi: pengaturan kontak, komunikasi staf dan pesan pelanggan setelahnya",
+            "沟通概况：联系安排、最近人工沟通与此后客户新消息",
+          ),
+          w(
+            "Tasks: saved action, deadlines and one processing entry",
+            "Tugas: tindakan, tenggat, dan satu pintu pemrosesan",
+            "跟进任务：已保存动作、期限与统一处理入口",
+          ),
+          w(
+            "On-demand form: contact, information or task operation; protect the draft",
+            "Formulir sesuai kebutuhan: kontak, informasi, atau tindakan tugas; lindungi draf",
+            "按需处理区：联系、信息或任务操作；保护草稿",
+          ),
+          w(
+            "Timeline: operating date and time to seconds; identify customer, sales and system sources",
+            "Linimasa: tanggal operasional dan waktu hingga detik; bedakan sumber pelanggan, sales dan sistem",
+            "跟进时间轴：运营日期与时分秒；区分客户、销售及系统来源",
+          ),
         ],
       },
       {
@@ -486,11 +506,11 @@ export const systemChapters: SystemChapter[] = [
   },
   {
     key: "notification-system",
-    title: w(
-      "Notification execution and audit",
-      "Eksekusi notifikasi dan audit",
-      "通知执行与发送审计",
-    ),
+    title: [
+      "Notification routing, delivery and audit",
+      "Perutean, pengiriman, dan audit notifikasi",
+      "通知路由、发送与审计",
+    ],
     intro: w(
       "Business data and its event are saved together. Notification delivery and staff follow-up are independent evidence.",
       "Data bisnis dan peristiwa disimpan bersama. Pengiriman notifikasi dan tindak lanjut staf merupakan bukti terpisah.",
@@ -574,11 +594,11 @@ export const systemChapters: SystemChapter[] = [
   },
   {
     key: "measurement",
-    title: w(
-      "Metrics and evidence boundaries",
-      "Metrik dan batas bukti",
-      "指标与证据边界",
-    ),
+    title: [
+      "Sales and marketing metric definitions",
+      "Definisi metrik penjualan dan pemasaran",
+      "销售与营销指标口径",
+    ],
     intro: w(
       "A number needs a population, time definition and evidence. Missing evidence is unknown, not zero.",
       "Angka memerlukan populasi, definisi waktu, dan bukti. Bukti hilang berarti tidak diketahui, bukan nol.",
@@ -646,11 +666,11 @@ export const systemChapters: SystemChapter[] = [
   },
   {
     key: "ai-assessment",
-    title: w(
-      "AI and assessment evidence",
-      "AI dan bukti asesmen",
-      "AI 与测评依据",
-    ),
+    title: [
+      "AI consultation and assessment evidence",
+      "Konsultasi AI dan bukti asesmen",
+      "AI咨询与测评依据",
+    ],
     intro: w(
       "AI consultation, diagnostic assessment and teacher placement have different responsibilities. None automatically proves official certification or a sale.",
       "Konsultasi AI, asesmen diagnostik, dan penempatan guru memiliki tanggung jawab berbeda. Tidak otomatis membuktikan sertifikasi resmi atau penjualan.",
@@ -753,11 +773,27 @@ export const systemChapters: SystemChapter[] = [
     blocks: [
       {
         kind: "table",
-        title: w("Storage and access boundaries", "Batas penyimpanan dan akses", "存储与权限边界"),
+        title: w(
+          "Storage and access boundaries",
+          "Batas penyimpanan dan akses",
+          "存储与权限边界",
+        ),
         items: [
-          w("MySQL stores CRM business records: customers, messages, tasks, contact records and notification audit.", "MySQL menyimpan catatan bisnis CRM: pelanggan, pesan, tugas, catatan kontak, dan audit notifikasi.", "MySQL保存CRM业务记录，包括客户、消息、任务、联系记录与通知审计。"),
-          w("Static JSON stores questions and translations. Updating explanatory copy does not change assessment scoring rules or historical results.", "JSON statis menyimpan soal dan terjemahan. Pembaruan penjelasan tidak mengubah aturan skor asesmen atau hasil historis.", "静态JSON保存题库与三语文案；修改解释文案不改变测评评分规则或历史结果。"),
-          w("The server enforces permissions and data scopes. Interface controls and documentation do not grant access.", "Server menerapkan izin dan cakupan data. Kontrol antarmuka dan dokumentasi tidak memberikan akses.", "权限和数据范围由服务端执行；界面控件与文档说明本身不授予权限。"),
+          w(
+            "MySQL stores CRM business records: customers, messages, tasks, contact records and notification audit.",
+            "MySQL menyimpan catatan bisnis CRM: pelanggan, pesan, tugas, catatan kontak, dan audit notifikasi.",
+            "MySQL保存CRM业务记录，包括客户、消息、任务、联系记录与通知审计。",
+          ),
+          w(
+            "Static JSON stores questions and translations. Updating explanatory copy does not change assessment scoring rules or historical results.",
+            "JSON statis menyimpan soal dan terjemahan. Pembaruan penjelasan tidak mengubah aturan skor asesmen atau hasil historis.",
+            "静态JSON保存题库与三语文案；修改解释文案不改变测评评分规则或历史结果。",
+          ),
+          w(
+            "The server enforces permissions and data scopes. Interface controls and documentation do not grant access.",
+            "Server menerapkan izin dan cakupan data. Kontrol antarmuka dan dokumentasi tidak memberikan akses.",
+            "权限和数据范围由服务端执行；界面控件与文档说明本身不授予权限。",
+          ),
         ],
       },
       {

@@ -716,9 +716,9 @@ Object.assign(guideLessons, {
   ),
   followup: how(
     w(
-      "Record an unanswered attempt and decide what remains",
-      "Catat upaya tanpa jawaban dan langkah berikutnya",
-      "未接通后，分别记录事实、任务结果与后续安排",
+      "Example: record an unanswered attempt and decide what remains",
+      "Contoh: catat upaya tanpa jawaban dan langkah berikutnya",
+      "案例：未接通后，分别记录事实、任务结果与后续安排",
     ),
     w(
       "Use a contact record for an actual attempt. Use an information note for facts that are not contact attempts.",
@@ -922,8 +922,16 @@ Object.assign(guideLessons, {
     ),
     [
       n(
-        w("Review unknown sources", "Verifikasi sumber tidak dikenal", "核实未知来源"),
-        w("Only unknown codes with saved leads appear in Unverified sources. A manager records a reason to link an existing campaign, create one, or mark invalid. Original codes and customer facts remain; each decision is audited.", "Hanya kode tidak dikenal dengan prospek tersimpan muncul di Sumber belum diverifikasi. Manajer mencatat alasan untuk menautkan kampanye, membuat kampanye, atau menandai tidak valid. Kode asli dan fakta pelanggan tetap; tiap keputusan diaudit.", "待核实来源仅收录已生成客户的未知代码。管理者填写依据后可关联已有活动、创建活动或标记无效；原始代码与客户事实保留，每次决定留存审计。"),
+        w(
+          "Review unknown sources",
+          "Verifikasi sumber tidak dikenal",
+          "核实未知来源",
+        ),
+        w(
+          "Only unknown codes with saved leads appear in Unverified sources. A manager records a reason to link an existing campaign, create one, or mark invalid. Original codes and customer facts remain; each decision is audited.",
+          "Hanya kode tidak dikenal dengan prospek tersimpan muncul di Sumber belum diverifikasi. Manajer mencatat alasan untuk menautkan kampanye, membuat kampanye, atau menandai tidak valid. Kode asli dan fakta pelanggan tetap; tiap keputusan diaudit.",
+          "待核实来源仅收录已生成客户的未知代码。管理者填写依据后可关联已有活动、创建活动或标记无效；原始代码与客户事实保留，每次决定留存审计。",
+        ),
       ),
       n(
         w("Create and save", "Buat dan simpan", "创建并保存活动"),
@@ -1506,3 +1514,27 @@ Object.assign(guideLessons, {
     ),
   ),
 });
+
+// Scope statements describe the whole chapter; lesson titles describe the diagram.
+export const guideChapterScopes: Record<string, Words> = {
+  followup: w(
+    "Record actual contact, keep a separate note, or handle a specific task. Completion, rescheduling, replacement, cancellation and added information have different effects. The example below follows an unanswered attempt; other outcomes remain available.",
+    "Catat kontak nyata, simpan catatan terpisah, atau tangani tugas tertentu. Penyelesaian, penjadwalan ulang, penggantian, pembatalan, dan tambahan informasi memiliki dampak berbeda. Contoh berikut memakai upaya tanpa jawaban; hasil lain tetap tersedia.",
+    "本章涵盖记录联系、记笔记，以及任务完成、改期、替代、取消和补充信息。不同操作的影响分别确认；下方用未接通案例演示，其他联系结果仍按实际情况选择。",
+  ),
+  access: w(
+    "Sign in, check your permissions, use the account menu and inspect the current environment and version.",
+    "Masuk, periksa izin, gunakan menu akun, dan periksa lingkungan serta versi saat ini.",
+    "登录后确认权限范围，使用账号菜单，并核对当前环境与版本。",
+  ),
+  assessment: w(
+    "Review saved results, performance and supporting evidence. Learning goals belong in Profile; contact-message previews are covered in the follow-up chapter.",
+    "Tinjau hasil tersimpan, performa, dan bukti pendukung. Tujuan belajar ada di Profil; pratinjau pesan kontak dibahas pada bab tindak lanjut.",
+    "查看已保存的测评结果、作答表现及依据。学习目标在客户资料中查看；联系预览在跟进操作章节说明。",
+  ),
+  "data-implementation": w(
+    "Look up CRM storage, server access boundaries, transaction behavior and field definitions. The diagram below explains how evidence differs from current state.",
+    "Cari penyimpanan CRM, batas akses server, perilaku transaksi, dan definisi kolom. Diagram berikut membedakan bukti dari status saat ini.",
+    "本章提供CRM存储方式、服务端权限边界、事务处理与字段字典；下方图解先说明原始依据与当前状态的区别。",
+  ),
+};

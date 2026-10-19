@@ -28,9 +28,9 @@ export const guideSections = [
   {
     key: "process-and-marketing-metrics",
     title: [
-      "Sales process and campaign measurement",
-      "Proses penjualan dan pengukuran kampanye",
-      "销售过程与营销统计",
+      "Review sales process and campaign metrics",
+      "Meninjau metrik proses penjualan dan kampanye",
+      "查看销售过程与营销统计",
     ],
     body: [
       [
@@ -78,21 +78,11 @@ export const guideSections = [
   {
     key: "failure-and-accessibility",
     title: [
-      "Recovery and keyboard access",
-      "Pemulihan dan akses keyboard",
-      "异常恢复与键盘操作",
+      "Keyboard navigation and accessibility",
+      "Navigasi keyboard dan aksesibilitas",
+      "键盘导航与无障碍操作",
     ],
     body: [
-      [
-        "A failed save retains the draft and keeps the current customer. If the server accepted it but the reply was lost, retry without changing the draft; the same request is not saved twice.",
-        "Penyimpanan gagal mempertahankan draf dan pelanggan saat ini. Jika server menerima tetapi balasan hilang, coba lagi tanpa mengubah draf; permintaan yang sama tidak disimpan dua kali.",
-        "保存失败保留草稿和当前客户。服务器已保存但响应丢失时，保留原内容重试，同一请求不会重复保存。",
-      ],
-      [
-        "Temporary connection failure does not sign you out. If access changes, old customer details close and your own draft remains in this page memory. Reopen after access returns to continue. Refreshing or closing the page clears unsaved memory; explicit sign-out clears your drafts.",
-        "Gangguan koneksi sementara tidak mengeluarkan akun. Saat akses berubah, detail pelanggan ditutup dan draf sendiri tetap dalam memori halaman. Buka kembali setelah akses pulih. Memuat ulang/menutup halaman menghapus draf belum tersimpan; keluar akun menghapus draf Anda.",
-        "临时断线不会退出登录。权限变化会关闭旧客户资料，自己的草稿保留在当前页内存中；恢复权限后重新打开客户可继续。刷新或关闭页面会清除未保存的内存草稿，主动退出会清除自己的草稿。",
-      ],
       [
         "Use Tab and Shift+Tab to move between controls, arrow keys to navigate choices and tabs, Enter to select, and Escape to close a choice or contact preview. Errors receive focus. Mobile module navigation stays on one row; scroll horizontally to reach other modules.",
         "Gunakan Tab/Shift+Tab untuk berpindah kontrol, panah untuk pilihan dan tab, Enter untuk memilih, Escape untuk menutup pilihan atau pratinjau kontak. Fokus berpindah ke pesan kesalahan. Navigasi modul pada layar kecil tetap satu baris; geser untuk membuka modul lainnya.",
@@ -102,7 +92,11 @@ export const guideSections = [
   },
   {
     key: "efficient-followup",
-    title: ["Daily sales work", "Pekerjaan penjualan harian", "日常销售跟进"],
+    title: [
+      "Plan daily follow-up and choose the next customer",
+      "Merencanakan tindak lanjut harian dan memilih pelanggan berikutnya",
+      "安排日常跟进与选择下一位客户",
+    ],
     body: [
       [
         "Sales start in their own Needs handling queue; Managers see all customers. Reset restores role defaults. Reading clears unread marks, not tasks.",
@@ -138,7 +132,11 @@ export const guideSections = [
   },
   {
     key: "workspace",
-    title: ["Customer workspace", "Ruang kerja pelanggan", "客户工作区"],
+    title: [
+      "Use the customer workspace",
+      "Menggunakan ruang kerja pelanggan",
+      "使用客户工作区",
+    ],
     body: [
       [
         "Documentation has a chapter directory and a separate reading pane on wide screens. Each scrolls independently; selecting a chapter keeps the directory position when possible, reveals the selected item and starts the chapter at the top. On small screens, open Chapters and search, then choose a chapter to close the directory and read it. Use View search results after searching, or Escape to close the directory. Browser Back and Forward also select the corresponding chapter.",
@@ -215,21 +213,25 @@ export const guideSections = [
         "Tugas prioritas dan daftar tugas Tindak lanjut memakai cakupan tertunda yang sama: tugas terbuka, terlambat, dan historis yang perlu ditinjau; pelanggan ditutup atau terdaftar tidak menyertakan tugas peninjauan historis. Urutan memakai tenggat tersimpan, lalu tugas tanpa waktu, lalu tugas historis. Ini prioritas tenggat, bukan rekomendasi AI. Ringkasan komunikasi menampilkan tautan tugas tersimpan untuk pesan pelanggan yang ditampilkan, dengan status tugas saat ini. Tautan menuju tugas tersebut; tugas selesai atau dibatalkan dibuka di riwayat. Tanpa tautan berarti hubungan belum tercatat, bukan pesan telah ditangani. Membaca pesan, catatan kontak berikutnya, dan teks serupa tidak membuktikan penyelesaian atau membuat tugas.",
         "优先待办与跟进任务列表使用同一待办范围：开放、逾期及历史待确认任务；已成交或关闭客户排除历史待确认占位任务。有可靠期限的任务按原期限排序，其后为时间待确认任务，再后为历史待确认任务。这是期限优先，不是AI推荐。沟通概况为所展示客户消息列出已保存的任务关联及任务当前状态；点击定位该任务，已完成或取消任务进入历史区。没有关联只表示未记录关联，不表示消息已处理。查看消息、后续联系记录或相似文字都不能证明任务完成，也不因此创建任务。",
       ],
+      [
+        "In Profile, Customer owner and Sales stage use the same option style as the main list. Search is available for owners; the fixed stage list has no search. Selecting a different value saves it immediately through the existing permission checks; selecting the current value makes no change. Escape closes without saving.",
+        "Di Profil, Penanggung jawab pelanggan dan Tahap penjualan memakai gaya pilihan yang sama dengan daftar utama. Penanggung jawab dapat dicari; daftar tahap tetap tidak memiliki pencarian. Memilih nilai berbeda langsung menyimpannya melalui pemeriksaan izin yang berlaku; memilih nilai saat ini tidak mengubah data. Escape menutup tanpa menyimpan.",
+        "客户资料中的负责人和销售阶段使用与主列表一致的选项样式。负责人可搜索，固定阶段列表无搜索。选择不同值会按现有权限立即保存；选择当前值不改动数据，Escape 关闭不保存。",
+      ],
     ],
   },
   {
     key: "access",
-    title: ["Accounts and permissions", "Akun dan izin akses", "账号与权限"],
+    title: [
+      "Sign-in, accounts and permissions",
+      "Login, akun, dan izin",
+      "登录、账号与权限",
+    ],
     body: [
       [
         "The sign-in page uses the same EN, ID and Chinese language buttons as CRM. Choose a language before signing in; the choice is kept in the workspace. Use your existing staff login ID and password. Changing language does not clear entered credentials.",
         "Halaman masuk memakai tombol bahasa EN, ID, dan Mandarin yang sama dengan CRM. Pilih bahasa sebelum masuk; pilihan tetap digunakan di ruang kerja. Gunakan ID akun staf dan kata sandi yang sudah ada. Mengganti bahasa tidak menghapus isian akun.",
         "登录页与 CRM 使用相同的 EN、ID、中文语言按钮。可先选择语言，进入工作区后继续使用该语言。请使用已有员工账号和密码；切换语言不会清空已输入内容。",
-      ],
-      [
-        "In Profile, Customer owner and Sales stage use the same option style as the main list. Search is available for owners; the fixed stage list has no search. Selecting a different value saves it immediately through the existing permission checks; selecting the current value makes no change. Escape closes without saving.",
-        "Di Profil, Penanggung jawab pelanggan dan Tahap penjualan memakai gaya pilihan yang sama dengan daftar utama. Penanggung jawab dapat dicari; daftar tahap tetap tidak memiliki pencarian. Memilih nilai berbeda langsung menyimpannya melalui pemeriksaan izin yang berlaku; memilih nilai saat ini tidak mengubah data. Escape menutup tanpa menyimpan.",
-        "客户资料中的负责人和销售阶段使用与主列表一致的选项样式。负责人可搜索，固定阶段列表无搜索。选择不同值会按现有权限立即保存；选择当前值不改动数据，Escape 关闭不保存。",
       ],
       [
         "CRM requires staff sign-in. Default CRM Manager roles manage visibility, assignment and operations; Sales handle customers within their scope. Current roles appear in the account menu; the staff directory, not this manual, is the source of current membership. Use the account menu to change your own password or sign out.",
@@ -286,9 +288,9 @@ export const guideSections = [
   {
     key: "followup",
     title: [
-      "Follow-up and task completion",
-      "Tindak lanjut dan penyelesaian tugas",
-      "跟进与任务完成",
+      "Record follow-up and manage tasks",
+      "Mencatat tindak lanjut dan mengelola tugas",
+      "记录跟进与处理任务",
     ],
     body: [
       [
@@ -316,7 +318,6 @@ export const guideSections = [
         "Pendaftaran pertama membuat tugas kontak awal. Asisten beranda dan /chat memakai pengenalan terbatas yang sama untuk permintaan konsultan, janji kelas percobaan, dan pendaftaran kelas dalam bahasa Inggris, Indonesia, dan Mandarin. Saya ingin menjadwalkan kelas percobaan membuat permintaan janji; pertanyaan umum tentang kelas tidak. Niat negatif, bersyarat, kutipan, atau bertentangan tetap menjadi konsultasi AI. Ini pencocokan ungkapan, bukan keputusan mandiri AI. WhatsApp, telepon, dan komunikasi offline tidak disinkronkan; sales mencatat dan membuat tugas sesuai kebutuhan.",
         "首次登记创建初次联系任务。主页助手和独立 /chat 共用有限的三语明确请求识别：例如“我想预约试听”创建预约请求，普通课程咨询不创建这类请求；否定、条件、引用示例或相互冲突的意向继续由 AI 咨询处理。这是保守的明确表达匹配，不是 AI 自主决定销售行动。WhatsApp、电话和线下沟通未自动同步，由销售记录并按需建任务。",
       ],
-
       [
         "Quick information notes can be saved at any time without selecting a task or a contact result. They do not complete tasks, change stages or count as contact attempts. Contact records can also be saved without completing tasks: choose Record only; keep arrangements. Stage changes require evidence and retain before/after values.",
         "Catatan informasi singkat dapat disimpan kapan saja tanpa memilih tugas atau hasil kontak. Catatan ini tidak menyelesaikan tugas, mengubah tahap, atau dihitung sebagai upaya kontak. Catatan kontak juga dapat disimpan tanpa menyelesaikan tugas: pilih Catat saja; pertahankan pengaturan. Perubahan tahap memerlukan bukti dan menyimpan nilai sebelum/sesudah.",
@@ -342,7 +343,6 @@ export const guideSections = [
         "Jika penyimpanan kehabisan waktu, simpan draf dan periksa hasilnya. Ulangi permintaan awal tanpa perubahan. Kebijakan notifikasi tugas baru awalnya nonaktif; operator berizin harus meninjau dan mengaktifkannya. Kebijakan lama dan riwayat pengiriman tidak ditulis ulang atau diputar ulang.",
         "保存超时后保留草稿并查询结果，使用原请求重试。新增任务通知策略默认关闭，须由有权限人员复核启用；既有策略和历史发送不改写、不重放。",
       ],
-
       [
         "The contact form uses the standard CRM option panel for channel, contact result, stage and buying signal. These fixed lists have no search. Staff identity remains locked to the signed-in employee. Changing form choices edits the draft only; Save follow-up submits the record.",
         "Formulir kontak memakai panel pilihan standar CRM untuk kanal, hasil kontak, tahap, dan sinyal pembelian. Daftar tetap ini tidak memiliki pencarian. Identitas staf tetap terkunci pada akun yang masuk. Perubahan pilihan hanya mengubah draf; Simpan tindak lanjut mengirim catatan.",
@@ -358,14 +358,19 @@ export const guideSections = [
         "Catat kontak beserta kanal, hasil, tahap penjualan, ringkasan, dan tindak lanjut berikutnya. Penyimpanan mencatat kontak dan dapat membuat tugas berikutnya. Membuka pelanggan hanya menghapus status belum dibaca. Menyelesaikan tugas membatalkan notifikasi terkait yang masih mengantre; pesan yang sudah dikirim tidak ditarik kembali. Tinjau tugas historis sebelum mengaktifkannya.",
         "记录沟通方式、联系结果、销售阶段、摘要和下次跟进安排。保存会记录本次联系，并可建立下一项任务。查看客户只清除未读；完成任务会取消关联的待发通知，不会撤回已经发送的消息。启用历史待办前先确认。",
       ],
+      [
+        "In Contact preview, choose Introduction and needs, Discuss assessment results, Course and schedule inquiry, Trial lesson inquiry, Enrollment assistance, or Write your own. Templates are editable drafts, not an approved offer catalogue. Choose the customer's communication language, review the complete message and verify course, fee and availability facts. Changing interface language does not rewrite a draft. Replacing edited text requires confirmation. Copying or opening WhatsApp creates no contact record and completes no task; stopped contact remains blocked.",
+        "Di Pratinjau kontak, pilih Perkenalan dan kebutuhan, Bahas hasil asesmen, Informasi kelas dan jadwal, Permintaan kelas percobaan, Bantuan pendaftaran kelas, atau Tulis sendiri. Templat adalah draf yang dapat diedit, bukan katalog penawaran resmi. Pilih bahasa pelanggan, tinjau seluruh pesan, dan periksa kursus, biaya, serta ketersediaan. Mengubah bahasa antarmuka tidak menulis ulang draf. Mengganti teks yang telah diedit memerlukan konfirmasi. Menyalin atau membuka WhatsApp tidak mencatat kontak atau menyelesaikan tugas; penghentian kontak tetap berlaku.",
+        "联系预览提供初次联系与需求确认、测评结果沟通、课程与排期沟通、试听需求沟通、报名协助及自由编写。模板是可编辑草稿，不是已批准的 Offer 目录。选择客户沟通语言，核对完整内容及课程、费用和时间事实。切换界面语言不重写草稿，替换已编辑内容须确认。复制或打开 WhatsApp 不登记联系、不完成任务；停止联系限制继续生效。",
+      ],
     ],
   },
   {
     key: "chat",
     title: [
-      "Conversations and human requests",
-      "Percakapan dan permintaan bantuan konsultan",
-      "聊天与转人工",
+      "Review conversations and handle human requests",
+      "Meninjau percakapan dan menangani permintaan bantuan konsultan",
+      "查看对话与处理人工请求",
     ],
     body: [
       [
@@ -398,9 +403,9 @@ export const guideSections = [
   {
     key: "assessment",
     title: [
-      "Learning goals and assessment evidence",
-      "Tujuan belajar dan bukti asesmen",
-      "学习目标与测评依据",
+      "Review and explain assessment results",
+      "Meninjau dan menjelaskan hasil asesmen",
+      "查看与解释测评结果",
     ],
     body: [
       [
@@ -428,19 +433,14 @@ export const guideSections = [
         "Teks asesmen asli disimpan di Bukti dan riwayat asesmen, bukan ditampilkan sebagai catatan sales. Bahasa aslinya dipertahankan dan teks dapat berasal dari catatan pelanggan sebelumnya; jangan menganggapnya milik upaya terbaru. Versi tes dan penilaian tetap tersedia untuk penelusuran. Riwayat tidak dihapus atau dinilai ulang.",
         "原始测评说明收在测评依据与历史记录中，不作为销售备注展示。原文保持原语言，可能来自较早的客户级记录，不能默认对应最近一次作答。试卷及评分版本供核对来源；不删除历史、不重新评分。",
       ],
-      [
-        "In Contact preview, choose Introduction and needs, Discuss assessment results, Course and schedule inquiry, Trial lesson inquiry, Enrollment assistance, or Write your own. Templates are editable drafts, not an approved offer catalogue. Choose the customer's communication language, review the complete message and verify course, fee and availability facts. Changing interface language does not rewrite a draft. Replacing edited text requires confirmation. Copying or opening WhatsApp creates no contact record and completes no task; stopped contact remains blocked.",
-        "Di Pratinjau kontak, pilih Perkenalan dan kebutuhan, Bahas hasil asesmen, Informasi kelas dan jadwal, Permintaan kelas percobaan, Bantuan pendaftaran kelas, atau Tulis sendiri. Templat adalah draf yang dapat diedit, bukan katalog penawaran resmi. Pilih bahasa pelanggan, tinjau seluruh pesan, dan periksa kursus, biaya, serta ketersediaan. Mengubah bahasa antarmuka tidak menulis ulang draf. Mengganti teks yang telah diedit memerlukan konfirmasi. Menyalin atau membuka WhatsApp tidak mencatat kontak atau menyelesaikan tugas; penghentian kontak tetap berlaku.",
-        "联系预览提供初次联系与需求确认、测评结果沟通、课程与排期沟通、试听需求沟通、报名协助及自由编写。模板是可编辑草稿，不是已批准的 Offer 目录。选择客户沟通语言，核对完整内容及课程、费用和时间事实。切换界面语言不重写草稿，替换已编辑内容须确认。复制或打开 WhatsApp 不登记联系、不完成任务；停止联系限制继续生效。",
-      ],
     ],
   },
   {
     key: "operations",
     title: [
-      "Sales Operations: seven modules",
-      "Operasional Penjualan: tujuh modul",
-      "销售运营：七个模块",
+      "Configure Sales Operations: seven modules",
+      "Mengatur Operasional Penjualan: tujuh modul",
+      "配置销售运营：七个模块",
     ],
     body: [
       [
@@ -458,9 +458,9 @@ export const guideSections = [
   {
     key: "notifications",
     title: [
-      "Notification rules, channels and delivery audit",
-      "Aturan notifikasi, kanal, dan audit pengiriman",
-      "通知策略、渠道与发送审计",
+      "Configure notifications and check delivery",
+      "Mengatur notifikasi dan memeriksa pengiriman",
+      "配置通知与检查发送结果",
     ],
     body: [
       [
@@ -488,14 +488,16 @@ export const guideSections = [
   {
     key: "campaigns",
     title: [
-      "Marketing campaigns and attribution",
-      "Kampanye pemasaran dan atribusi",
-      "营销活动与来源归因",
+      "Manage campaigns and review sources",
+      "Mengelola kampanye dan memverifikasi sumber",
+      "管理营销活动与核实来源",
     ],
     body: [
-      ["Unverified sources includes only unknown campaign codes with saved leads. A manager can link an existing campaign, create a planning campaign, or mark the source invalid with a reason. Original codes, first attribution evidence, ownership, scores and task deadlines remain; verification saves a separate attribution link and audit. Invalid does not delete customers or become organic. Visits without registration do not create review items. Existing registrations with the same source are counted once each. A temporary campaign lookup failure is not proof that the campaign is missing.",
-      "Sumber belum diverifikasi hanya memuat kode kampanye tidak dikenal dengan prospek tersimpan. Manajer dapat menautkan kampanye, membuat kampanye perencanaan, atau menandai sumber tidak valid dengan alasan. Kode asli, bukti atribusi pertama, pemilik, nilai, dan tenggat tetap; verifikasi menyimpan tautan atribusi dan audit terpisah. Sumber tidak valid tidak menghapus pelanggan atau menjadi trafik organik. Kunjungan tanpa registrasi tidak membuat item verifikasi. Tiap registrasi dihitung satu kali. Kegagalan pencarian sementara bukan bukti kampanye tidak ada.",
-      "待核实来源仅收录已生成客户的未知活动代码。管理者填写依据后可关联已有活动、创建筹备中的活动或标记无效。原始代码、首次归因依据、客户归属、分数和任务期限保留；核实另存归因关联和审计。无效来源不删除客户，也不归为自然流量。仅访问未登记不生成核实项；同一来源的每位客户只计一次。活动查询暂时失败不能证明活动不存在。"],
+      [
+        "Unverified sources includes only unknown campaign codes with saved leads. A manager can link an existing campaign, create a planning campaign, or mark the source invalid with a reason. Original codes, first attribution evidence, ownership, scores and task deadlines remain; verification saves a separate attribution link and audit. Invalid does not delete customers or become organic. Visits without registration do not create review items. Existing registrations with the same source are counted once each. A temporary campaign lookup failure is not proof that the campaign is missing.",
+        "Sumber belum diverifikasi hanya memuat kode kampanye tidak dikenal dengan prospek tersimpan. Manajer dapat menautkan kampanye, membuat kampanye perencanaan, atau menandai sumber tidak valid dengan alasan. Kode asli, bukti atribusi pertama, pemilik, nilai, dan tenggat tetap; verifikasi menyimpan tautan atribusi dan audit terpisah. Sumber tidak valid tidak menghapus pelanggan atau menjadi trafik organik. Kunjungan tanpa registrasi tidak membuat item verifikasi. Tiap registrasi dihitung satu kali. Kegagalan pencarian sementara bukan bukti kampanye tidak ada.",
+        "待核实来源仅收录已生成客户的未知活动代码。管理者填写依据后可关联已有活动、创建筹备中的活动或标记无效。原始代码、首次归因依据、客户归属、分数和任务期限保留；核实另存归因关联和审计。无效来源不删除客户，也不归为自然流量。仅访问未登记不生成核实项；同一来源的每位客户只计一次。活动查询暂时失败不能证明活动不存在。",
+      ],
       [
         "Create a campaign, copy its tracking link or QR code, then complete the questionnaire, assessment and AI consultation. Links use the current environment. CRM stores the first campaign attribution and each conversation's campaign separately. Registered leads count saved customer records; Assessments completed counts customers with saved server assessment results. Neither metric proves event attendance. Campaign counts use the current CRM database and saved assessment evidence; revenue includes recorded amounts only, with no assumed fees. Test notices in a live Lark group must be explicitly configured and identified as tests.",
         "Buat kampanye, salin tautan pelacakan atau kode QR, lalu isi kuesioner, asesmen, dan konsultasi AI. Tautan memakai lingkungan saat ini. CRM menyimpan atribusi kampanye pertama dan kampanye setiap percakapan secara terpisah. Prospek terdaftar menghitung catatan pelanggan tersimpan; Asesmen selesai menghitung pelanggan dengan hasil asesmen server tersimpan. Keduanya bukan bukti kehadiran acara. Jumlah prospek memakai basis data CRM saat ini dan bukti asesmen tersimpan; pendapatan hanya mencakup jumlah tercatat, tanpa asumsi biaya. Notifikasi uji di grup Lark aktif harus dikonfigurasi secara eksplisit dan ditandai sebagai pengujian.",
@@ -518,7 +520,7 @@ export const guideSections = [
     title: [
       "Daily checks and troubleshooting",
       "Pemeriksaan harian dan pemecahan masalah",
-      "日常检查与排错",
+      "日常检查与问题排查",
     ],
     body: [
       [
@@ -550,6 +552,16 @@ export const guideSections = [
         "Language preferences change system labels and documentation, not names, transcripts or notes. If a deadline or assessment is missing, inspect its source instead of inventing a value. Use delivery audit for notification issues and contact a CRM Manager for access or configuration issues.",
         "Preferensi bahasa mengubah label sistem dan dokumentasi, bukan nama, transkrip, atau catatan. Jika tenggat atau asesmen tidak tersedia, periksa sumbernya dan jangan membuat nilai sendiri. Gunakan audit pengiriman untuk masalah notifikasi dan hubungi Manajer CRM untuk masalah akses atau konfigurasi.",
         "语言偏好改变系统标签和文档，不改变姓名、对话与备注。缺失截止时间或测评时，应核查来源，不猜造数值。通知问题查看发送审计；权限和配置问题联系 CRM 管理者。",
+      ],
+      [
+        "A failed save retains the draft and keeps the current customer. If the server accepted it but the reply was lost, retry without changing the draft; the same request is not saved twice.",
+        "Penyimpanan gagal mempertahankan draf dan pelanggan saat ini. Jika server menerima tetapi balasan hilang, coba lagi tanpa mengubah draf; permintaan yang sama tidak disimpan dua kali.",
+        "保存失败保留草稿和当前客户。服务器已保存但响应丢失时，保留原内容重试，同一请求不会重复保存。",
+      ],
+      [
+        "Temporary connection failure does not sign you out. If access changes, old customer details close and your own draft remains in this page memory. Reopen after access returns to continue. Refreshing or closing the page clears unsaved memory; explicit sign-out clears your drafts.",
+        "Gangguan koneksi sementara tidak mengeluarkan akun. Saat akses berubah, detail pelanggan ditutup dan draf sendiri tetap dalam memori halaman. Buka kembali setelah akses pulih. Memuat ulang/menutup halaman menghapus draf belum tersimpan; keluar akun menghapus draf Anda.",
+        "临时断线不会退出登录。权限变化会关闭旧客户资料，自己的草稿保留在当前页内存中；恢复权限后重新打开客户可继续。刷新或关闭页面会清除未保存的内存草稿，主动退出会清除自己的草稿。",
       ],
     ],
   },

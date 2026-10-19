@@ -40,7 +40,8 @@ export const operationGroups = [
   ["campaigns"],
   ["operations"],
   ["notifications"],
-  ["support", "failure-and-accessibility", "process-and-marketing-metrics"],
+  ["process-and-marketing-metrics"],
+  ["support", "failure-and-accessibility"],
 ];
 const concepts: Record<string, string> = {
   access: "panorama",
@@ -331,21 +332,13 @@ export function CrmUserGuide({
   const resultKeys = new Set(
     [...matchesSystem, ...matchesOperations].map((s) => s.key),
   );
-  const navSystem = systemChapters.filter(
-    (s) => !terms || resultKeys.has(s.key),
-  );
-  const navOperations = operationGroups
-    .map((group) => {
-      const match = group.find((key) => resultKeys.has(key));
-      return {
-        key: terms ? match || group[0] : group[0],
-        group,
-        title:
-          guideSections.find((s) => s.key === (terms ? match : group[0]))
-            ?.title || guideSections.find((s) => s.key === group[0])!.title,
-      };
-    })
-    .filter((item) => !terms || item.group.some((key) => resultKeys.has(key)));
+  // Search results are separate; chapter names and numbering stay stable.
+  const navSystem = systemChapters;
+  const navOperations = operationGroups.map((group) => ({
+    key: group[0],
+    group,
+    title: guideSections.find((s) => s.key === group[0])!.title,
+  }));
   const system = systemChapters.filter((s) => s.key === selectedKey);
   const selectedGroup =
     operationGroups.find((group) => group.includes(selectedKey)) || [];
@@ -378,10 +371,9 @@ export function CrmUserGuide({
       ...operationGroups.flat(),
     ],
     position = fullNavigation.indexOf(selectedKey);
-  const chapterTitle = (
-    guideLessons[selectedKey] ||
-    [...systemChapters, ...guideSections].find((s) => s.key === selectedKey)!
-  ).title[col];
+  const chapterTitle = [...systemChapters, ...guideSections].find(
+    (s) => s.key === selectedKey,
+  )!.title[col];
   const navResults = [
     ...matchesSystem.map((s) => ({ ...s, part: "system" })),
     ...matchesOperations.map((s) => ({ ...s, part: "operations" })),
@@ -521,9 +513,10 @@ export function CrmUserGuide({
                       {s.title[col]}
                     </a>
                     {root === "operations" &&
-                      !terms &&
                       s.group.length > 1 &&
-                      s.group.includes(selectedKey) && (
+                      (s.group.includes(selectedKey) ||
+                        (!!terms &&
+                          s.group.some((key) => resultKeys.has(key)))) && (
                         <ul className="crm-doc-subchapters">
                           {s.group.slice(1).map((key) => (
                             <li key={key}>
@@ -615,7 +608,33 @@ export function CrmUserGuide({
                     id={"crm-guide-" + s.key}
                     key={s.key}
                   >
-                    <h3>{(guideLessons[s.key]?.title || s.title)[col]}</h3>
+                    <h3>{s.title[col]}</h3>
+                    {s.key === "ai-assessment" && (
+                      <>
+                        <h4>
+                          {t(
+                            "AI consultation: saved replies and failures",
+                            "Konsultasi AI: balasan tersimpan dan kegagalan",
+                            "AI咨询：回复保存与失败处理",
+                          )}
+                        </h4>
+                        <ol className="crm-doc-flow">
+                          {s.blocks[0].items.map((item, i) => (
+                            <li key={i}>
+                              <b>{i + 1}</b>
+                              {item[col]}
+                            </li>
+                          ))}
+                        </ol>
+                        <h4>
+                          {t(
+                            "Assessment: sources and limits",
+                            "Asesmen: sumber dan batasan",
+                            "测评：依据类型与适用范围",
+                          )}
+                        </h4>
+                      </>
+                    )}
                     <LessonOpening chapterKey={s.key} col={col} />
                     {s.blocks
                       .filter((b) => b.kind === "diagram")
@@ -632,7 +651,11 @@ export function CrmUserGuide({
                           )}
                         </summary>
                         {s.blocks
-                          .filter((b) => b.kind !== "diagram")
+                          .filter(
+                            (b, i) =>
+                              b.kind !== "diagram" &&
+                              !(s.key === "ai-assessment" && i === 0),
+                          )
                           .map((b, i) => (
                             <div key={i}>
                               {b.kind !== "diagram" && <h4>{b.title[col]}</h4>}
@@ -824,7 +847,7 @@ export function CrmUserGuide({
                     key={s.key}
                     className="crm-doc-card crm-doc-section"
                   >
-                    <h3>{(guideLessons[s.key]?.title || s.title)[col]}</h3>
+                    <h3>{s.title[col]}</h3>
                     <LessonOpening chapterKey={s.key} col={col} />
                     <details className="crm-doc-reference">
                       <summary>
