@@ -27,8 +27,8 @@ import {
 import { evaluateFullLeadTier } from "../src/types/crmLead.ts";
 import { calculateLeadTier } from "../src/types/leadSystem.ts";
 import { sla } from "../src/utils/workCalendar.ts";
-test("Ten system chapters restore concepts; nine operating groups preserve every existing section", () => {
-  assert.equal(systemChapters.length, 10);
+test("Eleven system chapters restore concepts; nine operating groups preserve every existing section", () => {
+  assert.equal(systemChapters.length, 11);
   assert.equal(operationGroups.length, 9);
   assert.deepEqual(
     operationGroups.flat().sort(),
@@ -91,7 +91,11 @@ test("Dictionary includes all 35 tables, nested properties, expanded enum values
 for (const lang of ["en", "id", "zh"] as const)
   test(`Concepts, diagrams, captions and dictionary render in ${lang} without other-language copy`, () => {
     const html = renderToStaticMarkup(
-      React.createElement(CrmUserGuide, { lang, isLight: true }),
+      React.createElement(CrmUserGuide, {
+        lang,
+        isLight: true,
+        initialChapter: "architecture",
+      }),
     );
     const text = html.replace(/<[^>]+>/g, " ");
     if (lang !== "zh") assert.doesNotMatch(text, /[\u4e00-\u9fff]/);

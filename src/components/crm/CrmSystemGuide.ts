@@ -1,3 +1,4 @@
+import { panoramaChapter } from "./CrmPanoramaContent";
 export type Words = readonly [string, string, string];
 export type GuideBlock = {
   kind: "flow" | "table" | "example" | "diagram";
@@ -16,6 +17,7 @@ export type SystemChapter = {
 };
 const w = (en: string, id: string, zh: string): Words => [en, id, zh];
 export const systemChapters: SystemChapter[] = [
+  panoramaChapter,
   {
     key: "architecture",
     title: w(

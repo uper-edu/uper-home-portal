@@ -1,3 +1,4 @@
+import { CrmPanorama } from "./CrmPanorama";
 import React, { useEffect, useRef, useState } from "react";
 import { guideLessons, type GuideLesson } from "./CrmGuideLearning";
 import {
@@ -98,6 +99,7 @@ export function LessonOpening({
 }: Props & { chapterKey: string }) {
   const s = guideLessons[chapterKey];
   if (!s) return null;
+  if (chapterKey === "panorama") return <CrmPanorama col={col} />;
   const t = (en: string, id: string, zh: string) => words(col, en, id, zh);
   return (
     <div className="crm-learning-opening">

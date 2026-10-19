@@ -1,3 +1,4 @@
+import { panoramaLesson } from "./CrmPanoramaContent";
 import type { Words } from "./CrmSystemGuide";
 
 export type LearningNode = { label: Words; detail: Words };
@@ -34,6 +35,7 @@ const lesson = (
 });
 
 export const guideLessons: Record<string, GuideLesson> = {
+  panorama: panoramaLesson,
   architecture: lesson(
     w(
       "From a visitor to accountable follow-up",

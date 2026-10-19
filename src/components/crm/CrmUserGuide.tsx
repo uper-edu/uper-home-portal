@@ -1,3 +1,10 @@
+import {
+  panoramaRoles,
+  panoramaModules,
+  panoramaData,
+  panoramaStates,
+  panoramaCases,
+} from "./CrmPanoramaContent";
 import { guideLessons } from "./CrmGuideLearning";
 import { LessonOpening } from "./CrmGuideLearningVisual";
 import React, { useEffect, useRef, useState } from "react";
@@ -106,7 +113,7 @@ export function CrmUserGuide({
       );
       if (saved) return saved.key;
     } catch {}
-    return "architecture";
+    return "panorama";
   });
   const part = resolveGuideAnchor(selectedKey)!.part;
   const [query, setQuery] = useState(""),
@@ -286,6 +293,12 @@ export function CrmUserGuide({
       includes([
         s.title[col],
         localizedText(guideLessons[s.key], col),
+        s.key === "panorama"
+          ? localizedText(
+              [panoramaModules, panoramaRoles, panoramaData, panoramaStates, panoramaCases],
+              col,
+            )
+          : "",
         s.intro[col],
         s.technical[col],
         s.blocks.map((b) => [
