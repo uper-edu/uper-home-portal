@@ -36,64 +36,6 @@ const lesson = (
 
 export const guideLessons: Record<string, GuideLesson> = {
   panorama: panoramaLesson,
-  architecture: lesson(
-    w(
-      "From a visitor to accountable follow-up",
-      "Dari pengunjung ke tindak lanjut yang jelas",
-      "从访客到有人负责的跟进",
-    ),
-    w(
-      "CRM connects what a customer said, who handles it and what must happen next.",
-      "CRM menghubungkan informasi pelanggan, penanggung jawab, dan tindakan berikutnya.",
-      "CRM 把客户说过什么、由谁负责、接下来做什么连接起来。",
-    ),
-    w(
-      "A colleague can continue the work without guessing from chat history. Evidence, responsibility and deadlines remain traceable.",
-      "Rekan dapat melanjutkan pekerjaan tanpa menebak dari riwayat chat. Bukti, tanggung jawab, dan tenggat dapat ditelusuri.",
-      "员工接手时能找到诉求、承诺和期限，不必从聊天中猜测进度；管理者也能区分尚未联系、尚未处理与已经完成。",
-    ),
-    [
-      n(
-        w("Acquire", "Akuisisi", "获客"),
-        w(
-          "A campaign link brings a visitor to registration, assessment and consultation.",
-          "Tautan kampanye membawa pengunjung ke registrasi, asesmen, dan konsultasi.",
-          "活动入口连接登记、测评与咨询，留下客户需求和来源。",
-        ),
-      ),
-      n(
-        w("Preserve evidence", "Simpan bukti", "保存依据"),
-        w(
-          "The server saves the customer, messages and structured requests. A request can create or supplement a task.",
-          "Server menyimpan pelanggan, pesan, dan permintaan terstruktur. Permintaan dapat membuat atau melengkapi tugas.",
-          "服务端保存客户、消息与结构化请求；请求可以新建任务或补充已有任务。",
-        ),
-      ),
-      n(
-        w("Handle the work", "Tangani pekerjaan", "落实处理"),
-        w(
-          "Staff record contact, decide each task outcome and choose the next arrangement. Notifications help surface the work.",
-          "Staf mencatat kontak, menentukan hasil tiap tugas, dan memilih langkah berikutnya. Notifikasi membantu menampilkan pekerjaan.",
-          "员工记录联系、确认单项任务结果并安排下一步；通知帮助发现待办。",
-        ),
-      ),
-    ],
-    w(
-      "The system preserves and routes work. Staff verify facts and record outcomes.",
-      "Sistem menyimpan dan menyalurkan pekerjaan. Staf memverifikasi fakta dan mencatat hasil.",
-      "系统负责留痕与提醒，员工负责核实事实并确认处理结果。",
-    ),
-    w(
-      "Amelia Putri asks about evening classes. The recorded request gives Fadhil a task to confirm availability; it does not confirm a booking.",
-      "Amelia Putri menanyakan kelas malam. Permintaan memberi Fadhil tugas untuk memeriksa ketersediaan, bukan mengonfirmasi pemesanan.",
-      "Amelia Putri 咨询晚间课程，Fadhil 收到待核实事项；记录了请求不代表已经确认班级或预约。",
-    ),
-    w(
-      "CRM does not provide live human chat, automatic class assignment or verified payment collection. CMS and System management have separate responsibilities.",
-      "CRM belum menyediakan chat staf langsung, penempatan kelas otomatis, atau verifikasi pembayaran. CMS dan manajemen sistem memiliki tanggung jawab terpisah.",
-      "当前 CRM 不提供实时人工坐席、自动分班或收款核验。CMS 管理网站内容，系统管理维护账号与权限，具体操作不混入本手册。",
-    ),
-  ),
   entities: lesson(
     w(
       "One customer, several kinds of evidence",

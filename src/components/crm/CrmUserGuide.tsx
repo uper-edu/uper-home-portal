@@ -1,8 +1,8 @@
 import {
   panoramaRoles,
   panoramaModules,
-  panoramaData,
-  panoramaStates,
+  panoramaConcepts,
+  panoramaSearchAliases,
   panoramaCases,
 } from "./CrmPanoramaContent";
 import { guideLessons } from "./CrmGuideLearning";
@@ -43,7 +43,7 @@ export const operationGroups = [
   ["support", "failure-and-accessibility", "process-and-marketing-metrics"],
 ];
 const concepts: Record<string, string> = {
-  access: "architecture",
+  access: "panorama",
   workspace: "entities",
   "efficient-followup": "lifecycle",
   filters: "classification",
@@ -68,6 +68,7 @@ export function resolveGuideAnchor(hash: string) {
   let key = old
     ? oldChapterKeys[Number(old[1]) - 1]
     : value.replace(/^crm-guide-/, "");
+  if (key === "architecture") key = "panorama";
   if (key === "fields") key = "data-implementation";
   if (systemChapters.some((s) => s.key === key)) return { part: "system", key };
   if (guideSections.some((s) => s.key === key))
@@ -182,6 +183,9 @@ export function CrmUserGuide({
       const next = resolveGuideAnchor(location.hash);
       setInvalid(!next);
       if (next) {
+        const canonical = "#crm-guide-" + next.key;
+        if (location.hash !== canonical)
+          window.history.replaceState(window.history.state, "", canonical);
         setSelectedKey(next.key);
         setQuery("");
         setSearchMode(false);
@@ -190,6 +194,8 @@ export function CrmUserGuide({
         setNavOpen(false);
       }
     };
+    const initial = resolveGuideAnchor(location.hash);
+    if (initial && location.hash !== "#crm-guide-" + initial.key) locate();
     window.addEventListener("hashchange", locate);
     window.addEventListener("popstate", locate);
     return () => {
@@ -295,7 +301,13 @@ export function CrmUserGuide({
         localizedText(guideLessons[s.key], col),
         s.key === "panorama"
           ? localizedText(
-              [panoramaModules, panoramaRoles, panoramaData, panoramaStates, panoramaCases],
+              [
+                panoramaModules,
+                panoramaRoles,
+                panoramaConcepts,
+                panoramaCases,
+                panoramaSearchAliases,
+              ],
               col,
             )
           : "",
@@ -610,70 +622,72 @@ export function CrmUserGuide({
                       .map((b, i) => (
                         <CrmGuideDiagram key={i} kind={b.diagram!} col={col} />
                       ))}
-                    <details className="crm-doc-reference">
-                      <summary>
-                        {t(
-                          "Detailed rules and examples",
-                          "Aturan rinci dan contoh",
-                          "规则细节与例外查阅",
-                        )}
-                      </summary>
-                      {s.blocks
-                        .filter((b) => b.kind !== "diagram")
-                        .map((b, i) => (
-                          <div key={i}>
-                            {b.kind !== "diagram" && <h4>{b.title[col]}</h4>}
-                            {b.kind === "diagram" ? (
-                              <CrmGuideDiagram kind={b.diagram!} col={col} />
-                            ) : b.kind === "flow" ? (
-                              <ol
-                                className="crm-doc-flow"
-                                aria-label={b.title[col]}
-                              >
-                                {b.items.map((item, j) => (
-                                  <li key={j}>
-                                    <b>{j + 1}</b>
-                                    {item[col]}
-                                    {j < b.items.length - 1 && (
-                                      <svg
-                                        aria-hidden="true"
-                                        viewBox="0 0 28 18"
-                                      >
-                                        <path
-                                          d="M1 9H25M17 2L25 9L17 16"
-                                          stroke="currentColor"
-                                          fill="none"
-                                          strokeWidth="2"
-                                        />
-                                      </svg>
-                                    )}
-                                  </li>
-                                ))}
-                              </ol>
-                            ) : b.kind === "table" ? (
-                              <table className="crm-doc-table">
-                                <caption className="sr-only">
-                                  {b.title[col]}
-                                </caption>
-                                <tbody>
+                    {s.blocks.some((b) => b.kind !== "diagram") && (
+                      <details className="crm-doc-reference">
+                        <summary>
+                          {t(
+                            "Detailed rules and examples",
+                            "Aturan rinci dan contoh",
+                            "规则细节与例外查阅",
+                          )}
+                        </summary>
+                        {s.blocks
+                          .filter((b) => b.kind !== "diagram")
+                          .map((b, i) => (
+                            <div key={i}>
+                              {b.kind !== "diagram" && <h4>{b.title[col]}</h4>}
+                              {b.kind === "diagram" ? (
+                                <CrmGuideDiagram kind={b.diagram!} col={col} />
+                              ) : b.kind === "flow" ? (
+                                <ol
+                                  className="crm-doc-flow"
+                                  aria-label={b.title[col]}
+                                >
                                   {b.items.map((item, j) => (
-                                    <tr key={j}>
-                                      <th scope="row">{j + 1}</th>
-                                      <td>{item[col]}</td>
-                                    </tr>
+                                    <li key={j}>
+                                      <b>{j + 1}</b>
+                                      {item[col]}
+                                      {j < b.items.length - 1 && (
+                                        <svg
+                                          aria-hidden="true"
+                                          viewBox="0 0 28 18"
+                                        >
+                                          <path
+                                            d="M1 9H25M17 2L25 9L17 16"
+                                            stroke="currentColor"
+                                            fill="none"
+                                            strokeWidth="2"
+                                          />
+                                        </svg>
+                                      )}
+                                    </li>
                                   ))}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <div className="crm-doc-example">
-                                {b.items.map((item, j) => (
-                                  <p key={j}>{item[col]}</p>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </details>
+                                </ol>
+                              ) : b.kind === "table" ? (
+                                <table className="crm-doc-table">
+                                  <caption className="sr-only">
+                                    {b.title[col]}
+                                  </caption>
+                                  <tbody>
+                                    {b.items.map((item, j) => (
+                                      <tr key={j}>
+                                        <th scope="row">{j + 1}</th>
+                                        <td>{item[col]}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <div className="crm-doc-example">
+                                  {b.items.map((item, j) => (
+                                    <p key={j}>{item[col]}</p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                      </details>
+                    )}
                     <details open={!!terms}>
                       <summary>
                         {t(
@@ -830,10 +844,10 @@ export function CrmUserGuide({
                       </div>
                     </details>
                     <a
-                      href={link(concepts[s.key] || "architecture")}
+                      href={link(concepts[s.key] || "panorama")}
                       onClick={(e) => {
                         e.preventDefault();
-                        choose(concepts[s.key] || "architecture");
+                        choose(concepts[s.key] || "panorama");
                       }}
                     >
                       {t(

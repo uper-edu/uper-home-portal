@@ -237,6 +237,21 @@ export const guideSections = [
         "访问 CRM 须员工登录。默认CRM管理者角色负责可见范围、分配与运营，销售处理权限范围内的客户。当前角色在账号菜单查看，人员名单以员工目录为准，不由手册写死。账号菜单提供修改自己的密码和退出入口。",
       ],
       [
+        "Open the account menu to check the environment, the last four characters of the Build ID and the build time. Choose Version and environment for full Code and Build details, UTC commit and build times, the GitHub link and copy buttons.",
+        "Buka menu akun untuk memeriksa lingkungan, empat karakter terakhir ID Build, dan waktu build. Pilih Versi dan lingkungan untuk detail Code dan Build lengkap, waktu commit dan build dalam UTC, tautan GitHub, serta tombol salin.",
+        "打开账号菜单可查看环境、Build末4位及构建时间；进入“版本与环境”查看完整Code/Build、各自的提交和构建时间（UTC）、GitHub链接及复制按钮。",
+      ],
+      [
+        "Version details describe the source captured at build time, or at startup in source mode. They do not show live Git status. Source mode and uncommitted builds are labeled. Save your work before refreshing when versions differ.",
+        "Detail versi menjelaskan kode saat build, atau saat mulai dalam mode sumber. Detail ini bukan status Git secara langsung. Mode sumber dan build yang belum dikomit diberi label. Simpan pekerjaan sebelum memuat ulang jika versi berbeda.",
+        "版本详情反映构建时的源码状态；源码模式反映启动时状态，并非实时Git状态。源码模式和未提交构建会明确标注；发现版本不一致时，先保存工作再刷新。",
+      ],
+      [
+        "Permissions are checked by the server. Reading documentation or changing language does not change business records. Staff sign-in does not establish an external education-platform integration.",
+        "Izin diperiksa oleh server. Membaca dokumentasi atau mengganti bahasa tidak mengubah catatan bisnis. Login staf tidak membuktikan integrasi dengan platform pendidikan eksternal.",
+        "权限由服务端校验；阅读文档或切换语言不改变业务记录。员工账号登录不代表已完成外部教育平台联调。",
+      ],
+      [
         "System management → Users & access manages staff roles and per-action own/all scopes. Teams do not control access, claiming or routing. Authorized sales share the unassigned pool; customer notifications use valid Owner → authorized CRM Manager. Login ID and an optional unique email use the same password and account. System administrators maintain roles and emails; the separate system guide explains administration. Changes revoke affected sessions and preserve ownership.",
         "Manajemen sistem → Pengguna & akses mengelola peran dan cakupan tindakan sendiri/semua. Tim tidak mengatur izin, pengambilan, atau alur notifikasi. Sales berwenang memakai kumpulan pelanggan tanpa penanggung jawab bersama; notifikasi pelanggan memakai penanggung jawab valid → Manajer CRM berwenang. ID login dan email unik opsional memakai kata sandi serta akun yang sama. Administrator Sistem mengelola peran dan email; panduan sistem terpisah menjelaskan administrasi. Perubahan mencabut sesi terkait dan mempertahankan kepemilikan.",
         "系统管理中的用户与权限配置角色及每项操作的本人／全部范围。团队不参与授权、认领或路由；有权限的销售共用未分配客户池，客户通知按有效负责人 → 有权处理客户的 CRM 管理者路由。登录ID和可选的唯一邮箱使用同一账号及密码。角色、邮箱由系统管理员维护，具体流程见独立系统指南。修改撤销受影响会话，保留客户归属。",

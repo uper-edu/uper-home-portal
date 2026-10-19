@@ -3,8 +3,7 @@ import {
   panoramaNodes,
   panoramaRoles,
   panoramaModules,
-  panoramaData,
-  panoramaStates,
+  panoramaConcepts,
   panoramaCases,
   panoramaLesson,
 } from "./CrmPanoramaContent";
@@ -20,40 +19,18 @@ export function CrmPanorama({ col }: { col: number }) {
       t("Where to work", "Tempat bekerja", "模块与工作入口"),
       panoramaModules,
       [
-        "Modules share customer evidence while retaining distinct responsibilities.",
-        "Modul berbagi bukti pelanggan dengan tanggung jawab berbeda.",
-        "各模块关联客户依据，并分别承担不同职责。",
+        "CRM handles customer work. CMS manages website content; System management maintains accounts and permissions. Their operating instructions belong to their own workspaces.",
+        "CRM menangani pekerjaan pelanggan. CMS mengelola konten situs; Manajemen sistem mengelola akun dan izin. Petunjuk operasinya berada di ruang kerja masing-masing.",
+        "CRM负责客户业务；CMS管理网站内容，系统管理维护账号与权限，具体操作在各自工作区查阅。",
       ],
     ],
     [
       t("Roles and boundaries", "Peran dan batasan", "角色与权限边界"),
       panoramaRoles,
       [
-        "Actual role grants determine access. Owner responsibility and user roles are separate. CMS and recruitment responsibilities belong to separate workspaces.",
-        "Izin peran aktual menentukan akses. Tanggung jawab penanggung jawab dan peran pengguna berbeda. CMS dan rekrutmen berada di ruang kerja terpisah.",
-        "实际角色授权决定权限；负责人关系与用户角色分开。CMS和招聘属于其他工作区。",
-      ],
-    ],
-    [
-      t("Data and relationships", "Data dan hubungan", "数据与关系"),
-      panoramaData,
-      [
-        "Records connect through the customer without replacing one another. The follow-up tab, conversation tab, profile and assessment present different evidence.",
-        "Catatan terhubung melalui pelanggan tanpa saling menggantikan. Tab tindak lanjut, percakapan, profil, dan asesmen menyajikan bukti berbeda.",
-        "不同记录通过客户关联，不能互相替代。跟进、对话、客户资料和测评四个页签分别呈现不同依据。",
-      ],
-    ],
-    [
-      t(
-        "Six independent state dimensions",
-        "Enam dimensi status terpisah",
-        "六个独立状态维度",
-      ),
-      panoramaStates,
-      [
-        "High intent, waiting for review and an overdue task can coexist. Waiting does not erase the original deadline.",
-        "Minat tinggi, menunggu peninjauan, dan tugas terlambat dapat terjadi bersamaan. Menunggu tidak menghapus tenggat asli.",
-        "高意向、等待复查和任务逾期可以同时成立；等待不抹去原期限。",
+        "Actual grants determine access. Owner responsibility is separate from a user's roles.",
+        "Izin aktual menentukan akses. Tanggung jawab penanggung jawab berbeda dari peran pengguna.",
+        "实际授权决定权限；客户负责人关系与用户角色分开。",
       ],
     ],
   ];
@@ -130,6 +107,12 @@ export function CrmPanorama({ col }: { col: number }) {
         </div>
         <figcaption>{panoramaLesson.caption[col]}</figcaption>
       </figure>
+      <div className="crm-learning-value">
+        <h4>
+          {t("Why this helps sales", "Manfaat bagi sales", "它解决什么问题")}
+        </h4>
+        <p>{panoramaLesson.value[col]}</p>
+      </div>
       {groups.map(([title, items, caption], group) => (
         <section className="crm-panorama-group" key={group}>
           <h4>{title}</h4>
@@ -149,11 +132,42 @@ export function CrmPanorama({ col }: { col: number }) {
       <section className="crm-panorama-group">
         <h4>
           {t(
-            "Decisions when information changes",
-            "Keputusan saat informasi berubah",
-            "信息变化后的决策",
+            "Concepts to keep separate",
+            "Konsep yang perlu dibedakan",
+            "需要分清的概念",
           )}
         </h4>
+        <figure>
+          <dl className="crm-panorama-grid crm-panorama-concepts">
+            {panoramaConcepts.map((item, i) => (
+              <div key={i}>
+                <dt>{item.label[col]}</dt>
+                <dd>
+                  {item.detail[col]}{" "}
+                  <a href={"#crm-guide-" + item.chapter}>
+                    {t("Read the explanation", "Baca penjelasan", "深入理解")} →
+                  </a>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <figcaption>
+            {t(
+              "Use the linked chapters for definitions and rules; this overview only introduces the distinctions.",
+              "Gunakan bab tertaut untuk definisi dan aturan; gambaran ini hanya memperkenalkan perbedaannya.",
+              "定义与规则在对应章节展开，总览只提示概念之间的区别。",
+            )}
+          </figcaption>
+        </figure>
+      </section>
+      <details className="crm-panorama-details">
+        <summary>
+          {t(
+            "Explore seven decision scenarios",
+            "Jelajahi tujuh skenario keputusan",
+            "按需查看七个决策情境",
+          )}
+        </summary>
         <figure>
           <div className="crm-panorama-scenarios">
             <div
@@ -205,7 +219,7 @@ export function CrmPanorama({ col }: { col: number }) {
             )}
           </figcaption>
         </figure>
-      </section>
+      </details>
       <aside className="crm-learning-boundary">
         <h4>{t("Capability boundary", "Batas kemampuan", "当前能力边界")}</h4>
         <p>{panoramaLesson.boundary[col]}</p>
@@ -227,11 +241,11 @@ export function CrmPanorama({ col }: { col: number }) {
       >
         {[
           [
-            "architecture",
+            "entities",
             t(
-              "Purpose and architecture",
-              "Tujuan dan arsitektur",
-              "系统定位与架构",
+              "Core concepts and relationships",
+              "Konsep inti dan hubungan",
+              "核心概念与关系",
             ),
           ],
           [
@@ -253,6 +267,18 @@ export function CrmPanorama({ col }: { col: number }) {
           [
             "notification-system",
             t("Notification mechanism", "Mekanisme notifikasi", "通知机制"),
+          ],
+          [
+            "data-implementation",
+            t("Data and implementation", "Data dan implementasi", "数据与实现"),
+          ],
+          [
+            "access",
+            t(
+              "Accounts and version checks",
+              "Akun dan pemeriksaan versi",
+              "账号与版本核对",
+            ),
           ],
           [
             "followup",

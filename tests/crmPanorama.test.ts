@@ -11,8 +11,8 @@ import {
   panoramaNodes,
   panoramaRoles,
   panoramaModules,
-  panoramaData,
-  panoramaStates,
+  panoramaConcepts,
+  panoramaSearchAliases,
   panoramaCases,
 } from "../src/components/crm/CrmPanoramaContent.ts";
 test("Panorama is first; existing deep links retain their meaning", () => {
@@ -21,9 +21,10 @@ test("Panorama is first; existing deep links retain their meaning", () => {
     part: "system",
     key: "panorama",
   });
-  assert.equal(resolveGuideAnchor("#chapter-1")?.key, "architecture");
+  assert.equal(resolveGuideAnchor("#chapter-1")?.key, "panorama");
+  assert.equal(resolveGuideAnchor("#crm-guide-architecture")?.key, "panorama");
+  assert.ok(!systemChapters.some((s) => s.key === "architecture"));
   for (const key of [
-    "architecture",
     "entities",
     "acquisition",
     "classification",
@@ -47,11 +48,11 @@ test("All expanded panorama content has three translations, not only the initial
     panoramaNodes,
     panoramaRoles,
     panoramaModules,
-    panoramaData,
-    panoramaStates,
+    panoramaConcepts,
+    panoramaSearchAliases,
     panoramaCases,
   ]);
-  assert.equal(panoramaStates.length, 6);
+  assert.equal(panoramaConcepts.length, 3);
   assert.equal(panoramaCases.length, 7);
 });
 for (const lang of ["en", "id", "zh"] as const)
@@ -68,4 +69,45 @@ for (const lang of ["en", "id", "zh"] as const)
       (html.match(/<figcaption>/g) || []).length,
     );
     assert.doesNotMatch(html, /<iframe|<script|https?:\/\//);
+  });
+
+test("Merged overview keeps one navigation entry and sends architecture and numbered bookmarks to it", () => {
+  for (const hash of [
+    "architecture",
+    "#architecture",
+    "#crm-guide-architecture",
+    "#chapter-1",
+  ])
+    assert.deepEqual(resolveGuideAnchor(hash), {
+      part: "system",
+      key: "panorama",
+    });
+  assert.equal(resolveGuideAnchor("#chapter-2")?.key, "acquisition");
+  assert.equal(
+    resolveGuideAnchor("#crm-guide-fields")?.key,
+    "data-implementation",
+  );
+});
+
+for (const lang of ["en", "id", "zh"] as const)
+  test(`Old architecture entry renders the merged overview once in ${lang}`, () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CrmUserGuide, {
+        lang,
+        isLight: true,
+        initialChapter: "architecture",
+      }),
+    );
+    assert.equal((html.match(/id="crm-guide-panorama"/g) || []).length, 1);
+    assert.doesNotMatch(
+      html,
+      /id="crm-guide-architecture"|href="#crm-guide-architecture"/,
+    );
+    assert.match(html, /<details class="crm-panorama-details"><summary>/);
+    assert.doesNotMatch(
+      html,
+      /<details[^>]*class="crm-panorama-details"[^>]*open/,
+    );
+    assert.match(html, /href="#crm-guide-access"/);
+    assert.match(html, /href="#crm-guide-data-implementation"/);
   });

@@ -140,125 +140,45 @@ export const panoramaRoles = [
     ),
   ),
 ];
-export const panoramaData = [
-  node(
-    w("Source and attribution", "Sumber dan atribusi", "来源与归因"),
-    w(
-      "Campaign → entry code → lead attribution and review audit. Original source codes remain available.",
-      "Kampanye → kode masuk → atribusi lead dan audit peninjauan. Kode sumber asli tetap tersedia.",
-      "活动 → 入口代码 → 客户归因与核实审计；保留原始来源代码。",
+export const panoramaConcepts = [
+  {
+    ...node(
+      w("Customer and evidence", "Pelanggan dan bukti", "客户与依据"),
+      w(
+        "One customer connects conversations, tasks and human records. Each answers a different question.",
+        "Satu pelanggan menghubungkan percakapan, tugas, dan catatan staf. Masing-masing menjawab pertanyaan berbeda.",
+        "一个客户关联会话、任务和人工记录，分别回答不同问题。",
+      ),
     ),
-  ),
-  node(
-    w("Customer and ownership", "Pelanggan dan kepemilikan", "客户与归属"),
-    w(
-      "Lead → owner and identity candidates. An owner is a responsibility relationship, not a role.",
-      "Lead → penanggung jawab dan kandidat identitas. Penanggung jawab adalah hubungan tanggung jawab, bukan peran.",
-      "客户 → 负责人及身份候选；负责人是责任关系，不是角色。",
+    chapter: "entities",
+  },
+  {
+    ...node(
+      w("Independent states", "Status yang terpisah", "独立状态"),
+      w(
+        "Customer group, sales stage, contact arrangement and task state have different meanings.",
+        "Kelompok pelanggan, tahap penjualan, pengaturan kontak, dan status tugas memiliki arti berbeda.",
+        "客户分组、销售阶段、联系安排与任务状态有不同含义。",
+      ),
     ),
-  ),
-  node(
-    w("Conversations and messages", "Percakapan dan pesan", "会话与消息"),
-    w(
-      "One customer → several conversations → original messages. Customer, AI and system messages remain distinguishable.",
-      "Satu pelanggan → beberapa percakapan → pesan asli. Pesan pelanggan, AI, dan sistem dibedakan.",
-      "一个客户 → 多个会话 → 原始消息；区分客户、AI和系统消息。",
+    chapter: "lifecycle",
+  },
+  {
+    ...node(
+      w("Evidence and outcomes", "Bukti dan hasil", "依据与结果"),
+      w(
+        "Assessment supports a learning-level judgment. Enrollment, payment and message receipt each need their own evidence.",
+        "Asesmen mendukung penilaian level belajar. Pendaftaran kelas, pembayaran, dan penerimaan pesan memerlukan bukti masing-masing.",
+        "测评支持水平判断；报名、付款与通知实收分别需要各自的事实依据。",
+      ),
     ),
-  ),
-  node(
-    w("Assessment evidence", "Bukti asesmen", "测评依据"),
-    w(
-      "Self-report, quick assessment, full assessment and teacher placement retain their own evidence.",
-      "Pernyataan mandiri, asesmen singkat, asesmen lengkap, dan penempatan guru memiliki bukti masing-masing.",
-      "自报、快速测评、完整测评与教师定级分别保留依据。",
-    ),
-  ),
-  node(
-    w("Tasks and deadlines", "Tugas dan tenggat", "任务与期限"),
-    w(
-      "One customer → several tasks → individual outcomes. Saved deadlines and rule evidence remain traceable.",
-      "Satu pelanggan → beberapa tugas → hasil tiap tugas. Tenggat tersimpan dan bukti aturan dapat ditelusuri.",
-      "一个客户 → 多项任务 → 各自处理结果；保存期限及规则依据可追溯。",
-    ),
-  ),
-  node(
-    w(
-      "Human records and notes",
-      "Catatan staf dan catatan tambahan",
-      "人工记录与备注",
-    ),
-    w(
-      "Contact attempts, two-way communication and standalone notes are distinct. A note is not a contact attempt.",
-      "Upaya kontak, komunikasi dua arah, dan catatan mandiri dibedakan. Catatan bukan upaya kontak.",
-      "联系尝试、双向沟通与独立备注分开；备注不计作联系尝试。",
-    ),
-  ),
-  node(
-    w("Notification audit", "Audit notifikasi", "通知审计"),
-    w(
-      "Business event → policy snapshot → delivery attempt and result. An alert is not a completed task.",
-      "Peristiwa bisnis → snapshot kebijakan → upaya pengiriman dan hasil. Pengingat bukan tugas selesai.",
-      "业务事件 → 策略快照 → 发送尝试与结果；提醒不等于任务完成。",
-    ),
-  ),
-  node(
-    w("Accounts and permissions", "Akun dan izin", "账号与权限"),
-    w(
-      "User → roles → capabilities and data scopes. Teams do not govern customer claiming or routing.",
-      "Pengguna → peran → kemampuan dan cakupan data. Tim tidak mengatur pengambilan pelanggan atau perutean.",
-      "用户 → 角色 → 能力及数据范围；团队不参与客户认领或通知路由。",
-    ),
-  ),
+    chapter: "measurement",
+  },
 ];
-export const panoramaStates = [
-  node(
-    w("Customer group", "Kelompok pelanggan", "客户分组"),
-    w(
-      "How do existing rules and human confirmation classify this customer? High intent is not enrollment.",
-      "Bagaimana aturan dan konfirmasi staf mengelompokkan pelanggan? Minat tinggi bukan pendaftaran kelas.",
-      "现有规则和人工确认如何分类？高意向不等于已报名。",
-    ),
-  ),
-  node(
-    w("Sales stage", "Tahap penjualan", "销售阶段"),
-    w(
-      "What business progress is recorded? Contact attempts do not automatically advance the stage.",
-      "Kemajuan bisnis apa yang tercatat? Upaya kontak tidak otomatis memajukan tahap.",
-      "记录了哪一步业务进展？联系尝试不自动推进阶段。",
-    ),
-  ),
-  node(
-    w("Contact arrangement", "Pengaturan kontak", "联系安排"),
-    w(
-      "Normal, waiting, nurturing or stopped. Waiting retains existing tasks and deadlines.",
-      "Normal, menunggu, pembinaan, atau berhenti. Menunggu tetap mempertahankan tugas dan tenggat.",
-      "正常、等待、暂缓或停止。等待仍保留原任务和期限。",
-    ),
-  ),
-  node(
-    w("Task state", "Status tugas", "任务状态"),
-    w(
-      "Is this specific action outstanding, completed or cancelled? Reading a message does not finish it.",
-      "Apakah tindakan ini belum ditangani, selesai, atau dibatalkan? Membaca pesan tidak menyelesaikannya.",
-      "这一个事项尚未处理、已完成还是已取消？读取消息不完成任务。",
-    ),
-  ),
-  node(
-    w("Assessment conclusion", "Kesimpulan asesmen", "测评结论"),
-    w(
-      "What is the level evidence and is it provisional? Assessment does not confirm class placement or payment.",
-      "Apa bukti levelnya dan apakah masih sementara? Asesmen tidak mengonfirmasi penempatan kelas atau pembayaran.",
-      "水平依据是什么，是否暂定？测评不确认分班或付款。",
-    ),
-  ),
-  node(
-    w("Delivery state", "Status pengiriman", "通知发送状态"),
-    w(
-      "Pending, simulated, API-accepted, failed, unknown or cancelled. Receipt requires separate evidence.",
-      "Tertunda, simulasi, diterima API, gagal, tidak diketahui, atau dibatalkan. Penerimaan pesan memerlukan bukti terpisah.",
-      "待发、模拟、接口接受、失败、未知或取消；实收需要另外的证据。",
-    ),
-  ),
+export const panoramaSearchAliases: Words = [
+  "System purpose and architecture",
+  "Tujuan dan arsitektur sistem",
+  "系统定位与全景架构",
 ];
 export const panoramaCases = [
   {
@@ -450,14 +370,14 @@ export const panoramaCases = [
 export const panoramaLesson: GuideLesson = {
   title: w("CRM Overview", "Gambaran Umum CRM", "CRM全景总览"),
   answer: w(
-    "Understand how customer evidence becomes accountable work, before exploring individual rules and screens.",
-    "Pahami bagaimana bukti pelanggan menjadi pekerjaan dengan penanggung jawab sebelum mempelajari aturan dan layar.",
-    "先理解客户依据如何变成有人负责的工作，再深入规则与操作页面。",
+    "CRM connects customer needs, responsibility and the next action. Start here, then explore the mechanisms you need.",
+    "CRM menghubungkan kebutuhan pelanggan, tanggung jawab, dan tindakan berikutnya. Mulai di sini, lalu pelajari mekanisme yang Anda perlukan.",
+    "CRM把客户需求、责任人和下一步连接起来；先看全貌，再深入所需机制。",
   ),
   value: w(
-    "Separate evidence, responsibility and outcomes to avoid mistaking activity for completed work.",
-    "Pisahkan bukti, tanggung jawab, dan hasil agar aktivitas tidak dianggap sebagai pekerjaan selesai.",
-    "分清依据、责任和结果，避免把操作痕迹误当作业务完成。",
+    "A colleague can take over without guessing: find the request, existing commitments, owner and deadline. Managers can distinguish contact attempts from completed work.",
+    "Rekan dapat mengambil alih tanpa menebak: temukan permintaan, komitmen, penanggung jawab, dan tenggat. Manajer dapat membedakan upaya kontak dari pekerjaan selesai.",
+    "员工接手时能找到诉求、已有承诺、责任人和期限，不必从聊天中猜测；管理者能区分联系尝试和业务完成。",
   ),
   nodes: panoramaNodes,
   caption: w(
@@ -481,17 +401,11 @@ export const panoramaChapter: SystemChapter = {
   key: "panorama",
   title: panoramaLesson.title,
   intro: panoramaLesson.answer,
-  blocks: [
-    {
-      kind: "example",
-      title: w("Reading the overview", "Cara membaca gambaran", "如何阅读全景"),
-      items: [panoramaLesson.caption, panoramaLesson.boundary],
-    },
-  ],
+  blocks: [],
   technical: w(
-    "Business records are stored in MySQL; static questions and translations use JSON. Permission checks, saved deadlines and scoring rules remain unchanged.",
-    "Catatan bisnis disimpan di MySQL; soal statis dan terjemahan menggunakan JSON. Pemeriksaan izin, tenggat tersimpan, dan aturan skor tidak berubah.",
-    "业务数据存储于MySQL，静态题库和文案使用JSON。权限校验、已保存期限和评分规则保持不变。",
+    "Storage and server access checks are explained in Data dictionary and implementation. Account and version instructions are in Accounts and permissions.",
+    "Penyimpanan dan pemeriksaan akses server dijelaskan dalam Kamus data dan implementasi. Petunjuk akun dan versi ada di Akun dan izin akses.",
+    "存储与服务端权限校验见“数据字典与技术实现”；账号及版本操作见“账号与权限”。",
   ),
   sources: [
     "src/utils/accessControl.ts",

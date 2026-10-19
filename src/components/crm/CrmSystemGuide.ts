@@ -19,85 +19,6 @@ const w = (en: string, id: string, zh: string): Words => [en, id, zh];
 export const systemChapters: SystemChapter[] = [
   panoramaChapter,
   {
-    key: "architecture",
-    title: w(
-      "System purpose and architecture",
-      "Tujuan dan arsitektur sistem",
-      "系统定位与全景架构",
-    ),
-    intro: w(
-      "CRM connects acquisition, learning needs and accountable sales follow-up. Automation preserves evidence and schedules work; staff confirm contact, participation and business outcomes.",
-      "CRM menghubungkan akuisisi, kebutuhan belajar, dan tindak lanjut yang dapat ditelusuri. Otomatisasi menyimpan bukti dan menjadwalkan pekerjaan; staf mengonfirmasi kontak, partisipasi, dan hasil bisnis.",
-      "CRM 将获客、学习需求和有责任人的销售跟进连接起来。系统保存证据并安排事项，员工确认联系、参与和业务结果。",
-    ),
-    blocks: [
-      {
-        kind: "flow",
-        title: w("Responsibilities", "Pembagian tanggung jawab", "职责关系"),
-        items: [
-          w(
-            "Website / campaign → attract visitors",
-            "Situs / kampanye → menarik pengunjung",
-            "官网／活动 → 引导访客",
-          ),
-          w(
-            "Chat → questionnaire, assessment, AI consultation",
-            "Chat → kuesioner, asesmen, konsultasi AI",
-            "聊天 → 问卷、测评、AI 咨询",
-          ),
-          w(
-            "Server + MySQL → persist customer and evidence",
-            "Server + MySQL → menyimpan pelanggan dan bukti",
-            "服务端＋MySQL → 保存客户与证据",
-          ),
-          w(
-            "CRM staff → claim, contact, record and plan",
-            "Staf CRM → mengambil, menghubungi, mencatat, merencanakan",
-            "CRM 员工 → 认领、联系、记录与安排",
-          ),
-          w(
-            "Worker → route reminders and audit delivery",
-            "Worker → menyalurkan pengingat dan mengaudit pengiriman",
-            "后台任务 → 路由提醒与记录发送审计",
-          ),
-        ],
-      },
-      {
-        kind: "table",
-        title: w("Workspace boundaries", "Batas ruang kerja", "工作区边界"),
-        items: [
-          w(
-            "The account menu shared with CMS and System management shows the environment, last four characters of the Build ID and build time. Open Version and environment for full Code/Build details, separate commit/build times in UTC, GitHub link and copy buttons, with environment and source state captured at build time (or startup in source mode), not live Git status. Save your work before refreshing if versions differ; source mode and uncommitted builds are labeled explicitly.",
-            "Menu akun bersama CMS dan manajemen sistem menampilkan lingkungan, empat karakter terakhir ID Build dan waktu build. Buka Versi dan lingkungan untuk detail Code/Build lengkap, waktu commit dan build dalam UTC, tautan GitHub dan tombol salin, serta lingkungan dan status kode saat build (atau saat mulai dalam mode sumber), bukan status Git secara langsung. Simpan pekerjaan sebelum memuat ulang jika versi berbeda; mode sumber dan perubahan yang belum dikomit ditandai jelas.",
-            "与CMS及系统管理共用的账号菜单显示环境、Build末4位及构建时间；点击“版本与环境”查看完整Code/Build、各自提交和构建时间（UTC）、GitHub链接及复制按钮，并显示环境及构建时（源码模式为启动时）的源码状态，而非实时Git状态。版本不一致时先保存工作再刷新；源码模式和未提交构建会明确标注。",
-          ),
-          w(
-            "CRM: customers, tasks, campaigns and sales operations",
-            "CRM: pelanggan, tugas, kampanye, operasional penjualan",
-            "CRM：客户、任务、活动与销售运营",
-          ),
-          w(
-            "CMS independently manages website content. Its operating instructions belong to the Content management workspace.",
-            "CMS mengelola konten situs secara terpisah. Petunjuk operasinya tersedia di ruang Manajemen konten.",
-            "CMS 独立管理网站内容；具体操作说明在内容管理工作区查阅。",
-          ),
-          w(
-            "Static JSON: questions and translations; MySQL: business records",
-            "JSON statis: soal dan terjemahan; MySQL: catatan bisnis",
-            "静态 JSON：题库与文案；MySQL：业务记录",
-          ),
-        ],
-      },
-    ],
-    technical: w(
-      "The server enforces access. Documentation and language changes do not mutate records. Current local authentication is not a completed external education-platform integration.",
-      "Server menerapkan izin akses. Dokumentasi dan bahasa tidak mengubah catatan. Autentikasi lokal saat ini bukan integrasi platform pendidikan eksternal yang sudah selesai.",
-      "权限由服务端执行。文档及语言切换不修改业务记录。当前本地账号认证不代表已经完成外部教育平台联调。",
-    ),
-    sources: ["server/mysqlApplication.ts", "server/portal/identity.ts"],
-    related: "access",
-  },
-  {
     key: "entities",
     title: w(
       "Core concepts and data relationships",
@@ -830,6 +751,15 @@ export const systemChapters: SystemChapter[] = [
       "显示字段、业务契约与数据库列属于不同层。展开字典查看 CRM 契约与存储字段；不展示其他模块的业务字段，数量按内容统计。",
     ),
     blocks: [
+      {
+        kind: "table",
+        title: w("Storage and access boundaries", "Batas penyimpanan dan akses", "存储与权限边界"),
+        items: [
+          w("MySQL stores CRM business records: customers, messages, tasks, contact records and notification audit.", "MySQL menyimpan catatan bisnis CRM: pelanggan, pesan, tugas, catatan kontak, dan audit notifikasi.", "MySQL保存CRM业务记录，包括客户、消息、任务、联系记录与通知审计。"),
+          w("Static JSON stores questions and translations. Updating explanatory copy does not change assessment scoring rules or historical results.", "JSON statis menyimpan soal dan terjemahan. Pembaruan penjelasan tidak mengubah aturan skor asesmen atau hasil historis.", "静态JSON保存题库与三语文案；修改解释文案不改变测评评分规则或历史结果。"),
+          w("The server enforces permissions and data scopes. Interface controls and documentation do not grant access.", "Server menerapkan izin dan cakupan data. Kontrol antarmuka dan dokumentasi tidak memberikan akses.", "权限和数据范围由服务端执行；界面控件与文档说明本身不授予权限。"),
+        ],
+      },
       {
         kind: "example",
         title: w(

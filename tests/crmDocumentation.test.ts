@@ -27,8 +27,8 @@ import {
 import { evaluateFullLeadTier } from "../src/types/crmLead.ts";
 import { calculateLeadTier } from "../src/types/leadSystem.ts";
 import { sla } from "../src/utils/workCalendar.ts";
-test("Eleven system chapters restore concepts; nine operating groups preserve every existing section", () => {
-  assert.equal(systemChapters.length, 11);
+test("Ten system chapters restore concepts; nine operating groups preserve every existing section", () => {
+  assert.equal(systemChapters.length, 10);
   assert.equal(operationGroups.length, 9);
   assert.deepEqual(
     operationGroups.flat().sort(),
@@ -94,7 +94,7 @@ for (const lang of ["en", "id", "zh"] as const)
       React.createElement(CrmUserGuide, {
         lang,
         isLight: true,
-        initialChapter: "architecture",
+        initialChapter: "entities",
       }),
     );
     const text = html.replace(/<[^>]+>/g, " ");
@@ -274,4 +274,30 @@ test("Every plotted SLA sample is validated by the unchanged server calendar fun
       sla(new Date(sample.input), 3, calendar).toISOString(),
       new Date(sample.expected).toISOString(),
     );
+});
+
+test("Unique architecture material moves to the appropriate operating and data chapters in every language", () => {
+  const account = guideSections.find((s) => s.key === "access")!;
+  const data = systemChapters.find((s) => s.key === "data-implementation")!;
+  for (const col of [0, 1, 2]) {
+    const accountText = account.body.map((row) => row[col]).join(" ");
+    const dataText = data.blocks
+      .flatMap((b) => b.items.map((row) => row[col]))
+      .join(" ");
+    assert.match(accountText, /Build/);
+    assert.match(accountText, /UTC/);
+    assert.match(accountText, /GitHub/);
+    assert.match(accountText, /Git/);
+    assert.match(dataText, /MySQL/);
+    assert.match(dataText, /JSON/);
+    assert.ok(
+      accountText.includes(
+        [
+          "external education-platform",
+          "platform pendidikan eksternal",
+          "外部教育平台",
+        ][col],
+      ),
+    );
+  }
 });
