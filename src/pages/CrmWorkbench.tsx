@@ -18,6 +18,7 @@ import {contactStatistics} from "../utils/crmContact";
 import {CrmWorkflowForm} from "../components/crm/CrmWorkflowForm";
 import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
+import { policySaveResponseError } from "../utils/crmPolicyValidation";
 import { CrmLeadFilters } from "../components/crm/CrmLeadFilters";
 import {
   defaultLeadFilters,
@@ -508,24 +509,16 @@ function CrmWorkspace({
   const handleSavePolicy = async (
     updated: CrmPolicyConfig,
   ): Promise<boolean> => {
-    try {
-      const res = await fetch("/api/crm/policy-config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          await fetchPolicyConfig();
-          fetchLeads();
-          return true;
-        }
-      }
-    } catch (e) {
-      console.error("Failed to save policy config:", e);
-    }
-    return false;
+    const res = await fetch("/api/crm/policy-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || data?.success !== true) throw policySaveResponseError(res.status, data);
+    await fetchPolicyConfig();
+    fetchLeads();
+    return true;
   };
   const handleResetPolicy = async (): Promise<boolean> => {
     try {

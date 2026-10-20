@@ -453,6 +453,11 @@ export const guideSections = [
         "Tenggat tugas baru memakai pengaturan SLA dan kalender operasional di server. Perubahan tidak mengubah tenggat lama secara diam-diam. Aturan notifikasi secara default mengikuti kalender global; kalender khusus dan waktu ringkasan harian hanya ditampilkan bila relevan.",
         "新任务截止时间由服务端 SLA 配置和运营日历计算；修改配置不会静默重写已有截止时间。通知策略默认继承全局日历；仅在适用时显示自定义时间或每日汇总时间。",
       ],
+      [
+        "Working hours must use a valid start and end time on the same day, with the end later than the start. Invalid hours have no preview. Save Policies identifies the time field to correct and keeps your input. A failed save keeps the saved configuration and existing task deadlines unchanged; correct the input or retry when the connection is restored. Only a successful save activates the changes.",
+        "Jam kerja harus memiliki waktu mulai dan selesai yang valid pada hari yang sama, dengan waktu selesai setelah waktu mulai. Jam yang tidak valid tidak ditampilkan dalam pratinjau. Simpan Kebijakan menunjukkan kolom waktu yang perlu diperbaiki dan mempertahankan isian Anda. Jika penyimpanan gagal, konfigurasi tersimpan dan tenggat tugas yang sudah ada tidak berubah; perbaiki isian atau coba lagi setelah koneksi pulih. Perubahan berlaku hanya setelah berhasil disimpan.",
+        "工作时间须填写有效的同日开始及结束时间，结束时间必须晚于开始时间；无效时间不显示预览。点击“保存策略”会定位需要修正的时间字段，并保留输入。保存失败时，已保存配置及已有任务截止时间保持不变；修正输入或恢复连接后再重试，仅保存成功后修改才生效。",
+      ],
     ],
   },
   {

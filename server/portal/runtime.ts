@@ -37,6 +37,7 @@ import {
 } from "./notificationDelivery.ts";
 import crypto from "node:crypto";
 import { DEFAULT_CRM_POLICY_CONFIG } from "../../src/types/crmPolicyConfig.ts";
+import { workTimeErrors } from "../../src/utils/crmPolicyValidation.ts";
 import {
   pool,
   tx,
@@ -1569,6 +1570,16 @@ export async function mountPortal(app: Express) {
         !Object.keys(b).length
       )
         fail(400, "Sales operations configuration required");
+      if (Object.hasOwn(b, "businessHours") && (!b.businessHours || typeof b.businessHours !== "object" || Array.isArray(b.businessHours)))
+        fail(400, "Invalid work calendar");
+      const hours = b.businessHours || {};
+      const start = Object.hasOwn(hours, "startTime") ? hours.startTime : old.start;
+      const end = Object.hasOwn(hours, "endTime") ? hours.endTime : old.end;
+      const fieldErrors = workTimeErrors({ startTime: start, endTime: end });
+      if (Object.keys(fieldErrors).length) {
+        res.status(400).json({ error: Object.values(fieldErrors)[0], fieldErrors });
+        return;
+      }
       const duration = (d: any) => {
         if (
           !d ||
@@ -1584,8 +1595,8 @@ export async function mountPortal(app: Express) {
       const next = {
         ...old,
         timezone: b.businessHours?.timezone || old.timezone,
-        start: b.businessHours?.startTime || old.start,
-        end: b.businessHours?.endTime || old.end,
+        start,
+        end,
         days: b.businessHours?.workDays || old.days,
         nextDayGraceTime:
           b.businessHours?.nextDayGraceTime ||

@@ -5,7 +5,8 @@ import {
   calendarSample,
 } from "../../utils/workCalendar";
 import { crmLocale, crmValue } from "../../utils/crmLanguage";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { workTimeErrors, policyMessage, PolicySaveError, type WorkTimeField, type WorkTimeErrors } from "../../utils/crmPolicyValidation";
 import type {
   CrmPolicyConfig,
   TimeUnit,
@@ -206,6 +207,21 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<PolicySaveError | null>(null);
+  const [showTimeErrors, setShowTimeErrors] = useState(false);
+  const [serverTimeErrors, setServerTimeErrors] = useState<WorkTimeErrors>({});
+  const [focusField, setFocusField] = useState<WorkTimeField | null>(null);
+  const startInput = useRef<HTMLInputElement>(null);
+  const endInput = useRef<HTMLInputElement>(null);
+  const saveFeedback = useRef<HTMLDivElement>(null);
+  const inFlight = useRef(false);
+  // Parent callbacks change when its toolbar state updates. Keep control callbacks
+  // stable so publishing controls cannot cause a parent/child render loop.
+  const actions = useRef({ onSavePolicy, onResetPolicy });
+  actions.current = { onSavePolicy, onResetPolicy };
+  const timeErrors = workTimeErrors(formData.businessHours);
+  const fieldErrors = { ...serverTimeErrors, ...(showTimeErrors ? timeErrors : {}) };
+  const calendarValid = Object.keys(timeErrors).length === 0;
   const [currentTimeStr, setCurrentTimeStr] = useState("");
   const [currentMinutesInDay, setCurrentMinutesInDay] = useState(0);
   const [isCurrentlyWorking, setIsCurrentlyWorking] = useState(true);
@@ -234,6 +250,17 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   useEffect(() => {
     setFormData(policyConfig);
   }, [policyConfig]);
+  useEffect(() => {
+    if (!focusField) return;
+    const input = focusField === "startTime" ? startInput.current : endInput.current;
+    input?.focus();
+    input?.scrollIntoView({ block: "center", behavior: "instant" });
+    setFocusField(null);
+  }, [focusField]);
+  const focusCalendar = useCallback((errors: WorkTimeErrors) => {
+    setActiveCategory("schedule");
+    setFocusField(errors.startTime ? "startTime" : "endTime");
+  }, []);
   // Live clock in target timezone
   useEffect(() => {
     const updateLiveClock = () => {
@@ -364,6 +391,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   }, [formData, policyConfig]);
   // Business hours ribbon math (00:00 to 24:00)
   const businessBarInfo = useMemo(() => {
+    if (Object.keys(workTimeErrors(formData.businessHours)).length) return null;
     const parseClock = (clock: string) => {
       const [h, m] = clock.split(":").map(Number);
       return (h || 0) * 60 + (m || 0);
@@ -534,87 +562,80 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       });
     }
   };
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
+  const submitPolicy = useCallback(async () => {
+    if (inFlight.current) return;
     setSaveSuccess(false);
-    try {
-      const ok = await onSavePolicy(formData);
-      if (ok) {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 4000);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  const handleReset = async () => {
-    if (
-      !window.confirm(
-        t(
-          "Reset all SLA & Cadence policies to standard recommended defaults?",
-          "是否确认将所有时效与策略恢复为默认值？",
-        ),
-      )
-    ) {
+    setSaveError(null);
+    setServerTimeErrors({});
+    setShowTimeErrors(true);
+    const invalid = workTimeErrors(formData.businessHours);
+    if (Object.keys(invalid).length) {
+      setSaveError(new PolicySaveError("policy_save_rejected", invalid));
+      focusCalendar(invalid);
       return;
     }
+    inFlight.current = true;
+    setIsSaving(true);
+    try {
+      const ok = await actions.current.onSavePolicy(formData);
+      if (!ok) throw new PolicySaveError();
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } catch (error) {
+      const failure = error instanceof PolicySaveError ? error : new PolicySaveError();
+      setSaveError(failure);
+      setServerTimeErrors(failure.fields);
+      if (Object.keys(failure.fields).length) focusCalendar(failure.fields);
+      else {
+        saveFeedback.current?.focus();
+        saveFeedback.current?.scrollIntoView({ block: "center" });
+      }
+    } finally {
+      inFlight.current = false;
+      setIsSaving(false);
+    }
+  }, [formData, focusCalendar]);
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitPolicy();
+  };
+  const handleReset = useCallback(async () => {
+    if (!window.confirm(t("Reset all SLA & Cadence policies to standard recommended defaults?", "是否确认将所有时效与策略恢复为默认值？"))) return;
     setIsResetting(true);
     try {
-      const ok = await onResetPolicy();
+      const ok = await actions.current.onResetPolicy();
       if (ok) {
         setFormData(DEFAULT_CRM_POLICY_CONFIG);
+        setSaveError(null);
+        setServerTimeErrors({});
+        setShowTimeErrors(false);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 4000);
       }
     } finally {
       setIsResetting(false);
     }
-  };
-  // Synchronize controls with parent page content sensitive button area in top header
+  }, [lang]);
+  const discard = useCallback(() => {
+    setFormData(policyConfig);
+    setSaveError(null);
+    setServerTimeErrors({});
+    setShowTimeErrors(false);
+    setSaveSuccess(false);
+  }, [policyConfig]);
   useEffect(() => {
-    if (onActionControlsChange) {
-      onActionControlsChange({
-        isDirty: modifiedFieldsCount > 0,
-        modifiedCount: modifiedFieldsCount,
-        isSaving,
-        isResetting,
-        saveSuccess,
-        save: async () => {
-          setIsSaving(true);
-          setSaveSuccess(false);
-          try {
-            const ok = await onSavePolicy(formData);
-            if (ok) {
-              setSaveSuccess(true);
-              setTimeout(() => setSaveSuccess(false), 4000);
-            }
-          } finally {
-            setIsSaving(false);
-          }
-        },
-        reset: handleReset,
-        discard: () => {
-          setFormData(policyConfig);
-        },
-      });
-    }
-    return () => {
-      if (onActionControlsChange) {
-        onActionControlsChange(null);
-      }
-    };
-  }, [
-    formData,
-    policyConfig,
-    isSaving,
-    isResetting,
-    saveSuccess,
-    modifiedFieldsCount,
-    onSavePolicy,
-    onResetPolicy,
-    onActionControlsChange,
-  ]);
+    onActionControlsChange?.({
+      isDirty: modifiedFieldsCount > 0,
+      modifiedCount: modifiedFieldsCount,
+      isSaving,
+      isResetting,
+      saveSuccess,
+      save: submitPolicy,
+      reset: handleReset,
+      discard,
+    });
+  }, [modifiedFieldsCount, isSaving, isResetting, saveSuccess, submitPolicy, handleReset, discard, onActionControlsChange]);
+  useEffect(() => () => onActionControlsChange?.(null), [onActionControlsChange]);
   const toggleWorkDay = (day: number) => {
     const current = formData.businessHours.workDays || [];
     if (current.includes(day)) {
@@ -646,7 +667,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     { num: 0, en: "Sun", zh: "周日" },
   ];
   return (
-    <form onSubmit={handleSave} className="space-y-6 w-full mx-auto">
+    <form noValidate onSubmit={handleSave} className="space-y-6 w-full mx-auto">
+      <button type="submit" hidden tabIndex={-1}>{t("Save Policies", "保存策略")}</button>
       {/* 1. Header & Live Status Banner */}
       <div
         className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800 shadow-md"}`}
@@ -733,7 +755,9 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                   : "bg-indigo-500/10 border-indigo-500/20 text-indigo-700 dark:text-indigo-300"
               }`}
             >
-              {isCurrentlyWorking ? (
+              {!calendarValid ? (
+                <span>{policyMessage("policy_calendar_invalid", lang)}</span>
+              ) : isCurrentlyWorking ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                   <span className="font-semibold font-sans">
@@ -764,14 +788,15 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               )}
             </span>
             <span className="text-[11px] text-slate-500 font-mono">
-              {businessBarInfo.dailyHours} {t("hrs/day", "小时/天")} ·{" "}
+              {businessBarInfo ? <>{businessBarInfo.dailyHours} {t("hrs/day", "小时/天")} ·{" "}
               {businessBarInfo.weeklyWorkDays} {t("days/week", "天/周")} (
               {businessBarInfo.weeklyHours} {t("h", "小时")}{" "}
-              {t("total", "工时")})
+              {t("total", "工时")})</> : policyMessage("policy_calendar_invalid", lang)}
             </span>
           </div>
 
-          {/* Interactive Timeline Bar */}
+          {/* Invalid draft hours have no meaningful work-window preview. */}
+          {businessBarInfo && <>
           <div className="relative h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700 flex">
             {/* Shaded Off-hours Left */}
             <div
@@ -821,6 +846,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             </span>
             <span>24:00 {t("End of Day", "日终")}</span>
           </div>
+          </>}
         </div>
 
         {/* Feature Switches Toolbar: Simulator & Cascade Diagram */}
@@ -923,6 +949,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                   )}
             </p>
           </section>
+          <div ref={saveFeedback} tabIndex={-1} className="mt-3 text-sm outline-none">
+            {saveError && <p role="alert" className="text-red-700 dark:text-red-300">{policyMessage(Object.values(saveError.fields)[0] || saveError.code, lang)}</p>}
+            {saveSuccess && <p role="status" className="text-emerald-700 dark:text-emerald-300">{policyMessage("policy_save_success", lang)}</p>}
+          </div>
         </div>
       </div>
 
@@ -1541,19 +1571,30 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     )}
                   </p>
                   <input
+                    id="crm-work-startTime"
+                    ref={startInput}
+                    aria-label={t("Daily Start Time", "每日开始工作时间")}
+                    aria-invalid={!!fieldErrors.startTime}
+                    aria-describedby={fieldErrors.startTime ? "crm-work-startTime-error" : undefined}
+                    style={{ scrollMarginTop: "12rem", ...(fieldErrors.startTime ? { borderColor: "#dc2626" } : {}) }}
                     type="time"
                     value={formData.businessHours.startTime}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setSaveError(null);
+                      setSaveSuccess(false);
+                      setServerTimeErrors({});
+                      setShowTimeErrors(true);
                       setFormData({
                         ...formData,
                         businessHours: {
                           ...formData.businessHours,
                           startTime: e.target.value,
                         },
-                      })
-                    }
+                      });
+                    }}
                     className={`w-full max-w-[140px] h-8 text-xs rounded-lg px-2.5 border outline-none font-semibold font-mono ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-200"}`}
                   />
+                  {fieldErrors.startTime && <p id="crm-work-startTime-error" className="mt-1 text-sm text-red-700 dark:text-red-300">{policyMessage(fieldErrors.startTime, lang)}</p>}
                 </div>
 
                 <div>
@@ -1571,19 +1612,30 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     )}
                   </p>
                   <input
+                    id="crm-work-endTime"
+                    ref={endInput}
+                    aria-label={t("Daily End Time", "每日停止外呼时间")}
+                    aria-invalid={!!fieldErrors.endTime}
+                    aria-describedby={fieldErrors.endTime ? "crm-work-endTime-error" : undefined}
+                    style={{ scrollMarginTop: "12rem", ...(fieldErrors.endTime ? { borderColor: "#dc2626" } : {}) }}
                     type="time"
                     value={formData.businessHours.endTime}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setSaveError(null);
+                      setSaveSuccess(false);
+                      setServerTimeErrors({});
+                      setShowTimeErrors(true);
                       setFormData({
                         ...formData,
                         businessHours: {
                           ...formData.businessHours,
                           endTime: e.target.value,
                         },
-                      })
-                    }
+                      });
+                    }}
                     className={`w-full max-w-[140px] h-8 text-xs rounded-lg px-2.5 border outline-none font-semibold font-mono ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-200"}`}
                   />
+                  {fieldErrors.endTime && <p id="crm-work-endTime-error" className="mt-1 text-sm text-red-700 dark:text-red-300">{policyMessage(fieldErrors.endTime, lang)}</p>}
                 </div>
               </div>
 

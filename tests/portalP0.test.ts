@@ -233,6 +233,24 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const saved = (
           await pool.query("SELECT id,value FROM portal_settings ORDER BY id")
         ).rows;
+        const protectedTasks = (await pool.query("SELECT id,due_at FROM followup_tasks ORDER BY id")).rows;
+        for (const [startTime, endTime, field] of [
+          ["22:00", "20:00", "endTime"],
+          ["20:00", "20:00", "endTime"],
+          ["", "20:00", "startTime"],
+          ["09:00", "", "endTime"],
+          ["25:00", "20:00", "startTime"],
+          [null, "20:00", "startTime"],
+        ]) {
+          const response = await request("/api/crm/policy-config", staff, {
+            ...config,
+            businessHours: { ...config.businessHours, startTime, endTime },
+          });
+          assert.equal(response.status, 400);
+          assert.ok(response.data.fieldErrors[field as string]);
+          assert.deepEqual((await pool.query("SELECT id,value FROM portal_settings ORDER BY id")).rows, saved);
+          assert.deepEqual((await pool.query("SELECT id,due_at FROM followup_tasks ORDER BY id")).rows, protectedTasks);
+        }
         await pool.query(
           "CREATE TRIGGER p0_fail_settings BEFORE INSERT ON portal_audit FOR EACH ROW BEGIN IF NEW.action='sla.save' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='TEST audit failure'; END IF; END",
         );
