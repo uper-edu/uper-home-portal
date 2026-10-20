@@ -950,8 +950,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             </p>
           </section>
           <div ref={saveFeedback} tabIndex={-1} className="mt-3 text-sm outline-none">
-            {saveError && <p role="alert" className="text-red-700 dark:text-red-300">{policyMessage(Object.values(saveError.fields)[0] || saveError.code, lang)}</p>}
-            {saveSuccess && <p role="status" className="text-emerald-700 dark:text-emerald-300">{policyMessage("policy_save_success", lang)}</p>}
+            {saveError && <p role="alert" className={isLight ? "text-red-700" : "text-red-300"}>{policyMessage(Object.values(saveError.fields)[0] || saveError.code, lang)}</p>}
+            {saveSuccess && <p role="status" className={isLight ? "text-emerald-700" : "text-emerald-300"}>{policyMessage("policy_save_success", lang)}</p>}
           </div>
         </div>
       </div>
@@ -1594,7 +1594,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     }}
                     className={`w-full max-w-[140px] h-8 text-xs rounded-lg px-2.5 border outline-none font-semibold font-mono ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-200"}`}
                   />
-                  {fieldErrors.startTime && <p id="crm-work-startTime-error" className="mt-1 text-sm text-red-700 dark:text-red-300">{policyMessage(fieldErrors.startTime, lang)}</p>}
+                  {fieldErrors.startTime && <p id="crm-work-startTime-error" className={`mt-1 text-sm ${isLight ? "text-red-700" : "text-red-300"}`}>{policyMessage(fieldErrors.startTime, lang)}</p>}
                 </div>
 
                 <div>
@@ -1635,7 +1635,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     }}
                     className={`w-full max-w-[140px] h-8 text-xs rounded-lg px-2.5 border outline-none font-semibold font-mono ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-200"}`}
                   />
-                  {fieldErrors.endTime && <p id="crm-work-endTime-error" className="mt-1 text-sm text-red-700 dark:text-red-300">{policyMessage(fieldErrors.endTime, lang)}</p>}
+                  {fieldErrors.endTime && <p id="crm-work-endTime-error" className={`mt-1 text-sm ${isLight ? "text-red-700" : "text-red-300"}`}>{policyMessage(fieldErrors.endTime, lang)}</p>}
                 </div>
               </div>
 
