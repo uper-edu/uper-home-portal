@@ -8,3 +8,11 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - Run `npm test`, `npm run lint`, `npm run build`, and `git diff --check` before syncing.
 - A request to sync code authorizes a push to the canonical repository, but does not authorize production deployment.
 - Keep lesson content and grading rules unchanged during infrastructure fixes unless the user requests content changes.
+
+## Zentao bug fixes
+
+- Use [fix-zentao-bugs](.agents/skills/fix-zentao-bugs/SKILL.md) for Zentao bug investigation, repair, and disposition.
+- Default to manual confirmation: analyze each bug and its validity, confirm the proposed fix with the user, then implement and verify it. Show remaining bugs and automatically present the next bug for confirmation.
+- Enable fully automatic repair only when the user explicitly requests that mode for the current task. Reading or maintaining the skill does not start a repair task.
+- Read connection settings from `.zentao.local.json`, keeping its account and password fields empty in Git. Store real credentials in environment variables or the ignored `.zentao.credentials.local.json`; never commit the credentials file. An empty `zentaoAssignee` defaults to the current bug reporter, and the resolved build defaults to `trunk`.
+- Follow the skill's Windows PowerShell or macOS zsh/bash instructions as appropriate. Handle authorized comments and status transitions on the user's behalf and verify the result in Zentao.
