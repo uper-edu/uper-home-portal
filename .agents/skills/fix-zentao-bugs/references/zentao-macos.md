@@ -4,7 +4,7 @@
 
 ## 配置与凭据
 
-在项目根目录检查 `node --version`、`curl --version`。六项配置读取项目根目录 `.zentao.local.json`，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)，环境变量可覆盖；产品必须核实；负责人可留空，按当前 BUG 提单人自动确定，不能使用占位符执行业务操作。解决版本默认主干 `trunk`，无需用户每次填写；只有用户明确指定其他解决版本时才覆盖，实际部署版本仍单独核验。真实凭据从已忽略的 `.zentao.credentials.local.json` 或环境变量读取，已跟踪的 `.zentao.local.json` 账号密码保持为空，不把密码写进命令历史、仓库或日志，不启用 `set -x`。
+在项目根目录检查 `node --version`、`curl --version`。六项配置读取项目根目录 `.zentao.local.json`，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)，环境变量可覆盖；产品必须核实；负责人可留空，按当前 BUG 提单人自动确定，不能使用占位符执行业务操作。解决版本默认主干 `trunk`，无需用户每次填写；只有用户明确指定其他解决版本时才覆盖，实际部署版本仍单独核验。用户已明确授权本项目指定的 `.zentao.local.json` 配置随仓库提交；账号密码按环境变量、主配置、可选 `.zentao.credentials.local.json` 的顺序读取，不把值复制到命令历史、其他文档或日志，不启用 `set -x`。
 
 ```bash
 # 从项目根目录运行。仅解析 JSON，不执行配置，不打印凭据。
@@ -18,7 +18,7 @@ zentao_config_value() {
       const credentialKey=key==="zentaoAccount" || key==="zentaoPassword";
       const secrets=credentialKey && fs.existsSync(".zentao.credentials.local.json") ? JSON.parse(fs.readFileSync(".zentao.credentials.local.json","utf8").replace(/^\uFEFF/,"")) : {};
       if (!secrets || Array.isArray(secrets) || typeof secrets!=="object") throw new Error();
-      let value=process.env[variable] || (credentialKey && secrets[key]) || cfg[key];
+      let value=process.env[variable] || cfg[key] || (credentialKey && secrets[key]);
       if (key==="zentaoAssignee") {
         value=[process.env[variable],cfg[key]].find(v=>typeof v==="string" && v.trim())?.trim() || "";
       }

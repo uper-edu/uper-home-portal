@@ -8,7 +8,7 @@
 
 ## 运行前配置
 
-从项目根目录 `.zentao.local.json` 读取六项配置，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)；环境变量可覆盖。该文件随仓库提交，账号密码字段保持为空；真实凭据另存于已忽略的 `.zentao.credentials.local.json` 或环境变量。产品 ID、环境按当前项目核实；负责人可留空，默认指派给当前 BUG 的提单人；解决版本默认主干 `trunk`，无需逐单填写，只有用户明确指定其他解决版本时才覆盖。实际部署版本另行核验。
+从项目根目录 `.zentao.local.json` 读取六项配置，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)；环境变量可覆盖。用户已明确授权将本项目指定的六项配置随仓库提交；环境变量优先，主配置字段其次，已忽略的 `.zentao.credentials.local.json` 仅为可选回退，不提交该回退文件。产品 ID、环境按当前项目核实；负责人可留空，默认指派给当前 BUG 的提单人；解决版本默认主干 `trunk`，无需逐单填写，只有用户明确指定其他解决版本时才覆盖。实际部署版本另行核验。
 
 ```powershell
 # 从项目根目录运行；文件仅解析为 JSON，不执行其中的内容。
@@ -27,8 +27,8 @@ $mcpUrl = if ($env:ZENTAO_MCP_URL) { $env:ZENTAO_MCP_URL } elseif ($zentaoConfig
   }
   if ($projectMcpUrl) { $projectMcpUrl } else { 'https://zentao-mcp.uper.monite.cn/zentao/mcp' }
 }
-$zentaoAccount = if ($env:ZENTAO_ACCOUNT) { $env:ZENTAO_ACCOUNT } elseif ($zentaoCredentials.zentaoAccount) { $zentaoCredentials.zentaoAccount } else { $zentaoConfig.zentaoAccount }
-$zentaoPassword = if ($env:ZENTAO_PASSWORD) { $env:ZENTAO_PASSWORD } elseif ($zentaoCredentials.zentaoPassword) { $zentaoCredentials.zentaoPassword } else { $zentaoConfig.zentaoPassword }
+$zentaoAccount = if ($env:ZENTAO_ACCOUNT) { $env:ZENTAO_ACCOUNT } elseif ($zentaoConfig.zentaoAccount) { $zentaoConfig.zentaoAccount } else { $zentaoCredentials.zentaoAccount }
+$zentaoPassword = if ($env:ZENTAO_PASSWORD) { $env:ZENTAO_PASSWORD } elseif ($zentaoConfig.zentaoPassword) { $zentaoConfig.zentaoPassword } else { $zentaoCredentials.zentaoPassword }
 $zentaoProductId = if ($env:ZENTAO_PRODUCT_ID) { $env:ZENTAO_PRODUCT_ID } else { $zentaoConfig.zentaoProductId }
 $zentaoAssignee = if (-not [string]::IsNullOrWhiteSpace($env:ZENTAO_ASSIGNEE)) { $env:ZENTAO_ASSIGNEE.Trim() } elseif (-not [string]::IsNullOrWhiteSpace($zentaoConfig.zentaoAssignee)) { $zentaoConfig.zentaoAssignee.Trim() } else { "" }
 $zentaoResolvedBuild = if ($env:ZENTAO_RESOLVED_BUILD) { $env:ZENTAO_RESOLVED_BUILD } else { 'trunk' }
@@ -44,7 +44,7 @@ mcp_zentao 的部分工具 schema 缺少路径参数，直接调用会失败。�
 
 mcp_zentao token **短时有效、会过期**：过期后所有数据级调用返回 `{"message":"Not allowed","status":"fail"}`（`tools/list` 仍可用，易误判为连通正常）。有可用环境 token 时先校验；否则登录换新 token，勿依赖 `.mcp.json` 里的旧值。优先级：已有 `$env:ZENTAO_TOKEN` > 已有 `$env:ZENTAO_ACCOUNT/PASSWORD` > 顶部配置的登录账号。
 
-登录账号密码使用顶部配置或环境变量，可自动登录。敏感信息不要输出到终端历史、commit 或关单 comment。
+登录账号密码使用顶部配置或环境变量，可自动登录。敏感信息不要输出到终端历史、提交说明或关单 comment，也不要复制到配置文件之外的版本化文档。
 
 ```powershell
 $account = if ($env:ZENTAO_ACCOUNT) { $env:ZENTAO_ACCOUNT } else { $zentaoAccount }
