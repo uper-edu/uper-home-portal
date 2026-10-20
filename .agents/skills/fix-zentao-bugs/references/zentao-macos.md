@@ -4,42 +4,37 @@
 
 ## 配置与凭据
 
-在项目根目录检查 `node --version`、`curl --version`。六项配置读取项目根目录 `.zentao.local.json`，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)，环境变量可覆盖；产品必须核实；负责人可留空，按当前 BUG 提单人自动确定，不能使用占位符执行业务操作。解决版本默认主干 `trunk`，无需用户每次填写；只有用户明确指定其他解决版本时才覆盖，实际部署版本仍单独核验。用户已明确授权本项目指定的 `.zentao.local.json` 配置随仓库提交；账号密码按环境变量、主配置、可选 `.zentao.credentials.local.json` 的顺序读取，不把值复制到命令历史、其他文档或日志，不启用 `set -x`。
+在项目根目录检查 `node --version`、`curl --version`。六项连接设置只读 `.zentao.local.json`，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)；不读取环境变量、`.mcp.json` 或其他凭据文件作为配置。负责人为空时取当前 BUG 的提单人，解决版本默认 `trunk`；实际部署版本单独核验。不要把配置值复制到命令历史、其他文档或日志，不启用 `set -x`。
 
 ```bash
-# 从项目根目录运行。仅解析 JSON，不执行配置，不打印凭据。
+# 从项目根目录运行。ZENTAO_* 仅是从 JSON 生成的运行变量。
 zentao_config_value() {
   node -e '
     try {
       const fs=require("node:fs");
-      const cfg=fs.existsSync(".zentao.local.json") ? JSON.parse(fs.readFileSync(".zentao.local.json","utf8").replace(/^\uFEFF/,"")) : {};
+      const cfg=JSON.parse(fs.readFileSync(".zentao.local.json","utf8").replace(/^\uFEFF/,""));
       if (!cfg || Array.isArray(cfg) || typeof cfg!=="object") throw new Error();
-      const key=process.argv[1], variable=process.argv[2];
-      const credentialKey=key==="zentaoAccount" || key==="zentaoPassword";
-      const secrets=credentialKey && fs.existsSync(".zentao.credentials.local.json") ? JSON.parse(fs.readFileSync(".zentao.credentials.local.json","utf8").replace(/^\uFEFF/,"")) : {};
-      if (!secrets || Array.isArray(secrets) || typeof secrets!=="object") throw new Error();
-      let value=process.env[variable] || cfg[key] || (credentialKey && secrets[key]);
-      if (key==="zentaoAssignee") {
-        value=[process.env[variable],cfg[key]].find(v=>typeof v==="string" && v.trim())?.trim() || "";
-      }
-      if (!value && key==="mcpUrl" && fs.existsSync(".mcp.json")) {
-        value=JSON.parse(fs.readFileSync(".mcp.json","utf8").replace(/^\uFEFF/,"")).mcpServers?.mcp_zentao?.url;
-      }
-      if (!value) value=process.argv[3] || "";
+      const key=process.argv[1];
+      let value=cfg[key];
+      if (key==="zentaoAssignee" && value==null) value="";
       if (typeof value!=="string") throw new Error();
-      process.stdout.write(value);
-    } catch { console.error("禅道配置格式或字段类型有误，请检查本机配置（不回显敏感值）"); process.exitCode=1; }
-  ' "$1" "$2" "${3:-}"
+      process.stdout.write(key==="zentaoAssignee" ? value.trim() : value);
+    } catch { console.error("请检查项目根目录 .zentao.local.json 是否存在及字段格式（不回显敏感值）"); process.exitCode=1; }
+  ' "$1"
 }
 
 zentao_load_config() {
-  ZENTAO_BASE=$(zentao_config_value zentaoBase ZENTAO_BASE 'https://zentao.uper.monite.cn') || return 1
-  ZENTAO_MCP_URL=$(zentao_config_value mcpUrl ZENTAO_MCP_URL 'https://zentao-mcp.uper.monite.cn/zentao/mcp') || return 1
-  ZENTAO_ACCOUNT=$(zentao_config_value zentaoAccount ZENTAO_ACCOUNT) || return 1
-  ZENTAO_PASSWORD=$(zentao_config_value zentaoPassword ZENTAO_PASSWORD) || return 1
-  ZENTAO_PRODUCT_ID=$(zentao_config_value zentaoProductId ZENTAO_PRODUCT_ID) || return 1
-  ZENTAO_ASSIGNEE=$(zentao_config_value zentaoAssignee ZENTAO_ASSIGNEE) || return 1
-  ZENTAO_RESOLVED_BUILD="${ZENTAO_RESOLVED_BUILD:-trunk}"
+  ZENTAO_BASE=$(zentao_config_value zentaoBase) || return 1
+  ZENTAO_MCP_URL=$(zentao_config_value mcpUrl) || return 1
+  ZENTAO_ACCOUNT=$(zentao_config_value zentaoAccount) || return 1
+  ZENTAO_PASSWORD=$(zentao_config_value zentaoPassword) || return 1
+  ZENTAO_PRODUCT_ID=$(zentao_config_value zentaoProductId) || return 1
+  ZENTAO_ASSIGNEE=$(zentao_config_value zentaoAssignee) || return 1
+  ZENTAO_RESOLVED_BUILD='trunk'
+  if [ -z "$ZENTAO_BASE" ] || [ -z "$ZENTAO_MCP_URL" ]; then
+    printf '%s\n' '请在 .zentao.local.json 填写禅道地址和 MCP 地址' >&2
+    return 1
+  fi
   export ZENTAO_BASE ZENTAO_MCP_URL ZENTAO_ACCOUNT ZENTAO_PASSWORD
   export ZENTAO_PRODUCT_ID ZENTAO_ASSIGNEE ZENTAO_RESOLVED_BUILD
 }
@@ -47,15 +42,16 @@ zentao_load_config() {
 zentao_load_config
 ```
 
-已有可用 `ZENTAO_TOKEN` 时先做授权范围内的只读校验；token 失效再登录。下列函数只定义操作，定义后不会自行访问网络。配置加载失败时停止后续操作；本机缺少登录账号时仍可使用已有有效 token 读单，固定负责人无需提供，指派前逐单读取提单人；只有提单人缺失或无法指派时才说明阻塞并请用户决定替代对象。
+配置加载失败就停止后续调用，不回退到旧环境值。空产品 ID 在拉产品清单前补齐，空账号密码在登录前补齐。每批使用本配置登录产生当前任务 token；token 只是临时运行值，不是第二份连接配置。固定负责人无需提供，指派前逐单读取提单人。
 
 ## 登录获取 token
 
 ```bash
 zentao_login() {
   local login_body login_raw login_token
+  zentao_load_config || return 1
   if [ -z "${ZENTAO_ACCOUNT:-}" ] || [ -z "${ZENTAO_PASSWORD:-}" ]; then
-    printf '%s\n' '请先通过环境变量或安全配置提供禅道账号密码' >&2
+    printf '%s\n' '请在 .zentao.local.json 填写禅道账号密码' >&2
     return 1
   fi
   login_body=$(node -e 'process.stdout.write(JSON.stringify({account:process.env.ZENTAO_ACCOUNT,password:process.env.ZENTAO_PASSWORD}))') || return 1

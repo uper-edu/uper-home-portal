@@ -8,33 +8,34 @@
 
 ## 运行前配置
 
-从项目根目录 `.zentao.local.json` 读取六项配置，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)；环境变量可覆盖。用户已明确授权将本项目指定的六项配置随仓库提交；环境变量优先，主配置字段其次，已忽略的 `.zentao.credentials.local.json` 仅为可选回退，不提交该回退文件。产品 ID、环境按当前项目核实；负责人可留空，默认指派给当前 BUG 的提单人；解决版本默认主干 `trunk`，无需逐单填写，只有用户明确指定其他解决版本时才覆盖。实际部署版本另行核验。
+六项连接配置只读项目根目录 `.zentao.local.json`，格式见 [主文件配置说明](../SKILL.md#本机禅道配置)。环境变量、`.mcp.json` 和其他凭据文件均不覆盖或回退。文件不存在或格式错误时停止并说明，不能自行猜值。负责人为空默认取当前单提单人，解决版本默认 `trunk`；实际部署版本仍单独核验。
 
 ```powershell
-# 从项目根目录运行；文件仅解析为 JSON，不执行其中的内容。
-$zentaoConfig = if (Test-Path -LiteralPath '.zentao.local.json') {
-  try { Get-Content -LiteralPath '.zentao.local.json' -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop }
-  catch { throw '本机禅道配置不是有效 JSON，请检查格式（不回显配置内容）' }
-} else { [pscustomobject]@{} }
-$zentaoCredentials = if (Test-Path -LiteralPath '.zentao.credentials.local.json') {
-  try { Get-Content -LiteralPath '.zentao.credentials.local.json' -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop }
-  catch { throw '本机禅道凭据文件不是有效 JSON，请检查格式（不回显内容）' }
-} else { [pscustomobject]@{} }
-$zentaoBase = if ($env:ZENTAO_BASE) { $env:ZENTAO_BASE } elseif ($zentaoConfig.zentaoBase) { $zentaoConfig.zentaoBase } else { 'https://zentao.uper.monite.cn' }
-$mcpUrl = if ($env:ZENTAO_MCP_URL) { $env:ZENTAO_MCP_URL } elseif ($zentaoConfig.mcpUrl) { $zentaoConfig.mcpUrl } else {
-  $projectMcpUrl = if (Test-Path -LiteralPath '.mcp.json') {
-    (Get-Content -LiteralPath '.mcp.json' -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop).mcpServers.mcp_zentao.url
-  }
-  if ($projectMcpUrl) { $projectMcpUrl } else { 'https://zentao-mcp.uper.monite.cn/zentao/mcp' }
+# 从项目根目录运行；仅解析这一份 JSON，不执行其中的内容。
+if (-not (Test-Path -LiteralPath '.zentao.local.json')) {
+  throw '缺少项目根目录 .zentao.local.json，请先准备统一配置'
 }
-$zentaoAccount = if ($env:ZENTAO_ACCOUNT) { $env:ZENTAO_ACCOUNT } elseif ($zentaoConfig.zentaoAccount) { $zentaoConfig.zentaoAccount } else { $zentaoCredentials.zentaoAccount }
-$zentaoPassword = if ($env:ZENTAO_PASSWORD) { $env:ZENTAO_PASSWORD } elseif ($zentaoConfig.zentaoPassword) { $zentaoConfig.zentaoPassword } else { $zentaoCredentials.zentaoPassword }
-$zentaoProductId = if ($env:ZENTAO_PRODUCT_ID) { $env:ZENTAO_PRODUCT_ID } else { $zentaoConfig.zentaoProductId }
-$zentaoAssignee = if (-not [string]::IsNullOrWhiteSpace($env:ZENTAO_ASSIGNEE)) { $env:ZENTAO_ASSIGNEE.Trim() } elseif (-not [string]::IsNullOrWhiteSpace($zentaoConfig.zentaoAssignee)) { $zentaoConfig.zentaoAssignee.Trim() } else { "" }
-$zentaoResolvedBuild = if ($env:ZENTAO_RESOLVED_BUILD) { $env:ZENTAO_RESOLVED_BUILD } else { 'trunk' }
+try {
+  $zentaoConfig = Get-Content -LiteralPath '.zentao.local.json' -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+  if ($zentaoConfig -isnot [pscustomobject]) { throw 'Expected JSON object' }
+  foreach ($key in @('zentaoBase', 'mcpUrl', 'zentaoAccount', 'zentaoPassword', 'zentaoProductId')) {
+    if ($zentaoConfig.$key -isnot [string]) { throw 'Expected string field' }
+  }
+  if ($null -ne $zentaoConfig.zentaoAssignee -and $zentaoConfig.zentaoAssignee -isnot [string]) { throw 'Expected optional string field' }
+} catch { throw '禅道配置格式或字段类型有误，请检查 .zentao.local.json（不回显内容）' }
+$zentaoBase = $zentaoConfig.zentaoBase
+$mcpUrl = $zentaoConfig.mcpUrl
+$zentaoAccount = $zentaoConfig.zentaoAccount
+$zentaoPassword = $zentaoConfig.zentaoPassword
+$zentaoProductId = $zentaoConfig.zentaoProductId
+$zentaoAssignee = ([string]$zentaoConfig.zentaoAssignee).Trim()
+$zentaoResolvedBuild = 'trunk'
+if ([string]::IsNullOrWhiteSpace($zentaoBase) -or [string]::IsNullOrWhiteSpace($mcpUrl)) {
+  throw '请在 .zentao.local.json 填写禅道地址和 MCP 地址'
+}
 ```
 
-MCP 地址按环境变量、本机 JSON、项目 `.mcp.json`、默认地址的顺序读取。账户、token、客户数据和完整敏感请求头不得输出到日志或上传到禅道。错误响应应脱敏后摘要，不直接输出登录响应全文。
+账号、token、客户数据和完整敏感请求头不得输出到日志或上传到禅道；错误只报告脱敏摘要，不回显登录响应或配置全文。空产品 ID 应在拉取产品清单前补齐；空账号密码在登录前补齐，不从其他来源寻找替代配置。
 
 ## MCP 调用
 
@@ -42,13 +43,11 @@ mcp_zentao 的部分工具 schema 缺少路径参数，直接调用会失败。�
 
 ### 1. 获取 token（实际执行禅道任务时）
 
-mcp_zentao token **短时有效、会过期**：过期后所有数据级调用返回 `{"message":"Not allowed","status":"fail"}`（`tools/list` 仍可用，易误判为连通正常）。有可用环境 token 时先校验；否则登录换新 token，勿依赖 `.mcp.json` 里的旧值。优先级：已有 `$env:ZENTAO_TOKEN` > 已有 `$env:ZENTAO_ACCOUNT/PASSWORD` > 顶部配置的登录账号。
-
-登录账号密码使用顶部配置或环境变量，可自动登录。敏感信息不要输出到终端历史、提交说明或关单 comment，也不要复制到配置文件之外的版本化文档。
+每批以统一配置中的账号密码登录获取当前任务 token；不采用外部环境里已有的账号密码或旧 token 作为配置来源。token 失效后用同一配置重新登录，`tools/list` 可用不代表数据权限有效。敏感值不输出到终端历史、提交说明或关单 comment。
 
 ```powershell
-$account = if ($env:ZENTAO_ACCOUNT) { $env:ZENTAO_ACCOUNT } else { $zentaoAccount }
-$password = if ($env:ZENTAO_PASSWORD) { $env:ZENTAO_PASSWORD } else { $zentaoPassword }
+$account = $zentaoAccount
+$password = $zentaoPassword
 if (-not $account -or -not $password -or $account -eq "<禅道账号>" -or $password -eq "<禅道密码>") { throw "请先配置禅道账号密码" }
 $body = @{ account = $account; password = $password } | ConvertTo-Json -Compress
 $tokenResp = curl.exe -sk -H "Content-Type: application/json" -X POST "$zentaoBase/api.php/v1/tokens" --max-time 30 --data $body
@@ -56,7 +55,7 @@ $env:ZENTAO_TOKEN = ($tokenResp | ConvertFrom-Json).token
 if (-not $env:ZENTAO_TOKEN) { throw "禅道 token 获取失败，请检查脱敏后的响应及凭据配置" }
 ```
 
-macOS 的环境变量、登录与 token 校验见 [macOS 操作参考](zentao-macos.md)，不要混用 PowerShell 变量语法。
+macOS 的统一配置读取、登录与 token 校验见 [macOS 操作参考](zentao-macos.md)，不要混用 PowerShell 变量语法。
 
 若返回 `{"message":"Not allowed","status":"fail"}`，先重取 token；`tools/list` 可用不代表数据接口 token 有效。同一会话内再次出现 `Not allowed`，重跑本步换新 token 即可。
 
@@ -145,7 +144,7 @@ $fileId = 232
 $dir = Join-Path $env:TEMP "zbugs"
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 $path = Join-Path $dir "$fileId.png"
-curl.exe -sk -H "Token: $env:ZENTAO_TOKEN" "https://zentao.uper.monite.cn/api.php/v1/files/$fileId" --max-time 30 -o $path
+curl.exe -sk -H "Token: $env:ZENTAO_TOKEN" "$zentaoBase/api.php/v1/files/$fileId" --max-time 30 -o $path
 if ((Get-Item $path).Length -le 0) { throw "截图下载为空: fileID=$fileId" }
 ```
 
