@@ -1,3 +1,4 @@
+import {CrmSaveFeedback} from "./CrmDetailWorkspace";
 import { CrmSalesDialog } from "./CrmSalesDialog";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { MessageSquarePlus, NotebookPen, Plus } from "lucide-react";
@@ -634,9 +635,9 @@ export function CrmTrustPanel({
           </button>
         </section>
       )}
-      {error && !editor && <p role="alert">{error}</p>}
+      {error && !editor && <CrmSaveFeedback state={unknown?"unknown":"error"}>{error}</CrmSaveFeedback>}
       {saved && (
-        <p role="status">
+        <CrmSaveFeedback state="saved">
           {saved === "note"
             ? t(
                 "Note saved. Contact counts and tasks are unchanged.",
@@ -650,7 +651,7 @@ export function CrmTrustPanel({
                   "已确认保存成功",
                 )
               : `${kindLabel(saved)} · ${t("Saved. Other tasks and original deadlines remain unchanged.", "Tersimpan. Tugas lain dan tenggat awal tetap.", "已保存，其他任务及原始期限保持不变。")}`}
-        </p>
+        </CrmSaveFeedback>
       )}
       {unknown && (
         <button

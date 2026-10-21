@@ -5,11 +5,13 @@ export function CrmCampaignMeasures({
   lang,
   isLight,
   detail = false,
+  scopeLabel, systemSource=false,
 }: {
   campaigns: CrmCampaignRecord[];
   lang: CrmLanguage;
   isLight: boolean;
   detail?: boolean;
+  scopeLabel?: string; systemSource?:boolean;
 }) {
   const t = (en: string, id: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? id : en;
@@ -70,7 +72,7 @@ export function CrmCampaignMeasures({
   ];
   return (
     <section
-      className="crm-process"
+      className={"crm-process"+(systemSource?" campaign-system-measures":"")}
       data-theme={isLight ? "light" : "dark"}
       aria-label={t(
         "Campaign measurement",
@@ -79,13 +81,13 @@ export function CrmCampaignMeasures({
       )}
     >
       <p className="crm-process-scope">
-        {detail
+        {scopeLabel ?? (detail
           ? t("This campaign", "Kampanye ini", "本活动")
           : t(
               "All listed campaigns",
               "Semua kampanye dalam daftar",
               "已列出活动",
-            )}{" "}
+            ))}{" "}
         ·{" "}
         {t(
           "Customers within your access scope; current lifetime totals",
@@ -94,7 +96,7 @@ export function CrmCampaignMeasures({
         )}
       </p>
       <div className="crm-process-grid">
-        {cards.map(([label, value, hint]) => (
+        {cards.filter((_,index)=>!systemSource||![2,5].includes(index)).map(([label, value, hint]) => (
           <article key={label}>
             <h3>{label}</h3>
             <strong>

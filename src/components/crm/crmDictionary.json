@@ -410,6 +410,102 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "promotionReview",
+    "type": "{ status: 'linked' | 'deferred' | 'invalid'; revision: number; rawCampaignCode: string; rawPromotionLinkId: string; campaignId: string; linkId: string | null; snapshot: any; actor: string; at: string; reason: string; scope: 'this_customer_only'; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.status",
+    "type": "'linked' | 'deferred' | 'invalid'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.revision",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.rawCampaignCode",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.rawPromotionLinkId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.campaignId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.linkId",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.snapshot",
+    "type": "any",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.actor",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.at",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.reason",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "promotionReview.scope",
+    "type": "'this_customer_only'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "ownerChangedAt",
     "type": "string",
     "optional": true,
@@ -1514,6 +1610,14 @@
   {
     "layer": "contract",
     "object": "CampaignAiAssets",
+    "key": "templateDrafts",
+    "type": "Partial<Record<\"en\" | \"id\" | \"zh\", Partial<Record<\"posterHeading\" | \"posterSubheading\" | \"socialCopy\" | \"whatsappInvitation\" | \"chatWelcomeGreeting\" | \"presentationOutline\", string>>>>",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignAiAssets",
     "key": "posterHeading",
     "type": "string",
     "optional": false,
@@ -1795,7 +1899,7 @@
     "layer": "contract",
     "object": "CampaignClosedLoopStats",
     "key": "budgetCost",
-    "type": "number",
+    "type": "number | null",
     "optional": false,
     "source": "src/types/crmCampaign.ts"
   },
@@ -1805,6 +1909,22 @@
     "key": "roi",
     "type": "number | null",
     "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "promotionLinks",
+    "type": "CampaignPromotionLink[]",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
+    "key": "promotionModel",
+    "type": "\"multiple\"",
+    "optional": true,
     "source": "src/types/crmCampaign.ts"
   },
   {
@@ -1859,7 +1979,7 @@
     "layer": "contract",
     "object": "CrmCampaignRecord",
     "key": "type",
-    "type": "'campus_seminar' | 'enterprise_roadshow' | 'webinar_class' | 'social_paid_ad' | 'community_referral' | 'education_fair' | 'other'",
+    "type": "'campus_seminar' | 'enterprise_roadshow' | 'webinar_class' | 'social_paid_ad' | 'community_referral' | 'education_fair' | 'other' | \"\"",
     "optional": false,
     "source": "src/types/crmCampaign.ts"
   },
@@ -1923,7 +2043,7 @@
     "layer": "contract",
     "object": "CrmCampaignRecord",
     "key": "locationType",
-    "type": "'offline' | 'online' | 'hybrid'",
+    "type": "'offline' | 'online' | 'hybrid' | \"\"",
     "optional": false,
     "source": "src/types/crmCampaign.ts"
   },
@@ -2043,6 +2163,62 @@
     "layer": "contract",
     "object": "CrmCampaignRecord",
     "key": "updatedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "name",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "source",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "medium",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "language",
+    "type": "'en' | 'id' | 'zh'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "experience",
+    "type": "'questionnaire_assessment_consultation'",
+    "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "createdAt",
     "type": "string",
     "optional": false,
     "source": "src/types/crmCampaign.ts"

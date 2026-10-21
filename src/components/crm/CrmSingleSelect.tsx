@@ -293,7 +293,7 @@ export function CrmSingleSelect({
               )}
             </div>
           </div>,
-          document.body,
+          trigger.current?.closest("dialog") || document.body,
         )}
     </div>
   );

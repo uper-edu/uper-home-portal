@@ -230,7 +230,7 @@ test("Profile has five business chapters with learning needs before sales progre
       chapters[0].indexOf("LANGUAGE_CONTROL") >
         chapters[0].indexOf("TEST parent contact"),
     );
-    assert.match(chapters[0], /LANGUAGE_CONTROL<\/button><\/dd><\/dl>/);
+    assert.match(chapters[0], /LANGUAGE_CONTROL<\/button><\/dd>(?:<\/div>)?<\/dl>/);
     assert.match(chapters[2], /OWNER_CONTROL/);
     assert.doesNotMatch(chapters[0], /2026-10-17/);
     assert.match(chapters[4], /2026-10-17/);
@@ -311,4 +311,17 @@ test("Empty outcome area is omitted, while partial saved outcomes show only the 
     /<dt>Outcome<|<dt>Enrolled class<|Paid|Enrolled<\/dd>/,
   );
   assert.match(zero, /Rp 0/);
+});
+
+
+test("Promotion review facts render in three languages while preserving raw evidence", () => {
+  const value = lead({campaignId: "camp-demo", promotionReview: {status: "linked", revision: 1, rawCampaignCode: "camp-original", rawPromotionLinkId: "p-raw", campaignId: "camp-demo", linkId: "p-verified", snapshot: {name: "TEST Original Entry", source: "test_source", medium: "poster"}, actor: "Robert", at: "2026-10-20T08:00:00Z", reason: "TEST Human 原文", scope: "this_customer_only"}});
+  for (const lang of ["en", "id", "zh"] as const) {
+    const html = render(value, lang);
+    assert.match(html, /p-raw/);
+    assert.match(html, /TEST Original Entry/);
+    assert.match(html, /TEST Human 原文/);
+    assert.match(html, lang === "zh" ? /推广入口核实/ : lang === "id" ? /Verifikasi entri promosi/ : /Promotion entry review/);
+    if(lang !== "en") assert.doesNotMatch(html, /Reviewed by \/ time|Invalid promotion attribution/);
+  }
 });

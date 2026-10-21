@@ -88,9 +88,17 @@ export default function GFormOnboardingModal({
       if (shortCode) {
         fetch(`/api/campaigns/${encodeURIComponent(shortCode)}`)
           .then(res => res.json())
-          .then(data => {
+          .then(async data => {
             if (data?.campaign) {
               const c = data.campaign;
+              const p = sp.get("p");
+              if (p) {
+                const response = await fetch(`/api/campaigns/${encodeURIComponent(shortCode)}/links/${encodeURIComponent(p)}`);
+                if (!response.ok) return;
+                const {link} = await response.json();
+                c.boundUtm = {...c.boundUtm,utm_source:link.source,utm_medium:link.medium,defaultLang:link.language,defaultHook:"hsk_assessment",defaultContext:"website"};
+                setLang(link.language);
+              }
               setCampaignMeta({
                 id: c.id,
                 name: c.name,

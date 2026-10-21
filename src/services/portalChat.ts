@@ -46,6 +46,7 @@ export async function registerContact(profile: object) {
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
   const params=new URLSearchParams(location.search);
+  contact.promotionLinkId=params.get('p')||undefined;
   contact.campaignId=canonicalCampaignId(params.get('c')||params.get('cid')||params.get('campaign'));
   for (const key of [
     "quizScore",

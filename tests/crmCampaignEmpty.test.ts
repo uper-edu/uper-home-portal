@@ -26,12 +26,8 @@ test(
         (await pool.query("SELECT id FROM trial_campaigns")).rows.length,
         0,
       );
-      await saveCampaign({
-        id: "TEST-empty",
-        code: "TEST-empty",
-        name: "TEST empty",
-      });
-      await deleteCampaign("TEST-empty");
+      const created = await saveCampaign({name: "TEST empty", savePhase: "basics", requestId: "TEST-empty-create"}, {kind: "create"});
+      await deleteCampaign(created.id);
       assert.equal(
         (await pool.query("SELECT id FROM trial_campaigns")).rows.length,
         0,

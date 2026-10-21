@@ -1,22 +1,102 @@
-import React, { useEffect, useState, useRef } from "react";
+import { campaignUi } from "../../utils/campaignI18n";
+import { CrmPromotionReviews } from "./CrmPromotionReviews";
+import { CampaignSourceEvidence } from "./CampaignSourceEvidence";
+import React, { useEffect, useState } from "react";
 import { CrmSingleSelect as CrmSelect } from "./CrmSingleSelect";
-export function CrmCampaignSources({
-  lang,
-  isLight,
-  campaigns,
-  onChanged,
-  onLead,
-}: {
+interface SourceProps {
+  initialIssue?: string;
+  promotionCampaign?: { id: string; name: string };
+  onClearPromotionCampaign?: () => void;
   lang: "en" | "id" | "zh";
   isLight: boolean;
   campaigns: any[];
   onChanged: () => void;
   onLead?: (id: string) => void;
-}) {
-  const formRef = useRef<HTMLFormElement>(null);
+  onStateChange?: (state: { dirty: boolean; busy: boolean }) => void;
+  onCount?: (count: number | null) => void;
+}
+export function CrmCampaignSources(props: SourceProps) {
+  const u = campaignUi(props.lang);
+  const [tab, setTab] = useState(
+      props.initialIssue === "promotions" ? "promotions" : "campaigns",
+    ),
+    [version, setVersion] = useState(0),
+    [campaignCount, setCampaignCount] = useState<number | null>(null),
+    [promotionCount, setPromotionCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (props.initialIssue === "promotions") setTab("promotions");
+  }, [props.initialIssue, props.promotionCampaign?.id]);
+  const changed = () => {
+    setVersion((v) => v + 1);
+    props.onChanged();
+  };
+  const draftStates = React.useRef(
+    new Map<string, { dirty: boolean; busy: boolean }>(),
+  );
+  const report = (key: string, state: { dirty: boolean; busy: boolean }) => {
+    draftStates.current.set(key, state);
+    props.onStateChange?.({
+      dirty: [...draftStates.current.values()].some((s) => s.dirty),
+      busy: [...draftStates.current.values()].some((s) => s.busy),
+    });
+  };
+  return (
+    <section aria-label={u("Source review workspace")} className="space-y-4">
+      <nav className="campaign-area-nav" aria-label={u("Source issue type")}>
+        <button
+          type="button"
+          aria-current={tab === "campaigns" ? "page" : undefined}
+          onClick={() => setTab("campaigns")}
+        >
+          {u("Unknown campaign codes") + " ("}
+          {campaignCount ?? "—"})
+        </button>
+        <button
+          type="button"
+          aria-current={tab === "promotions" ? "page" : undefined}
+          onClick={() => setTab("promotions")}
+        >
+          {u("Promotion link issues") + " ("}
+          {promotionCount ?? "—"})
+        </button>
+      </nav>
+      <div hidden={tab !== "campaigns"}>
+        <UnknownCampaignSources
+          {...props}
+          onChanged={changed}
+          onCount={setCampaignCount}
+          onStateChange={(state) => report("campaigns", state)}
+        />
+      </div>
+      <div hidden={tab !== "promotions"}>
+        <CrmPromotionReviews
+          lang={props.lang}
+          campaignFilter={props.promotionCampaign}
+          onClearCampaignFilter={props.onClearPromotionCampaign}
+          isLight={props.isLight}
+          onChanged={changed}
+          onLead={props.onLead}
+          reloadToken={version}
+          onCount={setPromotionCount}
+          onStateChange={(state) => report("promotions", state)}
+        />
+      </div>
+    </section>
+  );
+}
+function UnknownCampaignSources({
+  lang,
+  isLight,
+  campaigns,
+  onChanged,
+  onLead,
+  onCount,
+  onStateChange,
+}: SourceProps) {
+  const u = campaignUi(lang);
   const t = (en: string, id: string, zh: string) => ({ en, id, zh })[lang];
   const [rows, setRows] = useState<any[]>([]),
-    [error, setError] = useState(""),
+    [error, setError] = useState<string[] | null>(null),
     [loading, setLoading] = useState(false),
     [active, setActive] = useState<any>(null),
     [action, setAction] = useState("link"),
@@ -28,21 +108,32 @@ export function CrmCampaignSources({
     [receipt, setReceipt] = useState<any>(null),
     [history, setHistory] = useState(false),
     [requestId, setRequestId] = useState("");
+  const dirty =
+    !!active &&
+    !!(target || name || reason || type !== "other" || action !== "link");
+  useEffect(() => {
+    onStateChange?.({ dirty, busy });
+  }, [dirty, busy]);
+  useEffect(() => () => onStateChange?.({ dirty: false, busy: false }), []);
   async function load() {
     setLoading(true);
-    setError("");
+    onCount?.(null);
+    setError(null);
     try {
       const r = await fetch("/api/crm/campaigns/sources");
       if (!r.ok) throw Error();
-      setRows((await r.json()).sources);
-    } catch {
-      setError(
-        t(
-          "Source data unavailable. Retry.",
-          "Data sumber tidak tersedia. Coba lagi.",
-          "来源数据暂不可用，请重试。",
-        ),
+      const data = await r.json();
+      setRows(data.sources);
+      onCount?.(
+        data.sources.filter((row: any) => row.status === "pending").length,
       );
+    } catch {
+      onCount?.(null);
+      setError([
+        "Source data unavailable. Retry.",
+        "Data sumber tidak tersedia. Coba lagi.",
+        "来源数据暂不可用，请重试。",
+      ]);
     } finally {
       setLoading(false);
     }
@@ -50,16 +141,20 @@ export function CrmCampaignSources({
   useEffect(() => {
     load();
   }, []);
-  useEffect(() => {
-    if (active) {
-      formRef.current?.focus({ preventScroll: true });
-      formRef.current?.scrollIntoView({ block: "center" });
-    }
-  }, [active]);
+  function closeReview() {
+    const id = active?.id;
+    setActive(null);
+    requestAnimationFrame(() => {
+      if (id)
+        document
+          .getElementById("source-review-trigger-" + id)
+          ?.focus({ preventScroll: true });
+    });
+  }
   function edit(r: any) {
     setActive(r);
     setReceipt(null);
-    setError("");
+    setError(null);
     setAction("link");
     setTarget("");
     setName("");
@@ -70,7 +165,7 @@ export function CrmCampaignSources({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setError("");
+    setError(null);
     try {
       const r = await fetch(
         "/api/crm/campaigns/sources/" + active.id + "/review",
@@ -89,22 +184,31 @@ export function CrmCampaignSources({
         },
       );
       if (!r.ok) {
-        if (r.status === 409)
-          setError(
-            t(
-              "Source changed. Refresh before reviewing again.",
-              "Sumber berubah. Muat ulang sebelum meninjau lagi.",
-              "来源已变化，请刷新后重新核实。",
-            ),
-          );
+        const failure = await r.json().catch(() => ({}));
+        if (failure.error === "source_code_exists")
+          setError([
+            "This source code already belongs to a campaign. Refresh the list and link that campaign; no new campaign was created.",
+            "Kode sumber ini sudah terdaftar pada kampanye. Muat ulang daftar lalu tautkan kampanye tersebut; tidak ada kampanye baru yang dibuat.",
+            "原始代码已对应现有活动。请刷新列表并关联该活动；本次未创建新活动。",
+          ]);
+        else if (failure.error === "source_code_invalid")
+          setError([
+            "This original source code cannot be verified. Link an existing campaign or mark it invalid; the original is kept.",
+            "Kode asli ini tidak dapat dipakai sebagai kode kampanye. Tautkan kampanye yang ada atau tandai sumber tidak valid; kode asli tetap disimpan.",
+            "原始代码无法用作活动码。请关联已有活动或标记无效；原始来源仍保留。",
+          ]);
+        else if (r.status === 409)
+          setError([
+            "Source changed. Refresh before reviewing again.",
+            "Sumber berubah. Muat ulang sebelum meninjau lagi.",
+            "来源已变化，请刷新后重新核实。",
+          ]);
         else
-          setError(
-            t(
-              "Could not save. Check your permission, target and inputs; your draft is kept.",
-              "Gagal menyimpan. Periksa izin, kampanye, dan isian; draf tetap tersimpan.",
-              "保存失败，请核对权限、目标活动与输入；草稿已保留。",
-            ),
-          );
+          setError([
+            "Could not save. Check your permission, target and inputs; your draft is kept.",
+            "Gagal menyimpan. Periksa izin, kampanye, dan isian; draf tetap tersimpan.",
+            "保存失败，请核对权限、目标活动与输入；草稿已保留。",
+          ]);
         return;
       }
       setReceipt(await r.json());
@@ -112,13 +216,11 @@ export function CrmCampaignSources({
       await load();
       onChanged();
     } catch {
-      setError(
-        t(
-          "Connection interrupted. Retry uses the same request ID.",
-          "Koneksi terputus. Percobaan ulang memakai ID permintaan yang sama.",
-          "连接中断，重试将使用同一请求ID。",
-        ),
-      );
+      setError([
+        "Connection interrupted. Retry uses the same request ID.",
+        "Koneksi terputus. Percobaan ulang memakai ID permintaan yang sama.",
+        "连接中断，重试将使用同一请求ID。",
+      ]);
     } finally {
       setBusy(false);
     }
@@ -133,8 +235,12 @@ export function CrmCampaignSources({
     >
       <div className="flex flex-wrap gap-3 items-center">
         <h2 className="font-bold">
-          {t("Unverified sources", "Sumber belum diverifikasi", "待核实来源")} (
-          {rows.filter((r) => r.status === "pending").length})
+          {t(
+            "Unknown campaign codes",
+            "Sumber belum diverifikasi",
+            "待核实来源",
+          )}{" "}
+          ({rows.filter((r) => r.status === "pending").length})
         </h2>
         <button
           type="button"
@@ -145,7 +251,14 @@ export function CrmCampaignSources({
             ? t("Pending", "Belum diproses", "待核实")
             : t("Review history", "Riwayat verifikasi", "核实历史")}
         </button>
-        <button type="button" onClick={load} className="underline">
+        <button
+          type="button"
+          onClick={() => {
+            load();
+            onChanged();
+          }}
+          className="underline"
+        >
           {t("Refresh", "Muat ulang", "刷新")}
         </button>
       </div>
@@ -157,9 +270,9 @@ export function CrmCampaignSources({
         )}
       </p>
       {loading && <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>}
-      {error && (
+      {error && !active && (
         <p role="alert" className="text-red-600">
-          {error}
+          {error[{ en: 0, id: 1, zh: 2 }[lang]]}
         </p>
       )}
       {!loading && !error && !visible.length && (
@@ -172,7 +285,12 @@ export function CrmCampaignSources({
         </p>
       )}
       {visible.map((r) => (
-        <article key={r.id} className="border rounded-xl p-3 space-y-2">
+        <article
+          key={r.id}
+          aria-label={u("Source: {code}", { code: r.rawCode })}
+          data-review-open={active?.id === r.id}
+          className="campaign-source-card border rounded-xl p-3 space-y-2"
+        >
           <div className="flex flex-wrap justify-between gap-2">
             <strong className="break-all">{r.rawCode}</strong>
             <span>
@@ -192,7 +310,7 @@ export function CrmCampaignSources({
               "Pendaftaran pertama / terakhir",
               "首次／最近登记",
             )}{" "}
-            (Asia/Jakarta)：
+            {u("(Asia/Jakarta)：")}{" "}
             {r.firstSeen
               ? new Date(r.firstSeen).toLocaleString(
                   lang === "zh" ? "zh-CN" : lang === "id" ? "id-ID" : "en-GB",
@@ -235,182 +353,222 @@ export function CrmCampaignSources({
             <button
               type="button"
               className="rounded-lg px-3 py-2 bg-teal-700 text-white"
-              onClick={() => edit(r)}
+              id={"source-review-trigger-" + r.id}
+              aria-expanded={active?.id === r.id}
+              aria-controls={"source-review-" + r.id}
+              disabled={busy}
+              onClick={() => (active?.id === r.id ? closeReview() : edit(r))}
             >
-              {t("Review source", "Verifikasi sumber", "核实来源")}
+              {t("Review source", "Verifikasi sumber", "核实来源")}{" "}
+              <span aria-hidden="true">{active?.id === r.id ? "⌃" : "⌄"}</span>
             </button>
           )}
-        </article>
-      ))}
-      {active && (
-        <form
-          ref={formRef}
-          tabIndex={-1}
-          onSubmit={save}
-          className="border rounded-xl p-4 space-y-3"
-          aria-label={t("Review source", "Verifikasi sumber", "核实来源")}
-        >
-          <h3 className="font-bold break-all">{active.rawCode}</h3>
-          <p>
-            {t("Affected leads", "Prospek terdampak", "影响客户数")}：
-            {active.leadCount}
-          </p>
-          <CrmSelect
-            lang={lang}
-            isLight={isLight}
-            label={t("Action", "Tindakan", "处理方式")}
-            value={action}
-            onChange={(v) => {
-              setAction(v);
-              setRequestId(crypto.randomUUID());
-            }}
-            options={[
-              {
-                value: "link",
-                label: t(
-                  "Link existing campaign",
-                  "Tautkan kampanye yang ada",
-                  "关联已有活动",
-                ),
-              },
-              {
-                value: "create",
-                label: t(
-                  "Create campaign and link",
-                  "Buat dan tautkan kampanye",
-                  "创建新活动并关联",
-                ),
-              },
-              {
-                value: "invalid",
-                label: t("Mark invalid", "Tandai tidak valid", "标记无效"),
-              },
-            ]}
-          />
-          {action === "link" && (
-            <CrmSelect
-              lang={lang}
-              isLight={isLight}
-              label={t("Target campaign", "Kampanye tujuan", "目标活动")}
-              value={target}
-              onChange={(v) => {
-                setTarget(v);
-                setRequestId(crypto.randomUUID());
-              }}
-              options={[
-                {
-                  value: "",
-                  label: t("Choose a campaign", "Pilih kampanye", "选择活动"),
-                },
-                ...campaigns.map((c) => ({ value: c.id, label: c.name })),
-              ]}
-            />
-          )}
-          {action === "create" && (
-            <>
+          {active?.id === r.id && (
+            <form
+              id={"source-review-" + r.id}
+              tabIndex={-1}
+              onSubmit={save}
+              className="campaign-source-review border rounded-xl p-4 space-y-3"
+              aria-label={t("Review source", "Verifikasi sumber", "核实来源")}
+            >
+              {error && (
+                <p role="alert" className="text-red-600">
+                  {error[{ en: 0, id: 1, zh: 2 }[lang]]}
+                </p>
+              )}
+
+              <CampaignSourceEvidence
+                lang={lang}
+                source={active}
+                onLead={onLead}
+              />
+              <h4 className="font-bold">{u("Review decision")}</h4>
+              <CrmSelect
+                lang={lang}
+                isLight={isLight}
+                label={t("Action", "Tindakan", "处理方式")}
+                value={action}
+                onChange={(v) => {
+                  setAction(v);
+                  setRequestId(crypto.randomUUID());
+                }}
+                options={[
+                  {
+                    value: "link",
+                    label: t(
+                      "Link existing campaign",
+                      "Tautkan kampanye yang ada",
+                      "关联已有活动",
+                    ),
+                  },
+                  {
+                    value: "create",
+                    label: t(
+                      "Create campaign and link",
+                      "Buat dan tautkan kampanye",
+                      "创建新活动并关联",
+                    ),
+                  },
+                  {
+                    value: "invalid",
+                    label: t("Mark invalid", "Tandai tidak valid", "标记无效"),
+                  },
+                ]}
+              />
+              {action === "link" && (
+                <>
+                  <CrmSelect
+                    lang={lang}
+                    isLight={isLight}
+                    label={t("Target campaign", "Kampanye tujuan", "目标活动")}
+                    value={target}
+                    onChange={(v) => {
+                      setTarget(v);
+                      setRequestId(crypto.randomUUID());
+                    }}
+                    options={[
+                      {
+                        value: "",
+                        label: t(
+                          "Choose a campaign",
+                          "Pilih kampanye",
+                          "选择活动",
+                        ),
+                      },
+                      ...campaigns.map((c) => ({ value: c.id, label: c.name })),
+                    ]}
+                  />
+                  <p className="text-sm">
+                    {t(
+                      "The original code stays as an alias. Existing and future leads from that code are attributed to the selected campaign.",
+                      "Kode asli tetap menjadi alias. Prospek lama dan baru dari kode tersebut diatribusikan ke kampanye yang dipilih.",
+                      "原始代码保留为来源别名；该代码的已有及后续客户归因到选定活动。",
+                    )}
+                  </p>
+                </>
+              )}
+              {action === "create" && (
+                <>
+                  <p className="text-sm">
+                    {t(
+                      "Original source code",
+                      "Kode sumber asli",
+                      "原始来源代码",
+                    )}
+                    ：
+                    <output className="font-mono break-all">
+                      {active.rawCode}
+                    </output>
+                  </p>
+                  <label className="block">
+                    {t("Campaign name", "Nama kampanye", "活动名称")}
+                    <input
+                      required
+                      maxLength={200}
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setRequestId(crypto.randomUUID());
+                      }}
+                      className="block w-full border rounded-lg p-2 bg-transparent"
+                    />
+                  </label>
+                  <CrmSelect
+                    lang={lang}
+                    isLight={isLight}
+                    label={t("Campaign type", "Jenis kampanye", "活动类型")}
+                    value={type}
+                    onChange={(v) => {
+                      setType(v);
+                      setRequestId(crypto.randomUUID());
+                    }}
+                    options={[
+                      {
+                        value: "other",
+                        label: t(
+                          "Other / unspecified",
+                          "Lainnya / belum ditentukan",
+                          "其他／未明确",
+                        ),
+                      },
+                      {
+                        value: "campus_seminar",
+                        label: t(
+                          "Campus seminar",
+                          "Seminar kampus",
+                          "校园讲座",
+                        ),
+                      },
+                      {
+                        value: "enterprise_roadshow",
+                        label: t(
+                          "Enterprise roadshow",
+                          "Roadshow perusahaan",
+                          "企业路演",
+                        ),
+                      },
+                      {
+                        value: "webinar_class",
+                        label: t("Webinar", "Webinar", "线上研讨会"),
+                      },
+                      {
+                        value: "education_fair",
+                        label: t(
+                          "Education fair",
+                          "Pameran pendidikan",
+                          "教育展",
+                        ),
+                      },
+                    ]}
+                  />
+                  <p className="text-sm">
+                    {t(
+                      "Creates a planning campaign with a new camp- code. The original source code remains a working alias and stays in the audit record. Complete other details in campaign information.",
+                      "Membuat kampanye berstatus Perencanaan dengan kode camp- baru. Kode sumber asli tetap menjadi alias yang berfungsi dan tersimpan dalam audit. Lengkapi rincian lain di Informasi kampanye.",
+                      "创建使用新camp-活动码的筹备中活动；原始来源代码保留为可用别名及审计记录。其他信息可在活动信息中补充。",
+                    )}
+                  </p>
+                </>
+              )}
               <label className="block">
-                {t("Campaign name", "Nama kampanye", "活动名称")}
-                <input
+                {t("Reason", "Alasan", "核实依据")}
+                <textarea
                   required
-                  maxLength={200}
-                  value={name}
+                  maxLength={1000}
+                  value={reason}
                   onChange={(e) => {
-                    setName(e.target.value);
+                    setReason(e.target.value);
                     setRequestId(crypto.randomUUID());
                   }}
                   className="block w-full border rounded-lg p-2 bg-transparent"
                 />
               </label>
-              <CrmSelect
-                lang={lang}
-                isLight={isLight}
-                label={t("Campaign type", "Jenis kampanye", "活动类型")}
-                value={type}
-                onChange={(v) => {
-                  setType(v);
-                  setRequestId(crypto.randomUUID());
-                }}
-                options={[
-                  {
-                    value: "other",
-                    label: t(
-                      "Other / unspecified",
-                      "Lainnya / belum ditentukan",
-                      "其他／未明确",
-                    ),
-                  },
-                  {
-                    value: "campus_seminar",
-                    label: t("Campus seminar", "Seminar kampus", "校园讲座"),
-                  },
-                  {
-                    value: "enterprise_roadshow",
-                    label: t(
-                      "Enterprise roadshow",
-                      "Roadshow perusahaan",
-                      "企业路演",
-                    ),
-                  },
-                  {
-                    value: "webinar_class",
-                    label: t("Webinar", "Webinar", "线上研讨会"),
-                  },
-                  {
-                    value: "education_fair",
-                    label: t("Education fair", "Pameran pendidikan", "教育展"),
-                  },
-                ]}
-              />
-              <p className="text-sm">
+              <p>
                 {t(
-                  "Creates a planning campaign with a new code. Complete its details in the campaign editor.",
-                  "Membuat kampanye perencanaan dengan kode baru. Lengkapi rinciannya di editor kampanye.",
-                  "创建筹备中的活动并生成新代码；其他信息可在活动编辑中补充。",
+                  "The original code and audit record are retained. Invalid sources do not delete leads or move them to Non-campaign source.",
+                  "Kode asli dan audit tetap disimpan. Sumber tidak valid tidak menghapus pelanggan atau memindahkannya ke Sumber non-kampanye.",
+                  "原始代码及审计保留；标记无效不会删除客户或归入非活动来源。",
                 )}
               </p>
-            </>
+              <div className="flex gap-3">
+                <button
+                  disabled={
+                    busy || !reason.trim() || (action === "link" && !target)
+                  }
+                  className="bg-teal-700 text-white rounded-lg px-3 py-2 disabled:opacity-50"
+                >
+                  {busy
+                    ? t("Saving…", "Menyimpan…", "保存中…")
+                    : t("Confirm review", "Konfirmasi verifikasi", "确认核实")}
+                </button>
+                <button type="button" disabled={busy} onClick={closeReview}>
+                  {t("Cancel", "Batal", "取消")}
+                </button>
+              </div>
+            </form>
           )}
-          <label className="block">
-            {t("Reason", "Alasan", "核实依据")}
-            <textarea
-              required
-              maxLength={1000}
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                setRequestId(crypto.randomUUID());
-              }}
-              className="block w-full border rounded-lg p-2 bg-transparent"
-            />
-          </label>
-          <p>
-            {t(
-              "The original code and audit record are retained. Invalid sources do not delete leads or become organic traffic.",
-              "Kode asli dan audit tetap disimpan. Sumber tidak valid tidak menghapus prospek atau menjadi trafik organik.",
-              "原始代码及审计保留；标记无效不会删除客户或归入自然流量。",
-            )}
-          </p>
-          <div className="flex gap-3">
-            <button
-              disabled={
-                busy || !reason.trim() || (action === "link" && !target)
-              }
-              className="bg-teal-700 text-white rounded-lg px-3 py-2 disabled:opacity-50"
-            >
-              {busy
-                ? t("Saving…", "Menyimpan…", "保存中…")
-                : t("Confirm review", "Konfirmasi verifikasi", "确认核实")}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setActive(null)}
-            >
-              {t("Cancel", "Batal", "取消")}
-            </button>
-          </div>
-        </form>
-      )}
+        </article>
+      ))}
       {receipt && (
         <p role="status">
           {t(
@@ -419,6 +577,15 @@ export function CrmCampaignSources({
             "来源核实已保存，影响客户数",
           )}
           ：{receipt.affectedLeads}
+          {receipt.campaignCode && (
+            <>
+              {" "}
+              · {t("Campaign code", "Kode kampanye", "活动码")}：
+              <span className="font-mono break-all">
+                {receipt.campaignCode}
+              </span>
+            </>
+          )}
         </p>
       )}
     </section>

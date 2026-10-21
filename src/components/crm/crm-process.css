@@ -151,3 +151,9 @@
 .crm-campaign-status[data-state=completed]{color:#065f46;background:#ecfdf5;border-color:#a7f3d0}
 .crm-campaigns[data-theme=dark] .crm-campaign-status[data-state=completed]{color:#a7f3d0;background:#14352b;border-color:#27634e}
 .crm-campaign-title:focus-visible{outline:2px solid #0f766e;outline-offset:3px;border-radius:4px}
+
+/* Six process metrics need their own available-width breakpoint. */
+.crm-lead-process{container:lead-process / inline-size}
+@container lead-process (min-width:1320px){
+ .crm-process-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+}

@@ -641,9 +641,9 @@ export const systemChapters: SystemChapter[] = [
         title: w("Denominators matter", "Penyebut penting", "分母决定意义"),
         items: [
           w(
-            "Organic traffic is a permanent, read-only system campaign with ID organic. /chat, /chat?c=home and /chat?c=organic are attributed to it for new registrations. Other campaign IDs remain separate; existing first-touch attribution is retained. Link opens are not unique visitors or confirmed attendance.",
-            "Trafik organik adalah kampanye bawaan permanen yang hanya dapat dibaca dengan ID organic. /chat, /chat?c=home dan /chat?c=organic diatribusikan ke kampanye ini untuk registrasi baru. ID kampanye lain tetap terpisah; atribusi pertama yang sudah tersimpan dipertahankan. Pembukaan tautan bukan pengunjung unik atau kehadiran terkonfirmasi.",
-            "自然流量使用永久只读的系统活动organic。新登记客户从/chat、/chat?c=home、/chat?c=organic进入时统一归入该活动；其他活动ID独立统计，已有首次归因保留。链接打开次数不等于独立访客或确认到场。",
+            "Non-campaign source is a permanent, read-only system source with internal ID organic. It means no specific campaign was recorded at first registration, not verified organic search or unpaid traffic. UTM parameters without a campaign code do not change this default. /chat, /chat?c=home and /chat?c=organic are attributed to it for new registrations. Other campaign IDs remain separate; existing first-touch attribution is retained. Link opens are not unique visitors or confirmed attendance.",
+            "Sumber non-kampanye adalah kelompok atribusi sistem permanen dan hanya-baca dengan ID organic. Registrasi baru dari /chat, /chat?c=home, dan /chat?c=organic masuk ke kelompok ini. Ini tidak membuktikan pencarian organik atau lalu lintas tanpa biaya; iklan tanpa c juga dapat masuk. Kode kampanye lain tetap terpisah dan atribusi pertama dipertahankan. Pembukaan tautan bukan pengunjung unik atau kehadiran terkonfirmasi.",
+            "非活动来源是永久只读的系统归因分组，内部ID仍为organic。新客户从/chat、/chat?c=home、/chat?c=organic登记时统一归入；它不证明自然搜索或免费流量，缺少c的广告也可能归入。其他活动码独立统计，已有首次归因保留。链接打开不等于独立访客或确认到场。",
           ),
           w(
             "Two enrolled out of ten first-attributed registrations gives 20% enrollment share. This is not profit, payment confirmation or a causal marketing conversion claim.",

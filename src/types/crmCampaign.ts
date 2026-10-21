@@ -29,6 +29,7 @@ export interface BoundUtmConfig {
 }
 
 export interface CampaignAiAssets {
+  templateDrafts?: Partial<Record<"en" | "id" | "zh", Partial<Record<"posterHeading" | "posterSubheading" | "socialCopy" | "whatsappInvitation" | "chatWelcomeGreeting" | "presentationOutline", string>>>>;
   posterHeading: string;
   posterSubheading: string;
   socialCopy: string;
@@ -69,18 +70,20 @@ export interface CampaignClosedLoopStats {
   onsiteAttendanceCount?: number;
   onlineAttendanceCount?: number;
   revenueMissingCount?: number;
-  budgetCost: number;        // 活动投入总预算 (IDR)
+  budgetCost: number | null;        // 活动投入总预算 (IDR)
   roi: number | null;        // 预算与登记金额不能证明实际利润
 }
 
 export interface CrmCampaignRecord {
+  promotionLinks?: CampaignPromotionLink[];
+  promotionModel?: "multiple";
   systemManaged?: boolean;
   nameId?: string;
   id: string;                // e.g. 'seminar_2026', 'c_ui_career_2026'
   code: string;              // Short code used in URL parameter "?c=..."
-  name: string;              // 中文名称
-  nameEn: string;            // 英文名称
-  type: CampaignType;
+  name: string;              // Single campaign name, kept as entered
+  nameEn: string;            // Legacy value retained; not a display-name override
+  type: CampaignType | "";
   status: CampaignStatus;
   organizer: string;         // 负责人 / 领队
   
@@ -92,7 +95,7 @@ export interface CrmCampaignRecord {
   scheduleNotes?: string;    // 日程与时间说明
 
   // 地点与形态
-  locationType: CampaignLocationType;
+  locationType: CampaignLocationType | "";
   city: string;              // e.g. 'Jakarta', 'Surabaya', 'Online'
   venue: string;             // e.g. 'Binus University Anggrek Campus Auditorium 3F'
   address: string;
@@ -147,3 +150,14 @@ export const CAMPAIGN_STATUS_OPTIONS: Array<{
   { value: 'completed', labelEn: 'Completed', labelZh: '已结束', badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
   { value: 'archived', labelEn: 'Archived', labelZh: '已归档', badgeClass: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20' },
 ];
+
+/** Immutable configuration for one distribution entry; not proof of actual click origin. */
+export interface CampaignPromotionLink {
+ id: string;
+ name: string;
+ source: string;
+ medium: string;
+ language: 'en' | 'id' | 'zh';
+ experience: 'questionnaire_assessment_consultation';
+ createdAt: string;
+}

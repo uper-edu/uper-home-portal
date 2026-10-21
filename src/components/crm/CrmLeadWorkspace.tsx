@@ -1,8 +1,9 @@
+import {useCrmShellHeight} from "./CrmDetailWorkspace";
 import { worklistSignal, evidenceForLead, buyingEvidenceLabel, evidenceHeading } from "../../utils/crmBuyingEvidence";
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useRef, useState } from "react";
-import { PanelRightOpen } from "lucide-react";
+import { Search,PanelLeftClose,PanelLeftOpen,PanelRightOpen } from "lucide-react";
 import type { CrmLeadRecord } from "../../types/crmLead";
 import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
 import { leadDisplayNumber } from "../../utils/leadNumber";
@@ -42,6 +43,9 @@ export interface LeadWorkspaceProps {
   canProcess?: (lead:CrmLeadRecord)=>boolean;
   onOpen: (lead: CrmLeadRecord, tab?: CustomerTab) => void;
   onReset: () => void;
+  sidebarFilters?: React.ReactNode;
+  search?:string;
+  onSearch?:(value:string)=>void;
   children?: React.ReactNode;
 }
 export function CrmLeadWorkspace({
@@ -55,13 +59,18 @@ export function CrmLeadWorkspace({
   employeeId,
   employees,
   onSignal,onOpen,onClaim,onProcess,canProcess,canClaim,
-  onReset,
+  onReset,sidebarFilters,search="",onSearch,
   children,
 }: LeadWorkspaceProps) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const workspace = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(150);
+  const headerHeight=useCrmShellHeight();
+  const [collapsed,setCollapsed]=useState(false),[showList,setShowList]=useState(false);
+  const listToggle=useRef<HTMLButtonElement>(null);
+  const open:typeof onOpen=(lead,tab)=>{setShowList(false);onOpen(lead,tab);};
+  const revealList=()=>{setCollapsed(false);setShowList(true);requestAnimationFrame(()=>{workspace.current?.scrollIntoView({block:'start',behavior:'instant'});workspace.current?.querySelector<HTMLElement>('.crm-customer-open[aria-current=true]')?.focus({preventScroll:true});});};
+  useEffect(()=>{setShowList(false);},[selectedId]);
   const storageKey = `uper_crm_customer_fields_${employeeId}`;
   const [fields, setFields] = useState<CustomerField[]>(() => {
     try {
@@ -72,16 +81,6 @@ export function CrmLeadWorkspace({
       return [...defaultCustomerFields];
     }
   });
-  useEffect(() => {
-    const header = document.querySelector("[data-crm-header]");
-    if (!header) return;
-    const measure = () =>
-      setHeaderHeight(Math.ceil(header.getBoundingClientRect().height));
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, []);
   const updateFields = (values: CustomerField[]) => {
     const next = validCustomerFields(values);
     setFields(next);
@@ -102,7 +101,7 @@ export function CrmLeadWorkspace({
       timezone={timezone}
       isLight={isLight}
       employees={employees}
-      onOpen={() => onOpen(lead, "activities")}
+      onOpen={() => open(lead, "activities")}
       compact={compact}
     />
   );
@@ -115,7 +114,7 @@ export function CrmLeadWorkspace({
           <button
             type="button"
             className="crm-work-link crm-customer-open"
-            onClick={() => onOpen(lead)}
+            onClick={() => open(lead)}
           >
             {lead.fullName || t("Unnamed customer", "未填写姓名")}
           </button>
@@ -179,14 +178,20 @@ export function CrmLeadWorkspace({
   return (
     <div
       ref={workspace}
-      className="crm-customer-workspace"
+      className="crm-customer-workspace crm-detail-root"
       data-theme={isLight ? "light" : "dark"}
       data-open={!!children}
+      data-list-collapsed={Boolean(children&&collapsed)}
+      data-show-list={Boolean(children&&showList)}
       style={
         { "--crm-shell-height": `${headerHeight}px` } as React.CSSProperties
       }
     >
-      <div className="crm-customer-results">
+      <div className={`crm-customer-results ${children?'crm-list-shell':''}`}>
+        {children&&<div className="crm-workspace-list-heading"><span>{t("Customers","客户")}</span><button className="crm-collapse-list" aria-label={t("Collapse customer list","收起客户列表")} onClick={()=>{setCollapsed(true);requestAnimationFrame(()=>listToggle.current?.focus());}}><PanelLeftClose size={18}/></button></div>}
+        {children&&!sidebarFilters&&onSearch&&<div className="crm-workspace-list-search"><Search size={16}/><input aria-label={t("Search customer list","搜索客户侧栏")} placeholder={t("Search customers…","搜索客户…")} value={search} onChange={e=>onSearch(e.target.value)}/></div>}
+        {children&&sidebarFilters}
+        {children&&selectedId&&!loading&&!leads.some(lead=>lead.id===selectedId)&&<p className="crm-sidebar-selection-note" role="status">{t("Selected customer is outside the current filters. Your open details and draft are retained.","当前客户不在筛选结果中，已打开的详情与草稿保持不变。")}</p>}
         {view === "table" && !children && (
           <div className="crm-field-toolbar">
             <span className="crm-work-muted">
@@ -281,7 +286,7 @@ export function CrmLeadWorkspace({
                           "button,a,input,select",
                         )
                       )
-                        onOpen(lead);
+                        open(lead);
                     }}
                   >
                     <div className="crm-work-identity">
@@ -292,7 +297,7 @@ export function CrmLeadWorkspace({
                           t("Open customer: ", "打开客户：") + lead.fullName
                         }
                         aria-current={lead.id === selectedId ? true : undefined}
-                        onClick={() => onOpen(lead)}
+                        onClick={() => open(lead)}
                       >
                         {lead.fullName || t("Unnamed customer", "未填写姓名")}
                         <PanelRightOpen size={14} />
@@ -306,7 +311,7 @@ export function CrmLeadWorkspace({
                         lang={lang}
                         timezone={timezone}
                         onOpen={() =>
-                          onOpen(
+                          open(
                             lead,
                             [
                               "conversation.updated",
@@ -320,7 +325,7 @@ export function CrmLeadWorkspace({
                       />
                     </div>
                     <div className="crm-work-needs">
-                      <div>{assessment.goal}{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length>0&&<button type="button" className="crm-work-link" onClick={()=>onOpen(lead,"profile")}> · +{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length} {t("Other goals","其他目标")}</button>}</div>
+                      <div>{assessment.goal}{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length>0&&<button type="button" className="crm-work-link" onClick={()=>open(lead,"profile")}> · +{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length} {t("Other goals","其他目标")}</button>}</div>
                       <div className="crm-work-muted">
                         {customerCity(lead.city, lang)} ·{" "}
                         {crmValue(lead.mode, lang)}
@@ -328,7 +333,7 @@ export function CrmLeadWorkspace({
                       <button
                         type="button"
                         className="crm-work-assessment"
-                        onClick={() => onOpen(lead, "assessment")}
+                        onClick={() => open(lead, "assessment")}
                       >
                         <span>{assessment.source}</span>
                         <span>{assessment.conclusion}</span>
@@ -343,14 +348,14 @@ export function CrmLeadWorkspace({
                         <button
                           type="button"
                           className="crm-work-support-link"
-                          onClick={() => onSignal ? onSignal(lead,signal.evidence.id) : onOpen(lead, "profile")}
+                          onClick={() => onSignal ? onSignal(lead,signal.evidence.id) : open(lead, "profile")}
                         >
                           {evidenceHeading(signal.evidence.kind,lang)} · {buyingEvidenceLabel(signal.evidence,lang)}
                           {signal.more > 0 && ` +${signal.more}`}
                         </button>
                       )}
                     </div>
-                    <div className="crm-work-next">{follow(lead, true)}<button type="button" className="crm-work-button" data-primary="true" disabled={canProcess?.(lead)===false} onClick={()=>onProcess?onProcess(lead):onOpen(lead,"activities")}>{t("Record result","记录处理结果")}</button></div>
+                    <div className="crm-work-next">{follow(lead, true)}<button type="button" className="crm-work-button" data-primary="true" disabled={canProcess?.(lead)===false} onClick={()=>onProcess?onProcess(lead):open(lead,"activities")}>{t("Record result","记录处理结果")}</button></div>
                   </article>
                 );
               })}
@@ -358,7 +363,7 @@ export function CrmLeadWorkspace({
           </>
         )}
       </div>
-      {children}
+      {children&&<div className="crm-lead-detail-column"><div className="crm-workspace-list-access"><button ref={listToggle} className="crm-workspace-toggle" onClick={revealList} aria-expanded={!collapsed}><PanelLeftOpen size={17}/>{lang==='zh'?'显示客户侧栏':lang==='id'?'Tampilkan panel pelanggan':'Show customer sidebar'}</button><button className="crm-workspace-toggle crm-return-selected" onClick={()=>{setShowList(false);requestAnimationFrame(()=>document.querySelector<HTMLElement>('#crm-customer-panel h2')?.focus({preventScroll:true}));}}>{t("Return to selected customer","返回当前客户")}</button></div>{children}</div>}
     </div>
   );
 }

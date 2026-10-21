@@ -1,3 +1,5 @@
+import {campaignSourceEvidence} from "./campaignSourceEvidence.ts";
+import {allocateCampaignCode} from "./campaignCodeAllocation.ts";
 import crypto from "node:crypto";
 import { pool, tx } from "./store.ts";
 import { allowed } from "./identity.ts";
@@ -8,6 +10,13 @@ export const sourceKey = (code: string) =>
 const fail = (status: number, message: string) => {
   throw Object.assign(Error(message), { status });
 };
+/** Verified aliases resolve without changing the original URL or lead source. */
+export async function campaignAliasTarget(code: string, db: any = pool) {
+  return (await db.query(
+    "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'",
+    [sourceKey(code)],
+  )).rows[0]?.campaign_id || null;
+}
 /** Called only inside the saved-lead transaction. A URL visit alone never reaches here. */
 export async function recordCampaignSource(c: any, profile: any) {
   const raw = String(profile.campaignId || profile.campaign || "").trim();
@@ -46,6 +55,10 @@ export async function listCampaignSources(employee: any) {
   const profiles = (
     await pool.query("SELECT id,profile FROM portal_leads")
   ).rows.filter((r: any) => allowed(employee, r.profile));
+  const sourceIds=new Set(rows.map((r:any)=>r.id));
+  const sourceLeads=profiles.filter((p:any)=>sourceIds.has(sourceKey(String(p.profile.campaignId||p.profile.campaign||'').trim())));
+  const conversations=sourceLeads.length?(await pool.query("SELECT id,lead_id,source,attribution,updated_at FROM conversations WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) ORDER BY updated_at,id",[JSON.stringify(sourceLeads.map((p:any)=>p.id))])).rows:[];
+  const evidence=new Map(sourceLeads.map((p:any)=>[p.id,campaignSourceEvidence(p.profile,conversations.filter((c:any)=>c.lead_id===p.id),String(p.profile.campaignId||p.profile.campaign||''))]));
   return rows
     .map((r: any) => {
       const leads = profiles.filter(
@@ -73,6 +86,7 @@ export async function listCampaignSources(employee: any) {
           id: p.id,
           name: p.profile.fullName || p.profile.name || p.id,
           rawCode: p.profile.campaignId || p.profile.campaign,
+          evidence:evidence.get(p.id),
         })),
       };
     })
@@ -103,6 +117,9 @@ export async function reviewCampaignSource(id: string, b: any, employee: any) {
     )
     .digest("hex");
   return tx(async (c: any) => {
+    // Share the same allocation lock with ordinary campaign creation. Re-check
+    // the code after acquiring it, rather than trusting the review-page snapshot.
+    await c.query("SELECT GET_LOCK(:p1,5) AS acquired", ["trial-campaigns"]);
     const row = (
       await c.query(
         "SELECT * FROM campaign_source_reviews WHERE id=:p1 FOR UPDATE",
@@ -132,6 +149,14 @@ export async function reviewCampaignSource(id: string, b: any, employee: any) {
     if (leads.some((r: any) => !allowed(employee, r.profile)))
       fail(403, "source_forbidden");
     let campaignId: string | null = null;
+    const existing = b.action === "invalid" ? [] : (
+      await c.query(
+        "SELECT id FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE",
+        [row.raw_code],
+      )
+    ).rows;
+    if (existing.length && (b.action === "create" || existing.some((v: any) => v.id !== b.campaignId)))
+      fail(409, "source_code_exists");
     if (b.action === "link") {
       const target = (
         await c.query(
@@ -143,6 +168,8 @@ export async function reviewCampaignSource(id: string, b: any, employee: any) {
       campaignId = target.id;
     }
     if (b.action === "create") {
+      if (!row.raw_code || [...row.raw_code].length > 191 || /[\u0000-\u001f\u007f]/.test(row.raw_code) || canonicalCampaignId(row.raw_code) === "organic")
+        fail(400, "source_code_invalid");
       if (
         typeof b.name !== "string" ||
         !b.name.trim() ||
@@ -158,17 +185,18 @@ export async function reviewCampaignSource(id: string, b: any, employee: any) {
         fail(400, "source_invalid_campaign");
       campaignId = crypto.randomUUID();
       const at = new Date().toISOString();
+      const code = await allocateCampaignCode(c, b.type, "", new Date(at));
       const record = {
         id: campaignId,
-        code: "verified-" + campaignId,
+        code,
         name: b.name.trim(),
-        nameEn: b.name.trim(),
-        nameId: b.name.trim(),
+        nameEn: "",
+        nameId: "",
         type: b.type,
         status: "planning",
         createdAt: at,
         updatedAt: at,
-        boundUtm: {},
+        boundUtm: { utm_campaign: code },
         organizer: "",
         startDate: "",
         endDate: "",
@@ -209,6 +237,10 @@ export async function reviewCampaignSource(id: string, b: any, employee: any) {
     const result = {
       status,
       campaignId,
+      campaignCode: campaignId ? (
+        await c.query("SELECT code FROM trial_campaigns WHERE id=:p1", [campaignId])
+      ).rows[0].code : null,
+      rawCode: row.raw_code,
       affectedLeads: leads.length,
       revision: Number(row.revision) + 1,
     };

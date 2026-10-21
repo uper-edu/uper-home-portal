@@ -119,9 +119,9 @@ export const guideLessons: Record<string, GuideLesson> = {
       n(
         w("Campaign entry", "Pintu kampanye", "活动入口"),
         w(
-          "A tracked link carries the campaign code. Repeated opens remain opens, not unique people.",
-          "Tautan terlacak membawa kode kampanye. Pembukaan berulang tetap dihitung sebagai pembukaan, bukan orang unik.",
-          "专属链接携带活动代码；重复打开仍是访问次数，不是独立人数。",
+          "A campaign is the marketing initiative, not a single channel. Its c code groups several saved promotion entries. Each p belongs to that campaign and retains its source, medium and customer language. UTM fields are distribution labels, not proof of the actual referrer. Repeated opens are not unique people.",
+          "Kampanye adalah inisiatif pemasaran, bukan satu kanal. Kode c mengelompokkan beberapa entri promosi tersimpan. Setiap p terkait dengan kampanye itu dan menyimpan sumber, media, serta bahasa pelanggan. UTM adalah label distribusi, bukan bukti perujuk sebenarnya. Pembukaan berulang bukan orang unik.",
+          "活动是营销项目，不是单一渠道。c活动码下可有多个已保存推广入口，每个p属于该活动，并保留来源、推广方式和客户页面语言。UTM是投放标签，不证明真实来源；重复访问不等于独立人数。",
         ),
       ),
       n(
@@ -152,9 +152,9 @@ export const guideLessons: Record<string, GuideLesson> = {
       "Amelia 经活动 A 登记并完成测评：登记 1、测评 1、确认参与 0。只有另存参与依据后，参与数才会变化。",
     ),
     w(
-      "Natural traffic uses the system campaign organic. Existing first attribution remains. Customer messages and campaign names are not automatically translated.",
-      "Trafik alami memakai kampanye sistem organic. Atribusi pertama yang ada tetap. Pesan pelanggan dan nama kampanye tidak diterjemahkan otomatis.",
-      "自然流量归入系统活动 organic，已有首次归因保留。客户原文与活动名称不会随界面语言自动翻译。",
+      "Non-campaign source groups first registrations without a specific campaign code under the system ID organic. It does not prove organic search or unpaid traffic; an ad link missing its campaign code can also enter this group. Existing first attribution remains. Customer messages and campaign names are not automatically translated.",
+      "Sumber non-kampanye mengelompokkan registrasi pertama tanpa kode kampanye tertentu dengan ID sistem organic. Ini bukan bukti pencarian organik atau lalu lintas tanpa biaya; iklan tanpa c juga dapat masuk. Atribusi pertama, pesan pelanggan, dan nama asli dipertahankan.",
+      "首次登记无具体活动码的客户归入“非活动来源”，内部ID仍为organic。这不证明自然搜索或免费流量，缺少c的广告也可能归入。已有首次归因、客户消息和活动名称原文保留。",
     ),
   ),
   classification: lesson(
@@ -911,75 +911,107 @@ Object.assign(guideLessons, {
   ),
   campaigns: how(
     w(
-      "Create an attributable campaign and verify its path",
-      "Buat kampanye terlacak dan periksa alurnya",
-      "创建可归因活动并核对入口闭环",
+      "Create a campaign and distribute attributable links",
+      "Buat kampanye dan bagikan tautan terlacak",
+      "创建活动并分发可归因链接",
     ),
     w(
-      "Use the generated link so a saved registration can retain its campaign source.",
-      "Gunakan tautan yang dibuat agar registrasi menyimpan sumber kampanye.",
-      "使用系统生成的专属链接，让登记记录保留活动来源。",
+      "Save the campaign first. Configure and save each promotion link before copying its URL or QR code.",
+      "Simpan kampanye terlebih dahulu. Atur dan simpan setiap tautan promosi sebelum menyalin URL atau kode QR.",
+      "先保存活动，再逐条配置并保存推广链接，然后复制链接或下载二维码。",
     ),
     [
       n(
+        w("Create campaign", "Buat kampanye", "创建活动"),
         w(
-          "Review unknown sources",
-          "Verifikasi sumber tidak dikenal",
-          "核实未知来源",
-        ),
-        w(
-          "Only unknown codes with saved leads appear in Unverified sources. A manager records a reason to link an existing campaign, create one, or mark invalid. Original codes and customer facts remain; each decision is audited.",
-          "Hanya kode tidak dikenal dengan prospek tersimpan muncul di Sumber belum diverifikasi. Manajer mencatat alasan untuk menautkan kampanye, membuat kampanye, atau menandai tidak valid. Kode asli dan fakta pelanggan tetap; tiap keputusan diaudit.",
-          "待核实来源仅收录已生成客户的未知代码。管理者填写依据后可关联已有活动、创建活动或标记无效；原始代码与客户事实保留，每次决定留存审计。",
+          "Create a campaign, then add promotion links. Step 1 requires only one campaign name. Type and delivery format are optional internal context; neither defines all the campaign’s sources. Saving creates one Planning campaign with a new immutable camp- code. Existing codes remain unchanged. No dates, times, location or budget are invented. If the result is unknown, retry the original request rather than creating again.",
+          "Buat kampanye, lalu tambahkan tautan promosi. Langkah 1 hanya mewajibkan satu nama kampanye. Jenis dan bentuk penyelenggaraan adalah konteks internal opsional; keduanya tidak membatasi sumber kampanye. Penyimpanan membuat satu kampanye Perencanaan dengan kode camp- baru yang tetap. Kode lama tidak berubah. Tanggal, waktu, lokasi, dan anggaran tidak direka. Jika hasil belum diketahui, ulangi permintaan awal, bukan membuat lagi.",
+          "先创建活动，再添加推广链接。第1步仅要求一个活动名称，活动类型和开展形式是选填的内部说明，不代表活动只有一种推广来源。保存后生成筹备中的活动及不可修改的新camp-活动码，旧活动码保持不变。日期、时间、地点、预算不自动补造。保存结果未知时重试原请求，不要重复创建。",
         ),
       ),
       n(
-        w("Create and save", "Buat dan simpan", "创建并保存活动"),
+        w("Add promotion link", "Tambahkan tautan promosi", "添加推广链接"),
         w(
-          "Enter campaign type, status and display names. Chinese and English/Indonesian names are separate saved fields.",
-          "Isi jenis, status, dan nama tampilan. Nama Mandarin dan Inggris/Indonesia disimpan terpisah.",
-          "填写活动类型、状态与显示名称；中文与英文／印尼文名称分别保存，不自动互译。",
+          "Step 2 creates one saved promotion entry per placement you need to distinguish. Choose a source, medium and customer page language; the supported entry experience is questionnaire → assessment when applicable → AI consultation. Link name is optional. A campaign can have several entries. The system gives each entry a stable p ID belonging to that campaign’s c code. Copy the displayed link or download its matching QR code after saving. The URL uses the current environment and includes c, p, lang, utm_campaign, utm_source and utm_medium. These values have different purposes: c identifies the campaign, p selects its saved entry, and UTM fields label distribution for analysis. They do not prove the actual referring platform. Saved entries retain their settings; create another link for a different placement. Existing campaign-only links remain supported.",
+          "Langkah 2 membuat satu entri promosi tersimpan untuk setiap penempatan yang ingin dibedakan. Pilih sumber, media, dan bahasa halaman pelanggan; alur yang didukung adalah kuesioner → asesmen bila diperlukan → konsultasi AI. Nama tautan opsional. Satu kampanye dapat memiliki beberapa entri. Sistem memberi setiap entri ID p tetap yang terkait dengan kode c kampanye itu. Setelah disimpan, salin tautan atau unduh kode QR yang sesuai. URL menggunakan lingkungan saat ini dan memuat c, p, lang, utm_campaign, utm_source, serta utm_medium. c mengenali kampanye, p memilih entri tersimpan, dan UTM memberi label distribusi untuk analisis. Parameter bukan bukti platform asal sebenarnya. Pengaturan entri tersimpan tetap; buat tautan lain untuk penempatan berbeda. Tautan lama dengan kode kampanye saja tetap didukung.",
+          "第2步为需要区分的每个投放位置创建独立推广入口。选择来源、推广方式和客户页面语言；当前入口体验为“问卷→按规则测评→AI咨询”，链接名称选填。一个活动可有多条链接，每个入口有稳定的p ID，且必须属于对应的c活动。保存后复制展示链接或下载对应二维码。链接使用当前环境，包含c、p、lang、utm_campaign、utm_source和utm_medium：c识别活动，p识别该活动下已保存入口，UTM用于投放标签和分析，不证明真实来源平台。已保存入口配置保持固定，不同投放位置请另建链接。原有只含活动码的链接继续兼容。",
         ),
       ),
       n(
-        w("Use the entry link", "Gunakan tautan masuk", "使用专属入口"),
         w(
-          "Copy the generated link or QR code for the current environment. Follow its questionnaire, optional assessment and consultation path.",
-          "Salin tautan atau QR lingkungan saat ini. Ikuti kuesioner, asesmen opsional, dan konsultasi.",
-          "复制当前环境的链接或二维码，按问卷、可选测评与咨询路径核对。",
+          "Review campaign information",
+          "Periksa informasi kampanye",
+          "核对活动信息",
+        ),
+        w(
+          "In Campaign information, Start and End each use one date-and-time control. Times are Asia/Jakarta (WIB, UTC+7). The end cannot precede the start. Existing date-only facts remain recorded until explicitly replaced or cleared; a missing time never becomes midnight. Budget is optional planned IDR spending: blank means unrecorded, 0 means an explicit zero. It is not verified actual spend or ROI. Organizer, audience, venue and notes are optional facts, preserved as entered; organizer does not assign customer ownership.",
+          "Di Informasi kampanye, Mulai dan Selesai masing-masing memakai satu kontrol tanggal-waktu. Waktu menggunakan Asia/Jakarta (WIB, UTC+7); selesai tidak boleh mendahului mulai. Catatan lama yang hanya memiliki tanggal tetap dipertahankan sampai diganti atau dikosongkan; waktu kosong bukan tengah malam. Anggaran adalah rencana pengeluaran opsional dalam IDR: kosong berarti belum tercatat, 0 berarti anggaran nol. Ini bukan biaya aktual terverifikasi atau ROI. Penyelenggara, audiens, tempat, dan catatan opsional serta tetap sesuai input; penyelenggara tidak menetapkan penanggung jawab pelanggan.",
+          "活动信息中的开始、结束各使用一个日期时间控件，时间采用Asia/Jakarta（WIB，UTC+7），结束不得早于开始。历史仅有日期的记录在明确替换或清除前保留，不把缺失时间自动补成午夜。预算是选填的IDR计划金额，空值表示未填写，0表示明确零预算，不证明实际成本或投资回报。主办方、受众、场地及备注均为选填，按输入原文保存；主办方不决定客户Owner。",
         ),
       ),
       n(
-        w("Verify the CRM record", "Periksa catatan CRM", "核对客户与归因"),
         w(
-          "Check saved registration, first source and conversation source. Inspect assessment evidence independently.",
-          "Periksa registrasi, sumber pertama, dan sumber percakapan. Tinjau bukti asesmen secara terpisah.",
-          "核对登记、首次来源与会话来源，测评依据单独检查。",
+          "Prepare optional materials",
+          "Siapkan materi opsional",
+          "按需准备物料",
+        ),
+        w(
+          "There is one campaign name, displayed verbatim in every interface language. Materials provides separate English, Indonesian and Chinese template drafts. Choose a saved promotion link, material language and content type, then prepare, review and save a template. Templates assemble saved facts without an AI call or automatic translation of names and notes. Confirm before replacing existing text. Earlier materials retain their original text and unverified language labels. Preparing or saving a welcome draft neither activates it in chat nor sends a message. Campaign or link changes do not silently update stored drafts; recheck them before sharing. Unsaved changes are protected when switching tabs or leaving.",
+          "Hanya ada satu nama kampanye, ditampilkan persis sesuai input dalam semua bahasa antarmuka. Materi menyediakan draf templat Inggris, Indonesia, dan Mandarin secara terpisah. Pilih tautan promosi tersimpan, bahasa materi, dan jenis konten; siapkan, periksa, lalu simpan templat. Templat menyusun fakta tersimpan tanpa panggilan AI atau terjemahan otomatis nama dan catatan. Konfirmasikan sebelum mengganti teks. Materi lama mempertahankan teks asli dan label bahasa belum terverifikasi. Draf sambutan tidak diaktifkan di chat atau dikirim saat disiapkan maupun disimpan. Perubahan kampanye atau tautan tidak memperbarui draf lama secara diam-diam; periksa sebelum membagikan. Perubahan belum tersimpan dilindungi saat berpindah tab atau keluar.",
+          "活动只有一个名称，切换界面语言时保持原文。推广物料提供独立的英文、印尼文和中文模板草稿：选择已保存推广链接、物料语言和内容类型，再准备、核对并保存。模板拼装已保存事实，不调用AI，也不自动翻译名称及备注。替换已有内容须确认；历史物料保留原文并标明语言未核实。准备或保存欢迎语草稿不会启用聊天欢迎语或发送消息。活动或链接变动不自动改写已有草稿，分享前须重查；切换页签或离开时保护未保存内容。",
         ),
       ),
       n(
-        w("Confirm real outcomes", "Konfirmasi hasil nyata", "凭事实记录结果"),
         w(
-          "Record eligible event participation with onsite/online mode and evidence. Record enrollment separately.",
-          "Catat partisipasi acara yang sesuai dengan mode luring/daring dan bukti. Catat pendaftaran kelas secara terpisah.",
-          "对适用活动保存现场／线上参与及依据；报名结果另行记录。",
+          "Check records and results",
+          "Periksa catatan dan hasil",
+          "核对客户及结果",
+        ),
+        w(
+          "Results & customers shows customers within your access scope. Registrations count saved customers by first attribution; assessments require saved server evidence. Confirmed participation needs staff-recorded mode and evidence; online registration is not onsite attendance. Enrollment is recorded separately from payment. These are independent measures, not a mandatory funnel. Enrollment share uses the first-attributed customer cohort, not all link visitors; it does not prove causal campaign conversion. Link opens include repeat visits and are not unique visitors or QR scans. Non-campaign source is a read-only bucket with internal ID organic, for first registrations without a specific campaign code. It does not prove unpaid traffic; an ad missing c may enter this group.",
+          "Hasil & pelanggan menampilkan pelanggan dalam cakupan akses Anda. Registrasi menghitung pelanggan tersimpan berdasarkan atribusi pertama; asesmen memerlukan bukti server tersimpan. Partisipasi terkonfirmasi memerlukan mode dan bukti yang dicatat staf; registrasi daring bukan kehadiran di lokasi. Pendaftaran kelas dicatat terpisah dari pembayaran. Ini ukuran independen, bukan corong wajib. Proporsi pendaftaran kelas memakai kelompok pelanggan atribusi pertama, bukan semua pengunjung tautan; tidak membuktikan konversi kausal kampanye. Pembukaan tautan termasuk kunjungan berulang, bukan pengunjung unik atau pemindaian QR. Sumber non-kampanye adalah kelompok hanya-baca dengan ID internal organic untuk registrasi pertama tanpa kode kampanye tertentu. Ini bukan bukti lalu lintas tanpa biaya; iklan yang kehilangan c juga dapat masuk.",
+          "结果与客户仅展示权限内客户。登记按首次归因统计已保存客户，测评须有已保存服务端依据；确认参与须由员工记录方式及证据，线上登记不证明现场到访。报名与付款分别记录。这些是独立指标，不是必须逐级经过的漏斗。报名占比的分母是首次归因客户群，不是全部链接访问者，也不能证明活动的因果转化效果。链接访问包含重复打开，不等于独立访客或扫码次数。“非活动来源”是内部ID为organic的只读分组，用于首次登记无具体活动码的客户；它不证明免费流量，缺少c的广告也可能归入。",
+        ),
+      ),
+      n(
+        w(
+          "If flagged: unknown c",
+          "Jika ditandai: c tidak dikenal",
+          "有待核实项：未知c",
+        ),
+        w(
+          "Source review separates unknown campaign codes from promotion link issues. Only codes with saved leads appear; visits alone do not create a review item. For an unknown c, a CRM Manager can link an existing campaign, create a Planning campaign with a new camp- code and link it, or mark invalid with a reason. Linking or creating retains the original code as a working alias and audit evidence. Existing and future registrations using that alias use the verified campaign association, counting each customer once. Invalid does not delete customers or move them to Non-campaign source. Saving rechecks current codes and review state; refresh after a conflict. Historical visits are not reconstructed.",
+          "Verifikasi sumber memisahkan kode kampanye tidak dikenal dari masalah tautan promosi. Hanya kode dengan pelanggan tersimpan yang muncul; kunjungan saja tidak membuat item. Untuk c tidak dikenal, CRM Manager dapat menautkan kampanye yang ada, membuat kampanye Perencanaan dengan kode camp- baru lalu menautkannya, atau menandai tidak valid dengan alasan. Penautan atau pembuatan mempertahankan kode asli sebagai alias yang berfungsi dan bukti audit. Registrasi lama dan baru dengan alias tersebut memakai asosiasi terverifikasi; tiap pelanggan dihitung sekali. Penandaan tidak valid tidak menghapus pelanggan atau memindahkannya ke Sumber non-kampanye. Penyimpanan memeriksa ulang kode dan status verifikasi; muat ulang jika terjadi konflik. Kunjungan historis tidak direkonstruksi.",
+          "来源核实分为“未知活动码”和“推广链接问题”。仅收录已生成客户的代码，只有访问不生成核实项。未知c可由CRM管理者关联已有活动、创建使用新camp-码的筹备中活动并关联，或填写依据后标记无效。关联或创建均保留原始代码为可用别名及审计证据；该别名的已有和后续登记使用已核实活动关联，每位客户计一次。无效不会删除客户或归入非活动来源。保存时重新校验代码和核实状态，冲突后需刷新核对，不补造历史访问。",
+        ),
+      ),
+      n(
+        w(
+          "If flagged: mismatched p",
+          "Jika ditandai: p tidak cocok",
+          "有待核实项：不匹配的p",
+        ),
+        w(
+          "For a known c with an invalid or mismatched p, review the individual customer. Link an existing entry from that campaign, create an evidence-based entry and link it, leave unconfirmed, or mark the promotion attribution invalid. Each decision needs a reason. Original c/p and first-touch evidence remain. A new entry receives a new p; distribute its new link afterward. This review does not accept future incorrect p values, move the customer’s campaign, change owners, complete tasks or replay notifications. Deferral stays in Needs review; invalidation retains the customer and campaign attribution. Missing p on a legacy campaign-only link is not an error. Saved-result lookup and history show the recorded decision.",
+          "Untuk c yang dikenali tetapi p tidak valid atau tidak cocok, tinjau per pelanggan. Tautkan entri yang ada pada kampanye itu, buat entri berdasarkan bukti lalu tautkan, biarkan belum dikonfirmasi, atau tandai atribusi promosi tidak valid. Setiap keputusan memerlukan alasan. c/p asli dan bukti atribusi pertama tetap. Entri baru mendapat p baru; gunakan tautan barunya untuk distribusi berikutnya. Verifikasi tidak menerima p salah pada masa berikutnya, memindahkan kampanye pelanggan, mengubah pemilik, menyelesaikan tugas, atau mengirim ulang notifikasi. Penundaan tetap perlu ditinjau; penandaan tidak valid mempertahankan pelanggan dan atribusi kampanye. p yang tidak ada pada tautan lama bukan kesalahan. Pencarian hasil dan riwayat menunjukkan keputusan tersimpan.",
+          "已知c但p无效或不匹配时，按单个客户核实：关联本活动已有入口、依据真实投放创建入口并关联、暂不确认，或标记该推广归因无效。每次须填写依据，原始c/p和首次来源证据保留。新入口产生新p，后续应分发新链接；不会认可未来的错误p，也不会转移客户活动、改变Owner、完成任务或重放通知。暂不确认仍在待核实中；无效保留客户及活动归因。原有只含活动码的链接缺少p不算错误。保存结果查询及历史记录展示实际决定。",
         ),
       ),
     ],
     w(
-      "Registration and assessment counts do not automatically increase confirmed participation.",
-      "Jumlah registrasi dan asesmen tidak otomatis menambah partisipasi terkonfirmasi.",
-      "登记和测评增加，不会自动增加确认参与数。",
+      "One campaign can have several promotion links; each QR code encodes its displayed link.",
+      "Satu kampanye dapat memiliki beberapa tautan promosi; setiap kode QR memuat tautan yang ditampilkan.",
+      "一个活动可以有多条推广链接；每个二维码对应其展示的完整链接。",
     ),
     w(
-      "Amelia opens a link twice and registers once. Link opens can be 2 while saved registrations remain 1.",
-      "Amelia membuka tautan dua kali dan mendaftar sekali. Pembukaan dapat 2, sedangkan registrasi tersimpan tetap 1.",
-      "Amelia 打开链接两次、登记一次：访问次数可以是 2，登记客户仍为 1。",
+      "Illustration: campaign camp-demo has an Instagram paid_social link p_ad and a campus poster link p_poster. Both use c=camp-demo but different p values. Amelia registers from p_ad: one customer is first-attributed to that campaign and entry. This does not confirm attendance or enrollment.",
+      "Ilustrasi: camp-demo memiliki tautan Instagram paid_social p_ad dan poster kampus p_poster. Keduanya memakai c=camp-demo dengan p berbeda. Amelia mendaftar dari p_ad: satu pelanggan diatribusikan pertama ke kampanye dan entri itu. Ini tidak memastikan kehadiran atau pendaftaran kelas.",
+      "示例：camp-demo活动有Instagram paid_social链接p_ad及校园poster链接p_poster；c相同，p不同。Amelia经p_ad登记，形成一位首次归因到该活动及入口的客户，不代表已到场或报名。",
     ),
     w(
-      "Public links expose entry content, not internal CRM metrics. The organic campaign is a protected system source. Correct participation with a reason, preserving the audit.",
-      "Tautan publik menampilkan konten masuk, bukan metrik internal. Kampanye organic adalah sumber sistem terlindungi. Koreksi partisipasi memerlukan alasan dan audit.",
-      "公开入口只展示活动内容，不暴露 CRM 内部指标。organic 是受保护的系统来源；纠正参与记录要说明原因并保留审计。",
+      "Example IDs are illustrative, not working links. Use the saved URL in the current environment. Template preparation, source review and opening an attendance link do not complete sales tasks or send messages.",
+      "ID contoh hanya ilustrasi, bukan tautan aktif. Gunakan URL tersimpan pada lingkungan saat ini. Menyiapkan templat, memverifikasi sumber, atau membuka tautan kehadiran tidak menyelesaikan tugas atau mengirim pesan.",
+      "示例ID仅用于说明，不能直接作为有效链接。请使用当前环境已保存链接；准备模板、核实来源或打开参会链接都不完成销售任务，也不发送消息。",
     ),
   ),
   operations: how(

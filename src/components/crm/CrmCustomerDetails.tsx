@@ -1,3 +1,4 @@
+import { campaignUi } from "../../utils/campaignI18n";
 import { CrmBuyingEvidence } from "./CrmBuyingEvidence";
 import { CrmDisclosure } from "./CrmDisclosure";
 import { crmId } from "../../utils/crmIndonesian";
@@ -41,10 +42,10 @@ function Facts({ items }: { items: Array<[string, React.ReactNode]> }) {
   return (
     <dl className="crm-customer-facts">
       {items.map(([label, value]) => (
-        <React.Fragment key={label}>
+        <div key={label}>
           <dt>{label}</dt>
           <dd>{value === "" || value == null ? "—" : value}</dd>
-        </React.Fragment>
+        </div>
       ))}
     </dl>
   );
@@ -67,6 +68,7 @@ export function CrmCustomerProfile({
 }) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
+  const u = campaignUi(lang);
   const tierSources: Record<string, [string, string]> = {
     predicted: ["Rule-based", "规则判断"],
     sales_confirmed: ["Sales confirmed", "销售确认"],
@@ -80,7 +82,7 @@ export function CrmCustomerProfile({
       ? [
           [
             t("Acquisition entry", "获客入口"),
-            crmValue(lead.entryPoint, lang),
+            lang==='en'&&lead.entryPoint==='unverified_source'?'Original promotion entry unverified':crmValue(lead.entryPoint, lang),
           ] as [string, React.ReactNode],
         ]
       : []),
@@ -144,7 +146,7 @@ export function CrmCustomerProfile({
       ? [
           [
             t("Link placement", "链接投放位置"),
-            crmValue(lead.placement, lang),
+            lang==='en'&&lead.placement==='unrecorded'?'Not recorded':crmValue(lead.placement, lang),
           ] as [string, React.ReactNode],
         ]
       : []),
@@ -290,6 +292,19 @@ export function CrmCustomerProfile({
                 {t("Acquisition source not recorded", "获客来源未记录")}
               </p>
             )}
+            {lead.promotionReview&&<section className="crm-detail-subsection">
+              <h4>{u("Promotion entry review")}</h4>
+              <Facts items={[
+                [u("Review status"),lead.promotionReview.status==='linked'?u("Manually verified"):lead.promotionReview.status==='deferred'?u("Left unconfirmed"):u("Invalid promotion attribution")],
+                [u("Original promotion ID (p)"),lead.promotionReview.rawPromotionLinkId],
+                [u("Verified promotion entry"),lead.promotionReview.snapshot?.name||u("Not linked")],
+                [u("Verified source / medium"),lead.promotionReview.snapshot?lead.promotionReview.snapshot.source+' / '+lead.promotionReview.snapshot.medium:u("Not confirmed")],
+                [u("Verified entry ID"),lead.promotionReview.linkId||u("Not linked")],
+                [u("Review reason"),lead.promotionReview.reason],
+                [u("Reviewed by / time"),lead.promotionReview.actor+' · '+knownDate(lead.promotionReview.at,timezone,lang)],
+                [u("Applies to"),u("This customer only; original parameters retained. No future alias.")],
+              ]}/>
+            </section>}
             {trackingItems.length > 0 && (
               <section className="crm-detail-subsection ">
                 <h4>{t("Source tracking details", "来源追踪详情")}</h4>

@@ -1,0 +1,109 @@
+/* Shared Campaign/Lead page actions, isolated from form and card controls. */
+.crm-page-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.crm-page-action > svg {
+  flex-shrink: 0;
+}
+.crm-page-action > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.crm-page-action:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+.crm-page-action:focus-visible {
+  outline: 3px solid #0d9488;
+  outline-offset: 3px;
+}
+.crm-page-action--primary {
+  background: #0f766e;
+  color: #fff;
+  border-color: #0f766e;
+  box-shadow: 0 1px 2px #0f766e26;
+}
+.crm-page-action--primary:hover:not(:disabled) {
+  background: #115e59;
+  border-color: #115e59;
+}
+.crm-page-action--icon {
+  width: 44px;
+  padding: 10px;
+  flex-shrink: 0;
+}
+.crm-page-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
+  box-shadow: none;
+}
+[data-theme="dark"] .crm-page-action {
+  background: #172235;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .crm-page-action:hover:not(:disabled) {
+  background: #243247;
+  border-color: #64748b;
+}
+[data-theme="dark"] .crm-page-action--primary {
+  background: #5eead4;
+  border-color: #5eead4;
+  color: #134e4a;
+}
+[data-theme="dark"] .crm-page-action--primary:hover:not(:disabled) {
+  background: #99f6e4;
+  border-color: #99f6e4;
+}
+[data-theme="dark"] .crm-page-action:focus-visible {
+  outline-color: #5eead4;
+}
+.crm-page-action-spinner {
+  animation: crm-page-action-spin 1s linear infinite;
+}
+@keyframes crm-page-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crm-page-action {
+    transition: none;
+  }
+  .crm-page-action-spinner {
+    animation: none;
+  }
+}
+.crm-home-page-actions {
+  justify-content: flex-end;
+}
+@media (max-width: 767px) {
+  .crm-home-page-actions {
+    width: 100%;
+  }
+}
+
+/* The older admin mobile rule uses 40px; page actions keep a shared touch target. */
+.admin-page-actions .crm-page-action {
+  min-height: 44px;
+}

@@ -358,6 +358,7 @@
 
 .crm-customer-edit-fields {
   display: grid;
+  align-items: start;
   grid-template-columns: 1fr 1fr;
   gap: var(--cw-subsection-space);
   margin-bottom: var(--cw-subsection-space);
@@ -378,6 +379,8 @@
   min-width: 0;
   font-size: 13px;
 }
+.crm-customer-edit-field { display:grid; align-content:start; gap:var(--cw-field-space); min-width:0; }
+.crm-customer-field-label { font-size:12px; color:var(--cw-muted); }
 .crm-customer-context {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -12,6 +12,7 @@ import {
 import type { CustomerView } from "../../utils/crmWorkspace";
 type SingleField = "owner" | "task" | "sort" | "columns" | "workScope";
 interface Props {
+  compact?: boolean;
   value: LeadFilters;
   onChange: (value: LeadFilters) => void;
   lang: "zh" | "en" | "id";
@@ -28,6 +29,7 @@ interface Props {
   onViewMode: (mode: CustomerView) => void;
 }
 export function CrmLeadFilters({
+  compact = false,
   value: f,
   onChange,
   lang,
@@ -248,7 +250,7 @@ export function CrmLeadFilters({
     );
   };
   return (
-    <div className="crm-filter-area" data-theme={isLight ? "light" : "dark"}>
+    <div className={"crm-filter-area"+(compact?" crm-filter-sidebar":"")} data-theme={isLight ? "light" : "dark"}>
       <section
         aria-label={t("Lead filters", "客户筛选")}
         className="crm-filter-panel"
@@ -503,7 +505,7 @@ export function CrmLeadFilters({
           ],
           onSelect: (value) => update({ sort: value }),
         })}
-        {singleSelect({
+        {!compact&&singleSelect({
           id: "columns",
           label: t("View", "视图"),
           value: viewMode,

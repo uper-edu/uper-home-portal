@@ -153,6 +153,23 @@ export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
     : value;
 }
 export function crmError(message: string, lang: CrmLanguage) {
+  const campaignErrors: Record<string, [string, string, string]> = {
+    campaign_name_required: ["Enter a campaign name.", "Masukkan nama kampanye.", "请输入活动名称。"],
+    campaign_budget_invalid: ["Enter a budget of 0 or more. Negative amounts are not allowed.", "Masukkan anggaran 0 atau lebih. Nilai negatif tidak diperbolehkan.", "请输入大于或等于0的预算，不允许负数。"],
+    campaign_link_pending: ["Save the campaign before copying materials that contain its link.", "Simpan kampanye sebelum menyalin materi yang memuat tautannya.", "请先保存活动，再复制包含专属链接的物料。"],
+    campaign_code_generated: ["Campaign codes are generated automatically. Refresh this page before creating a campaign.", "Kode kampanye dibuat otomatis. Muat ulang halaman sebelum membuat kampanye.", "活动码由系统自动生成，请刷新页面后创建活动。"],
+    campaign_request_required: ["Refresh this page before creating a campaign. Your entries are still in this form.", "Muat ulang halaman sebelum membuat kampanye. Isian Anda masih ada di formulir ini.", "请刷新页面后创建活动，当前填写内容仍保留在表单中。"],
+    campaign_request_conflict: ["This creation request was already used with different details. Review the previously created campaign.", "Permintaan ini sudah digunakan dengan rincian berbeda. Periksa kampanye yang sebelumnya dibuat.", "该创建请求已用于不同内容，请先核对之前创建的活动。"],
+    campaign_type_required: ["Select a campaign type.", "Pilih jenis kampanye.", "请选择活动类型。"],
+    campaign_medium_required: ["Select a delivery medium.", "Pilih bentuk penyelenggaraan.", "请选择举办媒介形态。"],
+    campaign_create_unknown: ["The save result is not confirmed. Retrying checks the original creation request.", "Hasil penyimpanan belum terkonfirmasi. Coba lagi untuk memeriksa permintaan awal.", "保存结果尚未确认，重试会核对原创建请求。"],
+    campaign_code_conflict: ["This campaign code already exists. Choose another code.", "Kode kampanye ini sudah digunakan. Pilih kode lain.", "活动识别码已存在，请更换。"],
+    campaign_code_readonly: ["The campaign code cannot be changed. Its existing links are preserved.", "Kode kampanye tidak dapat diubah agar tautan yang ada tetap berlaku.", "活动识别码不可修改，已有链接保持不变。"],
+    campaign_not_found: ["This campaign no longer exists. Your entries have been kept.", "Kampanye ini sudah tidak ada. Isian Anda tetap tersimpan di formulir.", "活动已不存在，本次填写内容已保留。"],
+    campaign_save_failed: ["The campaign could not be saved. Your entries have been kept. Please try again.", "Kampanye belum berhasil disimpan. Isian Anda tetap tersimpan di formulir. Silakan coba lagi.", "活动保存失败，填写内容已保留，请重试。"],
+    "Invalid campaign ID": ["Enter a valid campaign code of up to 100 characters.", "Masukkan kode kampanye yang valid, maksimal 100 karakter.", "请输入有效的活动识别码，最多100个字符。"],
+  };
+  if (campaignErrors[message]) return campaignErrors[message][lang === "en" ? 0 : lang === "id" ? 1 : 2];
   if(["Stage change reason required","Stage changed; refresh and review"].includes(message))return trustError(message,lang);
   if(message==="Record-only cannot complete tasks or change contact arrangements")return lang==='zh'?'仅记录模式不能完成任务或修改联系安排':lang==='id'?'Mode catat saja tidak dapat menyelesaikan tugas atau mengubah pengaturan kontak':message;
   if(message.startsWith("access_"))return accessError(message,lang);

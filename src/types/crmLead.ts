@@ -78,6 +78,7 @@ export interface LeadAttention {
   isMine: boolean;
 }
 export interface CrmLeadRecord {
+  promotionReview?: {status:'linked'|'deferred'|'invalid';revision:number;rawCampaignCode:string;rawPromotionLinkId:string;campaignId:string;linkId:string|null;snapshot:any;actor:string;at:string;reason:string;scope:'this_customer_only'};
   ownerChangedAt?: string;
   attendanceRecords?: Array<{campaignId:string;confirmed:boolean;mode:"onsite"|"online";reason:string;actor:string;recordedAt:string}>;
   communicationLanguage?: "en"|"id"|"zh"|"unknown";

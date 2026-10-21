@@ -97,6 +97,19 @@ export default function StandAloneChat() {
   const [isTyping, setIsTyping] = useState(false);
   const [lang, setLang] = useState<'en' | 'id' | 'zh'>(initialContext?.preferredLanguage || 'en');
 
+  // A saved promotion entry also selects the interface language for returning visitors.
+  // Existing customer records, messages and assessment state are not rewritten.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search), code = params.get('c'), entry = params.get('p');
+    if (!code || !entry) return;
+    let active = true;
+    fetch(`/api/campaigns/${encodeURIComponent(code)}/links/${encodeURIComponent(entry)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (active && ['en','id','zh'].includes(data?.link?.language)) setLang(data.link.language); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   const changeLanguage = (language: 'en' | 'id' | 'zh') => {
     setLang(language);
     saveStudentContext({ preferredLanguage: language });

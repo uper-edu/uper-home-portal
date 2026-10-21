@@ -1,0 +1,6 @@
+export const promotionReviewActions=[
+ {value:'link',label:'Link existing promotion entry',scenario:'The Instagram ad entry already exists under this campaign, but the incoming p was mistyped.',effect:'Select that saved entry. Record the verified source, medium and language for this customer; keep the original c/p.'},
+ {value:'create',label:'Create promotion entry and link',scenario:'A real campus poster was distributed before its promotion entry was created.',effect:'Confirm source, medium and language. Create a new entry with a new p, then link this customer. Use the new link for future distribution; the old p is not automatically accepted.'},
+ {value:'defer',label:'Leave unconfirmed',scenario:'The campaign is known, but there is not enough evidence to identify the placement.',effect:'Save the reason and leave this customer in Needs review. Create no link and no follow-up task.'},
+ {value:'invalid',label:'Mark invalid',scenario:'The p is a test value, a corrupted code or noise with no defensible mapping.',effect:'Mark this promotion attribution invalid and move it to review history. Keep the customer, campaign attribution and sales tasks. No organic-traffic reclassification.'},
+] as const;

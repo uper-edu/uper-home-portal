@@ -32,7 +32,7 @@ export function CrmProcessOverview({
           : `${decimal(ms / 86400000)} ${t("days", "hari", "天")}`;
   if (error || !metrics)
     return (
-      <section className="crm-process" data-theme={isLight ? "light" : "dark"}>
+      <section className="crm-process crm-lead-process" data-theme={isLight ? "light" : "dark"}>
         <p role="status">
           {t(
             "Process metrics unavailable; refresh to retry.",
@@ -89,7 +89,7 @@ export function CrmProcessOverview({
   ];
   return (
     <section
-      className="crm-process"
+      className="crm-process crm-lead-process"
       data-theme={isLight ? "light" : "dark"}
       aria-label={t(
         "Sales process overview",

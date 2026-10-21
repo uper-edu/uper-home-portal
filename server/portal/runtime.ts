@@ -1,3 +1,4 @@
+import {promotionAttribution} from "./campaignPromotion.ts";
 import {recordCampaignSource} from './campaignSources.ts';
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
@@ -390,6 +391,7 @@ export async function mountPortal(app: Express) {
           )
         ).rows[0]?.profile || {};
       if(contactsConflict(existing,b)) fail(409,"Contact identity changed; start a separate visitor session");
+      const promotion = await promotionAttribution(c, existing, b);
       const profile = {
         ...existing,
         ...firstTouchAttribution(existing, b),
@@ -407,6 +409,7 @@ export async function mountPortal(app: Express) {
         tier: existing.tier || "Unqualified",
         submittedAt: existing.submittedAt || new Date().toISOString(),
         entryPoint: existing.entryPoint || b.entryPoint || "homepage_widget",
+        ...promotion,
       };
       if (!locked.lead_id) {
         profile.ownerChangedAt = new Date().toISOString();

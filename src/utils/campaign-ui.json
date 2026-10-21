@@ -1,0 +1,1642 @@
+{
+  "Address": [
+    "Alamat",
+    "地址"
+  ],
+  "Campaign code": [
+    "Kode kampanye",
+    "活动码"
+  ],
+  "Campaign name": [
+    "Nama kampanye",
+    "活动名称"
+  ],
+  "Campaign type": [
+    "Jenis kampanye",
+    "活动类型"
+  ],
+  "Checking…": [
+    "Memeriksa…",
+    "核对中…"
+  ],
+  "City": [
+    "Kota",
+    "城市"
+  ],
+  "Create campaign": [
+    "Buat kampanye",
+    "创建活动"
+  ],
+  "Customers": [
+    "Pelanggan",
+    "客户"
+  ],
+  "Not recorded": [
+    "Belum tercatat",
+    "未填写"
+  ],
+  "Online attendance link": [
+    "Tautan kehadiran daring",
+    "线上参会链接"
+  ],
+  "Organizer / campaign contact": [
+    "Penyelenggara / kontak kampanye",
+    "主办方／活动联系人"
+  ],
+  "Record details": [
+    "Rincian catatan",
+    "记录详情"
+  ],
+  "Retry": [
+    "Coba lagi",
+    "重试"
+  ],
+  "Retry original request": [
+    "Ulangi permintaan awal",
+    "重试原请求"
+  ],
+  "Review history": [
+    "Riwayat verifikasi",
+    "核实历史"
+  ],
+  "Saving…": [
+    "Menyimpan…",
+    "保存中…"
+  ],
+  "Schedule notes": [
+    "Catatan jadwal",
+    "日程备注"
+  ],
+  "System record": [
+    "Catatan sistem",
+    "系统记录"
+  ],
+  "Time not recorded": [
+    "Waktu belum tercatat",
+    "时间未填写"
+  ],
+  "Venue": [
+    "Tempat",
+    "场地"
+  ],
+  "* Required. Use a separate link for each placement you want to distinguish.": [
+    "* Wajib. Gunakan tautan terpisah untuk setiap penempatan yang ingin dibedakan.",
+    "* 必填。需要区分的每个投放位置应使用独立链接。"
+  ],
+  "Actions and typical scenarios": [
+    "Tindakan dan contoh situasi",
+    "操作及典型场景"
+  ],
+  "Add a promotion link": [
+    "Tambahkan tautan promosi",
+    "添加推广链接"
+  ],
+  "Add another promotion link": [
+    "Tambahkan tautan promosi lain",
+    "添加另一条推广链接"
+  ],
+  "Add later / cancel": [
+    "Tambahkan nanti / batal",
+    "稍后添加／取消"
+  ],
+  "Add promotion link": [
+    "Tambahkan tautan promosi",
+    "添加推广链接"
+  ],
+  "Additional campaign context": [
+    "Konteks kampanye tambahan",
+    "活动补充信息"
+  ],
+  "All actions apply only to the selected customer. No batch approval, future alias, task completion or notification replay.": [
+    "Semua tindakan hanya berlaku untuk pelanggan terpilih. Tidak ada persetujuan massal, alias baru untuk kunjungan berikutnya, penyelesaian tugas, atau pengiriman ulang notifikasi.",
+    "所有操作仅作用于所选客户，不批量确认、不建立后续来源别名、不完成任务，也不重放通知。"
+  ],
+  "All campaign types": [
+    "Semua jenis kampanye",
+    "全部活动类型"
+  ],
+  "All statuses": [
+    "Semua status",
+    "全部状态"
+  ],
+  "Archive a campaign by changing its status in Edit information. Campaigns with promotion links or verified source associations cannot be deleted.": [
+    "Untuk mengarsipkan kampanye, ubah statusnya melalui Edit informasi. Kampanye yang memiliki tautan promosi atau asosiasi sumber terverifikasi tidak dapat dihapus.",
+    "可在“编辑信息”中将活动状态改为已归档。已有推广链接或已核实来源关联的活动不能删除。"
+  ],
+  "Asia/Jakarta (UTC+7)": [
+    "Asia/Jakarta (UTC+7)",
+    "Asia/Jakarta（UTC+7）"
+  ],
+  "Back to campaign list": [
+    "Kembali ke daftar kampanye",
+    "返回活动列表"
+  ],
+  "Bahasa Indonesia": [
+    "Bahasa Indonesia",
+    "印尼文"
+  ],
+  "Basic information": [
+    "Informasi dasar",
+    "基本信息"
+  ],
+  "Campaign ID:": [
+    "ID kampanye:",
+    "活动ID："
+  ],
+  "Campaign cards": [
+    "Kartu kampanye",
+    "活动卡片"
+  ],
+  "Campaign catalogue": [
+    "Daftar kampanye",
+    "活动列表"
+  ],
+  "Campaign information": [
+    "Informasi kampanye",
+    "活动信息"
+  ],
+  "Campaign information saved. The campaign code and existing links stay unchanged.": [
+    "Informasi kampanye tersimpan. Kode kampanye dan tautan yang ada tetap sama.",
+    "活动信息已保存，活动码及已有链接保持不变。"
+  ],
+  "Campaign link": [
+    "Tautan kampanye",
+    "活动链接"
+  ],
+  "Campaign list": [
+    "Daftar kampanye",
+    "活动列表"
+  ],
+  "Campaign metrics unavailable.": [
+    "Metrik kampanye tidak tersedia.",
+    "活动统计暂不可用。"
+  ],
+  "Campaign not found or unavailable to your account.": [
+    "Kampanye tidak ditemukan atau tidak dapat diakses oleh akun Anda.",
+    "活动不存在，或当前账号无权访问。"
+  ],
+  "Campaign overview": [
+    "Ringkasan kampanye",
+    "活动概览"
+  ],
+  "Campaign overview · Current results": [
+    "Ringkasan kampanye · Hasil saat ini",
+    "活动概览 · 当前筛选结果"
+  ],
+  "Campaign saved. Add an entry to record a source, medium and customer language.": [
+    "Kampanye tersimpan. Tambahkan tautan promosi untuk mencatat sumber, media, dan bahasa pelanggan.",
+    "活动已保存。请添加推广链接，配置来源、推广方式及客户页面语言。"
+  ],
+  "Campaign sections": [
+    "Bagian kampanye",
+    "活动详情页签"
+  ],
+  "Campaign status filter": [
+    "Filter status kampanye",
+    "活动状态筛选"
+  ],
+  "Campaign type filter": [
+    "Filter jenis kampanye",
+    "活动类型筛选"
+  ],
+  "Campaign unavailable. Retry to load its saved information.": [
+    "Kampanye tidak tersedia. Coba lagi untuk memuat informasi yang tersimpan.",
+    "活动暂不可用，请重试加载已保存信息。"
+  ],
+  "Campaign:": [
+    "Kampanye:",
+    "活动："
+  ],
+  "Campaigns": [
+    "Kampanye",
+    "活动"
+  ],
+  "Campaigns unavailable.": [
+    "Daftar kampanye tidak tersedia.",
+    "活动列表暂不可用。"
+  ],
+  "Campaigns unavailable. Refresh to retry.": [
+    "Daftar kampanye tidak tersedia. Muat ulang untuk mencoba lagi.",
+    "活动列表暂不可用，请刷新重试。"
+  ],
+  "Check saved result": [
+    "Periksa hasil tersimpan",
+    "查询保存结果"
+  ],
+  "Choose a customer language": [
+    "Pilih bahasa pelanggan",
+    "选择客户页面语言"
+  ],
+  "Choose a medium": [
+    "Pilih media promosi",
+    "选择推广方式"
+  ],
+  "Choose a source": [
+    "Pilih sumber",
+    "选择推广来源"
+  ],
+  "Choose an action": [
+    "Pilih tindakan",
+    "选择处理方式"
+  ],
+  "Choose an entry from this campaign": [
+    "Pilih tautan promosi dari kampanye ini",
+    "选择本活动的推广入口"
+  ],
+  "Choose the saved link for this placement. Existing drafts keep their original content and links until you replace them.": [
+    "Pilih tautan tersimpan untuk penempatan ini. Isi dan tautan dalam draf lama tetap sama sampai Anda menggantinya.",
+    "请选择本次投放对应的已保存链接。现有草稿的内容和链接在明确替换前保持不变。"
+  ],
+  "Closing does not cancel the request. Check saved links before creating another promotion link.": [
+    "Menutup tidak membatalkan permintaan. Periksa tautan tersimpan sebelum membuat tautan promosi lain.",
+    "关闭不会取消已提交请求。再次创建前，请先核对已有推广链接。"
+  ],
+  "Closing does not cancel the request. Check the campaign list before creating again; do not submit a second creation request.": [
+    "Menutup tidak membatalkan permintaan. Periksa daftar kampanye sebelum membuat lagi; jangan kirim permintaan pembuatan kedua.",
+    "关闭不会取消已提交请求。再次创建前请核对活动列表，不要重复提交创建请求。"
+  ],
+  "Collapse campaign list": [
+    "Ciutkan daftar kampanye",
+    "收起活动侧栏"
+  ],
+  "Confirmed talking points": [
+    "Poin pembicaraan terkonfirmasi",
+    "已确认的活动要点"
+  ],
+  "Copy link": [
+    "Salin tautan",
+    "复制链接"
+  ],
+  "Create promotion link & QR": [
+    "Buat tautan promosi & kode QR",
+    "创建推广链接及二维码"
+  ],
+  "Created · Asia/Jakarta": [
+    "Dibuat · Asia/Jakarta",
+    "创建时间 · Asia/Jakarta"
+  ],
+  "Current lifetime totals · Customers within your access scope. Campaign statuses are manually maintained; saved links describe configuration, not measured traffic.": [
+    "Total kumulatif saat ini · Pelanggan dalam cakupan akses Anda. Status kampanye diperbarui secara manual; tautan tersimpan menunjukkan konfigurasi, bukan lalu lintas yang terukur.",
+    "当前累计统计 · 仅含权限范围内客户。活动状态由人工维护；已有推广链接表示配置情况，不代表实际流量。"
+  ],
+  "Customer language": [
+    "Bahasa pelanggan",
+    "客户页面语言"
+  ],
+  "Customer language *": [
+    "Bahasa pelanggan *",
+    "客户页面语言 *"
+  ],
+  "Customers attributed to this source:": [
+    "Pelanggan yang diatribusikan ke sumber ini:",
+    "归因于此来源的客户："
+  ],
+  "Customers whose first registration did not carry a specific campaign code, including entries using the reserved home and organic codes. This does not identify organic search or prove the traffic was unpaid. For example, an advertising link with UTM parameters but no campaign code can appear here. Unknown campaign codes remain separate for verification.": [
+    "Pelanggan yang pendaftaran pertamanya tidak membawa kode kampanye tertentu, termasuk kode sistem home dan organic. Ini bukan bukti pencarian organik atau lalu lintas tanpa biaya. Tautan iklan dengan parameter UTM tetapi tanpa kode kampanye juga dapat masuk ke sini. Kode kampanye tidak dikenal ditinjau secara terpisah.",
+    "首次登记时未携带具体活动码的客户，包括使用系统保留代码 home 和 organic 的入口。这不等于自然搜索或免费流量；带UTM但缺少活动码的广告链接也可能归入此处。未知活动码另行核实。"
+  ],
+  "Delete campaign": [
+    "Hapus kampanye",
+    "删除活动"
+  ],
+  "Delivery format": [
+    "Bentuk penyelenggaraan",
+    "开展形式"
+  ],
+  "Discard the unsaved promotion link details? Saved links stay unchanged.": [
+    "Buang rincian tautan promosi yang belum disimpan? Tautan tersimpan tetap sama.",
+    "放弃尚未保存的推广链接信息？已有链接保持不变。"
+  ],
+  "Download QR": [
+    "Unduh kode QR",
+    "下载二维码"
+  ],
+  "Edit information": [
+    "Edit informasi",
+    "编辑信息"
+  ],
+  "End": [
+    "Selesai",
+    "结束"
+  ],
+  "End date and time": [
+    "Tanggal dan waktu selesai",
+    "结束日期和时间"
+  ],
+  "English": [
+    "Bahasa Inggris",
+    "英文"
+  ],
+  "Entry experience": [
+    "Alur pelanggan",
+    "入口体验"
+  ],
+  "Entry experience:": [
+    "Alur pelanggan:",
+    "入口体验："
+  ],
+  "Entry name · optional": [
+    "Nama tautan · opsional",
+    "推广入口名称 · 选填"
+  ],
+  "Environment:": [
+    "Lingkungan:",
+    "当前环境："
+  ],
+  "Existing campaign-only link": [
+    "Tautan lama dengan kode kampanye saja",
+    "原有仅含活动码的链接"
+  ],
+  "Existing first-touch attribution is retained when a customer returns through another campaign.": [
+    "Atribusi pertama tetap dipertahankan saat pelanggan kembali melalui kampanye lain.",
+    "客户从其他活动再次进入时，已有首次归因保持不变。"
+  ],
+  "Existing promotion entry": [
+    "Tautan promosi yang ada",
+    "已有推广入口"
+  ],
+  "First promotion link": [
+    "Tautan promosi pertama",
+    "首条推广链接"
+  ],
+  "Internal campaign details · optional": [
+    "Rincian internal kampanye · opsional",
+    "活动内部信息 · 选填"
+  ],
+  "Internal facts about this campaign. Distribution settings belong to each promotion link.": [
+    "Informasi internal kampanye ini. Pengaturan distribusi ditentukan pada setiap tautan promosi.",
+    "这里记录活动自身的信息；推广来源等投放设置由各条推广链接分别配置。"
+  ],
+  "Invalid promotion attribution": [
+    "Atribusi promosi tidak valid",
+    "推广归因无效"
+  ],
+  "Keep draft": [
+    "Pertahankan draf",
+    "保留草稿"
+  ],
+  "Keep draft & close": [
+    "Pertahankan draf & tutup",
+    "保留草稿并收起"
+  ],
+  "Known campaign, unverified or mismatched p. Review one customer at a time; missing p on a legacy campaign-only link is not an error. Unknown campaigns must be verified in Unknown campaign codes first.": [
+    "Kampanye dikenali, tetapi p belum terverifikasi atau tidak cocok. Tinjau per pelanggan. Tautan lama yang hanya membawa kode kampanye boleh tidak memiliki p. Kampanye tidak dikenal harus ditinjau terlebih dahulu di Kode kampanye tidak dikenal.",
+    "活动已识别，但p未核实或不匹配，请逐个客户核实。原有仅含活动码的链接缺少p不算错误；未知活动须先在“未知活动码”中核实。"
+  ],
+  "Last updated · Asia/Jakarta": [
+    "Pembaruan terakhir · Asia/Jakarta",
+    "最近更新 · Asia/Jakarta"
+  ],
+  "Latest decision:": [
+    "Keputusan terakhir:",
+    "最近核实决定："
+  ],
+  "Left unconfirmed": [
+    "Belum dikonfirmasi",
+    "暂不确认"
+  ],
+  "Left unconfirmed; remains in Needs review.": [
+    "Belum dikonfirmasi; tetap perlu ditinjau.",
+    "暂不确认，仍保留在待核实中。"
+  ],
+  "Legacy campaign link": [
+    "Tautan kampanye lama",
+    "原有活动链接"
+  ],
+  "Legacy campaign link defaults": [
+    "Pengaturan bawaan tautan kampanye lama",
+    "原有活动链接默认设置"
+  ],
+  "Legacy entry service": [
+    "Layanan awal tautan lama",
+    "原有入口服务"
+  ],
+  "Link name · optional": [
+    "Nama tautan · opsional",
+    "链接名称 · 选填"
+  ],
+  "Link to include in the template": [
+    "Tautan untuk disertakan dalam templat",
+    "模板中使用的链接"
+  ],
+  "Loading campaigns…": [
+    "Memuat kampanye…",
+    "正在加载活动…"
+  ],
+  "Loading campaign…": [
+    "Memuat kampanye…",
+    "正在加载活动…"
+  ],
+  "Loading promotion reviews…": [
+    "Memuat tinjauan promosi…",
+    "正在加载推广核实记录…"
+  ],
+  "Management": [
+    "Pengelolaan",
+    "管理方式"
+  ],
+  "Manually maintained campaign status; not a link availability check": [
+    "Status kampanye diperbarui manual; bukan pemeriksaan ketersediaan tautan",
+    "活动状态由人工维护，不代表链接可用性检测结果"
+  ],
+  "Manually verified": [
+    "Diverifikasi manual",
+    "已人工核实"
+  ],
+  "Materials": [
+    "Materi",
+    "推广物料"
+  ],
+  "Medium": [
+    "Media promosi",
+    "推广方式"
+  ],
+  "Medium *": [
+    "Media promosi *",
+    "推广方式 *"
+  ],
+  "More campaign actions": [
+    "Tindakan kampanye lainnya",
+    "更多活动操作"
+  ],
+  "More filters": [
+    "Filter lainnya",
+    "更多筛选"
+  ],
+  "More": [
+    "Lainnya",
+    "更多"
+  ],
+  "Needs review": [
+    "Perlu ditinjau",
+    "待核实"
+  ],
+  "New entry customer language": [
+    "Bahasa pelanggan tautan baru",
+    "新推广入口客户页面语言"
+  ],
+  "New entry medium": [
+    "Media tautan baru",
+    "新推广入口方式"
+  ],
+  "New entry source": [
+    "Sumber tautan baru",
+    "新推广入口来源"
+  ],
+  "New promotion entry created. ": [
+    "Tautan promosi baru telah dibuat. ",
+    "已创建新推广入口。"
+  ],
+  "No customers are attributed to this system source yet.": [
+    "Belum ada pelanggan yang diatribusikan ke sumber sistem ini.",
+    "此系统来源暂无归因客户。"
+  ],
+  "No matching campaigns.": [
+    "Tidak ada kampanye yang cocok.",
+    "没有匹配的活动。"
+  ],
+  "No matching conversation entry URL was recorded. The original p, UTM parameters and referring site cannot be recovered from this code alone.": [
+    "URL masuk percakapan yang cocok tidak tercatat. p asli, parameter UTM, dan situs perujuk tidak dapat dipulihkan dari kode ini saja.",
+    "未记录与该代码匹配的对话入口URL，仅凭该代码无法还原原始p、UTM参数或来源网站。"
+  ],
+  "No promotion entries in this view.": [
+    "Tidak ada tautan promosi dalam tampilan ini.",
+    "当前视图没有推广入口核实项。"
+  ],
+  "No specific campaign at first registration": [
+    "Tidak ada kode kampanye tertentu saat pendaftaran pertama",
+    "首次登记未携带具体活动码"
+  ],
+  "Non-campaign source · System source": [
+    "Sumber non-kampanye · Sumber sistem",
+    "非活动来源 · 系统来源"
+  ],
+  "Not recorded · optional": [
+    "Belum tercatat · opsional",
+    "未填写 · 选填"
+  ],
+  "One campaign can have multiple links for ads, groups, posters and other placements. Each link has its own source, medium and customer language.": [
+    "Satu kampanye dapat memiliki beberapa tautan untuk iklan, grup, poster, dan penempatan lain. Setiap tautan memiliki sumber, media, dan bahasa pelanggan sendiri.",
+    "一个活动可以为广告、社群、海报等投放位置配置多条链接；每条链接分别设置来源、推广方式和客户页面语言。"
+  ],
+  "Only saved marketing parameters matching this code are shown. Other URL parameters and unrelated later visits are excluded. Missing values are not reconstructed.": [
+    "Hanya parameter pemasaran tersimpan yang cocok dengan kode ini yang ditampilkan. Parameter lain dan kunjungan berikutnya yang tidak terkait dikecualikan. Nilai yang hilang tidak direka ulang.",
+    "仅展示已保存且与该代码匹配的营销参数；不展示其他URL参数及无关的后续访问，也不补造缺失值。"
+  ],
+  "Only used by the original campaign-only link. Promotion links have their own settings.": [
+    "Hanya digunakan oleh tautan lama dengan kode kampanye saja. Setiap tautan promosi memiliki pengaturannya sendiri.",
+    "仅用于原有只含活动码的链接；各推广链接使用各自的独立设置。"
+  ],
+  "Open customer": [
+    "Buka pelanggan",
+    "查看客户"
+  ],
+  "Organizer:": [
+    "Penyelenggara:",
+    "主办方："
+  ],
+  "Original campaign code": [
+    "Kode kampanye asli",
+    "原始活动码"
+  ],
+  "Original p:": [
+    "p asli:",
+    "原始p："
+  ],
+  "Original parameters retained; future incorrect links are not approved.": [
+    "Parameter asli tetap disimpan; tautan salah pada kunjungan berikutnya tidak otomatis disetujui.",
+    "原始参数保留；不会自动认可后续访问中的错误链接。"
+  ],
+  "Other platform / institution": [
+    "Platform / lembaga lain",
+    "其他平台／机构"
+  ],
+  "Planned budget": [
+    "Anggaran rencana",
+    "计划预算"
+  ],
+  "Planned budget (IDR)": [
+    "Anggaran rencana (IDR)",
+    "计划预算（IDR）"
+  ],
+  "Preview entry": [
+    "Pratinjau alur pelanggan",
+    "预览入口"
+  ],
+  "Promotion attribution marked invalid; customer retained.": [
+    "Atribusi promosi ditandai tidak valid; pelanggan tetap disimpan.",
+    "已标记推广归因无效，客户记录保留。"
+  ],
+  "Promotion entry manually verified.": [
+    "Tautan promosi telah diverifikasi manual.",
+    "推广入口已人工核实。"
+  ],
+  "Promotion link": [
+    "Tautan promosi",
+    "推广链接"
+  ],
+  "Promotion link verification": [
+    "Verifikasi tautan promosi",
+    "推广链接核实"
+  ],
+  "Promotion links": [
+    "Tautan promosi",
+    "推广链接"
+  ],
+  "Promotion review counts unavailable.": [
+    "Jumlah tinjauan promosi tidak tersedia.",
+    "推广核实数量暂不可用。"
+  ],
+  "QR encodes the exact link shown.": [
+    "Kode QR memuat tautan yang sama persis dengan yang ditampilkan.",
+    "二维码对应上方展示的完整链接。"
+  ],
+  "Read-only attribution buckets. Included in the current totals; not marketing campaigns.": [
+    "Kelompok atribusi hanya-baca. Termasuk dalam total saat ini, tetapi bukan kampanye pemasaran.",
+    "只读的来源归因分组，计入当前统计，但不属于营销活动。"
+  ],
+  "Read-only · System managed": [
+    "Hanya-baca · Dikelola sistem",
+    "只读 · 系统管理"
+  ],
+  "Read-only · System source": [
+    "Hanya-baca · Sumber sistem",
+    "只读 · 系统来源"
+  ],
+  "Recorded entry parameters for this code": [
+    "Parameter masuk tercatat untuk kode ini",
+    "该代码对应的已记录入口参数"
+  ],
+  "Refresh campaigns": [
+    "Muat ulang kampanye",
+    "刷新活动"
+  ],
+  "Refresh promotion reviews": [
+    "Muat ulang tinjauan promosi",
+    "刷新推广核实记录"
+  ],
+  "Registered": [
+    "Terdaftar",
+    "已登记"
+  ],
+  "Replace only the selected material with a template using the saved campaign facts and promotion link. Other materials stay unchanged.": [
+    "Ganti hanya materi terpilih dengan templat berdasarkan informasi kampanye dan tautan tersimpan. Materi lainnya tetap sama.",
+    "仅使用已保存的活动信息和推广链接替换当前所选物料，其他物料保持不变。"
+  ],
+  "Replace this draft?": [
+    "Ganti draf ini?",
+    "替换此草稿？"
+  ],
+  "Replace with template": [
+    "Ganti dengan templat",
+    "使用模板替换"
+  ],
+  "Reset filters": [
+    "Atur ulang filter",
+    "重置筛选"
+  ],
+  "Result:": [
+    "Hasil:",
+    "操作结果："
+  ],
+  "Results": [
+    "Hasil",
+    "结果"
+  ],
+  "Results & customers": [
+    "Hasil & pelanggan",
+    "结果与客户"
+  ],
+  "Retained for this legacy campaign. It attributes customers to the campaign without a separate promotion entry. Use a new promotion entry when you need independent source, medium and language settings.": [
+    "Tautan lama ini tetap berlaku dan mengatribusikan pelanggan ke kampanye tanpa tautan promosi terpisah. Buat tautan promosi baru untuk sumber, media, dan bahasa yang independen.",
+    "原有链接继续保留，可在不含独立推广入口的情况下归因到本活动。如需单独配置来源、推广方式和语言，请新建推广链接。"
+  ],
+  "Return to campaign cards": [
+    "Kembali ke kartu kampanye",
+    "返回活动卡片列表"
+  ],
+  "Return to selected campaign": [
+    "Kembali ke kampanye terpilih",
+    "返回当前活动"
+  ],
+  "Review": [
+    "Tinjau",
+    "核实"
+  ],
+  "Review action": [
+    "Tindakan verifikasi",
+    "核实操作"
+  ],
+  "Review again": [
+    "Tinjau lagi",
+    "重新核实"
+  ],
+  "Review decision": [
+    "Keputusan verifikasi",
+    "核实决定"
+  ],
+  "Review decision · this customer only": [
+    "Keputusan verifikasi · pelanggan ini saja",
+    "核实决定 · 仅本客户"
+  ],
+  "Review promotion entry": [
+    "Tinjau tautan promosi",
+    "核实推广入口"
+  ],
+  "Review reason / evidence *": [
+    "Alasan / bukti verifikasi *",
+    "核实依据／证据 *"
+  ],
+  "Review the recorded evidence before linking or creating a campaign. URL parameters are visitor-supplied labels, not proof of the actual referring platform. Different customers may carry different parameters.": [
+    "Periksa bukti tercatat sebelum menautkan atau membuat kampanye. Parameter URL diberikan oleh pengunjung dan bukan bukti platform asal yang sebenarnya. Parameter tiap pelanggan dapat berbeda.",
+    "关联或创建前请先核对已记录的证据。URL参数来自访问者，不证明真实来源平台；不同客户携带的参数可能不同。"
+  ],
+  "Save outcome unknown": [
+    "Hasil penyimpanan belum diketahui",
+    "保存结果待确认"
+  ],
+  "Save review": [
+    "Simpan verifikasi",
+    "保存核实"
+  ],
+  "Saved lead attribution": [
+    "Atribusi pelanggan tersimpan",
+    "客户已保存归因"
+  ],
+  "Saved lead field": [
+    "Kolom pelanggan tersimpan",
+    "客户记录字段"
+  ],
+  "Saved settings are fixed to keep existing links and attribution consistent. Add another link for a different placement.": [
+    "Pengaturan tersimpan tetap untuk menjaga konsistensi tautan dan atribusi. Tambahkan tautan lain untuk penempatan berbeda.",
+    "已保存的链接设置保持固定，确保已有链接和归因一致。不同投放位置请另建链接。"
+  ],
+  "Schedule and location": [
+    "Jadwal dan lokasi",
+    "时间与地点"
+  ],
+  "Search campaigns": [
+    "Cari kampanye",
+    "搜索活动"
+  ],
+  "Search name or code…": [
+    "Cari nama atau kode…",
+    "搜索名称或活动码…"
+  ],
+  "Select a promotion link": [
+    "Pilih tautan promosi",
+    "选择推广链接"
+  ],
+  "Select delivery method": [
+    "Pilih media promosi",
+    "选择推广方式"
+  ],
+  "Select platform or institution": [
+    "Pilih platform atau lembaga",
+    "选择平台或机构"
+  ],
+  "Show all campaigns": [
+    "Tampilkan semua kampanye",
+    "显示全部活动"
+  ],
+  "Show campaign sidebar": [
+    "Tampilkan daftar samping kampanye",
+    "展开活动侧栏"
+  ],
+  "Source": [
+    "Sumber",
+    "推广来源"
+  ],
+  "Source *": [
+    "Sumber *",
+    "推广来源 *"
+  ],
+  "Source code": [
+    "Kode sumber",
+    "来源代码"
+  ],
+  "Source code *": [
+    "Kode sumber *",
+    "来源代码 *"
+  ],
+  "Source evidence": [
+    "Bukti sumber",
+    "来源证据"
+  ],
+  "Source information": [
+    "Informasi sumber",
+    "来源信息"
+  ],
+  "Source issue type": [
+    "Jenis masalah sumber",
+    "来源问题类型"
+  ],
+  "Source review": [
+    "Verifikasi sumber",
+    "来源核实"
+  ],
+  "Source review workspace": [
+    "Area verifikasi sumber",
+    "来源核实工作区"
+  ],
+  "Speakers": [
+    "Pembicara",
+    "讲者"
+  ],
+  "Start": [
+    "Mulai",
+    "开始"
+  ],
+  "Start date and time": [
+    "Tanggal dan waktu mulai",
+    "开始日期和时间"
+  ],
+  "Status": [
+    "Status",
+    "状态"
+  ],
+  "Status unavailable": [
+    "Status tidak tersedia",
+    "状态暂不可用"
+  ],
+  "Step 2 · Add your first promotion link": [
+    "Langkah 2 · Tambahkan tautan promosi pertama",
+    "第2步 · 添加首条推广链接"
+  ],
+  "System managed": [
+    "Dikelola sistem",
+    "系统管理"
+  ],
+  "System source": [
+    "Sumber sistem",
+    "系统来源"
+  ],
+  "System sources": [
+    "Sumber sistem",
+    "系统来源"
+  ],
+  "Target audience": [
+    "Audiens sasaran",
+    "目标受众"
+  ],
+  "The saved entry was limited to 300 characters; later parameters may be missing or incomplete.": [
+    "URL masuk tersimpan dibatasi 300 karakter; parameter di bagian akhir mungkin hilang atau tidak lengkap.",
+    "已保存入口限300个字符，后面的参数可能缺失或不完整。"
+  ],
+  "This campaign has no saved promotion entries. Create one only if the placement is supported by evidence.": [
+    "Kampanye ini belum memiliki tautan promosi. Buat hanya jika ada bukti penempatannya.",
+    "本活动尚无已保存推广入口。仅在有投放证据时创建。"
+  ],
+  "This is the currently supported flow. Assessment eligibility follows existing rules; this does not book a class or promise materials.": [
+    "Ini alur yang saat ini didukung. Kebutuhan asesmen mengikuti aturan yang ada; alur ini tidak memesan kelas atau menjanjikan materi.",
+    "这是当前支持的流程。是否测评遵循既有规则，不代表已预约课程或承诺提供资料。"
+  ],
+  "This source is read-only. It does not require promotion entries or campaign materials.": [
+    "Sumber ini hanya-baca. Tidak memerlukan tautan promosi atau materi kampanye.",
+    "此来源只读，不需要配置推广入口或活动物料。"
+  ],
+  "This system source": [
+    "Sumber sistem ini",
+    "此系统来源"
+  ],
+  "Times use Asia/Jakarta (UTC+7). The attendance link is separate from customer acquisition links.": [
+    "Waktu menggunakan Asia/Jakarta (UTC+7). Tautan kehadiran terpisah dari tautan akuisisi pelanggan.",
+    "时间采用Asia/Jakarta（UTC+7）。参会链接与获客推广链接相互独立。"
+  ],
+  "Times use Asia/Jakarta (WIB, UTC+7)": [
+    "Waktu menggunakan Asia/Jakarta (WIB, UTC+7)",
+    "时间采用Asia/Jakarta（WIB，UTC+7）"
+  ],
+  "Tracking details": [
+    "Rincian pelacakan",
+    "归因参数详情"
+  ],
+  "Typical scenario:": [
+    "Contoh situasi:",
+    "典型场景："
+  ],
+  "UPER newsletter": [
+    "Buletin UPER",
+    "UPER电子简报"
+  ],
+  "Unsaved changes": [
+    "Perubahan belum disimpan",
+    "有未保存修改"
+  ],
+  "Unverified promotion entries": [
+    "Tautan promosi belum terverifikasi",
+    "待核实推广入口"
+  ],
+  "Updating campaign metrics…": [
+    "Memperbarui metrik kampanye…",
+    "正在更新活动统计…"
+  ],
+  "Use the same source code for the same institution across links.": [
+    "Gunakan kode sumber yang sama untuk lembaga yang sama di semua tautan.",
+    "同一机构在不同推广链接中应使用相同来源代码。"
+  ],
+  "Verified entry:": [
+    "Tautan terverifikasi:",
+    "已核实入口："
+  ],
+  "Verified promotion link:": [
+    "Tautan promosi terverifikasi:",
+    "已核实推广链接："
+  ],
+  "View customers": [
+    "Lihat pelanggan",
+    "查看客户"
+  ],
+  "View link setup": [
+    "Lihat pengaturan tautan",
+    "查看链接配置"
+  ],
+  "WA:": [
+    "WA:",
+    "WhatsApp："
+  ],
+  "What this action does:": [
+    "Dampak tindakan ini:",
+    "此操作的作用："
+  ],
+  "What triggered this review?": [
+    "Mengapa perlu ditinjau?",
+    "为何需要核实？"
+  ],
+  "WhatsApp": [
+    "WhatsApp",
+    "WhatsApp"
+  ],
+  "Your unsaved campaign information will be discarded. Saved records and links stay unchanged.": [
+    "Informasi kampanye yang belum disimpan akan dibuang. Catatan dan tautan tersimpan tetap sama.",
+    "未保存的活动修改将被放弃，已保存记录及链接保持不变。"
+  ],
+  "e.g. Instagram October ad": [
+    "mis. iklan Instagram bulan Oktober",
+    "例如：Instagram十月广告"
+  ],
+  "or open Source review to check.": [
+    "atau buka Verifikasi sumber untuk memeriksa.",
+    "或打开“来源核实”查看。"
+  ],
+  "— Items need review": [
+    "— Ada item perlu ditinjau",
+    "— 有待核实事项"
+  ],
+  "Marketing Campaigns": [
+    "Kampanye pemasaran",
+    "营销活动中心"
+  ],
+  "Create campaigns and promotion links, verify acquisition sources, and review customer and enrollment results.": [
+    "Buat kampanye dan tautan promosi, verifikasi sumber akuisisi, lalu tinjau pelanggan dan hasil pendaftaran kelas.",
+    "创建活动与推广链接，核实获客来源，查看客户及报名结果。"
+  ],
+  "Items need review": [
+    "Ada item perlu ditinjau",
+    "有待核实事项"
+  ],
+  "Checking review status": [
+    "Memeriksa status verifikasi",
+    "正在核对来源核实状态"
+  ],
+  "Review status unavailable": [
+    "Status verifikasi tidak tersedia",
+    "来源核实状态暂不可用"
+  ],
+  "Review unknown campaign codes and promotion link issues": [
+    "Tinjau kode kampanye tidak dikenal dan masalah tautan promosi",
+    "核实未知活动码及推广链接问题"
+  ],
+  "1 campaign": [
+    "1 kampanye",
+    "1个活动"
+  ],
+  "{count} campaigns": [
+    "{count} kampanye",
+    "{count}个活动"
+  ],
+  "1 system source": [
+    "1 sumber sistem",
+    "1个系统来源"
+  ],
+  "{count} system sources": [
+    "{count} sumber sistem",
+    "{count}个系统来源"
+  ],
+  "Current filtered sources: {sources}": [
+    "Sumber dalam filter saat ini: {sources}",
+    "当前筛选来源：{sources}"
+  ],
+  "1 promotion link": [
+    "1 tautan promosi",
+    "1条推广链接"
+  ],
+  "{count} promotion links": [
+    "{count} tautan promosi",
+    "{count}条推广链接"
+  ],
+  "{count} links": [
+    "{count} tautan",
+    "{count}条链接"
+  ],
+  "No entry saved": [
+    "Belum ada tautan",
+    "暂无推广入口"
+  ],
+  "Legacy link": [
+    "Tautan lama",
+    "原有链接"
+  ],
+  "Links & QR": [
+    "Tautan & kode QR",
+    "链接与二维码"
+  ],
+  "Link & QR": [
+    "Tautan & kode QR",
+    "链接与二维码"
+  ],
+  "No promotion entry saved": [
+    "Belum ada tautan promosi",
+    "尚未添加推广入口"
+  ],
+  "Legacy campaign link retained": [
+    "Tautan kampanye lama tetap berlaku",
+    "原有活动链接保留"
+  ],
+  "Registered customers": [
+    "Pelanggan terdaftar",
+    "已登记客户"
+  ],
+  "Assessed customers": [
+    "Pelanggan dengan asesmen tersimpan",
+    "已测评客户"
+  ],
+  "Enrollment recorded": [
+    "Pendaftaran kelas tercatat",
+    "已记录报名"
+  ],
+  "Enrolled": [
+    "Terdaftar di kelas",
+    "已报名"
+  ],
+  "Campus Seminar": [
+    "Seminar kampus",
+    "校园讲座"
+  ],
+  "Enterprise Roadshow": [
+    "Roadshow perusahaan",
+    "企业路演"
+  ],
+  "Webinar & Masterclass": [
+    "Webinar & kelas khusus",
+    "线上讲座与大师课"
+  ],
+  "Social Paid Ads": [
+    "Iklan berbayar media sosial",
+    "社交媒体付费广告"
+  ],
+  "Community & Referral": [
+    "Komunitas & referensi",
+    "社群与转介绍"
+  ],
+  "Education Fair & Expo": [
+    "Pameran pendidikan",
+    "教育展会"
+  ],
+  "Other Activity": [
+    "Kegiatan lain",
+    "其他活动"
+  ],
+  "Planning": [
+    "Perencanaan",
+    "筹备中"
+  ],
+  "Active": [
+    "Aktif",
+    "进行中／招募中"
+  ],
+  "Completed": [
+    "Selesai",
+    "已结束"
+  ],
+  "Archived": [
+    "Diarsipkan",
+    "已归档"
+  ],
+  "Onsite": [
+    "Di lokasi",
+    "线下"
+  ],
+  "On-site": [
+    "Di lokasi",
+    "线下"
+  ],
+  "Online": [
+    "Daring",
+    "线上"
+  ],
+  "Hybrid": [
+    "Hibrida",
+    "线上线下混合"
+  ],
+  "Not set": [
+    "Belum ditentukan",
+    "未设置"
+  ],
+  "Type not set": [
+    "Jenis belum ditentukan",
+    "类型未设置"
+  ],
+  "Delivery format: {format}": [
+    "Bentuk penyelenggaraan: {format}",
+    "开展形式：{format}"
+  ],
+  "Campaign: {name}": [
+    "Kampanye: {name}",
+    "活动：{name}"
+  ],
+  "Open campaign: {name}": [
+    "Buka kampanye: {name}",
+    "打开活动：{name}"
+  ],
+  "Online attendance link for {name}": [
+    "Tautan kehadiran daring untuk {name}",
+    "{name}的线上参会链接"
+  ],
+  "More actions for {name}": [
+    "Tindakan lain untuk {name}",
+    "{name}的更多操作"
+  ],
+  "System source: {name}": [
+    "Sumber sistem: {name}",
+    "系统来源：{name}"
+  ],
+  "1 promotion attribution needs review": [
+    "1 atribusi promosi perlu ditinjau",
+    "1条推广归因待核实"
+  ],
+  "{count} promotion attributions need review": [
+    "{count} atribusi promosi perlu ditinjau",
+    "{count}条推广归因待核实"
+  ],
+  "1 promotion attribution needs review for {name}": [
+    "1 atribusi promosi untuk {name} perlu ditinjau",
+    "{name}有1条推广归因待核实"
+  ],
+  "{count} promotion attributions need review for {name}": [
+    "{count} atribusi promosi untuk {name} perlu ditinjau",
+    "{name}有{count}条推广归因待核实"
+  ],
+  "Recorded dates need review": [
+    "Tanggal tercatat perlu ditinjau",
+    "已记录日期需核对"
+  ],
+  "Recorded schedule needs review": [
+    "Jadwal tercatat perlu ditinjau",
+    "已记录排期需核对"
+  ],
+  "Date not recorded": [
+    "Tanggal belum tercatat",
+    "日期未填写"
+  ],
+  "End time not recorded": [
+    "Waktu selesai belum tercatat",
+    "结束时间未填写"
+  ],
+  "Start time not recorded": [
+    "Waktu mulai belum tercatat",
+    "开始时间未填写"
+  ],
+  "Starts {date}": [
+    "Mulai {date}",
+    "开始于{date}"
+  ],
+  "Ends {date}": [
+    "Selesai {date}",
+    "结束于{date}"
+  ],
+  "starts {date}": [
+    "mulai {date}",
+    "开始于{date}"
+  ],
+  "ends {date}": [
+    "selesai {date}",
+    "结束于{date}"
+  ],
+  "Recorded: {date} · {time}. Kept until replaced or cleared.": [
+    "Tercatat: {date} · {time}. Dipertahankan sampai diganti atau dikosongkan.",
+    "已记录：{date} · {time}。在明确替换或清除前保留。"
+  ],
+  "Clear {label}": [
+    "Kosongkan {label}",
+    "清除{label}"
+  ],
+  "Chinese": [
+    "Bahasa Mandarin",
+    "中文"
+  ],
+  "Paid social ad": [
+    "Iklan berbayar media sosial",
+    "社交媒体付费广告"
+  ],
+  "Organic social post": [
+    "Posting media sosial tanpa iklan berbayar",
+    "社交媒体自然发布"
+  ],
+  "Paid search ad": [
+    "Iklan penelusuran berbayar",
+    "付费搜索广告"
+  ],
+  "Group message": [
+    "Pesan grup",
+    "群消息"
+  ],
+  "Direct message": [
+    "Pesan langsung",
+    "私信"
+  ],
+  "Email": [
+    "Email",
+    "电子邮件"
+  ],
+  "Poster": [
+    "Poster",
+    "海报"
+  ],
+  "Flyer": [
+    "Selebaran",
+    "传单"
+  ],
+  "Table card": [
+    "Kartu meja",
+    "桌卡"
+  ],
+  "Referral": [
+    "Referensi",
+    "转介绍"
+  ],
+  "Questionnaire → assessment when applicable → AI consultation": [
+    "Kuesioner → asesmen bila diperlukan → konsultasi AI",
+    "问卷 → 按规则测评 → AI咨询"
+  ],
+  "Promotion link: {name}": [
+    "Tautan promosi: {name}",
+    "推广链接：{name}"
+  ],
+  "QR code for {name}": [
+    "Kode QR untuk {name}",
+    "{name}的二维码"
+  ],
+  "QR for legacy campaign {name}": [
+    "Kode QR tautan kampanye lama {name}",
+    "原有活动{name}的二维码"
+  ],
+  "Link copied.": [
+    "Tautan disalin.",
+    "链接已复制。"
+  ],
+  "Copy unavailable. Select and copy the link above.": [
+    "Tidak dapat menyalin. Pilih dan salin tautan di atas secara manual.",
+    "暂时无法复制，请选中上方链接手动复制。"
+  ],
+  "Promotion link saved. Copy the link or download its matching QR code below.": [
+    "Tautan promosi tersimpan. Salin tautan atau unduh kode QR yang sesuai di bawah.",
+    "推广链接已保存，请复制链接或下载对应二维码。"
+  ],
+  "Could not save promotion link.": [
+    "Tautan promosi belum berhasil disimpan.",
+    "推广链接保存失败。"
+  ],
+  "Save outcome unknown. Retry the same request to retrieve the saved link; do not create it again.": [
+    "Hasil penyimpanan belum diketahui. Ulangi permintaan yang sama untuk mengambil tautan tersimpan; jangan membuatnya lagi.",
+    "保存结果尚未确认，请重试原请求查询已保存链接，不要重复创建。"
+  ],
+  "A request ID is required.": [
+    "ID permintaan diperlukan. Muat ulang sebelum mencoba lagi.",
+    "缺少请求ID，请刷新后重试。"
+  ],
+  "Campaign not found.": [
+    "Kampanye tidak ditemukan.",
+    "活动不存在。"
+  ],
+  "Request already used with different values.": [
+    "Permintaan ini sudah digunakan dengan nilai berbeda. Periksa hasil sebelumnya.",
+    "该请求已用于不同内容，请先核对之前的结果。"
+  ],
+  "Select a source, medium, language and supported entry experience. Source codes use letters, numbers, underscores or hyphens.": [
+    "Pilih sumber, media, bahasa, dan alur yang didukung. Kode sumber menggunakan huruf, angka, garis bawah, atau tanda hubung.",
+    "请选择来源、推广方式、语言及支持的入口体验。来源代码可用字母、数字、下划线或连字符。"
+  ],
+  "The request failed. Your input is retained. Retry or ask a CRM Manager.": [
+    "Permintaan gagal. Isian tetap tersedia. Coba lagi atau hubungi CRM Manager.",
+    "操作失败，输入已保留。请重试或联系CRM管理者。"
+  ],
+  "Changes saved.": [
+    "Perubahan tersimpan.",
+    "修改已保存。"
+  ],
+  "Save failed. Your input is retained.": [
+    "Penyimpanan gagal. Isian tetap tersedia.",
+    "保存失败，输入已保留。"
+  ],
+  "Save outcome unknown. Check the result before submitting again.": [
+    "Hasil penyimpanan belum diketahui. Periksa hasil sebelum mengirim lagi.",
+    "保存结果尚未确认，再次提交前请先查询结果。"
+  ],
+  "Keep editing": [
+    "Lanjutkan mengedit",
+    "继续编辑"
+  ],
+  "Discard and continue": [
+    "Buang perubahan & lanjutkan",
+    "放弃并继续"
+  ],
+  "Keep editing, or discard your unsaved changes and continue. Saved records stay unchanged.": [
+    "Lanjutkan mengedit, atau buang perubahan yang belum disimpan untuk melanjutkan. Catatan tersimpan tetap sama.",
+    "可继续编辑，或放弃未保存修改后继续；已保存记录保持不变。"
+  ],
+  "Entry ID:": [
+    "ID tautan:",
+    "推广入口ID："
+  ],
+  "UTM source:": [
+    "Sumber UTM:",
+    "UTM来源："
+  ],
+  "· medium:": [
+    "· media:",
+    "· 推广方式："
+  ],
+  ". Link labels describe configured distribution, not proof of where a visitor actually clicked.": [
+    ". Label tautan menunjukkan pengaturan distribusi, bukan bukti tempat pengunjung benar-benar mengeklik.",
+    "。链接标签表示已配置的投放信息，不证明访问者实际从哪里点击。"
+  ],
+  "Unknown campaign codes": [
+    "Kode kampanye tidak dikenal",
+    "未知活动码"
+  ],
+  "Promotion link issues": [
+    "Masalah tautan promosi",
+    "推广链接问题"
+  ],
+  "Source: {code}": [
+    "Sumber: {code}",
+    "来源：{code}"
+  ],
+  "Conversation last activity": [
+    "Aktivitas percakapan terakhir",
+    "对话最近活动"
+  ],
+  "Application entry": [
+    "Pintu masuk aplikasi",
+    "应用入口"
+  ],
+  "Conversation": [
+    "Percakapan",
+    "对话"
+  ],
+  "(empty value)": [
+    "(nilai kosong)",
+    "（空值）"
+  ],
+  "Promotion link ID (p)": [
+    "ID tautan promosi (p)",
+    "推广入口ID（p）"
+  ],
+  "Saved entry point": [
+    "Sumber masuk tersimpan",
+    "已保存入口来源"
+  ],
+  "Saved placement / medium": [
+    "Penempatan / media tersimpan",
+    "已保存投放位置／方式"
+  ],
+  "Saved customer language": [
+    "Bahasa pelanggan tersimpan",
+    "已保存客户页面语言"
+  ],
+  "verified": [
+    "Terverifikasi",
+    "已核实"
+  ],
+  "unverified": [
+    "Belum terverifikasi",
+    "未核实"
+  ],
+  "The customer belongs to {campaign} ({code}), but promotion ID {p} was not verified for that campaign. Review the evidence; this does not make the customer invalid.": [
+    "Pelanggan diatribusikan ke {campaign} ({code}), tetapi ID promosi {p} belum terverifikasi untuk kampanye itu. Periksa bukti; ini tidak berarti pelanggan tidak valid.",
+    "客户归因于{campaign}（{code}），但推广入口{p}未在该活动中通过核实。请查看证据；这不代表客户无效。"
+  ],
+  "A saved customer has unknown campaign code {code}. It normally comes from the entry link’s c parameter. A saved customer field alone does not prove the original URL or platform.": [
+    "Pelanggan tersimpan membawa kode kampanye tidak dikenal {code}. Kode biasanya berasal dari parameter c pada tautan masuk. Kolom pelanggan saja tidak membuktikan URL atau platform asal.",
+    "已保存客户携带未知活动码{code}，通常来自入口链接的c参数；仅凭客户字段不能证明原始URL或来源平台。"
+  ],
+  "Promotion review data unavailable. Retry.": [
+    "Data verifikasi promosi tidak tersedia. Coba lagi.",
+    "推广核实数据暂不可用，请重试。"
+  ],
+  "Could not save review. Your input is retained.": [
+    "Verifikasi belum berhasil disimpan. Isian tetap tersedia.",
+    "核实保存失败，输入已保留。"
+  ],
+  "Save outcome unknown. Check the saved result or retry the original request.": [
+    "Hasil penyimpanan belum diketahui. Periksa hasil tersimpan atau ulangi permintaan awal.",
+    "保存结果尚未确认，请查询保存结果或重试原请求。"
+  ],
+  "No confirmed result yet. Retry the original request; do not create a second one.": [
+    "Belum ada hasil terkonfirmasi. Ulangi permintaan awal; jangan membuat permintaan kedua.",
+    "尚无已确认结果，请重试原请求，不要另建第二次请求。"
+  ],
+  "Result lookup unavailable.": [
+    "Pencarian hasil tidak tersedia.",
+    "结果查询暂不可用。"
+  ],
+  "Result lookup unavailable. Keep this request and retry.": [
+    "Pencarian hasil tidak tersedia. Pertahankan permintaan ini dan coba lagi.",
+    "结果查询暂不可用，请保留原请求重试。"
+  ],
+  "Review saved for {name}.": [
+    "Verifikasi untuk {name} tersimpan.",
+    "{name}的核实已保存。"
+  ],
+  "Showing promotion issues for {name}.": [
+    "Menampilkan masalah promosi untuk {name}.",
+    "当前显示{name}的推广问题。"
+  ],
+  "Promotion issue: {name}": [
+    "Masalah promosi: {name}",
+    "推广问题：{name}"
+  ],
+  "Review promotion entry for {name}": [
+    "Verifikasi tautan promosi untuk {name}",
+    "核实{name}的推广入口"
+  ],
+  "Applies to {name} only. Original c/p and first-touch fields stay unchanged. No future alias, campaign move, task completion or notification replay.": [
+    "Hanya berlaku untuk {name}. c/p asli dan atribusi pertama tetap sama. Tidak membuat alias untuk kunjungan berikutnya, memindahkan kampanye, menyelesaikan tugas, atau mengirim ulang notifikasi.",
+    "仅作用于{name}。原始c/p及首次来源字段保留；不建立后续别名、不转移活动、不完成任务，也不重放通知。"
+  ],
+  "Decision history ({count})": [
+    "Riwayat keputusan ({count})",
+    "核实历史（{count}）"
+  ],
+  "None": [
+    "Tidak ada",
+    "无"
+  ],
+  "Original:": [
+    "Asli:",
+    "原始值："
+  ],
+  "· Verified entry:": [
+    "· Tautan terverifikasi:",
+    "· 已核实入口："
+  ],
+  "· This customer only": [
+    "· Pelanggan ini saja",
+    "· 仅本客户"
+  ],
+  "Link existing promotion entry": [
+    "Tautkan entri promosi yang ada",
+    "关联已有推广入口"
+  ],
+  "Create promotion entry and link": [
+    "Buat dan tautkan entri promosi",
+    "创建推广入口并关联"
+  ],
+  "Leave unconfirmed": [
+    "Biarkan belum dikonfirmasi",
+    "暂不确认"
+  ],
+  "Mark invalid": [
+    "Tandai tidak valid",
+    "标记无效"
+  ],
+  "The Instagram ad entry already exists under this campaign, but the incoming p was mistyped.": [
+    "Entri iklan Instagram sudah ada pada kampanye ini, tetapi p pada tautan masuk salah ketik.",
+    "活动下已有对应Instagram广告入口，但访问链接的p被输错。"
+  ],
+  "Select that saved entry. Record the verified source, medium and language for this customer; keep the original c/p.": [
+    "Pilih entri tersimpan tersebut. Catat sumber, media, dan bahasa terverifikasi untuk pelanggan ini; pertahankan c/p asli.",
+    "选择已有入口，为本客户保存已核实来源、推广方式及语言；原始c/p保留。"
+  ],
+  "A real campus poster was distributed before its promotion entry was created.": [
+    "Poster kampus yang nyata sudah dibagikan sebelum entri promosinya dibuat.",
+    "校园海报已实际投放，但当时尚未创建对应推广入口。"
+  ],
+  "Confirm source, medium and language. Create a new entry with a new p, then link this customer. Use the new link for future distribution; the old p is not automatically accepted.": [
+    "Konfirmasikan sumber, media, dan bahasa. Buat entri dengan p baru, lalu tautkan pelanggan ini. Gunakan tautan baru untuk distribusi berikutnya; p lama tidak otomatis diterima.",
+    "确认来源、推广方式及语言，创建带新p的入口并关联本客户。后续投放应使用新链接；旧p不会自动获认可。"
+  ],
+  "The campaign is known, but there is not enough evidence to identify the placement.": [
+    "Kampanye dikenali, tetapi bukti belum cukup untuk menentukan penempatannya.",
+    "活动已知，但证据不足以确定具体投放位置。"
+  ],
+  "Save the reason and leave this customer in Needs review. Create no link and no follow-up task.": [
+    "Simpan alasan dan biarkan pelanggan ini dalam Perlu ditinjau. Tidak membuat tautan atau tugas tindak lanjut.",
+    "保存原因，客户继续保留在待核实中；不创建链接或跟进任务。"
+  ],
+  "The p is a test value, a corrupted code or noise with no defensible mapping.": [
+    "p merupakan nilai uji, kode rusak, atau nilai tanpa pemetaan yang didukung bukti.",
+    "p为测试值、损坏代码或无可靠对应关系的干扰值。"
+  ],
+  "Mark this promotion attribution invalid and move it to review history. Keep the customer, campaign attribution and sales tasks. No organic-traffic reclassification.": [
+    "Tandai atribusi promosi tidak valid dan pindahkan ke riwayat. Pertahankan pelanggan, atribusi kampanye, dan tugas penjualan. Tidak memindahkan ke Sumber non-kampanye.",
+    "将该推广归因标记无效并移入核实历史，保留客户、活动归因及销售任务，不重新归入非活动来源。"
+  ],
+  "Template prepared. Review and save it.": [
+    "Templat siap. Periksa lalu simpan.",
+    "模板草稿已准备，请核对后保存。"
+  ],
+  "Template unavailable. Your existing draft is unchanged.": [
+    "Templat tidak tersedia. Draf yang ada tetap sama.",
+    "模板暂不可用，原草稿保持不变。"
+  ],
+  "Drafts saved. No message was sent or welcome message activated.": [
+    "Draf tersimpan. Tidak ada pesan dikirim atau pesan sambutan diaktifkan.",
+    "草稿已保存，未发送消息，也未启用欢迎语。"
+  ],
+  "Save not confirmed. Your drafts remain here; retry saving.": [
+    "Penyimpanan belum terkonfirmasi. Draf tetap tersedia; coba simpan lagi.",
+    "保存尚未确认，草稿已保留，请重试。"
+  ],
+  "Copied. This does not send a message.": [
+    "Disalin. Ini tidak mengirim pesan.",
+    "已复制，尚未发送。"
+  ],
+  "Copy failed. Select and copy the text manually.": [
+    "Gagal menyalin. Pilih dan salin teks secara manual.",
+    "复制失败，请手动选择文本复制。"
+  ],
+  "(Asia/Jakarta)": [
+    "(Asia/Jakarta)",
+    "（Asia/Jakarta）"
+  ],
+  "(Asia/Jakarta)：": [
+    "(Asia/Jakarta):",
+    "（Asia/Jakarta）："
+  ],
+  "Rp": [
+    "Rp",
+    "Rp"
+  ],
+  "e.g. campus_jakarta_a": [
+    "mis. campus_jakarta_a",
+    "例如：campus_jakarta_a"
+  ],
+  "Are you sure you want to delete campaign \"{name}\"?": [
+    "Yakin ingin menghapus kampanye \"{name}\"?",
+    "确定要删除活动「{name}」吗？"
+  ],
+  "Permission denied.": [
+    "Anda tidak memiliki izin untuk tindakan ini.",
+    "你没有执行此操作的权限。"
+  ],
+  "Customer not found.": [
+    "Pelanggan tidak ditemukan atau tidak dapat diakses.",
+    "客户不存在或当前账号无权访问。"
+  ],
+  "No confirmed result for this request.": [
+    "Belum ada hasil terkonfirmasi untuk permintaan ini.",
+    "该请求尚无已确认结果。"
+  ],
+  "Choose an action and provide a review reason.": [
+    "Pilih tindakan dan isi alasan verifikasi.",
+    "请选择核实操作并填写依据。"
+  ],
+  "Request ID already used with different input.": [
+    "ID permintaan sudah digunakan dengan isian berbeda.",
+    "该请求ID已用于不同内容。"
+  ],
+  "This source no longer needs promotion review. Refresh the list.": [
+    "Sumber ini tidak lagi memerlukan verifikasi promosi. Muat ulang daftar.",
+    "此来源已不再需要推广核实，请刷新列表。"
+  ],
+  "Source or review changed. Refresh before saving.": [
+    "Sumber atau hasil verifikasi berubah. Muat ulang sebelum menyimpan.",
+    "来源或核实状态已变化，请刷新后再保存。"
+  ],
+  "Campaign unavailable.": [
+    "Kampanye tidak tersedia.",
+    "活动暂不可用。"
+  ],
+  "Choose a promotion entry belonging to this campaign.": [
+    "Pilih entri promosi yang terkait dengan kampanye ini.",
+    "请选择属于本活动的推广入口。"
+  ],
+  "Leads automatically matched from CRM:": [
+    "Pelanggan CRM yang diatribusikan ke kampanye ini:",
+    "CRM中归因于本活动的客户："
+  ],
+  "Leads Total": [
+    "Pelanggan",
+    "位客户"
+  ],
+  "Campaign customer list unavailable; reopen to retry.": [
+    "Daftar pelanggan kampanye tidak tersedia; buka kembali untuk mencoba lagi.",
+    "活动客户列表暂不可用，请重新打开重试。"
+  ],
+  "No leads have entered through this campaign short link yet.": [
+    "Belum ada pelanggan tersimpan yang diatribusikan ke kampanye ini.",
+    "暂无已保存客户归因于本活动。"
+  ],
+  "View in CRM": [
+    "Lihat di CRM",
+    "在CRM查看"
+  ],
+  "M": [
+    "jt",
+    "百万"
+  ],
+  "1 link": [
+    "1 tautan",
+    "1条链接"
+  ],
+  "Promotion entry review": [
+    "Verifikasi entri promosi",
+    "推广入口核实"
+  ],
+  "Review status": [
+    "Status verifikasi",
+    "核实状态"
+  ],
+  "Original promotion ID (p)": [
+    "ID promosi asli (p)",
+    "原始推广ID（p）"
+  ],
+  "Verified promotion entry": [
+    "Entri promosi terverifikasi",
+    "已核实推广入口"
+  ],
+  "Not linked": [
+    "Belum dikaitkan",
+    "未关联"
+  ],
+  "Verified source / medium": [
+    "Sumber / media terverifikasi",
+    "已核实来源／方式"
+  ],
+  "Not confirmed": [
+    "Belum dikonfirmasi",
+    "未确认"
+  ],
+  "Verified entry ID": [
+    "ID entri terverifikasi",
+    "已核实入口ID"
+  ],
+  "Review reason": [
+    "Alasan verifikasi",
+    "核实原因"
+  ],
+  "Reviewed by / time": [
+    "Diverifikasi oleh / waktu",
+    "核实人／时间"
+  ],
+  "Applies to": [
+    "Berlaku untuk",
+    "作用范围"
+  ],
+  "This customer only; original parameters retained. No future alias.": [
+    "Hanya pelanggan ini; parameter asli tetap disimpan. Bukan alias untuk registrasi mendatang.",
+    "仅此客户；原始参数保留，不作为未来登记别名。"
+  ]
+}

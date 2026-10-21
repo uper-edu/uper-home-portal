@@ -1,7 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+@import "./components/crm/crm-detail-workspace.css";
 @import "tailwindcss";
 @import "./components/hsk-picture-layout.css";
 @import "./components/crm/crm-language-switch.css";
+@import "./components/crm/campaign-workspace.css";
+@import "./components/crm/crm-page-actions.css";
+@import "./components/crm/crm-page-heading.css";
 @import "./components/crm/crm-lead-filters.css";
 @variant dark (.never-match-this-class-to-disable-dark-mode &);
 @plugin "@tailwindcss/typography";
