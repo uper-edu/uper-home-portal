@@ -115,7 +115,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   ) {
     return request("/api/portal/register", v.cookie, {
       fullName: "TEST P0 client",
-      whatsapp: "00000000",
+      whatsapp: "+6281234567892",
       email: "test-p0@example.invalid",
       goal,
       reportedLevel,

@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
+import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {organicCampaignName,canonicalCampaignId} from '../utils/organicCampaign';
 import { 
@@ -29,7 +31,7 @@ import {
 } from '../types/leadSystem';
 
 interface GFormOnboardingModalProps {
-  onComplete: (profile: LeadProfile, lang: 'en' | 'id' | 'zh') => void;
+  onComplete: (profile: LeadProfile, lang: 'en' | 'id' | 'zh') => void | Promise<void>;
   isOpen: boolean;
   initialLang?: 'en' | 'id' | 'zh';
 }
@@ -164,6 +166,30 @@ export default function GFormOnboardingModal({
   // Step wizard for effortless mobile completion
   const [step, setStep] = useState<1 | 2>(1);
 
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [phoneRejected, setPhoneRejected] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [emailRejected, setEmailRejected] = useState(false);
+  const [contactFocusRequest, setContactFocusRequest] = useState<{field: 'phone' | 'email'} | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submitInFlight = useRef(false);
+  const phoneText = contactPhoneText(lang);
+  const phoneInvalid = phoneRejected || (phoneTouched && !validContactPhone(whatsapp));
+  const emailText = contactEmailText(lang);
+  const emailInvalid = emailRejected || (emailTouched && !validContactEmail(email));
+  useEffect(() => {
+    if (step === 1 && contactFocusRequest) (contactFocusRequest.field === 'phone' ? phoneRef : emailRef).current?.focus();
+  }, [step, contactFocusRequest]);
+  const rejectPhone = () => {
+    setErrorMsg(''); setPhoneTouched(true); setStep(1); setContactFocusRequest({field: 'phone'});
+  };
+
+  const rejectEmail = () => {
+    setErrorMsg(''); setEmailTouched(true); setStep(1); setContactFocusRequest({field: 'email'});
+  };
+
   if (!isOpen) return null;
 
   const handleNextStep = () => {
@@ -177,26 +203,11 @@ export default function GFormOnboardingModal({
       );
       return;
     }
-    if (!whatsapp.trim() || whatsapp.replace(/\D/g, '').length < 8) {
-      setErrorMsg(
-        lang === 'en' 
-          ? 'Please enter an active WhatsApp number.' 
-          : lang === 'zh' 
-          ? '请填写有效的 WhatsApp 手机号码。' 
-          : 'Mohon isi nomor WhatsApp yang aktif.'
-      );
+    if (phoneRejected || !validContactPhone(whatsapp)) {
+      rejectPhone();
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
-      setErrorMsg(
-        lang === 'en' 
-          ? 'Please enter a valid email address.' 
-          : lang === 'zh' 
-          ? '请填写有效的电子邮箱。' 
-          : 'Mohon isi alamat email yang valid.'
-      );
-      return;
-    }
+    if (emailRejected || !validContactEmail(email)) {rejectEmail(); return;}
     if (!currentStatus) {
       setErrorMsg(
         lang === 'en'
@@ -211,8 +222,11 @@ export default function GFormOnboardingModal({
     setStep(2);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitInFlight.current) return;
+    if (phoneRejected || !validContactPhone(whatsapp)) {rejectPhone(); return;}
+    if (emailRejected || !validContactEmail(email)) {rejectEmail(); return;}
 
     if (selectedGoals.length === 0) {
       setErrorMsg(
@@ -307,7 +321,22 @@ export default function GFormOnboardingModal({
       tierSource: 'predicted'
     };
 
-    onComplete(leadData, lang);
+    submitInFlight.current = true;
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      await onComplete(leadData, lang);
+    } catch (error) {
+      if (error instanceof Error && error.message === CONTACT_PHONE_ERROR) {
+        setPhoneRejected(true); rejectPhone();
+      } else if (error instanceof Error && error.message === CONTACT_EMAIL_ERROR) {
+        setEmailRejected(true); rejectEmail();
+      } else {
+        setErrorMsg(lang === 'zh' ? '未保存，请重试。已保留您的填写内容。' : lang === 'id' ? 'Belum tersimpan. Coba lagi; isian Anda tetap tersedia.' : 'Not saved. Please retry; your entries have been kept.');
+      }
+    } finally {
+      submitInFlight.current = false; setSubmitting(false);
+    }
   };
 
   return (
@@ -431,7 +460,7 @@ export default function GFormOnboardingModal({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label htmlFor="onboarding-whatsapp" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   {lang === 'en' ? '2. WhatsApp number (Active)' : lang === 'zh' ? '2. WhatsApp 电话号码 (用于接收方案)' : '2. Nomor WhatsApp (Aktif)'} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -439,23 +468,25 @@ export default function GFormOnboardingModal({
                   <input
                     type="tel"
                     required
+                    id="onboarding-whatsapp"
+                    ref={phoneRef}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    aria-invalid={phoneInvalid}
+                    aria-describedby={phoneInvalid ? "onboarding-phone-help onboarding-phone-error" : "onboarding-phone-help"}
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    onChange={(e) => {setWhatsapp(e.target.value); setPhoneRejected(false);}}
+                    onBlur={() => setPhoneTouched(true)}
                     placeholder="e.g. +62 812-3456-7890 / 0812..."
                     className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {lang === 'en' 
-                    ? "Our academic advisor will send your placement report and class schedule via WhatsApp."
-                    : lang === 'zh'
-                    ? 'UPER 课程顾问将通过 WhatsApp 发送您的排班与测评报告。'
-                    : 'Konsultan UPER akan mengirimkan laporan analisis dan jadwal kelas via WA.'}
-                </p>
+                <p id="onboarding-phone-help" className="text-xs text-slate-500 mt-1">{phoneText.help}</p>
+                {phoneInvalid && <p id="onboarding-phone-error" role="alert" className="text-xs text-rose-700 mt-1">{phoneText.error}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label htmlFor="onboarding-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   {lang === 'en' ? "3. What's your email address?" : lang === 'zh' ? '3. 电子邮箱 / Email Address' : '3. Alamat Email'} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -463,19 +494,21 @@ export default function GFormOnboardingModal({
                   <input
                     type="email"
                     required
+                    id="onboarding-email"
+                    ref={emailRef}
+                    autoComplete="email"
+                    inputMode="email"
+                    aria-invalid={emailInvalid}
+                    aria-describedby={emailInvalid ? "onboarding-email-help onboarding-email-error" : "onboarding-email-help"}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {setEmail(e.target.value); setEmailRejected(false);}}
+                    onBlur={() => setEmailTouched(true)}
                     placeholder="name@example.com"
                     className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {lang === 'en'
-                    ? "We'll send your assessment results and learning recommendations here."
-                    : lang === 'zh'
-                    ? '用于发送测评结果与学习建议。'
-                    : 'Untuk pengiriman hasil tes dan rekomendasi belajar.'}
-                </p>
+                <p id="onboarding-email-help" className="text-xs text-slate-500 mt-1">{emailText.help}</p>
+                {emailInvalid && <p id="onboarding-email-error" role="alert" className="text-xs text-rose-700 mt-1">{emailText.error}</p>}
               </div>
 
               <div>
@@ -893,9 +926,10 @@ export default function GFormOnboardingModal({
                 </button>
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="w-2/3 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-primary-600/25 transition-all flex items-center justify-center gap-1.5"
                 >
-                  <span>{nextLabel}</span>
+                  <span>{submitting ? (lang === 'zh' ? '正在保存…' : lang === 'id' ? 'Menyimpan…' : 'Saving…') : nextLabel}</span>
                 </button>
               </div>
             </div>

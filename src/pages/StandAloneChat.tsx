@@ -170,7 +170,7 @@ export default function StandAloneChat() {
 
   // Called when student finishes 30s GForm Profile
   const handleOnboardingComplete = async (completedProfile: LeadProfile, selectedLang: 'en' | 'id' | 'zh') => {
-    try { await registerContact(completedProfile); } catch (e) { alert((e as Error).message); return; }
+    await registerContact(completedProfile);
     setProfile(completedProfile);
     setLang(selectedLang);
     setShowOnboardingModal(false);

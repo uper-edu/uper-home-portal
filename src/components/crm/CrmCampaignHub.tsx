@@ -1,3 +1,4 @@
+import {loadCampaignWorkspace} from "../../utils/campaignWorkspaceRefresh";
 import { campaignUi, campaignUiMessages } from "../../utils/campaignI18n";
 import { CampaignWorkspaceHeading } from "./CampaignWorkspaceHeading";
 import {
@@ -110,10 +111,12 @@ export function CrmCampaignHub({
   canManageCampaigns = false,
   isLight,
   lang,
-  leads,
+  leads: initialLeads,
   onSelectLeadInCrm,
   onNavigateTab,
 }: CrmCampaignHubProps) {
+  const [refreshedLeads, setRefreshedLeads] = useState<CrmLeadRecord[] | null>(null);
+  const leads = refreshedLeads ?? initialLeads;
   const u = campaignUi(lang);
   const t = (en: string, zh: string) =>
     campaignUiMessages[en]
@@ -490,12 +493,9 @@ export function CrmCampaignHub({
     setIsLoading(true);
     setCampaignError(false);
     try {
-      const res = await fetch("/api/crm/campaigns");
-      if (!res.ok) throw Error("Campaign data unavailable");
-      const data = await res.json();
-      if (data?.campaigns) {
-        setCampaigns(data.campaigns);
-      }
+      const data = await loadCampaignWorkspace(fetch);
+      setCampaigns(data.campaigns);
+      setRefreshedLeads(data.leads);
     } catch (err) {
       setCampaignError(true);
       console.error("[CAMPAIGN HUB] Failed to fetch campaigns:", err);
@@ -564,28 +564,8 @@ export function CrmCampaignHub({
       console.error("Delete error:", err);
     }
   };
-  const [campaignLeads, setCampaignLeads] = useState<CrmLeadRecord[]>([]);
-  const [campaignLeadError, setCampaignLeadError] = useState(false);
-  useEffect(() => {
-    if (!activeDetailCampaign) return;
-    let alive = true;
-    setCampaignLeadError(false);
-    fetch("/api/crm/leads?ownership=all&workScope=all")
-      .then(async (r) => {
-        if (!r.ok) throw Error("unavailable");
-        const d = await r.json();
-        if (alive) setCampaignLeads(d.leads || []);
-      })
-      .catch(() => {
-        if (alive) {
-          setCampaignLeads([]);
-          setCampaignLeadError(true);
-        }
-      });
-    return () => {
-      alive = false;
-    };
-  }, [activeDetailCampaign?.id]);
+  const campaignLeads = leads;
+  const campaignLeadError = campaignError;
   // Campaign cohort is independent of the worklist's current filters.
 
   const matchedLeadsForActiveCampaign = useMemo(() => {

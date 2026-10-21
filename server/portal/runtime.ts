@@ -1,4 +1,6 @@
 import {promotionAttribution} from "./campaignPromotion.ts";
+import {validContactEmail, CONTACT_EMAIL_ERROR} from "../../src/utils/contactEmail.ts";
+import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
 import {recordCampaignSource} from './campaignSources.ts';
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
@@ -362,6 +364,11 @@ export async function mountPortal(app: Express) {
         400,
         "Submit answers through the assessment endpoint; client scores are not accepted",
       );
+    for (const field of ["whatsapp", "phone"]) {
+      if (b[field] !== undefined && typeof b[field] !== "string") fail(400, CONTACT_PHONE_ERROR);
+    }
+    if (!validContactPhone(b.whatsapp || b.phone || "", false)) fail(400, CONTACT_PHONE_ERROR);
+    if (!validContactEmail(b.email === undefined ? "" : b.email, false)) fail(400, CONTACT_EMAIL_ERROR);
     const name = String(b.fullName || "").trim(),
       phone = String(b.whatsapp || b.phone || "").trim(),
       email = String(b.email || "")
@@ -1367,7 +1374,7 @@ export async function mountPortal(app: Express) {
       });
       const missingReferences = (
         await pool.query(
-          "SELECT r.id,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL",
+          "SELECT r.id,r.enabled,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL",
         )
       ).rows;
       res.json({

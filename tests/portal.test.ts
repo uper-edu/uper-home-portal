@@ -128,14 +128,14 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const lead = (
           await request("/api/portal/register", {
             fullName: "Test",
-            phone: "000123",
+            phone: "+6281234567890",
             email: "test@example.invalid",
           })
         ).data.lead;
         const again = (
           await request("/api/portal/register", {
             fullName: "Test",
-            phone: "000123",
+            phone: "+6281234567890",
             email: "test@example.invalid",
           })
         ).data.lead;
@@ -417,7 +417,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         try {
           const r = await request("/api/portal/register", {
             fullName: "Fail",
-            phone: "000",
+            phone: "+6281234567891",
             email: "fail@example.invalid",
           });
           assert.equal(r.status, 503);
@@ -454,7 +454,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const lead = (
           await request("/api/portal/register", {
             fullName: "Activity QA",
-            phone: "000123",
+            phone: "+6281234567890",
             email: "test@example.invalid",
           })
         ).data.lead;

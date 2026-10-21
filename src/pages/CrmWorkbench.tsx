@@ -1080,7 +1080,7 @@ function CrmWorkspace({
               {t("Customer list", "客户列表")}
             </button>
           </>}/>
-        {(hasDraft||isSubmittingLog)&&<CrmSaveFeedback state={isSubmittingLog?"saving":"dirty"}/>}
+        {(hasDraft||isSubmittingLog)&&<CrmSaveFeedback lang={lang} state={isSubmittingLog?"saving":"dirty"}/>}
         <div className="crm-panel-next"><CrmNextTaskSummary lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>
         <CrmDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
           {id:"activities",label:t("Follow-up","跟进"),icon:ListChecks},
@@ -1100,7 +1100,7 @@ function CrmWorkspace({
               {crmError(leadActionError, lang)}
             </p>
           )}
-          {profileSave&&activeDrawerTab==="profile"&&<CrmSaveFeedback state={profileSave==="saving"?"saving":"saved"}>{profileSave==="saving"?t("Saving customer details…","正在保存客户资料…"):t("Customer details saved.","客户资料已保存。")}</CrmSaveFeedback>}
+          {profileSave&&activeDrawerTab==="profile"&&<CrmSaveFeedback lang={lang} state={profileSave==="saving"?"saving":"saved"}>{profileSave==="saving"?t("Saving customer details…","正在保存客户资料…"):t("Customer details saved.","客户资料已保存。")}</CrmSaveFeedback>}
           {activeDrawerTab === "profile" && (
             <>
             <CrmCustomerProfile
@@ -1143,7 +1143,7 @@ function CrmWorkspace({
               command={followupCommand} onRequestEdit={requestFollowupEdit} workflowOpen={isAddLogOpen} modalSuspended={Boolean(pendingNavigation)} workflowTask={workflowTask} onRecord={()=>startContactRecord()} onArrange={()=>startContactRecord(true)} onIdentity={()=>changeCustomerTab("profile")} journey={journeyTimelineEvents}
               context={({data,error}:any)=><CrmFollowupContext lead={selectedLead} lang={lang} timezone={filterTimezone} onSource={viewTaskSource} tasks={data?.tasks} facts={data?.facts} taskError={error} onTask={openTaskList}/>}
             >
-              {workflowNotice&&<CrmSaveFeedback state="saved">{t("Result saved","处理结果已保存")} · {t("Completed tasks","已完成任务")} {workflowNotice.completed}{workflowNotice.completedNames?` · ${workflowNotice.completedNames}`:""} · {workflowNotice.recordOnly||workflowNotice.kept?(lang==='zh'?'已保留原安排':lang==='id'?'Pengaturan awal dipertahankan':'Existing arrangements preserved'):workflowNotice.created?t("Next task scheduled","已安排下一步任务"):t("Next arrangement recorded","已记录后续安排")}</CrmSaveFeedback>}
+              {workflowNotice&&<CrmSaveFeedback lang={lang} state="saved">{t("Result saved","处理结果已保存")} · {t("Completed tasks","已完成任务")} {workflowNotice.completed}{workflowNotice.completedNames?` · ${workflowNotice.completedNames}`:""} · {workflowNotice.recordOnly||workflowNotice.kept?(lang==='zh'?'已保留原安排':lang==='id'?'Pengaturan awal dipertahankan':'Existing arrangements preserved'):workflowNotice.created?t("Next task scheduled","已安排下一步任务"):t("Next arrangement recorded","已记录后续安排")}</CrmSaveFeedback>}
               {isAddLogOpen && <CrmWorkflowForm key={selectedLead.id+String(workflowTask)+String(administrative)} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} timezone={filterTimezone} initialDraft={draftCache.current[selectedLead.id]} onDraft={(draft:any)=>{draftCache.current[selectedLead.id]=draft;}} administrative={administrative} workCalendar={policyConfig.businessHours} selectedTask={workflowTask} sourceMessage={workflowSource} onDirty={()=>setWorkflowDirty(true)} onBusy={setIsSubmittingLog} onCancel={()=>discardDraft()} onSaved={async(data:any,next:boolean)=>{delete draftCache.current[selectedLead.id];if(retainedDraft?.id===selectedLead.id)setRetainedDraft(null);const candidates=filteredLeads.slice(filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+1);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setSelectedLead((current:any)=>current?.id===selectedLead.id?({...current,...data.lead,attention:{...current.attention,tasks:(current.attention?.tasks||[]).filter((task:any)=>!data.completedTaskIds.includes(task.id))}}):current);setDetailRefreshVersion(v=>v+1);setIsAddLogOpen(false);setWorkflowNotice({completed:data.completedTaskIds.length,completedNames:data.completedTaskIds.map((id:string)=>{const task=(selectedLead.attention?.tasks||[]).find((task:any)=>task.id===id);return task?describeFollowUpTask(task,lang,filterTimezone).action:id;}).join("；"),kept:data.lead?.followUpDisposition?.kind==="keep",created:Boolean(data.createdTaskId),recordOnly:data.recordOnly});fetchLeads(true);if(next){for(const candidate of candidates){const access=await fetch(`/api/crm/leads/${candidate.id}/tasks`);if([403,404].includes(access.status))continue;if(!access.ok){setLeadActionError(lang==='zh'?'记录已保存，下一位暂不可加载':lang==='id'?'Catatan disimpan; pelanggan berikutnya belum tersedia':'Record saved; next customer unavailable');return;}handleOpenLeadDrawer(candidate,'activities',true);return;}setIsDrawerOpen(false);setSelectedLead(null);writeLeadRoute();setQueueComplete(true);}}}/>}
 
               {!isAddLogOpen&&<CrmDisclosure heading={t("Sales playbook","销售话术参考")}>

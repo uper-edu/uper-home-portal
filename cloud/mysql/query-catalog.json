@@ -1394,8 +1394,8 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
-  "SELECT r.id,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL": {
-    "sql": "SELECT r.id,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL",
+  "SELECT r.id,r.enabled,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL": {
+    "sql": "SELECT r.id,r.enabled,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL",
     "sources": [
       "server/portal/runtime.ts"
     ]

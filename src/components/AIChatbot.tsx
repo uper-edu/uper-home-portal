@@ -1,3 +1,5 @@
+import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
+import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
 import { safeHskResult } from "../data/hskReportHistory";
 import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
 import HskAssessmentReport from './HskAssessmentReport';
@@ -262,7 +264,16 @@ export default function AIChatbot() {
   const [showForm, setShowForm] = useState<boolean>(false);
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
+  const formPhoneRef = useRef<HTMLInputElement>(null);
+  const [formPhoneTouched, setFormPhoneTouched] = useState(false);
+  const [formPhoneRejected, setFormPhoneRejected] = useState(false);
+  const formPhoneInvalid = formPhoneRejected || (formPhoneTouched && !validContactPhone(formPhone));
+
   const [formEmail, setFormEmail] = useState('');
+  const formEmailRef = useRef<HTMLInputElement>(null);
+  const [formEmailTouched, setFormEmailTouched] = useState(false);
+  const [formEmailRejected, setFormEmailRejected] = useState(false);
+  const formEmailInvalid = formEmailRejected || (formEmailTouched && !validContactEmail(formEmail));
   const [formInterest, setFormInterest] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [formSuccess, setFormSuccess] = useState(false);
@@ -456,6 +467,8 @@ export default function AIChatbot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const currentLang = i18n.language || 'id';
+  const phoneText = contactPhoneText(currentLang);
+  const emailText = contactEmailText(currentLang);
 
   // Trigger auto-focus whenever the chat window is opened
   useEffect(() => {
@@ -666,7 +679,13 @@ export default function AIChatbot() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim() || !formPhone.trim() || !formEmail.trim() || !formInterest) {
+    if (formPhoneRejected || !validContactPhone(formPhone)) {
+      setFormPhoneTouched(true); formPhoneRef.current?.focus(); return;
+    }
+    if (formEmailRejected || !validContactEmail(formEmail)) {
+      setFormEmailTouched(true); formEmailRef.current?.focus(); return;
+    }
+    if (!formName.trim() || !formInterest) {
       setFormError(currentLang.startsWith('zh') ? '请完整填写所有必填字段。' : 'Semua kolom wajib diisi dengan benar.');
       trackFormSubmit('chatbot_lead_form', false, { reason: 'validation_error' });
       return;
@@ -735,6 +754,12 @@ export default function AIChatbot() {
         scrollToBottom('smooth');
       }, 500);
     } catch (err: any) {
+      if (err?.message === CONTACT_PHONE_ERROR) {
+        setFormPhoneRejected(true); formPhoneRef.current?.focus(); return;
+      }
+      if (err?.message === CONTACT_EMAIL_ERROR) {
+        setFormEmailRejected(true); formEmailRef.current?.focus(); return;
+      }
       console.error('[SUBMIT FORM ERROR]', err);
       trackFormSubmit('chatbot_lead_form', false, { reason: 'api_error', error: err.message || 'unknown' });
       setFormError(
@@ -1250,35 +1275,51 @@ export default function AIChatbot() {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-700 flex items-center gap-0.5">
+                      <label htmlFor="form-phone" className="text-[11px] font-bold text-slate-700 flex items-center gap-0.5">
                         {getFormText().phone} <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="tel"
                         required
+                        ref={formPhoneRef}
+                        inputMode="tel"
+                        autoComplete="tel"
+                        aria-invalid={formPhoneInvalid}
+                        aria-describedby={formPhoneInvalid ? "form-phone-help form-phone-error" : "form-phone-help"}
                         value={formPhone}
-                        onChange={(e) => setFormPhone(e.target.value)}
+                        onChange={(e) => {setFormPhone(e.target.value); setFormPhoneRejected(false);}}
+                        onBlur={() => setFormPhoneTouched(true)}
                         placeholder={getFormText().phonePlaceholder}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-primary-500 focus:bg-white text-slate-800 text-xs rounded-xl px-3.5 py-2.5 outline-none transition-all placeholder:text-slate-400"
                         disabled={formLoading}
                         id="form-phone"
                       />
+                      <p id="form-phone-help" className="text-xs text-slate-500">{phoneText.help}</p>
+                      {formPhoneInvalid && <p id="form-phone-error" role="alert" className="text-xs text-rose-700">{phoneText.error}</p>}
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-bold text-slate-700 flex items-center gap-0.5">
+                      <label htmlFor="form-email" className="text-[11px] font-bold text-slate-700 flex items-center gap-0.5">
                         {getFormText().email} <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="email"
                         required
+                        ref={formEmailRef}
+                        autoComplete="email"
+                        inputMode="email"
+                        aria-invalid={formEmailInvalid}
+                        aria-describedby={formEmailInvalid ? "form-email-help form-email-error" : "form-email-help"}
                         value={formEmail}
-                        onChange={(e) => setFormEmail(e.target.value)}
+                        onChange={(e) => {setFormEmail(e.target.value); setFormEmailRejected(false);}}
+                        onBlur={() => setFormEmailTouched(true)}
                         placeholder={getFormText().emailPlaceholder}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-primary-500 focus:bg-white text-slate-800 text-xs rounded-xl px-3.5 py-2.5 outline-none transition-all placeholder:text-slate-400"
                         disabled={formLoading}
                         id="form-email"
                       />
+                      <p id="form-email-help" className="text-xs text-slate-500">{emailText.help}</p>
+                      {formEmailInvalid && <p id="form-email-error" role="alert" className="text-xs text-rose-700">{emailText.error}</p>}
                     </div>
 
                     <div className="flex flex-col gap-1">

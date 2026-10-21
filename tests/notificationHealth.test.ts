@@ -37,3 +37,6 @@ test("migration-frozen failures stay auditable without impersonating current cha
     { failed: 2, review: 0 },
   );
 });
+test('disabled missing references are maintenance warnings, not delivery failures',()=>{
+ assert.deepEqual(notificationHealth({missingReferences:[{enabled:0},{enabled:false},{enabled:1}]},[{state:'failed'},{state:'unknown'}]),{failed:2,review:1});
+});

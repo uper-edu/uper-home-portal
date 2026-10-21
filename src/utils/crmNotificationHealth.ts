@@ -2,7 +2,7 @@ export function notificationHealth(ready: any, jobs: any[]) {
   const current = jobs.filter((job) => !job.historicalHold);
   return {
     failed:
-      (ready.missingReferences?.length || 0) +
+      (ready.missingReferences || []).filter((reference: any) => reference.enabled !== false && reference.enabled !== 0).length +
       (ready.channels || []).filter(
         (channel: any) =>
           channel.mode === "live" &&
