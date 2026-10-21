@@ -485,7 +485,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const eventId = crypto.randomUUID(),
           jobId = crypto.randomUUID();
         await pool.query(
-          "INSERT INTO outbox(id,type,lead_id,payload,processed_at) VALUES(:p1,'conversation.updated',:p2,'{}',UTC_TIMESTAMP(6))",
+          "INSERT INTO outbox(id,type,lead_id,payload,processed_at) VALUES(:p1,'assessment.completed',:p2,'{}',UTC_TIMESTAMP(6))",
           [eventId, lead.id],
         );
         await pool.query(

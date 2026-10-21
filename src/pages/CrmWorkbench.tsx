@@ -1,3 +1,4 @@
+import {CrmPolling,crmJson,CrmRefreshError,stableCrmOrder} from "../utils/crmPolling";
 import { CrmPageIdentity } from "../components/crm/CrmPageIdentity";
 import { CrmPageAction } from "../components/crm/CrmPageAction";
 import {leadDetailTab,leadDetailUrl} from "../utils/crmDetailNavigation";
@@ -227,7 +228,12 @@ function CrmWorkspace({
   const [filterTimezone, setFilterTimezone] = useState("Asia/Jakarta");
   const [showOverview, setShowOverview] = useState(employee.permissions.includes("crm.leader"));
   const [processOverview,setProcessOverview]=useState<ProcessMetrics|null>(null);
-  const requestVersion = useRef(0);
+  const poller = useRef<CrmPolling|null>(null);
+  const [refreshProblem,setRefreshProblem]=useState("");
+  const [lastListRefresh,setLastListRefresh]=useState("");
+  const [pendingListOrder,setPendingListOrder]=useState(false);
+  const [newActivity,setNewActivity]=useState<number|null>(null);
+  const cursorRef=useRef("");
   const queryKey = filterQuery({ ...filters, search: appliedSearch });
   useEffect(() => {
     const timer = setTimeout(
@@ -437,70 +443,78 @@ function CrmWorkspace({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasDraft, policyControls?.isDirty]);
-  // Fetch leads from backend
-  const fetchLeads = async (quiet = false) => {
-    const version = ++requestVersion.current;
-    if (!quiet) setIsLoading(true);
-    try {
-      const res = await fetch(`/api/crm/leads?${queryKey}`);
-      if (version !== requestVersion.current) return;
-      if (!res.ok) {
-        if([401,403].includes(res.status)){setLeads([]);setOwnerOptions([]);}
-        const error = await res.json();
-        throw Error(error.error || String(res.status));
-      }
-      if (res.ok) {
-        const data = await res.json();
-        if (version !== requestVersion.current) return;
-        setLeadActionError("");
-        setOwnerOptions(data.ownerOptions || []);
-        setFilterTimezone(data.timezone || "Asia/Jakarta");
-        setLeads(data.leads || []);
-        if (data.dataScope) setDataScope(data.dataScope);
-        setProcessOverview(data.processMetrics || null);
-        // Update selected lead if drawer is open
-        setSelectedLead((current) => {
-          if (!current) return current;
-          const updated = (data.leads || []).find(
-            (l: CrmLeadRecord) => l.id === current.id,
-          );
-          return updated ? { ...current, ...updated } : current;
+  // A query generation owns its channels; changing query/access cancels older results.
+  const refreshContext=useRef({hasDraft,isSubmittingLog});
+  refreshContext.current={hasDraft,isSubmittingLog};
+  const fetchLeads = (quiet=false) => poller.current?.refresh(quiet?'mutation':'manual') || Promise.resolve();
+  useEffect(() => {
+    if(crmModule!=="leads") return;
+    let disposed=false;
+    cursorRef.current="";setLeads([]);setPendingListOrder(false);setNewActivity(null);setLastListRefresh("");setRefreshProblem("");
+    const current=new CrmPolling({
+      list:async(signal,reason)=>{
+        const data=await crmJson(`/api/crm/leads?${queryKey}`,signal);
+        if(signal.aborted||disposed)return;
+        cursorRef.current=data.changeCursor||"";
+        setRefreshProblem("");setLastListRefresh(new Date().toISOString());
+        setOwnerOptions(data.ownerOptions||[]);setFilterTimezone(data.timezone||"Asia/Jakarta");
+        setLeads(previous=>{
+          if(reason==='manual'||reason==='initial'||!previous.length){setPendingListOrder(false);return data.leads||[];}
+          const stable=stableCrmOrder(previous,data.leads||[]);
+          setPendingListOrder(stable.map(row=>row.id).join('|')!==(data.leads||[]).map((row:any)=>row.id).join('|'));
+          return stable;
         });
-      }
-    } catch (err) {
-      if (version !== requestVersion.current) return;
-      console.error("Failed to load CRM leads:", err);
-      setLeadActionError((err as Error).message);
-    } finally {
-      if (version === requestVersion.current) setIsLoading(false);
-    }
-  };
-  const fetchLeadsRef = useRef(fetchLeads);
-  useEffect(() => {
-    fetchLeadsRef.current = fetchLeads;
-  });
-  useEffect(() => {
-    fetchLeads();
-    const timer = setInterval(() => fetchLeadsRef.current(true), 5000);
-    const accessChanged=()=>void fetchLeadsRef.current(true);
+        if(data.dataScope)setDataScope(data.dataScope);
+        setProcessOverview(data.processMetrics||null);
+        if(!refreshContext.current.hasDraft&&!refreshContext.current.isSubmittingLog){
+          setSelectedLead(current=>{if(!current)return current;const updated=(data.leads||[]).find((row:any)=>row.id===current.id);return updated?{...current,...updated}:current;});
+          setDetailRefreshVersion(value=>value+1);
+        }
+      },
+      changes:async(signal)=>{
+        const data=await crmJson('/api/crm/lead-changes',signal);
+        if(signal.aborted||disposed)return;
+        setRefreshProblem(value=>value==="changes-timeout"||value==="changes-unavailable"?"":value);
+        const previous=cursorRef.current;
+        if(previous&&previous!==data.cursor){
+          setNewActivity(data.unreadCustomers);void current.refresh('automatic');
+        }
+      },
+      busy:setIsLoading,
+      error:(error,channel)=>{
+        const code=error instanceof CrmRefreshError?error.code:'unavailable';setRefreshProblem(code==='unauthorized'?code:channel==='changes'?'changes-'+code:code);
+        if(code==='unauthorized'){
+          setLeads([]);setOwnerOptions([]);setProcessOverview(null);setNewActivity(null);
+          // Preserve unsaved text, but remove customer data after access is revoked.
+          const draft=Object.entries(draftCache.current).find(([,draft]:any)=>draft.summary||draft.action||draft.arrangementReason);
+          if(draft)setRetainedDraft({id:draft[0],...draft[1]});
+          setSelectedLead(null);setIsDrawerOpen(false);
+          current.setVisible(false);
+        }
+      },
+    });
+    poller.current=current;
+    const visibility=()=>current.setVisible(document.visibilityState==='visible');
+    const accessChanged=()=>{setLeads([]);setOwnerOptions([]);setProcessOverview(null);cursorRef.current="";void current.refresh('access');};
+    document.addEventListener('visibilitychange',visibility);
     window.addEventListener('uper-access-changed',accessChanged);
-    return () => {
-      window.removeEventListener('uper-access-changed',accessChanged);
-      clearInterval(timer);
-      requestVersion.current++;
-    };
-  }, [queryKey, selectedLead?.id]);
+    visibility();
+    return()=>{disposed=true;current.setVisible(false);if(poller.current===current)poller.current=null;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('uper-access-changed',accessChanged);};
+  },[queryKey,employee.id,crmModule]);
   useEffect(() => {
     if (!isDrawerOpen || !selectedLead?.id) return;
     const id = selectedLead.id;
     let active = true;
+    let timer:ReturnType<typeof setTimeout>;let controller:AbortController|null=null;
+    let failures=0;
     const refresh = async () => {
+      if(!active||document.visibilityState!=="visible"||refreshContext.current.hasDraft||refreshContext.current.isSubmittingLog)return;
+      controller=new AbortController();const signal=controller.signal;
+      const timeout=setTimeout(()=>controller?.abort(),20000);
       try {
-        const response = await fetch(
-          `/api/crm/leads/${encodeURIComponent(id)}`,
-        );
+        const response = await fetch(`/api/crm/leads/${encodeURIComponent(id)}`,{signal});
         const data = await response.json();
-        if (!active) return;
+        if (!active||signal.aborted) return;
         if (!response.ok) {
           if ([401, 403, 404].includes(response.status)) {
             const draft=draftCache.current[id] || (attendanceCache.current[id]&&{...attendanceCache.current[id],summary:attendanceCache.current[id].reason});
@@ -511,6 +525,8 @@ function CrmWorkspace({
           }
           throw Error(data.error || "Lead not found");
         }
+        failures=0;
+        if(refreshContext.current.hasDraft||refreshContext.current.isSubmittingLog)return;
         setSelectedLead((current) =>
           current?.id === id
             ? {
@@ -528,14 +544,15 @@ function CrmWorkspace({
             : current,
         );
       } catch (e) {
-        if (active) setLeadActionError((e as Error).message);
-      }
+        if (active&&!signal.aborted) {failures++;setLeadActionError((e as Error).message);}
+      } finally {clearTimeout(timeout);if(active&&document.visibilityState==="visible")timer=setTimeout(refresh,Math.min(120000,30000*2**failures));}
     };
-    refresh();
-    const timer = setInterval(refresh, 5000);
+    const visibility=()=>{clearTimeout(timer);controller?.abort();if(document.visibilityState==="visible")void refresh();};
+    document.addEventListener("visibilitychange",visibility);
+    void refresh();
     return () => {
       active = false;
-      clearInterval(timer);
+      clearTimeout(timer);controller?.abort();document.removeEventListener("visibilitychange",visibility);
     };
   }, [isDrawerOpen, selectedLead?.id, detailRefreshVersion]);
   // Load SLA & Cadence Policy Configuration
@@ -1569,6 +1586,12 @@ function CrmWorkspace({
             {showOverview && <CrmProcessOverview metrics={processOverview} error={Boolean(leadActionError)} lang={lang} isLight={isLight} timezone={filterTimezone} leader={canAssign} employees={employees}/>}
             {retainedDraft&&<section className="crm-workflow-form" role="region" aria-label={lang==='zh'?'保留的未保存草稿':lang==='id'?'Draf belum tersimpan':'Retained unsaved draft'}><p role="alert">{lang==='zh'?'客户访问权限已变化，未保存草稿已保留；重新获得权限后打开客户可继续。':lang==='id'?'Akses pelanggan berubah. Draf disimpan di halaman ini; buka pelanggan setelah akses dipulihkan.':'Customer access changed. Your draft is retained on this page; reopen after access is restored.'}</p><textarea readOnly aria-label={lang==='zh'?'草稿内容':lang==='id'?'Isi draf':'Draft content'} value={[retainedDraft.summary,retainedDraft.action,retainedDraft.purpose,retainedDraft.date,retainedDraft.arrangementReason,retainedDraft.reviewDate].filter(Boolean).join('\n')}/><button type="button" className="crm-work-button" onClick={()=>{delete draftCache.current[retainedDraft.id];delete attendanceCache.current[retainedDraft.id];setRetainedDraft(null);}}>{lang==='zh'?'丢弃草稿':lang==='id'?'Buang draf':'Discard draft'}</button></section>}
             {queueComplete&&<p role="status">{lang==='zh'?'已到当前列表末尾，请核对剩余待办':lang==='id'?'Akhir daftar tercapai; periksa tugas yang masih terbuka':'End of current list; review remaining tasks'}</p>}
+            <div className="crm-refresh-status" role="status" aria-live="polite">
+              {lastListRefresh&&<span>{adminText(lang,'Last refreshed','Terakhir diperbarui','上次刷新')} {formatCrmOperatingTime(lastListRefresh,filterTimezone)}</span>}
+              {newActivity!==null&&<span> · {adminText(lang,'Customer activity updated','Aktivitas pelanggan diperbarui','客户动态已更新')} · {adminText(lang,'Unread customers','Pelanggan belum dibaca','未读客户')} {newActivity}</span>}
+              {pendingListOrder&&<button className="crm-work-button" onClick={()=>void fetchLeads()}>{adminText(lang,'Update order','Perbarui urutan','更新排序')}</button>}
+              {refreshProblem&&<><span> · {refreshProblem==='timeout'||refreshProblem==='changes-timeout'?adminText(lang,'Refresh timed out. Displayed data may be outdated.','Pembaruan melewati batas waktu. Data yang ditampilkan mungkin belum terbaru.','刷新超时，已显示数据可能不是最新。'):refreshProblem==='unauthorized'?adminText(lang,'Access changed. Sign in again.','Akses berubah. Silakan masuk kembali.','访问权限已变化，请重新登录。'):adminText(lang,'Refresh unavailable. Displayed data may be outdated.','Pembaruan gagal. Data yang ditampilkan mungkin belum terbaru.','刷新失败，已显示数据可能不是最新。')}</span><button disabled={isLoading||refreshProblem==='unauthorized'} className="crm-work-button" onClick={()=>void fetchLeads()}>{adminText(lang,'Retry','Coba lagi','重试')}</button></>}
+            </div>
             {leadActionError && (
               <p role="alert" className="text-xs text-rose-500">
                 {crmError(leadActionError, lang)}
@@ -1585,6 +1608,7 @@ function CrmWorkspace({
               isLight={isLight}
               timezone={filterTimezone}
               loading={isLoading}
+              loadUnavailable={Boolean(refreshProblem&&!lastListRefresh)||refreshProblem==='unauthorized'}
               employeeId={employee.id}
               employees={employees}
               onClaim={employee.permissions.includes("crm.claim")?(lead)=>claimLead(lead.id):undefined}

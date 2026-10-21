@@ -251,7 +251,7 @@
     "layer": "contract",
     "object": "LeadAttention",
     "key": "observedAt",
-    "type": "string",
+    "type": "string | null",
     "optional": false,
     "source": "src/types/crmLead.ts"
   },
@@ -1045,6 +1045,14 @@
     "key": "touchCount",
     "type": "number",
     "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "noResponseSequence",
+    "type": "import(\"../utils/crmNoResponse\").NoResponseSequence",
+    "optional": true,
     "source": "src/types/crmLead.ts"
   },
   {

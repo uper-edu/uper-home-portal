@@ -1,3 +1,4 @@
+import {customerReplied} from "./noResponse.ts";
 import { createHash, randomUUID } from "node:crypto";
 export function invalid(message: string, status = 400): never {
   throw Object.assign(Error(message), { status });
@@ -73,6 +74,10 @@ export async function engagement(
   data: any,
 ) {
   const key = kind + ":" + sourceId;
+  const lead=(await c.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",[leadId])).rows[0];
+  const exists=(await c.query("SELECT id FROM crm_engagements WHERE id=:p1",[key])).rows.length;
+  if(!exists && lead && kind==='message' && typeof data.text==='string' && data.text.trim())
+    await customerReplied(c,leadId,key,data.messageRecordedAt);
   await c.query(
     "INSERT INTO crm_engagements(id,lead_id,kind,source_id,data) VALUES(:p1,:p2,:p3,:p4,:p5) ON DUPLICATE KEY UPDATE id=id",
     [key, leadId, kind, sourceId, data],

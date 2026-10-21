@@ -1,3 +1,4 @@
+import {leadChanges} from "./leadChanges.ts";
 import {promotionAttribution} from "./campaignPromotion.ts";
 import {validContactEmail, CONTACT_EMAIL_ERROR} from "../../src/utils/contactEmail.ts";
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
@@ -40,7 +41,7 @@ import {
 } from "./notificationDelivery.ts";
 import crypto from "node:crypto";
 import { DEFAULT_CRM_POLICY_CONFIG } from "../../src/types/crmPolicyConfig.ts";
-import { workTimeErrors } from "../../src/utils/crmPolicyValidation.ts";
+import { effectivePolicy, mergePolicyConfig, policySla } from "../../src/utils/crmPolicyConfigValidation.ts";
 import {
   pool,
   tx,
@@ -164,13 +165,19 @@ async function leadAccess(req: Request, permission = "crm.read") {
   return { e, l };
 }
 async function visibleLeadProfiles(e: any) {
+  const snapshot = (await pool.query("SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff")).rows[0].cutoff;
   const leads = (await pool.exportLeads([])).rows
     .map((r) => ({
       ...r.profile,
       chatTranscript: (r.profile.chatTranscript || []).map(normalizeCrmMessage),
     }))
     .filter((p) => allowed(e, p));
-  const attention = (await pool.leadAttention([e.id])).rows;
+  await attachLeadAttention(e, leads, snapshot);
+  await attachBuyingEvidence(pool,leads);
+  return leads;
+}
+async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
+  const attention = (await pool.leadAttention([e.id, leads.map(l=>l.id), snapshot])).rows;
   const pending=(await pool.query("SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE state='pending' GROUP BY lead_id")).rows;
   const pendingMap=new Map(pending.map((r:any)=>[r.lead_id,Number(r.n)]));
   const byId = new Map(attention.map((a) => [a.id, a]));
@@ -192,8 +199,6 @@ async function visibleLeadProfiles(e: any) {
     };
   }
 
-  await attachBuyingEvidence(pool,leads);
-  return leads;
 }
 export async function mountPortal(app: Express) {
   if (!databaseConfigured()) {
@@ -678,10 +683,15 @@ export async function mountPortal(app: Express) {
   app.post("/api/crm/leads/sync-chat", (_q, r) => {
     r.status(410).json({ error: "Use owned conversations" });
   });
+  app.get("/api/crm/lead-changes", wrap(async (req,res)=>{
+    const employee=await staff(req);
+    res.set("Cache-Control","no-store").json(await leadChanges(pool,employee));
+  }));
   app.get(
     "/api/crm/leads",
     wrap(async (req, res) => {
       const e = await staff(req);
+      const changes = await leadChanges(pool,e);
       const leads = await visibleLeadProfiles(e);
       let filters;
       try {
@@ -711,6 +721,8 @@ export async function mountPortal(app: Express) {
       );
       res.json({
         ...result,
+        changeCursor: changes.cursor,
+        unreadCustomers: changes.unreadCustomers,
         processMetrics: processMetrics(result.leads, now),
         dataScope: e.scope,
         employeeId: e.id,
@@ -726,9 +738,12 @@ export async function mountPortal(app: Express) {
       const cutoff = req.body.readThrough;
       if (typeof cutoff !== "string" || !Number.isFinite(Date.parse(cutoff)))
         fail(400, "readThrough timestamp required");
+      // Preserve MySQL microseconds: Date/CAST coercion truncates these to milliseconds.
+      const watermark = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(cutoff)
+        ? cutoff : new Date(cutoff).toISOString();
       await pool.query(
-        "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(CAST(:p3 AS DATETIME(6)),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))",
-        [e.id, l.id, cutoff],
+        "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))",
+        [e.id, l.id, watermark],
       );
       res.json({ success: true });
     }),
@@ -750,7 +765,8 @@ export async function mountPortal(app: Express) {
   app.get(
     "/api/crm/leads/:id",
     wrap(async (req, res) => {
-      const { l } = await leadAccess(req);
+      const { l, e } = await leadAccess(req);
+      await attachLeadAttention(e, [l.profile]);
       const rows = (
         await pool.query(
           "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence",
@@ -1534,110 +1550,30 @@ export async function mountPortal(app: Express) {
             "SELECT value FROM portal_settings WHERE id='crm_policy'",
           )
         ).rows[0]?.value || DEFAULT_CRM_POLICY_CONFIG;
-      const displayDuration = (name: string, hours: number) => {
-        const d = configured.firstResponseSla?.[name];
-        const factor =
-          d?.unit === "minutes"
-            ? 1 / 60
-            : d?.unit === "days"
-              ? 24
-              : d?.unit === "hours"
-                ? 1
-                : NaN;
-        return d && Number.isFinite(d.value) && d.value * factor === hours
-          ? d
-          : { value: hours, unit: "hours" };
-      };
-      res.json({
-        ...configured,
-        businessHours: {
-          timezone: v.timezone,
-          startTime: v.start,
-          endTime: v.end,
-          workDays: v.days,
-          nextDayGraceTime: v.nextDayGraceTime || v.start,
-        },
-        firstResponseSla: {
-          hot: displayDuration("hot", v.hotHours),
-          warm: displayDuration("warm", v.warmHours),
-          cold: displayDuration("cold", v.coldHours),
-        },
-      });
+      res.json(effectivePolicy(configured,v));
     }),
   );
   app.post(
     "/api/crm/policy-config",
     wrap(async (req, res) => {
       const e = await staff(req, "notifications.manage");
-      const old = (
-        await pool.query("SELECT value FROM portal_settings WHERE id='sla'")
-      ).rows[0].value;
-      const b = req.body;
-      if (
-        !b ||
-        typeof b !== "object" ||
-        Array.isArray(b) ||
-        !Object.keys(b).length
-      )
-        fail(400, "Sales operations configuration required");
-      if (Object.hasOwn(b, "businessHours") && (!b.businessHours || typeof b.businessHours !== "object" || Array.isArray(b.businessHours)))
-        fail(400, "Invalid work calendar");
-      const hours = b.businessHours || {};
-      const start = Object.hasOwn(hours, "startTime") ? hours.startTime : old.start;
-      const end = Object.hasOwn(hours, "endTime") ? hours.endTime : old.end;
-      const fieldErrors = workTimeErrors({ startTime: start, endTime: end });
-      if (Object.keys(fieldErrors).length) {
-        res.status(400).json({ error: Object.values(fieldErrors)[0], fieldErrors });
+      const result = await tx(async (db) => {
+        const rows = (await db.query("SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy') ORDER BY id FOR UPDATE")).rows;
+        const old=rows.find((row:any)=>row.id==='sla').value;
+        const configured=rows.find((row:any)=>row.id==='crm_policy')?.value;
+        const {value,errors}=mergePolicyConfig(effectivePolicy(configured,old),req.body);
+        if(Object.keys(errors).length) return {errors};
+        const next=policySla(old,value);
+        value.updatedAt=new Date().toISOString();
+        await db.query("UPDATE portal_settings SET value=:p1 WHERE id='sla'",[next]);
+        await db.query("INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",[value]);
+        await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[e.id,"sla.save",next]);
+        return {errors:null};
+      });
+      if(result.errors) {
+        res.status(400).json({error:"Invalid sales operations configuration",fieldErrors:result.errors});
         return;
       }
-      const duration = (d: any) => {
-        if (
-          !d ||
-          !["minutes", "hours", "days"].includes(d.unit) ||
-          !Number.isFinite(d.value) ||
-          d.value <= 0
-        )
-          fail(400, "Invalid SLA duration");
-        return (
-          d.value * (d.unit === "minutes" ? 1 / 60 : d.unit === "days" ? 24 : 1)
-        );
-      };
-      const next = {
-        ...old,
-        timezone: b.businessHours?.timezone || old.timezone,
-        start,
-        end,
-        days: b.businessHours?.workDays || old.days,
-        nextDayGraceTime:
-          b.businessHours?.nextDayGraceTime ||
-          old.nextDayGraceTime ||
-          old.start,
-        hotHours: b.firstResponseSla
-          ? duration(b.firstResponseSla.hot)
-          : old.hotHours,
-        warmHours: b.firstResponseSla
-          ? duration(b.firstResponseSla.warm)
-          : old.warmHours,
-        coldHours: b.firstResponseSla
-          ? duration(b.firstResponseSla.cold)
-          : old.coldHours,
-      };
-      validate(next);
-      for (const k of ["hotHours", "warmHours", "coldHours"])
-        if (!Number.isFinite(next[k]) || next[k] <= 0) fail(400, "Invalid SLA");
-      await tx(async (db) => {
-        await db.query("UPDATE portal_settings SET value=:p1 WHERE id='sla'", [
-          next,
-        ]);
-        await db.query(
-          "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
-          [e.id, "sla.save", next],
-        );
-        await db.query(
-          "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",
-          [b],
-        );
-      });
       res.json({ success: true });
     }),
   );

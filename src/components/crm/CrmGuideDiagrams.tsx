@@ -52,9 +52,9 @@ export const ruleDefinitions = [
   {
     id: "R6",
     condition: w(
-      "No reply and recorded touch counter ≥ 3",
-      "Belum dibalas dan jumlah upaya tercatat ≥ 3",
-      "未回复且现有触达计数 ≥ 3",
+      "Consecutive valid unanswered threshold reached + final reply window ended",
+      "Ambang upaya tanpa balasan berturut-turut tercapai + masa tunggu terakhir berakhir",
+      "连续有效未回复达到阈值，且最后等待窗口结束",
     ),
     result: w("Nurture", "Pembinaan", "培育池"),
   },
@@ -501,9 +501,9 @@ export function CrmGuideDiagram({
         </ol>
         <p className="crm-diagram-note">
           {t(
-            "This explains prediction, not automatic replacement of a sales-confirmed group. The touch counter is not evidence of consecutive failed calls.",
-            "Ini menjelaskan prediksi, bukan penggantian otomatis kelompok terkonfirmasi staf. Penghitung upaya bukan bukti panggilan gagal berturut-turut.",
-            "本图解释预测过程，不代表自动覆盖人工确认分组。触达计数不证明连续未接通。",
+            "R6 uses a persisted sequence and final reply window, never the historical touch total. Sales-confirmed groups and existing tasks are protected.",
+            "R6 memakai urutan tercatat dan masa tunggu terakhir, bukan total upaya lama. Kelompok terkonfirmasi dan tugas yang ada dilindungi.",
+            "R6使用独立连续序列及最后窗口，不沿用历史累计次数；人工确认分组及已有任务保持不变。",
           )}
         </p>
         <details>

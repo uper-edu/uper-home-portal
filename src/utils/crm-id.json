@@ -1499,5 +1499,18 @@
   "Discard and continue": "Buang dan lanjutkan",
   "Search customer list": "Cari daftar pelanggan",
   "Search customers…": "Cari pelanggan…",
-  "Selected customer is outside the current filters. Your open details and draft are retained.": "Pelanggan terpilih berada di luar filter saat ini. Detail terbuka dan draf tetap dipertahankan."
+  "Selected customer is outside the current filters. Your open details and draft are retained.": "Pelanggan terpilih berada di luar filter saat ini. Detail terbuka dan draf tetap dipertahankan.",
+  "Consecutive unanswered threshold": "Ambang upaya berturut-turut tanpa balasan",
+  "Includes the first valid attempt. Retry spacing and a final reply window apply. Zero disables automatic nurture. New sequences snapshot these settings; existing tasks and confirmed groups stay unchanged.": "Termasuk upaya pertama yang valid. Jeda dan masa tunggu balasan terakhir berlaku. Nol menonaktifkan pembinaan otomatis. Urutan baru menyimpan pengaturan ini; tugas dan kelompok terkonfirmasi tetap.",
+  "Natural-time gap between real attempts; also used for the final reply window. A next eligible time outside working hours moves to the next opening.": "Jeda waktu alami antarupaya nyata; juga untuk masa tunggu balasan terakhir. Waktu yang memenuhi syarat di luar jam kerja digeser ke pembukaan berikutnya.",
+  "Unanswered sequence": "Urutan tanpa balasan",
+  "Wait for the reply window; keep existing tasks": "Tunggu masa balasan; pertahankan tugas yang ada",
+  "Review contact difficulty and existing commitments": "Tinjau kesulitan kontak dan komitmen yang ada",
+  "Contact sequence changed; refresh and review": "Urutan kontak berubah; muat ulang dan periksa",
+  "Customer activity you have not viewed; independent of notification delivery. Viewing does not complete tasks.": "Aktivitas pelanggan yang belum Anda lihat; terpisah dari pengiriman notifikasi. Membuka tidak menyelesaikan tugas.",
+  "Activation applies to new events. Queued jobs retain their policy version; disabling does not cancel them. Appointments missed before activation are not replayed; historical failures remain visible.": "Aktivasi berlaku untuk peristiwa baru. Tugas antrean mempertahankan versi kebijakannya; penonaktifan tidak membatalkannya. Janji yang terlewat sebelum aktivasi tidak dikirim ulang; kegagalan historis tetap terlihat.",
+  "Lark rate limit reached; waiting for the configured retry.": "Batas Lark tercapai; menunggu percobaan ulang sesuai pengaturan.",
+  "Batas Lark tercapai; menunggu percobaan ulang sesuai pengaturan.": "Batas Lark tercapai; menunggu percobaan ulang sesuai pengaturan.",
+  "Lark rate limit persists; retry limit reached. Delivery failed.": "Batas Lark masih berlaku; batas percobaan ulang tercapai. Pengiriman gagal.",
+  "Batas Lark masih berlaku; batas percobaan ulang tercapai. Pengiriman gagal.": "Batas Lark masih berlaku; batas percobaan ulang tercapai. Pengiriman gagal."
 }

@@ -622,6 +622,40 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
+    await t.test("BUG604 HTTP200 business throttling retries same job; exhaustion and unknown do not replay", async () => {
+      const native=globalThis.fetch;
+      process.env.TEST_POLICY_LARK="https://open.larksuite.com/open-apis/bot/v2/hook/policy-test";
+      process.env.LARK_TEST_GROUP="qa";
+      const prepare=async()=>{
+        await reset();
+        const lid=await lead();
+        await pool.query("INSERT INTO notification_channels VALUES('qa',:p1) ON DUPLICATE KEY UPDATE config=VALUES(config)",[{mode:'live',secretRef:'TEST_POLICY_LARK'}]);
+        return job(lid,'lark','qa',{},rule({channels:['lark'],retries:[1,5,15],dedupeMinutes:0}));
+      };
+      const failures=async()=>Number((await pool.query("SELECT COUNT(*) AS n FROM outbox WHERE type='notification.failed'")).rows[0].n);
+      const dueNow=async(jid:string)=>pool.query("UPDATE notification_jobs SET due_at=UTC_TIMESTAMP(6)-INTERVAL 1 day WHERE id=:p1",[jid]);
+      let calls=0;
+      const mock=(respond:()=>Promise<Response>|Response)=>{globalThis.fetch=async()=>{calls++;return respond();};};
+      try {
+        let jid=await prepare();
+        mock(()=>new Response(JSON.stringify({code:calls===1?11232:0}),{status:200,headers:{'retry-after':'90'}}));
+        const started=Date.now();await tick();let saved=await state(jid);
+        assert.equal(saved.state,'pending');assert.equal(Number(saved.attempts),1);assert.equal(saved.completed_at,null);assert.equal(await failures(),0);
+        assert.ok(new Date(saved.due_at).getTime()>=started+90000-500);
+        await tick();assert.equal(calls,1,'backoff cannot send early');
+        await dueNow(jid);await tick();saved=await state(jid);assert.equal(saved.state,'accepted');assert.equal(Number(saved.attempts),2);assert.equal(await failures(),0);
+        assert.equal(Number((await pool.query('SELECT COUNT(*) AS n FROM notification_jobs')).rows[0].n),1,'same job, no replacement');
+        jid=await prepare();calls=0;mock(()=>new Response(JSON.stringify({code:11232}),{status:200}));
+        for(const minutes of [1,5,15]){const start=Date.now();await tick();saved=await state(jid);assert.equal(saved.state,'pending');assert.equal(await failures(),0);assert.ok(new Date(saved.due_at).getTime()>=start+minutes*60000-500);await dueNow(jid);}
+        await tick();saved=await state(jid);assert.equal(saved.state,'failed');assert.equal(Number(saved.attempts),4);assert.match(saved.result,/retry limit reached/);assert.equal(await failures(),1);
+        const terminal=JSON.stringify(saved);await tick();assert.equal(calls,4);assert.equal(JSON.stringify(await state(jid)),terminal);assert.equal(await failures(),1);
+        for(const kind of ['timeout','malformed','terminal']) {
+          jid=await prepare();calls=0;
+          mock(()=>{if(kind==='timeout')throw new DOMException('TEST timeout','TimeoutError');return kind==='malformed'?new Response('not JSON',{status:200}):new Response(JSON.stringify({code:19001}),{status:200});});
+          await tick();saved=await state(jid);assert.equal(saved.state,kind==='terminal'?'failed':'unknown');assert.equal(Number(saved.attempts),1);await tick();await tick();assert.equal(calls,1,'unknown/terminal receipt must not replay');
+        }
+      } finally {globalThis.fetch=native;delete process.env.TEST_POLICY_LARK;delete process.env.LARK_TEST_GROUP;}
+    });
     await t.test(
       "Lark Retry-After, 1/5/15 backoff and terminal failure are traceable",
       async () => {

@@ -189,3 +189,13 @@ test("summary and sorting use final filtered customers, not number of tasks; unr
   assert.equal(result.stats.overdueSla, 1);
   assert.equal(result.stats.hot, 1);
 });
+
+test("638 retry-due follows new sequence and calendar, never the cumulative touch total",()=>{
+ const sequence={status:'counting',count:1,nextEligibleAt:new Date(now-1000).toISOString()};
+ const p=lead('retry',[],{connectStatus:'No Response',touchCount:50,noResponseSequence:sequence});
+ assert.equal(matches(p,{situation:['retry']}),true);
+ for(const status of ['waiting','nurtured','replied','protected'])assert.equal(matches({...p,noResponseSequence:{...sequence,status}},{situation:['retry']}),false);
+ assert.equal(matches({...p,noResponseSequence:undefined},{situation:['retry']}),false);
+ assert.equal(matches({...p,contactArrangement:{state:'stopped'}},{situation:['retry']}),false);
+ assert.equal(matches({...p,noResponseSequence:{...sequence,nextEligibleAt:new Date(now+1000).toISOString()}},{situation:['retry']}),false);
+});

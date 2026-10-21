@@ -1,3 +1,4 @@
+import {CrmNoResponseSummary} from "./CrmNoResponseSummary";
 import { useState } from "react";
 import { Clock3, MessageSquare, ArrowUpRight } from "lucide-react";
 import { CrmDisclosure } from "./CrmDisclosure";
@@ -17,6 +18,7 @@ export function CrmFollowupContext({ lead, lang, timezone, onSource, tasks, fact
   const links = messageTaskLinks(message, lead.chatTranscript || [], tasks || [], facts || []);
   return (
     <div className="crm-communication-overview">
+      <CrmNoResponseSummary lead={lead} lang={lang} timezone={timezone} />
       <div
         className="crm-contact-arrangement"
         data-state={a?.state || "active"}

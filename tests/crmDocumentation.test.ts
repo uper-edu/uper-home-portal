@@ -117,7 +117,7 @@ for (const lang of ["en", "id", "zh"] as const)
     );
     assert.doesNotMatch(text, /100%|3倍|3x|fully automated closed/);
   });
-test("Published R6 priority and baseline distinction match the unchanged engines", () => {
+test("Published R6 requires server sequence authorization; cumulative touches do not trigger it", () => {
   const base: any = {
     buyingSignal: "Asked price",
     currentStatus: "Working professional",
@@ -128,7 +128,8 @@ test("Published R6 priority and baseline distinction match the unchanged engines
     connectStatus: "No Response",
     touchCount: 3,
   };
-  assert.equal(evaluateFullLeadTier(base).tier, "Cold-Nurture");
+  assert.equal(evaluateFullLeadTier(base).tier, "Hot");
+  assert.equal(evaluateFullLeadTier({...base,noResponseReady:true}).tier,"Cold-Nurture");
   assert.equal(calculateLeadTier(base).tier, "Hot");
   assert.equal(evaluateFullLeadTier({ ...base, touchCount: 2 }).tier, "Hot");
   assert.equal(

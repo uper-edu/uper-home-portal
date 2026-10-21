@@ -354,8 +354,11 @@ export async function connection() {
         };
       return { rows: leads, rowCount: leads.length };
     },
-    async leadAttention([employeeId]) {
-      const leads = (await execute("SELECT id,profile FROM portal_leads")).rows,
+    async leadAttention([employeeId, leadIds, readSnapshot]) {
+      if (Array.isArray(leadIds) && !leadIds.length) return {rows: [], rowCount: 0};
+      const leads = (await execute(Array.isArray(leadIds)
+        ? `SELECT id,profile FROM portal_leads WHERE id IN (${leadIds.map((_,i)=>':p'+(i+1)).join(',')})`
+        : "SELECT id,profile FROM portal_leads", leadIds || [])).rows,
         rows = [];
       for (const lead of leads) {
         const tasks = (
@@ -364,12 +367,26 @@ export async function connection() {
             [lead.id],
           )
         ).rows;
-        const unread = (
+        // Customer activity is independent of notification recipients/delivery.
+        // One statement captures the count and its actual visible watermark together.
+        const activity = (
           await execute(
-            "SELECT COUNT(*) AS count FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id WHERE i.employee_id=:p1 AND o.lead_id=:p2 AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=:p1 AND lead_id=:p2),'1000-01-01 00:00:00')",
-            [employeeId, lead.id],
+            `SELECT SUM(a.activity_at>COALESCE(r.seen_at,'1000-01-01 00:00:00')) OVER () AS count,
+              DATE_FORMAT(a.activity_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS read_through,
+              a.event_type,a.source
+             FROM (
+              SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m
+              JOIN conversations c ON c.id=m.conversation_id
+              WHERE c.lead_id=:p2 AND m.role='user' AND m.status='saved' AND TRIM(m.content)<>''
+              UNION ALL
+              SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p2 AND o.type IN
+               ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')
+             ) a LEFT JOIN lead_read_marks r ON r.employee_id=:p1 AND r.lead_id=:p2
+             WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6))
+             ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1`,
+            [employeeId, lead.id, readSnapshot || null],
           )
-        ).rows[0].count;
+        ).rows[0] || {count: 0, read_through: null};
         const latest = (
           await execute(
             "SELECT type,created_at,payload FROM outbox WHERE lead_id=:p1 ORDER BY created_at DESC LIMIT 1",
@@ -378,9 +395,11 @@ export async function connection() {
         ).rows[0];
         rows.push({
           id: lead.id,
-          observed_at: new Date().toISOString(),
-          unread_count: unread,
-          latest: latest
+          observed_at: activity.read_through,
+          unread_count: Number(activity.count),
+          latest: Number(activity.count)>0
+            ? {type: activity.event_type, at: activity.read_through, source: activity.source}
+            : latest
             ? {
                 type: latest.type,
                 at: latest.created_at,

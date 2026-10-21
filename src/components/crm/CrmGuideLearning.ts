@@ -127,9 +127,9 @@ export const guideLessons: Record<string, GuideLesson> = {
       n(
         w("Saved customer", "Pelanggan tersimpan", "保存客户"),
         w(
-          "Registration creates the saved lead. First attribution stays separate from each conversation source.",
-          "Registrasi menyimpan calon pelanggan. Atribusi pertama terpisah dari sumber tiap percakapan.",
-          "登记成功形成客户记录；首次归因与每次会话来源分开保留。",
+          "Registration creates the saved lead. First attribution stays separate from each conversation source. Phone numbers are checked on the form and server. Indonesia accepts 08…, 62… or +62…; other countries need + and a country code (00 also works). Spaces and hyphens are allowed. Invalid numbers block saving; format checking does not verify WhatsApp availability. Email also needs one complete address: a name, one @ and a full domain. Internal spaces and malformed addresses block saving; correct the field without losing the remaining form. Format checking does not prove email delivery or ownership. Contact Us uses the same phone checks; a rejected inquiry retains the form for correction and retry.",
+          "Registrasi menyimpan calon pelanggan. Atribusi pertama terpisah dari sumber tiap percakapan. Nomor diperiksa pada formulir dan server. Indonesia menerima 08…, 62…, atau +62…; negara lain memerlukan + dan kode negara (00 juga diterima). Spasi dan tanda hubung diperbolehkan. Nomor tidak valid menghalangi penyimpanan; pemeriksaan format tidak memastikan nomor terdaftar di WhatsApp. Email memerlukan satu alamat lengkap: nama, satu @, dan domain lengkap. Spasi di dalam atau format salah menghalangi penyimpanan; perbaiki kolom tanpa kehilangan isian lain. Pemeriksaan format tidak membuktikan pengiriman atau kepemilikan email. Hubungi Kami memakai pemeriksaan nomor yang sama; pertanyaan yang ditolak tetap menyimpan isian untuk diperbaiki dan dicoba lagi.",
+          "登记成功形成客户记录；首次归因与每次会话来源分开保留。电话由表单与服务端共同校验：印尼可填08…、62…或+62…，其他国家需带+国家区号（兼容00前缀），可用空格、横杠分隔。异常号码会阻止保存；格式通过不代表已开通WhatsApp或一定可联系。邮箱也需填写完整地址：用户名、一个@与完整域名；内部空格或异常格式会阻止保存，修改对应字段后可继续，其他内容保留。格式通过不证明邮箱可收信或属于本人。联系我们入口采用相同电话校验，咨询提交失败会保留表单，修正后可重试。",
         ),
       ),
       n(
@@ -183,11 +183,19 @@ export const guideLessons: Record<string, GuideLesson> = {
         ),
       ),
       n(
+        w("Consecutive unanswered sequence", "Urutan tanpa balasan", "连续未回复序列"),
+        w(
+          "Only real recorded human attempts count. Retry spacing and the final reply window use the same natural-time interval (default 4 hours), rolling eligible times to working hours. Too-soon attempts are saved but not counted, and restart spacing. Zero threshold disables automatic nurture. New sequences snapshot settings; no historical backfill. Human two-way contact or a trusted new customer message clears the sequence; AI, visits, assessments and duplicate messages do not. In Record contact → Internal handling, explicitly confirm an external reply with channel and evidence; this does not add an outreach attempt. A new inquiry requires response without completing old tasks or lifting stopped contact. An R6 group can recover only with reliable evidence and no later manual decision; otherwise review it.",
+          "Hanya upaya manusia nyata yang dicatat dihitung. Jeda dan masa tunggu terakhir memakai interval alami yang sama (bawaan 4 jam), bergeser ke jam kerja. Upaya terlalu cepat disimpan tanpa dihitung dan memulai ulang jeda. Ambang nol menonaktifkan pembinaan otomatis. Urutan baru menyimpan pengaturan; riwayat tidak dihitung ulang. Kontak dua arah atau pesan pelanggan baru tepercaya mereset urutan; AI, kunjungan, asesmen dan pesan duplikat tidak. Di Catat kontak → Penanganan internal, konfirmasi balasan eksternal dengan kanal dan bukti; ini tidak menambah upaya kontak. Permintaan baru perlu ditanggapi tanpa menyelesaikan tugas lama atau mencabut larangan kontak. Kelompok R6 dipulihkan hanya dengan dasar tepercaya dan tanpa keputusan manual setelahnya; selain itu tinjau manual.",
+          "仅累计真实人工联系记录。重试间隔与最后回复窗口使用同一自然时长（默认4小时），有效时间顺延至工作时段。间隔不足的尝试留痕但不累计，并从该次重新计间隔。阈值0关闭自动转培育；新序列保存策略快照，不回填历史计数。人工双向沟通或可信客户新消息清零；AI、浏览、测评及重复消息不清零。在“记录联系→内部处理”中，可明确确认外部回复并填写渠道及依据，不增加外联次数。新咨询需响应，但不自动完成旧任务或解除停止联系。仅有可靠依据且没有后续人工决定时恢复R6分组，否则待复核。",
+        ),
+      ),
+      n(
         w("Follow-up evaluation", "Evaluasi tindak lanjut", "跟进时重新计算"),
         w(
-          "A qualifying contact save runs the full chain: R6 → R1 → R2 → R3 → R4 → R5. Earlier stopping rules take precedence.",
-          "Penyimpanan kontak yang memenuhi syarat menjalankan R6 → R1 → R2 → R3 → R4 → R5. Aturan penghenti lebih awal didahulukan.",
-          "符合条件的联系保存执行 R6 → R1 → R2 → R3 → R4 → R5；前面的终止规则先命中，后面的就不再决定结果。",
+          "Contact saves evaluate R1–R5 when questionnaire fields are complete. R6 is a separate delayed decision after a valid consecutive sequence and its final reply window, even when questionnaire fields are missing.",
+          "Kontak mengevaluasi R1–R5 jika kuesioner lengkap. R6 diputuskan terpisah setelah urutan valid dan masa tunggu terakhir, meskipun kuesioner belum lengkap.",
+          "问卷字段完整的联系保存按R1～R5重新计算；R6在连续有效尝试及最后窗口结束后独立判断，不受问卷缺失阻断。",
         ),
       ),
       n(
@@ -209,14 +217,14 @@ export const guideLessons: Record<string, GuideLesson> = {
       "R1～R6 是规则编号，编号顺序不等于执行优先级。",
     ),
     w(
-      "Asked price + No Response + touchCount 3 gives Nurture in the full chain because R6 precedes R1. This does not prove three consecutive unanswered calls.",
-      "Tanya harga + No Response + touchCount 3 menghasilkan Pembinaan karena R6 mendahului R1. Ini bukan bukti tiga panggilan berturut-turut tanpa jawaban.",
-      "询价＋未回复＋触达计数为 3，在完整规则链中得到培育池，因为 R6 优先于 R1。不能据此声称连续三次电话未接通。",
+      "Asked price plus 3 total touches is insufficient. R6 needs the consecutive valid threshold (default 3), retry spacing and the final reply window. Contact difficulty is not proof of low purchase intent.",
+      "Tanya harga ditambah 3 total upaya belum cukup. R6 memerlukan ambang berturut-turut (bawaan 3), jeda, dan masa tunggu terakhir. Kesulitan kontak bukan bukti minat beli rendah.",
+      "询价加累计触达3次不足以触发R6；须连续有效未回复达到阈值（默认3）、满足间隔且最后窗口结束。联系困难不等于购买意愿低。",
     ),
     w(
-      "The full rule threshold is currently fixed at 3. The configurable retry filter is a different calculation. Viewing or changing language does not reclassify customers.",
-      "Ambang aturan penuh saat ini tetap 3. Filter percobaan ulang yang dapat dikonfigurasi adalah perhitungan berbeda. Membaca atau mengganti bahasa tidak menghitung ulang.",
-      "完整分类阈值目前固定为 3，可配置重试筛选是另一套计算。查看页面和切换语言不会重算分组；本手册不调整优先级。",
+      "Each new sequence snapshots the configured threshold, retry interval and calendar; 0 disables automatic nurture. Existing sequences retain their policy. Viewing or changing language does not reclassify customers.",
+      "Urutan baru menyimpan ambang, jeda percobaan dan kalender yang dikonfigurasi; 0 menonaktifkan pemindahan otomatis ke nurturing. Urutan aktif mempertahankan kebijakannya. Membaca atau mengganti bahasa tidak mengubah kelompok.",
+      "新序列保存当时配置的阈值、重试间隔和日历；0表示禁用自动转培育。进行中的序列沿用原策略。查看页面和切换语言不会重算分组。",
     ),
   ),
   lifecycle: lesson(
@@ -668,9 +676,9 @@ Object.assign(guideLessons, {
       n(
         w("Customer", "Pelanggan", "客户"),
         w(
-          "Check name, Owner and latest activity. An unread mark means new information, not an unfinished task.",
-          "Periksa nama, penanggung jawab, dan aktivitas terbaru. Tanda belum dibaca berarti informasi baru, bukan tugas belum selesai.",
-          "确认姓名、负责人和最近动态；未读表示有新信息，不等于存在未完成任务。",
+          "Check name, Owner and latest activity. Unread is tracked separately for each employee with access, including the unassigned pool. It comes from saved customer messages and explicit customer activity, not notification delivery. Opening clears only your viewed activity; later messages remain unread and tasks stay open.",
+          "Periksa nama, penanggung jawab, dan aktivitas terbaru. Status belum dibaca terpisah untuk setiap staf yang berhak mengakses, termasuk pelanggan belum ditugaskan. Sumbernya pesan pelanggan tersimpan dan aktivitas pelanggan yang jelas, bukan pengiriman notifikasi. Membuka hanya menandai aktivitas yang Anda lihat; pesan berikutnya tetap belum dibaca dan tugas tetap terbuka.",
+          "确认姓名、负责人和最近动态。未读按有查看权限的员工分别记录，包含未分配共享池；依据已保存客户消息及明确客户动态，不依赖通知是否送达。打开只清除本人已查到范围内的未读，后到消息仍未读，任务保持未完成。",
         ),
       ),
       n(
@@ -684,9 +692,9 @@ Object.assign(guideLessons, {
       n(
         w("Sales progress", "Kemajuan penjualan", "销售进展"),
         w(
-          "Read the stage and customer group. Open buying-signal evidence in Profile; use Conversations to check the original request.",
-          "Baca tahap dan kelompok pelanggan. Buka bukti sinyal di Profil; gunakan Percakapan untuk memeriksa permintaan asli.",
-          "查看阶段与客户分组；在资料页签查购买信号依据，在对话页签核对原始诉求。",
+          "Read the stage and customer group. In Profile, changing the stage is a draft: enter the required reason and select Save stage. A missing reason shows a field error; only a confirmed response shows Stage saved. Cancel changes restores the saved stage. Owner changes keep their separate immediate-save behavior. Open buying-signal evidence in Profile; use Conversations to check the original request.",
+          "Baca tahap dan kelompok pelanggan. Di Profil, perubahan tahap masih berupa draf: isi alasan wajib lalu pilih Simpan tahap. Alasan kosong menampilkan kesalahan kolom; Tahap tersimpan hanya muncul setelah konfirmasi. Batalkan perubahan mengembalikan tahap tersimpan. Perubahan penanggung jawab tetap memakai penyimpanan langsung yang terpisah. Buka bukti sinyal di Profil; gunakan Percakapan untuk memeriksa permintaan asli.",
+          "查看阶段与客户分组。在资料页签选择新阶段只是草稿，须填写必填的变更依据并点击“保存阶段”；依据为空会在字段旁提示，只有服务端确认后才显示“阶段已保存”。“取消修改”恢复已保存阶段。负责人仍沿用单独的即时保存。购买信号依据在资料中查看，原始诉求在对话中核对。",
         ),
       ),
       n(
@@ -1045,9 +1053,9 @@ Object.assign(guideLessons, {
       n(
         w("Save the right area", "Simpan area yang tepat", "使用对应保存按钮"),
         w(
-          "Save Policies saves operational policies. Notification policies and channels use their own save buttons.",
-          "Simpan Kebijakan menyimpan kebijakan operasional. Kebijakan notifikasi dan kanal memakai tombol sendiri.",
-          "“保存策略”保存运营策略；通知策略与渠道使用各自区域的保存按钮。",
+          "Save Policies validates all operational settings before saving. Invalid fields are identified and your input is retained. Partial updates preserve other settings. Notification policies and channels have separate save buttons.",
+          "Simpan Kebijakan memvalidasi semua pengaturan operasional sebelum menyimpan. Kolom yang tidak valid ditandai dan masukan tetap tersimpan. Pembaruan sebagian mempertahankan pengaturan lain. Kebijakan notifikasi dan kanal memiliki tombol simpan tersendiri.",
+          "“保存策略”先校验全部运营设置；无效字段会被定位，输入保留。部分更新保留其他配置。通知策略与渠道使用各自保存按钮，已有任务期限不重算。",
         ),
       ),
       n(
@@ -1094,9 +1102,9 @@ Object.assign(guideLessons, {
           "选择事件与条件",
         ),
         w(
-          "Use the searchable multi-selects. Check enabled state, conditions and recipient routing before saving.",
-          "Gunakan pilihan jamak dengan pencarian. Periksa status aktif, syarat, dan penerima sebelum menyimpan.",
-          "通过可搜索多选填写条件，保存前核对启停状态、条件和接收人路由。",
+          "Task created, rescheduled and appointment due are separate rules. Enable each explicitly and bind CRM Bot; conditions, calendars and limits still apply. Route to the eligible Owner, otherwise CRM Managers. Activation applies only to new events and does not replay appointments missed beforehand or historical failed notifications.",
+          "Tugas dibuat, jadwal diubah, dan waktu janji tiba memakai aturan terpisah. Aktifkan masing-masing secara eksplisit dan hubungkan CRM Bot; syarat, kalender, dan batas tetap berlaku. Kirim ke penanggung jawab yang memenuhi izin, atau Manajer CRM. Aktivasi hanya berlaku untuk peristiwa baru, tanpa mengirim ulang janji yang sudah terlewat atau notifikasi lama yang gagal.",
+          "任务新增、任务改约、约定时间已到是三条独立规则。须明确启用并绑定CRM Bot，仍遵守原有条件、日历与频控，按有效Owner→CRM Manager路由。启用只作用于新事件，不补发生效前已错过的预约或历史失败通知。",
         ),
       ),
       n(
@@ -1118,9 +1126,9 @@ Object.assign(guideLessons, {
       n(
         w("Read the receipt", "Baca tanda terima", "检查发送回执"),
         w(
-          "Distinguish pending, sending, simulated, API accepted, failed, unknown and cancelled. Inspect the cause before another send.",
-          "Bedakan tertunda, mengirim, simulasi, diterima API, gagal, tidak diketahui, dan dibatalkan. Periksa sebab sebelum mengirim lagi.",
-          "区分待发、发送中、模拟、接口接受、失败、未知和取消；查清原因再考虑重发。",
+          "Distinguish pending, sending, simulated, API accepted, failed, unknown and cancelled. Lark rate-limit code 11232 retries on the same notification using configured intervals and limits, respecting Retry-After. Final failure is recorded only after retries are exhausted. Unknown outcomes are not automatically resent; historical failures are not replayed. API acceptance does not prove group receipt.",
+          "Bedakan tertunda, mengirim, simulasi, diterima API, gagal, tidak diketahui, dan dibatalkan. Kode batas Lark 11232 mencoba ulang notifikasi yang sama sesuai jeda dan batas percobaan, dengan mematuhi Retry-After. Kegagalan akhir dicatat setelah percobaan habis. Hasil tidak diketahui tidak dikirim ulang otomatis; kegagalan lama tidak diputar ulang. Diterima API tidak membuktikan grup menerima pesan.",
+          "区分待发、发送中、模拟、接口接受、失败、未知和取消。Lark 限流码 11232 按配置间隔和次数重试同一通知，并遵守 Retry-After；耗尽重试后才记最终失败。结果未知不自动重发，历史失败不补发。接口接受不代表群内实收。",
         ),
       ),
     ],

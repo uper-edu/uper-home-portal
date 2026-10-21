@@ -31,6 +31,7 @@ export interface LeadWorkspaceProps {
   isLight: boolean;
   timezone: string;
   loading: boolean;
+  loadUnavailable?: boolean;
   employeeId: string;
   employees: Array<{
     id: string;
@@ -56,6 +57,7 @@ export function CrmLeadWorkspace({
   isLight,
   timezone,
   loading,
+  loadUnavailable,
   employeeId,
   employees,
   onSignal,onOpen,onClaim,onProcess,canProcess,canClaim,
@@ -211,6 +213,8 @@ export function CrmLeadWorkspace({
           <p className="crm-work-empty" role="status">
             {t("Loading customers…", "正在加载客户…")}
           </p>
+        ) : loadUnavailable && !leads.length ? (
+          <p className="crm-work-empty" role="alert">{lang==='zh'?'客户列表暂不可用，请查看刷新提示并重试。':lang==='id'?'Daftar pelanggan belum tersedia. Periksa pesan pembaruan dan coba lagi.':'Customer list unavailable. Check the refresh message and retry.'}</p>
         ) : !leads.length ? (
           <div className="crm-work-empty">
             <p>

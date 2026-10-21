@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';import {CrmLeadWorkspace} from '../src/components/crm/CrmLeadWorkspace.tsx';
+test('642 first-load failure in all three languages is never represented as an empty result',()=>{
+ for(const lang of ['en','id','zh'] as const){const html=renderToStaticMarkup(React.createElement(CrmLeadWorkspace,{leads:[],view:'worklist' as any,lang,isLight:true,timezone:'Asia/Jakarta',loading:false,loadUnavailable:true,employeeId:'TEST',employees:[],onOpen:()=>{},onReset:()=>{}}));assert.match(html,/role="alert"/);assert.doesNotMatch(html,/No customers match|暂无符合|Tidak ada pelanggan/);assert.match(html,lang==='en'?/Customer list unavailable/:lang==='id'?/Daftar pelanggan belum tersedia/:/客户列表暂不可用/);}
+});

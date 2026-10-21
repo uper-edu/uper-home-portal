@@ -1,3 +1,4 @@
+import {settleNoResponse} from "./noResponse.ts";
 import { restoreState } from "./accessRecoveryState.ts";
 import { retryLeaseRecovery } from "./notificationLeaseRecovery.ts";
 import { contactPaused } from "../../src/utils/crmContact.ts";
@@ -23,6 +24,7 @@ import {
 export async function tick(clock = new Date()) {
   if((await restoreState())?.required)return;
   await tx(async (c) => {
+    await settleNoResponse(c,clock);
     const globalCalendar = (
       await c.query("SELECT value FROM portal_settings WHERE id='sla'")
     ).rows[0]?.value;
@@ -92,13 +94,14 @@ export async function tick(clock = new Date()) {
             ])
           ).rows[0]?.profile
         : {};
+      let eventTask: any;
       if (ev.payload.taskId) {
-        const task = (
+        eventTask = (
           await c.query("SELECT * FROM followup_tasks WHERE id=:p1", [
             ev.payload.taskId,
           ])
         ).rows[0];
-        if (!task || ["completed", "cancelled"].includes(task.status)) {
+        if (!eventTask || ["completed", "cancelled"].includes(eventTask.status)) {
           await c.query(
             "UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
             [ev.id],
@@ -116,6 +119,10 @@ export async function tick(clock = new Date()) {
       for (const rule of rules) {
         const r = withCalendarMode(rule.config as Rule);
         const effective = resolveCalendar(r, globalCalendar);
+        // Enabling a rule must not synthesize reminders for appointments already missed
+        // before its activation, even if their outbox event is generated afterward.
+        if(ev.type==='task.appointment_due' && eventTask?.scheduled_at &&
+          new Date(eventTask.scheduled_at).getTime()<new Date(rule.effective_at).getTime())continue;
         if (
           r.event !== ev.type ||
           (ev.type === "daily.digest" && ev.payload.ruleId !== rule.id) ||
@@ -484,7 +491,10 @@ export async function tick(clock = new Date()) {
       if (!response.ok || Number(body?.code ?? body?.StatusCode) !== 0) {
         state = "failed";
         result = `HTTP ${response.status}; code ${body?.code ?? body?.StatusCode}`;
-        retry = response.status === 429 || response.status >= 500;
+        // Lark can return a rate-limit rejection in an HTTP 200 receipt.
+        // Only this documented transient business code joins the existing HTTP retries.
+        retry = response.status === 429 || response.status >= 500 ||
+          Number(body?.code ?? body?.StatusCode) === 11232;
       }
     } catch (e) {
       state = "unknown";
@@ -496,6 +506,7 @@ export async function tick(clock = new Date()) {
         [job.id, Math.max(r.retries[job.attempts], serverWait / 60), result],
       );
     } else {
+      if (retry) result += "; retry limit reached";
       await tx(async (c) => {
         await c.query(
           "UPDATE notification_jobs SET state=:p2,result=:p3,completed_at=:p4 WHERE id=:p1",

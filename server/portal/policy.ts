@@ -1,6 +1,8 @@
 import {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
 export {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
 export type Channel = "inapp" | "lark" | "email" | "sms";
+export const CRM_BOT_CHANNEL = "CRM_Leads_Update";
+export const TASK_NOTICE_EVENTS = ["task.created", "task.rescheduled", "task.appointment_due"] as const;
 export interface Rule {
   calendarMode?: "inherit" | "custom";
   quiet?: { start:string; end:string };
@@ -131,7 +133,7 @@ export const defaultRules = events.map(
       channels:
         event === "conversation.updated" ? ["inapp"] : defaults.channels,
       recipient: event.includes("failed") || event === "daily.digest" ? "managers" : "owner",
-      group: event.includes("failed") ? "ops" : "sales",
+      group: (TASK_NOTICE_EVENTS as readonly string[]).includes(event) ? CRM_BOT_CHANNEL : event.includes("failed") ? "ops" : "sales",
       timing:
         event === "assessment.completed" || event === "daily.digest"
           ? "digest"

@@ -197,6 +197,7 @@ export function crmError(message: string, lang: CrmLanguage) {
     "Choose a contact channel": ["Choose a contact channel", "请选择沟通方式"],
     "Choose a task outcome": ["Choose a task outcome", "请选择此任务处理结果"],
     "Task outcome does not match completion": ["Task outcome does not match completion", "任务处理结果与完成项不一致，请重新选择"],
+    "Contact sequence changed; refresh and review": ["Contact sequence changed; refresh and review", "联系序列已变化，请刷新后核对"],
     "Choose a contact result": ["Choose a contact result", "请选择联系结果"],
     "Choose the next arrangement": ["Choose the next arrangement", "请选择后续安排"],
     "Explain why no next step is planned": ["Explain why no next step is planned", "请说明暂不安排的原因"],
@@ -266,6 +267,14 @@ export function crmDeliveryResult(
   state: string,
   lang: CrmLanguage,
 ) {
+  if (/^HTTP \d+; code 11232(?:;|$)/.test(result)) {
+    const text = state === 'pending'
+      ? ['Lark rate limit reached; waiting for the configured retry.','Batas Lark tercapai; menunggu percobaan ulang sesuai pengaturan.','Lark 限流，等待按配置重试。']
+      : state === 'failed' && result.endsWith('; retry limit reached')
+        ? ['Lark rate limit persists; retry limit reached. Delivery failed.','Batas Lark masih berlaku; batas percobaan ulang tercapai. Pengiriman gagal.','Lark 持续限流，已达到重试上限，发送失败。']
+        : null;
+    if(text)return text[lang==='en'?0:lang==='id'?1:2];
+  }
   const known: Record<string, [string, string]> = {
     "Confirm routing review before enabling": ["Confirm routing review before enabling", "请先确认历史通知范围复核，再启用策略"],
     "Retired team filters require explicit review": ["Retired team filters require explicit review", "历史团队过滤条件须先明确复核"],
@@ -283,6 +292,7 @@ export function crmDeliveryResult(
     "Choose a contact channel": ["Choose a contact channel", "请选择沟通方式"],
     "Choose a task outcome": ["Choose a task outcome", "请选择此任务处理结果"],
     "Task outcome does not match completion": ["Task outcome does not match completion", "任务处理结果与完成项不一致，请重新选择"],
+    "Contact sequence changed; refresh and review": ["Contact sequence changed; refresh and review", "联系序列已变化，请刷新后核对"],
     "Choose a contact result": ["Choose a contact result", "请选择联系结果"],
     "Choose the next arrangement": ["Choose the next arrangement", "请选择后续安排"],
     "Explain why no next step is planned": ["Explain why no next step is planned", "请说明暂不安排的原因"],

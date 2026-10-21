@@ -1,5 +1,5 @@
 import { actualSignalValues } from "./crmBuyingEvidence.ts";
-import {needsHandling} from "./crmContact.ts";
+import {needsHandling,contactPaused} from "./crmContact.ts";
 import {
   DEFAULT_CRM_POLICY_CONFIG,
   durationToMs,
@@ -276,9 +276,10 @@ export function leadMatches(
       retry:
         !closed &&
         lead.connectStatus === "No Response" &&
-        Number.isFinite(last) &&
-        lead.touchCount < config.noResponseCadence.maxRetriesBeforeNurture &&
-        now - last >= durationToMs(config.noResponseCadence.retryInterval),
+        !contactPaused(lead) &&
+        lead.noResponseSequence?.status === 'counting' &&
+        Number.isFinite(Date.parse(lead.noResponseSequence?.nextEligibleAt || '')) &&
+        now >= Date.parse(lead.noResponseSequence!.nextEligibleAt!),
       historical,
     };
     if (!f.situation.some((x) => situations[x as keyof typeof situations]))

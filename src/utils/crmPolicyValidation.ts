@@ -15,6 +15,13 @@ export function workTimeErrors(value: { startTime?: unknown; endTime?: unknown }
 }
 
 const messages = {
+  policy_object_invalid: ["Provide a non-empty configuration object.", "Berikan objek konfigurasi yang tidak kosong.", "请提供非空的配置对象。"],
+  policy_field_unknown: ["This configuration field is not supported.", "Kolom konfigurasi ini tidak didukung.", "不支持此配置字段。"],
+  policy_duration_invalid: ["Enter a finite duration greater than zero and a valid unit.", "Masukkan durasi terbatas lebih dari nol dan satuan yang valid.", "请填写大于零的有效时长并选择合法单位。"],
+  policy_count_invalid: ["Enter a non-negative whole number of retries.", "Masukkan jumlah percobaan ulang berupa bilangan bulat nol atau lebih.", "重试次数须为零或正整数。"],
+  policy_timezone_invalid: ["Select a valid timezone.", "Pilih zona waktu yang valid.", "请选择有效时区。"],
+  policy_days_invalid: ["Select at least one working day without duplicates.", "Pilih setidaknya satu hari kerja tanpa duplikat.", "请至少选择一个工作日，不可重复。"],
+  policy_clock_invalid: ["Enter a valid time (HH:mm).", "Masukkan waktu yang valid (HH:mm).", "请填写有效时间（HH:mm）。"],
   policy_start_time_invalid: ["Enter a valid start time (HH:mm).", "Masukkan waktu mulai yang valid (HH:mm).", "请填写有效的开始时间（HH:mm）。"],
   policy_end_time_invalid: ["Enter a valid end time (HH:mm).", "Masukkan waktu selesai yang valid (HH:mm).", "请填写有效的结束时间（HH:mm）。"],
   policy_time_order: ["End time must be later than start time.", "Waktu selesai harus setelah waktu mulai.", "结束时间须晚于开始时间。"],
@@ -31,16 +38,38 @@ export function policyMessage(code: PolicyMessage, lang: CrmLanguage) {
 }
 
 export class PolicySaveError extends Error {
-  constructor(public code: PolicyMessage = "policy_save_failed", public fields: WorkTimeErrors = {}) {
+  constructor(public code: PolicyMessage = "policy_save_failed", public fields: Record<string, PolicyMessage> = {}) {
     super(code);
   }
 }
 export function policySaveResponseError(status: number, body: unknown) {
-  const fields: WorkTimeErrors = {};
-  const supplied = (body as { fieldErrors?: WorkTimeErrors } | null)?.fieldErrors;
-  for (const field of ["startTime", "endTime"] as const) {
-    const code = supplied?.[field];
-    if (code === "policy_start_time_invalid" || code === "policy_end_time_invalid" || code === "policy_time_order") fields[field] = code;
+  const fields: Record<string, PolicyMessage> = {};
+  const supplied = (body as { fieldErrors?: Record<string, unknown> } | null)?.fieldErrors;
+  for (const [field,code] of Object.entries(supplied || {})) {
+    if (typeof code === 'string' && Object.hasOwn(messages,code)) fields[field] = code as PolicyMessage;
   }
   return new PolicySaveError(status === 401 ? "policy_save_login" : status === 403 ? "policy_save_forbidden" : status >= 400 && status < 500 ? "policy_save_rejected" : "policy_save_failed", fields);
+}
+
+const fieldNames: Record<string, readonly string[]> = {
+ 'businessHours.startTime':['Daily start time','Waktu mulai harian','每日开始工作时间'],
+ 'businessHours.endTime':['Daily end time','Waktu selesai harian','每日结束工作时间'],
+ 'businessHours.timezone':['Timezone','Zona waktu','时区'],
+ 'businessHours.workDays':['Working days','Hari kerja','工作日'],
+ 'businessHours.nextDayGraceTime':['Next-day start time','Waktu mulai hari berikutnya','次日起始时间'],
+ 'firstResponseSla.hot':['Hot response deadline','Tenggat respons prospek panas','高意向响应时限'],
+ 'firstResponseSla.warm':['Warm response deadline','Tenggat respons prospek hangat','中意向响应时限'],
+ 'firstResponseSla.cold':['Cold response deadline','Tenggat respons prospek dingin','培育响应时限'],
+ 'noResponseCadence.retryInterval':['Retry interval','Jeda percobaan ulang','重试间隔'],
+ 'noResponseCadence.maxRetriesBeforeNurture':['Consecutive unanswered threshold','Ambang upaya berturut-turut tanpa balasan','连续未回复阈值'],
+ 'inactivityWatchdog.hotInactivity':['Hot inactivity threshold','Ambang tidak aktif prospek panas','高意向未联系时长'],
+ 'inactivityWatchdog.warmInactivity':['Warm inactivity threshold','Ambang tidak aktif prospek hangat','中意向未联系时长'],
+ 'inactivityWatchdog.coldInactivity':['Cold inactivity threshold','Ambang tidak aktif prospek dingin','培育客户未联系时长'],
+ 'milestones.trialReminderBefore':['Before-trial reminder','Pengingat sebelum kelas percobaan','试听前提醒'],
+ 'milestones.trialFollowUpAfter':['After-trial follow-up','Tindak lanjut setelah kelas percobaan','试听后跟进'],
+ 'milestones.assessmentFollowUpAfter':['After-assessment follow-up','Tindak lanjut setelah asesmen','测评后跟进'],
+ 'reactivation.reactivatedResponse':['Reactivated response deadline','Tenggat respons pelanggan aktif kembali','重新激活响应时限'],
+};
+export function policyFieldLabel(field:string,lang:CrmLanguage) {
+ return (fieldNames[field] || ['Configuration','Konfigurasi','配置'])[lang==='en'?0:lang==='id'?1:2];
 }

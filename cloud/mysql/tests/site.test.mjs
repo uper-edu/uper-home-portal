@@ -50,7 +50,7 @@ test('MySQL CMS, publication, image, intake, application and permission acceptan
  const imageRead=await anon(upload.json.url);assert.equal(imageRead.status,200);assert.equal(imageRead.headers.get('content-type'),'image/webp');assert.ok(imageRead.bytes.length>10);
  assert.equal((await sales('/api/cms/upload',{data:'data:image/png;base64,'+image.toString('base64')})).status,403);
  assert.equal((await leader('/api/cms/upload',{data:'data:image/svg+xml;base64,'+Buffer.from('<svg/>').toString('base64')})).status,400);
- const inquiry={requestId:randomUUID(),fullName:'TEST Site Inquiry',email:randomUUID()+'@example.invalid',phone:'0000008122',interest:'TEST Mandarin information',message:'  TEST exact original inquiry text\n'};
+ const inquiry={requestId:randomUUID(),fullName:'TEST Site Inquiry',email:randomUUID()+'@example.invalid',phone:'+6281234567890',interest:'TEST Mandarin information',message:'  TEST exact original inquiry text\n'};
  const saved=await visitor('/api/inquiry',inquiry);assert.equal(saved.status,200);assert.equal(saved.json.saved,true);assert.equal(saved.json.emailSent,false);
  const repeats=await Promise.all(Array.from({length:10},()=>visitor('/api/inquiry',inquiry)));assert.ok(repeats.every(x=>x.status===200&&x.json.id===saved.json.id));
  const detail=await leader('/api/crm/leads/'+saved.json.leadId);assert.equal(detail.status,200);assert.equal(detail.json.chatTranscript.filter(m=>m.content===inquiry.message).length,1);assert.equal(detail.json.tasks.length,1);

@@ -1,3 +1,4 @@
+import { policyConfigErrors, type ConfigErrors } from "../../utils/crmPolicyConfigValidation";
 import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import {
@@ -6,7 +7,7 @@ import {
 } from "../../utils/workCalendar";
 import { crmLocale, crmValue } from "../../utils/crmLanguage";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { workTimeErrors, policyMessage, PolicySaveError, type WorkTimeField, type WorkTimeErrors } from "../../utils/crmPolicyValidation";
+import { workTimeErrors, policyMessage, policyFieldLabel, PolicySaveError, type WorkTimeField, type WorkTimeErrors } from "../../utils/crmPolicyValidation";
 import type {
   CrmPolicyConfig,
   TimeUnit,
@@ -73,6 +74,8 @@ interface DurationFieldProps {
   onChange: (newDuration: TimeDuration) => void;
   accentColor?: string;
   recommendedText?: string;
+  fieldPath: string;
+  error?: import("../../utils/crmPolicyValidation").PolicyMessage;
 }
 const isDurationEqual = (a?: TimeDuration, b?: TimeDuration) => {
   if (!a || !b) return true;
@@ -90,13 +93,15 @@ const DurationField: React.FC<DurationFieldProps> = ({
   onChange,
   accentColor = "text-primary-600",
   recommendedText,
+  fieldPath,
+  error,
 }) => {
   const isModified =
     originalDuration && !isDurationEqual(duration, originalDuration);
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   return (
-    <div
+    <div data-policy-field={fieldPath}
       className={`p-4 rounded-xl border transition-all ${
         isModified
           ? isLight
@@ -153,10 +158,13 @@ const DurationField: React.FC<DurationFieldProps> = ({
             type="number"
             min="1"
             max="365"
-            value={duration.value}
+            value={Number.isFinite(duration.value) ? duration.value : ""}
+            aria-label={t(titleEn, titleZh)}
+            aria-invalid={!!error}
+            aria-describedby={error ? "policy-error-"+fieldPath : undefined}
             onChange={(e) =>
               onChange({
-                value: Math.max(1, parseInt(e.target.value) || 1),
+                value: e.target.value === "" ? NaN : Number(e.target.value),
                 unit: duration.unit,
               })
             }
@@ -190,6 +198,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
           </button>
         )}
       </div>
+      {error && <p id={"policy-error-"+fieldPath} role="alert" className="mt-2 text-sm text-red-600">{policyMessage(error, lang)}</p>}
     </div>
   );
 };
@@ -219,6 +228,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   // stable so publishing controls cannot cause a parent/child render loop.
   const actions = useRef({ onSavePolicy, onResetPolicy });
   actions.current = { onSavePolicy, onResetPolicy };
+  const configErrors = showTimeErrors ? policyConfigErrors(formData) : {};
   const timeErrors = workTimeErrors(formData.businessHours);
   const fieldErrors = { ...serverTimeErrors, ...(showTimeErrors ? timeErrors : {}) };
   const calendarValid = Object.keys(timeErrors).length === 0;
@@ -247,6 +257,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   >("fri_night");
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
+  useEffect(() => { setSaveError(null); }, [formData]);
   useEffect(() => {
     setFormData(policyConfig);
   }, [policyConfig]);
@@ -261,6 +272,21 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     setActiveCategory("schedule");
     setFocusField(errors.startTime ? "startTime" : "endTime");
   }, []);
+  const [pendingConfigField, setPendingConfigField] = useState<string | null>(null);
+  const focusConfig = useCallback((errors: ConfigErrors) => {
+    const field=Object.keys(errors)[0];
+    if(field==='businessHours.startTime'||field==='businessHours.endTime') {
+      focusCalendar({[field.split('.')[1]]:errors[field]} as WorkTimeErrors);
+    } else { setActiveCategory('all'); setPendingConfigField(field); }
+  },[focusCalendar]);
+  useEffect(()=>{
+    if(!pendingConfigField)return;
+    const element=Array.from(document.querySelectorAll<HTMLElement>('[data-policy-field]')).find(e=>e.dataset.policyField===pendingConfigField);
+    const target=element?.matches('input') ? element : element?.querySelector<HTMLElement>('input,button');
+    (target||saveFeedback.current)?.focus();
+    (target||saveFeedback.current)?.scrollIntoView({block:'center'});
+    setPendingConfigField(null);
+  },[pendingConfigField,activeCategory]);
   // Live clock in target timezone
   useEffect(() => {
     const updateLiveClock = () => {
@@ -568,10 +594,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     setSaveError(null);
     setServerTimeErrors({});
     setShowTimeErrors(true);
-    const invalid = workTimeErrors(formData.businessHours);
+    const invalid = policyConfigErrors(formData);
     if (Object.keys(invalid).length) {
       setSaveError(new PolicySaveError("policy_save_rejected", invalid));
-      focusCalendar(invalid);
+      focusConfig(invalid);
       return;
     }
     inFlight.current = true;
@@ -584,8 +610,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     } catch (error) {
       const failure = error instanceof PolicySaveError ? error : new PolicySaveError();
       setSaveError(failure);
-      setServerTimeErrors(failure.fields);
-      if (Object.keys(failure.fields).length) focusCalendar(failure.fields);
+      setServerTimeErrors({startTime:failure.fields["businessHours.startTime"] as any,endTime:failure.fields["businessHours.endTime"] as any});
+      if (Object.keys(failure.fields).length) focusConfig(failure.fields);
       else {
         saveFeedback.current?.focus();
         saveFeedback.current?.scrollIntoView({ block: "center" });
@@ -594,7 +620,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       inFlight.current = false;
       setIsSaving(false);
     }
-  }, [formData, focusCalendar]);
+  }, [formData, focusConfig]);
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     void submitPolicy();
@@ -950,7 +976,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             </p>
           </section>
           <div ref={saveFeedback} tabIndex={-1} className="mt-3 text-sm outline-none">
-            {saveError && <p role="alert" className={isLight ? "text-red-700" : "text-red-300"}>{policyMessage(Object.values(saveError.fields)[0] || saveError.code, lang)}</p>}
+            {saveError && <div role="alert" className={isLight ? "text-red-700" : "text-red-300"}>
+              <p>{policyMessage(saveError.code, lang)}</p>
+              <ul>{Object.entries(saveError.fields).map(([field,code])=><li key={field}><button type="button" className="underline text-left" onClick={()=>focusConfig({[field]:code})}>{policyFieldLabel(field,lang)}: {policyMessage(code,lang)}</button></li>)}</ul>
+            </div>}
             {saveSuccess && <p role="status" className={isLight ? "text-emerald-700" : "text-emerald-300"}>{policyMessage("policy_save_success", lang)}</p>}
           </div>
         </div>
@@ -1517,7 +1546,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
             <div className="space-y-4">
               {/* Timezone */}
-              <div>
+              <div data-policy-field="businessHours.timezone">
                 <label
                   className={`block font-semibold text-xs mb-1 ${isLight ? "text-slate-800" : "text-slate-200"}`}
                 >
@@ -1640,7 +1669,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               </div>
 
               {/* Workdays */}
-              <div>
+              <div data-policy-field="businessHours.workDays">
                 <label
                   className={`block font-semibold text-xs mb-1 ${isLight ? "text-slate-800" : "text-slate-200"}`}
                 >
@@ -1723,6 +1752,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="等级 1 (高意向) 首访响应时限"
                 descEn="High-priority response deadline. Advisor follow-up, booking and enrollment requests use this duration regardless of lead tier."
                 descZh="高优先级响应时限。申请顾问跟进、预约及报名均使用此时限，不受原客户等级限制。"
+                fieldPath="firstResponseSla.hot"
+                error={configErrors["firstResponseSla.hot"] || saveError?.fields["firstResponseSla.hot"]}
                 duration={formData.firstResponseSla.hot}
                 originalDuration={policyConfig.firstResponseSla.hot}
                 recommendedText={t("Default: 3 Hours", "默认: 3 小时")}
@@ -1745,6 +1776,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="等级 2 (中意向) 首访响应时限"
                 descEn="Standard interest students seeking general consultation or trial placement."
                 descZh="常规意向咨询、申请试听学员的首次建联响应窗口。"
+                fieldPath="firstResponseSla.warm"
+                error={configErrors["firstResponseSla.warm"] || saveError?.fields["firstResponseSla.warm"]}
                 duration={formData.firstResponseSla.warm}
                 originalDuration={policyConfig.firstResponseSla.warm}
                 recommendedText={t("Default: 24 Hours", "默认: 24 小时")}
@@ -1767,6 +1800,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="等级 3 (低意向/院校) 首访响应时限"
                 descEn="Inquiries requesting broad brochures, general school inquiries or low initial intent."
                 descZh="学校合作或通用材料下载类线索的建联时限。"
+                fieldPath="firstResponseSla.cold"
+                error={configErrors["firstResponseSla.cold"] || saveError?.fields["firstResponseSla.cold"]}
                 duration={formData.firstResponseSla.cold}
                 originalDuration={policyConfig.firstResponseSla.cold}
                 recommendedText={t("Default: 48 Hours", "默认: 48 小时")}
@@ -1820,8 +1855,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 lang={lang}
                 titleEn="Retry Interval After Unanswered Call"
                 titleZh="未接通后的重试冷却间隔"
-                descEn="Time to wait before the system prompts the sales rep to make a second attempt."
-                descZh="学员初次电话未接后，建议等待的下一次重呼间隔，避免密集呼叫引起反感。"
+                descEn="Natural-time gap between real attempts; also used for the final reply window. A next eligible time outside working hours moves to the next opening."
+                descZh="真实尝试之间按自然时长计间隔，最后回复窗口使用相同时长；非工作时段的下次有效时间顺延至下次上班。"
+                fieldPath="noResponseCadence.retryInterval"
+                error={configErrors["noResponseCadence.retryInterval"] || saveError?.fields["noResponseCadence.retryInterval"]}
                 duration={formData.noResponseCadence.retryInterval}
                 originalDuration={policyConfig.noResponseCadence.retryInterval}
                 recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
@@ -1855,12 +1892,12 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                       className={`block font-semibold text-xs ${isLight ? "text-slate-800" : "text-slate-200"}`}
                     >
                       {t(
-                        "Max Retries Before Cold Nurture",
-                        "最大允许未接重试次数",
+                        "Consecutive unanswered threshold",
+                        "连续未回复阈值",
                       )}
                     </label>
                     <div className="text-[10px] text-slate-400 font-mono">
-                      {t("Max retries before nurture", "最大重试触达次数")}
+                      {t("Consecutive unanswered threshold", "包含首次有效尝试")}
                     </div>
                   </div>
                   <div className="text-right">
@@ -1878,24 +1915,26 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                   className={`text-[11px] mb-3 leading-relaxed ${isLight ? "text-slate-500" : "text-slate-400"}`}
                 >
                   {t(
-                    "After this many consecutive unanswered attempts, the lead automatically moves to cold nurture.",
-                    "连续达到此未接次数时，系统自动转入冷池培育，停止催促销售，避免被投诉骚扰。",
+                    "Includes the first valid attempt. Retry spacing and a final reply window apply. Zero disables automatic nurture. New sequences snapshot these settings; existing tasks and confirmed groups stay unchanged.",
+                    "包含首次有效尝试；须满足重试间隔及最后回复窗口。0关闭自动转培育。新序列保存配置快照，已有任务及人工确认分组不变。",
                   )}
                 </p>
 
                 <div className="flex items-center gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/60">
                   <input
                     type="number"
-                    min="1"
-                    max="10"
-                    value={formData.noResponseCadence.maxRetriesBeforeNurture}
+                    min="0"
+                    data-policy-field="noResponseCadence.maxRetriesBeforeNurture"
+                    aria-label={t("Consecutive unanswered threshold", "连续未回复阈值")}
+                    aria-invalid={!!configErrors["noResponseCadence.maxRetriesBeforeNurture"]}
+                    value={Number.isFinite(formData.noResponseCadence.maxRetriesBeforeNurture) ? formData.noResponseCadence.maxRetriesBeforeNurture : ""}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
                         noResponseCadence: {
                           ...formData.noResponseCadence,
                           maxRetriesBeforeNurture:
-                            parseInt(e.target.value) || 3,
+                            e.target.value === "" ? NaN : Number(e.target.value),
                         },
                       })
                     }
@@ -1947,6 +1986,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="高意向学员防停滞报警阈值"
                 descEn="Alert if no follow-up occurs within this duration for Hot leads."
                 descZh="高意向客户初访后若未排定下次具体时间，超过该时限未有新跟进则亮起停滞预警。"
+                fieldPath="inactivityWatchdog.hotInactivity"
+                error={configErrors["inactivityWatchdog.hotInactivity"] || saveError?.fields["inactivityWatchdog.hotInactivity"]}
                 duration={formData.inactivityWatchdog.hotInactivity}
                 originalDuration={policyConfig.inactivityWatchdog.hotInactivity}
                 recommendedText={t("Default: 24 Hours", "默认: 24 小时")}
@@ -1969,6 +2010,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="中意向客户未联系提醒时长"
                 descEn="Alert threshold for active intermediate interest leads."
                 descZh="常规意向客户初访后若未设定下次跟进时间，最大允许沉默时长。"
+                fieldPath="inactivityWatchdog.warmInactivity"
+                error={configErrors["inactivityWatchdog.warmInactivity"] || saveError?.fields["inactivityWatchdog.warmInactivity"]}
                 duration={formData.inactivityWatchdog.warmInactivity}
                 originalDuration={
                   policyConfig.inactivityWatchdog.warmInactivity
@@ -1993,6 +2036,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="普通/冷线索定期唤醒检查周期"
                 descEn="Interval before reminding the consultant to send regular promotion broadcasts."
                 descZh="培育池老客户每隔多久推送一次官方开班简章或奖学金动态。"
+                fieldPath="inactivityWatchdog.coldInactivity"
+                error={configErrors["inactivityWatchdog.coldInactivity"] || saveError?.fields["inactivityWatchdog.coldInactivity"]}
                 duration={formData.inactivityWatchdog.coldInactivity}
                 originalDuration={
                   policyConfig.inactivityWatchdog.coldInactivity
@@ -2050,6 +2095,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="试听课开课前提醒提前量"
                 descEn="Time before trial start to remind consultant to send Zoom meeting details or campus map."
                 descZh="约定试听课开始前几小时，自动提示顾问发送 Zoom 会议号或 PIK 校区导航。"
+                fieldPath="milestones.trialReminderBefore"
+                error={configErrors["milestones.trialReminderBefore"] || saveError?.fields["milestones.trialReminderBefore"]}
                 duration={formData.milestones.trialReminderBefore}
                 originalDuration={policyConfig.milestones.trialReminderBefore}
                 recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
@@ -2072,6 +2119,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="试听课后回访促单时间节点"
                 descEn="Time after trial completion to call the student/parents for feedback and close class enrollment."
                 descZh="试听结束后几小时内电话回访体验，解答疑问并促成学费预缴。"
+                fieldPath="milestones.trialFollowUpAfter"
+                error={configErrors["milestones.trialFollowUpAfter"] || saveError?.fields["milestones.trialFollowUpAfter"]}
                 duration={formData.milestones.trialFollowUpAfter}
                 originalDuration={policyConfig.milestones.trialFollowUpAfter}
                 recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
@@ -2094,6 +2143,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="智能测评完成后的推荐定级时效"
                 descEn="Time after student finishes test quiz to review score report and advise matched HSK syllabus."
                 descZh="学员完成测评后，顾问应在此时限内核对报告并推荐适配课程。"
+                fieldPath="milestones.assessmentFollowUpAfter"
+                error={configErrors["milestones.assessmentFollowUpAfter"] || saveError?.fields["milestones.assessmentFollowUpAfter"]}
                 duration={formData.milestones.assessmentFollowUpAfter}
                 originalDuration={
                   policyConfig.milestones.assessmentFollowUpAfter
@@ -2151,6 +2202,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 titleZh="沉睡客户重新咨询响应时限"
                 descEn="Urgent window within which a consultant must respond when an archived lead re-engages."
                 descZh="老客户在新周期有了主动意向后，销售必须在多长时间内优先跟进，趁热打铁促成转化。"
+                fieldPath="reactivation.reactivatedResponse"
+                error={configErrors["reactivation.reactivatedResponse"] || saveError?.fields["reactivation.reactivatedResponse"]}
                 duration={formData.reactivation.reactivatedResponse}
                 originalDuration={policyConfig.reactivation.reactivatedResponse}
                 recommendedText={t("Default: 30 Minutes", "默认: 30 分钟")}

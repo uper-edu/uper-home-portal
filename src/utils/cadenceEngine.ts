@@ -93,17 +93,15 @@ export function evaluateLeadCadence(
     };
   }
 
-  // 3. Max Unanswered Retries reached
+  // R6 follows the persisted sequence; old cumulative touches cannot imply failure.
   const touchCount = lead.touchCount || 0;
-  if (lead.connectStatus === 'No Response' && touchCount >= config.noResponseCadence.maxRetriesBeforeNurture) {
-    return {
-      badgeText: t(`No reply (${touchCount} calls)`, `已呼${touchCount}次未通`),
-      badgeColor: 'text-slate-600 bg-slate-100 border-slate-300 font-medium',
-      statusType: 'stale_alert',
-      isOverdue: false,
-      suggestedAction: t('Stop calling; move to nurture broadcast', '暂停呼叫；转入被动内容培育')
-    };
-  }
+  const sequence=lead.noResponseSequence;
+  if(sequence && ['waiting','nurtured','protected','review'].includes(sequence.status))return {
+    badgeText:t("Unanswered sequence", "连续未回复")+`: ${sequence.count}`,
+    badgeColor:'text-slate-600 bg-slate-100 border-slate-300 font-medium',
+    statusType:'stale_alert',isOverdue:false,
+    suggestedAction:sequence.status==='waiting' ? t('Wait for the reply window; keep existing tasks','等待回复窗口，保留已有任务') : t('Review contact difficulty and existing commitments','核实联系困难及已有承诺')
+  };
 
   // 4. Initial First Response Phase (Touch = 0, not yet contacted)
   if (touchCount === 0 && (lead.currentStage === 'New' || !lead.lastContactedAt)) {
@@ -166,15 +164,15 @@ export function evaluateLeadCadence(
   }
 
   // 5. Unanswered Call Follow-up Cadence (touchCount > 0, status is No Response)
-  if (lead.connectStatus === 'No Response' && touchCount < config.noResponseCadence.maxRetriesBeforeNurture) {
+  if (lead.connectStatus === 'No Response' && sequence?.status === 'counting') {
     const lastMs = new Date(lead.lastContactedAt || lead.updatedAt).getTime();
-    const retryIntervalMs = durationToMs(config.noResponseCadence.retryInterval || { value: 4, unit: 'hours' });
-    const retryDueMs = lastMs + retryIntervalMs;
+    const retryIntervalMs = sequence.policy?.intervalMs || durationToMs(config.noResponseCadence.retryInterval);
+    const retryDueMs = sequence.nextEligibleAt ? Date.parse(sequence.nextEligibleAt) : lastMs + retryIntervalMs;
     const diffMs = retryDueMs - nowMs;
 
     if (diffMs <= 0) {
       return {
-        badgeText: t(`Retry Call (${touchCount + 1}nd)`, `📞 待重呼 (第${touchCount + 1}次)`),
+        badgeText: t(`Retry Call (${(sequence?.count || 0) + 1}nd)`, `📞 待重呼 (第${(sequence?.count || 0) + 1}次)`),
         badgeColor: 'text-amber-800 bg-amber-50 border-amber-300 font-bold',
         statusType: 'retry_due',
         isOverdue: true,

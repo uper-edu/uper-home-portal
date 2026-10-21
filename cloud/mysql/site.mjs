@@ -1,3 +1,4 @@
+import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
 import {permittedRecord} from '../../src/utils/accessControl.ts';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
@@ -66,6 +67,7 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
 
   app.use(['/api/inquiry','/api/apply'],(q,r,next)=>{if(q.method==='POST'&&!q.is('application/json'))return r.status(415).json({error:'JSON request required'});next();});
   app.post('/api/inquiry',wrap(async(q,r)=>{
+    if(!validContactPhone(q.body?.phone))fail(400,CONTACT_PHONE_ERROR);
     const b=q.body,key=requestKey(b),fullName=text(b,'fullName',100,true),email=text(b,'email',150,true).toLowerCase(),phone=text(b,'phone',40,true),interest=text(b,'interest',150,true),message=text(b,'message',5000);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))fail(400,'Invalid email');
     const originalMessage=b.message??message;

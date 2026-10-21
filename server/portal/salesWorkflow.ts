@@ -1,3 +1,4 @@
+import {applyContactSequence} from "./noResponse.ts";
 import {stageFact,fact} from "./trustWorkflow.ts";
 import { evaluateFullLeadTier } from "../../src/types/crmLead.ts";
 import { randomUUID } from "node:crypto";
@@ -25,6 +26,8 @@ export function validateWorkflow(body: any) {
     if (body.completeTaskIds.some((id:string) => id !== body.processingTaskId) || body.completeTaskIds.length > 1)
       throw new WorkflowValidationError("Invalid task selection");
   }
+  if (body.customerReplied !== undefined && (typeof body.customerReplied !== 'boolean' || (body.customerReplied && (body.recordKind !== 'closure' || !body.channel))))
+    throw new WorkflowValidationError("Reply confirmation requires a channel and an internal record");
   if (body.recordKind && !["contact", "closure"].includes(body.recordKind))
     throw new WorkflowValidationError("Invalid contact channel");
   if (body.processingTaskId) {
@@ -107,6 +110,7 @@ export async function saveSalesWorkflow(
   actor: string,
   body: any,
   canWrite: (profile: any) => boolean,
+  clock = new Date(),
 ) {
   const current = (
     await c.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE", [
@@ -124,6 +128,7 @@ export async function saveSalesWorkflow(
     return { lead: current, ...previous.result, replayed: true };
   }
   validateWorkflow(body);
+  if(body.customerReplied && body.customerReplySequenceRevision!==(current.noResponseSequence?.revision||0))throw new WorkflowValidationError("Contact sequence changed; refresh and review");
   await stageFact(c,leadId,actor,current,body,body.summary);
   if (body.contactArrangement) {
     const a = body.contactArrangement;
@@ -256,7 +261,7 @@ export async function saveSalesWorkflow(
     cancelledNotifications: cancelled,
     logId: randomUUID(),
   };
-  const at = new Date().toISOString();
+  const at = clock.toISOString();
   const log = {
     ...body,
     id: result.logId,
@@ -268,7 +273,7 @@ export async function saveSalesWorkflow(
     input: JSON.stringify(body),
     result,
   };
-  const profile = {
+  let profile = {
     ...current,
     ...(body.contactArrangement
       ? {
@@ -315,6 +320,8 @@ export async function saveSalesWorkflow(
   // Reuse the existing R1-R6 rules for this new result, never regrade or batch-reclassify history.
   if (
     body.recordKind !== "closure" &&
+    current.noResponseSequence?.status !== "nurtured" &&
+    (!(current.tier === "Cold-Nurture" && current.tierSource === "behaviour_override") || body.connectStatus === "Connected") &&
     !current.tierConfirmed &&
     current.tierSource !== "sales_confirmed" &&
     [
@@ -340,6 +347,7 @@ export async function saveSalesWorkflow(
     )
       profile.tierUpdatedAt = at;
   }
+  profile = await applyContactSequence(c,{...profile,id:leadId},body,actor,clock);
   await fact(c,leadId,"followup.recorded",actor,{...body,result});
   await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1", [
     leadId,

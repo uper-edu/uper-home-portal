@@ -139,10 +139,22 @@
       "server/portal/trustWorkflow.ts"
     ]
   },
+  "INSERT INTO crm_engagements(id,lead_id,kind,source_id,data) VALUES(:p1,:p2,'reply_confirmation',:p3,:p4)": {
+    "sql": "INSERT INTO crm_engagements(id,lead_id,kind,source_id,data) VALUES(:p1,:p2,'reply_confirmation',:p3,:p4)",
+    "sources": [
+      "server/portal/noResponse.ts"
+    ]
+  },
   "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,:p3,:p4,:p5)": {
     "sql": "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,:p3,:p4,:p5)",
     "sources": [
       "server/portal/trustWorkflow.ts"
+    ]
+  },
+  "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,'contact.sequence',:p3,:p4)": {
+    "sql": "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,'contact.sequence',:p3,:p4)",
+    "sources": [
+      "server/portal/noResponse.ts"
     ]
   },
   "INSERT INTO crm_login_limits(`key`) VALUES(:p1) ON DUPLICATE KEY UPDATE failures=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN 0 ELSE crm_login_limits.failures END,window_start=CASE WHEN crm_login_limits.window_start<UTC_TIMESTAMP(6)-INTERVAL 15 minute THEN UTC_TIMESTAMP(6) ELSE crm_login_limits.window_start END": {
@@ -241,8 +253,8 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
-  "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(CAST(:p3 AS DATETIME(6)),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))": {
-    "sql": "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(CAST(:p3 AS DATETIME(6)),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))",
+  "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))": {
+    "sql": "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -425,6 +437,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'task.notifications.enabled',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'task.notifications.enabled',:p2)",
+    "sources": [
+      "server/portal/taskNotificationActivation.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.mutation',?)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.mutation',?)",
     "sources": [
@@ -505,6 +523,12 @@
     "sql": "INSERT INTO rule_versions VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/taskNotificationActivation.ts"
     ]
   },
   "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'inquiry',:p2,:p3,:p4,:p5,:p6)": {
@@ -839,6 +863,12 @@
       "server/portal/worker.ts"
     ]
   },
+  "SELECT * FROM notification_rules WHERE id IN (:p1) ORDER BY id FOR UPDATE": {
+    "sql": "SELECT * FROM notification_rules WHERE id IN (:p1) ORDER BY id FOR UPDATE",
+    "sources": [
+      "server/portal/taskNotificationActivation.ts"
+    ]
+  },
   "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE": {
     "sql": "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE",
     "sources": [
@@ -995,12 +1025,6 @@
       "server/portal/campaignPromotion.ts"
     ]
   },
-  "SELECT COUNT(*) AS count FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id WHERE i.employee_id=:p1 AND o.lead_id=:p2 AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=:p1 AND lead_id=:p2),'1000-01-01 00:00:00')": {
-    "sql": "SELECT COUNT(*) AS count FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id JOIN outbox o ON o.id=j.event_id WHERE i.employee_id=:p1 AND o.lead_id=:p2 AND i.read_at IS NULL AND o.created_at>COALESCE((SELECT seen_at FROM lead_read_marks WHERE employee_id=:p1 AND lead_id=:p2),'1000-01-01 00:00:00')",
-    "sources": [
-      "cloud/mysql/runtime.mjs"
-    ]
-  },
   "SELECT COUNT(*) AS count FROM notification_jobs WHERE channel='lark' AND recipient=:p1 AND state IN ('accepted','simulated') AND COALESCE(completed_at,due_at)>CAST(:p2 AS DATETIME(6))-INTERVAL 1 hour": {
     "sql": "SELECT COUNT(*) AS count FROM notification_jobs WHERE channel='lark' AND recipient=:p1 AND state IN ('accepted','simulated') AND COALESCE(completed_at,due_at)>CAST(:p2 AS DATETIME(6))-INTERVAL 1 hour",
     "sources": [
@@ -1011,6 +1035,12 @@
     "sql": "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT created_at FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1": {
+    "sql": "SELECT created_at FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1",
+    "sources": [
+      "server/portal/followup.ts"
     ]
   },
   "SELECT data FROM portal_audit WHERE action='attendance.record' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.id')),'null')=:p1 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId')),'null')=:p2": {
@@ -1041,6 +1071,12 @@
     "sql": "SELECT data FROM portal_audit WHERE actor=? AND action='cms.mutation' AND data->>'$.requestId'=?",
     "sources": [
       "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff": {
+    "sql": "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff",
+    "sources": [
+      "server/portal/runtime.ts"
     ]
   },
   "SELECT DISTINCT conversation_id FROM messages WHERE status='generating'": {
@@ -1105,6 +1141,18 @@
       "server/portal/mysqlCampaignStorage.ts"
     ]
   },
+  "SELECT id FROM crm_engagements WHERE id=:p1": {
+    "sql": "SELECT id FROM crm_engagements WHERE id=:p1",
+    "sources": [
+      "server/portal/trustWorkflow.ts"
+    ]
+  },
+  "SELECT id FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1": {
+    "sql": "SELECT id FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1",
+    "sources": [
+      "server/portal/followup.ts"
+    ]
+  },
   "SELECT id FROM crm_users WHERE email_key=:p1": {
     "sql": "SELECT id FROM crm_users WHERE email_key=:p1",
     "sources": [
@@ -1133,6 +1181,12 @@
     "sql": "SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' AND status IN ('open','overdue') FOR UPDATE",
     "sources": [
       "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT id FROM notification_channels WHERE id=:p1": {
+    "sql": "SELECT id FROM notification_channels WHERE id=:p1",
+    "sources": [
+      "server/portal/taskNotificationActivation.ts"
     ]
   },
   "SELECT id FROM notification_channels WHERE id='CRM_Leads_Update'": {
@@ -1247,6 +1301,18 @@
       "server/portal/campaignSources.ts"
     ]
   },
+  "SELECT id,profile FROM portal_leads WHERE JSON_UNQUOTE(JSON_EXTRACT(profile,'$.noResponseSequence.status'))='waiting' AND JSON_UNQUOTE(JSON_EXTRACT(profile,'$.noResponseSequence.waitUntil'))<=:p1 ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE JSON_UNQUOTE(JSON_EXTRACT(profile,'$.noResponseSequence.status'))='waiting' AND JSON_UNQUOTE(JSON_EXTRACT(profile,'$.noResponseSequence.waitUntil'))<=:p1 ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED",
+    "sources": [
+      "server/portal/noResponse.ts"
+    ]
+  },
+  "SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision FROM portal_leads ORDER BY id": {
+    "sql": "SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision FROM portal_leads ORDER BY id",
+    "sources": [
+      "server/portal/leadChanges.ts"
+    ]
+  },
   "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2": {
     "sql": "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2",
     "sources": [
@@ -1255,6 +1321,13 @@
   },
   "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')": {
     "sql": "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')",
+    "sources": [
+      "server/portal/noResponse.ts",
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy') ORDER BY id FOR UPDATE": {
+    "sql": "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy') ORDER BY id FOR UPDATE",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -1380,6 +1453,7 @@
     "sql": "SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/followup.ts",
+      "server/portal/noResponse.ts",
       "server/portal/promotionReviews.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts",
@@ -1455,6 +1529,12 @@
     "sql": "SELECT status FROM followup_tasks WHERE id=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT SUM(a.activity_at>COALESCE(r.seen_at,'1000-01-01 00:00:00')) OVER () AS count,\n              DATE_FORMAT(a.activity_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS read_through,\n              a.event_type,a.source\n             FROM (\n              SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m\n              JOIN conversations c ON c.id=m.conversation_id\n              WHERE c.lead_id=:p2 AND m.role='user' AND m.status='saved' AND TRIM(m.content)<>''\n              UNION ALL\n              SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p2 AND o.type IN\n               ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n             ) a LEFT JOIN lead_read_marks r ON r.employee_id=:p1 AND r.lead_id=:p2\n             WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6))\n             ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1": {
+    "sql": "SELECT SUM(a.activity_at>COALESCE(r.seen_at,'1000-01-01 00:00:00')) OVER () AS count,\n              DATE_FORMAT(a.activity_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS read_through,\n              a.event_type,a.source\n             FROM (\n              SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m\n              JOIN conversations c ON c.id=m.conversation_id\n              WHERE c.lead_id=:p2 AND m.role='user' AND m.status='saved' AND TRIM(m.content)<>''\n              UNION ALL\n              SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p2 AND o.type IN\n               ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n             ) a LEFT JOIN lead_read_marks r ON r.employee_id=:p1 AND r.lead_id=:p2\n             WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6))\n             ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1",
+    "sources": [
+      "cloud/mysql/runtime.mjs"
     ]
   },
   "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id": {
@@ -1869,6 +1949,12 @@
       "scripts/crm-channel-map.ts"
     ]
   },
+  "UPDATE notification_rules SET enabled=true,config=:p2,version=version+1,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE notification_rules SET enabled=true,config=:p2,version=version+1,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/taskNotificationActivation.ts"
+    ]
+  },
   "UPDATE notification_rules SET version=:p2,config=:p3,enabled=:p4,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
     "sql": "UPDATE notification_rules SET version=:p2,config=:p3,enabled=:p4,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
@@ -1892,6 +1978,7 @@
     "sources": [
       "server/portal/accessHandovers.ts",
       "server/portal/campaignSources.ts",
+      "server/portal/noResponse.ts",
       "server/portal/promotionReviews.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts",

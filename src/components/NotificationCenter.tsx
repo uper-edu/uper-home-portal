@@ -587,8 +587,8 @@ export default function NotificationCenter({
                 <p className={`text-xs ${muted}`}>
                   {tab === "notification-rules"
                     ? t(
-                        "启用仅作用于新事件。已排队任务保留原版本，停用规则不会自动取消它们。",
-                        "Activation applies to new events. Queued jobs retain their policy version; disabling does not cancel them.",
+                        "启用仅作用于新事件。已排队任务保留原版本，停用规则不会自动取消它们。生效前已错过的约定时间不补发，历史失败仍可查。",
+                        "Activation applies to new events. Queued jobs retain their policy version; disabling does not cancel them. Appointments missed before activation are not replayed; historical failures remain visible.",
                       )
                     : tab === "notification-channels"
                       ? t(

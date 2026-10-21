@@ -310,7 +310,7 @@ export function CrmLeadFilters({
             })),
             onSelect: (value) => update({ task: value }),
           })}
-          <label className="crm-filter-unread">
+          <label className="crm-filter-unread" title={t("Customer activity you have not viewed; independent of notification delivery. Viewing does not complete tasks.", "本人尚未查看的客户动态，与通知是否送达无关；查看不完成任务。") }>
             <input
               type="checkbox"
               checked={f.unread}
@@ -412,7 +412,18 @@ export function CrmLeadFilters({
                     >
                       <div className="crm-filter-options">
                         {options.map((o) => (
-                          <label key={o[0]} className="crm-filter-option">
+                          <label
+                            key={o[0]}
+                            className="crm-filter-option"
+                            onPointerDown={(event) => {
+                              // Keep focus inside the popup until the label activates its
+                              // checkbox. Otherwise blur can unmount it before change fires.
+                              if (event.button === 0 && event.target !== event.currentTarget.querySelector("input")) {
+                                event.preventDefault();
+                                event.currentTarget.querySelector("input")?.focus();
+                              }
+                            }}
+                          >
                             <input
                               type="checkbox"
                               checked={selected.includes(o[0])}

@@ -71,9 +71,9 @@ export const systemChapters: SystemChapter[] = [
             "客户负责人：客户归属；任务负责人：单项事项的责任人",
           ),
           w(
-            "Unread: activity not viewed; unfinished: business work not completed",
-            "Belum dibaca: aktivitas belum dilihat; belum selesai: pekerjaan belum ditangani",
-            "未读：动态未查看；未处理：业务事项未完成",
+            "Unread: customer activity not viewed by this employee, independent of notifications; unfinished: business work not completed",
+            "Belum dibaca: aktivitas pelanggan belum dilihat oleh staf ini, terpisah dari notifikasi; belum selesai: pekerjaan belum ditangani",
+            "未读：本人尚未查看的客户动态，与通知分发独立；未处理：业务事项未完成",
           ),
           w(
             "Stage: sales progress; group: classification; contact arrangement: outreach permission and review plan",
@@ -186,9 +186,9 @@ export const systemChapters: SystemChapter[] = [
         ),
         items: [
           w(
-            "R6: no reply + recorded attempts ≥ 3 → nurture",
-            "R6: belum dibalas + upaya tercatat ≥ 3 → pembinaan",
-            "R6：未回复且触达次数 ≥ 3 → 培育池",
+            "R6: spaced consecutive unanswered attempts + final reply window → nurture; sales-confirmed groups protected",
+            "R6: upaya tanpa balasan berturut-turut dengan jeda + masa tunggu terakhir → pembinaan; kelompok terkonfirmasi dilindungi",
+            "R6：连续有效未回复达阈值且等待窗口结束 → 培育池；人工确认分组保持不变",
           ),
           w(
             "R1: explicit buying signal → Hot",
@@ -256,9 +256,9 @@ export const systemChapters: SystemChapter[] = [
         ),
         items: [
           w(
-            "A price inquiry with No Response and touchCount 3 predicts Cold-Nurture because R6 precedes R1. This is the current counter rule, not proof of three consecutive failed calls.",
-            "Pertanyaan harga yang belum dibalas dengan 3 upaya tercatat memprediksi kelompok pembinaan karena R6 mendahului R1. Ini aturan penghitung saat ini, bukan bukti tiga panggilan gagal berturut-turut.",
-            "询价客户同时为未回复且已记录触达次数为 3，预测为培育池，因为 R6 优先于 R1。这是当前计数规则，不代表已证明连续三次未接通。",
+            "A total touch counter of 3 cannot trigger R6. Three valid consecutive unanswered attempts (default threshold), required spacing and a completed final reply window can. A real reply clears the sequence; previous tasks remain.",
+            "Total 3 upaya tidak memicu R6. Tiga upaya valid berturut-turut tanpa balasan (ambang bawaan), jeda dan masa tunggu terakhir yang selesai dapat memicunya. Balasan nyata mereset urutan; tugas tetap.",
+            "累计触达3次不触发R6。默认连续3次有效未回复、满足间隔且最后回复窗口结束才可转培育。真实回复清零，已有任务保持不变。",
           ),
           w(
             "A retained sales-confirmed group and a new prediction may differ. Inspect classification evidence; do not treat every prediction as an automatic reassignment.",

@@ -1,3 +1,4 @@
+import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Phone, Mail, MessageCircle, Clock, CheckCircle2 } from 'lucide-react';
@@ -6,8 +7,16 @@ import { SEO } from '../components/SEO';
 import { trackFormSubmit, trackConsultationClick } from '../utils/analytics';
 import { useDesignStyle } from '../utils/theme';
 
-export default function Contact() {
+const sendContactInquiry=(payload:Record<string,string>)=>fetch('/api/inquiry',{
+  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),
+});
+const NETWORK_UNSAVED='INQUIRY_NETWORK_UNSAVED';
+
+export default function Contact({sendInquiry=sendContactInquiry}:{sendInquiry?:(payload:Record<string,string>)=>Promise<Response>}={}) {
   const submissionKey=useRef(crypto.randomUUID());
+  const submissionInFlight=useRef(false);
+  const phoneRef=useRef<HTMLInputElement>(null);
+  const [phoneTouched,setPhoneTouched]=useState(false);
   const { t, i18n } = useTranslation();
   const localeText=(en:string,id:string,zh:string)=>i18n.language.startsWith('zh')?zh:i18n.language.startsWith('id')?id:en;
   const { isApple } = useDesignStyle();
@@ -24,6 +33,8 @@ export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const phoneText=contactPhoneText(i18n.language);
+  const phoneInvalid=Boolean(errors.phone)||(phoneTouched&&!validContactPhone(formData.phone));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -50,10 +61,10 @@ export default function Contact() {
       newErrors.email = t('contactPage.errors.emailInvalid', 'Please enter a valid email address');
     }
     
-    if (!formData.phone.trim()) {
-      newErrors.phone = t('contactPage.errors.phoneRequired', 'Mobile Phone is required');
-    } else if (!/^\+?[\d\s-]{8,20}$/.test(formData.phone)) {
-      newErrors.phone = t('contactPage.errors.phoneInvalid', 'Please enter a valid phone number');
+    if (!validContactPhone(formData.phone)) {
+      newErrors.phone = CONTACT_PHONE_ERROR;
+      setPhoneTouched(true);
+      phoneRef.current?.focus();
     }
 
     setErrors(newErrors);
@@ -62,22 +73,18 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submissionInFlight.current) return;
     if (validate()) {
+      submissionInFlight.current=true;
       setIsSubmitting(true);
       setSubmitError('');
       try {
-        const response = await fetch('/api/inquiry', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({...formData,requestId:submissionKey.current}),
-        });
+        const response = await sendInquiry({...formData,requestId:submissionKey.current});
 
         const data = await response.json();
 
         if (response.ok && data.saved === true) {
-          setIsSuccess(true);submissionKey.current=crypto.randomUUID();
+          setIsSuccess(true);submissionKey.current=crypto.randomUUID();setPhoneTouched(false);
           trackFormSubmit('contact_inquiry_form', true, { interest: formData.interest });
           setFormData({
             fullName: '',
@@ -88,6 +95,10 @@ export default function Contact() {
           });
           // Reset success message after 5 seconds
           setTimeout(() => setIsSuccess(false), 5000);
+        } else if (data.error === CONTACT_PHONE_ERROR) {
+          setPhoneTouched(true);
+          setErrors(prev=>({...prev,phone:CONTACT_PHONE_ERROR}));
+          phoneRef.current?.focus();
         } else {
           const detailStr = data.details ? `: ${data.details}` : '';
           setSubmitError(`${data.error || 'Failed to submit inquiry'}${detailStr}`);
@@ -95,9 +106,10 @@ export default function Contact() {
         }
       } catch (err: any) {
         console.error('Error submitting form:', err);
-        setSubmitError('A network error occurred. Please try again later.');
+        setSubmitError(NETWORK_UNSAVED);
         trackFormSubmit('contact_inquiry_form', false, { reason: 'network_error', error: err.message || 'unknown' });
       } finally {
+        submissionInFlight.current=false;
         setIsSubmitting(false);
       }
     } else {
@@ -326,7 +338,7 @@ export default function Contact() {
               {submitError && (
                 <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm border border-red-100 flex items-center gap-3">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
-                  <span>{submitError}</span>
+                  <span>{submitError===NETWORK_UNSAVED?localeText('Not saved. Please retry; your entries have been kept.','Belum tersimpan. Coba lagi; isian Anda tetap tersedia.','未保存，请重试。已保留您的填写内容。'):submitError}</span>
                 </div>
               )}
               <div>
@@ -354,16 +366,29 @@ export default function Contact() {
                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">{t("contactPage.mobilePhone", "Mobile Phone")}</label>
+                <label htmlFor="contact-phone" className="block text-sm font-medium text-slate-700 mb-2">{t("contactPage.mobilePhone", "Mobile Phone")}</label>
                 <input 
                   type="tel" 
                   name="phone"
+                  id="contact-phone"
+                  ref={phoneRef}
+                  inputMode="tel"
+                  autoComplete="tel"
+                  aria-invalid={phoneInvalid}
+                  aria-describedby={phoneInvalid ? "contact-phone-help contact-phone-error" : "contact-phone-help"}
+                  onBlur={event=>{
+                    const next=event.relatedTarget;
+                    // Submission validates and focuses the field itself. Avoid
+                    // moving the submit button between pointer-down and click.
+                    if(!(next instanceof HTMLButtonElement&&next.type==='submit'&&next.form===event.currentTarget.form))setPhoneTouched(true);
+                  }}
                   value={formData.phone}
                   onChange={handleChange}
-                  className={`w-full bg-slate-50 border ${errors.phone ? 'border-red-500 focus:ring-red-500' : `border-slate-200 ${focusRingClass}`} rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 transition-all`} 
+                  className={`w-full bg-slate-50 border ${phoneInvalid ? 'border-red-500 focus:ring-red-500' : `border-slate-200 ${focusRingClass}`} rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 transition-all`}
                   placeholder="+62 812-3456-7890" 
                 />
-                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                <p id="contact-phone-help" className="text-xs text-slate-500 mt-1">{phoneText.help}</p>
+                {phoneInvalid && <p id="contact-phone-error" role="alert" className="text-red-700 text-sm mt-1">{phoneText.error}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">{t("contactPage.interestedIn", "Interested In")}</label>

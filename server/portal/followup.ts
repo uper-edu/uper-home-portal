@@ -1,3 +1,4 @@
+import {customerReplied} from "./noResponse.ts";
 import { fact } from "./trustWorkflow.ts";
 import { sla, type Rule } from "./policy.ts";
 import {
@@ -104,6 +105,9 @@ export async function ensureFollowup(
       status: "contact_required",
       reply: followupReply(lang, "contact_required", action),
     };
+  const inboundKey='request:'+conversation.id+':'+action+':'+messageId;
+  const previousRequest=(await db.query("SELECT id FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1",[conversation.lead_id,messageId,conversation.id,action])).rows.length;
+  if(!previousRequest){const original=(await db.query("SELECT created_at FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1",[conversation.id,messageId])).rows[0];await customerReplied(db,conversation.lead_id,inboundKey,original?.created_at);}
   const profile = (
     await db.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE", [
       conversation.lead_id,

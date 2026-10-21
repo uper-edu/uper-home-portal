@@ -72,7 +72,7 @@ export interface ChatTranscriptMessage {
 
 export interface LeadAttention {
   unreadCount: number;
-  observedAt: string;
+  observedAt: string | null;
   latest?: {type:string;at:string;source?:string};
   tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string;originalDueAt?:string;scheduledAt?:string|null;timingKind?:string;details?:{action?:string;purpose?:string;sourceMessageId?:string;sourceConversationId?:string}}>;
   isMine: boolean;
@@ -148,6 +148,7 @@ export interface CrmLeadRecord {
   buyingEvidence?: import("../utils/crmBuyingEvidence").BuyingEvidence[];
   connectStatus?: ConnectStatusType;
   touchCount: number;
+  noResponseSequence?: import("../utils/crmNoResponse").NoResponseSequence;
 
   // ⑦ 任务与分配
   owner: string; // Sales A, Sales B, B2B owner, Online Ops
@@ -203,12 +204,13 @@ export function evaluateFullLeadTier(lead: {
   connectStatus?: ConnectStatusType;
   touchCount?: number;
   assessmentDone?: boolean;
+  noResponseReady?: boolean;
 }): { tier: TierType; flag: FlagType; source: 'predicted' | 'behaviour_override' | 'buying_signal' } {
   const levelState = lead.levelState;
   const flag = determineFlag(levelState);
 
-  // R6: 回滚规则 Connect Status = No Response 且 Touch Count >= 3 -> 降至 Cold-Nurture
-  if (lead.connectStatus === 'No Response' && (lead.touchCount || 0) >= 3) {
+  // R6 is authorized only by the server's consecutive-attempt / final-window state.
+  if (lead.noResponseReady === true) {
     return { tier: 'Cold-Nurture', flag, source: 'behaviour_override' };
   }
 

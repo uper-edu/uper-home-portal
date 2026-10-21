@@ -8,153 +8,135 @@ import { CrmTaskCard } from "./CrmTaskCard";
 import { projectPendingTasks } from "../../utils/crmTaskPresentation";
 import { emptyFollowUpLabel } from "../../utils/crmFollowUp";
 import { describeFollowUpTask } from "../../utils/crmFollowUp";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { calendarSample } from "../../utils/workCalendar";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
 import { trustError } from "../../utils/crmTrustLanguage";
 export function CrmStageEditor({
-  lead,
-  lang,
-  isLight,
-  onSaved,
-  disabled,
-  onDirty,
-  onBusy,
+  lead, lang, isLight, onSaved, disabled, onDirty, onBusy, request = fetch,
 }: any) {
   const t = (en: string, id: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? id : en;
-  const [stage, setStage] = useState(lead.currentStage || "New"),
+  const currentStage = lead.currentStage || "New";
+  const [stage, setStage] = useState(currentStage),
     [reason, setReason] = useState(""),
     [error, setError] = useState(""),
+    [reasonInvalid, setReasonInvalid] = useState(false),
     [busy, setBusy] = useState(false),
-    [unknown, setUnknown] = useState(false);
-  const pending = useRef<any>(null);
+    [busyAction, setBusyAction] = useState<"save" | "query">("save"),
+    [unknown, setUnknown] = useState(false),
+    [savedStage, setSavedStage] = useState<string | null>(null);
+  const pending = useRef<any>(null), inFlight = useRef(false);
+  const reasonRef = useRef<HTMLTextAreaElement>(null), id = useId();
+  const changed = stage !== currentStage;
   useEffect(() => {
-    setStage(lead.currentStage || "New");
+    setStage(currentStage);
     setReason("");
-  }, [lead.id, lead.currentStage]);
-  useEffect(() => {
-    onDirty?.(stage !== lead.currentStage || unknown);
-  }, [stage, lead.currentStage, unknown]);
-  const save = async () => {
-    const body =
-      pending.current ||
-      (pending.current = {
-        requestId: crypto.randomUUID(),
-        newStage: stage,
-        expectedStage: lead.currentStage,
-        expectedStageRevision: lead.stageRevision || 0,
-        reason,
-      });
-    setBusy(true);
-    onBusy?.(true);
+    setReasonInvalid(false);
+  }, [lead.id, currentStage]);
+  useEffect(() => { onDirty?.(changed || unknown); }, [changed, unknown]);
+  const finish = (data: any) => {
+    if (data.saved !== true || data.lead?.id !== lead.id) throw Error("Unconfirmed response");
+    pending.current = null;
+    setUnknown(false);
     setError("");
+    setReasonInvalid(false);
+    setReason("");
+    setStage(data.lead.currentStage || "New");
+    setSavedStage(data.lead.currentStage || "New");
+    onSaved(data.lead);
+  };
+  const save = async () => {
+    if (disabled || inFlight.current) return;
+    if (!pending.current && !reason.trim()) {
+      setReasonInvalid(true);
+      reasonRef.current?.focus();
+      return;
+    }
+    const body = pending.current || (pending.current = {
+      requestId: crypto.randomUUID(), newStage: stage,
+      expectedStage: currentStage, expectedStageRevision: lead.stageRevision || 0,
+      reason,
+    });
+    inFlight.current = true;
+    setBusyAction("save"); setBusy(true); onBusy?.(true); setError("");
+    let failure = "stage_save_unconfirmed";
     try {
-      const r = await fetch("/api/crm/leads/" + lead.id + "/stage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(20000),
-        body: JSON.stringify(body),
+      const r = await request("/api/crm/leads/" + lead.id + "/stage", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(20000), body: JSON.stringify(body),
       });
       const d = await r.json();
       if (!r.ok) {
-        if (r.status < 500) pending.current = null;
-        throw Error(d.error);
+        if (r.status < 500) { pending.current = null; failure = d.error || "stage_save_failed"; }
+        throw Error(failure);
       }
-      pending.current = null;
-      setUnknown(false);
-      onSaved(d.lead);
-    } catch (e) {
+      finish(d);
+    } catch {
       setUnknown(Boolean(pending.current));
-      setError(trustError((e as Error).message, lang));
+      if (failure === "Stage change reason required") { setReasonInvalid(true); reasonRef.current?.focus(); }
+      else setError(failure);
     } finally {
-      setBusy(false);
-      onBusy?.(false);
+      inFlight.current = false; setBusy(false); onBusy?.(false);
     }
   };
   const query = async () => {
-    if (!pending.current) return;
-    setBusy(true);
+    if (!pending.current || inFlight.current) return;
+    inFlight.current = true;
+    setBusyAction("query"); setBusy(true); onBusy?.(true); setError("");
+    let failure = "stage_query_unavailable";
     try {
-      const r = await fetch(
-        "/api/crm/leads/" +
-          lead.id +
-          "/operations/" +
-          pending.current.requestId,
-      );
+      const r = await request("/api/crm/leads/" + lead.id + "/operations/" + pending.current.requestId);
       const d = await r.json();
-      if (!r.ok) throw Error(d.error);
-      pending.current = null;
-      setUnknown(false);
-      setError("");
-      onSaved(d.lead);
-    } catch (e) {
-      setError(trustError((e as Error).message, lang));
-    } finally {
-      setBusy(false);
-    }
+      if (!r.ok) { if (r.status === 404) failure = "stage_result_not_found"; throw Error(failure); }
+      finish(d);
+    } catch { setError(failure); }
+    finally { inFlight.current = false; setBusy(false); onBusy?.(false); }
   };
-  const options = [
-    "New",
-    "Contacted",
-    "Assessment Booked",
-    "Assessment Done",
-    "Trial Booked",
-    "Trial Attended",
-    "Enrolled",
-    "Lost",
-  ].map((value) => ({ value, label: crmValue(value, lang) }));
+  const errorText = error === "stage_save_unconfirmed"
+    ? t("The save result is not confirmed. Your draft is kept; query the result or retry the original save.", "Hasil penyimpanan belum terkonfirmasi. Draf tetap tersedia; periksa hasil atau ulangi penyimpanan awal.", "保存结果尚未确认，草稿已保留。请查询结果或重试原保存。")
+    : error === "stage_query_unavailable"
+      ? t("The result could not be checked. Your draft is kept. Try querying again.", "Hasil belum dapat diperiksa. Draf tetap tersedia. Coba periksa lagi.", "暂时无法查询保存结果，草稿已保留，请重试查询。")
+      : error === "stage_result_not_found"
+        ? t("No saved result was found for this request. You can retry the original save.", "Hasil tersimpan untuk permintaan ini belum ditemukan. Anda dapat mengulangi penyimpanan awal.", "尚未找到该请求的保存结果，可重试原保存。")
+        : error === "stage_save_failed"
+          ? t("The stage was not saved. Your draft is kept.", "Tahap belum tersimpan. Draf tetap tersedia.", "阶段未保存，草稿已保留。") : trustError(error, lang);
+  const options = ["New", "Contacted", "Assessment Booked", "Assessment Done", "Trial Booked", "Trial Attended", "Enrolled", "Lost"]
+    .map(value => ({ value, label: crmValue(value, lang) }));
   return (
-    <div>
+    <div className="crm-stage-editor" aria-busy={busy}>
       <CrmSingleSelect
         label={t("Update sales stage", "Ubah tahap penjualan", "修改销售阶段")}
         value={stage}
-        onChange={setStage}
-        disabled={disabled || busy || unknown}
-        options={options}
-        lang={lang}
-        isLight={isLight}
+        onChange={(value) => { setStage(value); setError(""); setReasonInvalid(false); setSavedStage(null); if (value === currentStage) setReason(""); }}
+        disabled={disabled || busy || unknown} options={options} lang={lang} isLight={isLight}
       />
-      {stage !== lead.currentStage && (
-        <div>
-          <label>
-            {t(
-              "Reason for stage change",
-              "Alasan perubahan tahap",
-              "阶段变更依据",
-            )}
-            <textarea
-              disabled={busy || unknown}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-          <p>
-            {crmValue(lead.currentStage, lang)} → {crmValue(stage, lang)}
-          </p>
-          <button
-            type="button"
-            disabled={busy || !reason.trim()}
-            onClick={save}
-          >
-            {unknown
-              ? t(
-                  "Retry original save",
-                  "Ulangi penyimpanan awal",
-                  "重试原保存",
-                )
-              : t("Save stage", "Simpan tahap", "保存阶段")}
+      {!disabled && <p className="crm-stage-help">{t("Stage changes are saved manually. Choose a stage, enter the required reason, then save.", "Perubahan tahap disimpan secara manual. Pilih tahap, isi alasan wajib, lalu simpan.", "阶段变更需手动保存：选择阶段，填写必填依据后点击保存。")}</p>}
+      {(changed || unknown) && <div className="crm-stage-draft">
+        <label htmlFor={id}>{t("Reason for stage change", "Alasan perubahan tahap", "阶段变更依据")} <span className="crm-stage-required">{t("(required)", "(wajib)", "（必填）")}</span></label>
+        <p id={id + "-help"} className="crm-stage-help">{t("Describe the facts supporting this stage. Example: the customer confirmed a Saturday assessment booking.", "Jelaskan fakta yang mendukung tahap ini. Contoh: pelanggan mengonfirmasi jadwal asesmen hari Sabtu.", "请说明支持新阶段的事实。例如：客户已确认预约周六的测评。")}</p>
+        <textarea id={id} ref={reasonRef} rows={3} required aria-required="true" aria-invalid={reasonInvalid}
+          aria-describedby={id + "-help" + (reasonInvalid ? " " + id + "-error" : "")}
+          disabled={disabled || busy || unknown} value={reason}
+          onChange={e => { setReason(e.target.value); if (e.target.value.trim()) setReasonInvalid(false); }} />
+        {reasonInvalid && <p id={id + "-error"} role="alert" className="crm-stage-error">{t("Enter the reason for this stage change before saving.", "Isi alasan perubahan tahap sebelum menyimpan.", "请填写阶段变更依据后再保存。")}</p>}
+        <p className="crm-stage-transition">{crmValue(currentStage, lang)} → {crmValue(stage, lang)}</p>
+        <div className="crm-stage-actions">
+          <button type="button" className="crm-work-button" data-primary="true" disabled={disabled || busy} onClick={save}>
+            {busy && busyAction === "save" ? t("Saving…", "Menyimpan…", "保存中…") : unknown ? t("Retry original save", "Ulangi penyimpanan awal", "重试原保存") : t("Save stage", "Simpan tahap", "保存阶段")}
           </button>
+          {!unknown && <button type="button" className="crm-work-button" disabled={busy || disabled} onClick={() => { setStage(currentStage); setReason(""); setReasonInvalid(false); setError(""); setSavedStage(null); }}>{t("Cancel changes", "Batalkan perubahan", "取消修改")}</button>}
+          {unknown && <button type="button" className="crm-work-button" disabled={busy} onClick={query}>{busy && busyAction === "query" ? t("Checking…", "Memeriksa…", "查询中…") : t("Query save result", "Periksa hasil penyimpanan", "查询保存结果")}</button>}
         </div>
-      )}
-      {unknown && (
-        <button type="button" disabled={busy} onClick={query}>
-          {t("Query save result", "Periksa hasil penyimpanan", "查询保存结果")}
-        </button>
-      )}
-      {error && <p role="alert">{error}</p>}
+      </div>}
+      {(changed || unknown || savedStage === currentStage) && <p role="status" className="crm-stage-status">
+        {busy ? (busyAction === "query" ? t("Checking save result…", "Memeriksa hasil penyimpanan…", "正在查询保存结果…") : t("Saving stage…", "Menyimpan tahap…", "正在保存阶段…"))
+          : unknown ? t("Save result unknown; draft retained.", "Hasil penyimpanan belum diketahui; draf dipertahankan.", "保存结果未知，草稿已保留。")
+            : changed ? t("Unsaved stage change", "Perubahan tahap belum tersimpan", "阶段变更尚未保存") : t("Stage saved", "Tahap tersimpan", "阶段已保存")}
+      </p>}
+      {error && <p role="alert" className="crm-stage-error">{errorText}</p>}
     </div>
   );
 }
@@ -730,7 +712,7 @@ export function CrmTrustPanel({
               {reviewGroups.map((e: any) => (
                 <article key={e.id}>
                   <strong>
-                    {e.kind === "assessment"
+                    {e.kind === "reply_confirmation" ? (lang === "zh" ? "客户外部回复确认" : lang === "id" ? "Konfirmasi balasan eksternal" : "External customer reply confirmed") : e.kind === "assessment"
                       ? t("New assessment", "Asesmen baru", "新测评")
                       : t("Customer message", "Pesan pelanggan", "客户消息")}
                   </strong>

@@ -84,6 +84,7 @@ export function CrmWorkflowForm({
   const [recordKind, setRecordKind] = useState(
     initialDraft?.recordKind || (administrative ? "closure" : "contact"),
   );
+  const [customerReplied, setCustomerReplied] = useState(initialDraft?.customerReplied || false);
   const [disposition, setDisposition] = useState(
     initialDraft?.disposition || "",
   );
@@ -115,6 +116,7 @@ export function CrmWorkflowForm({
       stage,
       signal,
       recordKind,
+      customerReplied,
       disposition,
     });
   }, [
@@ -135,6 +137,7 @@ export function CrmWorkflowForm({
     stage,
     signal,
     recordKind,
+    customerReplied,
     disposition,
   ]);
   const originalArrangement = useRef(
@@ -210,7 +213,7 @@ export function CrmWorkflowForm({
           if (selectedTask && !boundTask)
             throw Error("Selected task changed; refresh and review");
           if (!pending.current) {
-            if (recordKind !== "closure" && !channel)
+            if ((recordKind !== "closure" || customerReplied) && !channel)
               throw Error("Choose a contact channel");
             if (recordKind !== "closure" && !contact)
               throw Error("Choose a contact result");
@@ -244,7 +247,9 @@ export function CrmWorkflowForm({
                 nextAction: action,
                 nextPurpose: purpose,
                 nextFollowUpAt,
-                channel: recordKind === "closure" ? undefined : channel,
+                channel: recordKind === "closure" && !customerReplied ? undefined : channel,
+                customerReplied: recordKind === "closure" && customerReplied ? true : undefined,
+                customerReplySequenceRevision: customerReplied ? (lead.noResponseSequence?.revision || 0) : undefined,
                 recordKind,
                 sourceMessageId: sourceMessage?.id,
                 sourceConversationId: sourceMessage?.conversation_id,
@@ -387,7 +392,7 @@ export function CrmWorkflowForm({
         <fieldset disabled={busy || unknown} className="crm-sales-fields">
           <section className="crm-sales-step">
             <h4>{t("This record", "Catatan kali ini", "本次记录")}</h4>
-            {selectedTask && (
+            {(selectedTask || !administrative) && (
               <div
                 className="crm-sales-segments"
                 role="group"
@@ -407,7 +412,7 @@ export function CrmWorkflowForm({
                     key={value}
                     type="button"
                     aria-pressed={recordKind === value}
-                    onClick={() => setRecordKind(value)}
+                    onClick={() => {setRecordKind(value);if(value!=="closure")setCustomerReplied(false);}}
                   >
                     {label}
                   </button>
@@ -423,7 +428,8 @@ export function CrmWorkflowForm({
                 )}
               </p>
             )}
-            {recordKind === "contact" && (
+            {recordKind === "closure" && <label><input type="checkbox" checked={customerReplied} onChange={e=>setCustomerReplied(e.target.checked)} />{t("Confirm customer replied externally (channel and evidence required; not an outreach attempt)","Konfirmasi pelanggan membalas di luar sistem (kanal dan bukti wajib; bukan upaya kontak)","确认客户已在外部回复（须填渠道与依据，不增加联系尝试次数）")}</label>}
+            {(recordKind === "contact" || customerReplied) && (
               <div className="crm-workflow-grid">
                 {select(
                   t("Channel", "Kanal", "沟通方式"),
@@ -444,7 +450,7 @@ export function CrmWorkflowForm({
                     ["Other", t("Other", "Lainnya", "其他")],
                   ],
                 )}
-                {select(
+                {recordKind === "contact" && select(
                   t("Contact result", "Hasil kontak", "联系结果"),
                   contact,
                   setContact,
