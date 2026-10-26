@@ -13,16 +13,6 @@ const meanings: Record<string, Words> = {
     "Ambang tanpa balasan berturut-turut disimpan per urutan; 0 menonaktifkan nurturing otomatis",
     "每个序列保存的连续未回复阈值；0禁用自动转培育",
   ),
-  unreadcount: w(
-    "Customer activity not viewed by this employee; independent of notification delivery and task completion",
-    "Aktivitas pelanggan yang belum dilihat staf ini; terpisah dari pengiriman notifikasi dan penyelesaian tugas",
-    "本人尚未查看的客户动态数量，与通知送达及任务完成独立",
-  ),
-  observedat: w(
-    "Latest customer activity included in this read snapshot; later activity stays unread",
-    "Aktivitas pelanggan terakhir dalam cakupan baca ini; aktivitas berikutnya tetap belum dibaca",
-    "本次查询包含的最新客户动态时间；后到动态仍保持未读",
-  ),
   nextdaygracetime: w(
     "Legacy cadence parameter; not the server task deadline algorithm",
     "Parameter ritme lama; bukan algoritme tenggat tugas server",

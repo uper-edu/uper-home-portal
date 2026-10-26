@@ -1,12 +1,11 @@
 import test from "node:test";
+import {guidePracticeOutcome} from "../src/components/crm/CrmSimpleGuideExamples";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { guideLessons } from "../src/components/crm/CrmGuideLearning.ts";
 import {
   LessonOpening,
-  taskStorySnapshot,
-  validateGuidePractice,
 } from "../src/components/crm/CrmGuideLearningVisual.tsx";
 import { systemChapters } from "../src/components/crm/CrmSystemGuide.ts";
 import { guideSections } from "../src/components/crm/CrmGuideContent.ts";
@@ -66,70 +65,14 @@ for (const [key, lesson] of Object.entries(guideLessons)) {
       assert.equal((chapterHtml.match(/aria-current="page"/g) || []).length, 1);
     });
 }
-test("Teaching story keeps three independent tasks, supplements T1 without duplicating it, and completes only T1", () => {
-  assert.equal(taskStorySnapshot(0).filter((t) => t.present).length, 1);
-  assert.equal(taskStorySnapshot(1).filter((t) => t.present).length, 2);
-  assert.equal(taskStorySnapshot(2).filter((t) => t.present).length, 3);
-  assert.equal(taskStorySnapshot(3).filter((t) => t.present).length, 3);
-  assert.deepEqual(
-    taskStorySnapshot(3)
-      .filter((t) => t.supplemented)
-      .map((t) => t.id),
-    ["T1"],
-  );
-  assert.deepEqual(
-    taskStorySnapshot(4)
-      .filter((t) => t.completed)
-      .map((t) => t.id),
-    ["T1"],
-  );
-  assert.deepEqual(
-    taskStorySnapshot(4)
-      .filter((t) => t.present && !t.completed)
-      .map((t) => t.id),
-    ["T2", "T3"],
-  );
+test("Current practice cannot invent contact without an explicitly chosen result and original note",()=>{
+ assert.equal(guidePracticeOutcome('', 'TEST original'), null);
+ assert.equal(guidePracticeOutcome('Connected', '  '), null);
+ assert.equal(guidePracticeOutcome('Strong Interest', 'TEST historical result'), null);
 });
-const filled = {
-  channel: "phone",
-  result: true,
-  keep: true,
-  plan: "keep",
-  note: "Telepon tidak dijawab.",
-  action: "",
-  purpose: "",
-  date: "",
-};
-test("No-response exercise requires facts, an explicit task outcome and an arrangement", () => {
-  assert.equal(validateGuidePractice({ ...filled, channel: "" }), "errChannel");
-  assert.equal(
-    validateGuidePractice({ ...filled, result: false }),
-    "errResult",
-  );
-  assert.equal(validateGuidePractice({ ...filled, note: " " }), "errNote");
-  assert.equal(validateGuidePractice({ ...filled, keep: false }), "errOutcome");
-  assert.equal(validateGuidePractice({ ...filled, plan: "" }), "errPlan");
-  assert.equal(validateGuidePractice(filled), "");
-  assert.equal(validateGuidePractice({ ...filled, plan: "record_only" }), "");
+test("Unanswered contact is a real attempt but not successful communication and requires no next task",()=>{
+ assert.deepEqual(guidePracticeOutcome('No Response','TEST original unanswered contact'),{successfulContacts:0,additionalTasks:0});
 });
-test("New arrangement needs a specific action, purpose and future Jakarta time; past/equal times cannot pass", () => {
-  const planned = {
-    ...filled,
-    plan: "schedule",
-    action: "Verify alternative number",
-    purpose: "Do not repeat invalid contact",
-    date: "2026-10-20T10:00",
-  };
-  assert.equal(validateGuidePractice(planned), "");
-  for (const patch of [
-    { action: "" },
-    { purpose: "" },
-    { date: "" },
-    { date: "2026-10-19T09:59" },
-    { date: "2026-10-19T10:00" },
-  ])
-    assert.equal(
-      validateGuidePractice({ ...planned, ...patch }),
-      "errSchedule",
-    );
+test("Connected contact is counted once by the simulated example; it does not create another task",()=>{
+ assert.deepEqual(guidePracticeOutcome('Connected','TEST original actual reply'),{successfulContacts:1,additionalTasks:0});
 });

@@ -1,3 +1,4 @@
+import {crmInstant} from './crmOperatingTime';
 import { crmId } from "./crmIndonesian";
 /** Legacy storage dates can be placeholders. Only original evidence establishes time. */
 export interface CrmMessageTimeInput {
@@ -18,7 +19,7 @@ function valid(value: unknown): string | null {
       : typeof value === "string"
         ? value
         : null;
-  return text && Number.isFinite(Date.parse(text)) ? text : null;
+  return text&&Number.isFinite(Date.parse(text))?(/(Z|[+-]\d\d:\d\d)$/i.test(text)?text:crmInstant(text)?.toISOString()||null):null;
 }
 export function legacyTimeMetadata(
   message: CrmMessageTimeInput,

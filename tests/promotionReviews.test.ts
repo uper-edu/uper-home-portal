@@ -11,7 +11,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
  const {setupNativeTest}=await import('./helpers/mysql.mjs');await setupNativeTest('promotion_reviews');
  const {pool}=await import('../server/portal/store.ts');const {nativePool}=await import('../cloud/mysql/runtime.mjs');
  const {listPromotionReviews,reviewPromotion,promotionReviewResult}=await import('../server/portal/promotionReviews.ts');const {promotionAttribution}=await import('../server/portal/campaignPromotion.ts');
- const manager:any={id:'Manager',active:true,scope:'all',permissions:['crm.read','campaigns.manage']};
+ const manager:any={id:'Manager',active:true,scope:'all',roles:['crm_leader'],permissions:['crm.read','crm.followup','campaigns.manage']};
  const entry={id:'p-existing',name:'TEST Instagram',source:'instagram',medium:'paid_social',language:'en',experience:PROMOTION_EXPERIENCE,createdAt:'2026-10-20T00:00:00Z'};
  const campaign={id:'A',code:'camp-test-A',name:'TEST Campaign A',promotionLinks:[entry],stats:{impressions:7}},other={id:'B',code:'camp-test-B',name:'TEST Campaign B',promotionLinks:[{...entry,id:'p-other'}],stats:{}};
  for(const c of [campaign,other])await pool.query('INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3)',[c.id,c.code,c]);
@@ -67,6 +67,14 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
   try{await assert.rejects(reviewPromotion('rollback',b,manager));}finally{await nativePool.query('DROP TRIGGER test_promotion_rollback');}
   assert.deepEqual((await pool.query("SELECT config FROM trial_campaigns WHERE id='A'")).rows[0].config,before);assert.equal((await pool.query("SELECT profile FROM portal_leads WHERE id='rollback'")).rows[0].profile.promotionReview,undefined);
   await assert.rejects(promotionReviewResult('rollback',b.requestId,manager),(e:any)=>e.status===404);assert.equal((await reviewPromotion('rollback',b,manager)).createdLink,true);
+ });
+ await test('promotion attribution uses the same Manager-only gate, including old requests',async()=>{
+  await seed('policy-controlled');const operator={...manager,roles:['sales']},b=body('invalid');
+  await assert.rejects(reviewPromotion('policy-controlled',b,operator),(e:any)=>e.status===403);
+  await pool.query("INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{sourceAttributionManagerOnly:false}]);
+  assert.equal((await reviewPromotion('policy-controlled',b,operator)).status,'invalid');
+  await pool.query("UPDATE portal_settings SET value=:p1 WHERE id='crm_policy'",[{sourceAttributionManagerOnly:true}]);
+  await assert.rejects(reviewPromotion('policy-controlled',b,operator),(e:any)=>e.status===403);
  });
  await pool.end();
 }else test('promotion review transactions require independent native MySQL fixture',{skip:true},()=>{});

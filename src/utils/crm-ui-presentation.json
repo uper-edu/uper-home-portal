@@ -1,0 +1,6690 @@
+{
+  "不修改": [
+    "No change",
+    "Tidak diubah"
+  ],
+  "关闭": [
+    "Close",
+    "Tutup"
+  ],
+  "取消": [
+    "Cancel",
+    "Batal"
+  ],
+  "同时更新销售阶段": [
+    "Also update sales stage",
+    "Perbarui tahap penjualan juga"
+  ],
+  "实际发生时间未注明": [
+    "Occurrence time not recorded",
+    "Waktu kejadian tidak tercatat"
+  ],
+  "客户": [
+    "Customers",
+    "Pelanggan"
+  ],
+  "客户约定": [
+    "Customer agreement",
+    "Kesepakatan pelanggan"
+  ],
+  "客户资料": [
+    "Profile",
+    "Profil"
+  ],
+  "当前阶段": [
+    "Current stage",
+    "Tahap saat ini"
+  ],
+  "未注明": [
+    "Not specified",
+    "Tidak disebutkan"
+  ],
+  "未记录": [
+    "Not recorded",
+    "Belum dicatat"
+  ],
+  "条记录": [
+    "records",
+    "catatan"
+  ],
+  "查看关联客户原文": [
+    "View linked original message",
+    "Lihat pesan asli terkait"
+  ],
+  "查看原始记录：": [
+    "View original: ",
+    "Lihat catatan asli: "
+  ],
+  "查询保存结果": [
+    "Check saved result",
+    "Periksa hasil tersimpan"
+  ],
+  "正在保存…": [
+    "Saving…",
+    "Menyimpan…"
+  ],
+  "移除": [
+    "Remove ",
+    "Hapus "
+  ],
+  "跟进记录": [
+    "Progress records",
+    "Riwayat perkembangan"
+  ],
+  "销售": [
+    "Sales",
+    "Sales"
+  ],
+  " · AI整理未完成": [
+    " · AI processing incomplete",
+    " · Pengolahan AI belum selesai"
+  ],
+  " · 依据已撤回": [
+    " · Evidence no longer active",
+    " · Bukti tidak lagi aktif"
+  ],
+  " · 原依据已有修正，需对照原文": [
+    " · Original evidence corrected; compare the original",
+    " · Bukti asli dikoreksi; periksa teks asli"
+  ],
+  " · 有不同记录": [
+    " · Different information recorded",
+    " · Ada informasi berbeda"
+  ],
+  " · 联系结果已修正：": [
+    " · Corrected contact result: ",
+    " · Hasil kontak dikoreksi: "
+  ],
+  "AI提取与字段采用结果": [
+    "AI findings and profile updates",
+    "Temuan AI dan pembaruan profil"
+  ],
+  "AI整理与采用说明": [
+    "AI findings and adoption",
+    "Temuan dan penerapan AI"
+  ],
+  "AI整理状态暂不可用。": [
+    "AI processing status unavailable.",
+    "Status pengolahan AI tidak tersedia."
+  ],
+  "AI整理状态暂不可用，原始记录仍保留。": [
+    "AI status unavailable; original records retained.",
+    "Status AI tidak tersedia; catatan asli tetap tersimpan."
+  ],
+  "AI整理状态暂不可用，原文及已有结果保留。": [
+    "AI status unavailable; original text and existing results retained.",
+    "Status AI tidak tersedia; teks asli dan hasil sebelumnya tetap tersimpan."
+  ],
+  "AI整理状态暂不可用，原文已保留。": [
+    "AI status unavailable; original text retained.",
+    "Status AI tidak tersedia; teks asli tetap tersimpan."
+  ],
+  "AI整理状态暂不可用，原文记录仍保留。": [
+    "AI status unavailable; original record retained.",
+    "Status AI tidak tersedia; catatan asli tetap tersimpan."
+  ],
+  "· 参考解读": [
+    "· Interpretation",
+    "· Penjelasan"
+  ],
+  "· 表达主体：": [
+    "· Stated by: ",
+    "· Disampaikan oleh: "
+  ],
+  "· 记录于": [
+    "· Recorded at ",
+    "· Dicatat pada "
+  ],
+  "· 近7天": [
+    "· Last 7 days",
+    "· 7 hari terakhir"
+  ],
+  "。下方保留当时填写的原始内容。": [
+    ". The original content is retained below.",
+    ". Isi asli tetap disimpan di bawah."
+  ],
+  "。可在客户资料中对照原始依据后明确采用。": [
+    ". Compare the evidence in Profile before adopting a value.",
+    ". Periksa bukti di Profil sebelum menerapkan nilai."
+  ],
+  "。本次原文不会重复提交。": [
+    ". This note will not be submitted again.",
+    ". Catatan ini tidak akan dikirim ulang."
+  ],
+  "不同记录：": [
+    "Different information: ",
+    "Informasi berbeda: "
+  ],
+  "不增加联系次数。未回复仍满足首次尝试；未实际发生／重复登记不计数。若无其他有效依据，只恢复原首次要求和原期限，不新建任务、不重发旧通知。": [
+    "This adds no contact attempt. Unanswered contact still satisfies the first attempt; nonexistent or duplicate contact is excluded. Without other valid evidence, only the original requirement and deadline are restored, without new tasks or replayed notifications.",
+    "Tidak menambah upaya kontak. Kontak tanpa balasan tetap memenuhi upaya pertama; kontak yang tidak terjadi atau duplikat tidak dihitung. Tanpa bukti lain, hanya persyaratan dan tenggat semula dipulihkan, tanpa tugas atau notifikasi baru."
+  ],
+  "不知道时留空，记为发生时间未注明；记录时间另行保留。": [
+    "Leave blank if unknown; recording time is retained separately.",
+    "Kosongkan jika tidak diketahui; waktu pencatatan disimpan terpisah."
+  ],
+  "主要目标": [
+    "Main goal",
+    "Tujuan utama"
+  ],
+  "仅更新阶段": [
+    "Update stage only",
+    "Perbarui tahap saja"
+  ],
+  "今天下午主动拨打电话，未接通，尚未获得新信息。": [
+    "I called this afternoon. No answer and no new information.",
+    "Saya menelepon sore ini. Tidak tersambung dan belum ada informasi baru."
+  ],
+  "依据已撤回": [
+    "Evidence no longer active",
+    "Bukti tidak lagi aktif"
+  ],
+  "保存名字备注": [
+    "Save name note",
+    "Simpan catatan nama"
+  ],
+  "保存时采用值：": [
+    "Value adopted on save: ",
+    "Nilai diterapkan saat disimpan: "
+  ],
+  "保存补充／修正": [
+    "Save supplement / correction",
+    "Simpan tambahan / koreksi"
+  ],
+  "保存资料更新": [
+    "Save profile changes",
+    "Simpan perubahan profil"
+  ],
+  "保留选择并使用已核对阶段": [
+    "Keep selection and use reviewed stage",
+    "Pertahankan pilihan dan gunakan tahap yang diperiksa"
+  ],
+  "修正原因": [
+    "Correction reason",
+    "Alasan koreksi"
+  ],
+  "修正原因（必填）": [
+    "Correction reason *",
+    "Alasan koreksi *"
+  ],
+  "修正原因：": [
+    "Correction reason: ",
+    "Alasan koreksi: "
+  ],
+  "修正误记": [
+    "Correct an error",
+    "Koreksi kesalahan"
+  ],
+  "关联补充／修正": [
+    "Linked supplements / corrections",
+    "Tambahan / koreksi terkait"
+  ],
+  "关联补充／修正原文": [
+    "Linked supplement / correction text",
+    "Teks tambahan / koreksi terkait"
+  ],
+  "刷新提取结果": [
+    "Refresh findings",
+    "Segarkan temuan"
+  ],
+  "刷新整理状态": [
+    "Refresh AI status",
+    "Segarkan status AI"
+  ],
+  "刷新记录": [
+    "Refresh records",
+    "Segarkan catatan"
+  ],
+  "加载最新资料，保留输入": [
+    "Load latest profile; keep draft",
+    "Muat profil terbaru; pertahankan draf"
+  ],
+  "加载最新阶段并核对": [
+    "Load and review latest stage",
+    "Muat dan periksa tahap terbaru"
+  ],
+  "勾选本次要更新的资料，可同时选择多项；未勾选的字段保持不变。": [
+    "Select the fields to update. You may select several; unselected fields stay unchanged.",
+    "Pilih kolom yang akan diperbarui. Bisa memilih beberapa; kolom lain tetap tidak berubah."
+  ],
+  "历史解释，已被关联修正替代": [
+    "Earlier interpretation, superseded by a linked correction",
+    "Penafsiran sebelumnya, digantikan koreksi terkait"
+  ],
+  "历史记录与依据": [
+    "History and evidence",
+    "Riwayat dan bukti"
+  ],
+  "历史记录筛选": [
+    "History filters",
+    "Filter riwayat"
+  ],
+  "历史记录类型": [
+    "History type",
+    "Jenis riwayat"
+  ],
+  "原依据已有历史调整，原文保留。": [
+    "The evidence has a historical revision; original text retained.",
+    "Bukti memiliki perubahan sebelumnya; teks asli tetap disimpan."
+  ],
+  "原值": [
+    "Previous value",
+    "Nilai sebelumnya"
+  ],
+  "原值来源与清空选项": [
+    "Previous source and clear option",
+    "Sumber sebelumnya dan opsi kosongkan"
+  ],
+  "原值：": [
+    "Previous: ",
+    "Sebelumnya: "
+  ],
+  "原因：": [
+    "Reason: ",
+    "Alasan: "
+  ],
+  "原始结果：": [
+    "Original result: ",
+    "Hasil asli: "
+  ],
+  "原文不会修改或删除。客户后来改变想法，请正常添加进展；这里只补充原记录或纠正误记。": [
+    "The original text stays unchanged. Record later changes as new progress; use this form only to supplement or correct the original record.",
+    "Teks asli tetap tidak berubah. Catat perubahan berikutnya sebagai perkembangan baru; formulir ini hanya untuk menambah atau mengoreksi catatan asli."
+  ],
+  "原文与当时记录": [
+    "Original text and recorded context",
+    "Teks asli dan konteks saat itu"
+  ],
+  "原文依据": [
+    "Original evidence",
+    "Bukti asli"
+  ],
+  "原文结构化信息": [
+    "Structured information from original text",
+    "Informasi terstruktur dari teks asli"
+  ],
+  "原记录中的": [
+    "Originally recorded ",
+    "Dalam catatan asli: "
+  ],
+  "原记录为结构化信息，相关字段见下方。": [
+    "This is a structured record. Its fields are shown below.",
+    "Ini catatan terstruktur. Kolomnya ditampilkan di bawah."
+  ],
+  "原记录保留": [
+    "Original record retained",
+    "Catatan asli dipertahankan"
+  ],
+  "原记录和已保存内容不受影响。": [
+    "Original and saved records remain unchanged.",
+    "Catatan asli dan tersimpan tidak berubah."
+  ],
+  "参考解读": [
+    "Interpretation",
+    "Penjelasan"
+  ],
+  "发生时间依据暂不可用": [
+    "Event-time evidence unavailable",
+    "Bukti waktu kejadian tidak tersedia"
+  ],
+  "发生时间未注明": [
+    "Occurrence time not recorded",
+    "Waktu kejadian tidak tercatat"
+  ],
+  "发生时间未注明记录 ·": [
+    "Undated records ·",
+    "Catatan tanpa waktu ·"
+  ],
+  "变为": [
+    "changed to",
+    "berubah menjadi"
+  ],
+  "变更依据（必填）": [
+    "Reason for change *",
+    "Alasan perubahan *"
+  ],
+  "只更新明确选择的字段；修正说明本身不会自动覆盖资料。": [
+    "Only selected fields are updated; a correction note alone does not overwrite the profile.",
+    "Hanya kolom terpilih diperbarui; catatan koreksi saja tidak menimpa profil."
+  ],
+  "名字备注（内部使用，最多200字）": [
+    "Name note (internal, up to 200 characters)",
+    "Catatan nama (internal, maksimal 200 karakter)"
+  ],
+  "名字备注：": [
+    "Name note: ",
+    "Catatan nama: "
+  ],
+  "后续修正": [
+    "Later correction",
+    "Koreksi berikutnya"
+  ],
+  "后续补充": [
+    "Later supplement",
+    "Tambahan berikutnya"
+  ],
+  "多项内容用分号分隔": [
+    "Separate items with semicolons",
+    "Pisahkan dengan titik koma"
+  ],
+  "学习目标与条件": [
+    "Learning goals and conditions",
+    "Tujuan dan kondisi belajar"
+  ],
+  "学习需求摘要": [
+    "Learning needs summary",
+    "Ringkasan kebutuhan belajar"
+  ],
+  "完成，仅保留已保存进展": [
+    "Finish with saved progress only",
+    "Selesai dengan catatan perkembangan yang tersimpan"
+  ],
+  "实际发生于": [
+    "Occurred at",
+    "Terjadi pada"
+  ],
+  "实际发生时间（选填） ·": [
+    "Actual occurrence time ·",
+    "Waktu kejadian sebenarnya ·"
+  ],
+  "客户当前情况": [
+    "Current customer situation",
+    "Kondisi pelanggan saat ini"
+  ],
+  "尚无历史记录。": [
+    "No history recorded.",
+    "Belum ada riwayat."
+  ],
+  "尚无学习需求信息": [
+    "No learning needs recorded",
+    "Belum ada kebutuhan belajar tercatat"
+  ],
+  "已保存资料保持不变。": [
+    "Saved profile data stays unchanged.",
+    "Data profil tersimpan tidak berubah."
+  ],
+  "已撤回的不同记录（仅历史）：": [
+    "Inactive different record (history only): ",
+    "Catatan berbeda tidak aktif (riwayat saja): "
+  ],
+  "已被关联修正替代（仅历史）：": [
+    "Superseded by linked correction (history only): ",
+    "Digantikan koreksi terkait (riwayat saja): "
+  ],
+  "当前值": [
+    "Current value",
+    "Nilai saat ini"
+  ],
+  "当前画像与来源": [
+    "Current profile and sources",
+    "Profil dan sumber saat ini"
+  ],
+  "当前返回的整理记录中未找到本条结果；原文已保留。": [
+    "This result was not found in the current AI records; original text is retained.",
+    "Hasil ini tidak ditemukan dalam catatan AI saat ini; teks asli tetap disimpan."
+  ],
+  "当前采用的联系结果：": [
+    "Current contact result: ",
+    "Hasil kontak saat ini: "
+  ],
+  "录入于": [
+    "Recorded at",
+    "Dicatat pada"
+  ],
+  "按“发生了什么 → 客户表达了什么 → 我做了什么 → 结果或约定”自然记录。有新信息才写，不必逐项回答，也不要补写客户没说过的内容。": [
+    "Write naturally: what happened → what the customer said → what you did → the result or agreement. Include only new information; do not invent missing details.",
+    "Tulis secara alami: apa yang terjadi → yang disampaikan pelanggan → tindakan Anda → hasil atau kesepakatan. Tulis informasi baru saja; jangan mengarang rincian yang tidak ada."
+  ],
+  "搜索历史记录": [
+    "Search history",
+    "Cari riwayat"
+  ],
+  "搜索原文与内容": [
+    "Search original text and content",
+    "Cari teks asli dan isi"
+  ],
+  "收起资料编辑": [
+    "Close profile editor",
+    "Tutup editor profil"
+  ],
+  "放弃未保存的补充／修正？": [
+    "Discard unsaved supplement / correction?",
+    "Buang tambahan / koreksi yang belum disimpan?"
+  ],
+  "放弃未保存的资料修改？": [
+    "Discard unsaved profile changes?",
+    "Buang perubahan profil yang belum disimpan?"
+  ],
+  "整理状态暂不可用，原文保存状态不受影响。": [
+    "AI status unavailable; the saved original is unaffected.",
+    "Status AI tidak tersedia; teks asli yang tersimpan tidak terpengaruh."
+  ],
+  "新增内容（必填）": [
+    "Additional text *",
+    "Teks tambahan *"
+  ],
+  "旧草稿中有逐字段资料修改，现已改为原文提取。请将这些内容写入上方原文，或稍后到客户资料页直接编辑；旧选择不会随本次提交。": [
+    "This draft contains earlier field selections. Include the changes in the note or edit Profile directly; earlier selections are not submitted.",
+    "Draf ini memuat pilihan kolom lama. Tulis perubahan dalam catatan atau edit Profil langsung; pilihan lama tidak dikirim."
+  ],
+  "旧草稿中的阶段／信号勾选不再提交，请将实际发生的内容写入进展原文；当前销售阶段请到客户资料页明确调整。": [
+    "Earlier stage / signal selections are not submitted. Describe what happened in the note and use the explicit stage update action.",
+    "Pilihan tahap / sinyal lama tidak dikirim. Jelaskan kejadian dalam catatan dan gunakan tindakan pembaruan tahap."
+  ],
+  "时区：": [
+    "Timezone: ",
+    "Zona waktu: "
+  ],
+  "明确清空此字段": [
+    "Explicitly clear this field",
+    "Kosongkan kolom ini secara eksplisit"
+  ],
+  "更多来源与变更": [
+    "More sources and changes",
+    "Sumber dan perubahan lainnya"
+  ],
+  "更新客户资料": [
+    "Update customer profile",
+    "Perbarui profil pelanggan"
+  ],
+  "最新阶段：": [
+    "Latest stage: ",
+    "Tahap terbaru: "
+  ],
+  "未接通也可以很简短：": [
+    "An unanswered attempt can be brief: ",
+    "Kontak tanpa jawaban dapat dicatat singkat: "
+  ],
+  "未显示AI整理结果，可展开核对": [
+    "AI findings hidden; expand to review",
+    "Temuan AI tersembunyi; buka untuk memeriksa"
+  ],
+  "未能唯一定位此段原文，请结合本条记录的完整原文核对。": [
+    "This excerpt could not be uniquely located; compare the complete original record.",
+    "Kutipan ini tidak dapat ditentukan secara unik; periksa catatan asli lengkap."
+  ],
+  "本次整理时未找到该客户的真实测评记录，仅保留描述。": [
+    "No actual assessment record was found during processing; the statement is retained only.",
+    "Tidak ditemukan catatan tes nyata saat pengolahan; hanya pernyataannya disimpan."
+  ],
+  "本次获得的信息与资料变化": [
+    "Information obtained and profile changes",
+    "Informasi diperoleh dan perubahan profil"
+  ],
+  "本次记录": [
+    "This record",
+    "Catatan ini"
+  ],
+  "本次记录：": [
+    "This record: ",
+    "Catatan ini: "
+  ],
+  "本次资料保存结果": [
+    "Profile save results",
+    "Hasil penyimpanan profil"
+  ],
+  "条独立互动": [
+    " separate interactions",
+    " interaksi terpisah"
+  ],
+  "条补充／修正": [
+    " supplements / corrections",
+    " tambahan / koreksi"
+  ],
+  "来源：": [
+    "Source: ",
+    "Sumber: "
+  ],
+  "查看": [
+    "View ",
+    "Lihat "
+  ],
+  "查看关联原文": [
+    "View linked original",
+    "Lihat teks asli terkait"
+  ],
+  "查看历次测评": [
+    "View assessment history",
+    "Lihat riwayat tes"
+  ],
+  "查看字段原始依据": [
+    "View original field evidence",
+    "Lihat bukti asli kolom"
+  ],
+  "查看对话与上下文": [
+    "View conversation and context",
+    "Lihat percakapan dan konteks"
+  ],
+  "查看本次互动的原文与整理依据": [
+    "View original interaction and findings",
+    "Lihat interaksi asli dan temuan"
+  ],
+  "查看来源与变更": [
+    "View sources and changes",
+    "Lihat sumber dan perubahan"
+  ],
+  "查看此条信息的原文依据": [
+    "View original evidence for this item",
+    "Lihat bukti asli informasi ini"
+  ],
+  "查看真实测评记录": [
+    "View actual assessment records",
+    "Lihat catatan tes nyata"
+  ],
+  "查看问卷原始答案": [
+    "View original questionnaire answers",
+    "Lihat jawaban kuesioner asli"
+  ],
+  "查看预算金额与单位的各项原文依据": [
+    "View evidence for budget amounts and units",
+    "Lihat bukti jumlah dan satuan anggaran"
+  ],
+  "查询阶段保存结果": [
+    "Check stage save result",
+    "Periksa hasil penyimpanan tahap"
+  ],
+  "核对最新版本，保留输入": [
+    "Review latest version; keep draft",
+    "Periksa versi terbaru; pertahankan draf"
+  ],
+  "核对真实测评记录": [
+    "Check actual assessment records",
+    "Periksa catatan tes nyata"
+  ],
+  "正在更新阶段": [
+    "Updating stage",
+    "Memperbarui tahap"
+  ],
+  "正在更新阶段…": [
+    "Updating stage…",
+    "Memperbarui tahap…"
+  ],
+  "正在核对发生时间…": [
+    "Checking occurrence time…",
+    "Memeriksa waktu kejadian…"
+  ],
+  "正在读取AI整理状态…": [
+    "Loading AI status…",
+    "Memuat status AI…"
+  ],
+  "正在读取历史依据…": [
+    "Loading historical evidence…",
+    "Memuat bukti riwayat…"
+  ],
+  "正在读取整理状态…": [
+    "Loading processing status…",
+    "Memuat status pengolahan…"
+  ],
+  "没有符合筛选的记录。": [
+    "No matching records.",
+    "Tidak ada catatan yang cocok."
+  ],
+  "测评原始结果": [
+    "Original assessment result",
+    "Hasil tes asli"
+  ],
+  "添加名字备注": [
+    "Add name note",
+    "Tambah catatan nama"
+  ],
+  "生效日期与时间 *": [
+    "Effective date and time *",
+    "Tanggal dan waktu berlaku *"
+  ],
+  "用于标注测试目的，不改变客户姓名；清空保存后隐藏。": [
+    "Use this for the test purpose, without changing the customer name. Saving an empty note hides it.",
+    "Gunakan untuk tujuan pengujian tanpa mengubah nama pelanggan. Simpan kosong untuk menyembunyikannya."
+  ],
+  "画像来源与变化": [
+    "Profile sources and changes",
+    "Sumber dan perubahan profil"
+  ],
+  "画像重要信息": [
+    "Important profile information",
+    "Informasi profil penting"
+  ],
+  "的AI整理": [
+    " · AI findings",
+    " · Temuan AI"
+  ],
+  "的原文依据": [
+    " · original evidence",
+    " · bukti asli"
+  ],
+  "的原文依据 · ": [
+    " · original evidence · ",
+    " · bukti asli · "
+  ],
+  "确认正式课程报名已成立（不含试听预约） *": [
+    "Confirm formal course enrollment (not trial booking) *",
+    "Konfirmasi pendaftaran kursus resmi (bukan pemesanan kelas percobaan) *"
+  ],
+  "类型": [
+    "Type",
+    "Jenis"
+  ],
+  "纠正误记／明确采用当前值（替代不同记录，原记录保留）": [
+    "Correct an error / explicitly adopt the current value (retain original evidence)",
+    "Koreksi kesalahan / terapkan nilai saat ini secara eksplisit (bukti asli dipertahankan)"
+  ],
+  "编辑名字备注": [
+    "Edit name note",
+    "Edit catatan nama"
+  ],
+  "联系结果修正：": [
+    "Contact result correction: ",
+    "Koreksi hasil kontak: "
+  ],
+  "联系结果如何修正": [
+    "Correct contact result",
+    "Koreksi hasil kontak"
+  ],
+  "补充说明": [
+    "Supplement",
+    "Tambahan"
+  ],
+  "补充／修正": [
+    "Supplement / correction",
+    "Tambahan / koreksi"
+  ],
+  "补充／修正关联的原记录": [
+    "Original record linked to the supplement / correction",
+    "Catatan asli terkait tambahan / koreksi"
+  ],
+  "补充／修正内容": [
+    "Supplement / correction text",
+    "Teks tambahan / koreksi"
+  ],
+  "补充／修正本记录": [
+    "Supplement / correct this record",
+    "Tambahkan / koreksi catatan ini"
+  ],
+  "补充／修正此项依据": [
+    "Supplement / correct this evidence",
+    "Tambahkan / koreksi bukti ini"
+  ],
+  "补充／修正资料依据": [
+    "Supplement / correct profile evidence",
+    "Tambahkan / koreksi bukti profil"
+  ],
+  "被关联的原记录：": [
+    "Linked original record: ",
+    "Catatan asli terkait: "
+  ],
+  "记录人：": [
+    "Recorded by: ",
+    "Dicatat oleh: "
+  ],
+  "记录参考": [
+    "Writing reference",
+    "Referensi penulisan"
+  ],
+  "记录方式": [
+    "Record type",
+    "Jenis pencatatan"
+  ],
+  "该客户有真实测评记录；仅凭本段描述不能确定对应哪一次。": [
+    "Actual assessments exist, but this statement does not identify a specific attempt.",
+    "Ada tes nyata, tetapi pernyataan ini tidak menunjukkan tes tertentu."
+  ],
+  "资料变更依据": [
+    "Evidence for profile changes",
+    "Bukti perubahan profil"
+  ],
+  "资料实际发生时间（选填）": [
+    "Actual profile information time",
+    "Waktu kejadian informasi profil"
+  ],
+  "进展已保存，": [
+    "Progress saved; ",
+    "Perkembangan disimpan; "
+  ],
+  "追加补充／修正": [
+    "Add supplement / correction",
+    "Tambah penjelasan / koreksi"
+  ],
+  "选择资料字段 · 已选": [
+    "Select profile fields · Selected ",
+    "Pilih kolom profil · Terpilih "
+  ],
+  "采用原因": [
+    "Reason for adoption",
+    "Alasan penerapan"
+  ],
+  "采用原因：": [
+    "Reason for adoption: ",
+    "Alasan penerapan: "
+  ],
+  "重试AI整理状态": [
+    "Retry AI status",
+    "Coba ulang status AI"
+  ],
+  "重试原阶段请求": [
+    "Retry original stage request",
+    "Coba ulang permintaan tahap asli"
+  ],
+  "重试读取": [
+    "Retry loading",
+    "Coba muat ulang"
+  ],
+  "销售阶段：": [
+    "Sales stage: ",
+    "Tahap penjualan: "
+  ],
+  "阶段尚未更新": [
+    "Stage not updated",
+    "Tahap belum diperbarui"
+  ],
+  "阶段生效日期与时间": [
+    "Stage effective date and time",
+    "Tanggal dan waktu berlaku tahap"
+  ],
+  "阶段结果尚未确认": [
+    "Stage result not confirmed",
+    "Hasil tahap belum terkonfirmasi"
+  ],
+  "项": [
+    " items",
+    " item"
+  ],
+  "项资料记录": [
+    " profile entries",
+    " informasi profil"
+  ],
+  "预算信息依据": [
+    "Budget evidence",
+    "Bukti anggaran"
+  ],
+  "：未注明": [
+    ": not recorded",
+    ": tidak tercatat"
+  ],
+  "；下方保留原记录当时填写的联系信息。": [
+    "; the original contact details are retained below.",
+    "; rincian kontak asli tetap disimpan di bawah."
+  ],
+  "；保存时保留：": [
+    "; retained on save: ",
+    "; dipertahankan saat disimpan: "
+  ],
+  "；原记录保留，可在自然沟通后直接更新资料。": [
+    "; original retained. Update the profile after clarifying with the customer.",
+    "; catatan asli dipertahankan. Perbarui profil setelah mengklarifikasi dengan pelanggan."
+  ],
+  "；发生时间：": [
+    "; occurred: ",
+    "; terjadi: "
+  ],
+  "；当时保留：": [
+    "; retained then: ",
+    "; dipertahankan saat itu: "
+  ],
+  "；记录时间：": [
+    "; recorded: ",
+    "; dicatat: "
+  ],
+  "角色": [
+    "Roles",
+    "Peran"
+  ],
+  "任务": [
+    "Task",
+    "Tugas"
+  ],
+  "保存": [
+    "Save",
+    "Simpan"
+  ],
+  "客户消息": [
+    "Customer message",
+    "Customer message"
+  ],
+  "测评完成": [
+    "Assessment completed",
+    "Penilaian selesai"
+  ],
+  "中文": [
+    "zh",
+    "zh"
+  ],
+  "未确认": [
+    "Unknown",
+    "Tidak diketahui"
+  ],
+  "加载中…": [
+    "Loading…",
+    "Memuat…"
+  ],
+  "全部": [
+    "All",
+    "Semua"
+  ],
+  "刷新": [
+    "Refresh",
+    "Muat ulang"
+  ],
+  "请输入活动名称。": [
+    "Enter a campaign name.",
+    "Masukkan nama kampanye."
+  ],
+  "预算请输入大于或等于0的数字；尚未确定可留空。": [
+    "Enter a non-negative budget, or leave it blank if unknown.",
+    "Isi anggaran nol atau lebih, atau kosongkan jika belum diketahui."
+  ],
+  "请核对日期和时间：填写时间须有对应日期，结束不得早于开始。": [
+    "Check the dates and times. A time needs a date; the end must not precede the start.",
+    "Periksa tanggal dan waktu. Waktu memerlukan tanggal; akhir tidak boleh mendahului awal."
+  ],
+  "请选择入口服务和客户页面语言。": [
+    "Select an entry service and customer language.",
+    "Pilih layanan awal dan bahasa pelanggan."
+  ],
+  "未查到已保存结果。原请求和草稿保留，可明确重试原请求。": [
+    "No saved result found. Keep this request and explicitly retry if needed.",
+    "Hasil tersimpan belum ditemukan. Pertahankan permintaan ini dan ulangi secara eksplisit bila perlu."
+  ],
+  "编辑活动信息": [
+    "Edit campaign information",
+    "Edit informasi kampanye"
+  ],
+  "创建活动": [
+    "Create campaign",
+    "Buat kampanye"
+  ],
+  "修改保留活动码和已有归因。": [
+    "Changes preserve the campaign code and existing attribution.",
+    "Perubahan mempertahankan kode dan atribusi yang ada."
+  ],
+  "第1步，共2步 · 填写活动名称，保存后为各渠道或投放位置添加推广链接。": [
+    "Step 1 of 2 · Name the campaign. Next, add a promotion link for each channel or placement.",
+    "Langkah 1 dari 2 · Beri nama kampanye. Berikutnya, tambahkan tautan promosi untuk setiap kanal atau penempatan."
+  ],
+  "保存结果待确认。请重试原请求查询结果，不要重复创建活动。": [
+    "Save outcome unknown. Check the saved result first; keep the original request.",
+    "Hasil belum diketahui. Ulangi permintaan yang sama untuk mendapatkan hasil; jangan buat kampanye lain."
+  ],
+  "活动名称 *": [
+    "Campaign name *",
+    "Nama kampanye *"
+  ],
+  "活动类型": [
+    "Campaign type",
+    "Jenis kampanye"
+  ],
+  "请选择类型": [
+    "Select type",
+    "Pilih jenis"
+  ],
+  "开展形式": [
+    "Delivery format",
+    "Bentuk penyelenggaraan"
+  ],
+  "请选择形式": [
+    "Select format",
+    "Pilih bentuk"
+  ],
+  "线下": [
+    "On-site",
+    "Tatap muka"
+  ],
+  "线上": [
+    "Online",
+    "Daring"
+  ],
+  "线上线下混合": [
+    "Hybrid",
+    "Hibrida"
+  ],
+  "创建为筹备中。预算与排期在补充前保持未填写。": [
+    "Created as Planning. Budget and schedule remain unrecorded until you add them.",
+    "Dibuat dengan status Perencanaan. Anggaran dan jadwal belum tercatat sampai Anda mengisinya."
+  ],
+  "联系人、状态及预算": [
+    "Contact, status and budget",
+    "Kontak, status, dan anggaran"
+  ],
+  "主办方／活动联系人": [
+    "Organizer / campaign contact",
+    "Penyelenggara / kontak kampanye"
+  ],
+  "计划预算（IDR）· 留空表示未填写": [
+    "Planned budget (IDR) · blank = unknown",
+    "Anggaran (IDR) · kosong = belum diketahui"
+  ],
+  "活动状态": [
+    "Campaign status",
+    "Status kampanye"
+  ],
+  "活动联系人不决定客户Owner。名称按输入原文保存。": [
+    "The campaign contact does not assign customer owners. Names are kept as entered.",
+    "Kontak kampanye tidak menetapkan pemilik pelanggan. Nama dipertahankan sesuai input."
+  ],
+  "时间与地点": [
+    "Schedule and location",
+    "Jadwal dan lokasi"
+  ],
+  "城市": [
+    "City",
+    "Kota"
+  ],
+  "场地": [
+    "Venue",
+    "Tempat"
+  ],
+  "地址": [
+    "Address",
+    "Alamat"
+  ],
+  "线上参会链接": [
+    "Online attendance link",
+    "Tautan kehadiran daring"
+  ],
+  "日程备注": [
+    "Schedule notes",
+    "Catatan jadwal"
+  ],
+  "参会链接与活动获客链接相互独立。": [
+    "Attendance links are separate from the campaign registration link.",
+    "Tautan kehadiran berbeda dari tautan pendaftaran kampanye."
+  ],
+  "受众与活动主张": [
+    "Audience and message",
+    "Audiens dan pesan"
+  ],
+  "目标受众 · 每行一项": [
+    "Target audience · one per line",
+    "Audiens sasaran · satu per baris"
+  ],
+  "已确认的活动要点 · 每行一项": [
+    "Confirmed talking points · one per line",
+    "Poin terkonfirmasi · satu per baris"
+  ],
+  "原有活动链接默认设置": [
+    "Legacy campaign link defaults",
+    "Pengaturan tautan kampanye lama"
+  ],
+  "适用于广告、社群、邮件和线下物料。修改默认来源影响后续登记，不改写已有归因。": [
+    "Applies to ads, social, email and offline materials. Changing these defaults affects future registrations, not existing attribution.",
+    "Berlaku untuk iklan, media sosial, email, dan materi luring. Perubahan default memengaruhi pendaftaran berikutnya, bukan atribusi yang sudah ada."
+  ],
+  "来源（utm_source）": [
+    "Source (utm_source)",
+    "Sumber (utm_source)"
+  ],
+  "媒介（utm_medium）": [
+    "Medium (utm_medium)",
+    "Media (utm_medium)"
+  ],
+  "这些默认设置仅适用于原有只含c的链接；新增推广链接使用各自的独立配置。": [
+    "These defaults apply only to the legacy c-only link. New promotion links keep their own saved settings.",
+    "Pengaturan ini hanya berlaku pada tautan lama yang membawa c saja. Tautan promosi baru memiliki pengaturannya sendiri."
+  ],
+  "重试原请求": [
+    "Retry original request",
+    "Ulangi permintaan awal"
+  ],
+  "保存中…": [
+    "Saving…",
+    "Menyimpan…"
+  ],
+  "保存修改": [
+    "Save changes",
+    "Simpan perubahan"
+  ],
+  "创建并添加推广链接": [
+    "Create & add promotion link",
+    "Buat & tambahkan tautan promosi"
+  ],
+  "推广物料": [
+    "Marketing materials",
+    "Materi promosi"
+  ],
+  "模板草稿": [
+    "Template drafts",
+    "Draf templat"
+  ],
+  "模板依据已保存的活动信息拼装，不调用AI，也不翻译您输入的原文。对外使用前请核对日期和内容。": [
+    "Templates assemble saved campaign facts; they do not use AI or translate your text. Review dates and claims before sharing.",
+    "Templat menyusun fakta kampanye tersimpan; tidak menggunakan AI atau menerjemahkan teks Anda. Periksa tanggal dan klaim sebelum membagikan."
+  ],
+  "物料语言": [
+    "Material language",
+    "Bahasa materi"
+  ],
+  "内容类型": [
+    "Content type",
+    "Jenis konten"
+  ],
+  "此语言暂无草稿。": [
+    "No draft in this language yet.",
+    "Belum ada draf dalam bahasa ini."
+  ],
+  "草稿操作": [
+    "Draft actions",
+    "Tindakan draf"
+  ],
+  "准备模板草稿": [
+    "Prepare template",
+    "Siapkan templat"
+  ],
+  "复制文案": [
+    "Copy text",
+    "Salin teks"
+  ],
+  "处理中…": [
+    "Working…",
+    "Memproses…"
+  ],
+  "保存草稿": [
+    "Save drafts",
+    "Simpan draf"
+  ],
+  "活动信息变化不会自动改写已保存草稿，复用前请重新核对。": [
+    "Drafts are not refreshed automatically when campaign information changes. Recheck them before reuse.",
+    "Draf tidak diperbarui otomatis saat informasi kampanye berubah. Periksa kembali sebelum digunakan."
+  ],
+  "历史物料 · 原文保留，语言未核实": [
+    "Earlier materials · original text, language unverified",
+    "Materi lama · teks asli, bahasa belum diverifikasi"
+  ],
+  "加载内容失败": [
+    "Failed to load content",
+    "Gagal memuat konten"
+  ],
+  "无标题内容": [
+    "Untitled Item",
+    "Item Tanpa Judul"
+  ],
+  "已删除内容": [
+    "Item deleted",
+    "Item deleted"
+  ],
+  "删除失败": [
+    "Delete failed",
+    "Penghapusan gagal"
+  ],
+  "内容保存成功！": [
+    "Saved successfully!",
+    "Berhasil disimpan!"
+  ],
+  "保存失败": [
+    "Save failed",
+    "Penyimpanan gagal"
+  ],
+  "图片上传成功！": [
+    "Image uploaded successfully!",
+    "Gambar berhasil diunggah!"
+  ],
+  "上传失败": [
+    "Upload failed",
+    "Pengunggahan gagal"
+  ],
+  "上传失败，请重试图片": [
+    "Upload failed; retry the image",
+    "Upload failed; retry the image"
+  ],
+  "无法读取图片": [
+    "Unable to read image",
+    "Unable to read image"
+  ],
+  "官网全量内容与素材配置中心": [
+    "Website Content & Media Center",
+    "Konten Situs Web & Pusat Media"
+  ],
+  "管理七类网站内容与图片。": [
+    "Manage website content and images in seven collections.",
+    "Manage website content and images in seven collections."
+  ],
+  "内容总数:": [
+    "Total content:",
+    "Total content:"
+  ],
+  "CMS 操作指南": [
+    "CMS operating guide",
+    "CMS operating guide"
+  ],
+  "工作区与偏好": [
+    "Workspace and preferences",
+    "Workspace and preferences"
+  ],
+  "从工作区菜单进入有权限的后台；语言与主题在 CMS 和 CRM 间沿用。窄屏中打开“语言与外观”调整偏好。": [
+    "Use the workspace menu to open the workspaces allowed by your staff permissions. Language and theme are shared with CRM. On narrow screens, open Language and appearance.",
+    "Use the workspace menu to open the workspaces allowed by your staff permissions. Language and theme are shared with CRM. On narrow screens, open Language and appearance."
+  ],
+  "内容编辑": [
+    "Content editing",
+    "Content editing"
+  ],
+  "选择内容集合，搜索或刷新记录，再新增或编辑内容。在编辑器中保存；查看网站只预览已保存的内容，不会保存尚未提交的草稿。": [
+    "Choose a collection, search or refresh its records, then add or edit content. Save changes in the editor. Opening the website previews saved content; it does not save an open draft.",
+    "Choose a collection, search or refresh its records, then add or edit content. Save changes in the editor. Opening the website previews saved content; it does not save an open draft."
+  ],
+  "姓名及已保存内容保持原文；界面偏好不改变 HSK 题库和评分。": [
+    "Names and saved content remain in their original language. HSK questions and scoring are not changed by interface preferences.",
+    "Names and saved content remain in their original language. HSK questions and scoring are not changed by interface preferences."
+  ],
+  "内容分类": [
+    "Content collections",
+    "Content collections"
+  ],
+  "类内容": [
+    "collections",
+    "collections"
+  ],
+  "网站内容更新": [
+    "Website content updates",
+    "Website content updates"
+  ],
+  "内容保存到 MySQL，重新加载网站后可查看更新。HSK 题库和评分独立管理。": [
+    "Saved content is stored in MySQL. Reload the website to see updates. HSK questions and scoring are managed separately.",
+    "Saved content is stored in MySQL. Reload the website to see updates. HSK questions and scoring are managed separately."
+  ],
+  "条数据": [
+    "records",
+    "rekaman"
+  ],
+  "刷新数据": [
+    "Refresh data",
+    "Segarkan data"
+  ],
+  "新增内容": [
+    "Add New Item",
+    "Tambahkan Item Baru"
+  ],
+  "正在加载本地数据...": [
+    "Loading local content...",
+    "Memuat konten lokal..."
+  ],
+  "未找到符合条件的内容条目。": [
+    "No matching items found in this section.",
+    "Tidak ada item yang cocok ditemukan di bagian ini."
+  ],
+  "创建第一条数据": [
+    "Create first record",
+    "Buat catatan pertama"
+  ],
+  "无标题": [
+    "Untitled",
+    "Tanpa judul"
+  ],
+  "在线": [
+    "Active",
+    "Aktif"
+  ],
+  "隐藏": [
+    "Hidden",
+    "Tersembunyi"
+  ],
+  "无附加描述": [
+    "No description",
+    "Tidak ada deskripsi"
+  ],
+  "编辑": [
+    "Edit",
+    "Ubah"
+  ],
+  "删除此项（需二次确认）": [
+    "Delete item (double confirmation required)",
+    "Hapus item (diperlukan konfirmasi ganda)"
+  ],
+  "编辑内容与图片": [
+    "Edit Item",
+    "Ubah item"
+  ],
+  "新建内容": [
+    "Create New Item",
+    "Buat Item Baru"
+  ],
+  "关闭编辑器": [
+    "Close editor",
+    "Tutup editor"
+  ],
+  "主图片 / Logo 封面": [
+    "Primary Image / Logo",
+    "Gambar Utama / Logo"
+  ],
+  "PNG、JPEG 或 WebP，最大 2 MB；保存到 MySQL": [
+    "PNG, JPEG or WebP up to 2 MB; stored in MySQL",
+    "PNG, JPEG or WebP up to 2 MB; stored in MySQL"
+  ],
+  "图片预览": [
+    "Image preview",
+    "Image preview"
+  ],
+  "正在上传...": [
+    "Uploading...",
+    "Mengunggah..."
+  ],
+  "上传本地图片": [
+    "Upload New Image",
+    "Unggah Gambar Baru"
+  ],
+  "清空": [
+    "Clear",
+    "Hapus"
+  ],
+  "https://... 或 /images/uploads/...": [
+    "https://... or /images/uploads/...",
+    "https://... or /images/uploads/..."
+  ],
+  "录取通知书 / 奖学金证书图片": [
+    "Admission Certificate / Letter Image",
+    "Gambar Sertifikat / Surat Penerimaan"
+  ],
+  "证书预览": [
+    "Certificate preview",
+    "Certificate preview"
+  ],
+  "上传证书图片": [
+    "Upload Certificate Image",
+    "Unggah Gambar Sertifikat"
+  ],
+  "院校或机构名称": [
+    "Institution Name",
+    "Nama Institusi"
+  ],
+  "学员姓名": [
+    "Student Full Name",
+    "Nama Lengkap Siswa"
+  ],
+  "标题": [
+    "Title",
+    "Judul"
+  ],
+  "所属类别": [
+    "Category",
+    "Kategori"
+  ],
+  "中国高校": [
+    "Chinese Universities",
+    "Chinese Universities"
+  ],
+  "印尼院校及学校": [
+    "Indonesian Universities & Schools",
+    "Indonesian Universities & Schools"
+  ],
+  "教育机构": [
+    "Educational Institutions",
+    "Educational Institutions"
+  ],
+  "企业伙伴": [
+    "Corporate Partners",
+    "Corporate Partners"
+  ],
+  "细分子类/备注": [
+    "Subcategory",
+    "Subkategori"
+  ],
+  "例如：中学": [
+    "Example: High school",
+    "Example: High school"
+  ],
+  "官方网址": [
+    "Official Website Link",
+    "Tautan Situs Resmi"
+  ],
+  "文章别名 (URL路径)": [
+    "Article Slug (URL path)",
+    "Slug Artikel (jalur URL)"
+  ],
+  "例如：study-in-china-2026": [
+    "Example: study-in-china-2026",
+    "Example: study-in-china-2026"
+  ],
+  "原始新闻来源链接": [
+    "Original News Source Link",
+    "Tautan Sumber Berita Asli"
+  ],
+  "文章摘要": [
+    "Summary / Excerpt",
+    "Ringkasan / Kutipan"
+  ],
+  "正文段落内容": [
+    "Full Text Content (Paragraphs)",
+    "Konten Teks Lengkap (Paragraf)"
+  ],
+  "在此输入新闻正文段落...": [
+    "Enter news content paragraphs here...",
+    "Masukkan paragraf konten berita di sini..."
+  ],
+  "例如：HSK 课程": [
+    "Example: HSK course",
+    "Example: HSK course"
+  ],
+  "角标标签": [
+    "Badge / Status Tag",
+    "Lencana / Tag Status"
+  ],
+  "例如：开放报名": [
+    "Example: Open for registration",
+    "Example: Open for registration"
+  ],
+  "学费 / 价格": [
+    "Tuition / Price",
+    "Biaya / Harga"
+  ],
+  "例如：1,000,000 印尼盾": [
+    "Example: IDR 1,000,000",
+    "Example: IDR 1,000,000"
+  ],
+  "课时周期": [
+    "Term Duration",
+    "Durasi Term"
+  ],
+  "例如：10 周": [
+    "Example: 10 weeks",
+    "Example: 10 weeks"
+  ],
+  "开班 / 开学时间": [
+    "Start Date",
+    "Tanggal Mulai"
+  ],
+  "例如：2026 年 7 月 15 日": [
+    "Example: 15 July 2026",
+    "Example: 15 July 2026"
+  ],
+  "名额限制": [
+    "Seats / Capacity",
+    "Kursi / Kapasitas"
+  ],
+  "例如：15 个名额": [
+    "Example: 15 places",
+    "Example: 15 places"
+  ],
+  "跳转链接": [
+    "Target Page Link",
+    "Tautan Halaman Target"
+  ],
+  "例如：/hsk": [
+    "Example: /hsk",
+    "Example: /hsk"
+  ],
+  "课程亮点与介绍": [
+    "Course Description & Highlights",
+    "Deskripsi & Sorotan Kursus"
+  ],
+  "就读院校 / 企业背景": [
+    "School / Company / Background",
+    "Sekolah / Perusahaan / Latar Belakang"
+  ],
+  "填写院校或企业名称": [
+    "Enter the institution name",
+    "Enter the institution name"
+  ],
+  "学员真实心得感言": [
+    "Story / Testimonial Quote",
+    "Cerita / Kutipan Testimoni"
+  ],
+  "在此输入学员感言...": [
+    "Enter student testimonial quote...",
+    "Masukkan kutipan testimoni siswa..."
+  ],
+  "录取院校": [
+    "Admitted University / School",
+    "Universitas / Sekolah yang Diterima"
+  ],
+  "录取专业": [
+    "Program / Major",
+    "Program / Jurusan"
+  ],
+  "例如：计算机科学": [
+    "Example: Computer science",
+    "Example: Computer science"
+  ],
+  "获得奖学金类别": [
+    "Scholarship Awarded",
+    "Beasiswa Diberikan"
+  ],
+  "例如：全额奖学金": [
+    "Example: Full scholarship",
+    "Example: Full scholarship"
+  ],
+  "录取学年范围": [
+    "Admission Date Range",
+    "Rentang Tanggal Penerimaan"
+  ],
+  "例如：2026 年 9 月至 2028 年 7 月": [
+    "Example: September 2026 to July 2028",
+    "Example: September 2026 to July 2028"
+  ],
+  "副标题 / 活动主题": [
+    "Subtitle / Topic",
+    "Subjudul / Topik"
+  ],
+  "倒计时 / 举办日期": [
+    "Countdown Date / Event Date",
+    "Tanggal Hitung Mundur / Tanggal Acara"
+  ],
+  "活动详情安排": [
+    "Campaign Details / Agenda",
+    "Detail Kampanye / Agenda"
+  ],
+  "输入活动描述与安排...": [
+    "Enter campaign description...",
+    "Masukkan deskripsi kampanye..."
+  ],
+  "频道副标题 / 导语": [
+    "Channel Subtitle / Tagline",
+    "Subjudul Kanal / Slogan"
+  ],
+  "在前台页面正常展示": [
+    "Active / Display on website",
+    "Aktif / Tampilkan di situs web"
+  ],
+  "排序权重:": [
+    "Display Order:",
+    "Urutan Tampilan:"
+  ],
+  "保存生效": [
+    "Save Changes",
+    "Simpan Perubahan"
+  ],
+  "确认删除内容条目": [
+    "Confirm Item Deletion",
+    "Konfirmasi Penghapusan Item"
+  ],
+  "此操作需要二次确认": [
+    "Action requires secondary confirmation",
+    "Tindakan memerlukan konfirmasi sekunder"
+  ],
+  "取消并关闭": [
+    "Cancel & Close",
+    "Batalkan & Tutup"
+  ],
+  "您确定要从系统数据模型中永久删除此项内容吗？确认后将直接从本地存储移除，并即时同步下架官方网站对应前台展示。": [
+    "Are you sure you want to permanently delete this content item? Once confirmed, the data will be immediately removed from local persistence and synchronised to the official portal.",
+    "Apakah Anda yakin ingin menghapus item konten ini secara permanen? Setelah dikonfirmasi, data akan segera dihapus dari penyimpanan lokal dan disinkronkan ke portal resmi."
+  ],
+  "所属数据表:": [
+    "Content Collection:",
+    "Koleksi Konten:"
+  ],
+  "条目标题:": [
+    "Item Title:",
+    "Judul Item:"
+  ],
+  "分类 / 标签:": [
+    "Category / Tag:",
+    "Kategori / Tag:"
+  ],
+  "不可逆操作提醒：此删除操作无法撤销。若后续仍需使用该素材或图文，请在删除前保留相关备份。": [
+    "Irreversible: Deleted records cannot be undone. Please ensure you have backup copies if this media asset is still required.",
+    "Tidak dapat diubah: Catatan yang dihapus tidak dapat dipulihkan. Pastikan Anda memiliki salinan cadangan jika aset media ini masih diperlukan."
+  ],
+  "正在删除...": [
+    "Deleting...",
+    "Menghapus..."
+  ],
+  "确认删除": [
+    "Confirm Delete",
+    "Konfirmasi Hapus"
+  ],
+  "快速测评": [
+    "Quick assessment",
+    "Asesmen cepat"
+  ],
+  "完整测评": [
+    "Full assessment",
+    "Asesmen lengkap"
+  ],
+  "历史测评": [
+    "Historical assessment",
+    "Asesmen historis"
+  ],
+  "未知时间": [
+    "Unknown time",
+    "Waktu tidak diketahui"
+  ],
+  "已记录音频播放异常，请先核实受影响的听力题，再使用此起点建议。": [
+    "Audio playback errors were recorded. Check the affected listening items before using this starting point.",
+    "Gangguan audio tercatat. Periksa soal menyimak yang terdampak sebelum memakai titik awal ini."
+  ],
+  "存在未作答题，建议补充作答或完成完整测评，以明确学习起点。": [
+    "Some questions were unanswered. Complete the missing items or a full assessment to clarify the starting point.",
+    "Sebagian soal belum dijawab. Lengkapi soal atau ikuti asesmen lengkap untuk memperjelas titik awal."
+  ],
+  "不同难度的表现不一致，请核对基础题表现后再确定学习起点。": [
+    "Performance varies across difficulty levels. Review the foundation items before choosing a starting point.",
+    "Hasil antar tingkat kesulitan berbeda. Tinjau soal dasar sebelum memilih titik awal."
+  ],
+  "结果接近学习起点分界，可通过完整测评进一步区分下一步学习内容。": [
+    "This result is near a starting-point boundary. A full assessment can help distinguish the next learning step.",
+    "Hasil mendekati batas titik awal. Asesmen lengkap dapat membantu menentukan langkah belajar berikutnya."
+  ],
+  "已保存结果标记为待复核，但未记录原因。": [
+    "The saved result requests review, but no reason was recorded.",
+    "Hasil tersimpan memerlukan peninjauan, tetapi alasannya belum dicatat."
+  ],
+  "当前结论": [
+    "Current conclusion",
+    "Kesimpulan saat ini"
+  ],
+  "本次测评结果": [
+    "Assessment result",
+    "Hasil asesmen"
+  ],
+  "教师定级": [
+    "Teacher placement",
+    "Penempatan oleh guru"
+  ],
+  "尚无测评记录": [
+    "No assessment recorded",
+    "Belum ada asesmen tercatat"
+  ],
+  "教师": [
+    "Teacher",
+    "Guru"
+  ],
+  "定级时间": [
+    "Placement date",
+    "Tanggal penempatan"
+  ],
+  "客户自报信息可在测评依据与历史记录中查看。": [
+    "Self-reported information is available under Assessment evidence and history.",
+    "Informasi dari pelanggan tersedia di Bukti dan riwayat asesmen."
+  ],
+  "快速测评用于建议学习起点，不代表完整 HSK 水平认定或官方成绩。": [
+    "A quick assessment suggests a learning starting point; it does not establish a complete HSK level or an official result.",
+    "Asesmen cepat menyarankan titik awal belajar; bukan penetapan level HSK lengkap atau hasil resmi."
+  ],
+  "本测评覆盖 HSK 1–3 题目，未测口语、手写及更高等级，不代表官方 HSK 成绩。": [
+    "This assessment covers HSK 1–3 items. Speaking, handwriting and higher levels were not assessed. This is not an official HSK result.",
+    "Asesmen ini mencakup soal HSK 1–3. Berbicara, tulisan tangan, dan level lebih tinggi tidak diuji. Ini bukan hasil HSK resmi."
+  ],
+  "历史依据不完整，不仅凭分数推断水平。": [
+    "Historical evidence is incomplete. No level is inferred from the score alone.",
+    "Bukti historis belum lengkap. Level tidak disimpulkan hanya dari skor."
+  ],
+  "需核实的依据": [
+    "Evidence to check",
+    "Bukti perlu diperiksa"
+  ],
+  "已保存依据缺失或不一致，请查看测评记录，不凭分数推断等级。": [
+    "Saved evidence is missing or inconsistent. Inspect the assessment record; do not infer a level from its score.",
+    "Bukti tersimpan hilang atau tidak konsisten. Periksa catatan asesmen; jangan menyimpulkan level dari skor."
+  ],
+  "最近测评 · 独立依据": [
+    "Latest assessment · separate evidence",
+    "Asesmen terbaru · bukti terpisah"
+  ],
+  "作答表现": [
+    "Response breakdown",
+    "Rincian jawaban"
+  ],
+  "本次测评与教师定级分别保留，不替代教师结论。": [
+    "This assessment is separate from the teacher's placement and does not replace it.",
+    "Asesmen ini terpisah dari penempatan guru dan tidak menggantikannya."
+  ],
+  "题目数量": [
+    "Questions",
+    "Jumlah soal"
+  ],
+  "正确题数": [
+    "Correct",
+    "Benar"
+  ],
+  "跳过题数": [
+    "Skipped",
+    "Dilewati"
+  ],
+  "未作答题数": [
+    "Unanswered",
+    "Belum dijawab"
+  ],
+  "分项结果": [
+    "Section results",
+    "Hasil per bagian"
+  ],
+  "项目": [
+    "Section",
+    "Bagian"
+  ],
+  "正确／总题数": [
+    "Correct / Total",
+    "Benar / Total"
+  ],
+  "听力": [
+    "Listening",
+    "Menyimak"
+  ],
+  "阅读": [
+    "Reading",
+    "Membaca"
+  ],
+  "书写题目": [
+    "Writing items",
+    "Soal menulis"
+  ],
+  "其他项目": [
+    "Other section",
+    "Bagian lain"
+  ],
+  "测评依据与历史记录": [
+    "Assessment evidence and history",
+    "Bukti dan riwayat asesmen"
+  ],
+  "客户自报水平": [
+    "Self-reported level",
+    "Level menurut pelanggan"
+  ],
+  "此处为客户自述，不是测评结果；未记录其与本次测评的先后关系。": [
+    "This is the customer's self-report, not an assessment result. Its timing relative to the assessment is not recorded.",
+    "Ini adalah keterangan pelanggan, bukan hasil asesmen. Waktunya relatif terhadap asesmen belum dicatat."
+  ],
+  "完成时间": [
+    "Completed",
+    "Selesai"
+  ],
+  "运营时区": [
+    "Operating timezone",
+    "Zona waktu operasional"
+  ],
+  "试卷版本": [
+    "Exam version",
+    "Versi tes"
+  ],
+  "评分版本": [
+    "Scoring version",
+    "Versi penilaian"
+  ],
+  "该记录暂无结构化作答详情。": [
+    "Structured attempt details are unavailable for this record.",
+    "Rincian upaya terstruktur tidak tersedia untuk catatan ini."
+  ],
+  "原始测评说明": [
+    "Original assessment text",
+    "Teks asesmen asli"
+  ],
+  "保留的客户级测评原文，并非销售备注；保持原语言，未核实其是否对应最近一次测评。": [
+    "Preserved text from the customer record; not a sales note. Its original language is retained. Association with the latest attempt is not verified.",
+    "Teks dari catatan pelanggan dipertahankan; bukan catatan sales. Bahasa aslinya tetap sama. Kaitannya dengan upaya terbaru belum diverifikasi."
+  ],
+  "当前结论沿用现有保存依据；历史记录不会自动取最高分或平均分来替换它。": [
+    "The current conclusion follows the existing saved reference. History does not replace it with the highest score or an average.",
+    "Kesimpulan saat ini mengikuti acuan tersimpan yang sudah digunakan. Riwayat tidak menggantinya dengan skor tertinggi atau rata-rata."
+  ],
+  "结果差异明显 · 请人工复核": [
+    "Different results · manual review needed",
+    "Hasil berbeda · perlu tinjauan manual"
+  ],
+  "标记的记录存在明显差异，请与客户核实作答条件、未答题及测评时间；不据此判定进步、退步或最终等级。": [
+    "Highlighted records differ materially. Check test conditions, unanswered items and dates with the learner. No progress, regression or final placement is inferred.",
+    "Catatan yang ditandai berbeda secara nyata. Periksa kondisi tes, soal yang belum dijawab, dan tanggal bersama peserta. Tidak disimpulkan kemajuan, penurunan, atau penempatan akhir."
+  ],
+  "依据类型不同 · 请核实结论": [
+    "Different evidence types · verify conclusions",
+    "Jenis bukti berbeda · periksa kesimpulan"
+  ],
+  "最近快速测评的起点建议与完整测评的本卷结论差异较大。两者覆盖范围不同，请结合原始依据向客户核实；不直接比较原始分数，也不自动确定最终等级。": [
+    "The latest quick starting-point suggestion and full-paper conclusion are far apart. Their coverage differs: compare the saved evidence with the learner; do not compare raw points or select a final level automatically.",
+    "Saran titik awal cepat terbaru dan kesimpulan tes lengkap berbeda jauh. Cakupannya berbeda: periksa bukti bersama peserta; jangan membandingkan skor mentah atau memilih level akhir secara otomatis."
+  ],
+  "客户自报与客户级原始依据": [
+    "Self-report and original customer-level evidence",
+    "Keterangan pelanggan dan bukti asli pada profil"
+  ],
+  "客户自报不是测评结果；客户级原文未必对应最近一次测评。": [
+    "Self-report is not a test result. Original customer-level text may not belong to the latest attempt.",
+    "Keterangan pelanggan bukan hasil tes. Teks asli pada profil belum tentu berasal dari upaya terbaru."
+  ],
+  "历次测评记录": [
+    "Assessment history",
+    "Riwayat asesmen"
+  ],
+  "快速测评建议学习起点，完整测评展示本卷门槛结果；两者原始分数不能直接比较。": [
+    "Quick assessments suggest a starting point; full assessments report their own paper thresholds. Their raw scores are not directly comparable.",
+    "Asesmen cepat menyarankan titik awal; asesmen lengkap melaporkan ambang tesnya sendiri. Skor mentah keduanya tidak dapat dibandingkan langsung."
+  ],
+  "历次记录暂不可用，上方保留现有摘要。": [
+    "Assessment history unavailable. Existing summary is shown above.",
+    "Riwayat asesmen tidak tersedia. Ringkasan yang ada ditampilkan di atas."
+  ],
+  "重试": [
+    "Retry",
+    "Coba lagi"
+  ],
+  "正在加载历次测评记录…": [
+    "Loading assessment history…",
+    "Memuat riwayat asesmen…"
+  ],
+  "尚无已保存的测评记录；客户自报信息不是测评结果。": [
+    "No saved test attempts. Self-reported information is not a test result.",
+    "Belum ada upaya tes tersimpan. Informasi dari pelanggan bukan hasil tes."
+  ],
+  "对比记录 · 待复核": [
+    "Compare · review needed",
+    "Bandingkan · perlu ditinjau"
+  ],
+  "记录时间": [
+    "Recorded",
+    "Dicatat"
+  ],
+  "差异提示如何判断": [
+    "How differences are flagged",
+    "Cara perbedaan ditandai"
+  ],
+  "提示比较同类测评前后相邻记录：完整作答且试卷、评分版本相同时，分数占满分比例相差至少30个百分点，或保存结论相差至少两级／阶段，会提示复核。未完整作答或本身不确定的结果沿用其依据核实提示。这是展示提示规则，不是评分或定级规则。": [
+    "Review cues compare consecutive records of the same assessment type. Complete attempts on the same paper and scoring version are flagged at a score difference of at least 30 percentage points, or saved conclusions differ by at least two levels/stages. Incomplete or already uncertain results retain their own review notices. This is a display rule, not a scoring or placement rule.",
+    "Petunjuk membandingkan catatan berurutan dari jenis asesmen yang sama. Upaya lengkap dengan versi tes dan penilaian yang sama ditandai jika selisih skor minimal 30 poin persentase, atau kesimpulan tersimpan berbeda minimal dua level/tahap. Hasil tidak lengkap atau belum pasti tetap memakai peringatan buktinya sendiri. Ini aturan tampilan, bukan aturan penilaian atau penempatan."
+  ],
+  "已记录参与确认": [
+    "Participation recorded",
+    "Partisipasi dicatat"
+  ],
+  "已撤销确认": [
+    "Confirmation withdrawn",
+    "Konfirmasi ditarik"
+  ],
+  "记录活动参与（可选）": [
+    "Record event participation (optional)",
+    "Catat partisipasi acara (opsional)"
+  ],
+  "仅在需要时记录宣讲、讲座、路演或展会参与；活动形式与获客归因不自动证明个人出席。": [
+    "Optional, for seminars, webinars, roadshows or fairs. Record only known participation; campaign format and acquisition attribution do not confirm attendance.",
+    "Opsional, untuk seminar, webinar, roadshow, atau pameran. Catat hanya partisipasi yang diketahui; format dan atribusi kampanye tidak membuktikan kehadiran."
+  ],
+  "正在加载活动…": [
+    "Loading events…",
+    "Memuat acara…"
+  ],
+  "暂无可记录参与的活动类 Campaign。": [
+    "No event campaigns available for participation records.",
+    "Belum ada kampanye acara untuk catatan partisipasi."
+  ],
+  "活动": [
+    "Campaign",
+    "Kampanye"
+  ],
+  "请选择活动": [
+    "Choose campaign",
+    "Pilih kampanye"
+  ],
+  "参与方式": [
+    "Participation mode",
+    "Mode partisipasi"
+  ],
+  "请选择方式": [
+    "Choose mode",
+    "Pilih mode"
+  ],
+  "现场": [
+    "Onsite",
+    "Di lokasi"
+  ],
+  "确认依据／原因": [
+    "Evidence / reason",
+    "Bukti / alasan"
+  ],
+  "此 Campaign 仅保留历史参与记录，可撤销确认，不在此新增活动确认。": [
+    "This campaign has a historical participation record. You can withdraw its confirmation, but cannot create a new event confirmation here.",
+    "Kampanye ini memiliki catatan partisipasi historis. Konfirmasi dapat ditarik, tetapi konfirmasi acara baru tidak dapat dibuat di sini."
+  ],
+  "确认参与": [
+    "Confirm participation",
+    "Konfirmasi partisipasi"
+  ],
+  "撤销确认": [
+    "Withdraw confirmation",
+    "Tarik konfirmasi"
+  ],
+  "时间未记录": [
+    "Time not recorded",
+    "Waktu tidak tercatat"
+  ],
+  "尚未记录": [
+    "None recorded",
+    "Belum tercatat"
+  ],
+  "原观察已被关联修正 · 仅保留历史，不作为当前信号": [
+    "Corrected original observation · history only",
+    "Observasi semula dikoreksi · hanya riwayat"
+  ],
+  "客户问卷": [
+    "Customer questionnaire",
+    "Kuesioner pelanggan"
+  ],
+  "销售记录": [
+    "Sales record",
+    "Catatan sales"
+  ],
+  "历史资料标签": [
+    "Historical profile label",
+    "Label profil historis"
+  ],
+  "保存的选项": [
+    "Saved answer",
+    "Jawaban tersimpan"
+  ],
+  "原始依据不可用，不推断来源或时间。": [
+    "Original evidence unavailable; no source or time inferred.",
+    "Bukti asli tidak tersedia; sumber dan waktu tidak disimpulkan."
+  ],
+  "查看关联客户消息": [
+    "View linked customer message",
+    "Lihat pesan pelanggan terkait"
+  ],
+  "查看原始消息": [
+    "View original message",
+    "Lihat pesan asli"
+  ],
+  "查看关联任务": [
+    "View linked task",
+    "Lihat tugas terkait"
+  ],
+  "已创建任务": [
+    "Created task",
+    "Tugas dibuat"
+  ],
+  "已补充已有任务": [
+    "Added to existing task",
+    "Ditambahkan ke tugas yang ada"
+  ],
+  "营销活动中心": [
+    "Marketing Campaigns",
+    "Kampanye Pemasaran"
+  ],
+  "由该活动短链自动沉淀至 CRM 的潜客学员：": [
+    "Leads automatically matched from CRM:",
+    "Prospek otomatis dicocokkan dari CRM:"
+  ],
+  "条线索": [
+    "Leads Total",
+    "Total Prospek"
+  ],
+  "活动客户列表暂不可用，请重新打开重试。": [
+    "Campaign customer list unavailable; reopen to retry.",
+    "Daftar pelanggan kampanye tidak tersedia; buka kembali untuk mencoba lagi."
+  ],
+  "暂无学员通过该专属渠道短链完成进线留资。": [
+    "No leads have entered through this campaign short link yet.",
+    "Belum ada prospek yang masuk melalui tautan pendek kampanye ini."
+  ],
+  "百万": [
+    "M",
+    "M"
+  ],
+  "在CRM跟进": [
+    "View in CRM",
+    "Lihat di CRM"
+  ],
+  "不可计算": [
+    "Not calculable",
+    "Tidak dapat dihitung"
+  ],
+  "已登记客户": [
+    "Registered customers",
+    "Pelanggan terdaftar"
+  ],
+  "按首次活动归因统计客户记录": [
+    "First campaign attribution; one saved customer record",
+    "Atribusi kampanye pertama; satu catatan pelanggan tersimpan"
+  ],
+  "已保存测评": [
+    "Assessments saved",
+    "Asesmen tersimpan"
+  ],
+  "有服务端测评依据；不代表出席": [
+    "Server assessment evidence; not attendance",
+    "Bukti asesmen server; bukan kehadiran"
+  ],
+  "已确认参与": [
+    "Confirmed participation",
+    "Partisipasi terkonfirmasi"
+  ],
+  "已记录报名": [
+    "Enrollment recorded",
+    "Pendaftaran kelas tercatat"
+  ],
+  "报名状态；缴费单独记录": [
+    "Enrollment status; payment is separate",
+    "Status pendaftaran kelas; pembayaran terpisah"
+  ],
+  "登记客户报名占比": [
+    "Enrollment share",
+    "Proporsi pendaftaran kelas"
+  ],
+  "首次归因客户群": [
+    "First-attributed customer cohort",
+    "Kelompok pelanggan atribusi pertama"
+  ],
+  "链接访问次数": [
+    "Link opens",
+    "Pembukaan tautan"
+  ],
+  "包含重复打开；不等于独立访客或扫码人数": [
+    "Repeated opens count; not unique visitors or QR scans",
+    "Pembukaan berulang dihitung; bukan pengunjung unik atau pemindaian QR"
+  ],
+  "营销统计口径": [
+    "Campaign measurement",
+    "Pengukuran kampanye"
+  ],
+  "本活动": [
+    "This campaign",
+    "Kampanye ini"
+  ],
+  "已列出活动": [
+    "All listed campaigns",
+    "Semua kampanye dalam daftar"
+  ],
+  "权限内客户；当前累计统计": [
+    "Customers within your access scope; current lifetime totals",
+    "Pelanggan dalam cakupan akses Anda; total kumulatif saat ini"
+  ],
+  "归因与分母说明": [
+    "Attribution and denominators",
+    "Atribusi dan penyebut"
+  ],
+  "登记、测评、参与、报名是独立指标，不是必须依次经过的漏斗。重复测评按首次归因客户计一次。参与须由员工确认活动、方式和依据，可包含首次登记来自其他活动的客户；跨活动汇总计活动—客户对，不是独立人数。": [
+    "Registration, assessment, participation and enrollment are independent measures, not a mandatory sequence. Repeat assessments count once per sourced customer. Participation requires a staff-confirmed campaign, mode and evidence; it can include customers first registered through another campaign. Across campaigns, participation counts campaign-customer pairs, not unique people.",
+    "Pendaftaran awal, asesmen, partisipasi, dan pendaftaran kelas adalah ukuran terpisah, bukan urutan wajib. Asesmen berulang dihitung sekali per pelanggan asal. Partisipasi memerlukan kampanye, mode, dan bukti yang dikonfirmasi staf; dapat mencakup pelanggan yang pertama terdaftar melalui kampanye lain. Antar kampanye, partisipasi menghitung pasangan kampanye-pelanggan, bukan orang unik."
+  ],
+  "报名占比＝首次归因客户中的报名记录／该客户群登记记录，不证明营销增量效果或缴费转化。无登记客户时不可计算。同名活动的历史归因有歧义时不重复计入，须先核实。访问次数没有独立访客分母，因此不展示访客获客率。": [
+    "Enrollment share = enrollment records in the first-attributed cohort / saved customers in that cohort. It is neither causal marketing lift nor paid conversion. With no customers the rate is not calculable. Ambiguous historical campaign names are excluded until attribution is clarified. Link opens have no unique visitor denominator, so no visitor-to-lead rate is shown.",
+    "Proporsi pendaftaran kelas = catatan pendaftaran kelas dalam kelompok atribusi pertama / pelanggan tersimpan dalam kelompok tersebut. Bukan dampak kausal pemasaran atau konversi pembayaran. Tanpa pelanggan, rasio tidak dapat dihitung. Nama kampanye historis yang ambigu dikecualikan sampai atribusi diperjelas. Pembukaan tautan tidak memiliki penyebut pengunjung unik; rasio kunjungan-ke-pelanggan tidak ditampilkan."
+  ],
+  "已登记金额": [
+    "Recorded amount",
+    "Nominal tercatat"
+  ],
+  "未登记金额的报名客户": [
+    "Enrollment records without an amount",
+    "Pendaftaran kelas tanpa nominal"
+  ],
+  "计划预算与登记金额不能证明实际花费、已核验收款、利润或投资回报率。": [
+    "Planned budget and recorded amounts do not establish actual spend, verified payment, profit or ROI.",
+    "Anggaran rencana dan nominal tercatat tidak membuktikan pengeluaran aktual, pembayaran terverifikasi, laba, atau ROI."
+  ],
+  "来源核实": [
+    "Source verification",
+    "Verifikasi sumber"
+  ],
+  "待核实来源": [
+    "Unknown campaign codes",
+    "Sumber belum diverifikasi"
+  ],
+  "待核实": [
+    "Pending",
+    "Belum diproses"
+  ],
+  "核实历史": [
+    "Review history",
+    "Riwayat verifikasi"
+  ],
+  "仅显示已生成客户的来源。核实只调整归因关联，保留原始代码、负责人和任务。": [
+    "Only sources with saved leads appear. Verification changes attribution, not the original code, owner or tasks.",
+    "Hanya sumber dengan prospek tersimpan yang muncul. Verifikasi mengubah atribusi, bukan kode asli, pemilik, atau tugas."
+  ],
+  "当前没有此类来源。": [
+    "No sources in this view.",
+    "Tidak ada sumber pada tampilan ini."
+  ],
+  "无效来源": [
+    "Invalid source",
+    "Sumber tidak valid"
+  ],
+  "已关联": [
+    "Linked",
+    "Tertaut"
+  ],
+  "首次／最近登记": [
+    "First / latest registration",
+    "Pendaftaran pertama / terakhir"
+  ],
+  "当前配置要求由CRM Manager核实归因": [
+    "CRM Manager review required by policy",
+    "Kebijakan memerlukan verifikasi CRM Manager"
+  ],
+  "核实来源": [
+    "Review source",
+    "Verifikasi sumber"
+  ],
+  "处理方式": [
+    "Action",
+    "Tindakan"
+  ],
+  "关联已有活动": [
+    "Link existing campaign",
+    "Tautkan kampanye yang ada"
+  ],
+  "创建新活动并关联": [
+    "Create campaign and link",
+    "Buat dan tautkan kampanye"
+  ],
+  "标记无效": [
+    "Mark invalid",
+    "Tandai tidak valid"
+  ],
+  "目标活动": [
+    "Target campaign",
+    "Kampanye tujuan"
+  ],
+  "选择活动": [
+    "Choose a campaign",
+    "Pilih kampanye"
+  ],
+  "原始代码保留为来源别名；该代码的已有及后续客户归因到选定活动。": [
+    "The original code stays as an alias. Existing and future leads from that code are attributed to the selected campaign.",
+    "Kode asli tetap menjadi alias. Prospek lama dan baru dari kode tersebut diatribusikan ke kampanye yang dipilih."
+  ],
+  "原始来源代码": [
+    "Original source code",
+    "Kode sumber asli"
+  ],
+  "活动名称": [
+    "Campaign name",
+    "Nama kampanye"
+  ],
+  "其他／未明确": [
+    "Other / unspecified",
+    "Lainnya / belum ditentukan"
+  ],
+  "校园讲座": [
+    "Campus seminar",
+    "Seminar kampus"
+  ],
+  "企业路演": [
+    "Enterprise roadshow",
+    "Roadshow perusahaan"
+  ],
+  "线上研讨会": [
+    "Webinar",
+    "Webinar"
+  ],
+  "教育展": [
+    "Education fair",
+    "Pameran pendidikan"
+  ],
+  "创建使用新camp-活动码的筹备中活动；原始来源代码保留为可用别名及审计记录。其他信息可在活动信息中补充。": [
+    "Creates a planning campaign with a new camp- code. The original source code remains a working alias and stays in the audit record. Complete other details in campaign information.",
+    "Membuat kampanye berstatus Perencanaan dengan kode camp- baru. Kode sumber asli tetap menjadi alias yang berfungsi dan tersimpan dalam audit. Lengkapi rincian lain di Informasi kampanye."
+  ],
+  "核实依据": [
+    "Reason",
+    "Alasan"
+  ],
+  "原始代码及审计保留；标记无效不会删除客户或归入非活动来源。": [
+    "The original code and audit record are retained. Invalid sources do not delete leads or move them to Non-campaign source.",
+    "Kode asli dan audit tetap disimpan. Sumber tidak valid tidak menghapus pelanggan atau memindahkannya ke Sumber non-kampanye."
+  ],
+  "确认核实": [
+    "Confirm review",
+    "Konfirmasi verifikasi"
+  ],
+  "来源核实已保存，影响客户数": [
+    "Source review saved. Affected leads",
+    "Verifikasi tersimpan. Prospek terdampak"
+  ],
+  "活动码": [
+    "Campaign code",
+    "Kode kampanye"
+  ],
+  "请选择语言并核对话术": [
+    "Choose language and review the message",
+    "Pilih bahasa dan tinjau pesan"
+  ],
+  "准备联系": [
+    "Prepare contact",
+    "Siapkan kontak"
+  ],
+  "号码": [
+    "Phone",
+    "Nomor telepon"
+  ],
+  "联系范围": [
+    "Contact scope",
+    "Cakupan kontak"
+  ],
+  "销售跟进": [
+    "Sales follow-up",
+    "Tindak lanjut penjualan"
+  ],
+  "仅核实身份": [
+    "Verify identity only",
+    "Verifikasi identitas saja"
+  ],
+  "回复客户新问题": [
+    "Reply to a new customer question",
+    "Jawab pertanyaan baru pelanggan"
+  ],
+  "需核实的另一条记录": [
+    "Matching record",
+    "Catatan terkait"
+  ],
+  "客户原文": [
+    "Customer message",
+    "Pesan pelanggan"
+  ],
+  "请选择依据": [
+    "Select evidence",
+    "Pilih bukti"
+  ],
+  "我已核对该问题尚未答复；打开工具不会记为已回复。": [
+    "I checked that this question has not been answered. Opening a tool does not record a reply.",
+    "Saya telah memeriksa bahwa pertanyaan ini belum dijawab. Membuka alat tidak mencatat balasan."
+  ],
+  "自己认领，再联系": [
+    "Claim for myself, then contact",
+    "Ambil untuk saya, lalu hubungi"
+  ],
+  "本次联系的原因与范围（必填）": [
+    "Reason and contact scope (required)",
+    "Alasan dan cakupan kontak (wajib)"
+  ],
+  "放弃已编辑的话术？": [
+    "Discard the edited message?",
+    "Buang pesan yang telah diedit?"
+  ],
+  "继续编辑": [
+    "Keep editing",
+    "Lanjutkan mengedit"
+  ],
+  "放弃并关闭": [
+    "Discard and close",
+    "Buang dan tutup"
+  ],
+  "已停止主动联系，请先说明原因并恢复。": [
+    "Proactive contact stopped. Restore with a reason first.",
+    "Kontak proaktif dihentikan. Pulihkan dengan alasan terlebih dahulu."
+  ],
+  "本次沟通目的": [
+    "Purpose of this contact",
+    "Tujuan komunikasi ini"
+  ],
+  "自由编写": [
+    "Write your own",
+    "Tulis sendiri"
+  ],
+  "客户沟通语言": [
+    "Customer communication language",
+    "Bahasa komunikasi pelanggan"
+  ],
+  "请选择语言": [
+    "Choose language",
+    "Pilih bahasa"
+  ],
+  "模板可自由编辑，不代表已确认的优惠或安排。发送前请核实课程、费用及可用时间。": [
+    "Editable starting points, not confirmed offers. Review course, fee and availability details before sending.",
+    "Templat dapat diedit dan bukan penawaran terkonfirmasi. Periksa informasi kursus, biaya, dan ketersediaan sebelum mengirim."
+  ],
+  "保留或替换草稿": [
+    "Keep or replace draft",
+    "Simpan atau ganti draf"
+  ],
+  "您已编辑话术，是否用新选择替换当前草稿？": [
+    "You edited this message. Replace it with the new selection?",
+    "Anda telah mengedit pesan ini. Ganti dengan pilihan baru?"
+  ],
+  "替换草稿": [
+    "Replace draft",
+    "Ganti draf"
+  ],
+  "保留并继续编辑": [
+    "Keep editing",
+    "Lanjutkan mengedit"
+  ],
+  "请先选择客户沟通语言，再准备话术。": [
+    "Choose the customer's communication language to prepare a message.",
+    "Pilih bahasa komunikasi pelanggan untuk menyiapkan pesan."
+  ],
+  "消息内容": [
+    "Message",
+    "Pesan"
+  ],
+  "保存为客户沟通语言": [
+    "Save as customer language",
+    "Simpan sebagai bahasa pelanggan"
+  ],
+  "打开或复制不会登记联系或完成任务。": [
+    "Opening or copying does not record contact or complete a task.",
+    "Membuka atau menyalin tidak mencatat kontak atau menyelesaikan tugas."
+  ],
+  "拨打电话": [
+    "Phone call",
+    "Telepon"
+  ],
+  "复制未成功，消息草稿已保留，请重试。": [
+    "Could not copy. Message retained; try again.",
+    "Tidak dapat menyalin. Pesan tetap tersimpan; coba lagi."
+  ],
+  "消息已复制": [
+    "Message copied",
+    "Pesan disalin"
+  ],
+  "复制消息": [
+    "Copy message",
+    "Salin pesan"
+  ],
+  "打开 WhatsApp": [
+    "Open WhatsApp",
+    "Buka WhatsApp"
+  ],
+  "常用参考": [
+    "Common reference",
+    "Referensi umum"
+  ],
+  "销售内部检查项": [
+    "Internal sales checks",
+    "Panduan internal sales"
+  ],
+  "准备此类消息": [
+    "Prepare a message",
+    "Siapkan pesan"
+  ],
+  "暂无对话记录": [
+    "No conversations recorded",
+    "Tidak ada percakapan yang direkam"
+  ],
+  "回复失败": [
+    "Reply failed",
+    "Balasan gagal"
+  ],
+  "回复已中断": [
+    "Reply interrupted",
+    "Balasan terputus"
+  ],
+  "等待回复": [
+    "Reply pending",
+    "Balasan tertunda"
+  ],
+  "UPER 系统": [
+    "UPER system",
+    "Sistem UPER"
+  ],
+  "UPER AI 顾问": [
+    "UPER AI advisor",
+    "Penasihat AI UPER"
+  ],
+  "顾问联系请求已记录": [
+    "Advisor contact request recorded",
+    "Permintaan kontak konsultan tercatat"
+  ],
+  "预约请求已记录": [
+    "Booking request recorded",
+    "Permintaan janji temu tercatat"
+  ],
+  "报名意向已记录": [
+    "Enrollment interest recorded",
+    "Minat pendaftaran tercatat"
+  ],
+  "跟进请求已记录": [
+    "Follow-up request recorded",
+    "Permintaan tindak lanjut tercatat"
+  ],
+  "已创建跟进任务": [
+    "Follow-up task created",
+    "Tugas tindak lanjut dibuat"
+  ],
+  "已补充到现有任务": [
+    "Added to existing task",
+    "Ditambahkan ke tugas yang ada"
+  ],
+  "关联跟进任务": [
+    "Linked follow-up task",
+    "Tugas tindak lanjut terkait"
+  ],
+  "关联任务暂不可用，无法确认截止时间或完成状态。": [
+    "Linked task unavailable; no deadline or completion can be confirmed.",
+    "Tugas terkait belum tersedia; tenggat dan penyelesaiannya belum dapat dipastikan."
+  ],
+  "历史对话": [
+    "Conversation history",
+    "Riwayat percakapan"
+  ],
+  "最新客户消息": [
+    "Latest customer message",
+    "Pesan pelanggan terbaru"
+  ],
+  "消息记录": [
+    "Message history",
+    "Riwayat pesan"
+  ],
+  "请求确认原文": [
+    "Original request confirmations",
+    "Konfirmasi permintaan asli"
+  ],
+  "此处仅保留当时的确认消息；当前状态与处理截止时间请在跟进页查看。": [
+    "Historical acknowledgements only. Current task status and processing deadlines are available in Follow-up.",
+    "Hanya konfirmasi historis. Status saat ini dan tenggat penanganan tersedia di Tindak lanjut."
+  ],
+  "会话详情": [
+    "Conversation details",
+    "Detail percakapan"
+  ],
+  "会话标识": [
+    "Conversation reference",
+    "Referensi percakapan"
+  ],
+  "时区": [
+    "Time zone",
+    "Zona waktu"
+  ],
+  "首次登记自动分类": [
+    "Initial registration",
+    "Registrasi awal"
+  ],
+  "规则判断": [
+    "Rule-based",
+    "Berbasis aturan"
+  ],
+  "销售确认": [
+    "Sales confirmed",
+    "Penjualan dikonfirmasi"
+  ],
+  "客户行为": [
+    "Customer activity",
+    "Aktivitas pelanggan"
+  ],
+  "购买信号": [
+    "Buying signals",
+    "Sinyal pembelian"
+  ],
+  "获客入口": [
+    "Acquisition entry",
+    "Pintu masuk akuisisi"
+  ],
+  "营销活动": [
+    "Campaign",
+    "Kampanye"
+  ],
+  "活动名称未记录": [
+    "Campaign name not recorded",
+    "Nama kampanye belum dicatat"
+  ],
+  "登记时间": [
+    "Registered",
+    "Terdaftar"
+  ],
+  "结果": [
+    "Outcome",
+    "Hasil"
+  ],
+  "报名班级": [
+    "Enrolled class",
+    "Kelas yang terdaftar"
+  ],
+  "登记金额": [
+    "Recorded amount",
+    "Jumlah yang dicatat"
+  ],
+  "活动标识": [
+    "Campaign ID",
+    "ID kampanye"
+  ],
+  "链接投放位置": [
+    "Link placement",
+    "Penempatan tautan"
+  ],
+  "获客引导内容": [
+    "Acquisition content",
+    "Materi penarik minat"
+  ],
+  "获客场景": [
+    "Acquisition context",
+    "Konteks akuisisi"
+  ],
+  "客户与联系方式": [
+    "Customer and contact details",
+    "Data pelanggan dan kontak"
+  ],
+  "姓名": [
+    "Name",
+    "Nama"
+  ],
+  "电子邮件": [
+    "Email",
+    "Email"
+  ],
+  "客户身份": [
+    "Customer identity",
+    "Identitas pelanggan"
+  ],
+  "家长联系方式": [
+    "Parent contact",
+    "Kontak orang tua"
+  ],
+  "首选沟通语言": [
+    "Preferred language",
+    "Bahasa pilihan"
+  ],
+  "学习需求": [
+    "Learning needs",
+    "Kebutuhan pembelajaran"
+  ],
+  "学习目标": [
+    "Learning goals",
+    "Tujuan pembelajaran"
+  ],
+  "授课方式": [
+    "Class format",
+    "Format kelas"
+  ],
+  "自报水平": [
+    "Self-reported level",
+    "Tingkat yang dilaporkan sendiri"
+  ],
+  "销售进展": [
+    "Sales progress",
+    "Kemajuan penjualan"
+  ],
+  "已登记业务结果": [
+    "Recorded outcome",
+    "Hasil yang dicatat"
+  ],
+  "客户分组": [
+    "Customer group",
+    "Grup pelanggan"
+  ],
+  "当前分组": [
+    "Current group",
+    "Grup saat ini"
+  ],
+  "分组来源": [
+    "Classification source",
+    "Sumber klasifikasi"
+  ],
+  "历史依据未记录": [
+    "Historical basis not recorded",
+    "Dasar historis belum tercatat"
+  ],
+  "人工确认分组": [
+    "Sales-confirmed group",
+    "Grup terkonfirmasi penjualan"
+  ],
+  "规则计算分组": [
+    "Rule-calculated group",
+    "Kelompok hasil aturan"
+  ],
+  "分组更新时间": [
+    "Group updated",
+    "Grup diperbarui"
+  ],
+  "首次分类依据": [
+    "Initial classification evidence",
+    "Bukti klasifikasi awal"
+  ],
+  "获客来源与活动记录": [
+    "Acquisition and activity records",
+    "Sumber akuisisi dan catatan kegiatan"
+  ],
+  "获客来源": [
+    "Acquisition source",
+    "Sumber akuisisi"
+  ],
+  "获客来源未记录": [
+    "Acquisition source not recorded",
+    "Sumber akuisisi belum dicatat"
+  ],
+  "来源追踪详情": [
+    "Source tracking details",
+    "Rincian pelacakan sumber"
+  ],
+  "已保存活动记录": [
+    "Saved activity records",
+    "Catatan kegiatan tersimpan"
+  ],
+  "参与记录状态": [
+    "Participation status",
+    "Status partisipasi"
+  ],
+  "已确认": [
+    "Confirmed",
+    "Terkonfirmasi"
+  ],
+  "已撤销": [
+    "Withdrawn",
+    "Ditarik"
+  ],
+  "记录人": [
+    "Recorded by",
+    "Dicatat oleh"
+  ],
+  "历史出席标记（未关联活动）": [
+    "Legacy attendance flag (unscoped)",
+    "Penanda kehadiran lama (tanpa kampanye)"
+  ],
+  "是": [
+    "Yes",
+    "Ya"
+  ],
+  "否": [
+    "No",
+    "Tidak"
+  ],
+  "正在加载对话…": [
+    "Loading conversations…",
+    "Memuat percakapan…"
+  ],
+  "任务负责人：": [
+    "Task owner: ",
+    "Penanggung jawab tugas: "
+  ],
+  "未分配": [
+    "Unassigned",
+    "Belum ditetapkan"
+  ],
+  "跟进信息暂不可用": [
+    "Follow-up information unavailable",
+    "Informasi tindak lanjut sementara tidak tersedia"
+  ],
+  "有人工备注": [
+    "Manual note available",
+    "Catatan manual tersedia"
+  ],
+  "跟进备注：": [
+    "Note: ",
+    "Catatan: "
+  ],
+  "联系限制": [
+    "Contact restriction",
+    "Pembatasan kontak"
+  ],
+  "停止主动联系": [
+    "Proactive contact stopped",
+    "Kontak proaktif dihentikan"
+  ],
+  "原联系安排待核对": [
+    "Previous contact arrangement needs review",
+    "Pengaturan kontak sebelumnya perlu ditinjau"
+  ],
+  "约定时间前不主动联系": [
+    "Do not initiate contact before the agreed time",
+    "Jangan hubungi sebelum waktu yang disepakati"
+  ],
+  "时间待核对": [
+    "Time needs review",
+    "Waktu perlu ditinjau"
+  ],
+  "调整安排": [
+    "Adjust arrangement",
+    "Ubah pengaturan"
+  ],
+  "最近客户消息": [
+    "Latest customer message",
+    "Pesan pelanggan terbaru"
+  ],
+  "查看原文": [
+    "View original message",
+    "Lihat pesan asli"
+  ],
+  "任务关联暂不可用，请重试加载跟进信息。": [
+    "Task links unavailable. Retry loading follow-up information.",
+    "Tautan tugas tidak tersedia. Coba muat ulang informasi tindak lanjut."
+  ],
+  "关联任务信息暂不可用": [
+    "Linked task information unavailable",
+    "Informasi tugas terkait tidak tersedia"
+  ],
+  "最近保存的联系记录": [
+    "Latest saved contact record",
+    "Catatan kontak terakhir disimpan"
+  ],
+  "尚无人工联系记录": [
+    "No human contact recorded yet",
+    "Belum ada catatan kontak oleh staf"
+  ],
+  "此前保存的已接通／回复记录": [
+    "Previous saved connected / replied record",
+    "Catatan tersambung / dibalas tersimpan sebelumnya"
+  ],
+  "客户人工备注": [
+    "Saved customer note",
+    "Catatan pelanggan tersimpan"
+  ],
+  "任务暂不可用": [
+    "Task no longer available",
+    "Tugas tidak lagi tersedia"
+  ],
+  "外联入口已授权 · 不代表已联系": [
+    "Outreach entry authorized · not a contact record",
+    "Akses kontak diizinkan · bukan catatan kontak"
+  ],
+  "联系／处理记录": [
+    "Contact / handling record",
+    "Catatan kontak / penanganan"
+  ],
+  "信息记录": [
+    "Information note",
+    "Catatan informasi"
+  ],
+  "阶段变更": [
+    "Stage change",
+    "Perubahan tahap"
+  ],
+  "提交问卷": [
+    "Questionnaire submitted",
+    "Kuesioner dikirim"
+  ],
+  "提交测评": [
+    "Assessment submitted",
+    "Asesmen dikirim"
+  ],
+  "资料更新": [
+    "Profile updates",
+    "Pembaruan profil"
+  ],
+  "身份核实": [
+    "Identity reviewed",
+    "Identitas ditinjau"
+  ],
+  "动态处理": [
+    "Information reviewed",
+    "Informasi ditinjau"
+  ],
+  "跟进时间轴": [
+    "Follow-up timeline",
+    "Linimasa tindak lanjut"
+  ],
+  "记录筛选": [
+    "Record filter",
+    "Filter catatan"
+  ],
+  "当前任务": [
+    "Selected task",
+    "Tugas dipilih"
+  ],
+  "全部记录": [
+    "All records",
+    "Semua catatan"
+  ],
+  "联系与处理": [
+    "Contact and handling",
+    "Kontak dan penanganan"
+  ],
+  "任务变化": [
+    "Task changes",
+    "Perubahan tugas"
+  ],
+  "客户动态": [
+    "Customer activity",
+    "Aktivitas pelanggan"
+  ],
+  "显示全部历史": [
+    "Show all history",
+    "Tampilkan semua riwayat"
+  ],
+  "暂无符合条件的记录": [
+    "No matching records",
+    "Belum ada catatan yang cocok"
+  ],
+  "系统记录": [
+    "System record",
+    "Catatan sistem"
+  ],
+  "来源未记录": [
+    "Source not recorded",
+    "Sumber tidak tercatat"
+  ],
+  "电话": [
+    "Phone",
+    "Telepon"
+  ],
+  "复制话术": [
+    "Copy message",
+    "Salin pesan"
+  ],
+  "Manager代处理／核实": [
+    "Manager assistance / verification",
+    "Bantuan / verifikasi manajer"
+  ],
+  "客户负责人": [
+    "Customer owner",
+    "Penanggung jawab pelanggan"
+  ],
+  "收起": [
+    "Show less",
+    "Tutup"
+  ],
+  "展开全文": [
+    "Read full note",
+    "Baca selengkapnya"
+  ],
+  "问卷关注内容": [
+    "Questionnaire interests",
+    "Minat dalam kuesioner"
+  ],
+  "Chat 明确请求": [
+    "Explicit Chat request",
+    "Permintaan Chat eksplisit"
+  ],
+  "员工记录的购买信号": [
+    "Buying signal recorded by staff",
+    "Sinyal pembelian yang dicatat staf"
+  ],
+  "本条记录关联任务": [
+    "Tasks in this record",
+    "Tugas dalam catatan ini"
+  ],
+  "本次处理 · 保持待处理": [
+    "Handled · kept open",
+    "Ditangani · tetap terbuka"
+  ],
+  "本次完成": [
+    "Completed in this record",
+    "Diselesaikan dalam catatan ini"
+  ],
+  "新建任务": [
+    "Task created",
+    "Tugas dibuat"
+  ],
+  "安排下一次任务": [
+    "Next task arranged",
+    "Tugas berikutnya dijadwalkan"
+  ],
+  "已补充任务信息": [
+    "Task information added",
+    "Informasi tugas ditambahkan"
+  ],
+  "本次改期": [
+    "Rescheduled",
+    "Dijadwalkan ulang"
+  ],
+  "被替代的原任务": [
+    "Original task replaced",
+    "Tugas awal diganti"
+  ],
+  "替代后的新任务": [
+    "Replacement task",
+    "Tugas pengganti"
+  ],
+  "本次取消": [
+    "Cancelled in this record",
+    "Dibatalkan dalam catatan ini"
+  ],
+  "关联任务": [
+    "Linked task",
+    "Tugas terkait"
+  ],
+  "任务详情暂不可用": [
+    "Task details unavailable",
+    "Detail tugas tidak tersedia"
+  ],
+  "任务编号": [
+    "Task ID",
+    "ID tugas"
+  ],
+  "本次改约时间": [
+    "New time in this change",
+    "Waktu baru pada perubahan ini"
+  ],
+  "任务当前情况": [
+    "Current task",
+    "Tugas saat ini"
+  ],
+  "下一步": [
+    "Next step",
+    "Langkah berikutnya"
+  ],
+  "保留已有安排": [
+    "Existing arrangements retained",
+    "Pengaturan yang ada dipertahankan"
+  ],
+  "记录详情": [
+    "Record details",
+    "Detail catatan"
+  ],
+  "查看更早记录": [
+    "Show earlier records",
+    "Lihat catatan sebelumnya"
+  ],
+  "活动入口": [
+    "Campaign entry",
+    "Pintu kampanye"
+  ],
+  "打开活动链接": [
+    "Open the campaign link",
+    "Buka tautan kampanye"
+  ],
+  "创建活动并分享专属链接": [
+    "Create campaign and share tracking link",
+    "Buat kampanye dan bagikan tautan pelacakan"
+  ],
+  "记录链接打开次数，包含重复": [
+    "Record link opens; repeats included",
+    "Catat pembukaan tautan; termasuk pengulangan"
+  ],
+  "打开次数 ≠ 人数": [
+    "Link opens ≠ people",
+    "Pembukaan ≠ orang"
+  ],
+  "问卷登记": [
+    "Registration",
+    "Registrasi"
+  ],
+  "提交问卷与联系方式": [
+    "Submit questionnaire and contact details",
+    "Kirim kuesioner dan kontak"
+  ],
+  "接受分配或认领客户": [
+    "Receive assignment or claim the customer",
+    "Terima penugasan atau ambil pelanggan"
+  ],
+  "保存客户与来源归因": [
+    "Save customer and attribution",
+    "Simpan pelanggan dan atribusi"
+  ],
+  "已保存登记数": [
+    "Saved registrations",
+    "Registrasi tersimpan"
+  ],
+  "测评／咨询（可选）": [
+    "Assessment / consultation — optional",
+    "Asesmen / konsultasi — opsional"
+  ],
+  "测评、咨询或跳过": [
+    "Take assessment, consult or skip",
+    "Ikuti asesmen, konsultasi, atau lewati"
+  ],
+  "查看已保存依据": [
+    "Review the saved evidence",
+    "Tinjau bukti tersimpan"
+  ],
+  "分别保存测评与聊天": [
+    "Save assessment and chat separately",
+    "Simpan asesmen dan chat secara terpisah"
+  ],
+  "有测评依据的客户数": [
+    "Customers with assessment evidence",
+    "Pelanggan dengan bukti asesmen"
+  ],
+  "跟进／参与": [
+    "Follow-up / participation",
+    "Tindak lanjut / partisipasi"
+  ],
+  "回复、预约或现场／线上参与": [
+    "Reply, book or participate onsite / online",
+    "Balas, pesan, atau berpartisipasi luring / daring"
+  ],
+  "记录联系；凭依据确认参与": [
+    "Record contact; confirm participation with evidence",
+    "Catat kontak; konfirmasi partisipasi dengan bukti"
+  ],
+  "保存任务、结果与参与记录": [
+    "Save tasks, outcomes and participation records",
+    "Simpan tugas, hasil, dan partisipasi"
+  ],
+  "员工确认参与数": [
+    "Staff-confirmed participation",
+    "Partisipasi terkonfirmasi staf"
+  ],
+  "报名记录": [
+    "Enrollment record",
+    "Catatan pendaftaran kelas"
+  ],
+  "提出或确认报名": [
+    "Request or agree to enrollment",
+    "Minta atau setujui pendaftaran kelas"
+  ],
+  "记录报名及已有业务依据": [
+    "Record enrollment and available business evidence",
+    "Catat pendaftaran kelas dan bukti bisnis"
+  ],
+  "统计已记录报名，金额仅为登记": [
+    "Count saved enrollment; amounts are recorded only",
+    "Hitung pendaftaran tersimpan; nominal hanya tercatat"
+  ],
+  "已记录报名 ≠ 已核验付款": [
+    "Recorded enrollment ≠ verified payment",
+    "Pendaftaran tercatat ≠ pembayaran terverifikasi"
+  ],
+  "工作时间内": [
+    "During working hours",
+    "Dalam jam kerja"
+  ],
+  "周一 10:00": [
+    "Mon 10:00",
+    "Sen 10:00"
+  ],
+  "立即起算": [
+    "Start now",
+    "Mulai sekarang"
+  ],
+  "自然时长 3 小时": [
+    "3 natural hours",
+    "3 jam berlalu"
+  ],
+  "周一 13:00": [
+    "Mon 13:00",
+    "Sen 13:00"
+  ],
+  "期限位于工作时间内": [
+    "Deadline inside work hours",
+    "Tenggat dalam jam kerja"
+  ],
+  "夜间提交": [
+    "Night submission",
+    "Kiriman malam"
+  ],
+  "周一 23:00": [
+    "Mon 23:00",
+    "Sen 23:00"
+  ],
+  "非工作时间：等待": [
+    "Outside work hours: wait",
+    "Di luar jam kerja: tunggu"
+  ],
+  "周二 09:00": [
+    "Tue 09:00",
+    "Sel 09:00"
+  ],
+  "下次上班：开始计时": [
+    "Next opening: start counting",
+    "Jam buka berikutnya: mulai menghitung"
+  ],
+  "周二 12:00": [
+    "Tue 12:00",
+    "Sel 12:00"
+  ],
+  "经过自然时长 3 小时：截止": [
+    "After 3 natural hours: due",
+    "Setelah 3 jam berlalu: jatuh tempo"
+  ],
+  "期限跨过下班时间": [
+    "Deadline crosses closing",
+    "Tenggat melewati tutup"
+  ],
+  "周六 19:00": [
+    "Sat 19:00",
+    "Sab 19:00"
+  ],
+  "工作时间内：起算": [
+    "Inside work hours: start",
+    "Dalam jam kerja: mulai"
+  ],
+  "周六 22:00": [
+    "Sat 22:00",
+    "Sab 22:00"
+  ],
+  "3 小时后，但已下班": [
+    "3 hours later, but closed",
+    "3 jam kemudian, tetapi tutup"
+  ],
+  "周一 09:00": [
+    "Mon 09:00",
+    "Sen 09:00"
+  ],
+  "期限顺延至下次上班": [
+    "Roll deadline to next opening",
+    "Geser tenggat ke jam buka berikutnya"
+  ],
+  "非工作日": [
+    "Non-working day",
+    "Hari tidak bekerja"
+  ],
+  "周日 10:00": [
+    "Sun 10:00",
+    "Min 10:00"
+  ],
+  "非工作日：等待": [
+    "Non-working day: wait",
+    "Hari tidak bekerja: tunggu"
+  ],
+  "周一 12:00": [
+    "Mon 12:00",
+    "Sen 12:00"
+  ],
+  "同一事务保存业务数据＋Outbox 事件": [
+    "Save business data + Outbox event in one transaction",
+    "Simpan data bisnis + peristiwa Outbox dalam satu transaksi"
+  ],
+  "匹配已启用策略、条件及日历；保存规则版本": [
+    "Match enabled policy, conditions and calendar; preserve rule version",
+    "Cocokkan kebijakan aktif, kondisi, dan kalender; simpan versi aturan"
+  ],
+  "创建持久通知任务及计划发送时间": [
+    "Create persistent notification jobs and scheduled time",
+    "Buat pekerjaan notifikasi tersimpan dan waktu terjadwal"
+  ],
+  "发送前再次核查任务、接收对象及联系安排": [
+    "Before sending: check task, recipient and contact arrangement again",
+    "Sebelum kirim: periksa lagi tugas, penerima, dan pengaturan kontak"
+  ],
+  "执行站内／Lark 发送器并保存发送证据": [
+    "Execute in-app / Lark sender and save delivery evidence",
+    "Jalankan pengirim aplikasi / Lark dan simpan bukti pengiriman"
+  ],
+  "接口接受": [
+    "API accepted",
+    "Diterima API"
+  ],
+  "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。": [
+    "Provider accepted; staff reading and follow-up remain separate",
+    "Penyedia menerima; staf membaca dan menindaklanjuti dicatat terpisah"
+  ],
+  "明确模拟": [
+    "Explicit simulation",
+    "Simulasi eksplisit"
+  ],
+  "没有外发；缺失渠道是失败，不是模拟": [
+    "No external message; a missing channel is a failure, not simulation",
+    "Tidak ada pesan eksternal; kanal hilang berarti gagal, bukan simulasi"
+  ],
+  "明确失败": [
+    "Definite failure",
+    "Kegagalan pasti"
+  ],
+  "暂时失败按策略重试；最终失败供管理者查看": [
+    "Retry temporary failures by policy; final failure stays visible to Managers",
+    "Ulangi gangguan sementara sesuai kebijakan; gagal akhir terlihat oleh Manajer"
+  ],
+  "结果未知": [
+    "Outcome unknown",
+    "Hasil tidak diketahui"
+  ],
+  "核查后再决定重试，不假定失败或盲目重发": [
+    "Verify before retrying; do not assume failure or blindly resend",
+    "Periksa sebelum mengulang; jangan anggap gagal atau kirim ulang sembarangan"
+  ],
+  "事实、诉求与销售决策各有边界": [
+    "Facts, intent and sales decisions have different responsibilities",
+    "Fakta, minat dan keputusan sales memiliki peran berbeda"
+  ],
+  "谁行动、保存什么、统计什么": [
+    "Who acts, what is saved, and what is counted",
+    "Siapa bertindak, apa tersimpan, apa dihitung"
+  ],
+  "测评可选。客户可以直接咨询或报名，不必经历所有阶段。": [
+    "Assessment is optional. Customers may consult or enroll without passing through every stage.",
+    "Asesmen opsional. Pelanggan dapat berkonsultasi atau mendaftar kelas tanpa melewati semua tahap."
+  ],
+  "活动获客职责泳道": [
+    "Campaign acquisition responsibility swimlane",
+    "Alur tanggung jawab akuisisi kampanye"
+  ],
+  "销售／管理者": [
+    "Sales / Manager",
+    "Staf penjualan / Manajer"
+  ],
+  "系统": [
+    "System",
+    "Sistem"
+  ],
+  "获客阶段及职责": [
+    "Acquisition stages and responsibilities",
+    "Tahap akuisisi dan tanggung jawab"
+  ],
+  "各项依据分别计数，不是严格转化漏斗。登记或测评不证明参与，报名不证明付款。": [
+    "These are separate evidence counts, not a strict conversion funnel. Registration or assessment does not confirm attendance, and enrollment does not confirm payment.",
+    "Jumlah bukti ini terpisah, bukan corong konversi ketat. Registrasi atau asesmen tidak mengonfirmasi kehadiran; pendaftaran kelas tidak mengonfirmasi pembayaran."
+  ],
+  "示例日历：Asia/Jakarta · 周一至周六 09:00–20:00 · 自然时长 3 小时": [
+    "Sample calendar: Asia/Jakarta · Mon–Sat 09:00–20:00 · 3 natural hours",
+    "Kalender contoh: Asia/Jakarta · Sen–Sab 09:00–20:00 · 3 jam berlalu"
+  ],
+  "时间轴案例": [
+    "Timeline examples",
+    "Contoh garis waktu"
+  ],
+  "非工作时间提交从下次上班起算；加自然时长后，若期限落在非工作时间，再顺延至下次上班。不是累计工作小时。图示不按时间比例绘制，修改策略不重写已有期限。": [
+    "Outside-hours submissions start at the next opening. Add natural duration, then roll a closed-time deadline to the next opening. This is not accumulated business hours. The diagram is schematic, not to scale; changing policy does not rewrite saved deadlines.",
+    "Kiriman di luar jam kerja dimulai saat buka berikutnya. Tambahkan durasi berlalu, lalu geser tenggat di waktu tutup ke buka berikutnya. Ini bukan akumulasi jam kerja. Diagram tidak berskala; perubahan kebijakan tidak mengubah tenggat tersimpan."
+  ],
+  "从业务保存到发送证据": [
+    "From business save to delivery evidence",
+    "Dari penyimpanan bisnis ke bukti pengiriman"
+  ],
+  "通知执行链": [
+    "Notification execution chain",
+    "Rantai eksekusi notifikasi"
+  ],
+  "接收对象路由": [
+    "Recipient route",
+    "Rute penerima"
+  ],
+  "有效负责人": [
+    "Valid owner",
+    "Penanggung jawab valid"
+  ],
+  "负责人": [
+    "Owner",
+    "Penanggung jawab"
+  ],
+  "未分配／负责人无效": [
+    "Unassigned / invalid owner",
+    "Kosong / penanggung jawab tidak valid"
+  ],
+  "有权限的 CRM 管理者": [
+    "Authorized CRM Managers",
+    "Manajer CRM berizin"
+  ],
+  "关联任务已完成 → 取消该任务待发通知。已经被外部接口接受的消息不伪装撤回。": [
+    "Completed linked task → cancel its pending notification. A message already accepted externally is not recalled.",
+    "Tugas terkait selesai → batalkan notifikasi tertunda terkait. Pesan yang sudah diterima penyedia tidak ditarik kembali."
+  ],
+  "发送结果分支": [
+    "Delivery result branches",
+    "Cabang hasil pengiriman"
+  ],
+  "原始依据": [
+    "Evidence",
+    "Bukti"
+  ],
+  "一位模拟客户": [
+    "One synthetic customer",
+    "Satu pelanggan simulasi"
+  ],
+  "分别关联": [
+    "links to",
+    "terhubung ke"
+  ],
+  "选择图中环节，查看它的作用与变化。": [
+    "Select a part to read how it works.",
+    "Pilih bagian untuk membaca cara kerjanya."
+  ],
+  "怎样判断做对了": [
+    "Check the result",
+    "Periksa hasil"
+  ],
+  "它解决什么问题": [
+    "Why this matters",
+    "Mengapa ini berguna"
+  ],
+  "10位登记客户中2位已报名：20%": [
+    "2 enrolled out of 10 registered customers: 20%",
+    "2 terdaftar kelas dari 10 pelanggan: 20%"
+  ],
+  "已记录报名占比，不代表已核验付款或因果转化。": [
+    "Recorded enrollment share; not verified payment or causal conversion.",
+    "Proporsi pendaftaran tercatat; bukan pembayaran terverifikasi atau konversi kausal."
+  ],
+  "规则实例 · 模拟数据": [
+    "Worked example · synthetic data",
+    "Contoh kasus · data simulasi"
+  ],
+  "不要混淆的边界": [
+    "Keep this distinction",
+    "Perhatikan perbedaan ini"
+  ],
+  "记录结果": [
+    "Record result",
+    "Catat hasil"
+  ],
+  "主要操作或当前选中": [
+    "Primary action or selection",
+    "Tindakan utama atau pilihan"
+  ],
+  "当前逾期／失败": [
+    "Overdue / failed",
+    "Terlambat / gagal"
+  ],
+  "当前需要关注的问题": [
+    "Needs attention now",
+    "Perlu perhatian sekarang"
+  ],
+  "今天到期／待核实": [
+    "Due today / review",
+    "Hari ini / perlu ditinjau"
+  ],
+  "用状态文字区分两种含义": [
+    "Read the state label to distinguish them",
+    "Baca label untuk membedakannya"
+  ],
+  "已完成／已确认": [
+    "Completed / confirmed",
+    "Selesai / terkonfirmasi"
+  ],
+  "已有记录支持的成功结果": [
+    "A recorded successful outcome",
+    "Hasil berhasil yang tercatat"
+  ],
+  "高意向": [
+    "High interest",
+    "Minat tinggi"
+  ],
+  "客户分类，不是紧急警报": [
+    "Customer group, not an alarm",
+    "Kelompok pelanggan, bukan peringatan"
+  ],
+  "颜色、图标和文字共同表达状态；客户价值高低不直接决定紧急程度。": [
+    "Read color, icon and text together. Customer value does not determine urgency.",
+    "Baca warna, ikon, dan teks bersama. Nilai pelanggan tidak menentukan urgensi."
+  ],
+  "AI顾问": [
+    "AI adviser",
+    "Konsultan AI"
+  ],
+  "英文": [
+    "English",
+    "Inggris"
+  ],
+  "印尼文": [
+    "Indonesian",
+    "Indonesia"
+  ],
+  "无未完成任务": [
+    "No open tasks",
+    "Tidak ada tugas terbuka"
+  ],
+  "暂无人工联系记录": [
+    "No human contact record",
+    "Belum ada catatan kontak staf"
+  ],
+  "同一客户": [
+    "Same customer",
+    "Pelanggan yang sama"
+  ],
+  "不同客户": [
+    "Different customers",
+    "Pelanggan berbeda"
+  ],
+  "共用联系方式，属于不同人": [
+    "Shared contact, different people",
+    "Kontak bersama, orang berbeda"
+  ],
+  "身份待核实": [
+    "Identity review required",
+    "Identitas perlu diverifikasi"
+  ],
+  "无有效待核实匹配": [
+    "No valid pending match",
+    "Tidak ada kecocokan tertunda yang valid"
+  ],
+  "本次待核实记录": [
+    "Record under review",
+    "Catatan yang perlu diverifikasi"
+  ],
+  "本次核实记录": [
+    "Reviewed record",
+    "Catatan yang ditinjau"
+  ],
+  "匹配到的已有记录": [
+    "Matching existing record",
+    "Catatan lama yang cocok"
+  ],
+  "核实记录 · 方向不唯一": [
+    "Record under review · direction uncertain",
+    "Catatan ditinjau · arah tidak pasti"
+  ],
+  "电话 · 原始格式": [
+    "Phone · original format",
+    "Telepon · format asli"
+  ],
+  "邮箱": [
+    "Email",
+    "Email"
+  ],
+  "来源／活动": [
+    "Source / campaign",
+    "Sumber / kampanye"
+  ],
+  "客户背景": [
+    "Customer background",
+    "Latar belakang pelanggan"
+  ],
+  "沟通语言": [
+    "Communication language",
+    "Bahasa komunikasi"
+  ],
+  "城市／授课方式": [
+    "City / format",
+    "Kota / format"
+  ],
+  "销售阶段／分组": [
+    "Sales stage / group",
+    "Tahap / kelompok"
+  ],
+  "测评依据": [
+    "Assessment evidence",
+    "Bukti asesmen"
+  ],
+  "未完成任务 · 原期限": [
+    "Open tasks · original deadline",
+    "Tugas terbuka · tenggat awal"
+  ],
+  "最近人工联系": [
+    "Latest human contact",
+    "Kontak staf terakhir"
+  ],
+  "信息不全": [
+    "Incomplete",
+    "Belum lengkap"
+  ],
+  "不同": [
+    "Different",
+    "Berbeda"
+  ],
+  "联系方式匹配": [
+    "Matching contact",
+    "Kontak cocok"
+  ],
+  "显示相同": [
+    "Same value",
+    "Nilai sama"
+  ],
+  "核实客户身份": [
+    "Review customer identity",
+    "Verifikasi identitas pelanggan"
+  ],
+  "比较双方资料后记录判断。共同信息仅是线索，不代表身份已确认。": [
+    "Compare the records, then record your decision. Matching details are clues, not identity proof.",
+    "Bandingkan catatan, lalu catat keputusan. Detail sama adalah petunjuk, bukan bukti identitas."
+  ],
+  "刷新对比": [
+    "Refresh comparison",
+    "Muat ulang perbandingan"
+  ],
+  "匹配线索": [
+    "Matching fields",
+    "Bidang cocok"
+  ],
+  "规范化电话": [
+    "Phone after normalization",
+    "Telepon setelah normalisasi"
+  ],
+  "身份与联系方式线索": [
+    "Identity & contact clues",
+    "Identitas & petunjuk kontak"
+  ],
+  "重点差异": [
+    "Differences to review",
+    "Perbedaan yang perlu ditinjau"
+  ],
+  "共同信息": [
+    "Common information",
+    "Informasi yang sama"
+  ],
+  "相同显示值 · 不作为身份结论": [
+    "Same display values · not proof",
+    "Nilai tampilan sama · bukan bukti"
+  ],
+  "缺失信息不算匹配": [
+    "Missing values are not matches",
+    "Nilai kosong bukan kecocokan"
+  ],
+  "身份核实结论": [
+    "Identity decision",
+    "Keputusan identitas"
+  ],
+  "此操作只记录关系，不合并记录或转移Owner。": [
+    "Records and owners are not merged by this decision.",
+    "Keputusan ini tidak menggabungkan catatan atau Owner."
+  ],
+  "身份结论已保存，负责人、其他任务及原始期限保持不变。": [
+    "Decision saved. Owners, other tasks and original deadlines stay unchanged.",
+    "Keputusan disimpan. Penanggung jawab, tugas lain, dan tenggat awal tetap."
+  ],
+  "判断": [
+    "Decision",
+    "Keputusan"
+  ],
+  "请选择判断": [
+    "Choose a decision",
+    "Pilih keputusan"
+  ],
+  "原因／依据（必填）": [
+    "Reason / evidence (required)",
+    "Alasan / bukti (wajib)"
+  ],
+  "证据不足时可关闭并保留待核实状态，不要用“不同人”代替暂缓。": [
+    "Insufficient evidence? Close without saving; the case remains pending.",
+    "Bukti belum cukup? Tutup tanpa menyimpan; kasus tetap tertunda."
+  ],
+  "此组当前不可提交新结论。": [
+    "No decision can be submitted for this case.",
+    "Keputusan tidak dapat dikirim untuk kasus ini."
+  ],
+  "重试原保存": [
+    "Retry original save",
+    "Ulangi simpan awal"
+  ],
+  "确认保存": [
+    "Confirm and save",
+    "Konfirmasi dan simpan"
+  ],
+  "认领当前记录给自己": [
+    "Claim this record for myself",
+    "Klaim catatan ini untuk saya"
+  ],
+  "返回工作区": [
+    "Return to workspace",
+    "Kembali ke ruang kerja"
+  ],
+  "原始备注与对话": [
+    "Original notes and conversation",
+    "Catatan dan percakapan asli"
+  ],
+  "客户级备注，不作为身份结论": [
+    "Customer-level note; not identity proof",
+    "Catatan pelanggan; bukan bukti identitas"
+  ],
+  "最多展示最近50条原始消息；联系记录与备注独立保留。": [
+    "Up to 50 recent original messages; contact records and notes remain separate.",
+    "Maksimal 50 pesan asli terbaru; catatan kontak dan informasi tetap terpisah."
+  ],
+  "身份核实队列": [
+    "Identity review queue",
+    "Antrean verifikasi identitas"
+  ],
+  "先由具备双方权限的核实人员核实，再分配和开展销售外联；现有归属与期限保持。": [
+    "Review identity before assignment or sales outreach. Existing owners and deadlines stay unchanged.",
+    "Verifikasi identitas sebelum penugasan atau kontak sales. Penanggung jawab dan tenggat tetap."
+  ],
+  "核实身份": [
+    "Review identity",
+    "Verifikasi identitas"
+  ],
+  "最近有效沟通": [
+    "Effective conversation",
+    "Komunikasi dua arah"
+  ],
+  "客户主动互动": [
+    "Customer-initiated interaction",
+    "Interaksi dari pelanggan"
+  ],
+  "销售主动联系": [
+    "Sales-initiated contact",
+    "Kontak dari sales"
+  ],
+  "尚未记录有效沟通": [
+    "No effective conversation recorded",
+    "Belum ada komunikasi dua arah tercatat"
+  ],
+  "尚未记录客户主动互动": [
+    "No customer-initiated interaction recorded",
+    "Belum ada interaksi dari pelanggan tercatat"
+  ],
+  "尚未记录销售主动联系": [
+    "No sales outreach recorded",
+    "Belum ada kontak sales tercatat"
+  ],
+  "暂无记录": [
+    "No records",
+    "Belum ada catatan"
+  ],
+  "客户对话": [
+    "Customer conversation",
+    "Percakapan pelanggan"
+  ],
+  "测评": [
+    "Assessment",
+    "Asesmen"
+  ],
+  "AI咨询": [
+    "AI chat",
+    "Chat AI"
+  ],
+  "三条互动时间线": [
+    "Interaction timelines",
+    "Linimasa interaksi"
+  ],
+  "互动与联系": [
+    "Interaction and contact",
+    "Interaksi dan kontak"
+  ],
+  "互动信息暂不可用，请刷新重试": [
+    "Interaction information unavailable; refresh to retry",
+    "Informasi interaksi tidak tersedia; muat ulang"
+  ],
+  "有效沟通": [
+    "Effective conversation",
+    "Komunikasi efektif"
+  ],
+  "客户互动": [
+    "Customer activity",
+    "Aktivitas pelanggan"
+  ],
+  "销售联系": [
+    "Sales outreach",
+    "Kontak sales"
+  ],
+  "发生时间未注明记录": [
+    "Records without occurrence time",
+    "Catatan tanpa waktu kejadian"
+  ],
+  "平台互动采用服务器接收时间；旧联系记录不补造实际时间或发起方。这些事实不新增任务、不改变Tier。": [
+    "Platform interactions use server receipt time. Legacy contact records do not acquire an invented occurrence time or initiator. These facts do not create tasks or change Tier.",
+    "Interaksi platform memakai waktu diterima server. Catatan lama tidak diberi waktu atau pemrakarsa rekaan. Fakta ini tidak membuat tugas atau mengubah Tier."
+  ],
+  "正在加载原始记录…": [
+    "Loading original record…",
+    "Memuat catatan asli…"
+  ],
+  "互动原始记录": [
+    "Original interaction record",
+    "Catatan interaksi asli"
+  ],
+  "实际发生时间": [
+    "Occurrence time",
+    "Waktu kejadian"
+  ],
+  "时间依据": [
+    "Time basis",
+    "Dasar waktu"
+  ],
+  "服务器接收客户提交": [
+    "Server received the customer submission",
+    "Server menerima kiriman pelanggan"
+  ],
+  "员工记录的实际发生时间": [
+    "Actual time recorded by staff",
+    "Waktu nyata dicatat staf"
+  ],
+  "未知；保存时间不代表发生时间": [
+    "Unknown; recorded time is not occurrence time",
+    "Tidak diketahui; waktu simpan bukan waktu kejadian"
+  ],
+  "原始内容": [
+    "Original content",
+    "Isi asli"
+  ],
+  "未记录原文": [
+    "No original text recorded",
+    "Teks asli tidak tercatat"
+  ],
+  "最近销售联系结果": [
+    "Latest sales contact result",
+    "Latest sales contact result"
+  ],
+  "联系概况": [
+    "Contact overview",
+    "Contact overview"
+  ],
+  "全部可见客户": [
+    "All accessible leads",
+    "Semua prospek yang dapat diakses"
+  ],
+  "我负责的": [
+    "Owned by me",
+    "Dimiliki oleh saya"
+  ],
+  "负责人已不可用": [
+    "Unavailable owner",
+    "Unavailable owner"
+  ],
+  "不限": [
+    "Any",
+    "Apa saja"
+  ],
+  "完成": [
+    "Done",
+    "Selesai"
+  ],
+  "客户筛选": [
+    "Lead filters",
+    "Filter prospek"
+  ],
+  "搜索客户": [
+    "Search customers",
+    "Cari pelanggan"
+  ],
+  "姓名、电话、邮箱或业务编号…": [
+    "Name, phone, email or lead number…",
+    "Nama, telepon, email, atau nomor prospek…"
+  ],
+  "日期采用 ": [
+    "Dates use ",
+    "Tanggal menggunakan "
+  ],
+  "首次联系": [
+    "First contact requirement",
+    "First contact requirement"
+  ],
+  "同一条件多选时符合任一项即可，不同条件之间须同时符合。": [
+    "Match any selected value within a field, and all fields together.",
+    "Match any selected value within a field, and all fields together."
+  ],
+  "筛选": [
+    "Filters",
+    "Filters"
+  ],
+  "更多筛选": [
+    "More filters",
+    "Filter lainnya"
+  ],
+  "互动与跟进": [
+    "Interaction and follow-up",
+    "Interaction and follow-up"
+  ],
+  "已选条件": [
+    "Applied filters",
+    "Applied filters"
+  ],
+  "搜索：": [
+    "Search: ",
+    "Search: "
+  ],
+  "负责人：": [
+    "Owner: ",
+    "Penanggung jawab: "
+  ],
+  "首次联系：": [
+    "First contact: ",
+    "First contact: "
+  ],
+  "需处理范围": [
+    "Needs-handling scope",
+    "Needs-handling scope"
+  ],
+  "清空条件": [
+    "Clear conditions",
+    "Clear conditions"
+  ],
+  "客户列表工具栏": [
+    "Customer list controls",
+    "Kontrol daftar pelanggan"
+  ],
+  "更新中…": [
+    "Updating…",
+    "Updating…"
+  ],
+  "恢复角色默认筛选和排序，视图不变": [
+    "Restore role defaults and sorting; keep view unchanged",
+    "Restore role defaults and sorting; keep view unchanged"
+  ],
+  "恢复默认筛选": [
+    "Restore default filters",
+    "Restore default filters"
+  ],
+  "排序": [
+    "Sort",
+    "Urutkan"
+  ],
+  "处理优先级": [
+    "Processing priority",
+    "Prioritas penanganan"
+  ],
+  "最近登记": [
+    "Newest customer",
+    "Pelanggan terbaru"
+  ],
+  "最近动态记录": [
+    "Latest recorded activity",
+    "Latest recorded activity"
+  ],
+  "首次联系截止最早": [
+    "First contact deadline",
+    "First contact deadline"
+  ],
+  "视图": [
+    "View",
+    "Lihat"
+  ],
+  "工作列表": [
+    "Worklist",
+    "Daftar Kerja"
+  ],
+  "字段表": [
+    "Data table",
+    "Tabel data"
+  ],
+  "未填写姓名": [
+    "Unnamed customer",
+    "Pelanggan tanpa nama"
+  ],
+  "历史意向记录": [
+    "Historical interest record",
+    "Riwayat minat"
+  ],
+  "尚无联系记录": [
+    "No contact recorded",
+    "Tidak ada kontak yang tercatat"
+  ],
+  "搜索客户侧栏": [
+    "Search customer list",
+    "Cari daftar pelanggan"
+  ],
+  "搜索客户…": [
+    "Search customers…",
+    "Cari pelanggan…"
+  ],
+  "当前客户不在筛选结果中，已打开的详情与草稿保持不变。": [
+    "Selected customer is outside the current filters. Your open details and draft are retained.",
+    "Pelanggan terpilih berada di luar filter saat ini. Detail terbuka dan draf tetap dipertahankan."
+  ],
+  "显示字段": [
+    "Visible fields",
+    "Kolom yang ditampilkan"
+  ],
+  "选择字段": [
+    "Choose fields",
+    "Pilih kolom"
+  ],
+  "默认字段": [
+    "Default fields",
+    "Kolom bawaan"
+  ],
+  "正在加载客户…": [
+    "Loading customers…",
+    "Memuat pelanggan…"
+  ],
+  "暂无符合当前筛选条件的客户": [
+    "No customers match the current filters",
+    "Tidak ada pelanggan yang cocok dengan filter saat ini"
+  ],
+  "恢复默认视图": [
+    "Reset to default view",
+    "Atur ulang ke tampilan default"
+  ],
+  "客户字段表": [
+    "Customer data table",
+    "Tabel data pelanggan"
+  ],
+  "客户工作列表": [
+    "Customer worklist",
+    "Daftar kerja pelanggan"
+  ],
+  "打开客户：": [
+    "Open customer: ",
+    "Buka pelanggan: "
+  ],
+  "自己认领": [
+    "Claim for myself",
+    "Klaim untuk diri saya"
+  ],
+  "问卷关注": [
+    "Questionnaire interest",
+    "Minat kuesioner"
+  ],
+  "诉求与意向": [
+    "Requests and interests",
+    "Permintaan dan minat"
+  ],
+  "其他目标": [
+    "Other goals",
+    "Tujuan lain"
+  ],
+  "返回当前客户": [
+    "Return to selected customer",
+    "Kembali ke pelanggan terpilih"
+  ],
+  "连续未回复联系": [
+    "Unanswered contact sequence",
+    "Urutan kontak tanpa balasan"
+  ],
+  "分组待复核": [
+    "Group needs review",
+    "Kelompok perlu ditinjau"
+  ],
+  "联系方式待核实": [
+    "Verify contact details",
+    "Verifikasi kontak"
+  ],
+  "连续有效未回复": [
+    "Consecutive unanswered attempts",
+    "Upaya berturut-turut tanpa balasan"
+  ],
+  "本轮已关闭自动转培育。": [
+    "Automatic nurture is disabled for this sequence.",
+    "Pembinaan otomatis dinonaktifkan untuk urutan ini."
+  ],
+  "等待回复至": [
+    "Waiting for a reply until",
+    "Menunggu balasan hingga"
+  ],
+  "下次有效尝试不早于": [
+    "Next eligible attempt no earlier than",
+    "Upaya berikutnya yang dihitung paling cepat"
+  ],
+  "本次尝试已记录，间隔不足，未累计；下次间隔从本次真实尝试重新计算。": [
+    "Attempt recorded but not counted: retry interval not met.",
+    "Upaya tercatat tetapi tidak dihitung: jeda belum terpenuhi."
+  ],
+  "请核实联系方式，号码无效不累计未回复次数。": [
+    "Verify contact details. An invalid number is not an unanswered attempt.",
+    "Verifikasi kontak. Nomor tidak valid bukan upaya tanpa balasan."
+  ],
+  "连续未回复且等待窗口结束，已转入培育；不代表购买意愿低。": [
+    "Moved to nurture after consecutive unanswered attempts and the reply window. This does not prove low purchase intent.",
+    "Masuk pembinaan setelah upaya tanpa balasan dan masa tunggu. Ini bukan bukti minat beli rendah."
+  ],
+  "已达到阈值，人工确认分组保持不变，请人工复核。": [
+    "Threshold reached; sales-confirmed group preserved. Review manually.",
+    "Ambang tercapai; kelompok terkonfirmasi dipertahankan. Tinjau manual."
+  ],
+  "客户已回复或接通，连续计数已清零；请核对最新诉求并响应。": [
+    "Customer replied or connected; counter cleared. Check the latest message and respond.",
+    "Pelanggan membalas atau terhubung; penghitung direset. Periksa pesan terbaru dan tanggapi."
+  ],
+  "分组待复核：历史依据不足或已有其他分组决定，不自动猜测恢复。": [
+    "Group needs review; history is insufficient or another decision superseded R6.",
+    "Kelompok perlu ditinjau; riwayat kurang atau keputusan lain menggantikan R6."
+  ],
+  "通知失败": [
+    "Notification failures",
+    "Kegagalan notifikasi"
+  ],
+  "结果待核实": [
+    "Outcome unknown",
+    "Hasil tidak diketahui"
+  ],
+  "请在销售运营的发送记录中核对。": [
+    "Review delivery records in Sales Operations.",
+    "Tinjau catatan pengiriman di Operasional Penjualan."
+  ],
+  "通知状态暂不可查询，请刷新重试。": [
+    "Notification status unavailable; refresh to retry.",
+    "Status notifikasi tidak tersedia; segarkan untuk mencoba lagi."
+  ],
+  "模块与工作入口": [
+    "Where to work",
+    "Tempat bekerja"
+  ],
+  "角色与权限边界": [
+    "Roles and boundaries",
+    "Peran dan batasan"
+  ],
+  "选择模块查看职责；箭头表示关系，不表示人人必经的步骤。": [
+    "Select a module to explore its responsibility. Arrows show relationships, not mandatory steps.",
+    "Pilih modul untuk melihat tanggung jawabnya. Panah menunjukkan hubungan, bukan tahapan wajib."
+  ],
+  "业务主线": [
+    "Business flow",
+    "Alur bisnis"
+  ],
+  "记录结果 → 保留、新增或明确调整后续安排": [
+    "Recorded outcome → keep, add or explicitly adjust the next arrangement",
+    "Hasil tercatat → pertahankan, tambah, atau sesuaikan pengaturan berikutnya secara eksplisit"
+  ],
+  "事件与校验 →": [
+    "Events and checks →",
+    "Peristiwa dan pemeriksaan →"
+  ],
+  "需要分清的概念": [
+    "Concepts to keep separate",
+    "Konsep yang perlu dibedakan"
+  ],
+  "深入理解": [
+    "Read the explanation",
+    "Baca penjelasan"
+  ],
+  "定义与规则在对应章节展开，总览只提示概念之间的区别。": [
+    "Use the linked chapters for definitions and rules; this overview only introduces the distinctions.",
+    "Gunakan bab tertaut untuk definisi dan aturan; gambaran ini hanya memperkenalkan perbedaannya."
+  ],
+  "按需查看七个决策情境": [
+    "Explore seven decision scenarios",
+    "Jelajahi tujuh skenario keputusan"
+  ],
+  "选择业务情境": [
+    "Choose a scenario",
+    "Pilih skenario"
+  ],
+  "触发条件": [
+    "Trigger",
+    "Pemicu"
+  ],
+  "系统处理": [
+    "System handling",
+    "Penanganan sistem"
+  ],
+  "人工决定": [
+    "Human decision",
+    "Keputusan staf"
+  ],
+  "保护边界": [
+    "Boundary",
+    "Batasan"
+  ],
+  "这些情境说明现有规则，不代表从任意聊天文字自行推断客户意图。": [
+    "These examples explain current rules. They do not infer customer intent from arbitrary chat text.",
+    "Contoh ini menjelaskan aturan saat ini. Sistem tidak menyimpulkan niat pelanggan dari sembarang teks chat."
+  ],
+  "当前能力边界": [
+    "Capability boundary",
+    "Batas kemampuan"
+  ],
+  "价格、班期、席位及优惠需有可靠依据，再向客户提出方案；本图不承诺自动选择最合适的优惠。": [
+    "Prices, class schedules, availability and promotions need reliable evidence before staff present an offer. The diagram does not promise automatic offer selection.",
+    "Harga, jadwal kelas, ketersediaan, dan promosi memerlukan bukti yang andal sebelum staf menawarkan. Diagram ini tidak menjanjikan pemilihan penawaran otomatis."
+  ],
+  "继续理解机制": [
+    "Explore the mechanisms",
+    "Pelajari mekanisme"
+  ],
+  "核心概念与关系": [
+    "Core concepts and relationships",
+    "Konsep inti dan hubungan"
+  ],
+  "获客与归因": [
+    "Acquisition and attribution",
+    "Akuisisi dan atribusi"
+  ],
+  "客户分类规则": [
+    "Classification rules",
+    "Aturan klasifikasi"
+  ],
+  "任务与期限": [
+    "Tasks and deadlines",
+    "Tugas dan tenggat"
+  ],
+  "通知机制": [
+    "Notification mechanism",
+    "Mekanisme notifikasi"
+  ],
+  "数据与实现": [
+    "Data and implementation",
+    "Data dan implementasi"
+  ],
+  "账号与版本核对": [
+    "Accounts and version checks",
+    "Akun dan pemeriksaan versi"
+  ],
+  "记录跟进操作": [
+    "Record a follow-up",
+    "Catat tindak lanjut"
+  ],
+  "未接通／未回复": [
+    "No answer or reply",
+    "Tidak dijawab atau dibalas"
+  ],
+  "已修改": [
+    "Modified",
+    "Diubah"
+  ],
+  "分钟": [
+    "min",
+    "menit"
+  ],
+  "小时": [
+    "hr",
+    "jam"
+  ],
+  "天": [
+    "days",
+    "hari"
+  ],
+  "时间单位": [
+    "Time unit",
+    "Satuan waktu"
+  ],
+  "还原为已保存值": [
+    "Revert to saved value",
+    "Kembalikan ke nilai yang disimpan"
+  ],
+  "还原": [
+    "Revert",
+    "Kembalikan"
+  ],
+  "等级 1：高意向": [
+    "Tier 1: Hot (High Intent)",
+    "Kelompok 1: minat tinggi"
+  ],
+  "等级 2：常规意向": [
+    "Tier 2: Warm (Standard Intent)",
+    "Kelompok 2: minat sedang"
+  ],
+  "等级 3：低意向／院校合作": [
+    "Tier 3: Cold / School (Nurture/B2B)",
+    "Kelompok 3: pembinaan prospek atau kerja sama sekolah"
+  ],
+  "沉睡客户重新咨询响应": [
+    "Dormant Reactivation",
+    "Reaktivasi Tidak Aktif"
+  ],
+  "工作日历无效": [
+    "Invalid work calendar",
+    "Kalender kerja tidak valid"
+  ],
+  "按自然时长计时：非工作时间收到的申请从下次上班开始计时；截止落在非工作时间则顺延到下次上班。与服务端使用同一计算函数，已有任务截止时间保持原值。": [
+    "Natural elapsed hours: start at the next opening if received outside working hours; move the deadline to the next opening if it falls outside working hours. The same calculation is used by the server. Existing task deadlines are retained.",
+    "Jam berlalu alami: mulai pada pembukaan berikutnya jika diterima di luar jam kerja; pindahkan tenggat waktu ke pembukaan berikutnya jika jatuh di luar jam kerja. Perhitungan yang sama digunakan oleh server. Tenggat waktu tugas yang ada dipertahankan."
+  ],
+  "SLA 真实时效推演沙盒": [
+    "Live SLA Timeline Simulator",
+    "Simulasi tenggat respons"
+  ],
+  "SLA 规则决策链架构图": [
+    "Logic Cascade Architecture",
+    "Alur aturan tindak lanjut"
+  ],
+  "查看在线手册的销售运营章节": [
+    "View the Sales Operations chapter in the online guide",
+    "Buka bab Operasional Penjualan pada panduan"
+  ],
+  "销售运营指南": [
+    "Sales Operations guide",
+    "Panduan Operasional Penjualan"
+  ],
+  "交互式 SLA 时效推演沙盒": [
+    "Interactive SLA Timeline Simulator",
+    "Simulator Garis Waktu SLA Interaktif"
+  ],
+  "使用与服务端相同的工作日历计算，预览不同等级的自然时长响应截止时间。": [
+    "Preview natural-hour response deadlines using the same work calendar calculation as the server.",
+    "Pratinjau tenggat waktu respons jam alami menggunakan perhitungan kalender kerja yang sama dengan server."
+  ],
+  "实时沙盒推演": [
+    "Interactive Sandbox",
+    "Kotak Pasir Interaktif"
+  ],
+  "收起沙盒": [
+    "Close Sandbox",
+    "Tutup Kotak Pasir"
+  ],
+  "模拟进线学员等级:": [
+    "Simulate Lead Intent Tier:",
+    "Simulasikan Tingkat Niat Prospek:"
+  ],
+  "高意向（等级 1）": [
+    "Hot (Tier 1)",
+    "Minat tinggi (kelompok 1)"
+  ],
+  "中意向（等级 2）": [
+    "Warm (Tier 2)",
+    "Minat sedang (kelompok 2)"
+  ],
+  "低意向（等级 3）": [
+    "Cold (Tier 3)",
+    "Minat rendah (kelompok 3)"
+  ],
+  "重新咨询客户": [
+    "Reactivation",
+    "Reaktivasi"
+  ],
+  "模拟客户提交咨询时间点:": [
+    "Simulate Ingestion Timestamp:",
+    "Waktu pendaftaran untuk simulasi:"
+  ],
+  "周五 19:30": [
+    "Friday 19:30",
+    "Jumat 19:30"
+  ],
+  "临近夜间打烊": [
+    "30m before 20:00 closing",
+    "30m sebelum penutupan 20:00"
+  ],
+  "周六 21:15": [
+    "Saturday 21:15",
+    "Sabtu 21:15"
+  ],
+  "周末夜间免打扰": [
+    "Weekend night off-hours",
+    "Jam tidak aktif malam akhir pekan"
+  ],
+  "周日 14:00": [
+    "Sunday 14:00",
+    "Minggu 14:00"
+  ],
+  "公休日自动顺延": [
+    "Sunday rest day rollover",
+    "Perputaran hari istirahat Minggu"
+  ],
+  "周一 09:30": [
+    "Monday 09:30",
+    "Senin 09:30"
+  ],
+  "正常工作时间": [
+    "Active peak working hours",
+    "Jam kerja puncak aktif"
+  ],
+  "当前推演场景:": [
+    "Simulation Target Scenario:",
+    "Skenario Target Simulasi:"
+  ],
+  "计算出的响应截止时间:": [
+    "Calculated response deadline:",
+    "Batas waktu respons yang dihitung:"
+  ],
+  "线索全生命周期流转与 SLA 规则链架构图": [
+    "Lead Lifecycle & SLA Decision Chain",
+    "Siklus Hidup Prospek & Rantai Keputusan SLA"
+  ],
+  "销售工作台底层所运行的 6 大策略流转逻辑图解。": [
+    "Standardized automation flow implemented across CRM workbench.",
+    "Alur otomatisasi yang distandarisasi diterapkan di seluruh meja kerja CRM."
+  ],
+  "收起图解": [
+    "Close Diagram",
+    "Tutup Diagram"
+  ],
+  "触点采集与清洗": [
+    "Capture & Deduplication",
+    "Penangkapan & Dedupikasi"
+  ],
+  "记录联系信息并关联访客；联系方式相同不能单独证明身份。": [
+    "Contact capture and visitor linkage. Matching contact details alone do not establish identity.",
+    "Simpan kontak dan tautkan pengunjung. Kesamaan kontak saja tidak membuktikan identitas."
+  ],
+  "参阅聊天与转人工章节": [
+    "See the conversations chapter",
+    "Lihat bab percakapan"
+  ],
+  "R1~R6 意向推演": [
+    "R1~R6 Tiering",
+    "Peringkat R1~R6"
+  ],
+  "依据购课意向强弱信号自动分档至 高、中、低意向。": [
+    "Algorithmic qualification into Hot, Warm, Cold with buying signal weights.",
+    "Kelompokkan prospek berdasarkan tingkat minat dan sinyal pembelian."
+  ],
+  "参阅客户工作区章节": [
+    "See the customer workspace chapter",
+    "Lihat bab ruang kerja pelanggan"
+  ],
+  "首响应倒计时": [
+    "FRT SLA Clock",
+    "Jam SLA FRT"
+  ],
+  "首次响应采用已配置的时限；非工作时间的请求与截止时间按已保存工作日历顺延。": [
+    "Configured first-response deadlines; outside-hours requests and deadlines roll forward using the saved work calendar.",
+    "Tenggat respons pertama mengikuti konfigurasi. Permintaan dan tenggat di luar jam kerja disesuaikan dengan kalender yang tersimpan."
+  ],
+  "未接止损熔断": [
+    "Call Retries & Circuit",
+    "Panggilan Ulang & Sirkuit"
+  ],
+  "未接通冷却等待 4 小时；累计 3 次未接自动熔断流转至冷池。": [
+    "Cooling interval between calls; max 3 misses automatically moves lead to cold pool.",
+    "Jeda antarpercobaan kontak; prospek masuk ke pembinaan setelah batas percobaan tanpa jawaban tercapai."
+  ],
+  "最多": [
+    "Max",
+    "Maks"
+  ],
+  "次重试": [
+    "Retries",
+    "Ulangi"
+  ],
+  "试听测评里程碑": [
+    "Milestone Cadence",
+    "Irama Tonggak"
+  ],
+  "试听前提醒与课后回访采用已配置的时间间隔。": [
+    "Trial reminders and post-trial follow-ups use the configured intervals.",
+    "Pengingat sebelum kelas percobaan dan tindak lanjut sesudahnya memakai interval yang ditetapkan."
+  ],
+  "提前 4 小时／延后 4 小时／延后 2 小时": [
+    "−4 h / +4 h / +2 h",
+    "−4 jam / +4 jam / +2 jam"
+  ],
+  "沉睡唤醒提速": [
+    "Reactivation Priority",
+    "Prioritas Reaktivasi"
+  ],
+  "沉睡客户重新咨询后，按配置的响应时限安排回访。": [
+    "Re-engaged dormant leads use the configured response deadline.",
+    "Prospek yang kembali aktif mengikuti tenggat respons yang ditetapkan."
+  ],
+  "24 小时工作日历": [
+    "24-hour work calendar",
+    "Kalender kerja 24 jam"
+  ],
+  "小时/天": [
+    "hrs/day",
+    "jam/hari"
+  ],
+  "天/周": [
+    "days/week",
+    "hari/minggu"
+  ],
+  "工时": [
+    "total",
+    "total"
+  ],
+  "● 正常外呼与建联沟通": [
+    "● Active Calling & WhatsApp",
+    "● Panggilan Aktif & WhatsApp"
+  ],
+  "目标时区当前时间:": [
+    "Current Time:",
+    "Waktu Saat Ini:"
+  ],
+  "午夜": [
+    "Midnight",
+    "Tengah Malam"
+  ],
+  "当前当地时间:": [
+    "Current local time:",
+    "Waktu setempat:"
+  ],
+  "日终": [
+    "End of Day",
+    "Akhir Hari"
+  ],
+  "销售运营设置": [
+    "Sales Operations Settings",
+    "Pengaturan Operasional Penjualan"
+  ],
+  "配置工作时间、响应时限、跟进规则与通知。": [
+    "Configure working hours, response deadlines, follow-up rules and notifications.",
+    "Konfigurasi jam kerja, batas waktu respons, aturan tindak lanjut dan notifikasi."
+  ],
+  "预设模板:": [
+    "Presets:",
+    "Prasetel:"
+  ],
+  "标准预设模式": [
+    "Standard Recommended Policy (Hot 3h, Warm 24h, Mon-Sat)",
+    "Prasetel standar (minat tinggi 3 jam, minat sedang 24 jam, Senin–Sabtu)"
+  ],
+  "标准稳健": [
+    "Standard",
+    "Standar"
+  ],
+  "大促敏捷抢单模式": [
+    "High Velocity Campaign Mode (Hot 1h, 7 days open, 08:30-21:00)",
+    "Prasetel intensif (minat tinggi 1 jam, setiap hari, 08.30–21.00)"
+  ],
+  "冲刺抢单": [
+    "Sprint",
+    "Intensif"
+  ],
+  "节假日宽松护航模式": [
+    "Relaxed / Holiday Nurture Mode (Mon-Fri, Extended SLA)",
+    "Prasetel longgar (Senin–Jumat, tenggat lebih panjang)"
+  ],
+  "节假宽松": [
+    "Relaxed",
+    "Santai"
+  ],
+  "营业外呼时段": [
+    "Active Calling Window",
+    "Jendela Panggilan Aktif"
+  ],
+  "夜间免打扰时段": [
+    "Night Quiet Period",
+    "Periode Tenang Malam"
+  ],
+  "保存与生效说明": [
+    "Saving and activation",
+    "Penyimpanan dan pemberlakuan"
+  ],
+  "通知配置": [
+    "Notification settings",
+    "Pengaturan notifikasi"
+  ],
+  "1. 业务服务时间与工作时区": [
+    "1. Business Hours & Operational Timezone",
+    "1. Jam Kerja & Zona Waktu Operasional"
+  ],
+  "确定销售顾问合规外呼的时间范围，防止夜间骚扰印尼学员与家长。": [
+    "Defines compliant outreach windows to prevent disturbing Indonesian parents at night.",
+    "Menentukan jendela komunikasi yang sesuai untuk mencegah mengganggu orang tua di Indonesia pada malam hari."
+  ],
+  "用于业务时钟、SLA截止时间和新线索业务编号的日期。已生成的业务编号保持不变。": [
+    "Timezone for the business clock, SLA deadlines and new lead-number dates. Existing lead numbers stay unchanged.",
+    "Zona waktu untuk jam bisnis, tenggat waktu SLA, dan tanggal nomor prospek baru. Nomor prospek yang ada tetap tidak berubah."
+  ],
+  "雅加达（UTC+7）": [
+    "Jakarta (UTC+7)",
+    "Jakarta (UTC+7)"
+  ],
+  "望加锡（UTC+8）": [
+    "Makassar (UTC+8)",
+    "Makassar (UTC+8)"
+  ],
+  "上海（UTC+8）": [
+    "Shanghai (UTC+8)",
+    "Shanghai (UTC+8)"
+  ],
+  "新加坡（UTC+8）": [
+    "Singapore (UTC+8)",
+    "Singapura (UTC+8)"
+  ],
+  "每日开始工作时间": [
+    "Daily Start Time",
+    "Waktu Mulai Harian"
+  ],
+  "早晨允许外呼起始点 (缺省 09:00)": [
+    "Earliest call hour (default: 09:00)",
+    "Jam panggilan paling awal (default: 09:00)"
+  ],
+  "每日停止外呼时间": [
+    "Daily End Time",
+    "Waktu Selesai Harian"
+  ],
+  "夜间停止外呼时间 (缺省 20:00)": [
+    "Latest call hour (default: 20:00)",
+    "Jam panggilan paling akhir (default: 20:00)"
+  ],
+  "团队每周工作日": [
+    "Active Workdays",
+    "Hari Kerja Aktif"
+  ],
+  "未选中的日期视为公休日，SLA 自动顺延至下个工作日早晨。": [
+    "Non-selected days are treated as rest days; timers roll over to next working morning.",
+    "Hari yang tidak dipilih dianggap sebagai hari istirahat; pengatur waktu akan berlanjut ke pagi hari kerja berikutnya."
+  ],
+  "响应截止时间按自然时长计算。非工作时间收到的申请从下次上班开始计时；截止落在非工作时间则顺延。旧版次日宽限值保留，但在此模式下不使用。": [
+    "Response deadlines use natural elapsed hours. Requests outside working hours start at the next opening, and deadlines outside working hours move to the next opening. The legacy next-day grace value is retained but inactive in this mode.",
+    "Batas waktu tanggapan menggunakan jam alami yang berlalu. Permintaan di luar jam kerja dimulai pada pembukaan berikutnya, dan batas waktu di luar jam kerja berpindah ke pembukaan berikutnya. Nilai kelonggaran hari berikutnya yang lama dipertahankan tetapi tidak aktif dalam mode ini."
+  ],
+  "2. 新客首次响应时限设定": [
+    "2. First Response SLA (FRT)",
+    "2. Batas waktu respons pertama"
+  ],
+  "依据意向评级设定不同的首次破冰倒计时窗口，支持自由选择分钟/小时/天。": [
+    "Mandatory maximum timeframe for consultants to initiate first contact based on lead Tier.",
+    "Kerangka waktu maksimum wajib bagi konsultan untuk memulai kontak pertama berdasarkan Tier prospek."
+  ],
+  "默认: 3 小时": [
+    "Default: 3 Hours",
+    "Bawaan: 3 Jam"
+  ],
+  "默认: 24 小时": [
+    "Default: 24 Hours",
+    "Bawaan: 24 Jam"
+  ],
+  "默认: 48 小时": [
+    "Default: 48 Hours",
+    "Bawaan: 48 Jam"
+  ],
+  "3. 未接通防骚扰与止损机制": [
+    "3. No-Response & Call Retry Policy",
+    "3. Aturan kontak ulang"
+  ],
+  "规范电话未接通后的重试等待周期与最大呼叫次数，防止引起客户反感。": [
+    "Governs cooling-off intervals and automatic nurture transition when calls are not answered.",
+    "Atur jeda antarpercobaan kontak dan perpindahan ke pembinaan saat panggilan tidak dijawab."
+  ],
+  "默认: 4 小时": [
+    "Default: 4 Hours",
+    "Bawaan: 4 Jam"
+  ],
+  "连续未回复阈值": [
+    "Consecutive unanswered threshold",
+    "Ambang upaya berturut-turut tanpa balasan"
+  ],
+  "包含首次有效尝试": [
+    "Consecutive unanswered threshold",
+    "Ambang upaya berturut-turut tanpa balasan"
+  ],
+  "次": [
+    " times",
+    " kali"
+  ],
+  "推荐: 3次": [
+    "Default: 3",
+    "Bawaan: 3"
+  ],
+  "包含首次有效尝试；须满足重试间隔及最后回复窗口。0关闭自动转培育。新序列保存配置快照，已有任务及人工确认分组不变。": [
+    "Includes the first valid attempt. Retry spacing and a final reply window apply. Zero disables automatic nurture. New sequences snapshot these settings; existing tasks and confirmed groups stay unchanged.",
+    "Termasuk upaya pertama yang valid. Jeda dan masa tunggu balasan terakhir berlaku. Nol menonaktifkan pembinaan otomatis. Urutan baru menyimpan pengaturan ini; tugas dan kelompok terkonfirmasi tetap."
+  ],
+  "4. 已联系客户的未联系时长": [
+    "4. Inactivity Watchdog Thresholds",
+    "4. Batas waktu tanpa kontak"
+  ],
+  "当下线索已联系过、但未设定具体下次时间时，超过此阈值即报警提示回访。": [
+    "Alerts sales reps when an active lead has no scheduled follow-up and exceeds silence threshold.",
+    "Memberi tahu perwakilan penjualan ketika prospek aktif tidak memiliki tindak lanjut yang dijadwalkan dan melebihi ambang batas keheningan."
+  ],
+  "默认: 7 天": [
+    "Default: 7 Days",
+    "Bawaan: 7 Hari"
+  ],
+  "5. 试听与测评里程碑自动提醒": [
+    "5. Milestone Cadence & Offsets",
+    "5. Pengingat tahap kemajuan"
+  ],
+  "围绕固定教学事件（试听课、智能测试出分）自动倒推的标准化动作节点，单位可选，缺省为小时。": [
+    "Automated reminder triggers tied to fixed educational events (trial classes, diagnostic quiz).",
+    "Pengingat terkait jadwal kelas percobaan dan penyelesaian asesmen."
+  ],
+  "默认: 2 小时": [
+    "Default: 2 Hours",
+    "Bawaan: 2 Jam"
+  ],
+  "6. 沉睡客户重新咨询响应": [
+    "6. Dormant Lead Re-activation",
+    "6. Aktivasi Ulang Prospek Tidak Aktif"
+  ],
+  "休眠老学员突然再次访问提问或重新做题时触发的高优先级响应窗口，缺省为 30 分钟。": [
+    "Prioritizes archived leads when they perform new digital interactions (AI chats, quiz retakes).",
+    "Memprioritaskan prospek yang diarsipkan ketika mereka melakukan interaksi digital baru (obrolan AI, pengulangan kuis)."
+  ],
+  "默认: 30 分钟": [
+    "Default: 30 Minutes",
+    "Bawaan: 30 Menit"
+  ],
+  "客户重新激活跟进说明": [
+    "Reactivation follow-up guidance",
+    "Panduan tindak lanjut aktivasi ulang"
+  ],
+  "沉睡客户再次咨询时，先查看历史对话与跟进记录，再按此处配置的响应时限进行回访。": [
+    "When a dormant lead makes a new inquiry, review prior conversations and follow-up history, then respond within the configured response window.",
+    "Saat prospek yang tidak aktif bertanya kembali, tinjau percakapan dan riwayat tindak lanjutnya, lalu tanggapi sesuai tenggat yang ditetapkan."
+  ],
+  "客户概况暂不可用，请刷新重试。": [
+    "Overview unavailable; refresh to retry.",
+    "Ringkasan tidak tersedia; segarkan lagi."
+  ],
+  "不足1小时": [
+    "Under 1 hour",
+    "Kurang dari 1 jam"
+  ],
+  "1–24小时（不含24）": [
+    "1–24 hours",
+    "1–24 jam"
+  ],
+  "24小时及以上": [
+    "24+ hours",
+    "24 jam atau lebih"
+  ],
+  "时长不可计算": [
+    "Cannot calculate",
+    "Tidak dapat dihitung"
+  ],
+  "当前客户": [
+    "Current customers",
+    "Pelanggan saat ini"
+  ],
+  "点击清除指标条件": [
+    "Clear metric conditions",
+    "Hapus kondisi metrik"
+  ],
+  "权限内的当前筛选客户": [
+    "Within the current filters",
+    "Sesuai filter saat ini"
+  ],
+  "首次联系未完成": [
+    "First contact pending",
+    "Kontak pertama belum selesai"
+  ],
+  "仅统计首次联系要求": [
+    "Only the first contact requirement",
+    "Hanya persyaratan kontak pertama"
+  ],
+  "近7天客户互动": [
+    "Customer activity · 7 days",
+    "Interaksi pelanggan · 7 hari"
+  ],
+  "客户主动消息、测评及联系": [
+    "Messages, assessments and customer-initiated contact",
+    "Pesan, tes, dan kontak dari pelanggan"
+  ],
+  "有效沟通覆盖": [
+    "Conversation coverage",
+    "Cakupan komunikasi"
+  ],
+  "未填写阶段": [
+    "Unrecorded",
+    "Belum tercatat"
+  ],
+  "位客户": [
+    "customers",
+    "pelanggan"
+  ],
+  "客户概况与分析": [
+    "Customer overview and analysis",
+    "Ringkasan dan analisis pelanggan"
+  ],
+  "当前筛选客户": [
+    "Current filtered cohort",
+    "Pelanggan sesuai filter"
+  ],
+  "截至": [
+    "As of",
+    "Hingga"
+  ],
+  "其中逾期": [
+    "Overdue",
+    "Terlambat"
+  ],
+  "当前阶段分布": [
+    "Current stage distribution",
+    "Distribusi tahap saat ini"
+  ],
+  "清除阶段筛选": [
+    "Clear stage filter",
+    "Hapus filter tahap"
+  ],
+  "联系与推进分析": [
+    "Contact and progress analysis",
+    "Analisis kontak dan perkembangan"
+  ],
+  "当前指标筛选": [
+    "Metric filter",
+    "Filter metrik"
+  ],
+  "清除": [
+    "Clear",
+    "Hapus"
+  ],
+  "首次联系要求执行": [
+    "First requirement execution",
+    "Pelaksanaan kontak pertama"
+  ],
+  "按时处理": [
+    "On-time processing",
+    "Diproses tepat waktu"
+  ],
+  "分母：可判断的正常完成＋已逾期未完成；异常结束单独统计。": [
+    "Evaluable: normal completions plus overdue pending requirements; exceptions excluded.",
+    "Dinilai dari penyelesaian normal dan persyaratan tertunda yang lewat tenggat; pengecualian dipisahkan."
+  ],
+  "未完成": [
+    "Pending",
+    "Belum selesai"
+  ],
+  "已逾期": [
+    "Overdue",
+    "Terlambat"
+  ],
+  "异常结束／处理时效未知／未完成期限未知": [
+    "Exceptions / unknown completion timing / unknown pending deadline",
+    "Pengecualian / waktu penyelesaian tidak diketahui / tenggat tertunda tidak diketahui"
+  ],
+  "首次实际主动联系": [
+    "First actual sales outreach",
+    "Kontak aktif pertama"
+  ],
+  "中位数": [
+    "Median",
+    "Median"
+  ],
+  "有效样本": [
+    "Valid samples",
+    "Sampel valid"
+  ],
+  "实际时间或登记时间未知／联系早于登记": [
+    "Unknown occurrence / contact before registration",
+    "Waktu tidak diketahui / kontak sebelum pendaftaran"
+  ],
+  "首次有效沟通": [
+    "First effective conversation",
+    "Komunikasi efektif pertama"
+  ],
+  "暂无有效沟通记录": [
+    "No conversation recorded",
+    "Belum ada komunikasi"
+  ],
+  "时间未知／早于登记": [
+    "Unknown time / before registration",
+    "Waktu tidak diketahui / sebelum pendaftaran"
+  ],
+  "距上次主动联系": [
+    "Time since last outreach",
+    "Waktu sejak kontak terakhir"
+  ],
+  "当前阶段停留": [
+    "Current stage duration",
+    "Durasi tahap saat ini"
+  ],
+  "阶段停留明细": [
+    "Stage durations",
+    "Durasi tahap"
+  ],
+  "阶段": [
+    "Stage",
+    "Tahap"
+  ],
+  "中位数／样本": [
+    "Median / samples",
+    "Median / sampel"
+  ],
+  "未知": [
+    "Unknown",
+    "Tidak diketahui"
+  ],
+  "已报名、结束推进不计入进行中停留；时长不自动产生任务。": [
+    "Enrolled and closed stages are excluded from ongoing stage duration. Longer duration does not create a task.",
+    "Tahap terdaftar dan ditutup tidak termasuk durasi proses aktif. Durasi panjang tidak membuat tugas."
+  ],
+  "按当前负责人查看": [
+    "By current owner",
+    "Menurut penanggung jawab saat ini"
+  ],
+  "负责人分析": [
+    "Owner analysis",
+    "Analisis penanggung jawab"
+  ],
+  "首次未完成／逾期": [
+    "Pending / overdue",
+    "Belum selesai / terlambat"
+  ],
+  "首次主动联系中位数／样本": [
+    "First outreach median / samples",
+    "Median kontak pertama / sampel"
+  ],
+  "统计口径与数据完整性": [
+    "Definitions and data quality",
+    "Definisi dan kualitas data"
+  ],
+  "所有数字跟随当前筛选及权限，客户可重复出现在不同指标中，不是转化漏斗。": [
+    "All values follow current filters and permissions. Categories overlap; this is not a conversion funnel.",
+    "Semua angka mengikuti filter dan izin saat ini. Kategori dapat tumpang tindih; bukan corong konversi."
+  ],
+  "近7天为截至现在的168小时，按客户实际互动时间计算，销售录入和AI回复不计入。": [
+    "Recent activity means the last 168 hours, using actual customer event time. Sales records and AI replies are not customer activity.",
+    "Interaksi terbaru berarti 168 jam terakhir berdasarkan waktu kejadian pelanggan. Catatan penjualan dan balasan AI tidak dihitung."
+  ],
+  " 客户互动时间未知：": [
+    " Unknown activity time: ",
+    " Waktu interaksi tidak diketahui: "
+  ],
+  "时长采用实际发生时间和自然时长；存在时间未知的相关联系时，不把已知记录冒充最早联系，不用保存时间代替。": [
+    "Duration uses actual occurrence and natural elapsed time. Any undated contact prevents a reliable first-contact duration; no recording time substitution.",
+    "Durasi memakai waktu kejadian dan waktu kalender. Kontak tanpa waktu membuat durasi pertama tidak pasti; waktu pencatatan tidak menggantikan."
+  ],
+  "首次要求按时处理保留现有处理时间和截止规则；阶段仍由销售人工确认。": [
+    "First requirement timeliness keeps the existing processing timestamp and deadline rules. Stage changes remain manual.",
+    "Ketepatan persyaratan pertama mempertahankan aturan waktu pemrosesan dan tenggat. Tahap tetap diubah manual."
+  ],
+  "尚未确定": [
+    "Not sure",
+    "Tidak yakin"
+  ],
+  "未指定": [
+    "Not specified",
+    "Belum ditentukan"
+  ],
+  "每月": [
+    "month",
+    "month"
+  ],
+  "整门课程": [
+    "course",
+    "course"
+  ],
+  "每小时": [
+    "hour",
+    "hour"
+  ],
+  "周期未明确": [
+    "Period not specified",
+    "Periode belum ditentukan"
+  ],
+  "课程预算上限现在调整为180万印尼盾。": [
+    "My course budget is now IDR 1.8 million.",
+    "Anggaran kursus saya kini Rp1,8 juta."
+  ],
+  "采用明确变化，保留旧值及原文依据。": [
+    "Adopt the explicit change; retain the old value and original evidence.",
+    "Terapkan perubahan eksplisit; simpan nilai lama dan bukti asli."
+  ],
+  "希望下个月开始。": [
+    "I hope to start next month.",
+    "Saya berharap mulai bulan depan."
+  ],
+  "记录当前开课偏好，不表示已确定班级，不补造具体日期。": [
+    "A current start preference, not a confirmed class or an invented exact date.",
+    "Preferensi mulai saat ini, bukan kelas terkonfirmasi atau tanggal pasti buatan."
+  ],
+  "下个月可能搬到泗水。": [
+    "I may move to Surabaya next month.",
+    "Saya mungkin pindah ke Surabaya bulan depan."
+  ],
+  "保留表达，不覆盖现居城市。": [
+    "Retain the statement; do not replace the current city.",
+    "Simpan pernyataan; jangan ganti kota saat ini."
+  ],
+  "HSK备考：先巩固HSK 1，再准备HSK 2。": [
+    "HSK exam preparation; first consolidate HSK 1, then HSK 2.",
+    "Persiapan HSK: kuatkan HSK 1 dahulu, lalu HSK 2."
+  ],
+  "相容的目标细节，不产生冲突。": [
+    "Compatible goal detail, not a conflict.",
+    "Rincian tujuan yang sesuai, bukan konflik."
+  ],
+  "请顾问联系我。": [
+    "Please ask an advisor to contact me.",
+    "Mohon konsultan menghubungi saya."
+  ],
+  "按原始事件记录明确请求；不等于已联系、已报名，也不创建新任务。": [
+    "Record one explicit request per original event. A request is not contact, enrollment or a new task.",
+    "Catat satu permintaan eksplisit per kejadian asli. Ini bukan kontak, pendaftaran, atau tugas baru."
+  ],
+  "原文如何更新画像与请求": [
+    "How original evidence updates the profile",
+    "Cara bukti asli memperbarui profil"
+  ],
+  "原文示例": [
+    "Evidence examples",
+    "Contoh bukti"
+  ],
+  "来源与实际发生时间可追溯；真实矛盾保留双方记录，AI不改变Tier或销售阶段。": [
+    "Sources and actual times remain traceable. Genuine contradictions retain both records; AI never changes Tier or sales stage.",
+    "Sumber dan waktu nyata tetap terlacak. Konflik nyata menyimpan kedua catatan; AI tidak mengubah Tier atau tahap penjualan."
+  ],
+  "请选择沟通方式": [
+    "Choose a contact channel",
+    "Pilih kanal kontak"
+  ],
+  "请选择联系结果": [
+    "Choose a contact result",
+    "Pilih hasil kontak"
+  ],
+  "请填写跟进内容或关闭说明": [
+    "Enter progress notes or a closure result",
+    "Isi catatan progres atau hasil penutupan"
+  ],
+  "请选择已完成或已终止": [
+    "Choose completed or terminated",
+    "Pilih selesai atau dihentikan"
+  ],
+  "请确认随任务终止的请求；请求信息不可用时请重试。": [
+    "Confirm the requests being terminated. Retry if request data is unavailable.",
+    "Konfirmasikan permintaan yang dihentikan. Coba lagi jika data belum tersedia."
+  ],
+  "请确认已完成的请求；请求信息不可用时请重试。": [
+    "Confirm completed requests. Retry if request data is unavailable.",
+    "Konfirmasikan permintaan yang selesai. Coba lagi jika data belum tersedia."
+  ],
+  "关闭任务": [
+    "Close task",
+    "Tutup tugas"
+  ],
+  "添加进展": [
+    "Add progress",
+    "Tambah progres"
+  ],
+  "关闭方式": [
+    "Closure outcome",
+    "Hasil penutupan"
+  ],
+  "请选择": [
+    "Choose",
+    "Pilih"
+  ],
+  "已完成": [
+    "Completed",
+    "Selesai"
+  ],
+  "已终止": [
+    "Terminated",
+    "Dihentikan"
+  ],
+  "请求信息不可用 · 重试": [
+    "Request information unavailable · Retry",
+    "Informasi permintaan tidak tersedia · Coba lagi"
+  ],
+  "随任务终止的请求": [
+    "Requests terminated with this task",
+    "Permintaan dihentikan bersama tugas"
+  ],
+  "已完成的客户请求": [
+    "Customer requests completed",
+    "Permintaan pelanggan selesai"
+  ],
+  "客户请求": [
+    "Customer request",
+    "Permintaan pelanggan"
+  ],
+  "本次有联系客户": [
+    "This progress includes a customer contact",
+    "Progres ini mencakup kontak pelanggan"
+  ],
+  "补记客户在CRM外的回复": [
+    "Record a customer reply outside CRM",
+    "Catat balasan pelanggan di luar CRM"
+  ],
+  "客户已回复，记录渠道及依据": [
+    "Customer replied; record the channel and evidence",
+    "Pelanggan membalas; catat kanal dan buktinya"
+  ],
+  "沟通方式": [
+    "Channel",
+    "Kanal"
+  ],
+  "校区接待": [
+    "Campus visit",
+    "Kunjungan kampus"
+  ],
+  "其他": [
+    "Other",
+    "Lainnya"
+  ],
+  "联系结果": [
+    "Contact result",
+    "Hasil kontak"
+  ],
+  "已联系／已回复": [
+    "Connected / replied",
+    "Terhubung / dibalas"
+  ],
+  "号码无效": [
+    "Invalid number",
+    "Nomor tidak valid"
+  ],
+  "终止原因（必填）": [
+    "Termination reason (required)",
+    "Alasan penghentian (wajib)"
+  ],
+  "完成结果（必填）": [
+    "Completion result (required)",
+    "Hasil penyelesaian (wajib)"
+  ],
+  "跟进内容（必填）": [
+    "Progress notes (required)",
+    "Catatan progres (wajib)"
+  ],
+  "销售进展（选填）": [
+    "Sales progress (optional)",
+    "Perkembangan penjualan (opsional)"
+  ],
+  "本次新增购买信号（可多选）": [
+    "New buying signals (multiple choice)",
+    "Sinyal pembelian baru (pilihan ganda)"
+  ],
+  "咨询学费": [
+    "Asked price",
+    "Menanyakan biaya"
+  ],
+  "询问开班": [
+    "Asked schedule",
+    "Menanyakan jadwal"
+  ],
+  "询问付款": [
+    "Asked payment",
+    "Menanyakan pembayaran"
+  ],
+  "准备报名": [
+    "Ready to enroll",
+    "Siap mendaftar"
+  ],
+  "销售阶段": [
+    "Sales stage",
+    "Tahap penjualan"
+  ],
+  "待初访": [
+    "New",
+    "Baru"
+  ],
+  "已建联": [
+    "Contacted",
+    "Dihubungi"
+  ],
+  "已预约测评": [
+    "Assessment booked",
+    "Asesmen dijadwalkan"
+  ],
+  "已预约试听": [
+    "Trial booked",
+    "Uji coba dijadwalkan"
+  ],
+  "已参加试听": [
+    "Trial attended",
+    "Uji coba dihadiri"
+  ],
+  "已报名": [
+    "Enrolled",
+    "Terdaftar"
+  ],
+  "已关闭": [
+    "Closed / lost",
+    "Ditutup / hilang"
+  ],
+  "保存并下一位": [
+    "Save and next",
+    "Simpan dan lanjut"
+  ],
+  "保存进展": [
+    "Save progress",
+    "Simpan progres"
+  ],
+  "新销售阶段 *": [
+    "New sales stage *",
+    "Tahap penjualan baru *"
+  ],
+  "新销售阶段": [
+    "New sales stage",
+    "Tahap penjualan baru"
+  ],
+  "选择新阶段": [
+    "Select a stage",
+    "Pilih tahap"
+  ],
+  "阶段生效时间 *": [
+    "Stage effective time *",
+    "Waktu berlaku tahap *"
+  ],
+  "阶段生效时间": [
+    "Stage effective time",
+    "Waktu berlaku tahap"
+  ],
+  "选择生效时间": [
+    "Select effective time",
+    "Pilih waktu berlaku"
+  ],
+  "明确日期与时间": [
+    "Specific date and time",
+    "Tanggal dan waktu pasti"
+  ],
+  "确实无法确认生效时间": [
+    "Effective time cannot be confirmed",
+    "Waktu berlaku tidak dapat dipastikan"
+  ],
+  "沟通动态与重要信息": [
+    "Communication and important information",
+    "Komunikasi dan informasi penting"
+  ],
+  "Lead登记": [
+    "Lead registered",
+    "Lead terdaftar"
+  ],
+  "真实联系未获回复": [
+    "Actual unanswered contact",
+    "Kontak nyata belum dibalas"
+  ],
+  "新的预约请求": [
+    "New booking request",
+    "Permintaan janji temu baru"
+  ],
+  "记录客户约定": [
+    "Customer agreement recorded",
+    "Kesepakatan dicatat"
+  ],
+  "交互实例 · 仅模拟，不写入客户数据": [
+    "Interactive example · simulated only",
+    "Contoh interaktif · simulasi saja"
+  ],
+  "一个有截止时间的首次联系要求。": [
+    "One first-contact requirement with a deadline.",
+    "Satu kewajiban kontak pertama dengan tenggat."
+  ],
+  "首次尝试已记录，不新增任务。": [
+    "The first attempt was recorded. No additional task is created.",
+    "Percobaan pertama dicatat. Tidak ada tugas tambahan."
+  ],
+  "预约请求不等于预约确认；看过不等于已回应。": [
+    "Booking requested is not booking confirmed. Reading does not answer it.",
+    "Permintaan janji temu bukan konfirmasi. Membaca bukan menjawab."
+  ],
+  "约定日期：11月2日。未约定具体时刻，系统不补造。": [
+    "Agreed date: 2 November. No exact time was given, so none is invented.",
+    "Tanggal disepakati: 2 November. Jam tidak diberikan dan tidak dikarang."
+  ],
+  "练习记录一次未回复联系": [
+    "Try recording an unanswered contact",
+    "Coba catat kontak tanpa balasan"
+  ],
+  "实际联系结果": [
+    "Actual contact result",
+    "Hasil kontak nyata"
+  ],
+  "主动选择结果": [
+    "Choose explicitly",
+    "Pilih secara eksplisit"
+  ],
+  "未回复": [
+    "No reply",
+    "Belum dibalas"
+  ],
+  "已接通／已回复": [
+    "Connected / replied",
+    "Tersambung / dibalas"
+  ],
+  "原始沟通记录": [
+    "Original summary",
+    "Ringkasan asli"
+  ],
+  "检查模拟保存结果": [
+    "Check simulated save",
+    "Periksa simpan simulasi"
+  ],
+  "记录已保存，无需安排下一任务。成功沟通次数：": [
+    "Record saved. No next task required. Successful contacts:",
+    "Catatan tersimpan. Tidak wajib tugas berikutnya. Kontak berhasil:"
+  ],
+  "R6自动降级已停用，销售自主选择后续行动。": [
+    "R6 automatic downgrade is disabled. Sales retain the choice of follow-up action.",
+    "Penurunan otomatis R6 nonaktif. Sales memilih tindak lanjut."
+  ],
+  "模拟事实与操作选择，不修改客户数据。": [
+    "Simulated facts and choices; no customer data is changed.",
+    "Fakta dan pilihan simulasi; data pelanggan tidak berubah."
+  ],
+  "尚无跟进记录": [
+    "No progress recorded yet",
+    "Belum ada catatan perkembangan"
+  ],
+  "内部进展": [
+    "Internal progress",
+    "Perkembangan internal"
+  ],
+  "联系记录": [
+    "Contact record",
+    "Catatan kontak"
+  ],
+  "未记录员工": [
+    "Staff not recorded",
+    "Staf tidak tercatat"
+  ],
+  "查看记录": [
+    "View record",
+    "Lihat catatan"
+  ],
+  "收起记录": [
+    "Collapse record",
+    "Tutup catatan"
+  ],
+  "记录原文": [
+    "Original record",
+    "Catatan asli"
+  ],
+  "仅显示最近5条": [
+    "Show recent 5",
+    "Tampilkan 5 terbaru"
+  ],
+  "显示全部记录": [
+    "Show all records",
+    "Tampilkan semua catatan"
+  ],
+  "未查到已保存记录，草稿保留，可明确重试。": [
+    "No saved record found. Draft retained; you may explicitly retry.",
+    "Catatan tersimpan tidak ditemukan. Draf tetap; Anda dapat mencoba lagi."
+  ],
+  "请按运营时区填写有效的实际发生时间，不能填写未来时间。": [
+    "Enter the actual contact time in the operating timezone; future times are not allowed.",
+    "Isi waktu kontak sebenarnya dalam zona operasi; waktu mendatang tidak diizinkan."
+  ],
+  "客户主动联系需要实际客户回应。": [
+    "Customer-initiated contact needs an actual customer reply.",
+    "Kontak dari pelanggan memerlukan balasan nyata."
+  ],
+  "客户信息已变化，草稿保留；请刷新并核对后再保存。": [
+    "Customer information changed. Your draft is retained; refresh and review before saving.",
+    "Informasi pelanggan berubah. Draf tetap; muat ulang dan periksa sebelum menyimpan."
+  ],
+  "请核对四项联系信息、进展原文、约定日期和原因，草稿已保留。": [
+    "Please check the required result, agreement date and reason. Your draft is retained.",
+    "Periksa hasil wajib, tanggal kesepakatan, dan alasan. Draf tetap disimpan."
+  ],
+  "保存未确认，草稿已保留；请先查询结果再重试。": [
+    "Save not confirmed. Your draft is retained. Query the result before retrying.",
+    "Penyimpanan belum terkonfirmasi. Draf tetap disimpan. Periksa hasil sebelum mencoba lagi."
+  ],
+  "进展记录 *": [
+    "Progress record *",
+    "Catatan perkembangan *"
+  ],
+  "进展记录": [
+    "Progress record",
+    "Catatan perkembangan"
+  ],
+  "发生了什么？客户表达了什么？你做了什么？结果如何？": [
+    "What did the customer say, what did you do, and what was the result?",
+    "Apa kata pelanggan, apa yang Anda lakukan, dan apa hasilnya?"
+  ],
+  "实际联系": [
+    "Actual contact",
+    "Kontak nyata"
+  ],
+  "联系渠道（必填）": [
+    "Contact channel (required)",
+    "Saluran kontak (wajib)"
+  ],
+  "选择联系渠道": [
+    "Select a channel",
+    "Pilih saluran"
+  ],
+  "校区面访": [
+    "Campus visit",
+    "Kunjungan kampus"
+  ],
+  "实际联系结果（必填）": [
+    "What actually happened? (required)",
+    "Apa yang terjadi? (wajib)"
+  ],
+  "选择实际结果": [
+    "Select the actual result",
+    "Pilih hasil nyata"
+  ],
+  "已接通／客户已回复": [
+    "Connected / customer replied",
+    "Tersambung / pelanggan membalas"
+  ],
+  "已拨打／已发送，尚未回复": [
+    "Called / sent; no response yet",
+    "Dihubungi / dikirimi; belum membalas"
+  ],
+  "联系方式无效": [
+    "Contact information is invalid",
+    "Kontak tidak valid"
+  ],
+  "联系发起方（必填）": [
+    "Who initiated? (required)",
+    "Siapa yang memulai? (wajib)"
+  ],
+  "选择联系发起方": [
+    "Select who initiated",
+    "Pilih pemrakarsa"
+  ],
+  "客户主动联系": [
+    "Customer initiated",
+    "Dimulai pelanggan"
+  ],
+  "实际发生时间（必填）": [
+    "When did this happen? (required)",
+    "Kapan ini terjadi? (wajib)"
+  ],
+  "选择实际发生时间": [
+    "Select when it happened",
+    "Pilih waktu kejadian"
+  ],
+  "刚刚发生": [
+    "Just now",
+    "Baru saja"
+  ],
+  "补记实际时间": [
+    "Record an earlier time",
+    "Catat waktu sebelumnya"
+  ],
+  "确实无法确认发生时间": [
+    "Unable to confirm the actual time",
+    "Waktu sebenarnya tidak dapat dipastikan"
+  ],
+  "实际日期与时间（必填）": [
+    "Actual date and time (required)",
+    "Tanggal dan jam sebenarnya (wajib)"
+  ],
+  "实际联系时间": [
+    "Actual contact time",
+    "Waktu kontak sebenarnya"
+  ],
+  "客户主动联系需要实际客户回应；请核对联系结果后保存。": [
+    "A customer-initiated conversation needs a real customer response. Select the actual result before saving.",
+    "Percakapan dari pelanggan memerlukan respons nyata. Pilih hasil sebenarnya sebelum menyimpan."
+  ],
+  "其他操作": [
+    "Other actions",
+    "Tindakan lain"
+  ],
+  "联系安排": [
+    "Contact arrangement",
+    "Pengaturan kontak"
+  ],
+  "恢复主动联系": [
+    "Restore proactive contact",
+    "Pulihkan kontak"
+  ],
+  "保持现有安排": [
+    "Keep current arrangement",
+    "Tetap seperti sekarang"
+  ],
+  "主动联系安排": [
+    "Permission to initiate contact",
+    "Izin menghubungi secara proaktif"
+  ],
+  "调整联系安排的原因（必填）": [
+    "Reason (required)",
+    "Alasan (wajib)"
+  ],
+  "正在填写": [
+    "Being recorded",
+    "Sedang dicatat"
+  ],
+  "未记录新约定": [
+    "No new agreement recorded",
+    "Belum ada kesepakatan baru"
+  ],
+  "约定发生了什么变化？": [
+    "What changed about the agreement?",
+    "Apa yang berubah pada kesepakatan?"
+  ],
+  "没有变化／不记录约定": [
+    "No agreement change",
+    "Tidak ada perubahan"
+  ],
+  "达成了新约定": [
+    "A new agreement was made",
+    "Ada kesepakatan baru"
+  ],
+  "处理已有约定": [
+    "An existing agreement changed",
+    "Kesepakatan yang ada berubah"
+  ],
+  "选择要处理的约定（必填）": [
+    "Which existing agreement? (required)",
+    "Kesepakatan yang mana? (wajib)"
+  ],
+  "已有约定": [
+    "Existing agreement",
+    "Kesepakatan yang ada"
+  ],
+  "选择约定": [
+    "Select an agreement",
+    "Pilih kesepakatan"
+  ],
+  "目前没有有效约定可处理；如已达成新约定，请选择新增。": [
+    "There are no active agreements to update. Choose a new agreement if one was made.",
+    "Tidak ada kesepakatan aktif. Pilih kesepakatan baru bila ada."
+  ],
+  "原约定": [
+    "Original agreement",
+    "Kesepakatan semula"
+  ],
+  "约定处理结果（必填）": [
+    "What happened to it? (required)",
+    "Apa hasilnya? (wajib)"
+  ],
+  "约定处理结果": [
+    "Agreement outcome",
+    "Hasil kesepakatan"
+  ],
+  "已履行": [
+    "Fulfilled",
+    "Dipenuhi"
+  ],
+  "已取消": [
+    "Cancelled",
+    "Dibatalkan"
+  ],
+  "改约 · 在下方填写替代约定": [
+    "Rescheduled · record its replacement below",
+    "Dijadwalkan ulang · isi penggantinya di bawah"
+  ],
+  "实际处理情况／变更原因（必填）": [
+    "What happened / why did it change? (required)",
+    "Apa yang terjadi / alasan perubahan? (wajib)"
+  ],
+  "约定更新原因": [
+    "Agreement update reason",
+    "Alasan perubahan kesepakatan"
+  ],
+  "同时另行达成了新约定": [
+    "A separate new agreement was also made",
+    "Kesepakatan baru terpisah juga dibuat"
+  ],
+  "替代约定": [
+    "Replacement agreement",
+    "Kesepakatan pengganti"
+  ],
+  "新约定": [
+    "New agreement",
+    "Kesepakatan baru"
+  ],
+  "具体约定事项（必填）": [
+    "What was agreed? (required)",
+    "Apa yang disepakati? (wajib)"
+  ],
+  "例如：电话确认周六班是否适合": [
+    "For example: call to discuss Saturday class availability",
+    "Contoh: telepon untuk membahas kelas Sabtu"
+  ],
+  "约定时间明确到什么程度？": [
+    "How specific was the agreed time?",
+    "Seberapa pasti waktunya?"
+  ],
+  "尚未约定日期或时刻": [
+    "No date or time agreed",
+    "Tanggal dan jam belum disepakati"
+  ],
+  "只约定了日期": [
+    "A date only",
+    "Hanya tanggal"
+  ],
+  "明确日期与时刻": [
+    "An exact date and time",
+    "Tanggal dan jam pasti"
+  ],
+  "约定日期与时刻": [
+    "Agreed date and time",
+    "Tanggal dan jam kesepakatan"
+  ],
+  "约定日期": [
+    "Agreed date",
+    "Tanggal kesepakatan"
+  ],
+  "不补造时间，也不产生定时提醒。": [
+    "No time will be invented and no timed reminder will be scheduled.",
+    "Waktu tidak dikarang dan tidak ada pengingat terjadwal."
+  ],
+  "无效线索／客户撤回例外": [
+    "Invalid / withdrawn lead exception",
+    "Pengecualian lead tidak valid / ditarik"
+  ],
+  "仅在首次联系要求已不适用时填写；普通内部补记不能结束该要求。": [
+    "Use only when the first-contact requirement cannot apply. An internal update alone does not finish it.",
+    "Hanya jika kewajiban kontak pertama tidak berlaku. Pembaruan internal saja tidak menyelesaikannya."
+  ],
+  "明确的例外原因": [
+    "Explicit exception reason",
+    "Alasan pengecualian"
+  ],
+  "草稿已保留。请加载并核对最新已保存版本后继续。": [
+    "Your draft is preserved. Load and review the latest saved version before continuing.",
+    "Draf tetap tersimpan. Muat dan tinjau versi tersimpan terbaru sebelum melanjutkan."
+  ],
+  "最新阶段": [
+    "Latest stage",
+    "Tahap terbaru"
+  ],
+  "最新原始记录": [
+    "Latest original record",
+    "Catatan asli terbaru"
+  ],
+  "保留草稿并使用已核对版本": [
+    "Keep draft and use reviewed version",
+    "Pertahankan draf dan gunakan versi yang ditinjau"
+  ],
+  "最新版本暂不可用，草稿保留。": [
+    "Latest version unavailable. Draft retained.",
+    "Versi terbaru tidak tersedia. Draf tetap."
+  ],
+  "加载最新已保存版本": [
+    "Load latest saved version",
+    "Muat versi tersimpan terbaru"
+  ],
+  "选项已失效": [
+    "Unavailable option",
+    "Opsi tidak tersedia"
+  ],
+  "选项": [
+    " options",
+    " opsi"
+  ],
+  "搜索": [
+    "Search ",
+    "Pencarian "
+  ],
+  "搜索选项…": [
+    "Find options…",
+    "Cari opsi…"
+  ],
+  "清除筛选（全部）": [
+    "Clear filter (all)",
+    "Hapus filter (semua)"
+  ],
+  "无匹配选项": [
+    "No matching options",
+    "Tidak ada opsi yang cocok"
+  ],
+  "内部核实／复查": [
+    "Internal review",
+    "Internal review"
+  ],
+  "查看客户原话": [
+    "View customer request",
+    "Lihat permintaan pelanggan"
+  ],
+  "已由新任务替代": [
+    "Replaced by a new task",
+    "Replaced by a new task"
+  ],
+  "查看处理记录": [
+    "View handling history",
+    "Lihat riwayat penanganan"
+  ],
+  "核对可能重叠的工作": [
+    "Check work that may overlap",
+    "Periksa pekerjaan yang mungkin beririsan"
+  ],
+  "这里只提示核对，不代表重复任务。请对照原请求和实际结果逐项处理；不会自动合并或结束其他任务。": [
+    "This is a review prompt, not a duplicate-task decision. Check the original requests and actual results. Complete tasks one at a time; no other task is merged or closed automatically.",
+    "Ini pengingat untuk meninjau, bukan keputusan bahwa tugas duplikat. Periksa permintaan asli dan hasil nyata. Selesaikan tugas satu per satu; tugas lain tidak digabung atau ditutup otomatis."
+  ],
+  "保存结果尚未确认，草稿已保留。请查询结果或重试原保存。": [
+    "The save result is not confirmed. Your draft is kept; query the result or retry the original save.",
+    "Hasil penyimpanan belum terkonfirmasi. Draf tetap tersedia; periksa hasil atau ulangi penyimpanan awal."
+  ],
+  "暂时无法查询保存结果，草稿已保留，请重试查询。": [
+    "The result could not be checked. Your draft is kept. Try querying again.",
+    "Hasil belum dapat diperiksa. Draf tetap tersedia. Coba periksa lagi."
+  ],
+  "尚未找到该请求的保存结果，可重试原保存。": [
+    "No saved result was found for this request. You can retry the original save.",
+    "Hasil tersimpan untuk permintaan ini belum ditemukan. Anda dapat mengulangi penyimpanan awal."
+  ],
+  "阶段未保存，草稿已保留。": [
+    "The stage was not saved. Your draft is kept.",
+    "Tahap belum tersimpan. Draf tetap tersedia."
+  ],
+  "查询中…": [
+    "Checking…",
+    "Memeriksa…"
+  ],
+  "修改销售阶段": [
+    "Update sales stage",
+    "Ubah tahap penjualan"
+  ],
+  "阶段变更需手动保存：选择阶段，关联依据或填写事实说明后保存。": [
+    "Stage changes are saved manually. Choose a stage, link evidence or describe the facts, then save.",
+    "Perubahan tahap disimpan secara manual. Pilih tahap, isi alasan wajib, lalu simpan."
+  ],
+  "具体事实说明": [
+    "Facts supporting the stage",
+    "Fakta pendukung tahap"
+  ],
+  "请说明支持新阶段的事实。例如：客户已确认预约周六的测评。": [
+    "Describe the facts supporting this stage. Example: the customer confirmed a Saturday assessment booking.",
+    "Jelaskan fakta yang mendukung tahap ini. Contoh: pelanggan mengonfirmasi jadwal asesmen hari Sabtu."
+  ],
+  "请关联依据或填写事实说明，已报名还须明确确认报名成立。": [
+    "Enter the reason for this stage change before saving.",
+    "Isi alasan perubahan tahap sebelum menyimpan."
+  ],
+  "正在查询保存结果…": [
+    "Checking save result…",
+    "Memeriksa hasil penyimpanan…"
+  ],
+  "正在保存阶段…": [
+    "Saving stage…",
+    "Menyimpan tahap…"
+  ],
+  "保存结果未知，草稿已保留。": [
+    "Save result unknown; draft retained.",
+    "Hasil penyimpanan belum diketahui; draf dipertahankan."
+  ],
+  "阶段已保存": [
+    "Stage saved",
+    "Tahap tersimpan"
+  ],
+  "请先查询上次结果，再修改内容。": [
+    "Query the previous result before editing.",
+    "Periksa hasil sebelumnya sebelum mengubah isi."
+  ],
+  "已保存，但任务刷新失败，请重新加载任务。": [
+    "Saved, but refreshing tasks failed. Reload the tasks.",
+    "Tersimpan, tetapi tugas gagal dimuat ulang. Muat ulang tugas."
+  ],
+  "响应截止": [
+    "Response deadline",
+    "Batas respons"
+  ],
+  "约定执行时间": [
+    "Agreed execution time",
+    "Waktu pelaksanaan yang disepakati"
+  ],
+  "内部复查时间": [
+    "Internal review time",
+    "Waktu tinjauan internal"
+  ],
+  "另建任务": [
+    "Create a separate task",
+    "Buat tugas terpisah"
+  ],
+  "补充到已有任务": [
+    "Add to an existing task",
+    "Tambahkan ke tugas yang ada"
+  ],
+  "请求已关联": [
+    "Request linked",
+    "Permintaan ditautkan"
+  ],
+  "请求依据": [
+    "Request evidence",
+    "Bukti permintaan"
+  ],
+  "新增任务": [
+    "New task",
+    "Tugas baru"
+  ],
+  "编辑任务": [
+    "Edit task",
+    "Edit tugas"
+  ],
+  "补充任务信息": [
+    "Add task information",
+    "Tambah informasi tugas"
+  ],
+  "改期": [
+    "Reschedule",
+    "Jadwal ulang"
+  ],
+  "替代任务": [
+    "Replace task",
+    "Ganti tugas"
+  ],
+  "取消任务": [
+    "Cancel task",
+    "Batalkan tugas"
+  ],
+  "无需行动": [
+    "No action needed",
+    "Tidak perlu tindakan"
+  ],
+  "客户明确请求": [
+    "Structured customer request",
+    "Permintaan terstruktur pelanggan"
+  ],
+  "已处理": [
+    "Handled",
+    "Ditangani"
+  ],
+  "尚未处理": [
+    "Not yet handled",
+    "Belum ditangani"
+  ],
+  "启用历史待办": [
+    "Activate historical task",
+    "Aktifkan tugas historis"
+  ],
+  "任务操作": [
+    "Task actions",
+    "Tindakan tugas"
+  ],
+  "事实与任务": [
+    "Facts and tasks",
+    "Fakta dan tugas"
+  ],
+  "跟进任务": [
+    "Follow-up tasks",
+    "Tugas tindak lanjut"
+  ],
+  "记笔记": [
+    "Quick note",
+    "Catatan singkat"
+  ],
+  "随时记录有用信息；保存不计为联系，也不完成任务。": [
+    "Record useful information at any time. This does not count as contact or complete a task.",
+    "Catat informasi kapan saja. Ini tidak dihitung sebagai kontak dan tidak menyelesaikan tugas."
+  ],
+  "信息内容": [
+    "Information",
+    "Informasi"
+  ],
+  "保存笔记": [
+    "Save note",
+    "Simpan catatan"
+  ],
+  "笔记已保存，联系次数和任务均未改变。": [
+    "Note saved. Contact counts and tasks are unchanged.",
+    "Catatan disimpan. Jumlah kontak dan tugas tidak berubah."
+  ],
+  "已确认保存成功": [
+    "Save confirmed",
+    "Penyimpanan dikonfirmasi"
+  ],
+  "已保存": [
+    "Saved",
+    "Tersimpan"
+  ],
+  "重新加载事实与任务": [
+    "Retry loading facts and tasks",
+    "Muat ulang fakta dan tugas"
+  ],
+  "先核实身份": [
+    "Identity review required",
+    "Verifikasi identitas diperlukan"
+  ],
+  "待确认关联的新请求": [
+    "New requests to assign",
+    "Permintaan baru untuk ditautkan"
+  ],
+  "请确认是已有事项的补充，还是另一件事；响应期限从收到请求起计算。": [
+    "Check whether this is the same matter or a separate task. The response deadline starts from receipt.",
+    "Periksa apakah urusannya sama atau tugas terpisah. Tenggat respons dihitung sejak diterima."
+  ],
+  "时间": [
+    "Times",
+    "Waktu"
+  ],
+  "最近沟通": [
+    "Recent communication",
+    "Komunikasi terakhir"
+  ],
+  "调整联系安排": [
+    "Adjust contact arrangement",
+    "Ubah pengaturan kontak"
+  ],
+  "待核实动态": [
+    "Information to review",
+    "Informasi untuk ditinjau"
+  ],
+  "新测评": [
+    "New assessment",
+    "Asesmen baru"
+  ],
+  "身份待核实 · 比较客户记录": [
+    "Identity needs review · Compare records",
+    "Identitas perlu ditinjau · Bandingkan catatan"
+  ],
+  "收起其他任务": [
+    "Hide other tasks",
+    "Sembunyikan tugas lain"
+  ],
+  "查看其他任务": [
+    "Show other tasks",
+    "Lihat tugas lain"
+  ],
+  "新增独立事项，已有任务及期限保持不变。同一事项的补充或改期，请从原任务菜单操作。": [
+    "Create a separate task. Existing tasks and deadlines stay unchanged. To add information or change a time for the same matter, use the original task menu.",
+    "Buat tugas terpisah. Tugas dan tenggat yang ada tetap. Untuk menambah informasi atau mengubah waktu urusan yang sama, gunakan menu tugas awal."
+  ],
+  "目标任务 · 已固定": [
+    "Target task · fixed",
+    "Tugas tujuan · tetap"
+  ],
+  "当前约定时间": [
+    "Current agreed time",
+    "Waktu saat ini"
+  ],
+  "新的约定时间": [
+    "New agreed time",
+    "Waktu baru"
+  ],
+  "新的客户请求": [
+    "New customer request",
+    "Permintaan pelanggan baru"
+  ],
+  "原响应截止": [
+    "Original response deadline",
+    "Tenggat respons awal"
+  ],
+  "同一事项的原工作已不再需要：取消原任务并建立替代任务，保留原期限及逾期历史。": [
+    "The earlier work for this matter is no longer needed. Cancel it and create the replacement; keep its history.",
+    "Pekerjaan sebelumnya untuk urusan ini tidak diperlukan lagi. Batalkan dan buat pengganti; riwayat tetap."
+  ],
+  "任务内容（必填）": [
+    "Task content (required)",
+    "Isi tugas (wajib)"
+  ],
+  "具体动作": [
+    "Action",
+    "Tindakan"
+  ],
+  "用途": [
+    "Purpose",
+    "Tujuan"
+  ],
+  "时间含义": [
+    "Time meaning",
+    "Makna waktu"
+  ],
+  "请选择时间含义": [
+    "Choose time meaning",
+    "Pilih makna waktu"
+  ],
+  "运营当前时间": [
+    "Current operating time",
+    "Waktu operasional saat ini"
+  ],
+  "新复查时间": [
+    "Revised review time",
+    "Waktu peninjauan baru"
+  ],
+  "新约定执行时间": [
+    "New agreed execution time",
+    "Waktu pelaksanaan baru"
+  ],
+  "任务时间（必填）": [
+    "Task time (required)",
+    "Waktu tugas (wajib)"
+  ],
+  "选择任务": [
+    "Choose a task",
+    "Pilih tugas"
+  ],
+  "请对照原记录并填写核实依据；相同联系方式不证明属于同一人。": [
+    "Compare the original records and confirm with evidence. Same contact details do not prove the same person.",
+    "Bandingkan catatan asli dan konfirmasi dengan bukti. Kontak sama tidak membuktikan orang yang sama."
+  ],
+  "补充说明（选填）": [
+    "Additional notes (optional)",
+    "Catatan tambahan (opsional)"
+  ],
+  "仅填写任务内容未涵盖的信息。": [
+    "Only add information not covered by the task content.",
+    "Tambahkan hanya informasi yang belum tercakup dalam isi tugas."
+  ],
+  "补充内容": [
+    "Additional information",
+    "Informasi tambahan"
+  ],
+  "改期原因（必填）": [
+    "Reschedule reason (required)",
+    "Alasan perubahan jadwal (wajib)"
+  ],
+  "原因／依据": [
+    "Reason / evidence",
+    "Alasan / bukti"
+  ],
+  "保存补充": [
+    "Save information",
+    "Simpan informasi"
+  ],
+  "保存新任务": [
+    "Save new task",
+    "Simpan tugas baru"
+  ],
+  "身份候选": [
+    "Identity candidates",
+    "Kandidat identitas"
+  ],
+  "CRM Manager核实有效且非空的相同联系方式。核实前Sales不可认领或主动外联。判断仅记录关系，不合并记录、不迁移历史或客户归属。": [
+    "CRM Managers review matching non-empty contact details. Sales cannot claim or initiate contact before review. A decision records the relationship; it never merges records or transfers owners.",
+    "CRM Manager memverifikasi kecocokan kontak yang terisi. Sales tidak dapat mengambil atau menghubungi sebelum verifikasi. Keputusan mencatat hubungan; catatan tidak digabung dan penanggung jawab tidak dipindahkan."
+  ],
+  "历史任务": [
+    "Past tasks",
+    "Riwayat tugas"
+  ],
+  "CRM 系统文档": [
+    "CRM documentation",
+    "Dokumentasi CRM"
+  ],
+  "聚焦客户获客、销售跟进与运营。系统说明解释逻辑，操作指南说明做法。": [
+    "Customer acquisition, sales follow-up and operations. Concepts explain why; instructions explain how.",
+    "Akuisisi pelanggan, tindak lanjut penjualan, dan operasional. Konsep menjelaskan alasan; panduan menjelaskan cara."
+  ],
+  "打开客户工作列表": [
+    "Open customer worklist",
+    "Buka daftar pelanggan"
+  ],
+  "打开营销活动": [
+    "Open campaigns",
+    "Buka kampanye"
+  ],
+  "章节链接不存在，请从目录选择章节。": [
+    "Chapter link not found. Choose a chapter from the directory.",
+    "Tautan bab tidak ditemukan. Pilih bab dari daftar isi."
+  ],
+  "章节目录与搜索": [
+    "Chapters and search",
+    "Bab dan pencarian"
+  ],
+  "文档章节": [
+    "Guide chapters",
+    "Bab panduan"
+  ],
+  "搜索两部分、规则与字段": [
+    "Search both parts, rules and fields",
+    "Cari kedua bagian, aturan, dan kolom"
+  ],
+  "清除搜索": [
+    "Clear search",
+    "Hapus pencarian"
+  ],
+  "查看搜索结果": [
+    "View search results",
+    "Lihat hasil pencarian"
+  ],
+  "系统说明": [
+    "System explanation",
+    "Penjelasan sistem"
+  ],
+  "操作指南": [
+    "Operating guide",
+    "Panduan operasi"
+  ],
+  "章节正文": [
+    "Chapter content",
+    "Isi bab"
+  ],
+  "搜索结果": [
+    "Search results",
+    "Hasil pencarian"
+  ],
+  "没有匹配的章节": [
+    "No matching chapters",
+    "Tidak ada bab yang cocok"
+  ],
+  "AI咨询：回复保存与失败处理": [
+    "AI consultation: saved replies and failures",
+    "Konsultasi AI: balasan tersimpan dan kegagalan"
+  ],
+  "测评：依据类型与适用范围": [
+    "Assessment: sources and limits",
+    "Asesmen: sumber dan batasan"
+  ],
+  "规则细节与例外查阅": [
+    "Detailed rules and examples",
+    "Aturan rinci dan contoh"
+  ],
+  "技术实现与限制": [
+    "Implementation and limitations",
+    "Implementasi dan batasan"
+  ],
+  "实现依据": [
+    "Implementation references",
+    "Referensi implementasi"
+  ],
+  "CRM 契约与存储字段": [
+    "CRM contracts and storage fields",
+    "Kontrak dan kolom penyimpanan CRM"
+  ],
+  "通过目录搜索定位字段，展开对象查看字段。类型及内部取值保留代码标识；可选表示声明允许缺省／空值，不表示可跳过必需业务步骤。嵌套 JSON 使用点路径。说明供理解，具体契约以源码声明为准。": [
+    "Use the chapter-directory search to locate fields. Expand an object to read its fields. Types and internal values remain code identifiers; optional means omission/null in the declaration, not permission to skip a required business step. Nested JSON properties use dotted paths. Descriptions are guidance; the source declaration defines the contract.",
+    "Gunakan pencarian daftar isi untuk menemukan kolom. Buka objek untuk membaca kolomnya. Tipe dan nilai internal tetap berupa kode; opsional berarti kosong/null dalam deklarasi, bukan izin melewati langkah wajib. Properti JSON bertingkat memakai jalur bertitik. Deskripsi adalah panduan; deklarasi sumber menentukan kontrak."
+  ],
+  "存储": [
+    "Storage",
+    "Penyimpanan"
+  ],
+  "契约": [
+    "Contract",
+    "Kontrak"
+  ],
+  "可滚动字段表": [
+    "Scrollable field table",
+    "Tabel kolom dapat digeser"
+  ],
+  "字段与含义": [
+    "Field and meaning",
+    "Kolom dan makna"
+  ],
+  "类型／取值": [
+    "Type / values",
+    "Tipe / nilai"
+  ],
+  "可选": [
+    "Optional",
+    "Opsional"
+  ],
+  "声明来源": [
+    "Declaration source",
+    "Sumber deklarasi"
+  ],
+  "相关操作说明": [
+    "Related operating instructions",
+    "Petunjuk operasi terkait"
+  ],
+  "操作细节与例外查阅": [
+    "Details and exceptions",
+    "Rincian dan pengecualian"
+  ],
+  "相关系统概念": [
+    "Related system concepts",
+    "Konsep sistem terkait"
+  ],
+  "上一章": [
+    "Previous chapter",
+    "Bab sebelumnya"
+  ],
+  "打印／PDF 导出当前章节。": [
+    "Print / PDF exports the current chapter.",
+    "Cetak / PDF mengekspor bab saat ini."
+  ],
+  "下一章": [
+    "Next chapter",
+    "Bab berikutnya"
+  ],
+  "处理此任务": [
+    "Process this task",
+    "Proses tugas ini"
+  ],
+  "记录联系": [
+    "Record contact",
+    "Catat kontak"
+  ],
+  "补充信息（必填）": [
+    "Additional information (required)",
+    "Informasi tambahan (wajib)"
+  ],
+  "替代原因（必填）": [
+    "Replacement reason (required)",
+    "Alasan penggantian (wajib)"
+  ],
+  "复查依据（必填）": [
+    "Review reason (required)",
+    "Alasan peninjauan (wajib)"
+  ],
+  "使用本次记录": [
+    "Use this record",
+    "Gunakan catatan ini"
+  ],
+  "返回": [
+    "Back",
+    "Kembali"
+  ],
+  "查看背景": [
+    "View background",
+    "Lihat latar belakang"
+  ],
+  "已关联客户消息": [
+    "Linked customer message",
+    "Pesan pelanggan terkait"
+  ],
+  "最近记录": [
+    "Latest saved note",
+    "Catatan tersimpan terakhir"
+  ],
+  "本次结果": [
+    "This result",
+    "Hasil kali ini"
+  ],
+  "记录类型": [
+    "Record type",
+    "Jenis catatan"
+  ],
+  "记录工作结果": [
+    "Record work result",
+    "Catat hasil pekerjaan"
+  ],
+  "补记客户主动回复": [
+    "Record an external customer reply",
+    "Catat balasan pelanggan di luar sistem"
+  ],
+  "客户已在CRM之外回复，须记录渠道与依据": [
+    "Customer replied outside CRM; record the channel and evidence",
+    "Pelanggan membalas di luar CRM; catat kanal dan buktinya"
+  ],
+  "调整原因（必填）": [
+    "Reason for adjustment (required)",
+    "Alasan perubahan (wajib)"
+  ],
+  "工作结果（必填）": [
+    "Work result (required)",
+    "Hasil pekerjaan (wajib)"
+  ],
+  "沟通记录（必填）": [
+    "Contact summary (required)",
+    "Ringkasan kontak (wajib)"
+  ],
+  "本次购买信号": [
+    "New buying signal",
+    "Sinyal pembelian baru"
+  ],
+  "未观察到新信号": [
+    "No new signal",
+    "Tidak ada sinyal baru"
+  ],
+  "任务结果": [
+    "Task outcome",
+    "Hasil tugas"
+  ],
+  "本次联系结果本身不能证明任务已完成；未完成的工作请保持待处理，或说明原因后取消／替代。": [
+    "This contact outcome alone does not prove the task is finished. Keep unfinished work open or use cancellation/replacement with a reason.",
+    "Hasil kontak ini saja tidak membuktikan tugas selesai. Biarkan pekerjaan yang belum selesai terbuka atau batalkan/ganti dengan alasan."
+  ],
+  "此任务处理结果": [
+    "Outcome for this task",
+    "Hasil untuk tugas ini"
+  ],
+  "保持待处理": [
+    "Keep task open",
+    "Biarkan tugas terbuka"
+  ],
+  "完成此任务": [
+    "Complete this task",
+    "Selesaikan tugas ini"
+  ],
+  "请求依据尚不可用，请重新打开表单后再完成任务。": [
+    "Request information unavailable. Reopen this form before completing the task.",
+    "Informasi permintaan tidak tersedia. Buka kembali formulir sebelum menyelesaikan tugas."
+  ],
+  "确认已处理的客户请求": [
+    "Confirm requests handled",
+    "Konfirmasi permintaan yang ditangani"
+  ],
+  "本次已处理的请求（选填）": [
+    "Requests handled this time (optional)",
+    "Permintaan yang ditangani kali ini (opsional)"
+  ],
+  "下一步安排": [
+    "Next arrangement",
+    "Pengaturan berikutnya"
+  ],
+  "保存后如何继续": [
+    "After saving",
+    "Setelah menyimpan"
+  ],
+  "请选择后续安排": [
+    "Choose the next arrangement",
+    "Pilih pengaturan berikutnya"
+  ],
+  "不调整安排，仅保存记录": [
+    "Record only; keep arrangements",
+    "Catat saja; pertahankan pengaturan"
+  ],
+  "继续已有任务": [
+    "Continue existing tasks",
+    "Lanjutkan tugas yang ada"
+  ],
+  "新增独立任务": [
+    "Add a new task",
+    "Tambah tugas baru"
+  ],
+  "调整已有任务": [
+    "Adjust an existing task",
+    "Ubah tugas yang ada"
+  ],
+  "安排稍后复查": [
+    "Schedule a review",
+    "Jadwalkan peninjauan"
+  ],
+  "客户已成交或关闭": [
+    "Customer closed",
+    "Pelanggan ditutup"
+  ],
+  "与客户明确约定：复查时间前不主动联系": [
+    "Customer agreed: do not initiate contact before this review time",
+    "Disepakati dengan pelanggan: jangan menghubungi sebelum waktu tinjauan ini"
+  ],
+  "调整方式": [
+    "Adjustment",
+    "Perubahan"
+  ],
+  "请选择操作": [
+    "Choose an operation",
+    "Pilih tindakan"
+  ],
+  "补充信息": [
+    "Add task information",
+    "Tambah informasi tugas"
+  ],
+  "替代": [
+    "Replace task",
+    "Ganti tugas"
+  ],
+  "目标任务": [
+    "Target task",
+    "Tugas tujuan"
+  ],
+  "请选择任务": [
+    "Choose a task",
+    "Pilih tugas"
+  ],
+  "取消选定的原任务，并建立替代任务。": [
+    "Cancel the selected old task and create its replacement.",
+    "Batalkan tugas lama yang dipilih dan buat penggantinya."
+  ],
+  "下个工作日开始": [
+    "Next working day start",
+    "Awal hari kerja berikutnya"
+  ],
+  "复查时间（必填）": [
+    "Review time (required)",
+    "Waktu peninjauan (wajib)"
+  ],
+  "调整原复查约定（选填）": [
+    "Change the previous review agreement (optional)",
+    "Ubah kesepakatan tinjauan sebelumnya (opsional)"
+  ],
+  "明确结束原复查约定": [
+    "Explicitly end the previous review agreement",
+    "Akhiri kesepakatan tinjauan sebelumnya secara tegas"
+  ],
+  "本次已实际答复所关联的客户问题": [
+    "This customer question was actually answered",
+    "Pertanyaan pelanggan ini benar-benar telah dijawab"
+  ],
+  "停止联系原因（必填）": [
+    "Reason for stopping contact (required)",
+    "Alasan menghentikan kontak (wajib)"
+  ],
+  "联系安排变更原因（必填）": [
+    "Arrangement change reason (required)",
+    "Alasan perubahan pengaturan (wajib)"
+  ],
+  "保存一条工作记录": [
+    "Save one work record",
+    "Simpan satu catatan pekerjaan"
+  ],
+  "保存一条联系记录": [
+    "Save one contact record",
+    "Simpan satu catatan kontak"
+  ],
+  "尚未选择任务结果": [
+    "Task outcome not selected",
+    "Hasil tugas belum dipilih"
+  ],
+  "完成当前任务": [
+    "Complete this task",
+    "Selesaikan tugas ini"
+  ],
+  "不完成任务": [
+    "No tasks completed",
+    "Tidak ada tugas diselesaikan"
+  ],
+  "保存记录": [
+    "Save record",
+    "Simpan catatan"
+  ],
+  "保存并完成此任务": [
+    "Save and complete this task",
+    "Simpan dan selesaikan tugas ini"
+  ],
+  "保存进展，保持待处理": [
+    "Save progress; keep task open",
+    "Simpan progres; tugas tetap terbuka"
+  ],
+  "客户操作": [
+    "Customer actions",
+    "Tindakan pelanggan"
+  ],
+  "对话": [
+    "Conversation",
+    "Percakapan"
+  ],
+  "水平未知": [
+    "Level unknown",
+    "Level belum diketahui"
+  ],
+  "在职人士": [
+    "Working professional",
+    "Profesional yang bekerja"
+  ],
+  "不确定": [
+    "Not sure",
+    "Tidak yakin"
+  ],
+  "线下面授": [
+    "On campus",
+    "Di kampus"
+  ],
+  "线上直播": [
+    "Online",
+    "Daring"
+  ],
+  "联系渠道": [
+    "Contact channel",
+    "Saluran kontak"
+  ],
+  "本次记录的阶段事实": [
+    "Stage facts recorded",
+    "Fakta tahap yang dicatat"
+  ],
+  "销售阶段变更": [
+    "Sales stage change",
+    "Perubahan tahap"
+  ],
+  "新增购买信号": [
+    "New buying signals",
+    "Sinyal niat baru"
+  ],
+  "已停止主动联系": [
+    "Proactive contact stopped",
+    "Kontak proaktif dihentikan"
+  ],
+  "已改约": [
+    "Rescheduled",
+    "Dijadwalkan ulang"
+  ],
+  "首次跟进处理结果": [
+    "First-follow-up result",
+    "Hasil tindak lanjut pertama"
+  ],
+  "主要学习目标": [
+    "Main learning goal",
+    "Tujuan belajar utama"
+  ],
+  "其他学习目标": [
+    "Other learning goals",
+    "Tujuan belajar lain"
+  ],
+  "目标HSK等级": [
+    "Target HSK level",
+    "Target tingkat HSK"
+  ],
+  "考试计划": [
+    "Exam plan",
+    "Rencana ujian"
+  ],
+  "希望开始时间": [
+    "Planned start",
+    "Rencana mulai"
+  ],
+  "可上课时段": [
+    "Available class times",
+    "Waktu tersedia"
+  ],
+  "预算下限": [
+    "Minimum budget",
+    "Anggaran minimum"
+  ],
+  "预算上限": [
+    "Maximum budget",
+    "Anggaran maksimum"
+  ],
+  "预算币种": [
+    "Budget currency",
+    "Mata uang anggaran"
+  ],
+  "预算周期": [
+    "Budget period",
+    "Periode anggaran"
+  ],
+  "主要顾虑": [
+    "Main concerns",
+    "Kekhawatiran utama"
+  ],
+  "首选联系渠道": [
+    "Preferred contact channel",
+    "Saluran kontak pilihan"
+  ],
+  "销售联系记录": [
+    "Sales contact record",
+    "Catatan kontak sales"
+  ],
+  "销售直接编辑": [
+    "Direct sales edit",
+    "Edit langsung sales"
+  ],
+  "既有资料": [
+    "Existing profile",
+    "Profil sebelumnya"
+  ],
+  "客户原文（AI提取）": [
+    "Customer text (AI-assisted)",
+    "Teks pelanggan (dibantu AI)"
+  ],
+  "销售原文（AI提取）": [
+    "Sales text (AI-assisted)",
+    "Teks sales (dibantu AI)"
+  ],
+  "既有资料，来源待补充": [
+    "Existing profile; source unavailable",
+    "Profil sebelumnya; sumber belum tersedia"
+  ],
+  "已明确清空": [
+    "Explicitly cleared",
+    "Dikosongkan secara eksplisit"
+  ],
+  "未填写": [
+    "Not provided",
+    "Belum diisi"
+  ],
+  "需求与条件": [
+    "Needs and availability",
+    "Kebutuhan dan ketersediaan"
+  ],
+  "沟通与进展": [
+    "Communication and progress",
+    "Komunikasi dan perkembangan"
+  ],
+  "约定与变化": [
+    "Agreements and changes",
+    "Kesepakatan dan perubahan"
+  ],
+  "学习目标与计划": [
+    "Learning goals and plans",
+    "Tujuan dan rencana belajar"
+  ],
+  "学习目的、目标等级、考试计划、希望开始时间": [
+    "Purpose, target level, exam plan, intended start",
+    "Tujuan, target tingkat, rencana ujian, rencana mulai"
+  ],
+  "客户计划明年3月参加HSK 3考试，希望下个月开始学习。": [
+    "The customer plans to take HSK 3 next March and wants to start next month.",
+    "Pelanggan berencana mengikuti HSK 3 Maret tahun depan dan ingin mulai bulan depan."
+  ],
+  "上课条件": [
+    "Class availability",
+    "Ketersediaan kelas"
+  ],
+  "城市、授课方式、可上课时段": [
+    "City, format and availability",
+    "Kota, format, dan waktu tersedia"
+  ],
+  "客户目前住万隆，只能周六晚上参加线上课。": [
+    "The customer lives in Bandung and can only attend online on Saturday evenings.",
+    "Pelanggan tinggal di Bandung dan hanya dapat mengikuti kelas daring Sabtu malam."
+  ],
+  "预算与顾虑": [
+    "Budget and concerns",
+    "Anggaran dan kekhawatiran"
+  ],
+  "预算金额、币种、计价周期和明确表达的顾虑": [
+    "Amount, currency, pricing period and stated concerns",
+    "Jumlah, mata uang, periode biaya, dan kekhawatiran yang disampaikan"
+  ],
+  "客户每月预算不超过150万印尼盾，担心加班影响出勤。": [
+    "The monthly budget is at most IDR 1.5 million; overtime may affect attendance.",
+    "Anggaran bulanan maksimal Rp1,5 juta; lembur dikhawatirkan mengganggu kehadiran."
+  ],
+  "沟通偏好": [
+    "Communication preferences",
+    "Preferensi komunikasi"
+  ],
+  "首选沟通语言、首选联系渠道": [
+    "Preferred language and contact channel",
+    "Bahasa dan saluran kontak pilihan"
+  ],
+  "客户希望用印尼语沟通，白天不方便接电话，可以发WhatsApp。": [
+    "The customer prefers Indonesian and WhatsApp, and cannot take calls during the day.",
+    "Pelanggan memilih bahasa Indonesia dan WhatsApp serta tidak dapat menerima telepon pada siang hari."
+  ],
+  "阶段相关事实": [
+    "Stage-related facts",
+    "Fakta terkait tahap"
+  ],
+  "咨询、测评、试听、报名或付款的实际进展": [
+    "Actual consultation, assessment, trial, enrollment or payment progress",
+    "Perkembangan nyata konsultasi, asesmen, kelas percobaan, pendaftaran, atau pembayaran"
+  ],
+  "客户询问报名步骤，尚未提交报名信息，也未付款；不能记为已报名。": [
+    "The customer asked about enrollment steps but has not submitted details or paid; this is not confirmed enrollment.",
+    "Pelanggan menanyakan langkah pendaftaran, tetapi belum menyerahkan data atau membayar; belum dapat dicatat sebagai sudah mendaftar."
+  ],
+  "客户具体询问或表达了什么": [
+    "What the customer specifically asked or expressed",
+    "Pertanyaan atau pernyataan spesifik pelanggan"
+  ],
+  "客户主动询问分期方式，并希望查看周六班时间表。": [
+    "The customer asked about installments and requested the Saturday timetable.",
+    "Pelanggan menanyakan cicilan dan meminta jadwal kelas Sabtu."
+  ],
+  "销售行动与结果": [
+    "Sales actions and outcomes",
+    "Tindakan sales dan hasil"
+  ],
+  "你实际做了什么，客户如何回应": [
+    "What you did and how the customer responded",
+    "Tindakan Anda dan respons pelanggan"
+  ],
+  "我已发送现行价目表；客户回复会和家人讨论。发送资料不是客户购买信号。": [
+    "I sent the current price list; the customer will discuss it with family. Sending information is not a customer buying signal.",
+    "Saya mengirim daftar harga terbaru; pelanggan akan berdiskusi dengan keluarga. Pengiriman informasi bukan sinyal pembelian pelanggan."
+  ],
+  "双方明确同意的事项与时间": [
+    "What both parties agreed and when",
+    "Hal dan waktu yang disepakati kedua pihak"
+  ],
+  "双方约定周五由我通过WhatsApp回复排期查询结果；请在客户约定中确认日期。": [
+    "We agreed that I will send the scheduling result via WhatsApp on Friday. Confirm the date under customer agreements.",
+    "Kami sepakat saya mengirim hasil pengecekan jadwal melalui WhatsApp Jumat. Pastikan tanggal pada kesepakatan pelanggan."
+  ],
+  "信息变化或纠正": [
+    "Changes or corrections",
+    "Perubahan atau koreksi"
+  ],
+  "变化前后、发生时间、原记录误记之处": [
+    "Before and after, actual time and errors in the original",
+    "Sebelum dan sesudah, waktu kejadian, serta kesalahan catatan awal"
+  ],
+  "客户原计划下个月开始，现在改为明年1月；上一条150万是每月预算，不是整门课程预算。": [
+    "The start moved from next month to next January. The earlier 1.5 million was a monthly budget, not a whole-course budget.",
+    "Rencana mulai berubah dari bulan depan ke Januari tahun depan. Angka 1,5 juta sebelumnya adalah anggaran bulanan, bukan seluruh kursus."
+  ],
+  "资料新增": [
+    "Profile additions",
+    "Informasi profil baru"
+  ],
+  "资料变化": [
+    "Profile changes",
+    "Perubahan profil"
+  ],
+  "信息差异": [
+    "Different information",
+    "Perbedaan informasi"
+  ],
+  "当前资料依据": [
+    "Current profile evidence",
+    "Bukti profil saat ini"
+  ],
+  "多份来源": [
+    "Multiple sources",
+    "Beberapa sumber"
+  ],
+  "资料编辑": [
+    "Profile edit",
+    "Edit profil"
+  ],
+  "学习顾虑": [
+    "Learning concerns",
+    "Kekhawatiran belajar"
+  ],
+  "希望开始": [
+    "Planned start",
+    "Rencana mulai"
+  ],
+  "现居城市": [
+    "Current city",
+    "Kota tempat tinggal"
+  ],
+  "记录": [
+    "recorded",
+    "mencatat"
+  ],
+  "· 录入": [
+    "· Recorded",
+    "· Dicatat"
+  ],
+  "修正": [
+    "Correction",
+    "Koreksi"
+  ],
+  "补充": [
+    "Supplement",
+    "Tambahan"
+  ],
+  "尚无阶段调整记录。": [
+    "No stage changes recorded.",
+    "Belum ada perubahan tahap."
+  ],
+  "查看关联依据（": [
+    "Linked evidence (",
+    "Bukti terkait ("
+  ],
+  "正在加载阶段历史…": [
+    "Loading stage history…",
+    "Memuat riwayat tahap…"
+  ],
+  "此依据后有补充／修正；阶段未自动改变，请结合新信息核对。": [
+    "This evidence has a supplement or correction. The stage did not change automatically; review the new information.",
+    "Bukti ini memiliki tambahan atau koreksi. Tahap tidak berubah otomatis; periksa informasi baru."
+  ],
+  "生效：": [
+    "Effective: ",
+    "Berlaku: "
+  ],
+  "阶段历史暂不可用。": [
+    "Stage history unavailable.",
+    "Riwayat tahap tidak tersedia."
+  ],
+  "阶段历史（": [
+    "Stage history (",
+    "Riwayat tahap ("
+  ],
+  "已发生的关键事件": [
+    "Established milestones",
+    "Tonggak fakta terkonfirmasi"
+  ],
+  "事实里程碑": [
+    "Fact milestones",
+    "Tonggak fakta"
+  ],
+  "事实里程碑暂不可用。": [
+    "Milestones unavailable.",
+    "Tonggak fakta tidak tersedia."
+  ],
+  "正在加载事实里程碑…": [
+    "Loading milestones…",
+    "Memuat tonggak fakta…"
+  ],
+  "暂无已成立的事实里程碑": [
+    "No established milestones",
+    "Belum ada tonggak fakta terkonfirmasi"
+  ],
+  "实际发生时间未知": [
+    "Occurrence time unknown",
+    "Waktu kejadian tidak diketahui"
+  ],
+  "里程碑依据": [
+    "Milestone evidence",
+    "Bukti tonggak"
+  ],
+  "历次里程碑记录": [
+    "Milestone history",
+    "Riwayat tonggak"
+  ],
+  "最近已知时间": [
+    "Latest known time",
+    "Waktu terakhir yang diketahui"
+  ],
+  "确认记录": [
+    "Confirmation records: ",
+    "Catatan konfirmasi: "
+  ],
+  "次数表示报名确认记录，不代表不同课程、订单或付款次数。": [
+    "The count represents enrollment confirmation records, not separate courses, orders or payments.",
+    "Jumlah menunjukkan catatan konfirmasi pendaftaran, bukan kursus, pesanan, atau pembayaran terpisah."
+  ],
+  "该次确认仅填写了事实说明，说明已保留在上方，未补造关联记录。": [
+    "Only the factual explanation was provided. It is retained above; no linked evidence was invented.",
+    "Hanya penjelasan fakta yang diberikan dan disimpan di atas; tidak ada bukti terkait yang dibuat-buat."
+  ],
+  "完成时间（设备上报）": [
+    "Completion time (device-reported)",
+    "Waktu selesai (dilaporkan perangkat)"
+  ],
+  "原互动发生时间": [
+    "Original interaction time",
+    "Waktu interaksi asli"
+  ],
+  "依据记录时间（性质未注明）": [
+    "Evidence time (basis unspecified)",
+    "Waktu bukti (jenis tidak dijelaskan)"
+  ],
+  "真实测评记录": [
+    "Saved assessment record",
+    "Catatan asesmen tersimpan"
+  ],
+  "快速／历史测评": [
+    "Quick / historical assessment",
+    "Asesmen cepat / historis"
+  ],
+  "满分未知": [
+    "Maximum unknown",
+    "Nilai maksimum tidak diketahui"
+  ],
+  "接收：": [
+    "Received: ",
+    "Diterima: "
+  ],
+  "录入：": [
+    "Recorded: ",
+    "Dicatat: "
+  ],
+  "依据": [
+    "Evidence",
+    "Bukti"
+  ],
+  "正式课程报名确认": [
+    "Course enrollment confirmed",
+    "Pendaftaran kursus dikonfirmasi"
+  ],
+  "报名确认（对象未注明）": [
+    "Enrollment confirmed (scope unspecified)",
+    "Pendaftaran dikonfirmasi (cakupan belum jelas)"
+  ],
+  "* 为必填项": [
+    "* Required fields",
+    "* Kolom wajib"
+  ],
+  "”，未自动映射。请选择符合实际的新阶段并明确保存。": [
+    "”; no automatic mapping. Choose the correct current stage and save.",
+    "”; tidak dipetakan otomatis. Pilih tahap yang sesuai dan simpan."
+  ],
+  "保留草稿并采用已核对的最新基准": [
+    "Keep draft and use the reviewed latest baseline",
+    "Pertahankan draf dan gunakan acuan terbaru yang telah diperiksa"
+  ],
+  "关联原始依据（已选": [
+    "Link original evidence (selected ",
+    "Tautkan bukti asli (dipilih "
+  ],
+  "可关联原始记录，也可填写具体事实说明；无需重复抄写已关联原文。": [
+    "Link original records or explain the specific facts; linked originals need not be copied again.",
+    "Tautkan catatan asli atau jelaskan fakta spesifik; teks asli yang tertaut tidak perlu disalin ulang."
+  ],
+  "当前销售阶段": [
+    "Current sales stage",
+    "Tahap penjualan saat ini"
+  ],
+  "旧阶段保留为“": [
+    "Original stage retained as “",
+    "Tahap lama dipertahankan sebagai “"
+  ],
+  "服务端阶段已变化，草稿仍保留。最新：": [
+    "The saved stage changed. Your draft is retained. Latest: ",
+    "Tahap tersimpan berubah. Draf tetap disimpan. Terbaru: "
+  ],
+  "没有可关联的原始记录，请填写具体事实说明。": [
+    "No original records available. Describe the specific facts.",
+    "Tidak ada catatan asli untuk ditautkan. Jelaskan fakta spesifik."
+  ],
+  "确认正式课程报名已成立（不含试听预约）；依据须说明具体课程及确认事实 *": [
+    "Confirm enrollment in a formal course (excluding trial bookings); identify the course and confirmation evidence *",
+    "Konfirmasi pendaftaran kursus resmi (bukan kelas percobaan); sebutkan kursus dan bukti konfirmasi *"
+  ],
+  "选择新阶段 *": [
+    "Select new stage *",
+    "Pilih tahap baru *"
+  ],
+  "重新加载": [
+    "Reload",
+    "Muat ulang"
+  ],
+  "重新加载依据": [
+    "Reload evidence",
+    "Muat ulang bukti"
+  ],
+  "（当前）": [
+    " (current)",
+    " (saat ini)"
+  ],
+  "，最多5条）": [
+    ", up to 5)",
+    ", maksimal 5)"
+  ],
+  "另有": [
+    "Also ",
+    "Ada juga "
+  ],
+  "在对话中查看原文与上下文": [
+    "View original and context in Conversations",
+    "Lihat teks asli dan konteks pada Percakapan"
+  ],
+  "基于本次记录更新阶段": [
+    "Update stage using this record",
+    "Perbarui tahap berdasarkan catatan ini"
+  ],
+  "客户明确诉求": [
+    "Explicit customer request",
+    "Permintaan jelas pelanggan"
+  ],
+  "客户约定历史 ·": [
+    "Agreement history ·",
+    "Riwayat kesepakatan ·"
+  ],
+  "客户请求信息暂不可用": [
+    "Customer requests unavailable",
+    "Permintaan pelanggan tidak tersedia"
+  ],
+  "当前没有额外变化提示；未记录的信息不代表客户没有相关需求。": [
+    "No additional changes. Missing information does not mean the customer has no such need.",
+    "Tidak ada perubahan tambahan. Informasi yang belum dicatat bukan berarti pelanggan tidak memiliki kebutuhan tersebut."
+  ],
+  "按原始互动追溯": [
+    "Trace original interactions",
+    "Telusuri interaksi asli"
+  ],
+  "有效客户约定": [
+    "Active customer agreements",
+    "Kesepakatan pelanggan aktif"
+  ],
+  "查看客户诉求的原文依据": [
+    "View original customer request",
+    "Lihat permintaan asli pelanggan"
+  ],
+  "查看本次记录": [
+    "View this record",
+    "Lihat catatan ini"
+  ],
+  "查看这次有效沟通的完整记录": [
+    "View full conversation record",
+    "Lihat catatan komunikasi lengkap"
+  ],
+  "查看这组资料的共同原文依据": [
+    "View shared original profile evidence",
+    "Lihat bukti asli bersama untuk profil ini"
+  ],
+  "正在读取客户请求…": [
+    "Loading customer requests…",
+    "Memuat permintaan pelanggan…"
+  ],
+  "销售记录 · ": [
+    "Sales record · ",
+    "Catatan sales · "
+  ],
+  "询问价格": [
+    "Asked about price",
+    "Menanyakan harga"
+  ],
+  "询问排期": [
+    "Asked about schedule",
+    "Menanyakan jadwal"
+  ],
+  "表达测评意向": [
+    "Assessment interest",
+    "Minat asesmen"
+  ],
+  "表达试听意向": [
+    "Trial interest",
+    "Minat kelas percobaan"
+  ],
+  "表达报名意向": [
+    "Enrollment interest",
+    "Minat pendaftaran"
+  ],
+  "持续重要信息": [
+    "Ongoing important information",
+    "Informasi penting berkelanjutan"
+  ],
+  "由AI根据关联原文整理": [
+    "AI-assisted, based on linked original text",
+    "Disusun dengan AI berdasarkan teks asli terkait"
+  ],
+  "本项包含AI根据关联原文整理的信息及人工记录": [
+    "Includes AI-assisted findings and staff records",
+    "Memuat hasil olahan AI dan catatan staf"
+  ],
+  "近7天动态": [
+    "Activity in the last 7 days",
+    "Aktivitas 7 hari terakhir"
+  ]
+}

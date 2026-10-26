@@ -36,6 +36,8 @@ export function CrmSelect({
   ...props
 }: {
   children: ReactNode;
+  required?: boolean;
+  controlId?: string;
   label: string;
   value: string;
   onChange: (value: string) => void;

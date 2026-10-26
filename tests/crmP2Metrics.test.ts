@@ -33,144 +33,6 @@ const base = (id: string, extra: any = {}) => ({
   attention: { tasks: [] },
   ...extra,
 });
-test("process quality separates first response, current overdue and completed late without altering source data", () => {
-  const rows = [
-    base("a", {
-      owner: "",
-      ownerChangedAt: "2026-10-14T10:00:00Z",
-      followUpLogs: [
-        {
-          id: "try",
-          timestamp: "2026-10-14T01:00:00Z",
-          connectStatus: "No Response",
-        },
-        {
-          id: "reply",
-          timestamp: "2026-10-14T02:00:00Z",
-          connectStatus: "Connected",
-          completeTaskIds: ["old"],
-        },
-      ],
-      _taskHistory: [
-        { id: "old", status: "completed", dueAt: "2026-10-14T01:30:00Z" },
-      ],
-    }),
-    base("b", {
-      followUpLogs: [
-        {
-          id: "reply2",
-          timestamp: "2026-10-14T04:00:00Z",
-          connectStatus: "Connected",
-        },
-      ],
-      attention: {
-        latest: { type: "task.overdue", at: "2026-10-13" },
-        tasks: [
-          { id: "future", status: "open", dueAt: "2026-10-15T01:00:00Z" },
-        ],
-      },
-    }),
-    base("c", {
-      attention: {
-        tasks: [
-          { id: "late", status: "open", dueAt: "2026-10-14T11:00:00Z" },
-          {
-            id: "hold",
-            status: "migration_hold",
-            dueAt: "1970-01-01T00:00:00Z",
-          },
-        ],
-      },
-    }),
-  ];
-  const before = JSON.stringify(rows),
-    m = processMetrics(rows, now);
-  assert.equal(m.firstResponseMedianMs, 3 * 3600000);
-  assert.equal(m.firstContactMedianMs, 2.5 * 3600000);
-  assert.equal(m.firstResponseSamples, 2);
-  assert.equal(m.unassigned, 1);
-  assert.equal(m.longestUnassignedMs, 2 * 3600000);
-  assert.equal(m.overdueCustomers, 1);
-  assert.equal(m.overdueTasks, 1);
-  assert.equal(m.lateCompletedTasks, 1);
-  assert.equal(m.noNext, 1);
-  assert.equal(m.engagedCustomers, 2);
-  assert.equal(m.attempts, 3);
-  assert.equal(m.tasksUnknown, 1);
-  assert.equal(JSON.stringify(rows), before);
-});
-test("unknown evidence is not zero duration, no tasks, success or an inferred registration timestamp", () => {
-  const m = processMetrics(
-    [
-      base("unknown", {
-        owner: "",
-        stageUpdatedAt: "1970-01-01T00:00:00Z",
-        submittedAt: "",
-        attention: undefined,
-        followUpLogs: [
-          {
-            connectStatus: "Connected",
-            timestamp: "2026-10-13",
-            timestampKnown: false,
-          },
-          {
-            connectStatus: "Connected",
-            recordKind: "closure",
-            timestamp: "2026-10-13",
-          },
-        ],
-      }),
-      base("future", {
-        stageUpdatedAt: "2030-01-01",
-        followUpLogs: [{ connectStatus: "Connected", timestamp: "2030-01-01" }],
-      }),
-    ],
-    now,
-  );
-  assert.equal(m.firstResponseMedianMs, null);
-  assert.equal(m.responseUnknown, 2);
-  assert.equal(m.engagedCustomers, 0);
-  assert.equal(m.longestUnassignedMs, null);
-  assert.equal(m.unassignedTimeUnknown, 1);
-  assert.equal(m.tasksUnknown, 1);
-  assert.equal(m.stageTimeUnknown, 2);
-  assert.equal(m.noNext, 1); // only the customer with a known empty task collection
-});
-test("process metrics use exactly the filtered permission-safe cohort, not all source rows", () => {
-  const filtered = filterAndSummarize(
-    [
-      base("mine"),
-      base("other", { owner: "Wigar" }),
-      base("unassigned", { owner: "" }),
-    ],
-    { ...defaultLeadFilters("own"), workScope: "all" },
-    "Fadhil",
-    "Asia/Jakarta",
-    now,
-  );
-  const m = processMetrics(filtered.leads, now);
-  assert.equal(m.customers, 1);
-  assert.deepEqual(
-    m.owners.map((r) => r.owner),
-    ["Fadhil"],
-  );
-});
-test("closed or stopped customers do not inflate no-arrangement and active stage aging", () => {
-  const m = processMetrics(
-    [
-      base("enrolled", {
-        currentStage: "Enrolled",
-        stageUpdatedAt: "2020-01-01",
-      }),
-      base("lost", { currentStage: "Lost" }),
-      base("stop", { contactArrangement: { state: "stopped" } }),
-    ],
-    now,
-  );
-  assert.equal(m.noNext, 0);
-  assert.equal(m.stageSamples, 1);
-  assert.equal(m.stageMedianMs, 6 * 3600000);
-});
 const campaign = {
   id: "p2-a",
   code: "p2-a",
@@ -250,14 +112,14 @@ test("P2 process and marketing dashboards render all three languages while retai
   const name = "刘 Alice";
   const metrics = processMetrics([base("a")], now);
   for (const [lang, processLabel, campaignLabel, empty] of [
-    ["en", "First human contact record", "Enrollment share", "Not calculable"],
+    ["en", "Current customers", "Enrollment share", "Not calculable"],
     [
       "id",
-      "Catatan kontak staf pertama",
+      "Pelanggan saat ini",
       "Proporsi pendaftaran kelas",
       "Tidak dapat dihitung",
     ],
-    ["zh", "首条人工联系记录", "登记客户报名占比", "不可计算"],
+    ["zh", "当前客户", "登记客户报名占比", "不可计算"],
   ] as const) {
     const process = renderToStaticMarkup(
       React.createElement(CrmProcessOverview, {
@@ -285,4 +147,16 @@ test("P2 process and marketing dashboards render all three languages while retai
       assert.ok(!/[\u4e00-\u9fff]/.test(marketing));
     }
   }
+});
+
+test('first-attempt timeliness excludes invalid and exception cases and separates unknown deadlines and pending requests',()=>{
+ const rows=[
+ base('timely',{firstFollowup:{outcome:'attempted',at:'2026-10-14T01:00:00Z',dueAt:'2026-10-14T02:00:00Z'}}),
+ base('late',{firstFollowup:{outcome:'connected',at:'2026-10-14T03:00:00Z',dueAt:'2026-10-14T02:00:00Z'}}),
+ base('unknown',{firstFollowup:{outcome:'attempted',at:'2026-10-14T03:00:00Z'}}),
+ base('invalid',{firstFollowup:{outcome:'invalid_contact',at:'2026-10-14T03:00:00Z',dueAt:'2026-10-14T02:00:00Z'}}),
+ base('exception',{firstFollowup:{outcome:'exception',at:'2026-10-14T03:00:00Z',dueAt:'2026-10-14T02:00:00Z'}}),
+ base('request',{attention:{tasks:[],customerRequests:[{id:'request'}]}}),
+ ];const before=JSON.stringify(rows),m=processMetrics(rows,now);
+ assert.equal(m.firstTimed,2);assert.equal(m.firstOnTime,1);assert.equal(m.firstExceptions,2);assert.equal(m.firstTimingUnknown,1);assert.equal(JSON.stringify(rows),before);
 });

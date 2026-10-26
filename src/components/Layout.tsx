@@ -1,3 +1,4 @@
+import VisitorBoundary from './VisitorBoundary';
 import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Outlet, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
@@ -843,7 +844,7 @@ export default function Layout() {
       </main>
       <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
       <AppearanceModal isOpen={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
-      <AIChatbot />
+      <VisitorBoundary><AIChatbot /></VisitorBoundary>
       <BackToTop />
       <MobileBottomBar />
     </div>

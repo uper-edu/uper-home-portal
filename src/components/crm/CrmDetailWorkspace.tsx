@@ -1,3 +1,4 @@
+import {recordScrollMode} from '../adminScroll';
 import { campaignUi, type CampaignUiLanguage } from "../../utils/campaignI18n";
 import React, { useEffect, useRef, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -6,25 +7,34 @@ export function CrmDetailHeader({
   title,
   meta,
   actions,
+  navigation,
+  identityNavigation,
   titleId,
   titleRef,
 }: {
   title: ReactNode;
   meta: ReactNode;
   actions?: ReactNode;
+  navigation?: ReactNode;
+  identityNavigation?: {back: ReactNode; adjacent: ReactNode; label: string};
   titleId?: string;
   titleRef?: React.Ref<HTMLHeadingElement>;
 }) {
   return (
-    <header className="crm-detail-header">
+    <>
+    {navigation && <nav className="crm-detail-navigation">{navigation}</nav>}
+    <header className={identityNavigation?"crm-detail-header has-identity-navigation":"crm-detail-header"}>
       <div className="crm-detail-identity">
-        <h2 id={titleId} ref={titleRef} tabIndex={-1}>
-          {title}
-        </h2>
+        {identityNavigation?<div className="crm-detail-title-row">
+          {identityNavigation.back}
+          <h2 id={titleId} ref={titleRef} tabIndex={-1}>{title}</h2>
+          <nav className="crm-detail-record-navigation" aria-label={identityNavigation.label}>{identityNavigation.adjacent}</nav>
+        </div>:<h2 id={titleId} ref={titleRef} tabIndex={-1}>{title}</h2>}
         <div className="crm-detail-meta">{meta}</div>
       </div>
       <div className="crm-detail-actions">{actions}</div>
     </header>
+    </>
   );
 }
 export interface CrmDetailTab {
@@ -195,4 +205,9 @@ export function useCrmShellHeight() {
     return () => observer.disconnect();
   }, []);
   return height;
+}
+
+export function useRecordScrollMode(header:number){
+ const [mode,setMode]=React.useState<'independent'|'page'>('page');
+ useEffect(()=>{const measure=()=>setMode(recordScrollMode(window.innerWidth,window.innerHeight,header));measure();window.addEventListener('resize',measure);return()=>window.removeEventListener('resize',measure);},[header]);return mode;
 }

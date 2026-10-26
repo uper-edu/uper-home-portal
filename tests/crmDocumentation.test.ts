@@ -50,7 +50,7 @@ test("Ten system chapters restore concepts; ten operating groups preserve every 
   });
   assert.equal(resolveGuideAnchor("#chapter-55"), null);
 });
-test("Dictionary includes all 35 tables, nested properties, expanded enum values and latest schema fields", () => {
+test("Dictionary includes all 36 tables, nested properties, expanded enum values and latest schema fields", () => {
   execFileSync(process.execPath, [
     "scripts/crm-documentation-dictionary.mjs",
     "--check",
@@ -59,7 +59,7 @@ test("Dictionary includes all 35 tables, nested properties, expanded enum values
     new Set(
       dictionary.filter((r) => r.layer === "storage").map((r) => r.object),
     ).size,
-    35,
+    36,
   );
   assert.equal(
     dictionary.filter(
@@ -129,7 +129,7 @@ test("Published R6 requires server sequence authorization; cumulative touches do
     touchCount: 3,
   };
   assert.equal(evaluateFullLeadTier(base).tier, "Hot");
-  assert.equal(evaluateFullLeadTier({...base,noResponseReady:true}).tier,"Cold-Nurture");
+  assert.equal(evaluateFullLeadTier({...base,noResponseReady:true}).tier,"Hot");
   assert.equal(calculateLeadTier(base).tier, "Hot");
   assert.equal(evaluateFullLeadTier({ ...base, touchCount: 2 }).tier, "Hot");
   assert.equal(
@@ -196,7 +196,7 @@ test("CRM display dictionary excludes CMS and public submission objects without 
         .filter((r) => r.layer === "storage")
         .map((r) => r.object),
     ).size,
-    32,
+    33,
   );
   for (const row of crmDocumentationFields)
     assert.ok(
@@ -206,21 +206,13 @@ test("CRM display dictionary excludes CMS and public submission objects without 
     );
   assert.ok(dictionary.some((r) => r.object === "cms_media"));
 });
-test("Rule definition numbering and actual execution remain distinct", () => {
-  assert.deepEqual(
-    ruleDefinitions.map((r) => r.id),
-    ["R1", "R2", "R3", "R4", "R5", "R6"],
-  );
-  assert.deepEqual(executionRules, ["R6", "R1", "R2", "R3", "R4", "R5"]);
-  const html = renderToStaticMarkup(
-    React.createElement(CrmGuideDiagram, { kind: "classification", col: 0 }),
-  );
-  assert.deepEqual(
-    [...html.matchAll(/data-rule="(R\d)"/g)].map((match) => match[1]),
-    executionRules,
-  );
-  assert.match(html, /Stop this prediction/);
-  assert.match(html, /No → continue checking/);
+test("Published classification explains decision boundaries instead of retired automatic upgrades", () => {
+  assert.deepEqual(executionRules, ['B1','B2','B3','B4']);
+  const html=renderToStaticMarkup(React.createElement(CrmGuideDiagram,{kind:'classification',col:2}));
+  assert.match(html,/仅首次登记/);
+  assert.match(html,/不自动重算Tier/);
+  assert.match(html,/AI描述不能证明事件成立/);
+  assert.doesNotMatch(html,/提升中意向|达到阈值.*转培育/);
 });
 for (const lang of ["en", "id", "zh"] as const)
   for (const kind of [
@@ -352,7 +344,7 @@ test("Operational details remain available in their destination chapters in all 
   for (const col of [0, 1, 2]) {
     assert.ok(
       rows("followup", col).includes(
-        ["In Contact preview", "Di Pratinjau kontak", "联系预览提供"][col],
+        ["In Prepare contact", "Di Siapkan kontak", "准备联系提供"][col],
       ),
     );
     assert.ok(

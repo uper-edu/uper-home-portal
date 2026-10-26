@@ -1,3 +1,4 @@
+import {visitorScope} from '../services/visitorScope';
 import {PageMetadata} from '../components/PageMetadata';
 import { safeHskResult } from "../data/hskReportHistory";
 import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
@@ -59,12 +60,12 @@ export default function StandAloneChat() {
     const ctx = getStudentContext();
     return !ctx?.leadProfile;
   });
-  useEffect(()=>{fetch('/api/portal/session').then(r=>r.ok?r.json():Promise.reject()).then(s=>{if(!s.registered)setShowOnboardingModal(true);}).catch(()=>{});},[]);
   const [isTakingAssessment, setIsTakingAssessment] = useState(() => getChatAssessmentStatus(initialContext) === 'pending');
   useEffect(() => {
     let active=true;
+    const owner = visitorScope();
     Promise.all([restoreChat('standalone_chat').catch(()=>[]),restoreHskAttempts().catch(()=>readHskHistory(initialContext?.preferredLanguage||'en'))]).then(([rows,attempts])=>{
-      if(!active)return;
+      if(!active || owner !== visitorScope())return;
       const latest=attempts[0] || safeHskResult(initialContext?.assessment?.result, initialContext?.preferredLanguage || 'en');
       if(latest){writeHskResult(latest);if(!readHskDraft())setIsTakingAssessment(false);}
       const unavailable = !latest && initialContext?.assessment?.result;
@@ -143,9 +144,8 @@ export default function StandAloneChat() {
   // Keep state synchronized with storage events
   useEffect(() => {
     const unsubscribe = subscribeStudentContext((ctx) => {
-      if (ctx?.leadProfile) {
-        setProfile(ctx.leadProfile);
-      }
+      setProfile(ctx?.leadProfile || null);
+      setShowOnboardingModal(!ctx?.leadProfile);
     });
     return unsubscribe;
   }, []);
@@ -227,40 +227,18 @@ Berdasarkan formulir Anda:
 
     } else if (levelState === 'KNOWN') {
       // KNOWN -> Skip Assessment (But offer voluntary entry)
-      const greetingContent = selectedLang === 'en'
-        ? `Hello **${studentName}**! Welcome to UPER Education! 🌟
-
-Impressive! You already hold verified proficiency at **${reportedLevel}**. In accordance with UPER academic standards:
-- ✅ **Diagnostic Status:** You **do not need to take basic placement tests**—your foundation is well-established!
-- 🎯 **Recommended Track:** We directly tailor an accelerated HSK curriculum, university scholarship guidance, or enterprise career placement for you.
-
-💡 *Tip: If you still wish to test your exact score today, feel free to click the **"Take HSK Test"** button at the top right corner or below.*
-
-What would you like to explore regarding class schedules, tuition packages, or Chinese university scholarships?`
-        : selectedLang === 'zh'
-        ? `您好 **${studentName}**！欢迎来到 UPER Education！🌟
-
-太棒了！您自报的中文基础是 **${reportedLevel}**。根据 UPER 教学规范：
-- ✅ **测评状态：** 您**无需重复参加基础摸底测验**，基础非常清晰！
-- 🎯 **推荐规划：** 我们直接为您对接高级进阶班排期、赴华奖学金名额或中资企业职场中文通道。
-
-💡 *提示：如果您仍希望检验自己的实战得分，可随时点击右上角的 **【HSK 摸底测验】** 或下方快捷入口随时自测。*
-
-关于近期的开班排期、课程学费或奖学金申请，您目前最想了解哪方面？`
-        : `Halo **${studentName}**! Selamat datang di UPER Education! 🌟
-
-Hebat sekali! Tingkat yang Anda laporkan adalah **${reportedLevel}**. Sesuai standar UPER:
-- ✅ **Status Tes:** Anda **tidak perlu mengulang tes dasar**, fondasi Anda sudah sangat jelas!
-- 🎯 **Rekomendasi:** Kami langsung menyusun jalur percepatan HSK lanjutan & persiapan karir perusahaan Tiongkok.
-
-💡 *Tips: Jika Anda ingin menguji kemampuan nyata Anda hari ini, silakan klik tombol **"Ikuti Tes HSK"** di pojok kanan atas kapan saja.*`;
+      const greetingContent = selectedLang === 'zh'
+        ? `您好 **${studentName}**！您填写的中文基础是 **${reportedLevel}（自报）**，尚不代表测评结论。可以自选摸底测评，或先咨询课程。具体班级、开班时间及名额需要确认。您最想了解什么？`
+        : selectedLang === 'id'
+        ? `Halo **${studentName}**! Tingkat **${reportedLevel}** berasal dari laporan Anda, bukan hasil tes. Anda dapat memilih tes atau konsultasi. Jadwal dan ketersediaan perlu dikonfirmasi.`
+        : `Hello **${studentName}**! **${reportedLevel}** is your self-reported starting point, not an assessment result. You can choose a diagnostic or ask about courses. Classes, schedules and availability require confirmation.`;
 
       const initialGreeting: ChatMessage = {
         id: 'msg-init-known',
         role: 'assistant',
         content: greetingContent,
         timestamp: new Date(),
-        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何安排教师复核或试听？'] : selectedLang === 'en' ? [
+        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何了解适合的课程或试听？'] : selectedLang === 'en' ? [
           '🎯 Take UPER HSK Placement Diagnostic (Optional)',
           'What are the course fees and available installment plans?',
           'When are the nearest class start dates for my level?'
@@ -310,7 +288,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         role: 'assistant',
         content: greetingContent,
         timestamp: new Date(),
-        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何安排教师复核或试听？'] : selectedLang === 'en' ? [
+        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何了解适合的课程或试听？'] : selectedLang === 'en' ? [
           '🎯 Take UPER HSK Placement Diagnostic (Optional)',
           'How long does it take from zero to conversational fluency?',
           'What are the tuition fees and schedules for HSK 1 beginner classes?'
@@ -331,7 +309,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
       const updatedProfile: LeadProfile = {...profile,quizScore:result.score,totalQuestions:result.questionCount,quizMaxScore:result.maxScore,
         ...(profile.levelSource==='trial'?{}:{levelConfirmed:result.levelConfirmed,levelSource:'assessment' as const}),quizResultSummary:result.summary,quizBreakdown:result.breakdown,
         latestAssessment:result,assessmentProvenance:result.saveStatus==='saved'?'server_recomputed_adapted_paper':undefined};
-      updatedProfile.tier=calculateLeadTier({buyingSignal:updatedProfile.buyingSignal,currentStatus:updatedProfile.currentStatus,goal:updatedProfile.goal,levelState:updatedProfile.levelState,city:updatedProfile.city,mode:updatedProfile.mode,hskExamPlan:updatedProfile.hskExamPlan,assessmentDone:true}).tier;
+      // Assessments update evidence, never the existing customer Tier.
       setProfile(updatedProfile);
       saveStudentContext({leadProfile:updatedProfile,chatAssessmentStatus:'completed',assessment:{completed:true,result,score:result.score,total:result.maxScore,maxScore:result.maxScore,questionCount:result.questionCount,levelConfirmed:result.levelConfirmed,summary:result.summary,breakdown:result.breakdown,saveStatus:result.saveStatus,completedAt:result.attempt.completedAt}});
     }
@@ -380,7 +358,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
   const handleSendMessage = async (textToSend?: string, retry?: ChatMessage) => {
     const messageContent=(retry?.content || textToSend || inputValue).trim();
     if(!messageContent || isTyping)return;
-    if(!retry && (messageContent.includes('🎯') || messageContent.toLowerCase().includes('take official hsk') || messageContent.includes('参加UPER HSK 摸底测试'))){handleStartVoluntaryAssessment();return;}
+    if(!retry && (messageContent.includes('🎯') || messageContent.toLowerCase().includes('take official hsk') || messageContent.includes('参加UPER HSK 摸底测试') || messageContent.includes('参加UPER分班诊断') || /take.*UPER.*diagnostic|ikuti.*diagnostik.*UPER/i.test(messageContent))){handleStartVoluntaryAssessment();return;}
     setInputValue('');setIsTyping(true);
     const userMessage:ChatMessage=retry || {id:crypto.randomUUID(),role:'user',content:messageContent,timestamp:new Date()};
     const botMessageId='reply-'+userMessage.id;

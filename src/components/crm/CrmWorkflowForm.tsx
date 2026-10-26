@@ -1,3 +1,9 @@
+import {CrmSimpleWorkflow} from './CrmSimpleWorkflow';
+import {CrmProgressForm} from './CrmProgressForm';
+export function CrmWorkflowForm(props:any){return <CrmSimpleWorkflow {...props}/>;}
+import {taskCompletionGuidance} from '../../utils/crmTaskGuidance';
+import {CrmTaskOverlap} from './CrmTaskOverlap';
+import {formatCrmOperatingTime} from '../../utils/crmOperatingTime';
 import { trustError } from "../../utils/crmTrustLanguage";
 import { completionForEntry } from "../../utils/crmSalesInput";
 import { CrmDisclosure } from "./CrmDisclosure";
@@ -7,7 +13,7 @@ import { CrmSingleSelect } from "./CrmSingleSelect";
 import { calendarSample, nextWork } from "../../utils/workCalendar";
 import { crmError } from "../../utils/crmLanguage";
 import type { CrmLanguage } from "../../utils/crmLanguage";
-export function CrmWorkflowForm({
+function CrmArrangementForm({
   lead,
   employee,
   lang,
@@ -52,6 +58,12 @@ export function CrmWorkflowForm({
   const tasks = (lead.attention?.tasks || []).filter((v: any) =>
     ["open", "overdue"].includes(v.status),
   );
+  const [requestData,setRequestData]=useState<any[]|null>(null),[requestLoadFailed,setRequestLoadFailed]=useState(false);
+  const [handledRequests,setHandledRequests]=useState<string[]>(initialDraft?.handledRequests||[]);
+  const [nextCommand,setNextCommand]=useState(initialDraft?.nextCommand||''),[nextTarget,setNextTarget]=useState(initialDraft?.nextTarget||'');
+  const [separateMatter,setSeparateMatter]=useState(initialDraft?.separateMatter||false),[sameMatter,setSameMatter]=useState(initialDraft?.sameMatter||false);
+  useEffect(()=>{let cancelled=false;fetch('/api/crm/leads/'+lead.id+'/trust',{signal:AbortSignal.timeout(15000)}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(!cancelled)setRequestData(d.requests||[]);}).catch(()=>{if(!cancelled)setRequestLoadFailed(true);});return()=>{cancelled=true;};},[lead.id]);
+  const taskRequests=(requestData||[]).filter(r=>r.task_id===selectedTask&&r.state==='linked');
   const boundTask = tasks.find((v: any) => v.id === selectedTask);
   const boundView = boundTask && presentFollowUpTask(boundTask, lang, timezone);
   const boundRevision = useRef(
@@ -73,7 +85,10 @@ export function CrmWorkflowForm({
   const [arrangementReason, setArrangementReason] = useState(
     initialDraft?.arrangementReason || "",
   );
-  const [reviewDate, setReviewDate] = useState(initialDraft?.reviewDate || "");
+  const [reviewTask,setReviewTask]=useState(initialDraft?.reviewTask || false);
+  const [blockBefore,setBlockBefore]=useState(initialDraft?.blockBefore || false);
+  const [cancelReview,setCancelReview]=useState(initialDraft?.cancelReview || false);
+  const [messageAnswered,setMessageAnswered]=useState(initialDraft?.messageAnswered || false);
   const nextRef = useRef(false);
   const pending = useRef<any>(initialDraft?.pending || null);
   const [unknown, setUnknown] = useState(Boolean(initialDraft?.unknown));
@@ -82,15 +97,15 @@ export function CrmWorkflowForm({
     if (error) errorRef.current?.focus();
   }, [error]);
   const [recordKind, setRecordKind] = useState(
-    initialDraft?.recordKind || (administrative ? "closure" : "contact"),
+    initialDraft?.recordKind || (administrative || boundTask?.kind === "contact_review" || boundTask?.timing_kind === "review" ? "closure" : "contact"),
   );
   const [customerReplied, setCustomerReplied] = useState(initialDraft?.customerReplied || false);
   const [disposition, setDisposition] = useState(
     initialDraft?.disposition || "",
   );
   useEffect(() => {
-    if (disposition === "record_only" && completed.length) setDisposition("");
-  }, [completed, disposition]);
+    if (disposition === "record_only" && (completed.length||handledRequests.length)) setDisposition("");
+  }, [completed, handledRequests, disposition]);
   useEffect(() => {
     onDraft?.({
       pending: pending.current,
@@ -101,6 +116,7 @@ export function CrmWorkflowForm({
       originalArrangement: originalArrangement.current,
       arrangementVersion: arrangementVersion.current,
       requestId,
+      handledRequests,nextCommand,nextTarget,separateMatter,sameMatter,
       completed,
       taskOutcome,
       summary,
@@ -110,7 +126,7 @@ export function CrmWorkflowForm({
       reason,
       arrangement,
       arrangementReason,
-      reviewDate,
+      reviewTask,blockBefore,cancelReview,messageAnswered,
       channel,
       contact,
       stage,
@@ -121,6 +137,7 @@ export function CrmWorkflowForm({
     });
   }, [
     requestId,
+    handledRequests,nextCommand,nextTarget,separateMatter,sameMatter,
     unknown,
     completed,
     taskOutcome,
@@ -131,7 +148,7 @@ export function CrmWorkflowForm({
     reason,
     arrangement,
     arrangementReason,
-    reviewDate,
+    reviewTask,blockBefore,cancelReview,messageAnswered,
     channel,
     contact,
     stage,
@@ -159,6 +176,7 @@ export function CrmWorkflowForm({
     if (mounted.current) onDirty?.();
     else mounted.current = true;
   }, [
+    handledRequests,nextCommand,nextTarget,separateMatter,sameMatter,
     summary,
     action,
     purpose,
@@ -174,13 +192,26 @@ export function CrmWorkflowForm({
     recordKind,
     arrangement,
     arrangementReason,
-    reviewDate,
+    reviewTask,blockBefore,cancelReview,messageAnswered,
   ]);
   useEffect(() => {
     document
       .getElementById("crm-sales-editor-title")
       ?.focus({ preventScroll: true });
   }, []);
+  const pureArrangement = administrative && !selectedTask && recordKind === "closure" && !customerReplied;
+  const changeReason = pureArrangement ? summary : arrangementReason;
+  const nextPurpose = pureArrangement ? summary : purpose;
+  const nextChoice = disposition === "schedule" ? reviewTask ? "review" : nextCommand === "create" ? "create" : "change" : disposition;
+  const chooseNext = (value:string) => {
+    const scheduled = ["create","change","review"].includes(value);
+    setDisposition(scheduled ? "schedule" : value);
+    if(scheduled){setReviewTask(value === "review");setNextCommand(value === "create" ? "create" : "");setNextTarget("");setSameMatter(false);}
+    if(value === "none" && arrangement === "active")setArrangement("");
+    if(value !== "none" && !arrangement)setArrangement(originalArrangement.current);
+  };
+  const purposeLabel = nextCommand==='supplement'?t("Additional information (required)","Informasi tambahan (wajib)","补充信息（必填）"):nextCommand==='reschedule'?t("Reschedule reason (required)","Alasan perubahan jadwal (wajib)","改期原因（必填）"):nextCommand==='replace'?t("Replacement reason (required)","Alasan penggantian (wajib)","替代原因（必填）"):t("Review reason (required)","Alasan peninjauan (wajib)","复查依据（必填）");
+  const reuseRecord = (setter:(value:string)=>void) => summary.trim() ? <button type="button" className="crm-work-link crm-reuse-record" onClick={()=>setter(summary)}>{t("Use this record","Gunakan catatan ini","使用本次记录")}</button> : null;
   const select = (
     label: string,
     value: string,
@@ -220,7 +251,12 @@ export function CrmWorkflowForm({
             if (selectedTask && !taskOutcome)
               throw Error("Choose a task outcome");
             if (!disposition) throw Error("Choose the next arrangement");
-            if (disposition === "none" && !arrangement)
+            if(completedIds.length&&(!requestData||requestLoadFailed||taskRequests.some(r=>!handledRequests.includes(r.id))))throw Error('Choose the requests handled by this result');
+            if(disposition==='schedule'&&!reviewTask){
+              if(!nextCommand)throw Error('Choose how this relates to existing tasks');
+              if(nextCommand==='replace'&&!sameMatter)throw Error('Confirm replacement of the same matter');
+            }
+            if (disposition === "none" && !changeReason.trim())
               throw Error("Choose a contact arrangement");
           }
           const nextFollowUpAt = date
@@ -239,13 +275,16 @@ export function CrmWorkflowForm({
                 requestId,
                 summary,
                 completeTaskIds: completedIds,
+                handledRequests:taskRequests.filter(r=>handledRequests.includes(r.id)).map(r=>({id:r.id,version:r.version})),
+                ...(disposition==='schedule'&&!reviewTask?{nextTaskChange:{command:nextCommand,taskId:nextTarget||undefined,revision:tasks.find(v=>v.id===nextTarget)?.revision,relationDecision:nextCommand==='create'?'separate':undefined,sameMatterConfirmed:sameMatter}}:{}),
                 processingTaskId: selectedTask || null,
                 taskOutcome: selectedTask ? taskOutcome : undefined,
                 expectedTaskRevision: boundRevision.current,
                 disposition,
                 noNextReason: reason,
                 nextAction: action,
-                nextPurpose: purpose,
+                nextPurpose: !reviewTask&&nextCommand==='create'?undefined:nextPurpose,
+                nextTaskNotes: !reviewTask&&nextCommand==='create'?purpose:undefined,
                 nextFollowUpAt,
                 channel: recordKind === "closure" && !customerReplied ? undefined : channel,
                 customerReplied: recordKind === "closure" && customerReplied ? true : undefined,
@@ -257,23 +296,10 @@ export function CrmWorkflowForm({
                 newStage: stage !== originalStage.current ? stage : undefined,
                 expectedStage: originalStage.current,
                 expectedStageRevision: originalStageRevision.current,
-                ...(disposition === "none" ||
-                arrangement !== originalArrangement.current
-                  ? {
-                      contactArrangement: {
-                        state: arrangement,
-                        reason: arrangementReason,
-                        reviewAt: reviewDate
-                          ? calendarSample(
-                              reviewDate.slice(0, 10),
-                              reviewDate.slice(11),
-                              timezone,
-                            ).toISOString()
-                          : undefined,
-                        version: arrangementVersion.current,
-                      },
-                    }
-                  : {}),
+                expectedArrangementVersion: arrangementVersion.current,
+                sourceMessageAnswered: sourceMessage && recordKind!=='closure' && contact==='Connected' ? messageAnswered : undefined,
+                ...(disposition==='schedule'&&reviewTask?{reviewPlan:{reason:nextPurpose,blockBefore,version:arrangementVersion.current}}:cancelReview&&disposition!=='record_only'?{reviewPlan:{cancel:true,reason:changeReason,version:arrangementVersion.current}}:{}),
+                ...(disposition!=='record_only'&&(disposition==='none'||(arrangement==='active'&&originalArrangement.current!=='active'))?{contactArrangement:{state:disposition==='none'?'stopped':'active',reason:changeReason,version:arrangementVersion.current}}:{}),
                 buyingSignalDetected: signal || undefined,
               }),
             ),
@@ -322,76 +348,15 @@ export function CrmWorkflowForm({
           {t("Back", "Kembali", "返回")}
         </button>
       </header>
-      <div className="crm-sales-editor-layout">
-        <aside className="crm-sales-context">
-          {boundView && (
-            <section>
-              <h4>
-                {t(
-                  "Task being handled",
-                  "Tugas yang sedang ditangani",
-                  "本次处理任务",
-                )}
-              </h4>
-              <strong>{boundView.action}</strong>
-              {boundView.times.map((v: any, i: number) => (
-                <p key={i}>
-                  {v.label} · {boundView.formatTime(v.value)}
-                </p>
-              ))}
-            </section>
-          )}
-          {sourceMessage && (
-            <section>
-              <h4>
-                {t(
-                  "Linked customer message",
-                  "Pesan pelanggan terkait",
-                  "已关联客户消息",
-                )}
-              </h4>
-              <p className="crm-sales-original">{sourceMessage.content}</p>
-            </section>
-          )}
-          {lead.followUpLogs?.length > 0 && (
-            <section>
-              <h4>
-                {t(
-                  "Latest saved note",
-                  "Catatan tersimpan terakhir",
-                  "最近记录",
-                )}
-              </h4>
-              <p className="crm-sales-original">
-                {
-                  [...lead.followUpLogs].sort(
-                    (a: any, b: any) =>
-                      Date.parse(b.timestamp) - Date.parse(a.timestamp),
-                  )[0]?.summary
-                }
-              </p>
-            </section>
-          )}
-          <section>
-            <h4>
-              {t(
-                "Other tasks stay unchanged",
-                "Tugas lain tetap",
-                "其他任务保持不变",
-              )}
-            </h4>
-            {tasks
-              .filter((v: any) => v.id !== selectedTask)
-              .map((v: any) => (
-                <p key={v.id}>
-                  {presentFollowUpTask(v, lang, timezone).action}
-                </p>
-              ))}
-          </section>
-        </aside>
+      {boundView&&<div className="crm-sales-task-summary"><strong>{boundView.action}</strong><div>{boundView.times.map((v:any,i:number)=><span key={i} data-tone={v.tone}>{v.label} · {boundView.formatTime(v.value)}</span>)}</div></div>}
+      <div className="crm-sales-editor-layout crm-sales-editor-compact">
+        {(sourceMessage||lead.followUpLogs?.length>0)&&<CrmDisclosure className="crm-sales-background" heading={t("View background","Lihat latar belakang","查看背景")}>
+          {sourceMessage&&<section><h4>{t("Linked customer message","Pesan pelanggan terkait","已关联客户消息")}</h4><p className="crm-sales-original">{sourceMessage.content}</p></section>}
+          {lead.followUpLogs?.length>0&&<section><h4>{t("Latest saved note","Catatan tersimpan terakhir","最近记录")}</h4><p className="crm-sales-original">{[...lead.followUpLogs].sort((a:any,b:any)=>Date.parse(b.timestamp)-Date.parse(a.timestamp))[0]?.summary}</p></section>}
+        </CrmDisclosure>}
         <fieldset disabled={busy || unknown} className="crm-sales-fields">
           <section className="crm-sales-step">
-            <h4>{t("This record", "Catatan kali ini", "本次记录")}</h4>
+            <h4>{t("This result", "Hasil kali ini", "本次结果")}</h4>
             {(selectedTask || !administrative) && (
               <div
                 className="crm-sales-segments"
@@ -401,11 +366,11 @@ export function CrmWorkflowForm({
                 {[
                   [
                     "contact",
-                    t("Customer contact", "Kontak pelanggan", "客户联系"),
+                    t("Record contact", "Catat kontak", "记录联系"),
                   ],
                   [
                     "closure",
-                    t("Internal handling", "Penanganan internal", "内部处理"),
+                    t("Record work result", "Catat hasil pekerjaan", "记录工作结果"),
                   ],
                 ].map(([value, label]) => (
                   <button
@@ -419,16 +384,9 @@ export function CrmWorkflowForm({
                 ))}
               </div>
             )}
-            {recordKind === "closure" && (
-              <p className="crm-work-muted">
-                {t(
-                  "Record internal work or a review; this does not count as customer contact.",
-                  "Catat pekerjaan internal atau tinjauan; ini tidak dihitung sebagai kontak pelanggan.",
-                  "记录内部核实或复查结果，不计为客户联系。",
-                )}
-              </p>
-            )}
-            {recordKind === "closure" && <label><input type="checkbox" checked={customerReplied} onChange={e=>setCustomerReplied(e.target.checked)} />{t("Confirm customer replied externally (channel and evidence required; not an outreach attempt)","Konfirmasi pelanggan membalas di luar sistem (kanal dan bukti wajib; bukan upaya kontak)","确认客户已在外部回复（须填渠道与依据，不增加联系尝试次数）")}</label>}
+            {recordKind === "closure" && <CrmDisclosure heading={t("Record an external customer reply","Catat balasan pelanggan di luar sistem","补记客户主动回复")} open={customerReplied}>
+              <label><input type="checkbox" checked={customerReplied} onChange={e=>setCustomerReplied(e.target.checked)}/>{t("Customer replied outside CRM; record the channel and evidence","Pelanggan membalas di luar CRM; catat kanal dan buktinya","客户已在CRM之外回复，须记录渠道与依据")}</label>
+            </CrmDisclosure>}
             {(recordKind === "contact" || customerReplied) && (
               <div className="crm-workflow-grid">
                 {select(
@@ -477,13 +435,13 @@ export function CrmWorkflowForm({
               </div>
             )}
             <label>
-              {recordKind === "closure"
+              {pureArrangement ? t("Reason for adjustment (required)","Alasan perubahan (wajib)","调整原因（必填）") : recordKind === "closure"
                 ? t(
-                    "Handling result and reason",
-                    "Hasil penanganan dan alasan",
-                    "处理结果与依据",
+                    "Work result (required)",
+                    "Hasil pekerjaan (wajib)",
+                    "工作结果（必填）",
                   )
-                : t("Contact summary", "Ringkasan kontak", "沟通记录")}
+                : t("Contact summary (required)", "Ringkasan kontak (wajib)", "沟通记录（必填）")}
               <textarea
                 required
                 value={summary}
@@ -556,6 +514,9 @@ export function CrmWorkflowForm({
           {selectedTask && (
             <section className="crm-sales-step">
               <h4>{t("Task outcome", "Hasil tugas", "任务结果")}</h4>
+              {boundTask&&taskOutcome==='complete'&&<p className="crm-task-outcome-guidance">{taskCompletionGuidance(boundTask,lang)}</p>}
+              <CrmTaskOverlap tasks={tasks} focusId={selectedTask} lang={lang} timezone={timezone}/>
+              {taskOutcome==="complete"&&recordKind==="contact"&&["No Response","Wrong Number"].includes(contact)&&<p className="crm-work-muted">{t("This contact outcome alone does not prove the task is finished. Keep unfinished work open or use cancellation/replacement with a reason.","Hasil kontak ini saja tidak membuktikan tugas selesai. Biarkan pekerjaan yang belum selesai terbuka atau batalkan/ganti dengan alasan.","本次联系结果本身不能证明任务已完成；未完成的工作请保持待处理，或说明原因后取消／替代。")}</p>}
               <div
                 className="crm-sales-segments"
                 role="group"
@@ -592,106 +553,54 @@ export function CrmWorkflowForm({
                   </button>
                 ))}
               </div>
-              <p className="crm-work-muted">
-                {t(
-                  "Only this task is affected. Other tasks and deadlines remain unchanged.",
-                  "Hanya tugas ini yang terpengaruh. Tugas lain dan tenggatnya tetap.",
-                  "仅处理当前任务，其他任务及其期限保持不变。",
-                )}
-              </p>
+              {taskOutcome==='complete'&&(!requestData||requestLoadFailed)&&<p role="alert">{t('Request information unavailable. Reopen this form before completing the task.','Informasi permintaan tidak tersedia. Buka kembali formulir sebelum menyelesaikan tugas.','请求依据尚不可用，请重新打开表单后再完成任务。')}</p>}
+              {taskOutcome&&taskRequests.length>0&&<CrmDisclosure className="crm-request-completion" heading={taskOutcome==='complete'?t('Confirm requests handled','Konfirmasi permintaan yang ditangani','确认已处理的客户请求'):t('Requests handled this time (optional)','Permintaan yang ditangani kali ini (opsional)','本次已处理的请求（选填）')} open={taskOutcome==='complete'}>{taskRequests.map(r=><label key={r.id}><input type="checkbox" checked={handledRequests.includes(r.id)} onChange={e=>setHandledRequests(v=>e.target.checked?[...v,r.id]:v.filter(id=>id!==r.id))}/><span>{r.data.text||t('Customer request','Permintaan pelanggan','客户请求')} · {formatCrmOperatingTime(r.data.dueAt,timezone)}</span></label>)}</CrmDisclosure>}
+
             </section>
           )}
           <section className="crm-sales-step">
             <h4>
               {t("Next arrangement", "Pengaturan berikutnya", "下一步安排")}
             </h4>
-            {select(
-              t("Next arrangement", "Pengaturan berikutnya", "后续去向"),
-              disposition,
-              (v) => {
-                setDisposition(v);
-                if (v === "none" && arrangement === "active")
-                  setArrangement("");
-                if (v !== "none" && !arrangement)
-                  setArrangement(originalArrangement.current);
-              },
-              [
-                [
-                  "",
-                  t(
-                    "Choose the next arrangement",
-                    "Pilih pengaturan berikutnya",
-                    "请选择后续安排",
-                  ),
-                ],
-                ...(!completed.length
-                  ? [
-                      [
-                        "record_only",
-                        t(
-                          "Record only; keep arrangements",
-                          "Catat saja; pertahankan pengaturan",
-                          "仅记录，保留原安排",
-                        ),
-                      ],
-                    ]
-                  : []),
-                [
-                  "keep",
-                  t(
-                    "Keep existing task",
-                    "Pertahankan tugas yang ada",
-                    "保留已有安排",
-                  ),
-                ],
-                [
-                  "schedule",
-                  t(
-                    "Schedule next step",
-                    "Jadwalkan langkah berikutnya",
-                    "安排下一步",
-                  ),
-                ],
-                [
-                  "none",
-                  t(
-                    "Wait, nurture or stop contact",
-                    "Tunggu, bina, atau hentikan kontak",
-                    "等待、培育或停止联系",
-                  ),
-                ],
-                ...(["Enrolled", "Lost"].includes(stage)
-                  ? [
-                      [
-                        "closed",
-                        t(
-                          "Customer closed",
-                          "Pelanggan ditutup",
-                          "客户已成交或关闭",
-                        ),
-                      ],
-                    ]
-                  : []),
-              ],
-            )}
+            {select(t("After saving","Setelah menyimpan","保存后如何继续"),nextChoice,chooseNext,[
+              ["",t("Choose the next arrangement","Pilih pengaturan berikutnya","请选择后续安排")],
+              ...(!completed.length&&!handledRequests.length?[["record_only",t("Record only; keep arrangements","Catat saja; pertahankan pengaturan","不调整安排，仅保存记录")]]:[]),
+              ["keep",t("Continue existing tasks","Lanjutkan tugas yang ada","继续已有任务")],
+              ["create",t("Add a new task","Tambah tugas baru","新增独立任务")],
+              ...(tasks.some(v=>!completedIds.includes(v.id)&&v.kind!=="contact_review")?[["change",t("Adjust an existing task","Ubah tugas yang ada","调整已有任务")]]:[]),
+              ["review",t("Schedule a review","Jadwalkan peninjauan","安排稍后复查")],
+              ["none",t("Stop proactive contact","Hentikan kontak proaktif","停止主动联系")],
+              ...(["Enrolled","Lost"].includes(stage)?[["closed",t("Customer closed","Pelanggan ditutup","客户已成交或关闭")]]:[])
+            ])}
+            {disposition==='keep'&&<div className="crm-kept-task-summary">{tasks.filter(v=>!completedIds.includes(v.id)).map(v=><p key={v.id}>{presentFollowUpTask(v,lang,timezone).action}</p>)}</div>}
             {disposition === "schedule" && (
               <>
-                <label>
-                  {t("Action", "Tindakan", "具体动作")}
+                {reviewTask&&<label><input type="checkbox" checked={blockBefore} onChange={e=>setBlockBefore(e.target.checked)}/>{t('Customer agreed: do not initiate contact before this review time','Disepakati dengan pelanggan: jangan menghubungi sebelum waktu tinjauan ini','与客户明确约定：复查时间前不主动联系')}</label>}
+                {!reviewTask&&nextCommand!=='create'&&<>
+                  {select(t('Adjustment','Perubahan','调整方式'),nextCommand,v=>{setNextCommand(v);setNextTarget('');setSameMatter(false);},[['',t('Choose an operation','Pilih tindakan','请选择操作')],['supplement',t('Add task information','Tambah informasi tugas','补充信息')],['reschedule',t('Reschedule task','Ubah jadwal tugas','改期')],['replace',t('Replace task','Ganti tugas','替代')]])}
+                  {['supplement','reschedule','replace'].includes(nextCommand)&&select(t('Target task','Tugas tujuan','目标任务'),nextTarget,setNextTarget,[['',t('Choose a task','Pilih tugas','请选择任务')],...tasks.filter(v=>!completedIds.includes(v.id)&&v.kind!=='contact_review').map(v=>[v.id,presentFollowUpTask(v,lang,timezone).action])])}
+                  {nextCommand==='replace'&&<label><input type="checkbox" required checked={sameMatter} onChange={e=>setSameMatter(e.target.checked)}/>{t('Cancel the selected old task and create its replacement.','Batalkan tugas lama yang dipilih dan buat penggantinya.','取消选定的原任务，并建立替代任务。')}</label>}
+                </>}
+                {(reviewTask||["create","replace"].includes(nextCommand))&&<label>
+                  {t("Task content (required)", "Isi tugas (wajib)", "任务内容（必填）")}
                   <input
-                    required
+                    required={reviewTask||["create","replace"].includes(nextCommand)}
+                    disabled={!reviewTask&&["supplement","reschedule"].includes(nextCommand)}
                     value={action}
                     onChange={(e) => setAction(e.target.value)}
                   />
-                </label>
-                <label>
-                  {t("Purpose", "Tujuan", "安排依据")}
+                </label>}
+                {!reviewTask&&nextCommand==='create'?<details className="crm-task-optional-note"><summary>{t('Additional notes (optional)','Catatan tambahan (opsional)','补充说明（选填）')}</summary><label>{t('Only add information not covered by the task content.','Tambahkan hanya informasi yang belum tercakup dalam isi tugas.','仅填写任务内容未涵盖的信息。')}<textarea aria-label={t('Additional notes (optional)','Catatan tambahan (opsional)','补充说明（选填）')} value={purpose} onChange={e=>setPurpose(e.target.value)}/></label></details>:!pureArrangement&&(reviewTask||["supplement","reschedule","replace"].includes(nextCommand))&&<label>
+                  {purposeLabel}
                   <input
                     required
+                    aria-label={purposeLabel}
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
                   />
-                </label>
+                  {reuseRecord(setPurpose)}
+                </label>}
+                {(reviewTask||['create','replace','reschedule'].includes(nextCommand))&&<>
                 <button
                   type="button"
                   className="crm-work-link"
@@ -731,77 +640,24 @@ export function CrmWorkflowForm({
                   )}
                 </button>
                 <label>
-                  {t("Deadline", "Tenggat", "截止时间")} · {timezone}
+                  {reviewTask?t("Review time (required)","Waktu peninjauan (wajib)","复查时间（必填）"):nextCommand==='reschedule'?t("New agreed execution time","Waktu pelaksanaan baru","新约定执行时间"):t("Task time (required)","Waktu tugas (wajib)","任务时间（必填）")} · {timezone}
                   <input
                     required
                     type="datetime-local"
+                    disabled={!reviewTask&&nextCommand==="supplement"}
                     value={date}
                     onInput={(e) => setDate(e.currentTarget.value)}
                     onChange={(e) => setDate(e.target.value)}
                   />
                 </label>
+                </>}
               </>
             )}
-            {disposition === "none" && (
-              <>
-                {select(
-                  t("Contact arrangement", "Pengaturan kontak", "联系安排"),
-                  arrangement,
-                  setArrangement,
-                  [
-                    [
-                      "",
-                      t(
-                        "Choose a contact arrangement",
-                        "Pilih pengaturan kontak",
-                        "请选择联系安排",
-                      ),
-                    ],
-                    [
-                      "waiting",
-                      t(
-                        "Wait until review",
-                        "Tunggu hingga tinjauan",
-                        "等待至复查时间",
-                      ),
-                    ],
-                    [
-                      "nurture",
-                      t("Pause for nurturing", "Jeda pembinaan", "暂缓培育"),
-                    ],
-                    [
-                      "stopped",
-                      t(
-                        "Stop proactive contact",
-                        "Hentikan kontak proaktif",
-                        "停止主动联系",
-                      ),
-                    ],
-                  ],
-                )}
-                <label>
-                  {t("Reason", "Alasan", "原因")}
-                  <textarea
-                    required
-                    value={arrangementReason}
-                    onChange={(e) => setArrangementReason(e.target.value)}
-                  />
-                </label>
-                {["waiting", "nurture"].includes(arrangement) && (
-                  <label>
-                    {t("Review time", "Waktu tinjauan", "复查时间")} ·{" "}
-                    {timezone}
-                    <input
-                      required
-                      type="datetime-local"
-                      value={reviewDate}
-                      onChange={(e) => setReviewDate(e.target.value)}
-                    />
-                  </label>
-                )}
-              </>
-            )}
-            {disposition !== "none" &&
+            {(lead.contactReview||['waiting','nurture'].includes(lead.contactArrangement?.state))&&disposition&&disposition!=='record_only'&&!(disposition==='schedule'&&reviewTask)&&<CrmDisclosure heading={t('Change the previous review agreement (optional)','Ubah kesepakatan tinjauan sebelumnya (opsional)','调整原复查约定（选填）')} open={cancelReview}>
+              <label><input type="checkbox" checked={cancelReview} onChange={e=>setCancelReview(e.target.checked)}/>{t('Explicitly end the previous review agreement','Akhiri kesepakatan tinjauan sebelumnya secara tegas','明确结束原复查约定')}</label>
+            </CrmDisclosure>}
+            {sourceMessage&&recordKind!=='closure'&&contact==='Connected'&&<label><input type="checkbox" checked={messageAnswered} onChange={e=>setMessageAnswered(e.target.checked)}/>{t('This customer question was actually answered','Pertanyaan pelanggan ini benar-benar telah dijawab','本次已实际答复所关联的客户问题')}</label>}
+            {disposition !== "none" && disposition !== "record_only" &&
               lead.contactArrangement &&
               lead.contactArrangement.state !== "active" && (
                 <>
@@ -823,16 +679,13 @@ export function CrmWorkflowForm({
                       "恢复主动联系",
                     )}
                   </label>
-                  <label>
-                    {t("Reason", "Alasan", "原因")}
-                    <textarea
-                      required
-                      value={arrangementReason}
-                      onChange={(e) => setArrangementReason(e.target.value)}
-                    />
-                  </label>
+
                 </>
               )}
+            {!pureArrangement&&(disposition==='none'||(disposition!=='record_only'&&(cancelReview||(arrangement==='active'&&originalArrangement.current!=='active'))))&&<div className="crm-arrangement-reason">
+              <label>{disposition==='none'?t('Reason for stopping contact (required)','Alasan menghentikan kontak (wajib)','停止联系原因（必填）'):t('Arrangement change reason (required)','Alasan perubahan pengaturan (wajib)','联系安排变更原因（必填）')}<textarea required value={arrangementReason} onChange={e=>setArrangementReason(e.target.value)}/></label>
+              {reuseRecord(setArrangementReason)}
+            </div>}
           </section>
         </fieldset>
       </div>
@@ -840,9 +693,9 @@ export function CrmWorkflowForm({
         <div className="crm-sales-effect">
           {recordKind === "closure"
             ? t(
-                "Save one internal record",
-                "Simpan satu catatan internal",
-                "保存一条内部处理记录",
+                "Save one work record",
+                "Simpan satu catatan pekerjaan",
+                "保存一条工作记录",
               )
             : t(
                 "Save one contact record",
@@ -915,7 +768,7 @@ export function CrmWorkflowForm({
         )}
         {error && (
           <p role="alert" ref={errorRef} tabIndex={-1}>
-            {error === "Operation not found"
+            {["Operation not found","Request changed; refresh and review","Choose the requests handled by this result","Confirm that this is a separate matter","Confirm replacement of the same matter","Choose how this relates to existing tasks","Use the contact arrangement to change this review task","Handle or move the linked requests before cancelling"].includes(error)
               ? trustError(error, lang)
               : crmError(error, lang)}
           </p>

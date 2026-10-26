@@ -1,6 +1,7 @@
+import {effectiveContactRecords} from './crmRecordAmendments';
 export type ContactState = "active" | "waiting" | "nurture" | "stopped";
 export function contactStatistics(lead: any) {
-  const logs = (lead.followUpLogs || [])
+  const logs = effectiveContactRecords(lead)
     .filter(
       (l: any) =>
         l.recordKind !== "closure" &&
@@ -23,57 +24,28 @@ export function contactStatistics(lead: any) {
     lastConnected: connected[0] || null,
   };
 }
-export function contactPaused(lead: any) {
-  return ["waiting", "nurture", "stopped"].includes(
-    lead.contactArrangement?.state,
-  );
+/** Legacy waits remain restricted until explicitly reviewed. New agreements expire by clock. */
+export function contactRestriction(lead: any, now = Date.now()): 'stopped' | 'legacy' | 'until' | null {
+  const state = lead.contactArrangement?.state;
+  if (state === 'stopped') return 'stopped';
+  if (state && !['active','waiting','nurture'].includes(state)) return 'legacy';
+  if (['waiting','nurture'].includes(state)) return 'legacy';
+  const review = lead.contactReview;
+  if (review?.blockBefore === true && (!Number.isFinite(Date.parse(review.reviewAt)) || Date.parse(review.reviewAt) > now)) return 'until';
+  return null;
 }
-export function needsHandling(
-  lead: any,
-  now: number,
-  day: (n: number) => string,
-) {
-  if (!lead.attention) return true;
-  if(lead.attention.pendingEngagements>0)return true;
-  const tasks = (lead.attention.tasks || []).filter((t: any) =>
-    ["open", "overdue", "migration_hold"].includes(t.status),
-  );
-  const ordinary = tasks.filter((t: any) => t.kind !== "contact_review");
-  if (
-    tasks.some(
-      (t: any) =>
-        t.status === "migration_hold" || !Number.isFinite(Date.parse(t.dueAt)),
-    )
-  )
-    return true;
-  if (contactPaused(lead))
-    return (
-      ordinary.length > 0 ||
-      tasks.some((t: any) => Date.parse(t.dueAt) <= now) ||
-      ([
-        "conversation.updated",
-        "conversation.reactivated",
-        "handoff.requested",
-      ].includes(lead.attention.latest?.type) &&
-        Date.parse(lead.attention.latest.at) >
-          Date.parse(lead.contactArrangement.at))
-    );
-  if (
-    tasks.some(
-      (t: any) =>
-        Date.parse(t.dueAt) < now ||
-        day(Date.parse(t.dueAt)) === day(now) ||
-        ["handoff", "booking", "enrollment"].includes(t.kind),
-    )
-  )
-    return true;
-  if (["Enrolled", "Lost"].includes(lead.currentStage)) return false;
-  return (
-    !lead.lastContactedAt ||
-    !tasks.length ||
-    lead.followUpDisposition?.kind === "none"
-  );
+export function contactPaused(lead: any, now = Date.now()) {
+  return contactRestriction(lead, now) !== null;
 }
+/** Missing task data is an error, not evidence that planning is absent. */
+export function needsTaskPlanning(_lead:any,_now=Date.now()){return false;}
+
+export function needsHandling(lead:any,now:number,day:(n:number)=>string){
+ if(!lead.attention||lead.attention.error||lead.identityReview?.pending)return true;
+ if((lead.attention.tasks||[]).some((t:any)=>t.kind==='consultation'&&['open','overdue'].includes(t.status)))return true;
+ return (lead.commitments||[]).some((v:any)=>v.status==='active'&&((v.at&&Date.parse(v.at)<=now)||(v.date&&v.date<=day(now))));
+}
+
 export function greeting(language: string, name: string, advisor: string) {
   if (language === "zh")
     return `您好，${name}！我是 UPER Education 的 ${advisor}。感谢您的咨询，可以先确认您的学习需求和方便联系的时间吗？`;

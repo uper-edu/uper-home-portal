@@ -1,3 +1,4 @@
+import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
 import { campaignUi, campaignUiError } from "../../utils/campaignI18n";
 import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
 import { useEffect, useRef, useState } from "react";
@@ -45,7 +46,7 @@ function LinkCard({
           )}
         </p>
         <p className="campaign-hint">{u(PROMOTION_EXPERIENCE_LABEL)}</p>
-        <label className="campaign-field">
+        <AdminField className="campaign-field">
           <span>{u("Promotion link")}</span>
           <input
             aria-label={u("Promotion link: {name}", { name: link.name })}
@@ -53,7 +54,7 @@ function LinkCard({
             value={url}
             onFocus={(e) => e.target.select()}
           />
-        </label>
+        </AdminField>
         <div className="campaign-promotion-actions">
           <button
             type="button"
@@ -139,7 +140,7 @@ function LegacyCampaignLink({
             "Retained for this legacy campaign. It attributes customers to the campaign without a separate promotion entry. Use a new promotion entry when you need independent source, medium and language settings.",
           )}
         </p>
-        <label className="campaign-field">
+        <AdminField className="campaign-field">
           <span>{u("Campaign link")}</span>
           <input
             readOnly
@@ -147,7 +148,7 @@ function LegacyCampaignLink({
             aria-label={u("Legacy campaign link")}
             onFocus={(e) => e.target.select()}
           />
-        </label>
+        </AdminField>
         <div className="campaign-promotion-actions">
           <button
             type="button"
@@ -353,7 +354,9 @@ export function CampaignPromotionLinks({
         </button>
       )}
       {adding && (
-        <form onSubmit={save} className="campaign-promotion-form">
+        <AdminForm lang={lang} onSubmit={save} className="campaign-promotion-form">
+<AdminRequiredNote lang={lang}/>
+
           <h3>
             {campaign.promotionLinks?.length
               ? u("Add a promotion link")
@@ -361,7 +364,7 @@ export function CampaignPromotionLinks({
           </h3>
           <p className="campaign-hint">
             {u(
-              "* Required. Use a separate link for each placement you want to distinguish.",
+              "Use a separate link for each placement you want to distinguish.",
             )}
           </p>
           {(dirty || busy) && !error && (
@@ -373,7 +376,7 @@ export function CampaignPromotionLinks({
             </CrmSaveFeedback>
           )}
           <fieldset disabled={busy || unknown}>
-            <label className="campaign-field">
+            <AdminField className="campaign-field">
               <span>{u("Link name · optional")}</span>
               <input
                 maxLength={120}
@@ -381,11 +384,12 @@ export function CampaignPromotionLinks({
                 placeholder={u("e.g. Instagram October ad")}
                 onChange={(e) => setV({ ...v, name: e.target.value })}
               />
-            </label>
+            </AdminField>
             <div className="campaign-fields-grid">
               <div className="campaign-field">
-                <span>{u("Source *")}</span>
+                <AdminFieldLabel required>{u("Source *")}</AdminFieldLabel>
                 <CrmSelect
+                  required
                   label={u("Source")}
                   value={customSource ? "custom" : v.source}
                   lang={lang}
@@ -413,8 +417,8 @@ export function CampaignPromotionLinks({
                   </option>
                 </CrmSelect>
                 {customSource && (
-                  <label className="campaign-field">
-                    <span>{u("Source code *")}</span>
+                  <AdminField className="campaign-field">
+                    <AdminFieldLabel required>{u("Source code *")}</AdminFieldLabel>
                     <input
                       required
                       maxLength={80}
@@ -423,7 +427,7 @@ export function CampaignPromotionLinks({
                       placeholder={u("e.g. campus_jakarta_a")}
                       onChange={(e) => setV({ ...v, source: e.target.value })}
                     />
-                  </label>
+                  </AdminField>
                 )}
                 <small>
                   {u(
@@ -432,8 +436,9 @@ export function CampaignPromotionLinks({
                 </small>
               </div>
               <div className="campaign-field">
-                <span>{u("Medium *")}</span>
+                <AdminFieldLabel required>{u("Medium *")}</AdminFieldLabel>
                 <CrmSelect
+                  required
                   label={u("Medium")}
                   value={v.medium}
                   lang={lang}
@@ -452,8 +457,9 @@ export function CampaignPromotionLinks({
                 </CrmSelect>
               </div>
               <div className="campaign-field">
-                <span>{u("Customer language *")}</span>
+                <AdminFieldLabel required>{u("Customer language *")}</AdminFieldLabel>
                 <CrmSelect
+                  required
                   label={u("Customer language")}
                   value={v.language}
                   lang={lang}
@@ -501,7 +507,7 @@ export function CampaignPromotionLinks({
               {u("Add later / cancel")}
             </button>
           </div>
-        </form>
+        </AdminForm>
       )}
       {(campaign.promotionLinks || []).map((link) => (
         <LinkCard lang={lang} key={link.id} campaign={campaign} link={link} />

@@ -1,4 +1,6 @@
+import {discoverIdentity} from '../../server/portal/identityReview.ts';
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
+import {contactsConflict} from '../../server/portal/trustWorkflow.ts';
 import {permittedRecord} from '../../src/utils/accessControl.ts';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
@@ -78,12 +80,14 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
       if(previous){if(previous.input_hash!==hash||previous.visitor_id!==v.id)fail(409,'Inquiry request conflict');return {id:previous.id,leadId:previous.lead_id};}
       const session=(await c.query("SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE",[v.id])).rows[0];const leadId=session.lead_id||id();
       const old=(await c.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",[leadId])).rows[0]?.profile;
-      const profile=old||{id:leadId,name:fullName,fullName,email,whatsapp:phone,team:'sales',owner:null,currentStage:'New',tier:'Unqualified',submittedAt:new Date().toISOString(),entryPoint:'contact_form',goal:interest};
+      if(contactsConflict(old||{},input))fail(409,'Contact identity changed; start a separate visitor session');
+      const profile=old||{id:leadId,name:fullName,fullName,email,whatsapp:phone,team:'sales',owner:null,currentStage:'progress:unreached',tier:'Unqualified',submittedAt:new Date().toISOString(),entryPoint:'contact_form',goal:interest};
       if(!old){profile.tier=leadTier(profile);await c.query("INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)",[leadId,profile]);await c.query("UPDATE visitor_sessions SET lead_id=:p1 WHERE id=:p2",[leadId,v.id]);}
+      await discoverIdentity(c,v.id,leadId,profile);
       const conversationId=id(),submissionId=id();await c.query("INSERT INTO conversations(id,visitor_id,lead_id,source) VALUES(:p1,:p2,:p3,:p4)",[conversationId,v.id,leadId,'contact_form']);
       await c.query("INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)",[id(),conversationId,key,originalMessage||interest,{submissionId,interest}]);
-      const existingTask=(await c.query("SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' AND status IN ('open','overdue') FOR UPDATE",[leadId])).rows[0];let taskId=existingTask?.id;
-      if(!taskId){taskId=id();const settings=(await c.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0].value;const {due}=taskDeadline(profile,'consultation',settings);await c.query("INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'consultation',:p3,:p4,:p5)",[taskId,leadId,profile.owner||null,due,{source:'contact_form',submissionId}]);}
+      const existingTask=(await c.query("SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' FOR UPDATE",[leadId])).rows[0];let taskId=existingTask?.id;
+      if(!taskId&&!old){taskId=id();const settings=(await c.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0].value;const {due}=taskDeadline(profile,'consultation',settings);await c.query("INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'consultation',:p3,:p4,:p5)",[taskId,leadId,profile.owner||null,due,{source:'contact_form',submissionId}]);}
       await c.query("INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'inquiry',:p2,:p3,:p4,:p5,:p6)",[submissionId,key,hash,v.id,leadId,input]);
       await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,:p2,:p3,:p4)",[id(),old?'conversation.updated':'lead.created',leadId,{source:'contact_form',taskId,submissionId}]);
       return {id:submissionId,leadId};

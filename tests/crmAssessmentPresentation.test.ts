@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CrmCustomerAssessment } from "../src/components/crm/CrmAssessmentDetails.tsx";
+import { CrmAssessmentEvidence as CrmCustomerAssessment } from "../src/components/crm/CrmAssessmentEvidence.tsx";
 import { CrmCustomerProfile } from "../src/components/crm/CrmCustomerDetails.tsx";
 import {
   communicationTemplate,

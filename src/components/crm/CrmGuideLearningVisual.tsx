@@ -1,16 +1,12 @@
+import {CrmProfileRulesExample} from './CrmProfileRulesExample';
+import {CrmSimpleGuideExamples} from './CrmSimpleGuideExamples';
 import { CrmPanorama } from "./CrmPanorama";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   guideLessons,
   guideChapterScopes,
   type GuideLesson,
 } from "./CrmGuideLearning";
-import {
-  exerciseWords,
-  taskStories,
-  taskChanges,
-} from "./CrmGuideExerciseContent";
-
 type Props = { col: number };
 const words = (col: number, en: string, id: string, zh: string) =>
   [en, id, zh][col];
@@ -115,7 +111,7 @@ export function LessonOpening({
       <p className="crm-learning-subtitle">{s.title[col]}</p>
       <p className="crm-learning-answer">{s.answer[col]}</p>
       {chapterKey === "tasks-sla" ? (
-        <TaskStory col={col} />
+        <CrmSimpleGuideExamples col={col} />
       ) : chapterKey === "visual-status" ? (
         <StatusLegend col={col} />
       ) : (
@@ -136,6 +132,7 @@ export function LessonOpening({
           <p>{s.value[col]}</p>
         </div>
       )}
+      {chapterKey === "entities" && <CrmProfileRulesExample col={col}/>}
       {chapterKey === "measurement" && (
         <figure className="crm-learning-ratio">
           <div
@@ -183,7 +180,7 @@ export function LessonOpening({
         </h4>
         <p>{s.boundary[col]}</p>
       </div>
-      {chapterKey === "followup" && <FollowupPractice col={col} />}
+      {chapterKey === "followup" && <><CrmSimpleGuideExamples col={col} /><CrmProfileRulesExample col={col}/></>}
     </div>
   );
 }
@@ -224,11 +221,11 @@ function StatusLegend({ col }: Props) {
     [
       "new",
       "●",
-      t("Unread information", "Informasi belum dibaca", "未读新信息"),
+      t("Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.", "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.", "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。"),
       t(
         "Reading is not task completion",
-        "Membaca tidak menyelesaikan tugas",
-        "已读不代表任务完成",
+        "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+        "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
       ),
     ],
     [
@@ -273,443 +270,5 @@ function StatusLegend({ col }: Props) {
         )}
       </figcaption>
     </figure>
-  );
-}
-
-export function taskStorySnapshot(step: number) {
-  return [1, 2, 3].map((id) => ({
-    id: `T${id}`,
-    present: step >= id - 1,
-    completed: id === 1 && step === 4,
-    supplemented: id === 1 && step >= 3,
-  }));
-}
-
-export function TaskStory({ col }: Props) {
-  const [step, setStep] = useState(2),
-    [change, setChange] = useState(0);
-  const t = (key: keyof typeof exerciseWords) => exerciseWords[key][col];
-  const task = taskStorySnapshot(step),
-    c = taskChanges[change];
-  return (
-    <>
-      <figure className="crm-task-story" aria-label={t("tasksTitle")}>
-        <div className="crm-story-header">
-          <div>
-            <small>{t("syntheticCustomer")}</small>
-            <strong>Amelia Putri</strong>
-            <span>{t("owner")} · Fadhil</span>
-          </div>
-          <div>
-            <small>{t("exampleClock")}</small>
-            <strong>2026-10-19 · 10:00</strong>
-            <span>Asia/Jakarta · UTC+7</span>
-          </div>
-        </div>
-        <ol className="crm-story-steps">
-          {taskStories.map((s, i) => (
-            <li key={i}>
-              <button
-                type="button"
-                aria-current={step === i ? "step" : undefined}
-                onClick={() => setStep(i)}
-              >
-                <span>{i + 1}</span>
-                {s.short[col]}
-              </button>
-            </li>
-          ))}
-        </ol>
-        <div className="crm-story-event" aria-live="polite">
-          <b>{step + 1}</b>
-          <div>
-            <h4>{taskStories[step].title[col]}</h4>
-            <p>{taskStories[step].body[col]}</p>
-          </div>
-        </div>
-        <div className="crm-story-count">
-          <strong>{t("taskLedger")}</strong>
-          <span>
-            {task.filter((x) => x.present && !x.completed).length}{" "}
-            {words(col, "open tasks", "tugas terbuka", "项开放任务")}
-          </span>
-        </div>
-        <div className="crm-story-board">
-          {task.map((x, i) => (
-            <div
-              key={x.id}
-              className="crm-story-task"
-              data-state={
-                !x.present ? "absent" : x.completed ? "completed" : "open"
-              }
-            >
-              <small>{x.id}</small>
-              {x.present ? (
-                <>
-                  <h4>{t(`task${i + 1}` as keyof typeof exerciseWords)}</h4>
-                  <span
-                    className={`crm-learning-status ${x.completed ? "complete" : i === 1 ? "neutral" : "today"}`}
-                  >
-                    {t(
-                      x.completed ? "completed" : i === 1 ? "pending" : "today",
-                    )}
-                  </span>
-                  <p>{t(`due${i + 1}` as keyof typeof exerciseWords)}</p>
-                  <small>
-                    {t(`source${i + 1}` as keyof typeof exerciseWords)}
-                  </small>
-                  {x.supplemented && (
-                    <p className="crm-story-evidence">{t("sameId")}</p>
-                  )}
-                </>
-              ) : (
-                <span>{t("notCreated")}</span>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="crm-story-notice">
-          <strong>{t("noticeTitle")}</strong>
-          <p>
-            {step === 4
-              ? words(
-                  col,
-                  "T1 pending reminder: cancelled. T2 and T3: unchanged.",
-                  "Pengingat tertunda T1: dibatalkan. T2 dan T3: tetap.",
-                  "T1 关联待发提醒取消，T2、T3 保持原状。",
-                )
-              : words(
-                  col,
-                  "No task has completed. Existing pending reminders remain.",
-                  "Belum ada tugas selesai. Pengingat tertunda tetap.",
-                  "尚未完成任何任务，既有关联待发提醒保留。",
-                )}
-          </p>
-          <small>{t("noticeScope")}</small>
-        </div>
-        <div className="crm-story-controls">
-          <button
-            type="button"
-            disabled={!step}
-            onClick={() => setStep(step - 1)}
-          >
-            {t("previous")}
-          </button>
-          <span>{step + 1} / 5</span>
-          <button type="button" onClick={() => setStep((step + 1) % 5)}>
-            {t(step === 4 ? "restart" : "next")}
-          </button>
-        </div>
-        <figcaption>{t("taskCaption")}</figcaption>
-      </figure>
-      <figure className="crm-learning-figure">
-        <h4>{t("changesTitle")}</h4>
-        <div className="crm-learning-choices">
-          {taskChanges.map((x, i) => (
-            <button
-              type="button"
-              aria-pressed={change === i}
-              key={i}
-              onClick={() => setChange(i)}
-            >
-              {x.name[col]}
-            </button>
-          ))}
-        </div>
-        <div className="crm-learning-before-after" aria-live="polite">
-          <div>
-            <strong>{c.left[col]}</strong>
-            <small>{c.leftSub[col]}</small>
-          </div>
-          <span aria-hidden="true">→</span>
-          <div>
-            <strong>{c.right[col]}</strong>
-            <small>{c.rightSub[col]}</small>
-          </div>
-        </div>
-        <figcaption>{c.caption[col]}</figcaption>
-      </figure>
-    </>
-  );
-}
-
-type Practice = {
-  channel: string;
-  result: boolean;
-  keep: boolean;
-  plan: string;
-  note: string;
-  action: string;
-  purpose: string;
-  date: string;
-};
-const blankPractice: Practice = {
-  channel: "",
-  result: false,
-  keep: false,
-  plan: "",
-  note: "",
-  action: "",
-  purpose: "",
-  date: "",
-};
-export function validateGuidePractice(p: Practice) {
-  if (!p.channel) return "errChannel";
-  if (!p.result) return "errResult";
-  if (!p.note.trim()) return "errNote";
-  if (!p.keep) return "errOutcome";
-  if (!p.plan) return "errPlan";
-  const at = Date.parse(p.date + ":00+07:00");
-  if (
-    p.plan === "schedule" &&
-    (!p.action.trim() ||
-      !p.purpose.trim() ||
-      !Number.isFinite(at) ||
-      at <= Date.parse("2026-10-19T10:00:00+07:00"))
-  )
-    return "errSchedule";
-  return "";
-}
-export function FollowupPractice({ col }: Props) {
-  const [p, setP] = useState<Practice>({ ...blankPractice }),
-    [saved, setSaved] = useState(false),
-    [error, setError] = useState(""),
-    [feedbackRequest, setFeedbackRequest] = useState(0);
-  const errorRef = useRef<HTMLParagraphElement>(null);
-  const savedRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!feedbackRequest) return;
-    const feedback = error ? errorRef.current : saved ? savedRef.current : null;
-    feedback?.focus({ preventScroll: true });
-    feedback?.scrollIntoView({ block: "center", behavior: "instant" });
-  }, [feedbackRequest, error, saved]);
-  const t = (key: keyof typeof exerciseWords) => exerciseWords[key][col];
-  const update = (value: Partial<Practice>) => {
-    setP((old) => ({ ...old, ...value }));
-    setSaved(false);
-    setError("");
-  };
-  return (
-    <section className="crm-guide-practice" aria-label={t("practiceTitle")}>
-      <h4>{t("practiceTitle")}</h4>
-      <p>
-        {words(
-          col,
-          "Teaching exercise only. No CRM records or notifications are created.",
-          "Latihan saja. Tidak membuat catatan CRM atau notifikasi.",
-          "教学演练，不会写入 CRM 或发送通知。",
-        )}
-      </p>
-      <div className="crm-guide-practice-grid">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const err = validateGuidePractice(p);
-            setError(err);
-            setSaved(!err);
-            setFeedbackRequest((value) => value + 1);
-          }}
-        >
-          <strong>Amelia Putri · Fadhil</strong>
-          <p>{t("boundTask")}</p>
-          <fieldset>
-            <legend>{t("factStep")}</legend>
-            <div className="crm-guide-practice-label">{t("channel")}</div>
-            <div className="crm-learning-choices">
-              {["phone", "wa"].map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-pressed={p.channel === k}
-                  onClick={() => update({ channel: k })}
-                >
-                  {t(k as "phone" | "wa")}
-                </button>
-              ))}
-            </div>
-            <div className="crm-guide-practice-label">{t("result")}</div>
-            <button
-              className="crm-learning-choice"
-              type="button"
-              aria-pressed={p.result}
-              onClick={() => update({ result: !p.result })}
-            >
-              {t("noReply")}
-            </button>
-            <label>
-              {t("noteLabel")}
-              <textarea
-                value={p.note}
-                onChange={(e) => update({ note: e.target.value })}
-              />
-            </label>
-            <button
-              type="button"
-              className="crm-learning-text-button"
-              onClick={() =>
-                update({
-                  note: "Telepon pukul 10.00 tidak dijawab. Kebutuhan belajar belum dapat dikonfirmasi.",
-                })
-              }
-            >
-              {t("fillNote")}
-            </button>
-            <small>{t("originalNote")}</small>
-          </fieldset>
-          <fieldset>
-            <legend>{t("outcomeStep")}</legend>
-            <button
-              className="crm-learning-choice"
-              type="button"
-              aria-pressed={p.keep}
-              onClick={() => update({ keep: !p.keep })}
-            >
-              {t("keepTask")}
-            </button>
-            <p>{t("outcomeHelp")}</p>
-          </fieldset>
-          <fieldset>
-            <legend>{t("planStep")}</legend>
-            <div className="crm-learning-plans">
-              {[
-                ["keep", "keepPlan", "keepPlanSub"],
-                ["schedule", "schedulePlan", "schedulePlanSub"],
-                ["record_only", "recordPlan", "recordPlanSub"],
-              ].map(([value, label, sub]) => (
-                <button
-                  type="button"
-                  key={value}
-                  aria-pressed={p.plan === value}
-                  onClick={() => update({ plan: value })}
-                >
-                  <strong>{t(label as keyof typeof exerciseWords)}</strong>
-                  <small>{t(sub as keyof typeof exerciseWords)}</small>
-                </button>
-              ))}
-            </div>
-            {p.plan === "schedule" && (
-              <div className="crm-guide-schedule">
-                <label>
-                  {t("actionLabel")}
-                  <input
-                    value={p.action}
-                    onChange={(e) => update({ action: e.target.value })}
-                  />
-                </label>
-                <label>
-                  {t("purposeLabel")}
-                  <input
-                    value={p.purpose}
-                    onChange={(e) => update({ purpose: e.target.value })}
-                  />
-                </label>
-                <label>
-                  {t("dateLabel")}
-                  <input
-                    type="datetime-local"
-                    value={p.date}
-                    onChange={(e) => update({ date: e.target.value })}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="crm-learning-text-button"
-                  onClick={() =>
-                    update({
-                      action: t("nextActionExample"),
-                      purpose: t("nextPurposeExample"),
-                      date: "2026-10-20T10:00",
-                    })
-                  }
-                >
-                  {t("fillPlan")}
-                </button>
-                <small>{t("scheduleHelp")}</small>
-              </div>
-            )}
-            {p.plan === "record_only" && <p>{t("recordHelp")}</p>}
-          </fieldset>
-          {error && (
-            <p
-              id="crm-guide-practice-error"
-              ref={errorRef}
-              tabIndex={-1}
-              role="alert"
-              className="crm-learning-error"
-            >
-              {t(error as keyof typeof exerciseWords)}
-            </p>
-          )}
-          <div className="crm-learning-choices">
-            <button type="submit" className="crm-learning-primary">
-              {t("previewSave")}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setP({ ...blankPractice });
-                setSaved(false);
-                setError("");
-              }}
-            >
-              {t("resetPractice")}
-            </button>
-          </div>
-        </form>
-        <div className="crm-guide-effects">
-          <h4>{t("effectTitle")}</h4>
-          <figure>
-            <ol>
-              {[
-                ["attemptTitle", p.result ? "attemptBody" : "draft"],
-                ["connectedTitle", p.result ? "connectedBody" : "draft"],
-                ["taskEffectTitle", p.keep ? "taskEffectBody" : "draft"],
-                [
-                  "nextEffectTitle",
-                  p.plan === "schedule"
-                    ? "schedulePlanSub"
-                    : p.plan === "keep"
-                      ? "keepPlanSub"
-                      : p.plan === "record_only"
-                        ? "recordPlanSub"
-                        : "draft",
-                ],
-              ].map(([label, body], i) => (
-                <li key={label}>
-                  <span aria-hidden="true">{i + 1}</span>
-                  <div>
-                    <strong>{t(label as keyof typeof exerciseWords)}</strong>
-                    <p>{t(body as keyof typeof exerciseWords)}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <figcaption>{t("effectCaption")}</figcaption>
-          </figure>
-          {saved && (
-            <div
-              ref={savedRef}
-              tabIndex={-1}
-              role="status"
-              className="crm-guide-saved"
-            >
-              <strong>{t("savedTitle")}</strong>
-              <p>{t("savedSummary")}</p>
-              <p>{t(p.plan === "schedule" ? "savedNew" : "savedKeep")}</p>
-              {p.plan === "schedule" && (
-                <p>
-                  {p.action}
-                  <br />
-                  {p.date.replace("T", " ")} · UTC+7
-                </p>
-              )}
-              <small>{t("savedNote")}</small>
-              <blockquote>{p.note}</blockquote>
-              <small>{t("notSent")}</small>
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
   );
 }

@@ -1,3 +1,4 @@
+import {AdminField} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
 import React, { useRef, useState, useEffect } from "react";
@@ -226,7 +227,7 @@ export function CampaignMaterials({
           )}
         </p>
       )}
-      <label className="campaign-field">
+      <AdminField className="campaign-field">
         <span>{campaignAssetLabel(asset, lang)}</span>
         <textarea
           readOnly={!canEdit}
@@ -241,7 +242,7 @@ export function CampaignMaterials({
             feedback("");
           }}
         />
-      </label>
+      </AdminField>
       <nav aria-label={t("Draft actions", "Tindakan draf", "草稿操作")}>
         {canEdit && (
           <button

@@ -1,3 +1,5 @@
+import {selectVisitorScope} from '../src/services/visitorScope';
+selectVisitorScope('a'.repeat(64));
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { explicitChatRequest } from "../src/utils/chatRequestIntent.ts";
@@ -64,7 +66,7 @@ test("Shared real chat client routes all request types, keeps retry identity/act
   globalThis.fetch = async (input: any, init: any) => {
     const url = String(input);
     if (url === "/api/portal/session")
-      return Response.json({ cacheScope: "TEST-request-routing" });
+      return Response.json({ cacheScope: 'a'.repeat(64) });
     if (url === "/api/portal/conversations")
       return Response.json({ conversationId: "TEST-real-conversation" });
     const body = JSON.parse(init.body);
@@ -160,4 +162,9 @@ test("Booking and enrollment acknowledgements distinguish requests from confirme
     followupReply("zh", "awaiting_advisor", "enrollment"),
     /尚未完成/,
   );
+});
+
+test('664 exact advisor request accepts an advisor while negated, conditional, quoted and conflicting requests stay on AI',()=>{
+ for(const text of ['please have an advisor contact me','Please have a human advisor call me','Please have an adviser contact me'])assert.equal(explicitChatRequest(text),'handoff',text);
+ for(const text of ['If I decide, please have an advisor contact me','Do not have an advisor contact me','Translate "please have an advisor contact me"','How to have an advisor contact me?','please have an advisor contact me, I want to enroll','What can an advisor do?'])assert.equal(explicitChatRequest(text),undefined,text);
 });

@@ -1,11 +1,12 @@
+import {CrmAiIndicator} from './CrmAiIndicator';
 import { useEffect, useRef, useState } from "react";
 import {
-  evidenceForLead,
+  visibleIntentEvidence,
   buyingEvidenceLabel,
   evidenceHeading,
   type BuyingEvidence,
 } from "../../utils/crmBuyingEvidence";
-import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
+import { formatCrmOperatingTime,viewerTimeZone } from "../../utils/crmOperatingTime";
 
 export function CrmBuyingEvidence({
   lead,
@@ -15,9 +16,10 @@ export function CrmBuyingEvidence({
   onSource,
   onTask,
 }: any) {
+  timezone=viewerTimeZone();
   const t = (en: string, id: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? id : en;
-  const rows = evidenceForLead(lead);
+  const rows = visibleIntentEvidence(lead);
   const root = useRef<HTMLDivElement>(null);
   const [highlight, setHighlight] = useState<string>();
   useEffect(() => {
@@ -47,13 +49,12 @@ export function CrmBuyingEvidence({
   };
   return (
     <div className="crm-buying-evidence" ref={root}>
-      {(["sales", "questionnaire", "legacy"] as const).map((group) => {
+      {(["sales", "questionnaire"] as const).map((group) => {
         const entries = rows.filter((e) =>
           group === "sales"
             ? e.kind === "sales" || e.kind === "chat"
             : e.kind === group,
         );
-        if (!entries.length && group === "legacy") return null;
         return (
           <section
             className="crm-signal-section"
@@ -75,7 +76,7 @@ export function CrmBuyingEvidence({
                 className="crm-signal-evidence-row"
                 aria-label={`${evidenceHeading(e.kind, lang)} · ${buyingEvidenceLabel(e, lang)}`}
               >
-                <strong>{buyingEvidenceLabel(e, lang)}</strong>
+                <strong>{buyingEvidenceLabel(e, lang)}{e.aiDerived&&<CrmAiIndicator/>}</strong>{e.correctedBy&&<p className="crm-work-muted">{t("Corrected original observation · history only","Observasi semula dikoreksi · hanya riwayat","原观察已被关联修正 · 仅保留历史，不作为当前信号")}</p>}
                 <p className="crm-signal-meta">
                   {e.kind === "questionnaire"
                     ? t(
@@ -87,7 +88,7 @@ export function CrmBuyingEvidence({
                       ? t(
                           "Customer Chat request",
                           "Permintaan Chat pelanggan",
-                          "客户 Chat 请求",
+                          e.aiDerived?"客户对话":"客户 Chat 请求",
                         )
                       : e.kind === "sales"
                         ? t("Sales record", "Catatan sales", "销售记录")
@@ -102,7 +103,7 @@ export function CrmBuyingEvidence({
                 {e.kind === "questionnaire" ? (
                   <p className="crm-signal-original">
                     {t("Saved answer", "Jawaban tersimpan", "保存的选项")}：
-                    {buyingEvidenceLabel(e, lang)}
+                    {buyingEvidenceLabel(e, lang)}{e.aiDerived&&<CrmAiIndicator/>}
                   </p>
                 ) : e.original ? (
                   <blockquote>{e.original}</blockquote>

@@ -1,5 +1,7 @@
 import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import {contactInquiry,INQUIRY_IDENTITY_CHANGED,INQUIRY_IDENTITY_CANCELLED} from '../services/portalChat';
+import {verifyVisitorSession} from '../services/visitorScope';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Phone, Mail, MessageCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -7,12 +9,17 @@ import { SEO } from '../components/SEO';
 import { trackFormSubmit, trackConsultationClick } from '../utils/analytics';
 import { useDesignStyle } from '../utils/theme';
 
-const sendContactInquiry=(payload:Record<string,string>)=>fetch('/api/inquiry',{
-  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),
-});
 const NETWORK_UNSAVED='INQUIRY_NETWORK_UNSAVED';
 
-export default function Contact({sendInquiry=sendContactInquiry}:{sendInquiry?:(payload:Record<string,string>)=>Promise<Response>}={}) {
+export default function Contact({sendInquiry}:{sendInquiry?:(payload:Record<string,string>)=>Promise<Response>}={}) {
+  const inquiryIdentity=useRef({scope:''});
+  const identityReady=useRef<Promise<void>|null>(null);
+  useEffect(()=>{
+    if(!sendInquiry) {
+      identityReady.current=verifyVisitorSession().then(s=>{inquiryIdentity.current.scope=s.cacheScope;});
+      void identityReady.current.catch(()=>{identityReady.current=null;});
+    }
+  },[sendInquiry]);
   const submissionKey=useRef(crypto.randomUUID());
   const submissionInFlight=useRef(false);
   const phoneRef=useRef<HTMLInputElement>(null);
@@ -33,6 +40,11 @@ export default function Contact({sendInquiry=sendContactInquiry}:{sendInquiry?:(
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const inquiryFeedback: string = ({
+    [INQUIRY_IDENTITY_CANCELLED]: localeText('Not submitted. Your entries are kept; review the contact details or submit as another user.','Belum dikirim. Isian tetap tersedia; periksa kontak atau kirim sebagai pengguna lain.','尚未提交，已保留填写内容。请核对联系方式，或作为另一位使用者提交。'),
+    [INQUIRY_IDENTITY_CHANGED]: localeText('The browser user changed. Your entries are kept. Copy them before reloading to verify the current user.','Pengguna browser berubah. Isian tetap tersedia. Salin isian sebelum memuat ulang untuk memverifikasi pengguna.','浏览器使用者已变化，当前填写内容仍在。请先复制填写内容，再重新加载并核对使用者。'),
+    [NETWORK_UNSAVED]: localeText('Not saved. Please retry; your entries have been kept.','Belum tersimpan. Coba lagi; isian Anda tetap tersedia.','未保存，请重试。已保留您的填写内容。'),
+  } as Record<string,string>)[submitError] || submitError;
   const phoneText=contactPhoneText(i18n.language);
   const phoneInvalid=Boolean(errors.phone)||(phoneTouched&&!validContactPhone(formData.phone));
 
@@ -79,7 +91,9 @@ export default function Contact({sendInquiry=sendContactInquiry}:{sendInquiry?:(
       setIsSubmitting(true);
       setSubmitError('');
       try {
-        const response = await sendInquiry({...formData,requestId:submissionKey.current});
+        if(!sendInquiry)await identityReady.current;
+        const payload={...formData,requestId:submissionKey.current};
+        const response = await (sendInquiry?sendInquiry(payload):contactInquiry(payload,i18n.language,inquiryIdentity.current));
 
         const data = await response.json();
 
@@ -105,8 +119,7 @@ export default function Contact({sendInquiry=sendContactInquiry}:{sendInquiry?:(
           trackFormSubmit('contact_inquiry_form', false, { reason: 'api_error', error: data.error || 'Failed' });
         }
       } catch (err: any) {
-        console.error('Error submitting form:', err);
-        setSubmitError(NETWORK_UNSAVED);
+        setSubmitError([INQUIRY_IDENTITY_CANCELLED,INQUIRY_IDENTITY_CHANGED].includes(err.message)?err.message:NETWORK_UNSAVED);
         trackFormSubmit('contact_inquiry_form', false, { reason: 'network_error', error: err.message || 'unknown' });
       } finally {
         submissionInFlight.current=false;
@@ -338,7 +351,7 @@ export default function Contact({sendInquiry=sendContactInquiry}:{sendInquiry?:(
               {submitError && (
                 <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm border border-red-100 flex items-center gap-3">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
-                  <span>{submitError===NETWORK_UNSAVED?localeText('Not saved. Please retry; your entries have been kept.','Belum tersimpan. Coba lagi; isian Anda tetap tersedia.','未保存，请重试。已保留您的填写内容。'):submitError}</span>
+                  <span>{inquiryFeedback}</span>
                 </div>
               )}
               <div>

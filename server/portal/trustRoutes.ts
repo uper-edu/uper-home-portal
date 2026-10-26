@@ -1,3 +1,11 @@
+import {salesProgressContext,validateSalesProgress} from './salesProgress.ts';
+import {saveProfileUpdates} from './dynamicProfile.ts';
+import {appendRecordAmendment} from './recordAmendments.ts';
+import {projectFactLedger} from '../../src/utils/crmFactLedger.ts';
+import {taskRequests,requestDeadline} from './taskManagement.ts';
+import {contactRestriction} from '../../src/utils/crmContact.ts';
+import {pendingIdentity,attachIdentity,identityMatch,identityComparison,identityControls} from './identityReview.ts';
+import {outreachPolicy,isCrmManager,canReviewIdentityRole} from '../../src/utils/crmOutreach.ts';
 import { permittedRecord } from "../../src/utils/accessControl.ts";
 import { allowed } from "./identity.ts";
 import {
@@ -10,8 +18,105 @@ import {
 } from "./trustWorkflow.ts";
 export function mountTrustRoutes(
   app: any,
-  { wrap, leadAccess, requestAllowed }: any,
+  { wrap, leadAccess, requestAllowed, staff }: any,
 ) {
+  app.get('/api/crm/leads/:id/extractions',wrap(async(req:any,res:any)=>{
+    const {l}=await leadAccess(req,'crm.read');const {pool}=await import('./store.ts');
+    const rows=(await pool.query('SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 50',[l.id])).rows;
+    res.set('Cache-Control','no-store').json({leadId:l.id,rows:rows.map((r:any)=>({...r,input:{text:r.input.text,occurredAt:r.input.occurredAt,sourceRoot:r.input.sourceRoot,amendment:r.input.amendment,explicitFields:r.input.explicitFields}}))});
+  }));
+  app.post('/api/crm/leads/:id/profile-fields',wrap(async(req:any,res:any)=>{
+    const {l,e}=await leadAccess(req,'crm.write');const {tx}=await import('./store.ts');
+    res.json(await tx((c:any)=>saveProfileUpdates(c,l.id,e.id,req.body,(p:any)=>requestAllowed(e,p,req))));
+  }));
+  app.get('/api/crm/leads/:id/facts',wrap(async(req:any,res:any)=>{
+    const {l}=await leadAccess(req);const {pool}=await import('./store.ts');
+    const facts=(await pool.query('SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC',[l.id])).rows;
+    const messages=(await pool.query("SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id",[l.id])).rows;
+    const attempts=(await pool.query('SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1',[l.id])).rows;
+    res.json({leadId:l.id,events:projectFactLedger(l.id,facts,messages,attempts,l.profile),scope:'facts_not_intent_or_tasks'});
+  }));
+  app.post('/api/crm/leads/:id/facts/:factId/corrections',wrap(async(req:any,res:any)=>{
+    await leadAccess(req,'crm.read');invalid('撤回入口已停用，请刷新并追加补充／修正记录',410);
+  }));
+  app.post('/api/crm/leads/:id/amendments',wrap(async(req:any,res:any)=>{
+    const {l,e}=await leadAccess(req,'crm.read');const {tx}=await import('./store.ts');
+    res.json(await tx((c:any)=>appendRecordAmendment(c,l.id,e.id,req.body,(p:any,permission:string)=>e.permissions.includes(permission)&&requestAllowed(e,p,req,permission))));
+  }));
+  app.get('/api/crm/identity-reviews', wrap(async(req:any,res:any)=>{
+    const e=await staff(req);
+    const {pool}=await import('./store.ts');
+    const controls=await identityControls(pool);
+    if(!canReviewIdentityRole(e,controls))invalid(controls.identityReviewManagerOnly?'IDENTITY_MANAGER_REQUIRED':'IDENTITY_REVIEW_PERMISSION_REQUIRED',403);
+    const seen=new Set<string>();
+    const reviews=(await pendingIdentity(pool)).filter((r:any)=>{
+      const key=[r.lead_id,r.candidate_id].sort().join(':');
+      if(seen.has(key)||!requestAllowed(e,r.source_profile,req,'crm.read')||!requestAllowed(e,r.candidate_profile,req,'crm.read')||!permittedRecord(e,r.source_profile,'crm.followup')||!permittedRecord(e,r.candidate_profile,'crm.followup'))return false;
+      seen.add(key);return true;
+    }).map((r:any)=>({leadId:r.lead_id,candidateId:r.candidate_id,name:r.source_profile.fullName||r.lead_id,candidateName:r.candidate_profile.fullName||r.candidate_id,basis:identityMatch(r.source_profile,r.candidate_profile)}));
+    res.json({reviews});
+  }));
+  app.get('/api/crm/leads/:id/identity-comparison',wrap(async(req:any,res:any)=>{
+    const {l,e}=await leadAccess(req);
+    const {tx}=await import('./store.ts');
+    res.json(await tx(async(c:any)=>{
+      const controls=await identityControls(c);
+      if(!canReviewIdentityRole(e,controls))invalid(controls.identityReviewManagerOnly?'IDENTITY_MANAGER_REQUIRED':'IDENTITY_REVIEW_PERMISSION_REQUIRED',403);
+      const data=await identityComparison(c,l.id,typeof req.query.candidateId==='string'?req.query.candidateId:undefined,(p:any)=>requestAllowed(e,p,req,'crm.read'));
+      await attachIdentity(c,e,[data.left.profile,data.right.profile]);
+      return {...data,canConfirm:data.pending&&permittedRecord(e,data.left.profile,'crm.followup')&&permittedRecord(e,data.right.profile,'crm.followup')};
+    }));
+  }));
+  app.get('/api/crm/leads/:id/contact-evidence',wrap(async(req:any,res:any)=>{
+    const {l,e}=await leadAccess(req);
+    if(!permittedRecord(e,l.profile,'crm.followup'))invalid('CONTACT_PERMISSION_DENIED',403);
+    const {pool}=await import('./store.ts');
+    const candidates=(await pendingIdentity(pool,l.id)).map((r:any)=>({id:r.lead_id===l.id?r.candidate_id:r.lead_id,profile:r.lead_id===l.id?r.candidate_profile:r.source_profile})).filter((r:any)=>requestAllowed(e,r.profile,req,'crm.read')&&permittedRecord(e,r.profile,'crm.followup')).map((r:any)=>({id:r.id,name:r.profile.fullName||r.id}));
+    const answered=new Set((l.profile.followUpLogs||[]).filter((v:any)=>v.sourceMessageAnswered===true).map((v:any)=>v.sourceMessageId));
+    const messages=(await pool.query("SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC LIMIT 30",[l.id])).rows.filter((m:any)=>!answered.has(m.id));
+    res.json({candidates,messages});
+  }));
+  app.post('/api/crm/leads/:id/contact-authorization',wrap(async(req:any,res:any)=>{
+    const {l,e}=await leadAccess(req);
+    const {tx}=await import('./store.ts');
+    res.json(await tx(async(c:any)=>{
+      const current=await lockLead(c,l.id,(p:any)=>requestAllowed(e,p,req,'crm.read'));
+      await attachIdentity(c,e,[current],true);
+      const b=req.body,purpose=b.purpose;
+      if(!['sales_followup','identity_verification','customer_reply'].includes(purpose))invalid('CONTACT_EVIDENCE_REQUIRED');
+      const denied=outreachPolicy(e,current,purpose);
+      if(denied)invalid(denied,403);
+      if((current.owner||null)!==(b.expectedOwner||null))invalid('CONTACT_OWNER_CHANGED',409);
+      if(b.expectedArrangementVersion!==(current.contactArrangement?.version||0))invalid('CONTACT_CONTEXT_CHANGED',409);
+      const assisted=isCrmManager(e)&&current.owner!==e.id;
+      const exceptional=purpose==='identity_verification'||(purpose==='customer_reply'&&contactRestriction(current));
+      if(exceptional&&(typeof b.reason!=='string'||!b.reason.trim()||b.reason.length>2000))invalid('CONTACT_REASON_REQUIRED');
+      if(purpose==='identity_verification'){
+        const pair=(await pendingIdentity(c,current.id,true)).find((r:any)=>r.lead_id===b.candidateId||r.candidate_id===b.candidateId);
+        const peer=pair&&(pair.lead_id===current.id?pair.candidate_profile:pair.source_profile);
+        if(!peer||!requestAllowed(e,peer,req,'crm.read')||!permittedRecord(e,peer,'crm.followup'))invalid('CONTACT_EVIDENCE_REQUIRED',403);
+      }
+      if(purpose==='customer_reply'){
+        const row=(await c.query("SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND v.lead_id=:p2",[b.sourceMessageId||'',current.id])).rows[0];
+        const time=(v:any)=>Date.parse(typeof v==='string'&&!/[Zz]|[+-]\d\d:\d\d$/.test(v)?v.replace(' ','T')+'Z':v);
+        const after=current.contactReview?.at||current.contactArrangement?.at;
+        if(!row||row.role!=='user'||b.replyConfirmedUnanswered!==true||(current.followUpLogs||[]).some((v:any)=>v.sourceMessageId===row.id&&v.sourceMessageAnswered===true)||(contactRestriction(current)&&(!after||!Number.isFinite(time(row.created_at))||time(row.created_at)<=time(after))))invalid('CONTACT_EVIDENCE_REQUIRED');
+      }
+      if(!['phone','whatsapp','copy'].includes(b.action))invalid('Invalid contact action');
+      return operation(c,e.id,b,{leadId:l.id,kind:'contact-authorization'},async()=>{
+        await fact(c,l.id,'contact.intent',e.id,{action:b.action,purpose,reason:exceptional?b.reason.trim():null,assisted,owner:current.owner||null,candidateId:purpose==='identity_verification'?b.candidateId:undefined,sourceMessageId:purpose==='customer_reply'?b.sourceMessageId:undefined,replyConfirmedUnanswered:purpose==='customer_reply'?true:undefined,identityVerification:purpose==='identity_verification',scope:'authorized_intent_not_confirmed_sent_or_contacted'});
+        return {authorized:true,leadId:l.id};
+      });
+    }));
+  }));
+  // Uses the same per-record CRM read authorization as all customer detail tabs.
+  app.get('/api/crm/leads/:id/assessments',wrap(async(req:any,res:any)=>{
+    const {l}=await leadAccess(req);
+    const {pool}=await import('./store.ts');
+    const attempts=(await pool.query("SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC",[l.id])).rows;
+    const p=l.profile;
+    res.json({leadId:l.id,attempts:attempts.map((r:any)=>({id:r.id,result:r.result,recordedAt:typeof r.created_at==='string'?r.created_at.replace(' ','T').replace(/Z$/,'')+'Z':r.created_at})),current:{levelSource:p.levelSource,levelConfirmed:p.levelConfirmed,latestAssessment:p.latestAssessment,reportedLevel:p.reportedLevel,quizScore:p.quizScore,quizMaxScore:p.quizMaxScore,quizResultSummary:p.quizResultSummary,quizBreakdown:p.quizBreakdown}});
+  }));
   app.get(
     "/api/crm/leads/:id/trust",
     wrap(async (req: any, res: any) => {
@@ -31,25 +136,17 @@ export function mountTrustRoutes(
       ).rows;
       const engagements = (
         await pool.query(
-          "SELECT * FROM crm_engagements WHERE lead_id=:p1 ORDER BY created_at DESC",
+          "SELECT e.* FROM crm_engagements e LEFT JOIN conversations c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')) AND c.lead_id=e.lead_id WHERE e.lead_id=:p1 AND (NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')),'') IS NULL OR c.id IS NOT NULL) ORDER BY e.created_at DESC",
           [l.id],
         )
       ).rows;
-      const candidates = (
-        await pool.query(
-          "SELECT i.*,l.profile FROM identity_candidates i JOIN portal_leads l ON l.id=i.candidate_id WHERE i.lead_id=:p1",
-          [l.id],
-        )
-      ).rows
-        .filter((r: any) => requestAllowed(e, r.profile, req, "crm.read"))
-        .map(({ profile, visitor_id, ...r }: any) => ({
-          ...r,
-          name: profile.fullName || profile.name,
-          canConfirm: e.grants
-            ? permittedRecord(e, profile, "crm.followup")
-            : allowed(e, profile, "write"),
-        }));
-      res.json({ facts, tasks, engagements, candidates });
+      await attachIdentity(pool,e,[l.profile]);
+      const candidates=(await pendingIdentity(pool,l.id)).map((r:any)=>{
+        const profile=r.lead_id===l.id?r.candidate_profile:r.source_profile;
+        return {...r,candidate_id:r.lead_id===l.id?r.candidate_id:r.lead_id,profile};
+      }).filter((r:any)=>requestAllowed(e,r.profile,req,'crm.read')).map((r:any)=>({candidate_id:r.candidate_id,decision:'pending',name:r.profile.fullName||r.profile.name,email:r.profile.email,whatsapp:r.profile.whatsapp,basis:identityMatch(l.profile,r.profile),canConfirm:Boolean(l.profile.identityReview.canReview&&permittedRecord(e,l.profile,"crm.followup")&&permittedRecord(e,r.profile,"crm.followup"))}));
+      const requests=engagements.filter((r:any)=>r.kind==='task_request');
+      res.json({ facts, tasks:tasks.map((t:any)=>({...t,requestDueAt:requestDeadline(t,requests)})), engagements:engagements.filter((r:any)=>r.kind!=='task_request'), requests, candidates, identityReview:l.profile.identityReview });
     }),
   );
   app.get(
@@ -75,6 +172,7 @@ export function mountTrustRoutes(
     "/api/crm/leads/:id/task-actions",
     wrap(async (req: any, res: any) => {
       const { l, e } = await leadAccess(req, "crm.write");
+      invalid('General tasks are retired; refresh CRM',410);
       const { tx } = await import("./store.ts");
       const result = await tx((c: any) =>
         taskCommand(c, l.id, e.id, req.body, (p: any) =>
@@ -84,54 +182,25 @@ export function mountTrustRoutes(
       res.json(result);
     }),
   );
-  app.post(
-    "/api/crm/leads/:id/stage",
-    wrap(async (req: any, res: any) => {
-      const { l, e } = await leadAccess(req, "crm.write");
-      const { tx } = await import("./store.ts");
-      res.json(
-        await tx(async (c: any) => {
-          const current = await lockLead(c, l.id, (p: any) =>
-            requestAllowed(e, p, req),
-          );
-          return operation(c, e.id, req.body, async () => {
-            const b = req.body;
-            if (
-              ![
-                "New",
-                "Contacted",
-                "Assessment Booked",
-                "Assessment Done",
-                "Trial Booked",
-                "Trial Attended",
-                "Enrolled",
-                "Lost",
-              ].includes(b.newStage)
-            )
-              invalid("Invalid sales stage");
-            await stageFact(c, l.id, e.id, current, b, b.reason);
-            const lead = {
-              ...current,
-              currentStage: b.newStage,
-              stageRevision:
-                b.newStage === current.currentStage
-                  ? current.stageRevision || 0
-                  : (current.stageRevision || 0) + 1,
-              stageUpdatedAt:
-                b.newStage === current.currentStage
-                  ? current.stageUpdatedAt
-                  : new Date().toISOString(),
-            };
-            await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1", [
-              l.id,
-              lead,
-            ]);
-            return { saved: true, leadId: l.id, lead };
-          });
-        }),
-      );
-    }),
-  );
+  app.get('/api/crm/leads/:id/stage-context',wrap(async(req:any,res:any)=>{
+    const {l}=await leadAccess(req,'crm.read');const {pool}=await import('./store.ts');
+    res.set('Cache-Control','no-store').json({leadId:l.id,...await salesProgressContext(pool,l.id,l.profile)});
+  }));
+  app.post('/api/crm/leads/:id/stage',wrap(async(req:any,res:any)=>{
+    const {l,e}=await leadAccess(req,'crm.write');const {tx}=await import('./store.ts');
+    res.json(await tx(async(c:any)=>{
+      const current=await lockLead(c,l.id,(p:any)=>requestAllowed(e,p,req));
+      return operation(c,e.id,req.body,{leadId:l.id,kind:'stage'},async()=>{
+        const decision=await validateSalesProgress(c,l.id,current,req.body);
+        if(req.body.newStage===current.currentStage)invalid('阶段没有变化，请勿重复保存');
+        await fact(c,l.id,'stage.changed',e.id,decision);
+        const lead={...current,currentStage:req.body.newStage,stageRevision:(current.stageRevision||0)+1,stageUpdatedAt:decision.recordedAt,stageEffectiveAt:decision.effectiveAt,stagePolicyVersion:2};
+        await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[l.id,lead]);
+        await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.stage',:p2)",[e.id,{leadId:l.id,...decision}]);
+        return {saved:true,leadId:l.id,lead};
+      });
+    }));
+  }));
   app.post(
     "/api/crm/leads/:id/information",
     wrap(async (req: any, res: any) => {
@@ -140,7 +209,7 @@ export function mountTrustRoutes(
       res.json(
         await tx(async (c: any) => {
           await lockLead(c, l.id, (p: any) => requestAllowed(e, p, req));
-          return operation(c, e.id, req.body, async () => {
+          return operation(c, e.id, req.body, { leadId: l.id, kind: "information" }, async () => {
             if (
               typeof req.body.summary !== "string" ||
               !req.body.summary.trim() ||
@@ -166,7 +235,7 @@ export function mountTrustRoutes(
       res.json(
         await tx(async (c: any) => {
           await lockLead(c, l.id, (p: any) => requestAllowed(e, p, req));
-          return operation(c, e.id, req.body, async () => {
+          return operation(c, e.id, req.body, { leadId: l.id, kind: "engagement-actions" }, async () => {
             const b = req.body;
             const selected = b.engagements || [
               { id: b.engagementId, version: b.version },
@@ -198,7 +267,7 @@ export function mountTrustRoutes(
                 )
               ).rows[0];
               if (
-                !row ||
+                !row || row.kind === "task_request" ||
                 row.state !== "pending" ||
                 row.version !== selection.version
               )
@@ -227,30 +296,39 @@ export function mountTrustRoutes(
     "/api/crm/leads/:id/identity-actions",
     wrap(async (req: any, res: any) => {
       const { l, e } = await leadAccess(req, "crm.write");
+
       const { tx } = await import("./store.ts");
       res.json(
         await tx(async (c: any) => {
-          await lockLead(c, l.id, (p: any) => requestAllowed(e, p, req));
-          return operation(c, e.id, req.body, async () => {
+          const controls=await identityControls(c);
+          if(!canReviewIdentityRole(e,controls))invalid(controls.identityReviewManagerOnly?'IDENTITY_MANAGER_REQUIRED':'IDENTITY_REVIEW_PERMISSION_REQUIRED',403);
+          if(typeof req.body.candidateId!=="string"||req.body.candidateId===l.id)invalid("Identity decision and reason required");
+          for(const key of [l.id,req.body.candidateId].sort())await lockLead(c,key,(p:any)=>requestAllowed(e,p,req));
+          return operation(c, e.id, req.body, {
+            leadId: l.id, kind: "identity-actions",
+            // Both records must remain accessible, including on a cached retry.
+            authorize: () => lockLead(c, req.body.candidateId, (p: any) => requestAllowed(e, p, req)),
+          }, async () => {
             const b = req.body;
-            await lockLead(c, b.candidateId, (p: any) =>
-              requestAllowed(e, p, req),
-            );
+            if(b.expectedComparisonRevision){
+              const comparison=await identityComparison(c,l.id,b.candidateId,(p:any)=>requestAllowed(e,p,req,'crm.read'));
+              if(comparison.revision!==b.expectedComparisonRevision)invalid('Identity evidence changed; refresh and review',409);
+            }
             if (
               !b.reason?.trim() ||
-              !["same", "different"].includes(b.decision)
+              !["same", "different", "shared"].includes(b.decision)
             )
               invalid("Identity decision and reason required");
             const found = (
               await c.query(
-                "SELECT * FROM identity_candidates WHERE lead_id=:p1 AND candidate_id=:p2 AND decision='pending' FOR UPDATE",
+                "SELECT * FROM identity_candidates WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision='pending' FOR UPDATE",
                 [l.id, b.candidateId],
               )
             ).rows;
-            if (!found.length)
+            if (!found.length || !(await pendingIdentity(c,l.id,true)).some((r:any)=>r.lead_id===b.candidateId||r.candidate_id===b.candidateId))
               invalid("Identity candidate changed; refresh and review", 409);
             await c.query(
-              "UPDATE identity_candidates SET decision=:p3,decided_by=:p4,reason=:p5,decided_at=UTC_TIMESTAMP(6) WHERE lead_id=:p1 AND candidate_id=:p2",
+              "UPDATE identity_candidates SET decision=:p3,decided_by=:p4,reason=:p5,decided_at=UTC_TIMESTAMP(6) WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision='pending'",
               [l.id, b.candidateId, b.decision, e.id, b.reason],
             );
             await fact(c, l.id, "identity." + b.decision, e.id, {

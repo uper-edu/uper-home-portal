@@ -167,12 +167,11 @@ test("multi-values OR within fields, AND across fields; signals, unknowns and sc
   assert.deepEqual(parsed, f);
   assert.throws(() => parseLeadFilters({ task: "unknown" }));
 });
-test("summary and sorting use final filtered customers, not number of tasks; unread is independent", () => {
+test("summary and sorting use final filtered customers, not task count or personal reading", () => {
   const rows = [
     lead("a", [task("open", "2026-10-01"), task("open", "2026-10-02")], {
       attention: {
         tasks: [task("open", "2026-10-01"), task("open", "2026-10-02")],
-        unreadCount: 1,
       },
     }),
     lead("b"),
@@ -180,22 +179,20 @@ test("summary and sorting use final filtered customers, not number of tasks; unr
   ];
   const result = filterAndSummarize(
     rows,
-    { ...defaults("all"), ownership: "mine", unread: true, sort: "deadline" },
+    { ...defaults("all"), ownership: "mine", sort: "deadline" },
     "Fadhil",
     "Asia/Jakarta",
     now,
   );
-  assert.equal(Number(result.total), 1);
+  assert.equal(Number(result.total), 2);
   assert.equal(result.stats.overdueSla, 1);
-  assert.equal(result.stats.hot, 1);
+  assert.equal(result.stats.hot, 2);
 });
 
-test("638 retry-due follows new sequence and calendar, never the cumulative touch total",()=>{
- const sequence={status:'counting',count:1,nextEligibleAt:new Date(now-1000).toISOString()};
- const p=lead('retry',[],{connectStatus:'No Response',touchCount:50,noResponseSequence:sequence});
+test("unanswered-contact filter is a fact, independent of retired retry cadence",()=>{
+ const p=lead('retry',[],{connectStatus:'No Response',touchCount:50,followUpLogs:[{id:'contact',recordKind:'contact',connectStatus:'No Response',contactDirection:'sales',channel:'Phone Call',occurredAt:new Date(now-1000).toISOString()}]});
  assert.equal(matches(p,{situation:['retry']}),true);
- for(const status of ['waiting','nurtured','replied','protected'])assert.equal(matches({...p,noResponseSequence:{...sequence,status}},{situation:['retry']}),false);
- assert.equal(matches({...p,noResponseSequence:undefined},{situation:['retry']}),false);
+ assert.equal(matches({...p,connectStatus:'Connected',followUpLogs:[{...p.followUpLogs[0],connectStatus:'Connected'}]},{situation:['retry']}),false);
  assert.equal(matches({...p,contactArrangement:{state:'stopped'}},{situation:['retry']}),false);
- assert.equal(matches({...p,noResponseSequence:{...sequence,nextEligibleAt:new Date(now+1000).toISOString()}},{situation:['retry']}),false);
+ assert.equal(matches({...p,noResponseSequence:{status:'waiting',nextEligibleAt:new Date(now+1000).toISOString()}},{situation:['retry']}),true);
 });

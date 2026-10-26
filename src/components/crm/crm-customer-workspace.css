@@ -37,10 +37,7 @@
 .crm-work-head,
 .crm-work-row {
   display: grid;
-  grid-template-columns: minmax(165px, 1.05fr) minmax(190px, 1.35fr) minmax(
-      150px,
-      0.85fr
-    ) minmax(190px, 1.15fr);
+  grid-template-columns: minmax(165px, 1fr) minmax(240px, 1.4fr) minmax(150px, .85fr) minmax(180px, 1.05fr);
   gap: 18px;
 }
 .crm-work-head {
@@ -100,12 +97,6 @@
   color: var(--cw-muted, #475569);
   font-size: 12px;
 }
-.crm-lead-activity[data-unread="true"] {
-  color: #1d4ed8;
-}
-.crm-customer-workspace[data-theme="dark"] .crm-lead-activity[data-unread="true"] {
-  color: #93c5fd;
-}
 .crm-customer-workspace .crm-followup-timing[data-tone="normal"] {
   color: var(--cw-muted);
 }
@@ -155,6 +146,10 @@
 .crm-work-row .crm-followup-action {
   font-size: 14px;
   font-weight: 500;
+}
+.crm-work-row .crm-work-next .crm-followup-timing {
+  font-size: 14px;
+  line-height: 1.5;
 }
 .crm-work-identity > button:not(.crm-work-name) {
   font-size: 12px;
@@ -627,10 +622,10 @@
   }
   .crm-work-head,
   .crm-work-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(
         0,
         0.8fr
-      ) minmax(0, 1.15fr);
+      ) minmax(0, 1fr);
     gap: 12px;
   }
 }
@@ -1115,3 +1110,132 @@
 .crm-sales-task-context[data-fixed-target] { border-inline-start: 3px solid var(--cw-accent); }
 .crm-sales-task-context .crm-sales-task-target-label { margin: 0 0 6px; font-size: 12px; font-weight: 600; }
 .crm-sales-task-context[data-fixed-target] strong { display: block; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+/* Follow-up: current work, evidence, then history. No separate cross-customer task centre. */
+.crm-followup-work-summary{font-size:14px;color:var(--cw-muted);margin:8px 0 14px;line-height:1.6}
+.crm-task-evidence{margin-top:10px;border-top:1px solid var(--cw-border);padding-top:8px;font-size:13px;line-height:1.6}
+.crm-task-evidence summary{cursor:pointer;color:var(--cw-muted);font-weight:600}
+.crm-task-evidence>div{border-left:2px solid var(--cw-border);padding:6px 12px;margin-top:8px;overflow-wrap:anywhere}
+.crm-task-source-quote{border-left:2px solid var(--cw-border);margin:8px 0;padding:0 10px;font-size:13px;line-height:1.6;white-space:pre-wrap;color:var(--cw-muted)}
+.crm-pending-requests{border:1px solid var(--cw-border);border-radius:12px;padding:16px;margin:14px 0;background:var(--cw-surface)}
+.crm-pending-requests>h4{font-size:15px;margin:0 0 8px}.crm-pending-requests>p{font-size:13px;color:var(--cw-muted)}
+.crm-pending-requests article{border-top:1px solid var(--cw-border);padding:12px 0}.crm-pending-requests article>p{white-space:pre-wrap;overflow-wrap:anywhere}
+.crm-pending-requests .crm-request-deadline{font-size:14px;font-weight:600}.crm-request-deadline[data-overdue=true]{color:#b42336}
+.crm-request-completion{padding:12px;border:1px solid var(--cw-border);border-radius:10px}.crm-request-completion label{display:flex;gap:10px;align-items:flex-start;margin-top:10px}.crm-request-completion input{width:auto;flex:none;margin-top:4px}
+.crm-task-operation-form input[type=checkbox]{width:auto;margin-right:8px}
+
+.crm-followup-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:3;background:var(--cw-surface);padding:8px 0;margin:0 0 8px;border-bottom:1px solid var(--cw-border)}
+.crm-followup-toolbar h3{font-size:15px;margin:0!important}.crm-followup-toolbar .crm-followup-entry-actions{padding-bottom:0}
+.crm-followup-toolbar .crm-work-button[data-primary=true]{background:var(--cw-accent,#087f77);color:#fff;border-color:var(--cw-accent,#087f77)}
+.crm-unified-task-list .crm-task-timezone{margin:2px 0 6px}
+
+.crm-sales-dialog-description{font-size:13px;line-height:1.6;color:var(--cw-muted);margin:8px 0 0;max-width:64ch}
+.crm-task-current-time{display:block;font-size:13px;line-height:1.6;color:var(--cw-muted);margin-bottom:8px}
+.crm-task-operation-form input[aria-invalid=true]{border-color:#b42336}
+
+.crm-task-completion-guidance{font-size:13px;line-height:1.6;margin-top:10px;color:var(--cw-muted)}
+.crm-task-completion-guidance summary,.crm-task-overlap summary{cursor:pointer;font-weight:600}.crm-task-completion-guidance h5{font-size:14px;margin:0 0 6px;color:var(--cw-text)}.crm-task-completion-guidance p{margin:6px 0;overflow-wrap:anywhere}
+.crm-task-overlap{border:1px solid var(--cw-border);border-radius:10px;padding:12px;margin:10px 0 14px;background:var(--cw-surface);font-size:13px;line-height:1.6}.crm-task-overlap p{color:var(--cw-muted);margin:6px 0;overflow-wrap:anywhere}.crm-task-overlap ul{padding-inline-start:20px}.crm-task-overlap li+li{margin-top:10px}
+
+/* Compact follow-up rows: content, schedule/status, and stable action slots. */
+.crm-customer-panel-body .crm-trust-panel .crm-task-rows article.crm-unified-task{grid-template-columns:minmax(0,1fr) minmax(210px,.72fr) 152px;align-items:start;gap:12px 20px;padding:12px 16px}
+.crm-task-rows .crm-unified-task h4{font-size:14px;line-height:1.5}
+.crm-task-rows .crm-unified-task-purpose{margin:4px 0 0;color:var(--cw-muted);line-height:1.5}
+.crm-task-rows .crm-unified-task-copy .crm-work-muted{margin:4px 0 0;font-size:12px}
+.crm-task-rows .crm-unified-task-schedule{gap:6px}
+.crm-task-rows .crm-unified-task-schedule>.crm-unified-task-state{order:0;align-self:flex-start;font-size:12px;line-height:1.4}
+.crm-task-rows .crm-task-times{margin:0;gap:5px}
+.crm-task-rows .crm-unified-task-schedule .crm-task-times>div{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px}
+.crm-task-rows .crm-task-times dt{font-size:12px;margin:0;line-height:1.5}
+.crm-task-rows .crm-task-times dd{font-size:14px;font-weight:600;line-height:1.5;font-variant-numeric:tabular-nums}
+.crm-task-rows .crm-task-times>div[data-secondary=true] dd{font-size:12px;font-weight:400;color:var(--cw-muted)}
+.crm-task-rows .crm-task-times>div[data-secondary=true] dd[data-tone=overdue]{color:#b91c1c;font-weight:600;font-size:13px}
+.crm-customer-workspace[data-theme=dark] .crm-task-rows .crm-task-times>div[data-secondary=true] dd[data-tone=overdue]{color:#fca5a5}
+.crm-task-rows .crm-unified-task-actions{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:start;justify-content:stretch}
+.crm-task-rows .crm-task-process{min-height:36px;justify-content:center;padding:7px 9px;font-size:13px;background:#087f77;color:#fff;border-color:#087f77}
+.crm-customer-workspace[data-theme=dark] .crm-task-rows .crm-task-process{background:#64dbcc;color:#0f172a;border-color:#64dbcc}
+.crm-task-rows .crm-task-more{grid-column:2}
+.crm-task-rows .crm-task-more .crm-filter-dimension-button{min-height:36px}
+.crm-task-rows .crm-task-evidence{margin-top:6px;font-size:12px}
+@media(max-width:700px){.crm-customer-panel-body .crm-trust-panel .crm-task-rows article.crm-unified-task{grid-template-columns:minmax(0,1fr);gap:8px;padding:12px}.crm-task-rows .crm-unified-task-actions{grid-template-columns:auto 34px;justify-content:end}.crm-task-rows .crm-unified-task-schedule{gap:4px}}
+
+/* Recent communication is a reading summary, not another task/status card. */
+.crm-followup-current .crm-followup-zone-heading{margin-bottom:4px}
+.crm-recent-communication{font-size:13px;line-height:1.55;min-width:0}
+.crm-recent-row{display:grid;grid-template-columns:135px minmax(0,1fr);gap:16px;padding:12px 0;border-bottom:1px solid var(--cw-border)}
+.crm-recent-row h4{margin:0!important;font-size:13px;font-weight:500;line-height:1.55;color:var(--cw-muted)}
+.crm-recent-row>div{min-width:0}
+.crm-recent-meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 12px;margin:0 0 4px!important;color:var(--cw-muted);font-size:12px}
+.crm-recent-meta strong{font-size:13px;color:var(--cw-text);font-weight:500}
+.crm-recent-excerpt{white-space:pre-wrap;overflow-wrap:anywhere;margin:0!important;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;line-height:1.6}
+.crm-recent-excerpt.is-expanded{display:block;overflow:visible}
+.crm-recent-row .crm-work-link,.crm-recent-note{font-size:12px}
+.crm-recent-row .crm-work-link{display:inline-flex;align-items:center;gap:4px;margin-top:5px;margin-right:12px}
+.crm-recent-message h4{color:#1d4ed8}
+.crm-customer-workspace[data-theme=dark] .crm-recent-message h4{color:#93c5fd}
+.crm-recent-empty{margin:0!important;padding:10px 0;color:var(--cw-muted)}
+.crm-recent-task-links{display:flex;flex-wrap:wrap;gap:2px 8px}
+.crm-recent-warning{color:#92400e;margin:5px 0!important;font-size:12px}
+.crm-customer-workspace[data-theme=dark] .crm-recent-warning{color:#fcd34d}
+.crm-recent-note{padding:8px 0}
+.crm-recent-no-response{padding:10px 0;font-size:12px;color:var(--cw-muted);border-bottom:1px solid var(--cw-border)}
+.crm-recent-no-response summary{cursor:pointer;font-weight:500;color:var(--cw-text)}
+.crm-recent-no-response p{margin:6px 0!important}
+.crm-contact-restriction{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-left:3px solid #b45309;background:var(--cw-soft);padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.5}
+.crm-contact-restriction strong{font-weight:600;color:#92400e}
+.crm-contact-restriction span{margin-left:10px;font-variant-numeric:tabular-nums}
+.crm-contact-restriction p{margin:3px 0 0!important;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--cw-muted)}
+.crm-contact-restriction>.crm-work-link{white-space:nowrap;font-size:12px}
+.crm-customer-workspace[data-theme=dark] .crm-contact-restriction strong{color:#fcd34d}
+@media(max-width:700px){.crm-recent-row{grid-template-columns:minmax(0,1fr);gap:5px}.crm-contact-restriction{flex-wrap:wrap}}
+.crm-customer-panel-body .crm-trust-panel .crm-unified-task-list{margin-bottom:0}
+.crm-customer-panel-body .crm-trust-panel .crm-followup-current{margin-bottom:0}
+.crm-customer-panel-body .crm-trust-panel .crm-followup-current .crm-followup-zone-heading{margin-bottom:0}
+.crm-customer-panel-body .crm-trust-panel .crm-followup-current .crm-followup-zone-heading>.crm-work-link{min-height:28px;padding:4px 0;border:0}
+.crm-trust-panel details.crm-recent-no-response{border:0;border-bottom:1px solid var(--cw-border);border-radius:0;padding:8px 0}
+.crm-customer-panel-body .crm-trust-panel .crm-recent-row .crm-work-link,.crm-customer-panel-body .crm-trust-panel .crm-contact-restriction>.crm-work-link{min-height:28px;padding:3px 0;border:0}
+
+/* Result entry: one reading context and three short decision sections. */
+.crm-sales-editor-layout.crm-sales-editor-compact{display:block;max-width:820px;margin-inline:auto}
+.crm-sales-task-summary{padding:12px 24px;background:var(--cw-soft);border-bottom:1px solid var(--cw-border);font-size:14px;line-height:1.5}
+.crm-sales-task-summary>div{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:5px;font-size:12px;color:var(--cw-muted)}
+.crm-sales-task-summary [data-tone=overdue]{color:#b91c1c;font-weight:600}
+.crm-customer-workspace[data-theme=dark] .crm-sales-task-summary [data-tone=overdue]{color:#fca5a5}
+.crm-sales-editor-compact .crm-sales-fields{padding:18px 24px;gap:18px}
+.crm-sales-editor-compact .crm-sales-step{gap:12px}
+.crm-sales-editor-compact .crm-sales-step+section{padding-top:16px}
+.crm-sales-editor-compact .crm-sales-background{margin:12px 24px 0;padding:0;border:0;font-size:12px;color:var(--cw-muted)}
+.crm-sales-background .crm-sales-original{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+.crm-sales-editor-compact .crm-task-outcome-guidance{font-size:12px;line-height:1.5;margin:0;color:var(--cw-muted)}
+.crm-sales-editor-compact .crm-reuse-record{justify-self:start;font-size:12px;min-height:26px;padding:2px 0;border:0;background:none;color:var(--cw-accent)}
+.crm-kept-task-summary{padding:8px 12px;background:var(--cw-soft);border-radius:8px;font-size:13px}
+.crm-kept-task-summary p{margin:2px 0!important}
+@media(max-width:560px){.crm-sales-task-summary,.crm-sales-editor-compact .crm-sales-fields{padding:12px 16px}.crm-sales-editor-compact .crm-sales-background{margin-inline:16px}}
+.crm-sales-editor-layout.crm-sales-editor-compact{width:100%;box-sizing:border-box}
+.crm-sales-editor-compact .crm-sales-fields{width:100%;box-sizing:border-box}
+
+.crm-buying-signal-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; border:0; padding:8px 0; }
+.crm-buying-signal-options legend { margin-bottom:8px; font-weight:600; }
+.crm-buying-signal-options label,.crm-progress-contact-toggle,.crm-task-request-confirm label {display:flex;align-items:center;gap:8px;}
+.crm-buying-signal-options input,.crm-progress-contact-toggle input,.crm-task-request-confirm input {width:auto;flex:none;}
+@media(max-width:520px){.crm-buying-signal-options{grid-template-columns:1fr;}}
+/* Sales-field defaults use grid labels. Checkbox choices must stay inline. */
+.crm-workflow-form .crm-sales-fields label.crm-progress-contact-toggle,
+.crm-workflow-form .crm-sales-fields .crm-buying-signal-options label,
+.crm-workflow-form .crm-sales-fields .crm-task-request-confirm label {
+  display:flex; align-items:center; gap:8px; padding:0; cursor:pointer;
+}
+.crm-workflow-form .crm-sales-fields input[type=checkbox] {
+  width:16px; max-width:16px; height:16px; min-height:16px; display:inline-block;
+  flex:0 0 16px; margin:0; padding:0; accent-color:var(--cw-accent);
+}
+.crm-progress-form > .crm-sales-editor-heading {padding:12px 24px; border:0;}
+
+.crm-contact-preview>.crm-contact-preparation-body{display:flex;flex-direction:column;gap:16px;width:100%;min-width:0}.crm-contact-preparation-body>.admin-required-note{margin:0}.crm-contact-preview .crm-template-label{display:block;font-size:14px;font-weight:500;margin:0 0 8px}.crm-contact-preview .crm-template-selectors{gap:16px}.crm-contact-preview textarea{min-height:200px;padding:14px 16px;resize:vertical}.crm-contact-preview .crm-contact-reference{border-top:1px solid var(--cw-border);padding-top:12px}.crm-contact-reference>summary{display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;font-size:14px;min-height:40px}.crm-contact-reference>summary::-webkit-details-marker{display:none}.crm-contact-reference>summary>span{font-size:12px;color:var(--cw-muted);margin-left:auto}.crm-contact-reference[open]>summary>svg:last-child{transform:rotate(180deg)}.crm-contact-reference-items{padding:0 0 12px}.crm-contact-reference-items>article{padding:12px 0;border-bottom:1px solid var(--cw-border)}.crm-contact-reference-items h4{font-size:14px;font-weight:600;margin:0 0 6px}.crm-contact-reference-items p{font-size:13px;line-height:1.7;color:var(--cw-muted);margin:0 0 6px}.crm-contact-reference-items button{min-height:36px}.crm-contact-preview .crm-contact-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;bottom:-24px;z-index:2;background:var(--cw-surface);margin:0 -24px -24px;padding:16px 24px;border-top:1px solid var(--cw-border)}.crm-contact-actions .crm-work-button{min-height:40px}.crm-contact-preview .crm-template-confirm{scroll-margin:16px}
+
+.crm-contact-preview.crm-customer-context{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}.crm-contact-preview .crm-contact-reference{padding:0;border-top:0;border-bottom:1px solid var(--cw-border)}
+
+/* Inline provenance: supplementary to the business field title, keyboard discoverable. */
+.crm-ai-indicator{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-inline-start:6px;padding:2px 5px;border-radius:5px;font-size:11px;font-weight:600;line-height:1.2;color:#6d4b8d;background:#f3eef8;cursor:help;white-space:nowrap}
+.crm-ai-indicator:focus-visible{outline:2px solid #0d9488;outline-offset:3px}
+
+[data-theme=dark] .crm-ai-indicator{color:#d2b9ee;background:#30263d}

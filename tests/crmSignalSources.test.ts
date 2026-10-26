@@ -1,4 +1,5 @@
 import test from "node:test";
+import {formatCrmEventTime} from "../src/utils/crmOperatingTime.ts";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -23,6 +24,7 @@ const facts = [
     actor: "Fadhil",
     created_at: "2026-10-17T02:03:04Z",
     data: {
+      occurredAt: "2026-10-17T02:03:04Z",
       buyingSignalDetected: "Asked price",
       summary: "客户原文 <script>TEST</script>",
       processingTaskId: "t1",
@@ -65,7 +67,8 @@ test("Projection separates questionnaire interests and actual signals, preserves
     followUpLogs: [
       {
         id: "l1",
-        buyingSignalDetected: "Asked price",
+        occurredAt: "2026-10-17T02:03:04Z",
+      buyingSignalDetected: "Asked price",
         summary: "must not duplicate",
       },
     ],
@@ -144,8 +147,8 @@ test("Three-language evidence contains originals, exact seconds and distinct sou
     assert.ok(html.includes(buyingEvidenceLabel(buyingEvidence[0], lang)));
     assert.match(html, /我要报名/);
     assert.match(html, /客户原文 &lt;script&gt;TEST&lt;\/script&gt;/);
-    assert.match(html, /10:04:07/);
-    assert.match(html, /09:03:04/);
+    assert.ok(html.includes(formatCrmEventTime("2026-10-17T03:04:07Z",lang)));
+    assert.ok(html.includes(formatCrmEventTime("2026-10-17T02:03:04Z",lang)));
     assert.equal((html.match(/data-signal-id=/g) || []).length, 4);
     assert.match(html, /tabindex="-1"/);
   }

@@ -4,7 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CrmDisclosure } from "../src/components/crm/CrmDisclosure.tsx";
 import { CrmCustomerProfile } from "../src/components/crm/CrmCustomerDetails.tsx";
-import { CrmCustomerAssessment } from "../src/components/crm/CrmAssessmentDetails.tsx";
+import { CrmAssessmentEvidence as CrmCustomerAssessment } from "../src/components/crm/CrmAssessmentEvidence.tsx";
 import { CrmAttendanceEditor } from "../src/components/crm/CrmAttendanceEditor.tsx";
 import type { CrmLeadRecord } from "../src/types/crmLead.ts";
 

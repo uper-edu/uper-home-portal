@@ -1,3 +1,4 @@
+import {ownerManagerOnly} from '../src/utils/crmAccessPolicy.ts';
 import fs from 'fs';
 import path from 'path';
 import type { CrmPolicyConfig } from '../src/types/crmPolicyConfig.ts';
@@ -20,6 +21,9 @@ let policyCache: CrmPolicyConfig | null = null;
 
 function normalizeConfig(parsed: any): CrmPolicyConfig {
   return {
+    identityReviewManagerOnly: parsed.identityReviewManagerOnly!==false,
+    ownerAssignmentManagerOnly: ownerManagerOnly(parsed),
+    sourceAttributionManagerOnly: parsed.sourceAttributionManagerOnly!==false,
     version: '2.0',
     updatedAt: parsed.updatedAt || new Date().toISOString(),
     businessHours: {

@@ -1,3 +1,4 @@
+import {CrmFirstContactCountdown} from './CrmFirstContactCountdown';
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { crmId } from "../../utils/crmIndonesian";
 import React from "react";
@@ -30,25 +31,29 @@ export function CrmFollowUp({
   const summary = leadFollowUp(lead, lang, timezone, now);
   const task = summary.next?.task;
   const taskView = task && presentFollowUpTask(task, lang, timezone, now);
+  const inlineFirst=task?.kind==='consultation'&&task.status!=='migration_hold'&&summary.next?.deadline!==null;
   const taskOwner = task?.ownerId;
   const ownerName =
     employees.find((person) => person.id === taskOwner)?.displayName ||
     taskOwner;
+  if(summary.loaded&&!summary.next&&!summary.note&&!emptyFollowUpLabel(lead,lang))return null;
   return (
     <div className="crm-followup" data-theme={isLight ? "light" : "dark"}>
       {summary.next ? (
         <>
+          <div className={inlineFirst?"crm-first-contact-line":undefined}>
           <div className="crm-followup-action">{summary.next.action}</div>
+          {inlineFirst&&<span aria-hidden="true" className="crm-first-contact-dot">·</span>}
           <div
             className="crm-followup-timing"
             data-tone={summary.next.tone}
             title={summary.next.deadline === null ? undefined : timezone}
           >
-            {taskView &&
+            {(task?.kind!=='consultation'||task.status==='migration_hold'||summary.next.deadline===null) && taskView &&
               ["overdue", "today", "review"].includes(taskView.tone) && (
                 <div>{taskView.status}</div>
               )}
-            {taskView?.times.map((time, index) => (
+            {task?.kind==='consultation'&&task.status!=='migration_hold'&&summary.next.deadline!==null?<CrmFirstContactCountdown dueAt={task.dueAt} lang={lang}/>:taskView?.times.map((time, index) => (
               <div key={index} data-tone={time.tone}>
                 {time.label} ·{" "}
                 {time.value ? (
@@ -60,6 +65,7 @@ export function CrmFollowUp({
                 )}
               </div>
             ))}
+          </div>
           </div>
           {taskOwner !== (lead.owner || null) && (
             <div className="crm-followup-secondary">

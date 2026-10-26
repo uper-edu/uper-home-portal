@@ -2,6 +2,30 @@
   {
     "layer": "contract",
     "object": "FollowUpLog",
+    "key": "occurredAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "contactDirection",
+    "type": "\"sales\" | \"customer\" | \"unknown\"",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "occurrenceMode",
+    "type": "\"now\" | \"specified\"",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
     "key": "id",
     "type": "string",
     "optional": false,
@@ -43,7 +67,7 @@
     "layer": "contract",
     "object": "FollowUpLog",
     "key": "previousStage",
-    "type": "'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
+    "type": "import('../utils/crmSalesProgress.ts').SalesProgressStage | 'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
     "optional": false,
     "source": "src/types/crmLead.ts"
   },
@@ -51,7 +75,7 @@
     "layer": "contract",
     "object": "FollowUpLog",
     "key": "newStage",
-    "type": "'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
+    "type": "import('../utils/crmSalesProgress.ts').SalesProgressStage | 'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
     "optional": false,
     "source": "src/types/crmLead.ts"
   },
@@ -60,6 +84,14 @@
     "object": "FollowUpLog",
     "key": "buyingSignalDetected",
     "type": "'Asked price' | 'Asked schedule' | 'Asked payment' | 'Ready to enroll' | 'Ready to enrol' | 'None yet'",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "FollowUpLog",
+    "key": "buyingSignalsDetected",
+    "type": "BuyingSignalType[]",
     "optional": true,
     "source": "src/types/crmLead.ts"
   },
@@ -242,22 +274,6 @@
   {
     "layer": "contract",
     "object": "LeadAttention",
-    "key": "unreadCount",
-    "type": "number",
-    "optional": false,
-    "source": "src/types/crmLead.ts"
-  },
-  {
-    "layer": "contract",
-    "object": "LeadAttention",
-    "key": "observedAt",
-    "type": "string | null",
-    "optional": false,
-    "source": "src/types/crmLead.ts"
-  },
-  {
-    "layer": "contract",
-    "object": "LeadAttention",
     "key": "latest",
     "type": "{ type: string; at: string; source?: string; }",
     "optional": true,
@@ -290,9 +306,57 @@
   {
     "layer": "contract",
     "object": "LeadAttention",
-    "key": "tasks",
-    "type": "Array<{ id: string; kind: string; ownerId: string | null; status: string; dueAt: string; originalDueAt?: string; scheduledAt?: string | null; timingKind?: string; details?: { action?: string; purpose?: string; sourceMessageId?: string; sourceConversationId?: string; }; }>",
+    "key": "customerRequests",
+    "type": "Array<{ id: string; dueAt: string; action: string; }>",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "customerRequests.id",
+    "type": "string",
     "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "customerRequests.dueAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "customerRequests.action",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks",
+    "type": "Array<{ requestDueAt?: string; revision?: number; id: string; kind: string; ownerId: string | null; status: string; dueAt: string; originalDueAt?: string; scheduledAt?: string | null; timingKind?: string; details?: { action?: string; purpose?: string; sourceMessageId?: string; sourceConversationId?: string; }; }>",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.requestDueAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "LeadAttention",
+    "key": "tasks.revision",
+    "type": "number",
+    "optional": true,
     "source": "src/types/crmLead.ts"
   },
   {
@@ -405,6 +469,462 @@
     "key": "isMine",
     "type": "boolean",
     "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "requestId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "targetFactId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "targetLogId",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "kind",
+    "type": "'supplement' | 'correction'",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "text",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "reason",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "contactResult",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "actor",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "staffName",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "RecordAmendment",
+    "key": "recordedAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary",
+    "type": "{ enrollmentScope?: string; key: string; title: string; count: number; unknownCount: number; latest: { id: string; occurredAt: string | null; timeBasis: string; }; }[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.enrollmentScope",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.key",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.title",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.count",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.unknownCount",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.latest",
+    "type": "{ id: string; occurredAt: string | null; timeBasis: string; }",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.latest.id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.latest.occurredAt",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "factMilestoneSummary.latest.timeBasis",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentEvidence",
+    "type": "{ confirmations: Array<{ id: string; effectiveAt: string | null; recordedAt: string | null; }>; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentEvidence.confirmations",
+    "type": "Array<{ id: string; effectiveAt: string | null; recordedAt: string | null; }>",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentEvidence.confirmations.id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentEvidence.confirmations.effectiveAt",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentEvidence.confirmations.recordedAt",
+    "type": "string | null",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "recordAmendments",
+    "type": "RecordAmendment[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstRequirementTaskIds",
+    "type": "string[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstRequirementDueAt",
+    "type": "string | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstRequirementReview",
+    "type": "string | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "interactionTimeline",
+    "type": "import(\"../utils/crmInteractionTimeline\").InteractionTimeline",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "informationHints",
+    "type": "any[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "profileFieldMeta",
+    "type": "Record<string, any>",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "targetHskLevel",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "preferredStart",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "availability",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "budgetMin",
+    "type": "number | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "budgetMax",
+    "type": "number | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "budgetCurrency",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "budgetPeriod",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "concerns",
+    "type": "string[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "preferredChannel",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "simpleRevision",
+    "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstFollowup",
+    "type": "{ outcome: \"attempted\" | \"connected\" | \"invalid_contact\" | \"exception\"; at: string; actor: string; logId: string; dueAt?: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstFollowup.outcome",
+    "type": "\"attempted\" | \"connected\" | \"invalid_contact\" | \"exception\"",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstFollowup.at",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstFollowup.actor",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstFollowup.logId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "firstFollowup.dueAt",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "commitments",
+    "type": "Array<import(\"../utils/crmSimpleFollowup\").Commitment & { actor?: string; recordedAt?: string; updatedAt?: string; updatedBy?: string; reason?: string; }>",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview",
+    "type": "{ pending: boolean; count: number; canReview: boolean; blocked: boolean; ownerAssignmentManagerOnly?: boolean; identityReviewManagerOnly?: boolean; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview.pending",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview.count",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview.canReview",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview.blocked",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview.ownerAssignmentManagerOnly",
+    "type": "boolean",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview.identityReviewManagerOnly",
+    "type": "boolean",
+    "optional": true,
     "source": "src/types/crmLead.ts"
   },
   {
@@ -578,6 +1098,62 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "contactReview",
+    "type": "{ taskId: string; reviewAt: string; reason: string; blockBefore: boolean; at: string; actor: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactReview.taskId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactReview.reviewAt",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactReview.reason",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactReview.blockBefore",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactReview.at",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "contactReview.actor",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "contactArrangement",
     "type": "{ state: \"active\" | \"waiting\" | \"nurture\" | \"stopped\"; reason: string; reviewAt?: string; at: string; actor: string; version: number; }",
     "optional": true,
@@ -717,6 +1293,14 @@
     "key": "submittedAt",
     "type": "string",
     "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "nameNote",
+    "type": "string",
+    "optional": true,
     "source": "src/types/crmLead.ts"
   },
   {
@@ -987,7 +1571,7 @@
     "layer": "contract",
     "object": "CrmLeadRecord",
     "key": "currentStage",
-    "type": "'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
+    "type": "import('../utils/crmSalesProgress.ts').SalesProgressStage | 'New' | 'Contacted' | 'Assessment Booked' | 'Assessment Done' | 'Trial Booked' | 'Trial Attended' | 'Enrolled' | 'Lost'",
     "optional": false,
     "source": "src/types/crmLead.ts"
   },
@@ -996,6 +1580,22 @@
     "object": "CrmLeadRecord",
     "key": "stageRevision",
     "type": "number",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "stagePolicyVersion",
+    "type": "2",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "stageEffectiveAt",
+    "type": "string | null",
     "optional": true,
     "source": "src/types/crmLead.ts"
   },
@@ -2386,6 +2986,30 @@
   {
     "layer": "contract",
     "object": "CrmPolicyConfig",
+    "key": "identityReviewManagerOnly",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "ownerAssignmentManagerOnly",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "sourceAttributionManagerOnly",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
     "key": "version",
     "type": "string",
     "optional": false,
@@ -3361,14 +3985,6 @@
   },
   {
     "layer": "storage",
-    "object": "notification_inbox",
-    "key": "read_at",
-    "type": "DATETIME(6)",
-    "optional": true,
-    "source": "cloud/mysql/schema.sql"
-  },
-  {
-    "layer": "storage",
     "object": "portal_audit",
     "key": "id",
     "type": "BIGINT UNSIGNED",
@@ -3428,30 +4044,6 @@
     "object": "identity_candidates",
     "key": "candidate_id",
     "type": "VARCHAR(191)",
-    "optional": false,
-    "source": "cloud/mysql/schema.sql"
-  },
-  {
-    "layer": "storage",
-    "object": "lead_read_marks",
-    "key": "employee_id",
-    "type": "VARCHAR(191)",
-    "optional": false,
-    "source": "cloud/mysql/schema.sql"
-  },
-  {
-    "layer": "storage",
-    "object": "lead_read_marks",
-    "key": "lead_id",
-    "type": "VARCHAR(191)",
-    "optional": false,
-    "source": "cloud/mysql/schema.sql"
-  },
-  {
-    "layer": "storage",
-    "object": "lead_read_marks",
-    "key": "seen_at",
-    "type": "DATETIME(6)",
     "optional": false,
     "source": "cloud/mysql/schema.sql"
   },
@@ -4181,6 +4773,198 @@
     "key": "created_at",
     "type": "DATETIME(6)",
     "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "id",
+    "type": "CHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "raw_code",
+    "type": "VARCHAR(200)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "status",
+    "type": "VARCHAR(16)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "campaign_id",
+    "type": "VARCHAR(191)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "revision",
+    "type": "BIGINT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "config",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_source_reviews",
+    "key": "updated_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "id",
+    "type": "CHAR(36)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "lead_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "source_type",
+    "type": "VARCHAR(32)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "source_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "source_revision",
+    "type": "VARCHAR(80)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "input_hash",
+    "type": "CHAR(64)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "contract_version",
+    "type": "VARCHAR(40)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "input",
+    "type": "JSON",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "status",
+    "type": "VARCHAR(16)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "output",
+    "type": "JSON",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "model",
+    "type": "VARCHAR(100)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "error_code",
+    "type": "VARCHAR(80)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "attempts",
+    "type": "INT",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "lease_until",
+    "type": "DATETIME(6)",
+    "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "created_at",
+    "type": "DATETIME(6)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "crm_ai_extractions",
+    "key": "completed_at",
+    "type": "DATETIME(6)",
+    "optional": true,
     "source": "cloud/mysql/migrate.mjs"
   },
   {

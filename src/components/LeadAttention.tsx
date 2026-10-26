@@ -1,3 +1,4 @@
+import {formatCrmEventTime,viewerTimeZone} from '../utils/crmOperatingTime';
 import { crmLocale } from "../utils/crmLanguage";
 import { crmId } from "../utils/crmIndonesian";
 import type { CrmLeadRecord } from "../types/crmLead";
@@ -16,7 +17,7 @@ export function LeadActivity({
   if (!a?.latest) return null;
   const labels: Record<string, [string, string]> = {
     "lead.created": ["New inquiry", "新咨询"],
-    "conversation.updated": ["New message", "新消息"],
+    "conversation.updated": ["Customer message", "客户消息"],
     "conversation.reactivated": ["Returning inquiry", "再次咨询"],
     "assessment.completed": ["Assessment completed", "测评完成"],
     "handoff.requested": ["Advisor requested", "请求顾问"],
@@ -47,22 +48,14 @@ export function LeadActivity({
         e.stopPropagation();
         onOpen();
       }}
-      className={`crm-lead-activity mt-1 flex items-center gap-1 max-w-full ${a.unreadCount ? "font-semibold" : ""}`}
-      data-unread={Boolean(a.unreadCount)}
-      aria-label={`${a.unreadCount ? (lang === "id" ? crmId("Unread") : lang === "zh" ? "未读" : "Unread") + " · " : ""}${label}`}
+      className="crm-lead-activity mt-1 flex items-center gap-1 max-w-full"
+      aria-label={label}
     >
       <span>
-        {a.unreadCount ? "● " : ""}
         {label}
       </span>
-      <time className="font-normal" dateTime={a.latest.at}>
-        {new Date(a.latest.at).toLocaleString(crmLocale(lang), {
-          timeZone: timezone,
-          month: "numeric",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
+      <time title={viewerTimeZone()} className="font-normal" dateTime={a.latest.at}>
+        {formatCrmEventTime(a.latest.at).slice(5,16)}
       </time>
     </button>
   );

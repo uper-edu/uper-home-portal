@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup as render}from 'react-dom/server';import{CrmLeadWorkspace}from '../src/components/crm/CrmLeadWorkspace';
+const lead:any={id:'maya',fullName:'Maya Putri',currentStage:'New',tier:'Hot',owner:'Robert',mode:'Online',city:'Jakarta',currentStatus:'Working professional',attention:{tasks:[]}};
+const markup=(value:any)=>render(React.createElement(CrmLeadWorkspace,{leads:[value],view:'worklist',lang:'zh',timezone:'Asia/Jakarta',isLight:true,loading:false,employeeId:'Robert',employees:[],onOpen(){},onReset(){}}));
+const identity=(html:string)=>html.slice(html.indexOf('class="crm-work-identity"'),html.indexOf('class="crm-work-next"'));
+const needs=(html:string)=>html.slice(html.indexOf('class="crm-work-needs"'));
+test('existing residence and identity are in first column only; learning mode, goal/assessment and original data remain',()=>{const before=JSON.stringify(lead),html=markup(lead);assert.match(identity(html),/雅加达 · 在职人士/);assert.doesNotMatch(needs(html),/雅加达|Jakarta|在职人士/);assert.match(needs(html),/线上/);assert.match(identity(html),/记录进展/);assert.equal(JSON.stringify(lead),before);});
+test('missing facts produce no invented status, location or empty demographic row',()=>{const html=markup({...lead,city:' ',currentStatus:undefined});assert.doesNotMatch(identity(html),/crm-work-demographics|在职人士|居住地与客户身份/);});
+test('one available fact has no dangling separator and never implies a specific occupation',()=>{const cityOnly=identity(markup({...lead,currentStatus:undefined}));assert.match(cityOnly,/>雅加达<\/div>/);assert.doesNotMatch(cityOnly,/雅加达 ·/);const statusOnly=identity(markup({...lead,city:undefined,occupation:'Engineer'}));assert.match(statusOnly,/>在职人士<\/div>/);assert.doesNotMatch(statusOnly,/Engineer|工程师/);});
+
+test('existing Employee legacy status is translated without inventing a job',()=>{const value={...lead,currentStatus:'Employee'},before=JSON.stringify(value);const html=identity(markup(value));assert.match(html,/在职人士/);assert.doesNotMatch(html,/工程师|经理/);assert.equal(JSON.stringify(value),before);});

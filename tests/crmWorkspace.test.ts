@@ -1,3 +1,5 @@
+import {listAssessmentConclusion} from '../src/utils/crmLeadPresentation.ts';
+import {CrmAssessmentEvidence} from '../src/components/crm/CrmAssessmentEvidence.tsx';
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
@@ -78,7 +80,7 @@ test("worklist scans four zones, retaining original names, one next task, its ac
     "Customer",
     "Learning needs",
     "Sales progress",
-    "Follow-up",
+    "Interaction and follow-up",
     "TEST 原名",
     "Fadhil",
     "Wigar",
@@ -139,7 +141,7 @@ test("compact assessment comes from the existing evidence presenter, with score 
     assert.equal(brief.conclusion, full.conclusion);
     assert.equal(brief.detail, full.detail);
     assert.ok(!brief.source.includes("12"));
-    assert.ok(render(l, { lang }).includes(brief.conclusion));
+    assert.ok(render(l, { lang }).includes(listAssessmentConclusion(brief.conclusion,lang)));
   }
 });
 test("missing tasks and historical dates do not become an empty or overdue task; unavailable times stay unknown", () => {
@@ -207,7 +209,7 @@ test("assessment panel keeps teacher evidence separate and does not substitute r
     },
   });
   const html = renderToStaticMarkup(
-    React.createElement(CrmCustomerAssessment, {
+    React.createElement(CrmAssessmentEvidence, {
       lead: l,
       lang: "en",
       timezone: "Asia/Jakarta",

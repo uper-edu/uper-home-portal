@@ -1,3 +1,5 @@
+import type {ChatRequestAction} from '../utils/chatRequestIntent';
+import {visitorKey} from '../services/visitorScope';
 import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
 import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
 import { safeHskResult } from "../data/hskReportHistory";
@@ -257,6 +259,7 @@ export default function AIChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const sendingRef = useRef(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
   
@@ -287,7 +290,7 @@ export default function AIChatbot() {
   } | null>(() => {
     try {
       if (typeof window !== 'undefined') {
-        const stored = sessionStorage.getItem('uper_pending_lead');
+        const stored = sessionStorage.getItem(visitorKey('uper_pending_lead'));
         return stored ? JSON.parse(stored) : null;
       }
     } catch (_) {}
@@ -302,9 +305,9 @@ export default function AIChatbot() {
     try {
       if (typeof window !== 'undefined') {
         if (pendingLeadData) {
-          sessionStorage.setItem('uper_pending_lead', JSON.stringify(pendingLeadData));
+          sessionStorage.setItem(visitorKey('uper_pending_lead'), JSON.stringify(pendingLeadData));
         } else {
-          sessionStorage.removeItem('uper_pending_lead');
+          sessionStorage.removeItem(visitorKey('uper_pending_lead'));
         }
       }
     } catch (_) {}
@@ -321,13 +324,12 @@ export default function AIChatbot() {
     try {
       const ctx = getStudentContext();
       if (ctx?.leadProfile) return true;
-      return typeof window !== 'undefined' && sessionStorage.getItem('uper_lead_submitted') === 'true';
+      return typeof window !== 'undefined' && sessionStorage.getItem(visitorKey('uper_lead_submitted')) === 'true';
     } catch (_) {
       return false;
     }
   });
 
-  useEffect(()=>{fetch('/api/portal/session').then(r=>r.ok?r.json():Promise.reject()).then(s=>setLeadSubmitted(!!s.registered)).catch(()=>{});},[]);
   useEffect(() => {
     const unsubscribe = subscribeStudentContext((ctx) => {
       setStudentContext(ctx);
@@ -340,7 +342,7 @@ export default function AIChatbot() {
 
   const [isHumanMode, setIsHumanMode] = useState<boolean>(() => {
     try {
-      return typeof window !== 'undefined' && sessionStorage.getItem('uper_chat_human_mode') === 'true';
+      return typeof window !== 'undefined' && sessionStorage.getItem(visitorKey('uper_chat_human_mode')) === 'true';
     } catch (_) {
       return false;
     }
@@ -373,7 +375,7 @@ export default function AIChatbot() {
 
   const [activeCounselorId, setActiveCounselorId] = useState<string>(() => {
     try {
-      return (typeof window !== 'undefined' && sessionStorage.getItem('uper_chat_counselor_id')) || 'scholarship';
+      return (typeof window !== 'undefined' && sessionStorage.getItem(visitorKey('uper_chat_counselor_id'))) || 'scholarship';
     } catch (_) {
       return 'scholarship';
     }
@@ -387,7 +389,7 @@ export default function AIChatbot() {
     setActiveCounselorId(id);
     try {
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('uper_chat_counselor_id', id);
+        sessionStorage.setItem(visitorKey('uper_chat_counselor_id'), id);
       }
     } catch (_) {}
 
@@ -398,7 +400,7 @@ export default function AIChatbot() {
     setIsHumanMode(val);
     try {
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('uper_chat_human_mode', String(val));
+        sessionStorage.setItem(visitorKey('uper_chat_human_mode'), String(val));
       }
     } catch (_) {}
   };
@@ -584,10 +586,10 @@ export default function AIChatbot() {
     setStudentContext(null);
     try {
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('uper_lead_submitted');
-        sessionStorage.removeItem('uper_chat_human_mode');
-        sessionStorage.removeItem('uper_chat_counselor_id');
-        sessionStorage.removeItem('uper_pending_lead');
+        sessionStorage.removeItem(visitorKey('uper_lead_submitted'));
+        sessionStorage.removeItem(visitorKey('uper_chat_human_mode'));
+        sessionStorage.removeItem(visitorKey('uper_chat_counselor_id'));
+        sessionStorage.removeItem(visitorKey('uper_pending_lead'));
       }
     } catch (_) {}
     // Reset other states
@@ -735,7 +737,7 @@ export default function AIChatbot() {
 
       try {
         if (typeof window !== 'undefined') {
-          sessionStorage.setItem('uper_lead_submitted', 'true');
+          sessionStorage.setItem(visitorKey('uper_lead_submitted'), 'true');
         }
       } catch (_) {}
 
@@ -832,9 +834,10 @@ export default function AIChatbot() {
     );
   };
 
-  const handleSend = async (textToSend?: string, retry?: Message) => {
+  const handleSend = async (textToSend?: string, retry?: Message, explicitAction?: ChatRequestAction) => {
     const text = (retry?.content || textToSend || input).trim();
-    if (!text || isLoading) return;
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
 
     if (textToSend) {
       trackChatbotInteraction('click_shortcut', { prompt_text: text });
@@ -864,7 +867,8 @@ export default function AIChatbot() {
       isComplete: true,
     };
 
-    const activeHumanMode = retry ? draft('homepage_widget',retry.id)?.action==='handoff' : isHumanMode;
+    const requestAction = retry ? draft('homepage_widget',retry.id)?.action : explicitAction;
+    const activeHumanMode = retry ? requestAction==='handoff' : requestAction==='handoff' || isHumanMode;
     const extraSystemMsg: Message | null = null;
     setMessages(prev=>[...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
     setIsLoading(true);
@@ -885,7 +889,7 @@ export default function AIChatbot() {
 
         const botMsgId='reply-'+userMsg.id;
         setMessages(prev=>[...prev.filter(m=>m.id!==botMsgId),{id:botMsgId,role:'assistant',content:'',timestamp:new Date(),isComplete:true}]);
-        const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historyContext,isHumanMode:activeHumanMode,language:currentLang.slice(0,2),stream:!activeHumanMode}),signal:controller.signal},'homepage_widget');
+        const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historyContext,isHumanMode:activeHumanMode,action:requestAction,language:currentLang.slice(0,2),stream:!activeHumanMode}),signal:controller.signal},'homepage_widget');
         const result=await finishChat(res,'homepage_widget',userMsg.id,e=>{
           if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply&&!e.chunk)reply=e.reply;
           setMessages(prev=>prev.map(m=>m.id===userMsg.id&&e.saved?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:reply}:m));
@@ -929,6 +933,7 @@ export default function AIChatbot() {
       setSuggestedPrompts([]);
     } finally {
       clearTimeout(timeoutId);
+      sendingRef.current = false;
       setIsLoading(false);
       // Ensure input focus is returned to the user
       setTimeout(() => {
@@ -945,7 +950,7 @@ export default function AIChatbot() {
   };
 
   const handleInitiateHumanMode = async (_preferredId?: string) => {
-    await handleSend(currentLang.startsWith('zh')?'请安排顾问联系我':currentLang.startsWith('en')?'Please arrange advisor follow-up':'Mohon tindak lanjut konsultan');
+    await handleSend(currentLang.startsWith('zh')?'请安排顾问联系我':currentLang.startsWith('en')?'Please arrange advisor follow-up':'Mohon tindak lanjut konsultan', undefined, 'handoff');
   };
 
   const currentStarterPrompts = getStarterPrompts();
@@ -1159,15 +1164,17 @@ export default function AIChatbot() {
                   ) : (
                     <button
                       onClick={() => handleInitiateHumanMode()}
+                      disabled={isLoading}
+                      aria-busy={isLoading}
                       className={`mr-1 shadow-sm px-2.5 py-1.5 text-[11px] font-extrabold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer border ${
                         isApple 
                           ? 'bg-slate-900 hover:bg-slate-850 text-white border-slate-950 shadow-none' 
                           : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white border-amber-500/20'
                       }`}
-                      title={currentLang.startsWith('zh') ? '提交顾问跟进申请' : currentLang.startsWith('en') ? 'Request advisor follow-up' : 'Bicara Konsultan'}
+                      title={currentLang.startsWith('zh') ? '提交顾问跟进申请' : currentLang.startsWith('en') ? 'Request advisor follow-up' : 'Minta tindak lanjut konsultan'}
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>{currentLang.startsWith('zh') ? '申请顾问跟进' : currentLang.startsWith('en') ? 'Advisor follow-up' : 'Chat Konsultan'}</span>
+                      <span>{currentLang.startsWith('zh') ? '申请顾问跟进' : currentLang.startsWith('en') ? 'Advisor follow-up' : 'Minta tindak lanjut'}</span>
                     </button>
                   )
                 )}

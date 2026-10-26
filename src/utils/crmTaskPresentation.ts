@@ -8,6 +8,7 @@ import { crmId } from "./crmIndonesian";
 import type { CrmLanguage } from "./crmLanguage";
 
 export type TaskPresentationInput = {
+  requestDueAt?: string;
   id: string;
   kind: string;
   status: string;
@@ -22,11 +23,15 @@ export type TaskPresentationInput = {
   timing_kind?: string;
   timingKind?: string;
   details?: {
+    matterId?: string;
     action?: string;
     purpose?: string;
     sourceMessageId?: string;
     sourceConversationId?: string;
     replacedBy?: string;
+    replaces?: string;
+    originalMatterDeadline?: string;
+    additions?: Array<{id:string;text:string;actor:string;at:string}>;
   };
 };
 export function normalizeFollowUpTask(task: TaskPresentationInput) {
@@ -45,9 +50,9 @@ export function normalizeFollowUpTask(task: TaskPresentationInput) {
 /** Match the existing server attention scope, including its closed-customer hold exclusion. */
 export function projectPendingTasks(
   tasks: TaskPresentationInput[],
-  stage?: string,
+  stage?: string, now=Date.now(), timezone="Asia/Jakarta",
 ) {
-  return pendingFollowUps(tasks.map(normalizeFollowUpTask), stage);
+  return pendingFollowUps(tasks.map(normalizeFollowUpTask), stage,now,timezone);
 }
 /** Presentation only. Due dates still govern existing sorting, SLA and overdue rules.
  * A revised execution time never replaces or erases the saved response deadline. */
@@ -59,6 +64,7 @@ export function presentFollowUpTask(
 ) {
   const task = normalizeFollowUpTask(input),
     display = describeFollowUpTask(task, lang, timezone, now);
+  if(['open','overdue'].includes(task.status)&&task.requestDueAt&&Date.parse(task.requestDueAt)<now)display.tone='overdue';
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const active = ["open", "overdue"].includes(task.status);
@@ -84,7 +90,7 @@ export function presentFollowUpTask(
   const hasDeadline = confirmedTaskDeadline(task) !== null;
   if (hasDeadline && valid(task.scheduledAt))
     times.push({
-      label: t("Revised execution time", "改约执行时间"),
+      label: task.timingKind === "review" ? t("Revised review time", "新复查时间") : t("Revised execution time", "改约执行时间"),
       value: task.scheduledAt!,
       tone: "normal",
     });
@@ -105,6 +111,7 @@ export function presentFollowUpTask(
       value: task.originalDueAt!,
       tone: "normal",
     });
+  if(valid(task.requestDueAt)&&Date.parse(task.requestDueAt!)<Date.parse(task.dueAt))times.push({label:lang==='zh'?'关联请求响应截止':lang==='id'?'Tenggat permintaan terkait':'Linked request deadline',value:task.requestDueAt!,tone:Date.parse(task.requestDueAt!)<now?'overdue':'normal'});
   const status =
     task.status === "completed"
       ? t("Completed", "已完成")

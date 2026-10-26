@@ -1,3 +1,4 @@
+import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
 import { useEffect, useState } from "react";
 import { adminText } from "./AdminHeader";
 import { CrmSingleSelect } from "./crm/CrmSingleSelect";
@@ -103,7 +104,9 @@ export function AccessRecoveryPreparation({
         {error && <p role="alert">{accessError(error, lang)}</p>}
         {!queryOnly && (
           <>
+            <AdminRequiredNote lang={lang}/><AdminFieldLabel required>{t("Recovery account", "Akun pemulihan", "恢复账号")}</AdminFieldLabel>
             <CrmSingleSelect
+              required
               label={t("Recovery account", "Akun pemulihan", "恢复账号")}
               value={userId}
               options={[
@@ -126,15 +129,16 @@ export function AccessRecoveryPreparation({
               lang={lang}
               isLight={isLight}
             />
-            <label>
+            <AdminField>
               {t("Approval reason", "Alasan persetujuan", "授权原因")}
               <textarea
+                required
                 value={reason}
                 maxLength={500}
                 onChange={(e) => setReason(e.target.value)}
               />
-            </label>
-            <label>
+            </AdminField>
+            <AdminField>
               <input
                 type="checkbox"
                 checked={enable}
@@ -145,8 +149,8 @@ export function AccessRecoveryPreparation({
                 "Izinkan mengaktifkan kembali akun ini",
                 "允许重新启用此账号",
               )}
-            </label>
-            <label>
+            </AdminField>
+            <AdminField>
               <input
                 type="checkbox"
                 checked={restore}
@@ -157,25 +161,26 @@ export function AccessRecoveryPreparation({
                 "Izinkan pemulihan izin administrasi sistem secara eksplisit",
                 "明确允许恢复系统管理权限",
               )}
-            </label>
-            <label>
+            </AdminField>
+            <AdminField>
               {t("Target database", "Basis data tujuan", "目标数据库")}
               <input
+                required
                 value={database}
                 onChange={(e) => setDatabase(e.target.value)}
               />
-            </label>
-            <label>
+            </AdminField>
+            <AdminField required={database!==info?.target.database}>
               {t(
-                "Backup SHA-256 (required for a restored database)",
-                "SHA-256 cadangan (wajib untuk basis data hasil pemulihan)",
-                "备份SHA-256（恢复备份时必填）",
+                "Backup SHA-256",
+                "SHA-256 cadangan",
+                "备份SHA-256",
               )}
               <input
                 value={backupHash}
                 onChange={(e) => setBackupHash(e.target.value.trim())}
               />
-            </label>
+            </AdminField>
             <button
               disabled={
                 busy ||
@@ -243,16 +248,17 @@ export function AccessRecoveryPreparation({
           </>
         )}
         <hr />
-        <label>
+        <AdminField>
           {t("Recovery operation ID", "ID operasi pemulihan", "恢复操作ID")}
           <input
+            required
             value={query}
             onChange={(e) => {
               setQuery(e.target.value.trim());
               setOutcome(null);
             }}
           />
-        </label>
+        </AdminField>
         <button
           disabled={busy || !/^[a-f0-9-]{36}$/.test(query)}
           onClick={async () => {

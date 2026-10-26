@@ -51,6 +51,7 @@ export function CrmFollowupHistory({
           "任务暂不可用",
         );
   const label = (f: any) =>
+    f.kind === "contact.intent" ? t("Outreach entry authorized · not a contact record", "Akses kontak diizinkan · bukan catatan kontak", "外联入口已授权 · 不代表已联系") :
     f.kind === "followup.recorded"
       ? t(
           "Contact / handling record",
@@ -221,6 +222,7 @@ export function CrmFollowupHistory({
                         : e.actorName || e.staffName || ""}
                     </span>
                   </div>
+                  {f?.kind==='contact.intent'&&<p>{d.action==='phone'?t('Phone','Telepon','电话'):d.action==='copy'?t('Copy message','Salin pesan','复制话术'):'WhatsApp'} · {d.assisted?t('Manager assistance / verification','Bantuan / verifikasi manajer','Manager代处理／核实'):t('Customer owner','Penanggung jawab pelanggan','客户负责人')}</p>}
                   {d?.channel && (
                     <p className="crm-work-muted">
                       {crmValue(d.channel, lang)}

@@ -1,3 +1,4 @@
+import {ownerManagerOnly} from './crmAccessPolicy';
 import { DEFAULT_CRM_POLICY_CONFIG, type CrmPolicyConfig } from '../types/crmPolicyConfig';
 import { workTimeErrors, type PolicyMessage } from './crmPolicyValidation';
 export type ConfigErrors = Record<string, PolicyMessage>;
@@ -29,6 +30,7 @@ export function mergePolicyConfig(base: CrmPolicyConfig, patch: unknown): {value
 }
 export function policyConfigErrors(value: CrmPolicyConfig): ConfigErrors {
   const errors: ConfigErrors={};
+  for(const field of ["identityReviewManagerOnly","ownerAssignmentManagerOnly","sourceAttributionManagerOnly"] as const)if(typeof value[field]!=="boolean")errors[field]="policy_boolean_invalid";
   const calendar=value.businessHours;
   for(const [key,code] of Object.entries(workTimeErrors(calendar))) errors['businessHours.'+key]=code;
   if(typeof calendar.timezone!=='string') errors['businessHours.timezone']='policy_timezone_invalid';
@@ -44,7 +46,8 @@ export function policyConfigErrors(value: CrmPolicyConfig): ConfigErrors {
 }
 /** SLA row is authoritative for existing calendar / response settings. */
 export function effectivePolicy(configured: any, sla: any): CrmPolicyConfig {
-  const result:any={...DEFAULT_CRM_POLICY_CONFIG,...configured};
+  const result:any={...DEFAULT_CRM_POLICY_CONFIG,...configured,ownerAssignmentManagerOnly:ownerManagerOnly(configured)};
+  delete result.selfClaimEnabled;
   for(const key of Object.keys(durationFields)) result[key]={...(DEFAULT_CRM_POLICY_CONFIG as any)[key],...configured?.[key]};
   result.businessHours={timezone:sla.timezone,startTime:sla.start,endTime:sla.end,workDays:sla.days,nextDayGraceTime:sla.nextDayGraceTime||sla.start};
   for(const [name,hours] of Object.entries({hot:sla.hotHours,warm:sla.warmHours,cold:sla.coldHours})) {

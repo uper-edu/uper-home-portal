@@ -448,65 +448,14 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
-      "lead activity read watermark preserves later events and never completes tasks",
-      async () => {
-        const lead = (
-          await request("/api/portal/register", {
-            fullName: "Activity QA",
-            phone: "+6281234567890",
-            email: "test@example.invalid",
-          })
-        ).data.lead;
-        await tick();
-        const listed = (await request("/api/crm/leads")).data.leads.find(
-          (l: any) => l.id === lead.id,
-        );
-        assert.ok(listed.attention.unreadCount > 0);
-        const taskBefore = (
-          await request("/api/crm/leads/" + lead.id + "/tasks")
-        ).data.find((t: any) => t.status === "open");
-        assert.ok(taskBefore);
-        await request("/api/crm/leads/" + lead.id + "/read", {
-          readThrough: listed.attention.observedAt,
-        });
-        assert.equal(
-          (await request("/api/crm/leads")).data.leads.find(
-            (l: any) => l.id === lead.id,
-          ).attention.unreadCount,
-          0,
-        );
-        assert.equal(
-          (await request("/api/crm/leads/" + lead.id + "/tasks")).data.find(
-            (t: any) => t.id === taskBefore.id,
-          ).status,
-          "open",
-        );
-        const eventId = crypto.randomUUID(),
-          jobId = crypto.randomUUID();
-        await pool.query(
-          "INSERT INTO outbox(id,type,lead_id,payload,processed_at) VALUES(:p1,'assessment.completed',:p2,'{}',UTC_TIMESTAMP(6))",
-          [eventId, lead.id],
-        );
-        await pool.query(
-          "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,due_at,snapshot,state) VALUES(:p1,:p2,'test',1,'inapp','test-admin',UTC_TIMESTAMP(6),'{}','accepted')",
-          [jobId, eventId],
-        );
-        await pool.query(
-          "INSERT INTO notification_inbox(id,employee_id,content) VALUES(:p1,'test-admin',:p2)",
-          [jobId, { leadId: lead.id, event: "conversation.updated" }],
-        );
-        await request("/api/crm/leads/" + lead.id + "/read", {
-          readThrough: listed.attention.observedAt,
-        });
-        assert.equal(
-          (await request("/api/crm/leads")).data.leads.find(
-            (l: any) => l.id === lead.id,
-          ).attention.unreadCount,
-          1,
-        );
-      },
-    );
+    await t.test('reading endpoints are gone and customer reads do not change first requirement',async()=>{
+      const lead=(await request('/api/portal/register',{fullName:'Nadia Putri',phone:'+6281234567890',email:'nadia@example.invalid'})).data.lead;
+      const before=(await request('/api/crm/leads/'+lead.id+'/tasks')).data;
+      assert.equal((await request('/api/crm/leads/'+lead.id+'/read',{})).status,404);
+      const listed=(await request('/api/crm/leads')).data.leads.find((l:any)=>l.id===lead.id);
+      assert.ok(!Object.hasOwn(listed.attention,'unreadCount'));
+      assert.deepEqual((await request('/api/crm/leads/'+lead.id+'/tasks')).data,before);
+    });
     await t.test(
       "sales sees own and unassigned leads; manager sees all; reassignment immediately revokes access",
       async () => {

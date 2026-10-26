@@ -1,3 +1,4 @@
+import {visitorKey} from './visitorScope';
 import {
   validateHskAttempt,
   type HskDraft,
@@ -14,7 +15,7 @@ const DRAFT_KEY = "uper_hsk_draft_v2";
 const HISTORY_KEY = "uper_hsk_history_v2";
 export function readHskDraft(): HskDraft | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+    const raw = JSON.parse(localStorage.getItem(visitorKey(DRAFT_KEY)) || "null");
     if (!raw) return null;
     const attempt = validateHskAttempt(raw.attempt);
     if (
@@ -41,7 +42,7 @@ export function readHskDraft(): HskDraft | null {
 }
 export function writeHskDraft(draft: HskDraft): boolean {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    localStorage.setItem(visitorKey(DRAFT_KEY), JSON.stringify(draft));
     return true;
   } catch {
     return false;
@@ -49,11 +50,11 @@ export function writeHskDraft(draft: HskDraft): boolean {
 }
 export function clearHskDraft() {
   try {
-    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(visitorKey(DRAFT_KEY));
   } catch {}
 }
 function storedRows(): { rows: unknown[]; damaged?: string } {
-  const raw = localStorage.getItem(HISTORY_KEY);
+  const raw = localStorage.getItem(visitorKey(HISTORY_KEY));
   if (raw === null) return { rows: [] };
   try {
     const rows = JSON.parse(raw);
@@ -126,13 +127,13 @@ function saveRows(incoming: readonly unknown[]): boolean {
   try {
     let { rows, damaged } = storedRows();
     if (damaged !== undefined) {
-      const storageKey = `${HISTORY_KEY}_recovery_${crypto.randomUUID()}`;
+      const storageKey = `${visitorKey(HISTORY_KEY)}_recovery_${crypto.randomUUID()}`;
       localStorage.setItem(storageKey, damaged);
       rows = [{ hskRecovery: true, storageKey }];
     }
     for (const record of incoming) rows = retainIncoming(rows, record);
     // Display the latest 20 valid reports, but retain all historical and quarantined rows.
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(rows));
+    localStorage.setItem(visitorKey(HISTORY_KEY), JSON.stringify(rows));
     return true;
   } catch {
     return false;

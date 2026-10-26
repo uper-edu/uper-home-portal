@@ -1,0 +1,3 @@
+.admin-required-note{font-size:13px;line-height:1.6;color:var(--cw-muted,#475569);margin:0 0 16px}.admin-field-label{font:inherit;color:inherit}.admin-required-star{font-weight:650;white-space:nowrap;color:inherit}[data-theme=dark] .admin-required-note{color:var(--cw-muted,#cbd5e1)}
+
+.crm-simple-form>.admin-required-note{padding:0 28px;margin:0}.admin-required-error{color:var(--cw-danger,#b91c1c);font-size:14px;margin:12px 0}

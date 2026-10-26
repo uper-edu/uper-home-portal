@@ -1,3 +1,4 @@
+import {simplifiedFollowupRows} from './CrmGuideContent';
 import { panoramaChapter } from "./CrmPanoramaContent";
 export type Words = readonly [string, string, string];
 export type GuideBlock = {
@@ -71,9 +72,9 @@ export const systemChapters: SystemChapter[] = [
             "客户负责人：客户归属；任务负责人：单项事项的责任人",
           ),
           w(
-            "Unread: customer activity not viewed by this employee, independent of notifications; unfinished: business work not completed",
-            "Belum dibaca: aktivitas pelanggan belum dilihat oleh staf ini, terpisah dari notifikasi; belum selesai: pekerjaan belum ditangani",
-            "未读：本人尚未查看的客户动态，与通知分发独立；未处理：业务事项未完成",
+            "Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.",
+            "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+            "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
           ),
           w(
             "Stage: sales progress; group: classification; contact arrangement: outreach permission and review plan",
@@ -163,197 +164,8 @@ export const systemChapters: SystemChapter[] = [
     ],
     related: "campaigns",
   },
-  {
-    key: "classification",
-    title: w(
-      "Customer classification and rule priority",
-      "Klasifikasi pelanggan dan prioritas aturan",
-      "客户分组与规则优先级",
-    ),
-    intro: w(
-      "Registration uses the baseline classifier. Follow-up evaluates the full rule chain. A sales-confirmed group can remain effective while a different prediction is retained as evidence.",
-      "Registrasi memakai klasifikasi dasar. Tindak lanjut mengevaluasi rantai aturan lengkap. Kelompok terkonfirmasi sales dapat tetap berlaku saat prediksi berbeda disimpan sebagai bukti.",
-      "登记使用基础分类，跟进使用完整规则链。人工确认分组可以继续生效，不同预测作为依据保留。",
-    ),
-    blocks: [
-      {
-        kind: "diagram",
-        diagram: "classification",
-        title: w(
-          "Full evaluation: early matches stop; baseline then adjustment",
-          "Evaluasi lengkap: kecocokan awal berhenti; dasar lalu penyesuaian",
-          "完整推演：前三项或院校规则命中即停止；否则基础分类再微调",
-        ),
-        items: [
-          w(
-            "R6: spaced consecutive unanswered attempts + final reply window → nurture; sales-confirmed groups protected",
-            "R6: upaya tanpa balasan berturut-turut dengan jeda + masa tunggu terakhir → pembinaan; kelompok terkonfirmasi dilindungi",
-            "R6：连续有效未回复达阈值且等待窗口结束 → 培育池；人工确认分组保持不变",
-          ),
-          w(
-            "R1: explicit buying signal → Hot",
-            "R1: sinyal pembelian eksplisit → minat tinggi",
-            "R1：明确购买信号 → 高意向",
-          ),
-          w(
-            "R2: trial attended → high interest",
-            "R2: uji coba dihadiri → minat tinggi",
-            "R2：已出席试听 → 高意向",
-          ),
-          w(
-            "R3: teacher / school staff → School",
-            "R3: guru / staf sekolah → kerja sama sekolah",
-            "R3：教师／学校职员 → 院校合作",
-          ),
-          w(
-            "R4: goal × reported foundation × city / learning format → baseline group",
-            "R4: tujuan × dasar yang dilaporkan × kota / format → kelompok dasar",
-            "R4：目标 × 自报基础 × 城市／授课方式 → 基础分组",
-          ),
-          w(
-            "R5: assessment done / trial booked upgrades a warm baseline; cold remains cold",
-            "R5: asesmen selesai / uji coba dipesan menaikkan kelompok hangat; dingin tetap",
-            "R5：完成测评／预约试听可提升中意向基础分组，培育池不因此升档",
-          ),
-        ],
-      },
-      {
-        kind: "table",
-        title: w(
-          "Baseline and assessment routing",
-          "Dasar klasifikasi dan alur asesmen",
-          "基础分类与测评路由",
-        ),
-        items: [
-          w(
-            "Work / scholarship / HSK goal + known foundation → high interest; partial foundation in Jakarta with offline/undecided format → warm offline; otherwise warm online. Other goals → nurture.",
-            "Tujuan kerja / beasiswa / HSK + dasar diketahui → minat tinggi; dasar belum jelas di Jakarta dengan format luring/belum pasti → minat sedang luring; lainnya → minat sedang daring. Tujuan lain → pembinaan.",
-            "就业／留学／HSK 目标且基础明确 → 高意向；基础尚未明确、雅加达且线下／未确定方式 → 线下中意向；其他情况 → 线上中意向。其他目标 → 培育池。",
-          ),
-          w(
-            "Known means self-reported HSK 1–4+; partial means beginner / unsure; zero means complete beginner. These are routing inputs, not certified results.",
-            "Diketahui berarti laporan HSK 1–4+; parsial berarti pemula / belum yakin; nol berarti pemula total. Ini masukan alur, bukan hasil bersertifikat.",
-            "基础明确指自报 HSK 1–4+；部分基础指初学／不确定；零基础指完全初学。这些是路由输入，不是认证结果。",
-          ),
-          w(
-            "Existing flag rule: partial foundation needs assessment; known or zero can skip it. Questionnaire entry may still offer diagnostic options.",
-            "Aturan penanda saat ini: dasar parsial perlu asesmen; dasar diketahui atau nol dapat melewatinya. Alur kuesioner tetap dapat menawarkan opsi diagnostik.",
-            "现有标记规则：部分基础需测评，明确基础或零基础可跳过。问卷入口仍可提供诊断选项。",
-          ),
-          w(
-            "Registration baseline additionally recognizes an exam plan within 3 months. It does not evaluate the full no-reply rollback chain.",
-            "Dasar registrasi juga mengenali rencana ujian dalam 3 bulan. Tidak mengevaluasi seluruh aturan penurunan saat belum dibalas.",
-            "登记基础分类还考虑三个月内考证计划，不执行完整未回复降档链。",
-          ),
-        ],
-      },
-      {
-        kind: "example",
-        title: w(
-          "Priority and confirmation examples",
-          "Contoh prioritas dan konfirmasi",
-          "优先级与人工确认实例",
-        ),
-        items: [
-          w(
-            "A total touch counter of 3 cannot trigger R6. Three valid consecutive unanswered attempts (default threshold), required spacing and a completed final reply window can. A real reply clears the sequence; previous tasks remain.",
-            "Total 3 upaya tidak memicu R6. Tiga upaya valid berturut-turut tanpa balasan (ambang bawaan), jeda dan masa tunggu terakhir yang selesai dapat memicunya. Balasan nyata mereset urutan; tugas tetap.",
-            "累计触达3次不触发R6。默认连续3次有效未回复、满足间隔且最后回复窗口结束才可转培育。真实回复清零，已有任务保持不变。",
-          ),
-          w(
-            "A retained sales-confirmed group and a new prediction may differ. Inspect classification evidence; do not treat every prediction as an automatic reassignment.",
-            "Kelompok terkonfirmasi sales dan prediksi baru dapat berbeda. Periksa bukti klasifikasi; jangan anggap setiap prediksi mengganti kelompok otomatis.",
-            "人工确认分组与新预测可以不同。查看分组依据，不能把每次预测当作自动覆盖。",
-          ),
-        ],
-      },
-    ],
-    technical: w(
-      "Effective group, confirmed group, prediction and source are separate fields. Missing required goal/foundation remains Unqualified. The full classifier currently uses a fixed threshold of 3; cadence filters read the configurable retry threshold. These are separate implementations. Interface language and viewing never reclassify customers.",
-      "Kelompok berlaku, konfirmasi, prediksi, dan sumber adalah kolom terpisah. Tujuan/dasar yang wajib tetapi hilang tetap belum dinilai. Klasifikasi lengkap saat ini memakai ambang tetap 3; filter ritme memakai ambang percobaan yang dapat dikonfigurasi. Keduanya implementasi terpisah. Bahasa antarmuka dan membuka data tidak mengklasifikasi ulang.",
-      "生效分组、人工确认、预测和来源分别记录。必需目标／基础缺失时保持待评估。完整分类当前使用固定阈值 3；节奏筛选读取可配置重试阈值，两者是不同实现。语言切换和查看不会重算分类。",
-    ),
-    sources: [
-      "src/types/leadSystem.ts",
-      "src/types/crmLead.ts",
-      "server/portal/salesWorkflow.ts",
-    ],
-    related: "workspace",
-  },
-  {
-    key: "lifecycle",
-    title: w(
-      "Sales stages and contact arrangements",
-      "Tahap penjualan dan pengaturan kontak",
-      "销售阶段与联系安排",
-    ),
-    intro: w(
-      "Stages record business progress, not automatic proof of payment or attendance. Changing contact arrangements does not change classification or complete tasks.",
-      "Tahap mencatat perkembangan bisnis, bukan bukti otomatis pembayaran atau kehadiran. Pengaturan kontak tidak mengubah klasifikasi atau menyelesaikan tugas.",
-      "阶段记录业务进展，不自动证明付款或到场。联系安排不改变分组，也不完成任务。",
-    ),
-    blocks: [
-      {
-        kind: "flow",
-        title: w(
-          "Typical staff-recorded journey; steps may be skipped",
-          "Alur umum yang dicatat staf; tahap dapat dilewati",
-          "常见人工记录路径；可跳过不适用阶段",
-        ),
-        items: [
-          w("New → Contacted", "Baru → Dihubungi", "待初访 → 已联系"),
-          w(
-            "Assessment Booked → Assessment Done",
-            "Asesmen dipesan → Asesmen selesai",
-            "已预约测评 → 已完成测评",
-          ),
-          w(
-            "Trial Booked → Trial Attended",
-            "Uji coba dipesan → Uji coba dihadiri",
-            "已预约试听 → 已出席试听",
-          ),
-          w("Enrolled / Lost", "Terdaftar / Ditutup", "已报名／已关闭"),
-        ],
-      },
-      {
-        kind: "table",
-        title: w(
-          "Independent contact arrangements",
-          "Pengaturan kontak terpisah",
-          "独立联系安排",
-        ),
-        items: [
-          w(
-            "Active: handle current tasks",
-            "Aktif: tangani tugas saat ini",
-            "正常跟进：处理当前任务",
-          ),
-          w(
-            "Waiting / nurture: reason + future review; retain old deadlines",
-            "Menunggu / pembinaan: alasan + tinjauan mendatang; tenggat lama tetap",
-            "等待／培育：原因＋未来复查；旧期限保留",
-          ),
-          w(
-            "Stopped: reason required; no proactive contact; internal work remains",
-            "Dihentikan: alasan wajib; tanpa kontak proaktif; pekerjaan internal tetap",
-            "停止联系：须说明原因；禁止主动外联，内部事项仍保留",
-          ),
-          w(
-            "Review due: staff decides whether to wait, resume or stop",
-            "Tinjauan jatuh tempo: staf memutuskan menunggu, melanjutkan, atau berhenti",
-            "复查到期：由员工决定继续等待、恢复或停止",
-          ),
-        ],
-      },
-    ],
-    technical: w(
-      "Contact results are Connected, No Response or Wrong Number. Historical Interested values are not new contact results. Stage editing records a state; it does not verify a contract or enroll a student into a class.",
-      "Hasil kontak adalah tersambung/dibalas, belum dibalas, atau nomor tidak valid. Nilai minat lama bukan hasil kontak baru. Mengubah tahap mencatat status; tidak memverifikasi kontrak atau memasukkan pelajar ke kelas.",
-      "联系结果为已接通／未回复／号码无效。历史意向值不是新的联系结果选项。编辑阶段只是记录状态，不验证合同或自动分班。",
-    ),
-    sources: ["server/portal/salesWorkflow.ts", "src/utils/crmContact.ts"],
-    related: "followup",
-  },
+  {"key": "classification", "title": ["Customer classification and confirmation boundaries", "Klasifikasi pelanggan dan batas konfirmasi", "客户分组与确认边界"], "intro": ["Only first registration calculates Tier from its saved inputs. Later facts do not automatically recalculate it.", "Hanya registrasi pertama menghitung Tier dari masukan tersimpan. Fakta berikutnya tidak menghitung ulang secara otomatis.", "仅首次登记按当时输入自动分类；后续测评、诉求和阶段变化不自动重算Tier。"], "blocks": [{"kind": "diagram", "diagram": "classification", "title": ["Facts, interests and decisions", "Fakta, minat dan keputusan", "事实、诉求与决策"], "items": [["Only first registration calculates Tier from its saved inputs. Later facts do not automatically recalculate it.", "Hanya registrasi pertama menghitung Tier dari masukan tersimpan. Fakta berikutnya tidak menghitung ulang secara otomatis.", "仅首次登记按当时输入自动分类；后续测评、诉求和阶段变化不自动重算Tier。"], ["Saved assessment completions and explicitly confirmed enrollment retain event time and evidence. Repeated events keep separate records.", "Asesmen tersimpan dan konfirmasi pendaftaran menyimpan waktu serta bukti. Kejadian berulang tetap terpisah.", "真实测评完成与明确确认报名成立保留实际时间和依据，同类事件可重复；AI描述不能证明事件成立。"], ["A price question, advisor request or assessment interest is an expression, not completed purchase. Questionnaire topics remain separate.", "Pertanyaan harga, permintaan konsultan atau minat asesmen adalah pernyataan, bukan pembelian. Topik kuesioner terpisah.", "询价、请求顾问联系、测评意向是具体表达，不等于购买承诺；问卷关注另行标明。"], ["Staff confirm the current sales stage with evidence and effective time. Tier requires its own explicit confirmation. No automatic downgrade.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku. Tier memerlukan konfirmasi tersendiri. Tanpa penurunan otomatis.", "销售按依据和生效时间明确确认当前阶段；Tier另行人工确认，R6自动降级已停用。"]]}], "technical": ["Viewing facts does not change Tier, stage, tasks or notifications.", "Melihat fakta tidak mengubah Tier, tahap, tugas atau notifikasi.", "查看记录不修改Tier、阶段、任务或通知；旧规则计算值是历史信息，不是新的自动决策。"], "sources": ["server/portal/tierProvenance.ts", "server/portal/salesProgress.ts", "src/utils/crmBuyingEvidence.ts"], "related": "buying-evidence-sources"},
+  {"key": "lifecycle", "title": ["Sales stages and fact milestones", "Tahap penjualan dan tonggak fakta", "销售阶段与事实里程碑"], "intro": ["Staff explicitly confirm the current stage with evidence and effective time; it is not the latest event.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku; bukan kejadian terbaru.", "销售明确确认当前推进位置，关联依据及生效时间；不以最近事件自动替换。"], "blocks": [{"kind": "flow", "title": ["Seven stages", "Tujuh tahap", "七阶段口径"], "items": [["Awaiting conversation → Understanding needs → Confirming proposal → Registration in progress → Enrolled; On hold and Opportunity closed are separate decisions.", "Menunggu komunikasi → Menggali kebutuhan → Konfirmasi program → Proses pendaftaran → Terdaftar; Ditunda dan Ditutup adalah keputusan tersendiri.", "待建立沟通 → 需求沟通中 → 方案确认中 → 报名办理中 → 已报名；暂缓推进、结束推进按实际情况明确选择。"]]}, {"kind": "table", "title": ["Facts and decisions", "Fakta dan keputusan", "事实与决策"], "items": [["Staff explicitly confirm the current stage with evidence and effective time; it is not the latest event.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku; bukan kejadian terbaru.", "销售明确确认当前推进位置，关联依据及生效时间；不以最近事件自动替换。"], ["A completed assessment or confirmed enrollment remains in history even when the opportunity is paused.", "Asesmen selesai atau pendaftaran terkonfirmasi tetap tercatat saat peluang ditunda.", "测评完成或明确确认报名成立独立留存；当前暂缓推进不抹除已发生事件。"], ["Open Update stage in Follow-up. A saved progress record can supply evidence; the stage is saved separately. Profile is read-only for stages.", "Buka Perbarui tahap di Tindak lanjut. Catatan perkembangan dapat menjadi bukti; tahap disimpan terpisah.", "在跟进页打开“更新阶段”；记录进展后可带入本次依据，阶段独立保存。资料页不重复编辑。"], ["Requests, milestones and stage changes do not create tasks, change Tier or prove payment. Contact permission remains separate.", "Permintaan, tonggak dan perubahan tahap tidak membuat tugas, mengubah Tier atau membuktikan pembayaran.", "诉求、里程碑及阶段调整不新增任务、不自动改变Tier，不证明已付款；停止／恢复联系单独处理。"]]}], "technical": ["Old stages retain their original values and need explicit confirmation; no ambiguous mapping.", "Tahap lama tetap asli dan perlu konfirmasi; tanpa pemetaan ambigu.", "旧阶段保留原值并标为阶段待确认，不做歧义映射。阶段历史保留前后值、原因、操作人、实际生效时间和原始依据。"], "sources": ["src/utils/crmSalesProgress.ts", "server/portal/salesProgress.ts"], "related": "followup"},
   {
     key: "tasks-sla",
     title: w(
@@ -566,7 +378,7 @@ export const systemChapters: SystemChapter[] = [
           w(
             "Accepted: provider accepted; not proof of staff reading",
             "Diterima API: bukan bukti staf membaca",
-            "接口接受：不代表员工已读",
+            "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
           ),
           w(
             "Failed: definite failure; unknown: inspect before retry",
@@ -610,14 +422,14 @@ export const systemChapters: SystemChapter[] = [
         title: w("Management measures", "Ukuran manajemen", "管理过程指标"),
         items: [
           w(
-            "Unassigned wait: ownership timestamp → now",
-            "Waktu belum ditugaskan: waktu kepemilikan → sekarang",
-            "未分配时长：归属时间 → 当前",
+            "Customer overview: current filtered permission-scoped cohort",
+            "Ringkasan pelanggan: kelompok terfilter sesuai izin",
+            "客户概况：权限内的当前筛选客户",
           ),
           w(
-            "First contact attempt: registration → first timed human record",
-            "Upaya kontak pertama: registrasi → catatan manusia pertama dengan waktu",
-            "首次联系尝试：登记 → 首条时间有效人工记录",
+            "First sales outreach: registration → actual occurrence",
+            "Kontak aktif pertama: pendaftaran → waktu kejadian",
+            "首次销售主动联系：登记 → 实际发生时间",
           ),
           w(
             "Successful communication: Connected records; separate from attempts",
@@ -625,9 +437,9 @@ export const systemChapters: SystemChapter[] = [
             "有效沟通：已接通记录，与尝试分别统计",
           ),
           w(
-            "Overdue: unfinished task with reliable past deadline",
-            "Terlambat: tugas belum selesai dengan tenggat lampau terpercaya",
-            "当前逾期：有可靠过去期限的未完成任务",
+            "Overdue: pending first-contact requirement with known past deadline",
+            "Terlambat: kontak pertama belum selesai dengan tenggat lampau",
+            "首次联系逾期：有已知过去期限的未完成首次要求",
           ),
           w(
             "Stage duration: reliable stage timestamp; exclude closed customers",
@@ -811,7 +623,7 @@ export const systemChapters: SystemChapter[] = [
           ),
           w(
             "Explicit request → saved source message and system acknowledgement → create or reuse a follow-up task → sales handles the task. An acknowledgement proves receipt only. Each new same-kind request adds task.request_evidence in crm_facts; an unfinished task keeps its deadline. Only a newly created request task emits handoff.requested, booking.requested or enrollment.requested in outbox for notification policy evaluation. Viewing messages does not complete tasks. Ordinary course questions stay in AI consultation and may become information for review, without an automatic booking or enrollment task.",
-            "Permintaan jelas → pesan sumber dan konfirmasi tersimpan → buat atau gunakan kembali tugas → sales menangani tugas. Konfirmasi hanya membuktikan penerimaan. Permintaan sejenis menambah task.request_evidence di crm_facts; tugas yang belum selesai mempertahankan tenggat. Hanya tugas permintaan baru yang menerbitkan handoff.requested, booking.requested, atau enrollment.requested di outbox untuk evaluasi kebijakan notifikasi. Membaca pesan tidak menyelesaikan tugas. Pertanyaan umum tetap menjadi konsultasi AI dan dapat menjadi informasi untuk ditinjau, tanpa tugas janji atau pendaftaran otomatis.",
+            "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
             "明确请求 → 保存客户原话和系统确认 → 新建或复用跟进任务 → 销售处理。确认消息只证明请求已收到。同类补充请求在crm_facts中追加task.request_evidence，未完成任务保留截止时间；只有新建请求任务才在outbox写入handoff.requested、booking.requested或enrollment.requested，供通知策略判断。查看消息不完成任务。普通课程咨询继续由AI回答，可形成待核实信息，不自动成为预约或报名任务。",
           ),
         ],
@@ -866,3 +678,17 @@ export const systemChapters: SystemChapter[] = [
     related: "support",
   },
 ];
+
+for(const chapter of systemChapters){const mapping:Record<string,number[]>={entities:[0,2,4,6],"tasks-sla":[0,2,6],"notification-system":[4,8]};const indexes=mapping[chapter.key];if(indexes){chapter.intro=simplifiedFollowupRows[indexes[0]+1] as unknown as Words;chapter.blocks=indexes.map(i=>({kind:'flow',title:simplifiedFollowupRows[i] as unknown as Words,items:[simplifiedFollowupRows[i+1] as unknown as Words]}));}}
+
+for(const c of systemChapters){if(c.key==="entities")c.blocks.push({kind:"table",title:["Data and responsibility","Data dan tanggung jawab","数据与职责"],items:[simplifiedFollowupRows[1],simplifiedFollowupRows[5],simplifiedFollowupRows[7]] as unknown as Words[]});}
+
+for(const c of systemChapters){if(c.key==="tasks-sla")c.title=["First follow-up, information and agreements","Tindak lanjut pertama, informasi dan kesepakatan","首次跟进、重要提示与客户约定"];}
+
+// Current persistence explanation: request evidence never manufactures a task.
+for(const chapter of systemChapters){if(chapter.key!=='data-implementation')continue;const rewrite=(value:any):any=>{if(Array.isArray(value)&&value.length===3&&value.every(v=>typeof v==='string')){if(value[0].startsWith('Request acknowledgements are stored'))return ['MySQL messages preserve original request text and system acknowledgement. crm_engagements stores the pending/handled request and source identifiers; crm_facts stores human updates. metadata.taskOperation is recorded and taskId is null for new requests. Do not infer business completion from acknowledgement text.','Pesan MySQL menyimpan permintaan asli dan konfirmasi sistem. crm_engagements menyimpan status pending/handled dan referensi sumber; crm_facts menyimpan pembaruan staf. Permintaan baru memakai metadata.taskOperation recorded dan taskId null. Konfirmasi bukan bukti urusan selesai.','MySQL messages保留客户请求原文及系统回执；crm_engagements保存待回应／已回应状态和来源标识，crm_facts保存人工更新。新请求的metadata.taskOperation为recorded，taskId为空；系统回执不证明业务完成。'];if(value[0].startsWith('Explicit request →'))return ['Explicit request → preserve original evidence and acknowledge receipt → show important information → staff record what actually happened and explicitly confirm a real response. Reading does not answer a request. Only registration creates the first-contact requirement; later requests never create another task.',"Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",'明确请求→保存原文并确认收到→展示重要提示→销售记录实际事实，并明确确认真实回应。阅读不等于回应；只有首次登记创建首次联系要求，后续请求不再创建任务。'];if(value[0].startsWith('Three open tasks:'))return ['One first-contact requirement: actual contact processes it once. Date-only and exact-time agreements coexist as optional facts, never extra tasks. Retrying the same request returns the saved outcome without duplicate records.','Satu kewajiban kontak pertama diproses sekali lewat kontak nyata. Kesepakatan bertanggal atau berjam dapat berdampingan sebagai fakta opsional, bukan tugas tambahan. ID permintaan yang sama mengembalikan hasil tersimpan tanpa duplikasi.','只有一个首次联系要求，真实联系后处理一次。日期约定和明确时刻约定作为选填事实并存，不生成额外任务；相同请求重试返回原保存结果，不重复记录。'];}if(Array.isArray(value))return value.map(rewrite);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,rewrite(v)]));return value;};chapter.blocks=chapter.blocks.map(rewrite);}
+
+for(const chapter of systemChapters){
+ if(chapter.key==='tasks-sla')chapter.blocks.push({kind:'example',title:w('Viewed, replied and first follow-up are separate',"Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.","依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。"),items:[w("Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.","Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.","依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。")]});
+ if(chapter.key==='data-implementation')chapter.technical=chapter.technical.map((v,i)=>v+' '+["Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.","Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.","依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。"][i]) as unknown as Words;
+}

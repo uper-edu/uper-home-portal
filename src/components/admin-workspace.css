@@ -1,0 +1,108 @@
+.admin-workspace{--aw-accent:#087f77;--aw-border:#cbd5e1;--aw-active:#e6f4f1;--admin-shell-height:116px;font-size:14px;line-height:1.6;min-width:0}.admin-topic{display:grid;grid-template-columns:256px minmax(0,1fr);gap:24px;align-items:start}.admin-topic-directory{position:sticky;top:calc(var(--admin-shell-height) + 16px);max-height:calc(100dvh - var(--admin-shell-height) - 32px);overflow-y:auto;min-width:0}.admin-topic-main{min-width:0}.admin-topic-main h2,.admin-topic-main h3{scroll-margin-top:calc(var(--admin-shell-height) + 16px)}.admin-directory-toggle{display:none}.admin-workspace :focus-visible{outline:2px solid #14b8a6;outline-offset:3px}.admin-topic-directory .crm-ops-nav{position:static;border-radius:14px}.admin-topic .crm-ops-summary{padding:20px 24px;border-radius:14px}.admin-topic .crm-ops-summary p{margin-top:8px}.admin-topic .crm-ops-commandbar{position:static;margin:16px 0}.admin-topic .crm-ops-explanation{margin:16px 0;padding:16px;border:1px solid var(--ops-border);border-radius:14px}.admin-topic .crm-ops-explanation>summary{cursor:pointer;font-weight:600}.admin-topic .crm-ops-content form>.rounded-2xl>h3{display:none}.admin-topic-directory .cms-collection-description{display:none}.admin-topic-directory aside{width:100%!important;position:static!important;max-height:none!important;overflow:visible!important}.admin-topic-directory aside button{border-radius:10px;min-height:44px}.admin-topic-directory aside button[aria-current=page]{background:var(--aw-active)!important;color:#075c55!important;border-color:transparent!important}.admin-topic-directory aside button[aria-current=page] span{color:inherit}.admin-topic-directory aside button .truncate{white-space:normal;font-size:14px}.admin-topic-main>div{min-width:0}
+@media(max-width:1023px){.admin-topic{grid-template-columns:minmax(0,1fr);gap:16px}.admin-directory-toggle{display:block;min-height:44px;text-align:left;border:1px solid #64748b;border-radius:10px;padding:8px 16px}.admin-topic-directory{position:static;max-height:60dvh;display:none}.admin-topic[data-directory-open=true]>.admin-topic-directory{display:block}.admin-topic button{min-height:44px}}
+@media(max-height:520px){.admin-topic-directory{position:static;max-height:none}}
+
+.crm-ops-workspace-sample{--ops-border:#cbd5e1;--ops-surface:#fff;--ops-text:#172b42;color:var(--ops-text)}.crm-ops-workspace-sample[data-theme=dark]{--ops-border:#475569;--ops-surface:#111c2c;--ops-text:#e2e8f0}.crm-ops-workspace-sample[data-theme=dark] .crm-ops-nav button[aria-current=page]{background:#123c3a;color:#91e2d6}.admin-topic .crm-ops-summary{margin:0}.admin-topic .crm-ops-note{font-size:13px!important;opacity:1}.admin-topic-directory aside>div:last-child{font-size:12px}.admin-topic-main form>div>h3{font-size:16px}
+
+.admin-topic .crm-ops-content form h3{display:none}.admin-topic [hidden]{display:none!important}.admin-topic .crm-ops-tools{margin:8px 0}.admin-topic-directory summary{min-height:40px;cursor:pointer}
+
+.admin-topic{overflow-anchor:none}.admin-topic-main{min-height:calc(100dvh - var(--admin-shell-height) - 32px)}.admin-topic-directory{overflow-anchor:none}.admin-topic .crm-ops-commandbar details details{margin-top:12px}.admin-topic .crm-ops-commandbar .crm-ops-tools h3{display:block}
+
+/* Contain wheel/touch momentum at directory edges; the body remains scrollable outside it. */
+.admin-topic-directory{overscroll-behavior-y:contain;scrollbar-gutter:stable;-webkit-overflow-scrolling:touch}
+
+/* One scoped save header; it stays with its form, never floats over another topic. */
+.admin-edit-header{--edit-surface:#fff;--edit-border:#cbd5e1;position:sticky;top:calc(var(--admin-shell-height,116px) + 8px);z-index:15;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 16px;min-height:56px;background:var(--edit-surface);border:1px solid var(--edit-border);border-radius:14px;box-shadow:0 2px 8px #0f172a0a;scroll-margin-top:calc(var(--admin-shell-height,116px) + 8px)}
+.admin-edit-header[data-theme=dark]{--edit-surface:#111c2c;--edit-border:#475569;color:#e2e8f0}.admin-edit-title{flex:1;min-width:140px}.admin-edit-title h2,.admin-edit-title h4{font-size:18px;font-weight:650;line-height:1.35;margin:0}.admin-edit-title small{font-size:12px;overflow-wrap:anywhere}.admin-edit-actions,.admin-edit-header>.crm-ops-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border:0;padding:0;font-size:13px}.admin-edit-header>.crm-ops-actions>details{position:relative}.admin-edit-header>.crm-ops-actions>details[open]{max-width:100%}.admin-edit-header>.crm-ops-actions>details>button,.admin-edit-header>.crm-ops-actions>details>.crm-ops-tools{position:relative;display:block}.admin-edit-header>.crm-ops-actions>details[open]>.crm-ops-tools{max-height:45dvh;overflow:auto}.admin-edit-header [role=alert],.admin-edit-header [role=status]:not(.crm-ops-actions>span){margin:0}.admin-edit-header>div[tabindex],.admin-edit-feedback{flex-basis:100%;max-height:100px;overflow:auto;font-size:13px}.admin-edit-header>div[tabindex]:empty{display:none}.admin-edit-header [role=alert]{color:#b91c1c}.admin-edit-header[data-theme=dark] [role=alert]{color:#fca5a5}.admin-save-scope{font-size:13px;margin:8px 0;color:inherit}.admin-topic .admin-topic-notification-heading{padding:16px 24px}.admin-topic .crm-ops-summary{padding:12px 16px}.admin-topic .crm-ops-summary .crm-ops-note{margin:0}.admin-topic-main :is(input,textarea,select,button,[tabindex]){scroll-margin-top:calc(var(--admin-shell-height,116px) + 180px)}
+@media(max-width:600px){.admin-edit-header{padding:8px 12px;gap:8px;top:var(--admin-shell-height,116px)}.admin-edit-title{flex-basis:100%}.admin-edit-title h2,.admin-edit-title h4{font-size:16px}.admin-edit-actions,.admin-edit-header>.crm-ops-actions{width:100%;gap:6px}.admin-edit-header button{min-height:44px}.admin-edit-header .crm-ops-actions>span{font-size:12px}.admin-edit-actions button{font-size:12px;white-space:normal}}
+
+.admin-save-menu{position:absolute;right:0;top:calc(100% + 8px);width:min(440px,calc(100vw - 48px));max-height:55dvh;overflow:auto;overscroll-behavior-y:contain;padding:12px;background:var(--edit-surface);border:1px solid var(--edit-border);border-radius:10px;box-shadow:0 8px 24px #0f172a33}.admin-save-menu>button{display:block;width:100%;text-align:left}.admin-save-menu .crm-ops-tools{margin:8px 0!important}.admin-edit-header .crm-ops-actions>button:disabled{opacity:.5;cursor:default}.admin-edit-header .crm-ops-actions>span{white-space:nowrap}.admin-edit-header~.admin-save-scope{margin-top:8px!important}.admin-edit-header~.crm-ops-summary{margin-top:12px!important}
+@media(max-width:600px){.admin-edit-header:has(.admin-edit-close)>.admin-edit-title{padding-right:40px}.admin-edit-close{position:absolute;right:8px;top:8px;min-width:36px}.admin-edit-actions{padding-right:0}.admin-edit-header>.crm-ops-actions>span{white-space:normal;max-width:80px;line-height:1.35}.admin-edit-header>.crm-ops-actions>button[type=submit]{max-width:170px;white-space:normal;line-height:1.3}.admin-edit-header>.crm-ops-actions>details>summary{font-size:0;min-width:32px;min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer}.admin-edit-header>.crm-ops-actions>details>summary:after{content:'⋯';font-size:20px}}
+
+/* Embedded notification topics share the topic page hierarchy, not another outer card. */
+.notification-topic-content{min-width:0;padding:16px 0;border:0;background:transparent}
+.notification-topic-toolbar{display:flex;align-items:flex-start;gap:16px;justify-content:space-between}
+.notification-topic-toolbar>p{flex:1;font-size:13px;line-height:1.6;max-width:80ch}
+.notification-topic-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.notification-routing{border-block:1px solid var(--ops-border,#cbd5e1);padding:12px 0}
+.notification-routing p{margin-top:8px;font-size:13px;line-height:1.6}
+.notification-topic-content :is(th,td){font-size:13px}
+@media(max-width:600px){.notification-topic-toolbar{flex-wrap:wrap;gap:8px}.notification-topic-actions{width:100%;justify-content:flex-end}.admin-edit-actions>button{flex:1;min-width:0;justify-content:center;padding:6px 8px;line-height:1.3}}
+
+.admin-topic .admin-topic-notification-heading{padding:12px 0 16px;border-bottom:1px solid var(--ops-border,#cbd5e1)}
+.admin-topic-notification-heading h2{font-size:20px;line-height:1.4;font-weight:650;margin:4px 0 8px}
+.admin-topic-notification-heading>p:last-child{font-size:14px;line-height:1.6;margin:0}
+.admin-topic-notification-heading>.crm-ops-note{margin:0;color:var(--ops-muted,#52647c)}
+.notification-topic-actions>button,.notification-topic-content article>button,.admin-edit-actions>button{min-height:40px;font-size:14px}
+.notification-topic-content article>p{font-size:13px;line-height:1.6}
+@media(max-width:600px){.notification-topic-actions>button,.notification-topic-content article>button,.admin-edit-actions>button{min-height:44px}.admin-edit-actions>button{font-size:12px}}
+
+.policy-conflict-review{font-size:13px;color:var(--ops-text,#172b42);padding-top:8px}
+.policy-conflict-review dl{margin:8px 0}.policy-conflict-review dl>div{padding:8px 0;border-bottom:1px solid var(--ops-border,#cbd5e1)}.policy-conflict-review dt{font-weight:600}.policy-conflict-review dd{overflow-wrap:anywhere}
+.admin-edit-header:has(.policy-conflict-review[open])>div[tabindex]{max-height:240px}
+
+.crm-simple-form{font-size:14px;min-width:0}.crm-simple-form>button{min-height:40px;padding:8px 16px;border:1px solid #94a3b8;border-radius:10px;margin-right:8px}.crm-simple-form>button[type=submit]{background:#087f77;color:white;border-color:#087f77}.crm-simple-form button:disabled{opacity:.5}.crm-simple-form label{display:block;margin:12px 0}.crm-simple-form input:not([type=checkbox]),.crm-simple-form textarea,.crm-simple-form select{max-width:100%;border:1px solid #94a3b8;border-radius:10px;padding:8px;width:100%;min-height:40px;background:transparent}.crm-simple-form textarea{min-height:100px}.crm-simple-form details{border-top:1px solid #94a3b8;padding-top:12px}.crm-simple-form summary{cursor:pointer}.crm-simple-form[data-theme=dark]{color:#e2e8f0;background:#0f172a}.crm-simple-form :focus-visible{outline:2px solid #14b8a6;outline-offset:3px}@media(max-width:600px){.crm-simple-form button{min-height:44px}}
+
+/* Assessment history: evidence remains neutral; review cues use amber. */
+.crm-assessment-history-view,.crm-assessment-history {display:grid;gap:16px;min-width:0}
+.crm-assessment-history-date,.crm-assessment-history-conclusion {display:block;margin-top:6px;overflow-wrap:anywhere}
+.crm-assessment-history-date {font-size:13px;font-weight:400;color:var(--crm-muted,#52657e)}
+.crm-assessment-review-tag {display:inline-block;margin-top:8px;border:1px solid #b7791f;border-radius:6px;padding:2px 8px;color:#854d0e;background:#fef3c7;font-size:13px}
+.crm-assessment-history-entry .crm-disclosure-label {min-width:0;overflow-wrap:anywhere}
+.dark .crm-assessment-review-tag {color:#fef3c7;background:#422c12;border-color:#d69e2e}
+@media(max-width:600px){.crm-assessment-history-entry .crm-disclosure-heading{min-height:44px}.crm-assessment-history-entry .crm-assessment-facts{grid-template-columns:1fr}}
+
+/* Simplified fact form shares control rhythm without changing submission boundaries. */
+.crm-simple-form fieldset {display:grid;gap:16px;border:0;padding:0;min-width:0}
+.crm-simple-form label {display:grid;gap:6px;font-size:14px;min-width:0}
+.crm-simple-form input:not([type=checkbox]),.crm-simple-form textarea {width:100%;min-height:40px;border:1px solid #cbd5e1;border-radius:10px;padding:8px 12px;background:transparent;color:inherit}
+.crm-simple-form textarea {min-height:100px}
+.crm-simple-form input[type=checkbox] {width:18px;height:18px}
+.crm-simple-form > button {min-height:40px;border:1px solid #cbd5e1;border-radius:10px;padding:8px 16px;margin-right:8px}
+.crm-simple-form > button[type=submit] {background:#0f766e;color:#fff;border-color:#0f766e}
+.crm-simple-form :focus-visible {outline:2px solid #0f766e;outline-offset:3px}
+.crm-simple-form [disabled] {opacity:.6;cursor:not-allowed}
+@media(max-width:600px){.crm-simple-form input:not([type=checkbox]),.crm-simple-form > button{min-height:44px}}
+
+.crm-simple-select-field{min-width:0;margin:12px 0}.crm-simple-select-field>p{font-size:14px;font-weight:600;margin:0 0 6px}
+
+/* Fact-first progress: necessary facts first, optional customer changes separately. */
+.crm-simple-recorder,.crm-simple-help {font-size:13px;line-height:1.65;color:var(--cw-muted,#52647c)}
+.crm-simple-form .crm-simple-two-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.crm-simple-form .crm-simple-two-fields .crm-simple-select-field {margin:0}
+.crm-simple-fields h3,.crm-progress-history h3 {font-size:16px;font-weight:650;margin:0 0 8px}
+.crm-simple-form .crm-simple-disclosure {border:1px solid var(--cw-border,#cbd5e1);border-radius:10px;padding:12px 16px}
+.crm-simple-disclosure>summary {min-height:40px;font-weight:600;display:list-item;line-height:1.6}
+.crm-simple-form .crm-simple-check {display:flex;align-items:flex-start;gap:10px;font-weight:400}
+.crm-simple-check input {flex-shrink:0;margin-top:3px}
+.crm-simple-agreement-original {border-left:3px solid var(--cw-border,#94a3b8);padding:8px 12px;font-size:13px;background:var(--cw-soft,#f8fafc)}
+.crm-attention-item {padding:12px 0;border-bottom:1px solid var(--cw-border,#cbd5e1);overflow-wrap:anywhere}
+.crm-attention-review {margin-top:8px;font-size:13px;color:var(--cw-muted,#52647c)}
+.crm-attention-review button {min-height:40px;font-size:13px}
+.crm-attention-review [role=alert] {color:#b91c1c;margin-top:8px}
+.crm-progress-record {border-top:1px solid var(--cw-border,#cbd5e1);padding:12px 0}
+.crm-progress-record>summary {display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;min-height:44px;list-style:none}
+.crm-progress-record>summary:after {content:'+';flex-shrink:0;font-size:18px}
+.crm-progress-record[open]>summary:after {content:'−'}
+.crm-progress-meta {display:block;margin-top:4px;font-size:12px;color:var(--cw-muted,#52647c)}
+.crm-progress-expand {font-size:13px;color:var(--cw-accent,#087f77);margin-left:auto;flex-shrink:0}
+.crm-progress-record-body {padding:12px 0 4px;min-width:0}
+.crm-progress-original,.crm-progress-record dd {white-space:pre-wrap;overflow-wrap:anywhere}
+.crm-progress-record-body h4 {font-size:14px;font-weight:600;margin-bottom:8px}
+.crm-progress-record dl {margin-top:16px}
+.crm-progress-record dl>div {display:grid;grid-template-columns:minmax(120px,30%) minmax(0,1fr);gap:12px;padding:8px 0;border-bottom:1px solid var(--cw-border,#cbd5e1)}
+.crm-progress-record dt {font-size:13px;color:var(--cw-muted,#52647c)}
+.crm-progress-record dd {margin:0;font-size:14px}
+@media(max-width:600px){.crm-simple-form .crm-simple-two-fields{grid-template-columns:1fr}.crm-simple-form .crm-simple-disclosure{padding:12px}.crm-progress-record dl>div{grid-template-columns:1fr;gap:4px}.crm-attention-review button{min-height:44px}}
+.crm-simple-form[data-theme=dark]{--cw-muted:#cbd5e1;--cw-border:#475569;--cw-soft:#172338}
+.crm-customer-workspace[data-theme=dark] .crm-attention-review [role=alert]{color:#fca5a5}
+/* Modal variant: one local save strip, visible while the form content scrolls. */
+.crm-simple-form-actions {position:sticky;bottom:0;z-index:3;display:flex;align-items:center;gap:8px;padding:12px 0;margin-top:16px;background:var(--cw-surface,#fff);border-top:1px solid var(--cw-border,#cbd5e1)}
+.crm-simple-form-actions>button {min-height:40px;border:1px solid var(--cw-border,#cbd5e1);border-radius:10px;padding:8px 16px;color:inherit;background:transparent}
+.crm-simple-form-actions>button:first-child {background:#0f766e;color:#fff;border-color:#0f766e}
+@media(max-width:600px){.crm-simple-form-actions>button{min-height:44px}}
+
+/* Three independent, evidence-backed interaction tracks. */
+.crm-interaction-timelines{min-width:0;border:1px solid var(--dw-border,#94a3b8);border-radius:14px;padding:16px;font-size:14px}.crm-interaction-timelines h3{font-size:16px;margin:0 0 12px}.crm-interaction-row{display:grid;grid-template-columns:155px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid color-mix(in srgb,currentColor 18%,transparent)}.crm-interaction-label{font-weight:600}.crm-interaction-meta,.crm-interaction-note{font-size:12px;line-height:1.5;opacity:.85;margin:4px 0}.crm-interaction-open{text-align:left;white-space:normal;overflow-wrap:anywhere;min-height:40px!important}.crm-interaction-timelines.is-compact{padding:0;border:0}.crm-interaction-timelines.is-compact .crm-interaction-row{display:block;padding:6px 0}.crm-interaction-timelines.is-compact .crm-interaction-label{display:block;font-size:13px}.crm-interaction-timelines.is-compact .crm-interaction-open{min-height:32px!important;font-size:13px}.crm-interaction-original{padding:16px;font-size:14px;overflow-wrap:anywhere}.crm-interaction-original dl>div{display:grid;grid-template-columns:160px minmax(0,1fr);gap:12px;margin:12px 0}.crm-interaction-original dt{font-weight:600;margin-top:8px}.crm-interaction-original dd{margin:0;white-space:pre-wrap}.crm-interaction-quote{white-space:pre-wrap}.crm-interaction-original details{margin:16px 0}.crm-interaction-original summary{cursor:pointer}.crm-interaction-original h3{margin-top:16px}.crm-interaction-timelines :focus-visible{outline:2px solid #0d9488;outline-offset:3px}@media(max-width:600px){.crm-interaction-row{grid-template-columns:1fr;gap:4px}.crm-interaction-open{min-height:44px!important}.crm-interaction-original dl>div{grid-template-columns:1fr}}
+
+.crm-interaction-timelines.is-compact .crm-interaction-row{display:grid;grid-template-columns:94px minmax(0,1fr);gap:8px;align-items:center;padding:3px 0}.crm-interaction-timelines.is-compact .crm-interaction-open{min-height:32px!important;font-size:12px;line-height:1.5;padding:0}.crm-interaction-timelines.is-compact .crm-interaction-label{font-size:12px}.crm-interaction-timelines.is-compact .crm-interaction-meta[hidden]{display:none}.crm-interaction-agreement{display:block;text-align:left;overflow-wrap:anywhere;max-width:100%;font-size:12px}

@@ -1,3 +1,4 @@
+import {canReviewSourceAttribution,assertSourceAttributionReviewer} from './crmAccessControls.ts';
 import {campaignSourceEvidence} from "./campaignSourceEvidence.ts";
 import {allocateCampaignCode} from "./campaignCodeAllocation.ts";
 import crypto from "node:crypto";
@@ -47,6 +48,7 @@ export async function recordCampaignSource(c: any, profile: any) {
   profile.campaignSourceStatus = "pending";
 }
 export async function listCampaignSources(employee: any) {
+  const canReview=await canReviewSourceAttribution(pool,employee);
   const rows = (
     await pool.query(
       "SELECT * FROM campaign_source_reviews ORDER BY updated_at DESC",
@@ -73,6 +75,7 @@ export async function listCampaignSources(employee: any) {
         .sort();
       return {
         id: r.id,
+        canReview,
         rawCode: r.raw_code,
         status: r.status,
         revision: Number(r.revision),
@@ -117,6 +120,7 @@ export async function reviewCampaignSource(id: string, b: any, employee: any) {
     )
     .digest("hex");
   return tx(async (c: any) => {
+    await assertSourceAttributionReviewer(c,employee);
     // Share the same allocation lock with ordinary campaign creation. Re-check
     // the code after acquiring it, rather than trusting the review-page snapshot.
     await c.query("SELECT GET_LOCK(:p1,5) AS acquired", ["trial-campaigns"]);

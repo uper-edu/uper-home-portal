@@ -1,3 +1,5 @@
+import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
+import {AdminTopicFrame} from "../AdminTopicFrame";
 import {BrowserMetadataGuide} from '../BrowserMetadataGuide';
 import {PageMetadata} from '../PageMetadata';
 import { cmsText } from '../../utils/cmsLanguage';
@@ -553,8 +555,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         </div>
       </details>
       {/* Main Master-Detail Body */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-start min-h-[660px] divide-y lg:divide-y-0 lg:divide-x border-slate-100 dark:border-slate-800 relative">
-        
+      <AdminTopicFrame selection={activeSection} label={t("Content collections", "内容分类")} navigation={<>
         {/* LEFT COLUMN: Master Resource & Model Navigation Sidebar (Sticky on desktop, independent scroll) */}
         <aside className={`w-full lg:w-72 xl:w-80 shrink-0 p-3.5 sm:p-4 flex flex-col justify-between lg:sticky lg:top-[74px] lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto ${
           isLight ? 'bg-slate-50/70' : 'bg-slate-950/40'
@@ -562,7 +563,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800">
               <span className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                {t('Content Collections', '内容数据模型与素材表')}
+                {t('Content Collections', '内容分类')}
               </span>
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-semibold ${
                 isLight ? 'bg-white text-slate-600 border-slate-200' : 'bg-slate-900 text-slate-400 border-slate-700'
@@ -589,6 +590,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       return (
                         <button
                           key={sec.id}
+                          aria-current={isActive ? "page" : undefined}
                           type="button"
                           onClick={() => {
                             setActiveSection(sec.id);
@@ -614,7 +616,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             </span>
                             <div className="min-w-0">
                               <div className="text-xs truncate">{t(sec.titleEn, sec.titleZh)}</div>
-                              <div className={`text-[10px] truncate ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                              <div className={`cms-collection-description text-[10px] truncate ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                                 {t(sec.descEn, sec.descZh)}
                               </div>
                             </div>
@@ -651,7 +653,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
               )}
             </span>
           </div>
-        </aside>
+        </aside></>}>
 
         {/* RIGHT COLUMN: Detail Workspace Main Content Area */}
         <section aria-label={t("Content editing", "内容编辑")} className="flex-1 min-w-0 p-4 sm:p-6 flex flex-col">
@@ -852,7 +854,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
             )}
           </div>
         </section>
-      </div>
+      </AdminTopicFrame>
 
       {/* Edit / Add Modal */}
       {isModalOpen && editingItem && (
@@ -860,7 +862,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
           <div className={`w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl ${
             isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
           }`}>
-            <form onSubmit={handleSave}>
+            <AdminForm lang={lang} onSubmit={handleSave}>
+<AdminRequiredNote lang={lang}/>
+
               <div className={`p-4 border-b flex items-center justify-between sticky top-0 z-10 ${
                 isLight ? 'bg-white/95 border-slate-100' : 'bg-slate-900/95 border-slate-800'
               }`}>
@@ -887,12 +891,12 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 <div className={`p-4 rounded-xl border ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'
                 }`}>
-                  <label className="block font-semibold mb-2 flex items-center justify-between">
+                  <AdminField className="block font-semibold mb-2 flex items-center justify-between">
                     <span>{t('Primary Image / Logo', '主图片 / Logo 封面')}</span>
                     <span className="text-[10px] text-primary-600 font-normal">
                       {t('PNG, JPEG or WebP up to 2 MB; stored in MySQL', 'PNG、JPEG 或 WebP，最大 2 MB；保存到 MySQL')}
                     </span>
-                  </label>
+                  </AdminField>
 
                   <div className="flex items-center gap-4">
                     {/* Live Preview */}
@@ -989,9 +993,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   <div className={`p-4 rounded-xl border ${
                     isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'
                   }`}>
-                    <label className="block font-semibold mb-2">
+                    <AdminField className="block font-semibold mb-2">
                       {t('Admission Certificate / Letter Image', '录取通知书 / 奖学金证书图片')}
-                    </label>
+                    </AdminField>
                     <div className="flex items-center gap-3">
                       <div className={`w-16 h-16 rounded-xl border flex items-center justify-center overflow-hidden shrink-0 ${
                         isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'
@@ -1037,7 +1041,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 )}
 
                 {/* Primary Name / Title */}
-                <div>
+                <AdminField as="div">
                   <label className="block font-semibold mb-1">
                     {activeSection === 'partners' 
                       ? t('Institution Name', '院校或机构名称')
@@ -1058,12 +1062,12 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                     }`}
                   />
-                </div>
+                </AdminField>
 
                 {/* Conditional Fields: Partners */}
                 {activeSection === 'partners' && (
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
                       <select
                         value={editingItem.category || ''}
@@ -1077,9 +1081,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         <option value="Educational Institutions">{t('Educational Institutions', '教育机构')}</option>
                         <option value="Corporate Partners">{t('Corporate Partners', '企业伙伴')}</option>
                       </select>
-                    </div>
+                    </AdminField>
 
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Subcategory', '细分子类/备注')}</label>
                       <input
                         type="text"
@@ -1090,9 +1094,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
 
-                    <div className="col-span-2">
+                    <AdminField as="div" className="col-span-2">
                       <label className="block font-semibold mb-1">{t('Official Website Link', '官方网址')}</label>
                       <input
                         type="url"
@@ -1103,7 +1107,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
                   </div>
                 )}
 
@@ -1111,7 +1115,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 {activeSection === 'news' && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Article Slug (URL path)', '文章别名 (URL路径)')}</label>
                         <input
                           type="text"
@@ -1126,9 +1130,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Original News Source Link', '原始新闻来源链接')}</label>
                         <input
                           type="url"
@@ -1139,10 +1143,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
                     </div>
 
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Summary / Excerpt', '文章摘要')}</label>
                       <textarea
                         rows={2}
@@ -1152,9 +1156,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
 
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Full Text Content (Paragraphs)', '正文段落内容')}</label>
                       <textarea
                         rows={5}
@@ -1180,7 +1184,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
                   </div>
                 )}
 
@@ -1188,7 +1192,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 {activeSection === 'trendingPrograms' && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
                         <input
                           type="text"
@@ -1199,9 +1203,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Badge / Status Tag', '角标标签')}</label>
                         <input
                           type="text"
@@ -1212,9 +1216,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Tuition / Price', '学费 / 价格')}</label>
                         <input
                           type="text"
@@ -1225,9 +1229,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Term Duration', '课时周期')}</label>
                         <input
                           type="text"
@@ -1238,9 +1242,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Start Date', '开班 / 开学时间')}</label>
                         <input
                           type="text"
@@ -1251,9 +1255,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Seats / Capacity', '名额限制')}</label>
                         <input
                           type="text"
@@ -1264,9 +1268,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div className="col-span-2">
+                      <AdminField as="div" className="col-span-2">
                         <label className="block font-semibold mb-1">{t('Target Page Link', '跳转链接')}</label>
                         <input
                           type="text"
@@ -1277,10 +1281,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
                     </div>
 
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Course Description & Highlights', '课程亮点与介绍')}</label>
                       <textarea
                         rows={4}
@@ -1290,14 +1294,14 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
                   </div>
                 )}
 
                 {/* Conditional Fields: Student Stories */}
                 {activeSection === 'studentStories' && (
                   <div className="space-y-3">
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('School / Company / Background', '就读院校 / 企业背景')}</label>
                       <input
                         type="text"
@@ -1309,9 +1313,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
 
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Story / Testimonial Quote', '学员真实心得感言')}</label>
                       <textarea
                         rows={4}
@@ -1323,14 +1327,14 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
                   </div>
                 )}
 
                 {/* Conditional Fields: Admissions List */}
                 {activeSection === 'admissionsList' && (
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Admitted University / School', '录取院校')}</label>
                       <input
                         type="text"
@@ -1342,9 +1346,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
 
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Program / Major', '录取专业')}</label>
                       <input
                         type="text"
@@ -1356,9 +1360,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
 
-                    <div className="col-span-2">
+                    <AdminField as="div" className="col-span-2">
                       <label className="block font-semibold mb-1">{t('Scholarship Awarded', '获得奖学金类别')}</label>
                       <input
                         type="text"
@@ -1369,9 +1373,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
 
-                    <div className="col-span-2">
+                    <AdminField as="div" className="col-span-2">
                       <label className="block font-semibold mb-1">{t('Admission Date Range', '录取学年范围')}</label>
                       <input
                         type="text"
@@ -1382,7 +1386,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
                   </div>
                 )}
 
@@ -1390,7 +1394,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 {activeSection === 'campaigns' && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Subtitle / Topic', '副标题 / 活动主题')}</label>
                         <input
                           type="text"
@@ -1400,9 +1404,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
 
-                      <div>
+                      <AdminField as="div">
                         <label className="block font-semibold mb-1">{t('Countdown Date / Event Date', '倒计时 / 举办日期')}</label>
                         <input
                           type="date"
@@ -1412,10 +1416,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
                         />
-                      </div>
+                      </AdminField>
                     </div>
 
-                    <div>
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Campaign Details / Agenda', '活动详情安排')}</label>
                       <textarea
                         rows={4}
@@ -1441,13 +1445,13 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                         }`}
                       />
-                    </div>
+                    </AdminField>
                   </div>
                 )}
 
                 {/* Conditional Fields: News Page Channels */}
                 {activeSection === 'newsPage' && (
-                  <div>
+                  <AdminField as="div">
                     <label className="block font-semibold mb-1">{t('Channel Subtitle / Tagline', '频道副标题 / 导语')}</label>
                     <input
                       type="text"
@@ -1457,12 +1461,12 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                       }`}
                     />
-                  </div>
+                  </AdminField>
                 )}
 
                 {/* Common Settings: Active Toggle & Display Order */}
                 <div className="pt-2 flex items-center justify-between border-t border-slate-200/60 dark:border-slate-800">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <AdminField className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={editingItem.isActive !== false}
@@ -1470,7 +1474,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       className="rounded border-slate-300 text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                     />
                     <span className="font-semibold">{t('Active / Display on website', '在前台页面正常展示')}</span>
-                  </label>
+                  </AdminField>
 
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-400">{t('Display Order:', '排序权重:')}</span>
@@ -1507,7 +1511,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   <span>{t('Save Changes', '保存生效')}</span>
                 </button>
               </div>
-            </form>
+            </AdminForm>
           </div>
         </div>
       )}

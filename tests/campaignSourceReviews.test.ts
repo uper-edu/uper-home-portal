@@ -36,7 +36,8 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   const admin: any = {
     id: "Manager",
     active: true,
-    permissions: ["crm.read", "crm.write"],
+    roles: ["crm_leader"],
+    permissions: ["crm.read", "crm.write", "crm.followup", "campaigns.manage"],
     scope: "all",
     teams: [],
   };
@@ -251,6 +252,18 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     assert.equal((await pool.query("SELECT * FROM campaign_source_reviews WHERE id=:p1", [sourceKey(longCode)])).rows[0].status, "pending");
     await register("forbidden", "TEST-No-Permission");
     await assert.rejects(reviewCampaignSource(sourceKey("TEST-No-Permission"), { ...b, requestId: "request-forbidden" }, { id: "OtherSales", permissions: ["crm.read", "crm.write"], scope: "own" }), (e: any) => e.status === 403);
+  });
+  await test('source attribution policy blocks non-Managers by default and never grants campaign permissions',async()=>{
+    const operator={...admin,roles:['sales']};
+    await register('policy-source','TEST-policy-source');
+    const b={action:'invalid',reason:'TEST policy attribution',requestId:'request-policy-source',revision:1};
+    assert.equal((await listCampaignSources(operator)).find((r:any)=>r.rawCode==='TEST-policy-source')?.canReview,false);
+    await assert.rejects(reviewCampaignSource(sourceKey('TEST-policy-source'),b,operator),(e:any)=>e.status===403);
+    await pool.query("INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{sourceAttributionManagerOnly:false}]);
+    await assert.rejects(reviewCampaignSource(sourceKey('TEST-policy-source'),b,{...operator,permissions:['crm.read']}),(e:any)=>e.status===403);
+    assert.equal((await reviewCampaignSource(sourceKey('TEST-policy-source'),b,operator)).status,'invalid');
+    await pool.query("UPDATE portal_settings SET value=:p1 WHERE id='crm_policy'",[{sourceAttributionManagerOnly:true}]);
+    await assert.rejects(reviewCampaignSource(sourceKey('TEST-policy-source'),b,operator),(e:any)=>e.status===403);
   });
   await test("automatic new campaign codes do not steal a verified source alias", async () => {
     const { allocateCampaignCode } = await import("../server/portal/campaignCodeAllocation.ts");

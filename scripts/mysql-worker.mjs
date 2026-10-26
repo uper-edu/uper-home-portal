@@ -1,3 +1,6 @@
+// Source-tree worker needs the same TypeScript resolver as the local application.
+import {register} from 'tsx/esm/api';
+register();
 import {loadPortalEnvironment} from '../server/environment.mjs';
 loadPortalEnvironment();
 if(process.env.PORTAL_DEPLOYMENT==='company-trial')throw Error('Company notifications run only inside the leased application; standalone local worker forbidden');

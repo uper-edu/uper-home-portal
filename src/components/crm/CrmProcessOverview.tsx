@@ -1,14 +1,24 @@
 import type { ProcessMetrics } from "../../utils/crmProcessMetrics";
-import { crmLocale, crmValue, type CrmLanguage } from "../../utils/crmLanguage";
-import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
+import {
+  metricSelectionLabel,
+  type MetricSelection,
+} from "../../utils/crmLeadAnalytics";
+import { progressLabel } from "../../utils/crmSalesProgress";
+import { CrmSalesStage } from "./CrmSalesStage";
+import { formatCrmEventTime } from "../../utils/crmOperatingTime";
+import type { CrmLanguage } from "../../utils/crmLanguage";
 export function CrmProcessOverview({
-  metrics,
+  metrics: m,
   lang,
   isLight,
   timezone,
   leader,
   employees,
   error,
+  onMetric,
+  onStage,
+  selectedMetrics = [],
+  selectedStages = [],
 }: {
   metrics: ProcessMetrics | null;
   lang: CrmLanguage;
@@ -17,109 +27,505 @@ export function CrmProcessOverview({
   leader: boolean;
   employees: any[];
   error?: boolean;
+  onMetric?: (key: string) => void;
+  onStage?: (key: string) => void;
+  selectedMetrics?: string[];
+  selectedStages?: string[];
 }) {
   const t = (en: string, id: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? id : en;
-  const number = (n: number) => n.toLocaleString(crmLocale(lang));
-  const decimal=(n:number)=>n.toLocaleString(crmLocale(lang),{minimumFractionDigits:1,maximumFractionDigits:1});
-  const duration = (ms: number | null) =>
-    ms === null
-      ? t("Not calculable", "Tidak dapat dihitung", "不可计算")
-      : ms < 3600000
-        ? `${Math.round(ms / 60000)} ${t("min", "mnt", "分钟")}`
-        : ms < 86400000
-          ? `${decimal(ms / 3600000)} ${t("h", "jam", "小时")}`
-          : `${decimal(ms / 86400000)} ${t("days", "hari", "天")}`;
-  if (error || !metrics)
+  if (error || !m)
     return (
-      <section className="crm-process crm-lead-process" data-theme={isLight ? "light" : "dark"}>
+      <section
+        className="crm-process crm-lead-process"
+        data-theme={isLight ? "light" : "dark"}
+      >
         <p role="status">
           {t(
-            "Process metrics unavailable; refresh to retry.",
-            "Metrik proses tidak tersedia; segarkan untuk mencoba lagi.",
-            "过程指标暂不可用，请刷新重试。",
+            "Overview unavailable; refresh to retry.",
+            "Ringkasan tidak tersedia; segarkan lagi.",
+            "客户概况暂不可用，请刷新重试。",
           )}
         </p>
       </section>
     );
-  const m = metrics;
+  const duration = (ms: number | null) =>
+    ms === null
+      ? "—"
+      : ms < 3600000
+        ? `${Math.round(ms / 60000)} ${t("min", "menit", "分钟")}`
+        : ms < 86400000
+          ? `${(ms / 3600000).toFixed(1)} ${t("h", "jam", "小时")}`
+          : `${(ms / 86400000).toFixed(1)} ${t("days", "hari", "天")}`;
+  const ratio = (n: number, d: number) =>
+    d ? `${Math.round((n / d) * 100)}%` : "—";
+  const metricLink = (
+    key: MetricSelection,
+    label: string,
+    count = m.breakdown[key] || 0,
+  ) => (
+    <button
+      key={key}
+      type="button"
+      className="crm-metric-link"
+      aria-pressed={selectedMetrics.includes(key)}
+      onClick={() => onMetric?.(key)}
+      disabled={!onMetric}
+    >
+      {label}
+      <span>{count}</span>
+    </button>
+  );
+  const bands = (prefix: "contact" | "response") => (
+    <div className="crm-analysis-bands">
+      {(["fast", "day", "later", "unknown"] as const).map((band, i) =>
+        metricLink(
+          (prefix + "_" + band) as MetricSelection,
+          [
+            t("Under 1 hour", "Kurang dari 1 jam", "不足1小时"),
+            t("1–24 hours", "1–24 jam", "1–24小时（不含24）"),
+            t("24+ hours", "24 jam atau lebih", "24小时及以上"),
+            t("Cannot calculate", "Tidak dapat dihitung", "时长不可计算"),
+          ][i],
+        ),
+      )}
+    </div>
+  );
   const cards = [
-    [
-      t("Unassigned customers", "Pelanggan belum ditugaskan", "未分配客户"),
-      number(m.unassigned),
-      `${t("Longest wait", "Waktu tunggu terlama", "最长未分配时长")}：${duration(m.longestUnassignedMs)} · ${t("Time unknown", "Waktu tidak diketahui", "时间未知")} ${m.unassignedTimeUnknown}`,
-    ],
-    [
-      t(
-        "First human contact record",
-        "Catatan kontak staf pertama",
-        "首条人工联系记录",
+    {
+      key: "",
+      label: t("Current customers", "Pelanggan saat ini", "当前客户"),
+      value: String(m.customers),
+      hint: selectedMetrics.length
+        ? t(
+            "Clear metric conditions",
+            "Hapus kondisi metrik",
+            "点击清除指标条件",
+          )
+        : t(
+            "Within the current filters",
+            "Sesuai filter saat ini",
+            "权限内的当前筛选客户",
+          ),
+    },
+    {
+      key: "first_pending",
+      label: t(
+        "First contact pending",
+        "Kontak pertama belum selesai",
+        "首次联系未完成",
       ),
-      duration(m.firstContactMedianMs),
-      `${t("Median", "Median", "中位数")} · ${m.firstContactSamples} ${t("timed customers", "pelanggan dengan waktu tercatat", "位时间有效客户")} · ${t("No human contact recorded", "Belum ada kontak staf tercatat", "尚无人工联系记录")} ${m.awaitingContact}`,
-    ],
-    [
-      t(
-        "No valid next arrangement",
-        "Tanpa rencana lanjutan valid",
-        "无有效后续安排",
+      value: String(m.firstPending),
+      hint: t(
+        "Only the first contact requirement",
+        "Hanya persyaratan kontak pertama",
+        "仅统计首次联系要求",
       ),
-      number(m.noNext),
-      t(
-        "Active customers; stopped contact excluded",
-        "Pelanggan aktif; kontak dihentikan dikecualikan",
-        "活跃客户；不含停止联系客户",
+    },
+    {
+      key: "recent_customer",
+      label: t(
+        "Customer activity · 7 days",
+        "Interaksi pelanggan · 7 hari",
+        "近7天客户互动",
       ),
-    ],
-    [
-      t("Currently overdue", "Saat ini terlambat", "当前逾期"),
-      number(m.overdueCustomers),
-      `${m.overdueTasks} ${t("open overdue tasks", "tugas terbuka terlambat", "项未完成逾期任务")} · ${t("Completed late", "Selesai terlambat", "逾期后已处理")} ${m.lateCompletedTasks}`,
-    ],
-    [
-      t("Two-way communication", "Komunikasi dua arah", "有效双向沟通"),
-      number(m.engagedCustomers),
-      `${t("Recorded successful contacts", "Kontak berhasil tercatat", "已接通或回复记录")} ${m.connectedRecords} · ${t("First two-way contact median", "Median kontak dua arah pertama", "首次双向沟通中位数")} ${duration(m.firstResponseMedianMs)} (${m.firstResponseSamples})`,
-    ],
-    [
-      t("Time in current stage", "Waktu pada tahap saat ini", "当前阶段停留"),
-      duration(m.stageMedianMs),
-      `${t("Median for active customers", "Median pelanggan aktif", "活跃客户中位数")} · ${t("Time unknown", "Waktu tidak diketahui", "时间未知")} ${m.stageTimeUnknown}`,
-    ],
+      value: String(m.recentCustomer),
+      hint: t(
+        "Messages, assessments and customer-initiated contact",
+        "Pesan, tes, dan kontak dari pelanggan",
+        "客户主动消息、测评及联系",
+      ),
+    },
+    {
+      key: "communication",
+      label: t("Conversation coverage", "Cakupan komunikasi", "有效沟通覆盖"),
+      value: `${m.engagedCustomers} / ${m.customers}`,
+      hint: ratio(m.engagedCustomers, m.customers),
+    },
   ];
+  const stageButton = (row: ProcessMetrics["stages"][number]) => (
+    <button
+      type="button"
+      className="crm-stage-distribution-item"
+      key={row.stage}
+      aria-pressed={selectedStages.includes(row.stage)}
+      onClick={() => onStage?.(row.stage)}
+      disabled={!onStage}
+      aria-label={`${row.stage === "__unknown" ? t("Unrecorded", "Belum tercatat", "未填写阶段") : progressLabel(row.stage, lang)} · ${row.customers} ${t("customers", "pelanggan", "位客户")}`}
+    >
+      <span>
+        {row.stage === "__unknown" ? (
+          t("Unrecorded", "Belum tercatat", "未填写阶段")
+        ) : (
+          <CrmSalesStage stage={row.stage} lang={lang} />
+        )}
+        <b>{row.customers}</b>
+      </span>
+      <span className="crm-stage-share" aria-hidden="true">
+        <i
+          style={{
+            width: `${m.customers ? (row.customers / m.customers) * 100 : 0}%`,
+          }}
+        />
+      </span>
+    </button>
+  );
   return (
     <section
-      className="crm-process crm-lead-process"
+      className="crm-process crm-lead-process crm-lead-overview"
       data-theme={isLight ? "light" : "dark"}
       aria-label={t(
-        "Sales process overview",
-        "Ringkasan proses penjualan",
-        "销售过程概览",
+        "Customer overview and analysis",
+        "Ringkasan dan analisis pelanggan",
+        "客户概况与分析",
       )}
     >
       <p className="crm-process-scope">
         {t(
-          "Current filtered customers",
-          "Pelanggan dalam filter saat ini",
+          "Current filtered cohort",
+          "Pelanggan sesuai filter",
           "当前筛选客户",
         )}{" "}
-        {m.customers} · {t("As of", "Per", "截至")}{" "}
-        {formatCrmOperatingTime(m.asOf, timezone)} ({timezone})
+        · {m.customers} · {t("As of", "Hingga", "截至")}{" "}
+        {formatCrmEventTime(m.asOf)}
       </p>
-      <div className="crm-process-grid">
-        {cards.map(([label, value, hint], i) => (
-          <article
-            key={label}
-            data-tone={
-              i === 3 && m.overdueCustomers > 0 ? "overdue" : "neutral"
-            }
-          >
-            <h3>{label}</h3>
-            <strong>{value}</strong>
-            <p>{hint}</p>
+      <div className="crm-overview-cards">
+        {cards.map((card) => (
+          <article key={card.key || "all"}>
+            <button
+              type="button"
+              className="crm-overview-main"
+              aria-pressed={
+                card.key
+                  ? selectedMetrics.includes(card.key)
+                  : selectedMetrics.length === 0
+              }
+              onClick={() => onMetric?.(card.key)}
+              disabled={!onMetric}
+            >
+              <h3>{card.label}</h3>
+              <strong>{card.value}</strong>
+              {card.key !== "first_pending" && <span>{card.hint}</span>}
+            </button>
+            {card.key === "first_pending" && (
+              <button
+                type="button"
+                className="crm-overdue-link"
+                data-overdue={m.firstOverdue > 0}
+                onClick={() => onMetric?.("first_overdue")}
+                disabled={!onMetric}
+              >
+                {t("Overdue", "Terlambat", "其中逾期")} {m.firstOverdue}
+              </button>
+            )}
           </article>
         ))}
       </div>
+      <div className="crm-stage-distribution-heading">
+        <h3>
+          {t(
+            "Current stage distribution",
+            "Distribusi tahap saat ini",
+            "当前阶段分布",
+          )}
+        </h3>
+        {selectedStages.length > 0 && (
+          <button
+            type="button"
+            className="crm-metric-clear"
+            onClick={() => onStage?.("")}
+          >
+            {t("Clear stage filter", "Hapus filter tahap", "清除阶段筛选")}
+          </button>
+        )}
+      </div>
+      <div className="crm-stage-distribution">{m.stages.map(stageButton)}</div>
+      <details className="crm-lead-analysis">
+        <summary>
+          {t(
+            "Contact and progress analysis",
+            "Analisis kontak dan perkembangan",
+            "联系与推进分析",
+          )}
+        </summary>
+        {selectedMetrics.length > 0 && (
+          <p>
+            {t("Metric filter", "Filter metrik", "当前指标筛选")}：
+            {selectedMetrics
+              .map((key) => metricSelectionLabel(key, lang))
+              .join(" · ")}{" "}
+            <button
+              type="button"
+              className="crm-metric-clear"
+              onClick={() => onMetric?.("")}
+            >
+              {t("Clear", "Hapus", "清除")}
+            </button>
+          </p>
+        )}
+        <div className="crm-analysis-grid">
+          <section>
+            <h4>
+              {t(
+                "First requirement execution",
+                "Pelaksanaan kontak pertama",
+                "首次联系要求执行",
+              )}
+            </h4>
+            <p>
+              {t("On-time processing", "Diproses tepat waktu", "按时处理")}{" "}
+              <b>{ratio(m.firstOnTime, m.firstTimed)}</b> · {m.firstOnTime}/
+              {m.firstTimed}
+            </p>
+            <p>
+              {t(
+                "Evaluable: normal completions plus overdue pending requirements; exceptions excluded.",
+                "Dinilai dari penyelesaian normal dan persyaratan tertunda yang lewat tenggat; pengecualian dipisahkan.",
+                "分母：可判断的正常完成＋已逾期未完成；异常结束单独统计。",
+              )}
+            </p>
+            {metricLink(
+              "first_pending",
+              t("Pending", "Belum selesai", "未完成"),
+            )}
+            {metricLink("first_overdue", t("Overdue", "Terlambat", "已逾期"))}
+            <p>
+              {t(
+                "Exceptions / unknown completion timing / unknown pending deadline",
+                "Pengecualian / waktu penyelesaian tidak diketahui / tenggat tertunda tidak diketahui",
+                "异常结束／处理时效未知／未完成期限未知",
+              )}
+              ：{m.firstExceptions} / {m.firstTimingUnknown} /{" "}
+              {m.firstDeadlineUnknown}
+            </p>
+          </section>
+          <section>
+            <h4>
+              {t(
+                "First actual sales outreach",
+                "Kontak aktif pertama",
+                "首次实际主动联系",
+              )}
+            </h4>
+            <p>
+              {t("Median", "Median", "中位数")}{" "}
+              <b>{duration(m.firstContactMedianMs)}</b> ·{" "}
+              {t("Valid samples", "Sampel valid", "有效样本")}{" "}
+              {m.firstContactSamples}
+            </p>
+            {bands("contact")}
+            <p>
+              {t(
+                "Unknown occurrence / contact before registration",
+                "Waktu tidak diketahui / kontak sebelum pendaftaran",
+                "实际时间或登记时间未知／联系早于登记",
+              )}
+              ：{m.contactTimeUnknown} / {m.contactBeforeRegistration}
+            </p>
+          </section>
+          <section>
+            <h4>
+              {t(
+                "First effective conversation",
+                "Komunikasi efektif pertama",
+                "首次有效沟通",
+              )}
+            </h4>
+            <p>
+              {t("Median", "Median", "中位数")}{" "}
+              <b>{duration(m.firstResponseMedianMs)}</b> ·{" "}
+              {t("Valid samples", "Sampel valid", "有效样本")}{" "}
+              {m.firstResponseSamples}
+            </p>
+            {bands("response")}
+            {metricLink(
+              "no_communication",
+              t(
+                "No conversation recorded",
+                "Belum ada komunikasi",
+                "暂无有效沟通记录",
+              ),
+            )}
+            <p>
+              {t(
+                "Unknown time / before registration",
+                "Waktu tidak diketahui / sebelum pendaftaran",
+                "时间未知／早于登记",
+              )}
+              ：{m.responseUnknown} / {m.responseBeforeRegistration}
+            </p>
+          </section>
+          <section>
+            <h4>
+              {t(
+                "Latest sales contact result",
+                "Hasil kontak penjualan terakhir",
+                "最近销售联系结果",
+              )}
+            </h4>
+            {(
+              [
+                "sales_connected",
+                "sales_unanswered",
+                "sales_wrong_number",
+                "sales_none",
+              ] as MetricSelection[]
+            ).map((key) => metricLink(key, metricSelectionLabel(key, lang)))}
+          </section>
+          <section>
+            <h4>
+              {t(
+                "Time since last outreach",
+                "Waktu sejak kontak terakhir",
+                "距上次主动联系",
+              )}
+            </h4>
+            {(
+              [
+                "outreach_day",
+                "outreach_week",
+                "outreach_month",
+                "outreach_old",
+                "outreach_unknown",
+                "sales_none",
+              ] as MetricSelection[]
+            ).map((key) => metricLink(key, metricSelectionLabel(key, lang)))}
+          </section>
+          <section>
+            <h4>
+              {t(
+                "Current stage duration",
+                "Durasi tahap saat ini",
+                "当前阶段停留",
+              )}
+            </h4>
+            <div
+              className="crm-process-table"
+              tabIndex={0}
+              role="region"
+              aria-label={t("Stage durations", "Durasi tahap", "阶段停留明细")}
+            >
+              <table>
+                <thead>
+                  <tr>
+                    {[
+                      t("Stage", "Tahap", "阶段"),
+                      t("Customers", "Pelanggan", "客户"),
+                      t("Median / samples", "Median / sampel", "中位数／样本"),
+                      t("Unknown", "Tidak diketahui", "未知"),
+                    ].map((label) => (
+                      <th key={label}>{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {m.stages.map((row) => (
+                    <tr key={row.stage}>
+                      <th>
+                        <button
+                          type="button"
+                          onClick={() => onStage?.(row.stage)}
+                        >
+                          {row.stage === "__unknown" ? (
+                            t("Unrecorded", "Belum tercatat", "未填写阶段")
+                          ) : (
+                            <CrmSalesStage stage={row.stage} lang={lang} />
+                          )}
+                        </button>
+                      </th>
+                      <td>{row.customers}</td>
+                      <td>
+                        {duration(row.stageMedianMs)} / {row.stageSamples}
+                      </td>
+                      <td>{row.stageTimeUnknown}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p>
+              {t(
+                "Enrolled and closed stages are excluded from ongoing stage duration. Longer duration does not create a task.",
+                "Tahap terdaftar dan ditutup tidak termasuk durasi proses aktif. Durasi panjang tidak membuat tugas.",
+                "已报名、结束推进不计入进行中停留；时长不自动产生任务。",
+              )}
+            </p>
+          </section>
+        </div>
+        {leader && (
+          <details>
+            <summary>
+              {t(
+                "By current owner",
+                "Menurut penanggung jawab saat ini",
+                "按当前负责人查看",
+              )}
+            </summary>
+            <div
+              className="crm-process-table"
+              role="region"
+              tabIndex={0}
+              aria-label={t(
+                "Owner analysis",
+                "Analisis penanggung jawab",
+                "负责人分析",
+              )}
+            >
+              <table>
+                <thead>
+                  <tr>
+                    {[
+                      t("Owner", "Penanggung jawab", "负责人"),
+                      t("Customers", "Pelanggan", "客户"),
+                      t(
+                        "Pending / overdue",
+                        "Belum selesai / terlambat",
+                        "首次未完成／逾期",
+                      ),
+                      t(
+                        "Conversation coverage",
+                        "Cakupan komunikasi",
+                        "有效沟通覆盖",
+                      ),
+                      t(
+                        "First outreach median / samples",
+                        "Median kontak pertama / sampel",
+                        "首次主动联系中位数／样本",
+                      ),
+                    ].map((v) => (
+                      <th key={v}>{v}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {m.owners.map((row) => (
+                    <tr key={row.owner}>
+                      <th>
+                        {employees.find((e) => e.id === row.owner)
+                          ?.displayName ||
+                          row.owner ||
+                          t("Unassigned", "Belum ditugaskan", "未分配")}
+                      </th>
+                      <td>{row.customers}</td>
+                      <td>
+                        {row.firstPending} / {row.firstOverdue}
+                      </td>
+                      <td>
+                        {row.engagedCustomers}/{row.customers} ·{" "}
+                        {ratio(row.engagedCustomers, row.customers)}
+                      </td>
+                      <td>
+                        {duration(row.firstContactMedianMs)} /{" "}
+                        {row.firstContactSamples}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        )}
+      </details>
       <details>
         <summary>
           {t(
@@ -131,187 +537,40 @@ export function CrmProcessOverview({
         <ul>
           <li>
             {t(
-              "All metrics use the visible, currently filtered customer cohort; they are lifetime records and a current snapshot, not a daily sales ranking.",
-              "Semua metrik memakai pelanggan yang terlihat dan terfilter; mencakup catatan sejak pendaftaran serta kondisi saat ini, bukan peringkat harian.",
-              "全部指标来自权限内的当前筛选客户，是自登记以来的记录及当前快照，不是每日销售排名。",
+              "All values follow current filters and permissions. Categories overlap; this is not a conversion funnel.",
+              "Semua angka mengikuti filter dan izin saat ini. Kategori dapat tumpang tindih; bukan corong konversi.",
+              "所有数字跟随当前筛选及权限，客户可重复出现在不同指标中，不是转化漏斗。",
             )}
           </li>
           <li>
             {t(
-              "First human contact: registration to the first submitted contact record, including unanswered attempts. Successful two-way communication is measured separately. AI replies and administrative records do not count. These are record submission times and natural elapsed durations, not exact call times or working-hour SLA.",
-              "Kontak staf pertama: dari pendaftaran hingga catatan kontak pertama dikirim, termasuk upaya tanpa balasan. Komunikasi dua arah berhasil diukur terpisah. Balasan AI dan catatan administratif tidak dihitung. Ini waktu pengiriman catatan dan durasi alami, bukan waktu telepon tepat atau SLA jam kerja.",
-              "首条人工联系：登记到第一条人工联系记录提交的时长，包含未接通尝试；有效双向沟通单独统计。AI 回复和非联系处理不计入。采用记录提交时间与自然时长，不冒充精确通话时间或工作时间 SLA。",
+              "Recent activity means the last 168 hours, using actual customer event time. Sales records and AI replies are not customer activity.",
+              "Interaksi terbaru berarti 168 jam terakhir berdasarkan waktu kejadian pelanggan. Catatan penjualan dan balasan AI tidak dihitung.",
+              "近7天为截至现在的168小时，按客户实际互动时间计算，销售录入和AI回复不计入。",
+            )}
+            {t(
+              " Unknown activity time: ",
+              " Waktu interaksi tidak diketahui: ",
+              " 客户互动时间未知：",
+            )}
+            {m.customerTimeUnknown}
+          </li>
+          <li>
+            {t(
+              "Duration uses actual occurrence and natural elapsed time. Any undated contact prevents a reliable first-contact duration; no recording time substitution.",
+              "Durasi memakai waktu kejadian dan waktu kalender. Kontak tanpa waktu membuat durasi pertama tidak pasti; waktu pencatatan tidak menggantikan.",
+              "时长采用实际发生时间和自然时长；存在时间未知的相关联系时，不把已知记录冒充最早联系，不用保存时间代替。",
             )}
           </li>
           <li>
             {t(
-              "Unassigned wait starts at the recorded ownership change; old records without this evidence remain unknown. Stage time starts at the recorded stage change; closed customers are excluded.",
-              "Waktu belum ditugaskan dimulai dari perubahan penanggung jawab yang tercatat; catatan lama tanpa bukti tetap tidak diketahui. Waktu tahap dimulai dari perubahan tahap; pelanggan tertutup dikecualikan.",
-              "未分配时长从明确的归属变化时间起算；历史缺失记录保持未知。阶段停留从明确阶段时间起算，已成交或关闭客户不计入停留中位数。",
+              "First requirement timeliness keeps the existing processing timestamp and deadline rules. Stage changes remain manual.",
+              "Ketepatan persyaratan pertama mempertahankan aturan waktu pemrosesan dan tenggat. Tahap tetap diubah manual.",
+              "首次要求按时处理保留现有处理时间和截止规则；阶段仍由销售人工确认。",
             )}
-          </li>
-          <li>
-            {t(
-              "Only open tasks with valid deadlines count as current overdue. Late completion uses the recorded processing time; historical events alone are not current overdue.",
-              "Hanya tugas terbuka dengan tenggat valid dihitung sebagai terlambat saat ini. Penyelesaian terlambat memakai waktu pemrosesan tercatat; peristiwa historis bukan keterlambatan saat ini.",
-              "当前逾期只计算有真实期限的开放任务；逾期后处理使用记录提交时间，历史逾期事件不冒充当前逾期。",
-            )}
+            {timezone}
           </li>
         </ul>
-        <p>
-          {t(
-            "Task evidence pending review",
-            "Bukti tugas perlu ditinjau",
-            "任务证据待核实",
-          )}{" "}
-          {m.tasksUnknown} ·{" "}
-          {t(
-            "Contact time unknown",
-            "Waktu kontak tidak diketahui",
-            "联系时间未知",
-          )}{" "}
-          {m.contactTimeUnknown} ·{" "}
-          {t(
-            "Completion time unknown",
-            "Waktu penyelesaian tidak diketahui",
-            "完成时间未知",
-          )}{" "}
-          {m.completionUnknown}
-        </p>
-        <p>
-          {t(
-            "Contact attempts are auxiliary, not successful communication",
-            "Upaya kontak adalah pendukung, bukan komunikasi berhasil",
-            "联系尝试仅为辅助，不等于有效沟通",
-          )}
-          ：{number(m.attempts)}
-        </p>
-      </details>
-      {leader && (
-        <details>
-          <summary>
-            {t(
-              "By customer owner",
-              "Menurut penanggung jawab pelanggan",
-              "按客户负责人查看",
-            )}
-          </summary>
-          <div
-            className="crm-process-table"
-            tabIndex={0}
-            role="region"
-            aria-label={t(
-              "Owner metrics table",
-              "Tabel metrik penanggung jawab",
-              "负责人指标表",
-            )}
-          >
-            <table>
-              <thead>
-                <tr>
-                  {[
-                    t("Owner", "Penanggung jawab", "负责人"),
-                    t("Customers", "Pelanggan", "客户数"),
-                    t(
-                      "No next arrangement",
-                      "Tanpa rencana lanjutan",
-                      "无后续安排",
-                    ),
-                    t("Overdue customers", "Pelanggan terlambat", "逾期客户"),
-                    t(
-                      "First contact record median",
-                      "Median catatan kontak pertama",
-                      "首条联系记录中位数",
-                    ),
-                    t(
-                      "Engaged customers",
-                      "Pelanggan berkomunikasi",
-                      "有效沟通客户",
-                    ),
-                  ].map((x) => (
-                    <th key={x} scope="col">
-                      {x}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {m.owners.map((r) => (
-                  <tr key={r.owner}>
-                    <th scope="row">
-                      {employees.find((e) => e.id === r.owner)?.displayName ||
-                        r.owner ||
-                        t("Unassigned", "Belum ditugaskan", "未分配")}
-                    </th>
-                    <td>{r.customers}</td>
-                    <td>{r.noNext}</td>
-                    <td>{r.overdueCustomers}</td>
-                    <td>
-                      {duration(r.firstContactMedianMs)} (
-                      {r.firstContactSamples})
-                    </td>
-                    <td>{r.engagedCustomers}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p>
-            {t(
-              "Groups follow the current customer owner, not the author of past records.",
-              "Kelompok mengikuti penanggung jawab saat ini, bukan penulis catatan sebelumnya.",
-              "按当前客户负责人分组，不表示历史记录均由该员工处理。",
-            )}
-          </p>
-        </details>
-      )}
-      <details>
-        <summary>
-          {t(
-            "Current stage distribution",
-            "Distribusi tahap saat ini",
-            "当前阶段分布",
-          )}
-        </summary>
-        <div
-          className="crm-process-table"
-          tabIndex={0}
-          role="region"
-          aria-label={t(
-            "Stage metrics table",
-            "Tabel metrik tahap",
-            "阶段指标表",
-          )}
-        >
-          <table>
-            <thead>
-              <tr>
-                {[
-                  t("Stage", "Tahap", "阶段"),
-                  t("Customers", "Pelanggan", "客户数"),
-                  t("Median duration", "Durasi median", "停留中位数"),
-                  t("Unknown time", "Waktu tidak diketahui", "时间未知"),
-                ].map((x) => (
-                  <th key={x} scope="col">
-                    {x}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {m.stages.map((r) => (
-                <tr key={r.stage}>
-                  <th scope="row">{crmValue(r.stage, lang)}</th>
-                  <td>{r.customers}</td>
-                  <td>
-                    {duration(r.stageMedianMs)} ({r.stageSamples})
-                  </td>
-                  <td>{r.stageTimeUnknown}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </details>
     </section>
   );

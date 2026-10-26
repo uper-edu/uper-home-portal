@@ -1,3 +1,4 @@
+import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
 import {
   campaignUi,
   campaignUiLocale,
@@ -409,7 +410,8 @@ function PromotionReviewCard({
         type="button"
         ref={trigger}
         className="campaign-workspace-action"
-        disabled={busy}
+        disabled={busy||row.canReview===false}
+        title={row.canReview===false?u("CRM Manager review required by policy"):undefined}
         aria-expanded={open}
         aria-controls={"promotion-review-" + row.leadId}
         onClick={() => {
@@ -427,7 +429,7 @@ function PromotionReviewCard({
         <span aria-hidden="true">{open ? "⌃" : "⌄"}</span>
       </button>
       {open && (
-        <form
+        <AdminForm lang={lang}
           id={"promotion-review-" + row.leadId}
           onSubmit={save}
           className="campaign-source-review border rounded-xl p-4 space-y-3"
@@ -435,6 +437,8 @@ function PromotionReviewCard({
             name: row.name,
           })}
         >
+<AdminRequiredNote lang={lang}/>
+
           <CampaignSourceEvidence
             lang={lang}
             source={{
@@ -459,7 +463,7 @@ function PromotionReviewCard({
               {campaignUiError(lang, error)}
             </CrmSaveFeedback>
           )}
-          <fieldset disabled={busy || unknown} className="space-y-3">
+          <fieldset disabled={busy || unknown || row.canReview===false} className="space-y-3">
             <CrmSingleSelect
               label={u("Review action")}
               value={action}
@@ -475,7 +479,7 @@ function PromotionReviewCard({
               isLight={isLight}
             />
             {choice && (
-              <div className="campaign-review-action-context">
+              <details className="campaign-review-action-context"><summary>{u("Typical scenario:")}</summary>
                 <p>
                   <strong>{u("Typical scenario:")}</strong> {u(choice.scenario)}
                 </p>
@@ -483,7 +487,7 @@ function PromotionReviewCard({
                   <strong>{u("What this action does:")}</strong>{" "}
                   {u(choice.effect)}
                 </p>
-              </div>
+              </details>
             )}
             {action === "link" && (
               <CrmSingleSelect
@@ -530,7 +534,7 @@ function PromotionReviewCard({
             )}
             {action === "create" && (
               <div className="campaign-fields-grid">
-                <label className="campaign-field">
+                <AdminField className="campaign-field">
                   <span>{u("Entry name · optional")}</span>
                   <input
                     maxLength={120}
@@ -539,7 +543,7 @@ function PromotionReviewCard({
                       setEntry({ ...entry, name: e.target.value })
                     }
                   />
-                </label>
+                </AdminField>
                 <div className="campaign-field">
                   <span>{u("Source *")}</span>
                   <CrmSingleSelect
@@ -568,7 +572,7 @@ function PromotionReviewCard({
                     isLight={isLight}
                   />
                   {custom && (
-                    <label>
+                    <AdminField>
                       {u("Source code *")}
                       <input
                         required
@@ -579,7 +583,7 @@ function PromotionReviewCard({
                           setEntry({ ...entry, source: e.target.value })
                         }
                       />
-                    </label>
+                    </AdminField>
                   )}
                 </div>
                 <CrmSingleSelect
@@ -618,7 +622,7 @@ function PromotionReviewCard({
                 </p>
               </div>
             )}
-            <label className="campaign-field">
+            <AdminField className="campaign-field">
               <span>{u("Review reason / evidence *")}</span>
               <textarea
                 required
@@ -626,7 +630,7 @@ function PromotionReviewCard({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
-            </label>
+            </AdminField>
           </fieldset>
           <p className="campaign-hint">
             {u(
@@ -634,7 +638,7 @@ function PromotionReviewCard({
               { name: row.name },
             )}
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="crm-source-review-actions flex flex-wrap gap-2">
             <button
               type="submit"
               className="campaign-workspace-action campaign-primary"
@@ -675,7 +679,7 @@ function PromotionReviewCard({
               {u("Keep draft & close")}
             </button>
           </div>
-        </form>
+        </AdminForm>
       )}
       {!!row.history.length && (
         <details>

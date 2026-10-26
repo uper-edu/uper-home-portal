@@ -1,3 +1,4 @@
+import {AdminField,AdminRequiredNote,AdminForm} from './AdminForm';
 import {RuntimeVersionStatus} from './RuntimeVersionStatus';
 import {PageMetadata} from './PageMetadata';
 import {managementRequest,clearAccessPasswords} from "../utils/accessOperationClient";
@@ -188,7 +189,7 @@ export default function CrmAccess({
               <li><Bell size={20} aria-hidden="true" /><span>{isSystem ? st("Access change audit","Audit perubahan akses","权限变更审计") : isCms ? cmsText("Website content updates", "网站内容更新", lang) : t("Reminders & sales operations", "提醒与销售运营")}</span></li>
             </ul>
           </section>
-        <form
+        <AdminForm lang={lang}
           className="crm-sign-in-card"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -205,10 +206,12 @@ export default function CrmAccess({
             }
           }}
         >
+<AdminRequiredNote lang={lang}/>
+
           <div className="crm-sign-in-lock"><LockKeyhole size={22} aria-hidden="true" /></div>
           <h1>{isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</h1>
           <p className="crm-sign-in-subtitle">{t("Use your staff account", "请使用员工账号登录")}</p>
-          <label className="crm-sign-in-label">
+          <AdminField className="crm-sign-in-label">
             {st("Login ID or email", "ID login atau email", "登录ID或邮箱")}
             <input
               className="crm-sign-in-input"
@@ -220,8 +223,8 @@ export default function CrmAccess({
               onChange={(e) => setLoginId(e.target.value)}
               required
             />
-          </label>
-          <label className="crm-sign-in-label">
+          </AdminField>
+          <AdminField className="crm-sign-in-label">
             {t("Password", "密码")}
             <input
               className="crm-sign-in-input"
@@ -231,7 +234,7 @@ export default function CrmAccess({
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-          </label>
+          </AdminField>
           {error && (
             <p role="alert" className="crm-sign-in-error">
               {crmError(error, lang)}
@@ -247,7 +250,7 @@ export default function CrmAccess({
             <ArrowRight size={18} aria-hidden="true" />
           </button>
           <p className="crm-sign-in-footnote">{t("Staff access only. Your role determines what you can view and manage.", "仅供员工访问。可查看的数据与操作权限由账号角色决定。")}</p>
-        </form>
+        </AdminForm>
         </div>
         <footer className="crm-sign-in-footer">UPER · {isSystem ? st("System management","Manajemen sistem","系统管理") : isCms ? cmsText("Content management", "内容管理", lang) : t("Customer relationship management", "客户关系管理")}</footer>
       </main>
@@ -286,7 +289,7 @@ export default function CrmAccess({
       {children(employee, lang, setLang)}
       {change && (
         <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6">
-          <form
+          <AdminForm lang={lang}
             className="w-full max-w-sm bg-white rounded-2xl p-6 space-y-4"
             onSubmit={async (e) => {
               e.preventDefault();
@@ -307,11 +310,13 @@ export default function CrmAccess({
               }
             }}
           >
+<AdminRequiredNote lang={lang}/>
+
             <AccessOperationStatus actor={employee.id} lang={lang} onResolved={()=>setError('')}/>
             <h2 className="font-bold">
               {t("Change your password", "修改自己的密码")}
             </h2>
-            <label className="block text-sm">
+            <AdminField className="block text-sm">
               {t("Current password", "当前密码")}
               <input
                 className={field}
@@ -321,8 +326,8 @@ export default function CrmAccess({
                 onChange={(e) => setCurrent(e.target.value)}
                 required
               />
-            </label>
-            <label className="block text-sm">
+            </AdminField>
+            <AdminField className="block text-sm">
               {t("New password", "新密码")}
               <input
                 className={field}
@@ -334,7 +339,7 @@ export default function CrmAccess({
                 onChange={(e) => setNext(e.target.value)}
                 required
               />
-            </label>
+            </AdminField>
             <p className="text-xs text-slate-500">
               {t("At least 8 characters", "至少 8 个字符")}
             </p>
@@ -371,7 +376,7 @@ export default function CrmAccess({
                 {t("Close", "关闭")}
               </button>
             </div>
-          </form>
+          </AdminForm>
         </div>
       )}
     </AccountContext.Provider>

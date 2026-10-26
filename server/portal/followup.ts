@@ -1,3 +1,4 @@
+import {requestEvidenceId} from './taskManagement.ts';
 import {customerReplied} from "./noResponse.ts";
 import { fact } from "./trustWorkflow.ts";
 import { sla, type Rule } from "./policy.ts";
@@ -96,6 +97,7 @@ export async function ensureFollowup(
   action: FollowupAction,
   messageId: string,
   lang: string,
+  evidenceOnly = false,
 ) {
   const { event } = await import("./store.ts");
   if (!conversation.lead_id)
@@ -105,73 +107,29 @@ export async function ensureFollowup(
       status: "contact_required",
       reply: followupReply(lang, "contact_required", action),
     };
-  const inboundKey='request:'+conversation.id+':'+action+':'+messageId;
-  const previousRequest=(await db.query("SELECT id FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1",[conversation.lead_id,messageId,conversation.id,action])).rows.length;
-  if(!previousRequest){const original=(await db.query("SELECT created_at FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1",[conversation.id,messageId])).rows[0];await customerReplied(db,conversation.lead_id,inboundKey,original?.created_at);}
-  const profile = (
-    await db.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE", [
-      conversation.lead_id,
-    ])
-  ).rows[0].profile;
-  let task = (
-    await db.query(
-      "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND (request_key=:p2 OR kind=:p3) AND status IN ('open','overdue') ORDER BY created_at LIMIT 1 FOR UPDATE",
-      [
-        conversation.lead_id,
-        conversation.id + ":" + action + ":" + messageId,
-        action,
-      ],
-    )
-  ).rows[0];
-  const taskOperation = task ? "supplemented" : "created";
-  if (!task) {
-    const settings = (
-      await db.query("SELECT value FROM portal_settings WHERE id='sla'")
-    ).rows[0].value;
-    const at = (await db.query("SELECT UTC_TIMESTAMP(6) AS at")).rows[0].at;
-    const { due, snapshot } = taskDeadline(profile, action, settings, at);
-    task = (
-      await db.query(
-        "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,original_due_at,request_key,details) VALUES(:p1,:p2,:p3,:p4,:p5,:p5,:p6,:p7)",
-        [
-          id(),
-          conversation.lead_id,
-          action,
-          profile.owner || null,
-          due,
-          conversation.id + ":" + action + ":" + messageId,
-          { sourceConversationId: conversation.id, sourceMessageId: messageId },
-        ],
-      )
-    ).rows[0];
-    await event(
-      db,
-      action === "handoff"
-        ? "handoff.requested"
-        : action === "booking"
-          ? "booking.requested"
-          : "enrollment.requested",
-      conversation.lead_id,
-      {
-        taskId: task.id,
-        source: conversation.source,
-        conversationId: conversation.id,
-        messageId,
-        sla: snapshot,
-      },
-    );
-  }
-  await fact(db, conversation.lead_id, "task.request_evidence", "visitor", {
-    taskId: task.id,
-    conversationId: conversation.id,
-    messageId,
-    action,
-    taskOperation,
-  });
-  return {
-    taskOperation,
-    taskId: task.id,
-    status: "awaiting_advisor",
-    reply: followupReply(lang, "awaiting_advisor", action),
-  };
+  // Serialize all incoming requests for this customer before checking retries.
+  const profile=(await db.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",[conversation.lead_id])).rows[0].profile;
+  const key=requestEvidenceId(conversation.lead_id,conversation.id,messageId,action);
+  const prior=(await db.query("SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2",[key,conversation.lead_id])).rows[0];
+  const old=(await db.query("SELECT data FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1",[conversation.lead_id,messageId,conversation.id,action])).rows[0];
+  if(prior||old)return {taskId:prior?(Object.hasOwn(prior.data,'receiptTaskId')?prior.data.receiptTaskId:prior.task_id):old?.data?.taskId||null,taskOperation:prior?.data.receiptOperation||'recorded',status:'awaiting_advisor',reply:followupReply(lang,'awaiting_advisor',action)};
+  const original=(await db.query("SELECT created_at,content FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1",[conversation.id,messageId])).rows[0];
+  if(!evidenceOnly)await customerReplied(db,conversation.lead_id,key,original?.created_at);
+  const taskId=null, taskOperation='recorded';
+  await db.query("INSERT INTO crm_engagements(id,lead_id,kind,source_id,data,state,task_id) VALUES(:p1,:p2,'task_request',:p3,:p4,:p5,:p6)",[key,conversation.lead_id,messageId,{action,receiptTaskId:taskId,receiptOperation:taskOperation,conversationId:conversation.id,messageId,text:original?.content||'',source:conversation.source},taskId?'linked':'pending',taskId]);
+  await event(db,action==='handoff'?'handoff.requested':action==='booking'?'booking.requested':'enrollment.requested',conversation.lead_id,{...(taskId?{taskId}:{}),requestEvidenceId:key,source:conversation.source,conversationId:conversation.id,messageId});
+  await fact(db,conversation.lead_id,'task.request_evidence','visitor',{taskId,requestEvidenceId:key,conversationId:conversation.id,messageId,action,taskOperation});
+  return {taskId,taskOperation,status:'awaiting_advisor',reply:followupReply(lang,'awaiting_advisor',action)};
+}
+
+/** A staff-recorded customer request has its own original evidence, never a fabricated chat. */
+export async function recordSalesAdvisorRequest(db:any,job:any,observation:any){
+ const {event}=await import('./store.ts');
+ const key=requestEvidenceId(job.lead_id,'sales_record',job.source_id,'handoff');
+ const prior=(await db.query('SELECT id FROM crm_engagements WHERE id=:p1 AND lead_id=:p2',[key,job.lead_id])).rows[0];
+ if(prior)return;
+ const data={action:'handoff',receiptTaskId:null,receiptOperation:'recorded',sourceType:'sales_record',sourceRecordId:job.source_id,text:observation.quote,occurredAt:job.input.occurredAt,source:'sales_record'};
+ await db.query("INSERT INTO crm_engagements(id,lead_id,kind,source_id,data,state,task_id) VALUES(:p1,:p2,'task_request',:p3,:p4,'pending',NULL)",[key,job.lead_id,job.source_id,data]);
+ await fact(db,job.lead_id,'task.request_evidence',job.input.actor,{...data,taskId:null,requestEvidenceId:key,taskOperation:'recorded'});
+ await event(db,'handoff.requested',job.lead_id,{requestEvidenceId:key,source:'sales_record',sourceRecordId:job.source_id});
 }

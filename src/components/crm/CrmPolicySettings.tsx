@@ -1,3 +1,10 @@
+import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
+import {readSavedPolicy} from '../../utils/crmPolicyTopicClient';
+import {policyTopicKeys,isPolicyTopic,topicPatch,topicDirty,topicChangeFields,reconcilePolicyDraft,policyEqual,type PolicyTopicRequest,type PolicyTopic} from '../../utils/crmPolicyTopics';
+import {notificationTopicIcons} from "./notificationTopicIcons";
+import {Clock3, ShieldCheck, PhoneMissed, Bell, CalendarCheck, Send} from "lucide-react";
+import {AdminTopicFrame} from "../AdminTopicFrame";
+import {operationSections,operationGroups,operationSectionForField,isNotificationTopic,type OperationSection} from "./operationsSections";
 import { policyConfigErrors, type ConfigErrors } from "../../utils/crmPolicyConfigValidation";
 import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
@@ -56,10 +63,11 @@ export interface CrmPolicySettingsProps {
   isLight: boolean;
   lang?: "en" | "zh" | "id";
   policyConfig: CrmPolicyConfig;
-  onSavePolicy: (updated: CrmPolicyConfig) => Promise<boolean>;
+  onSavePolicy: (updated: CrmPolicyConfig,context?:PolicyTopicRequest) => Promise<CrmPolicyConfig|boolean>;
   onResetPolicy: () => Promise<boolean>;
   onNavigateTab?: (tab: "leads" | "docs") => void;
   onNavigateNotifications?: () => void;
+  notificationContent?: React.ReactNode | ((topic:string,active:boolean)=>React.ReactNode);
   onActionControlsChange?: (controls: PolicyActionControls | null) => void;
 }
 interface DurationFieldProps {
@@ -114,7 +122,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
     >
       <div className="flex items-start justify-between gap-3 mb-1.5">
         <div className="space-y-0.5">
-          <label
+          <AdminField required htmlFor={"policy-duration-"+fieldPath}
             className={`font-semibold text-xs flex items-center gap-1.5 ${isLight ? "text-slate-900" : "text-slate-100"}`}
           >
             <span>{t(titleEn, titleZh)}</span>
@@ -123,7 +131,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
                 {t("Modified", "已修改")}
               </span>
             )}
-          </label>
+          </AdminField>
         </div>
 
         {/* Clean Numerical Indicator (Zero-Pill Discipline) */}
@@ -155,7 +163,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
       <div className="flex items-center gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/60">
         <div className="relative">
           <input
-            type="number"
+            type="number" required id={"policy-duration-"+fieldPath}
             min="1"
             max="365"
             value={Number.isFinite(duration.value) ? duration.value : ""}
@@ -176,7 +184,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
           />
         </div>
 
-        <CrmSelect label={t(titleEn, titleZh) + " · " + t("Time unit", "时间单位")} value={duration.unit} onChange={(value) =>
+        <CrmSelect required label={t(titleEn, titleZh) + " · " + t("Time unit", "时间单位")} value={duration.unit} onChange={(value) =>
             onChange({
               value: duration.value,
               unit: value as TimeUnit,
@@ -211,9 +219,13 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   onNavigateTab,
   onActionControlsChange,
   onNavigateNotifications,
+  notificationContent,
 }) => {
-  const [formData, setFormData] = useState<CrmPolicyConfig>(policyConfig);
+  const [policyDraft,setPolicyDraft]=useState({draft:policyConfig,base:policyConfig});
+  const formData=policyDraft.draft,savedPolicy=policyDraft.base;
+  const setFormData=useCallback((update:React.SetStateAction<CrmPolicyConfig>)=>setPolicyDraft(state=>({...state,draft:typeof update==='function'?update(state.draft):update})),[]);
   const [isSaving, setIsSaving] = useState(false);
+  const [checkingResult,setCheckingResult]=useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<PolicySaveError | null>(null);
@@ -236,16 +248,9 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [currentMinutesInDay, setCurrentMinutesInDay] = useState(0);
   const [isCurrentlyWorking, setIsCurrentlyWorking] = useState(true);
   // Active section filter or layout mode
-  const [activeCategory, setActiveCategory] = useState<
-    | "all"
-    | "schedule"
-    | "first_response"
-    | "retry"
-    | "watchdog"
-    | "milestone"
-    | "reactivation"
-    | "notifications"
-  >("all");
+  const [activeCategory, setActiveCategory] = useState<OperationSection>("schedule");
+  const languageIndex = lang === "zh" ? 2 : lang === "id" ? 1 : 0;
+  const currentSection = operationSections.find(section=>section.id===activeCategory)!;
   const [showCascadeDiagram, setShowCascadeDiagram] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
   // SLA Simulator states
@@ -255,11 +260,25 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [simPresetTime, setSimPresetTime] = useState<
     "now" | "fri_night" | "sat_night" | "sun_afternoon" | "mon_morning"
   >("fri_night");
+  const sectionDirty=(section:OperationSection)=>isPolicyTopic(section)&&topicDirty(formData,savedPolicy,section);
+  const activeModifiedCount=isPolicyTopic(activeCategory)?topicChangeFields(formData,savedPolicy,activeCategory).length:0;
+  const durationLabel = (d: TimeDuration) => `${d.value} ${crmValue(d.unit,lang)}`;
+  const displayPolicyValue=(value:any):string=>typeof value==='boolean'?(value?['Yes','Ya','是']:['No','Tidak','否'])[languageIndex]:Array.isArray(value)?value.map(day=>({en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],id:['Min','Sen','Sel','Rab','Kam','Jum','Sab'],zh:['周日','周一','周二','周三','周四','周五','周六']})[lang][day]??String(day)).join(' · '):value&&typeof value==='object'&&'value'in value?durationLabel(value):String(value??'—');
+  const ruleSnapshot = activeCategory==='schedule' ? `${formData.businessHours.timezone} · ${formData.businessHours.startTime}–${formData.businessHours.endTime} · ${formData.businessHours.workDays.length} ${['working days','hari kerja','个工作日'][languageIndex]}`
+    : activeCategory==='first_response' ? [formData.firstResponseSla.hot,formData.firstResponseSla.warm,formData.firstResponseSla.cold].map((d,i)=>`${({en:["Hot","Warm","Cold"],id:["Minat tinggi","Minat sedang","Pembinaan"],zh:["高意向","中意向","培育"]})[lang][i]}: ${durationLabel(d)}`).join(' · ')
+    : activeCategory==='retry' ? `${durationLabel(formData.noResponseCadence.retryInterval)} · ${formData.noResponseCadence.maxRetriesBeforeNurture} ${['attempt threshold','ambang upaya','次尝试阈值'][languageIndex]}`
+    : activeCategory==='watchdog' ? [formData.inactivityWatchdog.hotInactivity,formData.inactivityWatchdog.warmInactivity,formData.inactivityWatchdog.coldInactivity].map((d,i)=>`${({en:["Hot","Warm","Cold"],id:["Minat tinggi","Minat sedang","Pembinaan"],zh:["高意向","中意向","培育"]})[lang][i]}: ${durationLabel(d)}`).join(' · ')
+    : activeCategory==='milestone' ? [formData.milestones.trialReminderBefore,formData.milestones.trialFollowUpAfter,formData.milestones.assessmentFollowUpAfter].map(durationLabel).join(' / ')
+    : activeCategory==='reactivation' ? durationLabel(formData.reactivation.reactivatedResponse) : '';
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   useEffect(() => { setSaveError(null); }, [formData]);
+  const receivedPolicy = useRef(JSON.stringify(policyConfig));
   useEffect(() => {
-    setFormData(policyConfig);
+    const next = JSON.stringify(policyConfig);
+    if (next === receivedPolicy.current) return;
+    receivedPolicy.current = next;
+    setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,policyConfig));
   }, [policyConfig]);
   useEffect(() => {
     if (!focusField) return;
@@ -277,7 +296,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     const field=Object.keys(errors)[0];
     if(field==='businessHours.startTime'||field==='businessHours.endTime') {
       focusCalendar({[field.split('.')[1]]:errors[field]} as WorkTimeErrors);
-    } else { setActiveCategory('all'); setPendingConfigField(field); }
+    } else { setActiveCategory(operationSectionForField(field)); setPendingConfigField(field); }
   },[focusCalendar]);
   useEffect(()=>{
     if(!pendingConfigField)return;
@@ -329,92 +348,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     const interval = setInterval(updateLiveClock, 1000);
     return () => clearInterval(interval);
   }, [formData.businessHours, lang]);
-  // Dirty State Calculation: Compare formData with policyConfig
-  const modifiedFieldsCount = useMemo(() => {
-    let count = 0;
-    const orig = policyConfig;
-    const curr = formData;
-    if (curr.businessHours.timezone !== orig.businessHours.timezone) count++;
-    if (curr.businessHours.startTime !== orig.businessHours.startTime) count++;
-    if (curr.businessHours.endTime !== orig.businessHours.endTime) count++;
-    if (
-      JSON.stringify(curr.businessHours.workDays.slice().sort()) !==
-      JSON.stringify(orig.businessHours.workDays.slice().sort())
-    )
-      count++;
-    if (!isDurationEqual(curr.firstResponseSla.hot, orig.firstResponseSla.hot))
-      count++;
-    if (
-      !isDurationEqual(curr.firstResponseSla.warm, orig.firstResponseSla.warm)
-    )
-      count++;
-    if (
-      !isDurationEqual(curr.firstResponseSla.cold, orig.firstResponseSla.cold)
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.noResponseCadence.retryInterval,
-        orig.noResponseCadence.retryInterval,
-      )
-    )
-      count++;
-    if (
-      curr.noResponseCadence.maxRetriesBeforeNurture !==
-      orig.noResponseCadence.maxRetriesBeforeNurture
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.inactivityWatchdog.hotInactivity,
-        orig.inactivityWatchdog.hotInactivity,
-      )
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.inactivityWatchdog.warmInactivity,
-        orig.inactivityWatchdog.warmInactivity,
-      )
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.inactivityWatchdog.coldInactivity,
-        orig.inactivityWatchdog.coldInactivity,
-      )
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.milestones.trialReminderBefore,
-        orig.milestones.trialReminderBefore,
-      )
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.milestones.trialFollowUpAfter,
-        orig.milestones.trialFollowUpAfter,
-      )
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.milestones.assessmentFollowUpAfter,
-        orig.milestones.assessmentFollowUpAfter,
-      )
-    )
-      count++;
-    if (
-      !isDurationEqual(
-        curr.reactivation.reactivatedResponse,
-        orig.reactivation.reactivatedResponse,
-      )
-    )
-      count++;
-    return count;
-  }, [formData, policyConfig]);
+  const modifiedFieldsCount=useMemo(()=>(Object.keys(policyTopicKeys) as PolicyTopic[]).reduce((sum,topic)=>sum+topicChangeFields(formData,savedPolicy,topic).length,0),[formData,savedPolicy]);
   // Business hours ribbon math (00:00 to 24:00)
   const businessBarInfo = useMemo(() => {
     if (Object.keys(workTimeErrors(formData.businessHours)).length) return null;
@@ -588,67 +522,46 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       });
     }
   };
-  const submitPolicy = useCallback(async () => {
-    if (inFlight.current) return;
-    setSaveSuccess(false);
-    setSaveError(null);
-    setServerTimeErrors({});
-    setShowTimeErrors(true);
-    const invalid = policyConfigErrors(formData);
-    if (Object.keys(invalid).length) {
-      setSaveError(new PolicySaveError("policy_save_rejected", invalid));
-      focusConfig(invalid);
-      return;
-    }
-    inFlight.current = true;
-    setIsSaving(true);
-    try {
-      const ok = await actions.current.onSavePolicy(formData);
-      if (!ok) throw new PolicySaveError();
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 4000);
-    } catch (error) {
-      const failure = error instanceof PolicySaveError ? error : new PolicySaveError();
-      setSaveError(failure);
-      setServerTimeErrors({startTime:failure.fields["businessHours.startTime"] as any,endTime:failure.fields["businessHours.endTime"] as any});
-      if (Object.keys(failure.fields).length) focusConfig(failure.fields);
-      else {
-        saveFeedback.current?.focus();
-        saveFeedback.current?.scrollIntoView({ block: "center" });
-      }
-    } finally {
-      inFlight.current = false;
-      setIsSaving(false);
-    }
-  }, [formData, focusConfig]);
+  const submitPolicy = useCallback(async (replacement?:CrmPolicyConfig) => {
+    if(inFlight.current||!isPolicyTopic(activeCategory))return;
+    const topic=activeCategory,submitted=replacement||formData;
+    setSaveSuccess(false);setSaveError(null);setServerTimeErrors({});setShowTimeErrors(true);
+    const invalid=policyConfigErrors({...savedPolicy,...topicPatch(submitted,topic)});
+    if(Object.keys(invalid).length){setSaveError(new PolicySaveError('policy_save_rejected',invalid));focusConfig(invalid);return;}
+    inFlight.current=true;setIsSaving(true);
+    try{
+      const result=await actions.current.onSavePolicy(submitted,{topic,base:topicPatch(savedPolicy,topic),patch:topicPatch(submitted,topic)});
+      if(!result)throw new PolicySaveError();
+      const saved=typeof result==='object'?result:submitted;
+      setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));
+      setSaveSuccess(true);setTimeout(()=>setSaveSuccess(false),4000);
+    }catch(error){
+      const failure=error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown');setSaveError(failure);
+      setServerTimeErrors({startTime:failure.fields['businessHours.startTime'] as any,endTime:failure.fields['businessHours.endTime'] as any});
+      if(Object.keys(failure.fields).length)focusConfig(failure.fields);
+      else requestAnimationFrame(()=>{saveFeedback.current?.focus({preventScroll:true});saveFeedback.current?.scrollIntoView({block:'nearest'});});
+    }finally{inFlight.current=false;setIsSaving(false);}
+  },[formData,savedPolicy,activeCategory,focusConfig]);
+  const checkSaveResult=async()=>{
+    if(inFlight.current||!isPolicyTopic(activeCategory))return;const topic=activeCategory,submitted=formData;inFlight.current=true;setIsSaving(true);setCheckingResult(true);
+    try{const saved=await readSavedPolicy();if(policyEqual(topicPatch(saved,topic),topicPatch(submitted,topic))){setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));setSaveError(null);setSaveSuccess(true);}else setSaveError(new PolicySaveError('policy_topic_unknown',{},saved));}
+    catch(error){setSaveError(error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown'));}
+    finally{inFlight.current=false;setIsSaving(false);setCheckingResult(false);}
+  };
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     void submitPolicy();
   };
-  const handleReset = useCallback(async () => {
-    if (!window.confirm(t("Reset all SLA & Cadence policies to standard recommended defaults?", "是否确认将所有时效与策略恢复为默认值？"))) return;
-    setIsResetting(true);
-    try {
-      const ok = await actions.current.onResetPolicy();
-      if (ok) {
-        setFormData(DEFAULT_CRM_POLICY_CONFIG);
-        setSaveError(null);
-        setServerTimeErrors({});
-        setShowTimeErrors(false);
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 4000);
-      }
-    } finally {
-      setIsResetting(false);
-    }
-  }, [lang]);
-  const discard = useCallback(() => {
-    setFormData(policyConfig);
-    setSaveError(null);
-    setServerTimeErrors({});
-    setShowTimeErrors(false);
-    setSaveSuccess(false);
-  }, [policyConfig]);
+  const handleReset=useCallback(async()=>{
+    if(inFlight.current||!isPolicyTopic(activeCategory))return;
+    if(!window.confirm(['Restore and save defaults for this topic only? Other topic drafts and existing task deadlines stay unchanged.','Pulihkan dan simpan standar hanya untuk topik ini? Draf topik lain dan tenggat tugas tetap.','仅恢复并保存当前主题的默认值？其他主题草稿及已有任务截止时间保持不变。'][languageIndex]))return;
+    const reset={...formData,...topicPatch(DEFAULT_CRM_POLICY_CONFIG,activeCategory)};setFormData(reset);setIsResetting(true);try{await submitPolicy(reset);}finally{setIsResetting(false);}
+  },[activeCategory,formData,languageIndex,submitPolicy]);
+  const discard=useCallback(()=>{
+    if(!isPolicyTopic(activeCategory))return;
+    setFormData(current=>({...current,...topicPatch(savedPolicy,activeCategory)}));setSaveError(null);setServerTimeErrors({});setShowTimeErrors(false);setSaveSuccess(false);
+  },[activeCategory,savedPolicy,setFormData]);
+  useEffect(()=>{setSaveError(null);setSaveSuccess(false);setShowTimeErrors(false);},[activeCategory]);
   useEffect(() => {
     onActionControlsChange?.({
       isDirty: modifiedFieldsCount > 0,
@@ -656,7 +569,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       isSaving,
       isResetting,
       saveSuccess,
-      save: submitPolicy,
+      save: () => submitPolicy(),
       reset: handleReset,
       discard,
     });
@@ -692,193 +605,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     { num: 6, en: "Sat", zh: "周六" },
     { num: 0, en: "Sun", zh: "周日" },
   ];
-  return (
-    <form noValidate onSubmit={handleSave} className="space-y-6 w-full mx-auto">
-      <button type="submit" hidden tabIndex={-1}>{t("Save Policies", "保存策略")}</button>
-      {/* 1. Header & Live Status Banner */}
-      <div
-        className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800 shadow-md"}`}
-      >
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                <Clock className="w-5 h-5" />
-              </span>
-              <div>
-                <h2
-                  className={`font-bold text-base md:text-lg ${isLight ? "text-slate-900" : "text-white"}`}
-                >
-                  {t("Sales Operations Settings", "销售运营设置")}
-                </h2>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span>
-                    {t(
-                      "Configure working hours, response deadlines, follow-up rules and notifications.",
-                      "配置工作时间、响应时限、跟进规则与通知。",
-                    )}
-                  </span>
-                  <span aria-hidden="true">·</span>
-                  <span className="font-mono text-[11px]">
-                    {formData.businessHours.timezone}
-                  </span>
-                  <span aria-hidden="true">·</span>
-                  <span>v{formData.version}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Presets & Status */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Quick Policy Presets */}
-            <div
-              className={`p-1 rounded-xl border flex items-center gap-1 ${isLight ? "bg-slate-100/80 border-slate-200" : "bg-slate-800/80 border-slate-700"}`}
-            >
-              <span className="text-[11px] px-2 font-medium text-slate-500 dark:text-slate-400 hidden sm:inline">
-                {t("Presets:", "预设模板:")}
-              </span>
-              <button
-                type="button"
-                onClick={() => applyPreset("standard")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isLight ? "hover:bg-white text-slate-700" : "hover:bg-slate-700 text-slate-200"}`}
-                title={t(
-                  "Standard Recommended Policy (Hot 3h, Warm 24h, Mon-Sat)",
-                  "标准预设模式",
-                )}
-              >
-                {t("Standard", "标准稳健")}
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPreset("high_velocity")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isLight ? "hover:bg-white text-rose-700" : "hover:bg-slate-700 text-rose-300"}`}
-                title={t(
-                  "High Velocity Campaign Mode (Hot 1h, 7 days open, 08:30-21:00)",
-                  "大促敏捷抢单模式",
-                )}
-              >
-                ⚡ {t("Sprint", "冲刺抢单")}
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPreset("relaxed")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isLight ? "hover:bg-white text-indigo-700" : "hover:bg-slate-700 text-indigo-300"}`}
-                title={t(
-                  "Relaxed / Holiday Nurture Mode (Mon-Fri, Extended SLA)",
-                  "节假日宽松护航模式",
-                )}
-              >
-                🌿 {t("Relaxed", "节假宽松")}
-              </button>
-            </div>
-
-            {/* Current Operational Status Indicator */}
-            <div
-              className={`px-3 py-1.5 rounded-xl border text-xs font-mono flex items-center gap-2 ${
-                isCurrentlyWorking
-                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-                  : "bg-indigo-500/10 border-indigo-500/20 text-indigo-700 dark:text-indigo-300"
-              }`}
-            >
-              {!calendarValid ? (
-                <span>{policyMessage("policy_calendar_invalid", lang)}</span>
-              ) : isCurrentlyWorking ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="font-semibold font-sans">
-                    {t("Active Calling Window", "营业外呼时段")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-indigo-500" />
-                  <span className="font-semibold font-sans">
-                    {t("Night Quiet Period", "夜间免打扰时段")}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 24-Hour Visual Business Hours Ribbon */}
-        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between text-xs mb-1.5">
-            <span
-              className={`font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}
-            >
-              {t(
-                "24-hour work calendar",
-                "24 小时工作日历",
-              )}
-            </span>
-            <span className="text-[11px] text-slate-500 font-mono">
-              {businessBarInfo ? <>{businessBarInfo.dailyHours} {t("hrs/day", "小时/天")} ·{" "}
-              {businessBarInfo.weeklyWorkDays} {t("days/week", "天/周")} (
-              {businessBarInfo.weeklyHours} {t("h", "小时")}{" "}
-              {t("total", "工时")})</> : policyMessage("policy_calendar_invalid", lang)}
-            </span>
-          </div>
-
-          {/* Invalid draft hours have no meaningful work-window preview. */}
-          {businessBarInfo && <>
-          <div className="relative h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700 flex">
-            {/* Shaded Off-hours Left */}
-            <div
-              style={{ width: `${businessBarInfo.startPct}%` }}
-              className="h-full bg-indigo-500/10 dark:bg-indigo-950/40 flex items-center justify-start pl-2 text-[10px] text-indigo-500/70 font-mono"
-            >
-              🌙 00:00
-            </div>
-
-            {/* Active Working Window */}
-            <div
-              style={{ width: `${businessBarInfo.widthPct}%` }}
-              className="h-full bg-emerald-500/20 dark:bg-emerald-500/25 border-x border-emerald-500/40 flex items-center justify-between px-2 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300"
-            >
-              <span>{formData.businessHours.startTime}</span>
-              <span className="hidden sm:inline font-sans text-[10px] opacity-80">
-                {t("● Active Calling & WhatsApp", "● 正常外呼与建联沟通")}
-              </span>
-              <span>{formData.businessHours.endTime}</span>
-            </div>
-
-            {/* Shaded Off-hours Right */}
-            <div
-              style={{
-                width: `${100 - businessBarInfo.startPct - businessBarInfo.widthPct}%`,
-              }}
-              className="h-full bg-indigo-500/10 dark:bg-indigo-950/40 flex items-center justify-end pr-2 text-[10px] text-indigo-500/70 font-mono"
-            >
-              24:00 🌙
-            </div>
-
-            {/* Current Real-time Needle */}
-            <div
-              style={{ left: `${businessBarInfo.nowPct}%` }}
-              className="absolute top-0 bottom-0 w-0.5 bg-rose-500 shadow-sm z-10"
-              title={`${t("Current Time:", "目标时区当前时间:")} ${currentTimeStr}`}
-            >
-              <div className="w-2 h-2 rounded-full bg-rose-500 -ml-[3px] -top-1 absolute animate-ping opacity-75"></div>
-              <div className="w-2 h-2 rounded-full bg-rose-500 -ml-[3px] -top-1 absolute"></div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1 font-mono">
-            <span>00:00 {t("Midnight", "午夜")}</span>
-            <span className="text-rose-500 font-semibold">
-              {t("Current local time:", "当前当地时间:")} {currentTimeStr}
-            </span>
-            <span>24:00 {t("End of Day", "日终")}</span>
-          </div>
-          </>}
-        </div>
-
-        {/* Feature Switches Toolbar: Simulator & Cascade Diagram */}
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <button
+  const ruleExplanation = (
+<details className="crm-ops-explanation"><summary>{["Rule explanation and examples","Penjelasan aturan dan contoh","规则解释与示例"][languageIndex]}</summary>      {['schedule','first_response'].includes(activeCategory)&&<p className="crm-ops-note"><strong>{['Illustrative case','Contoh ilustratif','模拟实例'][languageIndex]} · {simulationResult.tierTitle} · {simulationResult.sampleLabel} ({formData.businessHours.timezone}) → {simulationResult.finalDeadline}. {['Uses the existing calendar calculator; no task is created.','Memakai perhitungan kalender yang ada; tidak membuat tugas.','复用现有日历计算，不创建任务。'][languageIndex]}</strong></p>}
+      {['schedule','first_response'].includes(activeCategory)&&<>          <div className="flex items-center gap-2">
+            {activeCategory !== 'schedule' && <button
               type="button"
               onClick={() => setShowSimulator(!showSimulator)}
               className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -893,9 +623,9 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               <span>
                 {t("Live SLA Timeline Simulator", "SLA 真实时效推演沙盒")}
               </span>
-            </button>
+            </button>}
 
-            <button
+            {activeCategory !== 'schedule' && <button
               type="button"
               onClick={() => setShowCascadeDiagram(!showCascadeDiagram)}
               className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -910,9 +640,9 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               <span>
                 {t("Logic Cascade Architecture", "SLA 规则决策链架构图")}
               </span>
-            </button>
+            </button>}
 
-            {onNavigateTab && (
+            {activeCategory !== 'schedule' && onNavigateTab && (
               <button
                 type="button"
                 onClick={() => onNavigateTab("docs")}
@@ -928,65 +658,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 </span>
               </button>
             )}
-          </div>
-
-          <section
-            aria-label={t("Saving and activation", "保存与生效说明")}
-            className={`rounded-xl border p-3 space-y-2 text-xs leading-relaxed ${isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-slate-950 border-slate-800 text-slate-300"}`}
-          >
-            <h3
-              className={`font-semibold ${isLight ? "text-slate-800" : "text-slate-100"}`}
-            >
-              {t("Saving and activation", "保存与生效说明")}
-            </h3>
-            <p>
-              <strong>
-                {t("Save Policies / Reset Defaults", "保存策略 / 恢复默认设置")}
-                ：
-              </strong>{" "}
-              {t(
-                "Apply only to working hours, response deadlines and follow-up rules. Edits take effect after Save Policies succeeds; existing follow-up deadlines are not recalculated.",
-                "仅用于工作时间、响应时限和跟进规则。修改在保存成功后生效；不会重新计算已有跟进任务的截止时间。",
-              )}
-            </p>
-            <p>
-              <strong>{t("Notification settings", "通知配置")}：</strong>{" "}
-              {t(
-                "Save each notification policy and channel in its own section. Save Policies does not save notification edits. Inactive drafts do not send notifications; enabling a policy applies to new events.",
-                "通知策略和渠道在各自区域单独保存；顶部“保存策略”不会保存通知修改。停用草稿不发送通知，策略启用后仅应用于新事件。",
-              )}
-            </p>
-            <p
-              role="status"
-              className={
-                modifiedFieldsCount > 0
-                  ? "font-medium text-amber-700 dark:text-amber-300"
-                  : "text-slate-500 dark:text-slate-400"
-              }
-            >
-              {modifiedFieldsCount > 0
-                ? t(
-                    `${modifiedFieldsCount} unsaved change${modifiedFieldsCount > 1 ? "s" : ""} to working hours or follow-up rules. Use Save Policies in the top-right toolbar.`,
-                    `工作时间或跟进规则有 ${modifiedFieldsCount} 项未保存修改，请使用右上角“保存策略”。`,
-                  )
-                : t(
-                    "No unsaved changes to working hours or follow-up rules.",
-                    "工作时间与跟进规则没有待保存修改。",
-                  )}
-            </p>
-          </section>
-          <div ref={saveFeedback} tabIndex={-1} className="mt-3 text-sm outline-none">
-            {saveError && <div role="alert" className={isLight ? "text-red-700" : "text-red-300"}>
-              <p>{policyMessage(saveError.code, lang)}</p>
-              <ul>{Object.entries(saveError.fields).map(([field,code])=><li key={field}><button type="button" className="underline text-left" onClick={()=>focusConfig({[field]:code})}>{policyFieldLabel(field,lang)}: {policyMessage(code,lang)}</button></li>)}</ul>
-            </div>}
-            {saveSuccess && <p role="status" className={isLight ? "text-emerald-700" : "text-emerald-300"}>{policyMessage("policy_save_success", lang)}</p>}
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Interactive SLA Timeline Simulator (Tool) */}
-      {showSimulator && (
+          </div>      {/* 2. Interactive SLA Timeline Simulator (Tool) */}
+      {activeCategory !== 'schedule' && showSimulator && (
         <div
           className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-white border-blue-200/90 shadow-xs" : "bg-gradient-to-r from-slate-900 via-indigo-950/20 to-slate-900 border-indigo-900/50"}`}
         >
@@ -1033,11 +706,11 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Lead Tier Picker */}
             <div>
-              <label
+              <AdminField
                 className={`block font-semibold text-xs mb-1.5 ${isLight ? "text-slate-700" : "text-slate-300"}`}
               >
                 {t("Simulate Lead Intent Tier:", "模拟进线学员等级:")}
-              </label>
+              </AdminField>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 <button
                   type="button"
@@ -1130,11 +803,11 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
             {/* Ingestion Time Preset */}
             <div>
-              <label
+              <AdminField
                 className={`block font-semibold text-xs mb-1.5 ${isLight ? "text-slate-700" : "text-slate-300"}`}
               >
                 {t("Simulate Ingestion Timestamp:", "模拟客户提交咨询时间点:")}
-              </label>
+              </AdminField>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
@@ -1253,7 +926,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       )}
 
       {/* 3. Logic Cascade Architecture Diagram */}
-      {showCascadeDiagram && (
+      {activeCategory !== 'schedule' && showCascadeDiagram && (
         <div
           className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200 shadow-xs" : "bg-slate-900 border-slate-800"}`}
         >
@@ -1412,111 +1085,256 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         </div>
       )}
 
-      {/* 4. Category Filter Buttons */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
-        <button
-          type="button"
-          onClick={() => setActiveCategory("all")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeCategory === "all"
-              ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-          }`}
-        >
-          {t("All 7 Modules", "全部 7 个模块")}
-        </button>
+</>}{activeCategory==='schedule'&&<>        {/* 24-Hour Visual Business Hours Ribbon */}
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between text-xs mb-1.5">
+            <span
+              className={`font-semibold ${isLight ? "text-slate-700" : "text-slate-300"}`}
+            >
+              {t(
+                "24-hour work calendar",
+                "24 小时工作日历",
+              )}
+            </span>
+            <span className="text-[11px] text-slate-500 font-mono">
+              {businessBarInfo ? <>{businessBarInfo.dailyHours} {t("hrs/day", "小时/天")} ·{" "}
+              {businessBarInfo.weeklyWorkDays} {t("days/week", "天/周")} (
+              {businessBarInfo.weeklyHours} {t("h", "小时")}{" "}
+              {t("total", "工时")})</> : policyMessage("policy_calendar_invalid", lang)}
+            </span>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveCategory("schedule")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeCategory === "schedule"
-              ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-          }`}
-        >
-          {t("1. Business Schedule", "1. 运营时区与工作日历")}
-        </button>
+          {/* Invalid draft hours have no meaningful work-window preview. */}
+          {businessBarInfo && <>
+          <div className="relative h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700 flex">
+            {/* Shaded Off-hours Left */}
+            <div
+              style={{ width: `${businessBarInfo.startPct}%` }}
+              className="h-full bg-indigo-500/10 dark:bg-indigo-950/40 flex items-center justify-start pl-2 text-[10px] text-indigo-500/70 font-mono"
+            >
+              🌙 00:00
+            </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveCategory("first_response")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeCategory === "first_response"
-              ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-          }`}
-        >
-          {t("2. First Response (FRT)", "2. 首响应分级时限")}
-        </button>
+            {/* Active Working Window */}
+            <div
+              style={{ width: `${businessBarInfo.widthPct}%` }}
+              className="h-full bg-emerald-500/20 dark:bg-emerald-500/25 border-x border-emerald-500/40 flex items-center justify-between px-2 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300"
+            >
+              <span>{formData.businessHours.startTime}</span>
+              <span className="hidden sm:inline font-sans text-[10px] opacity-80">
+                {t("● Active Calling & WhatsApp", "● 正常外呼与建联沟通")}
+              </span>
+              <span>{formData.businessHours.endTime}</span>
+            </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveCategory("retry")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeCategory === "retry"
-              ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-          }`}
-        >
-          {t("3. Call Retries", "3. 未接止损与重呼")}
-        </button>
+            {/* Shaded Off-hours Right */}
+            <div
+              style={{
+                width: `${100 - businessBarInfo.startPct - businessBarInfo.widthPct}%`,
+              }}
+              className="h-full bg-indigo-500/10 dark:bg-indigo-950/40 flex items-center justify-end pr-2 text-[10px] text-indigo-500/70 font-mono"
+            >
+              24:00 🌙
+            </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveCategory("watchdog")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeCategory === "watchdog"
-              ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-          }`}
-        >
-          {t("4. Watchdog Alerts", "4. 未联系提醒")}
-        </button>
+            {/* Current Real-time Needle */}
+            <div
+              style={{ left: `${businessBarInfo.nowPct}%` }}
+              className="absolute top-0 bottom-0 w-0.5 bg-rose-500 shadow-sm z-10"
+              title={`${t("Current Time:", "目标时区当前时间:")} ${currentTimeStr}`}
+            >
+              <div className="w-2 h-2 rounded-full bg-rose-500 -ml-[3px] -top-1 absolute animate-ping opacity-75"></div>
+              <div className="w-2 h-2 rounded-full bg-rose-500 -ml-[3px] -top-1 absolute"></div>
+            </div>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveCategory("milestone")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeCategory === "milestone"
-              ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-          }`}
-        >
-          {t("5. Milestones", "5. 试听测评里程碑")}
-        </button>
+          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1 font-mono">
+            <span>00:00 {t("Midnight", "午夜")}</span>
+            <span className="text-rose-500 font-semibold">
+              {t("Current local time:", "当前当地时间:")} {currentTimeStr}
+            </span>
+            <span>24:00 {t("End of Day", "日终")}</span>
+          </div>
+          </>}
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveCategory("reactivation")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeCategory === "reactivation"
-              ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-          }`}
-        >
-          {t("6. Reactivation", "6. 沉睡客户重新咨询")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveCategory("notifications");
-            onNavigateNotifications?.();
-          }}
-          aria-pressed={activeCategory === "notifications"}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeCategory === "notifications" ? "bg-white text-slate-900 shadow-2xs dark:bg-slate-700 dark:text-white" : "text-slate-600 dark:text-slate-400 hover:text-slate-900"}`}
-        >
-          {t(
-            "7. Notification settings & delivery audit",
-            "7. 通知设置与发送审计",
-          )}
-        </button>
+</>}<div className="crm-ops-flow" aria-label={['Rule illustration','Ilustrasi aturan','规则图解'][languageIndex]}>{currentSection.steps[languageIndex].map((step,i)=><React.Fragment key={step}>{i>0&&<b aria-hidden="true">→</b>}<span>{step}</span></React.Fragment>)}</div>
+      <p className="crm-ops-note">{isNotificationTopic(activeCategory)?['Use the save controls in each notification section.','Gunakan tombol simpan di tiap bagian notifikasi.','通知在各自区域独立保存。'][languageIndex]:['The diagram explains the process. Save applies only to the current topic; existing task deadlines are retained.','Diagram menjelaskan proses. Simpan hanya menerapkan topik saat ini; tenggat tugas lama tetap.','图解说明处理逻辑。保存仅提交当前主题，已有任务截止时间保持不变。'][languageIndex]}</p></details>
+  );
+  return (
+    <div className="crm-ops-workspace-sample" data-theme={isLight?'light':'dark'}><AdminTopicFrame selection={activeCategory} label={["Configuration topics","Topik konfigurasi","配置主题"][languageIndex]} navigation={
+      <nav className="crm-ops-nav" aria-label={['Operations topics','Topik operasional','运营主题'][languageIndex]}>
+        <details open><summary>{['Configuration topics','Topik konfigurasi','配置主题'][languageIndex]}</summary><div>
+        {operationGroups.map((group,i)=><React.Fragment key={i}><h2>{group[languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{setActiveCategory(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
+        </div></details><small role="status">{modifiedFieldsCount ? ['Unsaved policy changes','Perubahan kebijakan belum disimpan','有未保存的策略修改'][languageIndex] : ['Policies are up to date','Kebijakan sudah tersimpan','策略无未保存修改'][languageIndex]}</small>
+      </nav>}>
+      <div className="crm-ops-content"><AdminForm lang={lang} noValidate onSubmit={handleSave} className="space-y-6 w-full mx-auto">
+<AdminRequiredNote lang={lang}/>
+
+{isNotificationTopic(activeCategory)?<header className="admin-topic-notification-heading"><p className="crm-ops-note">{operationGroups[currentSection.group][languageIndex]}</p><h2>{currentSection.title[languageIndex]}</h2><p>{currentSection.purpose[languageIndex]}</p></header>:<header className="admin-edit-header" data-theme={isLight?"light":"dark"}><div className="admin-edit-title"><h2>{currentSection.title[languageIndex]}</h2></div>      <div className="crm-ops-actions"><span role="status">{activeModifiedCount} {['unsaved changes','perubahan belum disimpan','项修改尚未保存'][languageIndex]}</span><button type="submit" disabled={isSaving||isResetting||activeModifiedCount===0}>{checkingResult?['Checking…','Memeriksa…','正在核对…'][languageIndex]:isSaving?['Saving…','Menyimpan…','正在保存…'][languageIndex]:['Save','Simpan','保存'][languageIndex]}</button><details><summary>{['More actions','Tindakan lain','更多操作'][languageIndex]}</summary><div className="admin-save-menu"><button type="button" disabled={isSaving||isResetting} onClick={handleReset}>{['Restore topic defaults','Pulihkan standar topik','恢复本主题默认值'][languageIndex]}</button>{activeModifiedCount>0&&<button type="button" disabled={isSaving||isResetting} onClick={discard}>{['Discard topic edits','Buang perubahan topik','放弃本主题修改'][languageIndex]}</button>}      <details className="crm-ops-tools"><summary>{["Global presets and activation","Preset global dan aktivasi","全局预设与生效说明"][languageIndex]}</summary>
+      {/* 1. Header & Live Status Banner */}
+      <div
+        className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800 shadow-md"}`}
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400">
+                <Clock className="w-5 h-5" />
+              </span>
+              <div>
+                <p
+                  className={`font-bold text-base md:text-lg ${isLight ? "text-slate-900" : "text-white"}`}
+                >
+                  {t("Sales Operations Settings", "销售运营设置")}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <span>
+                    {t(
+                      "Configure working hours, response deadlines, follow-up rules and notifications.",
+                      "配置工作时间、响应时限、跟进规则与通知。",
+                    )}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-mono text-[11px]">
+                    {formData.businessHours.timezone}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>v{formData.version}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Presets & Status */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Policy Presets */}
+            <div
+              className={`p-1 rounded-xl border flex items-center gap-1 ${isLight ? "bg-slate-100/80 border-slate-200" : "bg-slate-800/80 border-slate-700"}`}
+            >
+              <span className="text-[11px] px-2 font-medium text-slate-500 dark:text-slate-400 hidden sm:inline">
+                {t("Presets:", "预设模板:")}
+              </span>
+              <button
+                type="button"
+                onClick={() => applyPreset("standard")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isLight ? "hover:bg-white text-slate-700" : "hover:bg-slate-700 text-slate-200"}`}
+                title={t(
+                  "Standard Recommended Policy (Hot 3h, Warm 24h, Mon-Sat)",
+                  "标准预设模式",
+                )}
+              >
+                {t("Standard", "标准稳健")}
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset("high_velocity")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isLight ? "hover:bg-white text-rose-700" : "hover:bg-slate-700 text-rose-300"}`}
+                title={t(
+                  "High Velocity Campaign Mode (Hot 1h, 7 days open, 08:30-21:00)",
+                  "大促敏捷抢单模式",
+                )}
+              >
+                ⚡ {t("Sprint", "冲刺抢单")}
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset("relaxed")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isLight ? "hover:bg-white text-indigo-700" : "hover:bg-slate-700 text-indigo-300"}`}
+                title={t(
+                  "Relaxed / Holiday Nurture Mode (Mon-Fri, Extended SLA)",
+                  "节假日宽松护航模式",
+                )}
+              >
+                🌿 {t("Relaxed", "节假宽松")}
+              </button>
+            </div>
+
+            {/* Current Operational Status Indicator */}
+            <div
+              className={`px-3 py-1.5 rounded-xl border text-xs font-mono flex items-center gap-2 ${
+                isCurrentlyWorking
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                  : "bg-indigo-500/10 border-indigo-500/20 text-indigo-700 dark:text-indigo-300"
+              }`}
+            >
+              {!calendarValid ? (
+                <span>{policyMessage("policy_calendar_invalid", lang)}</span>
+              ) : isCurrentlyWorking ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="font-semibold font-sans">
+                    {t("Active Calling Window", "营业外呼时段")}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="font-semibold font-sans">
+                    {t("Night Quiet Period", "夜间免打扰时段")}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Feature Switches Toolbar: Simulator & Cascade Diagram */}
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <section
+            aria-label={t("Saving and activation", "保存与生效说明")}
+            className={`rounded-xl border p-3 space-y-2 text-xs leading-relaxed ${isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-slate-950 border-slate-800 text-slate-300"}`}
+          >
+            <h3
+              className={`font-semibold ${isLight ? "text-slate-800" : "text-slate-100"}`}
+            >
+              {t("Saving and activation", "保存与生效说明")}
+            </h3>
+            <p>
+              <strong>
+                {["Save / Restore topic defaults","Simpan / Pulihkan standar topik","保存 / 恢复本主题默认值"][languageIndex]}
+                ：
+              </strong>{" "}
+              {['Save applies only to this topic. Other topic drafts stay unsaved and are marked in the left navigation. Global presets prepare drafts in several topics; save each separately. Existing task deadlines stay unchanged.','Simpan hanya menerapkan topik ini. Draf topik lain tetap ditandai di navigasi kiri. Preset global menyiapkan beberapa draf; simpan tiap topik terpisah. Tenggat tugas lama tetap.','保存仅提交当前主题；其他主题草稿保留并在左侧标记。全局预设会准备多个主题草稿，须分别保存。已有任务截止时间不变。'][languageIndex]}
+            </p>
+            <p>
+              <strong>{t("Notification settings", "通知配置")}：</strong>{" "}
+              {['Notification policies and channels retain their separate save actions. Inactive drafts do not send; enabling applies to new events.','Kebijakan dan kanal notifikasi tetap memakai tindakan simpan terpisah. Draf nonaktif tidak mengirim; aktivasi berlaku pada peristiwa baru.','通知策略和渠道保留各自保存操作；停用草稿不发送，启用仅应用于新事件。'][languageIndex]}
+            </p>
+            <p
+              role="status"
+              className={
+                modifiedFieldsCount > 0
+                  ? "font-medium text-amber-700 dark:text-amber-300"
+                  : "text-slate-500 dark:text-slate-400"
+              }
+            >
+              {lang==='zh'?(modifiedFieldsCount?`有 ${modifiedFieldsCount} 项策略修改尚未保存，请逐个打开左侧标记主题并“保存”。`:'没有待保存的策略修改。'):lang==='id'?(modifiedFieldsCount?`Ada ${modifiedFieldsCount} perubahan kebijakan belum disimpan. Buka tiap topik bertanda dan Simpan terpisah.`:'Tidak ada perubahan kebijakan yang belum disimpan.'):(modifiedFieldsCount?`${modifiedFieldsCount} policy changes are unsaved. Open each marked topic and Save separately.`:'No unsaved policy changes.')}
+            </p>
+          </section>
+
+        </div>
       </div>
 
+      </details>
+</div></details></div><div ref={saveFeedback} tabIndex={-1}>{saveError&&<div role="alert"><p>{policyMessage(saveError.code,lang)}</p>{saveError.code==='policy_topic_unknown'&&<button type="button" disabled={isSaving} onClick={()=>void checkSaveResult()}>{['Check save result','Periksa hasil simpan','查询保存结果'][languageIndex]}</button>}{saveError.currentPolicy&&isPolicyTopic(activeCategory)&&<details className="policy-conflict-review"><summary>{['Compare saved values','Bandingkan nilai tersimpan','核对最新已保存值'][languageIndex]}</summary><dl>{topicChangeFields(formData,saveError.currentPolicy,activeCategory).map(field=>{const read=(value:any)=>field.split('.').reduce((node,key)=>node?.[key],value);return <div key={field}><dt>{policyFieldLabel(field,lang)}</dt><dd>{['Saved','Tersimpan','已保存'][languageIndex]}: {displayPolicyValue(read(saveError.currentPolicy))} · {['Your draft','Draf Anda','你的草稿'][languageIndex]}: {displayPolicyValue(read(formData))}</dd></div>;})}</dl><button type="button" onClick={()=>{const latest=saveError.currentPolicy!;setPolicyDraft(state=>({...state,base:{...state.base,...topicPatch(latest,activeCategory as PolicyTopic)}}));setSaveError(null);}}>{['Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿'][languageIndex]}</button></details>}{Object.entries(saveError.fields).map(([field,code])=><button key={field} type="button" onClick={()=>focusConfig({[field]:code})}>{policyFieldLabel(field,lang)}: {policyMessage(code,lang)}</button>)}</div>}{saveSuccess&&<p role="status">{policyMessage('policy_topic_saved',lang)}</p>}</div></header>}      <header className="crm-ops-summary" hidden={isNotificationTopic(activeCategory)}><p className="crm-ops-note">{operationGroups[currentSection.group][languageIndex]}</p><p>{currentSection.purpose[languageIndex]}</p>{ruleSnapshot&&<p><strong>{["Current draft","Draf saat ini","当前草稿"][languageIndex]}: </strong>{ruleSnapshot}</p>}
+
+</header>
+
+
+      {activeCategory === "permissions" && <section className={`p-5 rounded-2xl border space-y-4 ${isLight?"bg-white border-slate-200":"bg-slate-900 border-slate-800"}`} aria-label={lang==='zh'?'核实与归属权限':lang==='id'?'Pengaturan verifikasi dan klaim':'Review and ownership permissions'}>
+        <h2 className="font-semibold text-lg">{lang==='zh'?'核实与归属权限':lang==='id'?'Izin verifikasi dan kepemilikan':'Review and ownership permissions'}</h2>
+        {([
+          ['identityReviewManagerOnly', ['Lead identity review is restricted to CRM Managers','Verifikasi identitas Lead hanya oleh CRM Manager','Lead身份核实仅限CRM Manager'], ['Enabled by default. If disabled, Sales still need existing read and write access to both records. This does not grant access to other owners’ leads.','Aktif secara standar. Jika nonaktif, Sales tetap memerlukan izin baca dan tulis yang ada atas kedua catatan, tanpa akses tambahan ke pelanggan orang lain.','默认开启。关闭后，Sales仍须拥有双方记录的现有读写权限，不授予他人客户权限。普通Sales无法写入共享池时，仍由Manager核实。']],
+          ['ownerAssignmentManagerOnly', ['Lead Owner assignment is restricted to CRM Managers','Penugasan Owner Lead hanya oleh CRM Manager','Lead分配Owner仅限CRM Manager'], ['Disabled by default. When enabled, only CRM Managers with existing permissions may claim or assign a Lead Owner. When disabled, existing claiming and assignment permissions apply. Identity review remains required before claiming; existing owners are unchanged.','Nonaktif secara standar. Jika aktif, hanya CRM Manager dengan izin yang ada dapat mengklaim atau menugaskan Owner Lead. Jika nonaktif, izin klaim dan penugasan yang ada tetap berlaku. Verifikasi identitas tetap wajib sebelum klaim; Owner yang ada tidak berubah.','默认关闭。开启后，仅具备现有权限的CRM Manager可认领或分配Lead的Owner；关闭时沿用原有认领及分配权限。身份待核实仍须先核实才能认领，已有Owner保持不变。']],
+          ['sourceAttributionManagerOnly', ['Unverified source attribution review is restricted to CRM Managers','Verifikasi atribusi sumber hanya oleh CRM Manager','待核实来源归因仅限CRM Manager'], ['Enabled by default. Only unknown campaign codes or promotion link issues with saved leads enter Unverified sources. If disabled, staff still need existing campaign-management and relevant lead-access permissions. Original sources and existing attribution are not changed automatically.','Aktif secara standar. Hanya kode kampanye tidak dikenal atau masalah tautan promosi yang sudah menghasilkan Lead masuk ke Sumber belum diverifikasi. Jika nonaktif, staf tetap memerlukan izin pengelolaan kampanye dan akses Lead terkait. Sumber asli dan atribusi yang ada tidak berubah otomatis.','默认开启。未知活动码或异常推广链接仅在产生Lead后进入待核实来源。关闭后，员工仍须具备现有营销活动管理及相关Lead访问权限；不自动授予权限，不自动改写原始来源或既有归因。']],
+        ] as const).map(([key,labels,help])=><AdminField key={key} className="flex items-start gap-3" data-policy-field={key}><input type="checkbox" className="mt-1 accent-teal-700" checked={formData[key]} onChange={e=>setFormData(v=>({...v,[key]:e.target.checked}))}/><span><strong className="block">{labels[lang==='zh'?2:lang==='id'?1:0]}</strong><span className="block text-sm opacity-75 mt-1">{help[lang==='zh'?2:lang==='id'?1:0]}</span></span></AdminField>)}
+        <p className="text-sm opacity-75">{lang==='zh'?'使用本主题“保存”后生效；仅配置管理员可修改，变更记录审计，不完成任务或重放通知。':lang==='id'?'Berlaku setelah Simpan topik ini; hanya pengelola konfigurasi dapat mengubah. Perubahan diaudit, tanpa menyelesaikan tugas atau mengirim ulang notifikasi.':'Use Save in this topic to apply. Configuration managers only; changes are audited without completing tasks or replaying notifications.'}</p>
+      </section>}
       {/* 5. Main Configuration Grid (Clean Layout) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* CARD 1: Business Hours & Operational Timezone */}
-        {(activeCategory === "all" || activeCategory === "schedule") && (
+        {(activeCategory === "schedule") && (
           <div
             className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
           >
@@ -1547,11 +1365,11 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             <div className="space-y-4">
               {/* Timezone */}
               <div data-policy-field="businessHours.timezone">
-                <label
+                <AdminField required htmlFor="policy-timezone"
                   className={`block font-semibold text-xs mb-1 ${isLight ? "text-slate-800" : "text-slate-200"}`}
                 >
                   {t("Operating Timezone", "运营时区")}
-                </label>
+                </AdminField>
                 <p
                   className={`text-[11px] mb-1.5 ${isLight ? "text-slate-500" : "text-slate-400"}`}
                 >
@@ -1560,7 +1378,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     "用于业务时钟、SLA截止时间和新线索业务编号的日期。已生成的业务编号保持不变。",
                   )}
                 </p>
-                <CrmSelect label={t("Operating Timezone", "运营时区")} value={formData.businessHours.timezone} onChange={(value) =>
+                <CrmSelect required controlId="policy-timezone" label={t("Operating Timezone", "运营时区")} value={formData.businessHours.timezone} onChange={(value) =>
                     setFormData({
                       ...formData,
                       businessHours: {
@@ -1585,7 +1403,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
               {/* Start and End Hours */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <AdminField as="div">
                   <label
                     className={`block font-semibold text-xs mb-1 ${isLight ? "text-slate-800" : "text-slate-200"}`}
                   >
@@ -1606,7 +1424,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     aria-invalid={!!fieldErrors.startTime}
                     aria-describedby={fieldErrors.startTime ? "crm-work-startTime-error" : undefined}
                     style={{ scrollMarginTop: "12rem", ...(fieldErrors.startTime ? { borderColor: "#dc2626" } : {}) }}
-                    type="time"
+                    type="time" required
                     value={formData.businessHours.startTime}
                     onChange={(e) => {
                       setSaveError(null);
@@ -1624,9 +1442,9 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     className={`w-full max-w-[140px] h-8 text-xs rounded-lg px-2.5 border outline-none font-semibold font-mono ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-200"}`}
                   />
                   {fieldErrors.startTime && <p id="crm-work-startTime-error" className={`mt-1 text-sm ${isLight ? "text-red-700" : "text-red-300"}`}>{policyMessage(fieldErrors.startTime, lang)}</p>}
-                </div>
+                </AdminField>
 
-                <div>
+                <AdminField as="div">
                   <label
                     className={`block font-semibold text-xs mb-1 ${isLight ? "text-slate-800" : "text-slate-200"}`}
                   >
@@ -1647,7 +1465,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     aria-invalid={!!fieldErrors.endTime}
                     aria-describedby={fieldErrors.endTime ? "crm-work-endTime-error" : undefined}
                     style={{ scrollMarginTop: "12rem", ...(fieldErrors.endTime ? { borderColor: "#dc2626" } : {}) }}
-                    type="time"
+                    type="time" required
                     value={formData.businessHours.endTime}
                     onChange={(e) => {
                       setSaveError(null);
@@ -1665,16 +1483,16 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     className={`w-full max-w-[140px] h-8 text-xs rounded-lg px-2.5 border outline-none font-semibold font-mono ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-950 border-slate-800 text-slate-200"}`}
                   />
                   {fieldErrors.endTime && <p id="crm-work-endTime-error" className={`mt-1 text-sm ${isLight ? "text-red-700" : "text-red-300"}`}>{policyMessage(fieldErrors.endTime, lang)}</p>}
-                </div>
+                </AdminField>
               </div>
 
               {/* Workdays */}
               <div data-policy-field="businessHours.workDays">
-                <label
+                <AdminField
                   className={`block font-semibold text-xs mb-1 ${isLight ? "text-slate-800" : "text-slate-200"}`}
                 >
                   {t("Active Workdays", "团队每周工作日")}
-                </label>
+                </AdminField>
                 <p
                   className={`text-[11px] mb-2 ${isLight ? "text-slate-500" : "text-slate-400"}`}
                 >
@@ -1719,7 +1537,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         )}
 
         {/* CARD 2: First Response SLA (FRT) */}
-        {(activeCategory === "all" || activeCategory === "first_response") && (
+        {(activeCategory === "first_response") && (
           <div
             className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
           >
@@ -1755,7 +1573,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="firstResponseSla.hot"
                 error={configErrors["firstResponseSla.hot"] || saveError?.fields["firstResponseSla.hot"]}
                 duration={formData.firstResponseSla.hot}
-                originalDuration={policyConfig.firstResponseSla.hot}
+                originalDuration={savedPolicy.firstResponseSla.hot}
                 recommendedText={t("Default: 3 Hours", "默认: 3 小时")}
                 accentColor="text-rose-600 dark:text-rose-400 font-bold"
                 onChange={(newDuration) =>
@@ -1779,7 +1597,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="firstResponseSla.warm"
                 error={configErrors["firstResponseSla.warm"] || saveError?.fields["firstResponseSla.warm"]}
                 duration={formData.firstResponseSla.warm}
-                originalDuration={policyConfig.firstResponseSla.warm}
+                originalDuration={savedPolicy.firstResponseSla.warm}
                 recommendedText={t("Default: 24 Hours", "默认: 24 小时")}
                 accentColor="text-amber-600 dark:text-amber-400 font-bold"
                 onChange={(newDuration) =>
@@ -1803,7 +1621,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="firstResponseSla.cold"
                 error={configErrors["firstResponseSla.cold"] || saveError?.fields["firstResponseSla.cold"]}
                 duration={formData.firstResponseSla.cold}
-                originalDuration={policyConfig.firstResponseSla.cold}
+                originalDuration={savedPolicy.firstResponseSla.cold}
                 recommendedText={t("Default: 48 Hours", "默认: 48 小时")}
                 accentColor="text-slate-600 dark:text-slate-400"
                 onChange={(newDuration) =>
@@ -1821,7 +1639,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         )}
 
         {/* CARD 3: No-Response & Call Retry Policy */}
-        {(activeCategory === "all" || activeCategory === "retry") && (
+        {(activeCategory === "retry") && (
           <div
             className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
           >
@@ -1860,7 +1678,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="noResponseCadence.retryInterval"
                 error={configErrors["noResponseCadence.retryInterval"] || saveError?.fields["noResponseCadence.retryInterval"]}
                 duration={formData.noResponseCadence.retryInterval}
-                originalDuration={policyConfig.noResponseCadence.retryInterval}
+                originalDuration={savedPolicy.noResponseCadence.retryInterval}
                 recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
                 accentColor="text-purple-600 dark:text-purple-400"
                 onChange={(newDuration) =>
@@ -1877,7 +1695,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               <div
                 className={`p-4 rounded-xl border transition-all ${
                   formData.noResponseCadence.maxRetriesBeforeNurture !==
-                  policyConfig.noResponseCadence.maxRetriesBeforeNurture
+                  savedPolicy.noResponseCadence.maxRetriesBeforeNurture
                     ? isLight
                       ? "bg-amber-50/50 border-amber-300 ring-1 ring-amber-200"
                       : "bg-amber-950/20 border-amber-700/60"
@@ -1888,14 +1706,14 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               >
                 <div className="flex items-start justify-between gap-3 mb-1.5">
                   <div>
-                    <label
+                    <AdminField
                       className={`block font-semibold text-xs ${isLight ? "text-slate-800" : "text-slate-200"}`}
                     >
                       {t(
                         "Consecutive unanswered threshold",
                         "连续未回复阈值",
                       )}
-                    </label>
+                    </AdminField>
                     <div className="text-[10px] text-slate-400 font-mono">
                       {t("Consecutive unanswered threshold", "包含首次有效尝试")}
                     </div>
@@ -1950,7 +1768,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         )}
 
         {/* CARD 4: Inactivity Watchdog Thresholds */}
-        {(activeCategory === "all" || activeCategory === "watchdog") && (
+        {(activeCategory === "watchdog") && (
           <div
             className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
           >
@@ -1989,7 +1807,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="inactivityWatchdog.hotInactivity"
                 error={configErrors["inactivityWatchdog.hotInactivity"] || saveError?.fields["inactivityWatchdog.hotInactivity"]}
                 duration={formData.inactivityWatchdog.hotInactivity}
-                originalDuration={policyConfig.inactivityWatchdog.hotInactivity}
+                originalDuration={savedPolicy.inactivityWatchdog.hotInactivity}
                 recommendedText={t("Default: 24 Hours", "默认: 24 小时")}
                 accentColor="text-rose-600 dark:text-rose-400 font-bold"
                 onChange={(newDuration) =>
@@ -2059,7 +1877,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         )}
 
         {/* CARD 5: Milestone Cadence & Offsets */}
-        {(activeCategory === "all" || activeCategory === "milestone") && (
+        {(activeCategory === "milestone") && (
           <div
             className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
           >
@@ -2098,7 +1916,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="milestones.trialReminderBefore"
                 error={configErrors["milestones.trialReminderBefore"] || saveError?.fields["milestones.trialReminderBefore"]}
                 duration={formData.milestones.trialReminderBefore}
-                originalDuration={policyConfig.milestones.trialReminderBefore}
+                originalDuration={savedPolicy.milestones.trialReminderBefore}
                 recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
                 accentColor="text-emerald-600 dark:text-emerald-400"
                 onChange={(newDuration) =>
@@ -2122,7 +1940,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="milestones.trialFollowUpAfter"
                 error={configErrors["milestones.trialFollowUpAfter"] || saveError?.fields["milestones.trialFollowUpAfter"]}
                 duration={formData.milestones.trialFollowUpAfter}
-                originalDuration={policyConfig.milestones.trialFollowUpAfter}
+                originalDuration={savedPolicy.milestones.trialFollowUpAfter}
                 recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
                 accentColor="text-emerald-600 dark:text-emerald-400"
                 onChange={(newDuration) =>
@@ -2147,7 +1965,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 error={configErrors["milestones.assessmentFollowUpAfter"] || saveError?.fields["milestones.assessmentFollowUpAfter"]}
                 duration={formData.milestones.assessmentFollowUpAfter}
                 originalDuration={
-                  policyConfig.milestones.assessmentFollowUpAfter
+                  savedPolicy.milestones.assessmentFollowUpAfter
                 }
                 recommendedText={t("Default: 2 Hours", "默认: 2 小时")}
                 accentColor="text-emerald-600 dark:text-emerald-400"
@@ -2166,7 +1984,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         )}
 
         {/* CARD 6: Dormant Lead Re-activation */}
-        {(activeCategory === "all" || activeCategory === "reactivation") && (
+        {(activeCategory === "reactivation") && (
           <div
             className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
           >
@@ -2205,7 +2023,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 fieldPath="reactivation.reactivatedResponse"
                 error={configErrors["reactivation.reactivatedResponse"] || saveError?.fields["reactivation.reactivatedResponse"]}
                 duration={formData.reactivation.reactivatedResponse}
-                originalDuration={policyConfig.reactivation.reactivatedResponse}
+                originalDuration={savedPolicy.reactivation.reactivatedResponse}
                 recommendedText={t("Default: 30 Minutes", "默认: 30 分钟")}
                 accentColor="text-indigo-600 dark:text-indigo-400 font-bold"
                 onChange={(newDuration) =>
@@ -2241,7 +2059,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             </div>
           </div>
         )}
-      </div>
-    </form>
+    </div>
+    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&ruleExplanation}</div></AdminTopicFrame></div>
   );
 };

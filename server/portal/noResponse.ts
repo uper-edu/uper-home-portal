@@ -11,20 +11,11 @@ export async function sequencePolicy(c:any):Promise<NoResponsePolicy>{
  const d=value.noResponseCadence.retryInterval;
  return {threshold:value.noResponseCadence.maxRetriesBeforeNurture,intervalMs:d.value*({minutes:60000,hours:3600000,days:86400000}[d.unit]),calendar:{timezone:value.businessHours.timezone,start:value.businessHours.startTime,end:value.businessHours.endTime,days:value.businessHours.workDays}};
 }
-function restore(p:any,s:NoResponseSequence,at:string){
- if(confirmedTier(p))return;
- if(s.appliedAt && (p.tier!=='Cold-Nurture'||p.tierSource!=='behaviour_override'||p.tierUpdatedAt!==s.appliedAt)){s.needsGroupReview=true;return;}
- if(s.appliedAt){
-  if(completeQuestionnaire(p)) {const evaluated=evaluateFullLeadTier({...p,noResponseReady:false,assessmentDone:typeof p.quizScore==='number'});Object.assign(p,{tier:evaluated.tier,tierSource:evaluated.source,flag:evaluated.flag,tierUpdatedAt:at});}
-  else if(s.beforeTier)for(const key of ['tier','tierSource','flag','tierUpdatedAt']){const value=(s.beforeTier as any)[key];if(value===null)delete p[key];else p[key]=value;}
-  else s.needsGroupReview=true;
- }else if(p.tier==='Cold-Nurture'&&p.tierSource==='behaviour_override'){if(completeQuestionnaire(p)){const evaluated=evaluateFullLeadTier({...p,noResponseReady:false,assessmentDone:typeof p.quizScore==='number'});Object.assign(p,{tier:evaluated.tier,tierSource:evaluated.source,flag:evaluated.flag,tierUpdatedAt:at});}else s.needsGroupReview=true;}
-}
 export function clearSequence(profile:any,source:string,clock:Date){
  const p={...profile};const old=profile.noResponseSequence as NoResponseSequence|undefined;
  const s:NoResponseSequence={...old,schema:1,revision:(old?.revision||0)+1,count:0,status:'replied',startedAt:clock.toISOString(),resetAt:clock.toISOString(),resetSource:source,lastOutcome:'replied',waitUntil:undefined,policy:undefined,nextEligibleAt:undefined};
  if(source==='human_connected')s.lastAttemptAt=clock.toISOString();
- restore(p,s,clock.toISOString());p.noResponseSequence=s;return p;
+ p.noResponseSequence=s;return p;
 }
 export async function applyContactSequence(c:any,profile:any,body:any,actor:string,clock:Date){
  if(body.customerReplied || (body.recordKind!=='closure'&&body.connectStatus==='Connected')){
@@ -51,14 +42,5 @@ export async function customerReplied(c:any,leadId:string,key:string,recordedAt?
  const next=clearSequence(p,key,clock);
  await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1",[leadId,next]);await record(c,leadId,'customer',next.noResponseSequence);
 }
-export async function settleNoResponse(c:any,clock:Date){
- const rows=(await c.query("SELECT id,profile FROM portal_leads WHERE JSON_UNQUOTE(JSON_EXTRACT(profile,'$.noResponseSequence.status'))='waiting' AND JSON_UNQUOTE(JSON_EXTRACT(profile,'$.noResponseSequence.waitUntil'))<=:p1 ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED",[clock.toISOString()])).rows;
- for(const row of rows){
-  const p=row.profile,s=p.noResponseSequence as NoResponseSequence;
-  if(!s.policy||!s.waitUntil||!Number.isFinite(Date.parse(s.waitUntil))||Date.parse(s.waitUntil)>clock.getTime()||s.count<s.policy.threshold||s.policy.threshold===0)continue;
-  if(confirmedTier(p)){s.status='protected';}
-  else if(['Enrolled','Lost'].includes(p.currentStage)){s.status='review';s.needsGroupReview=true;}
-  else {s.beforeTier={tier:p.tier??null,tierSource:p.tierSource??null,flag:p.flag??null,tierUpdatedAt:p.tierUpdatedAt??null};s.status='nurtured';s.appliedAt=clock.toISOString();p.tier='Cold-Nurture';p.tierSource='behaviour_override';p.tierUpdatedAt=s.appliedAt;}
-  s.revision++;await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1",[row.id,p]);await record(c,row.id,'system',s);
- }
-}
+/** R6 retired. Retain callable boundary while worker integration is updated. */
+export async function settleNoResponse(_c:any,_clock:Date){ return; }

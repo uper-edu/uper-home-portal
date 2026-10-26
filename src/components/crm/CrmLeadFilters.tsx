@@ -1,6 +1,8 @@
-import {CrmSingleSelect} from "./CrmSingleSelect";
+import {metricSelectionLabel} from '../../utils/crmLeadAnalytics';
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
-import { useEffect, useRef, useState } from "react";
 import {
   defaultLeadFilters,
   dimensions,
@@ -9,8 +11,12 @@ import {
   type Dimension,
   type LeadFilters,
 } from "../../utils/crmLeadFilters";
+import {
+  clearLeadConditions,
+  leadConditionCount,
+  advancedLeadDimensions,
+} from "../../utils/crmFilterPresentation";
 import type { CustomerView } from "../../utils/crmWorkspace";
-type SingleField = "owner" | "task" | "sort" | "columns" | "workScope";
 interface Props {
   compact?: boolean;
   value: LeadFilters;
@@ -18,10 +24,7 @@ interface Props {
   lang: "zh" | "en" | "id";
   scope: string;
   isLight?: boolean;
-  owners: Array<{
-    id: string;
-    label: string;
-  }>;
+  owners: Array<{ id: string; label: string }>;
   count: number;
   loading: boolean;
   timezone: string;
@@ -43,489 +46,330 @@ export function CrmLeadFilters({
   onViewMode,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [open, setOpen] = useState<Dimension | SingleField | null>(null);
-  const [ownerSearch, setOwnerSearch] = useState("");
-  const activeField = useRef<HTMLDivElement | null>(null);
-  const trigger = useRef<HTMLButtonElement | null>(null);
+  const filterRoot=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    if(!compact||!expanded)return;
+    const dismiss=(event:PointerEvent)=>{
+      const target=event.target as Element;
+      if(filterRoot.current?.contains(target)||target.closest?.('.crm-detail-choice-popup'))return;
+      setExpanded(false);
+    };
+    document.addEventListener('pointerdown',dismiss);
+    return()=>document.removeEventListener('pointerdown',dismiss);
+  },[compact,expanded]);
+  const [sheetHeight,setSheetHeight]=useState(440);
+  useLayoutEffect(()=>{
+    if(!compact||!expanded)return;
+    const measure=()=>{const top=filterRoot.current?.getBoundingClientRect().top??0;setSheetHeight(Math.min(680,Math.max(120,window.innerHeight-Math.max(12,top)-16)))};
+    measure();window.addEventListener('resize',measure);window.addEventListener('scroll',measure,true);
+    return()=>{window.removeEventListener('resize',measure);window.removeEventListener('scroll',measure,true)};
+  },[compact,expanded]);
   const t = (en: string, zh: string) =>
-    lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
+    lang === "zh" ? zh : lang === "id" ? crmId(en) : en;
   const update = (patch: Partial<LeadFilters>) => onChange({ ...f, ...patch });
   const dimLabel = (k: Dimension) =>
-    t(filterDimensions[k].en, filterDimensions[k].zh);
+    k === "connect"
+      ? t("Latest sales contact result", "最近销售联系结果")
+      : k === "situation"
+        ? t("Contact overview", "联系概况")
+        : t(filterDimensions[k].en, filterDimensions[k].zh);
   const optionLabel = (k: Dimension, v: string) => {
     const o = filterDimensions[k].options.find((o) => o[0] === v);
     return o ? t(o[1], o[2]) : v;
   };
-  const toggle = (k: Dimension, v: string) =>
-    update({
-      [k]: f[k].includes(v) ? f[k].filter((x) => x !== v) : [...f[k], v],
-    });
-  const selectedDimensions = dimensions.filter((k) => f[k].length).length;
+  const ownerValue =
+    f.ownership === "person" ? "person:" + f.owner : f.ownership;
+  const ownerOptions = [
+    { value: "all", label: t("All accessible leads", "全部可见客户") },
+    { value: "mine", label: t("Owned by me", "我负责的") },
+    { value: "unassigned", label: t("Unassigned", "未分配") },
+    ...(scope !== "own"
+      ? owners.map((o) => ({ value: "person:" + o.id, label: o.label }))
+      : []),
+  ];
+  const ownerLabel =
+    ownerOptions.find((o) => o.value === ownerValue)?.label ||
+    t("Unavailable owner", "负责人已不可用");
+  const firstOptions = taskOptions.map((o) => ({
+    value: o[0],
+    label: t(o[1], o[2]),
+  }));
+  const firstLabel =
+    firstOptions.find((o) => o.value === f.task)?.label || f.task;
+  const selectDimension = (
+    k: Dimension,
+    source: LeadFilters,
+    change: (patch: Partial<LeadFilters>) => void,
+    className = "",
+  ) => (
+    <CrmSingleSelect
+      className={className}
+      label={dimLabel(k)}
+      value=""
+      multiple
+      values={source[k]}
+      options={filterDimensions[k].options.map((o) => ({
+        value: o[0],
+        label: optionLabel(k, o[0]),
+      }))}
+      displayValue={
+        dimLabel(k) +
+        " · " +
+        (source[k].length === 1
+          ? optionLabel(k, source[k][0])
+          : source[k].length
+            ? t(`${source[k].length} selected`, `已选${source[k].length}项`)
+            : t("Any", "不限"))
+      }
+      onChange={() => {}}
+      onValuesChange={(values) => change({ [k]: values })}
+      lang={lang}
+      isLight={isLight}
+      footer={(close) => (
+        <>
+          <button type="button" onClick={() => change({ [k]: [] })}>
+            {t("Clear", "清空")}
+          </button>
+          <button type="button" onClick={close}>
+            {t("Done", "完成")}
+          </button>
+        </>
+      )}
+    />
+  );
+  const removeDimension = (k: Dimension, v: string) => {
+    update({ [k]: f[k].filter((x) => x !== v) });
+  };
+  const clear = () => {
+    const next = clearLeadConditions(f);
+    onChange(next);
+  };
   const reset = () => {
-    onChange(defaultLeadFilters(scope));
-    setOpen(null);
-    setOwnerSearch("");
+    const next = defaultLeadFilters(scope);
+    onChange(next);
+    setExpanded(false);
   };
-  useEffect(() => {
-    if (!open) return;
-    const dismiss = (event: PointerEvent) => {
-      if (!activeField.current?.contains(event.target as Node)) setOpen(null);
-    };
-    document.addEventListener("pointerdown", dismiss);
-    const popup = activeField.current?.querySelector(".crm-filter-popover");
-    const initialFocus =
-      popup?.querySelector<HTMLElement>("input") ??
-      popup?.querySelector<HTMLElement>(
-        '[role="option"][aria-selected="true"]',
-      ) ??
-      popup?.querySelector<HTMLElement>('[role="option"]');
-    initialFocus?.focus();
-    return () => document.removeEventListener("pointerdown", dismiss);
-  }, [open]);
-  useEffect(() => setOwnerSearch(""), [lang]);
-  const singleSelect = ({
-    id,
-    label,
-    accessibleLabel = label,
-    title,
-    value,
-    options,
-    onSelect,
-  }: {
-    id: SingleField;
-    label: string;
-    accessibleLabel?: string;
-    title?: string;
-    value: string;
-    options: Array<{
-      value: string;
-      label: string;
-    }>;
-    onSelect: (value: string) => void;
-  }) => {
-    const isOpen = open === id;
-    const selected = options.find((option) => option.value === value);
-    const visibleOptions =
-      id === "owner"
-        ? options.filter((option) =>
-            option.label
-              .toLocaleLowerCase()
-              .includes(ownerSearch.trim().toLocaleLowerCase()),
-          )
-        : options;
-    const close = () => {
-      setOpen(null);
-      trigger.current?.focus();
-    };
-    return (
-      <div
-        className={"crm-filter-single crm-filter-" + id}
-        ref={isOpen ? activeField : undefined}
-        onBlur={(event) => {
-          if (
-            isOpen &&
-            event.relatedTarget &&
-            !event.currentTarget.contains(event.relatedTarget as Node)
-          )
-            setOpen(null);
-        }}
-        onKeyDown={(event) => {
-          if (!isOpen) return;
-          if (event.key === "Escape") {
-            event.preventDefault();
-            event.stopPropagation();
-            close();
-            return;
-          }
-          const inSearch = event.target instanceof HTMLInputElement;
-          if (
-            !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) ||
-            (inSearch && ["Home", "End"].includes(event.key))
-          )
-            return;
-          const items = Array.from(
-            event.currentTarget.querySelectorAll<HTMLButtonElement>(
-              '[role="option"]',
-            ),
-          );
-          if (!items.length) return;
-          event.preventDefault();
-          const current = items.indexOf(
-            document.activeElement as HTMLButtonElement,
-          );
-          const next =
-            event.key === "Home"
-              ? 0
-              : event.key === "End"
-                ? items.length - 1
-                : event.key === "ArrowDown"
-                  ? (current + 1) % items.length
-                  : (current <= 0 ? items.length : current) - 1;
-          items[next].focus();
-        }}
-      >
-        <button
-          ref={isOpen ? trigger : undefined}
-          type="button"
-          className="crm-filter-dimension-button"
-          aria-label={
-            accessibleLabel +
-            t(": ", "：") +
-            (selected?.label ?? t("Unavailable option", "选项已失效"))
-          }
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          aria-controls={"lead-options-" + id}
-          title={title}
-          onClick={() => {
-            setOpen(isOpen ? null : id);
-            setOwnerSearch("");
-          }}
-          onKeyDown={(event) => {
-            if (!isOpen && ["ArrowDown", "ArrowUp"].includes(event.key)) {
-              event.preventDefault();
-              setOpen(id);
-              setOwnerSearch("");
-            }
-          }}
-        >
-          <span className="crm-filter-dimension-name">{label}</span>
-          <span className="crm-filter-dimension-value" title={selected?.label}>
-            {selected?.label ?? t("Unavailable option", "选项已失效")}
-          </span>
-          <span aria-hidden="true">⌄</span>
-        </button>
-        {isOpen && (
-          <div
-            id={"lead-options-" + id}
-            role="dialog"
-            aria-label={accessibleLabel + t(" options", "选项")}
-            className="crm-filter-popover"
-          >
-            {id === "owner" && (
-              <input
-                type="search"
-                className="crm-filter-option-search"
-                aria-label={t("Search ", "搜索") + accessibleLabel}
-                placeholder={t("Find options…", "搜索选项…")}
-                value={ownerSearch}
-                onChange={(event) => setOwnerSearch(event.target.value)}
-              />
-            )}
-            <div
-              className="crm-filter-options"
-              role="listbox"
-              aria-label={accessibleLabel}
-            >
-              {visibleOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="option"
-                  aria-selected={option.value === value}
-                  className="crm-filter-option crm-filter-single-option"
-                  onClick={() => {
-                    onSelect(option.value);
-                    close();
-                  }}
-                >
-                  <span
-                    className="crm-filter-selection-mark"
-                    aria-hidden="true"
-                  >
-                    {option.value === value ? "✓" : ""}
-                  </span>
-                  <span>{option.label}</span>
-                </button>
-              ))}
-            </div>
-            {!visibleOptions.length && (
-              <p className="crm-filter-no-options" role="status">
-                {t("No matching options", "无匹配选项")}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const advancedCount = advancedLeadDimensions.reduce(
+    (n, k) => n + f[k].length,
+    0,
+  );
+  const chip = (key: string, label: string, remove: () => void) => (
+    <button
+      type="button"
+      key={key}
+      className="crm-filter-chip"
+      aria-label={t("Remove ", "移除") + label}
+      onClick={remove}
+    >
+      {label}
+      <X size={12} aria-hidden="true" />
+    </button>
+  );
+  const group = (label: string, keys: Dimension[]) => (
+    <fieldset className="crm-lead-filter-group">
+      <legend>{label}</legend>
+      {keys.map((k) => (
+        <div key={k}>{selectDimension(k, f, update)}</div>
+      ))}
+    </fieldset>
+  );
   return (
-    <div className={"crm-filter-area"+(compact?" crm-filter-sidebar":"")} data-theme={isLight ? "light" : "dark"}>
+    <div
+      className={
+        "crm-filter-area crm-lead-filter-v3" +
+        (compact ? " crm-filter-sidebar" : "")
+      }
+      data-theme={isLight ? "light" : "dark"}
+      data-expanded={expanded}
+      ref={filterRoot}
+      onKeyDown={event=>{if(compact&&expanded&&event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();setExpanded(false);filterRoot.current?.querySelector<HTMLButtonElement>('.crm-filter-more')?.focus()}}}
+    >
+      <div className={compact?'crm-sidebar-filter-sheet':undefined} style={compact&&expanded?{maxHeight:sheetHeight}:undefined}>
       <section
         aria-label={t("Lead filters", "客户筛选")}
         className="crm-filter-panel"
       >
-
         <div className="crm-filter-main">
-        <CrmSingleSelect className="crm-filter-workscope" displayValue={(lang==='zh'?'范围':lang==='id'?'Lingkup':'Scope')+' · '+(f.workScope==='action'?(lang==='zh'?'需处理':lang==='id'?'Perlu ditangani':'Needs handling'):(lang==='zh'?'全部':lang==='id'?'Semua':'All'))} label={lang==='zh'?'工作范围':lang==='id'?'Lingkup kerja':'Work scope'} value={f.workScope||'all'} onChange={v=>update({workScope:v as 'all'|'action'})} options={[{value:'action',label:lang==='zh'?'需处理':lang==='id'?'Perlu ditangani':'Needs handling'},{value:'all',label:lang==='zh'?'全部':lang==='id'?'Semua':'All'}]} lang={lang} isLight={isLight}/>
-          <input
-            type="search"
-            maxLength={200}
-            className="crm-filter-search"
-            aria-label={t("Search customers", "搜索客户")}
-            placeholder={t(
-              "Name, phone, email or lead number…",
-              "姓名、电话、邮箱或业务编号…",
-            )}
-            value={f.search}
-            onChange={(e) => update({ search: e.target.value })}
-          />
-          {singleSelect({
-            id: "owner",
-            label: t("Owner", "负责人"),
-            value: f.ownership === "person" ? "person:" + f.owner : f.ownership,
-            options: [
-              {
-                value: "all",
-                label:
-                  scope === "all"
-                    ? t("All owners", "全部负责人")
-                    : t("All accessible leads", "全部可见客户"),
-              },
-              { value: "mine", label: t("Owned by me", "我负责的") },
-              { value: "unassigned", label: t("Unassigned", "未分配") },
-              ...(scope !== "own"
-                ? owners.map((o) => ({
-                    value: "person:" + o.id,
-                    label: o.label,
-                  }))
-                : []),
-            ],
-            onSelect: (value) =>
-              update(
-                value.startsWith("person:")
-                  ? { ownership: "person", owner: value.slice(7) }
-                  : { ownership: value as LeadFilters["ownership"], owner: "" },
-              ),
-          })}
-          {singleSelect({
-            id: "task",
-            label: t("Tasks", "跟进"),
-            accessibleLabel: t("Follow-up tasks", "跟进任务"),
-            title: t("Dates use ", "日期采用 ") + timezone,
-            value: f.task,
-            options: taskOptions.map((o) => ({
-              value: o[0],
-              label: t(o[1], o[2]),
-            })),
-            onSelect: (value) => update({ task: value }),
-          })}
-          <label className="crm-filter-unread" title={t("Customer activity you have not viewed; independent of notification delivery. Viewing does not complete tasks.", "本人尚未查看的客户动态，与通知是否送达无关；查看不完成任务。") }>
+          <div className="crm-lead-search">
+            <Search size={16} aria-hidden="true" />
             <input
-              type="checkbox"
-              checked={f.unread}
-              onChange={(e) => update({ unread: e.target.checked })}
+              type="search"
+              maxLength={200}
+              className="crm-filter-search"
+              aria-label={t("Search customers", "搜索客户")}
+              placeholder={t(
+                "Name, phone, email or lead number…",
+                "姓名、电话、邮箱或业务编号…",
+              )}
+              value={f.search}
+              onChange={(e) => update({ search: e.target.value })}
             />
-            {t("Unread by me", "仅我未读")}
-          </label>
+          </div>
+          <CrmSingleSelect
+            className="crm-filter-owner"
+            label={t("Owner", "负责人")}
+            value={ownerValue}
+            options={ownerOptions}
+            searchable
+            displayValue={t("Owner", "负责人") + " · " + ownerLabel}
+            onChange={(v) =>
+              update(
+                v.startsWith("person:")
+                  ? { ownership: "person", owner: v.slice(7) }
+                  : { ownership: v as LeadFilters["ownership"], owner: "" },
+              )
+            }
+            lang={lang}
+            isLight={isLight}
+          />
+          {selectDimension("stage", f, update, "crm-filter-stage")}
+          <div
+            className="crm-filter-task"
+            title={t("Dates use ", "日期采用 ") + timezone}
+          >
+            <CrmSingleSelect
+              label={t("First contact requirement", "首次联系")}
+              value={f.task}
+              options={firstOptions}
+              displayValue={t("First contact", "首次联系") + " · " + firstLabel}
+              onChange={(v) => update({ task: v })}
+              lang={lang}
+              isLight={isLight}
+            />
+          </div>
           <button
             type="button"
             className="crm-filter-more"
             aria-expanded={expanded}
             aria-controls="lead-more-filters"
+            title={t('Match any selected value within a field, and all fields together.','同一条件多选时符合任一项即可，不同条件之间须同时符合。')}
             onClick={() => {
               setExpanded(!expanded);
-              setOpen(null);
             }}
           >
-            {t("More filters", "更多筛选")}
-            {selectedDimensions ? ` (${selectedDimensions})` : ""}
-            <span aria-hidden="true">{expanded ? "⌃" : "⌄"}</span>
-          </button>
-          <button type="button" className="crm-filter-reset" onClick={reset}>
-            {t("Reset filters", "重置筛选")}
+            <SlidersHorizontal size={15} aria-hidden="true" />
+            {compact?t("Filters","筛选"):t("More filters", "更多筛选")}
+            {(compact?leadConditionCount(f):advancedCount) ? ` (${compact?leadConditionCount(f):advancedCount})` : ""}
+            <ChevronDown size={14} aria-hidden="true" />
           </button>
         </div>
-
         {expanded && (
-          <div id="lead-more-filters" className="crm-filter-dimensions">
-            {dimensions.map((k) => {
-              const isOpen = open === k;
-              const selected = f[k];
-              const summary =
-                selected.length === 0
-                  ? t("Any", "不限")
-                  : selected.length === 1
-                    ? optionLabel(k, selected[0])
-                    : t(
-                        `${selected.length} selected`,
-                        `已选 ${selected.length} 项`,
-                      );
-              const options = filterDimensions[k].options;
-              return (
-                <div
-                  key={k}
-                  className="crm-filter-dimension"
-                  ref={isOpen ? activeField : undefined}
-                  onBlur={(e) => {
-                    if (
-                      isOpen &&
-                      e.relatedTarget &&
-                      !e.currentTarget.contains(e.relatedTarget as Node)
-                    )
-                      setOpen(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (isOpen && e.key === "Escape") {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setOpen(null);
-                      trigger.current?.focus();
-                    }
-                  }}
-                >
-                  <button
-                    ref={isOpen ? trigger : undefined}
-                    type="button"
-                    className={
-                      "crm-filter-dimension-button" +
-                      (selected.length ? " is-selected" : "")
-                    }
-                    aria-label={dimLabel(k) + t(": ", "：") + summary}
-                    aria-haspopup="dialog"
-                    aria-expanded={isOpen}
-                    aria-controls={"lead-options-" + k}
-                    onClick={() => {
-                      setOpen(isOpen ? null : k);
-                      setOwnerSearch("");
-                    }}
-                  >
-                    <span className="crm-filter-dimension-name">
-                      {dimLabel(k)}
-                    </span>
-                    <span
-                      className="crm-filter-dimension-value"
-                      title={selected
-                        .map((v) => optionLabel(k, v))
-                        .join(t(", ", "、"))}
-                    >
-                      {summary}
-                    </span>
-                    <span aria-hidden="true">⌄</span>
-                  </button>
-                  {isOpen && (
-                    <div
-                      id={"lead-options-" + k}
-                      role="dialog"
-                      aria-label={dimLabel(k) + t(" options", "选项")}
-                      className="crm-filter-popover"
-                    >
-                      <div className="crm-filter-options">
-                        {options.map((o) => (
-                          <label
-                            key={o[0]}
-                            className="crm-filter-option"
-                            onPointerDown={(event) => {
-                              // Keep focus inside the popup until the label activates its
-                              // checkbox. Otherwise blur can unmount it before change fires.
-                              if (event.button === 0 && event.target !== event.currentTarget.querySelector("input")) {
-                                event.preventDefault();
-                                event.currentTarget.querySelector("input")?.focus();
-                              }
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selected.includes(o[0])}
-                              onChange={() => toggle(k, o[0])}
-                            />
-                            <span>{t(o[1], o[2])}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <div className="crm-filter-popover-footer">
-                        <span>
-                          {t(
-                            `${selected.length} selected`,
-                            `已选 ${selected.length} 项`,
-                          )}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpen(null);
-                            trigger.current?.focus();
-                          }}
-                        >
-                          {t("Done", "完成")}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div id="lead-more-filters" className="crm-lead-advanced">
+            <div className="crm-lead-filter-groups">
+              {group(t("Interaction and follow-up", "互动与跟进"), [
+                "connect",
+                "situation",
+              ])}
+              {group(t("Sales progress", "销售进展"), ["tier", "signal"])}
+              {group(t("Learning needs", "学习需求"), ["mode"])}
+            </div>
           </div>
         )}
-
-        {!expanded && selectedDimensions > 0 && (
+        {leadConditionCount(f) > 0 && (
           <div
-            aria-label={t("Applied additional filters", "已选附加条件")}
             className="crm-filter-chips"
+            aria-label={t("Applied filters", "已选条件")}
           >
+            {f.overview?.map(key=>chip("overview:"+key,metricSelectionLabel(key,lang),()=>update({overview:f.overview?.filter(value=>value!==key)})))}
+            {f.search.trim() &&
+              chip("search", t("Search: ", "搜索：") + f.search, () =>
+                update({ search: "" }),
+              )}
+            {f.ownership !== "all" &&
+              chip("owner", t("Owner: ", "负责人：") + ownerLabel, () =>
+                update({ ownership: "all", owner: "" }),
+              )}
+            {f.task !== "all" &&
+              chip(
+                "task",
+                t("First contact: ", "首次联系：") + firstLabel,
+                () => update({ task: "all" }),
+              )}
+            {f.workScope === "action" &&
+              chip("scope", t("Needs-handling scope", "需处理范围"), () => {
+                update({ workScope: "all" });
+              })}
             {dimensions.flatMap((k) =>
-              f[k].map((v) => (
-                <button
-                  type="button"
-                  key={k + ":" + v}
-                  className="crm-filter-chip"
-                  aria-label={
-                    t("Remove ", "移除") +
-                    dimLabel(k) +
-                    t(": ", "：") +
-                    optionLabel(k, v)
-                  }
-                  onClick={() => toggle(k, v)}
-                >
-                  {dimLabel(k)}
-                  {t(": ", "：")}
-                  {optionLabel(k, v)} <span aria-hidden="true">×</span>
-                </button>
-              )),
+              f[k].map((v) =>
+                chip(k + v, dimLabel(k) + "：" + optionLabel(k, v), () =>
+                  removeDimension(k, v),
+                ),
+              ),
             )}
+            <button type="button" className="crm-lead-clear" onClick={clear}>
+              {t("Clear conditions", "清空条件")}
+            </button>
           </div>
         )}
       </section>
-
       <div
-        aria-label={t("Customer list controls", "客户列表工具栏")}
         className="crm-filter-results"
+        aria-label={t("Customer list controls", "客户列表工具栏")}
       >
+        {!compact&&<>
         <p role="status" aria-live="polite">
-          {loading
-            ? t("Updating results…", "正在更新结果…")
-            : lang === "id"
-              ? `${count} pelanggan cocok`
-              : t(
-                  `${count} ${count === 1 ? "customer matches" : "customers match"}`,
-                  `匹配 ${count} 位客户`,
-                )}
+          {t(`${count} customers match`, `匹配 ${count} 位客户`)}
+          <span className="crm-filter-updating" style={{visibility:loading?'visible':'hidden'}} aria-hidden={!loading}>{t('Updating…','更新中…')}</span>
         </p>
-        {singleSelect({
-          id: "sort",
-          label: t("Sort", "排序"),
-          value: f.sort,
-          options: [
-            { value: "priority", label: t("Processing priority", "处理优先级") },
+        </>}
+        <button type="button" className="crm-lead-defaults" title={t("Restore role defaults and sorting; keep view unchanged","恢复角色默认筛选和排序，视图不变")} onClick={reset}>
+          {t("Restore default filters", "恢复默认筛选")}
+        </button>
+        <CrmSingleSelect
+          className="crm-lead-sort"
+          label={t("Sort", "排序")}
+          value={f.sort}
+          options={[
+            {
+              value: "priority",
+              label: t("Processing priority", "处理优先级"),
+            },
             { value: "newest", label: t("Newest customer", "最近登记") },
-            { value: "activity", label: t("Latest activity", "最新动态") },
+            {
+              value: "activity",
+              label: t("Latest recorded activity", "最近动态记录"),
+            },
             {
               value: "deadline",
-              label: t("Earliest deadline", "截止时间最早"),
+              label: t("First contact deadline", "首次联系截止最早"),
             },
-          ],
-          onSelect: (value) => update({ sort: value }),
-        })}
-        {!compact&&singleSelect({
-          id: "columns",
-          label: t("View", "视图"),
-          value: viewMode,
-          options: [
-            { value: "worklist", label: t("Worklist", "工作列表") },
-            { value: "table", label: t("Data table", "字段表") },
-          ],
-          onSelect: (value) => onViewMode(value as CustomerView),
-        })}
+          ]}
+          displayValue={
+            t("Sort", "排序") +
+            " · " +
+            ({
+              priority: t("Processing priority", "处理优先级"),
+              newest: t("Newest customer", "最近登记"),
+              activity: t("Latest recorded activity", "最近动态记录"),
+              deadline: t("First contact deadline", "首次联系截止最早"),
+            }[f.sort] || f.sort)
+          }
+          onChange={(v) => update({ sort: v })}
+          lang={lang}
+          isLight={isLight}
+        />
+        {!compact && (
+          <CrmSingleSelect
+            className="crm-lead-view"
+            label={t("View", "视图")}
+            value={viewMode}
+            options={[
+              { value: "worklist", label: t("Worklist", "工作列表") },
+              { value: "table", label: t("Data table", "字段表") },
+            ]}
+            displayValue={
+              t("View", "视图") +
+              " · " +
+              (viewMode === "worklist"
+                ? t("Worklist", "工作列表")
+                : t("Data table", "字段表"))
+            }
+            onChange={(v) => onViewMode(v as CustomerView)}
+            lang={lang}
+            isLight={isLight}
+          />
+        )}
+      </div>
       </div>
     </div>
   );

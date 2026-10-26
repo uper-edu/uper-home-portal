@@ -1,0 +1,2 @@
+export function identityRoute(url:string){const p=new URL(url).searchParams;const leadId=p.get('identityLead');return leadId?{leadId,candidateId:p.get('identityCandidate')||undefined}:null;}
+export function identityUrl(url:string,selection:{leadId:string;candidateId?:string}|null){const next=new URL(url);next.searchParams.delete('identityLead');next.searchParams.delete('identityCandidate');if(selection){next.searchParams.set('identityLead',selection.leadId);if(selection.candidateId)next.searchParams.set('identityCandidate',selection.candidateId);}return next.href;}

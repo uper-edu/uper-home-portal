@@ -1,3 +1,4 @@
+import {AdminField,AdminRequiredNote,firstMissingAdminField} from '../components/AdminForm';
 import {BrowserMetadataGuide} from '../components/BrowserMetadataGuide';
 import {PageMetadata} from '../components/PageMetadata';
 import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
@@ -235,6 +236,8 @@ export function AccessWorkspace({
   };
   const save = async () => {
     if (busy) return;
+    const missing=panel.current&&firstMissingAdminField(panel.current);
+    if(missing){missing.focus();setErr('admin_required_missing');return;}
     setBusy(true);
     setErr("");
     try {
@@ -270,7 +273,7 @@ export function AccessWorkspace({
     }
   };
   const errorText =
-    err === "access_preview_required"
+    err === "admin_required_missing" ? t("Complete the required fields.","Lengkapi kolom wajib.","请填写必填项。") : err === "access_preview_required"
       ? t(
           "Preview the role impact before saving.",
           "Pratinjau dampak peran sebelum menyimpan.",
@@ -470,7 +473,7 @@ export function AccessWorkspace({
           </p>
         ) : (
           <>
-            {err && (
+            {err && !user && !role && (
               <p role="alert" className="access-error">
                 {errorText}
               </p>
@@ -510,14 +513,14 @@ export function AccessWorkspace({
             {data && tab === "users" && (
               <>
                 <div className="access-toolbar">
-                  <label>
+                  <AdminField>
                     {t("Find a user", "Cari pengguna", "查找用户")}
                     <input
                       type="search"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                     />
-                  </label>
+                  </AdminField>
                   {can("access.users") && (
                     <button onClick={() => openUser(null)}>
                       {t("Add user", "Tambah pengguna", "新增用户")}
@@ -719,7 +722,7 @@ export function AccessWorkspace({
             aria-modal="true"
             aria-labelledby="access-editor-title"
           >
-            <div className="access-toolbar">
+            <AdminRequiredNote lang={lang}/><div className="access-toolbar">
               <h2 id="access-editor-title">
                 {user
                   ? t("User settings", "Pengaturan pengguna", "用户设置")
@@ -760,7 +763,7 @@ export function AccessWorkspace({
                 {errorText}
               </p>
             )}
-            {err && (
+            {err && err!=="admin_required_missing" && (
               <button
                 disabled={busy}
                 onClick={async () => {
@@ -865,9 +868,10 @@ export function AccessWorkspace({
             )}
             {user && (
               <>
-                <label>
+                <AdminField>
                   {t("Login ID", "ID login", "登录ID")}
                   <input
+                    required={!user.id}
                     value={user.loginId}
                     disabled={!!user.id}
                     onChange={(e) => {
@@ -875,19 +879,20 @@ export function AccessWorkspace({
                       setDirty(true);
                     }}
                   />
-                </label>
-                <label>
+                </AdminField>
+                <AdminField>
                   {t("Name", "Nama", "姓名")}
                   <input
                     disabled={!can("access.users")}
+                    required
                     value={user.displayName}
                     onChange={(e) => {
                       setUser({ ...user, displayName: e.target.value });
                       setDirty(true);
                     }}
                   />
-                </label>
-                <label>
+                </AdminField>
+                <AdminField>
                   {t(
                     "Login email (optional)",
                     "Email login (opsional)",
@@ -911,7 +916,7 @@ export function AccessWorkspace({
                       "可使用此邮箱或登录ID配合同一密码登录。邮箱不可重复，留空则仅使用登录ID。",
                     )}
                   </small>
-                </label>
+                </AdminField>
                 <CrmSingleSelect
                   label={t("Roles", "Peran", "角色")}
                   footer={() => (
@@ -944,7 +949,7 @@ export function AccessWorkspace({
                   isLight={isLight}
                   emptyLabel={t("Select roles", "Pilih peran", "选择角色")}
                 />
-                <label>
+                <AdminField>
                   <input
                     type="checkbox"
                     checked={user.active}
@@ -955,7 +960,7 @@ export function AccessWorkspace({
                     }}
                   />
                   {t("Account enabled", "Akun aktif", "启用账号")}
-                </label>
+                </AdminField>
                 {draftAccess && (
                   <section className="access-impact" aria-live="polite">
                     <h3>
@@ -1030,7 +1035,7 @@ export function AccessWorkspace({
                   </p>
                 )}
                 {(!user.id || can("access.sessions")) && (
-                  <label>
+                  <AdminField>
                     {user.id
                       ? t(
                           "New password for reset",
@@ -1041,6 +1046,7 @@ export function AccessWorkspace({
                     <input
                       type="password"
                       autoComplete="new-password"
+                      required={!user.id}
                       value={password}
                       minLength={8}
                       onChange={(e) => {
@@ -1055,32 +1061,34 @@ export function AccessWorkspace({
                         "密码不会返回或记入审计。",
                       )}
                     </small>
-                  </label>
+                  </AdminField>
                 )}
               </>
             )}
             {role && (
               <>
-                <label>
+                <AdminField>
                   {t("Stable role ID", "ID peran tetap", "稳定角色ID")}
                   <input
                     disabled={role.revision > 0}
+                    required={role.revision===0}
                     value={role.id}
                     onChange={(e) =>
                       changeRole({ ...role, id: e.target.value })
                     }
                   />
-                </label>
+                </AdminField>
                 {["names", "description"].map((field) => (
                   <div key={field} className="access-languages">
                     {["English", "Bahasa Indonesia", "中文"].map(
                       (language, i) => (
-                        <label key={language}>
+                        <AdminField key={language}>
                           {field === "names"
                             ? t("Role name", "Nama peran", "角色名称")
                             : t("Description", "Deskripsi", "职责说明")}{" "}
                           · {language}
                           <input
+                            required={field==="names"}
                             value={
                               role.config[field as "names" | "description"][i]
                             }
@@ -1097,12 +1105,12 @@ export function AccessWorkspace({
                               });
                             }}
                           />
-                        </label>
+                        </AdminField>
                       ),
                     )}
                   </div>
                 ))}
-                <label>
+                <AdminField>
                   <input
                     type="checkbox"
                     checked={role.enabled}
@@ -1111,7 +1119,7 @@ export function AccessWorkspace({
                     }
                   />
                   {t("Role enabled", "Peran aktif", "启用角色")}
-                </label>
+                </AdminField>
                 {permissionCatalog.map((p, index) => (
                   <Fragment key={p.key}>
                     {(index === 0 ||
@@ -1119,7 +1127,7 @@ export function AccessWorkspace({
                       <h3>{modules[p.module][col]}</h3>
                     )}
                     <div className="access-permission">
-                      <label>
+                      <AdminField>
                         <input
                           type="checkbox"
                           checked={!!role.config.grants[p.key]}
@@ -1142,7 +1150,7 @@ export function AccessWorkspace({
                           }}
                         />
                         {p.names[col]}
-                      </label>
+                      </AdminField>
                       {p.scoped && role.config.grants[p.key] && (
                         <CrmSingleSelect
                           label={t("Data scope", "Cakupan data", "数据范围")}
@@ -1231,14 +1239,15 @@ export function AccessWorkspace({
                 )}
               </>
             )}
-            <label>
+            <AdminField>
               {t("Change reason", "Alasan perubahan", "变更原因")}
               <textarea
+                required
                 value={why}
                 maxLength={500}
                 onChange={(e) => setWhy(e.target.value)}
               />
-            </label>
+            </AdminField>
             <div className="access-actions">
               <button
                 disabled={

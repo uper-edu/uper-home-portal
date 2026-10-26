@@ -1,3 +1,6 @@
+import {coursePriceReply,protectGeneratedReply,consultationPriceContext} from './coursePrices.ts';
+import {queueExtraction} from './aiExtraction.ts';
+import {crmInstant} from '../../src/utils/crmOperatingTime.ts';
 import {engagement} from "./trustWorkflow.ts";
 import type { Express } from "express";
 import {
@@ -129,6 +132,9 @@ export function mountChat(app: Express) {
           );
         } else {
           await transaction(async (c) => {
+            // Lock the customer before FK-backed evidence inserts to avoid
+            // shared-lock upgrades across simultaneous conversations.
+            if(conv.lead_id)await c.query("SELECT id FROM portal_leads WHERE id=:p1 FOR UPDATE",[conv.lead_id]);
             if (introduction)
               await c.query(
                 "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'assistant','','generating')",
@@ -144,6 +150,7 @@ export function mountChat(app: Express) {
               [conv.id],
             );
             if(conv.lead_id&&!introduction)await engagement(c,conv.lead_id,'message',conv.id+':'+messageId,{conversationId:conv.id,requestId:messageId,text:content});
+            if(conv.lead_id&&!introduction){const source=(await c.query("SELECT id,created_at FROM messages WHERE conversation_id=:p1 AND request_id=:p2 AND role='user'",[conv.id,messageId])).rows[0];await queueExtraction(c,conv.lead_id,'customer_message',source.id,content,(source.created_at instanceof Date ? source.created_at : crmInstant(source.created_at))?.toISOString()||null,'visitor');}
             if (conv.lead_id)
               await event(c, "conversation.updated", conv.lead_id, {
                 source: conv.source,
@@ -195,8 +202,12 @@ export function mountChat(app: Express) {
               ),
             })
           : "";
-        let reply = "",
-          modelUsed: string | null = null;
+        const priceContext=consultationPriceContext(ownedProfile,history);
+        const currentQuestion=introduction?(ownedProfile?.buyingSignals||[]).join(' ')||content:content;
+        const fixedReply=coursePriceReply(currentQuestion,priceContext,req.body.lang||'zh');
+        let catalogueUsed=!!fixedReply;
+        let reply = fixedReply||"",
+          modelUsed: string | null = fixedReply?'course-catalogue':null;
         const providers = [
           {
             model: process.env.OPENAI_MODEL || "gpt-4o",
@@ -213,7 +224,7 @@ export function mountChat(app: Express) {
               "https://api.deepseek.com/chat/completions",
           },
         ];
-        for (const provider of providers) {
+        for (const provider of (fixedReply?[]:providers)) {
           if (!provider.key) continue;
           let partial = "";
           try {
@@ -229,7 +240,7 @@ export function mountChat(app: Express) {
                   {
                     role: "system",
                     content:
-                      getSystemInstruction(false) +
+                      getSystemInstruction(false) + "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. Never invent prices; monetary answers are produced from a server catalogue. A stored request is not a completed contact or booking. No new tasks are created." +
                       placementContext +
                       introInstruction +
                       consultationNextStep(
@@ -238,7 +249,7 @@ export function mountChat(app: Express) {
                           ?.content,
                         !!ownedResult && !profileIntroduction,
                       ) +
-                      "\nYou are an AI assistant. Human requests create follow-up tasks; never impersonate an employee.",
+                      "\nYou are an AI assistant. Human requests are evidence and hints only, never new tasks or a booking confirmation. Never claim a request was routed or an advisor will contact them; say their original message is saved, and extraction may still be processing. Never impersonate an employee.",
                   },
                   ...history,
                   ...(introduction
@@ -293,8 +304,7 @@ export function mountChat(app: Express) {
                     throw Error("Answer truncated");
                   const chunk = payload.choices?.[0]?.delta?.content || "";
                   partial += chunk;
-                  if (stream && !res.destroyed)
-                    res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+                  // Only validated complete replies are sent to the client.
                 }
               }
             } else {
@@ -306,7 +316,8 @@ export function mountChat(app: Express) {
             try {
               partial = JSON.parse(partial).reply || partial;
             } catch {}
-            reply = partial;
+            reply = protectGeneratedReply(partial,content,priceContext,req.body.lang||'zh');
+            catalogueUsed=reply!==partial;
             modelUsed = provider.model;
             await db.query(
               "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
@@ -324,13 +335,14 @@ export function mountChat(app: Express) {
         }
         await transaction(async (c) => {
           await c.query(
-            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5 WHERE id=:p1",
+            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6) WHERE id=:p1",
             [
               assistantId,
               reply,
               modelUsed ? "completed" : "failed",
               modelUsed,
               modelUsed ? null : "all_providers_failed",
+              catalogueUsed?'course-fees-v1':null,
             ],
           );
           if (!modelUsed)

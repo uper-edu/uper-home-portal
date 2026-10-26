@@ -25,7 +25,6 @@ function result(rows) {
             "expires_at",
             "effective_at",
             "processed_at",
-            "seen_at",
             "completed_at",
             "lease_until",
             "window_start",
@@ -74,7 +73,7 @@ export async function connection() {
         tokens = insert[2].split(",");
       columns.forEach((column, index) => {
         if (
-          /^(due_at|expires_at|seen_at|created_at)$/.test(column.trim()) &&
+          /^(due_at|expires_at|created_at)$/.test(column.trim()) &&
           /^:p\d+$/.test(tokens[index]?.trim())
         ) {
           const position = Number(tokens[index].trim().slice(2)) - 1;
@@ -354,7 +353,7 @@ export async function connection() {
         };
       return { rows: leads, rowCount: leads.length };
     },
-    async leadAttention([employeeId, leadIds, readSnapshot]) {
+    async leadAttention([employeeId, leadIds, activitySnapshot]) {
       if (Array.isArray(leadIds) && !leadIds.length) return {rows: [], rowCount: 0};
       const leads = (await execute(Array.isArray(leadIds)
         ? `SELECT id,profile FROM portal_leads WHERE id IN (${leadIds.map((_,i)=>':p'+(i+1)).join(',')})`
@@ -367,45 +366,13 @@ export async function connection() {
             [lead.id],
           )
         ).rows;
-        // Customer activity is independent of notification recipients/delivery.
-        // One statement captures the count and its actual visible watermark together.
-        const activity = (
-          await execute(
-            `SELECT SUM(a.activity_at>COALESCE(r.seen_at,'1000-01-01 00:00:00')) OVER () AS count,
-              DATE_FORMAT(a.activity_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS read_through,
-              a.event_type,a.source
-             FROM (
-              SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m
-              JOIN conversations c ON c.id=m.conversation_id
-              WHERE c.lead_id=:p2 AND m.role='user' AND m.status='saved' AND TRIM(m.content)<>''
-              UNION ALL
-              SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p2 AND o.type IN
-               ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')
-             ) a LEFT JOIN lead_read_marks r ON r.employee_id=:p1 AND r.lead_id=:p2
-             WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6))
-             ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1`,
-            [employeeId, lead.id, readSnapshot || null],
-          )
-        ).rows[0] || {count: 0, read_through: null};
-        const latest = (
-          await execute(
-            "SELECT type,created_at,payload FROM outbox WHERE lead_id=:p1 ORDER BY created_at DESC LIMIT 1",
-            [lead.id],
-          )
-        ).rows[0];
+        const activity=(await execute(`SELECT a.activity_at,a.event_type,a.source FROM (
+          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' AND TRIM(m.content)<>''
+          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')
+        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1`,[lead.id,activitySnapshot||null])).rows[0];
         rows.push({
           id: lead.id,
-          observed_at: activity.read_through,
-          unread_count: Number(activity.count),
-          latest: Number(activity.count)>0
-            ? {type: activity.event_type, at: activity.read_through, source: activity.source}
-            : latest
-            ? {
-                type: latest.type,
-                at: latest.created_at,
-                source: latest.payload.source,
-              }
-            : null,
+          latest: activity?{type:activity.event_type,at:activity.activity_at,source:activity.source}:null,
           tasks: tasks
             .filter(
               (t) =>
@@ -416,6 +383,7 @@ export async function connection() {
             .map((t) => ({
               id: t.id,
               kind: t.kind,
+              revision: t.revision,
               ownerId: t.owner_id,
               status: t.status,
               dueAt: t.due_at,
@@ -434,6 +402,7 @@ export async function connection() {
   };
   return {
     client,
+    discard() { broken = true; },
     async release() {
       if (inTransaction)
         await c.rollback().catch(() => {
@@ -468,17 +437,26 @@ for (const method of methods)
       await lease.release();
     }
   };
-export async function tx(operation) {
+export async function tx(operation, options = {}) {
+  if (options.isolation !== undefined && options.isolation !== 'READ COMMITTED')
+    throw Error('Unsupported transaction isolation');
   const lease = await connection();
+  let begun = false;
   try {
+    // One transaction only: never change the pooled connection's session default.
+    if (options.isolation) await lease.client.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await lease.client.query("BEGIN");
+    begun = true;
+    lease.client.transactionIsolation = options.isolation;
     const value = await operation(lease.client);
     await lease.client.query("COMMIT");
     return value;
   } catch (error) {
+    if(options.isolation && !begun)lease.discard();
     await lease.client.query("ROLLBACK").catch(() => {});
     throw error;
   } finally {
+    delete lease.client.transactionIsolation;
     await lease.release();
   }
 }

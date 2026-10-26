@@ -3,6 +3,7 @@ import type { CrmLanguage } from "./crmLanguage";
 
 /** Editable starting points, not confirmed commercial offers or automatic actions. */
 export const communicationTemplates = [
+
   {
     id: "introduction",
     label: [
@@ -11,6 +12,7 @@ export const communicationTemplates = [
       "初次联系与需求确认",
     ],
   },
+  {id:"fees",label:["Discuss fees","Bahas biaya","学费咨询沟通"]},
   {
     id: "assessment",
     label: [
@@ -57,6 +59,11 @@ export function communicationTemplate(
   if (!["en", "id", "zh"].includes(language)) return "";
   if (id === "introduction") return greeting(language, name, advisor);
   const content: Record<string, Record<string, string>> = {
+    fees:{
+      en:`Hello ${name}! I'm ${advisor} from UPER Education. Which course would you like to know the fees for? I can check the current course fees, payment options and any applicable offer conditions with you.`,
+      id:`Halo ${name}! Saya ${advisor} dari UPER Education. Biaya kursus apa yang ingin Anda ketahui? Saya dapat memeriksa biaya terkini, pilihan pembayaran, dan syarat penawaran yang berlaku bersama Anda.`,
+      zh:`您好，${name}！我是 UPER Education 的 ${advisor}。您希望了解哪门课程的费用？我可以与您一起核实当前学费、付款方式及适用的优惠条件。`,
+    },
     assessment: {
       en: `Hello ${name}! I'm ${advisor} from UPER Education. Would you like to discuss your assessment results and which learning goals matter most to you?`,
       id: `Halo ${name}! Saya ${advisor} dari UPER Education. Apakah Anda ingin membahas hasil asesmen dan tujuan belajar yang paling penting bagi Anda?`,

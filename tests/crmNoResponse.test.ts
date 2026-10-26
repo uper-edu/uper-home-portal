@@ -17,12 +17,12 @@ test('638 working-calendar roll, wrong number, zero threshold, no historical tot
  const wrong=noResponseAttempt(s,'Wrong Number',work,at(19));assert.equal(wrong.count,1);
  const disabled=noResponseAttempt(undefined,'No Response',{...policy,threshold:0},at(9));assert.equal(disabled.count,1);assert.equal(disabled.status,'counting');
 });
-test('638 clear restores only known R6-owned group; later decisions and manual confirmation protected',()=>{
+test('customer reply resets contact sequence without any automatic Tier restoration',()=>{
  const base:any={id:'test',tier:'Cold-Nurture',tierSource:'behaviour_override',tierUpdatedAt:at(21).toISOString(),noResponseSequence:{schema:1,revision:3,count:3,status:'nurtured',startedAt:at(9).toISOString(),appliedAt:at(21).toISOString(),beforeTier:{tier:'Unqualified',tierSource:null,tierUpdatedAt:null,flag:null}}};
- let p=clearSequence(base,'customer-message',new Date('2026-10-20T09:00Z'));assert.equal(p.tier,'Unqualified');assert.equal(p.tierSource,undefined);assert.equal(p.noResponseSequence.count,0);
+ let p=clearSequence(base,'customer-message',new Date('2026-10-20T09:00Z'));assert.equal(p.tier,'Cold-Nurture');assert.equal(p.tierSource,'behaviour_override');assert.equal(p.noResponseSequence.count,0);
  p=clearSequence({...base,tierConfirmed:true},'customer-message',at(22));assert.equal(p.tier,'Cold-Nurture');assert.equal(p.noResponseSequence.count,0);
- p=clearSequence({...base,tier:'Hot',tierSource:'buying_signal'},'customer-message',at(22));assert.equal(p.tier,'Hot');assert.equal(p.noResponseSequence.needsGroupReview,true);
- p=clearSequence({tier:'Cold-Nurture',tierSource:'behaviour_override'},'staff-reply',at(22));assert.equal(p.tier,'Cold-Nurture');assert.equal(p.noResponseSequence.needsGroupReview,true);
+ p=clearSequence({...base,tier:'Hot',tierSource:'buying_signal'},'customer-message',at(22));assert.equal(p.tier,'Hot');assert.equal(p.noResponseSequence.needsGroupReview,undefined);
+ p=clearSequence({tier:'Cold-Nurture',tierSource:'behaviour_override'},'staff-reply',at(22));assert.equal(p.tier,'Cold-Nurture');assert.equal(p.noResponseSequence.needsGroupReview,undefined);
 });
 
 test('638 a connected real attempt resets count but still anchors minimum retry spacing',()=>{

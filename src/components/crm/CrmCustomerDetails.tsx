@@ -16,7 +16,7 @@ import type {
   ConversationRecord,
   ConversationTask,
 } from "../../utils/crmConversations";
-import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
+import { formatCrmOperatingTime,viewerTimeZone } from "../../utils/crmOperatingTime";
 import {
   customerCity,
   customerOutcome,
@@ -32,7 +32,7 @@ const knownDate = (
   lang: CrmLanguage,
 ) =>
   date && Date.parse(date) > 0
-    ? formatCrmOperatingTime(date, timezone)
+    ? formatCrmOperatingTime(date, viewerTimeZone())
     : lang === "id"
       ? crmId("Unknown time")
       : lang === "zh"
@@ -54,11 +54,13 @@ export function CrmCustomerProfile({
   lead,
   lang,
   timezone,
-  ownership,
+  ownership, nameNote, dynamicProfile,
   communication,
   participation, identity, signalFocus, onSignalSource, onSignalTask,
 }: DetailProps & {
   ownership: React.ReactNode;
+  nameNote?: React.ReactNode;
+  dynamicProfile?:React.ReactNode;
   communication?: React.ReactNode;
   participation?: React.ReactNode;
   identity?: React.ReactNode;
@@ -70,6 +72,7 @@ export function CrmCustomerProfile({
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const u = campaignUi(lang);
   const tierSources: Record<string, [string, string]> = {
+    initial_registration:["Initial registration", "首次登记自动分类"],
     predicted: ["Rule-based", "规则判断"],
     sales_confirmed: ["Sales confirmed", "销售确认"],
     behaviour_override: ["Customer activity", "客户行为"],
@@ -197,6 +200,8 @@ export function CrmCustomerProfile({
             ],
           ]}
         />
+        {dynamicProfile}
+        {nameNote}
         {identity}
       </section>
       <section>
@@ -248,7 +253,7 @@ export function CrmCustomerProfile({
               (lang === "id"
                 ? crmId(tierSources[lead.tierSource]?.[0])
                 : tierSources[lead.tierSource]?.[lang === "zh" ? 1 : 0]) ||
-                t("Not recorded", "未记录"),
+                t("Historical basis not recorded", "历史依据未记录"),
             ],
             ...(hasValue(lead.tierConfirmed)
               ? [
@@ -272,6 +277,7 @@ export function CrmCustomerProfile({
             ],
           ]}
         />
+        {(lead as any).initialTierDecision&&<CrmDisclosure heading={t('Initial classification evidence','首次分类依据')}><p>{(lead as any).initialTierDecision.ruleId} · {(lead as any).initialTierDecision.ruleVersion} · {knownDate((lead as any).initialTierDecision.at,timezone,lang)}</p><p>首次登记时采用的输入（不是当前画像）：</p><pre className="whitespace-pre-wrap">{JSON.stringify((lead as any).initialTierDecision.input,null,2)}</pre><p>原问卷事实：{(lead as any).initialTierDecision.sourceFactIds?.join('、')}</p></CrmDisclosure>}
         <CrmBuyingEvidence lead={lead} lang={lang} timezone={timezone} focus={signalFocus} onSource={onSignalSource} onTask={onSignalTask}/>
       </section>
       <section>

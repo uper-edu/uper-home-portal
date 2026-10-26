@@ -1,3 +1,4 @@
+import {selectVisitorScope, visitorKey} from '../src/services/visitorScope';
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
@@ -32,7 +33,8 @@ import {
   mergeHskHistoryRows,
 } from "../src/services/hskAttemptStorage";
 import HskAssessmentReport from "../src/components/HskAssessmentReport";
-const historyKey = "uper_hsk_history_v2";
+selectVisitorScope("a".repeat(64));
+const historyKey = visitorKey("uper_hsk_history_v2");
 function report(mode: "full" | "express" = "full", offset = 0): HskResult {
   const attempt = newHskAttempt(mode, randomUUID());
   attempt.startedAt = new Date(Date.now() - 200000 + offset).toISOString();

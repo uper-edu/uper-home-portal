@@ -68,6 +68,9 @@ export interface ReactivationPolicy {
 }
 
 export interface CrmPolicyConfig {
+  identityReviewManagerOnly: boolean;
+  ownerAssignmentManagerOnly: boolean;
+  sourceAttributionManagerOnly: boolean;
   version: string;
   updatedAt: string;
   businessHours: BusinessHoursPolicy;
@@ -79,6 +82,9 @@ export interface CrmPolicyConfig {
 }
 
 export const DEFAULT_CRM_POLICY_CONFIG: CrmPolicyConfig = {
+  identityReviewManagerOnly: true,
+  ownerAssignmentManagerOnly: false,
+  sourceAttributionManagerOnly: true,
   version: '2.0',
   updatedAt: new Date().toISOString(),
   businessHours: {

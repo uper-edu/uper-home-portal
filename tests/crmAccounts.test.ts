@@ -488,7 +488,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         assert.ok(
           (await request("/api/crm/leads", cookies.Fadhil)).data.leads.find(
             (l: any) => l.id === "account-a",
-          ).attention.unreadCount > 0,
+          ).attention.latest !== undefined,
         );
         assert.equal(
           (

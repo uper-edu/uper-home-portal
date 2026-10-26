@@ -35,8 +35,8 @@
   display: grid;
   grid-template-columns:
     minmax(140px, .6fr) minmax(220px, 1fr) minmax(180px, 0.7fr) minmax(180px, 0.7fr)
-    auto auto auto;
-  grid-template-areas: "scope search owner task unread more reset";
+    auto auto;
+  grid-template-areas: "scope search owner task more reset";
   align-items: center;
   gap: 8px;
 }
@@ -71,15 +71,6 @@
 }
 .crm-filter-task {
   grid-area: task;
-}
-.crm-filter-unread {
-  grid-area: unread;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  min-height: var(--cf-control-height);
-  cursor: pointer;
 }
 .crm-filter-more {
   grid-area: more;
@@ -288,10 +279,10 @@
 }
 @container crm-filters (max-width: 1119px) {
   .crm-filter-main {
-    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto auto auto;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto auto;
     grid-template-areas:
-      "scope search search search search"
-      "owner task unread more reset";
+      "scope search search search"
+      "owner task more reset";
   }
 }
 @container crm-filters (max-width: 759px) {
@@ -302,7 +293,7 @@
       "search search search"
       "owner owner owner"
       "task task task"
-      "unread more reset";
+      "more more reset";
   }
 }
 @container crm-filters (min-width: 480px) and (max-width: 759px) {
@@ -311,7 +302,7 @@
     grid-template-areas:
       "scope scope search search search search"
       "owner owner owner task task task"
-      "unread unread more more reset reset";
+      "more more more reset reset reset";
   }
   .crm-filter-more {
     justify-self: start;
@@ -357,7 +348,7 @@
       "search search"
       "owner owner"
       "task task"
-      "unread more"
+      "more more"
       "reset reset";
   }
 }
@@ -409,4 +400,75 @@
 .crm-detail-choice-popup .crm-filter-option input { flex-shrink: 0; }
 
 /* The detail sidebar and full worklist share one filter state and implementation. */
-.crm-filter-sidebar{padding:0 12px 12px;container-type:normal}.crm-filter-sidebar .crm-filter-panel{padding:0;border:0;background:transparent}.crm-filter-sidebar .crm-filter-main{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"search search" "scope scope" "owner owner" "task task" "unread more" "reset reset";gap:8px}.crm-filter-sidebar .crm-filter-dimensions{grid-template-columns:minmax(0,1fr)}.crm-filter-sidebar .crm-filter-results{display:flex;flex-direction:column;align-items:stretch;gap:4px}.crm-filter-sidebar .crm-filter-results>p{min-height:30px;margin:0}.crm-filter-sidebar .crm-filter-results .crm-filter-single{width:100%;flex:none;height:auto}.crm-filter-sidebar .crm-filter-popover{position:static;width:100%;max-width:none;margin-top:5px;box-shadow:none}.crm-filter-sidebar .crm-filter-options{max-height:220px}.crm-filter-sidebar .crm-filter-dimension:nth-child(n) .crm-filter-popover{width:100%}.crm-filter-sidebar .crm-filter-reset{justify-self:end}.crm-sidebar-selection-note{margin:0 12px 12px;padding:10px;border:1px solid var(--dw-border);border-radius:8px;color:var(--dw-muted);font-size:12px;line-height:1.5}.crm-filter-sidebar .crm-filter-chip{font-size:12px}
+.crm-filter-sidebar{padding:0 12px 12px;container-type:normal}.crm-filter-sidebar .crm-filter-panel{padding:0;border:0;background:transparent}.crm-filter-sidebar .crm-filter-main{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"search search" "scope scope" "owner owner" "task task" "more more" "reset reset";gap:8px}.crm-filter-sidebar .crm-filter-dimensions{grid-template-columns:minmax(0,1fr)}.crm-filter-sidebar .crm-filter-results{display:flex;flex-direction:column;align-items:stretch;gap:4px}.crm-filter-sidebar .crm-filter-results>p{min-height:30px;margin:0}.crm-filter-sidebar .crm-filter-results .crm-filter-single{width:100%;flex:none;height:auto}.crm-filter-sidebar .crm-filter-popover{position:static;width:100%;max-width:none;margin-top:5px;box-shadow:none}.crm-filter-sidebar .crm-filter-options{max-height:220px}.crm-filter-sidebar .crm-filter-dimension:nth-child(n) .crm-filter-popover{width:100%}.crm-filter-sidebar .crm-filter-reset{justify-self:end}.crm-sidebar-selection-note{margin:0 12px 12px;padding:10px;border:1px solid var(--dw-border);border-radius:8px;color:var(--dw-muted);font-size:12px;line-height:1.5}.crm-filter-sidebar .crm-filter-chip{font-size:12px}
+
+/* Lead collection toolbar: existing shared choice component, scoped dimensions. */
+.crm-lead-filter-v3,.crm-lead-filter-v3 .crm-detail-choice{--cf-control-height:40px;--cf-radius:10px;--cw-control-min:40px}
+.crm-lead-filter-v3>.crm-filter-panel{padding:12px;border-radius:14px}
+.crm-lead-filter-v3 .crm-filter-main{grid-template-columns:minmax(240px,1.6fr) minmax(170px,1fr) minmax(170px,1fr) minmax(210px,1.2fr) auto;grid-template-areas:"search owner stage task more";gap:8px}
+.crm-lead-search{grid-area:search;position:relative;min-width:0}
+.crm-lead-search>svg{position:absolute;left:12px;top:12px;color:var(--cf-muted);pointer-events:none}
+.crm-lead-filter-v3 .crm-lead-search input.crm-filter-search{padding-left:36px}
+:root[data-design-style="apple"] #root .crm-lead-filter-v3 .crm-lead-search input[type="search"]{padding-left:36px!important}
+.crm-lead-filter-v3 .crm-filter-stage{grid-area:stage;min-width:0}
+.crm-lead-filter-v3 .crm-filter-more>svg{flex:none}
+.crm-lead-filter-v3 .crm-filter-more[aria-expanded="true"]>svg:last-child{transform:rotate(180deg)}
+.crm-lead-filter-v3 .crm-filter-dimension-button{min-height:40px;height:40px}
+.crm-lead-advanced{border-top:1px solid var(--cf-border);margin-top:12px;padding-top:12px}
+.crm-lead-filter-help{margin:0 0 12px;color:var(--cf-muted);font-size:12px;line-height:1.5}
+.crm-lead-filter-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.crm-lead-filter-group{border:0;padding:0;margin:0;min-width:0;display:flex;flex-direction:column;gap:8px}
+.crm-lead-filter-group legend{margin-bottom:8px;font-weight:600;font-size:13px;color:var(--cf-text)}
+.crm-lead-filter-v3 .crm-filter-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:20px}
+.crm-lead-filter-v3 .crm-filter-chip svg{flex:none}
+.crm-lead-clear,.crm-lead-defaults{color:var(--cf-muted);padding:4px 6px;text-decoration:underline;text-underline-offset:3px}
+.crm-lead-filter-v3 .crm-filter-results>.crm-lead-sort{width:210px;min-width:0}
+.crm-lead-filter-v3 .crm-filter-results>.crm-lead-view{width:160px;min-width:0}
+.crm-lead-filter-v3.crm-filter-sidebar .crm-filter-main{grid-template-columns:minmax(0,1fr);grid-template-areas:"search" "owner" "stage" "task" "more"}
+.crm-lead-filter-v3.crm-filter-sidebar .crm-lead-filter-groups{grid-template-columns:minmax(0,1fr)}
+.crm-lead-filter-v3.crm-filter-sidebar .crm-filter-results>.crm-lead-sort{width:100%}
+@container crm-filters (max-width:1000px){.crm-lead-filter-v3 .crm-filter-main{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"search search more" "owner stage task"}}
+@container crm-filters (max-width:679px){.crm-lead-filter-v3 .crm-filter-main{grid-template-columns:minmax(0,1fr);grid-template-areas:"search" "owner" "stage" "task" "more"}.crm-lead-filter-groups{grid-template-columns:minmax(0,1fr)}}
+
+/* Keep filtering feedback and advanced controls in stable, compact rows. */
+.crm-filter-updating{display:inline-block;min-width:64px;margin-left:8px;color:var(--cf-muted);font-size:12px;font-weight:400}
+.crm-lead-filter-v3 .crm-lead-filter-groups{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.crm-lead-filter-v3 .crm-lead-filter-group{display:contents}
+.crm-lead-filter-v3 .crm-lead-filter-group legend{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.crm-lead-filter-v3 .crm-lead-advanced{margin-top:8px;padding-top:8px}
+.crm-lead-filter-v3.crm-filter-sidebar .crm-lead-filter-groups{grid-template-columns:minmax(0,1fr)}
+@container crm-filters (max-width:1000px){.crm-lead-filter-v3 .crm-lead-filter-groups{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container crm-filters (max-width:459px){.crm-lead-filter-v3 .crm-lead-filter-groups{grid-template-columns:minmax(0,1fr)}}
+/* An empty result must not shrink the page below an open desktop filter. */
+.crm-customer-workspace:not([data-open="true"])>.crm-customer-results{min-height:240px}
+
+/* Record workspace: keep customers visible; filters are secondary tools. */
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-main{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"search more";gap:6px}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-owner,
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-stage,
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-task,
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-chips,
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-lead-defaults,
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-lead-sort{display:none}
+.crm-lead-filter-v3.crm-filter-sidebar .crm-filter-more{padding:0 8px;gap:4px}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-more>svg:last-child{display:none}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-results{padding-top:4px}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="true"] .crm-filter-panel{max-height:min(300px,45vh);overflow-y:auto;overscroll-behavior-y:contain;padding:0 4px 8px 0}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="true"] .crm-filter-main{grid-template-areas:"search" "more" "owner" "stage" "task"}
+
+/* The sidebar filter sheet overlays records instead of displacing them. */
+.crm-lead-filter-v3.crm-filter-sidebar{position:relative;height:86px;flex-shrink:0}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="true"]{z-index:35}
+.crm-filter-sidebar .crm-sidebar-filter-sheet{min-width:0}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="true"] .crm-sidebar-filter-sheet{position:absolute;top:0;left:8px;right:8px;z-index:35;max-height:min(440px,calc(100vh - 220px));overflow-y:auto;overscroll-behavior-y:contain;background:var(--cf-bg);border:1px solid var(--cf-border);border-radius:12px;padding:8px;box-shadow:0 12px 28px #0f172a26}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="true"] .crm-filter-panel{max-height:none;overflow:visible;padding:0}
+.crm-lead-filter-v3.crm-filter-sidebar .crm-filter-results{padding-top:4px}
+.crm-lead-filter-v3 .crm-sidebar-filter-sheet>.crm-filter-panel{padding:0}
+.crm-lead-filter-v3:not(.crm-filter-sidebar)>div>.crm-filter-panel{padding:12px;border-radius:14px}
+
+.crm-customer-workspace[data-open="true"]{overflow-anchor:none}
+
+.crm-lead-filter-v3.crm-filter-sidebar{height:52px}
+.crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-results{display:none}
+.crm-sidebar-customer-count{font-size:13px;font-weight:500;color:var(--dw-muted)}
+.crm-sidebar-count-updating{font-size:12px;font-weight:400;color:var(--dw-muted)}

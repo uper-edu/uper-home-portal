@@ -1,3 +1,4 @@
+import {AdminField} from '../AdminForm';
 import React, { useId } from "react";
 import {
   campaignDateTimeValue,
@@ -34,7 +35,7 @@ export function CampaignDateTimeField({
     if (parts) onChange(parts);
   };
   return (
-    <div className="campaign-field campaign-datetime-field">
+    <AdminField as="div" className="campaign-field campaign-datetime-field">
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
@@ -65,6 +66,6 @@ export function CampaignDateTimeField({
           </button>
         </div>
       )}
-    </div>
+    </AdminField>
   );
 }

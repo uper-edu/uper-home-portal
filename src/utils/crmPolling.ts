@@ -93,9 +93,11 @@ export class CrmPolling {
     this.flights[kind]={promise,controller}; return promise;
   }
 }
-export function stableCrmOrder<T extends {id:string}>(previous:T[], incoming:T[]) {
+export function stableCrmOrder<T extends {id:string;identityReview?:{pending?:boolean}}>(previous:T[], incoming:T[]) {
   const byId=new Map(incoming.map(row=>[row.id,row]));
+  if(previous.some(row=>byId.has(row.id)&&Boolean(row.identityReview?.pending)!==Boolean(byId.get(row.id)?.identityReview?.pending)))return incoming;
   const stable=previous.filter(row=>byId.has(row.id)).map(row=>byId.get(row.id)!);
   const existing=new Set(stable.map(row=>row.id));
-  return [...stable,...incoming.filter(row=>!existing.has(row.id))];
+  const next=[...stable,...incoming.filter(row=>!existing.has(row.id))];
+  return [...incoming.filter(row=>row.identityReview?.pending),...next.filter(row=>!row.identityReview?.pending)];
 }

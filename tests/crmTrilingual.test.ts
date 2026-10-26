@@ -210,6 +210,8 @@ test("static bilingual labels have Indonesian entries and templates have no extr
             ] === node) ||
           (ts.isJsxAttribute(parent) && /En$/.test(parent.name.getText(ast))) ||
           (ts.isArrayLiteralExpression(parent) &&
+            parent.elements.length === 2 &&
+            parent.elements.every(ts.isStringLiteralLike) &&
             parent.elements.some((x) =>
               /[\u4e00-\u9fff]/.test(x.getText(ast)),
             ));

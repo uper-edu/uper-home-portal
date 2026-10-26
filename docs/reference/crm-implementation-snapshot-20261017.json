@@ -4,7 +4,7 @@
   "references": [
     {
       "path": "server/mysqlApplication.ts",
-      "sha256": "7c7df0e05230ee3019883797b3b80f54c8de00445daa2653c2998b6742b421f0"
+      "sha256": "542b7f9965c9280c1926eff08c65f02b274ee604363d78461fa9e65753b11e4f"
     },
     {
       "path": "server/portal/identity.ts",
@@ -12,11 +12,11 @@
     },
     {
       "path": "server/portal/runtime.ts",
-      "sha256": "24c063556d3c94c7a58d843a73520ccb0dca8701a40974cfef01fb0902c6cb9c"
+      "sha256": "656b8019425ae409d573f6fa148bea098eb9bf78109701882ee34b4cec49ba70"
     },
     {
       "path": "cloud/mysql/schema.sql",
-      "sha256": "d12365c0afca2f9e149fae38946b0b8afdaca805932e08481e6bbf0798e647d6"
+      "sha256": "3e00ecf82f3b39272231b2184e0bbbe691504d73b49b201b7dccd59fe48ee3d1"
     },
     {
       "path": "server/portal/attribution.ts",
@@ -32,39 +32,39 @@
     },
     {
       "path": "src/types/crmLead.ts",
-      "sha256": "a798c778c977bf962b40e056171d1ed16054e65631e2df1e54519f757354f7a5"
+      "sha256": "81e37c6b9d0808e502ffd47f198096af0118e2208cffaf8005d8e1d06120f770"
     },
     {
       "path": "server/portal/salesWorkflow.ts",
-      "sha256": "81ebb1415906ec3cb04b03f3b995c841fc50d646f68cc1db1d5e866dde71f5f4"
+      "sha256": "a578466948d7a39aa0d8b353952bad7e3a1babb9c8494c9c2a74552d694b0513"
     },
     {
       "path": "src/utils/crmContact.ts",
-      "sha256": "b7f283ee462fea6efd11f9aebe2abfad9025a73dada53fcf5884f80c7d41d4f3"
+      "sha256": "bb7edd3322bf59b48113b96cbaf9c8d9db490d883791882d3c927f20e4772391"
     },
     {
       "path": "server/portal/policy.ts",
-      "sha256": "39d9e8751c9bfb569c3c928d9f4d5c9123b6df69a8b25537c3f42013f33497be"
+      "sha256": "50eda340d44e6c133b3ac4244b2b392ab45d6cef3a0f3b03be17f8db2e287f55"
     },
     {
       "path": "server/portal/followup.ts",
-      "sha256": "0daf91a1bad32b610e2f9f80f9448cf475411f26497912f763afe56d2519e155"
+      "sha256": "6e008762294b88f8bb87c1ed1c4a783a58c3837de224f10e1ec143bca80eec1e"
     },
     {
       "path": "server/portal/worker.ts",
-      "sha256": "42f627989eb546e9a468268156e438c59b2012c693127af2eec4da707164427a"
+      "sha256": "37f1e3eaf9e5f456acecbcd90a1f5c47c0d07d0554ec1e4be4e6cceb4a73202d"
     },
     {
       "path": "server/portal/notificationDelivery.ts",
-      "sha256": "031f9bc9b68ce02dba63a4241ede812e9bec178d10f69dd42ec36923ec748e9b"
+      "sha256": "9a3fa42f082a1ab9162ecab97ca713be1d0f343c029cbc69d19b814824ebedd1"
     },
     {
       "path": "src/utils/crmProcessMetrics.ts",
-      "sha256": "8c86014f4bfc601e26a06ed9337cede216a1ac5f931fee4bfefef7641c28e543"
+      "sha256": "3b9cbc9bc54939b886b0b33862d3fafd4cafc28bd5471f0e7706ff25a846f1f3"
     },
     {
       "path": "server/portal/chat.ts",
-      "sha256": "8c4d6160a922f1c63efd32cb06c06cbc9470b485165b052096a28be3e7e948ec"
+      "sha256": "0195a0aec8fbd7f80a72003cd27caf99042a67735f4ac04946605baeb08752ad"
     },
     {
       "path": "server/portal/assessments.ts",
@@ -72,15 +72,15 @@
     },
     {
       "path": "src/types/crmCampaign.ts",
-      "sha256": "5c997e4909d9e39747452ebb4eaf423d3187e94788630bc34307ae8d9581ecb1"
+      "sha256": "466635c224ad007351e5402d9a335f78dc5754cd517db26953d2c0022f175f4b"
     },
     {
       "path": "src/types/crmPolicyConfig.ts",
-      "sha256": "23f8527e3ba2ae4cae1848becbaec3e03705d0b08963e0adc7fac035266e234d"
+      "sha256": "ebbe2c8cd05e4ecbaffdcfddee3aaf89faa8ccb6d2523a67fdee22dae48fb3ba"
     },
     {
       "path": "cloud/mysql/migrate.mjs",
-      "sha256": "964c9c8198732dd229dd3f629afdc7042ef160f6a8d7e7febd2f3deacbc131dc"
+      "sha256": "242bf09fc1f8d8a55004d88be85922bad9768f5eccbe0a1c7a19ed68294b4117"
     },
     {
       "path": "cloud/mysql/schema-v2.sql",
@@ -706,14 +706,6 @@
     },
     {
       "layer": "storage",
-      "object": "notification_inbox",
-      "key": "read_at",
-      "type": "DATETIME(6)",
-      "optional": true,
-      "source": "cloud/mysql/schema.sql"
-    },
-    {
-      "layer": "storage",
       "object": "portal_audit",
       "key": "id",
       "type": "BIGINT UNSIGNED",
@@ -773,30 +765,6 @@
       "object": "identity_candidates",
       "key": "candidate_id",
       "type": "VARCHAR(191)",
-      "optional": false,
-      "source": "cloud/mysql/schema.sql"
-    },
-    {
-      "layer": "storage",
-      "object": "lead_read_marks",
-      "key": "employee_id",
-      "type": "VARCHAR(191)",
-      "optional": false,
-      "source": "cloud/mysql/schema.sql"
-    },
-    {
-      "layer": "storage",
-      "object": "lead_read_marks",
-      "key": "lead_id",
-      "type": "VARCHAR(191)",
-      "optional": false,
-      "source": "cloud/mysql/schema.sql"
-    },
-    {
-      "layer": "storage",
-      "object": "lead_read_marks",
-      "key": "seen_at",
-      "type": "DATETIME(6)",
       "optional": false,
       "source": "cloud/mysql/schema.sql"
     },
@@ -1526,6 +1494,198 @@
       "key": "created_at",
       "type": "DATETIME(6)",
       "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "id",
+      "type": "CHAR(64)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "raw_code",
+      "type": "VARCHAR(200)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "status",
+      "type": "VARCHAR(16)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "campaign_id",
+      "type": "VARCHAR(191)",
+      "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "revision",
+      "type": "BIGINT",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "config",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_source_reviews",
+      "key": "updated_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "id",
+      "type": "CHAR(36)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "lead_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "source_type",
+      "type": "VARCHAR(32)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "source_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "source_revision",
+      "type": "VARCHAR(80)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "input_hash",
+      "type": "CHAR(64)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "contract_version",
+      "type": "VARCHAR(40)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "input",
+      "type": "JSON",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "status",
+      "type": "VARCHAR(16)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "output",
+      "type": "JSON",
+      "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "model",
+      "type": "VARCHAR(100)",
+      "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "error_code",
+      "type": "VARCHAR(80)",
+      "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "attempts",
+      "type": "INT",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "lease_until",
+      "type": "DATETIME(6)",
+      "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "created_at",
+      "type": "DATETIME(6)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "crm_ai_extractions",
+      "key": "completed_at",
+      "type": "DATETIME(6)",
+      "optional": true,
       "source": "cloud/mysql/migrate.mjs"
     },
     {

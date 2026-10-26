@@ -223,7 +223,7 @@ export const panoramaCases = [
     human: w(
       "An authorized salesperson claims the customer for themselves, or a Manager assigns an owner.",
       "Sales berwenang mengambil pelanggan untuk dirinya, atau Manager menetapkan penanggung jawab.",
-      "有权限的销售认领给自己，或由管理者分配。",
+      "有权限的销售自己认领，或由管理者分配。",
     ),
     boundary: w(
       "Permission and concurrent-claim checks still apply. Shared visibility is not assignment.",
@@ -415,3 +415,23 @@ export const panoramaChapter: SystemChapter = {
   ],
   related: "workspace",
 };
+
+// Current model: requests and agreements remain evidence, not a task factory.
+panoramaNodes[3]=node(w('First follow-up and important information','Tindak lanjut pertama dan informasi penting','首次跟进与重要提示'),w('Only a new Lead creates one first-contact deadline. Later requests and assessments provide evidence and prompts, never another task.','Hanya Lead baru membuat satu tenggat kontak pertama. Permintaan dan asesmen berikutnya memberi bukti dan informasi, tanpa tugas baru.','只有新Lead生成一次首次联系期限；后续请求和测评提供依据与提示，不再生成任务。'));
+panoramaNodes[4]=node(w('Facts and optional agreements','Fakta dan kesepakatan opsional','事实与选填约定'),w('Staff record actual contact outcomes and original notes. A next task is never required. Customer agreements preserve what was actually agreed.','Staf mencatat hasil kontak nyata dan catatan asli. Tidak wajib tugas berikutnya. Kesepakatan menyimpan hal yang benar-benar disepakati.','销售记录真实联系结果与原文，无需安排下一任务；客户约定保存实际承诺。'));
+panoramaCases[2].system=w('Save each original request and show important information. No task is created.','Simpan permintaan asli dan tampilkan informasi penting. Tidak membuat tugas.','保存每条原始请求并给出重要提示，不创建任务。');
+panoramaCases[2].boundary=w('Reading is not responding. Booking interest does not confirm a booking or enrollment.','Membaca bukan menjawab. Minat janji temu bukan konfirmasi atau pendaftaran.','阅读不等于回应；预约意向不等于预约确认或报名。');
+panoramaCases[3].system=w('Save the actual attempt. First follow-up can be processed, but successful communication remains zero. R6 automatic downgrade is disabled.','Simpan percobaan nyata. Tindak lanjut pertama dapat diproses, tetapi komunikasi berhasil tetap nol. R6 nonaktif.','保存真实尝试，可结束首次跟进要求，但成功沟通仍为零；R6自动降级停用。');
+panoramaCases[3].human=w('Choose the next action yourself; no next task is required.','Pilih tindakan berikutnya sendiri; tidak wajib tugas baru.','自主决定下一行动，无需创建下一任务。');
+panoramaCases[4].title=w('Process the first follow-up','Proses tindak lanjut pertama','处理首次跟进');
+panoramaCases[4].trigger=w('A salesperson records an actual first contact attempt.','Sales mencatat percobaan kontak pertama yang nyata.','销售记录真实的首次联系尝试。');
+panoramaCases[4].system=w('Save the record and first-attempt outcome together. No additional task is created.','Simpan catatan dan hasil upaya pertama bersama. Tidak ada tugas tambahan.','同时保存记录与首次尝试结果，不新增任务。');
+panoramaCases[4].human=w('Record the real result and original summary.','Catat hasil nyata dan ringkasan asli.','记录实际结果和原始摘要。');
+panoramaCases[4].boundary=w('Opening WhatsApp or reading a message does not count as contact.','Membuka WhatsApp atau membaca pesan bukan kontak.','打开WhatsApp或阅读消息不计为联系。');
+panoramaCases[5].system=w('Preserve contact restrictions and optional agreements as facts. No review task is created.','Simpan pembatasan kontak dan kesepakatan opsional sebagai fakta. Tidak ada tugas tinjauan.','保留联系限制与选填约定，不生成复查任务。');
+panoramaCases[5].boundary=w('Do not resume proactive contact automatically. Update a restriction explicitly with a reason.','Jangan pulihkan kontak proaktif otomatis. Ubah pembatasan secara eksplisit dengan alasan.','不自动恢复主动联系；调整限制须明确说明原因。');
+
+panoramaCases[5].title=w('Contact restrictions and agreements','Pembatasan kontak dan kesepakatan','联系限制与客户约定');
+panoramaCases[5].human=w('Record the real restriction reason and any actual customer agreement. Dates are optional; do not invent a review time.','Catat alasan pembatasan dan kesepakatan nyata. Tanggal opsional; jangan mengarang waktu tinjau.','记录真实限制原因及客户实际约定；日期选填，不补造复查时间。');
+
+panoramaLesson.example=w('A customer requests consultation and a trial. Preserve both original requests as information, not tasks. Sales choose how to follow up and record actual replies and agreements.','Pelanggan meminta konsultasi dan uji coba. Simpan keduanya sebagai informasi asli, bukan tugas. Sales memilih tindak lanjut dan mencatat jawaban serta kesepakatan nyata.','客户提出咨询和试听请求，分别保留原始信息，不创建任务；销售自主选择如何跟进，记录真实回应与约定。');

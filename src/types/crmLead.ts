@@ -16,7 +16,7 @@ import {
   determineLevelState
 } from './leadSystem.ts';
 
-export type StageType = 
+export type StageType = import('../utils/crmSalesProgress.ts').SalesProgressStage
   | 'New'
   | 'Contacted'
   | 'Assessment Booked'
@@ -39,6 +39,9 @@ export type OutcomeType =
   | 'Lost';
 
 export interface FollowUpLog {
+  occurredAt?: string;
+  contactDirection?: "sales" | "customer" | "unknown";
+  occurrenceMode?: "now" | "specified";
   id: string;
   timestamp: string;
   staffName: string;
@@ -47,6 +50,7 @@ export interface FollowUpLog {
   previousStage: StageType;
   newStage: StageType;
   buyingSignalDetected?: BuyingSignalType;
+  buyingSignalsDetected?: BuyingSignalType[];
   summary: string;
   nextAction: string;
   recordKind?: "contact" | "closure";
@@ -71,17 +75,40 @@ export interface ChatTranscriptMessage {
 }
 
 export interface LeadAttention {
-  unreadCount: number;
-  observedAt: string | null;
   latest?: {type:string;at:string;source?:string};
-  tasks: Array<{id:string;kind:string;ownerId:string|null;status:string;dueAt:string;originalDueAt?:string;scheduledAt?:string|null;timingKind?:string;details?:{action?:string;purpose?:string;sourceMessageId?:string;sourceConversationId?:string}}>;
+  customerRequests?: Array<{id:string;dueAt:string;action:string}>;
+  tasks: Array<{requestDueAt?:string;revision?:number;id:string;kind:string;ownerId:string|null;status:string;dueAt:string;originalDueAt?:string;scheduledAt?:string|null;timingKind?:string;details?:{action?:string;purpose?:string;sourceMessageId?:string;sourceConversationId?:string}}>;
   isMine: boolean;
 }
+export interface RecordAmendment {id:string;requestId:string;targetFactId:string;targetLogId:string|null;kind:'supplement'|'correction';text:string;reason:string|null;contactResult:string|null;actor:string;staffName?:string;recordedAt:string;}
 export interface CrmLeadRecord {
+  factMilestoneSummary?: {enrollmentScope?:string;key:string;title:string;count:number;unknownCount:number;latest:{id:string;occurredAt:string|null;timeBasis:string}}[];
+  enrollmentEvidence?: {confirmations: Array<{id:string;effectiveAt:string|null;recordedAt:string|null}>};
+  recordAmendments?:RecordAmendment[];
+  firstRequirementTaskIds?:string[];
+  firstRequirementDueAt?:string|null;
+  firstRequirementReview?:string|null;
+  interactionTimeline?: import("../utils/crmInteractionTimeline").InteractionTimeline;
+  informationHints?:any[];
+  profileFieldMeta?:Record<string,any>;
+  targetHskLevel?:string;
+  preferredStart?:string;
+  availability?:string;
+  budgetMin?:number|null;
+  budgetMax?:number|null;
+  budgetCurrency?:string;
+  budgetPeriod?:string;
+  concerns?:string[];
+  preferredChannel?:string;
+  simpleRevision?:number;
+  firstFollowup?:{outcome:"attempted"|"connected"|"invalid_contact"|"exception";at:string;actor:string;logId:string;dueAt?:string};
+  commitments?:Array<import("../utils/crmSimpleFollowup").Commitment & {actor?:string;recordedAt?:string;updatedAt?:string;updatedBy?:string;reason?:string}>;
+  identityReview?: {pending:boolean;count:number;canReview:boolean;blocked:boolean;ownerAssignmentManagerOnly?:boolean;identityReviewManagerOnly?:boolean};
   promotionReview?: {status:'linked'|'deferred'|'invalid';revision:number;rawCampaignCode:string;rawPromotionLinkId:string;campaignId:string;linkId:string|null;snapshot:any;actor:string;at:string;reason:string;scope:'this_customer_only'};
   ownerChangedAt?: string;
   attendanceRecords?: Array<{campaignId:string;confirmed:boolean;mode:"onsite"|"online";reason:string;actor:string;recordedAt:string}>;
   communicationLanguage?: "en"|"id"|"zh"|"unknown";
+  contactReview?: {taskId:string;reviewAt:string;reason:string;blockBefore:boolean;at:string;actor:string};
   contactArrangement?: {state: "active"|"waiting"|"nurture"|"stopped"; reason:string;reviewAt?:string;at:string;actor:string;version:number};
   contactStats?: ReturnType<typeof import("../utils/crmContact").contactStatistics>;
   attention?: LeadAttention;
@@ -98,6 +125,7 @@ export interface CrmLeadRecord {
   submittedAt: string;
 
   // ② 客户基础
+  nameNote?: string;
   fullName: string;
   whatsapp: string;
   email: string;
@@ -142,6 +170,8 @@ export interface CrmLeadRecord {
   // ⑥ 跟进依据
   currentStage: StageType;
   stageRevision?: number;
+  stagePolicyVersion?: 2;
+  stageEffectiveAt?: string | null;
   stageUpdatedAt: string;
   buyingSignal: BuyingSignalType;
   buyingSignals?: BuyingSignalType[];
@@ -209,10 +239,7 @@ export function evaluateFullLeadTier(lead: {
   const levelState = lead.levelState;
   const flag = determineFlag(levelState);
 
-  // R6 is authorized only by the server's consecutive-attempt / final-window state.
-  if (lead.noResponseReady === true) {
-    return { tier: 'Cold-Nurture', flag, source: 'behaviour_override' };
-  }
+  // R6 retired: contact attempts never override customer classification.
 
   // R1: 人工信号覆盖 (Buying Signal ≠ None yet) -> 一律 Hot
   if (lead.buyingSignal && lead.buyingSignal !== 'None yet') {

@@ -1,6 +1,7 @@
 import {accessSafetyErrors} from "./accessSafetyLanguage";
 import type { CrmLanguage } from "./crmLanguage";
 const accessErrors: Record<string, [string, string, string]> = {
+  OWNER_MANAGER_REQUIRED: ["Only a CRM Manager with existing assignment permission can transfer Lead ownership under the current policy.","Kebijakan saat ini hanya mengizinkan CRM Manager dengan izin penugasan yang ada memindahkan Owner Lead.","当前配置仅允许具备原有分配权限的CRM Manager交接Lead归属。"],
   access_invalid_email: [
     "Enter a valid login email or leave it blank.",
     "Masukkan email login yang valid atau kosongkan.",

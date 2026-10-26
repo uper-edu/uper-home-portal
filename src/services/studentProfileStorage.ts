@@ -1,3 +1,4 @@
+import {visitorKey, visitorScope} from './visitorScope';
 import type { HskResult } from '../data/hskAssessment';
 import type { LeadProfile } from '../types/leadSystem';
 
@@ -43,13 +44,13 @@ const UPDATE_EVENT = 'uper_student_context_updated';
 
 /**
  * Retrieve the currently unified student profile and diagnostic assessment context.
- * Provides backwards-compatibility fallbacks to existing session/local storage keys.
+ * Reads only the current verified visitor; unscoped legacy records remain untouched.
  */
 export function getStudentContext(): UnifiedStudentContext | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(visitorKey(STORAGE_KEY));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
@@ -58,36 +59,10 @@ export function getStudentContext(): UnifiedStudentContext | null {
       }
     }
 
-    // Fallback: Check if lead profile exists under legacy keys
-    let legacyLead: LeadProfile | null = null;
-    const legacyLeadRaw = localStorage.getItem('uper_lead_profile') || sessionStorage.getItem('uper_pending_lead');
-    if (legacyLeadRaw) {
-      try {
-        legacyLead = JSON.parse(legacyLeadRaw);
-      } catch (_) {}
-    }
+    // Unscoped legacy records remain stored, but cannot establish ownership.
 
-    if (legacyLead) {
-      const fallbackContext: UnifiedStudentContext = {
-        leadProfile: legacyLead,
-        assessment: legacyLead.quizScore !== undefined ? {
-          completed: true,
-          saveStatus: "legacy_unverified",
-          score: legacyLead.quizScore,
-          total: legacyLead.totalQuestions || 15,
-          levelConfirmed: legacyLead.levelConfirmed,
-          summary: legacyLead.quizResultSummary,
-          breakdown: legacyLead.quizBreakdown,
-          completedAt: legacyLead.submittedAt || new Date().toISOString()
-        } : null,
-        lastUpdated: new Date().toISOString()
-      };
-      // Persist into unified storage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackContext));
-      return fallbackContext;
-    }
   } catch (err) {
-    console.warn('[StudentProfileStorage] Failed to read student context:', err);
+    // Unverified identity and inaccessible storage both fail closed.
   }
 
   return null;
@@ -119,15 +94,7 @@ export function saveStudentContext(patch: Partial<UnifiedStudentContext>): Unifi
       lastUpdated: new Date().toISOString()
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-
-    // Also update legacy keys for maximum backwards compatibility
-    if (updated.leadProfile) {
-      try {
-        localStorage.setItem('uper_lead_profile', JSON.stringify(updated.leadProfile));
-        sessionStorage.setItem('uper_lead_submitted', 'true');
-      } catch (_) {}
-    }
+    localStorage.setItem(visitorKey(STORAGE_KEY), JSON.stringify(updated));
 
     // Dispatch custom event for real-time in-app synchronization
     window.dispatchEvent(new CustomEvent(UPDATE_EVENT, { detail: updated }));
@@ -148,10 +115,10 @@ export function saveStudentContext(patch: Partial<UnifiedStudentContext>): Unifi
 export function clearStudentContext(): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem('uper_lead_profile');
-    sessionStorage.removeItem('uper_lead_submitted');
-    sessionStorage.removeItem('uper_pending_lead');
+    localStorage.removeItem(visitorKey(STORAGE_KEY));
+
+
+
     window.dispatchEvent(new CustomEvent(UPDATE_EVENT, { detail: null }));
   } catch (err) {
     console.warn('[StudentProfileStorage] Failed to clear student context:', err);
@@ -170,7 +137,7 @@ export function subscribeStudentContext(callback: (context: UnifiedStudentContex
   };
 
   const handleStorageEvent = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY || event.key === 'uper_lead_profile') {
+    if (visitorScope() && event.key === visitorKey(STORAGE_KEY)) {
       callback(getStudentContext());
     }
   };

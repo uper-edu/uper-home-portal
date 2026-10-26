@@ -1,0 +1,451 @@
+.crm-followup-focus{display:grid;gap:24px;min-width:0;font-size:14px;line-height:1.6;color:var(--cw-text)}
+.crm-followup-focus :is(section,article,details,div){min-width:0}
+.crm-followup-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.crm-followup-section-heading h3,.crm-followup-focus>section>h3{font-size:16px;font-weight:650;margin:0}
+.crm-followup-now{padding:20px;border:1px solid var(--cw-border);border-radius:14px;background:var(--cw-surface)}
+.crm-followup-insight{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:start;gap:12px;padding:12px 0;border-top:1px solid var(--cw-border)}
+.crm-followup-insight p{margin:0;overflow-wrap:anywhere}.crm-followup-insight-type{font-size:12px;color:var(--cw-muted);padding:2px 0;font-weight:500}
+.crm-followup-insight[data-kind=difference] .crm-followup-insight-type{color:#92400e}.crm-followup-focus[data-theme=dark] .crm-followup-insight[data-kind=difference] .crm-followup-insight-type,[data-theme=dark] .crm-followup-insight[data-kind=difference] .crm-followup-insight-type{color:#fbbf24}
+.crm-followup-restriction{padding:12px 16px;border-left:3px solid var(--cw-accent);background:var(--cw-soft);border-radius:8px;margin-bottom:12px}.crm-followup-restriction p{margin:4px 0 0}
+.crm-followup-request{border-top:1px solid var(--cw-border);padding:12px 0}.crm-followup-request>summary{display:grid;grid-template-columns:88px minmax(0,1fr);gap:4px 12px;cursor:pointer;list-style:none}.crm-followup-request>summary>span:nth-child(2){overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.crm-followup-request time{grid-column:2;color:var(--cw-muted);font-size:12px}.crm-followup-request article{padding:12px 0;border-top:1px solid var(--cw-border)}
+.crm-followup-agreements{padding-top:16px;border-top:1px solid var(--cw-border);margin-top:12px}.crm-followup-agreements h4{font-size:13px;font-weight:600;margin:0 0 8px}.crm-followup-agreements>div{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:6px 0}.crm-followup-agreements strong{font-weight:500;overflow-wrap:anywhere}.crm-followup-agreements span{font-size:13px;color:var(--cw-muted);flex-shrink:0}
+.crm-followup-secondary{margin-top:12px;font-size:13px}.crm-followup-secondary>summary{color:var(--cw-muted);cursor:pointer;padding:6px 0}.crm-followup-secondary>div{padding:10px 0}
+.crm-followup-focus .crm-interaction-timelines.is-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:0 0 16px;border:0;border-bottom:1px solid var(--cw-border);border-radius:0}
+.crm-followup-focus .crm-interaction-timelines.is-summary>h3{grid-column:1/-1;font-size:14px;font-weight:600;margin:0 0 12px}
+.crm-followup-focus .is-summary .crm-interaction-row{display:block;padding:0 16px;border:0;border-left:1px solid var(--cw-border)}.crm-followup-focus .is-summary .crm-interaction-row:nth-of-type(1){padding-left:0;border-left:0}
+.crm-followup-focus .is-summary .crm-interaction-label{display:block;font-size:13px;font-weight:500;color:var(--cw-muted);margin-bottom:6px}.crm-followup-focus .is-summary .crm-interaction-open{font-size:14px;font-weight:500;padding:0;min-height:32px!important}.crm-followup-focus .is-summary .crm-interaction-meta{font-size:12px;color:var(--cw-muted)}
+.crm-followup-customer-message{border-bottom:1px solid var(--cw-border);padding-bottom:12px}.crm-followup-customer-message>summary{display:flex;align-items:baseline;gap:16px;cursor:pointer;list-style:none;font-size:13px;color:var(--cw-muted)}.crm-followup-message-excerpt{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1}.crm-followup-customer-message>p{margin:12px 0}.crm-followup-customer-message small{margin-right:12px;color:var(--cw-muted)}
+.crm-sales-records>.crm-progress-record{border:1px solid var(--cw-border);border-radius:12px;margin:12px 0;padding:0 16px;background:var(--cw-surface)}
+.crm-sales-records>.crm-progress-record>summary{display:grid;position:relative;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:16px 28px 16px 0;list-style:none}
+.crm-sales-records>.crm-progress-record>summary:after{position:absolute;right:0;top:16px;color:var(--cw-muted)}
+.crm-sales-records .crm-record-preview{grid-column:1/-1;font-size:14px;margin:4px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
+.crm-sales-records .crm-record-ai-preview{grid-column:1/-1;font-size:12px;color:var(--cw-muted)}.crm-sales-records>.crm-progress-record[open] .crm-record-preview{display:none}.crm-sales-records>.crm-progress-record[open]>.crm-progress-record-body{padding:4px 0 20px}
+.crm-record-current{display:inline-block;font-size:12px;color:var(--cw-accent);background:var(--cw-active);border-radius:6px;padding:1px 6px;margin-right:8px;font-weight:500}
+.crm-followup-focus .crm-progress-expand{font-size:13px;font-weight:400}.crm-followup-focus .crm-progress-meta{font-size:12px;color:var(--cw-muted)}.crm-record-source-actions{display:flex;gap:16px;flex-wrap:wrap;padding:16px 0 4px}
+.crm-record-ai{border-top:1px solid var(--cw-border);margin-top:12px;padding-top:12px}.crm-record-ai>summary{list-style:none;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--cw-muted);min-height:32px}.crm-record-ai>summary:after{content:'＋';flex:none}.crm-record-ai[open]>summary:after{content:'−'}.crm-record-ai[data-state=failed]>summary{color:#b91c1c}
+.crm-record-ai-body{padding:12px 0}.crm-extraction-observation{padding:14px 16px;background:var(--cw-soft);border-radius:10px;margin-bottom:10px;border-left:3px solid var(--cw-border)}.crm-extraction-observation[data-decision=apply]{border-left-color:var(--cw-accent)}.crm-extraction-observation[data-decision=difference]{border-left-color:#b45309}.crm-extraction-observation>div{display:flex;justify-content:space-between;gap:16px}.crm-extraction-observation p{font-size:12px;color:var(--cw-muted);margin:6px 0}.crm-extraction-value{text-align:right;overflow-wrap:anywhere}.crm-extraction-observation blockquote{margin:10px 0 0;padding-left:12px;border-left:2px solid var(--cw-border);font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.crm-evidence-explanation{font-size:12px;margin-top:10px;color:var(--cw-muted)}.crm-evidence-explanation>summary{cursor:pointer;min-height:28px;padding:3px 0}.crm-evidence-explanation pre{font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.crm-assessment-source-note{padding:12px 0;font-size:13px}.crm-assessment-source-note p{margin:0 0 8px}
+.crm-followup-source-section{border-top:1px solid var(--cw-border);padding-top:12px}.crm-followup-source-section>summary{list-style:none;display:flex;justify-content:space-between;gap:16px;cursor:pointer;min-height:40px;align-items:center;font-size:14px}.crm-followup-source-section>summary>span:last-child{font-size:12px;color:var(--cw-muted)}.crm-followup-source-body{padding:12px 0}.crm-followup-source-section .crm-progress-history{padding:0}
+.crm-followup-focus :focus-visible{outline:2px solid var(--cw-accent);outline-offset:3px}.crm-followup-focus button{min-height:32px}
+@media(max-width:700px){.crm-followup-insight{grid-template-columns:1fr auto;gap:4px 8px}.crm-followup-insight-type{grid-column:1/-1}.crm-followup-agreements>div{display:block}.crm-followup-agreements span{display:block}.crm-followup-focus .crm-interaction-timelines.is-summary{grid-template-columns:1fr;gap:12px}.crm-followup-focus .is-summary .crm-interaction-row{border-left:0;padding:0}.crm-extraction-observation>div{display:block}.crm-extraction-value{display:block;text-align:left;margin-top:6px}}
+.crm-sales-records .crm-when-open{display:none}.crm-sales-records>.crm-progress-record[open]>summary .crm-when-open{display:inline}.crm-sales-records>.crm-progress-record[open]>summary .crm-when-closed,.crm-sales-records>.crm-progress-record[open]>summary .crm-record-ai-preview{display:none}
+.crm-followup-source-body [aria-label="追加补充／修正"]{padding:16px;margin:16px 0;border:1px solid var(--cw-border);border-radius:12px;background:var(--cw-soft)}
+.crm-followup-source-body [aria-label="追加补充／修正"] label{display:grid;gap:8px;margin:14px 0;font-size:14px}.crm-followup-source-body [aria-label="追加补充／修正"] textarea{width:100%;min-height:140px;resize:vertical;padding:12px;border:1px solid var(--cw-border);border-radius:10px;background:var(--cw-surface);color:var(--cw-text);font-size:14px;line-height:1.7}
+.crm-followup-save-feedback{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.crm-followup-save-feedback:empty{display:none}.crm-followup-save-feedback>.crm-work-link{margin-left:auto;flex:none}
+/* Sales brief: current values first, recent evidence second, full history on demand. */
+.crm-sales-brief{padding:20px;border:1px solid var(--cw-border);border-radius:14px;background:var(--cw-surface)}
+.crm-sales-brief-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 24px;margin:0}
+.crm-sales-brief-field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-content:start}
+.crm-sales-brief-field dt{grid-column:1/-1;color:var(--cw-muted);font-size:12px}.crm-sales-brief-field dd{margin:0;font-size:14px;overflow-wrap:anywhere;font-weight:500}.crm-sales-brief-field button{font-size:12px;align-self:start;padding:0;min-height:24px}
+.crm-sales-brief-foot{display:flex;gap:12px 24px;flex-wrap:wrap;border-top:1px solid var(--cw-border);padding-top:14px;margin-top:16px;color:var(--cw-muted);font-size:13px}.crm-sales-brief-foot strong{color:var(--cw-text);font-weight:500;margin-left:8px}.crm-sales-brief .crm-followup-restriction{margin:16px 0 0}
+.crm-sales-communication{border-top:1px solid var(--cw-border);padding-top:16px;margin-top:12px}.crm-sales-communication h4{margin:0;font-size:14px}.crm-sales-communication-meta{font-size:12px;color:var(--cw-muted);margin:0 0 8px}.crm-sales-communication-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;line-height:1.8}.crm-sales-communication>details{margin-top:8px}
+.crm-followup-now .crm-followup-customer-message{margin-top:12px;padding:12px 0;border-top:1px solid var(--cw-border);border-bottom:0}.crm-followup-now .crm-followup-customer-message>summary{flex-wrap:wrap}.crm-followup-now .crm-followup-message-excerpt{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:200px;color:var(--cw-text)}
+.crm-followup-history-fold{border-top:1px solid var(--cw-border);padding-top:12px}.crm-followup-history-fold>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:44px;cursor:pointer;font-weight:600}.crm-followup-history-fold>summary>span:last-child{font-size:12px;font-weight:400;color:var(--cw-muted)}.crm-followup-history-fold>summary:after{content:'＋';color:var(--cw-muted)}.crm-followup-history-fold[open]>summary:after{content:'−'}.crm-followup-history-fold .crm-sales-records>.crm-followup-section-heading{display:none}
+@media(max-width:800px){.crm-sales-brief-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.crm-sales-brief-grid{grid-template-columns:1fr}}
+.crm-sales-communication-text{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.crm-followup-insight-body p{margin:0}.crm-insight-time{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:6px;font-size:12px;color:var(--cw-muted)}.crm-insight-time time{font-variant-numeric:tabular-nums}
+.crm-followup-customer-evidence{border-top:1px solid var(--cw-border);padding-top:14px;margin-top:12px}.crm-customer-evidence-heading{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap}.crm-customer-evidence-heading strong{font-size:14px;font-weight:600}.crm-customer-evidence-heading>span{font-size:12px;color:var(--cw-muted)}.crm-customer-evidence-heading>button{margin-left:auto;font-size:13px}.crm-followup-now .crm-followup-customer-evidence .crm-followup-customer-message{border:0;margin:0;padding:4px 0}.crm-followup-customer-message[open] .crm-followup-message-excerpt{display:none}
+/* One chronology, one metadata position. No source text is hidden behind a no-op expander. */
+.crm-followup-event-stream{min-width:0}.crm-followup-event{padding:16px 0;border-top:1px solid var(--cw-border);min-width:0}.crm-followup-event-header{display:flex;align-items:baseline;justify-content:space-between;gap:8px 20px;flex-wrap:wrap;margin-bottom:10px}.crm-followup-event-header>strong{font-size:13px;font-weight:600}.crm-followup-event-header>strong>span{font-weight:400;color:var(--cw-muted)}.crm-followup-event-time{font-size:12px;color:var(--cw-muted);display:grid;gap:3px;margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}.crm-followup-event-body>p{margin:0;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}.crm-followup-event-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:8px}.crm-followup-event-actions button{font-size:13px}.crm-followup-unknown-divider{margin:12px 0 0;padding:8px 12px;background:var(--cw-soft);color:var(--cw-muted);font-size:12px;border-radius:8px}.crm-followup-event-body>details{font-size:13px;margin-top:10px}.crm-followup-event[data-kind=difference] .crm-followup-event-header>strong{color:#92400e}[data-theme=dark] .crm-followup-event[data-kind=difference] .crm-followup-event-header>strong{color:#fbbf24}
+.crm-followup-window-caption{font-size:12px;color:var(--cw-muted);margin:0 0 16px}.crm-followup-time-group>h4{font-size:13px;font-weight:600;margin:20px 0 0;padding:8px 12px;background:var(--cw-soft);border-radius:8px;color:var(--cw-muted)}.crm-followup-time-group:first-child>h4{margin-top:0}.crm-grouped-field-changes{margin:0;display:grid;gap:8px}.crm-grouped-field-changes>div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px}.crm-grouped-field-changes dt{font-size:13px;color:var(--cw-muted)}.crm-grouped-field-changes dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
+.crm-field-change-kind{display:inline-block;margin-left:6px;font-size:12px;color:var(--cw-muted);font-weight:400}
+/* Stable title / time / source columns; source actions no longer add a footer row. */
+.crm-followup-event-header{display:grid;grid-template-columns:minmax(0,1fr) max-content 76px;align-items:start;gap:12px;margin-bottom:8px}.crm-followup-event-header>strong{padding-top:7px;overflow-wrap:anywhere}.crm-followup-event-header .crm-followup-event-time{padding-top:7px;margin-left:0}.crm-followup-event-header .crm-followup-event-actions{margin:0;min-height:36px;width:76px;display:flex;align-items:flex-start;justify-content:flex-end}
+.crm-evidence-action{position:relative;display:inline-flex}.crm-followup-focus .crm-evidence-action-button{min-height:36px;min-width:68px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--cw-muted);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer}.crm-evidence-action-button:hover{background:var(--cw-soft);color:var(--cw-accent);border-color:var(--cw-border)}.crm-evidence-action-button:focus-visible{background:var(--cw-soft);outline:2px solid var(--cw-accent);outline-offset:2px}.crm-evidence-tooltip{display:none;position:absolute;right:0;top:calc(100% + 6px);width:max-content;max-width:min(280px,80vw);white-space:normal;overflow-wrap:anywhere;padding:8px 10px;border:1px solid var(--cw-border);border-radius:8px;background:var(--cw-surface);color:var(--cw-text);box-shadow:0 4px 16px #0002;z-index:40;font-size:12px;line-height:1.5;pointer-events:none}.crm-evidence-action:not([data-dismissed]):is(:hover,:focus-within) .crm-evidence-tooltip{display:block}
+@media(max-width:700px){.crm-followup-event-header{grid-template-columns:minmax(0,1fr) 76px;gap:4px 8px}.crm-followup-event-header>strong{grid-column:1;grid-row:1}.crm-followup-event-header .crm-followup-event-time{grid-column:1;grid-row:2;text-align:left;padding-top:0}.crm-followup-event-header .crm-followup-event-actions{grid-column:2;grid-row:1/3}}
+.crm-followup-now .crm-interaction-timelines.is-summary{margin:4px 0 8px;padding-bottom:8px;border-bottom:0}.crm-followup-now .crm-interaction-timelines.is-summary>p{grid-column:1/-1}
+.crm-single-field-change{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}.crm-profile-value-change{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-width:0;overflow-wrap:anywhere}.crm-profile-value-before{color:var(--cw-muted)}.crm-profile-value-after{font-weight:500;color:var(--cw-text)}.crm-profile-value-change small{font-size:12px;font-weight:400;color:var(--cw-muted);margin-right:6px}.crm-profile-value-change>svg{flex-shrink:0;color:var(--cw-muted)}
+.crm-sales-brief-field>.crm-evidence-action{align-self:start;justify-self:end}.crm-sales-brief-field dd{padding-top:6px}
+
+/* Original interactions form the timeline; linked derived facts stay inside their source. */
+.crm-history-toolbar{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:4px 0 24px}.crm-history-toolbar label{display:grid;gap:6px;font-size:13px}.crm-history-toolbar label:nth-child(2){flex:1;min-width:180px}.crm-history-toolbar input,.crm-history-toolbar select{min-height:40px;border:1px solid var(--cw-border);background:var(--cw-surface,transparent);color:inherit;border-radius:10px;padding:8px 12px;width:100%}.crm-history-date{font-size:13px;color:var(--cw-muted);margin:24px 0 10px}.crm-customer-panel-body details.crm-history-node{position:relative;border-left:1px solid var(--cw-border);margin-left:12px;padding:0 0 8px 24px}.crm-history-node>summary{scroll-margin-top:calc(var(--crm-shell-height,120px) + 16px);list-style:none;cursor:pointer;padding:12px 0 16px}.crm-history-node>summary::-webkit-details-marker{display:none}.crm-history-node>summary:focus-visible{outline:2px solid var(--cw-accent,#0f766e);outline-offset:3px;border-radius:6px}.crm-history-icon{position:absolute;left:-12px;top:13px;width:24px;height:24px;display:grid;place-items:center;background:var(--cw-surface,#fff);color:var(--cw-muted)}.crm-history-head{display:flex;align-items:start;gap:12px}.crm-history-head strong{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px;line-height:1.65}.crm-history-when{font-size:12px;white-space:nowrap;color:var(--cw-muted);padding-top:3px}.crm-history-chevron{flex-shrink:0;margin-top:4px}.crm-history-node[open] .crm-history-chevron{transform:rotate(180deg)}.crm-history-meta{font-size:12px;color:var(--cw-muted);margin-top:5px}.crm-history-preview{margin:6px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.65;color:var(--cw-muted);overflow-wrap:anywhere}.crm-history-body{padding:4px 0 20px;overflow-wrap:anywhere}.crm-history-body h4{font-size:13px;margin:16px 0 8px}.crm-history-attribution{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 16px;font-size:12px;line-height:1.6;color:var(--cw-muted)}.crm-history-attribution>svg{flex-shrink:0}.crm-history-details,.crm-history-changes dl{display:grid;gap:8px}.crm-history-details>div,.crm-history-changes dl>div{display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px}.crm-history-details dt,.crm-history-changes dt{color:var(--cw-muted);font-size:13px}.crm-history-details dd,.crm-history-changes dd{margin:0;font-size:14px}.crm-history-changes small{display:block;color:var(--cw-muted);font-size:12px;margin-top:3px}.crm-history-amendment{border-left:2px solid var(--cw-border);padding:8px 12px;margin:10px 0}.crm-history-amendment>span{color:var(--cw-muted);font-size:12px}.crm-history-node .crm-evidence-explanation{margin:14px 0}.crm-history-node .crm-record-ai{margin:12px 0}
+
+.crm-extraction-run{margin:12px 0}.crm-extraction-status{font-size:13px;color:var(--cw-muted);line-height:1.6}.crm-extraction-status>span+span{margin-left:8px}.crm-extraction-run[data-state=failed]>.crm-extraction-status{color:#b91c1c}.crm-extraction-observation .crm-extraction-value{text-align:left;font-size:14px;color:inherit;margin:8px 0}.crm-extraction-decision{font-size:12px;color:var(--cw-muted);text-align:right}.crm-extraction-observation>div{flex-wrap:wrap}.crm-extraction-caption{display:block;font-size:12px;color:var(--cw-muted);margin-bottom:4px}
+
+.crm-history-additional-source{padding:4px 0 12px}.crm-history-additional-source+.crm-history-additional-source{border-top:1px solid var(--cw-border)}
+
+.crm-history-node[open] .crm-history-preview{display:none}.crm-history-information{margin:18px 0}.crm-history-information-item{padding:12px 0;border-bottom:1px solid var(--cw-border)}.crm-history-information-item:last-of-type{border-bottom:0}.crm-history-information-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.crm-history-information-heading strong{font-size:14px;flex:1;min-width:140px}.crm-history-information-state,.crm-history-information-meta{font-size:12px;color:var(--cw-muted)}.crm-history-information-item[data-status=difference] .crm-history-information-state{color:#92400e}.crm-history-information-value{font-size:14px;line-height:1.7;margin:6px 0;white-space:pre-wrap}.crm-history-information-reason,.crm-history-adoption-reason{font-size:13px;line-height:1.65;color:var(--cw-muted);margin:6px 0}.crm-history-adoption-reason summary,.crm-history-original-answers summary{cursor:pointer;min-height:28px}.crm-history-original mark{background:#fef3c7;color:#78350f;border-radius:3px;padding:1px 2px}.crm-history-original:focus-visible,.crm-history-original mark:focus-visible{outline:2px solid var(--cw-accent,#0f766e);outline-offset:3px}.crm-history-citation{border-left:2px solid var(--cw-border);padding:8px 12px;font-size:13px}.crm-history-original-answers{margin:8px 0;font-size:13px}
+
+/* Source, time, and source actions share semantics without making time a link. */
+.crm-followup-focus .is-summary .crm-interaction-summary-time{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-variant-numeric:tabular-nums;min-height:36px}
+.crm-followup-focus .is-summary .crm-interaction-summary-time .crm-evidence-action-button{min-width:58px;padding:6px 4px}
+.crm-hint-source-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:8px 0}
+.crm-hint-source-list>div>div{font-size:13px}.crm-hint-source-list>div>div>span:not(.crm-ai-indicator){color:var(--cw-muted)}
+.crm-hint-source-list>div>p{grid-column:1;margin:0;font-size:14px}.crm-hint-source-list>div>.crm-evidence-action{grid-column:2;grid-row:1/3;align-self:start}
+
+.crm-interaction-summary-time time{white-space:nowrap}.crm-interaction-summary-time>.crm-evidence-action{margin-left:auto}
+.crm-hint-source-list .crm-hint-source-evidence{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;font-size:12px;margin-top:8px}
+.crm-hint-source-evidence time{font-variant-numeric:tabular-nums}
+
+.crm-interaction-elapsed{color:var(--cw-muted);font-size:12px;font-weight:400}.crm-sales-contact-context{margin-top:6px;color:var(--cw-muted);font-size:12px;line-height:1.6}.crm-sales-contact-context p{margin:0}.crm-detail-root .crm-panel-next:empty{display:none}
+
+
+.crm-interaction-timelines .crm-interaction-empty{color:var(--cw-muted);font-weight:400}.crm-interaction-unknown{display:inline-flex;align-items:center;gap:5px}.crm-interaction-unknown>svg{flex:none;color:#b45309}.crm-customer-workspace[data-theme=dark] .crm-interaction-unknown>svg{color:#fbbf24}
+
+/* Contact-result semantics: colour the result only, never time, channel or evidence. */
+.crm-customer-workspace{--crm-contact-connected:#15803d;--crm-contact-unanswered:#946200;--crm-contact-invalid:#b91c1c}
+.crm-customer-workspace[data-theme=dark]{--crm-contact-connected:#86efac;--crm-contact-unanswered:#fcd34d;--crm-contact-invalid:#fca5a5}
+.crm-customer-workspace .crm-contact-result[data-contact-result=connected]{color:var(--crm-contact-connected)}
+.crm-customer-workspace .crm-contact-result[data-contact-result=unanswered]{color:var(--crm-contact-unanswered)}
+.crm-customer-workspace .crm-contact-result[data-contact-result=invalid]{color:var(--crm-contact-invalid)}
+.crm-customer-workspace .crm-contact-result[data-contact-result=neutral]{color:var(--cw-muted)}
+
+.crm-interaction-summary-time>.crm-interaction-stamp{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 5px;min-width:0;flex:1}.crm-interaction-summary-time>.crm-evidence-action{flex:none;align-self:flex-start}
+
+/* A first-contact requirement and its existing countdown form one wrapping line. */
+.crm-customer-workspace .crm-first-contact-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;min-width:0}.crm-first-contact-line>.crm-followup-action,.crm-first-contact-line>.crm-followup-timing{margin:0}.crm-first-contact-dot{color:var(--cw-muted)}
+
+/* First-contact countdown is informative, quiet and shared by list and detail. */
+.crm-customer-workspace .crm-countdown-badge{display:inline-flex;align-items:center;vertical-align:middle;gap:5px;white-space:nowrap;max-width:100%;box-sizing:border-box;min-height:26px;padding:3px 8px;border:1px solid #d4e3e5;border-radius:8px;font-size:12px;line-height:1.5;font-weight:400;font-variant-numeric:tabular-nums;animation:none;transition:none}
+.crm-customer-workspace .crm-countdown-badge>svg{flex:none}
+.crm-customer-workspace .crm-countdown-badge strong{font-weight:650;font-size:inherit}
+.crm-customer-workspace .crm-countdown-badge[data-tone=normal]{color:#425d63;background:#edf4f4}
+.crm-customer-workspace .crm-countdown-badge[data-tone=overdue]{color:#b91c1c;background:#fff1f2;border-color:#fecdd3}
+.crm-customer-workspace[data-theme=dark] .crm-countdown-badge[data-tone=normal]{color:#bdd4d7;background:#1b2d36;border-color:#36505a}
+.crm-customer-workspace[data-theme=dark] .crm-countdown-badge[data-tone=overdue]{color:#fda4af;background:#3b2029;border-color:#713443}
+
+.crm-interaction-heading{min-width:0}.crm-followup-focus .is-summary .crm-interaction-heading{display:flex;justify-content:space-between;align-items:baseline;gap:6px 10px;flex-wrap:wrap;margin-bottom:6px}.crm-followup-focus .is-summary .crm-interaction-heading>.crm-interaction-label{margin:0}.crm-interaction-heading>.crm-interaction-elapsed{margin-left:auto;color:var(--cw-muted);font-size:12px;font-weight:400;white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* Worklist: each interaction gets a short heading row and its existing factual detail below. */
+.crm-customer-workspace .crm-interaction-timelines.is-compact .crm-interaction-row{display:block;padding:6px 0;min-width:0}.crm-interaction-timelines.is-compact .crm-interaction-heading{display:flex;align-items:baseline;justify-content:space-between;gap:6px 10px;flex-wrap:wrap;min-width:0}.crm-interaction-timelines.is-compact .crm-interaction-heading>.crm-interaction-label{margin:0}.crm-interaction-timelines.is-compact .crm-interaction-heading>.crm-interaction-elapsed{margin-left:auto;white-space:nowrap}.crm-interaction-timelines.is-compact .crm-interaction-open{max-width:100%;text-align:left;overflow-wrap:anywhere}
+
+.crm-interaction-timelines.is-compact .crm-interaction-heading>.crm-interaction-empty{margin:0 0 0 auto;text-align:right;color:var(--cw-muted);font-size:12px;font-weight:400;line-height:1.5;white-space:normal;overflow-wrap:anywhere;max-width:100%}
+.crm-work-next>.crm-interaction-timelines.is-compact{align-self:stretch;width:100%;box-sizing:border-box}
+
+/* First simplification: stable field evidence, restrained spacing, no new business grouping. */
+.crm-followup-focus{gap:16px}.crm-followup-focus .crm-sales-brief,.crm-followup-focus .crm-followup-now{padding:16px}
+.crm-sales-brief-grid{gap:12px 20px}.crm-sales-brief-field{grid-template-rows:auto 1fr;align-content:start}.crm-sales-brief-field dt{grid-column:1;grid-row:1;align-self:center}.crm-sales-brief-field dd{grid-column:1/-1;grid-row:2;padding-top:0}.crm-sales-brief-field>.crm-evidence-action{grid-column:2;grid-row:1;align-self:start;justify-self:end}.crm-sales-brief-foot{margin-top:12px;padding-top:12px;gap:8px 20px}
+.crm-contact-result{white-space:nowrap}
+.crm-customer-workspace .crm-work-next{gap:8px}.crm-work-next>.crm-list-agreements{align-self:stretch;width:100%}.crm-list-agreements-label{display:block;font-size:12px;font-weight:600;color:var(--cw-muted);margin-bottom:3px}.crm-list-agreements .crm-interaction-agreement{display:block;width:100%;text-align:left;padding:2px 0;margin:0;font-size:12px;line-height:1.6}.crm-list-agreement-date{display:block;color:var(--cw-muted);font-variant-numeric:tabular-nums}.crm-list-agreement-preview{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.crm-list-actions{width:100%;display:flex;align-items:center;justify-content:flex-start;padding-top:2px}.crm-list-key-hint{margin:0;line-height:1.6}
+.crm-sales-brief-field{grid-template-rows:minmax(36px,auto) 1fr}
+
+.crm-work-identity>.crm-identity-actions{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px;margin-top:6px;padding-top:0;width:100%}.crm-identity-actions>.crm-work-button{white-space:nowrap;min-height:36px}
+
+.crm-list-agreement-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;margin-bottom:3px;min-width:0}.crm-list-agreement-heading>.crm-list-agreements-label{margin:0;flex-shrink:0}.crm-list-agreement-heading>.crm-list-agreement-date{margin-left:auto;max-width:100%;text-align:right;overflow-wrap:anywhere}.crm-list-agreements .crm-interaction-agreement+.crm-interaction-agreement{margin-top:6px}
+
+.crm-work-identity>.crm-work-demographics{font-size:13px;line-height:1.6;overflow-wrap:anywhere;margin:0;max-width:100%}
+
+/* Main worklist only: the first-contact badge shares the right edge of other time metadata. */
+.crm-customer-workspace[data-open=false] .crm-work-next>.crm-followup{width:100%;max-width:none}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-first-contact-line{width:100%;justify-content:space-between}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-first-contact-line>.crm-first-contact-dot{display:none}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-first-contact-line>.crm-followup-timing{margin-left:auto;flex:0 0 auto;white-space:nowrap;max-width:100%}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-first-contact-line>.crm-followup-action{flex:0 0 auto;white-space:nowrap}
+
+/* No leading divider when the interaction timeline starts the worklist follow-up column. */
+.crm-work-next>.crm-interaction-timelines.is-compact:first-child>.crm-interaction-row:first-child{border-top:0}
+
+/* Learning needs: goal first, secondary assessment, then aligned current conditions. */
+.crm-customer-workspace[data-open=false] .crm-work-needs{min-width:0;gap:5px}
+.crm-learning-goal{font-weight:600;line-height:1.5;color:var(--cw-text)}
+.crm-learning-details{margin:5px 0 0;display:grid;gap:6px;min-width:0;font-size:13px;line-height:1.55}
+.crm-learning-need{display:grid;grid-template-columns:4.5em minmax(0,1fr);gap:8px;align-items:start}
+.crm-learning-need dt{color:var(--cw-muted);font-weight:400}
+.crm-learning-need dd{margin:0;min-width:0;color:var(--cw-text)}
+.crm-work-learning-value{min-width:0;overflow-wrap:anywhere}
+.crm-work-learning-value>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:pre-wrap}
+.crm-work-learning-value>span.is-expanded{display:block;-webkit-line-clamp:unset;overflow:visible}
+.crm-learning-expand{font-size:12px;font-weight:400;line-height:1.6;padding:0;margin-top:2px}
+.crm-learning-expand:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:3px}
+.crm-customer-workspace[data-open=false] .crm-work-needs>.crm-learning-details{width:100%}
+.crm-customer-workspace .crm-learning-details>.crm-learning-need{display:grid;grid-template-columns:4.5em minmax(0,1fr);gap:8px}
+.crm-customer-workspace .crm-learning-need>dt{grid-column:1;grid-row:1;margin:0;padding:0}
+.crm-customer-workspace .crm-learning-need>dd{grid-column:2;grid-row:1;margin:0;padding:0}
+/* Main worklist only: fixed shared tracks prevent long content from resizing columns. */
+@media(min-width:1120px){
+ .crm-customer-workspace[data-open=false]{--crm-worklist-columns:minmax(210px,22fr) minmax(290px,31fr) minmax(160px,17fr) minmax(270px,30fr)}
+ .crm-customer-workspace[data-open=false] .crm-work-head,
+ .crm-customer-workspace[data-open=false] .crm-work-row{grid-template-columns:var(--crm-worklist-columns);gap:18px}
+ /* Match the rows container's one-pixel inline border. */
+ .crm-customer-workspace[data-open=false] .crm-work-head{border-inline:1px solid transparent}
+}
+
+/* Empty learning data is secondary; compact timelines use spacing instead of inner rules. */
+.crm-customer-workspace[data-open=false] .crm-learning-goal.is-empty{font-weight:400;color:var(--cw-muted)}
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact>.crm-interaction-row+.crm-interaction-row{border-top:0}
+.crm-customer-workspace[data-open=false] .crm-work-assessment>span:only-child::after{content:none}
+/* Agreement actions remain accessible; their subject reads as business content. */
+.crm-customer-workspace[data-open=false] .crm-list-agreement-preview{font-size:13px;font-weight:400;color:var(--cw-text);line-height:1.6}
+.crm-customer-workspace[data-open=false] .crm-list-agreements .crm-interaction-agreement:focus-visible{outline:2px solid var(--cw-accent);outline-offset:3px;border-radius:4px}
+/* Main list typography: identity 14, business content 13, metadata 12. */
+.crm-customer-workspace[data-open=false] .crm-work-row>div{line-height:1.6;gap:6px}
+.crm-customer-workspace[data-open=false] .crm-work-name,
+.crm-customer-workspace[data-open=false] .crm-learning-goal{font-size:14px;font-weight:600;line-height:1.6}
+.crm-customer-workspace[data-open=false] .crm-learning-goal.is-empty{font-weight:400;color:var(--cw-muted)}
+.crm-customer-workspace[data-open=false] .crm-work-demographics,
+.crm-customer-workspace[data-open=false] .crm-work-progress>div,
+.crm-customer-workspace[data-open=false] .crm-work-support-link,
+.crm-customer-workspace[data-open=false] .crm-work-needs>.crm-work-muted,
+.crm-customer-workspace[data-open=false] .crm-work-assessment,
+.crm-customer-workspace[data-open=false] .crm-list-actions>.crm-work-button,
+.crm-customer-workspace[data-open=false] .crm-learning-details{font-size:13px;line-height:1.6}
+.crm-customer-workspace[data-open=false] .crm-work-identity>.crm-work-muted:not(.crm-work-demographics),
+.crm-customer-workspace[data-open=false] .crm-work-group{font-size:12px;line-height:1.6}
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-label,
+.crm-customer-workspace[data-open=false] .crm-list-agreements-label{font-size:13px;font-weight:600;line-height:1.6}
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-open{font-size:13px;line-height:1.6}
+.crm-customer-workspace[data-open=false] .crm-interaction-exact-time,
+.crm-customer-workspace[data-open=false] .crm-list-agreement-date,
+.crm-customer-workspace[data-open=false] .crm-interaction-elapsed,
+.crm-customer-workspace[data-open=false] .crm-interaction-empty,
+.crm-customer-workspace[data-open=false] .crm-learning-expand{font-size:12px;font-weight:400;line-height:1.6}
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-heading{margin-bottom:4px}
+.crm-customer-workspace[data-open=false] .crm-learning-details{gap:6px;margin-top:6px}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-followup-action{font-size:13px;font-weight:600;line-height:1.6}
+/* Align the first text baseline across all four cells, without aligning later rows. */
+.crm-customer-workspace[data-open=false] .crm-work-row{align-items:first baseline}
+.crm-customer-workspace[data-open=false] .crm-work-next>.crm-interaction-timelines:first-child>.crm-interaction-row:first-child{padding-top:0}
+.crm-customer-workspace[data-open=false] .crm-work-next>.crm-list-agreements:first-child .crm-interaction-agreement:first-child{padding-top:0}
+/* Compact desktop rhythm: remove surrounding gaps, retain the 32px record hit area. */
+@media(min-width:1120px){
+ .crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact>.crm-interaction-row{padding-block:3px}
+ .crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-heading{margin-bottom:0}
+ .crm-customer-workspace[data-open=false] .crm-work-next>.crm-interaction-timelines:first-child>.crm-interaction-row:first-child{padding-top:0}
+}
+.crm-customer-workspace[data-open=false] .crm-work-support-link{color:var(--cw-text);text-decoration:none}
+.crm-customer-workspace[data-open=false] .crm-work-support-link:hover,
+.crm-customer-workspace[data-open=false] .crm-work-support-link:focus-visible{color:var(--cw-accent);text-decoration:underline}
+/* Keep worklist column labels visible below the measured management header. */
+@media(min-width:721px){
+ .crm-customer-workspace[data-open=false] .crm-work-head{position:sticky;top:var(--crm-shell-height,120px);z-index:10;background:var(--cw-surface);box-shadow:0 1px 0 var(--cw-border)}
+ .crm-customer-workspace[data-open=false] .crm-work-row{scroll-margin-top:calc(var(--crm-shell-height,120px) + 48px)}
+}
+@media(min-width:721px){
+ .crm-customer-workspace[data-open=false] .crm-work-head{box-shadow:0 -8px 0 var(--cw-surface),0 1px 0 var(--cw-border)}
+}
+/* Inline disclosure follows the text; measuring reserves room within two lines. */
+.crm-work-learning-value.is-inline{position:relative;line-height:1.6;white-space:pre-wrap}
+.crm-work-learning-value.is-inline>span{display:inline;overflow:visible;-webkit-line-clamp:unset;white-space:inherit}
+.crm-work-learning-value.is-inline>.crm-learning-expand{display:inline-block;vertical-align:baseline;margin:0;padding:0 2px;white-space:nowrap;line-height:inherit}
+.crm-customer-workspace[data-open=false] .crm-work-identity>.crm-identity-actions{flex-direction:column;align-items:flex-start;flex-wrap:nowrap}
+/* Stack actions share the intrinsic width of the longest visible label. */
+.crm-customer-workspace[data-open=false] .crm-work-identity>.crm-identity-actions{width:max-content;max-width:100%;align-items:stretch}
+.crm-customer-workspace[data-open=false] .crm-identity-actions>.crm-work-button{width:100%;box-sizing:border-box;text-align:center;justify-content:center}
+/* Keep relative time near its timeline title, aligned across the three tracks. */
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-heading{justify-content:flex-start;column-gap:12px}
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-heading>.crm-interaction-label{flex:0 0 auto;min-width:4em}
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-heading>.crm-interaction-elapsed,
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-heading>.crm-interaction-empty{margin-left:0;text-align:left}
+/* List follow-up dates and countdowns follow their titles, like interaction times. */
+.crm-customer-workspace[data-open=false] .crm-list-agreement-heading{justify-content:flex-start;column-gap:12px}
+.crm-customer-workspace[data-open=false] .crm-list-agreement-heading>.crm-list-agreement-date{margin-left:0;text-align:left}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-first-contact-line{justify-content:flex-start;column-gap:12px}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-first-contact-line>.crm-followup-timing{margin-left:0}
+/* Follow-up list details share a compact 12px size; titles and outcome colours stay unchanged. */
+.crm-customer-workspace[data-open=false] .crm-list-agreement-preview,
+.crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-open{font-size:12px;line-height:1.6;font-weight:400}
+/* Only agreement subject text opens details; title and date are plain metadata. */
+.crm-list-agreement{cursor:default}
+.crm-list-agreement+.crm-list-agreement{margin-top:6px}
+.crm-list-agreement>.crm-interaction-agreement{padding-top:0}
+/* Tight title/content pairs; independent groups keep an 8px structural gap. */
+@media(min-width:1120px){
+ .crm-customer-workspace[data-open=false] .crm-work-next{gap:8px}
+ .crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact{display:grid;gap:8px}
+ .crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact>.crm-interaction-row{padding-block:0}
+ .crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-heading{margin-bottom:2px}
+ .crm-customer-workspace[data-open=false] .crm-interaction-timelines.is-compact .crm-interaction-open{display:flex;align-items:flex-start;padding:0;min-height:32px!important}
+ .crm-customer-workspace[data-open=false] .crm-interaction-open-text{display:block;min-width:0;white-space:normal}
+ .crm-customer-workspace[data-open=false] .crm-list-agreement-heading{margin-bottom:2px}
+ .crm-customer-workspace[data-open=false] .crm-list-agreement>.crm-interaction-agreement{padding-top:0}
+ .crm-customer-workspace[data-open=false] .crm-list-agreement+.crm-list-agreement{margin-top:8px}
+}
+.crm-stage-source-picker{margin:12px 0;border:1px solid var(--cw-border);border-radius:10px;padding:12px;max-height:300px;overflow:auto}
+.crm-stage-source-picker>summary,.crm-stage-records summary{cursor:pointer;font-weight:600}
+.crm-stage-source-picker>div{padding:10px 0;border-top:1px solid var(--cw-border)}
+.crm-stage-source-picker label{display:flex;gap:8px;align-items:start}
+.crm-stage-source-picker p,.crm-stage-basis-original p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;margin:6px 0}
+.crm-stage-records{margin-top:16px;font-size:13px;line-height:1.6}.crm-stage-records>details{padding:12px 0;border-top:1px solid var(--cw-border)}
+.crm-stage-records article{padding:12px 0;border-bottom:1px solid var(--cw-border)}
+.crm-stage-records p{margin:4px 0;white-space:pre-wrap}.crm-stage-records small{color:var(--cw-muted)}
+.crm-stage-basis-original{padding:10px 12px;border-left:2px solid var(--cw-border);margin:8px 0}.crm-stage-basis-original>span{margin-left:12px;color:var(--cw-muted)}
+.crm-stage-editor select,.crm-stage-editor input[type=datetime-local]{display:block;max-width:100%;border:1px solid var(--cw-border);padding:8px;border-radius:8px;background:var(--cw-surface);color:var(--cw-text);margin-top:6px}
+#crm-sales-stage-editor{scroll-margin-top:calc(var(--crm-shell-height,120px) + 16px)}
+.crm-sales-stage-focus{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px;margin:16px 0 20px;border:1px solid var(--cw-border);border-left:3px solid var(--cw-accent);border-radius:10px;background:var(--cw-soft)}
+.crm-sales-stage-focus>div{display:grid;gap:4px;min-width:0}
+.crm-sales-stage-focus span{font-size:13px;color:var(--cw-muted)}
+.crm-sales-stage-focus strong{font-size:16px;line-height:1.5;font-weight:600}
+.crm-sales-stage-focus button{min-height:40px;white-space:nowrap;flex:none}
+.crm-stage-saved-notice{font-size:13px;color:var(--cw-accent)}
+/* Confirmed facts sit directly below the current stage; statements stay in source history. */
+.crm-fact-milestones{margin:0 0 20px;padding:0 0 16px;border-bottom:1px solid var(--cw-border)}
+.crm-fact-milestones>h4{font-size:14px;font-weight:600;line-height:1.5;margin:0 0 10px;color:var(--cw-text)}
+.crm-fact-milestone-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 16px;padding:10px 0}
+.crm-fact-milestone-row+.crm-fact-milestone-row{border-top:1px solid var(--cw-border)}
+.crm-fact-milestone-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
+.crm-fact-milestone-title>strong,.crm-fact-milestone-title>h3{font-size:14px;font-weight:600;line-height:1.5;margin:0}
+.crm-fact-milestone-title>span{font-size:12px;color:var(--cw-muted);font-weight:400}
+.crm-fact-milestone-meta{grid-column:1;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--cw-muted);line-height:1.6}
+.crm-fact-milestone-meta small,.crm-fact-milestone-time small{font-size:12px;color:var(--cw-muted)}
+.crm-fact-milestone-time{display:inline-flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px}
+.crm-fact-milestone-actions{grid-column:2;grid-row:1/3;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.crm-fact-milestone-actions>.crm-work-link{font-size:13px}
+.crm-fact-milestone-empty,.crm-fact-milestones>p{font-size:13px;color:var(--cw-muted);margin:0;line-height:1.6}
+.crm-fact-milestone-history .crm-fact-milestone-entry{display:grid;gap:10px;padding:16px 0;border-bottom:1px solid var(--cw-border)}
+.crm-fact-milestone-entry p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.6}
+.crm-fact-milestone-entry>small{font-size:12px;color:var(--cw-muted)}
+.crm-fact-milestone-entry details>summary{cursor:pointer;min-height:32px;font-size:13px;line-height:1.6;padding:6px 0}
+.crm-fact-milestone-entry .crm-stage-basis-original{border-left:2px solid var(--cw-border);padding:8px 14px;margin:6px 0;display:grid;gap:8px}
+.crm-fact-milestone-entry .crm-stage-basis-original>span{font-size:12px;color:var(--cw-muted)}
+
+/* Compact event facts: counts open history, provenance lives in evidence. */
+.crm-fact-milestone-row{padding:7px 0;gap:4px 12px;align-items:start}
+.crm-fact-milestone-row+.crm-fact-milestone-row{border-top:0}
+.crm-fact-milestone-title{gap:6px 12px;align-items:baseline}
+.crm-fact-milestone-title>.crm-work-link{font-size:13px}
+.crm-fact-milestone-title>.crm-fact-milestone-time{font-size:12px;line-height:1.5;color:var(--cw-muted)}
+.crm-fact-milestone-actions{grid-row:1;align-self:start}
+.crm-fact-milestones{margin-bottom:12px;padding-bottom:10px}
+.crm-sales-brief-empty{margin:0;font-size:13px}
+.crm-sales-brief-grid:empty{display:none}
+.crm-list-milestones{display:grid;gap:3px;margin-top:8px}
+.crm-list-milestones>.crm-work-muted{font-size:12px}
+.crm-list-milestones>.crm-work-support-link{font-size:12px;line-height:1.5;margin:0;text-align:left}
+
+/* Sales brief: one container, compact state bar, needs first, evidence beside each fact. */
+.crm-sales-brief .crm-sales-stage-focus{border:0;border-radius:0;border-left:0;background:none;padding:0 0 12px;margin:10px 0 16px;border-bottom:1px solid var(--cw-border);justify-content:flex-start;gap:16px;min-height:32px}
+.crm-sales-brief .crm-sales-stage-focus>div{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.crm-sales-brief .crm-sales-stage-focus strong{font-size:14px;line-height:1.6}
+.crm-sales-brief .crm-sales-stage-focus strong>span{font-size:inherit;color:var(--cw-text)}
+.crm-sales-brief .crm-sales-stage-focus button{min-height:32px;padding:4px 6px;font-size:13px;margin-left:auto}
+.crm-legacy-stage-hint{cursor:help;text-decoration:underline dotted;text-underline-offset:4px}
+.crm-legacy-stage-hint:focus-visible{outline:2px solid var(--cw-accent);outline-offset:3px;border-radius:3px}
+.crm-sales-brief-columns{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,1fr);gap:24px;align-items:start}
+.crm-sales-brief-columns[data-has-milestones="false"]{grid-template-columns:minmax(0,1fr)}
+.crm-sales-needs,.crm-sales-brief-aside{min-width:0}
+.crm-sales-needs>h4,.crm-sales-brief-aside .crm-fact-milestones>h4{font-size:12px;font-weight:500;color:var(--cw-muted);margin:0 0 10px;line-height:1.6}
+.crm-sales-goal{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.crm-sales-goal>strong{font-size:16px;font-weight:600;line-height:1.6;overflow-wrap:anywhere}
+.crm-sales-inline-evidence{display:inline-flex;gap:6px;align-items:center;vertical-align:middle;margin-left:6px}
+.crm-sales-inline-evidence:empty{display:none}
+.crm-sales-inline-evidence .crm-evidence-action{font-size:12px;min-height:24px}
+.crm-sales-brief-context{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--cw-muted);line-height:1.6;margin-bottom:14px}
+.crm-sales-brief-context>span{display:inline-flex;align-items:center;flex-wrap:wrap;min-width:0}
+.crm-sales-conditions{display:grid;gap:9px;margin:0}
+.crm-sales-condition{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:baseline;font-size:14px;line-height:1.65}
+.crm-sales-condition dt{font-size:12px;color:var(--cw-muted)}
+.crm-sales-condition dd{margin:0;overflow-wrap:anywhere;min-width:0}
+.crm-sales-brief-aside{padding-left:20px;border-left:1px solid var(--cw-border)}
+.crm-sales-brief-aside .crm-fact-milestones{padding:0;margin:0;border:0}
+.crm-sales-brief-aside .crm-fact-milestone-row{padding:0;gap:4px 8px;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+.crm-sales-brief-aside .crm-fact-milestone-row+.crm-fact-milestone-row{margin-top:14px}
+.crm-sales-brief-aside .crm-fact-milestone-title{gap:4px 8px}
+.crm-sales-brief-aside .crm-fact-milestone-title strong{font-size:13px;font-weight:500}
+.crm-sales-brief-aside .crm-fact-milestone-title>.crm-fact-milestone-time{flex-basis:100%;display:flex;gap:4px;flex-wrap:wrap;font-size:12px;line-height:1.5}
+.crm-sales-brief-aside .crm-fact-milestone-actions{grid-row:1;grid-column:2}
+.crm-sales-brief-aside .crm-evidence-action{min-height:24px;font-size:12px}
+@media(max-width:1100px){.crm-sales-brief-columns{grid-template-columns:minmax(0,1.5fr) minmax(235px,1fr);gap:18px}.crm-sales-brief-aside{padding-left:16px}}
+@media(max-width:760px){.crm-sales-brief-columns{grid-template-columns:minmax(0,1fr)}.crm-sales-brief-aside{border-left:0;padding-left:0;border-top:1px solid var(--cw-border);padding-top:14px}}
+.crm-sales-brief .crm-evidence-action-button{min-height:32px;min-width:56px;padding:3px 4px;font-size:12px}
+
+.crm-budget-source-group{padding:14px 0;border-bottom:1px solid var(--cw-border);display:grid;gap:8px}
+.crm-budget-source-group>div{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:14px}
+.crm-budget-source-group>div>strong{font-size:12px;font-weight:500;color:var(--cw-muted)}
+
+/* Shared stage colour semantics; contact restriction is independent and always textual. */
+.crm-customer-workspace,.crm-lead-overview{--crm-stage-active:#1d4f91;--crm-stage-registration:#087568;--crm-stage-enrolled:#15803d;--crm-stage-paused:#946200;--crm-stage-closed:#52647c;--crm-stage-stop:#b91c1c}
+.crm-customer-workspace[data-theme=dark],.crm-lead-overview[data-theme=dark]{--crm-stage-active:#93c5fd;--crm-stage-registration:#5eead4;--crm-stage-enrolled:#86efac;--crm-stage-paused:#fcd34d;--crm-stage-closed:#a3b3c7;--crm-stage-stop:#fca5a5}
+.crm-sales-stage{color:var(--cw-text)}
+.crm-sales-stage[data-stage-tone=active]{color:var(--crm-stage-active)}
+.crm-sales-stage[data-stage-tone=registration]{color:var(--crm-stage-registration)}
+.crm-sales-stage[data-stage-tone=enrolled]{color:var(--crm-stage-enrolled)}
+.crm-sales-stage[data-stage-tone=paused]{color:var(--crm-stage-paused)}
+.crm-sales-stage[data-stage-tone=closed]{color:var(--crm-stage-closed)}
+.crm-stop-contact{display:inline-flex;gap:5px;align-items:center;color:var(--crm-stage-stop);font-size:12px;line-height:1.6}
+.crm-sales-brief .crm-followup-restriction{border-left-color:var(--crm-stage-stop);background:none}
+.crm-customer-workspace[data-open=false] .crm-work-progress{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.crm-customer-workspace[data-open=false] .crm-list-stage-line{display:flex;align-items:baseline;gap:6px 8px;flex-wrap:wrap}
+.crm-customer-workspace[data-open=false] .crm-list-stage-line>.crm-sales-stage{font-size:14px;font-weight:600;line-height:1.6}
+.crm-list-stage-line .crm-work-group{font-weight:400;flex:none}
+.crm-list-progress-label{display:block;font-size:12px;font-weight:400;color:var(--cw-muted);line-height:1.5}
+.crm-list-intent{display:grid;gap:2px}
+.crm-list-intent>.crm-work-support-link{margin:0;line-height:1.6;text-align:left}
+.crm-customer-workspace[data-open=false] .crm-list-milestones{gap:2px;margin:0}
+.crm-customer-workspace[data-open=false] .crm-list-milestones>.crm-work-support-link{font-size:13px;line-height:1.6}
+.crm-list-milestones>.crm-work-support-link>.crm-work-muted{font-size:12px}
+.crm-sales-brief .crm-sales-stage-focus strong>.crm-sales-stage{color:inherit}
+.crm-sales-brief .crm-sales-stage-focus strong>.crm-sales-stage[data-stage-tone=active]{color:var(--crm-stage-active)}
+.crm-sales-brief .crm-sales-stage-focus strong>.crm-sales-stage[data-stage-tone=registration]{color:var(--crm-stage-registration)}
+.crm-sales-brief .crm-sales-stage-focus strong>.crm-sales-stage[data-stage-tone=enrolled]{color:var(--crm-stage-enrolled)}
+.crm-sales-brief .crm-sales-stage-focus strong>.crm-sales-stage[data-stage-tone=paused]{color:var(--crm-stage-paused)}
+.crm-sales-brief .crm-sales-stage-focus strong>.crm-sales-stage[data-stage-tone=closed]{color:var(--crm-stage-closed)}
+
+.crm-progress-stage-fields{border-top:1px solid var(--cw-border);padding-top:16px;margin-top:16px}
+.crm-progress-stage-toggle{display:flex;align-items:center;gap:8px;font-size:14px;line-height:1.6}
+.crm-progress-stage-toggle>input{width:auto;flex:none}
+.crm-progress-stage-options{display:grid;gap:12px;margin:12px 0 0;padding:0;border:0}
+.crm-progress-stage-options p{margin:0;font-size:13px}
+.crm-progress-partial-status{font-size:13px;color:var(--cw-text);border-left:3px solid var(--cw-accent);padding-left:10px}
+.crm-customer-workspace[data-open=false] .crm-work-next .crm-followup-action,
+.crm-customer-workspace[data-open=false] .crm-list-agreements-label{font-size:14px;font-weight:600;line-height:1.6}
+
+/* Current situation: stage → established events → learning brief; no sparse sidebar. */
+.crm-sales-brief{padding:20px!important}
+.crm-sales-brief .crm-followup-section-heading{margin-bottom:12px}
+.crm-sales-brief .crm-sales-stage-focus{margin:0;padding:0 0 12px;min-height:36px;gap:12px}
+.crm-sales-brief .crm-sales-stage-focus>div>span{font-size:12px;color:var(--cw-muted)}
+.crm-sales-brief .crm-sales-stage-focus strong{font-size:16px;line-height:1.5}
+.crm-sales-brief-events{padding:12px 0;border-bottom:1px solid var(--cw-border)}
+.crm-sales-brief-events .crm-fact-milestones{margin:0;padding:0;border:0}
+.crm-sales-brief-events .crm-fact-milestones>h4{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--cw-muted)}
+.crm-sales-brief-events .crm-fact-milestone-rows{display:flex;flex-wrap:wrap;gap:8px 24px}
+.crm-sales-brief-events .crm-fact-milestone-row{padding:0;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;min-width:0}
+.crm-sales-brief-events .crm-fact-milestone-title{gap:4px 8px}
+.crm-sales-brief-events .crm-fact-milestone-title strong{font-size:13px;font-weight:500}
+.crm-sales-brief-events .crm-fact-milestone-title>.crm-fact-milestone-time{flex-basis:100%;display:flex;gap:4px;flex-wrap:wrap;font-size:12px}
+.crm-sales-brief-events .crm-fact-milestone-actions{grid-column:2;grid-row:1}
+.crm-sales-brief-events .crm-fact-milestone-empty{margin:0;font-size:12px;color:var(--cw-muted)}
+.crm-sales-brief .crm-sales-brief-columns{display:block;padding-top:16px}
+.crm-sales-brief .crm-sales-needs>h4{margin:0 0 12px;font-size:12px;font-weight:500;color:var(--cw-muted)}
+.crm-sales-brief .crm-sales-goal{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:0 0 4px}
+.crm-sales-brief .crm-sales-goal-label{font-size:12px;color:var(--cw-muted);font-weight:400}
+.crm-sales-brief .crm-sales-goal>strong{font-size:16px;font-weight:600;line-height:1.6}
+.crm-sales-brief .crm-sales-brief-context{margin:0 0 14px;font-size:13px;gap:4px 8px}
+.crm-sales-brief .crm-sales-conditions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px;margin:0;padding-top:12px;border-top:1px solid var(--cw-border)}
+.crm-sales-brief .crm-sales-conditions:empty{display:none}
+.crm-sales-brief .crm-sales-condition{display:block;min-width:0;padding:0}
+.crm-sales-brief .crm-sales-condition dt{font-size:12px;color:var(--cw-muted);line-height:1.5;margin:0 0 2px}
+.crm-sales-brief .crm-sales-condition dd{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 6px;margin:0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.crm-sales-brief .crm-sales-inline-evidence{display:inline-flex;align-items:center;gap:4px;flex-shrink:0}
+.crm-sales-brief .crm-evidence-action-button{min-width:0;min-height:28px;padding:2px 4px}
+@media(max-width:760px){.crm-sales-brief .crm-sales-conditions{grid-template-columns:minmax(0,1fr)}}
+/* Keep the sales brief a compact scan surface, not a stack of report sections. */
+.crm-sales-brief .crm-sales-stage-focus{border-bottom:0;padding:0;min-height:28px;margin:0 0 8px}
+.crm-sales-brief-events{padding:8px 0 12px}
+.crm-sales-brief-events .crm-fact-milestones{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 16px}
+.crm-sales-brief-events .crm-fact-milestones>h4{margin:0;white-space:nowrap}
+.crm-sales-brief-events .crm-fact-milestone-rows{gap:6px 20px;min-width:0;flex:1}
+.crm-sales-brief-events .crm-fact-milestone-row{display:flex;gap:4px 8px;align-items:baseline;flex-wrap:wrap}
+.crm-sales-brief-events .crm-fact-milestone-title{display:flex;gap:4px 8px;align-items:baseline;flex-wrap:wrap}
+.crm-sales-brief-events .crm-fact-milestone-title>.crm-fact-milestone-time{flex-basis:auto;display:inline-flex}
+.crm-sales-brief .crm-sales-needs>h4{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.crm-sales-brief .crm-sales-goal{margin:0 0 2px}
+.crm-sales-brief .crm-sales-brief-context{margin:0 0 12px}
+.crm-sales-brief .crm-sales-conditions{padding-top:0;border-top:0;gap:8px 24px}
+.crm-sales-brief .crm-sales-condition{display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px;align-items:baseline}
+.crm-sales-brief .crm-sales-condition dt{margin:0}
+/* Separate intent and established facts from the preceding sales-progress group. */
+.crm-customer-workspace[data-open=false] .crm-work-progress>.crm-list-intent,
+.crm-customer-workspace[data-open=false] .crm-work-progress>.crm-list-milestones{margin-top:4px}
+
+.crm-list-intent>.crm-list-intent-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;max-width:100%;padding:0;text-align:left}
+.crm-list-intent-row>.crm-list-intent-time{font-size:12px;line-height:1.6;font-weight:400;color:var(--cw-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.crm-list-intent-row>.crm-list-intent-time[data-unknown=true]{color:var(--crm-contact-unanswered,#946200)}
+
+/* History filters use the shared selector and an aligned 40px toolbar. */
+.crm-history-toolbar{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr) auto;gap:12px;align-items:end}
+.crm-history-toolbar>div{display:grid;gap:6px;min-width:0}
+.crm-history-toolbar>div>label{display:block;margin:0;font-size:13px;font-weight:500;line-height:20px;color:var(--cw-muted)}
+.crm-history-toolbar .crm-detail-choice{width:100%;min-width:0;margin:0}
+.crm-history-toolbar .crm-filter-dimension-button,.crm-history-toolbar input[type=search],.crm-history-toolbar>.crm-history-refresh{box-sizing:border-box;height:40px;min-height:40px;margin:0;padding:0 12px;border-radius:10px;font-size:14px;line-height:20px}
+.crm-history-toolbar .crm-filter-dimension-button{width:100%}
+.crm-history-toolbar>.crm-history-refresh{gap:6px;font-weight:500;white-space:nowrap}
+@media(max-width:760px){.crm-history-toolbar{grid-template-columns:minmax(0,1fr) auto}.crm-history-toolbar>.crm-history-type-filter{grid-column:1/-1}}
+
+.crm-sales-stage-change{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:4px 6px;max-width:100%;font-size:inherit;line-height:inherit}
+.crm-sales-stage-change>.crm-sales-stage{font-weight:500}
+.crm-stage-change-arrow{color:var(--cw-muted);font-weight:400}
+
+.crm-history-toolbar{--cw-control-min:40px;--cf-control-height:40px}
+.crm-followup-focus .is-summary .crm-interaction-stamp>.crm-interaction-empty{font-size:inherit;line-height:inherit}

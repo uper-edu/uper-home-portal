@@ -63,6 +63,7 @@ export function historyTaskReferences(row: any) {
   add(d.taskId, "linked");
   add(d.newTaskId, "linked");
   add(d.processingTaskId, "handled");
+  for (const id of d.result?.cancelledTaskIds || []) add(id,"cancel");
   for (const id of d.result?.completedTaskIds || d.completeTaskIds || [])
     add(id, "completed");
   if (row.fact?.kind?.startsWith("task.")) {
@@ -126,15 +127,9 @@ export function historyBuyingEvidence(
     return values.length ? { kind: "questionnaire", values } : null;
   }
   if (f?.kind === "task.request_evidence" && f.data?.taskId && ["booking", "enrollment"].includes(f.data?.action)) return {kind:"chat",values:[f.data.action === "booking" ? "Booking requested" : "Ready to enroll"]};
-  const signal =
-    f?.kind === "followup.recorded"
-      ? f.data?.buyingSignalDetected
-      : !f
-        ? row.event?.buyingSignalDetected
-        : null;
-  return typeof signal === "string" && signal.trim() && signal !== "None yet"
-    ? { kind: "sales", values: [signal] }
-    : null;
+  const data = f?.kind === "followup.recorded" ? f.data : !f ? row.event : null;
+  const signals = [...new Set([...(data?.buyingSignalsDetected||[]),data?.buyingSignalDetected].filter(v=>typeof v==='string'&&v.trim()&&v!=='None yet'))] as string[];
+  return signals.length ? {kind:"sales",values:signals} : null;
 }
 
 export function historyBuyingLabel(

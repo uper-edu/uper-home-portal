@@ -1,3 +1,4 @@
+import {adminFieldName,useAdminField} from '../AdminForm';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { crmId } from "../../utils/crmIndonesian";
@@ -25,7 +26,11 @@ export function CrmSingleSelect({
   emptyLabel,
   displayValue,
   footer,
+  required: ownRequired,
+  controlId,
 }: {
+  required?: boolean;
+  controlId?: string;
   label: string;
   value: string;
   options: CrmChoice[];
@@ -43,7 +48,8 @@ export function CrmSingleSelect({
   displayValue?: string;
   footer?: (close: () => void) => React.ReactNode;
 }) {
-  const id = useId();
+  const id = useId(),field=useAdminField(),required=ownRequired??field?.required??false;
+  label=adminFieldName(label);
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -161,7 +167,12 @@ export function CrmSingleSelect({
         ref={trigger}
         type="button"
         className="crm-filter-dimension-button"
+        id={controlId||field?.id}
+        role={required?'combobox':undefined}
+        aria-required={required||undefined}
+        data-admin-has-value={multiple?values.length>0:!!value}
         aria-label={label}
+        aria-description={displayValue}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}

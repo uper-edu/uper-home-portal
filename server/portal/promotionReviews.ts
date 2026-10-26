@@ -1,3 +1,4 @@
+import {canReviewSourceAttribution,assertSourceAttributionReviewer} from './crmAccessControls.ts';
 import crypto from 'node:crypto';
 import {pool,tx} from './store.ts';
 import {allowed} from './identity.ts';
@@ -26,14 +27,14 @@ async function catalogs(db:any){return {
  reviews:(await db.query('SELECT * FROM campaign_source_reviews')).rows,
 };}
 export async function listPromotionReviews(employee:any){
- permitted(employee);const {campaigns,reviews}=await catalogs(pool);
+ permitted(employee);const canReview=await canReviewSourceAttribution(pool,employee);const {campaigns,reviews}=await catalogs(pool);
  const candidates=(await pool.query('SELECT id,profile FROM portal_leads')).rows.filter((r:any)=>allowed(employee,r.profile)).flatMap((r:any)=>{const c=context(r.profile,campaigns,reviews);return c?[{...r,...c}]:[];});
  if(!candidates.length)return [];
  const ids=JSON.stringify(candidates.map((r:any)=>r.id));
  const entries=(await pool.query('SELECT id,lead_id,source,attribution,updated_at FROM conversations WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) ORDER BY updated_at,id',[ids])).rows;
  const audits=(await pool.query("SELECT actor,data,created_at FROM portal_audit WHERE action='campaign.promotion.review' AND JSON_CONTAINS(:p1,JSON_QUOTE(JSON_UNQUOTE(JSON_EXTRACT(data,'$.leadId')))) ORDER BY id DESC",[ids])).rows;
  return candidates.map((r:any)=>({
-  leadId:r.id,name:r.profile.fullName||r.profile.name||r.id,rawCode:r.rawCampaign,rawPromotionLinkId:r.originalP,
+  canReview,leadId:r.id,name:r.profile.fullName||r.profile.name||r.id,rawCode:r.rawCampaign,rawPromotionLinkId:r.originalP,
   campaignId:r.campaign.id,campaignCode:r.campaign.code,campaignName:r.campaign.name,
   links:r.campaign.promotionLinks||[],status:r.current?.status||'pending',revision:r.current?.revision||0,
   resolution:r.current||null,
@@ -52,6 +53,7 @@ export async function reviewPromotion(leadId:string,b:any,employee:any){
  if(!['link','create','defer','invalid'].includes(b.action)||typeof b.reason!=='string'||!b.reason.trim()||b.reason.length>1000||typeof b.requestId!=='string'||!/^[-a-zA-Z0-9]{8,100}$/.test(b.requestId)||!Number.isSafeInteger(b.revision)||b.revision<0)fail(400,'Choose an action and provide a review reason.');
  const hash=fingerprint(leadId,b);
  return tx(async(db:any)=>{
+  await assertSourceAttributionReviewer(db,employee);
   const row=(await db.query('SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE',[leadId])).rows[0];if(!row)fail(404,'Customer not found.');permitted(employee,row.profile);
   const prior=(await db.query("SELECT data FROM portal_audit WHERE actor=:p1 AND action='campaign.promotion.review' AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId'))=:p2 ORDER BY id DESC LIMIT 1",[employee.id,b.requestId])).rows[0]?.data;
   if(prior){if(prior.fingerprint!==hash)fail(409,'Request ID already used with different input.');return prior.result;}

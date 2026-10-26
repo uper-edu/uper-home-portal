@@ -21,7 +21,6 @@ export async function setupNativeTest(label) {
     user: "root",
     socketPath: socket,
   });
-  await admin.query("SET GLOBAL log_bin_trust_function_creators=1");
   await admin.query(
     "CREATE DATABASE `" +
       name +

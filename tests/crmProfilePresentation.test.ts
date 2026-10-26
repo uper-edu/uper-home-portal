@@ -258,10 +258,10 @@ test("Customer group is a separate always-visible chapter with its current value
       group,
       /<details|<summary|Classification evidence|分组依据/,
     );
-    assert.match(group, /Asked about fees|Menanyakan biaya|询问学费/);
-    assert.match(group, /Buying intent signals|Sinyal minat pembelian|购买意向信号/);
+    assert.doesNotMatch(group, /Asked about fees|Menanyakan biaya|询问学费/);
+    assert.match(group, /Customer requests and interests|Permintaan dan minat pelanggan|客户诉求与意向/);
     assert.match(group, /Questionnaire interests|Minat dalam kuesioner|问卷关注内容/);
-    assert.match(group, /Historical labels|Label historis|历史标签/);
+    assert.doesNotMatch(group, /Historical labels|Label historis|历史标签/);
     assert.doesNotMatch(
       mainChapters(html)[2],
       /Buying signals|Sinyal pembelian|购买信号/,

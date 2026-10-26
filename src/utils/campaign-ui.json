@@ -1638,5 +1638,17 @@
   "This customer only; original parameters retained. No future alias.": [
     "Hanya pelanggan ini; parameter asli tetap disimpan. Bukan alias untuk registrasi mendatang.",
     "仅此客户；原始参数保留，不作为未来登记别名。"
+  ],
+  "CRM Manager review required by policy": [
+    "Kebijakan memerlukan verifikasi CRM Manager",
+    "当前配置要求由CRM Manager核实归因"
+  ],
+  "Only an authorized CRM Manager can review source attribution under the current policy.": [
+    "Kebijakan saat ini hanya mengizinkan CRM Manager berwenang memverifikasi atribusi sumber.",
+    "当前配置仅允许有权限的CRM Manager核实来源归因。"
+  ],
+  "Use a separate link for each placement you want to distinguish.": [
+    "Gunakan tautan terpisah untuk setiap penempatan yang ingin dibedakan.",
+    "需要区分的每个投放位置应使用独立链接。"
   ]
 }

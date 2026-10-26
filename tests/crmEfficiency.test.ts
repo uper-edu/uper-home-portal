@@ -37,31 +37,7 @@ test("contact evidence separates attempts from responses and excludes unknown ti
   assert.equal(stats.lastAttempt.id, "retry");
   assert.equal(stats.lastConnected.summary, "原文");
 });
-test("work queue includes internal review without waking future ordinary contact", () => {
-  const now = Date.parse("2026-10-14T10:00Z");
-  const day = (n: number) => new Date(n).toISOString().slice(0, 10);
-  const lead: any = {
-    lastContactedAt: "2026-10-10",
-    currentStage: "Contacted",
-    attention: {
-      tasks: [
-        { kind: "follow_up", status: "open", dueAt: "2026-10-16T10:00Z" },
-      ],
-    },
-  };
-  assert.equal(needsHandling(lead, now, day), false);
-  lead.contactArrangement = { state: "waiting", at: "2026-10-13" };
-  assert.equal(needsHandling(lead, now, day), true);
-  lead.attention.tasks = [
-    { kind: "contact_review", status: "open", dueAt: "2026-10-16T10:00Z" },
-  ];
-  assert.equal(needsHandling(lead, now, day), false);
-  lead.attention.tasks[0].dueAt = "2026-10-14T09:00Z";
-  assert.equal(needsHandling(lead, now, day), true);
-  assert.equal(needsHandling({}, now, day), true);
-  assert.equal(defaultLeadFilters("own").workScope, "action");
-  assert.equal(defaultLeadFilters("all").workScope, "all");
-});
+test("facts do not turn into work obligations; only first requirement and real agreements do",async()=>{const now=Date.parse('2026-11-01T10:00:00Z'),day=n=>new Date(n).toISOString().slice(0,10);const p={attention:{tasks:[]},currentStage:'Contacted'};assert.equal(needsHandling(p,now,day),false);assert.equal(needsHandling({...p,attention:{tasks:[],requestCount:1}},now,day),false);assert.equal(needsHandling({...p,commitments:[{status:'active',date:'2026-11-01'}]},now,day),true);assert.equal(needsHandling({...p,commitments:[{status:'active',date:'2026-11-02'}]},now,day),false);assert.equal(needsHandling({},now,day),true);});
 test("language unknown cannot produce an interface-driven greeting and ambiguous contact is rejected", () => {
   assert.equal(greeting("unknown", "原名", "Robert"), "");
   assert.match(greeting("id", "原名", "Robert"), /Halo 原名/);

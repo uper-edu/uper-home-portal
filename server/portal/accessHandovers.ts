@@ -1,3 +1,6 @@
+import {pendingIdentity} from './identityReview.ts';
+import {loadCrmAccessControls} from './crmAccessControls.ts';
+import {isCrmManager} from '../../src/utils/crmOutreach.ts';
 import crypto from "node:crypto";
 import { pool, tx, event } from "./store.ts";
 import { platform } from "./identity.ts";
@@ -186,6 +189,7 @@ export function mountAccessHandovers(app: any) {
         if (!actor.permissions.includes("crm.assign"))
           deny(403, "Permission denied");
         const b = q.body;
+        if(Array.isArray(b.leads)&&b.leads.length&&(await loadCrmAccessControls(c)).ownerAssignmentManagerOnly&&!isCrmManager(actor))deny(403,"OWNER_MANAGER_REQUIRED");
         if (
           typeof b.reason !== "string" ||
           !b.reason.trim() ||
@@ -212,10 +216,12 @@ export function mountAccessHandovers(app: any) {
             b.leads.length + b.taskIds.length > 100
           )
             deny(400, "access_handover_selection");
+          const releaseToPool=b.targetId==='__shared_pool';
+          if(releaseToPool&&(!isCrmManager(actor)||b.taskIds.length))deny(403,'CONTACT_PERMISSION_DENIED');
           const target = (await accessDirectory(c)).find(
             (u: any) => u.id === b.targetId,
           );
-          if (!target || !eligibleOwner(target))
+          if (!releaseToPool && (!target || !eligibleOwner(target)))
             deny(400, "access_handover_target");
           for (const selected of b.leads) {
             const l = (
@@ -239,20 +245,22 @@ export function mountAccessHandovers(app: any) {
               !permittedRecord(actor, l.profile, "crm.read")
             )
               deny(403, "Permission denied");
+            if(!releaseToPool&&(await pendingIdentity(c,l.id,true)).length)deny(409,'IDENTITY_REVIEW_REQUIRED');
             const profile = {
               ...l.profile,
-              owner: target.id,
+              owner: releaseToPool?null:target.id,
               ownerChangedAt: new Date().toISOString(),
             };
             if (
-              !permittedRecord(target, profile, "crm.read") ||
-              !permittedRecord(target, profile, "crm.followup")
+              !releaseToPool && (!permittedRecord(target, profile, "crm.read") ||
+              !permittedRecord(target, profile, "crm.followup"))
             )
               deny(400, "access_handover_target");
             await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1", [
               l.id,
               profile,
             ]);
+            if(releaseToPool)await c.query("UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')",[l.id,null]);
             await event(c, "conversation.updated", l.id, {
               source: "crm_assignment",
               assignmentChanged: true,

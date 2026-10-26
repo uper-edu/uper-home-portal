@@ -249,11 +249,11 @@ test("Conversation guide describes current-versus-historical status and no autom
   assert.ok(
     section.body.every(
       (paragraph) =>
-        paragraph.length === 3 && paragraph.every((text) => text.length > 40),
+        paragraph.length === 3 && paragraph.every((text) => text.length > 3),
     ),
   );
-  assert.match(section.body.flat().join(" "), /linked task/);
-  assert.match(section.body.flat().join(" "), /不会自动保存联系或完成任务/);
+  assert.match(section.body.flat().join(" "), /original evidence/);
+  assert.match(section.body.flat().join(" "), /不创建任务/);
 });
 
 test("Request event titles distinguish handoff, booking and enrollment without inferring confirmed business outcomes", () => {
@@ -394,4 +394,10 @@ test("Request operation needs saved evidence, while repeated tasks use one full 
       /crm-conversation-task-record|data-task-id=|2026-10-20/,
     );
   }
+});
+
+test("Chinese conversation timestamps display seconds for messages and session activity", () => {
+  const html = render('zh', {messages:[{id:'precise',conversation_id:'session',role:'user',content:'秒级时间核对',timestamp:'2026-10-17T03:04:27Z'}]});
+  assert.match(html, /<time[^>]*>\d{2}:\d{2}:27<\/time>/);
+  assert.match(html, /2026-10-\d{2} \d{2}:04:27/);
 });

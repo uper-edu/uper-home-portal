@@ -1,3 +1,4 @@
+import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmPromotionReviews } from "./CrmPromotionReviews";
 import { CampaignSourceEvidence } from "./CampaignSourceEvidence";
@@ -197,6 +198,7 @@ function UnknownCampaignSources({
             "Kode asli ini tidak dapat dipakai sebagai kode kampanye. Tautkan kampanye yang ada atau tandai sumber tidak valid; kode asli tetap disimpan.",
             "原始代码无法用作活动码。请关联已有活动或标记无效；原始来源仍保留。",
           ]);
+        else if(r.status===403)setError(["Source attribution review is restricted by the current policy or your campaign permissions.","Verifikasi atribusi sumber dibatasi kebijakan saat ini atau izin kampanye Anda.","当前配置或营销活动权限不允许核实归因，草稿已保留。"]);
         else if (r.status === 409)
           setError([
             "Source changed. Refresh before reviewing again.",
@@ -356,7 +358,8 @@ function UnknownCampaignSources({
               id={"source-review-trigger-" + r.id}
               aria-expanded={active?.id === r.id}
               aria-controls={"source-review-" + r.id}
-              disabled={busy}
+              disabled={busy||r.canReview===false}
+              title={r.canReview===false?t("CRM Manager review required by policy","Kebijakan memerlukan verifikasi CRM Manager","当前配置要求由CRM Manager核实归因"):undefined}
               onClick={() => (active?.id === r.id ? closeReview() : edit(r))}
             >
               {t("Review source", "Verifikasi sumber", "核实来源")}{" "}
@@ -364,13 +367,15 @@ function UnknownCampaignSources({
             </button>
           )}
           {active?.id === r.id && (
-            <form
+            <AdminForm lang={lang}
               id={"source-review-" + r.id}
               tabIndex={-1}
               onSubmit={save}
               className="campaign-source-review border rounded-xl p-4 space-y-3"
               aria-label={t("Review source", "Verifikasi sumber", "核实来源")}
             >
+<AdminRequiredNote lang={lang}/>
+
               {error && (
                 <p role="alert" className="text-red-600">
                   {error[{ en: 0, id: 1, zh: 2 }[lang]]}
@@ -460,7 +465,7 @@ function UnknownCampaignSources({
                       {active.rawCode}
                     </output>
                   </p>
-                  <label className="block">
+                  <AdminField className="block">
                     {t("Campaign name", "Nama kampanye", "活动名称")}
                     <input
                       required
@@ -472,7 +477,7 @@ function UnknownCampaignSources({
                       }}
                       className="block w-full border rounded-lg p-2 bg-transparent"
                     />
-                  </label>
+                  </AdminField>
                   <CrmSelect
                     lang={lang}
                     isLight={isLight}
@@ -530,7 +535,7 @@ function UnknownCampaignSources({
                   </p>
                 </>
               )}
-              <label className="block">
+              <AdminField className="block">
                 {t("Reason", "Alasan", "核实依据")}
                 <textarea
                   required
@@ -542,7 +547,7 @@ function UnknownCampaignSources({
                   }}
                   className="block w-full border rounded-lg p-2 bg-transparent"
                 />
-              </label>
+              </AdminField>
               <p>
                 {t(
                   "The original code and audit record are retained. Invalid sources do not delete leads or move them to Non-campaign source.",
@@ -550,10 +555,10 @@ function UnknownCampaignSources({
                   "原始代码及审计保留；标记无效不会删除客户或归入非活动来源。",
                 )}
               </p>
-              <div className="flex gap-3">
+              <div className="crm-source-review-actions flex gap-3">
                 <button
                   disabled={
-                    busy || !reason.trim() || (action === "link" && !target)
+                    active?.canReview===false || busy || !reason.trim() || (action === "link" && !target)
                   }
                   className="bg-teal-700 text-white rounded-lg px-3 py-2 disabled:opacity-50"
                 >
@@ -565,7 +570,7 @@ function UnknownCampaignSources({
                   {t("Cancel", "Batal", "取消")}
                 </button>
               </div>
-            </form>
+            </AdminForm>
           )}
         </article>
       ))}

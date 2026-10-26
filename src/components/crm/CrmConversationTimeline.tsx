@@ -13,7 +13,7 @@ import {
   crmMessageTimestamp,
   crmMessageTimeLabel,
 } from "../../utils/crmMessageTime";
-import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
+import { formatCrmOperatingTime,viewerTimeZone,crmInstant } from "../../utils/crmOperatingTime";
 
 import {
   conversationGroups,
@@ -53,6 +53,7 @@ export function CrmConversationTimeline({
     requestId?: string;
   };
 }) {
+  timezone=viewerTimeZone();
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const groups = conversationGroups(messages, conversations);
@@ -106,7 +107,7 @@ export function CrmConversationTimeline({
           day: "numeric",
           month: "long",
           year: "numeric",
-        }).format(new Date(timestamp))
+        }).format(crmInstant(timestamp)!)
       : t("Unknown time", "未知时间");
   };
   const latestUser = group.messages
@@ -207,7 +208,7 @@ export function CrmConversationTimeline({
                 ? formatCrmOperatingTime(
                     new Date(group.latest).toISOString(),
                     timezone,
-                  ).slice(0, 16)
+                  )
                 : t("Unknown time", "未知时间")}
               <span aria-hidden="true"> · </span>
               {group.messages.length}{" "}
@@ -230,7 +231,7 @@ export function CrmConversationTimeline({
             isLight={isLight}
             options={groups.map((value) => ({
               value: value.id,
-              label: `${value.latest ? formatCrmOperatingTime(new Date(value.latest).toISOString(), timezone).slice(0, 16) : t("Unknown time", "未知时间")} · ${crmValue(value.source, lang)} · ${value.messages.length} ${t(value.messages.length === 1 ? "message" : "messages", "条消息")}`,
+              label: `${value.latest ? formatCrmOperatingTime(new Date(value.latest).toISOString(), timezone) : t("Unknown time", "未知时间")} · ${crmValue(value.source, lang)} · ${value.messages.length} ${t(value.messages.length === 1 ? "message" : "messages", "条消息")}`,
             }))}
           />
         )}
@@ -294,7 +295,7 @@ export function CrmConversationTimeline({
                       {timestamp
                         ? formatCrmOperatingTime(timestamp, timezone).slice(
                             11,
-                            16,
+                            19,
                           )
                         : t("Unknown time", "未知时间")}
                     </time>

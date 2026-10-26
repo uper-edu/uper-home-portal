@@ -1,0 +1,9 @@
+/** Internal sales checks. These are never inserted or copied as customer-facing messages. */
+export const contactPreparationReferences=[
+ {id:'fees',purpose:'fees',title:['Fees and offers','Biaya dan penawaran','学费与优惠'],check:['Confirm the course, current fees, payment options and offer conditions before quoting.','Pastikan kursus, biaya terkini, pilihan pembayaran, dan syarat penawaran sebelum menyampaikan harga.','先确认所选课程，再核实当前价格、付款方式和优惠条件。'],},
+ {id:'format',purpose:'course',title:['Learning format','Format belajar','授课方式'],check:['Check the customer’s preferences, equipment and learning environment, then verify available course formats.','Periksa preferensi, perangkat, dan lingkungan belajar pelanggan, lalu pastikan format kursus yang tersedia.','了解客户设备、学习环境与偏好，再核实课程的授课方式和支持安排。'],},
+ {id:'schedule',purpose:'course',title:['Class schedule','Jadwal kelas','时间安排'],check:['Check availability and the actual timetable, including absence, catch-up and replay policies.','Periksa waktu yang sesuai, jadwal kelas, serta kebijakan ketidakhadiran, kelas pengganti, dan rekaman.','核对客户可上课时间、实际课表及缺课、补课和回放政策。'],},
+ {id:'decision',purpose:'custom',title:['Decision and information needs','Keputusan dan kebutuhan informasi','决策与资料准备'],check:['Ask what information is needed and who is involved in the decision; agree on further contact with the customer.','Tanyakan informasi yang diperlukan dan pihak yang terlibat dalam keputusan; sepakati kontak berikutnya dengan pelanggan.','确认还需要哪些资料、谁参与决策，征得客户同意后再约定后续联系。'],},
+] as const;
+/** Success is returned only after both existing authorization and the actual clipboard write succeed. */
+export async function copyPreparedContact(text:string,authorize:()=>Promise<unknown>,write:(text:string)=>Promise<void>){await authorize();await write(text);return true;}

@@ -209,14 +209,14 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             (await request("/api/crm/leads?task=overdue", cookies.Robert)).data
               .total,
           ),
-          0,
+          Number((await request("/api/crm/leads",cookies.Suki)).data.total),
         );
         assert.equal(
           Number(
             (await request("/api/crm/leads?task=today", cookies.Robert)).data
               .total,
           ),
-          0,
+          Number((await request("/api/crm/leads",cookies.Suki)).data.total),
         );
         const project=(rows:any[])=>rows.map(({id,profile})=>({id,owner:profile.owner,tier:profile.tier,currentStage:profile.currentStage}));
         const saved=await snapshot();assert.deepEqual(project(JSON.parse(saved)),project(JSON.parse(before)));before=saved;
@@ -228,7 +228,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       },
     );
     await t.test(
-      "unread is employee specific and combines with ownership; query does not change customer records",
+      "retired unread URL is ignored; queries preserve customer records",
       async () => {
         await pool.query(
           "INSERT INTO outbox(id,type,lead_id,payload) VALUES('filter-event','conversation.updated','filter-unassigned','{}')",
@@ -255,7 +255,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             (await request("/api/crm/leads?unread=true", cookies.Suki)).data
               .total,
           ),
-          0,
+          Number((await request("/api/crm/leads",cookies.Suki)).data.total),
         );
         assert.equal(await snapshot(), before);
       },

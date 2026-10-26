@@ -1,4 +1,4 @@
-import {contactPaused} from "./crmContact";
+import {contactPaused,needsTaskPlanning} from "./crmContact";
 import { crmId } from "./crmIndonesian";
 import type { CrmLeadRecord, LeadAttention } from "../types/crmLead";
 import { calendarDay } from "./crmLeadFilters";
@@ -9,7 +9,7 @@ export function confirmedTaskDeadline(task: FollowUpTask): number | null {
   const value = Date.parse(task.dueAt);
   return Number.isFinite(value) && value > 0 ? value : null;
 }
-export function pendingFollowUps(tasks: FollowUpTask[], stage?: string): FollowUpTask[] {
+export function pendingFollowUps(tasks: FollowUpTask[], stage?: string, now=Date.now(), timezone="Asia/Jakarta"): FollowUpTask[] {
   const pending = tasks.filter((task) =>
     ["open", "overdue", "migration_hold"].includes(task.status) &&
       !(task.status === "migration_hold" && ["Enrolled", "Lost"].includes(stage || "")),
@@ -22,9 +22,11 @@ export function pendingFollowUps(tasks: FollowUpTask[], stage?: string): FollowU
         : confirmedTaskDeadline(task) === null
           ? 1
           : 0;
+    const due=(t:FollowUpTask)=>Math.min(confirmedTaskDeadline(t)??Infinity,Date.parse(t.requestDueAt||'')||Infinity);
+    const urgency=(t:FollowUpTask)=>rank(t)>0?4:due(t)<now?0:calendarDay(due(t),timezone)===calendarDay(now,timezone)?1:['handoff','booking','enrollment'].includes(t.kind)?2:3;
     return (
-      rank(a) - rank(b) ||
-      (confirmedTaskDeadline(a) ?? 0) - (confirmedTaskDeadline(b) ?? 0) ||
+      rank(a) - rank(b) || urgency(a)-urgency(b) ||
+      (Math.min(confirmedTaskDeadline(a)??Infinity,Date.parse(a.requestDueAt||'')||Infinity)) - (Math.min(confirmedTaskDeadline(b)??Infinity,Date.parse(b.requestDueAt||'')||Infinity)) ||
       a.id.localeCompare(b.id)
     );
   });
@@ -39,7 +41,7 @@ export function describeFollowUpTask(
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const actions: Record<string, [string, string]> = {
     contact_review: ["Internal contact review", "内部联系复查"],
-    consultation: ["Contact and qualify", "联系客户并确认需求"],
+    consultation: ["First contact attempt", "首次联系尝试"],
     handoff: ["Arrange advisor contact", "安排顾问联系"],
     booking: ["Confirm booking", "确认预约安排"],
     enrollment: ["Follow up enrollment", "跟进报名意向"],
@@ -88,18 +90,16 @@ export function leadFollowUp(
   timezone: string,
   now = Date.now(),
 ) {
-  const tasks = pendingFollowUps(lead.attention?.tasks ?? [], lead.currentStage);
+  const tasks = pendingFollowUps(lead.attention?.tasks ?? [], lead.currentStage,now,timezone);
   return {
     loaded: !!lead.attention,
-    next: tasks[0] ? {...describeFollowUpTask(tasks[0], lang, timezone, now),...(contactPaused(lead)?{action:(lang==='zh'?'内部核实／复查':lang==='id'?'Tinjauan internal':'Internal review')+' · '+describeFollowUpTask(tasks[0],lang,timezone,now).action}:{})} : null,
+    next: tasks[0] ? {...describeFollowUpTask(tasks[0], lang, timezone, now),...(contactPaused(lead,now)?{action:(lang==='zh'?'内部核实／复查':lang==='id'?'Tinjauan internal':'Internal review')+' · '+describeFollowUpTask(tasks[0],lang,timezone,now).action}:{})} : null,
     additionalCount: Math.max(0, tasks.length - 1),
     // A lead-level memo is not a task description or proof of a scheduled task.
     note: lead.nextAction?.trim() ?? "",
   };
 }
 export function emptyFollowUpLabel(lead:any,lang:'en'|'id'|'zh'){
- const t=(en:string,zh:string)=>lang==='id'?crmId(en):lang==='zh'?zh:en;
- if(['Enrolled','Lost'].includes(lead.currentStage))return t('No open follow-up tasks','无未完成跟进事项');
- if(lead.followUpDisposition?.kind==='none')return t('No next step for now','暂不安排')+' · '+lead.followUpDisposition.reason;
- return t('Next step not scheduled','未安排下一步');
+ if(contactPaused(lead))return lang==='zh'?'仅内部核实，勿主动联系':lang==='id'?'Tinjauan internal saja; jangan hubungi secara proaktif':'Internal review only; no proactive contact';
+ return '';
 }

@@ -1,3 +1,4 @@
+import {containPaneKeys} from '../adminScroll';
 import {
   panoramaRoles,
   panoramaModules,
@@ -166,7 +167,7 @@ export function CrmUserGuide({
     };
   }, []);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 900px)"),
+    const media = window.matchMedia("(max-width: 1023px)"),
       change = () => {
         setIsNarrow(media.matches);
         setNavOpen(false);
@@ -211,39 +212,21 @@ export function CrmUserGuide({
       const pane = content.current;
       const node = document.getElementById("crm-guide-" + selectedKey);
       if (!pane || !layout.current) return;
-      const narrow = window.matchMedia("(max-width: 900px)").matches;
-      if (narrow) {
-        // The closed directory toggle remains above the chapter on small screens.
-        pane.scrollIntoView({ block: "start", behavior: "instant" });
-      } else {
-        const header = document.querySelector(
-          "[data-admin-header], [data-crm-header]",
-        );
-        const offset = (header?.getBoundingClientRect().bottom || 0) + 12;
-        const delta = layout.current.getBoundingClientRect().top - offset;
-        if (Math.abs(delta) > 2)
-          window.scrollBy({ top: delta, behavior: "instant" });
-        pane.scrollTop = 0;
-      }
-      // Direct subsection links still locate the requested subsection, within the pane.
-      if (
-        !searchMode &&
-        node &&
-        node !== pane.querySelector(".crm-doc-section")
-      ) {
-        if (narrow)
-          node.scrollIntoView({ block: "start", behavior: "instant" });
-        else
-          pane.scrollTop =
-            node.getBoundingClientRect().top - pane.getBoundingClientRect().top;
-      }
+      // Topic pages scroll the document; never reset or scroll a second content pane.
+      const target=searchMode?pane:node||pane;
+      const header=document.querySelector('[data-admin-header],[data-crm-header]');
+      const narrow=window.matchMedia('(max-width:1023px)').matches;
+      const offset=(header?.getBoundingClientRect().bottom||0)+(narrow?(directoryButton.current?.getBoundingClientRect().height||0)+24:16);
+      const delta=target.getBoundingClientRect().top-offset;
+      if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:'instant'});
       (searchMode ? pane : node)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(request);
   }, [selectedKey, focusRequest, searchMode]);
   useEffect(() => {
     if (query.trim()) {
-      if (content.current) content.current.scrollTop = 0;
+      const pane=content.current;
+      if(pane){const edge=(document.querySelector("[data-admin-header],[data-crm-header]")?.getBoundingClientRect().bottom||0)+16;const top=pane.getBoundingClientRect().top;if(top<edge)window.scrollBy({top:top-edge,behavior:"instant"});}
       return;
     }
     const nav = directory.current;
@@ -432,6 +415,9 @@ export function CrmUserGuide({
           ref={directory}
           id="crm-doc-chapter-nav"
           className="crm-doc-card crm-doc-nav"
+          data-admin-scroll="directory"
+          tabIndex={0}
+          onKeyDown={containPaneKeys}
           hidden={isNarrow && !navOpen}
           aria-label={t("Guide chapters", "Bab panduan", "文档章节")}
         >

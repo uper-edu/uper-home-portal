@@ -15,6 +15,7 @@ export function workTimeErrors(value: { startTime?: unknown; endTime?: unknown }
 }
 
 const messages = {
+  policy_boolean_invalid: ["Choose enabled or disabled.", "Pilih aktif atau nonaktif.", "请选择开启或关闭。"],
   policy_object_invalid: ["Provide a non-empty configuration object.", "Berikan objek konfigurasi yang tidak kosong.", "请提供非空的配置对象。"],
   policy_field_unknown: ["This configuration field is not supported.", "Kolom konfigurasi ini tidak didukung.", "不支持此配置字段。"],
   policy_duration_invalid: ["Enter a finite duration greater than zero and a valid unit.", "Masukkan durasi terbatas lebih dari nol dan satuan yang valid.", "请填写大于零的有效时长并选择合法单位。"],
@@ -31,6 +32,11 @@ const messages = {
   policy_save_forbidden: ["You no longer have permission to save these policies. Your changes are retained.", "Anda tidak lagi memiliki izin untuk menyimpan kebijakan ini. Perubahan Anda tetap tersimpan di formulir.", "你当前没有保存策略的权限，修改仍保留在表单中。"],
   policy_save_login: ["Your session has expired. Sign in before retrying. Your changes are retained on this page.", "Sesi Anda berakhir. Masuk sebelum mencoba lagi. Perubahan Anda tetap tersimpan di halaman ini.", "登录已失效，请重新登录后重试。修改仍保留在当前页面。"],
   policy_save_success: ["Policies saved. Existing task deadlines are unchanged.", "Kebijakan disimpan. Tenggat tugas yang sudah ada tidak berubah.", "策略已保存，已有任务截止时间保持不变。"],
+  policy_topic_conflict: ["This topic was changed in another session. Your draft is retained. Compare the saved values before retrying.", "Topik ini diubah di sesi lain. Draf dipertahankan. Bandingkan nilai tersimpan sebelum mencoba lagi.", "此主题已被其他会话修改，草稿仍保留。请核对最新已保存值后再重试。"],
+  policy_topic_unknown: ["The save result could not be confirmed. Your draft is retained. Check the saved values before retrying.", "Hasil penyimpanan belum dapat dipastikan. Draf dipertahankan. Periksa nilai tersimpan sebelum mencoba lagi.", "保存结果暂无法确认，草稿仍保留。请先核对已保存值再重试。"],
+  policy_topic_saved: ["Saved.", "Disimpan.", "已保存。"],
+  policy_reset_unknown: ["Restoration could not be confirmed. Your form changes are retained. Reload the saved policies before retrying.", "Pemulihan belum dapat dipastikan. Perubahan formulir tetap dipertahankan. Muat ulang kebijakan tersimpan sebelum mencoba lagi.", "恢复结果暂无法确认，表单修改仍保留。请先重新读取已保存策略，再决定是否重试。"],
+  policy_reset_not_applied: ["The saved policies do not match the defaults. Your form changes are retained. Review the saved policies before retrying.", "Kebijakan tersimpan tidak sesuai dengan pengaturan standar. Perubahan formulir tetap dipertahankan. Tinjau kebijakan tersimpan sebelum mencoba lagi.", "当前已保存策略与默认值不一致，表单修改仍保留。请核对已保存策略后再重试。"],
 } as const;
 export type PolicyMessage = keyof typeof messages;
 export function policyMessage(code: PolicyMessage, lang: CrmLanguage) {
@@ -38,7 +44,7 @@ export function policyMessage(code: PolicyMessage, lang: CrmLanguage) {
 }
 
 export class PolicySaveError extends Error {
-  constructor(public code: PolicyMessage = "policy_save_failed", public fields: Record<string, PolicyMessage> = {}) {
+  constructor(public code: PolicyMessage = "policy_save_failed", public fields: Record<string, PolicyMessage> = {}, public currentPolicy?: import("../types/crmPolicyConfig").CrmPolicyConfig) {
     super(code);
   }
 }
@@ -48,10 +54,14 @@ export function policySaveResponseError(status: number, body: unknown) {
   for (const [field,code] of Object.entries(supplied || {})) {
     if (typeof code === 'string' && Object.hasOwn(messages,code)) fields[field] = code as PolicyMessage;
   }
+  if(status===409 && (body as any)?.error==="policy_topic_conflict")return new PolicySaveError("policy_topic_conflict",{},(body as any).currentPolicy);
   return new PolicySaveError(status === 401 ? "policy_save_login" : status === 403 ? "policy_save_forbidden" : status >= 400 && status < 500 ? "policy_save_rejected" : "policy_save_failed", fields);
 }
 
 const fieldNames: Record<string, readonly string[]> = {
+ 'identityReviewManagerOnly':['Manager-only identity review','Verifikasi identitas hanya Manager','身份核实仅限CRM Manager'],
+ 'ownerAssignmentManagerOnly':['Manager-only Lead Owner assignment','Penugasan Owner Lead hanya Manager','Lead分配Owner仅限CRM Manager'],
+ 'sourceAttributionManagerOnly':['Manager-only source attribution review','Verifikasi atribusi sumber hanya Manager','待核实来源归因仅限CRM Manager'],
  'businessHours.startTime':['Daily start time','Waktu mulai harian','每日开始工作时间'],
  'businessHours.endTime':['Daily end time','Waktu selesai harian','每日结束工作时间'],
  'businessHours.timezone':['Timezone','Zona waktu','时区'],

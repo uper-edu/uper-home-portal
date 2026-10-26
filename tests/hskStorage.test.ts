@@ -1,3 +1,5 @@
+import {selectVisitorScope, visitorKey} from '../src/services/visitorScope';
+selectVisitorScope('a'.repeat(64));
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -35,7 +37,7 @@ test("versioned local drafts restore item/skip/replay state, reject incompatible
       reviewing: false,
     });
     values.set(
-      "uper_hsk_draft_v2",
+      visitorKey("uper_hsk_draft_v2"),
       JSON.stringify({
         attempt: { ...attempt, examVersion: "old" },
         currentIdx: 1,
@@ -58,7 +60,7 @@ test("versioned local drafts restore item/skip/replay state, reject incompatible
     assert.equal(readHskHistory().length, 2);
     clearHskDraft();
     assert.equal(readHskDraft(), null);
-    values.set("uper_hsk_draft_v2", "bad json");
+    values.set(visitorKey("uper_hsk_draft_v2"), "bad json");
     assert.equal(readHskDraft(), null);
     Object.defineProperty(globalThis, "localStorage", {
       configurable: true,
@@ -83,7 +85,7 @@ test("versioned local drafts restore item/skip/replay state, reject incompatible
 });
 
 import { getStudentContext } from "../src/services/studentProfileStorage";
-test("legacy context is retained as unverified without inventing a question count or score scale", () => {
+test("unscoped legacy context stays stored without being assigned to the current visitor", () => {
   const original = Object.getOwnPropertyDescriptors(globalThis);
   const items = new Map<string, string>();
   const storage = {
@@ -105,7 +107,8 @@ test("legacy context is retained as unverified without inventing a question coun
       }),
     );
     const migrated = getStudentContext();
-    assert.equal(migrated?.assessment?.saveStatus, "legacy_unverified");
+    assert.equal(migrated, null);
+    assert.ok(items.has('uper_lead_profile'));
     assert.equal(migrated?.assessment?.questionCount, undefined);
     assert.equal(migrated?.assessment?.maxScore, undefined);
     items.set(
@@ -117,8 +120,9 @@ test("legacy context is retained as unverified without inventing a question coun
     );
     assert.equal(
       getStudentContext()?.assessment?.saveStatus,
-      "legacy_unverified",
+      undefined,
     );
+    assert.ok(items.has('uper_unified_student_context'));
   } finally {
     for (const k of ["window", "localStorage", "sessionStorage"])
       if (original[k]) Object.defineProperty(globalThis, k, original[k]);

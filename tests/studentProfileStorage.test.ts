@@ -1,3 +1,5 @@
+import {selectVisitorScope} from '../src/services/visitorScope';
+selectVisitorScope('a'.repeat(64));
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { getChatAssessmentStatus, getStudentContext, saveStudentContext, clearStudentContext } from '../src/services/studentProfileStorage.ts';

@@ -22,17 +22,17 @@ test("P0 identity: known contact is normalized, conflicting contact is never ove
     true,
   );
 });
-test("P0 unread is independent of unresolved business information", () => {
+test("information does not create a business obligation for an enrolled customer", () => {
   assert.equal(
     needsHandling(
       {
         currentStage: "Enrolled",
-        attention: { tasks: [], pendingEngagements: 1, unreadCount: 0 },
+        attention: { tasks: [], requestCount: 1 },
       },
       Date.now(),
       () => "",
     ),
-    true,
+    false,
   );
 });
 if (process.env.MYSQL_P0_TRUST_TEST === "true") {
@@ -89,7 +89,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
       );
     const stamp = crypto.randomUUID(),
       profile = {
-        fullName: "TEST P0 Trust Learner",
+        fullName: "Putri Lestari", nameNote: "P0身份与七阶段验收",
         email: stamp + "@example.invalid",
         whatsapp: "000" + Date.now(),
         goal: "Work in China",
@@ -110,7 +110,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
         solo,
         JSON.stringify({
           id: solo,
-          fullName: "TEST Information-only Learner",
+          fullName: "Andi Pratama", nameNote: "进展记录验收",
           owner: "Fadhil",
           currentStage: "Contacted",
           tier: "Warm-Online",
@@ -124,7 +124,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
       connectStatus: "No Response",
       summary: "TEST unanswered call; information only",
       completeTaskIds: [],
-      disposition: "record_only",
+      disposition: "record_only", workflowVersion: 3, expectedRevision: 0, contactDirection: "sales", occurrenceMode: "unknown",
     });
     assert.equal(recordOnly.status, 200, JSON.stringify(recordOnly.data));
     assert.equal(recordOnly.data.lead.touchCount, 1);
@@ -168,8 +168,9 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
     );
     const stage = {
       requestId: "stage-" + stamp,
-      newStage: "Contacted",
-      expectedStage: "New",
+      newStage: "progress:discovery",
+      expectedStage: first.data.lead.currentStage,
+      expectedStageRevision: 0, basisRefs: [], effectiveTimeMode: "unknown",
       reason: "TEST human reply evidence",
     };
     assert.equal(
@@ -185,7 +186,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
         await sales(`/api/crm/leads/${id}/stage`, {
           ...stage,
           requestId: "stale",
-          newStage: "Trial Booked",
+          newStage: "progress:proposal",
         })
       ).status,
       409,
@@ -196,7 +197,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
           `/api/crm/leads/${id}`,
           {
             currentStage: "Enrolled",
-            expectedStage: "Contacted",
+            expectedStage: "progress:discovery",
             expectedStageRevision: 1,
           },
           "PATCH",
@@ -204,144 +205,18 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
       ).status,
       400,
     );
-    const create = (requestId: string) => ({
-      requestId,
-      command: "create",
-      reason: "TEST customer request",
-      action: "TEST confirm course schedule",
-      purpose: "TEST independent request",
-      timingKind: "appointment",
-      dueAt: "2099-01-01T09:00:00+07:00",
-    });
-    const one = await sales(
-      `/api/crm/leads/${id}/task-actions`,
-      create("task-one-" + stamp),
-    );
-    assert.equal(one.status, 200, JSON.stringify(one.data));
-    const two = await sales(
-      `/api/crm/leads/${id}/task-actions`,
-      create("task-two-" + stamp),
-    );
-    assert.equal(two.status, 200);
-    const tid = one.data.newTaskId;
-    const supplement = await sales(`/api/crm/leads/${id}/task-actions`, {
-      requestId: "supplement-" + stamp,
-      command: "supplement",
-      taskId: tid,
-      revision: 0,
-      reason: "TEST same request; add original evidence",
-    });
-    assert.equal(supplement.status, 200);
-    const changed = await sales(`/api/crm/leads/${id}/task-actions`, {
-      requestId: "reschedule-" + stamp,
-      command: "reschedule",
-      taskId: tid,
-      revision: 1,
-      reason: "TEST client changed appointment",
-      scheduledAt: "2099-01-02T10:00:00+07:00",
-    });
-    assert.equal(changed.status, 200, JSON.stringify(changed.data));
-    const trust = (await sales(`/api/crm/leads/${id}/trust`)).data;
-    const task = trust.tasks.find((v: any) => v.id === tid);
-    assert.equal(
-      new Date(task.due_at).toISOString(),
-      "2099-01-01T02:00:00.000Z",
-    );
-    assert.equal(
-      new Date(task.scheduled_at).toISOString(),
-      "2099-01-02T03:00:00.000Z",
-    );
-    assert.equal(
-      (
-        await sales(`/api/crm/leads/${id}/task-actions`, {
-          requestId: "conflict-" + stamp,
-          command: "cancel",
-          taskId: tid,
-          revision: 0,
-          reason: "TEST stale",
-        })
-      ).status,
-      409,
-    );
-    const replaced = await sales(`/api/crm/leads/${id}/task-actions`, {
-      ...create("replace-" + stamp),
-      command: "replace",
-      taskId: tid,
-      revision: 2,
-    });
-    assert.equal(replaced.status, 200, JSON.stringify(replaced.data));
-    const final = (await sales(`/api/crm/leads/${id}/trust`)).data;
-    assert.equal(
-      final.tasks.find((v: any) => v.id === tid).status,
-      "cancelled",
-    );
-    assert.equal(
-      final.tasks.find((v: any) => v.id === two.data.newTaskId).status,
-      "open",
-    );
-    assert.equal(
-      final.facts.filter(
-        (f: any) =>
-          f.kind === "information.recorded" && f.data.summary === note.summary,
-      ).length,
-      1,
-    );
-    assert.equal(
-      final.facts.filter((f: any) => f.kind === "stage.changed").length,
-      1,
-    );
-    const conversation = (
-      await visitor("/api/portal/conversations", { source: "standalone_chat" })
-    ).data.conversationId;
-    for (const suffix of ["one", "two"])
-      assert.equal(
-        (
-          await visitor("/api/chat", {
-            conversationId: conversation,
-            messageId: stamp + suffix,
-            content: "TEST customer original " + suffix,
-            lang: "en",
-          })
-        ).status,
-        200,
-      );
-    const pendingInfo = (
-      await sales(`/api/crm/leads/${id}/trust`)
-    ).data.engagements.filter(
-      (v: any) => v.kind === "message" && v.state === "pending",
-    );
-    assert.equal(pendingInfo.length, 2);
-    // A new message arriving after the review snapshot must remain pending.
-    await visitor("/api/chat", {
-      conversationId: conversation,
-      messageId: stamp + "three",
-      content: "TEST new message while reviewing",
-      lang: "en",
-    });
-    const resolution = await sales(`/api/crm/leads/${id}/engagement-actions`, {
-      requestId: "group-review-" + stamp,
-      command: "link",
-      engagements: pendingInfo.map((v: any) => ({
-        id: v.id,
-        version: v.version,
-      })),
-      taskId: two.data.newTaskId,
-      reason: "TEST same conversation; existing task covers these messages",
-    });
-    assert.equal(resolution.status, 200, JSON.stringify(resolution.data));
-    assert.equal(
-      (await sales(`/api/crm/leads/${id}/trust`)).data.engagements.filter(
-        (v: any) => v.kind === "message" && v.state === "pending",
-      ).length,
-      1,
-    );
+    // General task creation and message processing checklists are retired.
+    assert.equal((await sales(`/api/crm/leads/${id}/task-actions`, {requestId:'retired-'+stamp,command:'create'})).status,410);
+    const final=(await sales(`/api/crm/leads/${id}/trust`)).data;
+    assert.equal(final.facts.filter((f:any)=>f.kind==='information.recorded'&&f.data.summary===note.summary).length,1);
+    assert.equal(final.facts.filter((f:any)=>f.kind==='stage.changed').length,1);
     const refresh = await visitor("/api/portal/register", {
       ...profile,
       city: "Bandung",
     });
     assert.equal(refresh.data.lead.id, id);
     assert.equal(refresh.data.lead.owner, "Fadhil");
-    assert.equal(refresh.data.lead.currentStage, "Contacted");
+    assert.equal(refresh.data.lead.currentStage, "progress:discovery");
     const conflict = await visitor("/api/portal/register", {
       ...profile,
       email: "another-" + stamp + "@example.invalid",
@@ -353,14 +228,14 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
     assert.notEqual(second, id);
     assert.equal(
       (await sales(`/api/crm/leads/${second}/claim`, {})).status,
-      200,
+      409,
     );
     const identities = (await sales(`/api/crm/leads/${second}/trust`)).data;
     assert.equal(identities.candidates[0].candidate_id, id);
     assert.equal(identities.candidates[0].visitor_id, undefined);
     assert.equal(
       (
-        await sales(`/api/crm/leads/${second}/identity-actions`, {
+        await leader(`/api/crm/leads/${second}/identity-actions`, {
           requestId: "identity-" + stamp,
           candidateId: id,
           decision: "same",
@@ -418,3 +293,5 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
   });
   await db.end();
 }
+
+else test('P0 native identity and rollback require explicit independent MySQL',{skip:'MYSQL_NATIVE_TEST_ENV not configured; destructive trigger scenario not run on3000'},()=>{});

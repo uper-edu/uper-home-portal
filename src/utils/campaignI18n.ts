@@ -7,7 +7,7 @@ export const campaignUi =
   (key: string, values: Record<string, string | number> = {}) => {
     const pair = campaignUiMessages[key];
     const text = lang === "en" ? key : (pair?.[lang === "id" ? 0 : 1] ?? key);
-    return text.replace(/\{([a-zA-Z][\w]*)\}/g, (match, name) =>
+    return text.replace(/\s*[·・]\s*(?:optional|opsional|选填|可选)\s*$/i,'').replace(/\{([a-zA-Z][\w]*)\}/g, (match, name) =>
       Object.hasOwn(values, name) ? String(values[name]) : match,
     );
   };

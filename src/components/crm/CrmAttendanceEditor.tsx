@@ -1,3 +1,4 @@
+import {AdminField} from '../AdminForm';
 import { CrmDisclosure } from "./CrmDisclosure";
 import { useEffect, useRef, useState } from "react";
 import { CrmSingleSelect } from "./CrmSingleSelect";
@@ -241,7 +242,7 @@ export function CrmAttendanceEditor({
                   lang={lang}
                   isLight={isLight}
                 />
-                <label>
+                <AdminField>
                   {t("Evidence / reason", "Bukti / alasan", "确认依据／原因")}
                   <textarea
                     value={reason}
@@ -253,7 +254,7 @@ export function CrmAttendanceEditor({
                     }}
                     rows={3}
                   />
-                </label>
+                </AdminField>
                 {!supportsParticipationRecord(selected) && (
                   <p className="crm-work-muted">
                     {t(

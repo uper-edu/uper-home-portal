@@ -1,3 +1,5 @@
+import './components/admin-form.css';
+import VisitorBoundary from './components/VisitorBoundary';
 import {RouteMetadata,MetadataProvider,applyPageMetadata} from './components/PageMetadata';
 import {normalizeSiteLanguage,resolveMetadata} from './utils/siteMetadata';
 import {useTranslation} from 'react-i18next';
@@ -107,8 +109,8 @@ export default function App() {
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>}>
               <Routes>
                 {/* Standalone Seminar & Direct AI Advisory Portals */}
-                <Route path="chat" element={<StandAloneChat />} />
-                <Route path="consult" element={<StandAloneChat />} />
+                <Route path="chat" element={<VisitorBoundary><StandAloneChat /></VisitorBoundary>} />
+                <Route path="consult" element={<VisitorBoundary><StandAloneChat /></VisitorBoundary>} />
 
                 {/* Sales & Telemarketing CRM Workbench */}
                 <Route path="crm" element={<CrmWorkbench />} />

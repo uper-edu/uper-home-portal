@@ -13,6 +13,7 @@ export function CrmPageAction({
   onClick,
   id,
   title,
+  description,
   className = "",
   children,
 }: {
@@ -26,14 +27,18 @@ export function CrmPageAction({
   onClick?: () => void;
   id?: string;
   title?: string;
+  description?: string;
   className?: string;
   children?: ReactNode;
 }) {
+  const tipId = React.useId();
+  const [dismissed, setDismissed] = React.useState(false);
   const props = {
     id,
     className:
       `crm-page-action crm-page-action--${variant}${iconOnly ? " crm-page-action--icon" : ""} ${className}`.trim(),
-    title: title || label,
+    title: description ? undefined : title || label,
+    "aria-describedby": description ? tipId : undefined,
     "aria-label": iconOnly ? label : undefined,
     "aria-busy": loading || undefined,
   };
@@ -48,18 +53,40 @@ export function CrmPageAction({
       {children}
     </>
   );
-  return href && !disabled && !loading ? (
-    <a {...props} href={href}>
-      {content}
-    </a>
-  ) : (
-    <button
-      {...props}
-      type="button"
-      onClick={onClick}
-      disabled={disabled || loading}
+  const action =
+    href && !disabled && !loading ? (
+      <a {...props} href={href}>
+        {content}
+      </a>
+    ) : (
+      <button
+        {...props}
+        type="button"
+        onClick={onClick}
+        disabled={disabled || loading}
+      >
+        {content}
+      </button>
+    );
+  return description ? (
+    <span
+      className="crm-page-action-hint"
+      data-dismissed={dismissed || undefined}
+      onMouseEnter={() => setDismissed(false)}
+      onFocus={() => setDismissed(false)}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setDismissed(true);
+          event.stopPropagation();
+        }
+      }}
     >
-      {content}
-    </button>
+      {action}
+      <span id={tipId} role="tooltip">
+        {description}
+      </span>
+    </span>
+  ) : (
+    action
   );
 }

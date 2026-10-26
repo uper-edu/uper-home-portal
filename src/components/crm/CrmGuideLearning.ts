@@ -88,9 +88,9 @@ export const guideLessons: Record<string, GuideLesson> = {
       "三类记录都属于客户，但不能互相替代。",
     ),
     w(
-      "Two sessions contain the same sentence. Different message IDs keep both originals. A same-kind open request may still reuse one task.",
-      "Dua sesi berisi kalimat sama. ID pesan berbeda mempertahankan kedua teks. Permintaan terbuka sejenis dapat memakai satu tugas.",
-      "两个会话出现相同句子，不同消息 ID 保留各自原文；同类型开放请求仍可能关联同一任务。",
+      "Two sessions may contain identical text. Keep both original messages. Link requests to one task only after confirming they concern the same matter.",
+      "Dua sesi dapat berisi teks sama. Simpan kedua pesan asli. Tautkan permintaan ke satu tugas hanya setelah urusannya dikonfirmasi sama.",
+      "两个会话即使文字相同，也保留各自原文。确认是同一件事后才关联同一任务，不按文字或类型自动合并。",
     ),
     w(
       "A known session continues automatically. Phone or email matches create identity candidates. Confirmation links records without merging history or changing owners.",
@@ -157,135 +157,8 @@ export const guideLessons: Record<string, GuideLesson> = {
       "首次登记无具体活动码的客户归入“非活动来源”，内部ID仍为organic。这不证明自然搜索或免费流量，缺少c的广告也可能归入。已有首次归因、客户消息和活动名称原文保留。",
     ),
   ),
-  classification: lesson(
-    w(
-      "Customer group is a rule result, not a promise",
-      "Kelompok pelanggan adalah hasil aturan",
-      "客户分组是规则结果，不是成交承诺",
-    ),
-    w(
-      "The current group describes a sales segment. It can change when supported inputs change and classification runs.",
-      "Kelompok saat ini menggambarkan segmen penjualan. Nilainya dapat berubah saat input berubah dan klasifikasi dijalankan.",
-      "生效分组描述客户所属销售类别；输入发生变化且触发分类计算时，分组可能改变。",
-    ),
-    w(
-      "Use the group to understand the customer. Use current tasks and deadlines to decide immediate work.",
-      "Gunakan kelompok untuk memahami pelanggan. Gunakan tugas dan tenggat saat ini untuk memilih pekerjaan segera.",
-      "分组帮助理解客户特征，当前任务与期限帮助决定先做什么；高意向不自动表示逾期或需要立即联系。",
-    ),
-    [
-      n(
-        w("Registration baseline", "Dasar saat registrasi", "登记基础分类"),
-        w(
-          "Goal, self-reported foundation, city and format determine a baseline. A near-term HSK plan also affects registration rules.",
-          "Tujuan, dasar yang dilaporkan, kota, dan format menentukan dasar. Rencana HSK dekat juga memengaruhi aturan registrasi.",
-          "目标、自报基础、城市及授课方式构成基础输入；近期考证计划也影响登记规则。",
-        ),
-      ),
-      n(
-        w("Consecutive unanswered sequence", "Urutan tanpa balasan", "连续未回复序列"),
-        w(
-          "Only real recorded human attempts count. Retry spacing and the final reply window use the same natural-time interval (default 4 hours), rolling eligible times to working hours. Too-soon attempts are saved but not counted, and restart spacing. Zero threshold disables automatic nurture. New sequences snapshot settings; no historical backfill. Human two-way contact or a trusted new customer message clears the sequence; AI, visits, assessments and duplicate messages do not. In Record contact → Internal handling, explicitly confirm an external reply with channel and evidence; this does not add an outreach attempt. A new inquiry requires response without completing old tasks or lifting stopped contact. An R6 group can recover only with reliable evidence and no later manual decision; otherwise review it.",
-          "Hanya upaya manusia nyata yang dicatat dihitung. Jeda dan masa tunggu terakhir memakai interval alami yang sama (bawaan 4 jam), bergeser ke jam kerja. Upaya terlalu cepat disimpan tanpa dihitung dan memulai ulang jeda. Ambang nol menonaktifkan pembinaan otomatis. Urutan baru menyimpan pengaturan; riwayat tidak dihitung ulang. Kontak dua arah atau pesan pelanggan baru tepercaya mereset urutan; AI, kunjungan, asesmen dan pesan duplikat tidak. Di Catat kontak → Penanganan internal, konfirmasi balasan eksternal dengan kanal dan bukti; ini tidak menambah upaya kontak. Permintaan baru perlu ditanggapi tanpa menyelesaikan tugas lama atau mencabut larangan kontak. Kelompok R6 dipulihkan hanya dengan dasar tepercaya dan tanpa keputusan manual setelahnya; selain itu tinjau manual.",
-          "仅累计真实人工联系记录。重试间隔与最后回复窗口使用同一自然时长（默认4小时），有效时间顺延至工作时段。间隔不足的尝试留痕但不累计，并从该次重新计间隔。阈值0关闭自动转培育；新序列保存策略快照，不回填历史计数。人工双向沟通或可信客户新消息清零；AI、浏览、测评及重复消息不清零。在“记录联系→内部处理”中，可明确确认外部回复并填写渠道及依据，不增加外联次数。新咨询需响应，但不自动完成旧任务或解除停止联系。仅有可靠依据且没有后续人工决定时恢复R6分组，否则待复核。",
-        ),
-      ),
-      n(
-        w("Follow-up evaluation", "Evaluasi tindak lanjut", "跟进时重新计算"),
-        w(
-          "Contact saves evaluate R1–R5 when questionnaire fields are complete. R6 is a separate delayed decision after a valid consecutive sequence and its final reply window, even when questionnaire fields are missing.",
-          "Kontak mengevaluasi R1–R5 jika kuesioner lengkap. R6 diputuskan terpisah setelah urutan valid dan masa tunggu terakhir, meskipun kuesioner belum lengkap.",
-          "问卷字段完整的联系保存按R1～R5重新计算；R6在连续有效尝试及最后窗口结束后独立判断，不受问卷缺失阻断。",
-        ),
-      ),
-      n(
-        w(
-          "Effective group and basis",
-          "Kelompok berlaku dan dasar",
-          "生效值与依据",
-        ),
-        w(
-          "An existing sales-confirmed group can remain effective. Rule calculations and saved sources must not be described as AI predictions.",
-          "Kelompok yang telah dikonfirmasi sales dapat tetap berlaku. Hasil aturan dan sumber tersimpan bukan prediksi AI.",
-          "已有人工确认分组可继续生效；规则计算与已有来源不应称为 AI 预测。",
-        ),
-      ),
-    ],
-    w(
-      "Rule IDs identify rules. Their numeric order is not their execution priority.",
-      "ID menandai aturan. Urutan nomor bukan urutan pelaksanaan.",
-      "R1～R6 是规则编号，编号顺序不等于执行优先级。",
-    ),
-    w(
-      "Asked price plus 3 total touches is insufficient. R6 needs the consecutive valid threshold (default 3), retry spacing and the final reply window. Contact difficulty is not proof of low purchase intent.",
-      "Tanya harga ditambah 3 total upaya belum cukup. R6 memerlukan ambang berturut-turut (bawaan 3), jeda, dan masa tunggu terakhir. Kesulitan kontak bukan bukti minat beli rendah.",
-      "询价加累计触达3次不足以触发R6；须连续有效未回复达到阈值（默认3）、满足间隔且最后窗口结束。联系困难不等于购买意愿低。",
-    ),
-    w(
-      "Each new sequence snapshots the configured threshold, retry interval and calendar; 0 disables automatic nurture. Existing sequences retain their policy. Viewing or changing language does not reclassify customers.",
-      "Urutan baru menyimpan ambang, jeda percobaan dan kalender yang dikonfigurasi; 0 menonaktifkan pemindahan otomatis ke nurturing. Urutan aktif mempertahankan kebijakannya. Membaca atau mengganti bahasa tidak mengubah kelompok.",
-      "新序列保存当时配置的阈值、重试间隔和日历；0表示禁用自动转培育。进行中的序列沿用原策略。查看页面和切换语言不会重算分组。",
-    ),
-  ),
-  lifecycle: lesson(
-    w(
-      "Separate progress, contact permission and work",
-      "Pisahkan kemajuan, pengaturan kontak, dan tugas",
-      "销售进展、联系安排和任务状态分别管理",
-    ),
-    w(
-      "A sales stage says how far the recorded business process has progressed. A contact arrangement controls proactive outreach and review.",
-      "Tahap penjualan menunjukkan kemajuan bisnis tercatat. Pengaturan kontak mengatur kontak proaktif dan tinjauan.",
-      "销售阶段描述已记录进展；联系安排决定是否主动外联以及何时复查；任务状态描述具体事项是否处理。",
-    ),
-    w(
-      "Waiting should respect the customer without erasing commitments. A closed customer can still have unfinished internal work.",
-      "Menunggu menghormati pelanggan tanpa menghapus janji. Pelanggan tertutup tetap dapat memiliki pekerjaan internal.",
-      "等待客户时仍保留承诺和追踪依据；客户已成交或关闭，也可能还有未完成的内部事项。",
-    ),
-    [
-      n(
-        w("Sales stage", "Tahap penjualan", "销售阶段"),
-        w(
-          "New, Contacted, assessment or trial stages, Enrolled or Lost. Record a change with evidence, not merely a button click.",
-          "Baru, Dihubungi, tahap asesmen atau uji coba, Terdaftar atau Ditutup. Catat perubahan berdasarkan bukti.",
-          "待初访、已联系、测评／试听阶段、已报名或关闭；阶段变化须有依据，不能只凭一个动作按钮推断。",
-        ),
-      ),
-      n(
-        w("Contact arrangement", "Pengaturan kontak", "联系安排"),
-        w(
-          "Normal, waiting, nurturing or stopped. Waiting and nurturing need a future review time. Stopping blocks proactive outreach.",
-          "Normal, menunggu, pembinaan, atau berhenti. Menunggu dan pembinaan perlu waktu tinjauan. Berhenti memblokir kontak proaktif.",
-          "正常、等待、培育或停止；等待和培育需要未来复查时间；停止限制主动外联。",
-        ),
-      ),
-      n(
-        w("Task state", "Status tugas", "任务状态"),
-        w(
-          "Open, completed, cancelled or awaiting historical review. A contact pause does not complete or reschedule business tasks.",
-          "Terbuka, selesai, dibatalkan, atau perlu tinjauan historis. Jeda kontak tidak menyelesaikan atau menjadwal ulang tugas bisnis.",
-          "开放、完成、取消或历史待确认；暂停联系不会自动完成或改期业务任务。",
-        ),
-      ),
-    ],
-    w(
-      "One customer can be Contacted, waiting for a reply, and still have an overdue task.",
-      "Pelanggan dapat sudah Dihubungi, menunggu balasan, dan tetap memiliki tugas terlambat.",
-      "一个客户可以同时是“已联系”“等待回复”且仍有“逾期任务”。",
-    ),
-    w(
-      "Amelia asks for contact next week. Save a reason and review time. The review becoming due asks staff to decide; it does not restore outreach automatically.",
-      "Amelia meminta dihubungi minggu depan. Simpan alasan dan waktu tinjauan. Saat jatuh tempo, staf memutuskan, bukan memulihkan kontak otomatis.",
-      "Amelia 希望下周再联系：保存原因与复查时间。复查到期只提醒员工决策，不自动恢复主动联系。",
-    ),
-    w(
-      "A new inbound request during waiting needs review. It does not automatically lift a stop-contact instruction. Existing deadlines remain visible.",
-      "Permintaan masuk saat menunggu perlu ditinjau. Ini tidak otomatis membatalkan penghentian kontak. Tenggat lama tetap terlihat.",
-      "等待期间的新咨询需要核实，但不会自动解除停止联系；既有期限及逾期事实继续保留。",
-    ),
-    "comparison",
-  ),
+  classification: {"title": ["Classification and confirmation boundaries", "Batas klasifikasi dan konfirmasi", "客户分组与人工确认边界"], "answer": ["Only first registration calculates Tier from its saved inputs. Later facts do not automatically recalculate it.", "Hanya registrasi pertama menghitung Tier dari masukan tersimpan. Fakta berikutnya tidak menghitung ulang secara otomatis.", "仅首次登记按当时输入自动分类；后续测评、诉求和阶段变化不自动重算Tier。"], "value": ["A price question, advisor request or assessment interest is an expression, not completed purchase. Questionnaire topics remain separate.", "Pertanyaan harga, permintaan konsultan atau minat asesmen adalah pernyataan, bukan pembelian. Topik kuesioner terpisah.", "询价、请求顾问联系、测评意向是具体表达，不等于购买承诺；问卷关注另行标明。"], "nodes": [{"label": ["Initial classification", "Klasifikasi awal", "首次登记分类"], "detail": ["Only first registration calculates Tier from its saved inputs. Later facts do not automatically recalculate it.", "Hanya registrasi pertama menghitung Tier dari masukan tersimpan. Fakta berikutnya tidak menghitung ulang secara otomatis.", "仅首次登记按当时输入自动分类；后续测评、诉求和阶段变化不自动重算Tier。"]}, {"label": ["Fact milestones", "Tonggak fakta", "事实里程碑"], "detail": ["Saved assessment completions and explicitly confirmed enrollment retain event time and evidence. Repeated events keep separate records.", "Asesmen tersimpan dan konfirmasi pendaftaran menyimpan waktu serta bukti. Kejadian berulang tetap terpisah.", "真实测评完成与明确确认报名成立保留实际时间和依据，同类事件可重复；AI描述不能证明事件成立。"]}, {"label": ["Customer requests and interests", "Permintaan dan minat pelanggan", "客户诉求与意向"], "detail": ["A price question, advisor request or assessment interest is an expression, not completed purchase. Questionnaire topics remain separate.", "Pertanyaan harga, permintaan konsultan atau minat asesmen adalah pernyataan, bukan pembelian. Topik kuesioner terpisah.", "询价、请求顾问联系、测评意向是具体表达，不等于购买承诺；问卷关注另行标明。"]}, {"label": ["Sales confirmation", "Konfirmasi sales", "销售明确确认"], "detail": ["Staff confirm the current sales stage with evidence and effective time. Tier requires its own explicit confirmation. No automatic downgrade.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku. Tier memerlukan konfirmasi tersendiri. Tanpa penurunan otomatis.", "销售按依据和生效时间明确确认当前阶段；Tier另行人工确认，R6自动降级已停用。"]}], "caption": ["Saved assessment completions and explicitly confirmed enrollment retain event time and evidence. Repeated events keep separate records.", "Asesmen tersimpan dan konfirmasi pendaftaran menyimpan waktu serta bukti. Kejadian berulang tetap terpisah.", "真实测评完成与明确确认报名成立保留实际时间和依据，同类事件可重复；AI描述不能证明事件成立。"], "example": ["A completed test remains a fact; it does not automatically advance the sales stage or Tier.", "Tes selesai tetap fakta; tidak otomatis mengubah tahap atau Tier.", "客户完成测评后保留真实测评里程碑，不自动推进阶段或改变Tier。"], "boundary": ["Staff confirm the current sales stage with evidence and effective time. Tier requires its own explicit confirmation. No automatic downgrade.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku. Tier memerlukan konfirmasi tersendiri. Tanpa penurunan otomatis.", "销售按依据和生效时间明确确认当前阶段；Tier另行人工确认，R6自动降级已停用。"], "shape": "comparison"},
+  lifecycle: {"title": ["Current stage and historical milestones", "Tahap saat ini dan tonggak historis", "当前销售阶段与事实里程碑"], "answer": ["Staff explicitly confirm the current stage with evidence and effective time; it is not the latest event.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku; bukan kejadian terbaru.", "销售明确确认当前推进位置，关联依据及生效时间；不以最近事件自动替换。"], "value": ["A completed assessment or confirmed enrollment remains in history even when the opportunity is paused.", "Asesmen selesai atau pendaftaran terkonfirmasi tetap tercatat saat peluang ditunda.", "测评完成或明确确认报名成立独立留存；当前暂缓推进不抹除已发生事件。"], "nodes": [{"label": ["Current sales stage", "Tahap penjualan saat ini", "当前销售阶段"], "detail": ["Staff explicitly confirm the current stage with evidence and effective time; it is not the latest event.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku; bukan kejadian terbaru.", "销售明确确认当前推进位置，关联依据及生效时间；不以最近事件自动替换。"]}, {"label": ["Historical milestones", "Tonggak historis", "事实里程碑"], "detail": ["A completed assessment or confirmed enrollment remains in history even when the opportunity is paused.", "Asesmen selesai atau pendaftaran terkonfirmasi tetap tercatat saat peluang ditunda.", "测评完成或明确确认报名成立独立留存；当前暂缓推进不抹除已发生事件。"]}, {"label": ["Stage changes", "Perubahan tahap", "调整与记录"], "detail": ["Open Update stage in Follow-up. A saved progress record can supply evidence; the stage is saved separately. Profile is read-only for stages.", "Buka Perbarui tahap di Tindak lanjut. Catatan perkembangan dapat menjadi bukti; tahap disimpan terpisah.", "在跟进页打开“更新阶段”；记录进展后可带入本次依据，阶段独立保存。资料页不重复编辑。"]}, {"label": ["Preserved boundaries", "Batas yang dipertahankan", "独立边界"], "detail": ["Requests, milestones and stage changes do not create tasks, change Tier or prove payment. Contact permission remains separate.", "Permintaan, tonggak dan perubahan tahap tidak membuat tugas, mengubah Tier atau membuktikan pembayaran.", "诉求、里程碑及阶段调整不新增任务、不自动改变Tier，不证明已付款；停止／恢复联系单独处理。"]}], "caption": ["Awaiting conversation → Understanding needs → Confirming proposal → Registration in progress → Enrolled; On hold and Opportunity closed are separate decisions.", "Menunggu komunikasi → Menggali kebutuhan → Konfirmasi program → Proses pendaftaran → Terdaftar; Ditunda dan Ditutup adalah keputusan tersendiri.", "待建立沟通 → 需求沟通中 → 方案确认中 → 报名办理中 → 已报名；暂缓推进、结束推进按实际情况明确选择。"], "example": ["A completed test can coexist with Understanding needs; it is not a sales stage.", "Tes selesai dapat berdampingan dengan Menggali kebutuhan; bukan tahap penjualan.", "客户完成测评，当前仍可处于需求沟通中；不能把测评完成当成当前销售阶段。"], "boundary": ["Requests, milestones and stage changes do not create tasks, change Tier or prove payment. Contact permission remains separate.", "Permintaan, tonggak dan perubahan tahap tidak membuat tugas, mengubah Tier atau membuktikan pembayaran.", "诉求、里程碑及阶段调整不新增任务、不自动改变Tier，不证明已付款；停止／恢复联系单独处理。"], "shape": "comparison"},
   "tasks-sla": lesson(
     w(
       "Each task keeps its action, time and outcome",
@@ -310,9 +183,9 @@ export const guideLessons: Record<string, GuideLesson> = {
           "明确请求或人工安排",
         ),
         w(
-          "A structured request creates a task or supplements an open same-kind request. Staff can create a separate action.",
-          "Permintaan terstruktur membuat tugas atau melengkapi permintaan terbuka sejenis. Staf dapat membuat tindakan terpisah.",
-          "结构化请求可新建或补充同类型开放请求；销售也可明确新增独立事项。",
+          "A request without an open task of that type creates a task. If a similar open task exists, staff confirm whether to add the request to it or create a separate matter. Retries never duplicate a request.",
+          "Permintaan tanpa tugas terbuka sejenis membuat tugas. Jika ada tugas sejenis, staf mengonfirmasi pelengkapan atau membuat urusan terpisah. Pengulangan pengiriman tidak menggandakan permintaan.",
+          "没有同类开放任务时，明确请求生成任务；已有同类任务时，员工确认补充还是另建事项。重复提交不重复保存请求。",
         ),
       ),
       n(
@@ -392,13 +265,13 @@ export const guideLessons: Record<string, GuideLesson> = {
     ],
     w(
       "Delivery evidence and sales handling evidence must be read separately.",
-      "Bukti pengiriman dan penanganan sales harus dibaca terpisah.",
+      "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
       "发送证据与销售处理证据分别判断。",
     ),
     w(
       "Lark accepts T1's reminder. This proves API acceptance, not that Fadhil read it. A later task completion cannot recall an accepted message.",
       "Lark menerima pengingat T1. Ini membuktikan penerimaan API, bukan bahwa Fadhil membacanya. Penyelesaian berikutnya tidak menarik pesan yang diterima.",
-      "Lark 接受 T1 提醒，只能证明接口接受，不能证明 Fadhil 已读。之后完成任务也无法撤回已被外部接受的消息。",
+      "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
     ),
     w(
       "Missing channels are configuration failures, not simulation. An unknown delivery result needs investigation before retry. Frozen historical failures are not automatically replayed.",
@@ -540,7 +413,7 @@ export const guideLessons: Record<string, GuideLesson> = {
     ),
     w(
       "The interface reads structured records. Historical messages explain what happened then; they do not determine the current task state.",
-      "Antarmuka membaca catatan terstruktur. Pesan historis menjelaskan kejadian dahulu, bukan status tugas saat ini.",
+      "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
       "界面读取结构化记录；历史消息说明当时发生了什么，不能决定当前任务是否仍待处理。",
     ),
     w(
@@ -653,7 +526,7 @@ Object.assign(guideLessons, {
     w(
       "Fadhil can claim an eligible unassigned customer for himself. This does not grant permission to transfer his own customers to another salesperson.",
       "Fadhil dapat mengambil pelanggan belum ditugaskan yang memenuhi syarat. Ini tidak memberi izin memindahkan pelanggannya ke sales lain.",
-      "Fadhil 可把符合条件的未分配客户认领给自己，但这不赋予他把自己客户转给其他销售的权限。",
+      "Fadhil 可把符合条件的未分配客户自己认领，但这不赋予他把自己客户转给其他销售的权限。",
     ),
     w(
       "Users, roles and Owner determine access. There is no team-based routing or claim rule. Ask the System Administrator to review account permissions.",
@@ -676,9 +549,9 @@ Object.assign(guideLessons, {
       n(
         w("Customer", "Pelanggan", "客户"),
         w(
-          "Check name, Owner and latest activity. Unread is tracked separately for each employee with access, including the unassigned pool. It comes from saved customer messages and explicit customer activity, not notification delivery. Opening clears only your viewed activity; later messages remain unread and tasks stay open.",
-          "Periksa nama, penanggung jawab, dan aktivitas terbaru. Status belum dibaca terpisah untuk setiap staf yang berhak mengakses, termasuk pelanggan belum ditugaskan. Sumbernya pesan pelanggan tersimpan dan aktivitas pelanggan yang jelas, bukan pengiriman notifikasi. Membuka hanya menandai aktivitas yang Anda lihat; pesan berikutnya tetap belum dibaca dan tugas tetap terbuka.",
-          "确认姓名、负责人和最近动态。未读按有查看权限的员工分别记录，包含未分配共享池；依据已保存客户消息及明确客户动态，不依赖通知是否送达。打开只清除本人已查到范围内的未读，后到消息仍未读，任务保持未完成。",
+          "Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.",
+          "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+          "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
         ),
       ),
       n(
@@ -694,15 +567,15 @@ Object.assign(guideLessons, {
         w(
           "Read the stage and customer group. In Profile, changing the stage is a draft: enter the required reason and select Save stage. A missing reason shows a field error; only a confirmed response shows Stage saved. Cancel changes restores the saved stage. Owner changes keep their separate immediate-save behavior. Open buying-signal evidence in Profile; use Conversations to check the original request.",
           "Baca tahap dan kelompok pelanggan. Di Profil, perubahan tahap masih berupa draf: isi alasan wajib lalu pilih Simpan tahap. Alasan kosong menampilkan kesalahan kolom; Tahap tersimpan hanya muncul setelah konfirmasi. Batalkan perubahan mengembalikan tahap tersimpan. Perubahan penanggung jawab tetap memakai penyimpanan langsung yang terpisah. Buka bukti sinyal di Profil; gunakan Percakapan untuk memeriksa permintaan asli.",
-          "查看阶段与客户分组。在资料页签选择新阶段只是草稿，须填写必填的变更依据并点击“保存阶段”；依据为空会在字段旁提示，只有服务端确认后才显示“阶段已保存”。“取消修改”恢复已保存阶段。负责人仍沿用单独的即时保存。购买信号依据在资料中查看，原始诉求在对话中核对。",
+          "在跟进页通过“更新阶段”打开独立抽屉，明确选择新阶段、核对依据和生效时间后保存；资料页只读显示阶段及阶段历史。负责人沿用单独保存。客户诉求与意向可查看对应原文依据。",
         ),
       ),
       n(
         w("Next action", "Tindakan berikutnya", "下一步"),
         w(
-          "Read the action, actual deadline and task owner. Record result opens Follow-up for that specific task.",
-          "Baca tindakan, tenggat nyata, dan pemilik tugas. Catat hasil membuka Tindak lanjut untuk tugas tersebut.",
-          "查看动作、真实期限及任务负责人；“记录结果”进入跟进页签处理该项任务。",
+          "Read the action, actual deadline and task owner. Add progress opens Follow-up for that specific task.",
+          "Baca tindakan, tenggat nyata, dan pemilik tugas. Tambah progres membuka Tindak lanjut untuk tugas tersebut.",
+          "查看动作、真实期限及任务负责人；“添加进展”记录该项任务的实际工作，编辑和关闭各自独立。",
         ),
       ),
     ],
@@ -757,9 +630,9 @@ Object.assign(guideLessons, {
           "确定后续安排",
         ),
         w(
-          "Keep a valid task, create a specific future action, or explicitly keep arrangements unchanged with Record only. Pauses need reasons.",
-          "Pertahankan tugas valid, buat tindakan mendatang, atau pilih Catat saja untuk mempertahankan pengaturan. Jeda perlu alasan.",
-          "保留有效任务、安排具体未来行动，或选择仅记录保留原安排；需要等待或停止时另填原因。",
+          "Keep a valid task, schedule a specific action or review, or use Record only without changing arrangements. Explicit no-contact-before agreements and stopping require a reason.",
+          "Pertahankan tugas valid, jadwalkan tindakan atau tinjauan, atau pilih Catat saja tanpa perubahan. Kesepakatan batas kontak dan penghentian memerlukan alasan.",
+          "保留有效任务、安排具体动作或复查，或仅记录而不改安排；明确日期前不联系的约定及停止联系须有原因。",
         ),
       ),
       n(
@@ -838,7 +711,7 @@ Object.assign(guideLessons, {
     ],
     w(
       "Reading, copying or opening a contact tool does not record contact or complete tasks.",
-      "Membaca, menyalin, atau membuka alat kontak tidak mencatat kontak atau menyelesaikan tugas.",
+      "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
       "查看、复制或打开沟通工具不会自动保存联系或完成任务。",
     ),
     w(
@@ -1045,17 +918,17 @@ Object.assign(guideLessons, {
       n(
         w("Review affected settings", "Tinjau pengaturan", "查看设置用途"),
         w(
-          "Read the module's purpose and units. Distinguish response deadlines from retry and milestone parameters.",
-          "Baca tujuan dan satuan modul. Bedakan tenggat respons dari parameter percobaan ulang dan tonggak.",
-          "阅读模块目的及单位，分清响应期限、重试和里程碑参数。",
+          "Choose a topic in the grouped left navigation. Read its purpose, current-draft summary and diagram; distinguish response deadlines from retry and milestone parameters.",
+          "Pilih topik di navigasi kelompok kiri. Baca tujuan, ringkasan draf, dan diagram; bedakan tenggat respons dari parameter percobaan ulang dan tonggak.",
+          "在左侧分组目录选择主题，阅读用途、当前草稿摘要和图解，分清响应期限、重试和里程碑参数。",
         ),
       ),
       n(
         w("Save the right area", "Simpan area yang tepat", "使用对应保存按钮"),
         w(
-          "Save Policies validates all operational settings before saving. Invalid fields are identified and your input is retained. Partial updates preserve other settings. Notification policies and channels have separate save buttons.",
-          "Simpan Kebijakan memvalidasi semua pengaturan operasional sebelum menyimpan. Kolom yang tidak valid ditandai dan masukan tetap tersimpan. Pembaruan sebagian mempertahankan pengaturan lain. Kebijakan notifikasi dan kanal memiliki tombol simpan tersendiri.",
-          "“保存策略”先校验全部运营设置；无效字段会被定位，输入保留。部分更新保留其他配置。通知策略与渠道使用各自保存按钮，已有任务期限不重算。",
+          "Save submits only this topic and validates the merged configuration. Other drafts stay marked in the navigation. Concurrent edits to the same topic require review; failed or uncertain saves retain input. Notification policies and channels save separately.",
+          "Simpan hanya mengirim topik ini dan memvalidasi konfigurasi gabungan. Draf lain tetap ditandai di navigasi. Konflik topik sama perlu ditinjau; kegagalan atau hasil belum pasti mempertahankan masukan. Kebijakan dan kanal notifikasi disimpan terpisah.",
+          "“保存”仅提交当前主题并校验合并后的配置；其他草稿保留并在目录标记。同主题并发冲突须核对，失败或结果未知保留输入。通知策略与渠道分别保存，已有任务期限不重算。",
         ),
       ),
       n(
@@ -1222,9 +1095,9 @@ Object.assign(guideLessons, {
       "选择下一位需要处理的客户",
     ),
     w(
-      "Use the work queue to prioritize actual work, not unread counts alone.",
-      "Gunakan antrean untuk memprioritaskan pekerjaan, bukan hanya jumlah belum dibaca.",
-      "工作队列优先呈现实际待办，不只看未读数量。",
+      "Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.",
+      "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+      "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
     ),
     [
       n(
@@ -1268,8 +1141,8 @@ Object.assign(guideLessons, {
     ),
     w(
       "Reading messages does not clear business work. Unavailable task information needs retry, not exclusion as no work.",
-      "Membaca pesan tidak menyelesaikan pekerjaan. Data tugas tidak tersedia perlu dicoba ulang, bukan dianggap tanpa tugas.",
-      "已读不会清掉业务事项；任务信息不可用须重试，不能按无待办排除。",
+      "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+      "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
     ),
   ),
   filters: how(
@@ -1295,9 +1168,9 @@ Object.assign(guideLessons, {
       n(
         w("Select work", "Pilih pekerjaan", "选择待办范围"),
         w(
-          "Use task status and unread filters independently. Today and overdue use reliable task times in the operating timezone.",
-          "Gunakan filter tugas dan belum dibaca secara terpisah. Hari ini dan terlambat memakai waktu tugas tepercaya di zona operasional.",
-          "任务与未读独立筛选；今日到期及逾期使用运营时区和可信任务时间。",
+          "Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.",
+          "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+          "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
         ),
       ),
       n(
@@ -1349,9 +1222,9 @@ Object.assign(guideLessons, {
       n(
         w("Action / information", "Tindakan / informasi", "操作／信息"),
         w(
-          "Teal: main action or selection. Blue: unread or new information.",
-          "Hijau kebiruan: tindakan utama atau pilihan. Biru: informasi baru atau belum dibaca.",
-          "青绿色：主操作或选中；蓝色：未读或新信息。",
+          "Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.",
+          "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+          "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
         ),
       ),
       n(
@@ -1377,9 +1250,9 @@ Object.assign(guideLessons, {
       "高意向不能借用红色警报语义。",
     ),
     w(
-      "A blue unread mark can coexist with an amber task due today. Reading removes the first, not the second.",
-      "Tanda biru belum dibaca dapat muncul bersama tugas kuning hari ini. Membaca menghapus yang pertama, bukan yang kedua.",
-      "蓝色未读与琥珀色今日到期可以并存；阅读只改变前者。",
+      "Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.",
+      "Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",
+      "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
     ),
     w(
       "A buying-signal link opens evidence. It is not a command to contact immediately.",
@@ -1388,65 +1261,7 @@ Object.assign(guideLessons, {
     ),
     "comparison",
   ),
-  "buying-evidence-sources": lesson(
-    w(
-      "Interest, intent and historical labels differ",
-      "Minat, niat, dan label lama berbeda",
-      "关注内容、购买意向与历史标签不同",
-    ),
-    w(
-      "Read the saved source before treating a label as buying intent.",
-      "Baca sumber tersimpan sebelum menganggap label sebagai niat membeli.",
-      "先看保存来源，再判断标签是否代表购买意向。",
-    ),
-    w(
-      "This prevents a questionnaire choice from becoming an invented customer conversation.",
-      "Ini mencegah pilihan kuesioner dianggap sebagai percakapan yang tidak terjadi.",
-      "避免把问卷选项改说成客户实际询问或承诺。",
-    ),
-    [
-      n(
-        w("Questionnaire interest", "Minat kuesioner", "问卷关注"),
-        w(
-          "A selected topic records interest. It does not prove that the customer asked about price during a conversation.",
-          "Topik terpilih mencatat minat. Ini tidak membuktikan pelanggan menanyakan harga dalam percakapan.",
-          "选中主题表示关注，不证明客户在沟通中实际询价。",
-        ),
-      ),
-      n(
-        w("Supported intent", "Niat berbukti", "有依据意向"),
-        w(
-          "Saved staff evidence or structured Chat requests link to original notes, messages or tasks.",
-          "Bukti staf atau permintaan Chat terstruktur menautkan catatan, pesan, atau tugas asli.",
-          "员工记录或 咨询对话 结构化请求关联原始备注、消息或任务。",
-        ),
-      ),
-      n(
-        w("Historical label", "Label historis", "历史标签"),
-        w(
-          "A label without evidence stays historical. Do not manufacture its source from the current profile.",
-          "Label tanpa bukti tetap historis. Jangan membuat sumber dari profil saat ini.",
-          "无依据标签作为历史信息保留，不从当前资料反推来源。",
-        ),
-      ),
-    ],
-    w(
-      "Use supported intent in buying-signal filters; questionnaire interests remain separate.",
-      "Gunakan niat berbukti dalam filter sinyal pembelian; minat kuesioner tetap terpisah.",
-      "购买信号筛选使用有依据意向，问卷关注另行展示。",
-    ),
-    w(
-      "Amelia selects fees as an interest. Later she explicitly requests enrollment. Only the latter is a structured request with a task link.",
-      "Amelia memilih biaya sebagai minat. Kemudian ia meminta pendaftaran kelas. Yang terakhir adalah permintaan terstruktur dengan tautan tugas.",
-      "Amelia 在问卷勾选学费，后来明确提出报名请求；后者才是关联任务的结构化请求。",
-    ),
-    w(
-      "Ordinary Chat text does not automatically extract buying signals. A request is not confirmed payment or enrollment.",
-      "Teks Chat biasa tidak otomatis mengekstrak sinyal pembelian. Permintaan bukan konfirmasi pembayaran atau pendaftaran.",
-      "普通 咨询对话 文本不会自动提取购买信号，请求不等于已付款或已报名。",
-    ),
-    "comparison",
-  ),
+  "buying-evidence-sources": {"title": ["Customer requests, interests and evidence", "Permintaan, minat dan bukti pelanggan", "客户诉求、意向与依据"], "answer": ["Saved assessment completions and explicitly confirmed enrollment retain event time and evidence. Repeated events keep separate records.", "Asesmen tersimpan dan konfirmasi pendaftaran menyimpan waktu serta bukti. Kejadian berulang tetap terpisah.", "真实测评完成与明确确认报名成立保留实际时间和依据，同类事件可重复；AI描述不能证明事件成立。"], "value": ["A price question, advisor request or assessment interest is an expression, not completed purchase. Questionnaire topics remain separate.", "Pertanyaan harga, permintaan konsultan atau minat asesmen adalah pernyataan, bukan pembelian. Topik kuesioner terpisah.", "询价、请求顾问联系、测评意向是具体表达，不等于购买承诺；问卷关注另行标明。"], "nodes": [{"label": ["Initial classification", "Klasifikasi awal", "首次登记分类"], "detail": ["Only first registration calculates Tier from its saved inputs. Later facts do not automatically recalculate it.", "Hanya registrasi pertama menghitung Tier dari masukan tersimpan. Fakta berikutnya tidak menghitung ulang secara otomatis.", "仅首次登记按当时输入自动分类；后续测评、诉求和阶段变化不自动重算Tier。"]}, {"label": ["Fact milestones", "Tonggak fakta", "事实里程碑"], "detail": ["Saved assessment completions and explicitly confirmed enrollment retain event time and evidence. Repeated events keep separate records.", "Asesmen tersimpan dan konfirmasi pendaftaran menyimpan waktu serta bukti. Kejadian berulang tetap terpisah.", "真实测评完成与明确确认报名成立保留实际时间和依据，同类事件可重复；AI描述不能证明事件成立。"]}, {"label": ["Customer requests and interests", "Permintaan dan minat pelanggan", "客户诉求与意向"], "detail": ["A price question, advisor request or assessment interest is an expression, not completed purchase. Questionnaire topics remain separate.", "Pertanyaan harga, permintaan konsultan atau minat asesmen adalah pernyataan, bukan pembelian. Topik kuesioner terpisah.", "询价、请求顾问联系、测评意向是具体表达，不等于购买承诺；问卷关注另行标明。"]}, {"label": ["Sales confirmation", "Konfirmasi sales", "销售明确确认"], "detail": ["Staff confirm the current sales stage with evidence and effective time. Tier requires its own explicit confirmation. No automatic downgrade.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku. Tier memerlukan konfirmasi tersendiri. Tanpa penurunan otomatis.", "销售按依据和生效时间明确确认当前阶段；Tier另行人工确认，R6自动降级已停用。"]}], "caption": ["Worklists label requests / interests separately from questionnaire interests. Unsupported historical labels are excluded from current summaries; original data is retained.", "Daftar membedakan permintaan / minat dari minat kuesioner. Label historis tanpa bukti tidak ditampilkan dalam ringkasan; data asli tetap disimpan.", "列表明确标注“诉求／意向”或“问卷关注”；无依据历史标签不进入当前摘要和诉求展示，原始数据保留。"], "example": ["Completing a test is a milestone; asking its price is a request. Both retain their own evidence.", "Menyelesaikan tes adalah tonggak; menanyakan biaya adalah permintaan. Keduanya memiliki bukti sendiri.", "完成测评是里程碑；询问费用是诉求。两者可同时存在，分别关联原始依据。"], "boundary": ["New requests preserve evidence without creating tasks. Only the first-contact requirement remains; staff decide their next action and record what happened.", "Permintaan baru menyimpan bukti tanpa membuat tugas. Hanya kewajiban kontak pertama tetap ada; staf memutuskan tindakan dan mencatat hasil.", "后续诉求保存原文，不新增任务；保留首次联系要求和轻量客户约定，销售自主决定并记录实际行动。"], "shape": "comparison"},
   "failure-and-accessibility": how(
     w(
       "Use the guide and forms with a keyboard",
@@ -1507,9 +1322,9 @@ Object.assign(guideLessons, {
       "用指标定位过程问题",
     ),
     w(
-      "Start with customers awaiting ownership or action, then inspect communication quality and campaign evidence.",
-      "Mulai dari pelanggan tanpa penanggung jawab atau tindakan, lalu periksa komunikasi dan bukti kampanye.",
-      "先看无人负责或无后续安排的客户，再看沟通质量与活动结果依据。",
+      "Review the filtered customer overview, first-contact requirements, recent customer activity and conversation coverage; expand contact and stage analysis when needed.",
+      "Tinjau ringkasan pelanggan sesuai filter, kontak pertama, interaksi terbaru, dan cakupan komunikasi; buka analisis kontak serta tahap sesuai kebutuhan.",
+      "先看当前筛选客户、首次联系要求、近期客户互动和有效沟通覆盖，再按需展开联系与阶段分析。",
     ),
     [
       n(
@@ -1523,9 +1338,9 @@ Object.assign(guideLessons, {
       n(
         w("Read quality signals", "Baca indikator mutu", "查看质量指标"),
         w(
-          "Compare contact attempts with successful conversations. Inspect overdue work, no next step and missing-time counts.",
-          "Bandingkan upaya dengan percakapan berhasil. Periksa tugas terlambat, tanpa langkah lanjut, dan waktu hilang.",
-          "分别看尝试与成功沟通，核查逾期、未安排下一步和时间缺失数量。",
+          "Compare actual outreach and effective conversations, first-contact timeliness and stage duration. Unknown times are separate; this creates no tasks.",
+          "Bandingkan kontak nyata, komunikasi efektif, ketepatan kontak pertama, dan durasi tahap. Waktu tidak diketahui dipisahkan; tanpa tugas baru.",
+          "分别看实际联系和有效沟通、首次要求时效及阶段停留；未知时间单列，不生成催办任务。",
         ),
       ),
       n(
@@ -1578,3 +1393,34 @@ export const guideChapterScopes: Record<string, Words> = {
     "本章提供CRM存储方式、服务端权限边界、事务处理与字段字典；下方图解先说明原始依据与当前状态的区别。",
   ),
 };
+
+const simpleFollowupWords=[["First follow-up requirement","Kewajiban tindak lanjut pertama","首次跟进要求"],["A newly registered Lead receives one deadline for an actual human contact attempt. Repeated registration and later inquiries do not create another task. Owner or Tier changes do not reset the deadline.","Lead baru menerima satu tenggat untuk percobaan kontak nyata oleh staf. Registrasi berulang dan pertanyaan berikutnya tidak membuat tugas lain. Perubahan Owner atau Tier tidak mengatur ulang tenggat.","新登记Lead只生成一次首次人工联系尝试要求。重复登记和后续咨询不再创建任务；Owner或Tier变化不重置原期限。"],["Record actual facts","Catat fakta aktual","记录实际事实"],["Choose a real contact result and save the original summary. No answer completes the attempt, not successful communication. Viewing a message, opening WhatsApp, copying text or an AI reply never completes first follow-up. Internal notes do not count as contact.","Pilih hasil kontak nyata dan simpan ringkasan asli. Belum dijawab memenuhi percobaan, bukan komunikasi berhasil. Membaca pesan, membuka WhatsApp, menyalin teks, atau balasan AI tidak memenuhi tindak lanjut pertama. Catatan internal bukan kontak.","主动选择真实联系结果，保存原始摘要。未回复只表示已尝试，不算成功沟通。看消息、打开WhatsApp、复制文案和AI回复均不完成首次跟进；内部记录不计为联系。"],["Important information","Informasi penting","重要提示"],["Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.","Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.","依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。"],["Optional customer agreements","Kesepakatan pelanggan opsional","轻量客户约定"],["Record actual agreed actions and dates when available. Several agreements can coexist; rescheduling retains the previous record. A date without a time remains date-only. Do not invent an appointment time. An agreement is optional, never required to save contact.","Catat tindakan dan tanggal yang benar-benar disepakati. Beberapa kesepakatan dapat berdampingan; penjadwalan ulang mempertahankan catatan lama. Tanggal tanpa jam tetap hanya tanggal. Jangan mengarang jam. Kesepakatan tidak wajib untuk menyimpan kontak.","按实际记录约定事项和日期，允许多个约定并存；改约保留旧记录。只有日期时不补造具体时刻。约定选填，不是保存跟进的前提。"],["Tier and notification boundaries","Batas Tier dan notifikasi","Tier与通知边界"],["Use customer facts, original evidence and recorded actions. Information creates no tasks and has no reading or completion checklist.","Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.","依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。"]] as Words[];
+const simpleLessonRows:Record<string,number[]>={followup:[2,4,6],"tasks-sla":[0,2,6],operations:[0,8],notifications:[4,8],"notification-system":[4,8],entities:[0,4,6],workspace:[0,2,4],chat:[4]};
+for(const [key,indices]of Object.entries(simpleLessonRows)){if(guideLessons[key])guideLessons[key]={...guideLessons[key],answer:simpleFollowupWords[indices[0]+1],nodes:indices.map(i=>({label:simpleFollowupWords[i],detail:simpleFollowupWords[i+1]})),caption:simpleFollowupWords[8],example:["Example: record an unanswered WhatsApp attempt, save without a next task, then respond to a new booking request and optionally record the agreed date.","Contoh: catat WhatsApp belum dibalas, simpan tanpa tugas berikutnya, lalu tanggapi permintaan janji temu dan catat tanggal yang disepakati bila ada.","实例：记录WhatsApp未回复，直接保存而不安排下一任务；之后回应新的预约请求，按实际选填约定日期。"],boundary:simpleFollowupWords[9]};}
+
+guideLessons["tasks-sla"].title=["One first-follow-up requirement; later information stays evidence","Satu kewajiban tindak lanjut pertama; informasi berikutnya tetap bukti","一个首次跟进要求，后续信息保留为事实依据"];
+guideChapterScopes.followup=["Record real contact outcomes; optional agreements never require a next task.","Catat hasil kontak nyata; kesepakatan opsional tidak mewajibkan tugas berikutnya.","记录实际联系结果；约定选填，无需安排下一任务。"];
+
+guideLessons.followup.value=['Open Leads CRM → a customer → Follow-up → Progress records. Select a record header (result, staff, time and Full record +) to expand every saved detail. The latest record opens by default; Show all records reveals entries older than the recent five.','Buka CRM Prospek → pelanggan → Tindak lanjut → Riwayat perkembangan. Pilih judul catatan (hasil, staf, waktu dan Catatan lengkap +) untuk membuka rinciannya. Catatan terbaru terbuka; Tampilkan semua catatan menampilkan catatan sebelum lima terbaru.','进入销售线索→客户→跟进→跟进记录，点击记录标题行（结果、记录人、时间及“完整记录 +”）展开全部已保存内容。最新一条默认展开；超过5条时点击“显示全部记录”查看更早记录。'];
+guideLessons.followup.example=['View an advisor request and mark it as viewed: it stays awaiting reply and the first-contact deadline remains. Record an internal reschedule: the complete record shows the original date, replacement date and reason, without counting contact. Later an actual unanswered contact processes first follow-up but still does not answer the request.','Perhatikan permintaan konsultan: status tetap menunggu jawaban dan tenggat kontak pertama tetap. Catat perubahan jadwal internal: catatan lengkap menampilkan tanggal lama, pengganti dan alasan tanpa menghitung kontak. Kontak nyata yang belum dibalas memenuhi tindak lanjut pertama, tetapi belum menjawab permintaan.','关注顾问请求后，请求仍待回应，首次联系期限不变。内部记录改约后，完整记录显示原日期、替代日期及原因，不计联系。之后真实联系未获回复可以结束首次要求，但仍不算已回应客户。'];
+guideLessons.followup.title=['Record facts first; add status changes and agreements only when needed','Catat fakta dahulu; tambahkan perubahan status dan kesepakatan bila perlu','先记录事实，按需补充状态变化与约定'];
+guideLessons.followup.caption=['Contact facts, personal reading status and customer agreements stay distinct.',"Gunakan fakta pelanggan, bukti asli, dan catatan tindakan. Informasi tidak membuat tugas dan tidak memiliki konfirmasi membaca atau daftar penyelesaian.",'实际联系、个人关注状态与客户约定分别记录。'];
+
+// Three independent interaction tracks; never a replacement for deadlines or agreements.
+guideLessons.followup.caption=['Contact facts, customer activity and sales outreach have separate clocks. The first deadline, agreements and original records remain.','Fakta kontak, aktivitas pelanggan, dan kontak sales memiliki waktu terpisah. Tenggat pertama, kesepakatan, dan catatan asli tetap.','有效沟通、客户互动、销售外联各有独立时间；首次期限、客户约定与原始记录继续保留。'];
+const interactionGuideUse:Words=['In Leads → Interaction and follow-up, the first deadline and customer agreement stay above three compact facts. Select a time/channel to open its original record. In Follow-up → Interaction and contact, review the three tracks. When recording contact, identify Sales initiated / Customer initiated / Not specified and Just now / Record an earlier time. All times use the operating timezone; saving time stays separate.','Pada Leads → Interaksi dan tindak lanjut, tenggat pertama dan kesepakatan tetap di atas tiga fakta ringkas. Pilih waktu/saluran untuk membuka catatan asli. Pada Tindak lanjut → Interaksi dan kontak, tinjau tiga linimasa. Saat mencatat kontak, pilih Dimulai sales / Dimulai pelanggan / Tidak disebutkan dan Baru saja / Catat waktu sebelumnya. Waktu memakai zona operasi; waktu simpan tetap terpisah.','销售线索→互动与跟进区保留首次期限和客户约定，下方增加三条摘要。点击时间／渠道查看原始记录；客户详情→跟进→互动与联系查看三条时间线。记录联系时选择销售主动／客户主动／未注明，以及刚刚发生／补记实际时间；按运营时区填写，保存时间另行保留。'];
+const interactionGuideExample:Words=['At 10:20 a customer completes another assessment; customer activity changes, not human conversation. At 11:00 Sales sends WhatsApp with no response; only Sales outreach changes. At 14:00 an actual call connects; effective conversation changes, and only explicitly answered requests are resolved. An unanswered attempt may process first follow-up without a second task.','Pukul 10:20 pelanggan menyelesaikan asesmen lagi; aktivitas pelanggan berubah, bukan komunikasi staf. Pukul 11:00 sales mengirim WhatsApp tanpa balasan; hanya kontak sales berubah. Pukul 14:00 telepon benar-benar tersambung; komunikasi berubah dan hanya permintaan yang jelas dijawab ditangani. Percobaan tanpa jawaban dapat memenuhi tindak lanjut pertama tanpa tugas kedua.','10:20客户再次完成测评，只更新客户主动互动，不代表人工沟通。11:00销售发WhatsApp未获回复，只更新销售主动联系。14:00电话实际接通，更新有效沟通；仅显式确认已答复的请求变为已处理。未回复尝试可完成首次要求，不产生第二任务。'];
+
+guideLessons.followup.value=[guideLessons.followup.value[0]+' '+interactionGuideUse[0],guideLessons.followup.value[1]+' '+interactionGuideUse[1],guideLessons.followup.value[2]+' '+interactionGuideUse[2]];
+guideLessons.followup.example=[guideLessons.followup.example[0]+' '+interactionGuideExample[0],guideLessons.followup.example[1]+' '+interactionGuideExample[1],guideLessons.followup.example[2]+' '+interactionGuideExample[2]];
+
+const factLedgerHelp:Words=['Original evidence is kept separately from interpreted facts. Historical unknown times remain unknown. Buying evidence does not create tasks or change Tier.','Bukti asli terpisah dari penafsiran fakta. Waktu lama yang tidak diketahui tetap tidak diketahui. Bukti minat tidak membuat tugas atau mengubah Tier.','客户详情→跟进→事实账本：展开事件可查看原始依据、实际发生时间、系统记录时间及来源。客户自述和销售转述不等于已核实；原始记录不覆盖。展开原记录后追加“补充／修正”，保留原文和关联。补充不新增联系次数；联系结果修正同步影响有效沟通统计和首次要求，但不新增任务或改变Tier。购买证据不创建任务；重复询价不自动认定高意向。'];
+guideLessons.followup.value=[guideLessons.followup.value[0]+' '+factLedgerHelp[0],guideLessons.followup.value[1]+' '+factLedgerHelp[1],guideLessons.followup.value[2]+' '+factLedgerHelp[2]];
+const p1ProfileGuide:Words=['Profile updates use the source and actual time. Sales records update selected fields once; no verification badge or hint completion is required.','Pembaruan profil memakai sumber dan waktu nyata. Catatan sales memperbarui kolom terpilih sekali tanpa pengesahan atau daftar penyelesaian.','动态画像：客户资料→当前画像与来源可展开查看字段依据与不同记录；点击“更新客户资料”，只添加要修改的字段并记录变更依据。也可在“记录联系／事实→更新客户信息（选填）”与沟通原文一次保存。较早补记不覆盖较新信息；纠正误记需明确选择，原记录保留。重要信息只展示事实，不设阅读、关注、处理、关闭或完成率；销售自主决定行动，记录真实结果。Tier、Owner与首次期限不会因画像或提示变化而自动修改。'];
+guideLessons.followup.value=[guideLessons.followup.value[0]+' '+p1ProfileGuide[0],guideLessons.followup.value[1]+' '+p1ProfileGuide[1],guideLessons.followup.value[2]+' '+p1ProfileGuide[2]];
+
+// Existing explanation chapter: original -> constrained extraction -> evidence -> current projection.
+guideLessons.entities.nodes.push(n(
+ w('Constrained text extraction','Ekstraksi teks terbatas','原文结构化提取'),
+ w('Saved original → fixed contract → validated evidence → version-aware profile; failures keep the original. No new sales tasks or automatic Tier updates.','Teks asli → kontrak tetap → bukti tervalidasi → profil berversi. Tidak membuat tugas atau mengubah Tier otomatis.','先保存原文→15字段／6标签合同→校验原文证据→按时间与字段版本更新。未来搬迁不改当前城市，销售打算不当作客户约定。失败保留原文，不新增任务、不自动改Tier。')
+));

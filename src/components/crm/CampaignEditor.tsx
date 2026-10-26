@@ -1,3 +1,4 @@
+import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
 import React, { useEffect, useRef, useState } from "react";
@@ -73,6 +74,7 @@ export function CampaignEditor({
     [error, setError] = useState("");
   const dirty = JSON.stringify(v) !== JSON.stringify(initial.current);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [lookupMiss,setLookupMiss]=useState(false);
   const close = () => {
     if (busy) return;
     if (dirty || unknown) {
@@ -125,8 +127,8 @@ export function CampaignEditor({
     setError("");
   }
   const field = (key: keyof typeof v, label: string, type = "text") => (
-    <label className="campaign-field" key={key}>
-      <span>{label}</span>
+    <AdminField className="campaign-field" key={key}>
+      <AdminFieldLabel>{label}</AdminFieldLabel>
       <input
         name={key}
         type={type}
@@ -138,7 +140,7 @@ export function CampaignEditor({
           ? { required: true, maxLength: 200, autoFocus: true }
           : {})}
       />
-    </label>
+    </AdminField>
   );
   const select = (
     key: keyof typeof v,
@@ -146,7 +148,7 @@ export function CampaignEditor({
     options: React.ReactNode,
   ) => (
     <div className="campaign-field">
-      <span>{label}</span>
+      <AdminFieldLabel>{label}</AdminFieldLabel>
       <CrmSelect
         label={label}
         value={v[key]}
@@ -186,7 +188,7 @@ export function CampaignEditor({
                 "Pilih layanan awal dan bahasa pelanggan.",
                 "请选择入口服务和客户页面语言。",
               )
-            : crmError(code, lang);
+            : code === 'campaign_result_missing' ? t('No saved result found. Keep this request and explicitly retry if needed.','Hasil tersimpan belum ditemukan. Pertahankan permintaan ini dan ulangi secara eksplisit bila perlu.','未查到已保存结果。原请求和草稿保留，可明确重试原请求。') : crmError(code, lang);
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
     if (savingRef.current) return;
@@ -204,7 +206,7 @@ export function CampaignEditor({
         setError("campaign_schedule_invalid");
         return;
       }
-      const fields: any = { name: v.name.trim() };
+      const fields: any = { name: v.name.trim(),requestId:requestId.current };
       if (!campaign)
         Object.assign(fields, {
           requestId: requestId.current,
@@ -283,6 +285,10 @@ export function CampaignEditor({
       setBusy(false);
     }
   }
+  async function checkSavedResult(){
+    if(busy)return;setBusy(true);setError('');
+    try{const r=await fetch('/api/crm/campaign-save-results/'+encodeURIComponent(requestId.current));const d=await r.json();if(!r.ok){setLookupMiss(r.status===404);setError(r.status===404?'campaign_result_missing':'campaign_save_failed');return;}pending.current=null;onSaved(d.campaign);}catch{setError('campaign_save_failed');}finally{setBusy(false);}
+  }
   return (
     <>
       <dialog
@@ -295,7 +301,8 @@ export function CampaignEditor({
           close();
         }}
       >
-        <form onSubmit={save}>
+        <AdminForm lang={lang} onSubmit={e=>{if(unknown){e.preventDefault();void checkSavedResult();}else void save(e);}}>
+
           <header>
             <div>
               <h2 id="campaign-editor-title">
@@ -330,7 +337,7 @@ export function CampaignEditor({
               ×
             </button>
           </header>
-          <div className="campaign-editor-body">
+          <div className="campaign-editor-body"><AdminRequiredNote lang={lang}/>
             {(busy || dirty) && !error && (
               <CrmSaveFeedback lang={lang} state={busy ? "saving" : "dirty"} />
             )}
@@ -343,7 +350,7 @@ export function CampaignEditor({
               >
                 {unknown
                   ? t(
-                      "Save outcome unknown. Retry the same request to retrieve the result; do not create another campaign.",
+                      "Save outcome unknown. Check the saved result first; keep the original request.",
                       "Hasil belum diketahui. Ulangi permintaan yang sama untuk mendapatkan hasil; jangan buat kampanye lain.",
                       "保存结果待确认。请重试原请求查询结果，不要重复创建活动。",
                     )
@@ -351,13 +358,6 @@ export function CampaignEditor({
               </p>
             )}
             <fieldset disabled={busy || unknown}>
-              <p className="campaign-hint">
-                {t(
-                  "* Required. Other campaign details can be added later.",
-                  "* Wajib. Detail lain dapat ditambahkan nanti.",
-                  "* 必填。其他活动信息可在创建后补充。",
-                )}
-              </p>
               {field(
                 "name",
                 t("Campaign name *", "Nama kampanye *", "活动名称 *"),
@@ -368,9 +368,9 @@ export function CampaignEditor({
                   {select(
                     "type",
                     t(
-                      "Campaign type · optional",
-                      "Jenis kampanye · opsional",
-                      "活动类型 · 选填",
+                      "Campaign type",
+                      "Jenis kampanye",
+                      "活动类型",
                     ),
                     <>
                       <option value="" disabled>
@@ -386,9 +386,9 @@ export function CampaignEditor({
                   {select(
                     "locationType",
                     t(
-                      "Delivery format · optional",
-                      "Bentuk penyelenggaraan · opsional",
-                      "开展形式 · 选填",
+                      "Delivery format",
+                      "Bentuk penyelenggaraan",
+                      "开展形式",
                     ),
                     <>
                       <option value="" disabled>
@@ -421,9 +421,9 @@ export function CampaignEditor({
                   <details>
                     <summary>
                       {t(
-                        "Contact, status and budget · optional",
-                        "Kontak, status, dan anggaran · opsional",
-                        "联系人、状态及预算 · 选填",
+                        "Contact, status and budget",
+                        "Kontak, status, dan anggaran",
+                        "联系人、状态及预算",
                       )}
                     </summary>
                     <div className="campaign-fields-grid">
@@ -467,9 +467,9 @@ export function CampaignEditor({
                   <details>
                     <summary>
                       {t(
-                        "Schedule and location · optional",
-                        "Jadwal dan lokasi · opsional",
-                        "时间与地点 · 选填",
+                        "Schedule and location",
+                        "Jadwal dan lokasi",
+                        "时间与地点",
                       )}
                     </summary>
                     <p>{u("Asia/Jakarta (UTC+7)")}</p>
@@ -521,13 +521,13 @@ export function CampaignEditor({
                   <details>
                     <summary>
                       {t(
-                        "Audience and message · optional",
-                        "Audiens dan pesan · opsional",
-                        "受众与活动主张 · 选填",
+                        "Audience and message",
+                        "Audiens dan pesan",
+                        "受众与活动主张",
                       )}
                     </summary>
                     {(["targetAudience", "keyTopics"] as const).map((k) => (
-                      <label className="campaign-field" key={k}>
+                      <AdminField className="campaign-field" key={k}>
                         <span>
                           {k === "targetAudience"
                             ? t(
@@ -546,16 +546,16 @@ export function CampaignEditor({
                           value={v[k]}
                           onChange={(e) => update(k, e.target.value)}
                         />
-                      </label>
+                      </AdminField>
                     ))}
                   </details>
                   {campaign.promotionModel !== "multiple" && (
                     <details>
                       <summary>
                         {t(
-                          "Legacy campaign link defaults · optional",
-                          "Pengaturan tautan kampanye lama · opsional",
-                          "原有活动链接默认设置 · 选填",
+                          "Legacy campaign link defaults",
+                          "Pengaturan tautan kampanye lama",
+                          "原有活动链接默认设置",
                         )}
                       </summary>
                       <p className="campaign-hint">
@@ -597,6 +597,7 @@ export function CampaignEditor({
             </fieldset>
           </div>
           <footer>
+            {unknown&&lookupMiss&&<button type="button" disabled={busy} onClick={()=>void save()}>{t('Retry original request','Ulangi permintaan awal','重试原请求')}</button>}
             <button type="button" onClick={close} disabled={busy}>
               {t("Cancel", "Batal", "取消")}
             </button>
@@ -605,9 +606,9 @@ export function CampaignEditor({
                 ? t("Saving…", "Menyimpan…", "保存中…")
                 : unknown
                   ? t(
-                      "Retry original request",
-                      "Ulangi permintaan awal",
-                      "重试原请求",
+                      "Check saved result",
+                      "Periksa hasil tersimpan",
+                      "查询保存结果",
                     )
                   : campaign
                     ? t("Save changes", "Simpan perubahan", "保存修改")
@@ -618,7 +619,7 @@ export function CampaignEditor({
                       )}
             </button>
           </footer>
-        </form>
+        </AdminForm>
       </dialog>
       {confirmClose && (
         <CrmDiscardDialog

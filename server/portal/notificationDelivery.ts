@@ -132,7 +132,7 @@ export function larkCard(
           content:
             "UPER · " +
             (process.env.PORTAL_DEPLOYMENT === 'company-trial' || process.env.PLATFORM_MODE === "mock" ||
-            process.env.APP_ENV === "test"
+            ["test","dev","local"].includes(process.env.APP_ENV || "")
               ? "TEST"
               : process.env.NODE_ENV || "DEV"),
         },

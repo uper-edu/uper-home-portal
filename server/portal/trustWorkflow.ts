@@ -1,3 +1,5 @@
+import {ledgerMetadata} from '../../src/utils/crmFactLedger.ts';
+import {applyTaskChange} from './taskManagement.ts';
 import {customerReplied} from "./noResponse.ts";
 import { createHash, randomUUID } from "node:crypto";
 export function invalid(message: string, status = 400): never {
@@ -9,16 +11,21 @@ export async function fact(
   kind: string,
   actor: string,
   data: any,
+  explicitEventId?: string,
 ) {
+  const ledger=ledgerMetadata(leadId,kind,actor,data);
+  const hex=ledger.dedupKey?createHash('sha256').update(ledger.dedupKey).digest('hex').slice(0,32):null;
+  const eventId=explicitEventId||(hex?`${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`:randomUUID());
   await c.query(
-    "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,:p3,:p4,:p5)",
-    [randomUUID(), leadId, kind, actor, data],
+    "INSERT INTO crm_facts(id,lead_id,kind,actor,data) VALUES(:p1,:p2,:p3,:p4,:p5) ON DUPLICATE KEY UPDATE id=id",
+    [eventId, leadId, kind, actor, {...data,ledger}],
   );
 }
 export async function operation(
   c: any,
   actor: string,
   body: any,
+  scope: { leadId: string; kind: string; authorize?: () => Promise<unknown> },
   work: () => Promise<any>,
 ) {
   if (
@@ -27,7 +34,9 @@ export async function operation(
     body.requestId.length > 100
   )
     invalid("Request ID required");
-  const hash = createHash("sha256").update(JSON.stringify(body)).digest("hex");
+  const hash = createHash("sha256")
+    .update(JSON.stringify(["crm-operation-v2", scope.leadId, scope.kind, body]))
+    .digest("hex");
   const prior = (
     await c.query(
       "SELECT * FROM crm_operations WHERE actor=:p1 AND request_id=:p2",
@@ -35,15 +44,26 @@ export async function operation(
     )
   ).rows[0];
   if (prior) {
-    if (prior.fingerprint !== hash)
-      invalid("Request conflict; query the original result", 409);
+    if (prior.result?.leadId !== scope.leadId ||
+        prior.result?.operationKind !== scope.kind || prior.fingerprint !== hash)
+      invalid("Request context conflict; query the original result and refresh before saving", 409);
+    await scope.authorize?.();
     return { ...prior.result, replayed: true };
   }
-  const result = await work();
-  await c.query(
-    "INSERT INTO crm_operations(actor,request_id,fingerprint,result) VALUES(:p1,:p2,:p3,:p4)",
-    [actor, body.requestId, hash, result],
-  );
+  await scope.authorize?.();
+  const result = { ...await work(), leadId: scope.leadId, operationKind: scope.kind };
+  try {
+    await c.query(
+      "INSERT INTO crm_operations(actor,request_id,fingerprint,result) VALUES(:p1,:p2,:p3,:p4)",
+      [actor, body.requestId, hash, result],
+    );
+  } catch (error: any) {
+    // A competing target may have committed this actor/key while work ran.
+    // Throw so the enclosing transaction rolls back all of this attempt.
+    if (error.code === "ER_DUP_ENTRY")
+      invalid("Request context conflict; query the original result and refresh before saving", 409);
+    throw error;
+  }
   return result;
 }
 export function normalizeContactPhone(value: any) {
@@ -125,11 +145,12 @@ export async function cancelTaskNotices(
   c: any,
   taskId: string,
   reason: string,
+  preserveDeadline = false,
 ) {
   return (
     await c.query(
-      "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId')),'null')=:p1",
-      [taskId, reason],
+      "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId')),'null')=:p1 AND (:p3=false OR JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.event'))<>'task.overdue')",
+      [taskId, reason, preserveDeadline],
     )
   ).rowCount;
 }
@@ -141,82 +162,19 @@ export async function taskCommand(
   canWrite: (p: any) => boolean,
 ) {
   const lead = await lockLead(c, leadId, canWrite);
-  return operation(c, actor, body, async () => {
-    const reason = String(body.reason || "").trim();
-    if (!reason) invalid("Action and reason required");
-    const command = body.command;
-    let task = body.taskId
-      ? (
-          await c.query(
-            "SELECT * FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 FOR UPDATE",
-            [body.taskId, leadId],
-          )
-        ).rows[0]
-      : null;
-    if (
-      command !== "create" &&
-      (!task || !["open", "overdue"].includes(task.status))
-    )
-      invalid("Task changed; refresh and review", 409);
-    if (task && task.revision !== body.revision)
-      invalid("Task changed; refresh and review", 409);
-    let newTaskId: string | null = null;
-    if (["create", "replace"].includes(command)) {
-      if (
-        !body.action?.trim() ||
-        !body.purpose?.trim() ||
-        !["response", "appointment", "review"].includes(body.timingKind) ||
-        !/(Z|[+-]\d\d:\d\d)$/.test(body.dueAt || "") ||
-        !Number.isFinite(Date.parse(body.dueAt)) ||
-        Date.parse(body.dueAt) <= Date.now()
-      )
-        invalid("Enter an action, purpose and future time with timezone");
-      newTaskId = randomUUID();
-      await c.query(
-        "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,original_due_at,timing_kind,request_key,details) VALUES(:p1,:p2,'follow_up',:p3,:p4,:p4,:p5,:p6,:p7)",
-        [
-          newTaskId,
-          leadId,
-          lead.owner || null,
-          new Date(body.dueAt),
-          body.timingKind,
-          actor + ":" + body.requestId,
-          {
-            action: body.action.trim(),
-            purpose: body.purpose.trim(),
-            replaces: task?.id,
-          },
-        ],
-      );
-    }
-    if (command === "reschedule") {
-      if (
-        !/(Z|[+-]\d\d:\d\d)$/.test(body.scheduledAt || "") ||
-        !Number.isFinite(Date.parse(body.scheduledAt)) ||
-        Date.parse(body.scheduledAt) <= Date.now()
-      )
-        invalid("Future appointment time with timezone required");
-      await c.query(
-        "UPDATE followup_tasks SET scheduled_at=:p2,revision=revision+1,details=JSON_SET(details,'$.noticeRevision',COALESCE(JSON_EXTRACT(details,'$.noticeRevision'),0)+1) WHERE id=:p1",
-        [task.id, new Date(body.scheduledAt)],
-      );
-    } else if (command === "supplement") {
-      await c.query(
-        "UPDATE followup_tasks SET revision=revision+1 WHERE id=:p1",
-        [task.id],
-      );
-    } else if (["replace", "cancel"].includes(command)) {
-      await c.query(
-        "UPDATE followup_tasks SET status='cancelled',revision=revision+1,details=JSON_SET(details,'$.resolution',:p2,'$.replacedBy',:p3) WHERE id=:p1",
-        [task.id, command, newTaskId],
-      );
-      await cancelTaskNotices(c, task.id, command);
-    } else if (command !== "create") invalid("Invalid task action");
-    if (task && command === "reschedule") {
+  return operation(c, actor, body, { leadId, kind: "task-actions" }, async () => {
+    const tasks=(await c.query("SELECT * FROM followup_tasks WHERE lead_id=:p1 FOR UPDATE",[leadId])).rows;
+    const task=tasks.find((t:any)=>t.id===body.taskId);
+    const reason=String(body.reason||'').trim(),command=body.command;
+    const result=await applyTaskChange(c,leadId,actor,lead,body,tasks);
+    const newTaskId=result.newTaskId;
+    if(task&&['replace','cancel'].includes(command))await cancelTaskNotices(c,task.id,command);
+    if (task && (command === "reschedule" || (command === "edit" && body.scheduledAt))) {
       await cancelTaskNotices(
         c,
         task.id,
-        "Appointment changed; review current task",
+        "Task arrangement changed",
+        true,
       );
       const { event } = await import("./store.ts");
       await event(c, "task.rescheduled", leadId, {
@@ -241,7 +199,8 @@ export async function taskCommand(
       scheduledAt: body.scheduledAt,
       action: body.action,
       purpose: body.purpose,
+      sourceMessageId:result.sourceMessageId,sourceConversationId:result.sourceConversationId,requestEvidenceId:result.requestEvidenceId,
     });
-    return { saved: true, leadId, taskId: task?.id || newTaskId, newTaskId };
+    return { saved: true, leadId, ...result };
   });
 }

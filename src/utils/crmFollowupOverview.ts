@@ -43,7 +43,7 @@ export function followupHistoryDay(at: string | undefined, timezone: string) {
 
 /** Saved message/conversation identifiers only. Similar text, reading, or a later
  * contact record cannot establish a task relationship or resolve a message. */
-export function messageTaskLinks(message: any, messages: any[], tasks: any[], facts: any[] = []) {
+export function messageTaskLinks(message: any, messages: any[], tasks: any[], facts: any[] = [], requests:any[] = []) {
   if (!message?.conversation_id || (!message.id && !message.request_id)) return [];
   const ids = new Set([message.id, message.request_id].filter(Boolean));
   const matches = (conversation: any, id: any) =>
@@ -51,11 +51,13 @@ export function messageTaskLinks(message: any, messages: any[], tasks: any[], fa
   const linked = new Set<string>();
   for (const task of tasks)
     if (matches(task.details?.sourceConversationId, task.details?.sourceMessageId)) linked.add(task.id);
+  for(const r of requests)if(r.task_id&&matches(r.data?.conversationId,r.data?.messageId))linked.add(r.task_id);
   for (const receipt of messages)
     if (receipt.metadata?.followupAction && receipt.metadata.taskId && matches(receipt.conversation_id, receipt.request_id))
       linked.add(receipt.metadata.taskId);
   for (const fact of facts) {
     const d = fact.data || {};
+    if(['task.link_request','task.create_request'].includes(fact.kind)&&d.taskId&&matches(d.sourceConversationId,d.sourceMessageId))linked.add(d.taskId);
     if (fact.kind === 'task.request_evidence' && d.taskId && matches(d.conversationId, d.messageId)) linked.add(d.taskId);
     if (fact.kind === 'followup.recorded' && d.processingTaskId && matches(d.sourceConversationId, d.sourceMessageId)) linked.add(d.processingTaskId);
   }

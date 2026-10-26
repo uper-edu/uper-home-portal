@@ -121,7 +121,7 @@ async function applyTrustMigration(connection){
 
 async function applyCampaignSourceMigration(c){
  const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=10');
- if(v[0]?.state==='ready')return {version:10,state:'ready',alreadyApplied:true};
+ if(v[0]?.state==='ready')return removePersonalReading(c);
  if(v.length)throw Error('Incomplete campaign source migration');
  await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(10,'applying')");
  await c.query("CREATE TABLE campaign_source_reviews(id CHAR(64) PRIMARY KEY,raw_code VARCHAR(200) NOT NULL,status VARCHAR(16) NOT NULL, campaign_id VARCHAR(191),revision BIGINT NOT NULL DEFAULT 1,config JSON NOT NULL,created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),FOREIGN KEY(campaign_id) REFERENCES trial_campaigns(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
@@ -131,7 +131,30 @@ async function applyCampaignSourceMigration(c){
  for(const {profile:p} of leads){const raw=String(p.campaignId||p.campaign||'').trim(),key=raw.toLowerCase();if(!key||['home','organic'].includes(key))continue;
  if(campaigns.some(x=>[x.id,x.code,...(p.campaignId?[]:[x.config.name,x.config.nameEn])].some(v=>v?.trim().toLowerCase()===key)))continue;
  await c.execute("INSERT INTO campaign_source_reviews(id,raw_code,status,config) VALUES(?,?,'pending',?) ON DUPLICATE KEY UPDATE id=id",[createHash('sha256').update(key).digest('hex'),raw.slice(0,200),JSON.stringify({legacyDetected:true})]);}
- await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=10");return {version:10,state:'ready'};
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=10");return removePersonalReading(c);
+}
+
+async function removePersonalReading(c){
+ const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=11');
+ if(v[0]?.state==='ready')return addAiExtraction(c);
+ await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(11,'applying') ON DUPLICATE KEY UPDATE state=state");
+ await c.query("DELETE FROM crm_operations WHERE JSON_UNQUOTE(JSON_EXTRACT(result,'$.operationKind'))='attention.reviewed'");
+ await c.query("DELETE FROM crm_facts WHERE kind='attention.reviewed'");
+ await c.query('DROP TABLE IF EXISTS lead_read_marks');
+ const [columns]=await c.query("SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='notification_inbox' AND column_name='read_at'");
+ if(columns.length){await c.query('ALTER TABLE notification_inbox DROP INDEX inbox_employee, DROP COLUMN read_at, ADD INDEX inbox_employee(employee_id)');}
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=11");
+ return addAiExtraction(c);
+}
+
+async function addAiExtraction(c){
+ const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=12');
+ if(v[0]?.state==='ready')return {version:12,state:'ready',alreadyApplied:true};
+ if(v.length)throw Error('Incomplete AI extraction migration');
+ await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(12,'applying')");
+ await c.query("CREATE TABLE crm_ai_extractions(id CHAR(36) PRIMARY KEY,lead_id VARCHAR(191) NOT NULL,source_type VARCHAR(32) NOT NULL,source_id VARCHAR(191) NOT NULL,source_revision VARCHAR(80) NOT NULL,input_hash CHAR(64) NOT NULL,contract_version VARCHAR(40) NOT NULL,input JSON NOT NULL,status VARCHAR(16) NOT NULL,output JSON,model VARCHAR(100),error_code VARCHAR(80),attempts INT NOT NULL DEFAULT 0,lease_until DATETIME(6),created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),completed_at DATETIME(6),UNIQUE extraction_source(source_type,source_id,source_revision,contract_version),INDEX extraction_ready(status,lease_until),INDEX extraction_lead(lead_id,created_at),FOREIGN KEY(lead_id) REFERENCES portal_leads(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=12");
+ return {version:12,state:'ready'};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -123,3 +123,8 @@
 .campaign-home-card-heading{width:100%}.campaign-home-card-heading>.campaign-home-type{flex:1;flex-shrink:1;min-width:0}.campaign-home-card-heading>.crm-campaign-status{max-width:45%;white-space:normal;overflow-wrap:anywhere}.campaign-home-metrics>div{display:flex;flex-direction:column;min-width:0}.campaign-home-metrics dt{flex:1}
 @media(max-width:767px){.campaign-page-actions{width:100%}}
 @media(max-width:480px){.campaign-page-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px;align-items:stretch}.campaign-page-actions>button{min-width:0;padding:9px 8px}.campaign-page-actions>.campaign-source-return{grid-column:1/-1;justify-self:end}}
+/* Source review remains contextual; only its own decisions are grouped here. */
+.campaign-source-review .crm-source-review-actions,.campaign-source-card .crm-source-review-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;border-top:1px solid #94a3b844;padding-top:16px;margin-top:16px}
+.crm-source-review-actions button{min-height:40px;border-radius:10px;padding:8px 16px}
+.campaign-review-action-context summary{cursor:pointer;font-size:13px;color:inherit}
+.campaign-editor-body>.admin-required-note{margin:0 0 16px}

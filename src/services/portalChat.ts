@@ -1,3 +1,5 @@
+import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
+import {saveStudentContext} from './studentProfileStorage';
 import { explicitChatRequest } from "../utils/chatRequestIntent";
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
 import {canonicalCampaignId} from '../utils/organicCampaign';
@@ -17,32 +19,45 @@ async function checked(res: Response) {
   }
   return res;
 }
-let sessionReady: Promise<Response> | undefined;
-function session() {
-  return (sessionReady ||= fetch("/api/portal/session")
-    .then(checked)
-    .then(async (r) => {
-      const s = await r.clone().json();
-      setDraftScope(s.cacheScope || "");
-      return r;
-    })
-    .catch((e) => {
-      sessionReady = undefined;
-      throw e;
-    }));
+async function session() {
+  const s = await verifyVisitorSession();
+  setDraftScope(s.cacheScope);
+  return s;
+}
+const responseScopes = new WeakMap<Response,string>();
+async function scopedFetch(url: string, init?: RequestInit) {
+  const expected = visitorScope();
+  assertVisitorScope(expected);
+  const response = await fetch(url, {...init, headers: {...Object.fromEntries(new Headers(init?.headers)), 'X-Visitor-Scope': expected}});
+  assertVisitorScope(expected);
+  if (response.status === 409 && (await response.clone().json().catch(()=>({}))).error === 'Visitor identity changed') {
+    invalidateVisitorScope();
+    throw Error('Visitor changed; reload before continuing');
+  }
+  responseScopes.set(response, expected);
+  return response;
+}
+async function scopedJson(response: Response) {
+  const expected = responseScopes.get(response) || visitorScope();
+  const data = await response.json();
+  assertVisitorScope(expected);
+  return data;
 }
 export async function conversation(source: ChatSource) {
+  const expected = visitorScope();
   await session();
+  assertVisitorScope(expected);
   const res = await checked(
-    await fetch("/api/portal/conversations", {
+    await scopedFetch("/api/portal/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ source, page: location.pathname + location.search, campaign: new URLSearchParams(location.search).get("c") || "" }),
     }),
   );
-  return (await res.json()).conversationId as string;
+  return (await scopedJson(res)).conversationId as string;
 }
 export async function registerContact(profile: object) {
+  const expected = visitorScope();
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
   const params=new URLSearchParams(location.search);
@@ -59,24 +74,52 @@ export async function registerContact(profile: object) {
   ])
     delete contact[key];
   await session();
-  let response=await fetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
+  assertVisitorScope(expected);
+  let response=await scopedFetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
   if(response.status===409&&(await response.clone().json()).error==='Contact identity changed; start a separate visitor session'){
     const lang=String((profile as any).language||(profile as any).lang||document.documentElement.lang||'en');
     const agreed=window.confirm(lang.startsWith('zh')?'联系方式与当前客户不同。是否作为另一位使用者开始？原客户记录将保留。':lang.startsWith('id')?'Kontak berbeda dari pelanggan saat ini. Mulai sebagai pengguna lain? Catatan lama tetap tersimpan.':'Contact details differ from the current customer. Start as another user? Existing records will be preserved.');
     if(!agreed)throw Error(lang.startsWith('zh')?'未覆盖原客户，请核对联系方式。':lang.startsWith('id')?'Catatan lama tidak ditimpa. Periksa kontak.':'Existing customer was preserved. Review contact details.');
-    await checked(await fetch('/api/portal/new-person',{method:'POST'}));sessionReady=undefined;await session();
-    response=await fetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
+    await checked(await scopedFetch('/api/portal/new-person',{method:'POST'}));invalidateVisitorScope();await session();
+    response=await scopedFetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
   }
-  return (await checked(response)).json();
+  const data = await scopedJson(await checked(response));
+  saveStudentContext({leadProfile:data.lead});
+  return data;
+}
+export const INQUIRY_IDENTITY_CHANGED = 'INQUIRY_IDENTITY_CHANGED';
+export const INQUIRY_IDENTITY_CANCELLED = 'INQUIRY_IDENTITY_CANCELLED';
+/** A contact-form draft stays with its verified visitor until an explicit change. */
+export async function contactInquiry(payload: Record<string,string>, language: string, identity: {scope: string}) {
+  await session();
+  if(!identity.scope) identity.scope=visitorScope();
+  if(identity.scope!==visitorScope()) throw Error(INQUIRY_IDENTITY_CHANGED);
+  const send=()=>scopedFetch('/api/inquiry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  let response=await send();
+  if(response.status===409&&(await response.clone().json()).error==='Contact identity changed; start a separate visitor session') {
+    const agreed=window.confirm(language.startsWith('zh')?'联系方式与当前客户不同。是否作为另一位使用者提交本次咨询？原客户记录将保留。取消后可继续核对表单。':language.startsWith('id')?'Kontak berbeda dari pelanggan saat ini. Kirim pertanyaan ini sebagai pengguna lain? Catatan lama tetap tersimpan. Pilih Batal untuk memeriksa formulir.':'Contact details differ from the current customer. Submit this inquiry as another user? Existing records will be preserved. Cancel to review the form.');
+    if(!agreed) throw Error(INQUIRY_IDENTITY_CANCELLED);
+    assertVisitorScope(identity.scope);
+    await checked(await scopedFetch('/api/portal/new-person',{method:'POST'}));
+    invalidateVisitorScope();
+    identity.scope='';
+    const current=await session(); identity.scope=current.cacheScope;
+    response=await send();
+  }
+  // Parse within the scope guard so delayed responses cannot clear a different visitor's draft.
+  const data=await scopedJson(response);
+  return Response.json(data,{status:response.status});
 }
 export async function chatFetch(
   _url: string,
   init: RequestInit,
   source: ChatSource,
 ) {
+  const expected = visitorScope();
   const old = JSON.parse(String(init.body));
   const user = [...old.messages].reverse().find((m) => m.role === "user");
   await session();
+  assertVisitorScope(expected);
   const previous = draft(source, user.id);
   const messageId = user.id || crypto.randomUUID();
   const queued = {
@@ -86,13 +129,15 @@ export async function chatFetch(
     timestamp: previous?.timestamp || new Date().toISOString(),
     delivery: "unknown" as const,
   };
-  const action = previous?.action || explicitChatRequest(user.content) || (old.isHumanMode ? 'handoff' : undefined);
+  if (old.action !== undefined && !['handoff','booking','enrollment'].includes(old.action)) throw Error('Invalid request action');
+  // Explicit product controls do not depend on localized prose matching an intent regex.
+  const action = previous?.action || old.action || explicitChatRequest(user.content) || (old.isHumanMode ? 'handoff' : undefined);
   saveDraft(source, {...queued,action});
   const conversationId =
     previous?.conversationId || (await conversation(source));
   if (action) {
     const pending={...queued,conversationId,action};saveDraft(source,pending);
-    const res=await fetch('/api/portal/actions',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,action,language:old.language || 'en'})});
+    const res=await scopedFetch('/api/portal/actions',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,action,language:old.language || 'en'})});
     if(!res.ok){const error=await res.clone().json().catch(()=>({}));if(error.saved===false)saveDraft(source,{...pending,delivery:'unsaved'});await checked(res);}
     return res;
   }
@@ -105,7 +150,7 @@ export async function chatFetch(
   };
   saveDraft(source, pending);
   try {
-    const res = await fetch("/api/chat", {
+    const res = await scopedFetch("/api/chat", {
       ...init,
       body: JSON.stringify({
         conversationId,
@@ -133,9 +178,9 @@ export async function chatFetch(
 
 export async function restoreChat(source: ChatSource) {
   const conversationId = await conversation(source);
-  const data = await (
-    await checked(await fetch("/api/portal/conversations/" + conversationId))
-  ).json();
+  const expected = visitorScope();
+  const data = await scopedJson(await checked(await scopedFetch("/api/portal/conversations/" + conversationId)));
+  assertVisitorScope(expected);
   for (const m of data.messages)
     if (m.role === "user") {
       const answer = data.messages.find(
@@ -179,23 +224,29 @@ export async function restoreChat(source: ChatSource) {
 export async function saveHskAttempt(
   attempt: import("../data/hskAssessment").HskAttempt,
   lang: import("../data/hskAssessment").HskLanguage,
+  expectedScope = visitorScope(),
 ) {
   await session();
+  assertVisitorScope(expectedScope);
   const res = await checked(
-    await fetch("/api/portal/assessments", {
+    await scopedFetch("/api/portal/assessments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ attempt, lang }),
       signal: AbortSignal.timeout(15000),
     }),
   );
-  return (await res.json()).result as import("../data/hskAssessment").HskResult;
+  const data = await scopedJson(res);
+  assertVisitorScope(expectedScope);
+  return data.result as import("../data/hskAssessment").HskResult;
 }
 export async function restoreHskHistory(lang: import("../data/hskAssessment").HskLanguage = "en") {
   await session();
-  const res = await checked(await fetch("/api/portal/assessments"));
-  const data = await res.json();
+  const expected = visitorScope();
+  const res = await checked(await scopedFetch("/api/portal/assessments"));
+  const data = await scopedJson(res);
   if (!Array.isArray(data.results)) throw Error("Invalid assessment history response");
+  assertVisitorScope(expected);
   return mergeHskHistoryRows(data.results, lang);
 }
 export async function restoreHskAttempts() {
@@ -205,7 +256,7 @@ export async function restoreHskAttempts() {
 /** Idempotent system introduction. It does not fabricate a learner-authored message. */
 export async function assessmentConsultation(attemptId: string, lang: "zh" | "en" | "id") {
   const conversationId = await conversation("standalone_chat");
-  return checked(await fetch("/api/chat", {
+  return checked(await scopedFetch("/api/chat", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({conversationId, assessmentAttemptId: attemptId, lang, stream: true}),
   }));
@@ -213,7 +264,7 @@ export async function assessmentConsultation(attemptId: string, lang: "zh" | "en
 
 export async function profileConsultation(lang: "zh" | "en" | "id") {
   const conversationId = await conversation("standalone_chat");
-  return checked(await fetch('/api/chat', {
+  return checked(await scopedFetch('/api/chat', {
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({conversationId,consultationStart:true,lang,stream:true}),
   }));
@@ -225,9 +276,12 @@ export async function finishChat(
   messageId: string,
   onProgress: (e: any) => void,
 ) {
+  const owner = responseScopes.get(res) || visitorScope();
+  assertVisitorScope(owner);
   const m = draft(source, messageId);
   try {
     const result = await readChatResponse(res, (e) => {
+      assertVisitorScope(owner);
       if (e.saved && m)
         saveDraft(source, {
           ...m,
@@ -235,10 +289,11 @@ export async function finishChat(
         });
       onProgress(e);
     });
+    assertVisitorScope(owner);
     removeDraft(source, messageId);
     return result;
   } catch (e) {
-    if (m) {
+    if (m && visitorScope() === owner) {
       const latest = draft(source, messageId);
       saveDraft(source, {
         ...m,

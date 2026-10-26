@@ -44,7 +44,11 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     const original={...first.portal_leads[0].profile,owner:"TEST Owner",campaignId:"TEST first campaign",attributionCampaignId:"TEST attributed campaign"};
     await pool.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1",[saved.data.leadId,original]);
     const deadlines=first.followup_tasks;
-    const second=await request({...body,requestId:randomUUID(),phone:"+8613812345678",message:"TEST second inquiry"});assert.equal(second.status,200);assert.equal(second.data.leadId,saved.data.leadId);
+    const conflictBefore=await snapshot();
+    for(const changed of [{phone:'+8613812345678'},{email:'test-other677@example.invalid'},{fullName:'TEST Other 677',email:'test-other677@example.invalid',phone:'+8613812345678'}]) {
+      const conflict=await request({...body,...changed,requestId:randomUUID()});assert.equal(conflict.status,409);assert.match(conflict.data.error,/Contact identity changed/);assert.deepEqual(await snapshot(),conflictBefore);
+    }
+    const second=await request({...body,requestId:randomUUID(),fullName:'TEST Name Corrected',phone:"0062 812-3456-7890",email:' TEST-INQUIRY556@EXAMPLE.INVALID ',message:"TEST second inquiry"});assert.equal(second.status,200);assert.equal(second.data.leadId,saved.data.leadId);
     const after=await snapshot();assert.deepEqual(after.portal_leads[0].profile,original);assert.deepEqual(after.followup_tasks,deadlines);assert.equal(after.site_submissions.length,2);
     // Failed transactions must not leave a partial inquiry, task, message or event.
     const faultKey="TEST_556_FAIL_"+randomUUID().replaceAll("-","");const constraint="test_556_"+randomUUID().replaceAll("-","");
@@ -54,5 +58,14 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     }finally{await nativePool.query(`ALTER TABLE site_submissions DROP CHECK ${constraint}`);}
     assert.equal((await request(input("0086 138-1234-5678"),true)).status,200);
     assert.equal((await request(input("081234567890"),true)).status,200);
+    // Explicitly choosing another person isolates the new inquiry from A and preserves A's task.
+    const reset=await fetch(base+'/api/portal/new-person',{method:'POST',headers:{cookie}});assert.equal(reset.status,200);
+    cookie='';
+    const other={...body,requestId:randomUUID(),fullName:'TEST Other 677',phone:'+8613812345678',email:'test-other677@example.invalid',message:'TEST new visitor inquiry'};
+    const newPerson=await request(other);assert.equal(newPerson.status,200);assert.notEqual(newPerson.data.leadId,saved.data.leadId);
+    const repeats=await Promise.all(Array.from({length:10},()=>request(other)));assert.ok(repeats.every(r=>r.data.id===newPerson.data.id));
+    const final=await snapshot();assert.deepEqual(final.portal_leads.find(l=>l.id===saved.data.leadId)?.profile,original);assert.deepEqual(final.followup_tasks.filter(t=>t.lead_id===saved.data.leadId),deadlines);
+    assert.equal(final.site_submissions.filter(s=>s.lead_id===newPerson.data.leadId).length,1);assert.equal(final.followup_tasks.filter(t=>t.lead_id===newPerson.data.leadId).length,1);
+    assert.equal(final.portal_leads.find(l=>l.id===newPerson.data.leadId)?.profile.email,other.email);
   });
 }

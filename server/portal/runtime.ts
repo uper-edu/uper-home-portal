@@ -1,8 +1,25 @@
+import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
+import {salesProgressStages} from '../../src/utils/crmSalesProgress.ts';
+import {contactOverview} from '../../src/utils/crmContactOverview.ts';
+import {campaignSaveResultHandler} from './campaignSaveResults.ts';
+import {correctedSignalSources} from '../../src/utils/crmExtractionEvidence.ts';
+import {extractionHints} from '../../src/utils/crmExtractionHints.ts';
+import {initialTierProvenance} from './tierProvenance.ts';
+import {randomUUID} from 'node:crypto';
+import {recordProfileUpdates} from './dynamicProfile.ts';
+import {profileFields,dynamicProfileHints} from '../../src/utils/crmDynamicProfile.ts';
+import {attachInteractionTimelines} from './interactionTimeline.ts';
+import {saveSimpleSalesWorkflow as saveSalesWorkflow} from './simpleSalesWorkflow.ts';
+import {mergePolicyTopic,topicPatch,type PolicyTopic} from '../../src/utils/crmPolicyTopics.ts';
+import {requestDeadline} from './taskManagement.ts';
+import {isCrmManager} from '../../src/utils/crmOutreach.ts';
+import {attachIdentity,pendingIdentity,discoverIdentity,identityControls} from './identityReview.ts';
 import {leadChanges} from "./leadChanges.ts";
 import {promotionAttribution} from "./campaignPromotion.ts";
 import {validContactEmail, CONTACT_EMAIL_ERROR} from "../../src/utils/contactEmail.ts";
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
 import {recordCampaignSource} from './campaignSources.ts';
+import {attachFactMilestones} from "./factMilestones.ts";
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
 import {fact,contactsConflict,stageFact,engagement,normalizeContactPhone} from "./trustWorkflow.ts";
@@ -17,7 +34,7 @@ import {eligibleOwner,permittedRecord,canClaimRecord} from '../../src/utils/acce
 import { contactStatistics } from "../../src/utils/crmContact.ts";
 import { processMetrics } from "../../src/utils/crmProcessMetrics.ts";
 import { firstTouchAttribution } from "./attribution.ts";
-import { saveSalesWorkflow, WorkflowValidationError } from "./salesWorkflow.ts";
+import { WorkflowValidationError } from "./salesWorkflow.ts";
 import {
   parseLeadFilters,
   filterAndSummarize,
@@ -67,6 +84,7 @@ import { loadCampaigns } from "../campaignStorage.ts";
 import { mountHskAssessments } from "./assessments.ts";
 const cookieName = "uper_visitor";
 async function visitor(req: Request, res: Response) {
+  if (res.locals.portalVisitor) return res.locals.portalVisitor;
   let token = (req.headers.cookie || "")
     .split(";")
     .map((s) => s.trim())
@@ -93,6 +111,9 @@ async function visitor(req: Request, res: Response) {
       `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
     );
   }
+  const expected = req.headers['x-visitor-scope'];
+  if (expected && expected !== crypto.createHash('sha256').update(row.id).digest('hex')) fail(409, 'Visitor identity changed');
+  res.locals.portalVisitor = row;
   return row;
 }
 function wrap(fn: (req: Request, res: Response) => Promise<any>) {
@@ -174,12 +195,19 @@ async function visibleLeadProfiles(e: any) {
     .filter((p) => allowed(e, p));
   await attachLeadAttention(e, leads, snapshot);
   await attachBuyingEvidence(pool,leads);
+  await attachFactMilestones(pool,leads);
   return leads;
 }
 async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
+  await attachEnrollmentEvidence(pool,leads);
+  await attachIdentity(pool,e,leads);
+  await attachInteractionTimelines(pool,leads);
+  const textExtractions=leads.length?(await pool.query("SELECT id,lead_id,source_type,source_id,status,input,output,created_at FROM crm_ai_extractions WHERE status='completed' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) ORDER BY created_at DESC,id DESC",[JSON.stringify(leads.map(l=>l.id))])).rows:[];
   const attention = (await pool.leadAttention([e.id, leads.map(l=>l.id), snapshot])).rows;
-  const pending=(await pool.query("SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE state='pending' GROUP BY lead_id")).rows;
+  const pending=(await pool.query("SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE kind='task_request' GROUP BY lead_id")).rows;
   const pendingMap=new Map(pending.map((r:any)=>[r.lead_id,Number(r.n)]));
+  const requests=(await pool.query("SELECT * FROM crm_engagements WHERE kind='task_request'")).rows;
+  const cuePolicy=(await pool.query("SELECT value FROM portal_settings WHERE id='crm_policy'")).rows[0]?.value?.inactivityWatchdog;
   const byId = new Map(attention.map((a) => [a.id, a]));
   for (const lead of leads) {
     const a = byId.get(lead.id);
@@ -188,12 +216,15 @@ async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
       enumerable: false,
     });
     lead.contactStats = contactStatistics(lead);
+    lead.extractionSignalCorrections=correctedSignalSources(textExtractions.filter((r:any)=>r.lead_id===lead.id));
+    lead.informationHints=[...extractionHints(textExtractions.filter((r:any)=>r.lead_id===lead.id)),...dynamicProfileHints(lead)];
+    lead.contactOverview=contactOverview(lead,{inactivityWatchdog:cuePolicy});
     lead.attention = {
-      pendingEngagements: pendingMap.get(lead.id)||0,
-      unreadCount: Number(a?.unread_count || 0),
-      observedAt: a?.observed_at,
+      inactivity: lead.contactOverview.stale,
+      requestCount: pendingMap.get(lead.id)||0,
       latest: a?.latest,
-      tasks: a?.tasks || [],
+      customerRequests:requests.filter((r:any)=>r.lead_id===lead.id).map((r:any)=>({id:r.id,dueAt:r.data.dueAt,action:r.data.action})),
+      tasks: (a?.tasks || []).map((t:any)=>({...t,requestDueAt:requestDeadline(t,requests)})),
       isMine:
         lead.owner === e.id || (a?.tasks || []).some((t) => t.ownerId === e.id),
     };
@@ -271,13 +302,19 @@ export async function mountPortal(app: Express) {
     "/api/portal/session",
     wrap(async (req, res) => {
       const v = await visitor(req, res);
+      const lead = v.lead_id ? (await pool.query('SELECT profile FROM portal_leads WHERE id=:p1',[v.lead_id])).rows[0]?.profile : null;
+      // Return only learner-facing questionnaire fields, never internal CRM notes or routing.
+      const publicFields = ['id','fullName','whatsapp','email','currentStatus','goal','goals','city','cityDetail','mode','reportedLevel','levelState','language','submittedAt'];
+      res.setHeader('Cache-Control','no-store');
       res.json({
         registered: !!v.lead_id,
         cacheScope: crypto.createHash("sha256").update(v.id).digest("hex"),
+        profile: lead ? Object.fromEntries(publicFields.filter(k=>lead[k]!==undefined).map(k=>[k,lead[k]])) : null,
       });
     }),
   );
   app.post("/api/portal/new-person",wrap(async(req,res)=>{
+    await visitor(req,res);
     res.append("Set-Cookie",`${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
     res.json({success:true});
   }));
@@ -404,7 +441,7 @@ export async function mountPortal(app: Express) {
         ).rows[0]?.profile || {};
       if(contactsConflict(existing,b)) fail(409,"Contact identity changed; start a separate visitor session");
       const promotion = await promotionAttribution(c, existing, b);
-      const profile = {
+      let profile:any = {
         ...existing,
         ...firstTouchAttribution(existing, b),
         ...(existing.quizScore !== undefined && !existing.assessmentProvenance
@@ -417,7 +454,7 @@ export async function mountPortal(app: Express) {
         email,
         team: existing.team || "sales",
         owner: existing.owner || null,
-        currentStage: existing.currentStage || "New",
+        currentStage: existing.currentStage || "progress:unreached",
         tier: existing.tier || "Unqualified",
         submittedAt: existing.submittedAt || new Date().toISOString(),
         entryPoint: existing.entryPoint || b.entryPoint || "homepage_widget",
@@ -462,6 +499,11 @@ export async function mountPortal(app: Express) {
         [leadId, profile],
       );
       profile.businessNumber = numbered.rows[0].business_number;
+      const questionnaireFactId=randomUUID();
+      const fieldInput:any={};for(const k of Object.keys(profileFields)){if(b[k]!==undefined&&b[k]!==null&&b[k]!==''&&(!Array.isArray(b[k])||b[k].length))fieldInput[k]=b[k];if(existing[k]!==undefined)profile[k]=existing[k];else delete profile[k];}
+      const updated=await recordProfileUpdates(c,profile,fieldInput,null,{actor:'visitor',sourceType:'questionnaire',sourceRecordId:questionnaireFactId,basisFactIds:[questionnaireFactId],occurredAt:new Date().toISOString(),recordedAt:new Date().toISOString(),reason:'客户提交问卷'});
+      profile=updated.profile;await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,profile]);
+
       await c.query("UPDATE visitor_sessions SET lead_id=:p1 WHERE id=:p2", [
         leadId,
         v.id,
@@ -470,15 +512,13 @@ export async function mountPortal(app: Express) {
         "UPDATE conversations SET lead_id=:p1 WHERE visitor_id=:p2",
         [leadId, v.id],
       );
-      await c.query(
-        "INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) SELECT :p1,:p2,id FROM portal_leads WHERE id<>:p2 AND (lower(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null'))=:p3 OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p4,:p5,:p6)) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",
-        [v.id, leadId, email, normalizeContactPhone(phone),normalizeContactPhone(phone).startsWith("62")?"0"+normalizeContactPhone(phone).slice(2):normalizeContactPhone(phone),phone?"00"+normalizeContactPhone(phone):""],
-      );
+      await discoverIdentity(c,v.id,leadId,profile);
       if (!locked.lead_id) {
         const s = (
           await c.query("SELECT value FROM portal_settings WHERE id='sla'")
         ).rows[0].value;
         profile.tier = leadTier(profile);
+        Object.assign(profile,initialTierProvenance(profile,questionnaireFactId,new Date().toISOString()));
         const { due, snapshot } = taskDeadline(profile, "consultation", s);
         const taskId = id();
         profile.slaDueTime = due.toISOString();
@@ -561,7 +601,7 @@ export async function mountPortal(app: Express) {
           profile,
         ]);
       }
-      await fact(c,leadId,"questionnaire.submitted","visitor",{answers:b,previous:Object.fromEntries(["fullName","whatsapp","email","goal","goals","city","mode","reportedLevel"].map(k=>[k,existing[k]??null]))});
+      await fact(c,leadId,"questionnaire.submitted","visitor",{answers:b,previous:Object.fromEntries(["fullName","whatsapp","email","goal","goals","city","mode","reportedLevel"].map(k=>[k,existing[k]??null]))},questionnaireFactId);
       return profile;
     });
     res.json({ success: true, lead: result });
@@ -631,7 +671,7 @@ export async function mountPortal(app: Express) {
                   )
                 ).rows[0];
             const status = !taskId
-              ? "contact_required"
+              ? (answer.metadata.taskOperation==='review_required'&&c.lead_id?"awaiting_advisor":"contact_required")
               : task?.status === "completed"
                 ? "completed"
                 : "awaiting_advisor";
@@ -722,30 +762,12 @@ export async function mountPortal(app: Express) {
       res.json({
         ...result,
         changeCursor: changes.cursor,
-        unreadCustomers: changes.unreadCustomers,
         processMetrics: processMetrics(result.leads, now),
         dataScope: e.scope,
         employeeId: e.id,
         timezone,
         ownerOptions: [...new Set(leads.map((l) => l.owner).filter(Boolean))],
       });
-    }),
-  );
-  app.post(
-    "/api/crm/leads/:id/read",
-    wrap(async (req, res) => {
-      const { l, e } = await leadAccess(req);
-      const cutoff = req.body.readThrough;
-      if (typeof cutoff !== "string" || !Number.isFinite(Date.parse(cutoff)))
-        fail(400, "readThrough timestamp required");
-      // Preserve MySQL microseconds: Date/CAST coercion truncates these to milliseconds.
-      const watermark = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(cutoff)
-        ? cutoff : new Date(cutoff).toISOString();
-      await pool.query(
-        "INSERT INTO lead_read_marks(employee_id,lead_id,seen_at) VALUES(:p1,:p2,LEAST(STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)))\n      ON DUPLICATE KEY UPDATE seen_at=GREATEST(lead_read_marks.seen_at,VALUES(seen_at))",
-        [e.id, l.id, watermark],
-      );
-      res.json({ success: true });
     }),
   );
   app.get(
@@ -780,6 +802,7 @@ export async function mountPortal(app: Express) {
         ])
       ).rows;
       await attachBuyingEvidence(pool,[l.profile]);
+      await attachFactMilestones(pool,[l.profile]);
       res.json({
         ...l.profile,
         lead: { ...l.profile, chatTranscript: transcript },
@@ -808,6 +831,7 @@ export async function mountPortal(app: Express) {
       if (!(e.grants ? e.permissions.includes("crm.claim") : e.roles?.includes("sales") && e.permissions.includes("crm.write")))
         fail(403, "Sales claim permission required");
       const lead = await tx(async (c) => {
+        if((await identityControls(c)).ownerAssignmentManagerOnly&&!isCrmManager(e))fail(403,"OWNER_MANAGER_REQUIRED");
         const current = (
           await c.query(
             "SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",
@@ -815,6 +839,7 @@ export async function mountPortal(app: Express) {
           )
         ).rows[0]?.profile;
         if (!current) fail(404, "Lead not found");
+        if ((await pendingIdentity(c,l.id,true)).length) fail(409,"IDENTITY_REVIEW_REQUIRED");
         if (current.owner)
           fail(409, "Lead has already been assigned; refresh the list");
         if (!allowed(e, current)) fail(404, "Lead not found");
@@ -950,7 +975,19 @@ export async function mountPortal(app: Express) {
           typeof req.body.owner !== "string"
         )
           fail(400, "Owner must be an active Sales employee");
-        const next = { ...current };
+        if(req.body.nameNote!==undefined){
+          if(typeof req.body.nameNote!=='string'||req.body.nameNote.length>200)fail(400,'名字备注最多200字');
+          if(req.body.expectedNameNote!==(current.nameNote||''))fail(409,'名字备注已变化，请刷新后核对');
+        }
+        if(req.body.currentStage!==undefined&&req.body.currentStage!==current.currentStage)fail(400,'请使用销售阶段独立保存入口并关联依据');
+        let next = { ...current };
+        if(req.body.nameNote!==undefined)next.nameNote=req.body.nameNote.trim();
+        if(req.body.tier!==undefined){
+          if(!['Hot','Warm-Offline','Warm-Online','Cold-Nurture','School','Unqualified'].includes(req.body.tier))fail(400,'Invalid Tier');
+          next.tierConfirmed=req.body.tier;
+          next.tierSource='sales_confirmed';
+          next.tierUpdatedAt=new Date().toISOString();
+        }
         for (const k of [
           "owner",
           "currentStage",
@@ -973,7 +1010,10 @@ export async function mountPortal(app: Express) {
           ].includes(req.body.currentStage)
         )
           fail(400, "Invalid sales stage");
+        if(req.body.communicationLanguage!==undefined){const changed=await recordProfileUpdates(c,{...next,communicationLanguage:current.communicationLanguage,profileFieldMeta:current.profileFieldMeta},{communicationLanguage:req.body.communicationLanguage},null,{actor:e.id,sourceType:'sales_edit',occurredAt:null,recordedAt:new Date().toISOString(),reason:'员工明确更新首选沟通语言'});next=changed.profile;}
         const ownerChanged = (next.owner || null) !== (current.owner || null);
+        if(ownerChanged && (await pendingIdentity(c,l.id,true)).length)fail(409,"IDENTITY_REVIEW_REQUIRED");
+        if(ownerChanged&&(await identityControls(c)).ownerAssignmentManagerOnly&&!isCrmManager(e))fail(403,"OWNER_MANAGER_REQUIRED");
         if (ownerChanged && (!e.permissions.includes("crm.assign") || e.grants && !permittedRecord(e,current,"crm.assign")))
           fail(403, "Lead assignment permission required");
         if (
@@ -1096,17 +1136,6 @@ export async function mountPortal(app: Express) {
       );
     }),
   );
-  app.post(
-    "/api/crm/notifications/:id/read",
-    wrap(async (req, res) => {
-      const e = await staff(req);
-      await pool.query(
-        "UPDATE notification_inbox SET read_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND employee_id=:p2",
-        [req.params.id, e.id],
-      );
-      res.json({ success: true });
-    }),
-  );
   app.get(
     "/api/crm/notification-routing",
     wrap(async (req, res) => {
@@ -1145,6 +1174,7 @@ export async function mountPortal(app: Express) {
           "Cold-Nurture",
         ],
         states: [
+          ...salesProgressStages.map(s=>s[0]),
           "New",
           "Contacted",
           "Assessment Booked",
@@ -1553,6 +1583,27 @@ export async function mountPortal(app: Express) {
       res.json(effectivePolicy(configured,v));
     }),
   );
+  app.post('/api/crm/policy-config/topics/:topic',wrap(async(req,res)=>{
+    const employee=await staff(req,'notifications.manage');
+    const result=await tx(async(db)=>{
+      const rows=(await db.query("SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy') ORDER BY id FOR UPDATE")).rows;
+      const sla=rows.find((row:any)=>row.id==='sla').value,configured=rows.find((row:any)=>row.id==='crm_policy')?.value;
+      const current=effectivePolicy(configured,sla),merged=mergePolicyTopic(current,String(req.params.topic),req.body);
+      if(merged.kind!=='saved')return merged;
+      const value=merged.value;value.updatedAt=new Date().toISOString();
+      const before={identityReviewManagerOnly:current.identityReviewManagerOnly,ownerAssignmentManagerOnly:current.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:current.sourceAttributionManagerOnly};
+      const after={identityReviewManagerOnly:value.identityReviewManagerOnly,ownerAssignmentManagerOnly:value.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:value.sourceAttributionManagerOnly};
+      if(JSON.stringify(before)!==JSON.stringify(after))await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[employee.id,'crm.access-controls.save',{before,after}]);
+      await db.query("UPDATE portal_settings SET value=:p1 WHERE id='sla'",[policySla(sla,value)]);
+      await db.query("INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",[value]);
+      await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[employee.id,'sla.topic.save',{topic:req.params.topic,before:topicPatch(current,req.params.topic as PolicyTopic),after:topicPatch(value,req.params.topic as PolicyTopic)}]);
+      return {kind:'saved' as const,value};
+    });
+    if(result.kind==='invalid'){res.status(400).json({error:'policy_topic_invalid'});return;}
+    if(result.kind==='validation'){res.status(400).json({error:'policy_save_rejected',fieldErrors:result.errors});return;}
+    if(result.kind==='conflict'){res.status(409).json({error:'policy_topic_conflict',currentPolicy:result.current});return;}
+    res.json({success:true,policy:result.value,unchanged:result.kind==='unchanged'});
+  }));
   app.post(
     "/api/crm/policy-config",
     wrap(async (req, res) => {
@@ -1563,6 +1614,9 @@ export async function mountPortal(app: Express) {
         const configured=rows.find((row:any)=>row.id==='crm_policy')?.value;
         const {value,errors}=mergePolicyConfig(effectivePolicy(configured,old),req.body);
         if(Object.keys(errors).length) return {errors};
+        const previousControls={identityReviewManagerOnly:configured?.identityReviewManagerOnly!==false,ownerAssignmentManagerOnly:effectivePolicy(configured,old).ownerAssignmentManagerOnly,sourceAttributionManagerOnly:configured?.sourceAttributionManagerOnly!==false};
+        const currentControls={identityReviewManagerOnly:value.identityReviewManagerOnly,ownerAssignmentManagerOnly:value.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:value.sourceAttributionManagerOnly};
+        if(JSON.stringify(previousControls)!==JSON.stringify(currentControls))await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[e.id,"crm.access-controls.save",{before:previousControls,after:currentControls}]);
         const next=policySla(old,value);
         value.updatedAt=new Date().toISOString();
         await db.query("UPDATE portal_settings SET value=:p1 WHERE id='sla'",[next]);
@@ -1577,7 +1631,7 @@ export async function mountPortal(app: Express) {
       res.json({ success: true });
     }),
   );
-  mountTrustRoutes(app,{wrap,leadAccess,requestAllowed});
+  mountTrustRoutes(app,{wrap,leadAccess,requestAllowed,staff});
   app.post(
     [
       "/api/crm/leads/:id/follow-up",
@@ -1592,6 +1646,9 @@ export async function mountPortal(app: Express) {
             requestAllowed(e,current,req),
           ),
         );
+        await attachLeadAttention(e,[result.lead]);
+        await attachBuyingEvidence(pool,[result.lead]);
+        await attachFactMilestones(pool,[result.lead]);
         res.json({ success: true, ...result });
       } catch (error) {
         fail(
@@ -1644,6 +1701,7 @@ export async function mountPortal(app: Express) {
         );
     }),
   );
+  app.get('/api/crm/campaign-save-results/:requestId',wrap(campaignSaveResultHandler(pool,req=>platform.authenticate(req))));
   app.use("/api/crm/campaigns", (req, res, next) => {
     staff(req, req.method === "GET" && !req.path.startsWith("/sources") ? "crm.read" : "notifications.manage")
       .then((e) => {

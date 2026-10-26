@@ -1,3 +1,4 @@
+import "../components/admin-workspace.css";
 import {PageMetadata} from "../components/PageMetadata";
 import CrmAccess, {
   CrmAccountControls,

@@ -1,3 +1,4 @@
+import {AdminFieldLabel} from './AdminForm';
 import { crmId } from "../utils/crmIndonesian";
 import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 export interface Choice {
@@ -13,8 +14,10 @@ export default function SearchableChoices({
   lang = zh ? "zh" : "en",
   isLight,
   multiple = true,
+  required = false,
 }: {
   title: string;
+  required?:boolean;
   values: string[];
   choices: Choice[];
   onChange: (values: string[]) => void;
@@ -36,9 +39,10 @@ export default function SearchableChoices({
   ];
   return (
     <div className="space-y-1.5 min-w-0">
-      <span className="text-xs font-semibold">{title}</span>
+      <span className="text-xs font-semibold"><AdminFieldLabel required={required}>{title}</AdminFieldLabel></span>
       <CrmSingleSelect
         label={title}
+        required={required}
         value={values[0] || ""}
         options={all}
         onChange={(value) => onChange([value])}

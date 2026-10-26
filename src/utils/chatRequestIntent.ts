@@ -11,6 +11,8 @@ export function explicitChatRequest(
     )
   )
     return undefined;
+  // A leading condition still governs its request after a comma.
+  if (/^\s*(?:if\b|jika\b|kalau\b|如果|假如)/iu.test(text)) return undefined;
   const actions = new Set<ChatRequestAction>();
   for (const clause of text
     .normalize("NFKC")
@@ -22,7 +24,7 @@ export function explicitChatRequest(
     )
       continue;
     if (
-      /(?:请|麻烦).{0,8}(?:顾问|老师|人工|真人).{0,8}(?:联系我|给我回电)|(?:我想|我要|请|帮我)(?:转人工|联系(?:真人|人工|顾问))|^(?:\s*)(?:转人工|人工客服|真人客服|找真人|安排顾问联系)(?:\s*)$|(?:please\s+)?(?:ask|have)\s+(?:a\s+)?(?:human\s+)?(?:advis[oe]r|teacher)\s+(?:to\s+)?(?:contact|call)\s+me|(?:i\s+(?:would\s+like|want|need)\s+to|i['’]d\s+like\s+to|please)\s+(?:talk|speak)\s+(?:to|with)\s+(?:a\s+)?(?:human|advis[oe]r)|(?:tolong|mohon).{0,30}(?:konsultan|guru|manusia).{0,20}(?:hubungi|menghubungi|telepon).{0,8}saya|saya\s+(?:ingin|mau)\s+(?:bicara|berbicara).{0,20}(?:konsultan|manusia)/iu.test(
+      /(?:请|麻烦).{0,8}(?:顾问|老师|人工|真人).{0,8}(?:联系我|给我回电)|(?:我想|我要|请|帮我)(?:转人工|联系(?:真人|人工|顾问))|^(?:\s*)(?:转人工|人工客服|真人客服|找真人|安排顾问联系)(?:\s*)$|(?:please\s+)?(?:ask|have)\s+(?:an?\s+)?(?:human\s+)?(?:advis[oe]r|teacher)\s+(?:to\s+)?(?:contact|call)\s+me|(?:i\s+(?:would\s+like|want|need)\s+to|i['’]d\s+like\s+to|please)\s+(?:talk|speak)\s+(?:to|with)\s+(?:a\s+)?(?:human|advis[oe]r)|(?:tolong|mohon).{0,30}(?:konsultan|guru|manusia).{0,20}(?:hubungi|menghubungi|telepon).{0,8}saya|saya\s+(?:ingin|mau)\s+(?:bicara|berbicara).{0,20}(?:konsultan|manusia)/iu.test(
         clause,
       )
     )

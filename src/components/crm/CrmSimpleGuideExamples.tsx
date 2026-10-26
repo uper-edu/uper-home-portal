@@ -1,0 +1,17 @@
+import {useState} from 'react';
+export function guidePracticeOutcome(result:string,note:string){
+ if(!['No Response','Connected'].includes(result)||!note.trim())return null;
+ return {successfulContacts:result==='Connected'?1:0,additionalTasks:0};
+}
+export function CrmSimpleGuideExamples({col}:{col:number}){
+ const t=(en:string,id:string,zh:string)=>[en,id,zh][col];const [step,setStep]=useState(0),[result,setResult]=useState(''),[note,setNote]=useState(''),[saved,setSaved]=useState(false);
+ const stages=[t('Lead registered','Lead terdaftar','Lead登记'),t('Actual unanswered contact','Kontak nyata belum dibalas','真实联系未获回复'),t('New booking request','Permintaan janji temu baru','新的预约请求'),t('Customer agreement recorded','Kesepakatan dicatat','记录客户约定')];
+ return <figure className="crm-learning-example crm-simple-guide-example"><h4>{t('Interactive example · simulated only','Contoh interaktif · simulasi saja','交互实例 · 仅模拟，不写入客户数据')}</h4>
+ <ol className="crm-learning-flow">{stages.map((s,i)=><li key={s}><button type="button" aria-pressed={step===i} onClick={()=>setStep(i)}>{i+1}. {s}</button></li>)}</ol>
+ <div role="status"><strong>{stages[step]}</strong><p>{step===0?t('One first-contact requirement with a deadline.','Satu kewajiban kontak pertama dengan tenggat.','一个有截止时间的首次联系要求。'):t('The first attempt was recorded. No additional task is created.','Percobaan pertama dicatat. Tidak ada tugas tambahan.','首次尝试已记录，不新增任务。')}</p>{step>=2&&<p>{t('Booking requested is not booking confirmed. Reading does not answer it.','Permintaan janji temu bukan konfirmasi. Membaca bukan menjawab.','预约请求不等于预约确认；看过不等于已回应。')}</p>}{step===3&&<p>{t('Agreed date: 2 November. No exact time was given, so none is invented.','Tanggal disepakati: 2 November. Jam tidak diberikan dan tidak dikarang.','约定日期：11月2日。未约定具体时刻，系统不补造。')}</p>}</div>
+ <details><summary>{t('Try recording an unanswered contact','Coba catat kontak tanpa balasan','练习记录一次未回复联系')}</summary>
+ <label>{t('Actual contact result','Hasil kontak nyata','实际联系结果')}<select aria-label={t('Actual contact result','Hasil kontak nyata','实际联系结果')} value={result} onChange={e=>{setResult(e.target.value);setSaved(false)}}><option value="">{t('Choose explicitly','Pilih secara eksplisit','主动选择结果')}</option><option value="No Response">{t('No reply','Belum dibalas','未回复')}</option><option value="Connected">{t('Connected / replied','Tersambung / dibalas','已接通／已回复')}</option></select></label>
+ <label>{t('Original summary','Ringkasan asli','原始沟通记录')}<textarea aria-label={t('Original summary','Ringkasan asli','原始沟通记录')} value={note} onChange={e=>{setNote(e.target.value);setSaved(false)}}/></label><button type="button" disabled={!guidePracticeOutcome(result,note)} onClick={()=>setSaved(!!guidePracticeOutcome(result,note))}>{t('Check simulated save','Periksa simpan simulasi','检查模拟保存结果')}</button>
+ {saved&&<p role="status">{t('Record saved. No next task required. Successful contacts:','Catatan tersimpan. Tidak wajib tugas berikutnya. Kontak berhasil:','记录已保存，无需安排下一任务。成功沟通次数：')} {result==='Connected'?1:0}</p>}
+ </details><p>{t('R6 automatic downgrade is disabled. Sales retain the choice of follow-up action.','Penurunan otomatis R6 nonaktif. Sales memilih tindak lanjut.','R6自动降级已停用，销售自主选择后续行动。')}</p><figcaption>{t("Simulated facts and choices; no customer data is changed.","Fakta dan pilihan simulasi; data pelanggan tidak berubah.","模拟事实与操作选择，不修改客户数据。")}</figcaption></figure>;
+}

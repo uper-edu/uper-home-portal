@@ -3,63 +3,8 @@ import type { Words } from "./CrmSystemGuide";
 export type DiagramKind =
   "classification" | "acquisition" | "sla" | "notification";
 const w = (en: string, id: string, zh: string): Words => [en, id, zh];
-export const ruleDefinitions = [
-  {
-    id: "R1",
-    condition: w(
-      "Explicit buying signal",
-      "Sinyal pembelian eksplisit",
-      "明确购买信号",
-    ),
-    result: w("High interest", "Minat tinggi", "高意向"),
-  },
-  {
-    id: "R2",
-    condition: w("Trial attended", "Uji coba dihadiri", "已出席试听"),
-    result: w("High interest", "Minat tinggi", "高意向"),
-  },
-  {
-    id: "R3",
-    condition: w(
-      "Teacher / school staff",
-      "Guru / staf sekolah",
-      "教师／学校职员",
-    ),
-    result: w("School partnership", "Kerja sama sekolah", "院校合作"),
-  },
-  {
-    id: "R4",
-    condition: w(
-      "Goal × foundation × city / learning format",
-      "Tujuan × dasar × kota / format belajar",
-      "目标 × 基础 × 城市／授课方式",
-    ),
-    result: w("Baseline group", "Kelompok dasar", "基础分组"),
-  },
-  {
-    id: "R5",
-    condition: w(
-      "Assessment done / trial booked",
-      "Asesmen selesai / uji coba dipesan",
-      "完成测评／预约试听",
-    ),
-    result: w(
-      "Upgrade a warm baseline; nurture stays unchanged",
-      "Naikkan minat sedang; pembinaan tetap",
-      "提升中意向基础分组；培育池保持不变",
-    ),
-  },
-  {
-    id: "R6",
-    condition: w(
-      "Consecutive valid unanswered threshold reached + final reply window ended",
-      "Ambang upaya tanpa balasan berturut-turut tercapai + masa tunggu terakhir berakhir",
-      "连续有效未回复达到阈值，且最后等待窗口结束",
-    ),
-    result: w("Nurture", "Pembinaan", "培育池"),
-  },
-];
-export const executionRules = ["R6", "R1", "R2", "R3", "R4", "R5"];
+export const ruleDefinitions = [{"id": "B1", "condition": ["Initial classification", "Klasifikasi awal", "首次登记分类"], "result": ["Only first registration calculates Tier from its saved inputs. Later facts do not automatically recalculate it.", "Hanya registrasi pertama menghitung Tier dari masukan tersimpan. Fakta berikutnya tidak menghitung ulang secara otomatis.", "仅首次登记按当时输入自动分类；后续测评、诉求和阶段变化不自动重算Tier。"]}, {"id": "B2", "condition": ["Fact milestones", "Tonggak fakta", "事实里程碑"], "result": ["Saved assessment completions and explicitly confirmed enrollment retain event time and evidence. Repeated events keep separate records.", "Asesmen tersimpan dan konfirmasi pendaftaran menyimpan waktu serta bukti. Kejadian berulang tetap terpisah.", "真实测评完成与明确确认报名成立保留实际时间和依据，同类事件可重复；AI描述不能证明事件成立。"]}, {"id": "B3", "condition": ["Customer requests and interests", "Permintaan dan minat pelanggan", "客户诉求与意向"], "result": ["A price question, advisor request or assessment interest is an expression, not completed purchase. Questionnaire topics remain separate.", "Pertanyaan harga, permintaan konsultan atau minat asesmen adalah pernyataan, bukan pembelian. Topik kuesioner terpisah.", "询价、请求顾问联系、测评意向是具体表达，不等于购买承诺；问卷关注另行标明。"]}, {"id": "B4", "condition": ["Sales confirmation", "Konfirmasi sales", "销售明确确认"], "result": ["Staff confirm the current sales stage with evidence and effective time. Tier requires its own explicit confirmation. No automatic downgrade.", "Staf mengonfirmasi tahap dengan bukti dan waktu berlaku. Tier memerlukan konfirmasi tersendiri. Tanpa penurunan otomatis.", "销售按依据和生效时间明确确认当前阶段；Tier另行人工确认，R6自动降级已停用。"]}];
+export const executionRules = ruleDefinitions.map(r=>r.id);
 const journeyStages = [
   {
     title: w("Campaign entry", "Pintu kampanye", "活动入口"),
@@ -349,7 +294,7 @@ const receipts = [
     body: w(
       "Provider accepted; staff reading and follow-up remain separate",
       "Penyedia menerima; staf membaca dan menindaklanjuti dicatat terpisah",
-      "服务方接受；员工已读及跟进另行记录",
+      "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
     ),
   },
   {
@@ -411,137 +356,7 @@ export function CrmGuideDiagram({
 }) {
   const t = (en: string, id: string, zh: string) => [en, id, zh][col];
   const [sampleId, setSampleId] = useState("night");
-  if (kind === "classification")
-    return (
-      <figure className="crm-business-diagram" data-diagram={kind}>
-        <figcaption>
-          {t(
-            "Existing evaluation order — rule IDs stay unchanged",
-            "Urutan evaluasi saat ini — ID aturan tetap",
-            "现有判定顺序——规则编号保持不变",
-          )}
-        </figcaption>
-        <ol
-          className="crm-decision-tree"
-          aria-label={t(
-            "Actual evaluation sequence",
-            "Urutan evaluasi sebenarnya",
-            "实际判定顺序",
-          )}
-        >
-          {executionRules.slice(0, 4).map((id, index) => {
-            const rule = ruleDefinitions.find((r) => r.id === id)!;
-            return (
-              <li key={id} data-rule={id}>
-                <div className="crm-decision-row">
-                  <div className="crm-decision-question">
-                    <svg
-                      className="crm-decision-diamond"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M12 2L22 12L12 22L2 12Z"
-                        stroke="currentColor"
-                        fill="none"
-                      />
-                    </svg>
-                    <span className="crm-diagram-step">
-                      {index + 1} · {id}
-                    </span>
-                    <strong>{rule.condition[col]}?</strong>
-                  </div>
-                  <div className="crm-decision-yes">
-                    <span>{t("Yes", "Ya", "是")}</span>
-                    <Arrow />
-                  </div>
-                  <div className="crm-decision-result">
-                    <strong>{rule.result[col]}</strong>
-                    <small>
-                      {t(
-                        "Stop this prediction",
-                        "Hentikan prediksi ini",
-                        "结束本次预测",
-                      )}
-                    </small>
-                  </div>
-                </div>
-                <div className="crm-decision-no">
-                  <Arrow down />
-                  <span>
-                    {t(
-                      "No → continue checking",
-                      "Tidak → lanjutkan pemeriksaan",
-                      "否 → 继续检查",
-                    )}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-          <li className="crm-decision-baseline" data-rule="R4">
-            <span className="crm-diagram-step">5 · R4</span>
-            <strong>
-              {t(
-                "Calculate baseline from goal, foundation and learning context",
-                "Hitung dasar dari tujuan, tingkat dasar, dan konteks belajar",
-                "按目标、基础与学习情境计算基础分组",
-              )}
-            </strong>
-            <Arrow down />
-            <div data-rule="R5">
-              <span className="crm-diagram-step">6 · R5</span>
-              <strong>{ruleDefinitions[4].condition[col]}</strong>
-              <p>{ruleDefinitions[4].result[col]}</p>
-            </div>
-            <div className="crm-decision-result">
-              {t("Final prediction", "Prediksi akhir", "最终预测")}
-            </div>
-          </li>
-        </ol>
-        <p className="crm-diagram-note">
-          {t(
-            "R6 uses a persisted sequence and final reply window, never the historical touch total. Sales-confirmed groups and existing tasks are protected.",
-            "R6 memakai urutan tercatat dan masa tunggu terakhir, bukan total upaya lama. Kelompok terkonfirmasi dan tugas yang ada dilindungi.",
-            "R6使用独立连续序列及最后窗口，不沿用历史累计次数；人工确认分组及已有任务保持不变。",
-          )}
-        </p>
-        <details>
-          <summary>
-            {t(
-              "Rule definitions: R1–R6",
-              "Definisi aturan: R1–R6",
-              "规则定义：R1～R6",
-            )}
-          </summary>
-          <table className="crm-doc-table">
-            <caption className="sr-only">
-              {t(
-                "Definitions by rule ID",
-                "Definisi menurut ID aturan",
-                "按规则编号查看定义",
-              )}
-            </caption>
-            <thead>
-              <tr>
-                <th>{t("Rule", "Aturan", "规则")}</th>
-                <th>{t("Condition", "Kondisi", "条件")}</th>
-                <th>{t("Effect", "Dampak", "作用")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ruleDefinitions.map((r) => (
-                <tr key={r.id}>
-                  <th scope="row">{r.id}</th>
-                  <td>{r.condition[col]}</td>
-                  <td>{r.result[col]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </details>
-      </figure>
-    );
+  if (kind === "classification") return <figure className="crm-business-diagram" data-diagram={kind}><figcaption>{t('Facts, intent and sales decisions have different responsibilities','Fakta, minat dan keputusan sales memiliki peran berbeda','事实、诉求与销售决策各有边界')}</figcaption><ol className="crm-doc-flow">{ruleDefinitions.map(r=><li key={r.id} data-boundary={r.id}><strong>{r.condition[col]}</strong><p>{r.result[col]}</p></li>)}</ol></figure>;
   if (kind === "acquisition")
     return (
       <figure className="crm-business-diagram" data-diagram={kind}>
@@ -798,7 +613,7 @@ export function CrmGuideDiagram({
         {t(
           "Staff reading and actual follow-up are recorded independently. Historical frozen failures remain in audit without automatic replay.",
           "Staf membaca dan tindak lanjut dicatat terpisah. Kegagalan lama yang dibekukan tetap diaudit tanpa pengiriman ulang otomatis.",
-          "员工已读与实际跟进分别记录。历史冻结失败保留审计，不自动重放。",
+          "依据客户事实、原始证据和实际进展自主判断；提示不创建任务，无需阅读确认或销单。",
         )}
       </p>
     </figure>

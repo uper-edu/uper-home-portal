@@ -19,7 +19,7 @@ export const customerFields = [
   ["assessment", "Assessment", "测评结果"],
   ["group", "Customer group", "客户分组"],
   ["stage", "Sales stage", "销售阶段"],
-  ["signal", "Buying signals", "购买信号"],
+  ["signal", "Customer requests and interests", "客户诉求与意向"],
   ["contact", "Contact result", "联系结果"],
   ["touches", "Contact count", "联系次数"],
   ["lastContact", "Last contact", "最近联系"],

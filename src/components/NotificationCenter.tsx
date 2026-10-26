@@ -1,5 +1,12 @@
+import {isSalesProgressStage,progressLabel} from '../utils/crmSalesProgress';
+import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
+import {notificationTopicIcons} from "./crm/notificationTopicIcons";
+import {createElement} from "react";
+import {AdminTopicFrame} from "./AdminTopicFrame";
+import {notificationTopics} from "./crm/operationsSections";
 import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
+import { notificationPlanningSummary } from '../utils/notificationPlanning';
 import {
   crmLocale,
   crmValue,
@@ -22,7 +29,7 @@ import {
   Play,
   X,
 } from "lucide-react";
-type Tab =
+export type Tab =
   | "notification-rules"
   | "notification-channels"
   | "notification-jobs"
@@ -99,6 +106,7 @@ const initialRule: Rule = {
   language: "zh",
 };
 const eventNames: Record<string, [string, string]> = {
+  "commitment.due": ["客户约定到期", "Customer agreement due"],
   "lead.created": ["客户登记", "New lead"],
   "conversation.updated": ["聊天更新", "Chat updated"],
   "conversation.reactivated": ["客户重新咨询", "Consultation reopened"],
@@ -147,26 +155,31 @@ export default function NotificationCenter({
   lang,
   navigationRequest = 0,
   canEdit = true,
+  embeddedTab,
+  active = true,
 }: {
   isLight: boolean;
   lang: "zh" | "en" | "id";
   navigationRequest?: number;
   canEdit?: boolean;
+  embeddedTab?: Tab;
+  active?: boolean;
 }) {
   const panelRef = useRef<HTMLElement>(null);
+  const noticeRef=useRef<HTMLParagraphElement>(null);
   const zh = lang === "zh",
     t = (a: string, b: string) => (lang === "id" ? crmId(b) : zh ? a : b);
-  const [open, setOpen] = useState(false),
-    [tab, setTab] = useState<Tab>("notification-rules"),
+  const [open, setOpen] = useState(Boolean(embeddedTab)),
+    [tab, setTab] = useState<Tab>(embeddedTab || "notification-rules"),
     [rows, setRows] = useState<Row[]>([]),
     [channels, setChannels] = useState<Row[]>([]);
   useEffect(() => {
     if (navigationRequest > 0) setOpen(true);
   }, [navigationRequest]);
   useEffect(() => {
-    if (navigationRequest > 0 && open)
+    if (!embeddedTab && navigationRequest > 0 && open)
       panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [navigationRequest, open]);
+  }, [navigationRequest, open, embeddedTab]);
   const [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [loading, setLoading] = useState(false),
@@ -249,11 +262,12 @@ export default function NotificationCenter({
     }
   }, [tab]);
   useEffect(() => {
-    if (!open) return;
+    if (!open || !active) return;
     void load();
     const timer = setInterval(() => void load(), 10000);
     return () => clearInterval(timer);
-  }, [open, load]);
+  }, [open, load, active]);
+  useEffect(()=>{if(notice){noticeRef.current?.focus({preventScroll:true});noticeRef.current?.scrollIntoView({block:'nearest',behavior:'instant'});}},[notice]);
   const format = (value: string | undefined) =>
     value ? new Date(value).toLocaleString(crmLocale(lang)) : "—";
   const label = (name: string) =>
@@ -287,12 +301,12 @@ export default function NotificationCenter({
     `${row.config?.groupName || t("未命名群", "Unnamed group")} · ${connectionLabel(row)}`;
   const calendarSummary = `${globalCalendar.timezone} · ${globalCalendar.start}–${globalCalendar.end} · ${globalCalendar.days.map((d) => (zh ? ["日", "一", "二", "三", "四", "五", "六"] : lang === "id" ? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])[d]).join(", ")}`;
   const timed = rule.channels.includes("lark") || rule.event === "daily.digest";
-  const field = (title: string, child: React.ReactNode, hint?: string) => (
-    <label className="block space-y-1.5">
+  const field = (title: string, child: React.ReactNode, hint?: string, required?:boolean) => title===t("通知渠道", "Delivery channels") ? <div className="space-y-1.5"><AdminFieldLabel required>{title}</AdminFieldLabel><div role="group" aria-label={title} aria-required="true">{child}</div></div> : (
+    <AdminField required={required} className="block space-y-1.5">
       <span className="text-xs font-semibold">{title}</span>
       {child}
       {hint && <span className={`block text-[11px] ${muted}`}>{hint}</span>}
-    </label>
+    </AdminField>
   );
   const text = (
     title: string,
@@ -341,6 +355,7 @@ export default function NotificationCenter({
         lang={lang}
         isLight={isLight}
       />,
+      undefined, [t("运行方式", "Operation mode"),t("Lark 群渠道", "Lark group channel")].includes(title)||undefined,
     );
   const number = (
     title: string,
@@ -443,6 +458,7 @@ export default function NotificationCenter({
     }
   }
   function edit(row?: Row) {
+    if(row?.config&&["task.created","task.rescheduled","task.appointment_due"].includes(row.config.event)){setNotice(t("旧任务通知已退役，仅保留配置供核对，不执行或重放。","Retired task notification: configuration retained for reference; no execution or replay."));return;}
     setNotice("");
     setRoutingReviewed(false);
     setSimulation([]);
@@ -478,16 +494,16 @@ export default function NotificationCenter({
     ["notification-rules", t("通知策略", "Policies"), Settings2],
     ["notification-channels", t("渠道配置", "Channels"), Radio],
     ["notification-jobs", t("发送记录", "Delivery records"), Bell],
-    ["notification-audit", t("修改审计", "Change history"), History],
+    ["notification-audit", lang==='id'?'Riwayat eksekusi dan perubahan':t("执行与修改记录", "Execution & change history"), History],
     ["integration-readiness", t("联调检查", "Integration checks"), ShieldCheck],
   ];
   return (
     <section
       ref={panelRef}
       style={{ scrollMarginTop: 128 }}
-      className={`${box} p-5 space-y-4 ${isLight ? "text-slate-800" : "text-slate-200"}`}
+      className={`${embeddedTab?"notification-topic-content":box+" p-5"} space-y-4 ${isLight ? "text-slate-800" : "text-slate-200"}`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div style={embeddedTab?{display:"none"}:undefined} hidden={Boolean(embeddedTab)} className="flex items-start justify-between gap-3">
         <div className="flex gap-3">
           <span className="p-2 h-fit rounded-xl bg-primary-500/10 text-primary-500">
             <Bell className="w-5 h-5" />
@@ -527,8 +543,9 @@ export default function NotificationCenter({
       </div>
       {open && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" hidden={Boolean(embeddedTab)} style={embeddedTab?{display:"none"}:undefined}>
             <div
+              style={embeddedTab?{display:"none"}:undefined} hidden={Boolean(embeddedTab)}
               className={`flex flex-wrap gap-1 p-1 rounded-xl border ${isLight ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"}`}
             >
               {tabs.map(([value, title, Icon]) => (
@@ -560,7 +577,7 @@ export default function NotificationCenter({
               <span className="sr-only">{t("刷新", "Refresh")}</span>
             </button>
           </div>
-          {error && (
+          {error && !editor && (
             <p
               role="alert"
               className="text-xs p-3 rounded-lg bg-rose-500/10 text-rose-500"
@@ -574,7 +591,7 @@ export default function NotificationCenter({
             </p>
           )}
           {notice && (
-            <p
+            <p ref={noticeRef} tabIndex={-1}
               role="status"
               className="text-xs p-3 rounded-lg bg-emerald-500/10 text-emerald-600"
             >
@@ -583,7 +600,7 @@ export default function NotificationCenter({
           )}
           {!denied && (
             <>
-              <div className="flex flex-wrap justify-between gap-3 items-center">
+              <div className="notification-topic-toolbar">
                 <p className={`text-xs ${muted}`}>
                   {tab === "notification-rules"
                     ? t(
@@ -602,14 +619,15 @@ export default function NotificationCenter({
                           )
                         : tab === "notification-audit"
                           ? t(
-                              "记录策略版本、渠道修改和手动取消操作，最多显示最近 200 条。",
-                              "Policy versions, channel changes and cancellations. Latest 200 records.",
+                              "通知规划结果、未生成作业的原因、策略版本及修改操作，最多显示最近200条。规划完成不等于已送达。",
+                              "Notification planning results, reasons for no job, policy versions and changes. Latest 200 records. Planned does not mean delivered.",
                             )
                           : t(
                               "配置检查不代表真实平台联调或群内实收通过。",
                               "Configuration checks do not prove live identity integration or receipt in the group.",
                             )}
                 </p>
+                <div className="notification-topic-actions">{embeddedTab&&<button type="button" className={button} disabled={loading} onClick={()=>void load()} aria-label={t("刷新","Refresh")}><RefreshCw className={`w-4 h-4 ${loading?"animate-spin":""}`}/></button>}
                 {(tab === "notification-rules" ||
                   tab === "notification-channels") &&
                   !editor && (
@@ -623,13 +641,13 @@ export default function NotificationCenter({
                         ? t("新增策略", "Add policy")
                         : t("新增渠道", "Add channel")}
                     </button>
-                  )}
+                  )}</div>
               </div>
               {tab === "notification-rules" && routing && (
-                <div className={`${box} p-4 text-xs space-y-2`}>
-                  <h4 className="font-bold">
+                <details className="notification-routing text-xs">
+                  <summary className="font-bold cursor-pointer">
                     {t("全局通知路由", "Global notification routing")}
-                  </h4>
+                  </summary>
                   <p>
                     {t(
                       "站内客户通知默认通知有效负责人；未分配或负责人无效时通知有权处理该客户的 CRM 管理者。只改变收件人，不修改客户归属。",
@@ -657,7 +675,7 @@ export default function NotificationCenter({
                     {routing.leaders.map((e: any) => e.id).join(", ") ||
                       t("未配置", "None configured")}
                   </p>
-                </div>
+                </details>
               )}
               {editor && (
                 <div
@@ -667,19 +685,34 @@ export default function NotificationCenter({
                     "Notification configuration form",
                   )}
                 >
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-bold">
-                      {editor === "rule"
-                        ? t("编辑通知策略", "Edit notification policy")
-                        : t("编辑 Lark 渠道", "Edit Lark channel")}
-                    </h4>
-                    <button className={button} onClick={() => setEditor(null)}>
-                      <X className="w-4 h-4" />
-                      <span className="sr-only">
-                        {t("关闭编辑", "Close editor")}
-                      </span>
+                  <header className="admin-edit-header" data-theme={isLight?'light':'dark'}>
+                   <div className="admin-edit-title"><h4>{editor === 'rule'?t('编辑通知策略','Edit notification policy'):t('编辑 Lark 渠道','Edit Lark channel')}</h4><small>{key}</small></div><button type="button" className={`${button} admin-edit-close`} disabled={busy} onClick={()=>setEditor(null)}><X className="w-4 h-4"/><span className="sr-only">{t('关闭编辑','Close editor')}</span></button>
+                  <div className="admin-edit-actions">
+                    {editor === "rule" && (
+                      <button
+                        className={button}
+                        disabled={!canEdit || busy}
+                        onClick={() => void save(false)}
+                      >
+                        {t("保存为停用草稿", "Save inactive draft")}
+                      </button>
+                    )}
+                    <button
+                      className={`${primary} flex items-center gap-1`}
+                      disabled={!canEdit || busy}
+                      onClick={() => void save(true)}
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {busy
+                        ? t("保存中…", "Saving…")
+                        : editor === "rule"
+                          ? t("保存并启用", "Save and enable")
+                          : t("保存渠道", "Save channel")}
                     </button>
                   </div>
+                    {error&&<p role="alert" className="admin-edit-feedback">{crmError(error,lang)}</p>}
+                  </header>
+                  <AdminRequiredNote lang={lang}/>
                   {editor === "channel" ? (
                     <details className={`${box} p-3 text-xs`}>
                       <summary className="cursor-pointer">
@@ -705,6 +738,7 @@ export default function NotificationCenter({
                         <input
                           className={input}
                           value={key}
+                          required={!existing}
                           disabled={existing}
                           onChange={(e) => setKey(e.target.value)}
                           placeholder="crm-followup"
@@ -722,9 +756,10 @@ export default function NotificationCenter({
                         t("1 · 触发条件", "1 · Trigger conditions"),
                         <>
                           <SearchableChoices
+                            required
                             title={t("业务事件", "Business event")}
                             values={[rule.event]}
-                            choices={Object.entries(eventNames).map(
+                            choices={Object.entries(eventNames).filter(([key])=>!['task.created','task.rescheduled','task.appointment_due'].includes(key)).map(
                               ([value, n]) => ({
                                 value,
                                 label:
@@ -803,7 +838,7 @@ export default function NotificationCenter({
                                   choices={(filterOptions[key] || []).map(
                                     (value) => ({
                                       value,
-                                      label:
+                                      label: isSalesProgressStage(value)?progressLabel(value,lang):
                                         (lang === "id"
                                           ? crmId(labels[value]?.[1])
                                           : labels[value]?.[zh ? 0 : 1]) ||
@@ -841,7 +876,7 @@ export default function NotificationCenter({
                                 )}
                           </p>
                           {rule.requiresRoutingReview && (
-                            <label className="sm:col-span-2 lg:col-span-3">
+                            <AdminField className="sm:col-span-2 lg:col-span-3">
                               <input
                                 type="checkbox"
                                 checked={routingReviewed}
@@ -853,13 +888,13 @@ export default function NotificationCenter({
                                 "复核并确认移除历史团队限制，再启用本策略。原条件保留在历史版本。",
                                 "Review and confirm removal of retired team restrictions before enabling. Original conditions remain in version history.",
                               )}
-                            </label>
+                            </AdminField>
                           )}
                           {field(
                             t("通知渠道", "Delivery channels"),
                             <div className="flex gap-4 py-2 text-xs">
                               {["inapp", "lark"].map((c) => (
-                                <label
+                                <AdminField
                                   key={c}
                                   className="flex gap-2 items-center"
                                 >
@@ -879,7 +914,7 @@ export default function NotificationCenter({
                                   {c === "inapp"
                                     ? t("客户列表站内提醒", "Leads reminder")
                                     : "Lark"}
-                                </label>
+                                </AdminField>
                               ))}
                             </div>,
                           )}
@@ -1018,7 +1053,7 @@ export default function NotificationCenter({
                               {rule.channels.includes("lark") &&
                                 field(
                                   t("Lark 工作时间限制", "Lark business hours"),
-                                  <label className="flex gap-2 py-2 text-xs">
+                                  <AdminField className="flex gap-2 py-2 text-xs">
                                     <input
                                       type="checkbox"
                                       checked={rule.businessOnly}
@@ -1032,7 +1067,7 @@ export default function NotificationCenter({
                                       "仅在工作时间发送",
                                       "Send only during business hours",
                                     )}
-                                  </label>,
+                                  </AdminField>,
                                   t(
                                     "关闭后允许全天发送；站内提醒始终即时产生。",
                                     "Disable for round-the-clock delivery; in-app reminders are always immediate.",
@@ -1105,7 +1140,7 @@ export default function NotificationCenter({
                                               "Sa",
                                             ]
                                         ).map((d, i) => (
-                                          <label
+                                          <AdminField
                                             key={i}
                                             className="text-xs flex gap-1"
                                           >
@@ -1123,7 +1158,7 @@ export default function NotificationCenter({
                                               }
                                             />
                                             {d}
-                                          </label>
+                                          </AdminField>
                                         ))}
                                       </div>,
                                     )}
@@ -1132,7 +1167,7 @@ export default function NotificationCenter({
                               {rule.channels.includes("lark") &&
                                 field(
                                   t("静默时段", "Quiet hours"),
-                                  <label className="flex gap-2 py-2 text-xs">
+                                  <AdminField className="flex gap-2 py-2 text-xs">
                                     <input
                                       type="checkbox"
                                       checked={!!rule.quiet}
@@ -1148,7 +1183,7 @@ export default function NotificationCenter({
                                       "启用 Lark 静默时段",
                                       "Enable Lark quiet hours",
                                     )}
-                                  </label>,
+                                  </AdminField>,
                                 )}
                               {rule.channels.includes("lark") && rule.quiet && (
                                 <>
@@ -1401,7 +1436,7 @@ export default function NotificationCenter({
                         t("1 · 基本信息", "1 · Basic information"),
                         <>
                           {text(
-                            t("渠道名称", "Channel name"),
+                            t("渠道名称（必填）", "Channel name (required)"),
                             channel.groupName || "",
                             (v) => setChannel({ ...channel, groupName: v }),
                             t(
@@ -1451,7 +1486,7 @@ export default function NotificationCenter({
                               )}
                               {field(
                                 t("签名验证", "Signature verification"),
-                                <label className="flex gap-2 py-2 text-xs">
+                                <AdminField className="flex gap-2 py-2 text-xs">
                                   <input
                                     type="checkbox"
                                     checked={!!channel.signingEnabled}
@@ -1466,7 +1501,7 @@ export default function NotificationCenter({
                                     "机器人已开启签名验证",
                                     "Bot requires signature verification",
                                   )}
-                                </label>,
+                                </AdminField>,
                                 t(
                                   "仅在 Lark 机器人开启签名验证时勾选。",
                                   "Enable only if signature verification is enabled on the Lark bot.",
@@ -1530,29 +1565,7 @@ export default function NotificationCenter({
                       )}
                     </>
                   )}
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    {editor === "rule" && (
-                      <button
-                        className={button}
-                        disabled={!canEdit || busy}
-                        onClick={() => void save(false)}
-                      >
-                        {t("保存为停用草稿", "Save inactive draft")}
-                      </button>
-                    )}
-                    <button
-                      className={`${primary} flex items-center gap-1`}
-                      disabled={!canEdit || busy}
-                      onClick={() => void save(true)}
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      {busy
-                        ? t("保存中…", "Saving…")
-                        : editor === "rule"
-                          ? t("保存并启用", "Save and enable")
-                          : t("保存渠道", "Save channel")}
-                    </button>
-                  </div>
+
                 </div>
               )}
               {!editor && (
@@ -1574,9 +1587,9 @@ export default function NotificationCenter({
                               {label(row.config!.event)}
                             </h4>
                             <span
-                              className={`text-[11px] rounded-md px-2 py-1 ${row.enabled ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-500/10 " + muted}`}
+                              className={`text-[11px] rounded-md px-2 py-1 ${row.enabled && !["task.created","task.rescheduled","task.appointment_due"].includes(row.config!.event) ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-500/10 " + muted}`}
                             >
-                              {row.enabled
+                              {["task.created","task.rescheduled","task.appointment_due"].includes(row.config!.event) ? t("已退役 · 不再执行", "Retired · not executed") : row.enabled
                                 ? t("已启用", "Enabled")
                                 : t("停用 / 草稿", "Inactive / draft")}
                             </span>
@@ -1962,6 +1975,7 @@ export default function NotificationCenter({
                               <td className="p-3">{row.actor}</td>
                               <td className="p-3">
                                 {{
+                                  "notification.plan": lang==='id'?'Perencanaan notifikasi':t('通知规划','Notification planning'),
                                   "rule.save": t("保存策略", "Policy saved"),
                                   "channel.save": t(
                                     "保存渠道",
@@ -1974,11 +1988,12 @@ export default function NotificationCenter({
                                 }[row.action] || row.action}
                               </td>
                               <td className="p-3 break-words">
-                                {row.data?.id || row.data?.jobId || "—"}
+                                {row.data?.id || row.data?.jobId || row.data?.eventId || "—"}
+                                {row.action==='notification.plan' && <p className="mt-1">{notificationPlanningSummary(row.data,lang)}</p>}
                                 {row.data?.version
                                   ? " · v" + row.data.version
                                   : ""}
-                                {row.data?.reason
+                                {row.action!=='notification.plan' && row.data?.reason
                                   ? " · " + row.data.reason
                                   : ""}
                               </td>
@@ -2055,4 +2070,18 @@ export default function NotificationCenter({
       )}
     </section>
   );
+}
+
+/** Lazy keep-alive panels keep rule/channel drafts separate. Inactive panels stop polling. */
+export function NotificationTopicPanels({topic,enabled=true,...props}:{topic:Tab;enabled?:boolean;isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
+ const [visited,setVisited]=useState<Tab[]>(enabled?[topic]:[]);
+ useEffect(()=>{if(enabled)setVisited(items=>items.includes(topic)?items:[...items,topic]);},[topic,enabled]);
+ const topics=!enabled||visited.includes(topic)?visited:[...visited,topic];
+ return <>{topics.map(value=><div key={value} hidden={value!==topic} style={value===topic?undefined:{display:'none'}}><NotificationCenter {...props} embeddedTab={value} active={enabled&&value===topic}/></div>)}</>;
+}
+
+/** Same navigation for notification readers without policy-management permission. */
+export function NotificationWorkspace(props:{isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
+ const [topic,setTopic]=useState<Tab>('notification-rules');const col=props.lang==='zh'?2:props.lang==='id'?1:0;const current=notificationTopics.find(s=>s.id===topic)!;
+ return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>setTopic(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><header className="crm-ops-summary"><h2>{current.title[col]}</h2><p>{current.purpose[col]}</p></header><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
 }

@@ -70,15 +70,15 @@ test("completed/cancelled tasks and stale lead-level SLA dates cannot create pen
   );
   assert.equal(leadFollowUp(value, "en", "Asia/Jakarta", now).next, null);
   const html = render(value);
-  assert.equal((html.match(/Next step not scheduled/g) ?? []).length, 1);
+  assert.equal((html.match(/Review important information and latest contact/g) ?? []).length, 0);
   assert.doesNotMatch(html, /<time|Overdue|👉/);
-  assert.equal((render(value, "zh").match(/未安排下一步/g) ?? []).length, 1);
+  assert.equal((render(value, "zh").match(/查看重要提示与最近沟通/g) ?? []).length, 0);
 });
 
 test("manual notes survive without tasks and never become a fabricated scheduled action", () => {
   const value = lead([], { nextAction: "Call Robert\nDiscuss <plan> & fees" });
   const html = render(value);
-  assert.match(html, /Next step not scheduled/);
+  assert.doesNotMatch(html, /Review important information and latest contact/);
   assert.match(html, /Note: /);
   assert.match(html, /Call Robert\nDiscuss &lt;plan&gt; &amp; fees/);
   assert.doesNotMatch(html, /<time/);
@@ -169,6 +169,6 @@ test("missing task data is not reported as no pending work", () => {
   );
   assert.doesNotMatch(
     render({ owner: "Fadhil" } as CrmLeadRecord),
-    /Next step not scheduled/,
+    /Review important information and latest contact/,
   );
 });

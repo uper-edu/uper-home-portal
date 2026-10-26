@@ -1,3 +1,4 @@
+import {hasConfirmedEnrollment} from './crmEnrollment';
 import { matchesCampaign } from "./crmCampaignLink.ts";
 export function campaignMetrics(leads: any[], campaign: any) {
   const unique = [
@@ -11,7 +12,7 @@ export function campaignMetrics(leads: any[], campaign: any) {
   );
   const enrolled = registered.filter(
     (l) =>
-      l.currentStage === "Enrolled" || ["Enrolled", "Paid"].includes(l.outcome),
+      hasConfirmedEnrollment(l),
   );
   const attendance = unique
     .map((l) =>

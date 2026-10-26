@@ -7,7 +7,7 @@ import {
   historyTouchesTask,
   followupHistorySource,
 } from "../src/utils/crmFollowupHistory.ts";
-import { CrmFollowupContext } from "../src/components/crm/CrmFollowupContext.tsx";
+import { CrmFollowupContext, CrmContactRestriction } from "../src/components/crm/CrmFollowupContext.tsx";
 import { CrmFollowupHistory } from "../src/components/crm/CrmFollowupHistory.tsx";
 import { CrmTaskCard } from "../src/components/crm/CrmTaskCard.tsx";
 test("History joins the exact saved log ID only; same text in different sessions and unknown dates survive", () => {
@@ -114,18 +114,18 @@ test("Latest effective communication and newer failed attempt stay distinct; unk
   };
   for (const lang of ["en", "id", "zh"]) {
     const html = renderToStaticMarkup(
-      React.createElement(CrmFollowupContext, {
+      React.createElement(React.Fragment, null, React.createElement(CrmContactRestriction,{lead,lang,timezone:"Asia/Jakarta"}), React.createElement(CrmFollowupContext, {
         lead,
         lang,
         timezone: "Asia/Jakarta",
         onSource: () => {},
-      }),
+      })),
     );
     assert.match(html, /Original summary 原文/);
     assert.match(html, /No answer/);
     assert.match(
       html,
-      /View linked customer message|Lihat pesan pelanggan terkait|查看关联客户消息/,
+      /View linked message|Lihat pesan terkait|查看关联原文/,
     );
     assert.doesNotMatch(html, /Correct original/);
     assert.doesNotMatch(html, /Wrong session|Must not become a contact/);
@@ -167,6 +167,8 @@ test("Compact task keeps revised time and original deadline visible; raw request
       /View customer request|Lihat permintaan pelanggan|查看客户原话/,
     );
     assert.equal((html.match(/<details/g) || []).length, 0);
+    assert.doesNotMatch(html, /crm-task-completion-guidance/);
+    assert.doesNotMatch(html, /crm-task-evidence/);
     assert.match(html, /crm-task-process/);
     const read = renderToStaticMarkup(
       React.createElement(CrmTaskCard, {
@@ -249,7 +251,16 @@ test('overview task references are localized, deduplicated, and never label the 
     assert.equal((html.match(/class="crm-work-link crm-message-task-link"/g)||[]).length,1);
     assert.ok(html.includes(lang==='zh'?'已完成':lang==='id'?'Selesai':'Completed'));
     assert.doesNotMatch(render({tasks:[]}),/Original 任务/);
-    assert.ok(render({tasks:[]}).includes(lang==='zh'?'未记录任务关联':lang==='id'?'Belum ada tautan tugas tercatat':'No task link recorded'));
+    assert.doesNotMatch(render({tasks:[]}),/未记录任务关联|Belum ada tautan tugas tercatat|No task link recorded/);
     assert.ok(render({taskError:'error'}).includes(lang==='zh'?'任务关联暂不可用':lang==='id'?'Tautan tugas tidak tersedia':'Task links unavailable'));
   }
+});
+
+test('compact task rows retain an overdue original deadline and one consistent trilingual result action',()=>{
+ for(const [lang,action]of [['zh','添加进展'],['id','Tambah progres'],['en','Add progress']] as const){
+ const html=renderToStaticMarkup(React.createElement(CrmTaskCard,{task:{id:'row-overdue',kind:'follow_up',status:'overdue',timing_kind:'response',due_at:'2026-01-01T02:00:00Z',scheduled_at:'2099-09-02T04:00:00Z',details:{action:'TEST requested schedule'}},lead:{},lang,timezone:'Asia/Jakarta',compact:true,onProcess:()=>{}}));
+ assert.match(html,/2026-01-01 09:00/);assert.match(html,/2099-09-02 11:00/);
+ assert.match(html,/data-secondary="true"/);assert.match(html,/data-tone="overdue"/);
+ assert.ok(html.includes(action));assert.doesNotMatch(html,/crm-task-completion-guidance/);
+ }
 });

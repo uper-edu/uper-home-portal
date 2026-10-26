@@ -1,3 +1,4 @@
+import {containPaneKeys,revealRecord} from '../adminScroll';
 import {loadCampaignWorkspace} from "../../utils/campaignWorkspaceRefresh";
 import { campaignUi, campaignUiMessages } from "../../utils/campaignI18n";
 import { CampaignWorkspaceHeading } from "./CampaignWorkspaceHeading";
@@ -13,6 +14,7 @@ import {
   CrmSaveFeedback,
   CrmDiscardDialog,
   useCrmShellHeight,
+  useRecordScrollMode,
 } from "./CrmDetailWorkspace";
 import { CampaignOverview } from "./CampaignOverview";
 import {
@@ -231,6 +233,7 @@ export function CrmCampaignHub({
   const [saveNotice, setSaveNotice] = useState(false);
   const [campaignActionError, setCampaignActionError] = useState("");
   const shellHeight = useCrmShellHeight();
+  const scrollMode=useRecordScrollMode(shellHeight);
   const w = (en: string, id: string, zh: string) =>
     campaignText(lang, en, id, zh);
   const materialState = useRef({ dirty: false, busy: false });
@@ -443,8 +446,8 @@ export function CrmCampaignHub({
     if (body) body.scrollTop = 0;
   }, [requestedCampaign, detailTab]);
   useEffect(() => {
-    if (campaignArea === "campaigns")
-      selectedListItem.current?.scrollIntoView({ block: "nearest" });
+    const item=selectedListItem.current,pane=item?.closest<HTMLElement>(".campaign-list-items");
+    if(campaignArea==="campaigns"&&item&&pane)revealRecord(pane,item);
   }, [requestedCampaign, listCollapsed, campaignArea]);
   useEffect(() => {
     if (!canManageCampaigns) return;
@@ -598,6 +601,8 @@ export function CrmCampaignHub({
     <div
       className="crm-campaigns crm-detail-root space-y-5 animate-in fade-in duration-300"
       data-theme={isLight ? "light" : "dark"}
+      data-record-scroll={scrollMode}
+      onKeyDown={containPaneKeys}
       style={
         { "--crm-shell-height": `${shellHeight}px` } as React.CSSProperties
       }
@@ -835,7 +840,7 @@ export function CrmCampaignHub({
             <p className="campaign-list-count" aria-live="polite">
               {campaignCollectionLabel(filteredCampaigns, lang)}
             </p>
-            <div className="campaign-list-items">
+            <div className="campaign-list-items" data-admin-scroll="records" tabIndex={0} role="region" aria-label={u("Campaign list")}>
               {campaignError ? (
                 <p role="alert">
                   {u("Campaigns unavailable. Refresh to retry.")}
@@ -1043,6 +1048,8 @@ export function CrmCampaignHub({
                 />
                 <div
                   id="crm-campaign-content"
+                  data-admin-scroll="detail"
+                  tabIndex={0}
                   className="campaign-workpage-body crm-detail-body space-y-5"
                   role="tabpanel"
                   aria-labelledby={`crm-campaign-tab-${detailTab}`}

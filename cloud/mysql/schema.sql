@@ -72,8 +72,8 @@ CREATE TABLE IF NOT EXISTS notification_jobs (
  UNIQUE notification_event(event_id,rule_id,channel,recipient), INDEX notification_due(state,due_at)
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS notification_inbox (
- id VARCHAR(191) PRIMARY KEY, employee_id VARCHAR(191) NOT NULL, content JSON NOT NULL, read_at DATETIME(6),
- FOREIGN KEY (id) REFERENCES notification_jobs(id), INDEX inbox_employee(employee_id,read_at)
+ id VARCHAR(191) PRIMARY KEY, employee_id VARCHAR(191) NOT NULL, content JSON NOT NULL,
+ FOREIGN KEY (id) REFERENCES notification_jobs(id), INDEX inbox_employee(employee_id)
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS portal_audit (
  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT, actor VARCHAR(191) NOT NULL, action VARCHAR(100) NOT NULL,
@@ -83,10 +83,6 @@ CREATE TABLE IF NOT EXISTS identity_candidates (
  visitor_id VARCHAR(191) NOT NULL, lead_id VARCHAR(191) NOT NULL, candidate_id VARCHAR(191) NOT NULL,
  PRIMARY KEY(visitor_id,candidate_id), FOREIGN KEY(visitor_id) REFERENCES visitor_sessions(id),
  FOREIGN KEY(lead_id) REFERENCES portal_leads(id), FOREIGN KEY(candidate_id) REFERENCES portal_leads(id)
-) ENGINE=InnoDB;
-CREATE TABLE IF NOT EXISTS lead_read_marks (
- employee_id VARCHAR(191) NOT NULL, lead_id VARCHAR(191) NOT NULL, seen_at DATETIME(6) NOT NULL,
- PRIMARY KEY(employee_id,lead_id), FOREIGN KEY(lead_id) REFERENCES portal_leads(id)
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS hsk_attempts (
  id VARCHAR(191) PRIMARY KEY, visitor_id VARCHAR(191) NOT NULL, lead_id VARCHAR(191),

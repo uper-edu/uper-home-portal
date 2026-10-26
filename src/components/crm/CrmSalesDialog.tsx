@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 /** A short operation stays in context; the parent owns dirty-draft confirmation. */
 export function CrmSalesDialog({
   title,
+  description,
   children,
   onClose,
   suspended,
@@ -10,25 +11,31 @@ export function CrmSalesDialog({
   isLight,
 }: {
   title: string;
+  description?: ReactNode;
   children: ReactNode;
   onClose: () => void;
   suspended?: boolean;
   busy?: boolean;
   isLight: boolean;
 }) {
+  const dialog = useRef<HTMLDialogElement>(null);
   const ref = useRef<HTMLElement>(null),
     id = useId();
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
     const opener = document.activeElement as HTMLElement;
-    ref.current?.querySelector<HTMLElement>("h3")?.focus();
+    const overflow=document.documentElement.style.overflow,padding=document.body.style.paddingRight,x=window.scrollX,y=window.scrollY;
+    const gap=window.innerWidth-document.documentElement.clientWidth;if(gap)document.body.style.paddingRight=(parseFloat(getComputedStyle(document.body).paddingRight)+gap)+"px";
+    document.documentElement.style.overflow="hidden";dialog.current?.showModal();
+    ref.current?.querySelector<HTMLElement>("h3")?.focus({preventScroll:true});
     return () => {
+      document.documentElement.style.overflow=overflow;document.body.style.paddingRight=padding;window.scrollTo({left:x,top:y,behavior:"instant"});
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, []);
   return createPortal(
-    <div
+    <dialog ref={dialog} aria-labelledby={id} aria-describedby={description?id+"-description":undefined} onCancel={e=>{e.preventDefault();if(!busy&&!suspended)closeRef.current();}}
       className="crm-customer-workspace crm-sales-dialog-backdrop"
       data-theme={isLight ? "light" : "dark"}
       onMouseDown={(e) => {
@@ -39,9 +46,6 @@ export function CrmSalesDialog({
       <section
         ref={ref}
         className="crm-sales-dialog"
-        role="dialog"
-        aria-modal={!suspended}
-        aria-labelledby={id}
         onKeyDown={(e) => {
           if (suspended) return;
           // Select popovers own their keyboard navigation and Escape.
@@ -77,10 +81,11 @@ export function CrmSalesDialog({
           <h3 id={id} tabIndex={-1}>
             {title}
           </h3>
+          {description&&<p id={id+"-description"} className="crm-sales-dialog-description">{description}</p>}
         </header>
         {children}
       </section>
-    </div>,
+    </dialog>,
     document.body,
   );
 }

@@ -1,3 +1,5 @@
+import {isSalesProgressStage,progressLabel} from './crmSalesProgress';
+import {outreachText} from './crmOutreach';
 import {trustError} from "./crmTrustLanguage";
 import {accessError} from "./accessLanguage";
 import { crmId } from "./crmIndonesian";
@@ -47,6 +49,8 @@ const values: Record<string, [string, string]> = {
   organic_dm: ["Direct social message", "社交平台私信"],
   website: ["Website", "官网"],
   expo: ["Exhibition", "展会"],
+  "Advisor requested": ["Advisor requested", "请求顾问联系"],
+  "Assessment interest": ["Assessment interest", "测评意向"],
   "Asked price": ["Asked price", "咨询价格"],
   "Asked schedule": ["Asked schedule", "询问开班时间"],
   "Asked payment": ["Asked payment", "咨询付款方案"],
@@ -66,9 +70,9 @@ const values: Record<string, [string, string]> = {
   "Trial Attended": ["Trial attended", "试听出席"],
   Enrolled: ["Enrolled", "已报名"],
   Lost: ["Lost", "已流失"],
-  Connected: ["Connected", "已接通"],
-  "No Response": ["No response", "未接通"],
-  "Wrong Number": ["Wrong number", "号码无效"],
+  Connected: ["Connected / replied", "已接通／已回复"],
+  "No Response": ["No answer / no reply", "未接通／未回复"],
+  "Wrong Number": ["Invalid contact information", "联系方式无效"],
   Interested: ["Interested", "有意向"],
   WhatsApp: ["WhatsApp", "WhatsApp"],
   "Phone Call": ["Phone call", "电话"],
@@ -143,6 +147,7 @@ const values: Record<string, [string, string]> = {
 };
 // Only call this for system enums/labels, never names or customer free text.
 export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
+  if(isSalesProgressStage(value))return progressLabel(value,lang);
   if(value==='contact_form')return lang==='zh'?'联系表单':lang==='id'?'Formulir kontak':'Contact form';
   if (!value) return "—";
   const found = values[value];
@@ -152,7 +157,10 @@ export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
       : found[lang === "zh" ? 1 : 0]
     : value;
 }
+/** Current-state display only; historical milestone labels keep their original meaning. */
+export function crmStageValue(value:any,lang:CrmLanguage){return value&&!isSalesProgressStage(value)?(lang==='zh'?'阶段待确认（原：'+crmValue(value,lang)+'）':lang==='id'?'Tahap perlu dikonfirmasi (lama: '+crmValue(value,lang)+')':'Stage needs confirmation (previous: '+crmValue(value,lang)+')'):crmValue(value,lang);}
 export function crmError(message: string, lang: CrmLanguage) {
+  if(/^(IDENTITY_|CONTACT_|SELF_CLAIM_DISABLED|OWNER_MANAGER_REQUIRED|CLAIM_BEFORE_CONTACT)/.test(message))return outreachText(message,lang);
   const campaignErrors: Record<string, [string, string, string]> = {
     campaign_name_required: ["Enter a campaign name.", "Masukkan nama kampanye.", "请输入活动名称。"],
     campaign_budget_invalid: ["Enter a budget of 0 or more. Negative amounts are not allowed.", "Masukkan anggaran 0 atau lebih. Nilai negatif tidak diperbolehkan.", "请输入大于或等于0的预算，不允许负数。"],
@@ -311,6 +319,9 @@ export function crmDeliveryResult(
       "Recipient changed or no longer authorized.",
       "接收人已变更或失去访问权限。",
     ],
+    "Task cancelled": ["Task cancelled.", "任务已取消。"],
+    "Task unavailable": ["Task unavailable.", "任务已不存在。"],
+    "Task arrangement changed": ["Task arrangement changed.", "任务安排已变更。"],
     "Task completed": ["Follow-up task completed.", "跟进任务已完成。"],
     "Lease expired": ["Task lease expired.", "任务领取租约已过期。"],
     "Missing notification channel":["Missing notification channel","通知渠道不存在，请修复配置"],

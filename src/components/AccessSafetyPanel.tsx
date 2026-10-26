@@ -1,3 +1,5 @@
+import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
+import {isCrmManager} from '../utils/crmOutreach';
 import { describeFollowUpTask } from "../utils/crmFollowUp";
 import "./access-safety.css";
 import { useEffect, useState } from "react";
@@ -101,7 +103,7 @@ export function AccessHandoverPanel({
               reason = reasons[h.id] || "";
             return (
               <section className="access-impact" key={h.id}>
-                <h3>{h.userId}</h3>
+                <h3>{h.userId}</h3><AdminRequiredNote lang={lang}/>
                 <p>
                   {t("Customers", "Pelanggan", "客户")} {h.customerCount} ·{" "}
                   {t("Unfinished tasks", "Tugas belum selesai", "未完成任务")}{" "}
@@ -119,7 +121,7 @@ export function AccessHandoverPanel({
                 {manager && (
                   <>
                     {h.leads.map((l: any) => (
-                      <label key={l.id}>
+                      <AdminField key={l.id}>
                         <input
                           type="checkbox"
                           checked={!!selected[l.id]}
@@ -131,10 +133,10 @@ export function AccessHandoverPanel({
                           }
                         />
                         {t("Customer", "Pelanggan", "客户")}：{l.name}
-                      </label>
+                      </AdminField>
                     ))}
                     {h.tasks.map((task: any) => (
-                      <label key={task.id}>
+                      <AdminField key={task.id}>
                         <input
                           type="checkbox"
                           checked={!!selected[task.id]}
@@ -155,22 +157,23 @@ export function AccessHandoverPanel({
                           describeFollowUpTask(task as any, lang, h.timezone)
                             .timing
                         }
-                      </label>
+                      </AdminField>
                     ))}
                     {h.customerCount + h.taskCount > 0 && (
-                      <CrmSingleSelect
+                      <><AdminFieldLabel required>{t("Receiving owner","Penerima tanggung jawab","接收负责人")}</AdminFieldLabel><CrmSingleSelect
                         label={t(
                           "Receiving owner",
                           "Penerima tanggung jawab",
                           "接收负责人",
                         )}
+                        required
                         value={target}
                         emptyLabel={t(
                           "Select an owner",
                           "Pilih penanggung jawab",
                           "请选择接收负责人",
                         )}
-                        options={staff
+                        options={[...(isCrmManager(actor)?[{value:"__shared_pool",label:t("Return selected customers to shared pool (no task-only transfer)","Kembalikan pelanggan terpilih ke kumpulan bersama (tanpa transfer tugas saja)","将所选客户退回共享池（不可单独转任务）")}]:[]),...staff
                           .filter(
                             (u) =>
                               u.active &&
@@ -181,7 +184,7 @@ export function AccessHandoverPanel({
                           .map((u) => ({
                             value: u.id,
                             label: u.displayName || u.id,
-                          }))}
+                          }))]}
                         onChange={(value) =>
                           setTargets((current) => ({
                             ...current,
@@ -191,15 +194,16 @@ export function AccessHandoverPanel({
                         searchable
                         lang={lang}
                         isLight={isLight}
-                      />
+                      /></>
                     )}
-                    <label>
+                    <AdminField>
                       {t(
                         "Reason and authorization check",
                         "Alasan dan pemeriksaan izin",
                         "原因及授权核对",
                       )}
                       <textarea
+                        required
                         value={reason}
                         maxLength={500}
                         onChange={(e) =>
@@ -209,7 +213,7 @@ export function AccessHandoverPanel({
                           }))
                         }
                       />
-                    </label>
+                    </AdminField>
                     <button
                       type="button"
                       disabled={
@@ -432,19 +436,20 @@ export function AccessSafetyPanel({
               )
               .join(" · ")}
           </p>
-          <label>
+          <AdminField>
             {t(
               "Review evidence and reason",
               "Bukti dan alasan peninjauan",
               "复核依据及原因",
             )}
             <textarea
-              value={reason}
+              required
+                        value={reason}
               maxLength={500}
               onChange={(e) => setReason(e.target.value)}
             />
-          </label>
-          <label>
+          </AdminField>
+          <AdminField>
             <input
               type="checkbox"
               checked={confirmed}
@@ -455,7 +460,7 @@ export function AccessSafetyPanel({
               "Saya telah memverifikasi izin yang semestinya secara independen.",
               "我已独立核对本次应生效的授权。",
             )}
-          </label>
+          </AdminField>
           {state.users.map((u: any) => (
             <p key={u.id}>
               {u.name} ·{" "}

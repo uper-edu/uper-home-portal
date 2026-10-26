@@ -9,9 +9,11 @@ export {
 } from "../../cloud/mysql/runtime.mjs";
 import { tx as nativeTransaction, pool as nativePool } from "../../cloud/mysql/runtime.mjs";
 import { operationContext } from "./operationContext.ts";
-export const tx = (work: (client: any) => any) => {
+export const tx = (work: (client: any) => any, options?: {isolation?: 'READ COMMITTED'}) => {
   const client = operationContext.getStore();
-  return client ? work(client) : nativeTransaction(work);
+  if(client && options?.isolation && client.transactionIsolation!==options.isolation)
+    throw Error('Notification planning requires a new READ COMMITTED transaction');
+  return client ? work(client) : nativeTransaction(work, options);
 };
 export const pool = {
   ...nativePool,

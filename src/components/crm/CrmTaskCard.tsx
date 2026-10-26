@@ -21,6 +21,7 @@ export function CrmTaskCard({
   onHistory,
   compact,
   sourceQuote,
+  evidence,
 }: {
   task: TaskPresentationInput;
   lead: any;
@@ -34,6 +35,7 @@ export function CrmTaskCard({
   onHistory?: () => void;
   compact?: boolean;
   sourceQuote?: string;
+  evidence?: ReactNode;
 }) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
@@ -68,6 +70,11 @@ export function CrmTaskCard({
             {t("View customer request", "查看客户原话")}
           </button>
         )}
+        {sourceQuote && !compact && <blockquote className="crm-task-source-quote">{sourceQuote}</blockquote>}
+        {evidence}
+
+        {task.details?.additions?.length ? <details className="crm-task-evidence"><summary>{lang==='zh'?'补充信息':lang==='id'?'Informasi tambahan':'Added information'} ({task.details.additions.length})</summary>{task.details.additions.map(v=><div key={v.id}><p>{v.text}</p><small>{v.actor} · {view.formatTime(v.at)}</small></div>)}</details>:null}
+        {task.details?.replaces && <p className="crm-work-muted">{lang==='zh'?'替代原任务；原处理历史保留':lang==='id'?'Menggantikan tugas sebelumnya; riwayat dipertahankan':'Replaces an earlier task; handling history retained'}{task.details.originalMatterDeadline?' · '+view.formatTime(task.details.originalMatterDeadline):''}</p>}
         {task.details?.replacedBy && (
           <p className="crm-work-muted">
             {t("Replaced by a new task", "已由新任务替代")}
@@ -80,7 +87,7 @@ export function CrmTaskCard({
         </p>
         <dl className="crm-task-times">
           {view.times.map((time, index) => (
-            <div key={index}>
+            <div key={index} data-secondary={index > 0 || undefined}>
               <dt>{time.label}</dt>
               <dd data-tone={time.tone}>
                 {time.value ? (
@@ -103,13 +110,7 @@ export function CrmTaskCard({
             onClick={onProcess}
           >
             <MessageSquarePlus size={15} aria-hidden="true" />
-            {compact
-              ? lang === "zh"
-                ? "处理任务"
-                : lang === "id"
-                  ? "Tangani tugas"
-                  : "Process task"
-              : t("Record follow-up", "记录跟进")}
+            {lang === "zh" ? "添加进展" : lang === "id" ? "Tambah progres" : "Add progress"}
           </button>
         )}
         {!view.active && onHistory && (

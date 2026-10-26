@@ -1,3 +1,4 @@
+import {visitorScope, assertVisitorScope} from '../services/visitorScope';
 import React, { useEffect, useRef, useState } from "react";
 import {
   getVersionQuestions,
@@ -43,6 +44,7 @@ export default function HSKPlacementAssessment({
 }: Props) {
   const t = (zh: string, en: string, id: string) =>
     chooseText(lang, zh, en, id);
+  const [ownerScope] = useState(visitorScope);
   const [draft] = useState(readHskDraft);
   const continuing =
     !!draft &&
@@ -224,6 +226,7 @@ export default function HSKPlacementAssessment({
   }, [attempt?.attemptId, index, complete]);
   useEffect(() => {
     if (!attempt || pending) return;
+    if (visitorScope() !== ownerScope) return;
     setStorageOK(
       writeHskDraft({
         attempt,
@@ -288,6 +291,7 @@ export default function HSKPlacementAssessment({
   };
   const submit = async () => {
     if (!attempt || savingRef.current) return;
+    try { assertVisitorScope(ownerScope); } catch { setSaveError(true); return; }
     savingRef.current = true;
     setSaving(true);
     setSaveError(false);
@@ -301,7 +305,7 @@ export default function HSKPlacementAssessment({
     setPending(local);
     writeHskResult(local);
     try {
-      const saved = await saveHskAttempt(local.attempt, lang);
+      const saved = await saveHskAttempt(local.attempt, lang, ownerScope);
       writeHskResult(saved);
       clearHskDraft();
       if (mounted.current) onComplete(saved);

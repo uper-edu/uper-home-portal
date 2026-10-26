@@ -41,52 +41,9 @@ test("Explicit task entry rejects widening or completing from an ordinary record
       /Invalid task selection/,
     );
 });
-test("Three-language task form shows fixed context and outcomes, never task multi-selection", () => {
-  const lead = {
-    id: "l",
-    fullName: "Original name",
-    owner: "Fadhil",
-    currentStage: "Contacted",
-    attention: {
-      tasks: [
-        {
-          id: "a",
-          kind: "booking",
-          status: "open",
-          due_at: "2026-10-25T09:00:00Z",
-          revision: 0,
-          details: { action: "Original action" },
-        },
-        {
-          id: "b",
-          kind: "consultation",
-          status: "open",
-          due_at: "2026-10-26T09:00:00Z",
-          details: { action: "Other action" },
-        },
-      ],
-    },
-  };
-  for (const lang of ["en", "id", "zh"]) {
-    const html = renderToStaticMarkup(
-      React.createElement(CrmWorkflowForm, {
-        lead,
-        employee: { id: "Fadhil" },
-        selectedTask: "a",
-        lang,
-        timezone: "Asia/Jakarta",
-        initialDraft: { completed: ["a", "b"] },
-        workCalendar: {},
-      }),
-    );
-    assert.match(html, /Original action/);
-    assert.match(html, /Other action/);
-    assert.match(html, /crm-sales-editor-layout/);
-    assert.doesNotMatch(html, /type="checkbox"/);
-    assert.doesNotMatch(
-      html,
-      /Complete only selected tasks|仅完成以下勾选任务/,
-    );
-    assert.match(html, /Keep task open|Biarkan tugas terbuka|保持待处理/);
-  }
-});
+const lead={id:'TEST-entry',owner:'Robert',currentStage:'Contacted',attention:{tasks:[{id:'a',kind:'follow_up',status:'open',revision:0,due_at:'2099-10-01T02:00:00Z',details:{action:'Bound task'}},{id:'b',kind:'follow_up',status:'open',due_at:'2099-10-02T02:00:00Z',details:{action:'Unrelated task'}}]}};
+const render=(props:any)=>renderToStaticMarkup(React.createElement(CrmWorkflowForm,{lead,employee:{id:'Robert'},lang:'zh',timezone:'Asia/Jakarta',selectedTask:'a',...props}));
+test("progress in all languages is separate from closure and planning; contact is an explicit fact",async()=>{const React=await import('react');const {renderToStaticMarkup}=await import('react-dom/server');const {CrmWorkflowForm}=await import('../src/components/crm/CrmWorkflowForm.tsx');const render=(lang,extra={})=>renderToStaticMarkup(React.createElement(CrmWorkflowForm,{lead:{id:'TEST',fullName:'Original customer',currentStage:'Contacted'},employee:{id:'Fadhil'},lang,isLight:true,timezone:'Asia/Jakarta',...extra}));for(const l of ['en','id','zh']){const h=render(l,{initialDraft:{simple:{recordKind:'contact',summary:'',channel:'',connectStatus:''}}});assert.match(h,/Select the actual result|Pilih hasil nyata|选择实际结果/);assert.doesNotMatch(h,/Bound task|Unrelated task/);assert.doesNotMatch(h,/do not have to create a next task|Tidak wajib tugas berikutnya|无需创建下一任务/);}});
+test("contact-only form omits internal exception flow without forcing a future task",async()=>{const React=await import('react');const {renderToStaticMarkup}=await import('react-dom/server');const {CrmWorkflowForm}=await import('../src/components/crm/CrmWorkflowForm.tsx');const render=(lang,extra={})=>renderToStaticMarkup(React.createElement(CrmWorkflowForm,{lead:{id:'TEST',fullName:'Original customer',currentStage:'Contacted'},employee:{id:'Fadhil'},lang,isLight:true,timezone:'Asia/Jakarta',...extra}));for(const l of ['en','id','zh']){const h=render(l,{administrative:true});assert.doesNotMatch(h,/name="taskOutcome"/);assert.doesNotMatch(h,/Exception|exception|Pengecualian|例外/);assert.doesNotMatch(h,/Contacted the customer this time|Menghubungi pelanggan kali ini|本次有联系客户/);assert.match(h,/Contact channel|Saluran kontak|联系渠道/);}});
+test("legacy signal selections stay visible as a warning and unrelated drafts are not applied",async()=>{const React=await import('react');const {renderToStaticMarkup}=await import('react-dom/server');const {CrmWorkflowForm}=await import('../src/components/crm/CrmWorkflowForm.tsx');const render=(lang,extra={})=>renderToStaticMarkup(React.createElement(CrmWorkflowForm,{lead:{id:'TEST',fullName:'Original customer',currentStage:'Contacted'},employee:{id:'Fadhil'},lang,isLight:true,timezone:'Asia/Jakarta',...extra}));const h=render('zh',{initialDraft:{simple:{recordKind:'internal',summary:'Fact',buyingSignalsDetected:['Asked price','Asked payment']}}});assert.doesNotMatch(h,/本次观察到的购买信号（可多选）/);assert.match(h,/旧草稿中的阶段／信号勾选不再提交/);assert.match(h,/Fact/);assert.doesNotMatch(render('zh',{initialDraft:{operation:'close',selectedTask:'b',summary:'Wrong draft'}}),/Wrong draft/);});
+test("contact-arrangement form remains a separate controlled operation",async()=>{const React=await import('react');const {renderToStaticMarkup}=await import('react-dom/server');const {CrmWorkflowForm}=await import('../src/components/crm/CrmWorkflowForm.tsx');const render=(lang,extra={})=>renderToStaticMarkup(React.createElement(CrmWorkflowForm,{lead:{id:'TEST',fullName:'Original customer',currentStage:'Contacted'},employee:{id:'Fadhil'},lang,isLight:true,timezone:'Asia/Jakarta',...extra}));const h=render('zh',{administrative:true});assert.match(h,/主动联系安排/);assert.match(h,/保持现有安排/);assert.doesNotMatch(h,/复查依据（必填）|调整原因（必填）/);});
