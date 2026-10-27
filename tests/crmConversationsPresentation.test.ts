@@ -172,7 +172,7 @@ test("Three-language viewer separates current task state from original receipts,
   const before = JSON.stringify({ messages, tasks, lead });
   const expected = {
     en: [
-      "Linked follow-up task",
+      "Advisor contact request recorded",
       "Completed",
       "Reply failed",
       "Reply interrupted",
@@ -180,7 +180,7 @@ test("Three-language viewer separates current task state from original receipts,
       "Unknown time",
     ],
     id: [
-      "Tugas tindak lanjut terkait",
+      "Permintaan kontak konsultan tercatat",
       "Selesai",
       "Balasan gagal",
       "Balasan terputus",
@@ -188,7 +188,7 @@ test("Three-language viewer separates current task state from original receipts,
       "Waktu tidak diketahui",
     ],
     zh: [
-      "关联跟进任务",
+      "顾问联系请求已记录",
       "已完成",
       "回复失败",
       "回复已中断",
@@ -364,24 +364,8 @@ test("Request operation needs saved evidence, while repeated tasks use one full 
       2,
     );
     assert.match(html, /tabindex="-1"|tabIndex="-1"/);
-    assert.ok(
-      html.includes(
-        lang === "zh"
-          ? "已创建跟进任务"
-          : lang === "id"
-            ? "Tugas tindak lanjut dibuat"
-            : "Follow-up task created",
-      ),
-    );
-    assert.ok(
-      html.includes(
-        lang === "zh"
-          ? "已补充到现有任务"
-          : lang === "id"
-            ? "Ditambahkan ke tugas yang ada"
-            : "Added to existing task",
-      ),
-    );
+    assert.ok(html.includes(lang === "zh" ? "预约请求已记录" : lang === "id" ? "Permintaan janji temu tercatat" : "Booking request recorded"));
+    assert.doesNotMatch(html, /已创建跟进任务|已补充到现有任务|Follow-up task created|Added to existing task/);
     assert.doesNotMatch(html, /查看原始回执|View original receipt/);
     assert.equal(
       (html.match(/Original receipt: awaiting contact/g) || []).length,

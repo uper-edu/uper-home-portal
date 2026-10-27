@@ -1,3 +1,7 @@
+import {saveAttendance} from "./attendance.ts";
+import {ownerAssignmentBody,changeLeadOwner,ownerReceipt} from './ownerAssignment.ts';
+import {containsRemovedProfileMetadata} from './removedProfileMetadata.ts';
+import {hasInapplicableExamPlan,hasHskQuestionnaireGoal} from '../../src/utils/crmQuestionnaire.ts';
 import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
 import {salesProgressStages} from '../../src/utils/crmSalesProgress.ts';
 import {contactOverview} from '../../src/utils/crmContactOverview.ts';
@@ -118,7 +122,7 @@ async function visitor(req: Request, res: Response) {
 }
 function wrap(fn: (req: Request, res: Response) => Promise<any>) {
   return (req: Request, res: Response) => {
-    fn(req, res).catch((e) => {
+    Promise.resolve().then(()=>{if(containsRemovedProfileMetadata(req.body))fail(400,"不支持的资料字段");return fn(req,res);}).catch((e) => {
       console.error("[PORTAL]", e.message);
       if (!res.headersSent)
         res.status(e.status || 503).json({
@@ -153,7 +157,7 @@ function requestPermission(req:Request,original:string){
   return ['GET','HEAD'].includes(req.method)?'notifications.read':'notifications.manage';
  }
  if(original==='crm.write'){
-  if(req.method==='PATCH'&&path.includes('/leads/')&&Object.keys(req.body||{}).length===1&&Object.hasOwn(req.body,'owner'))return 'crm.assign';
+  if(req.method==='PATCH'&&path.includes('/leads/')&&ownerAssignmentBody(req.body))return 'crm.assign';
   if(/\/(?:logs|follow-up|contact-arrangement|information|task-actions|identity-actions|engagement-actions)$/.test(path)||path.includes('/tasks/'))return 'crm.followup';
   if(path.endsWith('/attendance'))return 'crm.attendance';
  }
@@ -406,6 +410,9 @@ export async function mountPortal(app: Express) {
         400,
         "Submit answers through the assessment endpoint; client scores are not accepted",
       );
+    // Hidden/inapplicable fields are not customer answers. Older clients must not save a default plan.
+    if (hasInapplicableExamPlan(b))
+      fail(400, "未选择HSK备考目标，不能保存考试计划");
     for (const field of ["whatsapp", "phone"]) {
       if (b[field] !== undefined && typeof b[field] !== "string") fail(400, CONTACT_PHONE_ERROR);
     }
@@ -500,7 +507,7 @@ export async function mountPortal(app: Express) {
       );
       profile.businessNumber = numbered.rows[0].business_number;
       const questionnaireFactId=randomUUID();
-      const fieldInput:any={};for(const k of Object.keys(profileFields)){if(b[k]!==undefined&&b[k]!==null&&b[k]!==''&&(!Array.isArray(b[k])||b[k].length))fieldInput[k]=b[k];if(existing[k]!==undefined)profile[k]=existing[k];else delete profile[k];}
+      const fieldInput:any={};for(const k of Object.keys(profileFields)){if(k==='hskExamPlan'&&!hasHskQuestionnaireGoal(b.goal,b.goals))continue;if(b[k]!==undefined&&b[k]!==null&&b[k]!==''&&(!Array.isArray(b[k])||b[k].length))fieldInput[k]=b[k];if(existing[k]!==undefined)profile[k]=existing[k];else delete profile[k];}
       const updated=await recordProfileUpdates(c,profile,fieldInput,null,{actor:'visitor',sourceType:'questionnaire',sourceRecordId:questionnaireFactId,basisFactIds:[questionnaireFactId],occurredAt:new Date().toISOString(),recordedAt:new Date().toISOString(),reason:'客户提交问卷'});
       profile=updated.profile;await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,profile]);
 
@@ -861,6 +868,7 @@ export async function mountPortal(app: Express) {
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.claim',:p2)",
           [e.id, { id: l.id, owner: e.id }],
         );
+        await fact(c,l.id,'owner.changed',e.id,{before:null,after:e.id,beforeName:'未分配',afterName:e.displayName||e.id,reason:'自己认领',changedAt:next.ownerChangedAt,requestId:randomUUID()});
         await event(c, "conversation.updated", l.id, {
           source: "crm_assignment",
           assignmentChanged: true,
@@ -874,77 +882,7 @@ export async function mountPortal(app: Express) {
     "/api/crm/leads/:id/attendance",
     wrap(async (req, res) => {
       const { l, e } = await leadAccess(req, "crm.write");
-      const b = req.body;
-      if (
-        typeof b.requestId !== "string" ||
-        b.requestId.length > 100 ||
-        !b.requestId.trim()
-      )
-        fail(400, "Attendance request ID required");
-      if (!loadCampaigns().some((c) => c.id === b.campaignId))
-        fail(400, "Choose a valid campaign");
-      if (
-        typeof b.confirmed !== "boolean" ||
-        !["onsite", "online"].includes(b.mode) ||
-        typeof b.reason !== "string" ||
-        !b.reason.trim() ||
-        b.reason.length > 2000
-      )
-        fail(400, "Choose participation mode and enter evidence");
-      const input = {
-        campaignId: b.campaignId,
-        confirmed: b.confirmed,
-        mode: b.mode,
-        reason: b.reason.trim(),
-      };
-      const lead = await tx(async (c) => {
-        const current = (
-          await c.query(
-            "SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",
-            [l.id],
-          )
-        ).rows[0]?.profile;
-        if (!current || !requestAllowed(e,current,req))
-          fail(404, "Lead not found");
-        const previous = (
-          await c.query(
-            "SELECT data FROM portal_audit WHERE action='attendance.record' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.id')),'null')=:p1 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId')),'null')=:p2",
-            [l.id, b.requestId],
-          )
-        ).rows[0]?.data;
-        if (previous) {
-          if (JSON.stringify(previous.input) !== JSON.stringify(input)) {
-            const equal = Object.keys(input).every(
-              (k) => previous.input[k] === input[k],
-            );
-            if (!equal) fail(409, "Attendance request conflict");
-          }
-          return current;
-        }
-        const record = {
-          ...input,
-          recordedAt: new Date().toISOString(),
-          actor: e.id,
-        };
-        const next = {
-          ...current,
-          attendanceRecords: [
-            ...(current.attendanceRecords || []).filter(
-              (a) => a.campaignId !== input.campaignId,
-            ),
-            record,
-          ],
-        };
-        await c.query("UPDATE portal_leads SET profile=:p2 WHERE id=:p1", [
-          l.id,
-          next,
-        ]);
-        await c.query(
-          "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)",
-          [e.id, { id: l.id, requestId: b.requestId, input }],
-        );
-        return next;
-      });
+      const lead = await tx(c => saveAttendance(c,l.id,e.id,req.body,loadCampaigns(),current=>requestAllowed(e,current,req)));
       res.json({ success: true, lead });
     }),
   );
@@ -962,6 +900,10 @@ export async function mountPortal(app: Express) {
         ).rows[0]?.profile;
         if (!current || !requestAllowed(e,current,req))
           fail(404, "Lead not found");
+        if(Object.hasOwn(req.body||{},'owner')){
+          if(!ownerAssignmentBody(req.body))fail(400,'负责人变更必须单独保存');
+          return changeLeadOwner(c,{actor:e,current,body:req.body,directory,managerOnly:(await identityControls(c)).ownerAssignmentManagerOnly,pendingIdentity:(await pendingIdentity(c,l.id,true)).length>0,fact,event});
+        }
         if (
           req.body.communicationLanguage !== undefined &&
           !["en", "id", "zh", "unknown"].includes(
@@ -975,13 +917,8 @@ export async function mountPortal(app: Express) {
           typeof req.body.owner !== "string"
         )
           fail(400, "Owner must be an active Sales employee");
-        if(req.body.nameNote!==undefined){
-          if(typeof req.body.nameNote!=='string'||req.body.nameNote.length>200)fail(400,'名字备注最多200字');
-          if(req.body.expectedNameNote!==(current.nameNote||''))fail(409,'名字备注已变化，请刷新后核对');
-        }
         if(req.body.currentStage!==undefined&&req.body.currentStage!==current.currentStage)fail(400,'请使用销售阶段独立保存入口并关联依据');
         let next = { ...current };
-        if(req.body.nameNote!==undefined)next.nameNote=req.body.nameNote.trim();
         if(req.body.tier!==undefined){
           if(!['Hot','Warm-Offline','Warm-Online','Cold-Nurture','School','Unqualified'].includes(req.body.tier))fail(400,'Invalid Tier');
           next.tierConfirmed=req.body.tier;
@@ -1055,9 +992,14 @@ export async function mountPortal(app: Express) {
           });
         return next;
       });
-      res.json({ success: true, lead: next });
+      res.json(next?.receipt ? {success:true,...next} : { success: true, lead: next });
     }),
   );
+  app.get('/api/crm/leads/:id/owner-result/:requestId',wrap(async(req,res)=>{
+    const {l,e}=await leadAccess(req);
+    const saved=await ownerReceipt(pool,e,l.profile,String(req.params.requestId),(await identityControls(pool)).ownerAssignmentManagerOnly);
+    res.set('Cache-Control','no-store').json({success:true,receipt:saved.receipt,lead:l.profile});
+  }));
   app.get(
     "/api/crm/tasks",
     wrap(async (req, res) => {

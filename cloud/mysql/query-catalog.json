@@ -374,6 +374,7 @@
       "server/portal/accessManagement.ts",
       "server/portal/accessRecovery.ts",
       "server/portal/contactPlans.ts",
+      "server/portal/ownerAssignment.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts"
     ]
@@ -405,7 +406,7 @@
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)",
     "sources": [
-      "server/portal/runtime.ts"
+      "server/portal/attendance.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.login','{}')": {
@@ -1153,7 +1154,7 @@
   "SELECT data FROM portal_audit WHERE action='attendance.record' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.id')),'null')=:p1 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId')),'null')=:p2": {
     "sql": "SELECT data FROM portal_audit WHERE action='attendance.record' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.id')),'null')=:p1 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId')),'null')=:p2",
     "sources": [
-      "server/portal/runtime.ts"
+      "server/portal/attendance.ts"
     ]
   },
   "SELECT data FROM portal_audit WHERE action='campaign.save' AND actor=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId'))=:p2 ORDER BY id DESC LIMIT 1": {
@@ -1161,6 +1162,12 @@
     "sources": [
       "server/portal/campaignSaveResults.ts",
       "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "SELECT data FROM portal_audit WHERE action='lead.owner_change' AND actor=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.id'))=:p2 AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId'))=:p3 ORDER BY id DESC LIMIT 1": {
+    "sql": "SELECT data FROM portal_audit WHERE action='lead.owner_change' AND actor=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.id'))=:p2 AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId'))=:p3 ORDER BY id DESC LIMIT 1",
+    "sources": [
+      "server/portal/ownerAssignment.ts"
     ]
   },
   "SELECT data FROM portal_audit WHERE actor=:p1 AND action='campaign.promotion.create' AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId'))=:p2 ORDER BY id DESC LIMIT 1": {
@@ -1290,6 +1297,12 @@
     "sql": "SELECT id FROM crm_engagements WHERE lead_id=:p1 AND source_id=:p2 AND kind='task_request' AND state='pending'",
     "sources": [
       "server/portal/aiExtraction.ts"
+    ]
+  },
+  "SELECT id FROM crm_facts WHERE id=:p1 AND lead_id=:p2": {
+    "sql": "SELECT id FROM crm_facts WHERE id=:p1 AND lead_id=:p2",
+    "sources": [
+      "server/portal/dynamicProfile.ts"
     ]
   },
   "SELECT id FROM crm_users WHERE email_key=:p1": {
@@ -1715,6 +1728,7 @@
     "sql": "SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/aiExtraction.ts",
+      "server/portal/attendance.ts",
       "server/portal/followup.ts",
       "server/portal/noResponse.ts",
       "server/portal/promotionReviews.ts",
@@ -2060,6 +2074,7 @@
     "sql": "UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')",
     "sources": [
       "server/portal/accessHandovers.ts",
+      "server/portal/ownerAssignment.ts",
       "server/portal/runtime.ts"
     ]
   },
@@ -2374,9 +2389,11 @@
     "sources": [
       "server/portal/accessHandovers.ts",
       "server/portal/aiExtraction.ts",
+      "server/portal/attendance.ts",
       "server/portal/campaignSources.ts",
       "server/portal/dynamicProfile.ts",
       "server/portal/noResponse.ts",
+      "server/portal/ownerAssignment.ts",
       "server/portal/promotionReviews.ts",
       "server/portal/recordAmendments.ts",
       "server/portal/runtime.ts",

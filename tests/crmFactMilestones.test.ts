@@ -8,3 +8,15 @@ test('unknown occurrence remains unknown, never ordered by saved/received time a
 test('repeated enrollment confirmations count records, never imply multiple courses or orders',()=>{const g=groupFactMilestones([confirmation('f1','2026-10-24T10:00:00Z'),confirmation('f2','2026-10-25T10:00:00Z'),confirmation('f1','2026-10-24T10:00:00Z')])[0];assert.equal(g.countLabel,'确认记录2条');assert.equal(g.latest.id,'f2');});
 test('summary offers named evidence and history actions with native keyboard-operable buttons',()=>{const html=renderToStaticMarkup(React.createElement(FactMilestoneRows,{groups:groupFactMilestones([actual('a','2026-10-24T10:00:00Z'),actual('b','2026-10-25T10:00:00Z')]),onOpen:()=>{}}));assert.match(html,/查看完成快速测评的原始依据/);assert.match(html,/查看完成快速测评历次记录（2）/);assert.match(html,/<time dateTime=/);assert.match(html,/<button type="button"/);});
 test('server explicitly separates real assessments and explicit enrollment confirmation from all event statements',async()=>{let writes=0;const facts=[{id:'confirmed',kind:'stage.changed',created_at:'2026-10-25 11:00:00',data:{schema:2,after:'progress:enrolled',enrollmentConfirmed:true,effectiveAt:'2026-10-25T10:00:00Z'}},{id:'legacy',kind:'sales.stage_observed',data:{stage:'Enrolled'},created_at:'2026-10-25 11:00:00'}];const c={async query(sql:string){if(!sql.startsWith('SELECT'))writes++;return{rows:sql.includes('crm_facts')?facts:sql.includes('hsk_attempts')?[{id:'real',created_at:'2026-10-25 11:00:00',result:{attempt:{mode:'full',completedAt:'2026-10-25T10:00:00Z'}}}]:[]};}};const p={currentStage:'progress:paused',tier:'Hot',followUpLogs:[]},before=JSON.stringify(p);const ctx=await salesProgressContext(c,'a',p);assert.equal(ctx.establishedMilestones.length,2);assert.equal(ctx.milestones.length,3);assert.equal(groupFactMilestones(ctx.establishedMilestones).length,2);assert.equal(writes,0);assert.equal(JSON.stringify(p),before);});
+
+test('single established event still exposes count and full history without a second event',()=>{
+ const html=renderToStaticMarkup(React.createElement(FactMilestoneRows,{groups:groupFactMilestones([actual('only','2026-10-24T10:00:00Z')]),onOpen:()=>{}}));
+ assert.match(html,/查看完成快速测评历次记录（1）/);assert.match(html,/>1次<\/button>/);assert.match(html,/查看完成快速测评的原始依据/);
+});
+
+import {CrmCustomerProfile} from '../src/components/crm/CrmCustomerDetails';
+test('profile does not repeat established milestones even when summary data exists on the lead',()=>{
+ const lead:any={id:'a',fullName:'Arif Hidayat',goal:'工作交流',tier:'Hot',factMilestoneSummary:[{key:'assessment:full',title:'完成完整测评',count:2,latest:{occurredAt:'2026-10-25T10:00:00Z'}}]};
+ const before=JSON.stringify(lead),html=renderToStaticMarkup(React.createElement(CrmCustomerProfile,{lead,lang:'zh',timezone:'Asia/Jakarta',ownership:null}));
+ assert.doesNotMatch(html,/完成完整测评|事实里程碑|已发生的关键事件/);assert.equal(JSON.stringify(lead),before);
+});

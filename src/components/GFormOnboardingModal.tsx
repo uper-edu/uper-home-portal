@@ -148,7 +148,6 @@ export default function GFormOnboardingModal({
   const [mode, setMode] = useState<ModeType | null>(null);
   
   const [selectedBuyingSignals, setSelectedBuyingSignals] = useState<BuyingSignalType[]>([]);
-  const [hskExamPlan, setHskExamPlan] = useState<string>('Within 6 months');
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleToggleGoal = (id: GoalType) => {
@@ -270,8 +269,9 @@ export default function GFormOnboardingModal({
     }
 
     const effectiveBuyingSignal = selectedBuyingSignals[0] || 'None yet';
-    const effectiveCurrentStatus = currentStatus || 'Other';
-    const effectiveGoal = selectedGoals[0] || 'Improve my Mandarin skills';
+    if (!currentStatus) { setErrorMsg(lang==='zh'?'请选择您的当前身份状态。':lang==='id'?'Pilih status Anda saat ini.':'Please select your current status.'); setStep(1); return; }
+    const effectiveCurrentStatus = currentStatus;
+    const effectiveGoal = selectedGoals[0];
     const effectiveLevel = reportedLevel;
     const effectiveCity = city;
     const effectiveMode = mode;
@@ -284,7 +284,6 @@ export default function GFormOnboardingModal({
       levelState,
       city: effectiveCity,
       mode: effectiveMode,
-      hskExamPlan,
       assessmentDone: false,
       trialAttended: false
     });
@@ -314,7 +313,6 @@ export default function GFormOnboardingModal({
       buyingSignal: effectiveBuyingSignal,
       buyingSignals: selectedBuyingSignals,
       nextStepInterest: 'hsk_assessment',
-      hskExamPlan,
 
       tier: tierResult.tier,
       flag: tierResult.flag,

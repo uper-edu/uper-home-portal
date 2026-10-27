@@ -69,7 +69,7 @@
 
 /* Source, time, and source actions share semantics without making time a link. */
 .crm-followup-focus .is-summary .crm-interaction-summary-time{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-variant-numeric:tabular-nums;min-height:36px}
-.crm-followup-focus .is-summary .crm-interaction-summary-time .crm-evidence-action-button{min-width:58px;padding:6px 4px}
+
 .crm-hint-source-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:8px 0}
 .crm-hint-source-list>div>div{font-size:13px}.crm-hint-source-list>div>div>span:not(.crm-ai-indicator){color:var(--cw-muted)}
 .crm-hint-source-list>div>p{grid-column:1;margin:0;font-size:14px}.crm-hint-source-list>div>.crm-evidence-action{grid-column:2;grid-row:1/3;align-self:start}
@@ -449,3 +449,77 @@
 
 .crm-history-toolbar{--cw-control-min:40px;--cf-control-height:40px}
 .crm-followup-focus .is-summary .crm-interaction-stamp>.crm-interaction-empty{font-size:inherit;line-height:inherit}
+
+/* Compact current situation: a single stage heading, aligned facts, sourced needs. */
+.crm-sales-brief.crm-sales-brief-compact{padding:16px!important}
+.crm-sales-brief-compact .crm-sales-brief-heading{margin:0;gap:12px}
+.crm-sales-brief-compact h3.crm-sales-stage-focus{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin:0;padding:0;min-height:0;font-size:14px;line-height:24px}
+.crm-sales-brief-compact h3.crm-sales-stage-focus>span:first-child{font-size:12px;font-weight:400;color:var(--cw-muted)}
+.crm-sales-brief-compact h3.crm-sales-stage-focus>.crm-sales-stage{font-size:14px;font-weight:650}
+.crm-sales-brief-compact .crm-sales-brief-events{margin:12px 0 0;padding:0;border:0}
+.crm-sales-brief-compact .crm-sales-brief-events:empty{display:none}
+.crm-sales-brief-compact .crm-fact-milestones{display:grid;grid-template-columns:56px minmax(0,1fr);gap:8px;align-items:baseline}
+.crm-sales-brief-compact .crm-fact-milestone-rows{display:grid;gap:8px;max-width:650px}
+.crm-sales-brief-compact .crm-fact-milestone-row{display:grid;grid-template-columns:120px max-content max-content;gap:8px 16px;align-items:baseline;padding:0;margin:0}
+.crm-sales-brief-compact .crm-fact-milestone-title{gap:6px;align-items:baseline}
+.crm-sales-brief-compact .crm-fact-milestone-latest{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px;font-size:12px;color:var(--cw-muted);font-variant-numeric:tabular-nums}
+.crm-sales-brief-compact .crm-fact-milestone-time{font-size:12px}
+.crm-sales-brief-compact .crm-fact-milestone-actions{grid-column:3;grid-row:1;align-self:baseline}
+.crm-sales-brief-compact .crm-sales-needs-compact{margin:12px 0 0;padding-top:12px;border-top:1px solid var(--cw-border)}
+.crm-sales-brief-compact .crm-sales-need-group{display:flex;align-items:flex-start;gap:12px;max-width:100%;width:fit-content}
+.crm-sales-brief-compact .crm-sales-need-group+.crm-sales-need-group{margin-top:8px}
+.crm-sales-brief-compact .crm-sales-need-group>dl{display:grid;gap:8px;margin:0;min-width:0}
+.crm-sales-brief-compact .crm-sales-need-row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:baseline;min-width:0}
+.crm-sales-brief-compact .crm-sales-need-row dt{margin:0;font-size:12px;line-height:24px;color:var(--cw-muted);font-weight:400}
+.crm-sales-brief-compact .crm-sales-need-row dd{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin:0;font-size:14px;line-height:24px;overflow-wrap:anywhere;min-width:0}
+.crm-sales-brief-compact .crm-sales-need-row[data-primary] dd>span:first-child{font-weight:600}
+.crm-sales-brief-compact .crm-sales-need-evidence{display:flex;gap:6px;flex:none}
+.crm-sales-brief-compact .crm-sales-brief-empty{margin:0;font-size:13px}
+@media(max-width:760px){.crm-sales-brief-compact .crm-fact-milestone-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 8px}.crm-sales-brief-compact .crm-fact-milestone-latest{grid-row:2;grid-column:1/-1}.crm-sales-brief-compact .crm-fact-milestone-actions{grid-column:2}}
+
+/* Full needs belong to Profile; Follow-up retains only the communication goal. */
+.crm-sales-brief-goal-only h3.crm-sales-stage-focus>.crm-sales-stage{font-size:16px;font-weight:600;line-height:24px}
+.crm-sales-brief-goal-only .crm-fact-milestone-title>strong{font-size:13px;font-weight:500!important;line-height:20px}
+.crm-sales-goal-context{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--cw-border);min-width:0}
+.crm-sales-goal-context-label{flex:0 0 64px;font-size:12px;color:var(--cw-muted);line-height:24px}
+.crm-sales-goal-context-value{flex:0 1 auto;font-size:14px;font-weight:600;line-height:24px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crm-sales-goal-context-value[data-empty=true]{color:var(--cw-muted);font-weight:400}
+.crm-sales-goal-context-sources{flex:none;display:flex;align-items:center;gap:4px}
+.crm-goal-needs-link{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:28px;font-size:13px;white-space:nowrap}
+#crm-profile-learning-needs:focus-visible{outline:2px solid var(--dw-accent);outline-offset:4px;border-radius:4px}
+@media(max-width:760px){.crm-sales-goal-context{display:grid;grid-template-columns:64px minmax(0,1fr) auto}.crm-goal-needs-link{grid-column:2/-1;justify-self:start}}
+
+/* Override the site-wide strong=700 rule only for follow-up information headings. */
+.crm-followup-now .crm-followup-event-header>strong{font-size:13px;font-weight:600!important}
+
+/* One evidence control and one reading grid throughout the Follow-up surface. */
+.crm-followup-focus .crm-evidence-action>.crm-evidence-action-button{box-sizing:border-box;min-height:32px;height:32px;min-width:56px;padding:4px 6px;font-size:12px;line-height:20px;gap:4px}
+.crm-followup-focus .crm-evidence-action-button>svg{width:16px;height:16px;flex:none}
+.crm-sales-brief-goal-only h3.crm-sales-stage-focus>span:first-child{flex:0 0 64px}
+.crm-sales-brief-goal-only .crm-fact-milestones{grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:baseline}
+.crm-sales-brief-goal-only .crm-fact-milestone-rows{gap:4px}
+.crm-sales-brief-goal-only .crm-fact-milestone-row{align-items:center}
+.crm-sales-brief-goal-only .crm-sales-goal-context{margin-top:12px;padding-top:0;border-top:0}
+.crm-sales-brief-goal-only .crm-sales-goal-context-value{font-weight:500}
+.crm-followup-focus .crm-followup-event-header{align-items:center;gap:8px 12px;margin-bottom:4px}
+.crm-followup-focus .crm-followup-event-header>strong,.crm-followup-focus .crm-followup-event-header .crm-followup-event-time{padding-top:0}
+.crm-followup-focus .crm-followup-event-header .crm-followup-event-actions{min-height:32px;align-items:center}
+.crm-followup-focus .is-summary .crm-interaction-summary-time{min-height:32px}
+.crm-followup-original>summary{display:list-item;width:fit-content;min-height:32px;cursor:pointer;color:var(--cw-muted);font-size:12px;line-height:20px;padding:6px 0}
+.crm-followup-original>summary:focus-visible{outline:2px solid var(--cw-accent);outline-offset:3px;border-radius:4px}
+.crm-followup-original>.crm-progress-original{margin:4px 0 0;font-size:14px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Read the interaction first; source-bound field results are compact supporting detail. */
+.crm-followup-focus .crm-followup-field-results{gap:4px;margin-top:6px}
+.crm-followup-focus .crm-followup-field-results>div{grid-template-columns:88px minmax(0,1fr);gap:8px}
+.crm-followup-focus .crm-followup-field-results :is(dt,dd){line-height:22px}
+.crm-followup-value-scope{display:inline-block;margin-left:8px;font-size:12px;color:var(--cw-muted)}
+.crm-followup-focus .crm-followup-original-toggle{min-height:28px;padding:2px 0;font-size:12px;line-height:20px;margin:0}
+.crm-followup-focus .crm-followup-event{padding:12px 0}
+
+.crm-owner-editor{display:grid;align-content:start;gap:16px}
+.crm-owner-editor>p{margin:0}
+.crm-owner-editor>label{display:block;font-size:14px;line-height:24px}
+.crm-owner-editor .crm-detail-choice{margin-top:6px;width:100%}
+.crm-owner-editor textarea{display:block;width:100%;box-sizing:border-box;min-height:120px;margin-top:6px;padding:10px 12px;font:inherit;color:var(--cw-text);background:var(--cw-surface);border:1px solid var(--cw-border);border-radius:10px;resize:vertical}
+.crm-detail-panel .crm-owner-trigger{display:inline-flex;min-height:28px;padding:0 4px;align-items:center;font-size:13px;line-height:20px;vertical-align:baseline}

@@ -1,3 +1,7 @@
 .admin-required-note{font-size:13px;line-height:1.6;color:var(--cw-muted,#475569);margin:0 0 16px}.admin-field-label{font:inherit;color:inherit}.admin-required-star{font-weight:650;white-space:nowrap;color:inherit}[data-theme=dark] .admin-required-note{color:var(--cw-muted,#cbd5e1)}
 
 .crm-simple-form>.admin-required-note{padding:0 28px;margin:0}.admin-required-error{color:var(--cw-danger,#b91c1c);font-size:14px;margin:12px 0}
+
+/* Required-field explanation belongs to the existing title, never a separate row. */
+h1>.admin-required-note,h2>.admin-required-note,h3>.admin-required-note,h4>.admin-required-note{display:inline-flex;align-items:center;gap:3px;margin:0 0 0 12px!important;padding:0!important;font-size:12px;font-weight:400;line-height:1.4;vertical-align:middle;white-space:nowrap;color:var(--cw-muted,var(--dw-muted,#52647c))}
+.admin-required-note-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}

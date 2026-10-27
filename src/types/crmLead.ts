@@ -94,10 +94,8 @@ export interface CrmLeadRecord {
   targetHskLevel?:string;
   preferredStart?:string;
   availability?:string;
-  budgetMin?:number|null;
-  budgetMax?:number|null;
-  budgetCurrency?:string;
-  budgetPeriod?:string;
+  /** Whole-course customer budget in IDR. No inferred monthly/range conversion. */
+  budgetAmount?:number|null;
   concerns?:string[];
   preferredChannel?:string;
   simpleRevision?:number;
@@ -125,7 +123,6 @@ export interface CrmLeadRecord {
   submittedAt: string;
 
   // ② 客户基础
-  nameNote?: string;
   fullName: string;
   whatsapp: string;
   email: string;

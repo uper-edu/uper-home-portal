@@ -6,6 +6,7 @@ import {recordProfileUpdates} from './dynamicProfile.ts';
 import {fact} from './trustWorkflow.ts';
 import {extractionFamily,extractionRoot} from '../../src/utils/crmExtractionEvidence.ts';
 import {sameProfileValue} from '../../src/utils/crmFieldValues.ts';
+import {supportsCourseBudget} from '../../src/utils/crmBudget.ts';
 /** Called in the original source transaction. Technical processing only; never a sales task or notification. */
 export async function queueExtraction(c:any,leadId:string,type:string,sourceId:string,text:string,occurredAt:string|null,actor:string,explicitFields:string[]=[],sourceRevision='1',relationship:any={}){
  const hash=createHash('sha256').update(text).digest('hex');
@@ -43,7 +44,7 @@ export async function applyExtractionOutput(c:any,job:any,output:any){const curr
  const fieldFacts=isCorrection?(await c.query("SELECT id,data FROM crm_facts WHERE lead_id=:p1 AND kind='profile.fields_updated'",[job.lead_id])).rows:[];
  for(const f of fieldFacts)if(sourceIds.has(f.data.sourceRecordId))priorFactIds.add(f.id);
  const owned=(meta:any)=>meta?.sourceFactIds?.some((id:string)=>id===job.input.amendment?.targetFactId||fieldFacts.some((f:any)=>f.id===id&&(sourceIds.has(f.data.sourceRecordId)||(f.data.basisFactIds||[]).some((x:string)=>priorFactIds.has(x)))));
- for(const raw of output.observations){let decision=extractionDecision(raw,next,job.input.baseVersions,job.input.occurredAt,job.input.text);if(isCorrection&&raw.kind==='field'&&raw.subject==='customer'&&raw.temporality==='current'&&raw.value!==null&&!sameProfileValue(raw.field,next[raw.field],raw.value)){
+ for(const raw of output.observations){let decision=extractionDecision(raw,next,job.input.baseVersions,job.input.occurredAt,job.input.text);if(isCorrection&&raw.kind==='field'&&raw.subject==='customer'&&raw.temporality==='current'&&raw.value!==null&&(raw.field!=='budgetAmount'||supportsCourseBudget(raw.value,raw.quote))&&!sameProfileValue(raw.field,next[raw.field],raw.value)){
    const meta=next.profileFieldMeta?.[raw.field]||{};
    decision=owned(meta)&&(meta.revision||0)===(job.input.baseVersions[raw.field]||0)?{decision:'apply',reason:'关联修正仅替代该字段的原依据；原文和旧解释保留'}:{decision:'difference',reason:'当前字段已有独立来源或版本变化，修正仅保留为不同记录'};
   }

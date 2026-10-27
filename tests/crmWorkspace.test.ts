@@ -180,8 +180,8 @@ test("profile includes ownership, source and outcome without inventing enrollmen
     }),
   );
   for (const label of [
-    "销售进展",
-    "获客来源与活动记录",
+    "已登记业务结果",
+    "客户来源与分组",
     "登记金额",
     "Demo Campaign",
     "TEST PARENT",

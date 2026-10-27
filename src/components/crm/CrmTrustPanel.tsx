@@ -1,3 +1,4 @@
+import {AdminRequiredNote} from '../AdminForm';
 import {useCrmUiText} from './CrmUiLanguage';
 import {AdminFieldLabel} from '../AdminForm';
 import {salesProgressStages,isSalesProgressStage} from '../../utils/crmSalesProgress';
@@ -145,8 +146,7 @@ export function CrmStageEditor({
   return (
     <div id="crm-sales-stage-editor" tabIndex={-1} className={`crm-stage-editor${inDrawer?' crm-editor-compose crm-stage-drawer':''}`} aria-busy={busy}>
       <div className={inDrawer?'crm-editor-scroll':undefined}>
-      {inDrawer&&<div className="crm-stage-current"><span>{ui("当前销售阶段")}</span><strong>{crmValue(currentStage,lang)}</strong></div>}
-      {inDrawer&&<p className="crm-stage-help">{ui("* 为必填项")}</p>}
+      {inDrawer&&<AdminRequiredNote lang={lang}/>}
       {!isSalesProgressStage(currentStage)&&<p className="crm-stage-help">{ui("旧阶段保留为“")}{crmValue(currentStage,lang)}{ui("”，未自动映射。请选择符合实际的新阶段并明确保存。")}</p>}
       {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id,definition])=><label key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{definition}</small></span></label>)}</fieldset>:(
       <CrmSingleSelect

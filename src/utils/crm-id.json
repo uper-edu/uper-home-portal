@@ -1577,5 +1577,17 @@
   "No successful refresh yet": "Belum berhasil diperbarui",
   "Customer message": "Pesan pelanggan",
   "{0} matching customers": "{0} pelanggan cocok",
-  "{0} customers match": "{0} pelanggan cocok"
+  "{0} customers match": "{0} pelanggan cocok",
+  "This acknowledgement records receipt of the request; it does not confirm a response to the customer.": "Konfirmasi ini mencatat penerimaan permintaan, bukan bahwa pelanggan telah ditanggapi.",
+  "Customer source and group": "Sumber dan kelompok pelanggan",
+  "Classification method": "Metode klasifikasi",
+  "Source and activity evidence": "Bukti sumber dan aktivitas",
+  "Choose participation mode": "Pilih mode partisipasi",
+  "Invalid participation reason": "Alasan partisipasi tidak valid",
+  "Source campaign changed. Reopen the customer before recording participation.": "Kampanye sumber berubah. Buka kembali pelanggan sebelum mencatat partisipasi.",
+  "The source campaign does not support participation records": "Kampanye sumber tidak mendukung catatan partisipasi",
+  "No participation confirmation to withdraw": "Tidak ada konfirmasi partisipasi yang dapat ditarik",
+  "Analysis filters": "Filter analisis",
+  "Basic details": "Data dasar",
+  "Learning background and needs": "Latar belakang dan kebutuhan belajar"
 }

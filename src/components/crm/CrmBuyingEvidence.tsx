@@ -152,13 +152,11 @@ export function CrmBuyingEvidence({
                     )}
                     {e.kind === "chat" && e.taskOperation && (
                       <span className="crm-work-muted">
-                        {e.taskOperation === "created"
-                          ? t("Created task", "Tugas dibuat", "已创建任务")
-                          : t(
-                              "Added to existing task",
-                              "Ditambahkan ke tugas yang ada",
-                              "已补充已有任务",
-                            )}
+                        {e.value === "Advisor requested"
+                          ? t("Advisor contact request recorded", "Permintaan kontak konsultan tercatat", "顾问联系请求已记录")
+                          : e.value === "Booking requested"
+                            ? t("Booking request recorded", "Permintaan pemesanan tercatat", "预约请求已记录")
+                            : t("Enrollment interest recorded", "Minat pendaftaran tercatat", "报名意向已记录")}
                       </span>
                     )}
                   </div>

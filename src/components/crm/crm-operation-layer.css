@@ -163,3 +163,12 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-operation-progress .crm-progress-stage-selection>label>.admin-field-label{font-size:14px;font-weight:500;color:var(--cw-muted)}
 /* The active modal owns editing feedback; do not duplicate it in the inert customer header. */
 body:has(dialog.crm-operation-layer[open]) #crm-customer-panel>.crm-save-feedback{display:none}
+
+.crm-profile-picker-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.crm-profile-picker-heading>.crm-work-button{display:inline-flex;align-items:center;gap:8px}
+.crm-profile-picker-panel{margin-top:12px;padding:16px;border:1px solid var(--cw-border);border-radius:10px}
+.crm-profile-picker-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 24px;margin-bottom:16px}
+.crm-profile-picker-groups .crm-profile-field-picker>div{grid-template-columns:minmax(0,1fr);gap:6px}
+.crm-profile-picker-groups .crm-profile-field-picker label{align-items:center;min-height:28px;margin:0}
+.crm-profile-picker-groups .crm-profile-field-picker input{margin-top:0}
+@media(max-width:600px){.crm-profile-picker-groups{grid-template-columns:minmax(0,1fr)}}

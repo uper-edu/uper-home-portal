@@ -34,7 +34,7 @@ export function hintOccurrenceTimes(lead:any,hint:any,rows:any[]=[],events:any[]
   return ledgerOccurrenceTime(events,id);
  };
  if(hint.id==='budget-unit')return [{label:'当前资料状态，无单独发生时刻',at:null}];
- if(hint.id?.startsWith('change:')){const m=lead.profileFieldMeta?.[hint.id.slice(7)];return [{label:'实际发生',at:instant(m?.effectiveAt)||(hint.evidenceIds||[]).map(source).find(Boolean)||null}];}
+ if(hint.id?.startsWith('change:')){const event=(hint.evidenceIds||[]).map((id:string)=>locateLedgerEvent(events,id)).find(independentProfileEdit);const meta=lead.profileFieldMeta?.[hint.id.slice(7)];if(event||meta?.sourceType==='sales_edit')return [{label:'资料更新',at:instant(event?.recordedAt)||instant(meta?.recordedAt)}];const m=lead.profileFieldMeta?.[hint.id.slice(7)];return [{label:'实际发生',at:instant(m?.effectiveAt)||(hint.evidenceIds||[]).map(source).find(Boolean)||null}];}
  if(hint.id?.startsWith('difference:')){const m=lead.profileFieldMeta?.[hint.id.slice(11)];if(m){const differences=(m.pendingDifferences||[]).filter((d:any)=>d.effective!==false&&!d.supersededBy&&!compatibleProfileValue(hint.id.slice(11),lead[hint.id.slice(11)],d.value));return [{label:'当前资料依据发生',at:instant(m.effectiveAt)},...differences.map((d:any,i:number)=>({label:'不同记录'+(i+1)+'发生',at:instant(d.effectiveAt)||source(d.sourceFactId)}))];}}
  const ids=[...new Set<string>((hint.evidenceIds||[]).filter(Boolean))];return ids.length?ids.map((id,i)=>({label:ids.length>1?'依据'+(i+1)+'发生':'实际发生',at:source(id)})):[{label:'实际发生',at:null}];
 }
@@ -72,7 +72,7 @@ export function groupSameSourceChanges(entries:any[],lead:any,events:any[]=[]){
   const ids=hint?.evidenceIds||[];
   if(entry.kind!=='hint'||hint?.kind!=='change'||ids.length!==1||!ids[0]||!meta?.sourceType){output.push(entry);continue;}
   const event=locateLedgerEvent(events,ids[0]),basisId=event?.eventType==='profile.fields_updated'&&event.payload?.basisFactIds?.length===1?event.payload.basisFactIds[0]:null,basis=basisId?events.find(e=>e.eventId===basisId):null;
-  const commonEvidenceId=basis?.eventType==='information.extracted'&&basis.payload?.sourceId===event?.payload?.sourceRecordId?basisId:ids[0];
+  const commonEvidenceId=!independentProfileEdit(event)&&basis?.eventType==='information.extracted'&&basis.payload?.sourceId===event?.payload?.sourceRecordId?basisId:ids[0];
   const identity=JSON.stringify([meta.sourceType,commonEvidenceId,at]);let group=groups.get(identity);
   if(!group){group={...entry,changes:[entry],sourceType:meta.sourceType,commonEvidenceId};groups.set(identity,group);output.push(group);}
   else {group.kind='changes';group.changes.push(entry);}
@@ -80,13 +80,15 @@ export function groupSameSourceChanges(entries:any[],lead:any,events:any[]=[]){
  return output;
 }
 
+/** A manual adoption is its own event even when it cites an older original. */
+export function independentProfileEdit(e:any){return e?.eventType==='profile.fields_updated'&&(e.payload?.adoption==='explicit_sales_edit'||e.payload?.sourceType==='sales_edit');}
 /** Follow only explicitly linked occurrence evidence, never save or model-processing time. */
 export function ledgerOccurrenceTime(events:any[],id:string,visited=new Set<string>()):string|null{
  if(visited.has(id))return null;visited.add(id);const e=locateLedgerEvent(events,id);if(!e)return null;
  const instant=(v:any)=>crmInstant(v)?.toISOString()||null;
  if(e.eventType==='information.extracted'&&e.payload?.sourceRoot)return instant(e.payload.sourceRoot.occurredAt);
  const direct=instant(e.occurredAt)||instant(e.payload?.occurredAt);if(direct)return direct;
- if(e.eventType==='profile.fields_updated'&&e.payload?.basisFactIds?.length===1)return ledgerOccurrenceTime(events,e.payload.basisFactIds[0],visited);
+ if(!independentProfileEdit(e)&&e.eventType==='profile.fields_updated'&&e.payload?.basisFactIds?.length===1)return ledgerOccurrenceTime(events,e.payload.basisFactIds[0],visited);
  return null;
 }
 /** "Added" requires an explicit empty-before/nonempty-after fact for the current adopted field. */

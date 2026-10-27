@@ -89,7 +89,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
       );
     const stamp = crypto.randomUUID(),
       profile = {
-        fullName: "Putri Lestari", nameNote: "P0身份与七阶段验收",
+        fullName: "Putri Lestari",
         email: stamp + "@example.invalid",
         whatsapp: "000" + Date.now(),
         goal: "Work in China",
@@ -110,7 +110,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
         solo,
         JSON.stringify({
           id: solo,
-          fullName: "Andi Pratama", nameNote: "进展记录验收",
+          fullName: "Andi Pratama",
           owner: "Fadhil",
           currentStage: "Contacted",
           tier: "Warm-Online",

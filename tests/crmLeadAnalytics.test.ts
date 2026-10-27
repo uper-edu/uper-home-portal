@@ -311,3 +311,30 @@ test('sales can read timing and stages without receiving manager-only owner comp
 
 // Native MySQL adapters return Date objects before JSON serialization.
 test('native database dates and HTTP ISO dates produce identical deadline metrics',()=>{const base={id:'native',currentStage:'progress:unreached',attention:{tasks:[{kind:'consultation',status:'open',dueAt:new Date(now-1000)}]}};const native=processMetrics([base],now),http=processMetrics([JSON.parse(JSON.stringify(base))],now);assert.deepEqual(native,http);assert.equal(native.firstOverdue,1);assert.equal(native.firstDeadlineUnknown,0);const future=processMetrics([{...base,attention:{tasks:[{kind:'consultation',status:'open',dueAt:new Date(now+1000)}]}}],now);assert.equal(future.firstOverdue,0);assert.equal(future.firstDeadlineUnknown,0);const invalid=processMetrics([{...base,attention:{tasks:[{kind:'consultation',status:'open',dueAt:new Date(NaN)}]}}],now);assert.equal(invalid.firstDeadlineUnknown,1);});
+
+
+test("list summary excludes detailed analytics while analysis keeps permission-gated breakdowns", () => {
+ const metrics=processMetrics([base('summary-customer')],now);
+ const props:any={metrics,lang:'zh',isLight:true,timezone:'Asia/Jakarta',leader:false,employees:[],onMetric:()=>{},onStage:()=>{}};
+ const summary=renderToStaticMarkup(createElement(CrmProcessOverview,{...props,mode:'summary'}));
+ for(const text of ['当前客户','首次联系未完成','近7天客户互动','有效沟通覆盖'])assert.ok(summary.includes(text),text);
+ assert.doesNotMatch(summary,/当前阶段分布|首次实际主动联系|按当前负责人查看/);
+ assert.match(summary,/crm-overview-strip/);
+ const analysis=renderToStaticMarkup(createElement(CrmProcessOverview,{...props,mode:'analysis'}));
+ assert.match(analysis,/当前阶段分布/);assert.match(analysis,/首次实际主动联系/);
+ assert.match(analysis,/所有数字跟随当前筛选及权限/);
+ assert.doesNotMatch(analysis,/crm-overview-cards|按当前负责人查看/);
+});
+
+test("analysis filters retain cohort controls without list-only sort and view controls", async () => {
+ const {CrmLeadFilters}=await import('../src/components/crm/CrmLeadFilters');
+ const html=renderToStaticMarkup(createElement(CrmLeadFilters,{analysis:true,value:defaultLeadFilters('all'),onChange:()=>{},lang:'zh',scope:'all',owners:[],count:4,loading:false,timezone:'Asia/Jakarta',viewMode:'worklist',onViewMode:()=>{}}));
+ assert.match(html,/搜索客户/);assert.match(html,/负责人/);assert.match(html,/销售阶段/);
+ assert.doesNotMatch(html,/crm-lead-sort|crm-lead-view/);
+});
+
+test("independent analysis page has a distinct private Chinese page title", async () => {
+ const {resolveMetadata}=await import('../src/utils/siteMetadata');
+ const metadata=resolveMetadata('/crm','zh',{module:'analysis'});
+ assert.match(metadata.title,/客户统计与分析/);
+});

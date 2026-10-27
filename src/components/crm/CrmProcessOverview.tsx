@@ -9,6 +9,7 @@ import { formatCrmEventTime } from "../../utils/crmOperatingTime";
 import type { CrmLanguage } from "../../utils/crmLanguage";
 export function CrmProcessOverview({
   metrics: m,
+  mode = "full",
   lang,
   isLight,
   timezone,
@@ -21,6 +22,7 @@ export function CrmProcessOverview({
   selectedStages = [],
 }: {
   metrics: ProcessMetrics | null;
+  mode?: "full" | "summary" | "analysis";
   lang: CrmLanguage;
   isLight: boolean;
   timezone: string;
@@ -172,7 +174,7 @@ export function CrmProcessOverview({
   );
   return (
     <section
-      className="crm-process crm-lead-process crm-lead-overview"
+      className={`crm-process crm-lead-process crm-lead-overview${mode === "summary" ? " crm-overview-strip" : ""}`}
       data-theme={isLight ? "light" : "dark"}
       aria-label={t(
         "Customer overview and analysis",
@@ -189,11 +191,12 @@ export function CrmProcessOverview({
         · {m.customers} · {t("As of", "Hingga", "截至")}{" "}
         {formatCrmEventTime(m.asOf)}
       </p>
-      <div className="crm-overview-cards">
+      {mode !== "analysis" && <div className="crm-overview-cards">
         {cards.map((card) => (
           <article key={card.key || "all"}>
             <button
               type="button"
+              title={card.hint}
               className="crm-overview-main"
               aria-pressed={
                 card.key
@@ -205,7 +208,7 @@ export function CrmProcessOverview({
             >
               <h3>{card.label}</h3>
               <strong>{card.value}</strong>
-              {card.key !== "first_pending" && <span>{card.hint}</span>}
+              {card.key !== "first_pending" && (mode !== "summary" || card.key === "communication") && <span>{card.hint}</span>}
             </button>
             {card.key === "first_pending" && (
               <button
@@ -220,7 +223,8 @@ export function CrmProcessOverview({
             )}
           </article>
         ))}
-      </div>
+      </div>}
+      {mode !== "summary" && <>
       <div className="crm-stage-distribution-heading">
         <h3>
           {t(
@@ -240,7 +244,7 @@ export function CrmProcessOverview({
         )}
       </div>
       <div className="crm-stage-distribution">{m.stages.map(stageButton)}</div>
-      <details className="crm-lead-analysis">
+      <details className="crm-lead-analysis" open={mode === "analysis" ? true : undefined}>
         <summary>
           {t(
             "Contact and progress analysis",
@@ -572,6 +576,7 @@ export function CrmProcessOverview({
           </li>
         </ul>
       </details>
+      </>}
     </section>
   );
 }

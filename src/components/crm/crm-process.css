@@ -194,3 +194,17 @@
 .crm-lead-overview .crm-overview-cards article:has(.crm-overview-main[aria-pressed=true]){border-color:var(--po-accent);background:var(--po-selected)}
 .crm-lead-overview .crm-overview-main[aria-pressed=true]{box-shadow:none;background:transparent}
 .crm-page-action-hint[data-dismissed=true]>[role=tooltip]{display:none}
+
+/* List-only overview; detailed analysis has its own page. */
+.crm-lead-overview.crm-overview-strip{padding:8px 12px}
+.crm-overview-strip .crm-process-scope{margin:0 4px 4px;font-size:12px}
+.crm-lead-overview.crm-overview-strip .crm-overview-cards{margin:0;gap:0}
+.crm-overview-strip .crm-overview-cards article{display:flex;align-items:center;flex-wrap:wrap;border:0;border-right:1px solid var(--po-border);border-radius:0;background:transparent;overflow:visible;padding:0 12px;min-width:0;gap:2px 8px}
+.crm-overview-strip .crm-overview-cards article:last-child{border-right:0}
+.crm-lead-overview.crm-overview-strip .crm-overview-main{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;padding:6px 0;width:auto;min-height:36px;border-radius:6px}
+.crm-overview-strip .crm-overview-main h3{font-size:13px;font-weight:500;margin:0}
+.crm-overview-strip .crm-overview-main strong{font-size:20px;line-height:1.2;font-weight:650;font-variant-numeric:tabular-nums}
+.crm-overview-strip .crm-overdue-link{margin:0;font-size:12px}
+.crm-overview-strip .crm-overview-cards article:has(.crm-overview-main[aria-pressed=true]){background:var(--po-selected)}
+.crm-overview-strip .crm-overdue-link[data-overdue=true]{color:#b91c1c}
+.crm-overview-strip[data-theme=dark] .crm-overdue-link[data-overdue=true]{color:#fda4af}

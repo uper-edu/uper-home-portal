@@ -22,7 +22,6 @@ export function campaignMetrics(leads: any[], campaign: any) {
           a.confirmed === true &&
           ["onsite", "online"].includes(a.mode) &&
           a.actor &&
-          a.reason &&
           Date.parse(a.recordedAt) > 0,
       ),
     )

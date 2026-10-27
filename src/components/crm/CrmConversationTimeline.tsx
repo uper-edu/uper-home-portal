@@ -18,7 +18,6 @@ import { formatCrmOperatingTime,viewerTimeZone,crmInstant } from "../../utils/cr
 import {
   conversationGroups,
   conversationRole,
-  conversationRequestOperation,
   conversationRequestSource,
   type ConversationMessage,
   type ConversationRecord,
@@ -149,24 +148,13 @@ export function CrmConversationTimeline({
         return t("Follow-up request recorded", "跟进请求已记录");
     }
   };
-  const operationLabel = (
-    message: ConversationMessage,
-    task?: ConversationTask,
-  ) => {
-    const operation = conversationRequestOperation(message, task);
-    return operation === "created"
-      ? t("Follow-up task created", "已创建跟进任务")
-      : operation === "supplemented"
-        ? t("Added to existing task", "已补充到现有任务")
-        : t("Linked follow-up task", "关联跟进任务");
-  };
   const renderRequest = (message: ConversationMessage) => {
     const task = tasks.find((value) => value.id === message.metadata?.taskId);
     const view = task && presentFollowUpTask(task, lang, timezone);
     return (
       <>
         <p className="crm-conversation-event-label">
-          {task ? operationLabel(message, task) : eventLabel(message)}
+          {eventLabel(message)}
         </p>
         {task && view ? (
           <button
@@ -184,14 +172,14 @@ export function CrmConversationTimeline({
               {view.action} · {view.status}
             </span>
           </button>
-        ) : (
+        ) : message.metadata?.taskId ? (
           <p className="crm-conversation-task-unavailable">
             {t(
               "Linked task unavailable; no deadline or completion can be confirmed.",
               "关联任务暂不可用，无法确认截止时间或完成状态。",
             )}
           </p>
-        )}
+        ) : null}
       </>
     );
   };
@@ -340,8 +328,8 @@ export function CrmConversationTimeline({
         >
           <p className="crm-work-muted">
             {t(
-              "Historical acknowledgements only. Current task status and processing deadlines are available in Follow-up.",
-              "此处仅保留当时的确认消息；当前状态与处理截止时间请在跟进页查看。",
+              "This acknowledgement records receipt of the request; it does not confirm a response to the customer.",
+              "此处保留当时的请求确认原文，不代表已回应客户。",
             )}
           </p>
           <ol className="crm-conversation-confirmation-history">

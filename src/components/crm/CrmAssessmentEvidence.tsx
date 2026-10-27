@@ -1,4 +1,6 @@
-import {viewerTimeZone} from '../../utils/crmOperatingTime';
+import { viewerTimeZone } from "../../utils/crmOperatingTime";
+import { CrmAssessmentQuestionTypes } from "./CrmAssessmentQuestionTypes";
+import { assessmentQuestionTypes } from "../../utils/crmAssessmentQuestionTypes";
 import { CrmDisclosure } from "./CrmDisclosure";
 import type { ReactNode } from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
@@ -12,13 +14,15 @@ export function CrmAssessmentEvidence({
   lang,
   timezone,
   summaryOnly = false,
+  historyDetail = false,
 }: {
   lead: CrmLeadRecord;
   lang: CrmLanguage;
   timezone: string;
   summaryOnly?: boolean;
+  historyDetail?: boolean;
 }) {
- timezone=viewerTimeZone();
+  timezone = viewerTimeZone();
   const t = (en: string, id: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? id : en;
   const unknown = t("Not recorded", "Belum dicatat", "未记录");
@@ -29,6 +33,7 @@ export function CrmAssessmentEvidence({
     !Array.isArray(lead.latestAssessment)
       ? lead.latestAssessment
       : undefined;
+  const questionTypes = result ? assessmentQuestionTypes(result) : null;
   const paper =
     summary.kind === "teacher" && result
       ? crmAssessmentSummary(
@@ -49,7 +54,7 @@ export function CrmAssessmentEvidence({
   const date = result?.attempt?.completedAt;
   const completed =
     date && Number.isFinite(Date.parse(date)) && Date.parse(date) > 0
-      ? formatCrmOperatingTime(date,viewerTimeZone())
+      ? formatCrmOperatingTime(date, viewerTimeZone())
       : t("Unknown time", "Waktu tidak diketahui", "未知时间");
   const facts = (items: Array<[string, ReactNode]>, className = "") => (
     <dl className={`crm-assessment-facts ${className}`}>
@@ -106,70 +111,80 @@ export function CrmAssessmentEvidence({
       : [];
   return (
     <div className="crm-assessment-view">
-      <section
-        className="crm-assessment-overview"
-        aria-label={summaryOnly ? t("Current conclusion", "Kesimpulan saat ini", "当前结论") : t("Assessment result", "Hasil asesmen", "本次测评结果")}
-      >
-        <div className="crm-assessment-heading">
-          <h3>{summaryOnly ? t("Current conclusion", "Kesimpulan saat ini", "当前结论") : t("Assessment result", "Hasil asesmen", "本次测评结果")}</h3>
-          {summary.kind !== "self" && (
-            <span className="crm-assessment-source">
-              {summary.kind === "teacher"
-                ? t("Teacher placement", "Penempatan oleh guru", "教师定级")
-                : source}
-            </span>
-          )}
-        </div>
-        <p className="crm-assessment-result">
-          {summary.kind === "self"
-            ? t(
-                "No assessment recorded",
-                "Belum ada asesmen tercatat",
-                "尚无测评记录",
-              )
-            : summary.conclusion}
-        </p>
-        {summary.kind === "assessment" && (
-          <p className="crm-assessment-meta">
-            {scoreDetail} · {completed} · {timezone}
-          </p>
-        )}
-        {summary.kind === "teacher" &&
-          facts([
-            [t("Teacher", "Guru", "教师"), unknown],
-            [t("Placement date", "Tanggal penempatan", "定级时间"), unknown],
-          ])}
-        {summary.kind === "self" && (
-          <p className="crm-assessment-meta">
-            {t(
-              "Self-reported information is available under Assessment evidence and history.",
-              "Informasi dari pelanggan tersedia di Bukti dan riwayat asesmen.",
-              "客户自报信息可在测评依据与历史记录中查看。",
+      {!historyDetail && (
+        <section
+          className="crm-assessment-overview"
+          aria-label={
+            summaryOnly
+              ? t("Current conclusion", "Kesimpulan saat ini", "当前结论")
+              : t("Assessment result", "Hasil asesmen", "本次测评结果")
+          }
+        >
+          <div className="crm-assessment-heading">
+            <h3>
+              {summaryOnly
+                ? t("Current conclusion", "Kesimpulan saat ini", "当前结论")
+                : t("Assessment result", "Hasil asesmen", "本次测评结果")}
+            </h3>
+            {summary.kind !== "self" && (
+              <span className="crm-assessment-source">
+                {summary.kind === "teacher"
+                  ? t("Teacher placement", "Penempatan oleh guru", "教师定级")
+                  : source}
+              </span>
             )}
-          </p>
-        )}
-        {summary.kind === "assessment" && (
-          <p className="crm-assessment-scope">
-            {mode === "express"
+          </div>
+          <p className="crm-assessment-result">
+            {summary.kind === "self"
               ? t(
-                  "A quick assessment suggests a learning starting point; it does not establish a complete HSK level or an official result.",
-                  "Asesmen cepat menyarankan titik awal belajar; bukan penetapan level HSK lengkap atau hasil resmi.",
-                  "快速测评用于建议学习起点，不代表完整 HSK 水平认定或官方成绩。",
+                  "No assessment recorded",
+                  "Belum ada asesmen tercatat",
+                  "尚无测评记录",
                 )
-              : mode === "full"
-                ? t(
-                    "This assessment covers HSK 1–3 items. Speaking, handwriting and higher levels were not assessed. This is not an official HSK result.",
-                    "Asesmen ini mencakup soal HSK 1–3. Berbicara, tulisan tangan, dan level lebih tinggi tidak diuji. Ini bukan hasil HSK resmi.",
-                    "本测评覆盖 HSK 1–3 题目，未测口语、手写及更高等级，不代表官方 HSK 成绩。",
-                  )
-                : t(
-                    "Historical evidence is incomplete. No level is inferred from the score alone.",
-                    "Bukti historis belum lengkap. Level tidak disimpulkan hanya dari skor.",
-                    "历史依据不完整，不仅凭分数推断水平。",
-                  )}
+              : summary.conclusion}
           </p>
-        )}
-      </section>
+          {summary.kind === "assessment" && (
+            <p className="crm-assessment-meta">
+              {scoreDetail} · {completed} · {timezone}
+            </p>
+          )}
+          {summary.kind === "teacher" &&
+            facts([
+              [t("Teacher", "Guru", "教师"), unknown],
+              [t("Placement date", "Tanggal penempatan", "定级时间"), unknown],
+            ])}
+          {summary.kind === "self" && !summaryOnly && (
+            <p className="crm-assessment-meta">
+              {t(
+                "Self-reported information is available under Assessment evidence and history.",
+                "Informasi dari pelanggan tersedia di Bukti dan riwayat asesmen.",
+                "客户自报信息可在测评依据与历史记录中查看。",
+              )}
+            </p>
+          )}
+          {summary.kind === "assessment" && (
+            <p className="crm-assessment-scope">
+              {mode === "express"
+                ? t(
+                    "A quick assessment suggests a learning starting point; it does not establish a complete HSK level or an official result.",
+                    "Asesmen cepat menyarankan titik awal belajar; bukan penetapan level HSK lengkap atau hasil resmi.",
+                    "快速测评用于建议学习起点，不代表完整 HSK 水平认定或官方成绩。",
+                  )
+                : mode === "full"
+                  ? t(
+                      "This assessment covers HSK 1–3 items. Speaking, handwriting and higher levels were not assessed. This is not an official HSK result.",
+                      "Asesmen ini mencakup soal HSK 1–3. Berbicara, tulisan tangan, dan level lebih tinggi tidak diuji. Ini bukan hasil HSK resmi.",
+                      "本测评覆盖 HSK 1–3 题目，未测口语、手写及更高等级，不代表官方 HSK 成绩。",
+                    )
+                  : t(
+                      "Historical evidence is incomplete. No level is inferred from the score alone.",
+                      "Bukti historis belum lengkap. Level tidak disimpulkan hanya dari skor.",
+                      "历史依据不完整，不仅凭分数推断水平。",
+                    )}
+            </p>
+          )}
+        </section>
+      )}
       {(reviewReason ||
         needsEvidence ||
         (mode === "express" && !result?.screeningPlacement)) && (
@@ -195,16 +210,24 @@ export function CrmAssessmentEvidence({
         </aside>
       )}
       {!summaryOnly && result && (
-        <section className="crm-assessment-performance">
-          <h3>
-            {summary.kind === "teacher"
-              ? t(
-                  "Latest assessment · separate evidence",
-                  "Asesmen terbaru · bukti terpisah",
-                  "最近测评 · 独立依据",
-                )
-              : t("Response breakdown", "Rincian jawaban", "作答表现")}
-          </h3>
+        <section
+          className={
+            "crm-assessment-performance" +
+            (historyDetail ? " is-history-detail" : "")
+          }
+          aria-label={t("Response breakdown", "Rincian jawaban", "作答表现")}
+        >
+          {!historyDetail && (
+            <h3>
+              {summary.kind === "teacher"
+                ? t(
+                    "Latest assessment · separate evidence",
+                    "Asesmen terbaru · bukti terpisah",
+                    "最近测评 · 独立依据",
+                  )
+                : t("Response breakdown", "Rincian jawaban", "作答表现")}
+            </h3>
+          )}
           {summary.kind === "teacher" && (
             <>
               <p className="crm-assessment-subresult">{paper.conclusion}</p>
@@ -220,19 +243,26 @@ export function CrmAssessmentEvidence({
               </p>
             </>
           )}
-          {facts(
-            [
-              [t("Questions", "Jumlah soal", "题目数量"), result.questionCount],
-              [t("Correct", "Benar", "正确题数"), result.correctCount],
-              [t("Skipped", "Dilewati", "跳过题数"), result.skippedCount],
+          {(!historyDetail || !questionTypes?.available) &&
+            facts(
               [
-                t("Unanswered", "Belum dijawab", "未作答题数"),
-                result.unansweredCount,
+                [
+                  t("Questions", "Jumlah soal", "题目数量"),
+                  result.questionCount,
+                ],
+                [t("Correct", "Benar", "正确题数"), result.correctCount],
+                [t("Skipped", "Dilewati", "跳过题数"), result.skippedCount],
+                [
+                  t("Unanswered", "Belum dijawab", "未作答题数"),
+                  result.unansweredCount,
+                ],
               ],
-            ],
-            "crm-assessment-stats",
+              "crm-assessment-stats",
+            )}
+          {questionTypes && (
+            <CrmAssessmentQuestionTypes stats={questionTypes} lang={lang} />
           )}
-          {sections.length > 0 && (
+          {!questionTypes?.available && sections.length > 0 && (
             <table className="crm-assessment-sections">
               <caption>
                 {t("Section results", "Hasil per bagian", "分项结果")}
@@ -265,92 +295,75 @@ export function CrmAssessmentEvidence({
           )}
         </section>
       )}
-      {!summaryOnly && <CrmDisclosure
-        heading={
-          <>
-            {t(
-              "Assessment evidence and history",
-              "Bukti dan riwayat asesmen",
-              "测评依据与历史记录",
-            )}
-          </>
-        }
-        className="crm-assessment-evidence"
-      >
-        <div className="crm-assessment-evidence-body">
-          {facts([
-            [
-              t(
-                "Self-reported level",
-                "Level menurut pelanggan",
-                "客户自报水平",
-              ),
-              lead.reportedLevel ? crmValue(lead.reportedLevel, lang) : unknown,
-            ],
-          ])}
-          {lead.reportedLevel && (
-            <p className="crm-assessment-meta">
+      {!summaryOnly && !historyDetail && (
+        <CrmDisclosure
+          heading={
+            <>
               {t(
-                "This is the customer's self-report, not an assessment result. Its timing relative to the assessment is not recorded.",
-                "Ini adalah keterangan pelanggan, bukan hasil asesmen. Waktunya relatif terhadap asesmen belum dicatat.",
-                "此处为客户自述，不是测评结果；未记录其与本次测评的先后关系。",
+                "Assessment evidence and history",
+                "Bukti dan riwayat asesmen",
+                "测评依据与历史记录",
               )}
-            </p>
-          )}
-          {result ? (
-            facts([
-              [t("Completed", "Selesai", "完成时间"), completed],
-              [
-                t("Operating timezone", "Zona waktu operasional", "运营时区"),
-                timezone,
-              ],
-              [
-                t("Exam version", "Versi tes", "试卷版本"),
-                result.attempt?.examVersion,
-              ],
-              [
-                t("Scoring version", "Versi penilaian", "评分版本"),
-                result.attempt?.scoringVersion,
-              ],
-            ])
-          ) : (
-            <p>
-              {t(
-                "Structured attempt details are unavailable for this record.",
-                "Rincian upaya terstruktur tidak tersedia untuk catatan ini.",
-                "该记录暂无结构化作答详情。",
-              )}
-            </p>
-          )}
-          {!result &&
-            lead.quizBreakdown &&
-            facts(
-              ([1, 2, 3] as const).map((n) => [
-                `HSK ${n}`,
-                `${lead.quizBreakdown?.[`hsk${n}Correct`] ?? "—"} / ${lead.quizBreakdown?.[`hsk${n}Total`] ?? "—"}`,
-              ]),
-            )}
-          {rawNotes && (
-            <section className="crm-detail-subsection crm-assessment-original">
-              <h4>
+            </>
+          }
+          className="crm-assessment-evidence"
+        >
+          <div className="crm-assessment-evidence-body">
+            {result ? (
+              facts([
+                [t("Completed", "Selesai", "完成时间"), completed],
+                [
+                  t("Operating timezone", "Zona waktu operasional", "运营时区"),
+                  timezone,
+                ],
+                [
+                  t("Exam version", "Versi tes", "试卷版本"),
+                  result.attempt?.examVersion,
+                ],
+                [
+                  t("Scoring version", "Versi penilaian", "评分版本"),
+                  result.attempt?.scoringVersion,
+                ],
+              ])
+            ) : (
+              <p>
                 {t(
-                  "Original assessment text",
-                  "Teks asesmen asli",
-                  "原始测评说明",
-                )}
-              </h4>
-              <p className="crm-assessment-meta">
-                {t(
-                  "Preserved text from the customer record; not a sales note. Its original language is retained. Association with the latest attempt is not verified.",
-                  "Teks dari catatan pelanggan dipertahankan; bukan catatan sales. Bahasa aslinya tetap sama. Kaitannya dengan upaya terbaru belum diverifikasi.",
-                  "保留的客户级测评原文，并非销售备注；保持原语言，未核实其是否对应最近一次测评。",
+                  "Structured attempt details are unavailable for this record.",
+                  "Rincian upaya terstruktur tidak tersedia untuk catatan ini.",
+                  "该记录暂无结构化作答详情。",
                 )}
               </p>
-              <p className="crm-assessment-raw">{rawNotes}</p>
-            </section>
-          )}
-        </div>
-      </CrmDisclosure>}
+            )}
+            {!result &&
+              lead.quizBreakdown &&
+              facts(
+                ([1, 2, 3] as const).map((n) => [
+                  `HSK ${n}`,
+                  `${lead.quizBreakdown?.[`hsk${n}Correct`] ?? "—"} / ${lead.quizBreakdown?.[`hsk${n}Total`] ?? "—"}`,
+                ]),
+              )}
+            {rawNotes && (
+              <section className="crm-detail-subsection crm-assessment-original">
+                <h4>
+                  {t(
+                    "Original assessment text",
+                    "Teks asesmen asli",
+                    "原始测评说明",
+                  )}
+                </h4>
+                <p className="crm-assessment-meta">
+                  {t(
+                    "Preserved text from the customer record; not a sales note. Its original language is retained. Association with the latest attempt is not verified.",
+                    "Teks dari catatan pelanggan dipertahankan; bukan catatan sales. Bahasa aslinya tetap sama. Kaitannya dengan upaya terbaru belum diverifikasi.",
+                    "保留的客户级测评原文，并非销售备注；保持原语言，未核实其是否对应最近一次测评。",
+                  )}
+                </p>
+                <p className="crm-assessment-raw">{rawNotes}</p>
+              </section>
+            )}
+          </div>
+        </CrmDisclosure>
+      )}
     </div>
   );
 }

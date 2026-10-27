@@ -19,6 +19,7 @@ import {
 import type { CustomerView } from "../../utils/crmWorkspace";
 interface Props {
   compact?: boolean;
+  analysis?: boolean;
   value: LeadFilters;
   onChange: (value: LeadFilters) => void;
   lang: "zh" | "en" | "id";
@@ -33,6 +34,7 @@ interface Props {
 }
 export function CrmLeadFilters({
   compact = false,
+  analysis = false,
   value: f,
   onChange,
   lang,
@@ -304,7 +306,7 @@ export function CrmLeadFilters({
       </section>
       <div
         className="crm-filter-results"
-        aria-label={t("Customer list controls", "客户列表工具栏")}
+        aria-label={analysis ? t("Analysis filters", "分析筛选") : t("Customer list controls", "客户列表工具栏")}
       >
         {!compact&&<>
         <p role="status" aria-live="polite">
@@ -315,7 +317,7 @@ export function CrmLeadFilters({
         <button type="button" className="crm-lead-defaults" title={t("Restore role defaults and sorting; keep view unchanged","恢复角色默认筛选和排序，视图不变")} onClick={reset}>
           {t("Restore default filters", "恢复默认筛选")}
         </button>
-        <CrmSingleSelect
+        {!analysis && <CrmSingleSelect
           className="crm-lead-sort"
           label={t("Sort", "排序")}
           value={f.sort}
@@ -347,8 +349,8 @@ export function CrmLeadFilters({
           onChange={(v) => update({ sort: v })}
           lang={lang}
           isLight={isLight}
-        />
-        {!compact && (
+        />}
+        {!compact && !analysis && (
           <CrmSingleSelect
             className="crm-lead-view"
             label={t("View", "视图")}

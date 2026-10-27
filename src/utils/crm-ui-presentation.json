@@ -179,10 +179,6 @@
     "Evidence no longer active",
     "Bukti tidak lagi aktif"
   ],
-  "保存名字备注": [
-    "Save name note",
-    "Simpan catatan nama"
-  ],
   "保存时采用值：": [
     "Value adopted on save: ",
     "Nilai diterapkan saat disimpan: "
@@ -346,14 +342,6 @@
   "只更新明确选择的字段；修正说明本身不会自动覆盖资料。": [
     "Only selected fields are updated; a correction note alone does not overwrite the profile.",
     "Hanya kolom terpilih diperbarui; catatan koreksi saja tidak menimpa profil."
-  ],
-  "名字备注（内部使用，最多200字）": [
-    "Name note (internal, up to 200 characters)",
-    "Catatan nama (internal, maksimal 200 karakter)"
-  ],
-  "名字备注：": [
-    "Name note: ",
-    "Catatan nama: "
   ],
   "后续修正": [
     "Later correction",
@@ -623,17 +611,9 @@
     "Original assessment result",
     "Hasil tes asli"
   ],
-  "添加名字备注": [
-    "Add name note",
-    "Tambah catatan nama"
-  ],
   "生效日期与时间 *": [
     "Effective date and time *",
     "Tanggal dan waktu berlaku *"
-  ],
-  "用于标注测试目的，不改变客户姓名；清空保存后隐藏。": [
-    "Use this for the test purpose, without changing the customer name. Saving an empty note hides it.",
-    "Gunakan untuk tujuan pengujian tanpa mengubah nama pelanggan. Simpan kosong untuk menyembunyikannya."
   ],
   "画像来源与变化": [
     "Profile sources and changes",
@@ -666,10 +646,6 @@
   "纠正误记／明确采用当前值（替代不同记录，原记录保留）": [
     "Correct an error / explicitly adopt the current value (retain original evidence)",
     "Koreksi kesalahan / terapkan nilai saat ini secara eksplisit (bukti asli dipertahankan)"
-  ],
-  "编辑名字备注": [
-    "Edit name note",
-    "Edit catatan nama"
   ],
   "联系结果修正：": [
     "Contact result correction: ",
@@ -2713,7 +2689,7 @@
   ],
   "来源未记录": [
     "Source not recorded",
-    "Sumber tidak tercatat"
+    "Sumber belum tercatat"
   ],
   "电话": [
     "Phone",
@@ -6686,5 +6662,176 @@
   "近7天动态": [
     "Activity in the last 7 days",
     "Aktivitas 7 hari terakhir"
-  ]
+  ],
+  "添加修改字段": [
+    "Add fields to update",
+    "Tambahkan kolom yang diubah"
+  ],
+  "选择修改字段": [
+    "Select fields to update",
+    "Pilih kolom yang diubah"
+  ],
+  "完成选择": [
+    "Done selecting",
+    "Selesai memilih"
+  ],
+  "信息来源与说明": [
+    "Information source and explanation",
+    "Sumber informasi dan penjelasan"
+  ],
+  "信息来源与说明（必填）": [
+    "Information source and explanation (required)",
+    "Sumber informasi dan penjelasan (wajib)"
+  ],
+  "例如：客户在WhatsApp中说明，下个月开始学习，每周六晚上有空。": [
+    "For example: the customer said on WhatsApp that they want to start next month and are available on Saturday evenings.",
+    "Contoh: pelanggan menyampaikan melalui WhatsApp bahwa ingin mulai bulan depan dan tersedia Sabtu malam."
+  ],
+  "收起字段选择": [
+    "Collapse field selection",
+    "Tutup pilihan kolom"
+  ],
+  "基本资料": [
+    "Basic details",
+    "Data dasar"
+  ],
+  "编辑基本资料": [
+    "Edit basic details",
+    "Edit data dasar"
+  ],
+  "学习需求与偏好": [
+    "Learning needs and preferences",
+    "Kebutuhan dan preferensi belajar"
+  ],
+  "调整学习需求": [
+    "Adjust learning needs",
+    "Sesuaikan kebutuhan belajar"
+  ],
+  "业务状态与管理": [
+    "Business status and management",
+    "Status bisnis dan pengelolaan"
+  ],
+  "当前值：": [
+    "Current value: ",
+    "Nilai saat ini: "
+  ],
+  "关联已有记录": [
+    "Link an existing record",
+    "Tautkan catatan yang ada"
+  ],
+  "调整": [
+    "Adjust",
+    "Sesuaikan"
+  ],
+  "预算来源与调整": [
+    "Budget sources and adjustments",
+    "Sumber dan penyesuaian anggaran"
+  ],
+  "方式": [
+    "Format",
+    "Metode"
+  ],
+  "地点": [
+    "Location",
+    "Lokasi"
+  ],
+  "时段": [
+    "Availability",
+    "Waktu"
+  ],
+  "开始": [
+    "Start",
+    "Mulai"
+  ],
+  "顾虑": [
+    "Concerns",
+    "Kekhawatiran"
+  ],
+  "本项包含AI根据关联原文整理的部分信息": [
+    "This item includes some information organized by AI from the linked original",
+    "Item ini memuat sebagian informasi yang disusun AI dari teks asli terkait"
+  ],
+  "查看学习需求": [
+    "View learning needs",
+    "Lihat kebutuhan belajar"
+  ],
+  "查看完整原文": [
+    "View full original text",
+    "Lihat teks asli lengkap"
+  ],
+  "展开原文": [
+    "Expand original text",
+    "Buka teks asli"
+  ],
+  "收起原文": [
+    "Collapse original text",
+    "Tutup teks asli"
+  ],
+  "当前资料，非当次记录值": [
+    "Current profile, not the value in this record",
+    "Profil saat ini, bukan nilai pada catatan ini"
+  ],
+  "资料更新于": [
+    "Profile updated at",
+    "Profil diperbarui pada"
+  ],
+  "负责人变更于": [
+    "Owner changed at",
+    "Penanggung jawab diubah pada"
+  ],
+  "负责人变更": [
+    "Owner changes",
+    "Perubahan penanggung jawab"
+  ],
+  "没有分配客户负责人的权限": [
+    "You do not have permission to assign this customer.",
+    "Anda tidak memiliki izin untuk menugaskan pelanggan ini."
+  ],
+  "负责人已被其他人修改，请刷新后核对": [
+    "The owner changed. Refresh and review before saving.",
+    "Penanggung jawab telah berubah. Muat ulang dan periksa sebelum menyimpan."
+  ],
+  "请先完成客户身份核对": [
+    "Complete the customer identity review first.",
+    "Selesaikan pemeriksaan identitas pelanggan terlebih dahulu."
+  ],
+  "接收销售无权查看或跟进此客户": [
+    "The receiving salesperson cannot view or follow up this customer.",
+    "Penerima tidak dapat melihat atau menindaklanjuti pelanggan ini."
+  ],
+  "只有CRM经理可以分配负责人": [
+    "Only a CRM manager may assign an owner.",
+    "Hanya manajer CRM yang dapat menetapkan penanggung jawab."
+  ],
+  "学习背景与需求": [
+    "Learning background and needs",
+    "Latar belakang dan kebutuhan belajar"
+  ],
+  "学习背景": [
+    "Learning background",
+    "Latar belakang belajar"
+  ],
+  "联系偏好": [
+    "Contact preferences",
+    "Preferensi kontak"
+  ],
+  "补充／修正记录": [
+    "Supplement / correct record",
+    "Tambahkan / koreksi catatan"
+  ],
+  "预算": ["Budget", "Anggaran"],
+  "的原始依据": [" — original evidence", " — bukti asli"],
+  "原始答案": ["Original answer", "Jawaban asli"],
+  "当次已采用": ["Applied at that time", "Diterapkan saat itu"],
+  "当次未采用": ["Not applied at that time", "Tidak diterapkan saat itu"],
+  "采用状态未记录": ["Adoption status not recorded", "Status penerapan belum dicatat"],
+  "保留为依据": ["Retained as evidence", "Disimpan sebagai bukti"],
+  "该依据未单独保存此字段的原始答案，请查看完整原文。": ["This source has no separately saved original answer for this field. See the full original.", "Sumber ini tidak menyimpan jawaban asli bidang ini secara terpisah. Lihat teks asli lengkap."],
+  "完整原文与关联记录": ["Full original and linked records", "Teks asli lengkap dan catatan terkait"],
+  "正在加载依据…": ["Loading evidence…", "Memuat bukti…"],
+  "销售直接编辑，明确采用该值": ["Sales explicitly adopted this value by direct editing", "Sales secara tegas menerapkan nilai ini melalui penyuntingan langsung"],
+  "采用客户问卷原始答案": ["Original questionnaire answer adopted", "Jawaban asli kuesioner pelanggan diterapkan"],
+  "AI整理": ["AI processing", "Pemrosesan AI"],
+  "课程总预算": ["Total course budget", "Anggaran total kursus"],
+  "原文不支持单一课程总预算金额，仅保留原文，不换算周期、币种或区间": ["The source does not support one total course budget amount. Retained as evidence without conversions or range selection.", "Sumber tidak mendukung satu jumlah anggaran total kursus. Disimpan sebagai bukti tanpa konversi atau pemilihan nilai rentang."]
 }

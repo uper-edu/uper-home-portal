@@ -33,4 +33,9 @@ test('unknown actual time can group by exact source but is never replaced with r
  const events=[event('m','customer.message',{}, {sourceRecordId:'m',original:'原文',occurredAt:null})];const g=groupFollowupInteractions(points('m',null),{id:'a'},events,[]);assert.equal(g.length,1);assert.equal(g[0].times[0].at,null);
  const p=points('amend');const rows=[{id:'r',source_type:'sales_amendment',source_id:'amend',input:{sourceRoot:{type:'customer_message',id:'m'}}}];assert.equal(groupFollowupInteractions(p,{id:'a'},events,rows).length,2);
 });
-test('empty customer needs use one empty state, never six repeated placeholders',()=>{const html=renderToStaticMarkup(React.createElement(CrmSalesBrief,{lead:{id:'a',currentStage:'progress:discovery'},lang:'zh'}));assert.match(html,/尚无学习需求信息/);assert.doesNotMatch(html,/<dd>未记录/);});
+test('empty customer needs use one empty state, never six repeated placeholders',()=>{const html=renderToStaticMarkup(React.createElement(CrmSalesBrief,{lead:{id:'a',currentStage:'progress:discovery'},lang:'zh'}));assert.match(html,/暂无记录/);assert.doesNotMatch(html,/<dd>未记录/);});
+
+test('follow-up stage precedes established milestones, separate from the learning needs summary',()=>{
+ const html=renderToStaticMarkup(React.createElement(CrmSalesBrief,{lead:{id:'a',currentStage:'progress:discovery'},lang:'zh',milestones:React.createElement('div',null,'ESTABLISHED_EVENT')}));
+ assert.ok(html.indexOf('crm-sales-stage-focus')<html.indexOf('ESTABLISHED_EVENT'));assert.ok(html.indexOf('ESTABLISHED_EVENT')<html.indexOf('学习目标'));
+});

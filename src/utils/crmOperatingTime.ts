@@ -16,3 +16,10 @@ export function formatCrmOperatingTime(value: string | undefined, timezone: stri
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 export function formatCrmEventTime(value:string|undefined){return formatCrmOperatingTime(value,viewerTimeZone());}
+
+/** Follow-up reading format only. No occurrence is inferred from a save/receipt time. */
+export function formatCrmSummaryTime(value:string|undefined,timezone=viewerTimeZone(),now:Date=new Date()):string{
+ if(!crmInstant(value))return '';
+ const full=formatCrmOperatingTime(value,timezone),year=formatCrmOperatingTime(now.toISOString(),timezone).slice(0,4);
+ return full.slice(0,4)===year?full.slice(5):full;
+}

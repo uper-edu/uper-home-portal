@@ -9,3 +9,11 @@ export function compatibleProfileValue(field:string,a:any,b:any){
  const hsk=(s:string)=>/HSK|汉语水平考试/i.test(s)&&!/不.{0,4}(?:HSK|考试)|不再|放弃|instead|no longer|not interested|tidak/i.test(s);
  return hsk(a)&&hsk(b);
 }
+
+/** The questionnaire's Other bucket means outside Greater Jakarta, not a conflicting city. */
+export function isCityRefinement(previous:any,next:any){
+ const vague=new Set(['other','其他','其它','其他地区','其它地区','其他城市','其他省市','其他地区/海外','lainnya']);
+ const normalize=(v:any)=>typeof v==='string'?v.trim().toLowerCase():'';
+ const from=normalize(previous),to=normalize(next);
+ return vague.has(from)&&!!to&&!vague.has(to)&&canonicalFieldValue('city',next)!=='Jakarta'&&!['unknown','未注明','未知','不清楚','尚未确定','not sure'].includes(to);
+}

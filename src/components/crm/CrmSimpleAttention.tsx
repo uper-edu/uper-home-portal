@@ -51,7 +51,7 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  return <div className="crm-followup-focus"><div className="crm-followup-save-feedback">{feedback}{recentSourceId&&<button type="button" className="crm-work-link" onClick={()=>openRecord(recentSourceId)}>{ui("查看本次记录")}</button>}</div>
  {feedback&&recentSourceId&&onViewStage&&canEditProfile&&<button type="button" className="crm-work-link" onClick={()=>onViewStage(recentSourceId)}>{ui("基于本次记录更新阶段")}</button>}
  {stageFeedback&&<p role="status" className="crm-stage-saved-notice">{stageFeedback}</p>}
- <CrmSalesBrief lead={lead} lang={lang} isLight={isLight} onEvidence={evidence} onProfile={onViewProfile} onStage={onViewStage} canEdit={canEditProfile} milestones={<CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>}/>
+ <CrmSalesBrief evidenceEvents={factProjection.events} lead={lead} lang={lang} isLight={isLight} onEvidence={evidence} onProfile={onViewProfile} onStage={onViewStage} canEdit={canEditProfile} milestones={<CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>}/>
  <section className="crm-followup-now" aria-label={ui("沟通动态与重要信息")}><div className="crm-followup-section-heading"><h3>{t('Communication and important information','Komunikasi dan informasi penting','沟通动态与重要信息')}</h3></div>
  <CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} summaryMode hideHeading/>
  {lead.firstRequirementReview&&<p role="note">{lead.firstRequirementReview}</p>}

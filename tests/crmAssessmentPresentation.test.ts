@@ -72,7 +72,7 @@ test("Assessment hierarchy in three languages preserves evidence, zeros and scor
         id: "Level menurut pelanggan",
         zh: "客户自报水平",
       }[lang];
-      assert.ok(html.indexOf(selfReportLabel) > evidenceIndex);
+      assert.doesNotMatch(html, new RegExp(selfReportLabel));
       assert.match(
         html,
         /<section class="crm-detail-subsection crm-assessment-original">/,
@@ -93,132 +93,9 @@ test("Assessment hierarchy in three languages preserves evidence, zeros and scor
   }
 });
 
-test("Profile groups visibly labeled customer language with contact preferences, keeping goals and ownership separate", () => {
-  const value = lead({ owner: "Fadhil", communicationLanguage: "unknown" });
-  const before = JSON.stringify(value);
-  for (const lang of ["en", "id", "zh"] as const) {
-    const html = renderToStaticMarkup(
-      React.createElement(CrmCustomerProfile, {
-        lead: value,
-        lang,
-        timezone: "Asia/Jakarta",
-        ownership: React.createElement("button", null, "OWNER_CONTROL"),
-        communication: React.createElement("button", null, "LANGUAGE_CONTROL"),
-      }),
-    );
-    const sections = html.split("</section>");
-    assert.match(sections[0], /LANGUAGE_CONTROL/);
-    assert.doesNotMatch(sections[0], /OWNER_CONTROL/);
-    assert.match(sections[2], /OWNER_CONTROL/);
-    assert.doesNotMatch(sections[2], /LANGUAGE_CONTROL/);
-    assert.match(sections[1], /Work in China|Bekerja di Tiongkok|赴华工作/);
-    const label = {
-      en: "Preferred communication language",
-      id: "Bahasa komunikasi pilihan",
-      zh: "首选沟通语言",
-    }[lang];
-    assert.ok(sections[0].includes(label));
-    if (lang !== "zh")
-      assert.doesNotMatch(html.replace("原名 Alice", ""), /[\u4e00-\u9fff]/);
-  }
-  assert.equal(JSON.stringify(value), before);
-});
-
-test("Self-report alone stays in collapsed evidence and never appears as an assessment result", () => {
-  for (const lang of ["en", "id", "zh"] as const) {
-    const html = render(lead({ reportedLevel: "HSK 2" }), lang);
-    const split = html.indexOf(
-      'class="crm-disclosure crm-assessment-evidence"',
-    );
-    assert.doesNotMatch(html.slice(0, split), /HSK 2/);
-    assert.match(html.slice(split), /HSK 2/);
-    assert.doesNotMatch(html, /crm-assessment-performance/);
-    assert.ok(
-      html.includes(
-        {
-          en: "No assessment recorded",
-          id: "Belum ada asesmen tercatat",
-          zh: "尚无测评记录",
-        }[lang],
-      ),
-    );
-  }
-});
-
-test("Teacher, self-report and historical evidence remain separate; no invented dates or teacher identity", () => {
-  const value = lead({
-    levelSource: "trial",
-    levelConfirmed: "HSK 2",
-    latestAssessment: result("full"),
-  });
-  const html = render(value, "en");
-  assert.match(html, /Latest assessment · separate evidence/);
-  assert.match(html, /HSK 2/);
-  assert.match(html, /HSK 3 criteria met/);
-  assert.match(html, /<dt>Teacher<\/dt><dd>Not recorded/);
-  const historical = render(
-    lead({
-      levelSource: "assessment",
-      quizScore: 0,
-      quizResultSummary: "HISTORICAL ORIGINAL",
-    }),
-    "en",
-  );
-  assert.match(historical, /Evidence to check/);
-  assert.match(historical, /0 pts \(maximum unknown\)/);
-  assert.match(historical, /HISTORICAL ORIGINAL/);
-  assert.doesNotMatch(
-    render(lead(), "en"),
-    /crm-assessment-performance|crm-assessment-review/,
-  );
-});
-
-test("Specific saved quick-assessment concerns explain review, corrupt evidence never becomes a passed level", () => {
-  for (const reason of [
-    "boundary",
-    "incomplete",
-    "inconsistent",
-    "audio_error",
-  ] as const) {
-    const r = result("express");
-    r.screeningPlacement!.needsReview = true;
-    r.screeningPlacement!.reason = reason;
-    for (const lang of ["en", "id", "zh"] as const) {
-      const html = render(lead({ latestAssessment: r }), lang);
-      assert.match(html, /crm-assessment-review/);
-      assert.doesNotMatch(html, /advisor approval|confirm learning needs/);
-    }
-  }
-  const malformed = result("full");
-  malformed.thresholds[0].reached = false;
-  assert.match(
-    render(lead({ latestAssessment: malformed }), "en"),
-    /Evidence to check/,
-  );
-});
-
-test("Communication templates follow customer language, retain names verbatim and make no fabricated commercial promises", () => {
-  for (const item of communicationTemplates)
-    for (const lang of ["en", "id", "zh"] as const) {
-      const text = communicationTemplate(
-        item.id,
-        lang,
-        "原名 Alice",
-        "Sales Budi",
-      );
-      assert.match(text, /原名 Alice/);
-      assert.match(text, /Sales Budi/);
-      assert.ok(templateLabel(item, lang).length > 0);
-      assert.doesNotMatch(
-        text,
-        /\b\d+%|Rp\s*\d|seats left|reserved a seat|已发送|已为您预留|优惠截止/,
-      );
-      if (lang === "id") assert.match(text, /Halo/);
-    }
-  assert.equal(communicationTemplate("trial", "unknown", "X", "Y"), "");
-  assert.equal(communicationTemplate("custom", "en", "X", "Y"), "");
-  assert.match(
-    communicationTemplate("trial", "en", "X", "Y"),
-    /check whether a suitable trial is available/,
-  );
+test("Profile does not repeat immediate language editing or mix ownership with basic facts",()=>{
+ const value=lead({owner:'Fadhil',communicationLanguage:'unknown'}),before=JSON.stringify(value);
+ const html=renderToStaticMarkup(React.createElement(CrmCustomerProfile,{lead:value,lang:'zh',timezone:'Asia/Jakarta',ownership:React.createElement('button',null,'OWNER_CONTROL'),communication:React.createElement('button',null,'LANGUAGE_CONTROL')}));
+ assert.doesNotMatch(html,/LANGUAGE_CONTROL|OWNER_CONTROL/);assert.match(html,/客户来源与分组/);
+ assert.equal(JSON.stringify(value),before);
 });

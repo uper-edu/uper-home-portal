@@ -1,3 +1,4 @@
+import { CrmCurrentField, CrmContactPreferences } from "./CrmProfileFields";
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmBuyingEvidence } from "./CrmBuyingEvidence";
 import { CrmDisclosure } from "./CrmDisclosure";
@@ -16,11 +17,11 @@ import type {
   ConversationRecord,
   ConversationTask,
 } from "../../utils/crmConversations";
-import { formatCrmOperatingTime,viewerTimeZone } from "../../utils/crmOperatingTime";
 import {
-  customerCity,
-  customerOutcome,
-} from "../../utils/crmWorkspace";
+  formatCrmOperatingTime,
+  viewerTimeZone,
+} from "../../utils/crmOperatingTime";
+import { customerCity, customerOutcome } from "../../utils/crmWorkspace";
 type DetailProps = {
   lead: CrmLeadRecord;
   lang: CrmLanguage;
@@ -54,25 +55,32 @@ export function CrmCustomerProfile({
   lead,
   lang,
   timezone,
-  ownership, nameNote, dynamicProfile,
+  dynamicProfile,
+  basicActions,
+  contactFields,
   communication,
-  participation, identity, signalFocus, onSignalSource, onSignalTask,
+  participation,
+  identity,
+  signalFocus,
+  onSignalSource,
+  onSignalTask,
 }: DetailProps & {
-  ownership: React.ReactNode;
-  nameNote?: React.ReactNode;
-  dynamicProfile?:React.ReactNode;
+  ownership?: React.ReactNode;
+  dynamicProfile?: React.ReactNode;
+  basicActions?: (node: HTMLDivElement | null) => void;
+  contactFields?: (node: HTMLDivElement | null) => void;
   communication?: React.ReactNode;
   participation?: React.ReactNode;
   identity?: React.ReactNode;
-  signalFocus?: {id:string;token:number};
-  onSignalSource?: (e:any)=>void;
-  onSignalTask?: (id:string)=>void;
+  signalFocus?: { id: string; token: number };
+  onSignalSource?: (e: any) => void;
+  onSignalTask?: (id: string) => void;
 }) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const u = campaignUi(lang);
   const tierSources: Record<string, [string, string]> = {
-    initial_registration:["Initial registration", "首次登记自动分类"],
+    initial_registration: ["Initial registration", "首次登记自动分类"],
     predicted: ["Rule-based", "规则判断"],
     sales_confirmed: ["Sales confirmed", "销售确认"],
     behaviour_override: ["Customer activity", "客户行为"],
@@ -85,7 +93,9 @@ export function CrmCustomerProfile({
       ? [
           [
             t("Acquisition entry", "获客入口"),
-            lang==='en'&&lead.entryPoint==='unverified_source'?'Original promotion entry unverified':crmValue(lead.entryPoint, lang),
+            lang === "en" && lead.entryPoint === "unverified_source"
+              ? "Original promotion entry unverified"
+              : crmValue(lead.entryPoint, lang),
           ] as [string, React.ReactNode],
         ]
       : []),
@@ -149,7 +159,9 @@ export function CrmCustomerProfile({
       ? [
           [
             t("Link placement", "链接投放位置"),
-            lang==='en'&&lead.placement==='unrecorded'?'Not recorded':crmValue(lead.placement, lang),
+            lang === "en" && lead.placement === "unrecorded"
+              ? "Not recorded"
+              : crmValue(lead.placement, lang),
           ] as [string, React.ReactNode],
         ]
       : []),
@@ -176,145 +188,90 @@ export function CrmCustomerProfile({
   return (
     <div className="crm-customer-sections crm-customer-profile">
       <section>
-        <h3>{t("Customer and contact details", "客户与联系方式")}</h3>
-        <Facts
-          items={[
-            [t("Name", "姓名"), lead.fullName],
-            ["WhatsApp", lead.whatsapp],
-            [t("Email", "电子邮件"), lead.email],
-            [
-              t("Customer identity", "客户身份"),
-              crmValue(lead.currentStatus, lang),
-            ],
-            ...(lead.parentContact
-              ? [
-                  [t("Parent contact", "家长联系方式"), lead.parentContact] as [
-                    string,
-                    React.ReactNode,
-                  ],
-                ]
-              : []),
-            [
-              t("Preferred communication language", "首选沟通语言"),
-              communication || t("Not recorded", "未记录"),
-            ],
-          ]}
-        />
-        {dynamicProfile}
-        {nameNote}
+        <header className="crm-profile-section-heading">
+          <h3>{t("Basic details", "基本资料")}</h3>
+          <div ref={basicActions} />
+        </header>
+        <dl className="crm-profile-basic-fields">{['fullName','currentStatus','parentContact','city'].map(field=><CrmCurrentField key={field} lead={lead} field={field} timezone={timezone}/>)}</dl>
+        <Facts items={[["WhatsApp",lead.whatsapp],[t("Email","电子邮件"),lead.email]].filter(([,v])=>v!=null&&v!=='') as Array<[string,React.ReactNode]>}/>
+        <div ref={contactFields}>{!contactFields&&<CrmContactPreferences lead={lead} timezone={timezone}/>}</div>
         {identity}
       </section>
-      <section>
-        <h3>{t("Learning needs", "学习需求")}</h3>
-        <Facts
-          items={[
-            [
-              t("Learning goals", "学习目标"),
-              [...new Set([lead.goal, ...(lead.goals || [])].filter(Boolean))]
-                .map((g) => crmValue(g, lang))
-                .join(
-                  lang === "id" ? crmId("; ") : lang === "zh" ? "；" : "; ",
-                ),
-            ],
-            [t("City", "城市"), customerCity(lead.city, lang)],
-            [t("Learning format", "授课方式"), crmValue(lead.mode, lang)],
-            [
-              t("Self-reported level", "自报水平"),
-              crmValue(lead.reportedLevel, lang),
-            ],
-          ]}
-        />
-      </section>
-      <section>
-        <h3>{t("Sales progress", "销售进展")}</h3>
-        {ownership}
-
-        {outcomeItems.length > 0 && (
-          <section className="crm-profile-outcome">
-            <h4>{t("Recorded outcome", "已登记业务结果")}</h4>
-            <Facts items={outcomeItems} />
-          </section>
-        )}
-      </section>
-      <section className="crm-profile-group">
-        <h3 className="crm-profile-group-heading">
-          {t("Customer group", "客户分组")}
-        </h3>
-        <Facts
-          items={[
-            [
-              t("Current group", "当前分组"),
-              hasValue(lead.tier)
-                ? crmValue(lead.tier, lang)
-                : t("Not recorded", "未记录"),
-            ],
-            [
-              t("Classification source", "分组来源"),
-              (lang === "id"
-                ? crmId(tierSources[lead.tierSource]?.[0])
-                : tierSources[lead.tierSource]?.[lang === "zh" ? 1 : 0]) ||
-                t("Historical basis not recorded", "历史依据未记录"),
-            ],
-            ...(hasValue(lead.tierConfirmed)
-              ? [
-                  [
-                    t("Sales-confirmed group", "人工确认分组"),
-                    crmValue(lead.tierConfirmed, lang),
-                  ] as [string, React.ReactNode],
-                ]
-              : []),
-            ...(hasValue(lead.tierPredicted)
-              ? [
-                  [
-                    t("Rule-calculated group", "规则计算分组"),
-                    crmValue(lead.tierPredicted, lang),
-                  ] as [string, React.ReactNode],
-                ]
-              : []),
-            [
-              t("Group updated", "分组更新时间"),
-              knownDate(lead.tierUpdatedAt, timezone, lang),
-            ],
-          ]}
-        />
-        {(lead as any).initialTierDecision&&<CrmDisclosure heading={t('Initial classification evidence','首次分类依据')}><p>{(lead as any).initialTierDecision.ruleId} · {(lead as any).initialTierDecision.ruleVersion} · {knownDate((lead as any).initialTierDecision.at,timezone,lang)}</p><p>首次登记时采用的输入（不是当前画像）：</p><pre className="whitespace-pre-wrap">{JSON.stringify((lead as any).initialTierDecision.input,null,2)}</pre><p>原问卷事实：{(lead as any).initialTierDecision.sourceFactIds?.join('、')}</p></CrmDisclosure>}
-        <CrmBuyingEvidence lead={lead} lang={lang} timezone={timezone} focus={signalFocus} onSource={onSignalSource} onTask={onSignalTask}/>
-      </section>
-      <section>
-        <CrmDisclosure
-          heading={
-            <>{t("Acquisition and activity records", "获客来源与活动记录")}</>
-          }
-          className="crm-acquisition-records"
-        >
+      {dynamicProfile || (
+        <section>
+          <h3>{t("Learning background and needs", "学习背景与需求")}</h3>
+          {lead.reportedLevel&&<Facts items={[[t("Self-reported level","客户自报水平"),crmValue(lead.reportedLevel,lang)]]}/>}
+          <Facts
+            items={[
+              [t("Learning goals", "主要学习目标"), crmValue(lead.goal, lang)],
+              [t("Learning format", "授课方式"), crmValue(lead.mode, lang)],
+            ]}
+          />
+        </section>
+      )}
+      {outcomeItems.length > 0 && <section className="crm-profile-outcome">
+        <header className="crm-profile-section-heading"><h3>{t("Recorded outcome", "已登记业务结果")}</h3></header>
+        <Facts items={outcomeItems}/>
+      </section>}
+      <section className="crm-profile-origin">
+        <header className="crm-profile-section-heading"><h3>{t("Customer source and group", "客户来源与分组")}</h3></header>
+            <Facts items={[
+              ...sourceItems,
+              [t("Current group", "当前分组"), hasValue(lead.tier) ? crmValue(lead.tier, lang) : t("Not recorded", "未记录")],
+              [t("Classification method", "分类方式"), (lang === "id" ? crmId(tierSources[lead.tierSource]?.[0]) : tierSources[lead.tierSource]?.[lang === "zh" ? 1 : 0]) || t("Historical basis not recorded", "历史依据未记录")],
+              ...(hasValue(lead.tierUpdatedAt) ? [[t("Group updated", "分组更新时间"), knownDate(lead.tierUpdatedAt, timezone, lang)] as [string,React.ReactNode]] : []),
+              ...trackingItems,
+            ]}/>
+        {(lead.promotionReview || activityRecords.length > 0 || lead.attendanceConfirmed !== undefined) && <CrmDisclosure className="crm-acquisition-records" heading={t("Source and activity evidence", "来源与活动依据")}>
           <div className="crm-acquisition-body">
-            {sourceItems.length > 0 ? (
-              <div>
-                <h4>{t("Acquisition source", "获客来源")}</h4>
-                <Facts items={sourceItems} />
-              </div>
-            ) : (
-              <p className="crm-work-muted">
-                {t("Acquisition source not recorded", "获客来源未记录")}
-              </p>
-            )}
-            {lead.promotionReview&&<section className="crm-detail-subsection">
-              <h4>{u("Promotion entry review")}</h4>
-              <Facts items={[
-                [u("Review status"),lead.promotionReview.status==='linked'?u("Manually verified"):lead.promotionReview.status==='deferred'?u("Left unconfirmed"):u("Invalid promotion attribution")],
-                [u("Original promotion ID (p)"),lead.promotionReview.rawPromotionLinkId],
-                [u("Verified promotion entry"),lead.promotionReview.snapshot?.name||u("Not linked")],
-                [u("Verified source / medium"),lead.promotionReview.snapshot?lead.promotionReview.snapshot.source+' / '+lead.promotionReview.snapshot.medium:u("Not confirmed")],
-                [u("Verified entry ID"),lead.promotionReview.linkId||u("Not linked")],
-                [u("Review reason"),lead.promotionReview.reason],
-                [u("Reviewed by / time"),lead.promotionReview.actor+' · '+knownDate(lead.promotionReview.at,timezone,lang)],
-                [u("Applies to"),u("This customer only; original parameters retained. No future alias.")],
-              ]}/>
-            </section>}
-            {trackingItems.length > 0 && (
-              <section className="crm-detail-subsection ">
-                <h4>{t("Source tracking details", "来源追踪详情")}</h4>
-                <Facts items={trackingItems} />
+            {lead.promotionReview && (
+              <section className="crm-detail-subsection">
+                <h4>{u("Promotion entry review")}</h4>
+                <Facts
+                  items={[
+                    [
+                      u("Review status"),
+                      lead.promotionReview.status === "linked"
+                        ? u("Manually verified")
+                        : lead.promotionReview.status === "deferred"
+                          ? u("Left unconfirmed")
+                          : u("Invalid promotion attribution"),
+                    ],
+                    [
+                      u("Original promotion ID (p)"),
+                      lead.promotionReview.rawPromotionLinkId,
+                    ],
+                    [
+                      u("Verified promotion entry"),
+                      lead.promotionReview.snapshot?.name || u("Not linked"),
+                    ],
+                    [
+                      u("Verified source / medium"),
+                      lead.promotionReview.snapshot
+                        ? lead.promotionReview.snapshot.source +
+                          " / " +
+                          lead.promotionReview.snapshot.medium
+                        : u("Not confirmed"),
+                    ],
+                    [
+                      u("Verified entry ID"),
+                      lead.promotionReview.linkId || u("Not linked"),
+                    ],
+                    [u("Review reason"), lead.promotionReview.reason],
+                    [
+                      u("Reviewed by / time"),
+                      lead.promotionReview.actor +
+                        " · " +
+                        knownDate(lead.promotionReview.at, timezone, lang),
+                    ],
+                    [
+                      u("Applies to"),
+                      u(
+                        "This customer only; original parameters retained. No future alias.",
+                      ),
+                    ],
+                  ]}
+                />
               </section>
             )}
             {(activityRecords.length > 0 ||
@@ -374,8 +331,20 @@ export function CrmCustomerProfile({
                 )}
               </section>
             )}
+
           </div>
-        </CrmDisclosure>
+        </CrmDisclosure>}
+          {signalFocus && (
+            <CrmBuyingEvidence
+              lead={lead}
+              lang={lang}
+              timezone={timezone}
+              focus={signalFocus}
+              onSource={onSignalSource}
+              onTask={onSignalTask}
+            />
+          )}
+
         {participation}
       </section>
     </div>
