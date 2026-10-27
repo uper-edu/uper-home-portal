@@ -200,7 +200,7 @@ export function CrmSingleSelect({
               : selected?.label ||
                 value ||
                 emptyLabel ||
-                t("Unavailable option", "选项已失效"))}
+                (value ? t("Unavailable option", "选项已失效") : t("Please select", "请选择")))}
         </span>
         <span aria-hidden="true">⌄</span>
       </button>

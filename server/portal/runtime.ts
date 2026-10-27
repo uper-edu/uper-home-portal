@@ -1,7 +1,8 @@
+import {attachQuestionnaireBasicSources} from './questionnaireSources.ts';
 import {saveAttendance} from "./attendance.ts";
 import {ownerAssignmentBody,changeLeadOwner,ownerReceipt} from './ownerAssignment.ts';
 import {containsRemovedProfileMetadata} from './removedProfileMetadata.ts';
-import {hasInapplicableExamPlan,hasHskQuestionnaireGoal} from '../../src/utils/crmQuestionnaire.ts';
+import {hasInapplicableExamPlan,hasHskQuestionnaireGoal,validateQuestionnaireAnswers} from '../../src/utils/crmQuestionnaire.ts';
 import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
 import {salesProgressStages} from '../../src/utils/crmSalesProgress.ts';
 import {contactOverview} from '../../src/utils/crmContactOverview.ts';
@@ -11,7 +12,7 @@ import {extractionHints} from '../../src/utils/crmExtractionHints.ts';
 import {initialTierProvenance} from './tierProvenance.ts';
 import {randomUUID} from 'node:crypto';
 import {recordProfileUpdates} from './dynamicProfile.ts';
-import {profileFields,dynamicProfileHints} from '../../src/utils/crmDynamicProfile.ts';
+import {profileFields,basicProfileFields,dynamicProfileHints} from '../../src/utils/crmDynamicProfile.ts';
 import {attachInteractionTimelines} from './interactionTimeline.ts';
 import {saveSimpleSalesWorkflow as saveSalesWorkflow} from './simpleSalesWorkflow.ts';
 import {mergePolicyTopic,topicPatch,type PolicyTopic} from '../../src/utils/crmPolicyTopics.ts';
@@ -203,6 +204,7 @@ async function visibleLeadProfiles(e: any) {
   return leads;
 }
 async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
+  await attachQuestionnaireBasicSources(pool,leads);
   await attachEnrollmentEvidence(pool,leads);
   await attachIdentity(pool,e,leads);
   await attachInteractionTimelines(pool,leads);
@@ -393,8 +395,9 @@ export async function mountPortal(app: Express) {
   );
   mountHskAssessments(app);
   const register = wrap(async (req, res) => {
-    const v = await visitor(req, res);
     const b = req.body;
+    validateQuestionnaireAnswers(b);
+    const v = await visitor(req, res);
     if (
       [
         "quizScore",
@@ -507,7 +510,7 @@ export async function mountPortal(app: Express) {
       );
       profile.businessNumber = numbered.rows[0].business_number;
       const questionnaireFactId=randomUUID();
-      const fieldInput:any={};for(const k of Object.keys(profileFields)){if(k==='hskExamPlan'&&!hasHskQuestionnaireGoal(b.goal,b.goals))continue;if(b[k]!==undefined&&b[k]!==null&&b[k]!==''&&(!Array.isArray(b[k])||b[k].length))fieldInput[k]=b[k];if(existing[k]!==undefined)profile[k]=existing[k];else delete profile[k];}
+      const fieldInput:any={};for(const k of Object.keys({...profileFields,...basicProfileFields})){if(k==='hskExamPlan'&&!hasHskQuestionnaireGoal(b.goal,b.goals))continue;if(b[k]!==undefined&&b[k]!==null&&b[k]!==''&&(!Array.isArray(b[k])||b[k].length))fieldInput[k]=b[k];if(existing[k]!==undefined)profile[k]=existing[k];else delete profile[k];}
       const updated=await recordProfileUpdates(c,profile,fieldInput,null,{actor:'visitor',sourceType:'questionnaire',sourceRecordId:questionnaireFactId,basisFactIds:[questionnaireFactId],occurredAt:new Date().toISOString(),recordedAt:new Date().toISOString(),reason:'客户提交问卷'});
       profile=updated.profile;await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,profile]);
 

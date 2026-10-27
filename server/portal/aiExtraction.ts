@@ -14,9 +14,29 @@ export async function queueExtraction(c:any,leadId:string,type:string,sourceId:s
  const input={text,occurredAt,actor,explicitFields,sourceRoot:relationship.sourceRoot||{type,id:sourceId,occurredAt},...(relationship.amendment?{amendment:relationship.amendment}:{}),baseVersions:Object.fromEntries(Object.keys(profileFields).map(k=>[k,current.profileFieldMeta?.[k]?.revision||0])),context:Object.fromEntries(Object.keys(profileFields).filter(k=>current[k]!=null).map(k=>[k,current[k]]))};
  await c.query("INSERT INTO crm_ai_extractions(id,lead_id,source_type,source_id,source_revision,input_hash,contract_version,input,status) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,'pending') ON DUPLICATE KEY UPDATE id=id",[randomUUID(),leadId,type,sourceId,sourceRevision,hash,EXTRACTION_VERSION,input]);
 }
-export async function extractWithAI(text:string,context:any){
+/** A cue requests a second AI review; it never supplies a city value or an adoption decision. */
+export function needsResidenceReview(text:string,observations:any[]){
+ if(/我(?:作为|是)?销售|销售(?:本人|自己)|as (?:a )?sales/i.test(text)&&!/客户(?:说|表示)?(?:长期居住地是|目前住在|现在住在|住在|现居|常住|已经搬到)/.test(text))return false;
+ return !observations.some(o=>o.kind==='field'&&o.field==='city')&&/(?:居住地(?:是|为)?|住在|现居|常住|搬到|tinggal(?:\s+di)?|domisili(?:\s+di)?|lives?\s+in|living\s+in|resides?\s+in|moved\s+to).{0,12}(?:雅加达|万隆|泗水|Jakarta|Bandung|Surabaya)/i.test(text);
+}
+export async function extractWithAI(text:string,context:any,request:typeof fetch=fetch){
  const providers=[{name:process.env.OPENAI_MODEL||'gpt-4o',key:process.env.OPENAI_API_KEY,url:process.env.OPENAI_API_BASE_URL||'https://api.openai.com/v1/chat/completions'},{name:'deepseek-chat',key:process.env.DEEPSEEK_API_KEY,url:process.env.DEEPSEEK_API_BASE_URL||'https://api.deepseek.com/chat/completions'}];
- for(const p of providers){if(!p.key)continue;try{const response=await fetch(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:extractionInstruction+'\n'+stageEventInstruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},temperature:0,max_tokens:2400}),signal:AbortSignal.timeout(30000)});if(!response.ok)throw Error('provider');const body=await response.json();if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');const output=JSON.parse(body.choices?.[0]?.message?.content||'');const observations=validateExtraction(output,text);requireExplicitAdvisorEvidence(text,observations);return {observations,model:p.name};}catch{/* Do not expose provider body, credentials or source in logs. */}}
+ for(const p of providers){if(!p.key)continue;try{
+  const ask=async(review=false)=>{
+   const instruction=extractionInstruction+'\n'+stageEventInstruction+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
+   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},temperature:0,max_tokens:2400}),signal:AbortSignal.timeout(30000)});
+   if(!response.ok)throw Error('provider');const body=await response.json();if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');
+   return validateExtraction(JSON.parse(body.choices?.[0]?.message?.content||''),text);
+  };
+  const observations=await ask();requireExplicitAdvisorEvidence(text,observations);
+  let coverageReview:any=null;
+  if(needsResidenceReview(text,observations)){
+   const recovered=(await ask(true)).filter(o=>o.kind==='field'&&o.field==='city');
+   if(!recovered.length)throw Error('city_coverage_incomplete');
+   observations.push(...recovered);coverageReview={field:'city',reviewed:true,recovered:recovered.length};
+  }
+  return {observations,model:p.name,coverageReview};
+ }catch{/* Invalid output, missing coverage and provider errors retry through the configured provider chain. No source or credentials in logs. */}}
  throw Error('结构化提取暂不可用，原文已保存');
 }
 let running=false;
@@ -86,7 +106,7 @@ export async function applyExtractionOutput(c:any,job:any,output:any){const curr
   }
  }
  const assessmentReferences=observations.some(o=>o.kind==='stage_event'&&o.field==='assessment_completion_reported')?(await c.query('SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 5',[job.lead_id])).rows.map((r:any)=>({id:r.id,mode:r.result?.mode||null,recordedAt:r.created_at})):[];
- const result={eventId,observations,assessmentReferences,sourceRoot:extractionRoot(job),amendment:job.input.amendment||null,sourceType:job.source_type,sourceId:job.source_id,contractVersion:job.contract_version,model:output.model,occurredAt:job.input.occurredAt,originalText:job.input.text,interpretationVersion:'crm-evidence-v2',summary:'从原文提取的结构化信息，不代表已执行行动'};
+ const result={eventId,observations,assessmentReferences,sourceRoot:extractionRoot(job),amendment:job.input.amendment||null,sourceType:job.source_type,sourceId:job.source_id,contractVersion:job.contract_version,model:output.model,occurredAt:job.input.occurredAt,originalText:job.input.text,interpretationVersion:'crm-evidence-v2',...(output.coverageReview?{coverageReview:output.coverageReview}:{}),summary:'从原文提取的结构化信息，不代表已执行行动'};
  await fact(c,job.lead_id,'information.extracted','ai',result,eventId);
  await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[job.lead_id,next]);
  await c.query("UPDATE crm_ai_extractions SET status='completed',output=:p2,model=:p3,completed_at=UTC_TIMESTAMP(6),lease_until=NULL,error_code=NULL WHERE id=:p1",[job.id,result,output.model]);return result;

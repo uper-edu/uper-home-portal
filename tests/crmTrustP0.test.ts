@@ -35,23 +35,16 @@ test("information does not create a business obligation for an enrolled customer
     false,
   );
 });
-if (process.env.MYSQL_P0_TRUST_TEST === "true") {
-  const { readFileSync } = await import("node:fs");
-  const fixture = JSON.parse(
-    readFileSync("/private/tmp/uper-p0-trust-env.json", "utf8"),
-  );
-  assert.equal(
-    fixture.MYSQL_TRIAL_SOCKET,
-    "/private/tmp/uper-mysql-native-cleanup.sock",
-  );
-  assert.match(
-    new URL(fixture.MYSQL_TRIAL_URL).pathname,
-    /^\/uper_trial_native_facts_tasks_browser_/,
-  );
-  Object.assign(process.env, fixture);
-  const { openTrialDatabase } = await import("../cloud/mysql/database.mjs");
-  const db = await openTrialDatabase(fixture);
-  const base = "http://127.0.0.1:4426";
+if (process.env.MYSQL_NATIVE_TEST_ENV) {
+  const {setupNativeTest}=await import('./helpers/mysql.mjs');
+  await setupNativeTest('p0Rollback');process.env.PLATFORM_MODE='local';
+  const {openTrialDatabase}=await import('../cloud/mysql/database.mjs');
+  const db=await openTrialDatabase(process.env);
+  const express=(await import('express')).default;
+  const {mountPortal}=await import('../server/portal/runtime.ts');
+  const app=express();app.use(express.json());await mountPortal(app);
+  const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));
+  const base='http://127.0.0.1:'+(server.address() as any).port;
   function browser() {
     const cookies = new Map<string, string>();
     return async (path: string, body?: any, method?: string) => {
@@ -80,7 +73,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
     for (const [b, name] of [
       [sales, "Fadhil"],
       [other, "Wigar"],
-      [leader, "Robert"],
+      [leader, "Suki"],
     ] as const)
       assert.equal(
         (await b("/api/crm/auth/login", { loginId: name, password: name }))
@@ -91,7 +84,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
       profile = {
         fullName: "Putri Lestari",
         email: stamp + "@example.invalid",
-        whatsapp: "000" + Date.now(),
+        whatsapp: "+12025550171",
         goal: "Work in China",
         reportedLevel: "Beginner",
         city: "Jakarta",
@@ -212,7 +205,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
     assert.equal(final.facts.filter((f:any)=>f.kind==='stage.changed').length,1);
     const refresh = await visitor("/api/portal/register", {
       ...profile,
-      city: "Bandung",
+      city: "Other", cityDetail: "Bandung",
     });
     assert.equal(refresh.data.lead.id, id);
     assert.equal(refresh.data.lead.owner, "Fadhil");
@@ -259,9 +252,9 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
     await visitor("/api/portal/new-person", {});
     const separate = await visitor("/api/portal/register", {
       ...profile,
-      fullName: "TEST separate person",
+      fullName: "Dewi Lestari",
       email: "separate-" + stamp + "@example.invalid",
-      whatsapp: "008" + Date.now(),
+      whatsapp: "+12025550172",
     });
     assert.equal(separate.status, 200);
     assert.notEqual(separate.data.lead.id, id);
@@ -273,6 +266,7 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
       requestId: "rollback-" + stamp,
       summary: "TEST rolled back note",
     };
+    const rollbackBefore=(await sales(`/api/crm/leads/${id}/trust`)).data;
     try {
       assert.equal(
         (await sales(`/api/crm/leads/${id}/information`, failBody)).status,
@@ -281,6 +275,8 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
     } finally {
       await db.query("DROP TRIGGER p0_fail_operation");
     }
+    const rollbackAfter=(await sales(`/api/crm/leads/${id}/trust`)).data;
+    assert.deepEqual(rollbackAfter.facts,rollbackBefore.facts);
     assert.equal(
       (await sales(`/api/crm/leads/${id}/operations/${failBody.requestId}`))
         .status,
@@ -291,7 +287,9 @@ if (process.env.MYSQL_P0_TRUST_TEST === "true") {
       200,
     );
   });
+  await new Promise<void>(r=>server.close(()=>r()));
   await db.end();
+  const {pool}=await import('../server/portal/store.ts');await pool.end();
 }
 
 else test('P0 native identity and rollback require explicit independent MySQL',{skip:'MYSQL_NATIVE_TEST_ENV not configured; destructive trigger scenario not run on3000'},()=>{});

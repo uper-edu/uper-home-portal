@@ -49,7 +49,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
   assert.ok(repeated.every(r=>r.status===200&&r.data.replayed===true));
   for(const action of ['information','task-actions','engagement-actions','identity-actions']){const r=await sales(path(a,action),request);assert.equal(r.status,action==='identity-actions'?403:action==='task-actions'?410:409);assert.equal(r.data.lead,undefined);}
   assert.equal((await sales(path(a),{...request,reason:'different'})).status,409);
-  assert.equal((await manager('/api/crm/leads/'+a,{owner:'Wigar'},'PATCH')).status,200);
+  assert.equal((await manager('/api/crm/leads/'+a,{owner:'Wigar',expectedOwner:'Fadhil',expectedOwnerChangedAt:null,ownerChangeReason:'隔离验收转交',ownerChangeRequestId:randomUUID()},'PATCH')).status,200);
   for(const action of ['', '/stage','/operations/'+request.requestId])assert.equal((await sales('/api/crm/leads/'+a+action,action==='/stage'?request:undefined)).status,404);
   const cross=await sales(path(b),request);assert.equal(cross.status,409);assert.equal(cross.data.lead,undefined);assert.equal(cross.data.leadId,undefined);
   assert.equal((await sales(path(b,'operations/'+request.requestId))).status,404);

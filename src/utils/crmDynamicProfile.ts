@@ -99,7 +99,7 @@ export function applyProfileFields(
 ) {
   const explicitAdoption =
     context.sourceType === "sales_edit" && context.adopt === true;
-  const updates = validateProfileUpdates(raw, explicitAdoption),
+  const updates = validateProfileUpdates(raw, explicitAdoption || context.sourceType === "questionnaire"),
     p = {
       ...current,
       profileFieldMeta: { ...(current.profileFieldMeta || {}) },
@@ -126,6 +126,7 @@ export function applyProfileFields(
       unresolved = old.pendingDifferences?.length > 0;
     if (
       !differs &&
+      !(context.sourceType === "questionnaire" && !old.sourceFactIds?.length) &&
       !unresolved &&
       !context.correction &&
       old.valueState !== "withdrawn"

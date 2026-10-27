@@ -5,15 +5,13 @@ import {confirmCrmOperation} from './crmOperationResult';
 export function progressStageError(value:any,current:string,timezone:string){
  if(!value?.enabled)return '';
  if(!isSalesProgressStage(value.stage)||value.stage===current)return '请选择不同于当前阶段的新阶段';
- if(!['specified','unknown'].includes(value.effectiveMode))return '请选择阶段生效时间或明确未知';
- if(value.effectiveMode==='specified'){try{if(Date.parse(progressContactTime(value.effectiveLocal,timezone))>Date.now())return '阶段生效时间不能晚于现在';}catch{return '请填写完整、有效的阶段生效日期、小时和分钟';}}
  if(value.stage==='progress:enrolled'&&value.enrollmentConfirmed!==true)return '请明确确认报名已成立';
  return '';
 }
 export function progressStageBody(value:any,receipt:any,base:any,timezone:string,requestId:string){
  const error=progressStageError(value,base.stage,timezone);if(error)throw Error(error);
  if(!receipt?.lead?.id||!receipt.logId||!receipt.lead.followUpLogs?.some((l:any)=>l.id===receipt.logId))throw Error('本次进展的保存结果尚未确认，不能更新阶段');
- return {requestId,newStage:value.stage,expectedStage:base.stage,expectedStageRevision:base.revision,reason:'',basisRefs:[{type:'sales_record',id:receipt.logId}],effectiveTimeMode:value.effectiveMode,effectiveAt:value.effectiveMode==='specified'?progressContactTime(value.effectiveLocal,timezone):null,...(value.stage==='progress:enrolled'?{enrollmentScope:'course'}:{}),enrollmentConfirmed:value.stage==='progress:enrolled'&&value.enrollmentConfirmed===true};
+ return {requestId,newStage:value.stage,expectedStage:base.stage,expectedStageRevision:base.revision,reason:'',basisRefs:[{type:'sales_record',id:receipt.logId}],effectiveTimeMode:'now',effectiveAt:null,...(value.stage==='progress:enrolled'?{enrollmentScope:'course'}:{}),enrollmentConfirmed:value.stage==='progress:enrolled'&&value.enrollmentConfirmed===true};
 }
 /** A stage failure never retries the already-saved progress. Unknown writes require a read query. */
 export async function submitProgressStage(leadId:string,body:any,request:typeof fetch=fetch,query=false){
