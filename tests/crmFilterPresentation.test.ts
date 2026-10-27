@@ -22,7 +22,7 @@ const matches = (lead: any, patch: any) =>
     "Asia/Jakarta",
     now,
   );
-test("clear conditions retains sorting; role default restores mine without hidden needs-handling restriction", () => {
+test("clear conditions retains sorting; role default restores all accessible without hidden needs-handling restriction", () => {
   const f = {
     ...defaultLeadFilters("own"),
     search: "Maya",
@@ -35,7 +35,7 @@ test("clear conditions retains sorting; role default restores mine without hidde
   assert.equal(c.sort, "activity");
   assert.equal(c.ownership, "all");
   assert.equal(leadConditionCount(c), 0);
-  assert.equal(defaultLeadFilters("own").ownership, "mine");
+  assert.equal(defaultLeadFilters("own").ownership, "all");
   assert.equal(defaultLeadFilters("own").workScope, "all");
   assert.equal(f.search, "Maya");
 });
@@ -110,7 +110,7 @@ test("requests match the evidenced categories visible in the list; unsupported t
 test("restore validates conditions and removes retired filters instead of mapping old stages", () => {
   const f = restoreLeadFilters(
     {
-      ...defaultLeadFilters("own"),
+      ...defaultLeadFilters("own"),ownership:"mine",
       stage: ["New", "progress:proposal"],
       connect: ["Interested"],
       situation: ["historical"],

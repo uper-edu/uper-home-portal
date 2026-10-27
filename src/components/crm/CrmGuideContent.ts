@@ -725,6 +725,11 @@ const originalGuideSections = [
         "完整与精简客户列表显示优先有效约定，Follow-up在近期动态上方突出同一条。逾期优先，其次为未来24小时内、未来已定时间及未定时间；仅日期按原时区当天标今天、次日才逾期，不补造时刻。红色标逾期，琥珀标临近或今天，其他用中性色。其余有效约定可展开；已履行、取消及改约旧记录保留在历史，不作为当前提醒。Follow-up约定标题与时间同行，必要状态靠近时间，内容置于下一行，不再套内层边框。普通约定直接显示保存的时间，无时间显示“未约定时间”，不重复“已约定时间”。展示不新增任务、通知或修改原日期。",
       ],
       [
+        "Owner defaults to All Accessible Leads, including the unassigned pool only where your permissions allow it. This does not grant access to other customers. Explicit owner choices persist. Reset restores the default. An exact legacy Sales default is migrated once; older storage cannot distinguish that default from a manual choice with identical conditions. Empty filters offer a clear-filters action, while an empty accessible scope and a failed load have different messages.",
+        "Penanggung jawab secara default menampilkan Semua calon pelanggan yang dapat diakses, termasuk yang belum ditetapkan hanya bila izin mengizinkan. Ini tidak memberi akses ke pelanggan lain. Pilihan penanggung jawab disimpan. Reset mengembalikan default. Default Sales lama yang persis sama dimigrasikan sekali; penyimpanan lama tidak membedakannya dari pilihan manual dengan kondisi identik. Filter tanpa hasil menyediakan tindakan hapus filter; cakupan kosong dan kegagalan pemuatan diberi pesan berbeda.",
+        "负责人默认全部可见客户，仅包含权限允许的未分配池，不增加其他客户访问权限。主动选择的负责人条件会保留，重置恢复默认。旧版Sales完全默认组合只迁移一次；旧存储无法区分它与条件完全相同的手动选择。筛选无结果可清空筛选，权限内没有客户与加载失败分别提示。",
+      ],
+      [
         "Language preferences change system labels and documentation, not names, transcripts or notes. If a deadline or assessment is missing, inspect its source instead of inventing a value. Use delivery audit for notification issues and contact a CRM Manager for access or configuration issues.",
         "Preferensi bahasa mengubah label sistem dan dokumentasi, bukan nama, transkrip, atau catatan. Jika tenggat atau asesmen tidak tersedia, periksa sumbernya dan jangan membuat nilai sendiri. Gunakan audit pengiriman untuk masalah notifikasi dan hubungi Manajer CRM untuk masalah akses atau konfigurasi.",
         "语言偏好改变系统标签和文档，不改变姓名、对话与备注。缺失截止时间或测评时，应核查来源，不猜造数值。通知问题查看发送审计；权限和配置问题联系 CRM 管理者。",

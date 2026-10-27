@@ -105,7 +105,7 @@ export interface LeadFilters {
 export function defaultLeadFilters(scope: string): LeadFilters {
   return {
     workScope: "all",
-    ownership: scope === "own" ? "mine" : "all",
+    ownership: "all",
     owner: "",
     task: "all",
     search: "",
@@ -351,4 +351,14 @@ export function restoreLeadFilters(saved:any,scope:string):LeadFilters {
  if(!taskOptions.some(o=>o[0]===next.task))next.task='all';
  for(const k of dimensions)next[k]=Array.isArray(saved[k])?saved[k].filter((v:unknown)=>filterDimensions[k].options.some(o=>o[0]===v)):[];
  try{return parseLeadFilters(Object.fromEntries([...new URLSearchParams(filterQuery(next)).keys()].map(k=>[k,(k==='overview'||dimensions.includes(k as Dimension))?new URLSearchParams(filterQuery(next)).getAll(k):new URLSearchParams(filterQuery(next)).get(k)])))}catch{return defaults}
+}
+
+/** Legacy storage did not distinguish an automatic default from a manual choice.
+ * Migrate only the exact old Sales default once; never overwrite a versioned choice. */
+export function restoreLeadFilterPreferences(current:any,legacy:any,scope:string):LeadFilters {
+ if(current?.version===3&&current.filters&&typeof current.filters==='object')return restoreLeadFilters(current.filters,scope);
+ const restored=restoreLeadFilters(legacy,scope);
+ const oldDefault={...defaultLeadFilters(scope),ownership:'mine' as const};
+ if(scope==='own'&&legacy?.ownership==='mine'&&!legacy.unread&&filterQuery(restored)===filterQuery(oldDefault))return {...restored,ownership:'all',owner:''};
+ return restored;
 }

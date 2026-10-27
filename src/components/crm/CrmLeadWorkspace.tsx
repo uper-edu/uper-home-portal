@@ -65,6 +65,7 @@ export interface LeadWorkspaceProps {
   timezone: string;
   loading: boolean;
   loadUnavailable?: boolean;
+  accessibleCount?:number|null;
   employeeId: string;
   employees: Array<{
     id: string;
@@ -92,7 +93,7 @@ export function CrmLeadWorkspace({
   isLight,
   timezone,
   loading,
-  loadUnavailable,
+  loadUnavailable,accessibleCount,
   employeeId,
   employees,
   onSignal,onOpen,onIdentity,onClaim,onProcess,canProcess,canClaim,progressAction,
@@ -271,15 +272,11 @@ export function CrmLeadWorkspace({
           <p className="crm-work-empty" role="alert">{lang==='zh'?'客户列表暂不可用，请查看刷新提示并重试。':lang==='id'?'Daftar pelanggan belum tersedia. Periksa pesan pembaruan dan coba lagi.':'Customer list unavailable. Check the refresh message and retry.'}</p>
         ) : !leads.length ? (
           <div className="crm-work-empty">
-            <p>
-              {t(
-                "No customers match the current filters",
-                "暂无符合当前筛选条件的客户",
-              )}
-            </p>
-            <button type="button" className="crm-work-link" onClick={onReset}>
-              {t("Reset to default view", "恢复默认视图")}
-            </button>
+            <p>{accessibleCount===0 ? t("No accessible leads are currently available","当前没有可访问的客户") : t("No leads match the current filters","当前筛选条件下没有匹配客户")}</p>
+            {accessibleCount!==0&&<button type="button" className="crm-work-link" onClick={onReset}>
+              {t("Clear filters and show all accessible leads","清空筛选，查看全部可见客户")}
+            </button>}
+
           </div>
         ) : view === "table" && !children ? (
           <div

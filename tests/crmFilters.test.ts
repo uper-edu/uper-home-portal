@@ -22,7 +22,7 @@ const lead = (id: string, tasks: any[] = [], extra: any = {}) => ({
 const matches = (l: any, patch: any, tz = "Asia/Jakarta") =>
   leadMatches(l, { ...defaults("all"), ...patch }, "Fadhil", tz, now);
 test("role defaults retain owned customers without tasks; explicit unassigned and clear are independent", () => {
-  assert.equal(defaults("own").ownership, "mine");
+  assert.equal(defaults("own").ownership, "all");
   assert.equal(defaults("all").ownership, "all");
   assert.equal(matches(lead("no-task"), defaults("own")), true);
   assert.equal(

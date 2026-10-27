@@ -44,7 +44,7 @@ import { PolicySaveError } from "../utils/crmPolicyValidation";
 import { restorePolicyDefaults } from "../utils/crmPolicyReset";
 import { CrmLeadFilters } from "../components/crm/CrmLeadFilters";
 import {
-  defaultLeadFilters,
+  defaultLeadFilters,restoreLeadFilterPreferences,
   restoreLeadFilters,
   filterQuery,
   type LeadFilters,
@@ -218,8 +218,13 @@ function CrmWorkspace({
   const [administrative,setAdministrative]=useState(false);
   const [contactPreview,setContactPreview]=useState(false);
   const [contactPreviewDirty,setContactPreviewDirty]=useState(false);
-  const [filters, setFilters] = useState<LeadFilters>(() => {try {const saved=JSON.parse(localStorage.getItem('crm_filters_v2_'+employee.id)||'null');return restoreLeadFilters(saved,employee.roles.includes('crm_leader')?'all':employee.scope);}catch{return defaultLeadFilters(employee.scope);}});
-  useEffect(()=>{localStorage.setItem('crm_filters_v2_'+employee.id,JSON.stringify(filters));},[filters,employee.id]);
+  const [filters, setFilters] = useState<LeadFilters>(() => {try {
+    const current=JSON.parse(localStorage.getItem('crm_filters_v3_'+employee.id)||'null');
+    const legacy=JSON.parse(localStorage.getItem('crm_filters_v2_'+employee.id)||'null');
+    return restoreLeadFilterPreferences(current,legacy,employee.roles.includes('crm_leader')?'all':employee.scope);
+  }catch{return defaultLeadFilters(employee.scope);}});
+  useEffect(()=>{localStorage.setItem('crm_filters_v3_'+employee.id,JSON.stringify({version:3,filters}));},[filters,employee.id]);
+  const [accessibleLeadCount,setAccessibleLeadCount]=useState<number|null>(null);
   const [appliedSearch, setAppliedSearch] = useState("");
   const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
   const [filterTimezone, setFilterTimezone] = useState("Asia/Jakarta");
@@ -505,7 +510,7 @@ function CrmWorkspace({
         if(signal.aborted||disposed)return;
         cursorRef.current=data.changeCursor||"";
         setRefreshProblem("");setLastListRefresh(new Date().toISOString());
-        setOwnerOptions(data.ownerOptions||[]);setFilterTimezone(data.timezone||"Asia/Jakarta");
+        setAccessibleLeadCount(Number.isInteger(data.accessibleCount)?data.accessibleCount:null);setOwnerOptions(data.ownerOptions||[]);setFilterTimezone(data.timezone||"Asia/Jakarta");
         setLeads(previous=>{
           if(reason==='manual'||reason==='initial'||!previous.length){setPendingListOrder(false);return data.leads||[];}
           const stable=stableCrmOrder(previous,data.leads||[]);
@@ -532,7 +537,7 @@ function CrmWorkspace({
       error:(error,channel)=>{
         const code=error instanceof CrmRefreshError?error.code:'unavailable';setRefreshProblem(code==='unauthorized'?code:channel==='changes'?'changes-'+code:code);
         if(code==='unauthorized'){
-          setLeads([]);setOwnerOptions([]);setProcessOverview(null);setNewActivity(null);
+          setLeads([]);setAccessibleLeadCount(null);setOwnerOptions([]);setProcessOverview(null);setNewActivity(null);
           // Preserve unsaved text, but remove customer data after access is revoked.
           const draft=Object.entries(draftCache.current).find(([,draft]:any)=>draft.summary||draft.action||draft.arrangementReason);
           if(draft)setRetainedDraft({id:draft[0],...draft[1]});
@@ -543,7 +548,7 @@ function CrmWorkspace({
     });
     poller.current=current;
     const visibility=()=>current.setVisible(document.visibilityState==='visible');
-    const accessChanged=()=>{setLeads([]);setOwnerOptions([]);setProcessOverview(null);cursorRef.current="";void current.refresh('access');};
+    const accessChanged=()=>{setLeads([]);setAccessibleLeadCount(null);setOwnerOptions([]);setProcessOverview(null);cursorRef.current="";void current.refresh('access');};
     document.addEventListener('visibilitychange',visibility);
     window.addEventListener('uper-access-changed',accessChanged);
     visibility();
@@ -1302,6 +1307,7 @@ function CrmWorkspace({
 
           {!leadAnalysis && <CrmLeadWorkspace
               leads={filteredLeads}
+              accessibleCount={accessibleLeadCount}
               selectedId={isDrawerOpen ? selectedLead?.id : undefined}
               view={viewMode}
               lang={lang}

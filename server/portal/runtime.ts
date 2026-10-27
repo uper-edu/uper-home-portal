@@ -771,6 +771,7 @@ export async function mountPortal(app: Express) {
       );
       res.json({
         ...result,
+        accessibleCount: leads.length,
         changeCursor: changes.cursor,
         processMetrics: processMetrics(result.leads, now),
         dataScope: e.scope,

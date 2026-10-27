@@ -212,7 +212,7 @@ test("all metric drilldowns match counters, preserve AND/OR and enforce owner sc
   }
   const own = filterAndSummarize(
     rows,
-    { ...defaultLeadFilters("own"), overview: ["sales_unanswered"] },
+    { ...defaultLeadFilters("own"), ownership: "mine", overview: ["sales_unanswered"] },
     "sales-a",
     "Asia/Jakarta",
     now,
