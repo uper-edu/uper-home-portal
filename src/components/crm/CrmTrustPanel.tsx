@@ -2,14 +2,14 @@ import {AdminRequiredNote} from '../AdminForm';
 import {useCrmUiText} from './CrmUiLanguage';
 import {AdminFieldLabel} from '../AdminForm';
 import {salesProgressStages,isSalesProgressStage,progressDefinition} from '../../utils/crmSalesProgress';
-import {CrmSalesProgressHistory,progressSourceText,progressSourceTiming} from './CrmSalesProgressHistory';
+import {CrmSalesProgressHistory,progressSourceText,progressSourceTiming,CrmProgressSourceBody} from './CrmSalesProgressHistory';
 import {CrmSimpleAttention} from './CrmSimpleAttention';
 export function CrmTrustPanel(props:any){return props.mode==='identity'?<LegacyCrmTrustPanel {...props}/>:<CrmSimpleAttention {...props}/>;}
 import {contactRestriction} from '../../utils/crmContact';
 import {CrmContactRestriction} from './CrmFollowupContext';
 import {CrmTaskOverlap} from './CrmTaskOverlap';
 import {prepareTaskInput} from '../../utils/crmTaskInput';
-import { confirmCrmOperation } from "../../utils/crmOperationResult";
+import { confirmCrmOperation, confirmedStageLead } from "../../utils/crmOperationResult";
 import {CrmSaveFeedback} from "./CrmDetailWorkspace";
 import { CrmSalesDialog } from "./CrmSalesDialog";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
@@ -46,6 +46,7 @@ export function CrmStageEditor({
     [busy, setBusy] = useState(false),
     [busyAction, setBusyAction] = useState<"save" | "query">("save"),
     [unknown, setUnknown] = useState(false),
+    [retryAllowed, setRetryAllowed] = useState(false),
     [savedStage, setSavedStage] = useState<string | null>(null);
   const pending = useRef<any>(null), inFlight = useRef(false);
   const reasonRef = useRef<HTMLTextAreaElement>(null),enrollmentRef=useRef<HTMLInputElement>(null), id = useId();
@@ -61,8 +62,7 @@ export function CrmStageEditor({
   useEffect(()=>{if(!changed&&!pending.current){setStage(inDrawer?'':currentStage);setBaseStage(currentStage);setBaseRevision(lead.stageRevision||0);}},[currentStage,lead.stageRevision]);
   useEffect(() => { onDirty?.(draftDirty); }, [draftDirty]);
   const finish = (data: any) => {
-    confirmCrmOperation(data, lead.id, "stage");
-    if (data.lead?.id !== lead.id) throw Error("Save response does not match this customer and action");
+    confirmedStageLead(data, lead.id, pending.current?.newStage);
     pending.current = null;
     setUnknown(false);
     setError("");
@@ -71,10 +71,11 @@ export function CrmStageEditor({
     setStage(data.lead.currentStage || "New");setBaseStage(data.lead.currentStage||'New');setBaseRevision(data.lead.stageRevision||0);
     setBasisRefs(initialBasisId?[{type:'sales_record',id:initialBasisId}]:[]);setEnrollmentConfirmed(false);
     setSavedStage(data.lead.currentStage || "New");
+    onDirty?.(false);
     onSaved(data.lead);
   };
   const save = async () => {
-    if (disabled || inFlight.current || (!changed&&!pending.current)) return;
+    if (disabled || inFlight.current || (unknown&&!retryAllowed) || (!changed&&!pending.current)) return;
     if(!pending.current){
       if(!reason.trim()&&!basisRefs.length){setReasonInvalid(true);reasonRef.current?.focus();return;}
       setReasonInvalid(false);
@@ -86,6 +87,7 @@ export function CrmStageEditor({
       reason,basisRefs,...(stage==='progress:enrolled'?{enrollmentScope:'course'}:{}),effectiveTimeMode:'now',effectiveAt:null,enrollmentConfirmed,
     });
     inFlight.current = true;
+    setRetryAllowed(false);
     setBusyAction("save"); setBusy(true); onBusy?.(true); setError("");
     let failure = "stage_save_unconfirmed";
     try {
@@ -119,13 +121,13 @@ export function CrmStageEditor({
     try {
       const r = await request("/api/crm/leads/" + lead.id + "/operations/" + pending.current.requestId);
       const d = await r.json();
-      if (!r.ok) { if (r.status === 404) failure = "stage_result_not_found"; throw Error(failure); }
+      if (!r.ok) { if (r.status === 404) {failure = "stage_result_not_found";setRetryAllowed(true);} throw Error(failure); }
       finish(d);
     } catch { setError(failure); }
     finally { inFlight.current = false; setBusy(false); onBusy?.(false); }
   };
   const errorText = error === "stage_save_unconfirmed"
-    ? t("The save result is not confirmed. Your draft is kept; query the result or retry the original save.", "Hasil penyimpanan belum terkonfirmasi. Draf tetap tersedia; periksa hasil atau ulangi penyimpanan awal.", "保存结果尚未确认，草稿已保留。请查询结果或重试原保存。")
+    ? t("The save result is not confirmed. Your draft is kept; query the result before retrying.", "Hasil penyimpanan belum terkonfirmasi. Draf tetap tersedia; periksa hasil sebelum mengulangi penyimpanan.", "保存结果尚未确认，草稿已保留，请先查询结果。")
     : error === "stage_query_unavailable"
       ? t("The result could not be checked. Your draft is kept. Try querying again.", "Hasil belum dapat diperiksa. Draf tetap tersedia. Coba periksa lagi.", "暂时无法查询保存结果，草稿已保留，请重试查询。")
       : error === "stage_result_not_found"
@@ -136,10 +138,10 @@ export function CrmStageEditor({
   const chosen=salesProgressStages.find(v=>v[0]===stage);
   if(!isSalesProgressStage(currentStage))options.unshift({value:currentStage as any,label:crmValue(currentStage,lang)+'（旧阶段，待确认）'});
   const actions=(<div className={inDrawer?"crm-editor-actions crm-stage-drawer-actions":"crm-stage-actions"}>
-          <button type="button" className="crm-work-button crm-editor-primary" data-primary="true" disabled={disabled || busy || (!changed&&!unknown) || (versionConflict&&!unknown)} onClick={save}>
+          <button type="button" className="crm-work-button crm-editor-primary" data-primary="true" disabled={disabled || busy || (unknown&&!retryAllowed) || (!changed&&!unknown) || (versionConflict&&!unknown)} onClick={save}>
             {busy && busyAction === "save" ? t("Saving…", "Menyimpan…", "保存中…") : unknown ? t("Retry original save", "Ulangi penyimpanan awal", "重试原保存") : t('Save','Simpan','保存')}
           </button>
-          {!unknown && <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{if(inDrawer){onClose?.();return;}setStage(currentStage);setReason('');setBasisRefs([]);setEnrollmentConfirmed(false);}}>{savedStage&&!changed ? ui("完成") : ui("取消")}</button>}
+          {!unknown && <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{if(inDrawer){onClose?.();return;}setStage(currentStage);setReason('');setBasisRefs([]);setEnrollmentConfirmed(false);}}>{!inDrawer&&savedStage&&!changed ? ui("完成") : ui("取消")}</button>}
 
           {unknown && <button type="button" className="crm-work-button" disabled={busy} onClick={query}>{busy && busyAction === "query" ? t("Checking…", "Memeriksa…", "查询中…") : t("Query save result", "Periksa hasil penyimpanan", "查询保存结果")}</button>}
         </div>);
@@ -169,7 +171,7 @@ export function CrmStageEditor({
         {reasonInvalid && <p id={id + "-error"} role="alert" className="crm-stage-error">{t("Enter the reason for this stage change before saving.", "Isi alasan perubahan tahap sebelum menyimpan.", "请关联依据或填写事实说明，已报名还须明确确认报名成立。")}</p>}
         <p className="crm-stage-help">{ui("可关联原始记录，也可填写具体事实说明；无需重复抄写已关联原文。")}</p>
         {contextError&&<p role="alert">{contextError}<button type="button" onClick={()=>void loadContext()}>{ui("重新加载依据")}</button></p>}
-        <details className="crm-stage-source-picker" open={Boolean(initialBasisId)}><summary>{ui("关联原始依据（已选")}{basisRefs.length}{ui("，最多5条）")}</summary>{stageContext?.sources.map((source:any)=>{const checked=basisRefs.some(s=>s.type===source.type&&s.id===source.id);return <div key={source.type+source.id}><label><input type="checkbox" disabled={busy||unknown||(!checked&&basisRefs.length>=5)} checked={checked} onChange={()=>setBasisRefs(v=>checked?v.filter(s=>s.type!==source.type||s.id!==source.id):[...v,{type:source.type,id:source.id}])}/>{ui(source.label)} · {progressSourceTiming(source,lang)}</label><p>{progressSourceText(source,lang)}</p></div>;})}{stageContext&&!stageContext.sources.length&&<p>{ui("没有可关联的原始记录，请填写具体事实说明。")}</p>}</details>
+        <details className="crm-stage-source-picker" open={Boolean(initialBasisId)}><summary>{ui("关联原始依据（已选")}{basisRefs.length}{ui("，最多5条）")}</summary>{stageContext?.sources.map((source:any)=>{const checked=basisRefs.some(s=>s.type===source.type&&s.id===source.id);return <div key={source.type+source.id}><label><input type="checkbox" disabled={busy||unknown||(!checked&&basisRefs.length>=5)} checked={checked} onChange={()=>setBasisRefs(v=>checked?v.filter(s=>s.type!==source.type||s.id!==source.id):[...v,{type:source.type,id:source.id}])}/>{ui(source.label)} · {progressSourceTiming(source,lang)}</label><CrmProgressSourceBody source={source} lang={lang}/></div>;})}{stageContext&&!stageContext.sources.length&&<p>{ui("没有可关联的原始记录，请填写具体事实说明。")}</p>}</details>
         {stage==='progress:enrolled'&&<label><input ref={enrollmentRef} type="checkbox" required aria-required="true" disabled={busy||unknown} checked={enrollmentConfirmed} onChange={e=>{setEnrollmentConfirmed(e.target.checked);setError('');}}/>{ui("确认正式课程报名已成立（不含试听预约）；依据须说明具体课程及确认事实 *")}</label>}
 
 

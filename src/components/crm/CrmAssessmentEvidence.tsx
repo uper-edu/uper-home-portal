@@ -75,9 +75,9 @@ export function CrmAssessmentEvidence({
             "已记录音频播放异常，请先核实受影响的听力题，再使用此起点建议。",
           ),
           incomplete: t(
-            "Some questions were unanswered. Complete the missing items or a full assessment to clarify the starting point.",
-            "Sebagian soal belum dijawab. Lengkapi soal atau ikuti asesmen lengkap untuk memperjelas titik awal.",
-            "存在未作答题，建议补充作答或完成完整测评，以明确学习起点。",
+            "Some questions were unanswered. Consider a new or full assessment to clarify the starting point.",
+            "Sebagian soal belum dijawab. Pertimbangkan asesmen baru atau lengkap untuk memperjelas titik awal.",
+            "存在未作答题，建议重新测评或完成完整测评，以明确学习起点。",
           ),
           inconsistent: t(
             "Performance varies across difficulty levels. Review the foundation items before choosing a starting point.",
@@ -92,9 +92,9 @@ export function CrmAssessmentEvidence({
           clear: "",
         }[result.screeningPlacement.reason] ||
         t(
-          "The saved result requests review, but no reason was recorded.",
-          "Hasil tersimpan memerlukan peninjauan, tetapi alasannya belum dicatat.",
-          "已保存结果标记为待复核，但未记录原因。",
+          "The saved result indicates uncertainty, but the specific limitation was not recorded. Consider a new assessment before selecting a learning starting point.",
+          "Hasil tersimpan menunjukkan ketidakpastian, tetapi batasannya tidak dicatat. Pertimbangkan asesmen baru sebelum memilih titik awal belajar.",
+          "已保存结果存在不确定性，但未记录具体限制。建议补充测评后再确定学习起点。",
         )
       : "";
   const needsEvidence = paper.kind === "assessment" && paper.evidenceIncomplete;
@@ -191,20 +191,20 @@ export function CrmAssessmentEvidence({
         <aside
           className="crm-assessment-review"
           aria-label={t(
-            "Evidence to check",
-            "Bukti perlu diperiksa",
-            "需核实的依据",
+            "Limitations and suggestions",
+            "Batasan dan saran",
+            "依据限制与建议",
           )}
         >
           <h3>
-            {t("Evidence to check", "Bukti perlu diperiksa", "需核实的依据")}
+            {t("Limitations and suggestions", "Batasan dan saran", "依据限制与建议")}
           </h3>
           <p>
             {reviewReason ||
               t(
-                "Saved evidence is missing or inconsistent. Inspect the assessment record; do not infer a level from its score.",
-                "Bukti tersimpan hilang atau tidak konsisten. Periksa catatan asesmen; jangan menyimpulkan level dari skor.",
-                "已保存依据缺失或不一致，请查看测评记录，不凭分数推断等级。",
+                "Saved evidence is missing or inconsistent, so a learning starting point cannot be determined from the score alone. Consider a new assessment if a starting point is needed.",
+                "Bukti tersimpan tidak lengkap atau tidak konsisten; titik awal belajar tidak dapat ditentukan hanya dari skor. Pertimbangkan asesmen baru bila titik awal diperlukan.",
+                "已保存依据缺失或不一致，不能仅凭分数确定学习起点。如需确定起点，建议补充测评。",
               )}
           </p>
         </aside>

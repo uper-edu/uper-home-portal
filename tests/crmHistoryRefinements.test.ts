@@ -36,9 +36,10 @@ test('distinct field count differs from write count and amendment title uses onl
  assert.deepEqual(historyAmendmentTitle(a,[item('root'),item('fix',{scope:'am',field:'budgetAmount',label:'课程总预算'}),item('fix2',{scope:'am',field:'budgetAmount',label:'课程总预算'})]),{kind:'修正',labels:['课程总预算']});
  assert.deepEqual(historyAmendmentTitle(event('s','record.amended',{id:'s',contactResult:'No Response'}),[]),{kind:'补充',labels:['联系结果']});
 });
-test('questionnaire original has one disclosure title, full text and a separate amendment action',()=>{
- const g=source(),html=render(React.createElement(CrmHistoryQuestionnaireOriginal,{group:g,action:React.createElement('button',{},'补充／修正记录')}));
- assert.equal((html.match(/<summary>/g)||[]).length,1);assert.match(html,/问卷原始答案/);assert.match(html,/客户问卷原文/);assert.match(html,/crm-history-original-g%3Amain/);assert.match(html,/<button>补充／修正记录<\/button>/);assert.doesNotMatch(html,/原文与当时记录|查看问卷原始答案/);
+test('questionnaire evidence is structured, preserves citation and a separate amendment action, never exposes raw JSON',()=>{
+ const g=source();g.root.payload={answers:{fullName:'客户原名',city:'Bandung',internalId:'PRIVATE_INTERNAL'}};g.original=JSON.stringify(g.root.payload.answers);const before=JSON.stringify(g);
+ const html=render(React.createElement(CrmHistoryQuestionnaireOriginal,{group:g,action:React.createElement('button',{},'补充／修正记录')}));
+ assert.match(html,/客户问卷摘要/);assert.match(html,/客户原名/);assert.match(html,/Bandung/);assert.match(html,/crm-history-original-g%3Amain/);assert.match(html,/<button>补充／修正记录<\/button>/);assert.doesNotMatch(html,/<summary>|PRIVATE_INTERNAL|internalId|fullName|查看问卷原始答案/);assert.equal(JSON.stringify(g),before);
 });
 const message=(id='db',conversationId='conv')=>event('message:'+id,'customer.message',{conversationId},{sourceRecordId:id,original:'请顾问通过WhatsApp联系我'});
 const request=(id='r',extra:any={})=>event(id,'task.request_evidence',{action:'handoff',messageId:'request',conversationId:'conv',...extra},{original:'请顾问通过WhatsApp联系我'});

@@ -567,3 +567,39 @@
 /* Localised short labels keep an aligned value column without changing the four-column ratio. */
 .crm-customer-workspace[data-open=false][lang=en] .crm-learning-details>.crm-learning-need{grid-template-columns:6.5em minmax(0,1fr)}
 .crm-customer-workspace[data-open=false][lang=id] .crm-learning-details>.crm-learning-need{grid-template-columns:5.5em minmax(0,1fr)}
+/* Questionnaire evidence: separate source title and content by the standard 16px step. */
+.crm-questionnaire-evidence { padding-top:16px; overflow-wrap:anywhere; }
+.crm-questionnaire-evidence .crm-history-details { row-gap:12px; }
+.crm-questionnaire-evidence .crm-history-details ul { margin:0; padding-left:0; list-style:none; }
+.crm-questionnaire-evidence .crm-history-details li+li { margin-top:4px; }
+.crm-questionnaire-evidence { font-family:inherit; font-size:14px; line-height:1.6; }
+.crm-questionnaire-evidence .crm-history-details dt { font-family:inherit; font-size:13px; line-height:1.6; font-weight:400; }
+.crm-questionnaire-evidence .crm-history-details dd,
+.crm-questionnaire-evidence .crm-history-details li { font-family:inherit; font-size:14px; line-height:1.6; font-weight:400; }
+.crm-questionnaire-evidence .crm-history-details time { font-family:inherit; font-size:13px; line-height:1.6; }
+.crm-questionnaire-evidence .crm-history-details dt,
+.crm-questionnaire-evidence .crm-history-details dd {text-align:left;}
+.crm-questionnaire-evidence .crm-history-details li {text-align:left;}
+/* Agreements share existing admin semantic pairs; only the local cue is tinted. */
+.crm-list-agreement{min-width:0;padding:8px 0;border-bottom:1px solid var(--cw-border)}
+.crm-list-agreement:last-child{border-bottom:0}
+.crm-list-agreement-heading .crm-list-agreements-label{font-size:13px;color:var(--admin-text)}
+.crm-agreement-status{font-size:12px;line-height:1.6;color:var(--admin-muted)}
+.crm-agreement-status[data-tone=danger]{color:var(--admin-danger)}
+.crm-agreement-status[data-tone=warning]{color:var(--admin-warning)}
+.crm-list-agreement[data-tone=danger]{border-left:3px solid var(--admin-danger-border);padding-left:10px}
+.crm-list-agreement[data-tone=warning]{border-left:3px solid var(--admin-warning-border);padding-left:10px}
+.crm-list-agreements.is-detail{margin-bottom:16px;padding:0;border:0;border-radius:0}
+.crm-list-agreements.is-detail .crm-list-agreement{padding-top:0}
+.crm-agreement-action{margin:4px 0;font-size:14px;line-height:1.6;color:var(--admin-text);overflow-wrap:anywhere}
+.crm-list-agreements .crm-list-agreement-date{margin:4px 0 0;font-size:13px;line-height:1.6;color:var(--admin-muted);text-align:left}
+.crm-agreement-more,.crm-other-agreements summary{font-size:13px;margin-top:8px;cursor:pointer}
+.crm-list-agreements .crm-work-link:focus-visible,.crm-other-agreements summary:focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
+/* Compact record-list metadata follows its 12px body, not the 13px full view. */
+.crm-customer-workspace[data-open=true] .crm-list-agreements:not(.is-detail) .crm-list-agreement-date{font-family:inherit;font-size:12px;line-height:1.5;font-weight:400;letter-spacing:normal}
+
+/* Follow-up: one compact heading line, body below; no nested card frame. */
+.crm-list-agreements.is-detail .crm-list-agreement-heading{gap:4px 16px;margin-bottom:8px}
+.crm-list-agreements.is-detail .crm-agreement-meta{display:flex;align-items:baseline;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px;margin-left:auto;max-width:100%;min-width:0}
+.crm-list-agreements.is-detail .crm-list-agreement-date{margin:0;font-family:inherit;font-size:12px;line-height:1.5;font-weight:400;letter-spacing:normal;overflow-wrap:anywhere}
+.crm-list-agreements.is-detail .crm-agreement-action{margin:0;font-size:14px;line-height:1.6}

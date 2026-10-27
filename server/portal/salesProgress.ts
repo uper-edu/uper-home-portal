@@ -1,3 +1,4 @@
+import {questionnaireAnswers} from '../../src/utils/crmQuestionnaireEvidence.ts';
 import {assessmentOccurrence as assessmentTime,establishedFactMilestones} from './factMilestones.ts';
 import {isSalesProgressStage} from '../../src/utils/crmSalesProgress.ts';
 import {activeExtractionEvidence} from '../../src/utils/crmExtractionEvidence.ts';
@@ -9,11 +10,12 @@ export async function salesProgressContext(c:any,leadId:string,profile:any){
  const messages=(await c.query("SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC",[leadId])).rows;
  const attempts=(await c.query('SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC',[leadId])).rows;
  const extractions=(await c.query('SELECT * FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at,id',[leadId])).rows;
+ const campaigns=(await c.query('SELECT id,code,config FROM trial_campaigns')).rows;
  const sources:any[]=[
   ...(profile.followUpLogs||[]).map((l:any)=>({type:'sales_record',id:l.id,label:'销售记录',text:l.summary||'',occurredAt:iso(l.occurredAt),recordedAt:iso(l.at||l.timestamp),timeBasis:'staff_reported'})),
   ...messages.map((m:any)=>({type:'customer_message',id:m.id,label:'客户对话',text:m.content,occurredAt:null,receivedAt:iso(m.created_at),recordedAt:iso(m.created_at),timeBasis:'received'})),
   ...attempts.map((a:any)=>({type:'assessment',id:a.id,label:'真实测评记录',text:JSON.stringify(a.result||{}),occurredAt:assessmentTime(a),receivedAt:iso(a.created_at),recordedAt:iso(a.created_at),timeBasis:'reported_completion'})),
-  ...facts.filter((f:any)=>f.kind==='questionnaire.submitted').map((f:any)=>({type:'fact',id:f.id,label:'客户问卷',text:JSON.stringify(f.data.answers||{}),occurredAt:null,receivedAt:iso(f.created_at),recordedAt:iso(f.created_at),timeBasis:'received'}))
+  ...facts.filter((f:any)=>f.kind==='questionnaire.submitted').map((f:any)=>({type:'fact',id:f.id,label:'客户问卷',sourceKind:'questionnaire',questionnaire:questionnaireAnswers({answers:{...f.data.answers,campaignName:f.data.answers?.campaignName||campaigns.find((v:any)=>[v.id,v.code].includes(f.data.answers?.campaignId))?.config?.name}}),submittedAt:f.data.answers?.submittedAt||null,text:'',occurredAt:null,receivedAt:iso(f.created_at),recordedAt:iso(f.created_at),timeBasis:'received'}))
  ];
  // Corrections have their own exact text and record identity. The original interaction remains linked separately.
  for(const a of profile.recordAmendments||[]){const root=sources.find(s=>s.id===(a.targetLogId||a.targetFactId));sources.push({type:'sales_amendment',id:a.id,label:a.kind==='correction'?'销售修正':'销售补充',text:a.text||'',occurredAt:root?.occurredAt||null,recordedAt:iso(a.recordedAt),timeBasis:'linked_interaction',relatedBasis:root?{type:root.type,id:root.id}:null});}

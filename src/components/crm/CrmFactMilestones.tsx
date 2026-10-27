@@ -10,7 +10,7 @@ import { crmAssessmentSummary } from "../../utils/crmAssessment";
 import { CrmEvidenceAction } from "./CrmEvidenceAction";
 import { CrmOperationLayer } from "./CrmOperationLayer";
 import {
-  progressSourceText,
+  progressSourceText,CrmProgressSourceBody,
   progressSourceTiming,
 } from "./CrmSalesProgressHistory";
 export function FactMilestoneTime({ event, compact = false }: any) {
@@ -138,7 +138,7 @@ export function CrmFactMilestones({
     >
       <strong>{ui(s.label || "原始依据")}</strong>
       <span>{progressSourceTiming(s, lang)}</span>
-      <p>{progressSourceText(s, lang)}</p>
+      <CrmProgressSourceBody source={s} lang={lang}/>
     </div>
   );
   if (context && !error && !groups.length) return null;

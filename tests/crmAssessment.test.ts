@@ -35,7 +35,7 @@ test("Quick is a starting-point suggestion with its own denominator and review s
   assert.equal(crmAssessmentSummary(value, "en").conclusion, "Suggested start: HSK 3 consolidation");
   assert.equal(crmAssessmentSummary(value, "en").detail, "Quick assessment · 30/30 pts");
   value.latestAssessment!.screeningPlacement!.needsReview = true;
-  assert.equal(crmAssessmentSummary(value, "zh").conclusion, "建议起点：HSK 3 进阶内容 · 待复核");
+  assert.equal(crmAssessmentSummary(value, "zh").conclusion, "建议起点：HSK 3 进阶内容 · 未记录具体限制");
   assert.doesNotMatch(render(value, "en"), /threshold|passed|Confirmed|✓/);
 });
 
@@ -58,22 +58,22 @@ test("one saved attempt supplies score and maximum without blending stale lead f
 
 test("legacy prose, unknown modes and missing structures remain unverified rather than inferred from points", () => {
   const legacy = lead({levelSource: "assessment", levelConfirmed: "Paper HSK 3 threshold reached (provisional)", quizScore: 100});
-  assert.equal(crmAssessmentSummary(legacy, "zh").conclusion, "结果待复核");
+  assert.equal(crmAssessmentSummary(legacy, "zh").conclusion, "依据不完整，无法确定学习起点");
   assert.equal(crmAssessmentSummary(legacy, "en").detail, "Historical assessment · 100 pts (maximum unknown)");
   const quick = withResult(result("express"));
   delete quick.latestAssessment!.screeningPlacement;
-  assert.equal(crmAssessmentSummary(quick, "en").conclusion, "Starting point pending review");
+  assert.equal(crmAssessmentSummary(quick, "en").conclusion, "Starting-point evidence incomplete");
   for (const malformed of [[], {attempt: null, thresholds: "bad"}, {attempt: {mode: "future"}, score: 90, maxScore: 100}]) {
-    assert.equal(crmAssessmentSummary(lead({latestAssessment: malformed, levelSource: "assessment"}), "en").conclusion, "Result pending review");
+    assert.equal(crmAssessmentSummary(lead({latestAssessment: malformed, levelSource: "assessment"}), "en").conclusion, "Evidence incomplete; starting point undetermined");
   }
 });
 
 test("duplicate or inconsistent saved thresholds are review cases, not proficiency claims", () => {
   const value = withResult(result("full"));
   value.latestAssessment!.thresholds[0].reached = false;
-  assert.equal(crmAssessmentSummary(value, "en").conclusion, "Result pending review");
+  assert.equal(crmAssessmentSummary(value, "en").conclusion, "Evidence incomplete; starting point undetermined");
   value.latestAssessment!.thresholds[0] = value.latestAssessment!.thresholds[1];
-  assert.equal(crmAssessmentSummary(value, "zh").conclusion, "结果待复核");
+  assert.equal(crmAssessmentSummary(value, "zh").conclusion, "依据不完整，无法确定学习起点");
 });
 
 test("self-reported, beginner and unknown states do not pretend an assessment occurred", () => {
@@ -96,5 +96,30 @@ test("standard and expanded summaries match; three stacked fields have no tick, 
       else assert.doesNotMatch(standard, /Work in China|assessment ·|placement|Provisional|Suggested|pts/);
     }
     assert.equal(JSON.stringify(value), before);
+  }
+});
+
+test('718: legacy facts and each uncertainty show limitations, never an unclosable review state; source is immutable', async () => {
+  const {CrmAssessmentEvidence}=await import('../src/components/crm/CrmAssessmentEvidence.tsx');
+  const examples=[
+    {reason:'audio_error',label:'听力播放异常',advice:'听力题'},
+    {reason:'incomplete',label:'存在未答题',advice:'重新测评'},
+    {reason:'inconsistent',label:'不同难度表现不一致',advice:'基础题'},
+    {reason:'boundary',label:'接近学习起点分界',advice:'完整测评'},
+    {reason:'unknown',label:'未记录具体限制',advice:'补充测评'},
+  ];
+  const legacy=lead({quizScore:28,quizMaxScore:30,levelSource:'assessment'});
+  const before=JSON.stringify(legacy);
+  const legacyHtml=renderToStaticMarkup(React.createElement(CrmAssessmentEvidence,{lead:legacy,lang:'zh',timezone:'Asia/Jakarta'}));
+  assert.match(legacyHtml,/28\/30 分/);assert.match(legacyHtml,/依据不完整，无法确定学习起点/);assert.match(legacyHtml,/建议补充测评/);
+  assert.doesNotMatch(legacyHtml,/待复核|复核按钮/);assert.equal(JSON.stringify(legacy),before);
+  for(const row of examples){
+    const value=withResult(result('express'));
+    Object.assign(value.latestAssessment!.screeningPlacement!,{needsReview:true,reason:row.reason});
+    const original=JSON.stringify(value);
+    const html=renderToStaticMarkup(React.createElement(CrmAssessmentEvidence,{lead:value,lang:'zh',timezone:'Asia/Jakarta'}));
+    assert.match(html,new RegExp(row.label));assert.match(html,new RegExp(row.advice));
+    assert.doesNotMatch(html,/待复核|pending review/);
+    assert.equal(JSON.stringify(value),original);
   }
 });

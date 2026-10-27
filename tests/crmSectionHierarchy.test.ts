@@ -13,7 +13,7 @@ test('assessment summaries put exact completion with type, conclusion with score
  const html=content({leadId:'a',attempts:[{id:'attempt-2',recordedAt:'2026-10-26T12:01:02Z',result}],current:{latestAssessment:result,levelSource:'assessment'}});
  const summary=html.match(/<summary[^>]*>[\s\S]*?<\/summary>/)?.[0]||'';
  assert.doesNotMatch(summary,/<svg|chevron/);assert.match(summary,/<strong>完整测评<\/strong><time/);assert.match(summary,/dateTime="2026-10-26T11:50:56Z"/i);
- assert.match(summary,/结果待复核/);assert.match(summary,/42\/100/);assert.doesNotMatch(summary,/记录时间/);assert.doesNotMatch(html,/记录时间/);
+ assert.match(summary,/依据不完整，无法确定学习起点/);assert.match(summary,/42\/100/);assert.doesNotMatch(summary,/记录时间/);assert.doesNotMatch(html,/记录时间/);
 });
 
 test('assessment omits customer-level source section without changing the saved original text',()=>{const raw='客户原始测评说明 <原文>';const current={...lead,quizResultSummary:raw};const html=content({leadId:'a',attempts:[],current:{}},false,current);assert.doesNotMatch(html,/客户自报水平|客户自报与客户级原始依据/);assert.doesNotMatch(html,/客户级原始依据|客户原始测评说明/);assert.equal(current.quizResultSummary,raw);assert.equal(current.reportedLevel,'Beginner');});
@@ -24,7 +24,7 @@ test('removing generic help preserves substantial same-type differences, cross-t
  const attempt=(mode:'full'|'express',correct:boolean,index:number)=>{const a=newHskAttempt(mode,'00000000-0000-4000-8000-'+String(index).padStart(12,'0'));for(const q of getVersionQuestions(mode,a.examVersion,a.scoringVersion))a.answers[q.id]=q.options.find(o=>o.isCorrect===correct)!.id;a.completedAt=a.startedAt;return gradeHskAttempt(a,'zh');};
  const low=attempt('full',false,1),high=attempt('full',true,2),quick=attempt('express',true,3);
  const data={leadId:'a',attempts:[{id:low.attempt.attemptId,recordedAt:'2026-10-26T12:00:00Z',result:low},{id:high.attempt.attemptId,recordedAt:'2026-10-25T12:00:00Z',result:high}],current:{latestAssessment:low,levelSource:'assessment'}};
- const before=JSON.stringify(data),html=content(data);assert.match(html,/结果差异明显 · 请人工复核/);assert.match(html,/对比记录 · 待复核/);assert.doesNotMatch(html,/测评口径与差异说明/);assert.equal(JSON.stringify(data),before);
+ const before=JSON.stringify(data),html=content(data);assert.match(html,/测评结果存在明显差异/);assert.match(html,/记录差异明显/);assert.doesNotMatch(html,/测评口径与差异说明/);assert.equal(JSON.stringify(data),before);
  const cross=content({...data,attempts:[data.attempts[0],{id:quick.attempt.attemptId,recordedAt:'2026-10-25T12:00:00Z',result:quick}]});assert.match(cross,/依据类型不同 · 请核实结论/);
  const incomplete={...quick,unansweredCount:1,screeningPlacement:{...quick.screeningPlacement,needsReview:true,reason:'incomplete'}};
  const review=content({...data,attempts:[{id:quick.attempt.attemptId,result:incomplete}],current:{latestAssessment:incomplete,levelSource:'assessment'}});assert.match(review,/存在未作答题/);assert.doesNotMatch(review,/测评口径与差异说明/);

@@ -1,0 +1,100 @@
+import {
+  questionnaireAnswers,
+  questionnaireFields,
+  questionnaireTimes,
+} from "../../utils/crmQuestionnaireEvidence";
+import { useCrmUiLanguage, useCrmUiText } from "./CrmUiLanguage";
+import { crmValue } from "../../utils/crmLanguage";
+import {
+  formatCrmOperatingTime,
+  viewerTimeZone,
+} from "../../utils/crmOperatingTime";
+export function CrmQuestionnaireEvidence({ source, lang: provided }: any) {
+  const lang = useCrmUiLanguage(provided),
+    ui = useCrmUiText(provided),
+    answers = questionnaireAnswers(source),
+    times = questionnaireTimes(source);
+  const literal = new Set(["fullName", "whatsapp", "email", "campaignName"]);
+  const show = (key: string, v: string) =>
+    literal.has(key)
+      ? v
+      : key === "city" && v === "Jakarta"
+        ? lang === "zh"
+          ? "雅加达"
+          : "Jakarta"
+        : (
+            {
+              standalone_chat: ui("学习咨询入口"),
+              chat: ui("学习咨询入口"),
+              website: ui("官网"),
+              organic: ui("自然访问"),
+            } as any
+          )[v] || crmValue(v, lang);
+  return (
+    <section
+      className="crm-questionnaire-evidence"
+      aria-label={ui("客户问卷摘要")}
+    >
+      <dl className="crm-history-details">
+        {questionnaireFields
+          .filter(
+            ([key]) =>
+              answers[key] != null &&
+              (!Array.isArray(answers[key]) || answers[key].length),
+          )
+          .map(([key, label]) => (
+            <div key={key}>
+              <dt>{ui(label)}</dt>
+              <dd>
+                {Array.isArray(answers[key]) ? (
+                  <ul>
+                    {answers[key].map((v: string) => (
+                      <li key={v}>{show(key, v)}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  show(key, answers[key])
+                )}
+              </dd>
+            </div>
+          ))}
+        {!answers.campaignName && (
+          <div>
+            <dt>{ui("营销活动")}</dt>
+            <dd>{ui("原问卷未记录活动名称")}</dd>
+          </div>
+        )}
+        {times.submittedAt && (
+          <div>
+            <dt>{ui("客户提交时间（问卷上报）")}</dt>
+            <dd>
+              <time dateTime={times.submittedAt}>
+                {formatCrmOperatingTime(times.submittedAt, viewerTimeZone())}
+              </time>
+            </dd>
+          </div>
+        )}
+        {times.receivedAt && (
+          <div>
+            <dt>{ui("系统接收时间")}</dt>
+            <dd>
+              <time dateTime={times.receivedAt}>
+                {formatCrmOperatingTime(times.receivedAt, viewerTimeZone())}
+              </time>
+            </dd>
+          </div>
+        )}
+        {!times.submittedAt && !times.receivedAt && (
+          <div>
+            <dt>{ui("问卷时间")}</dt>
+            <dd>{ui("未记录")}</dd>
+          </div>
+        )}
+      </dl>
+      {!Object.keys(answers).some((k) => k !== "buyingSignals") &&
+        !answers.buyingSignals?.length && (
+          <p>{ui("本条未附可展示的问卷答案")}</p>
+        )}
+    </section>
+  );
+}

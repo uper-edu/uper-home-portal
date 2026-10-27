@@ -70,7 +70,7 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
         ? t(`${score}/${max} pts`, `${score}/${max} 分`)
         : t(`${score} pts (maximum unknown)`, `${score} 分（满分未知）`)
       : t("Score unavailable", "暂无分数");
-    let conclusion = t("Result pending review", "结果待复核");
+    let conclusion = t("Evidence incomplete; starting point undetermined", "依据不完整，无法确定学习起点");
     let evidenceIncomplete = true;
     if (mode === "full" && Array.isArray(result.thresholds)) {
       const thresholds = result.thresholds.map(record);
@@ -119,9 +119,12 @@ export function crmAssessmentSummary(lead: AssessmentLead, lang: CrmLanguage) {
                 `建议起点：HSK ${placement.suggestedStartLevel}`,
               );
         if (placement.needsReview)
-          conclusion += t(" · Review needed", " · 待复核");
+          conclusion += " · " + t(
+            ({audio_error:"Listening audio errors",incomplete:"Unanswered questions",inconsistent:"Uneven performance across levels",boundary:"Near a starting-point boundary"} as Record<string,string>)[String(placement.reason)] || "Limitations not recorded",
+            ({audio_error:"听力播放异常",incomplete:"存在未答题",inconsistent:"不同难度表现不一致",boundary:"接近学习起点分界"} as Record<string,string>)[String(placement.reason)] || "未记录具体限制",
+          );
       } else {
-        conclusion = t("Starting point pending review", "起点建议待复核");
+        conclusion = t("Starting-point evidence incomplete", "学习起点依据不完整");
       }
     }
     return {

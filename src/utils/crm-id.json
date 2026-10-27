@@ -1596,5 +1596,13 @@
   "View original evidence and history": "Lihat bukti asli dan riwayat",
   "Please select": "Pilih",
   "Internal review": "Tinjauan internal",
-  "Replaced by a new task": "Digantikan tugas baru"
+  "Replaced by a new task": "Digantikan tugas baru",
+  "Evidence incomplete; starting point undetermined": "Bukti tidak lengkap; titik awal belum dapat ditentukan",
+  "Starting-point evidence incomplete": "Bukti titik awal tidak lengkap",
+  "Listening audio errors": "Gangguan audio menyimak",
+  "Unanswered questions": "Ada soal belum dijawab",
+  "Uneven performance across levels": "Hasil antar tingkat tidak konsisten",
+  "Near a starting-point boundary": "Mendekati batas titik awal",
+  "Limitations not recorded": "Batasan tidak dicatat",
+  "Sales stage updated to ": "Tahap penjualan diperbarui menjadi "
 }

@@ -1,3 +1,4 @@
+import {questionnaireTimes} from './crmQuestionnaireEvidence';
 import {crmUiText} from './crmUiText';
 import {crmAssessmentSummary} from './crmAssessment';
 import {extractionRoot} from './crmExtractionEvidence';
@@ -86,6 +87,7 @@ export function buildHistoryTimeline(events:any[]=[],lead:any={},rows:any[]=[]):
   g.recordedAt=interactionInstant(g.log?.at||g.log?.timestamp)||root?.recordedAt||interactionInstant(originalRow?.created_at)||null;
   const manual=root?.eventType==='profile.fields_updated'&&(root.payload?.sourceType==='sales_edit'||root.payload?.adoption==='explicit_sales_edit');
   g.displayAt=manual||root?.eventType==='owner.changed'?g.recordedAt:g.occurredAt;g.timeLabel=manual?'资料更新于':root?.eventType==='owner.changed'?'负责人变更于':undefined;
+  if(g.category==='questionnaire'){const times=questionnaireTimes(g);g.displayAt=times.submittedAt||times.receivedAt;g.timeLabel=times.submittedAt?'客户提交时间（问卷上报）':times.receivedAt?'系统接收时间':undefined;}
   g.title=historyBusinessTitle(g);
  }
  return [...groups.values()].sort((a,b)=>(Date.parse(b.displayAt||'')||0)-(Date.parse(a.displayAt||'')||0)||a.id.localeCompare(b.id));

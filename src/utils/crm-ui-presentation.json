@@ -6149,7 +6149,7 @@
   ],
   "其他学习目标": [
     "Other learning goals",
-    "Tujuan belajar lain"
+    "Tujuan belajar lainnya"
   ],
   "目标HSK等级": [
     "Target HSK level",
@@ -7230,5 +7230,73 @@
   "记录者：": [
     "Recorded by ",
     "Dicatat oleh "
+  ],
+  "客户问卷摘要": [
+    "Questionnaire summary",
+    "Ringkasan kuesioner"
+  ],
+  "客户提交时间（问卷上报）": [
+    "Customer submission time (reported by questionnaire)",
+    "Waktu pengiriman pelanggan (dilaporkan kuesioner)"
+  ],
+  "系统接收时间": [
+    "System receipt time",
+    "Waktu penerimaan sistem"
+  ],
+  "原问卷未记录活动名称": [
+    "Campaign name not recorded in the original questionnaire",
+    "Nama kampanye tidak dicatat dalam kuesioner asli"
+  ],
+  "本条未附可展示的问卷答案": [
+    "No questionnaire answers available in this record",
+    "Jawaban kuesioner tidak tersedia dalam catatan ini"
+  ],
+  "问卷时间": [
+    "Questionnaire time",
+    "Waktu kuesioner"
+  ],
+  "问卷时间未记录": [
+    "Questionnaire time not recorded",
+    "Waktu kuesioner tidak dicatat"
+  ],
+  "学习咨询入口": [
+    "Learning consultation",
+    "Konsultasi belajar"
+  ],
+  "官网": [
+    "Website",
+    "Situs web"
+  ],
+  "自然访问": [
+    "Direct visit",
+    "Kunjungan langsung"
+  ],
+  "约定已逾期": [
+    "Agreement overdue",
+    "Kesepakatan lewat waktu"
+  ],
+  "约定临近": [
+    "Due within 24 hours",
+    "Jatuh tempo dalam 24 jam"
+  ],
+  "今天约定": [
+    "Agreed for today",
+    "Disepakati untuk hari ini"
+  ],
+  "已约定时间": [
+    "Scheduled",
+    "Terjadwal"
+  ],
+  "约定时间无效": [
+    "Invalid agreement time",
+    "Waktu kesepakatan tidak valid"
+  ],
+  "其他客户约定": [
+    "Other agreements",
+    "Kesepakatan lainnya"
+  ],
+  "未约定时间": [
+    "No time agreed",
+    "Waktu belum disepakati"
   ]
 }

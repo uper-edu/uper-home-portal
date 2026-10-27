@@ -101,6 +101,8 @@ export function CrmLeadWorkspace({
 }: LeadWorkspaceProps) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
+  const [agreementNow,setAgreementNow]=useState(Date.now());
+  useEffect(()=>{const timer=setInterval(()=>setAgreementNow(Date.now()),60000);return()=>clearInterval(timer);},[]);
   const workspace = useRef<HTMLDivElement>(null);
   const headerHeight=useCrmShellHeight();
   const scrollMode=useRecordScrollMode(headerHeight);
@@ -385,7 +387,7 @@ export function CrmLeadWorkspace({
                       />}
                       {!children&&<div className="crm-list-actions crm-identity-actions" role="group" aria-label={lang==='zh'?'客户操作':lang==='id'?'Tindakan pelanggan':'Customer actions'}>{!lead.identityReview?.pending&&!lead.owner&&onClaim&&canClaim?.(lead)!==false&&<button type="button" className="crm-work-button" onClick={()=>onClaim(lead)}>{t("Claim for myself","自己认领")}</button>}<CrmProgressAction state={progressAction?.(lead)??(canProcess?.(lead)===false?'hidden':'enabled')} lang={lang} primary={!lead.identityReview?.pending} onClick={()=>onProcess?onProcess(lead):open(lead,"activities")}/></div>}
                     </div>
-                    <div className="crm-work-next">{identityAction(lead)}{follow(lead, true)}{!children&&<CrmListAgreements lead={lead} lang={lang} timezone={timezone} onOpen={()=>open(lead,'activities')}/>}{!children&&<CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} compact/>}{!children&&listLeadHint(lead,lang)&&<p className="crm-work-muted crm-list-key-hint">{listLeadHint(lead,lang)}</p>}</div>
+                    <div className="crm-work-next">{identityAction(lead)}{follow(lead, true)}<CrmListAgreements lead={lead} lang={lang} timezone={timezone} now={agreementNow} onOpen={()=>open(lead,'activities')}/>{!children&&<CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} compact/>}{!children&&listLeadHint(lead,lang)&&<p className="crm-work-muted crm-list-key-hint">{listLeadHint(lead,lang)}</p>}</div>
                     <div className="crm-work-progress">
                       <div className="crm-list-stage-line"><CrmSalesStage stage={lead.currentStage} lang={lang}/><span className="crm-work-group" title={t('Customer group','客户分组')}>{crmValue(lead.tier,lang)}</span></div>
                       <CrmStopContact lead={lead} lang={lang}/>

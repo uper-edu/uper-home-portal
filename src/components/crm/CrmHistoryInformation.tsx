@@ -1,3 +1,4 @@
+import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
 import {useCrmUiText,useCrmUiLanguage} from './CrmUiLanguage';
 import React,{useState} from 'react';
 import {historyInformation,historyDisplayInformation,historySharedCitations,historyCitationKey,historyBusinessReasons,historyInformationBatches,historyExtractionScope,historyQuoteRange,type HistoryCitation,type HistoryInformation,type HistoryDisplayInformation} from '../../utils/crmHistoryInformation';
@@ -54,6 +55,5 @@ export function CrmHistoryInformation({group,items=historyInformation(group),all
 
 
 export function CrmHistoryQuestionnaireOriginal({group,citation,action}:{group:any;citation?:HistoryCitation|null;action?:React.ReactNode}){
- const ui=useCrmUiText();
- return <div className="crm-history-questionnaire-original"><details className="crm-history-original-answers"><summary>{ui("问卷原始答案")}</summary><CrmHistoryOriginal groupId={group.id} text={group.original} citation={citation}/></details>{action}</div>;
+ return <div className="crm-history-questionnaire-original" id={historyOriginalId(group.id,"main")} tabIndex={-1}><CrmQuestionnaireEvidence source={group}/>{action}</div>;
 }

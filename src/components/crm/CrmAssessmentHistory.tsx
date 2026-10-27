@@ -101,9 +101,9 @@ export function CrmAssessmentHistoryContent({
         <aside className="crm-assessment-review" role="note">
           <h3>
             {t(
-              "Different results · manual review needed",
-              "Hasil berbeda · perlu tinjauan manual",
-              "结果差异明显 · 请人工复核",
+              "Material differences between results",
+              "Perbedaan hasil yang nyata",
+              "测评结果存在明显差异",
             )}
           </h3>
           <p>
@@ -232,9 +232,9 @@ export function CrmAssessmentHistoryContent({
                         {flagged.has(row.id) && (
                           <span className="crm-assessment-review-tag">
                             {t(
-                              "Compare · review needed",
-                              "Bandingkan · perlu ditinjau",
-                              "对比记录 · 待复核",
+                              "Material difference",
+                              "Perbedaan nyata",
+                              "记录差异明显",
                             )}
                           </span>
                         )}

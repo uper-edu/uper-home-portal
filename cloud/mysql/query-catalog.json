@@ -1404,7 +1404,8 @@
   "SELECT id,code,config FROM trial_campaigns": {
     "sql": "SELECT id,code,config FROM trial_campaigns",
     "sources": [
-      "server/portal/promotionReviews.ts"
+      "server/portal/promotionReviews.ts",
+      "server/portal/salesProgress.ts"
     ]
   },
   "SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE": {
