@@ -320,9 +320,11 @@ test("list summary excludes detailed analytics while analysis keeps permission-g
  for(const text of ['当前客户','首次联系未完成','近7天客户互动','有效沟通覆盖'])assert.ok(summary.includes(text),text);
  assert.doesNotMatch(summary,/当前阶段分布|首次实际主动联系|按当前负责人查看/);
  assert.match(summary,/crm-overview-strip/);
+ assert.doesNotMatch(summary,/crm-process-scope|当前筛选客户.*截至/);
  const analysis=renderToStaticMarkup(createElement(CrmProcessOverview,{...props,mode:'analysis'}));
  assert.match(analysis,/当前阶段分布/);assert.match(analysis,/首次实际主动联系/);
  assert.match(analysis,/所有数字跟随当前筛选及权限/);
+ assert.match(analysis,/crm-process-scope/);
  assert.doesNotMatch(analysis,/crm-overview-cards|按当前负责人查看/);
 });
 

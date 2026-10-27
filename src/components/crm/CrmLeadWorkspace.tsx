@@ -1,3 +1,5 @@
+import {CrmProgressAction} from './CrmProgressAction';
+import type {ProgressActionState} from '../../utils/crmProgressAction';
 import {CrmSalesStage,CrmStopContact} from './CrmSalesStage';
 import {CrmListMilestones} from './CrmListMilestones';
 import {listLeadHint,listLearningNeeds,listAssessmentConclusion} from '../../utils/crmLeadPresentation';
@@ -74,6 +76,7 @@ export interface LeadWorkspaceProps {
   canClaim?: (lead:CrmLeadRecord)=>boolean;
   onProcess?: (lead:CrmLeadRecord)=>void;
   canProcess?: (lead:CrmLeadRecord)=>boolean;
+  progressAction?: (lead:CrmLeadRecord)=>ProgressActionState;
   onOpen: (lead: CrmLeadRecord, tab?: CustomerTab) => void;
   onReset: () => void;
   sidebarFilters?: React.ReactNode;
@@ -92,7 +95,7 @@ export function CrmLeadWorkspace({
   loadUnavailable,
   employeeId,
   employees,
-  onSignal,onOpen,onIdentity,onClaim,onProcess,canProcess,canClaim,
+  onSignal,onOpen,onIdentity,onClaim,onProcess,canProcess,canClaim,progressAction,
   onReset,sidebarFilters,search="",onSearch,
   children,
 }: LeadWorkspaceProps) {
@@ -228,7 +231,7 @@ export function CrmLeadWorkspace({
     <div
       ref={workspace}
       className="crm-customer-workspace crm-detail-root"
-      data-theme={isLight ? "light" : "dark"}
+      data-theme={isLight ? "light" : "dark"} lang={lang==='zh'?'zh-CN':lang}
       data-open={!!children}
       data-record-scroll={scrollMode}
       onKeyDown={containPaneKeys}
@@ -380,16 +383,16 @@ export function CrmLeadWorkspace({
                           )
                         }
                       />}
-                      {!children&&<div className="crm-list-actions crm-identity-actions" role="group" aria-label={lang==='zh'?'客户操作':lang==='id'?'Tindakan pelanggan':'Customer actions'}>{!lead.identityReview?.pending&&!lead.owner&&onClaim&&canClaim?.(lead)!==false&&<button type="button" className="crm-work-button" onClick={()=>onClaim(lead)}>{t("Claim for myself","自己认领")}</button>}<button type="button" className="crm-work-button" data-primary={!lead.identityReview?.pending} disabled={canProcess?.(lead)===false} onClick={()=>onProcess?onProcess(lead):open(lead,"activities")}>{lang==='zh'?'记录进展':lang==='id'?'Catat perkembangan':'Record progress'}</button></div>}
+                      {!children&&<div className="crm-list-actions crm-identity-actions" role="group" aria-label={lang==='zh'?'客户操作':lang==='id'?'Tindakan pelanggan':'Customer actions'}>{!lead.identityReview?.pending&&!lead.owner&&onClaim&&canClaim?.(lead)!==false&&<button type="button" className="crm-work-button" onClick={()=>onClaim(lead)}>{t("Claim for myself","自己认领")}</button>}<CrmProgressAction state={progressAction?.(lead)??(canProcess?.(lead)===false?'hidden':'enabled')} lang={lang} primary={!lead.identityReview?.pending} onClick={()=>onProcess?onProcess(lead):open(lead,"activities")}/></div>}
                     </div>
                     <div className="crm-work-next">{identityAction(lead)}{follow(lead, true)}{!children&&<CrmListAgreements lead={lead} lang={lang} timezone={timezone} onOpen={()=>open(lead,'activities')}/>}{!children&&<CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} compact/>}{!children&&listLeadHint(lead,lang)&&<p className="crm-work-muted crm-list-key-hint">{listLeadHint(lead,lang)}</p>}</div>
                     <div className="crm-work-progress">
                       <div className="crm-list-stage-line"><CrmSalesStage stage={lead.currentStage} lang={lang}/><span className="crm-work-group" title={t('Customer group','客户分组')}>{crmValue(lead.tier,lang)}</span></div>
                       <CrmStopContact lead={lead} lang={lang}/>
                       {intents.length>0&&<div className="crm-list-intent"><span className="crm-list-progress-label">{intents[0].evidence.kind==='questionnaire'?t('Questionnaire interest','问卷关注'):t('Requests and interests','诉求与意向')}</span>
-                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?'最近已知发生时间：':'实际发生于：'}${stamp} · ${viewerTimeZone()}`:'实际发生时间未知';return <button type="button" key={evidence.value} className="crm-work-support-link crm-list-intent-row" title={`${label} · ${description}`} aria-label={`${label}，${description}，查看原文依据及历次记录`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span>{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></button>;})}
+                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?t('Latest known occurrence: ','最近已知发生时间：'):t('Occurred: ','实际发生于：')}${stamp} · ${viewerTimeZone()}`:t('Occurrence time unknown','实际发生时间未知');return <button type="button" key={evidence.value} className="crm-work-support-link crm-list-intent-row" title={`${label} · ${description}`} aria-label={`${label}, ${description}, ${t('View original evidence and history','查看原文依据及历次记录')}`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span>{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></button>;})}
                       </div>}
-                      {!children&&<CrmListMilestones lead={lead} onOpen={()=>open(lead,'activities')}/>}
+                      {!children&&<CrmListMilestones lang={lang} lead={lead} onOpen={()=>open(lead,'activities')}/>}
                     </div>
                     <div className="crm-work-needs">
                       <div className={!children?`crm-learning-goal${lead.goal?.trim()?'':' is-empty'}`:undefined}>{!children?<LearningNeedText value={assessment.goal} lang={lang}/>:assessment.goal}{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length>0&&<button type="button" className="crm-work-link" onClick={()=>open(lead,"profile")}> · +{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length} {t("Other goals","其他目标")}</button>}</div>

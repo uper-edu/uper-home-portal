@@ -1,3 +1,5 @@
+import {crmUiText} from './crmUiText';
+import {profileFields} from './crmDynamicProfile';
 import { crmValue, crmLocale } from "./crmLanguage";
 /** Presentation only: no inferred old value, new signal, task or priority. */
 export function listLeadHint(lead: any, lang: any = "zh") {
@@ -5,7 +7,13 @@ export function listLeadHint(lead: any, lang: any = "zh") {
   const meaningful = hints.find((h: any) =>
     ["difference", "contact", "source"].includes(h.kind),
   );
-  if (meaningful) return meaningful.text;
+  if (meaningful) {
+    if(lang!=='zh'&&meaningful.id?.startsWith('difference:')){
+      const label=profileFields[meaningful.id.slice(11)],match=meaningful.text?.match(/^.+?存在不同记录：([\s\S]*)。来源与发生时间可在客户资料查看。$/);
+      if(label&&match)return `${crmUiText(label,lang)}: ${lang==='id'?'catatan berbeda':'different record'} — ${match[1]}`;
+    }
+    return meaningful.text;
+  }
   return null;
 }
 /** The only budget field is the whole-course amount in IDR; never convert old periodic/range data. */
@@ -35,9 +43,9 @@ export function listLearningNeeds(lead: any, lang: any = "zh") {
     lang === "zh" ? zh : lang === "id" ? id : en;
   const rows: Array<{ label: string; value: string }> = [];
   for (const [field, label] of [
-    ["availability", t("上课时段", "Class availability", "Waktu belajar")],
-    ["preferredStart", t("计划开始", "Planned start", "Rencana mulai")],
-    ["concerns", t("顾虑", "Learning concerns", "Kekhawatiran belajar")],
+    ["availability", t("上课时段", "Availability", "Jadwal")],
+    ["preferredStart", t("计划开始", "Start", "Mulai")],
+    ["concerns", t("顾虑", "Concerns", "Kendala")],
   ]) {
     const raw = lead[field];
     const values = (Array.isArray(raw) ? raw : [raw])
@@ -47,8 +55,9 @@ export function listLearningNeeds(lead: any, lang: any = "zh") {
   }
   const budget = budgetPresentation(lead, lang);
   if (budget) {
+    budget.label = t("课程总预算", "Budget", "Anggaran");
     const concerns = rows.findIndex(
-      (r) => r.label === t("顾虑", "Learning concerns", "Kekhawatiran belajar"),
+      (r) => r.label === t("顾虑", "Concerns", "Kendala"),
     );
     rows.splice(concerns < 0 ? rows.length : concerns, 0, budget);
   }

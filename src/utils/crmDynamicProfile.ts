@@ -17,11 +17,11 @@ export const profileFields: Record<string, string> = {
 };
 export const profileSourceLabels: Record<string, string> = {
   questionnaire: "客户问卷",
-  sales_contact: "销售联系记录",
-  sales_edit: "销售直接编辑",
+  sales_contact: "销售记录",
+  sales_edit: "资料编辑",
   legacy: "既有资料",
-  ai_customer_text: "客户原文（AI提取）",
-  ai_sales_text: "销售原文（AI提取）",
+  ai_customer_text: "客户对话",
+  ai_sales_text: "销售记录",
 };
 export const basicProfileFields: Record<string, string> = {
   fullName: "姓名",

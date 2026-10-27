@@ -1017,7 +1017,7 @@
 .crm-customer-workspace[data-theme=dark] .crm-contact-new-message{background:#172e48}
 .crm-customer-workspace[data-theme=dark] .crm-contact-new-message h4{color:#a9cbff}
 .crm-customer-workspace[data-theme=dark] .crm-timeline-event[data-source=customer] .crm-timeline-node{background:#172e48}
-.crm-customer-workspace[data-theme=dark] .crm-followup-toolbar .crm-work-button[data-primary=true]{color:#092d29;background:#79d5c8}
+.crm-customer-workspace[data-theme=dark] .crm-followup-toolbar .crm-work-button[data-primary=true]{color:var(--admin-on-action);background:var(--admin-action-fill)}
 @media(min-width:1120px){.crm-customer-workspace[data-open=true] .crm-customer-panel{height:calc(100dvh - var(--crm-shell-height) - 24px)}.crm-customer-workspace[data-open=true] .crm-customer-panel-body{min-height:0;flex:1}.crm-customer-panel-header,.crm-customer-tabs,.crm-panel-next{flex-shrink:0}}
 @media(max-width:700px){.crm-followup-toolbar{align-items:flex-start;flex-direction:column;gap:12px}.crm-followup-entry-actions{width:100%}.crm-followup-entry-actions>.crm-work-button{flex:1}.crm-communication-grid[data-has-message=true]{grid-template-columns:minmax(0,1fr)}.crm-contact-new-message{border-left:0;border-top:1px solid var(--cw-border)}.crm-customer-panel-body .crm-trust-panel .crm-task-rows article.crm-unified-task{grid-template-columns:minmax(0,1fr);gap:12px;padding:15px}.crm-unified-task-actions{justify-content:flex-end}.crm-unified-task-schedule .crm-task-times>div{display:flex;gap:8px;flex-wrap:wrap}.crm-unified-task-schedule>.crm-unified-task-state{font-size:13px}.crm-followup-history-list>li.crm-timeline-event{grid-template-columns:24px minmax(0,1fr);gap:5px 10px}.crm-timeline-time{grid-column:2;grid-row:1;padding:0}.crm-timeline-node{grid-column:1;grid-row:1;width:24px;height:24px}.crm-timeline-content{grid-column:2}.crm-timeline-event:before{left:11px}.crm-task-timezone{text-align:left;margin-top:5px}}
 
@@ -1235,7 +1235,12 @@
 .crm-contact-preview.crm-customer-context{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}.crm-contact-preview .crm-contact-reference{padding:0;border-top:0;border-bottom:1px solid var(--cw-border)}
 
 /* Inline provenance: supplementary to the business field title, keyboard discoverable. */
-.crm-ai-indicator{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-inline-start:6px;padding:2px 5px;border-radius:5px;font-size:11px;font-weight:600;line-height:1.2;color:#6d4b8d;background:#f3eef8;cursor:help;white-space:nowrap}
-.crm-ai-indicator:focus-visible{outline:2px solid #0d9488;outline-offset:3px}
+.crm-ai-indicator{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-inline-start:6px;padding:2px 5px;border-radius:5px;font-size:11px;font-weight:600;line-height:1.2;color:var(--admin-ai);background:var(--admin-ai-bg);cursor:help;white-space:nowrap}
+.crm-ai-indicator:focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
 
-[data-theme=dark] .crm-ai-indicator{color:#d2b9ee;background:#30263d}
+[data-theme=dark] .crm-ai-indicator{color:var(--admin-ai);background:var(--admin-ai-bg)}
+
+.crm-customer-workspace .crm-work-button[data-primary=true],.crm-operation-layer .crm-editor-primary,.crm-operation-layer .crm-progress-refined .crm-progress-actions>button:first-child{background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
+.crm-progress-action-reason{display:block;font-size:12px;line-height:1.5;color:var(--admin-muted);max-width:220px}
+.crm-progress-action-group{display:inline-flex;flex-direction:column;gap:2px;align-items:flex-start;min-width:0}
+.crm-identity-actions .crm-progress-action-group{width:100%;align-items:stretch}

@@ -630,7 +630,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               onClick={() => setShowCascadeDiagram(!showCascadeDiagram)}
               className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 showCascadeDiagram
-                  ? "bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400"
+                  ? "admin-policy-accent"
                   : isLight
                     ? "bg-slate-100 text-slate-600 border-slate-200"
                     : "bg-slate-800 text-slate-300 border-slate-700"
@@ -932,7 +932,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         >
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              <span className="p-1.5 rounded-lg admin-policy-accent">
                 <Layers className="w-4 h-4" />
               </span>
               <div>
@@ -1024,7 +1024,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
             {/* Step 4 */}
             <div
-              className={`p-3 rounded-xl border flex flex-col justify-between ${isLight ? "bg-purple-50/70 border-purple-200 text-purple-900" : "bg-purple-950/30 border-purple-800 text-purple-300"}`}
+              className={`p-3 rounded-xl border flex flex-col justify-between admin-policy-accent`}
             >
               <div className="font-bold mb-1">
                 4. {t("Call Retries & Circuit", "未接止损熔断")}
@@ -1644,7 +1644,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
             className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
           >
             <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
-              <span className="p-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              <span className="p-1 rounded-md admin-policy-accent">
                 <PhoneCall className="w-4 h-4" />
               </span>
               <div>
@@ -1680,7 +1680,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 duration={formData.noResponseCadence.retryInterval}
                 originalDuration={savedPolicy.noResponseCadence.retryInterval}
                 recommendedText={t("Default: 4 Hours", "默认: 4 小时")}
-                accentColor="text-purple-600 dark:text-purple-400"
+                accentColor="admin-policy-value"
                 onChange={(newDuration) =>
                   setFormData({
                     ...formData,

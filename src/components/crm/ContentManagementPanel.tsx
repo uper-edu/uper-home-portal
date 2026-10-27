@@ -1,3 +1,4 @@
+import {AdminStatus} from '../AdminStatus';
 import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
 import {AdminTopicFrame} from "../AdminTopicFrame";
 import {BrowserMetadataGuide} from '../BrowserMetadataGuide';
@@ -793,14 +794,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             }`}>
                               {subtitle || activeSection}
                             </span>
-                            {item.isActive !== false ? (
-                              <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5 shrink-0">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                                {t('Active', '在线')}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 shrink-0">{t('Hidden', '隐藏')}</span>
-                            )}
+                            <AdminStatus active={item.isActive !== false}>{item.isActive !== false ? t('Active', '在线') : t('Hidden', '隐藏')}</AdminStatus>
                           </div>
 
                           <h4 className={`text-xs font-bold mt-1.5 line-clamp-1 ${

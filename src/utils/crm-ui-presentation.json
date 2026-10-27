@@ -44,8 +44,8 @@
     "Belum dicatat"
   ],
   "条记录": [
-    "records",
-    "catatan"
+    " records",
+    " catatan"
   ],
   "查看关联客户原文": [
     "View linked original message",
@@ -624,8 +624,8 @@
     "Informasi profil penting"
   ],
   "的AI整理": [
-    " · AI findings",
-    " · Temuan AI"
+    " AI processing",
+    " pemrosesan AI"
   ],
   "的原文依据": [
     " · original evidence",
@@ -660,7 +660,7 @@
     "Tambahan"
   ],
   "补充／修正": [
-    "Supplement / correction",
+    "Addition / correction",
     "Tambahan / koreksi"
   ],
   "补充／修正关联的原记录": [
@@ -2128,8 +2128,8 @@
     "Catatan terkait"
   ],
   "客户原文": [
-    "Customer message",
-    "Pesan pelanggan"
+    "Customer original",
+    "Teks asli pelanggan"
   ],
   "请选择依据": [
     "Select evidence",
@@ -2537,7 +2537,7 @@
   ],
   "未分配": [
     "Unassigned",
-    "Belum ditetapkan"
+    "Belum ditugaskan"
   ],
   "跟进信息暂不可用": [
     "Follow-up information unavailable",
@@ -3940,8 +3940,8 @@
     "Catat tindak lanjut"
   ],
   "未接通／未回复": [
-    "No answer or reply",
-    "Tidak dijawab atau dibalas"
+    "No answer / no reply",
+    "Tidak tersambung / belum dibalas"
   ],
   "已修改": [
     "Modified",
@@ -4356,7 +4356,7 @@
     "Ambang upaya berturut-turut tanpa balasan"
   ],
   "次": [
-    " times",
+    " attempts",
     " kali"
   ],
   "推荐: 3次": [
@@ -4792,7 +4792,7 @@
     "Lainnya"
   ],
   "联系结果": [
-    "Contact result",
+    "Contact outcome",
     "Hasil kontak"
   ],
   "已联系／已回复": [
@@ -5492,8 +5492,8 @@
     "Tidak perlu tindakan"
   ],
   "客户明确请求": [
-    "Structured customer request",
-    "Permintaan terstruktur pelanggan"
+    "Explicit customer request",
+    "Permintaan jelas pelanggan"
   ],
   "已处理": [
     "Handled",
@@ -6372,8 +6372,8 @@
     "Kota tempat tinggal"
   ],
   "记录": [
-    "recorded",
-    "mencatat"
+    "Record",
+    "Catatan"
   ],
   "· 录入": [
     "· Recorded",
@@ -6449,19 +6449,19 @@
   ],
   "最近已知时间": [
     "Latest known time",
-    "Waktu terakhir yang diketahui"
+    "Waktu terakhir diketahui"
   ],
   "确认记录": [
     "Confirmation records: ",
     "Catatan konfirmasi: "
   ],
   "次数表示报名确认记录，不代表不同课程、订单或付款次数。": [
-    "The count represents enrollment confirmation records, not separate courses, orders or payments.",
-    "Jumlah menunjukkan catatan konfirmasi pendaftaran, bukan kursus, pesanan, atau pembayaran terpisah."
+    "Counts refer to enrolment confirmations, not separate courses, orders or payments.",
+    "Jumlah menunjukkan catatan konfirmasi pendaftaran, bukan jumlah kursus, pesanan, atau pembayaran."
   ],
   "该次确认仅填写了事实说明，说明已保留在上方，未补造关联记录。": [
-    "Only the factual explanation was provided. It is retained above; no linked evidence was invented.",
-    "Hanya penjelasan fakta yang diberikan dan disimpan di atas; tidak ada bukti terkait yang dibuat-buat."
+    "Only a factual note was provided for this confirmation. It is preserved above; no linked record was invented.",
+    "Konfirmasi ini hanya memiliki uraian fakta yang tersimpan di atas. Tidak ada catatan terkait yang dibuat-buat."
   ],
   "完成时间（设备上报）": [
     "Completion time (device-reported)",
@@ -6569,7 +6569,7 @@
   ],
   "另有": [
     "Also ",
-    "Ada juga "
+    "Ada "
   ],
   "在对话中查看原文与上下文": [
     "View original and context in Conversations",
@@ -6819,19 +6819,416 @@
     "Supplement / correct record",
     "Tambahkan / koreksi catatan"
   ],
-  "预算": ["Budget", "Anggaran"],
-  "的原始依据": [" — original evidence", " — bukti asli"],
-  "原始答案": ["Original answer", "Jawaban asli"],
-  "当次已采用": ["Applied at that time", "Diterapkan saat itu"],
-  "当次未采用": ["Not applied at that time", "Tidak diterapkan saat itu"],
-  "采用状态未记录": ["Adoption status not recorded", "Status penerapan belum dicatat"],
-  "保留为依据": ["Retained as evidence", "Disimpan sebagai bukti"],
-  "该依据未单独保存此字段的原始答案，请查看完整原文。": ["This source has no separately saved original answer for this field. See the full original.", "Sumber ini tidak menyimpan jawaban asli bidang ini secara terpisah. Lihat teks asli lengkap."],
-  "完整原文与关联记录": ["Full original and linked records", "Teks asli lengkap dan catatan terkait"],
-  "正在加载依据…": ["Loading evidence…", "Memuat bukti…"],
-  "销售直接编辑，明确采用该值": ["Sales explicitly adopted this value by direct editing", "Sales secara tegas menerapkan nilai ini melalui penyuntingan langsung"],
-  "采用客户问卷原始答案": ["Original questionnaire answer adopted", "Jawaban asli kuesioner pelanggan diterapkan"],
-  "AI整理": ["AI processing", "Pemrosesan AI"],
-  "课程总预算": ["Total course budget", "Anggaran total kursus"],
-  "原文不支持单一课程总预算金额，仅保留原文，不换算周期、币种或区间": ["The source does not support one total course budget amount. Retained as evidence without conversions or range selection.", "Sumber tidak mendukung satu jumlah anggaran total kursus. Disimpan sebagai bukti tanpa konversi atau pemilihan nilai rentang."]
+  "预算": [
+    "Budget",
+    "Anggaran"
+  ],
+  "的原始依据": [
+    " original evidence",
+    " bukti asli"
+  ],
+  "原始答案": [
+    "Original answer",
+    "Jawaban asli"
+  ],
+  "当次已采用": [
+    "Applied at that time",
+    "Diterapkan saat itu"
+  ],
+  "当次未采用": [
+    "Not applied at that time",
+    "Tidak diterapkan saat itu"
+  ],
+  "采用状态未记录": [
+    "Adoption status not recorded",
+    "Status penerapan belum dicatat"
+  ],
+  "保留为依据": [
+    "Retained as evidence",
+    "Disimpan sebagai bukti"
+  ],
+  "该依据未单独保存此字段的原始答案，请查看完整原文。": [
+    "This source has no separately saved original answer for this field. See the full original.",
+    "Sumber ini tidak menyimpan jawaban asli bidang ini secara terpisah. Lihat teks asli lengkap."
+  ],
+  "完整原文与关联记录": [
+    "Full original and linked records",
+    "Teks asli lengkap dan catatan terkait"
+  ],
+  "正在加载依据…": [
+    "Loading evidence…",
+    "Memuat bukti…"
+  ],
+  "销售直接编辑，明确采用该值": [
+    "Sales explicitly adopted this value by direct editing",
+    "Sales secara tegas menerapkan nilai ini melalui penyuntingan langsung"
+  ],
+  "采用客户问卷原始答案": [
+    "Original questionnaire answer adopted",
+    "Jawaban asli kuesioner pelanggan diterapkan"
+  ],
+  "AI整理": [
+    "AI processing",
+    "Pemrosesan AI"
+  ],
+  "课程总预算": [
+    "Total course budget",
+    "Anggaran total kursus"
+  ],
+  "原文不支持单一课程总预算金额，仅保留原文，不换算周期、币种或区间": [
+    "The source does not support one total course budget amount. Retained as evidence without conversions or range selection.",
+    "Sumber tidak mendukung satu jumlah anggaran total kursus. Disimpan sebagai bukti tanpa konversi atau pemilihan nilai rentang."
+  ],
+  "定位原文": [
+    "Locate original",
+    "Temukan teks asli"
+  ],
+  "定位对应原文": [
+    "Locate the matching original",
+    "Temukan sumber asli terkait"
+  ],
+  "就地展开原文": [
+    "Expand original here",
+    "Buka sumber asli di sini"
+  ],
+  "打开完整记录": [
+    "Open full record",
+    "Buka catatan lengkap"
+  ],
+  "定位本次信息对应的原文片段": [
+    "Locate the source passage for this information",
+    "Temukan kutipan sumber informasi ini"
+  ],
+  "本条记录的补充／修正": [
+    "Additions and corrections to this record",
+    "Tambahan dan koreksi catatan ini"
+  ],
+  "测评记录": [
+    "Assessment record",
+    "Catatan asesmen"
+  ],
+  "首次联系要求": [
+    "First contact requirement",
+    "Persyaratan kontak pertama"
+  ],
+  "当次已完成": [
+    "Completed at that time",
+    "Selesai saat itu"
+  ],
+  "整理结果": [
+    "Organized results",
+    "Hasil rangkuman"
+  ],
+  "补充／修正结果": [
+    "Supplement / correction results",
+    "Hasil tambahan / koreksi"
+  ],
+  "当时采用，后续已修正": [
+    "Adopted then; later corrected",
+    "Diterapkan saat itu; kemudian dikoreksi"
+  ],
+  "后续已修正": [
+    "Later corrected",
+    "Kemudian dikoreksi"
+  ],
+  "问卷原始答案": [
+    "Original questionnaire answers",
+    "Jawaban kuesioner asli"
+  ],
+  "个字段": [
+    " fields",
+    " kolom"
+  ],
+  "共同依据": [
+    "Shared evidence",
+    "Bukti bersama"
+  ],
+  "条时间未知": [
+    " undated records",
+    " catatan tanpa waktu"
+  ],
+  "条": [
+    " records",
+    " catatan"
+  ],
+  "历次记录": [
+    " history",
+    " riwayat"
+  ],
+  "查看全部": [
+    "View all ",
+    "Lihat semua "
+  ],
+  "完成时间由设备上报": [
+    "Completion time reported by device",
+    "Waktu selesai dilaporkan perangkat"
+  ],
+  "销售已明确确认报名成立": [
+    "Sales explicitly confirmed enrolment",
+    "Sales telah mengonfirmasi pendaftaran"
+  ],
+  "旧阶段保留原值，未自动映射。": [
+    "The original stage is retained without automatic mapping.",
+    "Tahap asli dipertahankan tanpa pemetaan otomatis."
+  ],
+  "客户资料编辑": [
+    "Profile edit",
+    "Perubahan profil"
+  ],
+  "销售阶段调整": [
+    "Sales stage change",
+    "Perubahan tahap penjualan"
+  ],
+  "历史依据调整": [
+    "Historical evidence correction",
+    "Koreksi bukti historis"
+  ],
+  "其他来源记录": [
+    "Other source record",
+    "Catatan sumber lain"
+  ],
+  "请求内容": [
+    "Request",
+    "Permintaan"
+  ],
+  "结构化信息": [
+    "Structured information",
+    "Informasi terstruktur"
+  ],
+  "原文明确描述（见原文）": [
+    "Explicitly described (see original)",
+    "Disebutkan jelas (lihat teks asli)"
+  ],
+  "联系结果按后续修正显示；原文及修正依据保留在下方完整记录。": [
+    "The contact result reflects the later correction. The original and correction evidence remain in the full record below.",
+    "Hasil kontak mengikuti koreksi terbaru. Teks asli dan bukti koreksi tetap tersedia dalam catatan lengkap di bawah."
+  ],
+  "当前没有计入统计的人工联系记录；原记录和修正仍保留在下方。": [
+    "No staff contact currently qualifies for the statistics. Original records and corrections remain below.",
+    "Belum ada kontak staf yang memenuhi kriteria statistik. Catatan asli dan koreksi tetap tersedia di bawah."
+  ],
+  "最新版本暂不可用，输入保留。": [
+    "The latest version is unavailable. Your input is retained.",
+    "Versi terbaru belum tersedia. Isian Anda tetap tersimpan."
+  ],
+  "时间未知": [
+    "Time unknown",
+    "Waktu tidak diketahui"
+  ],
+  "已选": [
+    "Selected ",
+    "Dipilih "
+  ],
+  "有不同记录": [
+    "Different records",
+    "Ada perbedaan catatan"
+  ],
+  "原依据已有修正，请对照原文": [
+    "The original evidence has a correction; check the original.",
+    "Bukti asli telah dikoreksi; periksa teks aslinya."
+  ],
+  "放弃修改": [
+    "Discard changes",
+    "Buang perubahan"
+  ],
+  "记录时间未注明": [
+    "Recording time not specified",
+    "Waktu pencatatan tidak disebutkan"
+  ],
+  "同时更新当前客户资料": [
+    "Also update the current profile",
+    "Perbarui profil saat ini juga"
+  ],
+  "核对最新已保存的补充／修正": [
+    "Review the latest saved addition or correction",
+    "Periksa tambahan atau koreksi terbaru yang tersimpan"
+  ],
+  "销售已主动联系": [
+    "Sales initiated contact",
+    "Sales telah menghubungi"
+  ],
+  "新值尚未明确采用": [
+    "New value not yet adopted",
+    "Nilai baru belum diterapkan"
+  ],
+  "未记录采用原因": [
+    "Adoption reason not recorded",
+    "Alasan penerapan belum dicatat"
+  ],
+  "提取结果": [
+    "Findings",
+    "Hasil ekstraksi"
+  ],
+  "已整理": [
+    "Processed",
+    "Sudah dirapikan"
+  ],
+  "发生于": [
+    "Occurred",
+    "Terjadi"
+  ],
+  "整理记录于": [
+    "Processed at",
+    "Diproses pada"
+  ],
+  "原文已保存": [
+    "Original saved",
+    "Teks asli tersimpan"
+  ],
+  "等待AI整理": [
+    "Awaiting AI processing",
+    "Menunggu pemrosesan AI"
+  ],
+  "AI整理中": [
+    "AI processing",
+    "AI sedang memproses"
+  ],
+  "等待重试": [
+    "Awaiting retry",
+    "Menunggu percobaan ulang"
+  ],
+  "AI整理失败": [
+    "AI processing failed",
+    "Pemrosesan AI gagal"
+  ],
+  "整理状态待核对": [
+    "Processing status unknown",
+    "Status pemrosesan perlu diperiksa"
+  ],
+  "已表达": [
+    "Expressed",
+    "Dinyatakan"
+  ],
+  "时间语义未注明": [
+    "Time context unspecified",
+    "Konteks waktu belum disebutkan"
+  ],
+  "已清空": [
+    "Cleared",
+    "Dikosongkan"
+  ],
+  "约定建议": [
+    "Suggested agreement",
+    "Saran kesepakatan"
+  ],
+  "原文未附在本次整理中": [
+    "Original text not attached to this result",
+    "Teks asli tidak dilampirkan pada hasil ini"
+  ],
+  "销售原文": [
+    "Sales original",
+    "Teks asli sales"
+  ],
+  "补充／修正原文": [
+    "Addition / correction original",
+    "Teks asli tambahan / koreksi"
+  ],
+  "更新客户资料：": [
+    "Profile updated: ",
+    "Profil diperbarui: "
+  ],
+  "记录不同的": [
+    "Different record: ",
+    "Catatan berbeda: "
+  ],
+  "新增": [
+    "Added ",
+    "Ditambahkan "
+  ],
+  "更新": [
+    "Updated ",
+    "Diperbarui "
+  ],
+  "该次记录未填写沟通内容。": [
+    "No conversation content was entered in this record.",
+    "Catatan ini tidak memuat isi komunikasi."
+  ],
+  "完成完整测评": [
+    "Full assessment completed",
+    "Asesmen lengkap selesai"
+  ],
+  "完成快速测评": [
+    "Quick assessment completed",
+    "Asesmen cepat selesai"
+  ],
+  "完成测评": [
+    "Assessment completed",
+    "Asesmen selesai"
+  ],
+  "未采用，保留不同记录": [
+    "Not adopted; difference retained",
+    "Tidak diterapkan; perbedaan disimpan"
+  ],
+  "当次保持原值": [
+    "Original value retained then",
+    "Nilai semula dipertahankan saat itu"
+  ],
+  "采用结果未注明": [
+    "Adoption outcome unspecified",
+    "Hasil penerapan tidak disebutkan"
+  ],
+  "人工记录": [
+    "Recorded by staff",
+    "Dicatat staf"
+  ],
+  "请对照原始记录进行补充或修正": [
+    "Refer to the original record when adding or correcting information.",
+    "Gunakan catatan asli saat menambah atau mengoreksi informasi."
+  ],
+  "未查到本次结果；原输入和请求ID保留，可核对后明确重试。": [
+    "This result was not found. Your input and request ID are retained; review before retrying.",
+    "Hasil ini tidak ditemukan. Isian dan ID permintaan disimpan; periksa sebelum mencoba lagi."
+  ],
+  "未保存，输入保留": [
+    "Not saved. Your input is retained.",
+    "Belum tersimpan. Isian dipertahankan."
+  ],
+  "结果尚未确认，请查询保存结果": [
+    "Outcome unconfirmed. Check the save result.",
+    "Hasil belum terkonfirmasi. Periksa hasil penyimpanan."
+  ],
+  "保存结果尚未确认，输入保留。请先查询结果，不要重复提交。": [
+    "Save outcome unknown. Your input is retained. Check the result before resubmitting.",
+    "Hasil penyimpanan belum diketahui. Isian disimpan. Periksa hasil sebelum mengirim ulang."
+  ],
+  "保存结果尚未确认，请先查询保存结果，输入已保留。": [
+    "Save outcome unknown. Check the result first; your input is retained.",
+    "Hasil penyimpanan belum diketahui. Periksa hasil terlebih dahulu; isian disimpan."
+  ],
+  "版本已更新，草稿保留。请查看原记录的新修正，再明确保存。": [
+    "Version refreshed; draft retained. Review the new corrections before saving.",
+    "Versi diperbarui; draf dipertahankan. Periksa koreksi terbaru sebelum menyimpan."
+  ],
+  "最新记录暂不可用，输入保留。": [
+    "Latest record unavailable. Your input is retained.",
+    "Catatan terbaru belum tersedia. Isian dipertahankan."
+  ],
+  "历史依据暂不可用，请重试": [
+    "History evidence unavailable. Please retry.",
+    "Bukti riwayat belum tersedia. Coba lagi."
+  ],
+  "未在当前历史中定位该依据，原记录不会被删除；可重试读取或核对原始记录。": [
+    "This evidence was not found in the current history. The original remains intact; reload or check the source record.",
+    "Bukti ini tidak ditemukan dalam riwayat saat ini. Catatan asli tetap ada; muat ulang atau periksa sumbernya."
+  ],
+  "已定位对应原始记录。": [
+    "Original record located.",
+    "Catatan asli ditemukan."
+  ],
+  "当前资料状态，无单独发生时刻": [
+    "Current profile state; no separate occurrence time",
+    "Status profil saat ini; tanpa waktu kejadian terpisah"
+  ],
+  "本条未附完整结果，请进入测评页核对。": [
+    "This record has no full result attached. Check the Assessment tab.",
+    "Catatan ini tidak memiliki hasil lengkap. Periksa tab Asesmen."
+  ],
+  "已保存真实测评记录": [
+    "Assessment record saved",
+    "Catatan asesmen tersimpan"
+  ],
+  "记录者：": [
+    "Recorded by ",
+    "Dicatat oleh "
+  ]
 }

@@ -1,3 +1,4 @@
+import {CrmSalesStage} from "./CrmSalesStage";
 import {containPaneKeys,revealRecord} from '../adminScroll';
 import {loadCampaignWorkspace} from "../../utils/campaignWorkspaceRefresh";
 import { campaignUi, campaignUiMessages } from "../../utils/campaignI18n";
@@ -1218,13 +1219,11 @@ export function CrmCampaignHub({
                                     {lead.fullName}
                                   </span>
                                   <span
-                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${lead.tier === "Hot" ? "bg-amber-500/20 text-amber-600" : "bg-slate-500/10 text-slate-500"}`}
+                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isLight ? "bg-slate-100 text-slate-600" : "bg-slate-800 text-slate-300"}`}
                                   >
                                     {crmValue(lead.tier, lang)}
                                   </span>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary-500/10 text-primary-600 font-medium">
-                                    {crmValue(lead.currentStage, lang)}
-                                  </span>
+                                  <CrmSalesStage stage={lead.currentStage} lang={lang}/>
                                 </div>
                                 <div className="text-[11px] text-slate-400 flex items-center gap-2">
                                   <span>

@@ -1,4 +1,4 @@
-import { useCrmUiText } from "./CrmUiLanguage";
+import { useCrmUiText,useCrmUiLanguage } from "./CrmUiLanguage";
 import { useEffect, useState } from "react";
 import { groupFactMilestones } from "../../utils/crmFactMilestones";
 import {
@@ -29,7 +29,7 @@ export function FactMilestoneTime({ event, compact = false }: any) {
             " · " +
             viewerTimeZone() +
             (event.timeBasis === "reported_completion"
-              ? " · 完成时间由设备上报"
+              ? " · "+ui("完成时间由设备上报")
               : "")
           }
         >
@@ -42,7 +42,7 @@ export function FactMilestoneTime({ event, compact = false }: any) {
   );
 }
 export function FactMilestoneRows({ groups, onOpen }: any) {
-  const ui = useCrmUiText();
+  const ui = useCrmUiText(),lang=useCrmUiLanguage();
   return (
     <div className="crm-fact-milestone-rows">
       {groups.map((g: any) => (
@@ -58,26 +58,27 @@ export function FactMilestoneRows({ groups, onOpen }: any) {
             <button
               type="button"
               className="crm-work-link"
-              aria-label={`查看${g.title}历次记录（${g.count}）`}
+              aria-label={ui("查看")+ui(g.title)+ui("历次记录")+(lang==='zh'?`（${g.count}）`:` (${g.count})`)}
               onClick={() => onOpen(g)}
             >
               {g.key === "enrollment_confirmation"
-                ? `确认记录${g.count}条`
-                : `${g.count}次`}
+                ? ui("确认记录")+g.count+ui("条")
+                : g.count+ui("次")}
             </button>
           </div>
           <div className="crm-fact-milestone-latest">
             {g.unknownCount > 0 && g.latest.occurredAt && (
-              <small>最近已知时间 </small>
+              <small>{ui("最近已知时间")} </small>
             )}
             <FactMilestoneTime event={g.latest} compact />
             {g.unknownCount > 0 && g.latest.occurredAt && (
-              <small>另有{g.unknownCount}条时间未知</small>
+              <small>{ui("另有")}{g.unknownCount}{ui("条时间未知")}</small>
             )}
           </div>
           <div className="crm-fact-milestone-actions">
             <CrmEvidenceAction
-              description={`查看${g.title}的原始依据`}
+              behavior="open"
+              description={ui("查看")+ui(g.title)+ui("的原始依据")}
               onClick={() => onOpen(g, g.latest.id)}
             />
           </div>
@@ -135,7 +136,7 @@ export function CrmFactMilestones({
       key={s.type + ":" + s.id + ":" + index}
       className="crm-stage-basis-original"
     >
-      <strong>{s.label || "原始依据"}</strong>
+      <strong>{ui(s.label || "原始依据")}</strong>
       <span>{progressSourceTiming(s, lang)}</span>
       <p>{progressSourceText(s, lang)}</p>
     </div>
@@ -183,11 +184,11 @@ export function CrmFactMilestones({
             <div className="crm-editor-scroll crm-fact-milestone-history">
               <div className="crm-fact-milestone-title">
                 <h3>{ui(group.title)}</h3>
-                <span>{group.countLabel}</span>
+                <span>{group.key==='enrollment_confirmation'?ui("确认记录")+group.count+ui("条"):group.count+ui("次")}</span>
               </div>
               {group.key === "enrollment_confirmation" && (
                 <p className="crm-simple-help">
-                  次数表示报名确认记录，不代表不同课程、订单或付款次数。
+                  {ui("次数表示报名确认记录，不代表不同课程、订单或付款次数。")}
                 </p>
               )}
               {entries.map((m: any) => {
@@ -212,7 +213,7 @@ export function CrmFactMilestones({
                     <FactMilestoneTime event={m} />
                     {m.receivedAt && (
                       <small>
-                        接收：
+                        {ui("接收：")}
                         {formatCrmOperatingTime(m.receivedAt, viewerTimeZone())}
                       </small>
                     )}
@@ -222,23 +223,23 @@ export function CrmFactMilestones({
                         <p>{summary.detail}</p>
                       </div>
                     ) : (
-                      <p>{m.text || "销售已明确确认报名成立"}</p>
+                      <p>{m.text || ui("销售已明确确认报名成立")}</p>
                     )}
                     <details open={Boolean(selection.id)}>
                       <summary>
-                        原始依据{basis.length ? `（${basis.length}）` : ""}
+                        {ui("原始依据")}{basis.length ? `（${basis.length}）` : ""}
                       </summary>
                       {basis.length ? (
                         basis.map(source)
                       ) : (
                         <p>
-                          该次确认仅填写了事实说明，说明已保留在上方，未补造关联记录。
+                          {ui("该次确认仅填写了事实说明，说明已保留在上方，未补造关联记录。")}
                         </p>
                       )}
                     </details>
                     {m.recordedAt && (
                       <small>
-                        录入：
+                        {ui("录入：")}
                         {formatCrmOperatingTime(m.recordedAt, viewerTimeZone())}
                       </small>
                     )}
@@ -251,7 +252,7 @@ export function CrmFactMilestones({
                   className="crm-work-link"
                   onClick={() => setSelection({ key: group.key })}
                 >
-                  查看全部{group.count}条记录
+                  {ui("查看全部")}{group.count}{ui("条记录")}
                 </button>
               )}
             </div>

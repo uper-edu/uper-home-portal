@@ -72,3 +72,50 @@ export function historyQuoteRange(text:string,citation:HistoryCitation){
  if(Number.isInteger(citation.start)&&text.slice(citation.start,citation.start!+citation.quote.length)===citation.quote)return {start:citation.start!,end:citation.start!+citation.quote.length};
  const start=text.indexOf(citation.quote);return citation.quote&&start>=0&&text.indexOf(citation.quote,start+1)<0?{start,end:start+citation.quote.length}:null;
 }
+
+/** Common captions require one proven source and consecutive equal states; never merge records. */
+export function historyInformationBatches(group:HistoryGroup,items:HistoryInformation[]){
+ const origin=(item:HistoryInformation)=>{
+  if(item.extractionIds?.length){const roots=[...new Set(item.extractionIds.map(id=>(group.extractions||[]).find(r=>r.id===id)).map(r=>r?.source_type&&r?.source_id?JSON.stringify([r.source_type,r.source_id]):''))];return roots.length===1?roots[0]:'';}
+  if(item.manualSourceId)return JSON.stringify(['record',item.manualSourceId]);
+  const roots=[...new Set((item.factIds||[]).map(id=>(group.events||[]).find(e=>e.eventId===id)?.payload).map(p=>p?.sourceRecordId?JSON.stringify(['record',p.sourceRecordId]):p?.basisFactIds?.length===1?JSON.stringify(['fact',p.basisFactIds[0]]):''))];
+  return roots.length===1?roots[0]:'';
+ };
+ const key=(i:HistoryInformation)=>{const source=origin(i);return source?JSON.stringify([i.scope,source,[...i.sources].sort(),i.status,i.superseded,i.observation?.temporality||'',i.observation?.subject||'']):null;};
+ const batches:{items:HistoryInformation[];shared:boolean;sharedReasons:boolean;key:string|null}[]=[];
+ for(const item of items){const k=key(item),last=batches.at(-1);if(k&&last?.key===k)last.items.push(item);else batches.push({items:[item],shared:false,sharedReasons:false,key:k});}
+ for(const b of batches){b.shared=b.items.length>1;b.sharedReasons=b.shared&&b.items[0].status==='applied'&&b.items[0].reasons.length>0&&b.items.every(i=>JSON.stringify(i.reasons)===JSON.stringify(b.items[0].reasons));}
+ return batches;
+}
+export function historyFieldCount(group:HistoryGroup){return new Set(group.events.flatMap(historyChanges).map((c:any)=>c.field)).size;}
+export function historyAmendmentTitle(amendment:any,items:HistoryInformation[]){
+ const scope=amendment.payload?.id||amendment.eventId;
+ const labels=[...new Set(items.filter(i=>i.scope===scope).map(i=>i.label))];
+ if(amendment.payload?.contactResult)labels.push('联系结果');
+ return {kind:amendment.payload?.kind==='correction'?'修正':'补充',labels:[...new Set(labels)]};
+}
+
+/** Presentation-only duplicate goals: retain both complete result records and every citation. */
+export type HistoryDisplayInformation=HistoryInformation&{displayMembers?:HistoryInformation[]};
+export function historyDisplayInformation(group:HistoryGroup,items:HistoryInformation[]):HistoryDisplayInformation[]{
+ const replacements=new Map<HistoryInformation,HistoryDisplayInformation>(),hidden=new Set<HistoryInformation>();
+ const equalGoal=(a:any,b:any)=>{const values=(v:any)=>typeof v==='string'&&v!==''?[v]:Array.isArray(v)&&v.length&&v.every(x=>typeof x==='string'&&x!=='')?v:null;const x=values(a),y=values(b);return !!x&&!!y&&JSON.stringify([...x].sort())===JSON.stringify([...y].sort());};
+ for(const batch of historyInformationBatches(group,items).filter(b=>b.shared)){
+  const primary=batch.items.filter(i=>i.kind==='field'&&i.field==='goal'),other=batch.items.filter(i=>i.kind==='field'&&i.field==='goals');
+  if(primary.length!==1||other.length!==1)continue;
+  const a=primary[0],b=other[0];
+  if(a.status!=='applied'||!equalGoal(a.value,b.value)||!a.beforeKnown||!b.beforeKnown||!(a.before===null&&b.before===null||equalGoal(a.before,b.before))||JSON.stringify(a.reasons)!==JSON.stringify(b.reasons)||JSON.stringify(a.aiReferences)!==JSON.stringify(b.aiReferences))continue;
+  const first=batch.items.indexOf(a)<batch.items.indexOf(b)?a:b,last=first===a?b:a;
+  const citations=[...new Map([...a.citations,...b.citations].map(c=>[historyCitationKey(c),c])).values()];
+  replacements.set(first,{...a,id:first.id,label:'学习目标',citations,factIds:unique([...a.factIds,...b.factIds]),extractionIds:unique([...a.extractionIds,...b.extractionIds]),displayMembers:[a,b]});hidden.add(last);
+ }
+ return items.filter(i=>!hidden.has(i)).map(i=>replacements.get(i)||i);
+}
+export const historyCitationKey=(c:HistoryCitation)=>JSON.stringify([c.scope,c.quote,c.start??null,c.sourceText]);
+export function historySharedCitations(items:HistoryInformation[]){
+ const refs=new Map<string,{key:string;citation:HistoryCitation;items:HistoryInformation[]}>();
+ for(const item of items)for(const c of item.citations){const key=historyCitationKey(c);if(!refs.has(key))refs.set(key,{key,citation:c,items:[]});const ref=refs.get(key)!;if(!ref.items.includes(item))ref.items.push(item);}
+ return [...refs.values()].filter(r=>r.items.length>1);
+}
+/** Remove only a known rule explanation from sales presentation, never a specific business reason. */
+export function historyBusinessReasons(item:HistoryInformation){return item.reasons.filter(r=>r!=='有原文依据的行为／诉求，不代表已处理或成交');}

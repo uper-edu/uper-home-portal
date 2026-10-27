@@ -29,3 +29,10 @@ export function progressDetails(log:any,lead:any,requests:any[],lang:CrmLanguage
  add(t('Exception reason','Alasan pengecualian','例外原因'),log.exceptionReason);
  return rows;
 }
+
+/** History separates the recorded contact outcome from proven first-requirement completion. */
+export function historyProgressDetails(log:any,lead:any,requests:any[],timezone:string){
+ return progressDetails(log,lead,requests,'zh',timezone)
+  .filter(row=>!['实际发生时间','记录类型','联系渠道','本次记录的阶段事实','新增购买信号'].includes(row.label)&&!row.label.startsWith('资料更新 · '))
+  .map(row=>row.label==='首次跟进处理结果'?{label:'首次联系要求',value:'当次已完成'}:row);
+}

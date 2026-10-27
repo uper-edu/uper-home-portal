@@ -166,7 +166,7 @@ export function CrmProfileFields({
                   type="button"
                   className="crm-work-link"
                   disabled={disabled}
-                  aria-label={ui("不修改") + manualProfileFields[key]}
+                  aria-label={ui("不修改") + (lang==='zh'?'':' ') + ui(manualProfileFields[key])}
                   onClick={() => remove(key)}
                 >
                   {ui("移除")}
@@ -285,7 +285,7 @@ function profileSourceName(type?: string) {
   return type === "ai_customer_text"
     ? "客户对话"
     : type === "ai_sales_text"
-      ? "销售联系记录"
+      ? "销售记录"
       : profileSourceLabels[type || ""] || "来源未记录";
 }
 
@@ -342,7 +342,7 @@ export function CrmCurrentField({
           <button
             type="button"
             className="crm-work-link"
-            aria-label={ui("调整") + ui(manualProfileFields[field] || field)}
+            aria-label={ui("调整") + (lang==='zh'?'':' ') + ui(manualProfileFields[field] || field)}
             onClick={() => onEdit(field)}
           >
             <Pencil size={13} aria-hidden="true" />

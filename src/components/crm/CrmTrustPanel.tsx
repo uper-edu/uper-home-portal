@@ -1,7 +1,7 @@
 import {AdminRequiredNote} from '../AdminForm';
 import {useCrmUiText} from './CrmUiLanguage';
 import {AdminFieldLabel} from '../AdminForm';
-import {salesProgressStages,isSalesProgressStage} from '../../utils/crmSalesProgress';
+import {salesProgressStages,isSalesProgressStage,progressDefinition} from '../../utils/crmSalesProgress';
 import {CrmSalesProgressHistory,progressSourceText,progressSourceTiming} from './CrmSalesProgressHistory';
 import {CrmSimpleAttention} from './CrmSimpleAttention';
 export function CrmTrustPanel(props:any){return props.mode==='identity'?<LegacyCrmTrustPanel {...props}/>:<CrmSimpleAttention {...props}/>;}
@@ -148,7 +148,7 @@ export function CrmStageEditor({
       <div className={inDrawer?'crm-editor-scroll':undefined}>
       {inDrawer&&<AdminRequiredNote lang={lang}/>}
       {!isSalesProgressStage(currentStage)&&<p className="crm-stage-help">{ui("旧阶段保留为“")}{crmValue(currentStage,lang)}{ui("”，未自动映射。请选择符合实际的新阶段并明确保存。")}</p>}
-      {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id,definition])=><label key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{definition}</small></span></label>)}</fieldset>:(
+      {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id,definition])=><label key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{progressDefinition(value,lang)}</small></span></label>)}</fieldset>:(
       <CrmSingleSelect
         label={t("Update sales stage", "Ubah tahap penjualan", "修改销售阶段")}
         value={stage}
@@ -157,7 +157,7 @@ export function CrmStageEditor({
       />)}
 
       {changed&&versionConflict&&<p role="alert">{ui("服务端阶段已变化，草稿仍保留。最新：")}{crmValue(latestStage.stage,lang)}。<button type="button" disabled={busy||unknown} onClick={()=>{setBaseStage(latestStage.stage);setBaseRevision(latestStage.version);}}>{ui("保留草稿并采用已核对的最新基准")}</button></p>}
-      {!inDrawer&&chosen&&<p className="crm-stage-help">{chosen[4]}</p>}
+      {!inDrawer&&chosen&&<p className="crm-stage-help">{progressDefinition(chosen[0],lang)}</p>}
       {!inDrawer&&!disabled && <p className="crm-stage-help">{t("Stage changes are saved manually. Choose a stage, link evidence or describe the facts, then save.", "Perubahan tahap disimpan secara manual. Pilih tahap, isi alasan wajib, lalu simpan.", "阶段变更需手动保存：选择阶段，关联依据或填写事实说明后保存。")}</p>}
       {(changed || unknown) && <div className="crm-stage-draft">
         <label htmlFor={id}><AdminFieldLabel required={!basisRefs.length}>{t("Facts supporting the stage", "Fakta pendukung tahap", "具体事实说明")}</AdminFieldLabel></label>

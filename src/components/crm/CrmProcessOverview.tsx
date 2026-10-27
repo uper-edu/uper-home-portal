@@ -182,7 +182,7 @@ export function CrmProcessOverview({
         "客户概况与分析",
       )}
     >
-      <p className="crm-process-scope">
+      {mode !== "summary" && <p className="crm-process-scope">
         {t(
           "Current filtered cohort",
           "Pelanggan sesuai filter",
@@ -190,7 +190,7 @@ export function CrmProcessOverview({
         )}{" "}
         · {m.customers} · {t("As of", "Hingga", "截至")}{" "}
         {formatCrmEventTime(m.asOf)}
-      </p>
+      </p>}
       {mode !== "analysis" && <div className="crm-overview-cards">
         {cards.map((card) => (
           <article key={card.key || "all"}>

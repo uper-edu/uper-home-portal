@@ -30,3 +30,7 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 ## 管理工作区设计
 
 修改CRM、CMS或系统管理的导航、布局、详情、编辑、保存反馈或响应式时，必须使用 [uper-admin-workspace-design](.agents/skills/uper-admin-workspace-design/SKILL.md)。纯后端、数据库及HSK题库任务不自动触发。此要求不授予发布或业务规则变更权限。
+
+## 管理界面颜色执行要求
+
+CRM、CMS和系统管理的颜色变更必须执行[全局颜色与状态规范](docs/design/admin-color-system.md)，复用 `src/components/admin-colors.css` 的语义变量及现有共享业务组件；不得按页面新增近似状态色。营销站主题不能改变管理业务状态。颜色只呈现已存在的状态，不授权新增任务、评级或业务规则。修改时检查文字、背景和边框的浅深色配对、键盘焦点及文字含义，报告未验证状态。无能力权限或当前客户范围权限时隐藏“记录进展”；可执行认领前置步骤时禁用并解释；保存中保留禁用反馈，服务端校验不变。

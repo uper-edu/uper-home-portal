@@ -8,6 +8,8 @@ import {savePolicyTopic} from '../utils/crmPolicyTopicClient';
 import type {PolicyTopicRequest} from '../utils/crmPolicyTopics';
 import {NotificationWorkspace,NotificationTopicPanels,type Tab as NotificationTab} from "../components/NotificationCenter";
 import "../components/admin-workspace.css";
+import {progressActionState} from "../utils/crmProgressAction";
+import {CrmProgressAction} from "../components/crm/CrmProgressAction";
 import "../components/crm/crm-operations-workspace.css";
 import {CrmIdentityComparison} from '../components/crm/CrmIdentityComparison';
 import {CrmOperationLayer} from '../components/crm/CrmOperationLayer';
@@ -1056,7 +1058,7 @@ function CrmWorkspace({
             <button type="button" disabled={!selectedLead.whatsapp?.trim() || selectedLead.contactArrangement?.state==='stopped'} title={!selectedLead.whatsapp?.trim()?t("No contact number recorded","尚未记录联系号码"):selectedLead.contactArrangement?.state==='stopped'?outreachText('CONTACT_STOPPED',lang):undefined} onClick={openContactPreview} className="crm-work-button">
               <MessageCircle size={15} aria-hidden="true" /> {t("Prepare contact","准备联系")}
             </button>
-            <button type="button" className="crm-work-button" data-primary={!selectedLead.identityReview?.pending} disabled={!canEditLead(selectedLead,"crm.followup")||isSubmittingLog} onClick={startContactRecord}><PlusCircle size={15} aria-hidden="true" />{lang==='zh'?'记录进展':lang==='id'?'Catat perkembangan':'Record progress'}</button>
+            <CrmProgressAction state={progressActionState(employee,selectedLead)} busy={isSubmittingLog} lang={lang} primary={!selectedLead.identityReview?.pending} icon={<PlusCircle size={15} aria-hidden="true"/>} onClick={startContactRecord}/>
             {canEditLead(selectedLead)&&<button type="button" className="crm-work-button" data-crm-stage-trigger disabled={isSubmittingLog||profileSave==='saving'} onClick={()=>openStageEditor()}><ArrowRightLeft size={15} aria-hidden="true" />{lang==='zh'?'更新阶段':lang==='id'?'Perbarui tahap':'Update stage'}</button>}
             </div>
             {selectedLead.identityReview?.pending&&selectedLead.identityReview?.canReview&&<button type="button" className="crm-work-button" data-primary="true" onClick={()=>openIdentityReview(selectedLead.id)}>{lang==='zh'?'核实身份':lang==='id'?'Verifikasi identitas':'Review identity'}</button>}
@@ -1173,6 +1175,7 @@ function CrmWorkspace({
   );
   return (
     <div
+      data-admin-workspace="crm" data-theme={isLight ? "light" : "dark"}
       className={`min-h-screen flex flex-col font-sans transition-colors duration-200 select-text ${isLight ? "bg-[#f5f5f7] text-[#1d1d1f]" : "bg-slate-950 text-slate-100"}`}
     >
       <PageMetadata lang={lang} options={{module:crmModule === "leads" && leadAnalysis ? "analysis" : crmModule}}/>
@@ -1313,7 +1316,7 @@ function CrmWorkspace({
               onIdentity={lead=>openIdentityReview(lead.id)}
               onOpen={handleOpenLeadDrawer}
               onProcess={processFromList}
-              canProcess={lead=>canEditLead(lead,"crm.followup")}
+              progressAction={lead=>progressActionState(employee,lead)}
               sidebarFilters={leadPanel?leadFilterControls:undefined}
               search={filters.search} onSearch={value=>setFilters(current=>({...current,search:value}))}
               onReset={() => setFilters(defaultLeadFilters(employee.scope))}

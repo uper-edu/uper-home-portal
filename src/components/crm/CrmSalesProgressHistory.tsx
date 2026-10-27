@@ -7,8 +7,8 @@ export function progressSourceTiming(s:any,lang='zh'){const format=(v:any)=>form
 export function CrmSalesProgressHistory({context,lang}:any){
  const ui=useCrmUiText(lang);
 
- const time=(v:any)=>v?formatCrmOperatingTime(v,viewerTimeZone()):'实际发生时间未知';
+ const time=(v:any)=>v?formatCrmOperatingTime(v,viewerTimeZone()):ui('实际发生时间未知');
  const source=(s:any)=><div className="crm-stage-basis-original"><strong>{ui(s.label)}</strong><span>{progressSourceTiming(s,lang)}</span><p>{progressSourceText(s,lang)}</p>{s.amendments?.length>0&&<div role="note"><strong>{ui("此依据后有补充／修正；阶段未自动改变，请结合新信息核对。")}</strong>{s.amendments.map((a:any)=><p key={a.id}>{a.kind==='correction' ? ui("修正") : ui("补充")} · {time(a.recordedAt)}：{a.text}{a.reason?'（'+a.reason+'）':''}</p>)}</div>}</div>;
- return <div className="crm-stage-records"><details><summary>{ui("阶段历史（")}{context.history.length}）</summary>{!context.history.length?<p>{ui("尚无阶段调整记录。")}{!isSalesProgressStage(context.current.stage)&&'旧阶段保留原值，未自动映射。'}</p>:context.history.map((h:any)=><article key={h.id}><strong>{crmValue(h.before,lang)} → {crmValue(h.after,lang)}</strong><p>{ui("生效：")}{time(h.occurredAt)}</p><p>{h.reason}</p><small>{h.actor} {ui("· 录入")}{time(h.recordedAt)}</small>{h.basis?.length>0&&<details><summary>{ui("查看关联依据（")}{h.basis.length}）</summary>{h.basis.map((s:any)=><div key={s.type+':'+s.id}>{source(s)}</div>)}</details>}</article>)}</details>
+ return <div className="crm-stage-records"><details><summary>{ui("阶段历史（")}{context.history.length}）</summary>{!context.history.length?<p>{ui("尚无阶段调整记录。")}{!isSalesProgressStage(context.current.stage)&&ui('旧阶段保留原值，未自动映射。')}</p>:context.history.map((h:any)=><article key={h.id}><strong>{crmValue(h.before,lang)} → {crmValue(h.after,lang)}</strong><p>{ui("生效：")}{time(h.occurredAt)}</p><p>{h.reason}</p><small>{h.actor} {ui("· 录入")}{time(h.recordedAt)}</small>{h.basis?.length>0&&<details><summary>{ui("查看关联依据（")}{h.basis.length}）</summary>{h.basis.map((s:any)=><div key={s.type+':'+s.id}>{source(s)}</div>)}</details>}</article>)}</details>
  </div>;
 }

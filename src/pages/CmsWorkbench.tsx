@@ -19,7 +19,7 @@ function CmsWorkspace({
 }) {
   const { isLight, toggleTheme } = useAdminTheme();
   return (
-    <div
+    <div data-admin-workspace="cms" data-theme={isLight ? "light" : "dark"}
       className={`min-h-screen flex flex-col font-sans ${isLight ? "bg-[#f5f5f7] text-slate-900" : "bg-slate-950 text-slate-100"}`}
     >
 

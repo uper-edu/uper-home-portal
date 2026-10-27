@@ -45,7 +45,7 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-profile-field-source{font-size:12px;color:var(--cw-muted)}.crm-profile-field-source summary{cursor:pointer}.crm-profile-field-source label{display:flex!important;align-items:center;gap:6px}
 .crm-operation-content .crm-progress-refined .crm-simple-form-actions{position:sticky;bottom:-24px;z-index:3;margin:20px -24px -24px;padding:12px 24px;border-top:1px solid var(--cw-border);background:var(--cw-surface);display:flex;gap:8px;justify-content:flex-end;align-items:center}
 .crm-progress-refined .crm-simple-form-actions>button{min-height:40px;min-width:88px;border:1px solid var(--cw-border);border-radius:10px;padding:8px 18px;background:var(--cw-surface)}
-.crm-progress-refined .crm-simple-form-actions>button:first-child{order:2;background:var(--cw-accent);border-color:var(--cw-accent);color:white}.crm-progress-refined .crm-simple-form-actions>button:disabled{opacity:.5;cursor:not-allowed}
+.crm-progress-refined .crm-simple-form-actions>button:first-child{order:2;background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}.crm-progress-refined .crm-simple-form-actions>button:disabled{opacity:.5;cursor:not-allowed}
 .crm-progress-refined .crm-simple-check{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--cw-muted)}
 .crm-progress-kind{padding:0;margin:0;border:0}.crm-progress-kind legend{font-weight:600;margin-bottom:8px}.crm-progress-kind>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .crm-progress-kind label{display:flex!important;align-items:center;justify-content:center;gap:8px!important;padding:10px 14px;border:1px solid var(--cw-border);border-radius:10px;cursor:pointer}.crm-progress-kind label:has(input:checked){background:var(--cw-soft);border-color:var(--cw-accent);color:var(--cw-accent)}
@@ -105,7 +105,7 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-operation-compose .crm-editor-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:24px 28px;scroll-padding:20px;display:flex;flex-direction:column;gap:16px}
 .crm-operation-compose :is(.crm-editor-actions,.crm-contact-actions){flex:none;position:static;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin:0;padding:16px 28px;border-top:1px solid var(--cw-border);background:var(--cw-surface)}
 .crm-editor-actions>button,.crm-contact-actions>button{min-height:40px;border-radius:10px}
-.crm-operation-layer .crm-editor-primary{background:var(--cw-accent);border-color:var(--cw-accent);color:white}
+.crm-operation-layer .crm-editor-primary{background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
 .crm-editor-original{margin:0;padding:12px 16px;border-left:3px solid var(--cw-accent);background:var(--cw-soft);color:var(--cw-muted);white-space:pre-wrap;max-height:140px;overflow:auto}
 .crm-operation-compose .crm-profile-batch-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 .crm-editor-actions>.crm-work-link{order:-1;min-width:88px}
@@ -122,7 +122,7 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-contact-call-actions,.crm-contact-message-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .crm-contact-message-actions{margin-left:auto;justify-content:flex-end}
 .crm-contact-actions .crm-work-button{min-height:40px;padding:9px 14px;white-space:nowrap}
-.crm-contact-actions .crm-editor-primary{background:var(--cw-accent);border-color:var(--cw-accent);color:#fff}
+.crm-contact-actions .crm-editor-primary{background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
 
 /* Sales-stage decisions share the fixed-heading, scroll-body, single-footer editing shell. */
 .crm-stage-drawer .crm-stage-options{border:0;padding:0;margin:0;display:grid;gap:8px;min-width:0}

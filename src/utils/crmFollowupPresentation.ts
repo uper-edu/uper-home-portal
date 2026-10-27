@@ -1,3 +1,4 @@
+import {crmUiText} from './crmUiText';
 import {crmInstant} from './crmOperatingTime';
 import {crmMessageTimestamp} from './crmMessageTime';
 import {sameProfileValue,compatibleProfileValue} from './crmFieldValues';
@@ -5,7 +6,17 @@ import {extractionRoot} from './crmExtractionEvidence';
 import {profileFields} from './crmDynamicProfile';
 /** Associate by original identity only; similar text is never a merge key. */
 export function extractionsForLog(rows:any[],id:string){return rows.filter(r=>r.source_type==='sales_record'&&r.source_id===id||r.source_type==='sales_amendment'&&extractionRoot(r).type==='sales_record'&&extractionRoot(r).id===id);}
-export function extractionSummary(row:any){
+export function extractionSummary(row:any,lang='zh'){
+ if(lang!=='zh'){
+ const ui=(v:string)=>crmUiText(v,lang);
+ if(row.status!=='completed')return ui('原文已保存')+' · '+ui(({pending:'等待AI整理',processing:'AI整理中',retry:'等待重试',failed:'AI整理失败'}as any)[row.status]||'整理状态待核对');
+ const obs=row.output?.observations||[],applied=obs.filter((o:any)=>o.kind==='field'&&o.decision==='apply'),different=obs.filter((o:any)=>o.kind==='field'&&o.decision==='difference').length,signals=obs.filter((o:any)=>o.kind==='signal'&&o.subject==='customer'&&o.temporality==='current').length,stages=obs.filter((o:any)=>o.kind==='stage_event').length,parts=[];
+ if(applied.length)parts.push((lang==='id'?'Diterapkan: ':'Adopted: ')+applied.map((o:any)=>ui(profileFields[o.field]||o.field)).join(', '));
+ if(different)parts.push(different+(lang==='id'?' perbedaan':' differences'));
+ if(signals)parts.push(signals+(lang==='id'?' permintaan / sinyal':' requests / signals'));
+ if(stages)parts.push(stages+(lang==='id'?' uraian tahap':' stage descriptions'));
+ return (lang==='id'?'AI selesai memproses':'AI processing complete')+' · '+(parts.join(' · ')||ui('仅保留原文依据'));
+ }
  if(row.status!=='completed')return ({pending:'原文已保存 · 等待AI整理',processing:'原文已保存 · AI整理中',retry:'原文已保存 · 等待重试',failed:'原文已保存 · AI整理失败'} as any)[row.status]||'原文已保存 · 整理状态待核对';
  const obs=row.output?.observations||[];if(!obs.length)return 'AI整理完成，未识别出可结构化的信息。';
  const applied=obs.filter((o:any)=>o.kind==='field'&&o.decision==='apply'),different=obs.filter((o:any)=>o.kind==='field'&&o.decision==='difference');const labels=[];

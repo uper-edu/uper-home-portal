@@ -1,0 +1,35 @@
+/* Admin semantic pairs. Marketing themes must not redefine these business meanings. */
+:root,[data-theme=light]{
+ --admin-text:#17263d;--admin-muted:#52647c;--admin-surface:#ffffff;
+ --admin-action:#087f77;--admin-action-fill:#087f77;--admin-on-action:#ffffff;--admin-selected:#edf9f6;--admin-focus:#087f77;
+ --admin-success:#15803d;--admin-success-bg:#f0fdf4;--admin-success-border:#15803d;
+ --admin-info:#1d4f91;--admin-info-bg:#eff6ff;--admin-info-border:#1d4f91;
+ --admin-warning:#946200;--admin-warning-bg:#fffbeb;--admin-warning-border:#946200;
+ --admin-danger:#b91c1c;--admin-danger-bg:#fff1f2;--admin-danger-border:#b91c1c;
+ --admin-ai:#6d4b8d;--admin-ai-bg:#f3eef8;
+ --admin-registration:#087568;--admin-quote:#164e63;--admin-quote-bg:#ecfeff;
+}
+[data-theme=dark]{
+ --admin-text:#e2e8f0;--admin-muted:#a3b3c7;--admin-surface:#0f1b2d;
+ --admin-action:#64dbcc;--admin-action-fill:#64dbcc;--admin-on-action:#092d29;--admin-selected:#103d3a;--admin-focus:#64dbcc;
+ --admin-success:#86efac;--admin-success-bg:#173528;--admin-success-border:#86efac;
+ --admin-info:#93c5fd;--admin-info-bg:#172d49;--admin-info-border:#93c5fd;
+ --admin-warning:#fcd34d;--admin-warning-bg:#342b18;--admin-warning-border:#fcd34d;
+ --admin-danger:#fca5a5;--admin-danger-bg:#3b2029;--admin-danger-border:#fca5a5;
+ --admin-ai:#d2b9ee;--admin-ai-bg:#30263d;
+ --admin-registration:#5eead4;--admin-quote:#a5f3fc;--admin-quote-bg:#15353e;
+}
+/* Scope interactive administration independently from public-site colour themes. */
+[data-admin-workspace]{--primary-500:#087f77;--primary-600:#087f77;--primary-700:#075e59}
+[data-admin-workspace] :focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
+.admin-status{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:1.5;color:var(--admin-muted)}
+.admin-status[data-tone=success]{color:var(--admin-success)}
+.admin-status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.admin-policy-accent{color:var(--admin-action);background:var(--admin-selected);border-color:var(--admin-action)}
+.admin-policy-value{color:var(--admin-action)}
+/* Legacy utility consumers use the same foreground/fill pair, including dark CMS. */
+[data-admin-workspace] :is(.text-primary-500,.text-primary-600,.text-primary-700){color:var(--admin-action)}
+[data-admin-workspace] :is(.bg-primary-500,.bg-primary-600,.bg-primary-700).text-white{background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
+[data-admin-workspace] :is(.bg-primary-500,.bg-primary-600,.bg-primary-700).text-white :is(.text-primary-500,.text-primary-600,.text-primary-700){color:inherit}
+/* Read-only metadata is readable secondary text, never a disabled-control colour. */
+[data-admin-workspace] :is(.text-slate-400,.text-slate-500,.text-gray-400,.text-gray-500){color:var(--admin-muted)}

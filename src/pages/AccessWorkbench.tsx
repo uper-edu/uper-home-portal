@@ -392,7 +392,7 @@ export function AccessWorkspace({
   const selectedPreviewUser =
     data?.users.find((u) => u.id === previewUserId) || data?.users[0];
   return (
-    <div className="access-page" data-theme={isLight ? "light" : "dark"}>
+    <div className="access-page" data-admin-workspace="system" data-theme={isLight ? "light" : "dark"}>
       <PageMetadata lang={lang} options={{module:tab,state:can("access.read")?undefined:"denied"}}/>
       <a className="admin-skip-link" href="#access-main">
         {t("Skip to workspace", "Lewati ke ruang kerja", "跳到工作区")}

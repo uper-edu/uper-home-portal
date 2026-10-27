@@ -9,8 +9,14 @@ export function historyAdditionalSources(group:HistoryGroup):HistoryBusinessSour
   const p=event.payload||{},root=event.eventId===group.root?.eventId;
   let title='',original='',reason='',fields:HistoryBusinessSource['fields']=[];
   if(event.eventType==='task.request_evidence'){
-   title='客户明确请求';const action=requestNames[p.action];if(action)fields=[{label:'请求内容',value:action}];
+   title='客户明确请求';
    if(event.original&&event.original!==group.original)original=event.original;
+   reason=typeof p.reason==='string'?p.reason:'';
+   const message=group.root;
+   // The timeline has already resolved request ids to this exact customer message.
+   // Equal text, equal timestamps or another message in the same conversation are not proof.
+   const represented=p.action==='handoff'&&message?.eventType==='customer.message'&&group.id==='message:'+message.sourceRecordId&&p.messageId&&p.conversationId===message.payload?.conversationId&&(p.messageId===message.sourceRecordId||group.aliases?.includes(p.messageId))&&!!group.original;
+   const action=requestNames[p.action];if(action&&(!represented||original||reason))fields=[{label:'请求内容',value:action}];
   }else if(['profile.changed','stage.changed'].includes(event.eventType)){
    title=event.eventType==='stage.changed'?'销售阶段调整':'客户资料编辑';
    // Root fields are already visible alongside their original. Only an additional reason is needed.
