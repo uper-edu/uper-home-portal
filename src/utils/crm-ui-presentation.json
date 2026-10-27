@@ -7298,5 +7298,25 @@
   "未约定时间": [
     "No time agreed",
     "Waktu belum disepakati"
+  ],
+  "此日期或时刻无效或不唯一，请选择其他时间": [
+    "This local date or time is invalid or ambiguous. Choose another time.",
+    "Tanggal atau jam lokal tidak valid atau ambigu. Pilih waktu lain."
+  ],
+  "实际发生时间不能晚于现在": [
+    "The occurrence time cannot be in the future.",
+    "Waktu kejadian tidak boleh di masa depan."
+  ],
+  "请填写完整日期、小时和分钟": [
+    "Enter the complete date, hour and minute.",
+    "Isi tanggal, jam, dan menit lengkap."
+  ],
+  "实际日期或时间不正确": [
+    "The date or time is invalid.",
+    "Tanggal atau jam tidak valid."
+  ],
+  "更多约定": [
+    "More agreements",
+    "Kesepakatan lainnya"
   ]
 }

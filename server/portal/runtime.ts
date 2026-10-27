@@ -754,8 +754,13 @@ export async function mountPortal(app: Express) {
           "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')",
         )
       ).rows;
-      const timezone =
-        settings.find((r) => r.id === "sla")?.value.timezone || "Asia/Jakarta";
+      let timezone = settings.find((r) => r.id === "sla")?.value.timezone || "Asia/Jakarta";
+      if (req.query.viewerTimezone !== undefined) {
+        if (typeof req.query.viewerTimezone !== 'string') fail(400, 'Invalid display timezone');
+        try { new Intl.DateTimeFormat('en', {timeZone: String(req.query.viewerTimezone)}); }
+        catch { fail(400, 'Invalid display timezone'); }
+        timezone = String(req.query.viewerTimezone);
+      }
       const config = {
         ...DEFAULT_CRM_POLICY_CONFIG,
         ...settings.find((r) => r.id === "crm_policy")?.value,
@@ -1633,8 +1638,13 @@ export async function mountPortal(app: Express) {
           "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')",
         )
       ).rows;
-      const timezone =
-        settings.find((r) => r.id === "sla")?.value.timezone || "Asia/Jakarta";
+      let timezone = settings.find((r) => r.id === "sla")?.value.timezone || "Asia/Jakarta";
+      if (req.query.viewerTimezone !== undefined) {
+        if (typeof req.query.viewerTimezone !== 'string') fail(400, 'Invalid display timezone');
+        try { new Intl.DateTimeFormat('en', {timeZone: String(req.query.viewerTimezone)}); }
+        catch { fail(400, 'Invalid display timezone'); }
+        timezone = String(req.query.viewerTimezone);
+      }
       const config = {
         ...DEFAULT_CRM_POLICY_CONFIG,
         ...settings.find((r) => r.id === "crm_policy")?.value,

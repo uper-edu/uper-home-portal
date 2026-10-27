@@ -1,3 +1,4 @@
+import {viewerTimeZone} from '../utils/crmOperatingTime';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
 import {isCrmManager} from '../utils/crmOutreach';
 import { describeFollowUpTask } from "../utils/crmFollowUp";
@@ -149,12 +150,12 @@ export function AccessHandoverPanel({
                         />
                         {t("Task", "Tugas", "任务")}：
                         {
-                          describeFollowUpTask(task as any, lang, h.timezone)
+                          describeFollowUpTask(task as any, lang, viewerTimeZone())
                             .action
                         }{" "}
                         · {task.id} ·{" "}
                         {
-                          describeFollowUpTask(task as any, lang, h.timezone)
+                          describeFollowUpTask(task as any, lang, viewerTimeZone())
                             .timing
                         }
                       </AdminField>

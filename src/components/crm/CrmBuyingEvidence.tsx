@@ -45,7 +45,7 @@ export function CrmBuyingEvidence({
     const at = /^\d{4}-\d\d-\d\d /.test(e.at)
       ? e.at.replace(" ", "T") + "Z"
       : e.at;
-    return formatCrmOperatingTime(at, timezone) + " · " + timezone;
+    return formatCrmOperatingTime(at, timezone);
   };
   return (
     <div className="crm-buying-evidence" ref={root}>

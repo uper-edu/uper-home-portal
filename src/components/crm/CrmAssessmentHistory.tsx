@@ -219,7 +219,7 @@ export function CrmAssessmentHistoryContent({
                         <time
                           className="crm-assessment-history-date"
                           dateTime={result?.attempt?.completedAt}
-                          title={`${t("Completed", "Selesai", "完成时间")} · ${time(result?.attempt?.completedAt)} · ${timezone}`}
+                          title={`${t("Completed", "Selesai", "完成时间")} · ${time(result?.attempt?.completedAt)}`}
                         >
                           {time(result?.attempt?.completedAt)}
                         </time>

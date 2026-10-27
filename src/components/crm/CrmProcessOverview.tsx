@@ -572,7 +572,7 @@ export function CrmProcessOverview({
               "Ketepatan persyaratan pertama mempertahankan aturan waktu pemrosesan dan tenggat. Tahap tetap diubah manual.",
               "首次要求按时处理保留现有处理时间和截止规则；阶段仍由销售人工确认。",
             )}
-            {timezone}
+
           </li>
         </ul>
       </details>

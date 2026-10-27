@@ -1,3 +1,5 @@
+// Fixture browser timezone is explicit; cross-zone conversion is tested in crmViewerTime.
+process.env.TZ='Asia/Jakarta';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';

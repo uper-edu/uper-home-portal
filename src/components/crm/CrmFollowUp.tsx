@@ -13,6 +13,7 @@ export function CrmFollowUp({
   onOpen,
   now,
   compact = false,
+  hideStoppedNotice = false,
 }: {
   lead: CrmLeadRecord;
   lang: "zh" | "en" | "id";
@@ -25,9 +26,11 @@ export function CrmFollowUp({
   onOpen: () => void;
   now?: number;
   compact?: boolean;
+  hideStoppedNotice?: boolean;
 }) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
+  const emptyLabel=hideStoppedNotice&&lead.contactArrangement?.state==='stopped'?'':emptyFollowUpLabel(lead,lang);
   const summary = leadFollowUp(lead, lang, timezone, now);
   const task = summary.next?.task;
   const taskView = task && presentFollowUpTask(task, lang, timezone, now);
@@ -36,7 +39,7 @@ export function CrmFollowUp({
   const ownerName =
     employees.find((person) => person.id === taskOwner)?.displayName ||
     taskOwner;
-  if(summary.loaded&&!summary.next&&!summary.note&&!emptyFollowUpLabel(lead,lang))return null;
+  if(summary.loaded&&!summary.next&&!summary.note&&!emptyLabel)return null;
   return (
     <div className="crm-followup" data-theme={isLight ? "light" : "dark"}>
       {summary.next ? (
@@ -77,7 +80,7 @@ export function CrmFollowUp({
       ) : (
         <div className="crm-followup-secondary">
           {summary.loaded
-            ? emptyFollowUpLabel(lead, lang)
+            ? emptyLabel
             : t("Follow-up information unavailable", "跟进信息暂不可用")}
         </div>
       )}

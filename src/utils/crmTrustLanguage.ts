@@ -1,12 +1,12 @@
 import {outreachText} from './crmOutreach';
 import type { CrmLanguage } from "./crmLanguage";
 const messages: Record<string, [string, string]> = {
-  "Enter task content and a future time with timezone": ["Isi tugas dan waktu mendatang dengan zona waktu", "请填写任务内容和带时区的未来时间"],
+  "Enter task content and a future time with timezone": ["Isi tugas dan waktu mendatang", "请填写任务内容和未来时间"],
   "Enter the specific task action": ["Isi tindakan spesifik tugas", "请填写任务的具体动作"],
   "Enter the task purpose": ["Isi tujuan tugas", "请填写任务用途"],
   "Choose what the task time means": ["Pilih makna waktu tugas", "请选择任务时间的含义"],
   "Choose a task date and time": ["Pilih tanggal dan waktu tugas", "请选择完整的任务日期和时间"],
-  "Choose a future time in the operating timezone": ["Waktu yang dipilih telah lewat menurut zona operasional. Pilih waktu setelah waktu operasional saat ini.", "所选时间在运营时区下已经过去，请选择晚于运营当前时间的时间。"],
+  "Choose a future time in the operating timezone": ["Waktu yang dipilih sudah lewat. Pilih waktu mendatang.", "所选时间已经过去，请选择未来时间。"],
   "Enter the task reason or evidence": ["Isi alasan atau bukti tugas", "请填写任务原因或依据"],
 
   "Request changed; refresh and review": ["Permintaan berubah; muat ulang dan tinjau", "请求已变化，请刷新核对"],
@@ -72,8 +72,8 @@ const messages: Record<string, [string, string]> = {
   "Lead not found": ["Pelanggan tidak ditemukan", "未找到客户"],
   "Invalid task action": ["Tindakan tugas tidak valid", "任务操作无效"],
   "Enter an action, purpose and future time with timezone": [
-    "Isi tindakan, tujuan, dan waktu mendatang dengan zona waktu",
-    "请填写动作、依据和带时区的未来时间",
+    "Isi tindakan, tujuan, dan waktu mendatang",
+    "请填写动作、依据和未来时间",
   ],
 };
 const stageMessages:Record<string,[string,string,string]>={
@@ -87,6 +87,7 @@ const stageMessages:Record<string,[string,string,string]>={
  '阶段没有变化，请勿重复保存':['The stage has not changed','Tahap belum berubah','阶段没有变化，请勿重复保存']
 };
 export function trustError(message: string, lang: CrmLanguage) {
+  if(message==='Choose a future time in the operating timezone')return lang==='zh'?'所选时间已经过去，请选择未来时间。':lang==='id'?'Waktu yang dipilih sudah lewat. Pilih waktu mendatang.':'Choose a future time';
   if(stageMessages[message])return stageMessages[message][lang==='zh'?2:lang==='id'?1:0];
   if(message.startsWith("IDENTITY_")||message.startsWith("CONTACT_")||message==="SELF_CLAIM_DISABLED"||message==="OWNER_MANAGER_REQUIRED")return outreachText(message,lang);
   const value = messages[message];

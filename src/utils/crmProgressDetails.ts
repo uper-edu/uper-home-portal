@@ -1,20 +1,26 @@
 import {profileFields} from './crmDynamicProfile';
-import {formatCrmOperatingTime,viewerTimeZone} from './crmOperatingTime';
+import {formatCrmOperatingTime,formatCrmSummaryTime,viewerTimeZone} from './crmOperatingTime';
 import type {CrmLanguage} from './crmLanguage';
 import {crmValue} from './crmLanguage';
 const text=(lang:string,en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
 export function agreementTime(agreement:any,timezone:string,lang:string,compact=false){
  if(!agreement)return text(lang,'Not recorded','Tidak tercatat','未记录');
- if(agreement.at)return formatCrmOperatingTime(agreement.at,agreement.timezone||timezone)+' · '+(agreement.timezone||timezone);
+ if(agreement.at)return formatCrmOperatingTime(agreement.at,timezone);
  if(agreement.date)return agreement.date+(compact?'':' · '+text(lang,'Date only','Hanya tanggal','仅日期'));
  return text(lang,'No date or time agreed','Tanggal dan jam belum disepakati','尚未约定日期或时刻');
+}
+/** Compact list dates follow the contact timestamps; date-only remains a calendar date. */
+export function agreementListTime(agreement:any,timezone:string,now=Date.now()){
+ if(agreement.at)return formatCrmSummaryTime(agreement.at,timezone,new Date(now)).slice(0,-3);
+ if(agreement.date){const year=formatCrmOperatingTime(new Date(now).toISOString(),timezone).slice(0,4);return agreement.date.startsWith(year+'-')?agreement.date.slice(5):agreement.date;}
+ return '';
 }
 export function progressDetails(log:any,lead:any,requests:any[],lang:CrmLanguage,timezone:string){
  const t=(en:string,id:string,zh:string)=>text(lang,en,id,zh);const rows:{label:string,value:string}[]=[];
  const add=(label:string,value:any)=>{if(value!==undefined&&value!==null&&value!=='')rows.push({label,value:String(value)});};
  const internal=log.recordKind==='internal'||log.recordKind==='closure';
  add(t('Record type','Jenis catatan','记录类型'),internal?t('Internal progress','Perkembangan internal','内部进展'):t('Customer contact','Kontak pelanggan','客户联系'));
- add(t('Actual occurrence','Waktu kejadian sebenarnya','实际发生时间'),log.occurredAt?formatCrmOperatingTime(log.occurredAt,viewerTimeZone())+' · '+viewerTimeZone():t('Not recorded; recording time is separate','Tidak tercatat; waktu pencatatan terpisah','未注明；记录时间另行保留'));
+ add(t('Actual occurrence','Waktu kejadian sebenarnya','实际发生时间'),log.occurredAt?formatCrmOperatingTime(log.occurredAt,viewerTimeZone()):t('Not recorded; recording time is separate','Tidak tercatat; waktu pencatatan terpisah','未注明；记录时间另行保留'));
  if(!internal){add(t('Initiated by','Dimulai oleh','联系发起方'),log.contactDirection==='sales'?t('Sales','Sales','销售'):log.contactDirection==='customer'?t('Customer','Pelanggan','客户'):t('Not specified','Tidak disebutkan','未注明'));add(t('Contact channel','Saluran kontak','联系渠道'),crmValue(log.channel,lang));add(t('Actual result','Hasil nyata','实际联系结果'),crmValue(log.connectStatus,lang));}
  add(t('Stage facts recorded','Fakta tahap yang dicatat','本次记录的阶段事实'),log.stageObservations?.length?log.stageObservations.map((v:string)=>crmValue(v,lang)).join(' · '):null);
  add(t('Sales stage change','Perubahan tahap','销售阶段变更'),log.newStage?(log.expectedStage?crmValue(log.expectedStage,lang)+' → ':'')+crmValue(log.newStage,lang):null);

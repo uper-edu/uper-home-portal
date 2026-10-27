@@ -581,7 +581,7 @@
 .crm-questionnaire-evidence .crm-history-details dd {text-align:left;}
 .crm-questionnaire-evidence .crm-history-details li {text-align:left;}
 /* Agreements share existing admin semantic pairs; only the local cue is tinted. */
-.crm-list-agreement{min-width:0;padding:8px 0;border-bottom:1px solid var(--cw-border)}
+.crm-list-agreement{min-width:0;padding:8px 0;border-bottom:0}
 .crm-list-agreement:last-child{border-bottom:0}
 .crm-list-agreement-heading .crm-list-agreements-label{font-size:13px;color:var(--admin-text)}
 .crm-agreement-status{font-size:12px;line-height:1.6;color:var(--admin-muted)}
@@ -603,3 +603,45 @@
 .crm-list-agreements.is-detail .crm-agreement-meta{display:flex;align-items:baseline;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px;margin-left:auto;max-width:100%;min-width:0}
 .crm-list-agreements.is-detail .crm-list-agreement-date{margin:0;font-family:inherit;font-size:12px;line-height:1.5;font-weight:400;letter-spacing:normal;overflow-wrap:anywhere}
 .crm-list-agreements.is-detail .crm-agreement-action{margin:0;font-size:14px;line-height:1.6}
+/* Active agreements: one heading, every item visible in Follow-up. */
+.crm-list-agreements .crm-list-agreements-label{display:inline-flex;align-items:center;gap:5px;color:var(--admin-info)}
+.crm-list-agreement .crm-agreement-icon{flex:none;color:var(--admin-info)}
+.crm-list-agreement[data-tone=warning] .crm-agreement-icon,.crm-list-agreement[data-tone=warning] .crm-list-agreements-label,.crm-list-agreement[data-tone=warning] .crm-list-agreement-date:not([data-undated]){color:var(--admin-warning)}
+.crm-list-agreement[data-tone=danger] .crm-agreement-icon,.crm-list-agreement[data-tone=danger] .crm-list-agreements-label,.crm-list-agreement[data-tone=danger] .crm-list-agreement-date:not([data-undated]){color:var(--admin-danger)}
+.crm-agreement-section-title{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--admin-info);line-height:1.6}
+.crm-list-agreements.is-detail .crm-list-agreement{padding:10px 0;border-left:0;border-bottom:1px solid var(--cw-border);margin:0}
+.crm-list-agreements.is-detail .crm-list-agreement:last-child{border-bottom:0;padding-bottom:0}
+.crm-agreement-detail-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:baseline}
+.crm-agreement-item-icon{display:inline-flex;align-self:start;padding-top:4px}
+.crm-list-agreements.is-detail .crm-agreement-meta{display:flex;align-items:baseline;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px;max-width:100%;margin:0}
+.crm-list-agreements.is-detail .crm-list-agreement-date{font-size:13px;font-weight:500;line-height:1.6;color:var(--admin-text)}
+.crm-list-agreements .crm-list-agreement-date[data-undated]{color:var(--admin-muted);font-weight:400}
+@media(max-width:700px){.crm-agreement-detail-row{grid-template-columns:14px minmax(0,1fr)}.crm-list-agreements.is-detail .crm-agreement-meta{grid-column:2;justify-content:flex-start}}
+
+/* List and compact sidebar expose every agreement and its full action text. */
+.crm-list-agreements:not(.is-detail) .crm-agreement-list-action{display:grid;grid-template-columns:14px minmax(0,1fr);align-items:baseline;gap:6px;padding:0;margin:0}
+.crm-agreement-list-action .crm-agreement-icon{align-self:start;margin-top:3px}
+.crm-list-agreements .crm-list-agreement-preview{display:block;-webkit-line-clamp:unset;overflow:visible;white-space:normal}
+.crm-list-agreements:not(.is-detail) .crm-list-agreement-date{margin-left:20px}
+
+/* Contact restriction heads the follow-up column, independent of sales stage. */
+.crm-work-next>.crm-stop-contact,.crm-data-table td>.crm-stop-contact{display:flex;align-items:center;gap:5px;margin:0 0 8px;font-size:13px;font-weight:600;line-height:1.6;color:var(--admin-danger)}
+
+/* One typography level for first contact, agreements and contact restrictions. */
+.crm-customer-workspace{--crm-followup-heading-size:13px}
+.crm-customer-workspace[data-open=false]{--crm-followup-heading-size:14px}
+.crm-customer-workspace .crm-work-next .crm-followup-action,.crm-customer-workspace .crm-work-next .crm-agreement-section-title,.crm-customer-workspace .crm-work-next>.crm-stop-contact{font-size:var(--crm-followup-heading-size);font-weight:600;line-height:1.6}
+.crm-list-agreements:not(.is-detail) .crm-list-agreement-date{margin:0;font-weight:400}
+.crm-list-agreements.is-detail{padding-bottom:12px;border-bottom:1px solid var(--cw-border)}
+.crm-list-agreements.is-detail .crm-list-agreement{border:0}
+
+/* Group agreements with spacing, not row dividers; description → time is one 4px step. */
+.crm-list-agreements:not(.is-detail) .crm-list-agreement{display:flex;flex-direction:column;gap:4px;padding:0;border:0;margin:0}
+.crm-list-agreements:not(.is-detail) .crm-list-agreement+.crm-list-agreement{margin-top:12px}
+.crm-list-agreements:not(.is-detail) .crm-list-agreement-heading{margin:0}
+/* List timestamps share one font contract, including OpenType numeral settings. */
+.crm-customer-workspace .crm-list-agreements:not(.is-detail) .crm-list-agreement-date,
+.crm-customer-workspace .crm-interaction-timelines.is-compact .crm-interaction-open-text{font-family:inherit;font-size:12px;font-weight:400;line-height:1.6;letter-spacing:normal;font-variant-numeric:normal;font-feature-settings:normal}
+/* Interaction groups breathe below preceding work, but never add leading space. */
+.crm-customer-workspace[data-open=false] .crm-work-next>.crm-interaction-timelines.is-compact:not(:first-child)>.crm-interaction-row:first-child{border-top:1px solid var(--cw-border);padding-top:12px}
+.crm-customer-workspace[data-open=false] .crm-work-next>.crm-interaction-timelines.is-compact:first-child>.crm-interaction-row:first-child{border-top:0;padding-top:0}

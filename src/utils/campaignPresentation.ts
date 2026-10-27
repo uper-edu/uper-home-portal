@@ -1,3 +1,4 @@
+import {campaignViewerSchedule} from './campaignScheduleInput';
 import {
   campaignUi,
   campaignUiLocale,
@@ -29,7 +30,14 @@ const dateText = (
     timeZone: "UTC",
   }).format(date);
 /** Date-only facts stay date-only, independent of the employee's browser timezone. */
+function localCampaign(c:Summary):Summary {
+ try { const start=campaignViewerSchedule(c.startDate,c.startTime),end=campaignViewerSchedule(c.endDate,c.endTime);
+ return {...c,startDate:start.date,startTime:start.time,endDate:end.date,endTime:end.time}; } catch { return c; }
+}
 export function campaignDateRange(c: Summary, lang: CampaignUiLanguage = "en") {
+ return dateRange(localCampaign(c),lang);
+}
+function dateRange(c: Summary, lang: CampaignUiLanguage = "en") {
   const u = campaignUi(lang),
     format = (d: Date, o?: Intl.DateTimeFormatOptions) => dateText(d, o, lang);
   if (!c.startDate && !c.endDate) return "";
@@ -55,6 +63,7 @@ export function campaignDateRange(c: Summary, lang: CampaignUiLanguage = "en") {
   return format(start) + "–" + format(end);
 }
 export function campaignTimeRange(c: Summary, lang: CampaignUiLanguage = "en") {
+ c=localCampaign(c);
   const u = campaignUi(lang);
   const start = c.startTime || "",
     end = c.endTime || "";
@@ -70,17 +79,18 @@ export function campaignTimeRange(c: Summary, lang: CampaignUiLanguage = "en") {
         : start
           ? u("Starts {date}", { date: start })
           : u("Ends {date}", { date: end });
-  return time + " · Asia/Jakarta";
+  return time;
 }
 /** One schedule range, with each time attached to its recorded date (never daily opening hours). */
 export function campaignScheduleRange(
   c: Summary,
   lang: CampaignUiLanguage = "en",
 ) {
+  c=localCampaign(c);
   const u = campaignUi(lang),
     format = (d: Date, o?: Intl.DateTimeFormatOptions) => dateText(d, o, lang);
-  if (!c.startTime && !c.endTime) return campaignDateRange(c, lang);
-  const dates = campaignDateRange(c, lang),
+  if (!c.startTime && !c.endTime) return dateRange(c, lang);
+  const dates = dateRange(c, lang),
     timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
   if (
     dates === u("Recorded dates need review") ||
@@ -92,7 +102,7 @@ export function campaignScheduleRange(
       c.endTime < c.startTime)
   )
     return u("Recorded schedule needs review");
-  const suffix = " · WIB";
+  const suffix = "";
   if (c.startDate && c.startDate === c.endDate) {
     const date = format(day(c.startDate)!);
     return (

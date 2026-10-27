@@ -227,7 +227,7 @@ export function CrmLeadFilters({
           {selectDimension("stage", f, update, "crm-filter-stage")}
           <div
             className="crm-filter-task"
-            title={t("Dates use ", "日期采用 ") + timezone}
+
           >
             <CrmSingleSelect
               label={t("First contact requirement", "首次联系")}

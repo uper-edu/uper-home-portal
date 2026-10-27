@@ -369,9 +369,9 @@ function PromotionReviewCard({
           {u("Latest decision:")} {row.resolution.reason} ·{" "}
           {row.resolution.actor} ·{" "}
           {new Date(row.resolution.at).toLocaleString(campaignUiLocale(lang), {
-            timeZone: "Asia/Jakarta",
+
           })}{" "}
-          {u("(Asia/Jakarta)")}
+
         </p>
       )}
       {row.resolution?.snapshot && (
@@ -695,9 +695,9 @@ function PromotionReviewCard({
                 )}{" "}
                 · {h.actor} ·{" "}
                 {new Date(h.at).toLocaleString(campaignUiLocale(lang), {
-                  timeZone: "Asia/Jakarta",
+
                 })}{" "}
-                {u("(Asia/Jakarta)")}
+
               </p>
               <p>{h.after.reason}</p>
               <p>

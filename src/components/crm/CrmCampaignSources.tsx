@@ -312,18 +312,18 @@ function UnknownCampaignSources({
               "Pendaftaran pertama / terakhir",
               "首次／最近登记",
             )}{" "}
-            {u("(Asia/Jakarta)：")}{" "}
+            ：{" "}
             {r.firstSeen
               ? new Date(r.firstSeen).toLocaleString(
                   lang === "zh" ? "zh-CN" : lang === "id" ? "id-ID" : "en-GB",
-                  { timeZone: "Asia/Jakarta" },
+                  {},
                 )
               : "—"}{" "}
             /{" "}
             {r.lastSeen
               ? new Date(r.lastSeen).toLocaleString(
                   lang === "zh" ? "zh-CN" : lang === "id" ? "id-ID" : "en-GB",
-                  { timeZone: "Asia/Jakarta" },
+                  {},
                 )
               : "—"}
           </p>

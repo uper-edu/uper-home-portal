@@ -204,8 +204,7 @@ export function CrmConversationTimeline({
                 group.messages.length === 1 ? "message" : "messages",
                 "条消息",
               )}
-              <span aria-hidden="true"> · </span>
-              {timezone}
+
             </p>
           </div>
         </div>
@@ -359,8 +358,7 @@ export function CrmConversationTimeline({
           <dd>
             <code>{group.id}</code>
           </dd>
-          <dt>{t("Time zone", "时区")}</dt>
-          <dd>{timezone}</dd>
+
         </dl>
       </CrmDisclosure>
     </div>

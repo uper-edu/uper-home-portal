@@ -42,7 +42,7 @@ export function CrmNextTaskSummary({
               {time.label} · {view.formatTime(time.value)}
             </span>
           ))}
-          {view.task.kind!=='consultation'&&<span className="crm-work-muted"> · {timezone}</span>}
+          {view.task.kind!=='consultation'&&<span className="crm-work-muted"></span>}
           {view.task.kind!=='consultation'&&["overdue", "review"].includes(view.tone) && (
             <span data-tone={view.tone}> · {view.status}</span>
           )}

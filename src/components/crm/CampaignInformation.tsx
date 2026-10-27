@@ -1,3 +1,4 @@
+import {campaignViewerSchedule} from '../../utils/campaignScheduleInput';
 import { campaignUi, campaignUiLocale } from "../../utils/campaignI18n";
 import { CrmDisclosure } from "./CrmDisclosure";
 import React from "react";
@@ -15,7 +16,7 @@ function dateTime(value: string, lang: "en" | "id" | "zh") {
   return new Intl.DateTimeFormat(campaignUiLocale(lang), {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "Asia/Jakarta",
+
   }).format(new Date(value));
 }
 function Field({
@@ -44,10 +45,10 @@ export function CampaignInformation({
   const u = campaignUi(lang);
   const r = (value: unknown) =>
     typeof value === "string" && value.trim() ? value : u("Not recorded");
-  const schedule = (date?: string, time?: string) =>
-    date || time
-      ? `${date || u("Date not recorded")} · ${time || u("Time not recorded")}`
-      : u("Not recorded");
+  const schedule = (date?: string, time?: string) => {
+    const shown=campaignViewerSchedule(date,time);
+    return shown.date || shown.time ? `${shown.date || u("Date not recorded")} · ${shown.time || u("Time not recorded")}` : u("Not recorded");
+  };
   const hasSchedule = Boolean(
     c.startDate ||
     c.endDate ||
@@ -118,7 +119,7 @@ export function CampaignInformation({
       >
         <p className="campaign-hint">
           {u(
-            "Times use Asia/Jakarta (UTC+7). The attendance link is separate from customer acquisition links.",
+            "The attendance link is separate from customer acquisition links.",
           )}
         </p>
         <dl className="campaign-info-grid">
@@ -199,10 +200,10 @@ export function CampaignInformation({
         heading={u("System record")}
       >
         <dl className="campaign-info-grid">
-          <Field label={u("Created · Asia/Jakarta")}>
+          <Field label={u("Created")}>
             {dateTime(c.createdAt, lang)}
           </Field>
-          <Field label={u("Last updated · Asia/Jakarta")}>
+          <Field label={u("Last updated")}>
             {dateTime(c.updatedAt, lang)}
           </Field>
         </dl>

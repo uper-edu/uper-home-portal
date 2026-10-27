@@ -170,7 +170,7 @@ export function CrmFollowupHistory({
                 <li className="crm-timeline-date">
                   {day ||
                     t("Time not recorded", "Waktu tidak dicatat", "时间未记录")}
-                  <span className="crm-work-muted"> · {timezone}</span>
+                  <span className="crm-work-muted"></span>
                 </li>
               )}
               <li
@@ -416,7 +416,7 @@ export function CrmFollowupHistory({
                                 {view.times.map((time: any, i: number) => (
                                   <span key={i}>
                                     {time.label} · {view.formatTime(time.value)}{" "}
-                                    · {timezone}
+
                                   </span>
                                 ))}
                               </div>

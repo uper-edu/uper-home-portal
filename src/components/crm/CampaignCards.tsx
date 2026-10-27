@@ -225,7 +225,7 @@ export function CampaignCards({
                     {schedule && (
                       <p
                         className="campaign-card-schedule"
-                        title={u("Times use Asia/Jakarta (WIB, UTC+7)")}
+
                       >
                         <Calendar size={14} aria-hidden="true" />
                         <span>{schedule}</span>

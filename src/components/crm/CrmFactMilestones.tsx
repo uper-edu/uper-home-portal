@@ -23,7 +23,7 @@ export function FactMilestoneTime({ event, compact = false }: any) {
       {event.occurredAt ? (
         <time
           dateTime={event.occurredAt}
-          aria-label={full+' · '+viewerTimeZone()}
+          aria-label={full}
           title={
             full +
             " · " +

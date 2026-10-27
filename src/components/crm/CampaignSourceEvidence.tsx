@@ -72,10 +72,10 @@ export function CampaignSourceEvidence({
                   {entry.lastActivityAt
                     ? new Date(entry.lastActivityAt).toLocaleString(
                         campaignUiLocale(lang),
-                        { timeZone: "Asia/Jakarta" },
+                        {},
                       )
                     : u("Time not recorded")}{" "}
-                  (Asia/Jakarta)
+
                 </summary>
                 <dl className="campaign-source-evidence-fields">
                   {[

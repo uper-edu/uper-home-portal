@@ -1650,5 +1650,21 @@
   "Use a separate link for each placement you want to distinguish.": [
     "Gunakan tautan terpisah untuk setiap penempatan yang ingin dibedakan.",
     "需要区分的每个投放位置应使用独立链接。"
+  ],
+  "Created": [
+    "Dibuat",
+    "创建时间"
+  ],
+  "Last updated": [
+    "Terakhir diperbarui",
+    "最近更新"
+  ],
+  "Invalid local date and time": [
+    "Tanggal atau jam tidak berlaku. Pilih waktu lain.",
+    "此日期或时刻无效，请选择其他时间。"
+  ],
+  "The attendance link is separate from customer acquisition links.": [
+    "Tautan kehadiran terpisah dari tautan akuisisi pelanggan.",
+    "参会链接与获客推广链接相互独立。"
   ]
 }

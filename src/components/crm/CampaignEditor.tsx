@@ -472,7 +472,7 @@ export function CampaignEditor({
                         "时间与地点",
                       )}
                     </summary>
-                    <p>{u("Asia/Jakarta (UTC+7)")}</p>
+
                     <div className="campaign-fields-grid">
                       <>
                         <CampaignDateTimeField

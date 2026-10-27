@@ -1,3 +1,5 @@
+// Fixture browser timezone is explicit; cross-zone conversion is tested in crmViewerTime.
+process.env.TZ='Asia/Jakarta';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
@@ -27,22 +29,22 @@ test('date summaries handle same-day, month/year boundaries and date-only timezo
  assert.equal(campaignDateRange({endDate:'2026-11-11'}),'Ends 11 Nov 2026');assert.equal(campaignDateRange({}),'');
  assert.equal(campaignDateRange({startDate:'2026-02-30'}),'Recorded dates need review');
  assert.equal(campaignDateRange({startDate:'2026-11-11',endDate:'2026-11-10'}),'Recorded dates need review');
- assert.match(campaignTimeRange({...campaign,startTime:'10:00',endTime:'16:00'}),/^Start 10:00 · End 16:00 · Asia\/Jakarta$/);
+ assert.match(campaignTimeRange({...campaign,startTime:'10:00',endTime:'16:00'}),/^Start 10:00 · End 16:00$/);
 });
 test('card schedule attaches times to dates in one row without inventing missing endpoints or daily hours',()=>{
  const c={...campaign,startTime:'10:00',endTime:'16:00'};
- assert.equal(campaignScheduleRange(c),'10 Nov 10:00 → 11 Nov 16:00, 2026 · WIB');
- assert.equal(campaignScheduleRange({...c,endDate:c.startDate}),'10 Nov 2026, 10:00–16:00 · WIB');
- assert.equal(campaignScheduleRange({startDate:'2026-11-10',startTime:'10:00'}),'Starts 10 Nov 2026, 10:00 · WIB');
- assert.equal(campaignScheduleRange({endDate:'2026-11-11',endTime:'16:00'}),'Ends 11 Nov 2026, 16:00 · WIB');
- assert.equal(campaignScheduleRange({...c,startDate:'2026-12-31',endDate:'2027-01-01'}),'31 Dec 2026, 10:00 → 1 Jan 2027, 16:00 · WIB');
+ assert.equal(campaignScheduleRange(c),'10 Nov 10:00 → 11 Nov 16:00, 2026');
+ assert.equal(campaignScheduleRange({...c,endDate:c.startDate}),'10 Nov 2026, 10:00–16:00');
+ assert.equal(campaignScheduleRange({startDate:'2026-11-10',startTime:'10:00'}),'Starts 10 Nov 2026, 10:00');
+ assert.equal(campaignScheduleRange({endDate:'2026-11-11',endTime:'16:00'}),'Ends 11 Nov 2026, 16:00');
+ assert.equal(campaignScheduleRange({...c,startDate:'2026-12-31',endDate:'2027-01-01'}),'31 Dec 2026, 10:00 → 1 Jan 2027, 16:00');
  assert.equal(campaignScheduleRange(campaign),'10–11 Nov 2026');assert.equal(campaignScheduleRange({}),'');
- assert.equal(campaignScheduleRange({...c,startTime:''}),'10 Nov 2026 · Time not recorded → 11 Nov 2026, 16:00 · WIB');
- assert.equal(campaignScheduleRange({startTime:'10:00'}),'Starts Date not recorded, 10:00 · WIB');
+ assert.equal(campaignScheduleRange({...c,startTime:''}),'10 Nov 2026 · Time not recorded → 11 Nov 2026, 16:00');
+ assert.equal(campaignScheduleRange({startTime:'10:00'}),'Starts Date not recorded, 10:00');
  assert.equal(campaignScheduleRange({...c,startDate:'2026-02-30'}),'Recorded schedule needs review');
  assert.equal(campaignScheduleRange({...c,endDate:c.startDate,endTime:'09:59'}),'Recorded schedule needs review');
  const html=render([c]);assert.equal((html.match(/class="campaign-card-schedule"/g)||[]).length,1);
- assert.match(html,/10 Nov 10:00 → 11 Nov 16:00, 2026 · WIB/);assert.doesNotMatch(html,/Start 10:00 · End 16:00/);
+ assert.match(html,/10 Nov 10:00 → 11 Nov 16:00, 2026/);assert.doesNotMatch(html,/Start 10:00 · End 16:00/);
 });
 test('optional place/date fields stay absent, delivery is explicit and unknown values are not invented',()=>{
  const c={...campaign,startDate:'',endDate:'',city:'',venue:'',type:'',locationType:''};const html=render([c]);

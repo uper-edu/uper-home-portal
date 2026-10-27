@@ -23,3 +23,13 @@ export function formatCrmSummaryTime(value:string|undefined,timezone=viewerTimeZ
  const full=formatCrmOperatingTime(value,timezone),year=formatCrmOperatingTime(now.toISOString(),timezone).slice(0,4);
  return full.slice(0,4)===year?full.slice(5):full;
 }
+
+/** Reject DST gaps/repeated local times rather than silently shifting an appointment. */
+export function validateLocalInstant(local:string,instant:Date,timezone:string){
+ const shown=(date:Date)=>formatCrmOperatingTime(date.toISOString(),timezone).slice(0,16).replace(' ','T');
+ if(shown(instant)!==local)throw Error('Invalid local date and time');
+ for(const minutes of [-120,-60,-30,30,60,120]){
+  if(shown(new Date(instant.getTime()+minutes*60000))===local)throw Error('Ambiguous local date and time');
+ }
+ return instant;
+}

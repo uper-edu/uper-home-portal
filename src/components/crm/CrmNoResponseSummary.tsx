@@ -7,8 +7,8 @@ export function CrmNoResponseSummary({lead,lang,timezone}:any){
  return <details className="crm-recent-no-response" aria-label={t('Unanswered contact sequence','Urutan kontak tanpa balasan','连续未回复联系')}>
  <summary>{s.needsGroupReview?t('Group needs review','Kelompok perlu ditinjau','分组待复核'):s.lastOutcome==='wrong_number'?t('Verify contact details','Verifikasi kontak','联系方式待核实'):t('Consecutive unanswered attempts','Upaya berturut-turut tanpa balasan','连续有效未回复')} {s.count>0&&`${s.count}${s.policy?.threshold ? ' / '+s.policy.threshold : ''}`}</summary><div>
  {s.policy?.threshold===0 && <p>{t('Automatic nurture is disabled for this sequence.','Pembinaan otomatis dinonaktifkan untuk urutan ini.','本轮已关闭自动转培育。')}</p>}
- {s.status==='waiting'&&<p>{t('Waiting for a reply until','Menunggu balasan hingga','等待回复至')} {formatCrmOperatingTime(s.waitUntil!,timezone)} · {timezone}</p>}
- {s.status==='counting'&&s.nextEligibleAt&&<p>{t('Next eligible attempt no earlier than','Upaya berikutnya yang dihitung paling cepat','下次有效尝试不早于')} {formatCrmOperatingTime(s.nextEligibleAt,timezone)} · {timezone}</p>}
+ {s.status==='waiting'&&<p>{t('Waiting for a reply until','Menunggu balasan hingga','等待回复至')} {formatCrmOperatingTime(s.waitUntil!,timezone)}</p>}
+ {s.status==='counting'&&s.nextEligibleAt&&<p>{t('Next eligible attempt no earlier than','Upaya berikutnya yang dihitung paling cepat','下次有效尝试不早于')} {formatCrmOperatingTime(s.nextEligibleAt,timezone)}</p>}
  {s.lastOutcome==='too_soon'&&<p>{t('Attempt recorded but not counted: retry interval not met.','Upaya tercatat tetapi tidak dihitung: jeda belum terpenuhi.','本次尝试已记录，间隔不足，未累计；下次间隔从本次真实尝试重新计算。')}</p>}
  {s.lastOutcome==='wrong_number'&&<p>{t('Verify contact details. An invalid number is not an unanswered attempt.','Verifikasi kontak. Nomor tidak valid bukan upaya tanpa balasan.','请核实联系方式，号码无效不累计未回复次数。')}</p>}
  {s.status==='nurtured'&&<p>{t('Moved to nurture after consecutive unanswered attempts and the reply window. This does not prove low purchase intent.','Masuk pembinaan setelah upaya tanpa balasan dan masa tunggu. Ini bukan bukti minat beli rendah.','连续未回复且等待窗口结束，已转入培育；不代表购买意愿低。')}</p>}

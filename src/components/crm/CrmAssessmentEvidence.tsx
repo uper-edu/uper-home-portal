@@ -145,7 +145,7 @@ export function CrmAssessmentEvidence({
           </p>
           {summary.kind === "assessment" && (
             <p className="crm-assessment-meta">
-              {scoreDetail} · {completed} · {timezone}
+              {scoreDetail} · {completed}
             </p>
           )}
           {summary.kind === "teacher" &&

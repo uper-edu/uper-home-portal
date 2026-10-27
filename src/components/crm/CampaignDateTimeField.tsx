@@ -3,6 +3,7 @@ import React, { useId } from "react";
 import {
   campaignDateTimeValue,
   splitCampaignDateTime,
+  campaignViewerSchedule, campaignStoredSchedule,
   type CampaignScheduleParts,
 } from "../../utils/campaignScheduleInput";
 import { campaignUi, type CampaignUiLanguage } from "../../utils/campaignI18n";
@@ -26,13 +27,19 @@ export function CampaignDateTimeField({
 }) {
   const u = campaignUi(lang);
   const id = useId();
-  const value = campaignDateTimeValue(date, time);
+  const shown = campaignViewerSchedule(date, time);
+  const value = campaignDateTimeValue(shown.date, shown.time);
+  const minimum = min ? splitCampaignDateTime(min) : null;
+  const shownMin = minimum ? campaignViewerSchedule(minimum.date, minimum.time) : null;
   const partial = Boolean((date || time) && !value);
   const readInput = (input: HTMLInputElement) => {
     // A partially typed native date/time has an empty value but is not an intentional clear.
     if (input.validity.badInput) return;
     const parts = splitCampaignDateTime(input.value);
-    if (parts) onChange(parts);
+    if (parts) {
+      try { const stored = campaignStoredSchedule(parts.date,parts.time); input.setCustomValidity(''); onChange(stored); }
+      catch { input.setCustomValidity(u("Invalid local date and time")); }
+    }
   };
   return (
     <AdminField as="div" className="campaign-field campaign-datetime-field">
@@ -43,7 +50,7 @@ export function CampaignDateTimeField({
         type="datetime-local"
         step="60"
         value={value}
-        min={min || undefined}
+        min={shownMin ? campaignDateTimeValue(shownMin.date,shownMin.time) : undefined}
         aria-describedby={partial ? `${id}-partial` : undefined}
         onInput={(e) => readInput(e.currentTarget)}
         onChange={(e) => readInput(e.currentTarget)}

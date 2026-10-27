@@ -150,7 +150,8 @@ export function CrmLeadWorkspace({
       : t("Unknown time", "未知时间");
   const identityAction=(lead:CrmLeadRecord)=>lead.identityReview?.pending?<button type="button" className="crm-work-button" data-primary="true" disabled={!lead.identityReview.canReview} onClick={()=>onIdentity?onIdentity(lead):open(lead,'profile')}>{lang==='zh'?'核实身份':lang==='id'?'Verifikasi identitas':'Review identity'}</button>:null;
   const follow = (lead: CrmLeadRecord, compact = false) => (
-    <CrmFollowUp
+    <><CrmStopContact lead={lead} lang={lang}/><CrmFollowUp
+      hideStoppedNotice
       lead={lead}
       lang={lang}
       timezone={timezone}
@@ -158,7 +159,7 @@ export function CrmLeadWorkspace({
       employees={employees}
       onOpen={() => open(lead, "activities")}
       compact={compact}
-    />
+    /></>
   );
   const field = (key: CustomerField, lead: CrmLeadRecord): React.ReactNode => {
     switch (key) {
@@ -252,7 +253,7 @@ export function CrmLeadWorkspace({
         {view === "table" && !children && (
           <div className="crm-field-toolbar">
             <span className="crm-work-muted">
-              {t("Data table", "字段表")} · {timezone}
+              {t("Data table", "字段表")}
             </span>
             <CrmSingleSelect
               label={t("Visible fields", "显示字段")} value="" multiple values={fields}
@@ -387,9 +388,8 @@ export function CrmLeadWorkspace({
                     <div className="crm-work-next">{identityAction(lead)}{follow(lead, true)}<CrmListAgreements lead={lead} lang={lang} timezone={timezone} now={agreementNow} onOpen={()=>open(lead,'activities')}/>{!children&&<CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} compact/>}{!children&&listLeadHint(lead,lang)&&<p className="crm-work-muted crm-list-key-hint">{listLeadHint(lead,lang)}</p>}</div>
                     <div className="crm-work-progress">
                       <div className="crm-list-stage-line"><CrmSalesStage stage={lead.currentStage} lang={lang}/><span className="crm-work-group" title={t('Customer group','客户分组')}>{crmValue(lead.tier,lang)}</span></div>
-                      <CrmStopContact lead={lead} lang={lang}/>
                       {intents.length>0&&<div className="crm-list-intent"><span className="crm-list-progress-label">{intents[0].evidence.kind==='questionnaire'?t('Questionnaire interest','问卷关注'):t('Requests and interests','诉求与意向')}</span>
-                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?t('Latest known occurrence: ','最近已知发生时间：'):t('Occurred: ','实际发生于：')}${stamp} · ${viewerTimeZone()}`:t('Occurrence time unknown','实际发生时间未知');return <button type="button" key={evidence.value} className="crm-work-support-link crm-list-intent-row" title={`${label} · ${description}`} aria-label={`${label}, ${description}, ${t('View original evidence and history','查看原文依据及历次记录')}`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span>{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></button>;})}
+                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?t('Latest known occurrence: ','最近已知发生时间：'):t('Occurred: ','实际发生于：')}${stamp}`:t('Occurrence time unknown','实际发生时间未知');return <button type="button" key={evidence.value} className="crm-work-support-link crm-list-intent-row" title={`${label} · ${description}`} aria-label={`${label}, ${description}, ${t('View original evidence and history','查看原文依据及历次记录')}`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span>{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></button>;})}
                       </div>}
                       {!children&&<CrmListMilestones lang={lang} lead={lead} onOpen={()=>open(lead,'activities')}/>}
                     </div>

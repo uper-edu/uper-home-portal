@@ -1,3 +1,4 @@
+import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {AdminField,AdminRequiredNote,firstMissingAdminField} from '../components/AdminForm';
 import {BrowserMetadataGuide} from '../components/BrowserMetadataGuide';
 import {PageMetadata} from '../components/PageMetadata';
@@ -679,7 +680,7 @@ export function AccessWorkspace({
                 {audit.map((a) => (
                   <details key={a.id}>
                     <summary>
-                      {a.actor} · {String(a.created_at)} ·{" "}
+                      {a.actor} · {formatCrmEventTime(a.created_at)} ·{" "}
                       {auditLabels[a.action]?.[col] || a.action}
                     </summary>
                     <pre>{JSON.stringify(a.data, null, 2)}</pre>

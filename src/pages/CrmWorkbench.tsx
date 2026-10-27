@@ -227,7 +227,7 @@ function CrmWorkspace({
   const [accessibleLeadCount,setAccessibleLeadCount]=useState<number|null>(null);
   const [appliedSearch, setAppliedSearch] = useState("");
   const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
-  const [filterTimezone, setFilterTimezone] = useState("Asia/Jakarta");
+  const filterTimezone = viewerTimeZone();
   const [leadAnalysis, setLeadAnalysis] = useState(() => new URLSearchParams(window.location.search).get("leadArea") === "analysis");
   const analysisListScroll = useRef(0);
   const [processOverview,setProcessOverview]=useState<ProcessMetrics|null>(null);
@@ -237,7 +237,7 @@ function CrmWorkspace({
   const [pendingListOrder,setPendingListOrder]=useState(false);
   const [newActivity,setNewActivity]=useState<number|null>(null);
   const cursorRef=useRef("");
-  const queryKey = filterQuery({ ...filters, search: appliedSearch });
+  const queryKey = filterQuery({ ...filters, search: appliedSearch }) + "&viewerTimezone=" + encodeURIComponent(filterTimezone);
   useEffect(() => {
     const timer = setTimeout(
       () => setAppliedSearch(filters.search),
@@ -510,7 +510,7 @@ function CrmWorkspace({
         if(signal.aborted||disposed)return;
         cursorRef.current=data.changeCursor||"";
         setRefreshProblem("");setLastListRefresh(new Date().toISOString());
-        setAccessibleLeadCount(Number.isInteger(data.accessibleCount)?data.accessibleCount:null);setOwnerOptions(data.ownerOptions||[]);setFilterTimezone(data.timezone||"Asia/Jakarta");
+        setAccessibleLeadCount(Number.isInteger(data.accessibleCount)?data.accessibleCount:null);setOwnerOptions(data.ownerOptions||[]);
         setLeads(previous=>{
           if(reason==='manual'||reason==='initial'||!previous.length){setPendingListOrder(false);return data.leads||[];}
           const stable=stableCrmOrder(previous,data.leads||[]);

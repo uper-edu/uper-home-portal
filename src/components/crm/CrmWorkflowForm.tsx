@@ -606,19 +606,19 @@ function CrmArrangementForm({
                   className="crm-work-link"
                   onClick={() => {
                     const day = new Intl.DateTimeFormat("en-CA", {
-                      timeZone: timezone,
+                      timeZone: workCalendar.timezone || "Asia/Jakarta",
                       year: "numeric",
                       month: "2-digit",
                       day: "2-digit",
                     }).format(new Date(Date.now() + 86400000));
                     const c = {
-                      timezone,
+                      timezone: workCalendar.timezone || "Asia/Jakarta",
                       days: workCalendar.workDays,
                       start: workCalendar.startTime,
                       end: workCalendar.endTime,
                     };
                     const d = nextWork(
-                      calendarSample(day, c.start, timezone),
+                      calendarSample(day, c.start, c.timezone),
                       c,
                     );
                     const parts = new Intl.DateTimeFormat("sv-SE", {
