@@ -645,3 +645,6 @@
 /* Interaction groups breathe below preceding work, but never add leading space. */
 .crm-customer-workspace[data-open=false] .crm-work-next>.crm-interaction-timelines.is-compact:not(:first-child)>.crm-interaction-row:first-child{border-top:1px solid var(--cw-border);padding-top:12px}
 .crm-customer-workspace[data-open=false] .crm-work-next>.crm-interaction-timelines.is-compact:first-child>.crm-interaction-row:first-child{border-top:0;padding-top:0}
+
+/* Static timestamps and relative labels share normal UI numerals; live countdowns retain tabular numerals. */
+.crm-customer-workspace .crm-list-intent-row>.crm-list-intent-time,.crm-customer-workspace .crm-interaction-heading>.crm-interaction-elapsed,.crm-customer-workspace .crm-sales-brief-compact .crm-fact-milestone-latest{font-family:inherit;font-weight:400;font-variant-numeric:normal;font-feature-settings:normal}
