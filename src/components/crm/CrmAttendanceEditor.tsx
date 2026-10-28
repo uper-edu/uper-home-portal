@@ -1,3 +1,5 @@
+import {CrmFormSummary} from './CrmFormLayout';
+import {AdminFormActions} from '../AdminFormLayout';
 import { CrmDisclosure } from "./CrmDisclosure";
 import { useEffect, useRef, useState } from "react";
 import { CrmSingleSelect } from "./CrmSingleSelect";
@@ -35,11 +37,14 @@ export function CrmAttendanceFields({
     );
   const name = campaign.name || campaign.nameEn || campaign.nameId;
   return (
-    <div className="crm-attendance-fields">
-      <p className="crm-attendance-event">
+    <div data-admin-form="" className="crm-attendance-fields crm-form-layout">
+      <CrmFormSummary><p className="crm-attendance-event">
         <span>{t("Event", "Acara", "活动")}</span>
         <strong>{name || campaign.code || campaign.id}</strong>
-      </p>
+      </p></CrmFormSummary>
+      {record && <p role="status" className="crm-work-muted">{record.confirmed
+        ? t('Participation confirmed', 'Partisipasi dikonfirmasi', '已确认参与')
+        : t('Confirmation withdrawn', 'Konfirmasi ditarik', '已撤销确认')}{record.confirmed && <> · {record.mode === 'onsite' ? t('Onsite', 'Di lokasi', '现场') : t('Online', 'Daring', '线上')}</>}</p>}
       <div className="crm-attendance-mode">
       <AdminFieldLabel required>{t("Participation mode", "Mode partisipasi", "参与方式")}</AdminFieldLabel>
       <CrmSingleSelect
@@ -66,13 +71,13 @@ export function CrmAttendanceFields({
           )}
         </p>
       )}
-      <div className="flex gap-2 flex-wrap">
+      <AdminFormActions className="crm-attendance-actions">
         {eligible && (
           <button
             className="crm-work-button"
             data-primary="true"
             type="button"
-            disabled={busy || !mode || contextChanged}
+            disabled={busy || !mode || contextChanged || (record?.confirmed && record.mode === mode)}
             onClick={() => onSave(true)}
           >
             {t("Confirm participation", "Konfirmasi partisipasi", "确认参与")}
@@ -88,7 +93,7 @@ export function CrmAttendanceFields({
             {t("Withdraw confirmation", "Tarik konfirmasi", "撤销确认")}
           </button>
         )}
-      </div>
+      </AdminFormActions>
     </div>
   );
 }
@@ -132,6 +137,7 @@ export function CrmAttendanceEditor({
   const record = lead.attendanceRecords?.find(
     (record: any) => record.campaignId === campaign?.id,
   );
+  const selectedMode = mode || (record?.confirmed ? record.mode : "");
   useEffect(() => {
     if (!expanded || loaded) return;
     const controller = new AbortController();
@@ -163,7 +169,7 @@ export function CrmAttendanceEditor({
     if (failed) errorFocus.current?.focus();
   }, [failed, status]);
   useEffect(() => {
-    const dirty = !!mode;
+    const dirty = !!mode && mode !== (record?.confirmed ? record.mode : "");
     if (dirty)
       cache[lead.id] = {
         campaignId: boundCampaignId || campaign?.id || "",
@@ -172,9 +178,9 @@ export function CrmAttendanceEditor({
       };
     else delete cache[lead.id];
     onDirty?.(dirty);
-  }, [mode, boundCampaignId, campaign?.id]);
+  }, [mode, boundCampaignId, campaign?.id, record?.confirmed, record?.mode]);
   const save = async (confirmed: boolean) => {
-    if (busy || !campaign || !mode || contextChanged) return;
+    if (busy || !campaign || !selectedMode || contextChanged) return;
     setBusy(true);
     onBusy?.(true);
     setStatus("");
@@ -189,7 +195,7 @@ export function CrmAttendanceEditor({
           body: JSON.stringify({
             requestId: request.current,
             campaignId: campaign.id,
-            mode,
+            mode: selectedMode,
             confirmed,
           }),
         },
@@ -243,7 +249,7 @@ export function CrmAttendanceEditor({
           <CrmAttendanceFields
             campaign={campaign}
             record={record}
-            mode={mode}
+            mode={selectedMode}
             busy={busy}
             contextChanged={contextChanged}
             lang={lang}
@@ -259,7 +265,7 @@ export function CrmAttendanceEditor({
           />
         )}
       </CrmDisclosure>
-      {status && (
+      {status && (failed || !expanded) && (
         <p ref={errorFocus} tabIndex={-1} role={failed ? "alert" : "status"}>
           {failed ? crmError(status, lang) : status}
         </p>

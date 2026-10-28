@@ -1,3 +1,7 @@
+import {CrmFormLayoutScope} from '../AdminForm';
+import {CrmFormSection} from './CrmFormLayout';
+import {CrmDisclosure} from './CrmDisclosure';
+import {X} from 'lucide-react';
 import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -21,7 +25,7 @@ import {
   campaignDateTimeValue,
   type CampaignScheduleParts,
 } from "../../utils/campaignScheduleInput";
-export function CampaignEditor({
+function CampaignEditorBody({
   campaign,
   lang,
   isLight,
@@ -293,7 +297,7 @@ export function CampaignEditor({
     <>
       <dialog
         ref={dialog}
-        className="campaign-editor"
+        className="campaign-editor crm-form-campaign-editor"
         data-theme={isLight ? "light" : "dark"}
         aria-labelledby="campaign-editor-title"
         onCancel={(e) => {
@@ -334,10 +338,10 @@ export function CampaignEditor({
               disabled={busy}
               aria-label={t("Close", "Tutup", "关闭")}
             >
-              ×
+              <X size={20} aria-hidden="true"/>
             </button>
           </header>
-          <div className="campaign-editor-body"><AdminRequiredNote lang={lang}/>
+          <div className="campaign-editor-body crm-form-layout"><AdminRequiredNote lang={lang}/>
             {(busy || dirty) && !error && (
               <CrmSaveFeedback lang={lang} state={busy ? "saving" : "dirty"} />
             )}
@@ -357,14 +361,15 @@ export function CampaignEditor({
                   : explainError(error)}
               </p>
             )}
-            <fieldset disabled={busy || unknown}>
+            <fieldset disabled={busy || unknown} className="crm-form-layout">
+              <CrmFormSection name="campaign" lang={lang}>
               {field(
                 "name",
                 t("Campaign name *", "Nama kampanye *", "活动名称 *"),
               )}
-              <details>
-                <summary>{u("Internal campaign details · optional")}</summary>
-                <div className="campaign-fields-grid">
+              <CrmDisclosure className="crm-form-details" heading={<>{u("Internal campaign details · optional")}</>}>
+
+                <div className="campaign-fields-grid" data-admin-grid="">
                   {select(
                     "type",
                     t(
@@ -406,7 +411,7 @@ export function CampaignEditor({
                     </>,
                   )}
                 </div>
-              </details>
+              </CrmDisclosure>
               {!campaign && (
                 <p className="campaign-hint">
                   {t(
@@ -416,17 +421,18 @@ export function CampaignEditor({
                   )}
                 </p>
               )}
+              </CrmFormSection>
               {campaign && (
                 <>
-                  <details>
-                    <summary>
+                  <CrmDisclosure className="crm-form-details" heading={<>
                       {t(
                         "Contact, status and budget",
                         "Kontak, status, dan anggaran",
                         "联系人、状态及预算",
                       )}
-                    </summary>
-                    <div className="campaign-fields-grid">
+                    </>}>
+
+                    <div className="campaign-fields-grid" data-admin-grid="">
                       {field(
                         "organizer",
                         t(
@@ -463,17 +469,17 @@ export function CampaignEditor({
                         "活动联系人不决定客户Owner。名称按输入原文保存。",
                       )}
                     </p>
-                  </details>
-                  <details>
-                    <summary>
+                  </CrmDisclosure>
+                  <CrmDisclosure className="crm-form-details" heading={<>
                       {t(
                         "Schedule and location",
                         "Jadwal dan lokasi",
                         "时间与地点",
                       )}
-                    </summary>
+                    </>}>
 
-                    <div className="campaign-fields-grid">
+
+                    <div className="campaign-fields-grid" data-admin-grid="">
                       <>
                         <CampaignDateTimeField
                           lang={lang}
@@ -517,15 +523,15 @@ export function CampaignEditor({
                         "参会链接与活动获客链接相互独立。",
                       )}
                     </p>
-                  </details>
-                  <details>
-                    <summary>
+                  </CrmDisclosure>
+                  <CrmDisclosure className="crm-form-details" heading={<>
                       {t(
                         "Audience and message",
                         "Audiens dan pesan",
                         "受众与活动主张",
                       )}
-                    </summary>
+                    </>}>
+
                     {(["targetAudience", "keyTopics"] as const).map((k) => (
                       <AdminField className="campaign-field" key={k}>
                         <span>
@@ -548,16 +554,16 @@ export function CampaignEditor({
                         />
                       </AdminField>
                     ))}
-                  </details>
+                  </CrmDisclosure>
                   {campaign.promotionModel !== "multiple" && (
-                    <details>
-                      <summary>
+                    <CrmDisclosure className="crm-form-details" heading={<>
                         {t(
                           "Legacy campaign link defaults",
                           "Pengaturan tautan kampanye lama",
                           "原有活动链接默认设置",
                         )}
-                      </summary>
+                      </>}>
+
                       <p className="campaign-hint">
                         {t(
                           "Applies to ads, social, email and offline materials. Changing these defaults affects future registrations, not existing attribution.",
@@ -565,7 +571,7 @@ export function CampaignEditor({
                           "适用于广告、社群、邮件和线下物料。修改默认来源影响后续登记，不改写已有归因。",
                         )}
                       </p>
-                      <div className="campaign-fields-grid">
+                      <div className="campaign-fields-grid" data-admin-grid="">
                         {field(
                           "utm_source",
                           t(
@@ -590,7 +596,7 @@ export function CampaignEditor({
                           "这些默认设置仅适用于原有只含c的链接；新增推广链接使用各自的独立配置。",
                         )}
                       </p>
-                    </details>
+                    </CrmDisclosure>
                   )}
                 </>
               )}
@@ -645,3 +651,5 @@ export function CampaignEditor({
     </>
   );
 }
+
+export function CampaignEditor(props:Parameters<typeof CampaignEditorBody>[0]){return <CrmFormLayoutScope><CampaignEditorBody {...props}/></CrmFormLayoutScope>;}

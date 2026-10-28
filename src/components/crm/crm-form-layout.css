@@ -1,0 +1,68 @@
+/* Explicit CRM editor sections; public forms, read-only lists and retired editors are unaffected. */
+.crm-form-section{min-width:0}
+.crm-form-section+.crm-form-section{margin-top:0}
+.crm-form-section>.admin-form-section-heading{padding-top:8px}
+.crm-form-section>.admin-form-section-body{gap:var(--admin-form-field-gap)}
+.crm-form-section>.admin-form-section-body>p{margin:0;font-size:14px;line-height:1.6}
+.crm-form-section>.admin-form-section-body>:is(fieldset,details){min-width:0}
+.crm-form-summary{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 16px;padding:0 0 12px;border-bottom:1px solid var(--cw-border,var(--dw-border));font-size:14px;line-height:1.6}
+.crm-form-summary p{margin:0}
+.crm-form-layout{display:grid;align-content:start;gap:var(--admin-form-group-gap);min-width:0}
+.crm-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--admin-form-field-gap) var(--admin-form-column-gap);min-width:0}
+.crm-form-section :is(.crm-form-details,.crm-profile-basis){margin:0;border:0;border-top:1px solid var(--cw-border,var(--dw-border));padding:12px 0 0;border-radius:0}
+.crm-form-section :is(.crm-form-details,.crm-profile-basis)>summary{font-size:14px;line-height:1.6;font-weight:500;cursor:pointer}
+.crm-form-section :is(.crm-form-details,.crm-profile-basis)[open]>summary{margin-bottom:12px}
+.crm-form-section .crm-stage-draft{margin:0;padding:0;border:0;display:grid;gap:var(--admin-form-field-gap)}
+.crm-form-section .crm-stage-options{margin:0;border:0;padding:0}
+.crm-form-section .crm-stage-options>legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.crm-form-section .crm-stage-draft>textarea{font:inherit;font-size:14px;line-height:1.6;min-height:96px}
+.crm-operation-compose .crm-editor-scroll>.crm-form-section{flex:none}
+.crm-form-section .crm-profile-batch-fields{margin-top:12px}
+.crm-form-section .crm-profile-field-editor{border:0;border-top:1px solid var(--cw-border);border-radius:0;padding:12px 0 0;gap:8px}
+.crm-form-section .crm-profile-batch-fields>.crm-profile-field-editor:only-child{grid-column:1/-1}
+.crm-form-section .crm-profile-basis label{display:flex;align-items:flex-start;gap:8px;margin-top:8px}
+.crm-form-section .crm-profile-basis input[type=checkbox]{flex:none;width:auto}
+.crm-contact-preparation-body .crm-editor-scroll>.crm-form-section{margin:0}
+.crm-form-section .crm-template-selectors{margin:0;gap:12px 16px}
+.crm-form-section .crm-template-label{font-size:14px;line-height:1.6;margin:0 0 8px}
+.crm-form-section .crm-work-muted{margin:0;font-size:13px;line-height:1.6}
+@media(max-width:760px){.crm-form-grid{grid-template-columns:1fr}}
+/* Campaign modal keeps one body scroller and one original save footer. */
+.campaign-editor.crm-form-campaign-editor>form{height:100%;min-height:0}
+.campaign-editor.crm-form-campaign-editor>form>header,.campaign-editor.crm-form-campaign-editor>form>footer{padding:16px 24px}
+.campaign-editor.crm-form-campaign-editor .campaign-editor-body{padding:16px 24px}
+.campaign-editor .crm-form-section>.admin-form-section-heading{padding:8px 0 12px;gap:12px;background:transparent}
+.campaign-editor .crm-form-section .admin-form-section-heading h3{font-size:14px;line-height:1.6;font-weight:600}
+.campaign-editor .crm-form-details.crm-disclosure{margin:0;padding:12px 0;border:0;border-top:1px solid var(--dw-border,var(--cw-border,#cbd5e1));border-radius:0;background:transparent}
+.campaign-editor .crm-form-details>.crm-disclosure-heading{margin:0;padding:0}
+.campaign-editor .crm-form-details>.crm-disclosure-body{padding:12px 0 0;margin:0}
+.campaign-editor .crm-form-section .campaign-field,.campaign-editor .crm-form-details .campaign-field{margin-bottom:0;gap:8px}
+.campaign-editor .crm-form-section .campaign-fields-grid,.campaign-editor .crm-form-details .campaign-fields-grid{gap:12px 16px}
+.campaign-promotion-form>.crm-form-section,.campaign-promotion-form>fieldset{min-width:0}
+.campaign-source-review>.crm-form-section{margin:0}
+.campaign-source-review>.crm-form-section+.crm-form-section{margin-top:16px}
+.campaign-source-evidence.crm-form-section{padding:0;border:0;border-radius:0;background:transparent}
+.crm-form-layout>fieldset{min-width:0;margin:0;padding:0;border:0}
+.crm-form-section .space-y-4{display:grid;gap:12px}
+.crm-form-section .space-y-4>*{margin-top:0;margin-bottom:0}
+.crm-form-section .crm-form-fields{display:grid;gap:12px}
+.crm-form-layout>.crm-form-section{margin:0}
+.crm-form-draft-status{font-size:13px;font-weight:400;color:var(--admin-muted)}
+.crm-source-review-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding-bottom:12px;border-bottom:1px solid var(--dw-border,var(--cw-border));font-size:16px;line-height:1.6;font-weight:600}
+.crm-source-review-heading h3{font:inherit;margin:0}
+.crm-form-close{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;border:1px solid var(--dw-border,var(--cw-border));border-radius:10px;background:transparent;color:inherit}
+.crm-attendance-fields.crm-form-layout{gap:12px}
+.crm-attendance-fields .crm-attendance-mode{display:grid;gap:8px}
+.crm-attendance-fields .crm-attendance-actions{justify-content:flex-start}
+/* Keep group spacing in the owning stack, not in both stack and old sibling margins. */
+.crm-editor-scroll>.crm-form-section+.crm-form-section,.crm-form-layout>.crm-form-section+.crm-form-section{margin-top:0}
+.crm-form-section .crm-profile-batch-fields:empty{display:none;margin:0}
+.crm-form-section>.admin-form-section-body>.crm-profile-basis:first-child{border-top:0;padding-top:0}
+.crm-form-section .admin-form-section-heading h3{font-size:14px;line-height:1.6;font-weight:600}
+.crm-form-section :is(input,textarea){font-family:inherit}
+/* Source review shares the form rhythm; legacy campaign margins must not stack with section gaps. */
+.campaign-source-review .campaign-field{margin:0;gap:var(--admin-form-label-gap,8px)}
+.campaign-source-review fieldset{display:grid;gap:var(--admin-form-field-gap);margin:0;padding:0;border:0}
+.campaign-source-review fieldset.space-y-3>*{margin-top:0;margin-bottom:0}
+.campaign-source-review>.crm-form-section>.admin-form-section-body{padding-bottom:0}
+.campaign-source-review.crm-form-layout>.crm-source-review-actions{margin-top:0;gap:8px}

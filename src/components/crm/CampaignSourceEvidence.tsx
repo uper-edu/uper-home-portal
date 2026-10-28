@@ -1,3 +1,4 @@
+import {AdminFormSection} from '../AdminFormLayout';
 import React from "react";
 import {
   campaignUi,
@@ -22,11 +23,7 @@ export function CampaignSourceEvidence({
 }) {
   const u = campaignUi(lang);
   return (
-    <section
-      className="campaign-source-evidence"
-      aria-label={u("Source evidence")}
-    >
-      <h4>{u("What triggered this review?")}</h4>
+    <AdminFormSection className="campaign-source-evidence crm-form-section" title={u("What triggered this review?")}>
       <p>
         {source.promotionIssue
           ? u(
@@ -163,6 +160,6 @@ export function CampaignSourceEvidence({
           </p>
         </article>
       ))}
-    </section>
+    </AdminFormSection>
   );
 }

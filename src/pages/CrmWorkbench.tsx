@@ -1,3 +1,5 @@
+import '../components/admin-form-layout.css';
+import '../components/crm/crm-form-layout.css';
 import {CrmIdentityAction} from '../components/crm/CrmIdentityAction';
 import {CrmOwnerEditor} from '../components/crm/CrmOwnerEditor';
 import {CrmUiProvider} from '../components/crm/CrmUiLanguage';

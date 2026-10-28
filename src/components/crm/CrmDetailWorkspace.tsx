@@ -1,3 +1,4 @@
+import {AdminFormFeedback} from '../AdminFormLayout';
 import {recordScrollMode} from '../adminScroll';
 import { campaignUi, type CampaignUiLanguage } from "../../utils/campaignI18n";
 import React, { useEffect, useRef, type ReactNode } from "react";
@@ -126,16 +127,7 @@ export function CrmSaveFeedback({
     error: "Save failed. Your input is retained.",
     unknown: "Save outcome unknown. Check the result before submitting again.",
   }[state];
-  return (
-    <p
-      className="crm-save-feedback"
-      data-state={state}
-      role={state === "error" || state === "unknown" ? "alert" : "status"}
-      aria-atomic="true"
-    >
-      {children || campaignUi(lang)(text)}
-    </p>
-  );
+  return <AdminFormFeedback state={state} lang={lang} className="crm-save-feedback">{children || campaignUi(lang)(text)}</AdminFormFeedback>;
 }
 export function CrmDiscardDialog({
   onKeep,

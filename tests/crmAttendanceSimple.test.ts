@@ -108,6 +108,8 @@ test("form has one required mode choice and a read-only event name, no event pic
     form({ mode: "onsite", contextChanged: true }),
     /来源活动已变化/,
   );
+  assert.match(form({ mode: "onsite", record: {confirmed: true, mode: "onsite"} }), /已确认参与.*现场/);
+  assert.match(form({record: {confirmed: false, mode: "online"}}), /已撤销确认/);
   assert.match(form({ mode: "onsite", contextChanged: true }), /disabled=""/);
   assert.match(
     form({

@@ -1,3 +1,6 @@
+import {CrmFormLayoutScope} from '../AdminForm';
+import {CrmFormSection} from './CrmFormLayout';
+import {AdminFormActions} from '../AdminFormLayout';
 import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
 import { campaignUi, campaignUiError } from "../../utils/campaignI18n";
 import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -197,7 +200,7 @@ function LegacyCampaignLink({
     </article>
   );
 }
-export function CampaignPromotionLinks({
+function CampaignPromotionLinksBody({
   campaign,
   isLight,
   canManage,
@@ -357,11 +360,7 @@ export function CampaignPromotionLinks({
         <AdminForm lang={lang} onSubmit={save} className="campaign-promotion-form">
 <AdminRequiredNote lang={lang}/>
 
-          <h3>
-            {campaign.promotionLinks?.length
-              ? u("Add a promotion link")
-              : u("First promotion link")}
-          </h3>
+
           <p className="campaign-hint">
             {u(
               "Use a separate link for each placement you want to distinguish.",
@@ -376,6 +375,7 @@ export function CampaignPromotionLinks({
             </CrmSaveFeedback>
           )}
           <fieldset disabled={busy || unknown}>
+            <CrmFormSection name="promotion" lang={lang}>
             <AdminField className="campaign-field">
               <span>{u("Link name · optional")}</span>
               <input
@@ -385,7 +385,7 @@ export function CampaignPromotionLinks({
                 onChange={(e) => setV({ ...v, name: e.target.value })}
               />
             </AdminField>
-            <div className="campaign-fields-grid">
+            <div className="campaign-fields-grid" data-admin-grid="">
               <div className="campaign-field">
                 <AdminFieldLabel required>{u("Source *")}</AdminFieldLabel>
                 <CrmSelect
@@ -482,8 +482,9 @@ export function CampaignPromotionLinks({
                 )}
               </small>
             </div>
+            </CrmFormSection>
           </fieldset>
-          <div className="campaign-promotion-actions">
+          <AdminFormActions className="campaign-promotion-actions">
             <button
               type="submit"
               className="campaign-workspace-action campaign-primary"
@@ -506,7 +507,7 @@ export function CampaignPromotionLinks({
             >
               {u("Add later / cancel")}
             </button>
-          </div>
+          </AdminFormActions>
         </AdminForm>
       )}
       {(campaign.promotionLinks || []).map((link) => (
@@ -540,3 +541,5 @@ export function CampaignPromotionLinks({
     </section>
   );
 }
+
+export function CampaignPromotionLinks(props:Parameters<typeof CampaignPromotionLinksBody>[0]){return <CrmFormLayoutScope><CampaignPromotionLinksBody {...props}/></CrmFormLayoutScope>;}

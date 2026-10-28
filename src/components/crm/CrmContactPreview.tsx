@@ -1,3 +1,5 @@
+import {CrmFormLayoutScope} from '../AdminForm';
+import {CrmFormSection} from './CrmFormLayout';
 import {CrmContactReference} from './CrmContactReference';
 import {copyPreparedContact} from '../../utils/crmContactPreparation';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from '../AdminForm';
@@ -12,7 +14,7 @@ import {
   communicationTemplate,
   templateLabel,
 } from "../../utils/crmCommunicationTemplates";
-export function CrmContactPreview({
+function CrmContactPreviewBody({
   lead,
   employee,
   lang,
@@ -137,7 +139,7 @@ export function CrmContactPreview({
     }
   };
   return (
-    <section
+    <section data-admin-form=""
       ref={root}
       tabIndex={-1}
       onKeyDown={(e) => {
@@ -159,6 +161,7 @@ export function CrmContactPreview({
             "准备联系",
           )}
         </h3>}
+        <CrmFormSection name="contactScope" lang={lang}>
         <p>
           {!inLayer&&<>{lead.fullName} · </>}{t('Phone','Nomor telepon','号码')}：{lead.whatsapp||t('Not recorded','Belum tercatat','未记录')}
         </p>
@@ -173,6 +176,7 @@ export function CrmContactPreview({
         </>}
         {denied&&<div role="status"><p>{outreachText(denied,lang)}</p>{denied==='CLAIM_BEFORE_CONTACT'&&canClaimForContact(employee,lead)&&<button type="button" className="crm-work-button" disabled={working} onClick={async()=>{setWorking(true);try{const r=await fetch(`/api/crm/leads/${lead.id}/claim`,{method:'POST',headers:{'Content-Type':'application/json'}});const d=await r.json();if(!r.ok)throw Error(d.error);onUpdated({...lead,...d.lead});setError('');}catch(e){setError(contactError(e));}finally{setWorking(false);}}}>{t('Claim for myself, then contact','Ambil untuk saya, lalu hubungi','自己认领，再联系')}</button>}</div>}
         {exceptional&&!denied&&<AdminField>{t('Reason and contact scope (required)','Alasan dan cakupan kontak (wajib)','本次联系的原因与范围（必填）')}<textarea value={reason} onChange={e=>{setReason(e.target.value);setEdited(true);}}/></AdminField>}
+        </CrmFormSection>
         {closePending&&<div role="alert" className="crm-template-confirm"><p>{t("Discard the edited message?","Buang pesan yang telah diedit?","放弃已编辑的话术？")}</p><button type="button" onClick={()=>{setClosePending(false);message.current?.focus();}}>{t("Keep editing","Lanjutkan mengedit","继续编辑")}</button><button type="button" onClick={finishClose}>{t("Discard and close","Buang dan tutup","放弃并关闭")}</button></div>}
         {stopped && (
           <p role="alert">
@@ -183,6 +187,7 @@ export function CrmContactPreview({
             )}
           </p>
         )}
+        <CrmFormSection name="message" lang={lang}>
         <div className="crm-template-selectors">
           {purpose==='sales_followup'&&<div><label htmlFor={intentId} className="crm-template-label">{t('Purpose of this contact','Tujuan komunikasi ini','本次沟通目的')}</label><CrmSingleSelect controlId={intentId} label={t('Purpose of this contact','Tujuan komunikasi ini','本次沟通目的')} value={template} disabled={working} onChange={v=>choose({language,template:v})} options={[...communicationTemplates.map(item=>({value:item.id,label:templateLabel(item,lang)})),{value:'custom',label:t('Write your own','Tulis sendiri','自由编写')}]} lang={lang} isLight={isLight}/></div>}
           <div><label htmlFor={languageId} className="crm-template-label"><AdminFieldLabel required>{t('Customer communication language','Bahasa komunikasi pelanggan','客户沟通语言')}</AdminFieldLabel></label><CrmSingleSelect controlId={languageId} label={t('Customer communication language','Bahasa komunikasi pelanggan','客户沟通语言')} value={language} required disabled={working} onChange={v=>choose({language:v,template})} options={[{value:'',label:t('Choose language','Pilih bahasa','请选择语言')},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight}/></div>
@@ -243,7 +248,6 @@ export function CrmContactPreview({
         <CrmContactReference lang={lang} disabled={working||purpose!=='sales_followup'} onPrepare={v=>{const confirm=edited&&!!text.trim();choose({language,template:v});if(!confirm)requestAnimationFrame(()=>message.current?.focus());}}/>
         <AdminField required htmlFor={messageId}>
           {t("Message", "Pesan", "消息内容")}
-        </AdminField>
         <textarea
           ref={message}
           id={messageId}
@@ -260,6 +264,7 @@ export function CrmContactPreview({
             setCopied(false);
           }}
         />
+        </AdminField>
         <AdminField>
           <input
             type="checkbox"
@@ -274,6 +279,7 @@ export function CrmContactPreview({
           )}
         </AdminField>
 
+        </CrmFormSection>
         {error && <p role="alert">{error}</p>}
         <p className="crm-work-muted">
           {t(
@@ -337,3 +343,5 @@ export function CrmContactPreview({
     </section>
   );
 }
+
+export function CrmContactPreview(props:Parameters<typeof CrmContactPreviewBody>[0]){return <CrmFormLayoutScope><CrmContactPreviewBody {...props}/></CrmFormLayoutScope>;}

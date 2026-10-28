@@ -1,3 +1,6 @@
+import {CrmFormLayoutScope} from '../AdminForm';
+import {CrmFormSection} from './CrmFormLayout';
+import {AdminFormActions} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
 import { CrmOperationLayer } from "./CrmOperationLayer";
 import { CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -78,7 +81,7 @@ export function CrmProfileFields({
     onChange(next, rev);
   };
   return (
-    <div className="crm-profile-batch">
+    <div data-admin-form="" className="crm-profile-batch">
       <div className="crm-profile-picker-heading">
         <button
           ref={pickerTrigger}
@@ -416,7 +419,7 @@ export function CrmProfileEvidence({ lead, timezone }: any) {
     </dl>
   );
 }
-export function CrmProfileEditor({
+function CrmProfileEditorBody({
   lead,
   onSaved,
   onDirty,
@@ -616,8 +619,9 @@ export function CrmProfileEditor({
           onClose={close}
         >
           <div className="crm-editor-compose">
-            <div className="crm-editor-scroll" ref={formRef}>
+            <div className="crm-editor-scroll" data-admin-stack="" ref={formRef}>
               <AdminRequiredNote lang={lang} />
+              <CrmFormSection name="changes" lang={lang}>
               <CrmProfileFields
                 scope={scope}
                 lead={lead}
@@ -637,6 +641,8 @@ export function CrmProfileEditor({
                   );
                 }}
               />
+              </CrmFormSection>
+              <CrmFormSection name="evidence" lang={lang}>
               <details className="crm-profile-basis">
                 <summary
                   onClick={() => {
@@ -706,9 +712,10 @@ export function CrmProfileEditor({
                   }}
                 />
               </AdminField>
+              </CrmFormSection>
               {error && <p role="alert">{error}</p>}
             </div>
-            <div className="crm-editor-actions">
+            <AdminFormActions className="crm-editor-actions">
               <button
                 className="crm-work-button"
                 disabled={busy || unknown}
@@ -758,7 +765,7 @@ export function CrmProfileEditor({
                   {ui("加载最新资料，保留输入")}
                 </button>
               )}
-            </div>
+            </AdminFormActions>
           </div>
           {confirm && (
             <CrmDiscardDialog
@@ -1172,3 +1179,5 @@ export function CrmContactPreferences({
     </section>
   );
 }
+
+export function CrmProfileEditor(props:Parameters<typeof CrmProfileEditorBody>[0]){return <CrmFormLayoutScope><CrmProfileEditorBody {...props}/></CrmFormLayoutScope>;}

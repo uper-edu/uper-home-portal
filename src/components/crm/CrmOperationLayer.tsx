@@ -12,7 +12,7 @@ export function CrmOperationLayer({title,context,lang,isLight,onClose,children,w
     root.style.overflow='hidden';dialog.current?.showModal();heading.current?.focus({preventScroll:true});
     return()=>{dialog.current?.close();root.style.overflow=overflow;body.style.paddingRight=padding;window.scrollTo({left:x,top:y,behavior:'instant'});if(opener?.isConnected)opener.focus({preventScroll:true});};
   },[]);
-  const content=<dialog ref={dialog} className={`crm-customer-workspace crm-operation-layer${wide?' crm-operation-page':''}${progress?' crm-operation-progress':''}${compose?' crm-operation-compose':''}`} data-theme={isLight?'light':'dark'} aria-labelledby={id} onCancel={e=>{e.preventDefault();if(!busy)close.current();}}>
+  const content=<dialog data-admin-form="" ref={dialog} className={`crm-customer-workspace crm-operation-layer${wide?' crm-operation-page':''}${progress?' crm-operation-progress':''}${compose?' crm-operation-compose':''}`} data-theme={isLight?'light':'dark'} aria-labelledby={id} onCancel={e=>{e.preventDefault();if(!busy)close.current();}}>
     <header className="crm-operation-heading"><div><h2 data-admin-form-title ref={heading} tabIndex={-1} id={id}>{title}</h2>{context&&<div className="crm-operation-context">{context}</div>}</div><button type="button" className="crm-operation-close" aria-label={lang==='zh'?'关闭':lang==='id'?'Tutup':'Close'} disabled={busy} onClick={onClose}>{<X size={20}/>}</button></header>
     <div className="crm-operation-content">{children}</div>
   </dialog>;

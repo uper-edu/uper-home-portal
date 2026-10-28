@@ -1,8 +1,13 @@
-import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
+import {CrmFormLayoutScope} from '../AdminForm';
+import {crmFormText} from '../../utils/crmFormLanguage';
+import {X} from 'lucide-react';
+import {CrmDiscardDialog} from './CrmDetailWorkspace';
+import {AdminFormSection,AdminFormActions} from '../AdminFormLayout';
+import {AdminField,AdminFieldLabel,AdminRequiredNote,AdminForm} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmPromotionReviews } from "./CrmPromotionReviews";
 import { CampaignSourceEvidence } from "./CampaignSourceEvidence";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CrmSingleSelect as CrmSelect } from "./CrmSingleSelect";
 interface SourceProps {
   initialIssue?: string;
@@ -16,7 +21,7 @@ interface SourceProps {
   onStateChange?: (state: { dirty: boolean; busy: boolean }) => void;
   onCount?: (count: number | null) => void;
 }
-export function CrmCampaignSources(props: SourceProps) {
+function CrmCampaignSourcesBody(props: SourceProps) {
   const u = campaignUi(props.lang);
   const [tab, setTab] = useState(
       props.initialIssue === "promotions" ? "promotions" : "campaigns",
@@ -112,6 +117,8 @@ function UnknownCampaignSources({
   const dirty =
     !!active &&
     !!(target || name || reason || type !== "other" || action !== "link");
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const nextReview = useRef<any>(null);
   useEffect(() => {
     onStateChange?.({ dirty, busy });
   }, [dirty, busy]);
@@ -143,6 +150,14 @@ function UnknownCampaignSources({
     load();
   }, []);
   function closeReview() {
+    if (dirty) {
+      nextReview.current = null;
+      setConfirmDiscard(true);
+      return;
+    }
+    finishClose();
+  }
+  function finishClose() {
     const id = active?.id;
     setActive(null);
     requestAnimationFrame(() => {
@@ -151,6 +166,12 @@ function UnknownCampaignSources({
           .getElementById("source-review-trigger-" + id)
           ?.focus({ preventScroll: true });
     });
+  }
+  function requestEdit(r: any) {
+    if (dirty) {
+      nextReview.current = r;
+      setConfirmDiscard(true);
+    } else edit(r);
   }
   function edit(r: any) {
     setActive(r);
@@ -360,7 +381,7 @@ function UnknownCampaignSources({
               aria-controls={"source-review-" + r.id}
               disabled={busy||r.canReview===false}
               title={r.canReview===false?t("CRM Manager review required by policy","Kebijakan memerlukan verifikasi CRM Manager","当前配置要求由CRM Manager核实归因"):undefined}
-              onClick={() => (active?.id === r.id ? closeReview() : edit(r))}
+              onClick={() => (active?.id === r.id ? closeReview() : requestEdit(r))}
             >
               {t("Review source", "Verifikasi sumber", "核实来源")}{" "}
               <span aria-hidden="true">{active?.id === r.id ? "⌃" : "⌄"}</span>
@@ -371,9 +392,10 @@ function UnknownCampaignSources({
               id={"source-review-" + r.id}
               tabIndex={-1}
               onSubmit={save}
-              className="campaign-source-review border rounded-xl p-4 space-y-3"
+              className="campaign-source-review crm-form-layout border rounded-xl p-4"
               aria-label={t("Review source", "Verifikasi sumber", "核实来源")}
             >
+<header className="crm-source-review-heading"><h3 data-admin-form-title>{crmFormText(lang,'sourceReview')}</h3><button type="button" className="crm-form-close" disabled={busy} aria-label={t('Close','Tutup','关闭')} onClick={closeReview}><X size={18} aria-hidden="true"/></button></header>
 <AdminRequiredNote lang={lang}/>
 
               {error && (
@@ -387,8 +409,8 @@ function UnknownCampaignSources({
                 source={active}
                 onLead={onLead}
               />
-              <h4 className="font-bold">{u("Review decision")}</h4>
-              <CrmSelect
+              <AdminFormSection className="crm-form-section" title={u("Review decision")}>
+              <div className="campaign-field"><AdminFieldLabel required>{t("Action", "Tindakan", "处理方式")}</AdminFieldLabel><CrmSelect required
                 lang={lang}
                 isLight={isLight}
                 label={t("Action", "Tindakan", "处理方式")}
@@ -419,10 +441,10 @@ function UnknownCampaignSources({
                     label: t("Mark invalid", "Tandai tidak valid", "标记无效"),
                   },
                 ]}
-              />
+              /></div>
               {action === "link" && (
                 <>
-                  <CrmSelect
+                  <div className="campaign-field"><AdminFieldLabel required>{t("Target campaign", "Kampanye tujuan", "目标活动")}</AdminFieldLabel><CrmSelect required
                     lang={lang}
                     isLight={isLight}
                     label={t("Target campaign", "Kampanye tujuan", "目标活动")}
@@ -442,7 +464,7 @@ function UnknownCampaignSources({
                       },
                       ...campaigns.map((c) => ({ value: c.id, label: c.name })),
                     ]}
-                  />
+                  /></div>
                   <p className="text-sm">
                     {t(
                       "The original code stays as an alias. Existing and future leads from that code are attributed to the selected campaign.",
@@ -478,7 +500,7 @@ function UnknownCampaignSources({
                       className="block w-full border rounded-lg p-2 bg-transparent"
                     />
                   </AdminField>
-                  <CrmSelect
+                  <div className="campaign-field"><AdminFieldLabel required>{t("Campaign type", "Jenis kampanye", "活动类型")}</AdminFieldLabel><CrmSelect required
                     lang={lang}
                     isLight={isLight}
                     label={t("Campaign type", "Jenis kampanye", "活动类型")}
@@ -525,7 +547,7 @@ function UnknownCampaignSources({
                         ),
                       },
                     ]}
-                  />
+                  /></div>
                   <p className="text-sm">
                     {t(
                       "Creates a planning campaign with a new camp- code. The original source code remains a working alias and stays in the audit record. Complete other details in campaign information.",
@@ -555,7 +577,8 @@ function UnknownCampaignSources({
                   "原始代码及审计保留；标记无效不会删除客户或归入非活动来源。",
                 )}
               </p>
-              <div className="crm-source-review-actions flex gap-3">
+              </AdminFormSection>
+              <AdminFormActions className="crm-source-review-actions flex gap-3">
                 <button
                   disabled={
                     active?.canReview===false || busy || !reason.trim() || (action === "link" && !target)
@@ -569,7 +592,7 @@ function UnknownCampaignSources({
                 <button type="button" disabled={busy} onClick={closeReview}>
                   {t("Cancel", "Batal", "取消")}
                 </button>
-              </div>
+              </AdminFormActions>
             </AdminForm>
           )}
         </article>
@@ -593,6 +616,16 @@ function UnknownCampaignSources({
           )}
         </p>
       )}
+      {confirmDiscard && <CrmDiscardDialog lang={lang} isLight={isLight}
+        onKeep={() => setConfirmDiscard(false)}
+        onDiscard={() => {
+          setConfirmDiscard(false);
+          if (nextReview.current) edit(nextReview.current);
+          else finishClose();
+          nextReview.current = null;
+        }}/ >}
     </section>
   );
 }
+
+export function CrmCampaignSources(props:Parameters<typeof CrmCampaignSourcesBody>[0]){return <CrmFormLayoutScope><CrmCampaignSourcesBody {...props}/></CrmFormLayoutScope>;}

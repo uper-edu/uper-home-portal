@@ -1,4 +1,6 @@
-import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
+import {CrmFormLayoutScope} from '../AdminForm';
+import {AdminFormSection,AdminFormActions} from '../AdminFormLayout';
+import {AdminField,AdminFieldLabel,AdminRequiredNote,AdminForm} from '../AdminForm';
 import {
   campaignUi,
   campaignUiLocale,
@@ -18,7 +20,7 @@ import {
   campaignPromotionUrl,
 } from "../../utils/campaignPromotion";
 
-export function CrmPromotionReviews({
+function CrmPromotionReviewsBody({
   isLight,
   onChanged,
   onLead,
@@ -432,11 +434,12 @@ function PromotionReviewCard({
         <AdminForm lang={lang}
           id={"promotion-review-" + row.leadId}
           onSubmit={save}
-          className="campaign-source-review border rounded-xl p-4 space-y-3"
+          className="campaign-source-review crm-form-layout border rounded-xl p-4"
           aria-label={u("Review promotion entry for {name}", {
             name: row.name,
           })}
         >
+<h3 data-admin-form-title className="crm-source-review-heading">{u("Review promotion entry for {name}",{name:row.name})}</h3>
 <AdminRequiredNote lang={lang}/>
 
           <CampaignSourceEvidence
@@ -455,16 +458,14 @@ function PromotionReviewCard({
             }}
             onLead={onLead}
           />
-          <h3 className="font-bold">
-            {u("Review decision · this customer only")}
-          </h3>
+          <AdminFormSection className="crm-form-section" title={u("Review decision · this customer only")}>
           {error && (
             <CrmSaveFeedback lang={lang} state={unknown ? "unknown" : "error"}>
               {campaignUiError(lang, error)}
             </CrmSaveFeedback>
           )}
           <fieldset disabled={busy || unknown || row.canReview===false} className="space-y-3">
-            <CrmSingleSelect
+            <div className="campaign-field"><AdminFieldLabel required>{u("Review action")}</AdminFieldLabel><CrmSingleSelect required
               label={u("Review action")}
               value={action}
               options={[
@@ -477,7 +478,7 @@ function PromotionReviewCard({
               onChange={setAction}
               lang={lang}
               isLight={isLight}
-            />
+            /></div>
             {choice && (
               <details className="campaign-review-action-context"><summary>{u("Typical scenario:")}</summary>
                 <p>
@@ -490,7 +491,7 @@ function PromotionReviewCard({
               </details>
             )}
             {action === "link" && (
-              <CrmSingleSelect
+              <div className="campaign-field"><AdminFieldLabel required>{u("Existing promotion entry")}</AdminFieldLabel><CrmSingleSelect required
                 label={u("Existing promotion entry")}
                 searchable
                 value={target}
@@ -523,7 +524,7 @@ function PromotionReviewCard({
                 onChange={setTarget}
                 lang={lang}
                 isLight={isLight}
-              />
+              /></div>
             )}
             {action === "link" && !row.links.length && (
               <p>
@@ -533,7 +534,7 @@ function PromotionReviewCard({
               </p>
             )}
             {action === "create" && (
-              <div className="campaign-fields-grid">
+              <div className="campaign-fields-grid" data-admin-grid="">
                 <AdminField className="campaign-field">
                   <span>{u("Entry name · optional")}</span>
                   <input
@@ -545,9 +546,9 @@ function PromotionReviewCard({
                   />
                 </AdminField>
                 <div className="campaign-field">
-                  <span>{u("Source *")}</span>
+                  <AdminFieldLabel required>{u("Source *")}</AdminFieldLabel>
                   <CrmSingleSelect
-                    label={u("New entry source")}
+                    label={u("New entry source")} required
                     value={custom ? "custom" : entry.source}
                     options={[
                       {
@@ -586,7 +587,7 @@ function PromotionReviewCard({
                     </AdminField>
                   )}
                 </div>
-                <CrmSingleSelect
+                <div className="campaign-field"><AdminFieldLabel required>{u("Medium *")}</AdminFieldLabel><CrmSingleSelect required
                   label={u("New entry medium")}
                   value={entry.medium}
                   options={[
@@ -599,8 +600,8 @@ function PromotionReviewCard({
                   onChange={(medium) => setEntry({ ...entry, medium })}
                   lang={lang}
                   isLight={isLight}
-                />
-                <CrmSingleSelect
+                /></div>
+                <div className="campaign-field"><AdminFieldLabel required>{u("Customer language *")}</AdminFieldLabel><CrmSingleSelect required
                   label={u("New entry customer language")}
                   value={entry.language}
                   options={[
@@ -616,7 +617,7 @@ function PromotionReviewCard({
                   onChange={(language) => setEntry({ ...entry, language })}
                   lang={lang}
                   isLight={isLight}
-                />
+                /></div>
                 <p>
                   {u("Entry experience:")} {u(PROMOTION_EXPERIENCE_LABEL)}
                 </p>
@@ -638,7 +639,8 @@ function PromotionReviewCard({
               { name: row.name },
             )}
           </p>
-          <div className="crm-source-review-actions flex flex-wrap gap-2">
+          </AdminFormSection>
+          <AdminFormActions className="crm-source-review-actions flex flex-wrap gap-2">
             <button
               type="submit"
               className="campaign-workspace-action campaign-primary"
@@ -678,7 +680,7 @@ function PromotionReviewCard({
             >
               {u("Keep draft & close")}
             </button>
-          </div>
+          </AdminFormActions>
         </AdminForm>
       )}
       {!!row.history.length && (
@@ -713,3 +715,5 @@ function PromotionReviewCard({
     </article>
   );
 }
+
+export function CrmPromotionReviews(props:Parameters<typeof CrmPromotionReviewsBody>[0]){return <CrmFormLayoutScope><CrmPromotionReviewsBody {...props}/></CrmFormLayoutScope>;}

@@ -1,0 +1,35 @@
+/* Opt-in administration forms. No public questionnaire, assessment or marketing selectors. */
+[data-admin-form]{--af-text:var(--cw-text,var(--access-ink,var(--admin-text,#17263d)));--af-muted:var(--cw-muted,var(--access-muted,var(--admin-muted,#52647c)));--af-border:var(--cw-border,var(--access-border,var(--admin-border,#cbd5e1)));--af-surface:var(--cw-surface,var(--access-surface,var(--admin-surface,#fff)));--af-soft:var(--cw-soft,var(--access-bg,var(--admin-surface-soft,#f5f7fa)))}
+[data-admin-form] .admin-field:not(.admin-field--choice):not(.admin-field--annotation){display:grid;gap:var(--admin-form-label-gap);margin:0;min-width:0;align-content:start;font-size:14px;line-height:1.6}
+[data-admin-form] .admin-field:not(.admin-field--choice)>.admin-field-label,[data-admin-form] .admin-field:not(.admin-field--choice)>label{margin:0;font-size:14px;line-height:1.6;font-weight:500;color:var(--af-text)}
+[data-admin-form] .admin-field :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),textarea,select){box-sizing:border-box;max-width:100%;min-width:0;min-height:40px;font-size:14px;line-height:1.6;border-radius:10px}
+[data-admin-form] .admin-field--choice{display:flex;align-items:flex-start;gap:8px;margin:0;min-width:0;font-size:14px;line-height:1.6}
+[data-admin-form] .admin-field--choice input:is([type=checkbox],[type=radio]){flex:0 0 auto;align-self:start;max-width:20px;width:auto}
+[data-admin-form] .admin-field--choice .admin-field-label{font-weight:400}
+[data-admin-form] .admin-field-control{display:grid;gap:var(--admin-form-help-gap);min-width:0}
+[data-admin-form] .admin-field-control>:is(small,p){margin:0;font-size:13px;line-height:1.6;color:var(--af-muted)}
+[data-admin-stack]{display:grid;gap:var(--admin-form-field-gap);align-content:start;min-width:0}
+[data-admin-grid]{column-gap:var(--admin-form-column-gap);row-gap:var(--admin-form-field-gap)}
+.admin-form-section{min-width:0;color:var(--af-text);margin:0}
+.admin-form-section+.admin-form-section{margin-top:var(--admin-form-group-gap)}
+.admin-form-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--af-border)}
+.admin-form-section-heading h3{margin:0;font-size:14px;font-weight:600;line-height:1.6;display:flex;align-items:center;gap:8px}
+.admin-form-section-heading p{margin:4px 0 0;font-size:13px;line-height:1.6;color:var(--af-muted)}
+.admin-form-section-tools{display:flex;align-items:center;gap:8px;flex:none}
+.admin-form-section-body{display:grid;gap:var(--admin-form-field-gap);padding:var(--admin-form-panel-top) 0 var(--admin-form-panel-bottom);min-width:0}
+.admin-form-section[data-admin-section=card]{border:1px solid var(--af-border);border-radius:14px;overflow:clip}
+.admin-form-section[data-admin-section=card]>.admin-form-section-heading{padding:12px 16px;background:var(--af-soft)}
+.admin-form-section[data-admin-section=card]>.admin-form-section-body{padding:16px}
+.admin-form-section[data-admin-section=subgroup]>.admin-form-section-heading{padding:0;border:0}
+.admin-form-section[data-admin-section=subgroup]>.admin-form-section-body{padding-bottom:0}
+.admin-form-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+.admin-form-actions>button{min-height:40px;border-radius:10px;font-size:14px;line-height:1.5}
+.admin-form-feedback{margin:0;padding:10px 12px;border:1px solid var(--af-border,var(--admin-border));border-radius:10px;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.admin-form-feedback[data-tone=neutral]{color:var(--af-muted);background:var(--af-soft)}
+.admin-form-feedback[data-tone=info]{color:var(--admin-info);background:var(--admin-info-bg);border-color:var(--admin-info-border)}
+.admin-form-feedback[data-tone=success]{color:var(--admin-success);background:var(--admin-success-bg);border-color:var(--admin-success-border)}
+.admin-form-feedback[data-tone=danger]{color:var(--admin-danger);background:var(--admin-danger-bg);border-color:var(--admin-danger-border)}
+.admin-form-feedback[data-tone=warning]{color:var(--admin-warning);background:var(--admin-warning-bg);border-color:var(--admin-warning-border)}
+/* Remove utility margins only inside explicitly registered field groups. */
+[data-admin-form] .admin-field:not(.admin-field--choice)>*{margin-top:0;margin-bottom:0}
+[data-admin-form] .admin-field-control>:is(small,p,span){margin:0;font-size:13px;line-height:1.6;color:var(--af-muted)}

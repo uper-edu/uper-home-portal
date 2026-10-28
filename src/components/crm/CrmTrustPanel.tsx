@@ -1,3 +1,6 @@
+import {CrmFormLayoutScope} from '../AdminForm';
+import {CrmFormSection,CrmFormSummary} from './CrmFormLayout';
+import {AdminFormActions} from '../AdminFormLayout';
 import {CrmIdentityAction} from './CrmIdentityAction';
 import {AdminRequiredNote} from '../AdminForm';
 import {useCrmUiText} from './CrmUiLanguage';
@@ -27,7 +30,7 @@ import { calendarSample } from "../../utils/workCalendar";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
 import { trustError } from "../../utils/crmTrustLanguage";
-export function CrmStageEditor({
+function CrmStageEditorBody({
   lead, lang, isLight, onSaved, disabled, onDirty, onBusy, initialBasisId, inDrawer=false, onClose, request = fetch,
 }: any) {
  const ui=useCrmUiText(lang);
@@ -138,20 +141,22 @@ export function CrmStageEditor({
   const options:Array<{value:string,label:string}> = salesProgressStages.map(([value,zh,en,id])=>({value,label:lang==='zh'?zh:lang==='id'?id:en}));
   const chosen=salesProgressStages.find(v=>v[0]===stage);
   if(!isSalesProgressStage(currentStage))options.unshift({value:currentStage as any,label:crmValue(currentStage,lang)+'（旧阶段，待确认）'});
-  const actions=(<div className={inDrawer?"crm-editor-actions crm-stage-drawer-actions":"crm-stage-actions"}>
+  const actions=(<AdminFormActions data-admin-form="" className={inDrawer?"crm-editor-actions crm-stage-drawer-actions":"crm-stage-actions"}>
           <button type="button" className="crm-work-button crm-editor-primary" data-primary="true" disabled={disabled || busy || (unknown&&!retryAllowed) || (!changed&&!unknown) || (versionConflict&&!unknown)} onClick={save}>
             {busy && busyAction === "save" ? t("Saving…", "Menyimpan…", "保存中…") : unknown ? t("Retry original save", "Ulangi penyimpanan awal", "重试原保存") : t('Save','Simpan','保存')}
           </button>
           {!unknown && <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{if(inDrawer){onClose?.();return;}setStage(currentStage);setReason('');setBasisRefs([]);setEnrollmentConfirmed(false);}}>{!inDrawer&&savedStage&&!changed ? ui("完成") : ui("取消")}</button>}
 
           {unknown && <button type="button" className="crm-work-button" disabled={busy} onClick={query}>{busy && busyAction === "query" ? t("Checking…", "Memeriksa…", "查询中…") : t("Query save result", "Periksa hasil penyimpanan", "查询保存结果")}</button>}
-        </div>);
+        </AdminFormActions>);
   return (
-    <div id="crm-sales-stage-editor" tabIndex={-1} className={`crm-stage-editor${inDrawer?' crm-editor-compose crm-stage-drawer':''}`} aria-busy={busy}>
+    <div data-admin-form="" id="crm-sales-stage-editor" tabIndex={-1} className={`crm-stage-editor${inDrawer?' crm-editor-compose crm-stage-drawer':''}`} aria-busy={busy}>
       <div className={inDrawer?'crm-editor-scroll':undefined}>
       {inDrawer&&<AdminRequiredNote lang={lang}/>}
       {!isSalesProgressStage(currentStage)&&<p className="crm-stage-help">{ui("旧阶段保留为“")}{crmValue(currentStage,lang)}{ui("”，未自动映射。请选择符合实际的新阶段并明确保存。")}</p>}
-      {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id,definition])=><label key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{progressDefinition(value,lang)}</small></span></label>)}</fieldset>:(
+      <CrmFormSection name="stage" lang={lang}>
+      {inDrawer&&<CrmFormSummary>{t('Current stage','Tahap saat ini','当前阶段')}：{crmValue(currentStage,lang)}</CrmFormSummary>}
+      {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id,definition])=><label className="admin-field admin-field--choice" key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{progressDefinition(value,lang)}</small></span></label>)}</fieldset>:(
       <CrmSingleSelect
         label={t("Update sales stage", "Ubah tahap penjualan", "修改销售阶段")}
         value={stage}
@@ -159,10 +164,11 @@ export function CrmStageEditor({
         disabled={disabled || busy || unknown} options={options} lang={lang} isLight={isLight}
       />)}
 
+      </CrmFormSection>
       {changed&&versionConflict&&<p role="alert">{ui("服务端阶段已变化，草稿仍保留。最新：")}{crmValue(latestStage.stage,lang)}。<button type="button" disabled={busy||unknown} onClick={()=>{setBaseStage(latestStage.stage);setBaseRevision(latestStage.version);}}>{ui("保留草稿并采用已核对的最新基准")}</button></p>}
       {!inDrawer&&chosen&&<p className="crm-stage-help">{progressDefinition(chosen[0],lang)}</p>}
       {!inDrawer&&!disabled && <p className="crm-stage-help">{t("Stage changes are saved manually. Choose a stage, link evidence or describe the facts, then save.", "Perubahan tahap disimpan secara manual. Pilih tahap, isi alasan wajib, lalu simpan.", "阶段变更需手动保存：选择阶段，关联依据或填写事实说明后保存。")}</p>}
-      {(changed || unknown) && <div className="crm-stage-draft">
+      {(changed || unknown) && <CrmFormSection name="stageEvidence" lang={lang}><div className="crm-stage-draft">
         <label htmlFor={id}><AdminFieldLabel required={!basisRefs.length}>{t("Facts supporting the stage", "Fakta pendukung tahap", "具体事实说明")}</AdminFieldLabel></label>
         <p id={id + "-help"} className="crm-stage-help">{t("Describe the facts supporting this stage. Example: the customer confirmed a Saturday assessment booking.", "Jelaskan fakta yang mendukung tahap ini. Contoh: pelanggan mengonfirmasi jadwal asesmen hari Sabtu.", "请说明支持新阶段的事实。例如：客户已确认预约周六的测评。")}</p>
         <textarea id={id} ref={reasonRef} rows={3} required={!basisRefs.length} aria-required={!basisRefs.length} aria-invalid={reasonInvalid}
@@ -172,11 +178,11 @@ export function CrmStageEditor({
         {reasonInvalid && <p id={id + "-error"} role="alert" className="crm-stage-error">{t("Enter the reason for this stage change before saving.", "Isi alasan perubahan tahap sebelum menyimpan.", "请关联依据或填写事实说明，已报名还须明确确认报名成立。")}</p>}
         <p className="crm-stage-help">{ui("可关联原始记录，也可填写具体事实说明；无需重复抄写已关联原文。")}</p>
         {contextError&&<p role="alert">{contextError}<button type="button" onClick={()=>void loadContext()}>{ui("重新加载依据")}</button></p>}
-        <details className="crm-stage-source-picker" open={Boolean(initialBasisId)}><summary>{ui("关联原始依据（已选")}{basisRefs.length}{ui("，最多5条）")}</summary>{stageContext?.sources.map((source:any)=>{const checked=basisRefs.some(s=>s.type===source.type&&s.id===source.id);return <div key={source.type+source.id}><label><input type="checkbox" disabled={busy||unknown||(!checked&&basisRefs.length>=5)} checked={checked} onChange={()=>setBasisRefs(v=>checked?v.filter(s=>s.type!==source.type||s.id!==source.id):[...v,{type:source.type,id:source.id}])}/>{ui(source.label)} · {progressSourceTiming(source,lang)}</label><CrmProgressSourceBody source={source} lang={lang}/></div>;})}{stageContext&&!stageContext.sources.length&&<p>{ui("没有可关联的原始记录，请填写具体事实说明。")}</p>}</details>
-        {stage==='progress:enrolled'&&<label><input ref={enrollmentRef} type="checkbox" required aria-required="true" disabled={busy||unknown} checked={enrollmentConfirmed} onChange={e=>{setEnrollmentConfirmed(e.target.checked);setError('');}}/>{ui("确认正式课程报名已成立（不含试听预约）；依据须说明具体课程及确认事实 *")}</label>}
+        <details className="crm-stage-source-picker crm-form-details" open={Boolean(initialBasisId)}><summary>{ui("关联原始依据（已选")}{basisRefs.length}{ui("，最多5条）")}</summary>{stageContext?.sources.map((source:any)=>{const checked=basisRefs.some(s=>s.type===source.type&&s.id===source.id);return <div key={source.type+source.id}><label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown||(!checked&&basisRefs.length>=5)} checked={checked} onChange={()=>setBasisRefs(v=>checked?v.filter(s=>s.type!==source.type||s.id!==source.id):[...v,{type:source.type,id:source.id}])}/>{ui(source.label)} · {progressSourceTiming(source,lang)}</label><CrmProgressSourceBody source={source} lang={lang}/></div>;})}{stageContext&&!stageContext.sources.length&&<p>{ui("没有可关联的原始记录，请填写具体事实说明。")}</p>}</details>
+        {stage==='progress:enrolled'&&<label className="admin-field admin-field--choice"><input ref={enrollmentRef} type="checkbox" required aria-required="true" disabled={busy||unknown} checked={enrollmentConfirmed} onChange={e=>{setEnrollmentConfirmed(e.target.checked);setError('');}}/>{ui("确认正式课程报名已成立（不含试听预约）；依据须说明具体课程及确认事实 *")}</label>}
 
 
-      </div>}
+      </div></CrmFormSection>}
       {(busy || unknown || savedStage === currentStage) && <p role="status" className="crm-stage-status">
         {busy ? (busyAction === "query" ? t("Checking save result…", "Memeriksa hasil penyimpanan…", "正在查询保存结果…") : t("Saving stage…", "Menyimpan tahap…", "正在保存阶段…"))
           : unknown ? t("Save result unknown; draft retained.", "Hasil penyimpanan belum diketahui; draf dipertahankan.", "保存结果未知，草稿已保留。")
@@ -1233,3 +1239,5 @@ function LegacyCrmTrustPanel({
     </section>
   );
 }
+
+export function CrmStageEditor(props:Parameters<typeof CrmStageEditorBody>[0]){return <CrmFormLayoutScope><CrmStageEditorBody {...props}/></CrmFormLayoutScope>;}
