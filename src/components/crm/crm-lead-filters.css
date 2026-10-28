@@ -472,3 +472,9 @@
 .crm-lead-filter-v3.crm-filter-sidebar[data-expanded="false"] .crm-filter-results{display:none}
 .crm-sidebar-customer-count{font-size:13px;font-weight:500;color:var(--dw-muted)}
 .crm-sidebar-count-updating{font-size:12px;font-weight:400;color:var(--dw-muted)}
+
+.crm-filter-area .crm-choice-detail{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left;white-space:normal;overflow:visible;text-overflow:clip}
+.crm-filter-area .crm-choice-title{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.6}
+.crm-filter-area .crm-choice-description{font-size:13px;line-height:1.6;color:var(--cf-muted);font-weight:400}
+.crm-detail-choice .crm-filter-dimension-button:has(.crm-choice-detail){height:auto;min-height:var(--cf-control-height);align-items:center;padding-block:10px}
+.crm-detail-choice-popup .crm-filter-option:has(.crm-choice-detail){align-items:flex-start;height:auto}

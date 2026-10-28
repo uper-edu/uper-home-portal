@@ -6,6 +6,7 @@ import type { CrmLanguage } from "../../utils/crmLanguage";
 export interface CrmChoice {
   value: string;
   label: string;
+  description?: string;
   disabled?: boolean;
 }
 /** Reuses the CRM filter trigger, popover, option and focus styles for editing. */
@@ -172,7 +173,7 @@ export function CrmSingleSelect({
         aria-required={required||undefined}
         data-admin-has-value={multiple?values.length>0:!!value}
         aria-label={label}
-        aria-description={displayValue}
+        aria-description={displayValue||(selected?.description?selected.label+'; '+selected.description:undefined)}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -189,8 +190,8 @@ export function CrmSingleSelect({
           } else keyboard(event);
         }}
       >
-        <span className="crm-filter-dimension-value">
-          {displayValue ??
+        <span className={'crm-filter-dimension-value'+(selected?.description&&!displayValue?' crm-choice-detail':'')}>
+          {selected?.description&&!displayValue&&!multiple?<><span className="crm-choice-title">{selected.label}</span><span className="crm-choice-description">{selected.description}</span></>:displayValue ??
             (multiple
               ? values.length
                 ? values
@@ -282,7 +283,7 @@ export function CrmSingleSelect({
                         {option.value === value ? "✓" : ""}
                       </span>
                     )}
-                    <span>{option.label}</span>
+                    <span className={option.description?'crm-choice-detail':undefined}>{option.description?<><span className="crm-choice-title">{option.label}</span><span className="crm-choice-description">{option.description}</span></>:option.label}</span>
                   </button>
                 ))}
               </div>

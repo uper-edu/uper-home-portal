@@ -15,11 +15,16 @@ export function agreementListTime(agreement:any,timezone:string,now=Date.now()){
  if(agreement.date){const year=formatCrmOperatingTime(new Date(now).toISOString(),timezone).slice(0,4);return agreement.date.startsWith(year+'-')?agreement.date.slice(5):agreement.date;}
  return '';
 }
+/** Original wording and viewer-local time identify agreements; neither is inferred or rewritten. */
+export function agreementChoice(agreement:any,lang:string,timezone=viewerTimeZone()){
+ const time=agreementListTime(agreement,timezone);
+ return {value:agreement.id,label:agreement.action,description:time+(agreement.date&&!agreement.at?' · '+text(lang,'Date only','Hanya tanggal','仅日期'):'')||text(lang,'No time agreed','Waktu belum disepakati','未约定时间')};
+}
 export function progressDetails(log:any,lead:any,requests:any[],lang:CrmLanguage,timezone:string){
  const t=(en:string,id:string,zh:string)=>text(lang,en,id,zh);const rows:{label:string,value:string}[]=[];
  const add=(label:string,value:any)=>{if(value!==undefined&&value!==null&&value!=='')rows.push({label,value:String(value)});};
  const internal=log.recordKind==='internal'||log.recordKind==='closure';
- add(t('Record type','Jenis catatan','记录类型'),internal?t('Internal progress','Perkembangan internal','内部进展'):t('Customer contact','Kontak pelanggan','客户联系'));
+ add(t('Record type','Jenis catatan','记录类型'),internal?t('Progress note','Catatan perkembangan','进展记录'):t('Customer contact','Kontak pelanggan','客户联系'));
  add(t('Actual occurrence','Waktu kejadian sebenarnya','实际发生时间'),log.occurredAt?formatCrmOperatingTime(log.occurredAt,viewerTimeZone()):t('Not recorded; recording time is separate','Tidak tercatat; waktu pencatatan terpisah','未注明；记录时间另行保留'));
  if(!internal){add(t('Initiated by','Dimulai oleh','联系发起方'),log.contactDirection==='sales'?t('Sales','Sales','销售'):log.contactDirection==='customer'?t('Customer','Pelanggan','客户'):t('Not specified','Tidak disebutkan','未注明'));add(t('Contact channel','Saluran kontak','联系渠道'),crmValue(log.channel,lang));add(t('Actual result','Hasil nyata','实际联系结果'),crmValue(log.connectStatus,lang));}
  add(t('Stage facts recorded','Fakta tahap yang dicatat','本次记录的阶段事实'),log.stageObservations?.length?log.stageObservations.map((v:string)=>crmValue(v,lang)).join(' · '):null);

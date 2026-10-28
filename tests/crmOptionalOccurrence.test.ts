@@ -10,10 +10,10 @@ test('unknown stays unknown; explicit local without offset, invalid dates and fu
  for(const v of ['',0,{},'2026-10-25T09:00','2026-02-31T09:00:00Z','2026-10-26T09:00:00Z'])assert.throws(()=>optionalOccurrence(v,clock));
  assert.equal(optionalOccurrence('2026-10-24T17:00:00+07:00',clock),'2026-10-24T10:00:00.000Z');
 });
-test('internal occurrence independent of hidden contact draft and never becomes contact',()=>{
+test('plain notes omit legacy hidden occurrence and contact fields',()=>{
  const draft={recordKind:'internal',summary:'客户资料说明',internalLocal:'2026-10-24T17:00',contactLocal:'2026-10-23T12:00',occurrenceMode:'specified',contactDirection:'sales',channel:'WhatsApp',connectStatus:'Connected'};
- const b=prepareProgressDraft(draft,'Asia/Jakarta');assert.equal(b.occurredAt,'2026-10-24T10:00:00.000Z');assert.equal(b.internalLocal,undefined);assert.equal(b.contactDirection,undefined);assert.equal(b.channel,undefined);assert.equal(b.occurrenceMode,undefined);
- assert.deepEqual(contactOccurrence(b,clock),{occurredAt:b.occurredAt});
+ const b=prepareProgressDraft(draft,'Asia/Jakarta');assert.equal(b.occurredAt,undefined);assert.equal(b.internalLocal,undefined);assert.equal(b.contactDirection,undefined);assert.equal(b.channel,undefined);assert.equal(b.occurrenceMode,undefined);
+ assert.deepEqual(contactOccurrence(b,clock),{});
  assert.equal(prepareProgressDraft({...draft,internalLocal:''},'Asia/Jakarta').occurredAt,undefined);
  assert.equal(prepareProgressDraft({...draft,recordKind:'contact'},'Asia/Jakarta').occurredAt,'2026-10-23T05:00:00.000Z');
  assert.deepEqual(projectInteractionTimeline({followUpLogs:[{...b,recordKind:'closure',at:clock.toISOString()}]}),{communication:null,customer:null,sales:null});

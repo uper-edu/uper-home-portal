@@ -76,7 +76,7 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-operation-progress .crm-progress-writing-heading>label{font-size:15px;font-weight:600;color:var(--cw-text)}
 .crm-operation-progress .crm-progress-reference-button{display:inline-flex;align-items:center;gap:6px;padding:4px 0;min-height:32px;font-size:13px;color:var(--cw-muted);background:transparent;border:0}
 .crm-operation-progress .crm-progress-reference-button:hover,.crm-operation-progress .crm-progress-reference-button[aria-expanded=true]{color:var(--cw-accent)}
-.crm-operation-progress .crm-progress-writing>textarea{min-height:210px;max-height:440px;resize:vertical;padding:14px 16px;font-size:15px;line-height:1.75;border:1px solid var(--cw-border);border-radius:12px;background:var(--cw-surface);color:var(--cw-text)}
+.crm-operation-progress .crm-progress-writing>textarea{min-height:136px;max-height:440px;resize:vertical;padding:14px 16px;font-size:15px;line-height:1.75;border:1px solid var(--cw-border);border-radius:12px;background:var(--cw-surface);color:var(--cw-text)}
 .crm-operation-progress .crm-progress-writing>textarea:focus{outline:2px solid var(--cw-accent);outline-offset:1px}
 .crm-operation-progress .crm-progress-writing-reference{margin-top:12px;padding:16px 18px;border-radius:12px;background:var(--cw-soft);font-size:13px;line-height:1.65;color:var(--cw-muted)}
 .crm-operation-progress .crm-progress-writing-reference[hidden]{display:none}
@@ -158,9 +158,34 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-operation-progress .crm-progress-stage-toggle>input[type=checkbox]{width:18px;height:18px;min-height:18px;flex:0 0 18px;margin:2px 0 0;padding:0;accent-color:var(--cw-accent)}
 .crm-operation-progress .crm-progress-stage-toggle>span{flex:1;min-width:0}
 .crm-operation-progress .crm-progress-stage-fields{border-top:1px solid var(--cw-border);margin-top:0;padding-top:12px}
-.crm-operation-progress .crm-progress-refined:has(.crm-progress-stage-fields) .crm-progress-disclosure-row[aria-controls="crm-progress-extra-agreement"]{border-bottom:0}
 .crm-operation-progress .crm-progress-stage-options{margin-top:4px;gap:12px}
 .crm-operation-progress .crm-progress-stage-selection>label>.admin-field-label{font-size:14px;font-weight:500;color:var(--cw-muted)}
+.crm-operation-progress .crm-progress-sections{margin-top:16px;border-top:1px solid var(--cw-border)}
+.crm-operation-progress .crm-progress-section+.crm-progress-section{border-top:1px solid var(--cw-border)}
+.crm-progress-section-heading{position:relative}
+.crm-operation-progress .crm-progress-section-toggle{display:flex;align-items:center;gap:12px;min-height:52px;width:100%;padding:12px 0;text-align:left;border:0;border-radius:0;background:transparent;color:var(--cw-text);font-size:14px;line-height:1.6}
+.crm-progress-section-title{flex:none;font-weight:500}
+.crm-progress-section-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-size:13px;color:var(--cw-muted)}
+.crm-progress-section-incomplete{margin-left:auto;flex:none;font-size:12px;color:var(--admin-warning)}
+.crm-progress-section-toggle>svg{flex:none;margin-left:auto;transition:transform .15s}
+.crm-progress-section-toggle>svg.is-open{transform:rotate(180deg)}
+.crm-operation-progress .crm-progress-section-panel{display:grid;gap:var(--admin-form-field-gap);border:0;margin:0;padding:var(--admin-form-panel-top) 0 var(--admin-form-panel-bottom);min-width:0}
+.crm-operation-progress .crm-progress-section-panel[hidden]{display:none!important}
+.crm-progress-section-clear-space{visibility:hidden;flex:none;white-space:nowrap;padding:4px 8px;font-size:13px}
+.crm-operation-progress .crm-progress-section-clear{position:absolute;right:28px;top:50%;transform:translateY(-50%);min-height:40px;white-space:nowrap;padding:4px 8px;border:0;background:transparent;color:var(--cw-accent);font-size:13px}
+.crm-progress-section-toggle:focus-visible,.crm-progress-section-clear:focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+.crm-operation-progress .crm-progress-section-panel .crm-progress-stage-fields{border:0;margin:0;padding:0}
+.crm-operation-progress .crm-progress-section-panel .crm-progress-stage-options{margin:0}
+/* Each field owns its label/help; the parent owns spacing between fields. */
+.crm-operation-progress .crm-progress-section-panel .crm-simple-select-field{margin:0;display:grid;gap:var(--admin-form-label-gap)}
+.crm-operation-progress .crm-progress-section-panel .crm-simple-select-field>p{margin:0}
+.crm-operation-progress .crm-progress-section-panel label:not(.crm-simple-check):not(.crm-progress-stage-toggle){margin:0;gap:var(--admin-form-label-gap)}
+.crm-operation-progress .crm-progress-section-panel .crm-simple-two-fields{row-gap:var(--admin-form-field-gap);column-gap:var(--admin-form-column-gap)}
+.crm-operation-progress .crm-progress-section-panel .crm-progress-stage-options,.crm-operation-progress .crm-progress-field-stack{display:grid;gap:var(--admin-form-field-gap)}
+.crm-operation-progress .crm-progress-section-panel .crm-simple-fields{margin:0;padding-top:calc(var(--admin-form-group-gap) - var(--admin-form-field-gap));gap:var(--admin-form-label-gap)}
+.crm-operation-progress .crm-progress-section-panel .crm-simple-fields>h3{margin:0}
+.crm-operation-progress .crm-progress-field-group{display:grid;gap:var(--admin-form-help-gap)}
+.crm-operation-progress .crm-progress-section-panel .crm-simple-help,.crm-operation-progress .crm-progress-field-group>[role=alert]{margin:0}
 /* The active modal owns editing feedback; do not duplicate it in the inert customer header. */
 body:has(dialog.crm-operation-layer[open]) #crm-customer-panel>.crm-save-feedback{display:none}
 
@@ -176,3 +201,5 @@ body:has(dialog.crm-operation-layer[open]) #crm-customer-panel>.crm-save-feedbac
 .crm-work-button.crm-identity-action:hover:not(:disabled){background:var(--admin-warning-bg);color:var(--admin-warning);box-shadow:inset 0 0 0 1px var(--admin-warning-border)}
 .crm-work-button.crm-identity-action:focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
 .crm-identity-existing-stop{color:var(--admin-danger)}
+
+.crm-operation-progress .admin-form-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}

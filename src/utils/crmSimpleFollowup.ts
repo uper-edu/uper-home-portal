@@ -9,7 +9,7 @@ export function firstContactOutcome(record:{kind:'contact'|'internal';result?:st
  if(record.result==='Wrong Number')return 'invalid_contact';
  throw Error('Contact result required');
 }
-export type Commitment={id:string;action:string;status:'active'|'fulfilled'|'rescheduled'|'cancelled';at?:string;date?:string;timezone:string;sourceId:string};
+export type Commitment={id:string;action:string;status:'active'|'fulfilled'|'rescheduled'|'cancelled'|'withdrawn';at?:string;date?:string;timezone:string;sourceId:string};
 export function validateCommitment(c:Commitment){
  if(!c.action.trim()||!c.sourceId||!c.id)throw Error('Commitment evidence required');
  if(typeof c.timezone!=='string'||!c.timezone.trim())throw Error('Explicit timezone required');
@@ -28,5 +28,5 @@ export function attentionFacts(facts:AttentionFact[],stopped=false){
 
 /** Workflow metadata and untouched defaults are not user edits. */
 export function hasSimpleWorkflowDraft(draft:Record<string,unknown>,unknown=false){
- return unknown||draft.recordKind==='contact'||Object.entries(draft).some(([key,value])=>!(key==='occurrenceMode'&&value==='now')&&!(key==='contactDirection'&&value==='unknown')&&!['requestId','recordKind','expectedRevision','expectedStage','expectedStageRevision','workflowVersion'].includes(key)&&(Array.isArray(value)?value.length>0:typeof value==='string'?!!value.trim():value&&typeof value==='object'?Object.keys(value).length>0:!!value));
+ return unknown||draft.recordKind==='contact'||Object.entries(draft).some(([key,value])=>!(key==='occurrenceMode'&&value==='now')&&!(key==='contactDirection'&&value==='unknown')&&!['requestId','recordKind','expectedRevision','expectedContactArrangementVersion','expectedStage','expectedStageRevision','workflowVersion'].includes(key)&&(Array.isArray(value)?value.length>0:typeof value==='string'?!!value.trim():value&&typeof value==='object'?Object.keys(value).length>0:!!value));
 }
