@@ -1,4 +1,5 @@
 import {ledgerMetadata} from '../../src/utils/crmFactLedger.ts';
+import {assertIdentitySalesAllowed,recordIdentityRefusal} from './identityConsolidation.ts';
 import {applyTaskChange} from './taskManagement.ts';
 import {customerReplied} from "./noResponse.ts";
 import { createHash, randomUUID } from "node:crypto";
@@ -96,6 +97,7 @@ export async function engagement(
   const key = kind + ":" + sourceId;
   const lead=(await c.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",[leadId])).rows[0];
   const exists=(await c.query("SELECT id FROM crm_engagements WHERE id=:p1",[key])).rows.length;
+  if(!exists&&lead&&kind==='message'&&typeof data.text==='string')await recordIdentityRefusal(c,leadId,data.text,sourceId);
   if(!exists && lead && kind==='message' && typeof data.text==='string' && data.text.trim())
     await customerReplied(c,leadId,key,data.messageRecordedAt);
   await c.query(
@@ -107,6 +109,7 @@ export async function lockLead(
   c: any,
   leadId: string,
   canWrite: (p: any) => boolean,
+  identityReview = false,
 ) {
   const p = (
     await c.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE", [
@@ -114,6 +117,7 @@ export async function lockLead(
     ])
   ).rows[0]?.profile;
   if (!p || !canWrite(p)) invalid("Lead not found", 404);
+  if(!identityReview)await assertIdentitySalesAllowed(c,leadId);
   return p;
 }
 export async function stageFact(

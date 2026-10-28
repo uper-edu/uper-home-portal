@@ -206,6 +206,7 @@ export function leadMatches(
   if (
     f.search &&
     ![
+      "identitySearchTerms",
       "fullName",
       "whatsapp",
       "phone",

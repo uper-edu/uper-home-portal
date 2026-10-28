@@ -107,8 +107,12 @@ export async function tick(clock = new Date()) {
             ])
           ).rows[0]?.profile
         : {};
+      if(lead?.identityLifecycle==='pending'||lead?.identityMergedInto){
+        await recordPlan(lead.identityMergedInto?'identity_consolidated':'identity_pending');
+        await c.query('UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1',[ev.id]);continue;
+      }
       if(ev.payload.requestEvidenceId){
-        const sourceRequest=(await c.query("SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2",[ev.payload.requestEvidenceId,ev.lead_id])).rows[0];
+        const sourceRequest=(await c.query("SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",[ev.payload.requestEvidenceId,ev.lead_id])).rows[0];
         if(!sourceRequest||!['pending','linked'].includes(sourceRequest.state)){
           await recordPlan('request_handled');
           await c.query("UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1",[ev.id]);continue;
@@ -275,6 +279,9 @@ export async function tick(clock = new Date()) {
           job.snapshot.leadId,
         ])
       ).rows[0]?.profile || {};
+    if(lead.identityLifecycle==='pending'||lead.identityMergedInto){
+      await pool.query("UPDATE notification_jobs SET state='cancelled',result='Identity review or consolidation; no historical replay',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
+    }
     const agreement=job.snapshot.payload.commitmentId?(lead.commitments||[]).find((v:any)=>v.id===job.snapshot.payload.commitmentId):null;
     if(job.snapshot.payload.commitmentId){const agreement=(lead.commitments||[]).find((v:any)=>v.id===job.snapshot.payload.commitmentId);if(!agreement||agreement.status!=='active'){await pool.query("UPDATE notification_jobs SET state='cancelled',result='Agreement changed',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;}}
     if (job.channel === "inapp") {
@@ -319,7 +326,7 @@ export async function tick(clock = new Date()) {
         return;
       }
     }
-    const sourceRequest=job.snapshot.payload.requestEvidenceId?(await pool.query("SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2",[job.snapshot.payload.requestEvidenceId,job.snapshot.leadId])).rows[0]:null;
+    const sourceRequest=job.snapshot.payload.requestEvidenceId?(await pool.query("SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",[job.snapshot.payload.requestEvidenceId,job.snapshot.leadId])).rows[0]:null;
     if(job.snapshot.payload.requestEvidenceId&&(!sourceRequest||!['pending','linked'].includes(sourceRequest.state))){
       await pool.query("UPDATE notification_jobs SET state='cancelled',result='Request handled',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
     }

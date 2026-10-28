@@ -187,6 +187,14 @@ export function CrmCustomerProfile({
   );
   return (
     <div className="crm-customer-sections crm-customer-profile">
+      {Boolean(lead.identitySources?.length)&&<section>
+        <h3>{lang==='zh'?'归入的登记记录':lang==='id'?'Pendaftaran yang digabungkan':'Consolidated registrations'}</h3>
+        <p className="crm-work-muted">{lang==='zh'?'后续跟进统一记录在此客户；原始登记、对话、测评和活动来源保留。':lang==='id'?'Tindak lanjut dicatat pada pelanggan ini; pendaftaran, percakapan, asesmen, dan sumber kampanye asli tetap disimpan.':'Follow-up is recorded on this customer; original registrations, conversations, assessments and campaign sources are retained.'}</p>
+        {lead.identitySources!.map((source:any)=><Facts key={source.id} items={[
+          [lang==='zh'?'原登记记录':lang==='id'?'Pendaftaran asli':'Original registration',`${source.fullName||''} · ${source.businessNumber||source.id}`],
+          [lang==='zh'?'登记时间':lang==='id'?'Waktu pendaftaran':'Registered',knownDate(source.submittedAt,timezone,lang)],
+          [lang==='zh'?'原始活动来源':lang==='id'?'Sumber kampanye asli':'Original campaign source',source.campaignId||source.campaign||'—'],
+        ]}/>)}</section>}
       <section>
         <header className="crm-profile-section-heading">
           <h3>{t("Basic details", "基本资料")}</h3>

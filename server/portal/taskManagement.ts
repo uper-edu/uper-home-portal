@@ -26,7 +26,7 @@ export function requestDeadline(task: any, requests: any[]) {
 export async function requestEvidence(c: any, leadId: string, selection: any) {
   const row = (
     await c.query(
-      "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2 FOR UPDATE",
+      "SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) FOR UPDATE",
       [selection.id, leadId],
     )
   ).rows[0];
@@ -42,7 +42,7 @@ export async function requestEvidence(c: any, leadId: string, selection: any) {
 export async function taskRequests(c: any, leadId: string) {
   return (
     await c.query(
-      "SELECT * FROM crm_engagements WHERE lead_id=:p1 AND kind='task_request' ORDER BY created_at,id",
+      "SELECT * FROM crm_engagements WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND kind='task_request' ORDER BY created_at,id",
       [leadId],
     )
   ).rows;

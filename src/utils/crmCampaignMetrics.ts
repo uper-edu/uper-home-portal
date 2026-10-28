@@ -4,15 +4,15 @@ export function campaignMetrics(leads: any[], campaign: any) {
   const unique = [
     ...new Map(leads.map((l, i) => [l.id || `record-${i}`, l])).values(),
   ];
-  const registered = unique.filter((l) => matchesCampaign(l, campaign));
+  const origins=(lead:any)=>[lead,...(lead.identitySources||[])];
+  const registered = unique.filter((l) => !l.identityReview?.pending && l.identityLifecycle!=='pending' && origins(l).some(p=>matchesCampaign(p,campaign)));
   const assessed = registered.filter(
     (l) =>
-      l.assessmentProvenance === "server_recomputed_adapted_paper" &&
-      l.latestAssessment,
+      origins(l).some(p=>matchesCampaign(p,campaign)&&p.assessmentProvenance === "server_recomputed_adapted_paper" && (p.latestAssessment||p.assessed)),
   );
   const enrolled = registered.filter(
     (l) =>
-      hasConfirmedEnrollment(l),
+      matchesCampaign(l,campaign)&&hasConfirmedEnrollment(l),
   );
   const attendance = unique
     .map((l) =>
@@ -33,6 +33,8 @@ export function campaignMetrics(leads: any[], campaign: any) {
       l.revenue >= 0,
   );
   return {
+    registrationRecordsCount: unique.reduce((n,l)=>n+origins(l).filter(p=>matchesCampaign(p,campaign)).length,0),
+    pendingIdentityCount: unique.filter(l=>(l.identityReview?.pending||l.identityLifecycle==='pending')&&matchesCampaign(l,campaign)).length,
     leadsCount: registered.length,
     hotLeadsCount: registered.filter((l) => l.tier === "Hot").length,
     assessedCount: assessed.length,

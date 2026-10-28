@@ -336,7 +336,7 @@ export async function connection() {
     async exportLeads() {
       const leads = (
         await execute(
-          "SELECT id,business_number,profile FROM portal_leads ORDER BY created_at DESC",
+          "SELECT id,business_number,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NULL ORDER BY created_at DESC",
         )
       ).rows;
       for (const row of leads)
@@ -346,7 +346,7 @@ export async function connection() {
           businessNumber: row.business_number,
           chatTranscript: (
             await execute(
-              "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence",
+              "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY m.sequence",
               [row.id],
             )
           ).rows.map((m) => ({ ...m, timestamp: m.created_at })),
@@ -367,7 +367,7 @@ export async function connection() {
           )
         ).rows;
         const activity=(await execute(`SELECT a.activity_at,a.event_type,a.source FROM (
-          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' AND TRIM(m.content)<>''
+          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' AND TRIM(m.content)<>''
           UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')
         ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1`,[lead.id,activitySnapshot||null])).rows[0];
         rows.push({

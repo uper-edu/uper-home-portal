@@ -6,10 +6,10 @@ import {stageEventLabels} from '../../src/utils/crmExtractionContract.ts';
 const invalid=(message:string,status=400):never=>{throw Object.assign(Error(message),{status});};
 const iso=(v:any)=>{if(!v)return null;const d=new Date(typeof v==='string'&&!/(Z|[+-]\d\d:\d\d)$/.test(v)?v.replace(' ','T')+'Z':v);return Number.isFinite(d.getTime())?d.toISOString():null;};
 export async function salesProgressContext(c:any,leadId:string,profile:any){
- const facts=(await c.query('SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC',[leadId])).rows;
- const messages=(await c.query("SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC",[leadId])).rows;
- const attempts=(await c.query('SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC',[leadId])).rows;
- const extractions=(await c.query('SELECT * FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at,id',[leadId])).rows;
+ const facts=(await c.query("SELECT * FROM crm_facts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC",[leadId])).rows;
+ const messages=(await c.query("SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE (v.lead_id=:p1 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id DESC",[leadId])).rows;
+ const attempts=(await c.query("SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC",[leadId])).rows;
+ const extractions=(await c.query("SELECT * FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at,id",[leadId])).rows;
  const campaigns=(await c.query('SELECT id,code,config FROM trial_campaigns')).rows;
  const sources:any[]=[
   ...(profile.followUpLogs||[]).map((l:any)=>({type:'sales_record',id:l.id,label:'销售记录',text:l.summary||'',occurredAt:iso(l.occurredAt),recordedAt:iso(l.at||l.timestamp),timeBasis:'staff_reported'})),

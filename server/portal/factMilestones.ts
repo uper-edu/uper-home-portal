@@ -1,3 +1,4 @@
+import {identityProjectionRows} from './identityConsolidation.ts';
 import {groupFactMilestones} from '../../src/utils/crmFactMilestones.ts';
 const iso=(v:any)=>{if(!v)return null;const d=new Date(typeof v==='string'&&!/(Z|[+-]\d\d:\d\d)$/.test(v)?v.replace(' ','T')+'Z':v);return Number.isFinite(d.getTime())?d.toISOString():null;};
 /** Occurrence is never inferred from ingestion, extraction or profile save time. */
@@ -11,8 +12,8 @@ export function establishedFactMilestones(attempts:any[],facts:any[]){return [
 export async function attachFactMilestones(db:any,profiles:any[]){
  if(!profiles.length)return;
  const ids=JSON.stringify(profiles.map(p=>p.id));
- const attempts=(await db.query('SELECT id,lead_id,result,created_at FROM hsk_attempts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) ORDER BY created_at DESC,id DESC',[ids])).rows;
- const facts=(await db.query("SELECT id,lead_id,kind,data,created_at FROM crm_facts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) AND kind='stage.changed' ORDER BY created_at DESC,id DESC",[ids])).rows;
+ const attempts=(await identityProjectionRows(db,profiles,'SELECT id,lead_id,result,created_at FROM hsk_attempts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) ORDER BY created_at DESC,id DESC'));
+ const facts=(await identityProjectionRows(db,profiles,"SELECT id,lead_id,kind,data,created_at FROM crm_facts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) AND kind='stage.changed' ORDER BY created_at DESC,id DESC"));
  for(const profile of profiles){
   const own=attempts.filter((a:any)=>a.lead_id===profile.id);
   const groups=groupFactMilestones(establishedFactMilestones(own,facts.filter((f:any)=>f.lead_id===profile.id)));

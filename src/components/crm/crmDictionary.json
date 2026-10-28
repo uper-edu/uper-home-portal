@@ -850,8 +850,88 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "identitySources",
+    "type": "any[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityMergedInto",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityResolvedFrom",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityStopRequest",
+    "type": "{ text: string; sourceId: string; at: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityStopRequest.text",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityStopRequest.sourceId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityStopRequest.at",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityLifecycle",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityContactHold",
+    "type": "string[]",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "identityReview",
-    "type": "{ pending: boolean; count: number; canReview: boolean; blocked: boolean; ownerAssignmentManagerOnly?: boolean; identityReviewManagerOnly?: boolean; }",
+    "type": "{ crossConflict?: boolean; pending: boolean; count: number; canReview: boolean; blocked: boolean; ownerAssignmentManagerOnly?: boolean; identityReviewManagerOnly?: boolean; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "identityReview.crossConflict",
+    "type": "boolean",
     "optional": true,
     "source": "src/types/crmLead.ts"
   },

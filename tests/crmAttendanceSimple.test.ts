@@ -131,6 +131,7 @@ function database(profile: any = lead) {
       return writes;
     },
     async query(sql: string, args: any[]) {
+      if(sql.includes('FROM identity_candidates'))return {rows:[]};
       if (sql.startsWith("SELECT profile"))
         return { rows: [{ profile: structuredClone(current) }] };
       if (sql.startsWith("SELECT data"))
@@ -153,6 +154,11 @@ function database(profile: any = lead) {
     },
   };
 }
+test('identity-pending submission cannot record attendance before release',async()=>{
+ const db=database({...lead,identityLifecycle:'pending'});
+ await assert.rejects(saveAttendance(db,'pending','Robert',body,[campaign],()=>true),(e:any)=>e.message==='IDENTITY_REVIEW_REQUIRED');
+ assert.equal(db.writes,0);
+});
 test("save without reason records staff/time and only source-event participation; idempotency and business state stay intact", async () => {
   const db = database(),
     clock = new Date("2026-10-26T12:00:00Z");

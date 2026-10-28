@@ -360,7 +360,6 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
   const handleSendMessage = async (textToSend?: string, retry?: ChatMessage) => {
     const messageContent=(retry?.content || textToSend || inputValue).trim();
     if(!messageContent || isTyping)return;
-    if(!retry && (messageContent.includes('🎯') || messageContent.toLowerCase().includes('take official hsk') || messageContent.includes('参加UPER HSK 摸底测试') || messageContent.includes('参加UPER分班诊断') || /take.*UPER.*diagnostic|ikuti.*diagnostik.*UPER/i.test(messageContent))){handleStartVoluntaryAssessment();return;}
     setInputValue('');setIsTyping(true);
     const userMessage:ChatMessage=retry || {id:crypto.randomUUID(),role:'user',content:messageContent,timestamp:new Date()};
     const botMessageId='reply-'+userMessage.id;

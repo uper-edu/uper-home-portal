@@ -1,3 +1,4 @@
+import {attachIdentityContactHolds,canonicalIdentity,assertIdentitySalesAllowed,lockIdentityRegistry,projectIdentityProfiles,identityProjectionRows} from './identityConsolidation.ts';
 import {attachQuestionnaireBasicSources} from './questionnaireSources.ts';
 import {saveAttendance} from "./attendance.ts";
 import {ownerAssignmentBody,changeLeadOwner,ownerReceipt} from './ownerAssignment.ts';
@@ -178,26 +179,33 @@ async function staff(req: Request, permission = "crm.read") {
 }
 async function leadAccess(req: Request, permission = "crm.read") {
   const e = await staff(req, permission);
-  const l = (
+  let l = (
     await pool.query("SELECT * FROM portal_leads WHERE id=:p1", [
       req.params.id || req.body.leadId,
     ])
   ).rows[0];
-  if (
-    !l ||
-    !requestAllowed(e,l.profile,req,permission)
-  )
-    fail(404, "Lead not found");
+  if(!l)fail(404,'Lead not found');
+  const identityEndpoint=/\/(identity-comparison|identity-actions|operations)(?:\/|$)/.test(req.path);
+  if(l.profile.identityMergedInto){
+    const root=await canonicalIdentity(pool,l.id);
+    if(!root||!requestAllowed(e,root.profile,req,permission))fail(404,'Lead not found');
+    if(!identityEndpoint){
+      if(!['GET','HEAD'].includes(req.method))fail(409,'IDENTITY_RECORD_MERGED');
+      l={...l,...root,profile:{...root.profile,identityResolvedFrom:l.id}};
+    }
+  }else if(!requestAllowed(e,l.profile,req,permission))fail(404,'Lead not found');
+  if(!['GET','HEAD'].includes(req.method)&&!identityEndpoint&&!req.path.endsWith('/contact-authorization'))await assertIdentitySalesAllowed(pool,l.id);
+  if(['GET','HEAD'].includes(req.method)&&!identityEndpoint)l.profile=(await projectIdentityProfiles(pool,[l.profile]))[0]||l.profile;
   return { e, l };
 }
 async function visibleLeadProfiles(e: any) {
   const snapshot = (await pool.query("SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff")).rows[0].cutoff;
-  const leads = (await pool.exportLeads([])).rows
+  const leads = await projectIdentityProfiles(pool,(await pool.exportLeads([])).rows
     .map((r) => ({
       ...r.profile,
       chatTranscript: (r.profile.chatTranscript || []).map(normalizeCrmMessage),
     }))
-    .filter((p) => allowed(e, p));
+    .filter((p) => allowed(e, p)));
   await attachLeadAttention(e, leads, snapshot);
   await attachBuyingEvidence(pool,leads);
   await attachFactMilestones(pool,leads);
@@ -207,12 +215,12 @@ async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
   await attachQuestionnaireBasicSources(pool,leads);
   await attachEnrollmentEvidence(pool,leads);
   await attachIdentity(pool,e,leads);
+  await attachIdentityContactHolds(pool,leads);
   await attachInteractionTimelines(pool,leads);
   const textExtractions=leads.length?(await pool.query("SELECT id,lead_id,source_type,source_id,status,input,output,created_at FROM crm_ai_extractions WHERE status='completed' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) ORDER BY created_at DESC,id DESC",[JSON.stringify(leads.map(l=>l.id))])).rows:[];
   const attention = (await pool.leadAttention([e.id, leads.map(l=>l.id), snapshot])).rows;
-  const pending=(await pool.query("SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE kind='task_request' GROUP BY lead_id")).rows;
-  const pendingMap=new Map(pending.map((r:any)=>[r.lead_id,Number(r.n)]));
-  const requests=(await pool.query("SELECT * FROM crm_engagements WHERE kind='task_request'")).rows;
+  const requests=await identityProjectionRows(pool,leads,"SELECT * FROM crm_engagements WHERE kind='task_request' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))");
+  const pendingMap=new Map<string,number>();for(const r of requests)pendingMap.set(r.lead_id,(pendingMap.get(r.lead_id)||0)+1);
   const cuePolicy=(await pool.query("SELECT value FROM portal_settings WHERE id='crm_policy'")).rows[0]?.value?.inactivityWatchdog;
   const byId = new Map(attention.map((a) => [a.id, a]));
   for (const lead of leads) {
@@ -308,7 +316,7 @@ export async function mountPortal(app: Express) {
     "/api/portal/session",
     wrap(async (req, res) => {
       const v = await visitor(req, res);
-      const lead = v.lead_id ? (await pool.query('SELECT profile FROM portal_leads WHERE id=:p1',[v.lead_id])).rows[0]?.profile : null;
+      const lead = v.lead_id ? (await pool.query(`SELECT profile FROM portal_leads WHERE id=:p1`,[v.lead_id])).rows[0]?.profile : null;
       // Return only learner-facing questionnaire fields, never internal CRM notes or routing.
       const publicFields = ['id','fullName','whatsapp','email','currentStatus','goal','goals','city','cityDetail','mode','reportedLevel','levelState','language','submittedAt'];
       res.setHeader('Cache-Control','no-store');
@@ -363,7 +371,7 @@ export async function mountPortal(app: Express) {
         if (v.lead_id) {
           const last = (
             await c.query(
-              "SELECT updated_at FROM conversations WHERE lead_id=:p1 AND id<>:p2 ORDER BY updated_at DESC LIMIT 1",
+              "SELECT updated_at FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND id<>:p2 ORDER BY updated_at DESC LIMIT 1",
               [v.lead_id, row.id],
             )
           ).rows[0];
@@ -435,6 +443,7 @@ export async function mountPortal(app: Express) {
     )
       fail(400, "Contact fields required");
     const result = await tx(async (c) => {
+      await lockIdentityRegistry(c);
       const locked = (
         await c.query(
           "SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
@@ -522,8 +531,13 @@ export async function mountPortal(app: Express) {
         "UPDATE conversations SET lead_id=:p1 WHERE visitor_id=:p2",
         [leadId, v.id],
       );
-      await discoverIdentity(c,v.id,leadId,profile);
-      if (!locked.lead_id) {
+      const matches=await discoverIdentity(c,v.id,leadId,profile);
+      if(!locked.lead_id&&matches||profile.identityLifecycle==='pending'){
+        profile.identityLifecycle='pending';
+        delete profile.currentStage;delete profile.tier;delete profile.stageUpdatedAt;
+        await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,profile]);
+      }
+      if (!locked.lead_id&&!matches) {
         const s = (
           await c.query("SELECT value FROM portal_settings WHERE id='sla'")
         ).rows[0].value;
@@ -571,7 +585,7 @@ export async function mountPortal(app: Express) {
           [message.id, outcome.taskId, outcome.taskOperation || null],
         );
       }
-      const priorMessages=(await c.query("SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND c.lead_id=:p2 AND m.role='user'",[v.id,leadId])).rows;
+      const priorMessages=(await c.query("SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND (c.lead_id=:p2 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND m.role='user'",[v.id,leadId])).rows;
       for(const m of priorMessages)await engagement(c,leadId,'message',m.source_conversation+':'+m.request_id,{conversationId:m.source_conversation,requestId:m.request_id,text:m.content,messageRecordedAt:m.created_at});
       // Link previously submitted anonymous attempts without trusting contact-supplied grades.
       await c.query(
@@ -584,7 +598,7 @@ export async function mountPortal(app: Express) {
           [v.id],
         )
       ).rows;
-      const attempts=(await c.query("SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2",[v.id,leadId])).rows;
+      const attempts=(await c.query("SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",[v.id,leadId])).rows;
       for(const a of attempts.filter((r:any)=>r.result&&typeof r.result==='object'))await engagement(c,leadId,"assessment",a.id,{attemptId:a.id,mode:a.result.mode,score:a.result.score,maxScore:a.result.maxScore});
       const latest = latestRows
         .map((row) => safeHskResult(row.result))
@@ -793,7 +807,7 @@ export async function mountPortal(app: Express) {
       res.json(
         (
           await pool.query(
-            "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at",
+            "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY due_at",
             [l.id],
           )
         ).rows,
@@ -807,13 +821,13 @@ export async function mountPortal(app: Express) {
       await attachLeadAttention(e, [l.profile]);
       const rows = (
         await pool.query(
-          "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence",
+          "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY m.sequence",
           [l.id],
         )
       ).rows;
       const transcript = rows.map(normalizeCrmMessage);
       const tasks = (
-        await pool.query("SELECT * FROM followup_tasks WHERE lead_id=:p1", [
+        await pool.query("SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))", [
           l.id,
         ])
       ).rows;
@@ -833,7 +847,7 @@ export async function mountPortal(app: Express) {
       const { l } = await leadAccess(req);
       res.json(
         (
-          await pool.query("SELECT * FROM conversations WHERE lead_id=:p1", [
+          await pool.query("SELECT * FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))", [
             l.id,
           ])
         ).rows,
@@ -855,6 +869,7 @@ export async function mountPortal(app: Express) {
           )
         ).rows[0]?.profile;
         if (!current) fail(404, "Lead not found");
+        await assertIdentitySalesAllowed(c,l.id);
         if ((await pendingIdentity(c,l.id,true)).length) fail(409,"IDENTITY_REVIEW_REQUIRED");
         if (current.owner)
           fail(409, "Lead has already been assigned; refresh the list");
@@ -909,6 +924,7 @@ export async function mountPortal(app: Express) {
         ).rows[0]?.profile;
         if (!current || !requestAllowed(e,current,req))
           fail(404, "Lead not found");
+        await assertIdentitySalesAllowed(c,l.id);
         if(Object.hasOwn(req.body||{},'owner')){
           if(!ownerAssignmentBody(req.body))fail(400,'负责人变更必须单独保存');
           return changeLeadOwner(c,{actor:e,current,body:req.body,directory,managerOnly:(await identityControls(c)).ownerAssignmentManagerOnly,pendingIdentity:(await pendingIdentity(c,l.id,true)).length>0,fact,event});
@@ -1044,6 +1060,7 @@ export async function mountPortal(app: Express) {
         ).rows[0]?.profile;
         if (!current || !requestAllowed(e,current,req))
           fail(404, "Task not found");
+        await assertIdentitySalesAllowed(c,t.lead_id);
         await c.query(
           "UPDATE followup_tasks SET status='open' WHERE id=:p1 AND status='migration_hold'",
           [t.id],
@@ -1597,6 +1614,7 @@ export async function mountPortal(app: Express) {
             requestAllowed(e,current,req),
           ),
         );
+        result.lead=(await projectIdentityProfiles(pool,[result.lead]))[0]||result.lead;
         await attachLeadAttention(e,[result.lead]);
         await attachBuyingEvidence(pool,[result.lead]);
         await attachFactMilestones(pool,[result.lead]);

@@ -250,6 +250,7 @@
   "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,:p3,:p4,:p5)": {
     "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at) VALUES(:p1,:p2,:p3,:p4,:p5)",
     "sources": [
+      "server/portal/identityConsolidation.ts",
       "server/portal/runtime.ts"
     ]
   },
@@ -676,6 +677,12 @@
       "server/portal/campaignSources.ts"
     ]
   },
+  "SELECT * FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))": {
+    "sql": "SELECT * FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "SELECT * FROM conversations WHERE id=:p1": {
     "sql": "SELECT * FROM conversations WHERE id=:p1",
     "sources": [
@@ -694,20 +701,14 @@
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT * FROM conversations WHERE lead_id=:p1": {
-    "sql": "SELECT * FROM conversations WHERE lead_id=:p1",
-    "sources": [
-      "server/portal/runtime.ts"
-    ]
-  },
   "SELECT * FROM conversations WHERE visitor_id=:p1 AND source=:p2 AND updated_at>UTC_TIMESTAMP(6)-INTERVAL 30 minute ORDER BY updated_at DESC LIMIT 1": {
     "sql": "SELECT * FROM conversations WHERE visitor_id=:p1 AND source=:p2 AND updated_at>UTC_TIMESTAMP(6)-INTERVAL 30 minute ORDER BY updated_at DESC LIMIT 1",
     "sources": [
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT * FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at,id": {
-    "sql": "SELECT * FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at,id",
+  "SELECT * FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at,id": {
+    "sql": "SELECT * FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at,id",
     "sources": [
       "server/portal/salesProgress.ts"
     ]
@@ -718,43 +719,48 @@
       "server/portal/aiExtraction.ts"
     ]
   },
-  "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2": {
-    "sql": "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2",
+  "SELECT * FROM crm_engagements WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND kind='task_request' ORDER BY created_at,id": {
+    "sql": "SELECT * FROM crm_engagements WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND kind='task_request' ORDER BY created_at,id",
     "sources": [
-      "server/portal/followup.ts",
+      "server/portal/taskManagement.ts"
+    ]
+  },
+  "SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))": {
+    "sql": "SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",
+    "sources": [
       "server/portal/worker.ts"
     ]
   },
-  "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2 FOR UPDATE": {
-    "sql": "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2 FOR UPDATE",
+  "SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) FOR UPDATE": {
+    "sql": "SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) FOR UPDATE",
     "sources": [
       "server/portal/taskManagement.ts",
       "server/portal/trustRoutes.ts"
     ]
   },
-  "SELECT * FROM crm_engagements WHERE kind='task_request'": {
-    "sql": "SELECT * FROM crm_engagements WHERE kind='task_request'",
+  "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2": {
+    "sql": "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2",
+    "sources": [
+      "server/portal/followup.ts"
+    ]
+  },
+  "SELECT * FROM crm_engagements WHERE kind='task_request' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))": {
+    "sql": "SELECT * FROM crm_engagements WHERE kind='task_request' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))",
     "sources": [
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT * FROM crm_engagements WHERE lead_id=:p1 AND kind='task_request' ORDER BY created_at,id": {
-    "sql": "SELECT * FROM crm_engagements WHERE lead_id=:p1 AND kind='task_request' ORDER BY created_at,id",
+  "SELECT * FROM crm_facts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC": {
+    "sql": "SELECT * FROM crm_facts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC",
     "sources": [
-      "server/portal/taskManagement.ts"
+      "server/portal/salesProgress.ts",
+      "server/portal/trustRoutes.ts"
     ]
   },
   "SELECT * FROM crm_facts WHERE id=:p1 AND lead_id=:p2": {
     "sql": "SELECT * FROM crm_facts WHERE id=:p1 AND lead_id=:p2",
     "sources": [
       "server/portal/recordAmendments.ts"
-    ]
-  },
-  "SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC": {
-    "sql": "SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC",
-    "sources": [
-      "server/portal/salesProgress.ts",
-      "server/portal/trustRoutes.ts"
     ]
   },
   "SELECT * FROM crm_operations WHERE actor=:p1 AND request_id=:p2": {
@@ -822,6 +828,24 @@
       "server/portal/worker.ts"
     ]
   },
+  "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))": {
+    "sql": "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY due_at": {
+    "sql": "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY due_at",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY due_at,id": {
+    "sql": "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY due_at,id",
+    "sources": [
+      "server/portal/trustRoutes.ts"
+    ]
+  },
   "SELECT * FROM followup_tasks WHERE id=:p1": {
     "sql": "SELECT * FROM followup_tasks WHERE id=:p1",
     "sources": [
@@ -838,12 +862,6 @@
     "sql": "SELECT * FROM followup_tasks WHERE lead_id IN (:p1,:p2) ORDER BY lead_id,due_at,id",
     "sources": [
       "server/portal/identityReview.ts"
-    ]
-  },
-  "SELECT * FROM followup_tasks WHERE lead_id=:p1": {
-    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1",
-    "sources": [
-      "server/portal/runtime.ts"
     ]
   },
   "SELECT * FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' AND status IN ('open','overdue') FOR UPDATE": {
@@ -868,14 +886,7 @@
   "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at": {
     "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at",
     "sources": [
-      "server/portal/runtime.ts",
       "cloud/mysql/runtime.mjs"
-    ]
-  },
-  "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at,id": {
-    "sql": "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at,id",
-    "sources": [
-      "server/portal/trustRoutes.ts"
     ]
   },
   "SELECT * FROM followup_tasks WHERE owner_id=:p1 AND status IN ('open','overdue','migration_hold')": {
@@ -1023,8 +1034,8 @@
       "cloud/mysql/site.mjs"
     ]
   },
-  "SELECT a.activity_at,a.event_type,a.source FROM (\n          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' AND TRIM(m.content)<>''\n          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1": {
-    "sql": "SELECT a.activity_at,a.event_type,a.source FROM (\n          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' AND TRIM(m.content)<>''\n          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1",
+  "SELECT a.activity_at,a.event_type,a.source FROM (\n          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' AND TRIM(m.content)<>''\n          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1": {
+    "sql": "SELECT a.activity_at,a.event_type,a.source FROM (\n          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' AND TRIM(m.content)<>''\n          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1",
     "sources": [
       "cloud/mysql/runtime.mjs"
     ]
@@ -1051,6 +1062,12 @@
     "sql": "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'",
     "sources": [
       "server/portal/campaignSources.ts"
+    ]
+  },
+  "SELECT candidate_id FROM identity_candidates WHERE lead_id=:p1 AND candidate_id<>:p2 AND decision='pending'": {
+    "sql": "SELECT candidate_id FROM identity_candidates WHERE lead_id=:p1 AND candidate_id<>:p2 AND decision='pending'",
+    "sources": [
+      "server/portal/identityConsolidation.ts"
     ]
   },
   "SELECT code FROM trial_campaigns WHERE id=:p1": {
@@ -1194,6 +1211,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT decision FROM identity_candidates WHERE lead_id=:p1 AND candidate_id=:p2 AND decision IN ('different','shared')": {
+    "sql": "SELECT decision FROM identity_candidates WHERE lead_id=:p1 AND candidate_id=:p2 AND decision IN ('different','shared')",
+    "sources": [
+      "server/portal/identityReview.ts"
+    ]
+  },
   "SELECT display_name FROM crm_users WHERE id=:p1": {
     "sql": "SELECT display_name FROM crm_users WHERE id=:p1",
     "sources": [
@@ -1213,8 +1236,8 @@
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT e.* FROM crm_engagements e LEFT JOIN conversations c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')) AND c.lead_id=e.lead_id WHERE e.lead_id=:p1 AND (NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')),'') IS NULL OR c.id IS NOT NULL) ORDER BY e.created_at DESC": {
-    "sql": "SELECT e.* FROM crm_engagements e LEFT JOIN conversations c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')) AND c.lead_id=e.lead_id WHERE e.lead_id=:p1 AND (NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')),'') IS NULL OR c.id IS NOT NULL) ORDER BY e.created_at DESC",
+  "SELECT e.* FROM crm_engagements e LEFT JOIN conversations c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')) AND c.lead_id=e.lead_id WHERE (e.lead_id=:p1 OR e.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND (NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')),'') IS NULL OR c.id IS NOT NULL) ORDER BY e.created_at DESC": {
+    "sql": "SELECT e.* FROM crm_engagements e LEFT JOIN conversations c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')) AND c.lead_id=e.lead_id WHERE (e.lead_id=:p1 OR e.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND (NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')),'') IS NULL OR c.id IS NOT NULL) ORDER BY e.created_at DESC",
     "sources": [
       "server/portal/trustRoutes.ts"
     ]
@@ -1236,6 +1259,12 @@
     "sources": [
       "server/portal/chat.ts",
       "server/portal/worker.ts"
+    ]
+  },
+  "SELECT GET_LOCK(:p1,5)": {
+    "sql": "SELECT GET_LOCK(:p1,5)",
+    "sources": [
+      "server/portal/identityConsolidation.ts"
     ]
   },
   "SELECT GET_LOCK(:p1,5) AS acquired": {
@@ -1269,8 +1298,8 @@
       "server/portal/identityReview.ts"
     ]
   },
-  "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND (i.lead_id=:p1 OR i.candidate_id=:p1) FOR UPDATE": {
-    "sql": "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND (i.lead_id=:p1 OR i.candidate_id=:p1) FOR UPDATE",
+  "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1 FOR UPDATE": {
+    "sql": "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/identityReview.ts"
     ]
@@ -1305,6 +1334,12 @@
       "server/portal/dynamicProfile.ts"
     ]
   },
+  "SELECT id FROM crm_facts WHERE lead_id=:p1 AND kind='questionnaire.submitted' ORDER BY created_at,id LIMIT 1": {
+    "sql": "SELECT id FROM crm_facts WHERE lead_id=:p1 AND kind='questionnaire.submitted' ORDER BY created_at,id LIMIT 1",
+    "sources": [
+      "server/portal/identityConsolidation.ts"
+    ]
+  },
   "SELECT id FROM crm_users WHERE email_key=:p1": {
     "sql": "SELECT id FROM crm_users WHERE email_key=:p1",
     "sources": [
@@ -1323,10 +1358,22 @@
       "server/portal/accessManagement.ts"
     ]
   },
-  "SELECT id FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 AND status IN ('open','overdue')": {
-    "sql": "SELECT id FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 AND status IN ('open','overdue')",
+  "SELECT id FROM followup_tasks WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND status IN ('open','overdue')": {
+    "sql": "SELECT id FROM followup_tasks WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND status IN ('open','overdue')",
     "sources": [
       "server/portal/trustRoutes.ts"
+    ]
+  },
+  "SELECT id FROM followup_tasks WHERE lead_id=:p1": {
+    "sql": "SELECT id FROM followup_tasks WHERE lead_id=:p1",
+    "sources": [
+      "server/portal/identityConsolidation.ts"
+    ]
+  },
+  "SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation'": {
+    "sql": "SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation'",
+    "sources": [
+      "server/portal/identityConsolidation.ts"
     ]
   },
   "SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' FOR UPDATE": {
@@ -1389,8 +1436,8 @@
       "server/portal/accessManagement.ts"
     ]
   },
-  "SELECT id,business_number,profile FROM portal_leads ORDER BY created_at DESC": {
-    "sql": "SELECT id,business_number,profile FROM portal_leads ORDER BY created_at DESC",
+  "SELECT id,business_number,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NULL ORDER BY created_at DESC": {
+    "sql": "SELECT id,business_number,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NULL ORDER BY created_at DESC",
     "sources": [
       "cloud/mysql/runtime.mjs"
     ]
@@ -1520,32 +1567,45 @@
       "server/portal/identityReview.ts"
     ]
   },
+  "SELECT id,profile FROM portal_leads WHERE id=:p1": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE id=:p1",
+    "sources": [
+      "server/portal/identityConsolidation.ts"
+    ]
+  },
   "SELECT id,profile FROM portal_leads WHERE JSON_LENGTH(profile->'$.commitments')>0": {
     "sql": "SELECT id,profile FROM portal_leads WHERE JSON_LENGTH(profile->'$.commitments')>0",
     "sources": [
       "server/portal/worker.ts"
     ]
   },
-  "SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision FROM portal_leads ORDER BY id": {
-    "sql": "SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision FROM portal_leads ORDER BY id",
+  "SELECT id,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NOT NULL": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NOT NULL",
+    "sources": [
+      "server/portal/identityConsolidation.ts",
+      "server/portal/identityReview.ts"
+    ]
+  },
+  "SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision,profile->>'$.identityMergedInto' AS identityMergedInto FROM portal_leads ORDER BY id": {
+    "sql": "SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision,profile->>'$.identityMergedInto' AS identityMergedInto FROM portal_leads ORDER BY id",
     "sources": [
       "server/portal/leadChanges.ts"
     ]
   },
-  "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2": {
-    "sql": "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND lead_id=:p2",
+  "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))": {
+    "sql": "SELECT id,result FROM hsk_attempts WHERE visitor_id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",
     "sources": [
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1": {
-    "sql": "SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1",
+  "SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))": {
+    "sql": "SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))",
     "sources": [
       "server/portal/trustRoutes.ts"
     ]
   },
-  "SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC": {
-    "sql": "SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC",
+  "SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC": {
+    "sql": "SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC",
     "sources": [
       "server/portal/salesProgress.ts",
       "server/portal/trustRoutes.ts"
@@ -1563,8 +1623,8 @@
       "server/portal/aiExtraction.ts"
     ]
   },
-  "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 50": {
-    "sql": "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 50",
+  "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50": {
+    "sql": "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50",
     "sources": [
       "server/portal/trustRoutes.ts"
     ]
@@ -1630,39 +1690,33 @@
       "scripts/portal-migrate.ts"
     ]
   },
-  "SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE kind='task_request' GROUP BY lead_id": {
-    "sql": "SELECT lead_id,COUNT(*) AS n FROM crm_engagements WHERE kind='task_request' GROUP BY lead_id",
-    "sources": [
-      "server/portal/runtime.ts"
-    ]
-  },
-  "SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id": {
-    "sql": "SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id",
+  "SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id": {
+    "sql": "SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id",
     "sources": [
       "server/portal/trustRoutes.ts"
     ]
   },
-  "SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND c.lead_id=:p2 AND m.role='user'": {
-    "sql": "SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND c.lead_id=:p2 AND m.role='user'",
+  "SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND (c.lead_id=:p2 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND m.role='user'": {
+    "sql": "SELECT m.*,c.id AS source_conversation FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.visitor_id=:p1 AND (c.lead_id=:p2 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND m.role='user'",
     "sources": [
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence": {
-    "sql": "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.sequence",
+  "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY m.sequence": {
+    "sql": "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY m.sequence",
     "sources": [
       "server/portal/runtime.ts",
       "cloud/mysql/runtime.mjs"
     ]
   },
-  "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC": {
-    "sql": "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC",
+  "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE (v.lead_id=:p1 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id DESC": {
+    "sql": "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE (v.lead_id=:p1 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id DESC",
     "sources": [
       "server/portal/salesProgress.ts"
     ]
   },
-  "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC LIMIT 30": {
-    "sql": "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC LIMIT 30",
+  "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE (v.lead_id=:p1 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id DESC LIMIT 30": {
+    "sql": "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE (v.lead_id=:p1 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id DESC LIMIT 30",
     "sources": [
       "server/portal/trustRoutes.ts"
     ]
@@ -1685,8 +1739,8 @@
       "server/portal/identityReview.ts"
     ]
   },
-  "SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND v.lead_id=:p2": {
-    "sql": "SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND v.lead_id=:p2",
+  "SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND (v.lead_id=:p2 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))": {
+    "sql": "SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND (v.lead_id=:p2 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",
     "sources": [
       "server/portal/trustRoutes.ts"
     ]
@@ -1726,8 +1780,10 @@
     "sources": [
       "server/portal/aiExtraction.ts",
       "server/portal/chat.ts",
+      "server/portal/identityConsolidation.ts",
       "server/portal/promotionReviews.ts",
       "server/portal/runtime.ts",
+      "server/portal/store.ts",
       "server/portal/worker.ts"
     ]
   },
@@ -1737,6 +1793,7 @@
       "server/portal/aiExtraction.ts",
       "server/portal/attendance.ts",
       "server/portal/followup.ts",
+      "server/portal/identityConsolidation.ts",
       "server/portal/noResponse.ts",
       "server/portal/promotionReviews.ts",
       "server/portal/runtime.ts",
@@ -1852,8 +1909,8 @@
       "server/portal/localAuth.ts"
     ]
   },
-  "SELECT updated_at FROM conversations WHERE lead_id=:p1 AND id<>:p2 ORDER BY updated_at DESC LIMIT 1": {
-    "sql": "SELECT updated_at FROM conversations WHERE lead_id=:p1 AND id<>:p2 ORDER BY updated_at DESC LIMIT 1",
+  "SELECT updated_at FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND id<>:p2 ORDER BY updated_at DESC LIMIT 1": {
+    "sql": "SELECT updated_at FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND id<>:p2 ORDER BY updated_at DESC LIMIT 1",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -1896,6 +1953,7 @@
     "sql": "SELECT value FROM portal_settings WHERE id='sla'",
     "sources": [
       "server/portal/accessHandovers.ts",
+      "server/portal/identityConsolidation.ts",
       "server/portal/runtime.ts",
       "server/portal/worker.ts",
       "cloud/mysql/site.mjs",
@@ -2241,6 +2299,18 @@
       "server/portal/simpleSalesWorkflow.ts"
     ]
   },
+  "UPDATE notification_jobs SET state='cancelled',result='Identity record consolidated; historical event not replayed',completed_at=UTC_TIMESTAMP(6) WHERE snapshot->>'$.leadId'=:p1 AND state='pending'": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Identity record consolidated; historical event not replayed',completed_at=UTC_TIMESTAMP(6) WHERE snapshot->>'$.leadId'=:p1 AND state='pending'",
+    "sources": [
+      "server/portal/identityConsolidation.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Identity review or consolidation; no historical replay',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Identity review or consolidation; no historical replay',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
   "UPDATE notification_jobs SET state='cancelled',result='Merged within dedupe window' WHERE id=:p1": {
     "sql": "UPDATE notification_jobs SET state='cancelled',result='Merged within dedupe window' WHERE id=:p1",
     "sources": [
@@ -2399,6 +2469,7 @@
       "server/portal/attendance.ts",
       "server/portal/campaignSources.ts",
       "server/portal/dynamicProfile.ts",
+      "server/portal/identityConsolidation.ts",
       "server/portal/noResponse.ts",
       "server/portal/ownerAssignment.ts",
       "server/portal/promotionReviews.ts",

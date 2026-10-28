@@ -1,3 +1,4 @@
+import {assertIdentitySalesAllowed} from './identityConsolidation.ts';
 import {observedBuyingSignals,appendBuyingSignals,buyingSignalOptions} from '../../src/utils/crmBuyingSignals.ts';
 import {applyTaskChange,handleTaskRequests} from './taskManagement.ts';
 import {validateContactPlan,applyContactPlan} from './contactPlans.ts';
@@ -124,6 +125,7 @@ export async function saveSalesWorkflow(
   ).rows[0]?.profile;
   if (!current || !canWrite(current))
     throw new WorkflowValidationError("Lead not found");
+  await assertIdentitySalesAllowed(c,leadId);
   const previous = (current.followUpLogs || []).find(
     (log: any) => log.requestId === body.requestId,
   );

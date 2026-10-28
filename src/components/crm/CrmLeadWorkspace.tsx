@@ -1,3 +1,4 @@
+import {CrmIdentityAction} from './CrmIdentityAction';
 import {CrmProgressAction} from './CrmProgressAction';
 import type {ProgressActionState} from '../../utils/crmProgressAction';
 import {CrmSalesStage,CrmStopContact} from './CrmSalesStage';
@@ -148,7 +149,7 @@ export function CrmLeadWorkspace({
     value && Date.parse(value) > 0
       ? formatCrmOperatingTime(value, viewerTimeZone())
       : t("Unknown time", "未知时间");
-  const identityAction=(lead:CrmLeadRecord)=>lead.identityReview?.pending?<button type="button" className="crm-work-button" data-primary="true" disabled={!lead.identityReview.canReview} onClick={()=>onIdentity?onIdentity(lead):open(lead,'profile')}>{lang==='zh'?'核实身份':lang==='id'?'Verifikasi identitas':'Review identity'}</button>:null;
+  const identityAction=(lead:CrmLeadRecord)=>lead.identityReview?.pending?<CrmIdentityAction lang={lang} disabled={!lead.identityReview.canReview} onClick={()=>onIdentity?onIdentity(lead):open(lead,'profile')}/>:null;
   const follow = (lead: CrmLeadRecord, compact = false) => (
     <><CrmStopContact lead={lead} lang={lang}/><CrmFollowUp
       hideStoppedNotice

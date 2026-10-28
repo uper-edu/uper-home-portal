@@ -1,3 +1,4 @@
+import {assertIdentitySalesAllowed} from './identityConsolidation.ts';
 import {
   attendanceInput,
   linkedParticipationCampaign,
@@ -22,6 +23,7 @@ export async function saveAttendance(
     ])
   ).rows[0]?.profile;
   if (!current || !canWrite(current)) invalid("Lead not found", 404);
+  await assertIdentitySalesAllowed(c,leadId);
   const previous = (
     await c.query(
       "SELECT data FROM portal_audit WHERE action='attendance.record' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.id')),'null')=:p1 AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId')),'null')=:p2",

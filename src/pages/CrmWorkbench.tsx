@@ -1,3 +1,4 @@
+import {CrmIdentityAction} from '../components/crm/CrmIdentityAction';
 import {CrmOwnerEditor} from '../components/crm/CrmOwnerEditor';
 import {CrmUiProvider} from '../components/crm/CrmUiLanguage';
 import {salesProgressStages} from '../utils/crmSalesProgress';
@@ -897,7 +898,7 @@ function CrmWorkspace({
       return getWeight(a.id) - getWeight(b.id);
     });
   }, [selectedLead, isLight, lang]);
-  const canEditLead = (lead:CrmLeadRecord,permission='crm.write') => permittedRecord(employee,lead,permission);
+  const canEditLead = (lead:CrmLeadRecord,permission='crm.write') => !lead.identityReview?.pending && permittedRecord(employee,lead,permission);
   const [claiming, setClaiming] = useState<string | null>(null);
   const claimLead = async (leadId: string) => {
     if (!discardDraft()) return;
@@ -1066,7 +1067,7 @@ function CrmWorkspace({
             <CrmProgressAction state={progressActionState(employee,selectedLead)} busy={isSubmittingLog} lang={lang} primary={!selectedLead.identityReview?.pending} icon={<PlusCircle size={15} aria-hidden="true"/>} onClick={startContactRecord}/>
             {canEditLead(selectedLead)&&<button type="button" className="crm-work-button" data-crm-stage-trigger disabled={isSubmittingLog||profileSave==='saving'} onClick={()=>openStageEditor()}><ArrowRightLeft size={15} aria-hidden="true" />{lang==='zh'?'更新阶段':lang==='id'?'Perbarui tahap':'Update stage'}</button>}
             </div>
-            {selectedLead.identityReview?.pending&&selectedLead.identityReview?.canReview&&<button type="button" className="crm-work-button" data-primary="true" onClick={()=>openIdentityReview(selectedLead.id)}>{lang==='zh'?'核实身份':lang==='id'?'Verifikasi identitas':'Review identity'}</button>}
+            {selectedLead.identityReview?.pending&&selectedLead.identityReview?.canReview&&<CrmIdentityAction lang={lang} onClick={()=>openIdentityReview(selectedLead.id)}/>}
 
 
           </>}/>
@@ -1132,7 +1133,7 @@ function CrmWorkspace({
             />
           )}
           {activeDrawerTab === "activities" && <div className="crm-followup-sections">
-            {!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
+            {!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{selectedLead.identityReview?.pending?(lang==='zh'?'请优先核实身份；核实后再认领或开展销售跟进。':lang==='id'?'Prioritaskan verifikasi identitas; klaim atau tindak lanjut penjualan dilakukan setelah verifikasi.':'Prioritize identity review before claiming or starting sales follow-up.'):t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
             {conversationReturn&&<button type="button" className="crm-work-link" onClick={()=>changeCustomerTab("chat")}>{t("Return to conversation","返回对话")}</button>}
             {taskOpening&&<p role="status">{t("Loading task context…","正在加载任务依据…")}</p>}
             <CrmTrustPanel feedback={<>{workflowNotice?.taskChange&&<CrmSaveFeedback lang={lang} state="saved">{({create:lang==='zh'?'已新增独立任务':lang==='id'?'Tugas terpisah dibuat':'Separate task created',supplement:lang==='zh'?'已补充原任务，期限不变':lang==='id'?'Informasi tugas ditambahkan; tenggat tetap':'Task information added; deadline unchanged',reschedule:lang==='zh'?'已更新执行时间，原期限及历史保留':lang==='id'?'Waktu pelaksanaan diperbarui; tenggat dan riwayat awal tetap':'Execution time updated; original deadline and history retained',replace:lang==='zh'?'已取消选定原任务并建立替代任务，其他任务保留':lang==='id'?'Tugas lama terpilih dibatalkan dan diganti; tugas lain tetap':'Selected task cancelled and replaced; other tasks retained'}as any)[workflowNotice.taskChange]}</CrmSaveFeedback>}

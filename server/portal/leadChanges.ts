@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 import {allowed, type Employee} from './identity.ts';
 /** No transcripts or global activity watermark cross the authorization boundary. */
 export async function leadChanges(db:any, employee:Employee) {
-  const rows=(await db.query("SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision FROM portal_leads ORDER BY id")).rows;
-  const visible=rows.filter((row:any)=>allowed(employee,{owner:row.owner==='null'?null:row.owner}));
+  const rows=(await db.query("SELECT id,profile->>'$.owner' AS owner,MD5(CAST(profile AS CHAR)) AS revision,profile->>'$.identityMergedInto' AS identityMergedInto FROM portal_leads ORDER BY id")).rows;
+  const visible=rows.filter((row:any)=>{const primary=row.identityMergedInto&&row.identityMergedInto!=='null'?rows.find((r:any)=>r.id===row.identityMergedInto):row;return primary&&allowed(employee,{owner:primary.owner==='null'?null:primary.owner});});
   const ids=visible.map((row:any)=>row.id);
   const base={employee:employee.id,grants:employee.grants,scope:employee.scope,roles:employee.roles,leads:visible};
   let activity:any[]=[],tasks:any[]=[],requests:any[]=[];

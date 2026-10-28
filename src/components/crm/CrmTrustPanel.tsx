@@ -1,3 +1,4 @@
+import {CrmIdentityAction} from './CrmIdentityAction';
 import {AdminRequiredNote} from '../AdminForm';
 import {useCrmUiText} from './CrmUiLanguage';
 import {AdminFieldLabel} from '../AdminForm';
@@ -758,7 +759,7 @@ function LegacyCrmTrustPanel({
           className="crm-unified-task-list"
           aria-label={t("Follow-up tasks", "Tugas tindak lanjut", "跟进任务")}
         >
-          {lead.identityReview?.pending&&<button type="button" className="crm-work-button" data-primary="true" onClick={onIdentity}>{t('Identity review required','Verifikasi identitas diperlukan','先核实身份')}</button>}
+          {lead.identityReview?.pending&&<CrmIdentityAction lang={lang} onClick={onIdentity}/>}
           {data.requests?.some((r:any)=>r.state==='pending')&&<section className="crm-pending-requests" aria-label={t('New requests to assign','Permintaan baru untuk ditautkan','待确认关联的新请求')}><h4>{t('New requests to assign','Permintaan baru untuk ditautkan','待确认关联的新请求')} ({data.requests.filter((r:any)=>r.state==='pending').length})</h4><p>{t('Check whether this is the same matter or a separate task. The response deadline starts from receipt.','Periksa apakah urusannya sama atau tugas terpisah. Tenggat respons dihitung sejak diterima.','请确认是已有事项的补充，还是另一件事；响应期限从收到请求起计算。')}</p>{data.requests.filter((r:any)=>r.state==='pending').map((r:any)=><article key={r.id}><strong>{describeFollowUpTask({id:r.id,kind:r.data.action,status:'open',ownerId:lead.owner,dueAt:r.data.dueAt},lang,timezone).action}</strong><p>{r.data.text||t('Structured customer request','Permintaan terstruktur pelanggan','客户明确请求')}</p><p className="crm-request-deadline" data-overdue={Date.parse(r.data.dueAt)<Date.now()||undefined}>{t('Response deadline','Batas respons','响应截止')} · {time(r.data.dueAt)}</p><div className="crm-trust-actions"><button type="button" disabled={disabled||busy||unknown} onClick={()=>open('link_request',r)}>{kindLabel('link_request')}</button><button type="button" disabled={disabled||busy||unknown} onClick={()=>open('create_request',r)}>{kindLabel('create_request')}</button><button type="button" className="crm-work-link" onClick={()=>onSource?.({details:{sourceConversationId:r.data.conversationId,sourceMessageId:r.data.messageId}})}>{t('View original message','Lihat pesan asli','查看原文')}</button></div></article>)}</section>}
 
           <CrmTaskOverlap tasks={pendingTasks} lang={lang} timezone={timezone}/>

@@ -1,3 +1,4 @@
+import {assertIdentitySalesAllowed} from './identityConsolidation.ts';
 import {profileFieldResults} from '../../src/utils/crmProfileSaveResult.ts';
 import {observedStageFacts} from '../../src/utils/crmSalesFacts.ts';
 import {queueExtraction} from './aiExtraction.ts';
@@ -12,6 +13,7 @@ const bad=(s:string,status=400):never=>{throw Object.assign(Error(s),{status});}
 export async function saveSimpleSalesWorkflow(c:any,leadId:string,actor:string,b:any,canWrite:(p:any)=>boolean,clock=new Date()){
  const p=(await c.query('SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE',[leadId])).rows[0]?.profile;
  if(!p||!canWrite(p))bad('Lead not found',404);
+ await assertIdentitySalesAllowed(c,leadId);
  if(typeof b.requestId!=='string'||!b.requestId||b.requestId.length>100)bad('Request ID required');
  const prior=(p.followUpLogs||[]).find((l:any)=>l.requestId===b.requestId);
  if(prior){if(prior.actor!==actor||prior.input!==JSON.stringify(b))bad('Follow-up request conflict',409);return {lead:p,...prior.result,replayed:true};}

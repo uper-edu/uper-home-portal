@@ -14,7 +14,7 @@ test('basic edit uses explicit manual path; AI and default validators cannot mut
  for(const k of ['whatsapp','email','tier','currentStage','reportedLevel','quizScore'])assert.throws(()=>applyProfileFields(lead,{[k]:'changed'},{[k]:0},context));
 });
 test('scope whitelist and cross-customer evidence are rejected before any write',async()=>{
- let writes=0;const c={query:async(sql:string)=>{if(sql.includes('SELECT profile'))return {rows:[{profile:lead}]};if(sql.startsWith('SELECT id'))return {rows:[]};writes++;return{rows:[]};}};
+ let writes=0;const c={query:async(sql:string)=>{if(sql.includes('SELECT profile'))return {rows:[{profile:lead}]};if(sql.startsWith('SELECT'))return {rows:[]};writes++;return{rows:[]};}};
  for(const b of [{scope:'basic',updates:{goal:'new'}},{scope:'needs',updates:{fullName:'new'}},{scope:'invalid',updates:{city:'new'}},{scope:'needs',updates:{city:'Bandung'},basisFactIds:['other-customer']}])await assert.rejects(()=>saveProfileUpdates(c,'maya','sales-a',{reason:'客户说明',versions:{city:2},...b},()=>true));
  assert.equal(writes,0);
 });

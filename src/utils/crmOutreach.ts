@@ -4,6 +4,7 @@ export const isCrmManager = (employee: any) => employee?.active !== false && emp
 export const canReviewIdentityRole=(employee:any,controls:{identityReviewManagerOnly?:boolean}={})=>isCrmManager(employee)||(controls.identityReviewManagerOnly===false&&employee?.active!==false&&employee?.roles?.includes("sales")&&employee?.permissions?.includes("crm.followup"));
 export type ContactPurpose = 'sales_followup' | 'identity_verification' | 'customer_reply';
 export function outreachPolicy(employee: any, lead: any, purpose: ContactPurpose = 'sales_followup', now = Date.now()) {
+  if(lead.identityContactHold?.includes('phone'))return 'IDENTITY_CONTACT_HOLD';
   const restriction = contactRestriction(lead, now);
   if (restriction === 'stopped') return 'CONTACT_STOPPED';
   if (lead.identityReview?.pending && (purpose !== 'identity_verification' || !isCrmManager(employee))) return 'IDENTITY_REVIEW_REQUIRED';
@@ -16,6 +17,12 @@ export function outreachPolicy(employee: any, lead: any, purpose: ContactPurpose
 }
 export const canClaimForContact = (employee: any, lead: any) => (!lead.identityReview?.ownerAssignmentManagerOnly||isCrmManager(employee)) && !lead.identityReview?.pending && canClaimRecord(employee, lead);
 const words: Record<string, [string,string,string]> = {
+  IDENTITY_CONTACT_HOLD: ['A matching contact requested no further outreach. Review identity before contacting this number.','Kontak yang cocok meminta agar tidak dihubungi lagi. Verifikasi identitas sebelum menghubungi nomor ini.','匹配联系方式收到停止联系要求，请先核实身份，再处理此号码的联系安排。'],
+  IDENTITY_RECORD_MERGED: ['This record has been consolidated. Open the retained customer before making changes.','Catatan ini telah digabungkan. Buka pelanggan yang dipertahankan sebelum mengubah data.','此记录已归入已有客户，请打开保留客户后操作。'],
+  IDENTITY_TARGET_CHANGED: ['The identity target changed. Refresh before reviewing.','Target identitas berubah. Muat ulang sebelum meninjau.','身份核实对象已变化，请刷新核对。'],
+  IDENTITY_CROSS_CONFLICT_REQUIRED: ['Contact details point to different customers. Keep this record pending for a joint review.','Detail kontak mengarah ke pelanggan berbeda. Biarkan catatan menunggu peninjauan bersama.','联系方式指向不同客户，暂保留待核实，需综合核对后处理。'],
+  IDENTITY_LEGACY_BUSINESS_REVIEW_REQUIRED: ['This older duplicate has sales records. Review its owner and tasks before consolidation.','Duplikat lama ini memiliki catatan penjualan. Tinjau penanggung jawab dan tugas sebelum menggabungkan.','此历史重复记录已有销售业务，请先明确处理归属和任务，不能直接归入。'],
+  IDENTITY_REGISTRATION_TIME_REQUIRED: ['Registration time is missing. Review the original record before release.','Waktu pendaftaran belum tersedia. Tinjau catatan asli sebelum meloloskan.','缺少可信登记时间，请核对原记录后再放行。'],
   CONTACT_STOPPED: ['Proactive contact stopped. Restore with a reason first.','Kontak proaktif dihentikan. Pulihkan dengan alasan terlebih dahulu.','已停止主动联系，请先说明原因并恢复。'],
   IDENTITY_REVIEW_REQUIRED: ['Identity review required · Review identity before claiming or contacting.','Identitas perlu diverifikasi · Verifikasi sebelum klaim atau kontak.','身份待核实 · 请先核实，再认领或联系。'],
   OWNER_MANAGER_REQUIRED: ["Only an authorized CRM Manager can claim or assign a Lead owner under the current policy.","Kebijakan saat ini hanya mengizinkan CRM Manager berwenang mengklaim atau menugaskan penanggung jawab Lead.","当前配置仅允许有权限的CRM Manager认领或分配Lead的Owner。"],

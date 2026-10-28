@@ -1,3 +1,4 @@
+import {attachIdentityContactHolds,activateIdentityLead,mergeIdentityLead,lockIdentityRegistry} from './identityConsolidation.ts';
 import {salesProgressContext,validateSalesProgress} from './salesProgress.ts';
 import {saveProfileUpdates} from './dynamicProfile.ts';
 import {appendRecordAmendment} from './recordAmendments.ts';
@@ -22,7 +23,7 @@ export function mountTrustRoutes(
 ) {
   app.get('/api/crm/leads/:id/extractions',wrap(async(req:any,res:any)=>{
     const {l}=await leadAccess(req,'crm.read');const {pool}=await import('./store.ts');
-    const rows=(await pool.query('SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 50',[l.id])).rows;
+    const rows=(await pool.query(`SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50`,[l.id])).rows;
     res.set('Cache-Control','no-store').json({leadId:l.id,rows:rows.map((r:any)=>({...r,input:{text:r.input.text,occurredAt:r.input.occurredAt,sourceRoot:r.input.sourceRoot,amendment:r.input.amendment,explicitFields:r.input.explicitFields}}))});
   }));
   app.post('/api/crm/leads/:id/profile-fields',wrap(async(req:any,res:any)=>{
@@ -31,9 +32,9 @@ export function mountTrustRoutes(
   }));
   app.get('/api/crm/leads/:id/facts',wrap(async(req:any,res:any)=>{
     const {l}=await leadAccess(req);const {pool}=await import('./store.ts');
-    const facts=(await pool.query('SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC',[l.id])).rows;
-    const messages=(await pool.query("SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id",[l.id])).rows;
-    const attempts=(await pool.query('SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1',[l.id])).rows;
+    const facts=(await pool.query(`SELECT * FROM crm_facts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC`,[l.id])).rows;
+    const messages=(await pool.query("SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id",[l.id])).rows;
+    const attempts=(await pool.query(`SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1))`,[l.id])).rows;
     res.json({leadId:l.id,events:projectFactLedger(l.id,facts,messages,attempts,l.profile),scope:'facts_not_intent_or_tasks'});
   }));
   app.post('/api/crm/leads/:id/facts/:factId/corrections',wrap(async(req:any,res:any)=>{
@@ -64,7 +65,7 @@ export function mountTrustRoutes(
       if(!canReviewIdentityRole(e,controls))invalid(controls.identityReviewManagerOnly?'IDENTITY_MANAGER_REQUIRED':'IDENTITY_REVIEW_PERMISSION_REQUIRED',403);
       const data=await identityComparison(c,l.id,typeof req.query.candidateId==='string'?req.query.candidateId:undefined,(p:any)=>requestAllowed(e,p,req,'crm.read'));
       await attachIdentity(c,e,[data.left.profile,data.right.profile]);
-      return {...data,canConfirm:data.pending&&permittedRecord(e,data.left.profile,'crm.followup')&&permittedRecord(e,data.right.profile,'crm.followup')};
+      return {...data,canConfirm:data.pending&&!data.crossConflict&&permittedRecord(e,data.left.profile,'crm.followup')&&permittedRecord(e,data.right.profile,'crm.followup')};
     }));
   }));
   app.get('/api/crm/leads/:id/contact-evidence',wrap(async(req:any,res:any)=>{
@@ -73,15 +74,17 @@ export function mountTrustRoutes(
     const {pool}=await import('./store.ts');
     const candidates=(await pendingIdentity(pool,l.id)).map((r:any)=>({id:r.lead_id===l.id?r.candidate_id:r.lead_id,profile:r.lead_id===l.id?r.candidate_profile:r.source_profile})).filter((r:any)=>requestAllowed(e,r.profile,req,'crm.read')&&permittedRecord(e,r.profile,'crm.followup')).map((r:any)=>({id:r.id,name:r.profile.fullName||r.id}));
     const answered=new Set((l.profile.followUpLogs||[]).filter((v:any)=>v.sourceMessageAnswered===true).map((v:any)=>v.sourceMessageId));
-    const messages=(await pool.query("SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE v.lead_id=:p1 AND m.role='user' ORDER BY m.created_at DESC,m.id DESC LIMIT 30",[l.id])).rows.filter((m:any)=>!answered.has(m.id));
+    const messages=(await pool.query("SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE (v.lead_id=:p1 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id DESC LIMIT 30",[l.id])).rows.filter((m:any)=>!answered.has(m.id));
     res.json({candidates,messages});
   }));
   app.post('/api/crm/leads/:id/contact-authorization',wrap(async(req:any,res:any)=>{
     const {l,e}=await leadAccess(req);
     const {tx}=await import('./store.ts');
     res.json(await tx(async(c:any)=>{
-      const current=await lockLead(c,l.id,(p:any)=>requestAllowed(e,p,req,'crm.read'));
+      const current=await lockLead(c,l.id,(p:any)=>requestAllowed(e,p,req,'crm.read'),true);
       await attachIdentity(c,e,[current],true);
+      await attachIdentityContactHolds(c,[current]);
+      if(current.identityContactHold?.includes('phone'))invalid('IDENTITY_CONTACT_HOLD',403);
       const b=req.body,purpose=b.purpose;
       if(!['sales_followup','identity_verification','customer_reply'].includes(purpose))invalid('CONTACT_EVIDENCE_REQUIRED');
       const denied=outreachPolicy(e,current,purpose);
@@ -97,7 +100,7 @@ export function mountTrustRoutes(
         if(!peer||!requestAllowed(e,peer,req,'crm.read')||!permittedRecord(e,peer,'crm.followup'))invalid('CONTACT_EVIDENCE_REQUIRED',403);
       }
       if(purpose==='customer_reply'){
-        const row=(await c.query("SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND v.lead_id=:p2",[b.sourceMessageId||'',current.id])).rows[0];
+        const row=(await c.query("SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND (v.lead_id=:p2 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",[b.sourceMessageId||'',current.id])).rows[0];
         const time=(v:any)=>Date.parse(typeof v==='string'&&!/[Zz]|[+-]\d\d:\d\d$/.test(v)?v.replace(' ','T')+'Z':v);
         const after=current.contactReview?.at||current.contactArrangement?.at;
         if(!row||row.role!=='user'||b.replyConfirmedUnanswered!==true||(current.followUpLogs||[]).some((v:any)=>v.sourceMessageId===row.id&&v.sourceMessageAnswered===true)||(contactRestriction(current)&&(!after||!Number.isFinite(time(row.created_at))||time(row.created_at)<=time(after))))invalid('CONTACT_EVIDENCE_REQUIRED');
@@ -113,7 +116,7 @@ export function mountTrustRoutes(
   app.get('/api/crm/leads/:id/assessments',wrap(async(req:any,res:any)=>{
     const {l}=await leadAccess(req);
     const {pool}=await import('./store.ts');
-    const attempts=(await pool.query("SELECT id,result,created_at FROM hsk_attempts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC",[l.id])).rows;
+    const attempts=(await pool.query("SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC",[l.id])).rows;
     const p=l.profile;
     res.json({leadId:l.id,attempts:attempts.map((r:any)=>({id:r.id,result:r.result,recordedAt:typeof r.created_at==='string'?r.created_at.replace(' ','T').replace(/Z$/,'')+'Z':r.created_at})),current:{levelSource:p.levelSource,levelConfirmed:p.levelConfirmed,latestAssessment:p.latestAssessment,reportedLevel:p.reportedLevel,quizScore:p.quizScore,quizMaxScore:p.quizMaxScore,quizResultSummary:p.quizResultSummary,quizBreakdown:p.quizBreakdown}});
   }));
@@ -124,19 +127,19 @@ export function mountTrustRoutes(
       const { pool } = await import("./store.ts");
       const facts = (
         await pool.query(
-          "SELECT * FROM crm_facts WHERE lead_id=:p1 ORDER BY created_at DESC,id DESC",
+          "SELECT * FROM crm_facts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC",
           [l.id],
         )
       ).rows;
       const tasks = (
         await pool.query(
-          "SELECT * FROM followup_tasks WHERE lead_id=:p1 ORDER BY due_at,id",
+          "SELECT * FROM followup_tasks WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY due_at,id",
           [l.id],
         )
       ).rows;
       const engagements = (
         await pool.query(
-          "SELECT e.* FROM crm_engagements e LEFT JOIN conversations c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')) AND c.lead_id=e.lead_id WHERE e.lead_id=:p1 AND (NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')),'') IS NULL OR c.id IS NOT NULL) ORDER BY e.created_at DESC",
+          "SELECT e.* FROM crm_engagements e LEFT JOIN conversations c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')) AND c.lead_id=e.lead_id WHERE (e.lead_id=:p1 OR e.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND (NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.data,'$.conversationId')),'') IS NULL OR c.id IS NOT NULL) ORDER BY e.created_at DESC",
           [l.id],
         )
       ).rows;
@@ -253,7 +256,7 @@ export function mountTrustRoutes(
               b.command === "link" &&
               !(
                 await c.query(
-                  "SELECT id FROM followup_tasks WHERE id=:p1 AND lead_id=:p2 AND status IN ('open','overdue')",
+                  "SELECT id FROM followup_tasks WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND status IN ('open','overdue')",
                   [b.taskId, l.id],
                 )
               ).rows.length
@@ -262,7 +265,7 @@ export function mountTrustRoutes(
             for (const selection of selected) {
               const row = (
                 await c.query(
-                  "SELECT * FROM crm_engagements WHERE id=:p1 AND lead_id=:p2 FOR UPDATE",
+                  "SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) FOR UPDATE",
                   [selection.id, l.id],
                 )
               ).rows[0];
@@ -300,16 +303,18 @@ export function mountTrustRoutes(
       const { tx } = await import("./store.ts");
       res.json(
         await tx(async (c: any) => {
+          await lockIdentityRegistry(c);
           const controls=await identityControls(c);
           if(!canReviewIdentityRole(e,controls))invalid(controls.identityReviewManagerOnly?'IDENTITY_MANAGER_REQUIRED':'IDENTITY_REVIEW_PERMISSION_REQUIRED',403);
           if(typeof req.body.candidateId!=="string"||req.body.candidateId===l.id)invalid("Identity decision and reason required");
-          for(const key of [l.id,req.body.candidateId].sort())await lockLead(c,key,(p:any)=>requestAllowed(e,p,req));
+          for(const key of [l.id,req.body.candidateId].sort())await lockLead(c,key,(p:any)=>requestAllowed(e,p,req),true);
           return operation(c, e.id, req.body, {
             leadId: l.id, kind: "identity-actions",
             // Both records must remain accessible, including on a cached retry.
-            authorize: () => lockLead(c, req.body.candidateId, (p: any) => requestAllowed(e, p, req)),
+            authorize: () => lockLead(c, req.body.candidateId, (p: any) => requestAllowed(e, p, req),true),
           }, async () => {
             const b = req.body;
+            if(typeof b.expectedComparisonRevision!=='string'||!b.expectedComparisonRevision)invalid('Identity evidence changed; refresh and review',409);
             if(b.expectedComparisonRevision){
               const comparison=await identityComparison(c,l.id,b.candidateId,(p:any)=>requestAllowed(e,p,req,'crm.read'));
               if(comparison.revision!==b.expectedComparisonRevision)invalid('Identity evidence changed; refresh and review',409);
@@ -325,8 +330,15 @@ export function mountTrustRoutes(
                 [l.id, b.candidateId],
               )
             ).rows;
-            if (!found.length || !(await pendingIdentity(c,l.id,true)).some((r:any)=>r.lead_id===b.candidateId||r.candidate_id===b.candidateId))
+            if (!found.length || !(await pendingIdentity(c)).some((r:any)=>(r.lead_id===l.id&&r.candidate_id===b.candidateId)||(r.lead_id===b.candidateId&&r.candidate_id===l.id)))
               invalid("Identity candidate changed; refresh and review", 409);
+            const subjectId=found[0].lead_id,targetId=found[0].candidate_id;
+            const allPending=await pendingIdentity(c,subjectId);
+            if(new Set(allPending.map((r:any)=>r.candidate_id)).size>1)invalid('IDENTITY_CROSS_CONFLICT_REQUIRED');
+            const subject=await lockLead(c,subjectId,(p:any)=>requestAllowed(e,p,req),true);
+            const primary=await lockLead(c,targetId,(p:any)=>requestAllowed(e,p,req),true);
+            let resolution:any={canonicalLeadId:subjectId,merged:false};
+            if(b.decision==='same')resolution=await mergeIdentityLead(c,subject,primary,e.id,b.reason.trim());
             await c.query(
               "UPDATE identity_candidates SET decision=:p3,decided_by=:p4,reason=:p5,decided_at=UTC_TIMESTAMP(6) WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision='pending'",
               [l.id, b.candidateId, b.decision, e.id, b.reason],
@@ -334,9 +346,15 @@ export function mountTrustRoutes(
             await fact(c, l.id, "identity." + b.decision, e.id, {
               candidateId: b.candidateId,
               reason: b.reason,
-              scope: "relationship_only_no_record_or_owner_transfer",
+              scope: b.decision==='same'?"logical_association_originals_preserved":"independent_identity_release",
+              ...resolution,
             });
-            return { saved: true, leadId: l.id };
+            if(b.decision!=='same'){
+              const released={...subject,identityLifecycle:'independent',identityDecidedAt:new Date().toISOString()};
+              await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[subjectId,released]);
+              await activateIdentityLead(c,released,e.id);
+            }
+            return { saved: true, leadId: l.id,...resolution };
           });
         }),
       );

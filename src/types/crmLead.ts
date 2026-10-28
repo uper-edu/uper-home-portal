@@ -101,7 +101,13 @@ export interface CrmLeadRecord {
   simpleRevision?:number;
   firstFollowup?:{outcome:"attempted"|"connected"|"invalid_contact"|"exception";at:string;actor:string;logId:string;dueAt?:string};
   commitments?:Array<import("../utils/crmSimpleFollowup").Commitment & {actor?:string;recordedAt?:string;updatedAt?:string;updatedBy?:string;reason?:string}>;
-  identityReview?: {pending:boolean;count:number;canReview:boolean;blocked:boolean;ownerAssignmentManagerOnly?:boolean;identityReviewManagerOnly?:boolean};
+  identitySources?:any[];
+  identityMergedInto?:string;
+  identityResolvedFrom?:string;
+  identityStopRequest?:{text:string;sourceId:string;at:string};
+  identityLifecycle?:string;
+  identityContactHold?:string[];
+  identityReview?: {crossConflict?:boolean;pending:boolean;count:number;canReview:boolean;blocked:boolean;ownerAssignmentManagerOnly?:boolean;identityReviewManagerOnly?:boolean};
   promotionReview?: {status:'linked'|'deferred'|'invalid';revision:number;rawCampaignCode:string;rawPromotionLinkId:string;campaignId:string;linkId:string|null;snapshot:any;actor:string;at:string;reason:string;scope:'this_customer_only'};
   ownerChangedAt?: string;
   attendanceRecords?: Array<{campaignId:string;confirmed:boolean;mode:"onsite"|"online";reason:string;actor:string;recordedAt:string}>;
