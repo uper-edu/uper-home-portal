@@ -1271,7 +1271,7 @@
       "errorDesc": "提交前请检查并确保填妥所有必要的星号重点项。",
       "errorFileRequired": "请上传您的简历附件或提供云端简历链接。",
       "serverErrorTitle": "提交失败 (系统/邮件配置问题)",
-      "serverErrorDesc": "很抱歉，简历发送失败。这可能是由于系统邮件服务配置或网络延迟引起的。您可以再次尝试，或直接将简历与求职职位发送至：service@uperedu.com。"
+      "serverErrorDesc": "很抱歉，简历发送失败。这可能是由于系统邮件服务配置或网络延迟引起的。您可以再次尝试，或直接将简历与求职职位发送至：upereducation@gmail.com。"
     },
     "locations": "办公地点 (Locations):",
     "locJakarta": "印尼雅加达 PIK",

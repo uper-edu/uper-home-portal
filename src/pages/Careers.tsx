@@ -811,7 +811,7 @@ export default function Careers() {
                     </h5>
                     <p className="text-xs text-rose-600 mt-0.5">
                       {submitErrorType === 'server'
-                        ? t('careers.form.serverErrorDesc', 'Sorry, your application could not be sent. This might be due to an email system configuration issue. Please retry or email us directly at service@uperedu.com.')
+                        ? t('careers.form.serverErrorDesc', 'Sorry, your application could not be sent. This might be due to an email system configuration issue. Please retry or email us directly at upereducation@gmail.com.')
                         : submitErrorType === 'file_required'
                           ? t('careers.form.errorFileRequired', 'Please attach your CV/Resume file or provide a cloud resume link.')
                           : t('careers.form.errorDesc', 'Please fill in all mandatory fields.')}

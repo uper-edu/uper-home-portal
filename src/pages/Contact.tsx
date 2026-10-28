@@ -301,11 +301,11 @@ export default function Contact({sendInquiry}:{sendInquiry?:(payload:Record<stri
               <div className="flex-1">
                 <h3 className="text-base font-bold mb-1 text-slate-900">{t("contactPage.email", "Email")}</h3>
                 <p className="text-slate-600 text-sm mb-3">
-                  service@uperedu.com
+                  upereducation@gmail.com
                 </p>
                 <a 
-                  href="mailto:service@uperedu.com" 
-                  onClick={() => trackConsultationClick('email', 'service@uperedu.com')}
+                  href="mailto:upereducation@gmail.com"
+                  onClick={() => trackConsultationClick('email', 'upereducation@gmail.com')}
                   className={`inline-flex items-center gap-2 text-sm font-semibold transition-colors ${
                     isApple ? 'text-[#0071e3] hover:text-[#0077ed]' : 'text-tech-600 hover:text-tech-700'
                   }`}

@@ -1271,7 +1271,7 @@
       "errorDesc": "Please double-check all required fields before hitting submit.",
       "errorFileRequired": "Please attach your CV/Resume file or provide a cloud link.",
       "serverErrorTitle": "Submission Failed (System Error)",
-      "serverErrorDesc": "We're sorry, your application could not be sent. This might be due to mail server configuration issues. Please try again or email us directly at service@uperedu.com."
+      "serverErrorDesc": "We're sorry, your application could not be sent. This might be due to mail server configuration issues. Please try again or email us directly at upereducation@gmail.com."
     },
     "locations": "Locations:",
     "locJakarta": "Jakarta PIK, Indonesia",
