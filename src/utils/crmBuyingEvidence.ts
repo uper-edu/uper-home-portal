@@ -1,3 +1,4 @@
+import {weakerIntent} from './crmNaturalRequests';
 import {crmInstant} from './crmOperatingTime';
 import {activeExtractionEvidence} from './crmExtractionEvidence';
 import {effectiveSalesRecords} from './crmRecordAmendments';
@@ -104,7 +105,7 @@ export function projectBuyingEvidence(
         });
     }
   const extractionRows=facts.filter(f=>f.kind==='information.extracted').map(f=>({id:f.id,created_at:f.created_at,status:'completed',source_id:f.data?.sourceId,source_type:f.data?.sourceType,input:{sourceRoot:f.data?.sourceRoot,amendment:f.data?.amendment},output:f.data}));
-  const labels:Record<string,string>={price_inquiry:'Asked price',schedule_inquiry:'Asked schedule',advisor_request:'Advisor requested',assessment_interest:'Assessment interest',trial_interest:'Trial interest',enrollment_interest:'Enrollment interest'};
+  const labels:Record<string,string>={price_inquiry:'Asked price',schedule_inquiry:'Asked schedule',advisor_request:'Advisor requested',assessment_interest:'Assessment interest',trial_interest:'Trial interest',enrollment_interest:'Enrollment interest',trial_request:'Booking requested',enrollment_request:'Ready to enroll'};
   for(const e of activeExtractionEvidence(extractionRows)){
    const o=e.observation;if(e.supersededBy||o.kind!=='signal'||o.subject!=='customer'||o.temporality!=='current'||e.root.countable===false)continue;
    const value=labels[o.field];if(!value)continue;
@@ -123,7 +124,7 @@ export function projectBuyingEvidence(
         value,
         at: null,
       });
-  const mapping:Record<string,string>={advisor_request:'Advisor requested',price_inquiry:'Asked price',schedule_inquiry:'Asked schedule',enrollment_interest:'Ready to enroll',trial_interest:'Booking requested'};
+  const mapping:Record<string,string>={advisor_request:'Advisor requested',price_inquiry:'Asked price',schedule_inquiry:'Asked schedule',enrollment_interest:'Ready to enroll',trial_interest:'Booking requested',trial_request:'Booking requested',enrollment_request:'Ready to enroll'};
   for(const entry of result){const correction=(profile.extractionSignalCorrections||[]).find((c:any)=>c.sourceId===entry.sourceRecordId&&mapping[c.field]===entry.value);if(correction)entry.correctedBy=correction.correctionId;}
   for (const entry of result)
     if (entry.at && /^\d{4}-\d\d-\d\d /.test(entry.at))
@@ -155,7 +156,8 @@ export function signalCategory(e:Pick<BuyingEvidence,'kind'>,lang:string) {
 }
 /** One row per supported intent; latest known occurrence, not extraction/save time. */
 export function worklistIntents(lead:any){
- const all=visibleIntentEvidence(lead).filter(e=>!e.correctedBy),actual=all.filter(e=>e.kind==='sales'||e.kind==='chat');
+ const evidence=visibleIntentEvidence(lead).filter(e=>!e.correctedBy);
+ const all=evidence.filter(e=>!evidence.some(stronger=>stronger.sourceRecordId&&stronger.sourceRecordId===e.sourceRecordId&&weakerIntent(stronger.value)===e.value)),actual=all.filter(e=>e.kind==='sales'||e.kind==='chat');
  const pool=actual.length?actual:all.filter(e=>e.kind==='questionnaire');
  const groups=new Map<string,BuyingEvidence[]>();
  for(const e of pool){const key=e.value==='Ready to enrol'?'Ready to enroll':e.value;groups.set(key,[...(groups.get(key)||[]),e]);}

@@ -7318,5 +7318,17 @@
   "更多约定": [
     "More agreements",
     "Kesepakatan lainnya"
+  ],
+  "请求预约试听": [
+    "Trial booking requested",
+    "Meminta jadwal kelas percobaan"
+  ],
+  "明确请求报名": [
+    "Enrollment requested",
+    "Meminta pendaftaran"
+  ],
+  "约定陈述（未经销售确认）": [
+    "Reported agreement (not confirmed by sales)",
+    "Pernyataan kesepakatan (belum dikonfirmasi sales)"
   ]
 }

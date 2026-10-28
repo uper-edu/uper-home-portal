@@ -42,7 +42,7 @@ test("Only explicit singular requests route to follow-up; ordinary, negated, con
   }
 });
 
-test("Shared real chat client routes all request types, keeps retry identity/action and leaves ordinary consultation on AI endpoint", async () => {
+test("Free text always uses AI; explicit controls retain action, retry identity and saved outcome", async () => {
   const storage = new Map<string, string>(),
     posts: any[] = [];
   const before = {
@@ -83,19 +83,20 @@ test("Shared real chat client routes all request types, keeps retry identity/act
       taskId: body.action ? "TEST-" + body.action : undefined,
     });
   };
-  const init = (id: string, content: string) => ({
+  const init = (id: string, content: string, action?:string) => ({
     method: "POST",
     body: JSON.stringify({
       messages: [{ id, role: "user", content }],
       language: "zh",
+      action,
       stream: true,
     }),
   });
   try {
     for (const [id, text, action] of [
       ["ordinary", "我想了解周末课程", undefined],
-      ["handoff", "请顾问联系我", "handoff"],
-      ["enrollment", "我要报名", "enrollment"],
+      ["handoff", "请顾问联系我", undefined],
+      ["enrollment", "我要报名", undefined],
     ] as const) {
       await finishChat(
         await chatFetch("/api/chat", init(id, text), "standalone_chat"),
@@ -113,7 +114,7 @@ test("Shared real chat client routes all request types, keeps retry identity/act
     await assert.rejects(
       chatFetch(
         "/api/chat",
-        init("booking", "我想预约试听"),
+        init("booking", "我想预约试听", "booking"),
         "standalone_chat",
       ),
       /TEST unavailable/,
@@ -124,7 +125,7 @@ test("Shared real chat client routes all request types, keeps retry identity/act
     await finishChat(
       await chatFetch(
         "/api/chat",
-        init("booking", "我想预约试听"),
+        init("booking", "我想预约试听", "booking"),
         "standalone_chat",
       ),
       "standalone_chat",

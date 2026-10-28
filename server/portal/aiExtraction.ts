@@ -1,6 +1,7 @@
-import {explicitAdvisorRequest,requireExplicitAdvisorEvidence} from '../../src/utils/crmAdvisorRequest.ts';
+import {naturalRequestActions} from '../../src/utils/crmNaturalRequests.ts';
+import {explicitAdvisorRequest} from '../../src/utils/crmAdvisorRequest.ts';
 import {createHash,randomUUID} from 'node:crypto';
-import {EXTRACTION_VERSION,extractionInstruction,stageEventInstruction,validateExtraction,extractionDecision} from '../../src/utils/crmExtractionContract.ts';
+import {EXTRACTION_VERSION,extractionInstruction,stageEventInstruction,naturalRequestInstruction,validateExtraction,extractionDecision} from '../../src/utils/crmExtractionContract.ts';
 import {profileFields} from '../../src/utils/crmDynamicProfile.ts';
 import {recordProfileUpdates} from './dynamicProfile.ts';
 import {fact} from './trustWorkflow.ts';
@@ -26,12 +27,12 @@ export async function extractWithAI(text:string,context:any,request:typeof fetch
  for(const p of providers){if(!p.key)continue;try{
   let actualModel=p.name;
   const ask=async(review=false)=>{
-   const instruction=extractionInstruction+'\n'+stageEventInstruction+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
+   const instruction=extractionInstruction+'\n'+stageEventInstruction+'\n'+naturalRequestInstruction+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
    const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},...modelParameters(p.name,2400,0)}),signal:AbortSignal.timeout(30000)});
    if(!response.ok)throw Error('provider');const body=await response.json();actualModel=body.model||p.name;if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');
    return validateExtraction(JSON.parse(body.choices?.[0]?.message?.content||''),text);
   };
-  const observations=await ask();requireExplicitAdvisorEvidence(text,observations);
+  const observations=await ask();
   let coverageReview:any=null;
   if(needsResidenceReview(text,observations)){
    const recovered=(await ask(true)).filter(o=>o.kind==='field'&&o.field==='city');
@@ -96,14 +97,15 @@ export async function applyExtractionOutput(c:any,job:any,output:any){const curr
    await c.query("UPDATE notification_jobs SET state='cancelled',result='Request corrected',completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.requestEvidenceId')),'null')=:p1",[request.id]);
   }
  }
- // Only newly queued v3 sources can create new request evidence. Never replay old extractions or amendments.
- if(job.contract_version===EXTRACTION_VERSION&&!job.input.amendment&&observations.some(explicitAdvisorRequest)){
+ // Only the new contract can emit AI-derived requests; never replay old queued sources or corrections.
+ const actions=naturalRequestActions(observations);
+ if(job.contract_version===EXTRACTION_VERSION&&!job.input.amendment&&actions.length){
   const {ensureFollowup}=await import('./followup.ts');
   if(job.source_type==='customer_message'){
    const source=(await c.query("SELECT conversation_id,request_id FROM messages WHERE id=:p1 AND role='user'",[job.source_id])).rows[0];
    const conversation=source?(await c.query('SELECT * FROM conversations WHERE id=:p1 AND lead_id=:p2',[source.conversation_id,job.lead_id])).rows[0]:null;
-   if(conversation)await ensureFollowup(c,conversation,'handoff',source.request_id||job.source_id,'zh',true);
-  }else if(job.source_type==='sales_record'){
+   if(conversation)for(const action of actions)await ensureFollowup(c,conversation,action,source.request_id||job.source_id,'zh',true);
+  }else if(job.source_type==='sales_record'&&observations.some(explicitAdvisorRequest)){
    const {recordSalesAdvisorRequest}=await import('./followup.ts');
    await recordSalesAdvisorRequest(c,job,observations.find(explicitAdvisorRequest));
   }

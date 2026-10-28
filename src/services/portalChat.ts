@@ -1,6 +1,5 @@
 import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
-import { explicitChatRequest } from "../utils/chatRequestIntent";
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
 import {canonicalCampaignId} from '../utils/organicCampaign';
 import {
@@ -131,7 +130,7 @@ export async function chatFetch(
   };
   if (old.action !== undefined && !['handoff','booking','enrollment'].includes(old.action)) throw Error('Invalid request action');
   // Explicit product controls do not depend on localized prose matching an intent regex.
-  const action = previous?.action || old.action || explicitChatRequest(user.content) || (old.isHumanMode ? 'handoff' : undefined);
+  const action = previous?.action || old.action || (old.isHumanMode ? 'handoff' : undefined);
   saveDraft(source, {...queued,action});
   const conversationId =
     previous?.conversationId || (await conversation(source));
