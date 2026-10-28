@@ -7,6 +7,7 @@ import {fact} from './trustWorkflow.ts';
 import {extractionFamily,extractionRoot} from '../../src/utils/crmExtractionEvidence.ts';
 import {sameProfileValue} from '../../src/utils/crmFieldValues.ts';
 import {supportsCourseBudget} from '../../src/utils/crmBudget.ts';
+import {modelParameters} from './modelParameters.ts';
 /** Called in the original source transaction. Technical processing only; never a sales task or notification. */
 export async function queueExtraction(c:any,leadId:string,type:string,sourceId:string,text:string,occurredAt:string|null,actor:string,explicitFields:string[]=[],sourceRevision='1',relationship:any={}){
  const hash=createHash('sha256').update(text).digest('hex');
@@ -19,13 +20,15 @@ export function needsResidenceReview(text:string,observations:any[]){
  if(/我(?:作为|是)?销售|销售(?:本人|自己)|as (?:a )?sales/i.test(text)&&!/客户(?:说|表示)?(?:长期居住地是|目前住在|现在住在|住在|现居|常住|已经搬到)/.test(text))return false;
  return !observations.some(o=>o.kind==='field'&&o.field==='city')&&/(?:居住地(?:是|为)?|住在|现居|常住|搬到|tinggal(?:\s+di)?|domisili(?:\s+di)?|lives?\s+in|living\s+in|resides?\s+in|moved\s+to).{0,12}(?:雅加达|万隆|泗水|Jakarta|Bandung|Surabaya)/i.test(text);
 }
-export async function extractWithAI(text:string,context:any,request:typeof fetch=fetch){
- const providers=[{name:process.env.OPENAI_MODEL||'gpt-4o',key:process.env.OPENAI_API_KEY,url:process.env.OPENAI_API_BASE_URL||'https://api.openai.com/v1/chat/completions'},{name:'deepseek-chat',key:process.env.DEEPSEEK_API_KEY,url:process.env.DEEPSEEK_API_BASE_URL||'https://api.deepseek.com/chat/completions'}];
+export async function extractWithAI(text:string,context:any,request:typeof fetch=fetch,providersOverride?:Array<{model:string;key?:string;url:string}>){
+ const {runtimeProviders}=await import('./aiServiceConfig.ts');
+ const providers=(providersOverride||await runtimeProviders()).map(p=>({...p,name:p.model}));
  for(const p of providers){if(!p.key)continue;try{
+  let actualModel=p.name;
   const ask=async(review=false)=>{
    const instruction=extractionInstruction+'\n'+stageEventInstruction+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
-   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},temperature:0,max_tokens:2400}),signal:AbortSignal.timeout(30000)});
-   if(!response.ok)throw Error('provider');const body=await response.json();if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');
+   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},...modelParameters(p.name,2400,0)}),signal:AbortSignal.timeout(30000)});
+   if(!response.ok)throw Error('provider');const body=await response.json();actualModel=body.model||p.name;if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');
    return validateExtraction(JSON.parse(body.choices?.[0]?.message?.content||''),text);
   };
   const observations=await ask();requireExplicitAdvisorEvidence(text,observations);
@@ -35,7 +38,7 @@ export async function extractWithAI(text:string,context:any,request:typeof fetch
    if(!recovered.length)throw Error('city_coverage_incomplete');
    observations.push(...recovered);coverageReview={field:'city',reviewed:true,recovered:recovered.length};
   }
-  return {observations,model:p.name,coverageReview};
+  return {observations,model:actualModel,coverageReview};
  }catch{/* Invalid output, missing coverage and provider errors retry through the configured provider chain. No source or credentials in logs. */}}
  throw Error('结构化提取暂不可用，原文已保存');
 }

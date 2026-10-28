@@ -1,5 +1,7 @@
 import {coursePriceReply,protectGeneratedReply,consultationPriceContext} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
+import {runtimeProviders} from './aiServiceConfig.ts';
+import {modelParameters} from './modelParameters.ts';
 import {crmInstant} from '../../src/utils/crmOperatingTime.ts';
 import {engagement} from "./trustWorkflow.ts";
 import type { Express } from "express";
@@ -208,25 +210,10 @@ export function mountChat(app: Express) {
         let catalogueUsed=!!fixedReply;
         let reply = fixedReply||"",
           modelUsed: string | null = fixedReply?'course-catalogue':null;
-        const providers = [
-          {
-            model: process.env.OPENAI_MODEL || "gpt-4o",
-            key: process.env.OPENAI_API_KEY,
-            url:
-              process.env.OPENAI_API_BASE_URL ||
-              "https://api.openai.com/v1/chat/completions",
-          },
-          {
-            model: "deepseek-chat",
-            key: process.env.DEEPSEEK_API_KEY,
-            url:
-              process.env.DEEPSEEK_API_BASE_URL ||
-              "https://api.deepseek.com/chat/completions",
-          },
-        ];
+        const providers = await runtimeProviders();
         for (const provider of (fixedReply?[]:providers)) {
           if (!provider.key) continue;
-          let partial = "";
+          let partial = "", actualModel = provider.model;
           try {
             const upstream = await fetch(provider.url, {
               method: "POST",
@@ -270,7 +257,7 @@ export function mountChat(app: Express) {
                     : []),
                 ],
                 stream: true,
-                max_tokens: 1200,
+                ...modelParameters(provider.model, 1200),
               }),
               signal: AbortSignal.timeout(45000),
             });
@@ -299,6 +286,7 @@ export function mountChat(app: Express) {
                     continue;
                   }
                   const payload = JSON.parse(data);
+                  actualModel = payload.model || actualModel;
                   if (payload.error) throw Error("Provider stream error");
                   if (payload.choices?.[0]?.finish_reason === "length")
                     throw Error("Answer truncated");
@@ -309,6 +297,7 @@ export function mountChat(app: Express) {
               }
             } else {
               const payload = await upstream.json();
+              actualModel = payload.model || actualModel;
               partial = payload.choices?.[0]?.message?.content || "";
               complete = payload.choices?.[0]?.finish_reason !== "length";
             }
@@ -318,10 +307,10 @@ export function mountChat(app: Express) {
             } catch {}
             reply = protectGeneratedReply(partial,content,priceContext,req.body.lang||'zh');
             catalogueUsed=reply!==partial;
-            modelUsed = provider.model;
+            modelUsed = actualModel;
             await db.query(
               "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
-              [assistantId, provider.model, partial],
+              [assistantId, actualModel, partial],
             );
             break;
           } catch (e) {

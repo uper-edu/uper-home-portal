@@ -404,6 +404,12 @@
       "server/portal/accessRecovery.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'ai.configuration',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'ai.configuration',:p2)",
+    "sources": [
+      "server/portal/aiServiceConfig.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)",
     "sources": [
@@ -530,6 +536,12 @@
       "server/portal/runtime.ts",
       "cloud/mysql/site.mjs",
       "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)",
+    "sources": [
+      "server/portal/aiServiceConfig.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1": {
@@ -1038,6 +1050,12 @@
     "sql": "SELECT a.activity_at,a.event_type,a.source FROM (\n          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' AND TRIM(m.content)<>''\n          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1",
     "sources": [
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT a.model,a.error,a.created_at,m.model AS final_model FROM ai_attempts a LEFT JOIN messages m ON m.id=a.message_id ORDER BY a.created_at DESC LIMIT 12": {
+    "sql": "SELECT a.model,a.error,a.created_at,m.model AS final_model FROM ai_attempts a LEFT JOIN messages m ON m.id=a.message_id ORDER BY a.created_at DESC LIMIT 12",
+    "sources": [
+      "server/portal/aiServiceConfig.ts"
     ]
   },
   "SELECT actor,data,created_at FROM portal_audit WHERE action='campaign.promotion.review' AND JSON_CONTAINS(:p1,JSON_QUOTE(JSON_UNQUOTE(JSON_EXTRACT(data,'$.leadId')))) ORDER BY id DESC": {
@@ -1763,6 +1781,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "SELECT model,status,completed_at FROM crm_ai_extractions WHERE model IS NOT NULL ORDER BY completed_at DESC LIMIT 8": {
+    "sql": "SELECT model,status,completed_at FROM crm_ai_extractions WHERE model IS NOT NULL ORDER BY completed_at DESC LIMIT 8",
+    "sources": [
+      "server/portal/aiServiceConfig.ts"
+    ]
+  },
   "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads": {
     "sql": "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads",
     "sources": [
@@ -1927,6 +1951,7 @@
       "server/portal/accessManagement.ts",
       "server/portal/accessOperations.ts",
       "server/portal/accessRecovery.ts",
+      "server/portal/aiServiceConfig.ts",
       "server/portal/teamlessAccess.ts"
     ]
   },
@@ -1941,6 +1966,12 @@
     "sql": "SELECT value FROM access_state WHERE id='teamless'",
     "sources": [
       "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='ai_service'": {
+    "sql": "SELECT value FROM portal_settings WHERE id='ai_service'",
+    "sources": [
+      "server/portal/aiServiceConfig.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='crm_policy'": {

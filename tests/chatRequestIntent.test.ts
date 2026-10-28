@@ -168,3 +168,8 @@ test('664 exact advisor request accepts an advisor while negated, conditional, q
  for(const text of ['please have an advisor contact me','Please have a human advisor call me','Please have an adviser contact me'])assert.equal(explicitChatRequest(text),'handoff',text);
  for(const text of ['If I decide, please have an advisor contact me','Do not have an advisor contact me','Translate "please have an advisor contact me"','How to have an advisor contact me?','please have an advisor contact me, I want to enroll','What can an advisor do?'])assert.equal(explicitChatRequest(text),undefined,text);
 });
+
+ test('booking denial, withdrawal and historical intent are checked across clauses in three languages',()=>{
+ for(const text of ['我没有说我想预约试听，请先介绍周末线上班的学费。','我之前说我想预约试听，但现在不约了，只想先了解课程费用。','我之前说我想预约试听','I never said I want to book a trial lesson, please explain fees.','I previously said I want to book a trial, but I no longer want to book.','Saya tidak pernah bilang saya ingin booking kelas trial','Dulu saya ingin booking kelas trial, sekarang tidak jadi'])assert.equal(explicitChatRequest(text),undefined,text);
+ for(const text of ['我想预约试听','I would like to book a trial lesson','Saya ingin menjadwalkan kelas percobaan','我不想报名，但是我想预约试听'])assert.equal(explicitChatRequest(text),'booking',text);
+ });

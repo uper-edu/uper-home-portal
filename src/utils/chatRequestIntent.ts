@@ -1,3 +1,11 @@
+/** A denial, historical quote or withdrawal can govern a request across clause boundaries. */
+export function bookingRequestSuppressed(text:string):boolean {
+ const value=text.normalize('NFKC');
+ return /(?:没有说|没说过|并未说|从未说|并不是说|不是说).{0,30}(?:预约|试听)|(?:之前|以前|曾经|原来|刚才|先前).{0,16}(?:说|想|要|希望).{0,20}(?:预约|试听)|不约了|不预约|不想约|暂不约|先不约|(?:撤回|取消).{0,12}(?:预约|试听)/u.test(value)
+ || /\b(?:did\s+not\s+say|didn't\s+say|never\s+said|previously\s+said|used\s+to\s+want).{0,70}\b(?:book|schedule|reserve|trial)\b|\b(?:no\s+longer|don't|do\s+not)\s+(?:want\s+to\s+)?(?:book|schedule|reserve)\b|\b(?:cancel|withdraw)[^,.;!?\n]{0,35}\b(?:booking|trial|reservation)\b/iu.test(value)
+ || /\b(?:tidak\s+pernah\s+(?:bilang|mengatakan)|dulu\s+(?:saya\s+)?(?:bilang|ingin|mau)|sebelumnya\s+(?:saya\s+)?(?:bilang|ingin|mau)|(?:tidak|nggak)\s+jadi|batalkan|batal).{0,65}\b(?:booking|pesan|memesan|menjadwalkan|reservasi|trial|percobaan)\b/iu.test(value);
+}
+
 export type ChatRequestAction = "handoff" | "booking" | "enrollment";
 
 /** Conservative UI routing of explicit requests, not AI-generated sales decisions.
@@ -42,5 +50,6 @@ export function explicitChatRequest(
     )
       actions.add("enrollment");
   }
+  if (bookingRequestSuppressed(text)) actions.delete('booking');
   return actions.size === 1 ? [...actions][0] : undefined;
 }

@@ -1,3 +1,4 @@
+import {bookingRequestSuppressed} from '../../src/utils/chatRequestIntent.ts';
 import {attachIdentityContactHolds,canonicalIdentity,assertIdentitySalesAllowed,lockIdentityRegistry,projectIdentityProfiles,identityProjectionRows} from './identityConsolidation.ts';
 import {attachQuestionnaireBasicSources} from './questionnaireSources.ts';
 import {saveAttendance} from "./attendance.ts";
@@ -35,6 +36,7 @@ import { mountAccessRecovery } from "./accessRecovery.ts";
 import { accessRestoreGate } from "./accessRecoveryState.ts";
 import { trustedOrigin } from "./accessTransport.ts";
 import {initializeTeamlessAccess} from "./teamlessAccess.ts";
+import {mountAiServiceConfig} from './aiServiceConfig.ts';
 import {mountAccessManagement} from './accessManagement.ts';
 import {eligibleOwner,permittedRecord,canClaimRecord} from '../../src/utils/accessControl.ts';
 import { contactStatistics } from "../../src/utils/crmContact.ts";
@@ -268,6 +270,7 @@ export async function mountPortal(app: Express) {
   mountAccessHandovers(app);
   mountAccessRecovery(app);
   mountAccessManagement(app);
+  mountAiServiceConfig(app);
   for (const r of defaultRules)
     await pool.query(
       "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
@@ -706,6 +709,8 @@ export async function mountPortal(app: Express) {
               reply: followupReply(lang, status, action),
             };
           }
+          if(action==='booking'&&bookingRequestSuppressed(content))
+            fail(400,lang==='zh'?'当前文字是否定、历史引用或撤回预约，请作为普通咨询发送。':lang==='id'?'Pesan menyangkal, mengutip niat lama, atau menarik permintaan reservasi. Kirim sebagai konsultasi biasa.':'This message denies, quotes a past booking intention, or withdraws it. Send it as an ordinary consultation.');
           await db.query(
             "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved')",
             [id(), c.id, messageId, content],

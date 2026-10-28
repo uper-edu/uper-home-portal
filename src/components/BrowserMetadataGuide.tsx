@@ -39,6 +39,13 @@ export function BrowserMetadataGuide({ lang }: { lang: SiteLanguage }) {
           lang,
         )}
       </p>
+      <p>
+        {metadataWords([
+          'Public versioned JS and CSS can be cached; unversioned images are revalidated. Page HTML and version metadata remain fresh. This does not cache customer data, relax sign-in or change the trial site’s noindex policy.',
+          'JS dan CSS publik berversi dapat disimpan dalam cache; gambar tanpa versi divalidasi ulang. HTML halaman dan metadata versi tetap diperbarui. Ini tidak menyimpan data pelanggan dalam cache, melonggarkan login, atau mengubah larangan indeks situs uji.',
+          '公开的带版本JS和CSS可复用缓存，未带版本的图片需重新校验；页面HTML和版本信息及时更新。这不缓存客户数据、不放宽登录，也不改变测试站禁止索引的规则。',
+        ], lang)}
+      </p>
     </section>
   );
 }

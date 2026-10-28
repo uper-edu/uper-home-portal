@@ -9,6 +9,7 @@ import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
 import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
+import {frontendStaticOptions} from './staticCache.ts';
 import {companyConfiguration} from './companyTrial.ts';
 import {acquireCompanyRuntimeLease} from '../cloud/mysql/company-maintenance.mjs';
 import { configureAccessTransport } from "./portal/accessTransport.ts";
@@ -93,7 +94,7 @@ app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/im
 app.use('/api',(_q,r)=>r.status(404).json({error:'API endpoint not found'}));
 if(process.env.TRIAL_FRONTEND_DIRECTORY){
   const directory=path.resolve(process.env.TRIAL_FRONTEND_DIRECTORY);
-  app.use(express.static(directory,{index:false}));
+  app.use(express.static(directory,frontendStaticOptions(directory)));
   mountMetadataHtml(app,directory,nativePool);
 }
 app.use((e:any,_q:any,r:any,_next:any)=>r.status(e.status||503).json({error:e.status===413?'Request too large':'Request could not be processed'}));

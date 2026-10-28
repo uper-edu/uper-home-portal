@@ -1,0 +1,1 @@
+export function isAiAdministrator(e:any){return !!e?.roles?.includes('access_admin')&&['access.read','access.users','access.roles','access.sessions','access.audit'].every(p=>e.permissions?.includes(p));}

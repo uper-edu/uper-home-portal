@@ -1,3 +1,5 @@
+import {AiServicePanel} from '../components/AiServicePanel';
+import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {AdminField,AdminRequiredNote,firstMissingAdminField} from '../components/AdminForm';
 import {BrowserMetadataGuide} from '../components/BrowserMetadataGuide';
@@ -31,6 +33,7 @@ const moduleIcons = {
   audit: History,
   guide: BookOpen,
   test: FlaskConical,
+  ai: FlaskConical,
 };
 type User = {
   id: string;
@@ -303,6 +306,7 @@ export function AccessWorkspace({
     system: ["Access administration", "Administrasi akses", "权限管理"],
   };
   const auditLabels: Record<string, [string, string, string]> = {
+    "ai.configuration": ["AI model configuration", "Konfigurasi model AI", "AI模型配置"],
     "access.recovery.emergency_authorize": [
       "Emergency recovery authorization recorded",
       "Persetujuan pemulihan darurat dicatat",
@@ -408,6 +412,7 @@ export function AccessWorkspace({
         navigation={
           <>
             {[
+              ["ai", "AI services", "Layanan AI", "AI服务配置"],
               ["users", "Users", "Pengguna", "用户"],
               ["roles", "Roles", "Peran", "角色"],
               ["preview", "Access preview", "Pratinjau akses", "权限预览"],
@@ -415,6 +420,7 @@ export function AccessWorkspace({
               ["guide", "Guide", "Panduan", "使用指南"],
               ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
+              .filter((a) => a[0] !== "ai" || isAiAdministrator(employee))
               .filter((a) => a[0] !== "audit" || can("access.audit"))
               .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
@@ -449,16 +455,16 @@ export function AccessWorkspace({
         <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight} />
         <div className="admin-page-toolbar">
           <div>
-            <h1>{t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
+            <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
-              {t(
+              {tab === "ai" ? t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。") : t(
                 "Manage staff responsibilities and access without changing customer ownership.",
                 "Kelola tanggung jawab dan akses staf tanpa mengubah kepemilikan pelanggan.",
                 "管理员工职责和权限，不改变客户归属。",
               )}
             </p>
           </div>
-          {can("access.read") && (
+          {can("access.read") && tab !== "ai" && (
             <button disabled={busy || dirty} onClick={() => void load()}>
               {t("Reload", "Muat ulang", "重新载入")}
             </button>
@@ -487,6 +493,7 @@ export function AccessWorkspace({
             {!data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
+            {tab === 'ai' && isAiAdministrator(employee) && <AiServicePanel lang={lang} isLight={isLight}/>}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
             {tab === "guide" ? (
               <section className="access-card">

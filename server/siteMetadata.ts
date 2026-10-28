@@ -70,6 +70,8 @@ export function mountMetadataHeaders(app: Express) {
   app.use((q, r, next) => {
     if (process.env.PORTAL_DEPLOYMENT === 'company-trial' || isPrivatePath(q.path)) {
       r.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+      // Conservative default; verified public files override this in staticCache.
+      // Keeping the indexing header does not require disabling asset caching.
       if (!q.path.startsWith("/api/"))
         r.setHeader("Cache-Control", "private, no-store");
     }
