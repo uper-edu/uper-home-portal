@@ -58,7 +58,7 @@ for(const lang of ['zh','en','id']as const)test(lang+': list and follow-up share
  const renderTrack=(summary:boolean)=>view(lang,React.createElement(CrmInteractionTimelines,{lead,lang,summaryMode:summary,compact:!summary,isLight:true}));
  const list=renderTrack(false),detail=renderTrack(true);
  const labels=(html:string)=>[...html.matchAll(/class="crm-interaction-label">([^<]+)</g)].map(m=>m[1]);
- assert.deepEqual(labels(list),labels(detail));assert.deepEqual(labels(list),lang==='zh'?['有效沟通','客户互动','销售联系']:lang==='en'?['Conversation','Customer activity','Sales outreach']:['Komunikasi','Aktivitas pelanggan','Kontak sales']);
+ assert.deepEqual(labels(list),labels(detail));assert.deepEqual(labels(list),lang==='zh'?['有效沟通','客户互动','销售联系']:lang==='en'?['Conversation','Customer interactions','Sales outreach']:['Komunikasi','Interaksi pelanggan','Kontak sales']);
 });
 
 test('two-language CRM label callers have Indonesian coverage; only deliberate shared terms may remain identical',()=>{

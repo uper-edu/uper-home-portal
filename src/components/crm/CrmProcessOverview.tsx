@@ -127,15 +127,15 @@ export function CrmProcessOverview({
     {
       key: "recent_customer",
       label: t(
-        "Customer activity · 7 days",
-        "Interaksi pelanggan · 7 hari",
-        "近7天客户互动",
+        "Customers with interactions · 7 days",
+        "Pelanggan yang berinteraksi · 7 hari",
+        "近7天互动客户",
       ),
       value: String(m.recentCustomer),
       hint: t(
-        "Messages, assessments and customer-initiated contact",
-        "Pesan, tes, dan kontak dari pelanggan",
-        "客户主动消息、测评及联系",
+        "Number of customers with post-registration inquiries, assessments or customer-initiated contact/replies; excludes initial registration and profile edits. Each customer counts once, not once per interaction.",
+        "Jumlah pelanggan dengan pertanyaan, tes, atau kontak/balasan setelah pendaftaran; tidak termasuk pendaftaran awal dan perubahan profil. Setiap pelanggan dihitung sekali, bukan per interaksi.",
+        "登记后的咨询、测评及客户主动联系／回复；不含首次登记和资料修改。统计客户人数，同一客户只计一人，不统计互动次数。",
       ),
     },
     {
@@ -548,9 +548,9 @@ export function CrmProcessOverview({
           </li>
           <li>
             {t(
-              "Recent activity means the last 168 hours, using actual customer event time. Sales records and AI replies are not customer activity.",
-              "Interaksi terbaru berarti 168 jam terakhir berdasarkan waktu kejadian pelanggan. Catatan penjualan dan balasan AI tidak dihitung.",
-              "近7天为截至现在的168小时，按客户实际互动时间计算，销售录入和AI回复不计入。",
+              "Counts customers with interactions in the last 168 hours, once per customer, not interactions. Initial registration, profile edits, sales-only records and AI replies do not count.",
+              "Menghitung pelanggan yang berinteraksi dalam 168 jam terakhir, sekali per pelanggan, bukan jumlah interaksi. Pendaftaran awal, perubahan profil, catatan sales saja, dan balasan AI tidak dihitung.",
+              "统计截至现在168小时内有互动的客户人数，同一客户只计一人，不是互动次数；首次登记、资料修改、仅销售操作和AI回复不计入。",
             )}
             {t(
               " Unknown activity time: ",

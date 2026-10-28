@@ -246,7 +246,7 @@ test("overview never represents AI replies or manual stage as a real contact, re
   for (const label of [
     "当前客户",
     "首次联系未完成",
-    "近7天客户互动",
+    "近7天互动客户",
     "有效沟通覆盖",
     "当前阶段分布",
     "联系与推进分析",
@@ -317,7 +317,7 @@ test("list summary excludes detailed analytics while analysis keeps permission-g
  const metrics=processMetrics([base('summary-customer')],now);
  const props:any={metrics,lang:'zh',isLight:true,timezone:'Asia/Jakarta',leader:false,employees:[],onMetric:()=>{},onStage:()=>{}};
  const summary=renderToStaticMarkup(createElement(CrmProcessOverview,{...props,mode:'summary'}));
- for(const text of ['当前客户','首次联系未完成','近7天客户互动','有效沟通覆盖'])assert.ok(summary.includes(text),text);
+ for(const text of ['当前客户','首次联系未完成','近7天互动客户','有效沟通覆盖'])assert.ok(summary.includes(text),text);
  assert.doesNotMatch(summary,/当前阶段分布|首次实际主动联系|按当前负责人查看/);
  assert.match(summary,/crm-overview-strip/);
  assert.doesNotMatch(summary,/crm-process-scope|当前筛选客户.*截至/);

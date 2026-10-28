@@ -3496,8 +3496,8 @@
     "Komunikasi efektif"
   ],
   "客户互动": [
-    "Customer activity",
-    "Aktivitas pelanggan"
+    "Customer interactions",
+    "Interaksi pelanggan"
   ],
   "销售联系": [
     "Sales outreach",
@@ -4451,9 +4451,9 @@
     "Only the first contact requirement",
     "Hanya persyaratan kontak pertama"
   ],
-  "近7天客户互动": [
-    "Customer activity · 7 days",
-    "Interaksi pelanggan · 7 hari"
+  "近7天互动客户": [
+    "Customers with interactions · 7 days",
+    "Pelanggan yang berinteraksi · 7 hari"
   ],
   "客户主动消息、测评及联系": [
     "Messages, assessments and customer-initiated contact",

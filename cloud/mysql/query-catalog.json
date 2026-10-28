@@ -1058,6 +1058,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT c.lead_id,m.id AS message_id,m.content AS original_text,m.created_at AS message_at,m.metadata,c.id AS conversation_id,EXISTS(SELECT 1 FROM site_submissions prev WHERE prev.lead_id=s.lead_id AND prev.kind='inquiry' AND prev.created_at<s.created_at) AS prior_inquiry,EXISTS(SELECT 1 FROM crm_facts f WHERE f.lead_id=s.lead_id AND f.kind='questionnaire.submitted' AND f.created_at<=s.created_at) AS prior_questionnaire FROM messages m JOIN conversations c ON c.id=m.conversation_id JOIN site_submissions s ON s.id=JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.submissionId')) AND s.lead_id=c.lead_id AND s.kind='inquiry' WHERE c.source='contact_form' AND m.role='user' AND m.status='saved' AND JSON_CONTAINS(:p1,JSON_QUOTE(c.lead_id))": {
+    "sql": "SELECT c.lead_id,m.id AS message_id,m.content AS original_text,m.created_at AS message_at,m.metadata,c.id AS conversation_id,EXISTS(SELECT 1 FROM site_submissions prev WHERE prev.lead_id=s.lead_id AND prev.kind='inquiry' AND prev.created_at<s.created_at) AS prior_inquiry,EXISTS(SELECT 1 FROM crm_facts f WHERE f.lead_id=s.lead_id AND f.kind='questionnaire.submitted' AND f.created_at<=s.created_at) AS prior_questionnaire FROM messages m JOIN conversations c ON c.id=m.conversation_id JOIN site_submissions s ON s.id=JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.submissionId')) AND s.lead_id=c.lead_id AND s.kind='inquiry' WHERE c.source='contact_form' AND m.role='user' AND m.status='saved' AND JSON_CONTAINS(:p1,JSON_QUOTE(c.lead_id))",
+    "sources": [
+      "server/portal/interactionTimeline.ts"
+    ]
+  },
   "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'": {
     "sql": "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'",
     "sources": [

@@ -1,7 +1,7 @@
 import {effectiveContactRecords} from './crmRecordAmendments';
 /** Independent facts. No task, Tier, read-state or notification writes. */
 export type InteractionTrack='communication'|'customer'|'sales';
-export type InteractionEvent={id:string;at?:string;recordedAt?:string;timeBasis:'occurred'|'received'|'unrecorded';channel:string;source:'contact'|'chat'|'request'|'assessment';text:string;actor?:string;result?:string;direction?:string;log?:any;assessment?:any;conversationId?:string;messageId?:string;undatedCount?:number};
+export type InteractionEvent={id:string;at?:string;recordedAt?:string;timeBasis:'occurred'|'received'|'unrecorded';channel:string;source:'contact'|'chat'|'request'|'assessment'|'inquiry';text:string;actor?:string;result?:string;direction?:string;log?:any;assessment?:any;conversationId?:string;messageId?:string;undatedCount?:number};
 export type InteractionTimeline=Record<InteractionTrack,InteractionEvent|null>;
 export function interactionInstant(value:any):string|undefined {if(typeof value!=='string')return;const normalized=/^\d{4}-\d\d-\d\d \d\d:/.test(value)?value.replace(' ','T')+'Z':value;const date=normalized.match(/^(\d{4})-(\d{2})-(\d{2})T/);if(!date||Number(date[2])<1||Number(date[2])>12||Number(date[3])<1||Number(date[3])>new Date(Date.UTC(Number(date[1]),Number(date[2]),0)).getUTCDate())return;if(!/(Z|[+-]\d\d:\d\d)$/.test(normalized)||!Number.isFinite(Date.parse(normalized))||Date.parse(normalized)<=0)return;return new Date(normalized).toISOString();}
 /** Optional occurrence is never inferred from recording time. */

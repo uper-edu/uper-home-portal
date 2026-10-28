@@ -21,9 +21,9 @@ export const metricSelections = {
     "Kontak pertama terlambat",
   ],
   recent_customer: [
-    "近7天客户互动",
-    "Customer activity in 7 days",
-    "Interaksi pelanggan 7 hari",
+    "近7天互动客户",
+    "Customers with interactions · 7 days",
+    "Pelanggan yang berinteraksi · 7 hari",
   ],
   communication: ["有有效沟通记录", "With conversation", "Ada komunikasi"],
   no_communication: [
