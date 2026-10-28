@@ -1,8 +1,9 @@
+import {chatLanguage} from '../utils/chatLanguage';
 import {visitorScope} from '../services/visitorScope';
 import {PageMetadata} from '../components/PageMetadata';
 import { safeHskResult } from "../data/hskReportHistory";
 import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
-import { chatFetch, registerContact, restoreChat, finishChat } from '../services/portalChat';
+import { chatFetch, registerContact, restoreChat, finishChat, startAnotherVisitor } from '../services/portalChat';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -84,7 +85,7 @@ export default function StandAloneChat() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (!initialContext?.leadProfile) return [];
     const pending = getChatAssessmentStatus(initialContext) === 'pending';
-    const language = initialContext.preferredLanguage || 'en';
+    const language = chatLanguage(initialContext.preferredLanguage,window.location.search);
     return [{
       id: 'msg-resume', role: 'assistant', timestamp: new Date(),
       content: language === 'zh'
@@ -96,7 +97,7 @@ export default function StandAloneChat() {
   });
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [lang, setLang] = useState<'en' | 'id' | 'zh'>(initialContext?.preferredLanguage || 'en');
+  const [lang, setLang] = useState<'en' | 'id' | 'zh'>(()=>chatLanguage(initialContext?.preferredLanguage,window.location.search));
 
   // A saved promotion entry also selects the interface language for returning visitors.
   // Existing customer records, messages and assessment state are not rewritten.
@@ -145,6 +146,7 @@ export default function StandAloneChat() {
   useEffect(() => {
     const unsubscribe = subscribeStudentContext((ctx) => {
       setProfile(ctx?.leadProfile || null);
+      if(ctx?.preferredLanguage)setLang(ctx.preferredLanguage);
       setShowOnboardingModal(!ctx?.leadProfile);
     });
     return unsubscribe;
@@ -378,6 +380,16 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
   };
 
   const whatsappDraft=hskWhatsAppDraft(profile,messages.filter(m=>m.isAssessmentResult).at(-1)?.assessmentData,lang);
+  const [retakeConfirm,setRetakeConfirm]=useState(false);
+  const [switchingPerson,setSwitchingPerson]=useState(false);
+  const [personError,setPersonError]=useState(false);
+  const [switchConfirm,setSwitchConfirm]=useState(false);
+  const switchPerson=()=>{setRetakeConfirm(false);setSwitchConfirm(true);};
+  const performPersonSwitch=async()=>{
+
+    setSwitchingPerson(true);setPersonError(false);
+    try{await startAnotherVisitor();window.location.reload();}catch{setPersonError(true);setSwitchingPerson(false);}
+  };
   const hasResults=messages.some(m=>m.isAssessmentResult);
   return (
     <div className="flex flex-col h-dvh bg-slate-100 text-slate-900 font-sans">
@@ -424,17 +436,18 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         )}
         {/* Right Action: Voluntary HSK Test, Language Switcher & WhatsApp Link */}
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {profile && <button type="button" disabled={switchingPerson||isTyping} onClick={()=>void switchPerson()} className="text-xs text-slate-200 underline underline-offset-2 min-h-11 disabled:opacity-50">{switchingPerson?chooseText(lang,'正在切换…','Switching…','Mengganti…'):chooseText(lang,'切换使用者','Switch user','Ganti pengguna')}</button>}
           {/* Voluntary Assessment Quick Launcher Button */}
-          {!isTakingAssessment && !hasResults && (
+          {!isTakingAssessment && (
             <button
               type="button"
               onClick={()=>{
-                handleStartVoluntaryAssessment();
+                if(hasResults&&!readHskDraft())setRetakeConfirm(true);else handleStartVoluntaryAssessment();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer"
             >
               <Award className="w-3.5 h-3.5 text-white" />
-              <span>{readHskDraft()?chooseText(lang,'继续测评','Resume assessment','Lanjutkan tes'):chooseText(lang,'HSK 摸底测验','Take HSK Test','Ikuti Tes HSK')}</span>
+              <span>{readHskDraft()?chooseText(lang,'继续测评','Resume assessment','Lanjutkan tes'):hasResults?chooseText(lang,'重新测评','Retake assessment','Ulangi tes'):chooseText(lang,'HSK 摸底测验','Take HSK Test','Ikuti Tes HSK')}</span>
             </button>
           )}
 
@@ -477,16 +490,19 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
             title={chooseText(lang,'带上基本信息和测评摘要，在WhatsApp中编辑后手动发送','Includes your profile and assessment summary; edit and send manually in WhatsApp','Membawa profil dan ringkasan tes; edit lalu kirim sendiri di WhatsApp')}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={chooseText(lang,'通过WhatsApp联系真人顾问','Contact a human advisor on WhatsApp','Hubungi konsultan manusia via WhatsApp')}
+            aria-label={chooseText(lang,'通过WhatsApp联系真人顾问','Contact a human advisor on WhatsApp','Hubungi Konsultan UPER via WhatsApp')}
             className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
           >
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="w-5 h-5 shrink-0"><path d="M20 11.8a8 8 0 0 1-11.8 7L4 20l1.2-4.2A8 8 0 1 1 20 11.8Z" stroke="currentColor" strokeWidth="1.8"/><path d="M8.5 7.5c-.6.6-.8 1.3-.4 2.3 1 2.5 3 4.5 5.5 5.4 1 .4 1.7.1 2.2-.5l.5-1.1-2.1-1-1 1c-1.4-.6-2.7-1.8-3.3-3.2l.8-1-1-2Z" fill="currentColor"/></svg>
-            <span className="text-left leading-tight"><span className="block">{chooseText(lang,'联系真人顾问','Human advisor','Konsultan manusia')}</span><span className="block text-[10px] font-normal opacity-90">WhatsApp</span></span>
+            <span className="text-left leading-tight"><span className="block">{chooseText(lang,'联系真人顾问','Human advisor','Konsultan UPER')}</span><span className="block text-[10px] font-normal opacity-90">WhatsApp</span></span>
           </a>}
         </div>
       </header>
 
       {/* Main Dialogue Scrollable Body */}
+      {switchConfirm&&<div role="dialog" aria-modal="true" aria-label={chooseText(lang,'切换使用者','Switch user','Ganti pengguna')} onKeyDown={e=>{if(e.key==='Escape'&&!switchingPerson)setSwitchConfirm(false);if(e.key==='Tab'){const b=e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');if(e.shiftKey&&document.activeElement===b[0]){e.preventDefault();b[b.length-1]?.focus();}else if(!e.shiftKey&&document.activeElement===b[b.length-1]){e.preventDefault();b[0]?.focus();}}}} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"><div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md space-y-4"><h2 className="text-lg font-semibold">{chooseText(lang,'切换使用者','Switch user','Ganti pengguna')}</h2><p>{chooseText(lang,'下一位需要重新填写个人资料。当前使用者已保存的记录会保留；未提交的内容不会转给下一位。','The next person must enter their details. Saved records are kept; unsent content is not transferred.','Pengguna berikutnya perlu mengisi data pribadi. Catatan tersimpan tetap ada; isian yang belum dikirim tidak diteruskan.')}</p><button autoFocus disabled={switchingPerson} className="min-h-11 px-4" onClick={()=>setSwitchConfirm(false)}>{chooseText(lang,'取消','Cancel','Batal')}</button><button disabled={switchingPerson} className="min-h-11 px-4 underline" onClick={()=>void performPersonSwitch()}>{switchingPerson?chooseText(lang,'正在切换…','Switching…','Mengganti…'):chooseText(lang,'继续切换','Continue','Lanjutkan')}</button></div></div>}
+      {personError&&<p role="alert">{chooseText(lang,'切换未确认成功，请刷新后核对当前使用者，不要继续填写。','The switch could not be confirmed. Reload and check the current user before continuing.','Pergantian belum dapat dikonfirmasi. Muat ulang dan periksa pengguna sebelum melanjutkan.')}</p>}
+      {retakeConfirm&&<div role="dialog" onKeyDown={e=>{if(e.key==='Escape')setRetakeConfirm(false);if(e.key==='Tab'){const b=e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');if(e.shiftKey&&document.activeElement===b[0]){e.preventDefault();b[b.length-1]?.focus();}else if(!e.shiftKey&&document.activeElement===b[b.length-1]){e.preventDefault();b[0]?.focus();}}}} aria-modal="true" aria-label={chooseText(lang,'重新测评','Retake assessment','Ulangi tes')} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"><div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md space-y-4"><h2 className="text-lg font-semibold">{chooseText(lang,`为 ${profile?.fullName||''} 重新测评？`,`Retake the assessment for ${profile?.fullName||''}?`,`Ulangi tes untuk ${profile?.fullName||''}?`)}</h2><p>{chooseText(lang,'之前的测评记录会保留。','Previous assessment records will be kept.','Riwayat tes sebelumnya tetap disimpan.')}</p><button autoFocus type="button" className="min-h-11 px-4 underline" onClick={()=>{setRetakeConfirm(false);handleStartVoluntaryAssessment();}}>{chooseText(lang,'开始重新测评','Start retake','Mulai tes ulang')}</button><button type="button" className="min-h-11 px-4" onClick={()=>setRetakeConfirm(false)}>{chooseText(lang,'取消','Cancel','Batal')}</button><button type="button" className="block underline min-h-11" onClick={()=>void switchPerson()}>{chooseText(lang,'不是本人？切换使用者','Not you? Switch user','Bukan Anda? Ganti pengguna')}</button></div></div>}
       <main ref={mainRef} className={`flex-1 min-h-0 overflow-y-auto space-y-4 w-full mx-auto ${isTakingAssessment ? 'p-2 sm:p-4 max-w-5xl' : 'p-4 sm:p-6 max-w-4xl'}`}>
         {!isTakingAssessment && messages.map((msg) => (
           <div

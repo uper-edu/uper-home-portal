@@ -4,7 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {selectVisitorScope, visitorKey, visitorScope, verifyVisitorSession, invalidateVisitorScope, assertVisitorScope} from '../src/services/visitorScope';
 import {writeHskResult, readHskHistory, mergeHskHistoryRows, readHskDraft, writeHskDraft} from '../src/services/hskAttemptStorage';
 import {saveStudentContext,getStudentContext,subscribeStudentContext} from '../src/services/studentProfileStorage';
-import {saveHskAttempt,restoreHskHistory,registerContact} from '../src/services/portalChat';
+import {saveHskAttempt,restoreHskHistory,registerContact,startAnotherVisitor} from '../src/services/portalChat';
 import {newHskAttempt,gradeHskAttempt} from '../src/data/hskAssessment';
 const A='a'.repeat(64),B='b'.repeat(64);
 function environment() {
@@ -57,4 +57,14 @@ test('657: updating the same visitor profile preserves that visitor assessment',
  globalThis.fetch=async(url:any)=>String(url).endsWith('/session')?Response.json({registered:true,cacheScope:A}):Response.json({success:true,lead:{fullName:'TEST A Updated'}});
  await registerContact({fullName:'TEST A Updated'});assert.equal(getStudentContext()?.assessment?.result?.attempt.attemptId,r.attempt.attemptId);
  }finally{if(original)Object.defineProperty(globalThis,'location',original);else delete (globalThis as any).location;e.restore();}
+});
+
+test('explicit person switch retains A history but selects empty B and uses guarded POST',async()=>{
+ const e=environment();try{let switched=false;const r=result();writeHskResult(r);saveStudentContext({leadProfile:{fullName:'TEST A'} as any});
+ globalThis.fetch=async(url:any,init:any)=>{if(String(url).endsWith('/session'))return Response.json({registered:!switched,cacheScope:switched?B:A});assert.equal(String(url),'/api/portal/new-person');assert.equal(init.method,'POST');assert.equal(new Headers(init.headers).get('X-Visitor-Scope'),A);switched=true;return Response.json({ok:true});};
+ await startAnotherVisitor();assert.equal(visitorScope(),B);assert.equal(getStudentContext(),null);assert.deepEqual(readHskHistory(),[]);selectVisitorScope(A);assert.equal(readHskHistory()[0].attempt.attemptId,r.attempt.attemptId);
+ }finally{e.restore();}
+});
+test('failed person switch does not locally erase current profile or history',async()=>{
+ const e=environment();try{saveStudentContext({leadProfile:{fullName:'TEST A'} as any});globalThis.fetch=async(url:any)=>String(url).endsWith('/session')?Response.json({registered:true,cacheScope:A}):Response.json({error:'Unavailable'},{status:503});await assert.rejects(startAnotherVisitor(),/Unavailable/);assert.equal(visitorScope(),A);assert.equal(getStudentContext()?.leadProfile?.fullName,'TEST A');}finally{e.restore();}
 });

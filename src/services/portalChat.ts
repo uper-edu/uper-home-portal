@@ -306,3 +306,11 @@ export async function finishChat(
     throw e;
   }
 }
+
+/** Explicit shared-device person switch; server records remain intact. */
+export async function startAnotherVisitor() {
+  await session();
+  await checked(await scopedFetch('/api/portal/new-person', {method:'POST'}));
+  invalidateVisitorScope();
+  await session();
+}

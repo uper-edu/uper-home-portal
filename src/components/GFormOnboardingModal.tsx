@@ -2,7 +2,7 @@ import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils
 import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {organicCampaignName,canonicalCampaignId} from '../utils/organicCampaign';
+import {canonicalCampaignId} from '../utils/organicCampaign';
 import { 
   User, 
   Phone, 
@@ -384,14 +384,14 @@ export default function GFormOnboardingModal({
             </div>
           </div>
 
-          {campaignMeta && (
+          {campaignMeta && canonicalCampaignId(campaignMeta.id)!=='organic' && (
             <div className="mb-3 p-2.5 bg-emerald-500/15 border border-emerald-400/30 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-200">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-300 font-bold text-[10px] uppercase tracking-wider">
-                  {campaignMeta.id==='organic'?(lang==='zh'?'自然流量入口':lang==='id'?'Trafik organik':'Organic entry'):(lang === 'zh' ? '专属活动通道' : lang === 'en' ? 'Event Channel' : 'Saluran Khusus Acara')}
+                  {lang === 'zh' ? '专属活动通道' : lang === 'en' ? 'Event Channel' : 'Saluran Khusus Acara'}
                 </span>
                 <span className="font-semibold text-white">
-                  {campaignMeta.id==='organic'?organicCampaignName(lang):lang === 'zh' ? campaignMeta.name : (campaignMeta.nameEn || campaignMeta.name)}
+                  {lang === 'zh' ? campaignMeta.name : (campaignMeta.nameEn || campaignMeta.name)}
                 </span>
               </div>
               {campaignMeta.venue && (
@@ -451,7 +451,7 @@ export default function GFormOnboardingModal({
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder={lang === 'en' ? 'e.g. Budi Santoso / Kevin Tan' : 'Contoh: Budi Santoso'}
+                    placeholder={lang === 'zh' ? '例如：张三 / Budi Santoso' : lang === 'en' ? 'e.g. Budi Santoso / Kevin Tan' : 'Contoh: Budi Santoso'}
                     className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
                   />
                 </div>
@@ -475,7 +475,7 @@ export default function GFormOnboardingModal({
                     value={whatsapp}
                     onChange={(e) => {setWhatsapp(e.target.value); setPhoneRejected(false);}}
                     onBlur={() => setPhoneTouched(true)}
-                    placeholder="e.g. +62 812-3456-7890 / 0812..."
+                    placeholder={lang === 'zh' ? '例如：+62 812-3456-7890 / 0812...' : lang === 'id' ? 'Contoh: +62 812-3456-7890 / 0812...' : 'e.g. +62 812-3456-7890 / 0812...'}
                     className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
                   />
                 </div>
@@ -577,7 +577,7 @@ export default function GFormOnboardingModal({
                     type="text"
                     value={parentContact}
                     onChange={(e) => setParentContact(e.target.value)}
-                    placeholder={lang === 'en' ? "Parent's Name & WhatsApp" : "Nama & Nomor WhatsApp Orang Tua"}
+                    placeholder={lang === 'zh' ? "家长姓名与WhatsApp号码" : lang === 'en' ? "Parent's Name & WhatsApp" : "Nama & Nomor WhatsApp Orang Tua"}
                     className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 outline-none text-slate-800"
                   />
                 </div>
