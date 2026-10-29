@@ -1,3 +1,4 @@
+import {identityCrossConflict} from '../../src/utils/crmIdentityCandidates.ts';
 import {canonicalIdentity} from './identityConsolidation.ts';
 import {loadCrmAccessControls as identityControls} from './crmAccessControls.ts';
 import { normalizeContactPhone } from './trustWorkflow.ts';
@@ -21,7 +22,7 @@ export async function attachIdentity(c: any, employee: any, leads: any[], lock=f
   const {permittedRecord}=await import("../../src/utils/accessControl.ts");
   for (const lead of leads) {
     const matches = rows.filter((r: any)=>r.lead_id===lead.id);
-    lead.identityReview = {pending:matches.length>0,count:new Set(matches.map((r: any)=>r.lead_id===lead.id?r.candidate_id:r.lead_id)).size,canReview:Boolean(canReviewIdentityRole(employee,controls)&&matches.some((r:any)=>permittedRecord(employee,r.source_profile,"crm.followup")&&permittedRecord(employee,r.candidate_profile,"crm.followup"))),blocked:matches.length>0,crossConflict:new Set(matches.map((r:any)=>r.candidate_id)).size>1,...controls};
+    lead.identityReview = {pending:matches.length>0,count:new Set(matches.map((r: any)=>r.lead_id===lead.id?r.candidate_id:r.lead_id)).size,canReview:Boolean(canReviewIdentityRole(employee,controls)&&matches.some((r:any)=>permittedRecord(employee,r.source_profile,"crm.followup")&&permittedRecord(employee,r.candidate_profile,"crm.followup"))),blocked:matches.length>0,crossConflict:identityCrossConflict(matches.map((r:any)=>({id:r.candidate_id,basis:identityMatch(r.source_profile,r.candidate_profile)}))),...controls};
   }
 }
 export async function discoverIdentity(c:any,visitorId:string,leadId:string,profile:any){
@@ -77,8 +78,17 @@ export async function identityComparison(c:any,leadId:string,candidateId:string|
   const validPending=(await pendingIdentity(c)).filter((r:any)=>(r.lead_id===leadId&&r.candidate_id===candidateId)||(r.lead_id===candidateId&&r.candidate_id===leadId));
   const pending=validPending.length>0;
   const decided=relations.filter((r:any)=>r.decision!=='pending').sort((a:any,b:any)=>String(b.decided_at||'').localeCompare(String(a.decided_at||'')))[0];
-  const revision=createHash('sha256').update(JSON.stringify({leads,relations,tasks,facts,evidence})).digest('hex');
+  const subjectForGroup=identityComparisonSubject(relations);
+  const group=subjectForGroup?await pendingIdentity(c,subjectForGroup):[];
+  if(group.some((r:any)=>!canRead(r.source_profile)||!canRead(r.candidate_profile)))invalid('Lead not found',404);
+  const candidates=group.map((r:any)=>({id:r.candidate_id,name:r.candidate_profile.fullName,businessNumber:r.candidate_profile.businessNumber,owner:r.candidate_profile.owner,basis:identityMatch(r.source_profile,r.candidate_profile)}));
+  const knownRelations=[];
+  for(const candidate of candidates.filter((r:any)=>r.id!==candidateId)){
+    const known=(await c.query("SELECT lead_id,candidate_id,decision,reason,decided_by FROM identity_candidates WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision IN ('shared','different')",[candidateId,candidate.id])).rows;
+    knownRelations.push(...known);
+  }
+  const revision=createHash('sha256').update(JSON.stringify({leads,relations,tasks,facts,evidence,group,knownRelations})).digest('hex');
   const subjectId=identityComparisonSubject(relations);
   const side=(row:any)=>({recordRole:subjectId?(row.id===subjectId?"review_subject":"existing_match"):"undetermined",profile:row.profile,normalizedContact:{email:validContactEmail(row.profile.email)?row.profile.email.trim().toLowerCase():null,phone:validContactPhone(row.profile.whatsapp)?normalizeContactPhone(row.profile.whatsapp):null},tasks:tasks.filter((t:any)=>t.lead_id===row.id),facts:facts.filter((f:any)=>f.lead_id===row.id),messages:evidence.filter((m:any)=>m.lead_id===row.id)});
-  return {leadId,candidateId,aliasMatches:validPending.flatMap((r:any)=>r.aliasMatches||[]),left:side(left),right:side(right),basis,pending,subjectId,crossConflict:subjectId?new Set((await pendingIdentity(c,subjectId)).map((r:any)=>r.candidate_id)).size>1:false,decision:pending?'pending':decided?.decision||'unavailable',reason:decided?.reason||'',decidedBy:decided?.decided_by||null,decidedAt:decided?.decided_at?(String(decided.decided_at).includes('T')?decided.decided_at:String(decided.decided_at).replace(' ','T')+'Z'):null,revision};
+  return {leadId,candidateId,aliasMatches:validPending.flatMap((r:any)=>r.aliasMatches||[]),left:side(left),right:side(right),basis,pending,subjectId,candidates,knownRelations,crossConflict:identityCrossConflict(candidates),decision:pending?'pending':decided?.decision||'unavailable',reason:decided?.reason||'',decidedBy:decided?.decided_by||null,decidedAt:decided?.decided_at?(String(decided.decided_at).includes('T')?decided.decided_at:String(decided.decided_at).replace(' ','T')+'Z'):null,revision};
 }

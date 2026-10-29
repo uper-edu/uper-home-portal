@@ -334,7 +334,20 @@ export function mountTrustRoutes(
               invalid("Identity candidate changed; refresh and review", 409);
             const subjectId=found[0].lead_id,targetId=found[0].candidate_id;
             const allPending=await pendingIdentity(c,subjectId);
-            if(new Set(allPending.map((r:any)=>r.candidate_id)).size>1)invalid('IDENTITY_CROSS_CONFLICT_REQUIRED');
+            for(const candidate of [...new Set<string>(allPending.map((r:any)=>r.candidate_id))].sort())await lockLead(c,candidate,(p:any)=>requestAllowed(e,p,req,'crm.followup'),true);
+            const currentComparison=await identityComparison(c,l.id,b.candidateId,(p:any)=>requestAllowed(e,p,req,'crm.read'));
+            if(currentComparison.revision!==b.expectedComparisonRevision)invalid('Identity evidence changed; refresh and review',409);
+            if(currentComparison.crossConflict)invalid('IDENTITY_CROSS_CONFLICT_REQUIRED');
+            if(allPending.some((r:any)=>!permittedRecord(e,r.source_profile,'crm.followup')||!permittedRecord(e,r.candidate_profile,'crm.followup')||!requestAllowed(e,r.candidate_profile,req,'crm.followup')))invalid('Identity review requires access to all candidates',403);
+            // A same-person conclusion can exclude other candidates only through explicit prior decisions.
+            if(b.decision==='same'){
+              for(const other of allPending.filter((r:any)=>r.candidate_id!==targetId)){
+                const prior=(await c.query("SELECT * FROM identity_candidates WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision IN ('different','shared')",[targetId,other.candidate_id])).rows;
+                if(!prior.length)invalid('Identity review remaining candidates before consolidation',409);
+                await c.query("UPDATE identity_candidates SET decision='different',decided_by=:p3,reason=:p4,decided_at=UTC_TIMESTAMP(6) WHERE lead_id=:p1 AND candidate_id=:p2 AND decision='pending'",[subjectId,other.candidate_id,e.id,b.reason.trim()]);
+                await fact(c,subjectId,'identity.different',e.id,{candidateId:other.candidate_id,reason:b.reason.trim(),derivedFrom:{sameTargetId:targetId,priorRelations:prior.map((r:any)=>({visitorId:r.visitor_id,leadId:r.lead_id,candidateId:r.candidate_id,decision:r.decision,reason:r.reason,decidedBy:r.decided_by}))}});
+              }
+            }
             const subject=await lockLead(c,subjectId,(p:any)=>requestAllowed(e,p,req),true);
             const primary=await lockLead(c,targetId,(p:any)=>requestAllowed(e,p,req),true);
             let resolution:any={canonicalLeadId:subjectId,merged:false};
@@ -349,12 +362,13 @@ export function mountTrustRoutes(
               scope: b.decision==='same'?"logical_association_originals_preserved":"independent_identity_release",
               ...resolution,
             });
-            if(b.decision!=='same'){
+            const remaining=await pendingIdentity(c,subjectId);
+            if(b.decision!=='same'&&!remaining.length){
               const released={...subject,identityLifecycle:'independent',identityDecidedAt:new Date().toISOString()};
               await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[subjectId,released]);
               await activateIdentityLead(c,released,e.id);
             }
-            return { saved: true, leadId: l.id,...resolution };
+            return { saved: true, leadId: l.id,remainingCandidates:remaining.length,nextCandidateId:remaining[0]?.candidate_id,...resolution };
           });
         }),
       );

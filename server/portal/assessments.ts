@@ -1,3 +1,4 @@
+import {sameHskSubmission} from '../../src/utils/hskSubmissionIdentity.ts';
 import {engagement,fact} from "./trustWorkflow.ts";
 import type { Express } from "express";
 import { createHash } from "node:crypto";
@@ -9,6 +10,12 @@ import {
 import { pool, tx, event } from "./store.ts";
 import { visitor, wrap, fail } from "./runtime.ts";
 export function mountHskAssessments(app: Express) {
+  app.get('/api/portal/assessments/:attemptId',wrap(async(req,res)=>{
+    const v=await visitor(req,res);
+    const row=(await pool.query('SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2',[req.params.attemptId,v.id])).rows[0];
+    if(!row)fail(404,'Attempt not found');
+    res.set('Cache-Control','no-store').json({result:row.result});
+  }));
   app.get(
     "/api/portal/assessments",
     wrap(async (req, res) => {
@@ -48,18 +55,15 @@ export function mountHskAssessments(app: Express) {
         ).rows[0];
         const prior = (
           await c.query(
-            "SELECT visitor_id,input_hash,result FROM hsk_attempts WHERE id=:p1",
+            "SELECT visitor_id,input_hash,attempt,result FROM hsk_attempts WHERE id=:p1",
             [attempt.attemptId],
           )
         ).rows[0];
         if (prior) {
           if (prior.visitor_id !== v.id) fail(404, "Attempt not found");
-          if (prior.input_hash !== digest)
+          if (prior.input_hash !== digest && !sameHskSubmission(prior.attempt,attempt))
             fail(409, "Attempt already submitted with different answers");
-          return {
-            ...gradeHskAttempt(attempt, lang),
-            saveStatus: "saved" as const,
-          };
+          return {...prior.result,saveStatus:"saved" as const};
         }
         const calculated = {
           ...gradeHskAttempt(attempt, lang),

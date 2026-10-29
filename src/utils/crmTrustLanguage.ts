@@ -1,6 +1,8 @@
 import {outreachText} from './crmOutreach';
 import type { CrmLanguage } from "./crmLanguage";
 const messages: Record<string, [string, string]> = {
+  "Identity review requires access to all candidates": ["Verifikasi memerlukan akses ke semua kandidat", "无权核实全部候选客户"],
+  "Identity review remaining candidates before consolidation": ["Verifikasi dan singkirkan kandidat lain sebelum menggabungkan", "请先核实并排除其他候选客户，再确认归入"],
   "Enter task content and a future time with timezone": ["Isi tugas dan waktu mendatang", "请填写任务内容和未来时间"],
   "Enter the specific task action": ["Isi tindakan spesifik tugas", "请填写任务的具体动作"],
   "Enter the task purpose": ["Isi tujuan tugas", "请填写任务用途"],

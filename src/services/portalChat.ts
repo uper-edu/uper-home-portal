@@ -313,3 +313,11 @@ export async function startAnotherVisitor() {
   invalidateVisitorScope();
   await session();
 }
+
+/** Recovery reads one attempt owned by the active visitor; never returns another visitor's result. */
+export async function restoreHskAttempt(attemptId:string, expectedScope=visitorScope()){
+ await session();assertVisitorScope(expectedScope);
+ const res=await checked(await scopedFetch('/api/portal/assessments/'+encodeURIComponent(attemptId),{signal:AbortSignal.timeout(15000)}));
+ const data=await scopedJson(res);assertVisitorScope(expectedScope);
+ return data.result as import('../data/hskAssessment').HskResult;
+}

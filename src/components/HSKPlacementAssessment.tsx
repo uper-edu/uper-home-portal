@@ -24,7 +24,7 @@ import {
   writeHskResult,
   readHskHistoryState,
 } from "../services/hskAttemptStorage";
-import { saveHskAttempt, restoreHskHistory } from "../services/portalChat";
+import { saveHskAttempt, restoreHskHistory, restoreHskAttempt } from "../services/portalChat";
 import { HskPlayback, type PlaybackStatus } from "../services/hskPlayback";
 import { HskExamImage } from "./HskExamVisuals";
 import { HskPinyinText } from "./HskPinyinText";
@@ -65,6 +65,7 @@ export default function HSKPlacementAssessment({
   const [pending, setPending] = useState<HskResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [submissionConflict,setSubmissionConflict]=useState(false);
   const [storageOK, setStorageOK] = useState(true);
   const [history, setHistory] = useState(() => readHskHistoryState(lang));
   const [historical, setHistorical] = useState<HskResult | null>(null);
@@ -289,6 +290,13 @@ export default function HSKPlacementAssessment({
     setPending(null);
     if (!old?.reviewing) activate(a, i, old?.audioPositionSec || 0, true);
   };
+  const recoverSaved = async()=>{
+    if(!attempt||savingRef.current)return;
+    savingRef.current=true;setSaving(true);setSaveError(false);
+    try{const saved=await restoreHskAttempt(attempt.attemptId,ownerScope);writeHskResult(saved);clearHskDraft();if(mounted.current)onComplete(saved);}
+    catch{if(mounted.current)setSaveError(true);}
+    finally{savingRef.current=false;if(mounted.current)setSaving(false);}
+  };
   const submit = async () => {
     if (!attempt || savingRef.current) return;
     try { assertVisitorScope(ownerScope); } catch { setSaveError(true); return; }
@@ -309,8 +317,8 @@ export default function HSKPlacementAssessment({
       writeHskResult(saved);
       clearHskDraft();
       if (mounted.current) onComplete(saved);
-    } catch {
-      if (mounted.current) setSaveError(true);
+    } catch (e) {
+      if (mounted.current) {setSaveError(true);setSubmissionConflict((e as Error).message==="Attempt already submitted with different answers");}
     } finally {
       savingRef.current = false;
       if (mounted.current) setSaving(false);
@@ -521,10 +529,12 @@ export default function HSKPlacementAssessment({
         <button
           disabled={saving}
           className={button + " bg-primary-700 text-white"}
-          onClick={() => void submit()}
+          onClick={() => void (submissionConflict?recoverSaved():submit())}
         >
           {saving
             ? t("正在提交…", "Submitting…", "Mengirim…")
+            : submissionConflict
+              ? t("查看已保存结果并进入咨询", "View saved result and continue", "Lihat hasil tersimpan dan lanjut")
             : saveError
               ? t("重试提交", "Retry submission", "Coba kirim lagi")
               : t(
@@ -535,7 +545,7 @@ export default function HSKPlacementAssessment({
         </button>
         {saveError && (
           <p role="alert">
-            {t(
+            {submissionConflict?t("这份测评已保存，但本页答卷不同。原成绩未被覆盖，可查看已保存结果。", "This assessment is saved, but this page contains a different submission. The original result was not overwritten; you can view it.", "Tes ini sudah tersimpan, tetapi kiriman halaman ini berbeda. Hasil asli tidak ditimpa; Anda dapat melihatnya."):t(
               "结果暂存，服务端保存未完成，请重试。",
               "Results are stored locally; server saving failed. Please retry.",
               "Hasil tersimpan lokal; penyimpanan server gagal. Coba lagi.",
