@@ -9,6 +9,8 @@ import {pendingIdentity,attachIdentity,identityMatch,identityComparison,identity
 import {outreachPolicy,isCrmManager,canReviewIdentityRole} from '../../src/utils/crmOutreach.ts';
 import { permittedRecord } from "../../src/utils/accessControl.ts";
 import { allowed } from "./identity.ts";
+import {customerDimensionCatalog} from './customerInsights.ts';
+import {CRM_DIMENSION_CATALOG_VERSION} from '../../src/utils/crmDimensionCatalog.ts';
 import {
   fact,
   operation,
@@ -21,6 +23,12 @@ export function mountTrustRoutes(
   app: any,
   { wrap, leadAccess, requestAllowed, staff }: any,
 ) {
+  app.get('/api/crm/dimensions',wrap(async(req:any,res:any)=>{
+    const e=await staff(req);
+    if(!e.permissions?.includes('crm.read'))invalid('CRM_READ_PERMISSION_REQUIRED',403);
+    const {pool}=await import('./store.ts');
+    res.set('Cache-Control','no-store').json({version:CRM_DIMENSION_CATALOG_VERSION,dimensions:await customerDimensionCatalog(pool)});
+  }));
   app.get('/api/crm/leads/:id/extractions',wrap(async(req:any,res:any)=>{
     const {l}=await leadAccess(req,'crm.read');const {pool}=await import('./store.ts');
     const rows=(await pool.query(`SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50`,[l.id])).rows;

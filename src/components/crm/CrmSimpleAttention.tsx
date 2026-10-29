@@ -1,3 +1,4 @@
+import {CrmHistoryAccess} from './CrmHistoryAccess';
 import {CrmListAgreements} from './CrmListAgreements';
 import {useCrmUiText} from './CrmUiLanguage';
 import {groupFollowupInteractions} from '../../utils/crmFollowupGrouping';
@@ -15,23 +16,24 @@ import {CrmFactLedger} from './CrmFactLedger';
 import {CrmInformationHint} from './CrmImportantInformation';
 import {CrmFollowupEvent} from './CrmFollowupEvent';
 import {CrmInteractionTimelines} from './CrmInteractionTimelines';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,useContext} from 'react';
 import {formatCrmOperatingTime,viewerTimeZone} from '../../utils/crmOperatingTime';
 import {dynamicProfileHints} from '../../utils/crmDynamicProfile';
 import {followupOverview} from '../../utils/crmFollowupOverview';
 import {crmMessageTimestamp} from '../../utils/crmMessageTime';
 import {agreementTime} from '../../utils/crmProgressDetails';
-export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,onViewAssessment,onViewProfile,onViewStage,stageFeedback,now:clockNow}:any){
- const ui=useCrmUiText(lang);
+export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,sourceFocus,onViewAssessment,onViewProfile,onViewStage,stageFeedback,now:clockNow}:any){
+ const ui=useCrmUiText(lang),openHistory=useContext(CrmHistoryAccess);
 
  const [clock,setClock]=useState(Date.now());const now=clockNow??clock;
  useEffect(()=>{if(clockNow!==undefined)return;const timer=setInterval(()=>setClock(Date.now()),60000);return()=>clearInterval(timer);},[clockNow]);
  const [data,setData]=useState<any>(null),[error,setError]=useState(false),[retry,setRetry]=useState(0),[ledgerOpen,setLedgerOpen]=useState(false),[focusRequest,setFocusRequest]=useState<any>(null),[editing,setEditing]=useState(false),[factProjection,setFactProjection]=useState<any>({state:'loading',events:[]});const ledger=useRef<HTMLDetailsElement>(null),token=useRef(0);
- useEffect(()=>{if(recentSourceId){setLedgerOpen(true);setFocusRequest({id:recentSourceId,mode:'view',token:++token.current});}},[recentSourceId]);
+ useEffect(()=>{const id=sourceFocus?.id||recentSourceId;if(id){setLedgerOpen(true);setFocusRequest({id,mode:'view',token:++token.current});}},[sourceFocus,recentSourceId]);
  useEffect(()=>{let cancelled=false;setError(false);setData(null);fetch(`/api/crm/leads/${lead.id}/trust`).then(async r=>{if(!r.ok)throw Error();const d=await r.json();if(!cancelled)setData(d);}).catch(()=>{if(!cancelled)setError(true);});return()=>{cancelled=true};},[lead.id,lead.simpleRevision,retry]);
+ useEffect(()=>{if(!openHistory)return;let active=true;setFactProjection({state:"loading",events:[]});fetch(`/api/crm/leads/${lead.id}/facts`).then(async r=>{if(!r.ok)throw Error();return r.json();}).then(d=>{if(active)setFactProjection({state:"ready",events:d.events});}).catch(()=>{if(active)setFactProjection({state:"error",events:[]});});return()=>{active=false;};},[lead.id,lead.simpleRevision,!!openHistory]);
  const extraction=useCrmExtractions(lead.id,lead.simpleRevision,recentSourceId,onRefresh);
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
- const evidence=(id:string,mode='view',withdrawCommitmentId?:string)=>{if(mode==='amend'&&editing)return;setLedgerOpen(true);setFocusRequest({id,mode,withdrawCommitmentId,token:++token.current});};
+ const evidence=(id:string,mode='view',withdrawCommitmentId?:string)=>{if(mode==='view'&&openHistory){openHistory({id});return;}if(mode==='amend'&&editing)return;setLedgerOpen(true);setFocusRequest({id,mode,withdrawCommitmentId,token:++token.current});};
  const freshHints=dynamicProfileHints(lead,now);
  const hints=[...(lead.informationHints||freshHints).filter((h:any)=>h.kind!=='change'),...freshHints.filter((h:any)=>h.kind==='change')],requests=[...(data?.requests||[])].sort((a:any,b:any)=>Date.parse(b.created_at)-Date.parse(a.created_at));
  const communication=projectInteractionTimeline(lead).communication;
@@ -70,7 +72,7 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  {lead.nextAction&&<details className="crm-followup-secondary"><summary>{ui("客户人工备注")}</summary><p className="crm-progress-original">{lead.nextAction}</p></details>}
  </section>
 
- <details className="crm-followup-source-section" open={ledgerOpen} ref={ledger} onToggle={e=>setLedgerOpen(e.currentTarget.open)}><summary><span>{ui("历史记录与依据")}</span><span>{ui("按原始互动追溯")}</span></summary><div className="crm-followup-source-body"><CrmFactLedger lang={lang} key={lead.id} onProjection={setFactProjection} hideHeading focusRequest={focusRequest} onEditing={setEditing} leadId={lead.id} lead={lead} onDirty={onDirty} onBusy={onBusy} suspended={modalSuspended} canEditProfile={canEditProfile} isLight={isLight} revision={lead.simpleRevision} timezone={timezone} disabled={disabled} onChanged={onRefresh} extractions={extraction.rows} extractionLoading={extraction.loading} extractionError={extraction.error} onReloadExtraction={extraction.reload} onViewAssessment={onViewAssessment} onSource={onSource} requests={data?.requests||[]}/></div></details>
+ {(!openHistory||focusRequest?.mode==='amend')&&<details className="crm-followup-source-section" open={ledgerOpen} ref={ledger} onToggle={e=>setLedgerOpen(e.currentTarget.open)}><summary><span>{ui("历史记录与依据")}</span><span>{ui("按原始互动追溯")}</span></summary><div className="crm-followup-source-body"><CrmFactLedger lang={lang} key={lead.id} onProjection={setFactProjection} hideHeading focusRequest={focusRequest} onEditing={setEditing} leadId={lead.id} lead={lead} onDirty={onDirty} onBusy={onBusy} suspended={modalSuspended} canEditProfile={canEditProfile} isLight={isLight} revision={lead.simpleRevision} timezone={timezone} disabled={disabled} onChanged={onRefresh} extractions={extraction.rows} extractionLoading={extraction.loading} extractionError={extraction.error} onReloadExtraction={extraction.reload} onViewAssessment={onViewAssessment} onSource={onSource} requests={data?.requests||[]}/></div></details>}
  {children}
  </div>;
 }

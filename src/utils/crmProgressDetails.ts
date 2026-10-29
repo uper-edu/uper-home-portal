@@ -41,9 +41,18 @@ export function progressDetails(log:any,lead:any,requests:any[],lang:CrmLanguage
  return rows;
 }
 
-/** History separates the recorded contact outcome from proven first-requirement completion. */
+/** Current status is linked by stable source identity, never by similar wording. */
+export function historyAgreementStatus(log:any,lead:any){
+ const ids=[log.id,log.requestId].filter(Boolean);
+ const linked=(lead.commitments||[]).filter((v:any)=>ids.includes(v.sourceId));
+ if(linked.length!==1)return '当前状态暂不可用';
+ return ({active:'当前有效',fulfilled:'已履行',cancelled:'已取消',rescheduled:'已改约',withdrawn:'误记已撤回'}as Record<string,string>)[linked[0].status]||'当前状态暂不可用';
+}
+/** Historical values remain immutable; current agreement state is a separate read-only row. */
 export function historyProgressDetails(log:any,lead:any,requests:any[],timezone:string){
- return progressDetails(log,lead,requests,'zh',timezone)
+ const rows= progressDetails(log,lead,requests,'zh',timezone)
   .filter(row=>!['实际发生时间','记录类型','联系渠道','本次记录的阶段事实','新增购买信号'].includes(row.label)&&!row.label.startsWith('资料更新 · '))
-  .map(row=>row.label==='首次跟进处理结果'?{label:'首次联系要求',value:'当次已完成'}:row);
+  .map(row=>row.label==='首次跟进处理结果'?{label:'首次联系要求',value:'当次已完成'}:row.label==='新增约定'?{...row,label:'当次登记的客户约定'}:row.label==='约定时间'?{...row,label:'当次约定时间'}:row);
+ if(log.commitment)rows.push({label:'该约定当前状态',value:historyAgreementStatus(log,lead)});
+ return rows;
 }

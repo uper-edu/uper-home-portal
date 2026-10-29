@@ -1,3 +1,5 @@
+import {CLASS_EQUIPMENT_KEY,classEquipmentWords} from './crmClassEquipment';
+import {aiProtectedFieldLabels} from './crmAiProfilePolicy';
 import {historyChanges,type HistoryGroup} from './crmHistoryTimeline';
 import {profileFields} from './crmDynamicProfile';
 import {sameProfileValue} from './crmFieldValues';
@@ -48,9 +50,10 @@ export function historyInformation(group:HistoryGroup,allRows:any[]=group.extrac
  for(const row of rows.filter(r=>r.status==='completed')){
   (row.output?.observations||[]).forEach((o:any,i:number)=>{
    const superseded=!!active.find(e=>e.row.id===row.id&&observationKey(e.observation)===observationKey(o)&&e.observation.quote===o.quote)?.supersededBy,scope=rowScope(row);
-   const linked=items.filter(item=>o.kind==='field'&&item.scope===scope&&item.field===o.field&&item.extractionIds.includes(row.id)&&sameProfileValue(o.field,item.value,o.value)&&item.status===({apply:'applied',difference:'difference'}as any)[o.decision]);
+   const adoptedValue=o.decision==='apply'&&Object.hasOwn(o,'appliedValue')?o.appliedValue:o.value;
+   const linked=items.filter(item=>o.kind==='field'&&item.scope===scope&&item.field===o.field&&item.extractionIds.includes(row.id)&&sameProfileValue(o.field,item.value,adoptedValue)&&item.status===({apply:'applied',difference:'difference'}as any)[o.decision]);
    const explicitCandidates=items.filter(item=>o.kind==='field'&&item.scope===scope&&item.field===o.field&&row.input?.explicitFields?.includes(o.field)&&item.sources.includes('人工填写')&&item.manualSourceId===row.source_id);const sameExplicit=explicitCandidates.filter(item=>sameProfileValue(o.field,item.value,o.value));const explicit=sameExplicit.length===1?sameExplicit:explicitCandidates;
-   const item=linked.length===1?linked[0]:!linked.length&&explicit.length===1?explicit[0]:add({id:'ai:'+row.id+':'+i,scope,kind:o.kind,field:o.field,label:profileFields[o.field]||signalLabels[o.field]||stageEventLabels[o.field]||'约定陈述（未经销售确认）',value:o.value,status:({apply:'applied',difference:'difference',evidence:'evidence',suggestion:'suggestion'}as any)[o.decision]||'unknown',observation:o});
+   const item=linked.length===1?linked[0]:!linked.length&&explicit.length===1?explicit[0]:add({id:'ai:'+row.id+':'+i,scope,kind:o.kind,field:o.field,label:o.kind==='insight'&&o.field===CLASS_EQUIPMENT_KEY?classEquipmentWords.zh:o.dimension?.labels?.zh||profileFields[o.field]||aiProtectedFieldLabels[o.field]||signalLabels[o.field]||stageEventLabels[o.field]||'原文中的安排描述',value:adoptedValue,status:o.kind==='insight'&&o.decision==='apply'?(o.operation==='withdraw'?'withdrawn':o.basis==='inferred'?'tentative':'applied'):({review:'review',apply:'applied',difference:'difference',evidence:'evidence',suggestion:'suggestion'}as any)[o.decision]||'unknown',observation:o});
    if(explicit.includes(item)&&!sameProfileValue(o.field,item.value,o.value)&&!item.aiReferences.some(ref=>sameProfileValue(o.field,ref.value,o.value)&&ref.reason===o.reason))item.aiReferences.push({value:o.value,reason:o.reason||'仅供参考，未覆盖人工填写'});
    item.observation=o;item.superseded=superseded;item.extractionIds=unique([...item.extractionIds,row.id]);item.sources=unique([...item.sources,item.sources.includes('人工填写')&&row.input?.explicitFields?.includes(o.field)?'AI参考':'AI提取']);item.reasons=unique([...item.reasons,o.reason]);
    if(o.quote){const citation={id:row.source_type+':'+row.source_id+':'+o.quote,scope,quote:o.quote,start:o.start,sourceText:row.input?.text||''};if(!item.citations.some(c=>c.id===citation.id))item.citations.push(citation);}

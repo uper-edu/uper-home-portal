@@ -10,5 +10,5 @@ import {CrmProfileEditor} from '../src/components/crm/CrmProfileFields';
 test('complete needs and source actions remain in Profile after removal from Follow-up',()=>{
  const p={...lead,concerns:['担心时间冲突'],communicationLanguage:'id',preferredChannel:'WhatsApp'};
  const html=renderToStaticMarkup(React.createElement(CrmProfileEditor,{lead:p,timezone:'Asia/Jakarta',isLight:true}));
- for(const value of ['学习背景与需求','周六晚','2026年11月','1,800,000','担心时间冲突','调整学习需求'])assert.ok(html.includes(value),value);
+ for(const value of ['客户洞察','周六晚','2026年11月','1,800,000','担心时间冲突','人工纠正学习需求'])assert.ok(html.includes(value),value);
 });

@@ -1,3 +1,7 @@
+import {CrmCustomer360Button} from '../components/crm/CrmCustomer360Button';
+import {crmUiText} from '../utils/crmUiText';
+import {CrmHistoryAccess} from '../components/crm/CrmHistoryAccess';
+import {CrmCustomerHistoryWindow} from '../components/crm/CrmCustomerHistoryWindow';
 import {progressSaveSummary} from '../utils/crmProgressRecord';
 import {CrmIdentityAction} from '../components/crm/CrmIdentityAction';
 import {CrmOwnerEditor} from '../components/crm/CrmOwnerEditor';
@@ -334,6 +338,12 @@ function CrmWorkspace({
   const [attendanceDirty,setAttendanceDirty]=useState(false);
   const [attendanceReset,setAttendanceReset]=useState(0);
   const [profileSave,setProfileSave]=useState("");
+  const [insightSourceFocus,setInsightSourceFocus]=useState<any>();
+  const [historyRequest,setHistoryRequest]=useState<any>(null);
+  const [historyConversationBack,setHistoryConversationBack]=useState<any>(null);
+  const openCustomerHistory=(request:any={})=>{if(selectedLead)setHistoryRequest((current:any)=>({...request,previous:request.returnId&&current?{...current,id:request.returnId,search:request.returnSearch,filter:request.returnFilter,fields:undefined,quote:undefined}:current?.leadId===selectedLead.id&&current.id!==request.id?current:current?.previous,leadId:selectedLead.id,token:Date.now()}));};
+  useEffect(()=>{setHistoryRequest(null);setHistoryConversationBack(null);},[selectedLead?.id]);
+  useEffect(()=>{setInsightSourceFocus(undefined)},[selectedLead?.id]);
   const [signalFocus,setSignalFocus]=useState<{id:string;token:number}|undefined>();
   const [workflowNotice,setWorkflowNotice]=useState<any>(null);
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
@@ -1003,7 +1013,18 @@ function CrmWorkspace({
   const openContactPreview=()=>{if(contactPreview){document.querySelector<HTMLElement>(".crm-contact-preview")?.focus({preventScroll:true});return;}const finish=()=>{setContactPreview(true);};if(discardDraft(finish))finish();};
   const [taskOperation,setTaskOperation]=useState<'progress'|'close'>('progress');
   const startContactRecord=()=>{if(!selectedLead||!canEditLead(selectedLead,'crm.followup'))return;const finish=()=>{setWorkflowNotice(null);setAdministrative(false);setTaskOperation('progress');setWorkflowTask(undefined);setWorkflowSource(undefined);setIsAddLogOpen(true);};if(discardDraft(finish))finish();};
+  const viewHistoryConversation=(source:any)=>{
+    if(!selectedLead)return;
+    const finish=()=>{
+      const details=source.details||{},message=selectedLead.chatTranscript?.find((m:any)=>m.conversation_id===details.sourceConversationId&&(m.id===details.sourceMessageId||m.request_id===details.sourceMessageId));
+      setHistoryConversationBack({leadId:selectedLead.id,tab:activeDrawerTab,request:{...historyRequest,id:source.returnId,search:source.returnSearch,filter:source.returnFilter}});
+      setHistoryRequest(null);
+      setConversationReturn({conversationId:details.sourceConversationId,messageId:message?.id||details.sourceMessageId,requestId:(message as any)?.request_id||details.sourceMessageId});
+      setActiveDrawerTab("chat");writeLeadRoute(selectedLead.id,"chat");
+    };if(discardDraft(finish))finish();
+  };
   const viewTaskSource=(task:any)=>{
+    if(selectedLead&&task.details?.sourceMessageId){openCustomerHistory({id:task.details.sourceMessageId});return;}
     const finish=()=>{const message=selectedLead?.chatTranscript?.find((m:any)=>m.role==="user"&&m.conversation_id===task.details.sourceConversationId&&(m.id===task.details.sourceMessageId||m.request_id===task.details.sourceMessageId));setConversationReturn({conversationId:task.details.sourceConversationId,messageId:message?.id,requestId:(message as any)?.request_id||task.details.sourceMessageId,taskId:task.id});setActiveDrawerTab("chat");};if(discardDraft(finish))finish();
   };
   const openTaskWorkflow=(task:any,lead=selectedLead,discarded=false,operation:'progress'|'close'='progress')=>{
@@ -1024,6 +1045,7 @@ function CrmWorkspace({
     const finish=()=>{
       tabViewport.current = {pageY:window.scrollY, keyboard, tab};
       setTaskFocus(undefined);
+      setInsightSourceFocus(undefined);
       setConversationReturn(null);
       setActiveDrawerTab(tab);
       if(selectedLead)writeLeadRoute(selectedLead.id,tab);
@@ -1049,6 +1071,7 @@ function CrmWorkspace({
             </span>} actions={<>
 
             <div className="crm-detail-contact-actions" role="group" aria-label={t("Customer actions","客户操作")}>
+            <CrmCustomer360Button lang={lang} onClick={()=>openCustomerHistory({})}/>
             {canClaimForContact(employee,selectedLead) && (
                 <button
                   type="button"
@@ -1100,6 +1123,8 @@ function CrmWorkspace({
             <>
 
             <CrmCustomerProfile
+              onInsightsRefresh={()=>void fetchLeads(true)}
+              onInsightSource={e=>openCustomerHistory({id:e.root?.id||e.sourceId,quote:e.quote})}
               signalFocus={signalFocus}
               onSignalSource={e=>viewTaskSource({id:e.taskId,details:{sourceConversationId:e.conversationId,sourceMessageId:e.messageId}})}
               onSignalTask={id=>openTaskList(id)}
@@ -1124,21 +1149,21 @@ function CrmWorkspace({
             />
           )}
           {activeDrawerTab === "chat" && (
-            <CrmCustomerConversations
+            <>{historyConversationBack?.leadId===selectedLead.id&&<button type="button" className="crm-work-link" onClick={()=>{const back=historyConversationBack;setActiveDrawerTab(back.tab);writeLeadRoute(selectedLead.id,back.tab);setHistoryRequest({...back.request,leadId:selectedLead.id,token:Date.now()});setHistoryConversationBack(null);}}>{crmUiText("返回客户全景",lang)}</button>}<CrmCustomerConversations
               isLight={isLight}
               onOpenTask={(taskId:string,message:any)=>openTaskList(taskId,message)}
               conversationContext={conversationReturn}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
-            />
+            /></>
           )}
           {activeDrawerTab === "activities" && <div className="crm-followup-sections">
             {!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{selectedLead.identityReview?.pending?(lang==='zh'?'请优先核实身份；核实后再认领或开展销售跟进。':lang==='id'?'Prioritaskan verifikasi identitas; klaim atau tindak lanjut penjualan dilakukan setelah verifikasi.':'Prioritize identity review before claiming or starting sales follow-up.'):t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
             {conversationReturn&&<button type="button" className="crm-work-link" onClick={()=>changeCustomerTab("chat")}>{t("Return to conversation","返回对话")}</button>}
             {taskOpening&&<p role="status">{t("Loading task context…","正在加载任务依据…")}</p>}
             <CrmTrustPanel feedback={<>{workflowNotice?.taskChange&&<CrmSaveFeedback lang={lang} state="saved">{({create:lang==='zh'?'已新增独立任务':lang==='id'?'Tugas terpisah dibuat':'Separate task created',supplement:lang==='zh'?'已补充原任务，期限不变':lang==='id'?'Informasi tugas ditambahkan; tenggat tetap':'Task information added; deadline unchanged',reschedule:lang==='zh'?'已更新执行时间，原期限及历史保留':lang==='id'?'Waktu pelaksanaan diperbarui; tenggat dan riwayat awal tetap':'Execution time updated; original deadline and history retained',replace:lang==='zh'?'已取消选定原任务并建立替代任务，其他任务保留':lang==='id'?'Tugas lama terpilih dibatalkan dan diganti; tugas lain tetap':'Selected task cancelled and replaced; other tasks retained'}as any)[workflowNotice.taskChange]}</CrmSaveFeedback>}
-              {workflowNotice?.leadId===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">{typeof workflowNotice.contactRecorded==='boolean' ? progressSaveSummary(workflowNotice,lang) : workflowNotice.cancelled ? (lang==='zh'?'任务已终止':lang==='id'?'Tugas dihentikan':'Task terminated') : workflowNotice.completed ? (lang==='zh'?'首次跟进要求已处理':lang==='id'?'Tindak lanjut pertama diproses':'First follow-up processed') : workflowNotice.contactPlanChange ? ({review_cancelled:lang==='zh'?'复查安排已更新':lang==='id'?'Pengaturan tinjauan diperbarui':'Review arrangement updated',review_scheduled:lang==='zh'?'已安排复查任务':lang==='id'?'Tugas tinjauan dijadwalkan':'Review task scheduled',stopped:lang==='zh'?'已停止主动联系':lang==='id'?'Kontak proaktif dihentikan':'Proactive contact stopped',restored:lang==='zh'?'联系限制已更新':lang==='id'?'Pembatasan kontak diperbarui':'Contact restriction updated'} as any)[workflowNotice.contactPlanChange] : (lang==='zh'?'进展已保存':lang==='id'?'Progres disimpan':'Progress saved')}</CrmSaveFeedback>}{lang==='zh'&&workflowNotice?.profileFieldResults?.length>0&&<p role="status">{profileSaveSummary(workflowNotice.profileFieldResults)}完整结果见最新跟进记录。</p>}</>} onViewStage={openStageEditor}  onViewProfile={openLearningNeeds} onViewAssessment={()=>{setActiveDrawerTab("assessment");writeLeadRoute(selectedLead.id,"assessment");}} recentSourceId={workflowNotice?.leadId===selectedLead.id?workflowNotice.logId:undefined} key={selectedLead.id+trustReset} canEditProfile={canEditLead(selectedLead)} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} timezone={filterTimezone} disabled={!canEditLead(selectedLead,"crm.followup")||taskOpening} onRefresh={()=>{setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}} focusTask={taskFocus} onProcess={(task:any,operation:any)=>openTaskWorkflow(task,selectedLead,false,operation)} onSource={(task:any)=>viewTaskSource(task)}
+              {workflowNotice?.leadId===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">{typeof workflowNotice.contactRecorded==='boolean' ? progressSaveSummary(workflowNotice,lang) : workflowNotice.cancelled ? (lang==='zh'?'任务已终止':lang==='id'?'Tugas dihentikan':'Task terminated') : workflowNotice.completed ? (lang==='zh'?'首次跟进要求已处理':lang==='id'?'Tindak lanjut pertama diproses':'First follow-up processed') : workflowNotice.contactPlanChange ? ({review_cancelled:lang==='zh'?'复查安排已更新':lang==='id'?'Pengaturan tinjauan diperbarui':'Review arrangement updated',review_scheduled:lang==='zh'?'已安排复查任务':lang==='id'?'Tugas tinjauan dijadwalkan':'Review task scheduled',stopped:lang==='zh'?'已停止主动联系':lang==='id'?'Kontak proaktif dihentikan':'Proactive contact stopped',restored:lang==='zh'?'联系限制已更新':lang==='id'?'Pembatasan kontak diperbarui':'Contact restriction updated'} as any)[workflowNotice.contactPlanChange] : (lang==='zh'?'进展已保存':lang==='id'?'Progres disimpan':'Progress saved')}</CrmSaveFeedback>}{lang==='zh'&&workflowNotice?.profileFieldResults?.length>0&&<p role="status">{profileSaveSummary(workflowNotice.profileFieldResults)}完整结果见最新跟进记录。</p>}</>} onViewStage={openStageEditor}  onViewProfile={openLearningNeeds} onViewAssessment={()=>{setActiveDrawerTab("assessment");writeLeadRoute(selectedLead.id,"assessment");}} sourceFocus={insightSourceFocus?.leadId===selectedLead.id?insightSourceFocus:undefined} recentSourceId={workflowNotice?.leadId===selectedLead.id?workflowNotice.logId:undefined} key={selectedLead.id+trustReset} canEditProfile={canEditLead(selectedLead)} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} timezone={filterTimezone} disabled={!canEditLead(selectedLead,"crm.followup")||taskOpening} onRefresh={()=>{setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}} focusTask={taskFocus} onProcess={(task:any,operation:any)=>openTaskWorkflow(task,selectedLead,false,operation)} onSource={(task:any)=>viewTaskSource(task)}
               command={followupCommand} onRequestEdit={requestFollowupEdit} workflowOpen={false} modalSuspended={Boolean(pendingNavigation)} workflowTask={workflowTask} onIdentity={()=>openIdentityReview(selectedLead.id)} journey={journeyTimelineEvents}
               context={({data,error}:any)=><CrmFollowupContext lead={selectedLead} lang={lang} timezone={filterTimezone} onSource={viewTaskSource} tasks={data?.tasks} facts={data?.facts} requests={data?.requests} taskError={error} onTask={openTaskList}/>}
             >
@@ -1182,7 +1207,7 @@ function CrmWorkspace({
             />
   );
   return (
-    <div
+    <CrmHistoryAccess.Provider value={openCustomerHistory}><div
       data-admin-workspace="crm" data-theme={isLight ? "light" : "dark"}
       className={`min-h-screen flex flex-col font-sans transition-colors duration-200 select-text ${isLight ? "bg-[#f5f5f7] text-[#1d1d1f]" : "bg-slate-950 text-slate-100"}`}
     >
@@ -1335,6 +1360,6 @@ function CrmWorkspace({
           </>
         )}
       </main>
-    </div>
+    </div>{historyRequest&&selectedLead&&historyRequest.leadId===selectedLead.id&&<CrmCustomerHistoryWindow lead={selectedLead} request={historyRequest} {...{lang,isLight}} timezone={filterTimezone} onClose={()=>setHistoryRequest(null)} onBack={historyRequest.previous?()=>setHistoryRequest({...historyRequest.previous,token:Date.now()}):undefined} onOpen={openCustomerHistory} onConversation={viewHistoryConversation}/>}</CrmHistoryAccess.Provider>
   );
 }

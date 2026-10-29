@@ -1,20 +1,9 @@
+import {aiProfileFieldLabels,assertAiProfileUpdates,AI_PROFILE_POLICY} from './crmAiProfilePolicy';
+import {systemDimension,validateDimensionValue} from './crmDimensionCatalog';
 import { sameProfileValue, compatibleProfileValue } from "./crmFieldValues";
 import { effectiveContactRecords } from "./crmRecordAmendments";
 import { interactionInstant } from "./crmInteractionTimeline";
-export const profileFields: Record<string, string> = {
-  goal: "主要学习目标",
-  goals: "其他学习目标",
-  targetHskLevel: "目标HSK等级",
-  hskExamPlan: "考试计划",
-  preferredStart: "希望开始时间",
-  city: "城市",
-  mode: "授课方式",
-  availability: "可上课时段",
-  budgetAmount: "课程总预算",
-  concerns: "主要顾虑",
-  communicationLanguage: "首选沟通语言",
-  preferredChannel: "首选联系渠道",
-};
+export const profileFields=aiProfileFieldLabels;
 export const profileSourceLabels: Record<string, string> = {
   questionnaire: "客户问卷",
   sales_contact: "销售记录",
@@ -48,38 +37,20 @@ export function validateProfileUpdates(updates: any, allowBasic = false) {
   for (const [k, v] of Object.entries(updates)) {
     if (!Object.hasOwn(allowBasic ? manualProfileFields : profileFields, k))
       bad("不允许修改该资料字段：" + k);
+    const dimension=systemDimension(k);
+    if(dimension?.category==='profile'){
+      result[k]=validateDimensionValue(dimension,v);
+      continue;
+    }
     if (v === null) {
       if (k === "fullName") bad("姓名不能为空");
       result[k] = null;
       continue;
     }
-    if (["goals", "concerns"].includes(k)) {
-      if (
-        !Array.isArray(v) ||
-        v.length > (k === "goals" ? 8 : 12) ||
-        v.some((x) => typeof x !== "string" || !x.trim() || x.length > 300)
-      )
-        bad("资料列表格式不正确");
-      result[k] = [...new Set((v as string[]).map((x) => x.trim()))];
-    } else if (k === "budgetAmount") {
-      if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 1e12)
-        bad("预算必须是有效非负数");
-      result[k] = v;
-    } else {
-      if (typeof v !== "string" || !v.trim() || v.length > 500)
-        bad("所选字段为空或过长");
-      result[k] = (v as string).trim();
-    }
-    if (
-      k === "communicationLanguage" &&
-      !["en", "id", "zh", "unknown", null].includes(result[k])
-    )
-      bad("沟通语言不正确");
-    if (
-      k === "mode" &&
-      !["Online", "Offline", "Not sure", null].includes(result[k])
-    )
-      bad("授课方式不正确");
+    // The three manually editable identity fields retain their separate business path.
+    if (typeof v !== "string" || !v.trim() || v.length > 500)
+      bad("所选字段为空或过长");
+    result[k] = (v as string).trim();
   }
   return result;
 }
@@ -95,8 +66,13 @@ export function applyProfileFields(
     recordedAt: string;
     correction?: boolean;
     adopt?: boolean;
+    aiPolicy?: string;
+    sourceRecordedAt?: string | null;
   },
 ) {
+  const aiSource=context.actor==='ai'||context.sourceType.startsWith('ai_');
+  if(aiSource)assertAiProfileUpdates(raw);
+  const approvedAi=aiSource&&context.aiPolicy===AI_PROFILE_POLICY;
   const explicitAdoption =
     context.sourceType === "sales_edit" && context.adopt === true;
   const updates = validateProfileUpdates(raw, explicitAdoption || context.sourceType === "questionnaire"),
@@ -138,7 +114,7 @@ export function applyProfileFields(
       previous &&
       (!occurred || Date.parse(occurred) <= Date.parse(previous)) &&
       !context.correction &&
-      !explicitAdoption;
+      !explicitAdoption && !approvedAi;
     const observation = {
       value,
       sourceFactId: context.sourceFactId,
@@ -180,6 +156,7 @@ export function applyProfileFields(
         effectiveAt: occurred || null,
         recordedAt: context.recordedAt,
         updatedBy: context.actor,
+        ...(approvedAi?{sourceRecordedAt:context.sourceRecordedAt||null}:{}),
         valueState: "sourced",
         valueChanged: differs,
         pendingDifferences: [],

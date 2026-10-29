@@ -738,6 +738,14 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "aiInsights",
+    "type": "Record<string, import(\"../utils/crmCustomerInsights\").CustomerInsight>",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "targetHskLevel",
     "type": "string",
     "optional": true,

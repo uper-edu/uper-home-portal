@@ -5160,8 +5160,8 @@
     "Tetap seperti sekarang"
   ],
   "主动联系安排": [
-    "Permission to initiate contact",
-    "Izin menghubungi secara proaktif"
+    "Proactive contact arrangement",
+    "Pengaturan kontak proaktif"
   ],
   "调整联系安排的原因（必填）": [
     "Reason (required)",
@@ -7358,5 +7358,313 @@
   "约定陈述（未经销售确认）": [
     "Reported agreement (not confirmed by sales)",
     "Pernyataan kesepakatan (belum dikonfirmasi sales)"
+  ],
+  "原文中的安排描述": [
+    "Arrangements mentioned in the original text",
+    "Rencana yang disebutkan dalam catatan asli"
+  ],
+  "原文整理": [
+    "Original-text summary",
+    "Ringkasan catatan asli"
+  ],
+  "当次登记的客户约定": [
+    "Customer agreement recorded at the time",
+    "Kesepakatan pelanggan yang dicatat saat itu"
+  ],
+  "当次约定时间": [
+    "Agreed time recorded at the time",
+    "Waktu kesepakatan yang dicatat saat itu"
+  ],
+  "该约定当前状态": [
+    "Current status of this agreement",
+    "Status kesepakatan saat ini"
+  ],
+  "当前状态暂不可用": [
+    "Current status unavailable",
+    "Status saat ini belum tersedia"
+  ],
+  "当前有效": [
+    "Currently active",
+    "Masih berlaku"
+  ],
+  "客户资料请到客户资料Tab修改。": [
+    "Edit customer details in the Customer profile tab.",
+    "Ubah data pelanggan di tab Profil pelanggan."
+  ],
+  "需人工确认，未自动修改": [
+    "Human confirmation required; not changed automatically",
+    "Perlu konfirmasi staf; tidak diubah otomatis"
+  ],
+  "受保护信息，需在对应业务入口人工确认，未自动修改": [
+    "Protected information: confirm through the relevant action; no automatic change",
+    "Informasi dilindungi: konfirmasikan melalui tindakan terkait; tidak diubah otomatis"
+  ],
+  "只保留原文，不将过去、否定、假设或销售自身计划作为当前资料": [
+    "Keep the source only; past, negative, hypothetical statements and staff plans do not establish current details",
+    "Simpan sumber saja; pernyataan lampau, negatif, bersyarat dan rencana staf bukan data terkini"
+  ],
+  "未明确撤回或整体更改，保留当前资料": [
+    "No explicit withdrawal or full replacement; keep current details",
+    "Tidak ada penarikan atau penggantian menyeluruh yang tegas; pertahankan data saat ini"
+  ],
+  "合并后的资料超出字段范围，保留当前值": [
+    "Combined information exceeds this field’s limits; keep the current value",
+    "Gabungan informasi melebihi batas kolom; pertahankan nilai saat ini"
+  ],
+  "关联补充／修正仅更新同源资料，原值和历史保留": [
+    "Update only details derived from the linked source; retain previous values and history",
+    "Perbarui hanya data dari sumber terkait; nilai lama dan riwayat tetap disimpan"
+  ],
+  "从关联补充中填入明确资料，保留原文依据": [
+    "Fill an empty field from the linked supplement and retain its source",
+    "Isi kolom kosong dari tambahan terkait dan simpan sumbernya"
+  ],
+  "按明确的补充或撤回更新当前列表，保留历史": [
+    "Update the current list from explicit additions or withdrawals; retain history",
+    "Perbarui daftar berdasarkan tambahan atau penarikan tegas; simpan riwayat"
+  ],
+  "采用较新的明确当前事实，保留原值和依据": [
+    "Adopt a newer explicit current fact; retain the previous value and evidence",
+    "Gunakan fakta terkini yang lebih baru dan tegas; simpan nilai lama dan buktinya"
+  ],
+  "旧记录修正不能移除其他来源的列表信息": [
+    "Correcting an old record cannot remove list items from other sources",
+    "Koreksi catatan lama tidak boleh menghapus item dari sumber lain"
+  ],
+  "身份归并": [
+    "Identity consolidation",
+    "Penggabungan identitas"
+  ],
+  "权限": [
+    "Permissions",
+    "Izin"
+  ],
+  "任务状态": [
+    "Task status",
+    "Status tugas"
+  ],
+  "任务期限": [
+    "Task deadline",
+    "Tenggat tugas"
+  ],
+  "真实测评成绩": [
+    "Actual assessment results",
+    "Hasil asesmen tersimpan"
+  ],
+  "付款记录": [
+    "Payment records",
+    "Catatan pembayaran"
+  ],
+  "原始记录": [
+    "Original record",
+    "Catatan asli"
+  ],
+  "审计记录": [
+    "Audit records",
+    "Catatan audit"
+  ],
+  "原始活动归因": [
+    "Original campaign attribution",
+    "Atribusi kampanye asli"
+  ],
+  "暂无": [
+    "None",
+    "Tidak ada"
+  ],
+  "直接编辑客户资料请到“客户资料”页签。": [
+    "Edit customer details directly in the Customer profile tab.",
+    "Ubah data pelanggan secara langsung di tab Profil pelanggan."
+  ],
+  "客户洞察": [
+    "Customer insights",
+    "Wawasan pelanggan"
+  ],
+  "暂无当前洞察": [
+    "No current insights",
+    "Belum ada wawasan terkini"
+  ],
+  "新记录正在整理": [
+    "New records are being analyzed",
+    "Catatan baru sedang dianalisis"
+  ],
+  "正在读取洞察状态…": [
+    "Loading insight status…",
+    "Memuat status wawasan…"
+  ],
+  "洞察状态暂不可用，已有资料保留": [
+    "Insight status is unavailable; existing details are retained",
+    "Status wawasan belum tersedia; data yang ada tetap disimpan"
+  ],
+  "有新记录未完成AI整理，原文保留": [
+    "Some new records could not be analyzed; the originals are retained",
+    "Analisis sebagian catatan baru belum selesai; teks asli tetap disimpan"
+  ],
+  "刷新状态": [
+    "Refresh status",
+    "Perbarui status"
+  ],
+  "原文陈述": [
+    "Source statement",
+    "Pernyataan dalam sumber"
+  ],
+  "AI推断，待核实": [
+    "AI inference; unverified",
+    "Dugaan AI; belum diverifikasi"
+  ],
+  "依据与历史": [
+    "Evidence and history",
+    "Bukti dan riwayat"
+  ],
+  "已撤回的洞察": [
+    "Withdrawn insights",
+    "Wawasan yang ditarik"
+  ],
+  "已撤回当前洞察": [
+    "Current insight withdrawn",
+    "Wawasan terkini ditarik"
+  ],
+  "查看洞察对应的原始记录": [
+    "Open the original record supporting this insight",
+    "Buka catatan asli yang mendukung wawasan ini"
+  ],
+  "查看原记录": [
+    "View original record",
+    "Lihat catatan asli"
+  ],
+  "未采用，保留当前洞察": [
+    "Not adopted; current insight retained",
+    "Tidak diterapkan; wawasan saat ini dipertahankan"
+  ],
+  "本次已更新客户洞察": [
+    "Customer insight updated",
+    "Wawasan pelanggan diperbarui"
+  ],
+  "客户洞察更新": [
+    "Customer insight updates",
+    "Pembaruan wawasan pelanggan"
+  ],
+  "本条洞察依据已保存": [
+    "This insight evidence is already saved",
+    "Bukti wawasan ini sudah tersimpan"
+  ],
+  "已更新客户洞察，保留原文与历史": [
+    "Insight updated; original text and history retained",
+    "Wawasan diperbarui; teks asli dan riwayat disimpan"
+  ],
+  "仅保留原文，不作为当前客户洞察": [
+    "Source retained without establishing a current insight",
+    "Sumber disimpan tanpa menetapkan wawasan terkini"
+  ],
+  "同一原文的洞察结论冲突，保留现值": [
+    "Conflicting insights in the same source; current value retained",
+    "Wawasan dalam sumber yang sama bertentangan; nilai saat ini dipertahankan"
+  ],
+  "洞察已被更新，保留当前值和本次依据": [
+    "Insight changed during processing; current value and new evidence retained",
+    "Wawasan berubah saat diproses; nilai terkini dan bukti baru disimpan"
+  ],
+  "旧记录修正不覆盖其他来源更新的洞察": [
+    "An old correction does not overwrite an insight updated from another source",
+    "Koreksi catatan lama tidak menimpa wawasan dari sumber lain"
+  ],
+  "较早的洞察不覆盖当前值": [
+    "Older insight does not overwrite the current value",
+    "Wawasan lama tidak menimpa nilai terkini"
+  ],
+  "未明确撤回，保留当前洞察": [
+    "No explicit withdrawal; current insight retained",
+    "Tidak ada penarikan tegas; wawasan terkini dipertahankan"
+  ],
+  "AI推断不覆盖客户明确陈述": [
+    "AI inference does not override an explicit customer statement",
+    "Dugaan AI tidak menimpa pernyataan tegas pelanggan"
+  ],
+  "AI推断": [
+    "AI inference",
+    "Dugaan AI"
+  ],
+  "原设备记录为文字，本次未说明完整使用设备，保留原记录": [
+    "Previous device information is text; this update does not specify the full set. Previous information retained.",
+    "Catatan perangkat sebelumnya berupa teks; pembaruan ini tidak menyebutkan seluruh perangkat. Catatan lama dipertahankan."
+  ],
+  "未明确停止使用，保留当前设备": [
+    "No explicit cessation of use; current devices retained.",
+    "Penghentian penggunaan belum jelas; perangkat saat ini dipertahankan."
+  ],
+  "设备使用情况须有明确原文，不从拥有情况推断": [
+    "Class use requires explicit source evidence; ownership is not sufficient.",
+    "Penggunaan untuk kelas memerlukan bukti sumber yang jelas; kepemilikan saja tidak cukup."
+  ],
+  "更多操作": [
+    "More actions",
+    "Tindakan lain"
+  ],
+  "人工纠正学习需求": [
+    "Correct learning needs",
+    "Koreksi kebutuhan belajar"
+  ],
+  "学习条件与决策背景": [
+    "Learning conditions and decision context",
+    "Kondisi belajar dan konteks keputusan"
+  ],
+  "查看原始问卷": [
+    "View original questionnaire",
+    "Lihat kuesioner asli"
+  ],
+  "查看原始记录": [
+    "View original record",
+    "Lihat catatan asli"
+  ],
+  "查看完整原始问卷": [
+    "View complete original questionnaire",
+    "Lihat kuesioner asli lengkap"
+  ],
+  "查看完整原始记录": [
+    "View complete original record",
+    "Lihat catatan asli lengkap"
+  ],
+  "原始问卷": [
+    "Original questionnaire",
+    "Kuesioner asli"
+  ],
+  "距首次记录": [
+    "Since first record",
+    "Sejak catatan pertama"
+  ],
+  "返回客户全景": [
+    "Return to Customer 360",
+    "Kembali ke Panorama Pelanggan"
+  ],
+  "客户全景": [
+    "Customer 360",
+    "Panorama Pelanggan"
+  ],
+  "历史与依据": [
+    "History and evidence",
+    "Riwayat dan bukti"
+  ],
+  "客户提供": [
+    "Customer-provided",
+    "Dari pelanggan"
+  ],
+  "员工记录": [
+    "Staff-recorded",
+    "Dicatat staf"
+  ],
+  "时间轴": [
+    "Timeline",
+    "Linimasa"
+  ],
+  "网站AI咨询": [
+    "Website AI consultation",
+    "Konsultasi AI situs web"
+  ],
+  "在线测评": [
+    "Online assessment",
+    "Asesmen daring"
+  ],
+  "返回上一条依据": [
+    "Back to previous evidence",
+    "Kembali ke bukti sebelumnya"
   ]
 }

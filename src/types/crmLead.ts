@@ -91,6 +91,7 @@ export interface CrmLeadRecord {
   interactionTimeline?: import("../utils/crmInteractionTimeline").InteractionTimeline;
   informationHints?:any[];
   profileFieldMeta?:Record<string,any>;
+  aiInsights?:Record<string,import("../utils/crmCustomerInsights").CustomerInsight>;
   targetHskLevel?:string;
   preferredStart?:string;
   availability?:string;

@@ -1,3 +1,4 @@
+import {CrmSearchHighlight} from './CrmSearchHighlight';
 import {
   questionnaireAnswers,
   questionnaireFields,
@@ -9,7 +10,7 @@ import {
   formatCrmOperatingTime,
   viewerTimeZone,
 } from "../../utils/crmOperatingTime";
-export function CrmQuestionnaireEvidence({ source, lang: provided }: any) {
+export function CrmQuestionnaireEvidence({ source, lang: provided,highlightFields=[] }: any) {
   const lang = useCrmUiLanguage(provided),
     ui = useCrmUiText(provided),
     answers = questionnaireAnswers(source),
@@ -43,17 +44,17 @@ export function CrmQuestionnaireEvidence({ source, lang: provided }: any) {
               (!Array.isArray(answers[key]) || answers[key].length),
           )
           .map(([key, label]) => (
-            <div key={key}>
+            <div key={key} className={highlightFields.includes(key)?"crm-history-field-match":undefined}>
               <dt>{ui(label)}</dt>
               <dd>
                 {Array.isArray(answers[key]) ? (
                   <ul>
                     {answers[key].map((v: string) => (
-                      <li key={v}>{show(key, v)}</li>
+                      <li key={v}><CrmSearchHighlight text={show(key, v)}/></li>
                     ))}
                   </ul>
                 ) : (
-                  show(key, answers[key])
+                  <CrmSearchHighlight text={show(key, answers[key])}/>
                 )}
               </dd>
             </div>

@@ -1,4 +1,6 @@
-import { CrmCurrentField, CrmContactPreferences } from "./CrmProfileFields";
+import {CrmCustomerInsights} from './CrmCustomerInsights';
+import {useCrmUiText} from './CrmUiLanguage';
+import { CrmCurrentField, CrmContactPreferences, CrmLearningGoals } from "./CrmProfileFields";
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmBuyingEvidence } from "./CrmBuyingEvidence";
 import { CrmDisclosure } from "./CrmDisclosure";
@@ -63,6 +65,8 @@ export function CrmCustomerProfile({
   identity,
   signalFocus,
   onSignalSource,
+  onInsightSource,
+  onInsightsRefresh,
   onSignalTask,
 }: DetailProps & {
   ownership?: React.ReactNode;
@@ -74,8 +78,11 @@ export function CrmCustomerProfile({
   identity?: React.ReactNode;
   signalFocus?: { id: string; token: number };
   onSignalSource?: (e: any) => void;
+  onInsightSource?: (e: any) => void;
+  onInsightsRefresh?: () => void;
   onSignalTask?: (id: string) => void;
 }) {
+  const ui=useCrmUiText(lang);
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const u = campaignUi(lang);
@@ -205,16 +212,18 @@ export function CrmCustomerProfile({
         <div ref={contactFields}>{!contactFields&&<CrmContactPreferences lead={lead} timezone={timezone}/>}</div>
         {identity}
       </section>
-      {dynamicProfile || (
-        <section>
-          <h3>{t("Learning background and needs", "学习背景与需求")}</h3>
+      {dynamicProfile ? React.cloneElement(dynamicProfile as React.ReactElement<any>,{insightContent:<CrmCustomerInsights embedded lead={lead} lang={lang} onSource={onInsightSource} onRefresh={onInsightsRefresh}/>}) : (
+        <section aria-label={ui('客户洞察')}>
+          <h3>{ui('客户洞察')}</h3>
+          {(lead.reportedLevel||lead.goal||lead.goals?.length||lead.mode)&&<div className="crm-insights-group"><h4>{ui('学习需求与偏好')}</h4>
           {lead.reportedLevel&&<Facts items={[[t("Self-reported level","客户自报水平"),crmValue(lead.reportedLevel,lang)]]}/>}
+          <dl><CrmLearningGoals lead={lead} timezone={timezone}/></dl>
           <Facts
             items={[
-              [t("Learning goals", "主要学习目标"), crmValue(lead.goal, lang)],
               [t("Learning format", "授课方式"), crmValue(lead.mode, lang)],
             ]}
-          />
+          /></div>}
+          <CrmCustomerInsights embedded lead={lead} lang={lang} onSource={onInsightSource} onRefresh={onInsightsRefresh}/>
         </section>
       )}
       {outcomeItems.length > 0 && <section className="crm-profile-outcome">

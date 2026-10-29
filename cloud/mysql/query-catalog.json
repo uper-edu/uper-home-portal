@@ -1198,6 +1198,12 @@
       "server/portal/followup.ts"
     ]
   },
+  "SELECT data FROM crm_facts WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT data FROM crm_facts WHERE id=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/customerInsights.ts"
+    ]
+  },
   "SELECT data FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1": {
     "sql": "SELECT data FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1",
     "sources": [
@@ -1513,6 +1519,12 @@
     "sql": "SELECT id,created_at FROM messages WHERE conversation_id=:p1 AND request_id=:p2 AND role='user'",
     "sources": [
       "server/portal/chat.ts"
+    ]
+  },
+  "SELECT id,data FROM crm_facts WHERE kind='insight.dimension_created' ORDER BY created_at,id": {
+    "sql": "SELECT id,data FROM crm_facts WHERE kind='insight.dimension_created' ORDER BY created_at,id",
+    "sources": [
+      "server/portal/customerInsights.ts"
     ]
   },
   "SELECT id,data FROM crm_facts WHERE lead_id=:p1 AND kind='profile.fields_updated'": {
@@ -2093,6 +2105,12 @@
     "sources": [
       "server/portal/chat.ts",
       "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE crm_ai_extractions SET input=:p2 WHERE id=:p1": {
+    "sql": "UPDATE crm_ai_extractions SET input=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/aiExtraction.ts"
     ]
   },
   "UPDATE crm_ai_extractions SET status='completed',output=:p2,model=:p3,completed_at=UTC_TIMESTAMP(6),lease_until=NULL,error_code=NULL WHERE id=:p1": {

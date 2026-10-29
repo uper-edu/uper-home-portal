@@ -1,3 +1,5 @@
+import {insightValueText,CLASS_EQUIPMENT_KEY,classEquipmentWords} from '../../utils/crmClassEquipment';
+import {aiProtectedFieldLabels} from '../../utils/crmAiProfilePolicy';
 import {useCrmUiText,useCrmUiLanguage} from './CrmUiLanguage';
 import React from 'react';
 import {activeExtractionEvidence,observationKey} from '../../utils/crmExtractionEvidence';
@@ -8,7 +10,7 @@ import {extractionSummary} from '../../utils/crmFollowupPresentation';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {CrmAiIndicator} from './CrmAiIndicator';
 import {useCrmExtractions} from './useCrmExtractions';
-const label=(o:any)=>profileFields[o.field]||signalLabels[o.field]||stageEventLabels[o.field]||'约定建议';
+const label=(o:any,lang='zh')=>o.field===CLASS_EQUIPMENT_KEY?classEquipmentWords[lang as 'zh']:o.dimension?.labels?.[lang]||profileFields[o.field]||aiProtectedFieldLabels[o.field]||signalLabels[o.field]||stageEventLabels[o.field]||'约定建议';
 const value=(v:any):string=>v===true?'已表达':v===null?'明确空值':Array.isArray(v)?v.join('、'):({Online:'线上直播',Offline:'线下面授','Not sure':'尚未确定',course:'整门课程',month:'每月',hour:'每小时',unspecified:'周期未说明',IDR:'印尼盾（IDR）',en:'英语',id:'印尼语',zh:'中文',unknown:'未确认'} as any)[String(v)]||String(v);
 export function CrmExtractionRows({rows,allRows=rows,onViewAssessment,includeSource=true,initiallyExpanded=false,embedded=false}:any){
  const ui=useCrmUiText(),lang=useCrmUiLanguage();
@@ -23,11 +25,11 @@ export function CrmExtractionRows({rows,allRows=rows,onViewAssessment,includeSou
   const content=<>
    {hasResults&&(r.output.observations||[]).map((o:any,i:number)=>{
     const superseded=evidence.find(e=>e.row.id===r.id&&observationKey(e.observation)===observationKey(o)&&e.observation.quote===o.quote)?.supersededBy;
-    return <article key={i} className="crm-extraction-observation" data-decision={superseded?'history':o.decision}>
-     <div><strong>{ui(label(o))}<CrmAiIndicator/></strong><span className="crm-extraction-decision">{superseded ? ui("历史解释，已被关联修正替代") : ui(extractionDecisionLabel(o))}</span></div>
-     <p className="crm-extraction-value">{o.kind==='stage_event'?ui(extractionStageValue(o)):o.kind==='signal'?ui(extractionSignalValue(o)):ui(value(o.value))}</p>
+    return <article key={i} className="crm-extraction-observation" data-decision={superseded?'history':o.decision==='review'?'difference':o.decision}>
+     <div><strong>{ui(label(o,lang))}<CrmAiIndicator/></strong><span className="crm-extraction-decision">{superseded ? ui("历史解释，已被关联修正替代") : ui(extractionDecisionLabel(o))}</span></div>
+     <p className="crm-extraction-value">{o.kind==='stage_event'?ui(extractionStageValue(o)):o.kind==='signal'?ui(extractionSignalValue(o)):o.kind==='insight'?insightValueText(o.appliedValue??o.value,o.field,lang):o.kind==='protected_field'?o.value:ui(value(Object.hasOwn(o,'appliedValue')?o.appliedValue:o.value))}</p>
      <blockquote><span className="crm-extraction-caption">{ui("原文依据")}</span>{o.quote}</blockquote>
-     <p>{ui("采用原因：")}{o.reason||ui('未记录采用原因')}</p>
+     <p>{ui("采用原因：")}{ui(o.reason||'未记录采用原因')}</p>
      <small className="crm-work-muted">{ui(({current:'当前表达',past:'过去情况',future:'未来安排',conditional:'有条件',uncertain:'不确定',negated:'否定表达'} as any)[o.temporality]||'时间语义未注明')} {ui("· 表达主体：")}{o.subject==='sales' ? ui("销售") : o.subject==='customer' ? ui("客户") : ui("未注明")}</small>
     </article>;
    })}

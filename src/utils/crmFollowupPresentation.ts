@@ -15,6 +15,7 @@ export function extractionSummary(row:any,lang='zh'){
  if(different)parts.push(different+(lang==='id'?' perbedaan':' differences'));
  if(signals)parts.push(signals+(lang==='id'?' permintaan / sinyal':' requests / signals'));
  if(stages)parts.push(stages+(lang==='id'?' uraian tahap':' stage descriptions'));
+ const insights=obs.filter((o:any)=>o.kind==='insight'&&o.decision==='apply').length;if(insights)parts.push(ui('客户洞察更新')+': '+insights);
  return (lang==='id'?'AI selesai memproses':'AI processing complete')+' · '+(parts.join(' · ')||ui('仅保留原文依据'));
  }
  if(row.status!=='completed')return ({pending:'原文已保存 · 等待AI整理',processing:'原文已保存 · AI整理中',retry:'原文已保存 · 等待重试',failed:'原文已保存 · AI整理失败'} as any)[row.status]||'原文已保存 · 整理状态待核对';
@@ -24,6 +25,7 @@ export function extractionSummary(row:any,lang='zh'){
  if(different.length)labels.push(different.length+'项不同记录');
  const signals=obs.filter((o:any)=>o.kind==='signal'&&o.subject==='customer'&&o.temporality==='current').length,stages=obs.filter((o:any)=>o.kind==='stage_event').length;
  if(signals)labels.push(signals+'项诉求／信号');if(stages)labels.push(stages+'项阶段描述');
+ const insights=obs.filter((o:any)=>o.kind==='insight'&&o.decision==='apply').length;if(insights)labels.push('客户洞察更新：'+insights+'项');
  return 'AI整理完成 · '+(labels.join(' · ')||'仅保留原文依据');
 }
 export function locateLedgerEvent(events:any[],sourceId:string){return events.find(v=>v.eventId===sourceId)||events.find(v=>v.eventType==='followup.recorded'&&(v.sourceRecordId===sourceId||v.payload?.result?.logId===sourceId))||events.find(v=>v.sourceRecordId===sourceId||v.payload?.sourceId===sourceId||v.payload?.sourceLogId===sourceId);}

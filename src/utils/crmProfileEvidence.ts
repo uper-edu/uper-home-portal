@@ -106,3 +106,18 @@ export function profileChangeReason(
     return "采用客户问卷原始答案";
   return ""; // Old records may lack a saved reason; do not manufacture one.
 }
+
+/** Display-only union: exact saved strings only; never merge semantic near-matches. */
+export function learningGoalEntries(lead: any): {value:string; fields:string[]}[] {
+  const entries: {value:string; fields:string[]}[]=[];
+  for(const field of ['goal','goals']) {
+    const values=Array.isArray(lead[field])?lead[field]:[lead[field]];
+    for(const value of values) {
+      if(typeof value!=='string'||!value.trim())continue;
+      const found=entries.find(entry=>entry.value===value);
+      if(found){if(!found.fields.includes(field))found.fields.push(field);}
+      else entries.push({value,fields:[field]});
+    }
+  }
+  return entries;
+}

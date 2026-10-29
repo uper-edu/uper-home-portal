@@ -1,3 +1,5 @@
+import {CrmHistoryAccess} from './CrmHistoryAccess';
+import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
@@ -9,7 +11,7 @@ import {
   sameProfileValue,
   compatibleProfileValue,
 } from "../../utils/crmFieldValues";
-import { Fragment, useState, useRef, useId } from "react";
+import { Fragment, useState, useRef, useId, useEffect, useContext } from "react";
 import { Plus, ChevronDown, Pencil } from "lucide-react";
 import { createPortal } from "react-dom";
 import {
@@ -25,6 +27,7 @@ import {
   linkedProfileEvidence,
   profileChangeReason,
   visibleProfileNeedsGroups,
+  learningGoalEntries,
 } from "../../utils/crmProfileEvidence";
 import { CrmAiIndicator } from "./CrmAiIndicator";
 import { CrmSingleSelect } from "./CrmSingleSelect";
@@ -297,6 +300,7 @@ export function CrmCurrentField({
   onEdit,
   disabled,
   timezone,
+  differencesOnly = false,
 }: any) {
   const lang = useCrmUiLanguage(),
     ui = useCrmUiText(),
@@ -336,9 +340,11 @@ export function CrmCurrentField({
   )
     return null;
   const source = profileSourceName(m?.sourceType);
+  const showCurrent = !differencesOnly;
+  if(differencesOnly&&!differences.length&&m?.valueState!=="correction_pending")return null;
   return (
     <div className="crm-current-field">
-      <dt>
+      {showCurrent&&<dt>
         <span>{ui(manualProfileFields[field] || field)}</span>
         {onEdit && !disabled && (
           <button
@@ -351,9 +357,9 @@ export function CrmCurrentField({
             {ui("调整")}
           </button>
         )}
-      </dt>
+      </dt>}
       <dd>
-        <div className="crm-current-field-value">
+        {showCurrent&&<><div className="crm-current-field-value">
           {value(lead[field]) || ui("未填写")}
         </div>
         <div className="crm-current-field-source">
@@ -373,6 +379,7 @@ export function CrmCurrentField({
             />
           )}
         </div>
+        </>}
         {differences.length > 0 && (
           <details className="crm-profile-difference">
             <summary>
@@ -409,6 +416,26 @@ export function CrmCurrentField({
     </div>
   );
 }
+/** A read-only view over both legacy fields. Sources still use their actual original keys. */
+export function CrmLearningGoals({lead,timezone}:any){
+ const lang=useCrmUiLanguage(),ui=useCrmUiText(),entries=learningGoalEntries(lead);
+ const fields=['goal','goals'].filter(field=>lead.profileFieldMeta?.[field]);
+ if(!entries.length&&!fields.length)return null;
+ return <div className="crm-current-field crm-learning-goals"><dt>{ui('学习目标')}</dt><dd>
+  {entries.map(entry=>{
+   const metas=entry.fields.map(field=>lead.profileFieldMeta?.[field]);
+   const ids=[...new Set(metas.flatMap(m=>m?.sourceFactIds||[]))];
+   const sources=metas.filter((m,index)=>metas.findIndex(other=>other?.sourceType===m?.sourceType&&other?.effectiveAt===m?.effectiveAt)===index);
+   return <div key={entry.value} className="crm-learning-goal-entry">
+    <div className="crm-current-field-value">{crmValue(entry.value,lang)||entry.value}</div>
+    <div className="crm-current-field-source">{sources.map((m,index)=><Fragment key={index}><span>{ui(profileSourceName(m?.sourceType))}</span>{m?.sourceType?.startsWith('ai_')&&<CrmAiIndicator/>}{m?.effectiveAt&&<time dateTime={m.effectiveAt}>{formatCrmOperatingTime(m.effectiveAt,viewerTimeZone())}</time>}</Fragment>)}
+    {ids.length>0&&<ProfileSource key={lead.id+':goals:'+entry.value+':'+ids.join(',')} leadId={lead.id} ids={ids} field={entry.fields[0]} fields={entry.fields} label="学习目标"/>}</div>
+   </div>;
+  })}
+  {!entries.length&&<><div className="crm-current-field-value">{ui('未填写')}</div><details className="crm-profile-difference"><summary>{ui('依据与历史')}</summary><dl>{fields.map(field=><CrmCurrentField key={field} {...{lead,field,timezone}}/>)}</dl></details></>}
+  {entries.length>0&&<dl>{fields.map(field=><CrmCurrentField key={field} {...{lead,field,timezone}} differencesOnly/>)}</dl>}
+ </dd></div>;
+}
 export function CrmProfileEvidence({ lead, timezone }: any) {
   return (
     <dl>
@@ -429,6 +456,7 @@ export function CrmProfileEditor({
   actionTarget,
   basicTarget,
   contactTarget,
+  insightContent,
 }: any) {
   const lang = useCrmUiLanguage();
   const ui = useCrmUiText();
@@ -436,6 +464,8 @@ export function CrmProfileEditor({
   const [scope, setScope] = useState("needs"),
     [basisIds, setBasisIds] = useState<string[]>([]),
     [availableFacts, setAvailableFacts] = useState<any[]>([]);
+  const moreActions=useRef<HTMLDetailsElement>(null);
+  useEffect(()=>{const outside=(e:PointerEvent)=>{if(moreActions.current&&!moreActions.current.contains(e.target as Node))moreActions.current.open=false;};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
   const openEditor = (nextScope: string, key?: string) => {
     setScope(nextScope);
     if (key) {
@@ -566,7 +596,7 @@ export function CrmProfileEditor({
     );
   const basicAction = editAction("basic", "编辑基本资料");
   return (
-    <section className="crm-current-needs">
+    <section className="crm-current-needs" aria-label={ui('客户洞察')}>
       {basicTarget && createPortal(basicAction, basicTarget)}
       {contactTarget &&
         createPortal(
@@ -580,13 +610,13 @@ export function CrmProfileEditor({
         )}
       <header className="crm-profile-section-heading">
         <h3 id="crm-profile-learning-needs" tabIndex={-1}>
-          {ui("学习背景与需求")}
+          {ui("客户洞察")}
         </h3>
-        {editAction("needs", "调整学习需求")}
+        {!disabled&&<details className="crm-insights-more" ref={moreActions} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();e.currentTarget.open=false;e.currentTarget.querySelector('summary')?.focus();}}}><summary className="crm-work-button">{ui('更多操作')}</summary><div><button type="button" className="crm-work-link" disabled={busy||open} onClick={()=>{if(moreActions.current){moreActions.current.open=false;moreActions.current.querySelector('summary')?.focus();}openEditor('needs');}}>{ui('人工纠正学习需求')}</button></div></details>}
       </header>
       {success && <p role="status">{success}</p>}
       <CrmProfileSaveResult results={results} />
-      <div className="crm-profile-needs-group">
+      {(lead.reportedLevel||visibleProfileNeedsGroups(lead).length>0)&&<section className="crm-insights-group" aria-label={ui('学习需求与偏好')}><h4>{ui('学习需求与偏好')}</h4><div className="crm-profile-needs-group">
         <dl>
           {lead.reportedLevel && (
             <div>
@@ -594,23 +624,24 @@ export function CrmProfileEditor({
               <dd>{crmValue(lead.reportedLevel, lang)}</dd>
             </div>
           )}
+          <CrmLearningGoals lead={lead} timezone={timezone}/>
           {visibleProfileNeedsGroups(lead).map(({ title, fields: keys }) => (
             <Fragment key={title}>
-              {keys.map((field: string) => (
+              {keys.filter(field=>field!=="goal"&&field!=="goals").map((field: string) => (
                 <CrmCurrentField
                   key={field}
                   {...{ lead, field, disabled: disabled || open, timezone }}
-                  onEdit={(key: string) => openEditor("needs", key)}
                 />
               ))}
             </Fragment>
           ))}
         </dl>
-      </div>
+      </div></section>}
+      {insightContent}
       {open && (
         <CrmOperationLayer
           compose
-          title={ui(scope === "basic" ? "编辑基本资料" : "调整学习需求")}
+          title={ui(scope === "basic" ? "编辑基本资料" : "人工纠正学习需求")}
           context={lead.fullName}
           lang={lang}
           isLight={isLight}
@@ -859,7 +890,8 @@ export function CrmProfileSourceContent({
         Number(b.entries.some((entry) => entry.hasAnswer)) -
         Number(a.entries.some((entry) => entry.hasAnswer)),
     );
-  const shownQuotes = new Set<string>();
+  const [originalRecord,setOriginalRecord]=useState<any>(null);
+  const sameAnswer=(a:any,b:any)=>JSON.stringify(Array.isArray(a)?a:[a])===JSON.stringify(Array.isArray(b)?b:[b]);
   const stamp = (event: any) => (
     <small>
       {event.actor === "ai" ? ui("AI整理") : event.actor} ·{" "}
@@ -879,6 +911,7 @@ export function CrmProfileSourceContent({
   const blocks = focused.map(({ event, entries }) => {
     const quotes = new Set<string>();
     const decisions: { field: string; status: string; reason: string }[] = [];
+    const seenAnswers:any[]=[],seenRows=new Set<string>();
     const values = entries.map((entry) => {
       const {
         field: key,
@@ -888,7 +921,7 @@ export function CrmProfileSourceContent({
         observations,
         linked,
       } = entry;
-      const label = ui(manualProfileFields[key] || key);
+      const label = ui(fields.every(k=>["goal","goals"].includes(k))?"学习目标":manualProfileFields[key] || key);
       const rows: any[] = [
         ...changes.map((change: any) => ({
           value: change.applied === false ? change.observation : change.after,
@@ -938,11 +971,11 @@ export function CrmProfileSourceContent({
           })),
       ];
       const answerText = hasAnswer ? show(answer, key) : null;
-      if (typeof answer === "string" && answer === answerText)
-        shownQuotes.add(answer);
+      const answerRepeated=hasAnswer&&seenAnswers.some(v=>sameAnswer(v,answer));
+      if(hasAnswer)seenAnswers.push(answer);
       return (
         <Fragment key={key}>
-          {hasAnswer && (
+          {hasAnswer && !answerRepeated && (
             <p>
               <strong>
                 {fields.length > 1 ? label + " · " : ""}
@@ -969,8 +1002,11 @@ export function CrmProfileSourceContent({
               reason: reasonText(row.reason),
             });
             // Exact repeats add no business information. Distinct old values and conflicting values remain visible.
-            return changed ||
-              (valueText !== answerText && !row.quotes.includes(valueText)) ? (
+            const linkedAnswer=data.some(other=>(event.payload?.basisFactIds?.includes(other.eventId)||event.payload?.sourceRoot?.id===other.eventId)&&Object.hasOwn(other.payload?.answers||{},key)&&sameAnswer(other.payload.answers[key],row.value));
+            const signature=JSON.stringify([before??null,Array.isArray(row.value)?row.value:[row.value],row.status,row.reason]);
+            const repeated=seenRows.has(signature);seenRows.add(signature);
+            return !repeated&&(changed ||
+              (!linkedAnswer&&valueText !== answerText && !row.quotes.includes(valueText))) ? (
               <p key={index}>
                 <strong>{label}：</strong>
                 {changed && <>{show(before, key)} → </>}
@@ -981,7 +1017,7 @@ export function CrmProfileSourceContent({
         </Fragment>
       );
     });
-    quotes.forEach((quote) => shownQuotes.add(quote));
+
     const uniqueDecisions = decisions.filter(
       (item, index) =>
         decisions.findIndex(
@@ -1019,76 +1055,30 @@ export function CrmProfileSourceContent({
       </article>
     );
   });
-  // Complete originals stay available. The second layer contains only information not already shown above.
-  const extra = data
-    .map((event, index) => ({
-      event,
-      original:
-        event.original &&
-        !shownQuotes.has(event.original) &&
-        !data.slice(0, index).some((other) => other.original === event.original)
-          ? event.original
-          : null,
-      answers: Object.entries(event.payload?.answers || {}).filter(
-        ([key, value]) =>
-          !fields.includes(key) &&
-          Object.hasOwn(manualProfileFields, key) &&
-          value != null &&
-          value !== "",
-      ),
-      changes: (event.payload?.changes || []).filter(
-        (change: any) => !fields.includes(change.field),
-      ),
-    }))
-    .filter(
-      (item) => item.original || item.answers.length || item.changes.length,
-    );
-  return (
-    <>
-      <div className="crm-profile-field-evidence">
-        {blocks.length ? (
-          blocks
-        ) : (
-          <p>{ui("该依据未单独保存此字段的原始答案，请查看完整原文。")}</p>
-        )}
-      </div>
-      {extra.length > 0 && (
-        <details className="crm-profile-full-source">
-          <summary>{ui("完整原文与关联记录")}</summary>
-          {extra.map(({ event, original, answers, changes }) => (
-            <article key={event.eventId}>
-              {original && <blockquote>{original}</blockquote>}
-              {answers.length > 0 && (
-                <dl>
-                  {answers.map(([key, value]) => (
-                    <div key={key}>
-                      <dt>{ui(manualProfileFields[key])}</dt>
-                      <dd>{show(value, key)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {changes.map((change: any, index: number) => (
-                <p key={index}>
-                  {ui(manualProfileFields[change.field] || change.field)}：
-                  {show(change.before, change.field)} →{" "}
-                  {show(
-                    change.applied === false
-                      ? change.observation
-                      : change.after,
-                    change.field,
-                  )}
-                </p>
-              ))}
-              {stamp(event)}
-            </article>
-          ))}
-        </details>
-      )}
-    </>
-  );
+  // Full sources stay independent; source links, never language similarity, define derivation.
+  const originals=data.filter(event=>{
+    if(event.eventType==='questionnaire.submitted'||event.payload?.answers)return true;
+    const linked=(event.payload?.basisFactIds||[]).some((id:string)=>data.some(other=>other.eventId===id))||data.some(other=>other.eventId===event.payload?.sourceRoot?.id);
+    const derived=["profile.fields_updated","information.extracted"].includes(event.eventType);
+    return !(linked&&derived)&&!!event.original;
+  }).filter((event,index,all)=>all.findIndex(other=>other.eventId===event.eventId)===index);
+  return <>
+    <div className="crm-profile-field-evidence">{blocks.length?blocks:<p>{ui('该依据未单独保存此字段的原始答案，请查看完整原文。')}</p>}</div>
+    {originals.length>0&&<div className="crm-profile-original-actions">{originals.map(event=><div key={event.eventId}>
+      <CrmEvidenceAction label={event.payload?.answers?'查看原始问卷':'查看原始记录'} behavior="open" description={ui(event.payload?.answers?'查看完整原始问卷':'查看完整原始记录')} onClick={()=>setOriginalRecord(event)}/>
+      {originals.length>1&&stamp(event)}
+    </div>)}</div>}
+    {originalRecord&&<CrmOperationLayer title={ui(originalRecord.payload?.answers?'原始问卷':'原始记录')} lang={lang} isLight={typeof document==='undefined'||document.querySelector('.crm-detail-root')?.getAttribute('data-theme')!=='dark'} onClose={()=>setOriginalRecord(null)}>
+      <CrmProfileOriginalRecord event={originalRecord}/>
+      {stamp(originalRecord)}
+    </CrmOperationLayer>}
+  </>;
 }
-function ProfileSource({ leadId, ids, field, fields, availableEvents }: any) {
+
+export function CrmProfileOriginalRecord({event}:any){return event.payload?.answers?<CrmQuestionnaireEvidence source={{answers:event.payload.answers,recordedAt:event.recordedAt,root:{payload:event.payload}}}/>:<blockquote className="crm-progress-original">{event.original}</blockquote>;}
+
+function ProfileSource({ leadId, ids, field, fields, availableEvents, label }: any) {
+  const openHistory=useContext(CrmHistoryAccess);
   const ui = useCrmUiText(),
     contentId = useId();
   const [data, setData] = useState<any[] | null>(null),
@@ -1099,12 +1089,14 @@ function ProfileSource({ leadId, ids, field, fields, availableEvents }: any) {
       <CrmEvidenceAction
         description={
           ui("查看") +
-          ui(manualProfileFields[field] || field) +
+          ui(label || manualProfileFields[field] || field) +
           ui("的原始依据")
         }
-        expanded={data !== null || busy || !!error}
+        expanded={openHistory?undefined:data !== null || busy || !!error}
+        behavior={openHistory?"open":undefined}
         controls={contentId}
         onClick={async () => {
+          if(openHistory){openHistory({id:ids[0],fields:fields||[field]});return;}
           if (busy) return;
           if (data) {
             setData(null);

@@ -93,6 +93,13 @@
 .crm-profile-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .crm-profile-section-heading h3{margin:0}.crm-profile-section-heading button{display:inline-flex;align-items:center;gap:6px}
 .crm-profile-needs-group{padding:16px 0;border-top:1px solid var(--dw-border)}
+.crm-insights-group+.crm-insights-group{margin-top:24px}
+.crm-insights-group>h4{font-size:14px;line-height:20px;font-weight:600;margin:0 0 12px}
+.crm-insights-more{position:relative}
+.crm-insights-more>summary{list-style:none;cursor:pointer}
+.crm-insights-more>summary::-webkit-details-marker{display:none}
+.crm-insights-more>div{position:absolute;right:0;top:calc(100% + 8px);z-index:6;min-width:200px;padding:8px;background:var(--dw-surface);border:1px solid var(--dw-border);border-radius:10px}
+.crm-insights-more>div>button{width:100%;padding:8px;text-align:left}
 .crm-profile-needs-group dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px;margin:0}
 .crm-current-field{min-width:0}.crm-current-field dt{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--cw-muted);margin-bottom:4px}
 .crm-current-field dt button{display:inline-flex;align-items:center;gap:4px;font-size:12px}.crm-current-field dd{margin:0;min-width:0}
@@ -196,3 +203,75 @@
 .crm-attendance-event>strong{font-weight:500;overflow-wrap:anywhere}
 .crm-attendance-mode{display:grid;gap:4px}
 .crm-attendance-mode>.admin-field-label{font-size:12px;line-height:18px;color:var(--cw-muted)}
+
+.crm-learning-goal-entry+.crm-learning-goal-entry{margin-top:12px}
+
+.crm-profile-original-actions{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px}.crm-profile-original-actions>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+.crm-history-timeline .crm-search-match{background:var(--admin-quote-bg);color:var(--admin-quote);border-radius:3px;padding:1px 0;font:inherit}
+
+/* Shared read-only history viewer. Lane position conveys origin, never business risk. */
+.crm-operation-layer.crm-customer-workspace.crm-operation-history{inset:24px;margin:auto;width:min(1320px,calc(100vw - 48px));height:calc(100dvh - 48px);max-height:calc(100dvh - 48px);border:1px solid var(--cw-border);border-radius:14px;box-shadow:0 16px 60px #0003}
+.crm-customer-history-window{max-width:1200px;margin:0 auto}.crm-history-lane-labels{display:grid;grid-template-columns:1fr 100px 1fr;gap:16px;align-items:center;font-size:14px;margin:0 0 16px;color:var(--cw-muted)}.crm-history-lane-labels>span{text-align:center;font-size:12px}.crm-history-lane-labels>strong:last-child{text-align:right}
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]{position:relative;padding:12px 0}.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--cw-border);z-index:0}.crm-history-bilateral .crm-history-date{position:relative;z-index:1;text-align:center;background:var(--cw-surface);margin:0 auto 16px;width:max-content;padding:4px 12px}
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node{position:relative;z-index:1;width:calc(50% - 28px);margin:0;border:1px solid var(--cw-border);border-radius:14px;background:var(--cw-surface);padding:12px 16px}
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane=staff]>.crm-history-node{margin-left:calc(50% + 28px)}.crm-history-bilateral>.crm-history-card-stream>[data-history-lane=system]>.crm-history-node{width:min(640px,90%);margin:auto}
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node[open]{width:100%;margin:0}.crm-history-bilateral>.crm-history-card-stream>[data-history-focused=true]>.crm-history-node{outline:2px solid var(--admin-focus);outline-offset:2px}
+.crm-history-origin{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:16px;font-size:13px}.crm-history-origin>span{color:var(--cw-muted)}.crm-history-open{margin-top:16px}
+@media(max-width:760px){.crm-operation-layer.crm-customer-workspace.crm-operation-history{inset:0;width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.crm-history-lane-labels{grid-template-columns:1fr 64px 1fr;gap:8px}.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node{width:calc(100% - 20px);margin:0 0 0 20px}.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]::before{left:0}.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node[open]{width:calc(100% - 20px);margin-left:20px}}
+
+.crm-operation-heading-actions{display:flex;align-items:center;gap:12px;flex:none}
+
+.crm-history-field-match{background:var(--admin-quote-bg);color:var(--admin-quote);border-radius:8px;padding:8px!important}
+
+.crm-operation-history .crm-operation-content{scroll-padding-top:90px}.crm-history-bilateral>.crm-history-toolbar{position:sticky;top:-24px;z-index:5;background:var(--cw-surface);padding:12px 0}.crm-history-bilateral .crm-history-node{scroll-margin-top:100px}
+
+.crm-history-card-stream{display:flex;flex-direction:column}.crm-history-card-time{margin-bottom:8px;font-size:12px;line-height:18px;color:var(--cw-muted)}.crm-history-card-time .crm-history-when{display:block;white-space:normal;font:inherit}.crm-history-card-stream>[data-history-lane=customer] .crm-history-card-time{text-align:right}.crm-history-card-stream>[data-history-lane=staff] .crm-history-card-time{text-align:left}.crm-history-card-stream>[data-history-lane=system] .crm-history-card-time{text-align:center}
+/* Mirror the compact time row towards the central axis, retaining chronological DOM order. */
+.crm-history-bilateral .crm-history-node>summary{display:grid;grid-template-columns:24px minmax(0,1fr) 24px;column-gap:8px;row-gap:8px;align-items:center}
+.crm-history-bilateral .crm-history-summary,.crm-history-bilateral .crm-history-head{display:contents}
+.crm-history-bilateral .crm-history-icon{position:static;grid-row:1;grid-column:1;width:24px;height:24px}
+.crm-history-bilateral .crm-history-chevron{grid-row:1;grid-column:3;margin:0;justify-self:center}
+.crm-history-bilateral .crm-history-card-time{grid-row:1;grid-column:2;margin:0;min-width:0}
+.crm-history-bilateral .crm-history-card-time .crm-history-when{padding:0}
+.crm-history-bilateral .crm-history-head>strong{grid-row:2;grid-column:1/-1}
+.crm-history-bilateral .crm-history-meta{grid-row:3;grid-column:1/-1;margin:0}
+.crm-history-bilateral .crm-history-preview{grid-row:4;grid-column:1/-1;margin:0}
+.crm-history-bilateral [data-history-lane=customer] .crm-history-icon{grid-column:3}
+.crm-history-bilateral [data-history-lane=customer] .crm-history-chevron{grid-column:1}
+/* Source icons sit on the card edge towards the timeline; time and toggle keep their row. */
+.crm-history-bilateral .crm-history-icon{position:absolute;top:13px;left:-12px;right:auto;grid-column:auto;grid-row:auto}
+.crm-history-bilateral [data-history-lane=customer] .crm-history-icon{left:auto;right:-12px;grid-column:auto}
+
+/* Staff timestamps align with the title and body, without reserving an inline icon slot. */
+.crm-history-bilateral [data-history-lane=staff] .crm-history-card-time{grid-column:1/3}
+/* Customer-side copy mirrors staff-side copy towards the central timeline. */
+.crm-history-bilateral [data-history-lane=customer]>.crm-history-node{text-align:right}
+.crm-history-bilateral [data-history-lane=customer] .crm-history-origin{justify-content:flex-end}
+/* Customer timestamps reach the same right edge as the card copy. */
+.crm-history-bilateral [data-history-lane=customer] .crm-history-card-time{grid-column:2/4}
+
+/* Hover and keyboard focus identify the active card without moving the timeline. */
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node:is(:hover,:focus-within){border-color:var(--admin-action);background:var(--admin-selected);box-shadow:0 0 0 1px var(--admin-action)}
+.crm-history-bilateral .crm-history-node>summary:focus-visible{outline:2px solid var(--admin-focus);outline-offset:4px;border-radius:8px}
+/* Expanded desktop cards retain the direction of their source lane. */
+@media(min-width:761px){
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane=staff]>.crm-history-node[open]{width:75%;margin-left:25%;margin-right:0}
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane=customer]>.crm-history-node[open]{width:75%;margin-left:0;margin-right:25%}
+}
+/* Expanded records use the same reading layout regardless of their source lane. */
+.crm-history-bilateral [data-history-lane=customer]>.crm-history-node[open]{text-align:left}
+.crm-history-bilateral [data-history-lane=customer]>.crm-history-node[open] .crm-history-card-time{text-align:left;grid-column:1/3}
+.crm-history-bilateral [data-history-lane=customer]>.crm-history-node[open] .crm-history-chevron{grid-column:3}
+.crm-history-bilateral [data-history-lane=customer]>.crm-history-node[open] .crm-history-origin{justify-content:flex-start}
+
+.crm-history-bilateral .crm-history-card-time{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.crm-history-bilateral .crm-history-elapsed{font:inherit;color:var(--cw-muted);white-space:nowrap}
+.crm-history-bilateral [data-history-lane=customer]>.crm-history-node:not([open]) .crm-history-card-time{flex-direction:row-reverse}
+
+/* Panorama is a distinct secondary action using the shared action palette. */
+.crm-detail-root .crm-detail-contact-actions>.crm-work-button.crm-customer360-button,.crm-operation-heading-actions>.crm-work-button.crm-customer360-button{display:inline-flex;align-items:center;gap:8px;color:var(--admin-action);border-color:var(--admin-action);background:linear-gradient(120deg,var(--admin-selected),var(--cw-surface));font-weight:600}
+.crm-detail-root .crm-detail-contact-actions>.crm-work-button.crm-customer360-button:hover,.crm-operation-heading-actions>.crm-work-button.crm-customer360-button:hover{color:var(--admin-action);background:var(--admin-selected);border-color:var(--admin-action);box-shadow:0 0 0 1px var(--admin-action)}
+.crm-customer360-button:focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
+
+.crm-operation-history .crm-operation-content{overflow-anchor:none}

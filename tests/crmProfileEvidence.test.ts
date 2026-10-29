@@ -48,7 +48,7 @@ test("empty needs groups are omitted, while zero, explicit clearing and conflict
   );
   assert.match(html, /主要学习目标|工作交流/);
   assert.match(html, /客户自报水平/);
-  assert.doesNotMatch(html, /<h4>|预算与顾虑|学习安排|暂无记录/);
+  assert.doesNotMatch(html, /预算与顾虑|学习安排|暂无记录/);
 });
 test("linked evidence traverses cycles and all explicit roots, refuses other customers, preserves original content", () => {
   const events = [
@@ -110,9 +110,8 @@ test("field focus uses only the selected original answer, exact extraction quote
   assert.match(focus, /当次已采用/);
   assert.match(focus, /将其他地区补充/);
   assert.doesNotMatch(focus, /旅游|工作学习|目标冲突/);
-  assert.match(html, /完整原文与关联记录/);
-  assert.match(html, /我现在住在万隆，希望为了工作学习中文。/);
-  assert.match(html, /旅游/);
+  assert.match(html, /查看完整原始记录/);
+  assert.doesNotMatch(html, /完整原文与关联记录|我现在住在万隆，希望为了工作学习中文。|旅游/);
   assert.equal(JSON.stringify(data), before);
   assert.equal(fieldEvidenceDetails(data, "availability").length, 0);
 });

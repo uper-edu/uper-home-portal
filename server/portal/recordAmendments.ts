@@ -1,12 +1,17 @@
 import {withdrawMistakenAgreements} from '../../src/utils/crmAgreementCorrection.ts';
 import {extractionRoot} from '../../src/utils/crmExtractionEvidence.ts';
-import {profileFieldResults} from '../../src/utils/crmProfileSaveResult.ts';
 import {queueExtraction} from './aiExtraction.ts';
 import {randomUUID}from'node:crypto';
 import{fact,operation,lockLead,invalid}from'./trustWorkflow.ts';
-import{recordProfileUpdates}from'./dynamicProfile.ts';
 import{contactCorrectionOptions,firstRequirementBasis,firstBasisOutcome}from'../../src/utils/crmRecordAmendments.ts';
 import{contactStatistics}from'../../src/utils/crmContact.ts';
+/** Empty legacy envelopes are harmless; successful old requests replay before this write boundary. */
+export function assertAmendmentProfileBoundary(body:any){
+ for(const key of ['profileUpdates','profileVersions']){
+  const value=body[key];
+  if(value!==undefined&&(value===null||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length>0))invalid('直接编辑客户资料请到“客户资料”页签。');
+ }
+}
 export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:any,canWrite:(p:any,permission:string)=>boolean,clock=new Date()){
  if(typeof b.targetFactId!=='string'||!b.targetFactId.trim()||b.targetFactId.length>191)invalid('请选择需要补充／修正的原记录');
  const p=await lockLead(c,leadId,()=>true);
@@ -19,6 +24,7 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
  if(b.contactResult&&(b.kind!=='correction'||!originalLog||['closure','internal'].includes(originalLog.recordKind)||!contactCorrectionOptions.some(o=>o[0]===b.contactResult)))invalid('联系结果只能通过原联系记录的修正更新');
  if(b.profileUpdates&&Object.keys(b.profileUpdates).length&&!canWrite(p,'crm.write'))invalid('无权更新客户资料',403);
  return operation(c,actor,b,{leadId,kind:'record.amended'},async()=>{
+  assertAmendmentProfileBoundary(b);
   const previous=(p.recordAmendments||[]).filter((a:any)=>a.targetFactId===target.id);
   if(b.expectedAmendmentRevision!==previous.length)invalid('该记录已有新的补充／修正，请保留输入并核对后再保存',409);
   const staff=(await c.query('SELECT display_name FROM crm_users WHERE id=:p1',[actor])).rows[0];
@@ -26,8 +32,7 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
   let next:any={...p,recordAmendments:[...(p.recordAmendments||[]),amendment],simpleRevision:(p.simpleRevision||0)+1};
   next.commitments=withdrawMistakenAgreements(p,originalLog,b,amendment);
   for(const id of amendment.withdrawCommitmentIds){await c.query("UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken agreement withdrawn',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2",[leadId,id,clock]);}
-  const eventId=randomUUID();let fieldResults:any[]=[];
-  if(b.profileUpdates&&Object.keys(b.profileUpdates).length){if(!b.profileVersions)invalid('缺少资料版本，请刷新核对');const updated=await recordProfileUpdates(c,next,b.profileUpdates,b.profileVersions,{actor,sourceType:'sales_edit',sourceRecordId:amendment.id,basisFactIds:[eventId],occurredAt:clock.toISOString(),recordedAt:clock.toISOString(),reason:amendment.text,correction:b.kind==='correction'});next=updated.profile;fieldResults=profileFieldResults(b.profileUpdates,updated.changes,next);}
+  const eventId=randomUUID();const fieldResults:any[]=[];
   let firstRequirementStatus='unchanged';
   if(amendment.contactResult){
    const originalFirst=(p.followUpLogs||[]).find((l:any)=>l.id===p.firstFollowup?.logId);
@@ -51,8 +56,8 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
   const sourceRoot:any=sourceRow?extractionRoot(sourceRow):{type:originalLog?'sales_record':target.kind,id:sourceId,occurredAt:originalLog?.occurredAt||target.data.occurredAt||null};
   if(originalLog){const effectiveResult=(next.recordAmendments||[]).filter((a:any)=>a.targetLogId===originalLog.id&&a.contactResult).at(-1)?.contactResult;sourceRoot.countable=!['Not Occurred','Duplicate'].includes(effectiveResult);}
   const relationship={sourceRoot,amendment:{kind:b.kind,sequence:(next.recordAmendments||[]).length,targetFactId:target.id,targetSourceId:sourceId,originalText:originalLog?.summary||target.data.summary||target.data.text||JSON.stringify(target.data.changes||target.data.answers||{}),reason:amendment.reason}};
-  await queueExtraction(c,leadId,'sales_amendment',amendment.id,amendment.text,sourceRoot.occurredAt,actor,Object.keys(b.profileUpdates||{}),'1',relationship);
-  await fact(c,leadId,'record.amended',actor,{...amendment,firstRequirementStatus,profileUpdates:b.profileUpdates||{},profileFieldResults:fieldResults},eventId);
+  await queueExtraction(c,leadId,'sales_amendment',amendment.id,amendment.text,sourceRoot.occurredAt,actor,[],'1',relationship);
+  await fact(c,leadId,'record.amended',actor,{...amendment,firstRequirementStatus,profileUpdates:{},profileFieldResults:fieldResults},eventId);
   await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);
   await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'record.amend',:p2)",[actor,{leadId,amendmentId:amendment.id,targetFactId:target.id,firstRequirementStatus,withdrawCommitmentIds:amendment.withdrawCommitmentIds}]);
   return {saved:true,lead:next,amendment,firstRequirementStatus,profileFieldResults:fieldResults,createdTaskId:null};

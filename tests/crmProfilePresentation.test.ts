@@ -175,8 +175,8 @@ function mainChapters(html: string) {
 
 test("Basic details and current needs precede folded business management and source records",()=>{
  const html=render(lead({submittedAt:'2026-10-17T08:00:00Z',parentContact:'家长号码',city:'Bandung'}),'zh');
- assert.ok(html.indexOf('基本资料')<html.indexOf('学习背景与需求'));
- assert.ok(html.indexOf('学习背景与需求')<html.indexOf('客户来源与分组'));
+ assert.ok(html.indexOf('基本资料')<html.indexOf('客户洞察'));
+ assert.ok(html.indexOf('客户洞察')<html.indexOf('客户来源与分组'));
  assert.match(html,/<section class="crm-profile-origin">/);
  assert.doesNotMatch(html,/OWNER_CONTROL/);assert.match(html,/家长号码/);assert.match(html,/Bandung|万隆/);assert.match(html,/登记时间/);
 });
@@ -260,13 +260,13 @@ test('recorded tracking fields continue directly below source/group with no head
  assert.ok(html.indexOf('当前分组')<html.indexOf('活动标识'));assert.equal(JSON.stringify(value),before);
 });
 
-test('profile attributes keep their values, evidence and edit actions without subgroup headings',()=>{
+test('profile attributes retain evidence with read-only grouped insights and controlled correction',()=>{
  const value=lead({fullName:'Maya Putri',city:'Jakarta',communicationLanguage:'id',preferredChannel:'whatsapp',reportedLevel:'HSK 2',mode:'Online',availability:'周六晚上',budgetAmount:800000,concerns:['时间安排'],campaign:'周末中文体验课'}),before=JSON.stringify(value);
  const dynamicProfile=React.createElement(CrmProfileEditor,{lead:value,timezone:'Asia/Jakarta',isLight:true,onSaved(){}});
  const html=renderToStaticMarkup(React.createElement(CrmCustomerProfile,{lead:value,lang:'zh',timezone:'Asia/Jakarta',dynamicProfile}));
- assert.doesNotMatch(html,/<h4>/);
- for(const text of ['基本资料','学习背景与需求','客户来源与分组','客户自报水平','HSK 2','周六晚上','时间安排','周末中文体验课','当前分组','首选沟通语言','调整学习需求']){
+ assert.match(html,/<h4>学习需求与偏好<\/h4>/);
+ for(const text of ['基本资料','客户洞察','客户来源与分组','客户自报水平','HSK 2','周六晚上','时间安排','周末中文体验课','当前分组','首选沟通语言','更多操作','人工纠正学习需求']){
    assert.ok(html.includes(text),text);
  }
- assert.match(html,/调整可上课时段/);assert.equal(JSON.stringify(value),before);
+ assert.doesNotMatch(html,/调整可上课时段/);assert.equal(JSON.stringify(value),before);
 });
