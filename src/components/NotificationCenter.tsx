@@ -1,3 +1,6 @@
+import {AdminFormSection} from './AdminFormLayout';
+import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
+import {crmFormText} from '../utils/crmFormLanguage';
 import {isSalesProgressStage,progressLabel} from '../utils/crmSalesProgress';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
 import {notificationTopicIcons} from "./crm/notificationTopicIcons";
@@ -195,6 +198,13 @@ export default function NotificationCenter({
       mode: "simulation",
       maxPerHour: 20,
     });
+  const editorBaseline=useRef<string|null>(null);
+  const [discardEditor,setDiscardEditor]=useState<null|{run:()=>void}>(null);
+  const editorSnapshot=JSON.stringify({key,config:editor==='rule'?rule:channel,routingReviewed});
+  const editorDirty=Boolean(editor&&editorBaseline.current!==null&&editorBaseline.current!==editorSnapshot);
+  useEffect(()=>{if(editor&&editorBaseline.current===null)editorBaseline.current=editorSnapshot;if(!editor)editorBaseline.current=null;});
+  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(editorDirty||busy){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[editorDirty,busy]);
+  const leaveEditor=(run:()=>void)=>{if(busy)return;if(editorDirty)setDiscardEditor({run});else run();};
   const [filterOptions, setFilterOptions] = useState<Record<string, string[]>>({
     sources: [],
     tiers: [],
@@ -301,7 +311,7 @@ export default function NotificationCenter({
     `${row.config?.groupName || t("未命名群", "Unnamed group")} · ${connectionLabel(row)}`;
   const calendarSummary = `${globalCalendar.timezone} · ${globalCalendar.start}–${globalCalendar.end} · ${globalCalendar.days.map((d) => (zh ? ["日", "一", "二", "三", "四", "五", "六"] : lang === "id" ? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])[d]).join(", ")}`;
   const timed = rule.channels.includes("lark") || rule.event === "daily.digest";
-  const field = (title: string, child: React.ReactNode, hint?: string, required?:boolean) => title===t("通知渠道", "Delivery channels") ? <div className="space-y-1.5"><AdminFieldLabel required>{title}</AdminFieldLabel><div role="group" aria-label={title} aria-required="true">{child}</div></div> : (
+  const field = (title: string, child: React.ReactNode, hint?: string, required?:boolean) => title===t("通知渠道", "Delivery channels") ? <div data-admin-form="" className="space-y-1.5"><AdminFieldLabel required>{title}</AdminFieldLabel><div role="group" aria-label={title} aria-required="true">{child}</div></div> : (
     <AdminField required={required} className="block space-y-1.5">
       <span className="text-xs font-semibold">{title}</span>
       {child}
@@ -374,14 +384,9 @@ export default function NotificationCenter({
       />,
     );
   const section = (title: string, children: React.ReactNode) => (
-    <div
-      className={`p-4 rounded-xl border space-y-4 ${isLight ? "bg-slate-50/70 border-slate-200" : "bg-slate-950/40 border-slate-800"}`}
-    >
-      <h4 className="text-xs font-bold">{title}</h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {children}
-      </div>
-    </div>
+    <AdminFormSection className="crm-form-section notification-form-section" title={title}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" data-admin-grid="">{children}</div>
+    </AdminFormSection>
   );
   async function save(enabled: boolean) {
     setBusy(true);
@@ -457,8 +462,10 @@ export default function NotificationCenter({
       setBusy(false);
     }
   }
-  function edit(row?: Row) {
+  function edit(row?: Row) {leaveEditor(()=>openEditor(row));}
+  function openEditor(row?: Row) {
     if(row?.config&&["task.created","task.rescheduled","task.appointment_due"].includes(row.config.event)){setNotice(t("旧任务通知已退役，仅保留配置供核对，不执行或重放。","Retired task notification: configuration retained for reference; no execution or replay."));return;}
+    editorBaseline.current=null;
     setNotice("");
     setRoutingReviewed(false);
     setSimulation([]);
@@ -499,7 +506,7 @@ export default function NotificationCenter({
   ];
   return (
     <section
-      ref={panelRef}
+      data-admin-form="" ref={panelRef}
       style={{ scrollMarginTop: 128 }}
       className={`${embeddedTab?"notification-topic-content":box+" p-5"} space-y-4 ${isLight ? "text-slate-800" : "text-slate-200"}`}
     >
@@ -541,6 +548,7 @@ export default function NotificationCenter({
           </span>
         </button>
       </div>
+      {discardEditor&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardEditor(null)} onDiscard={()=>{const run=discardEditor.run;setDiscardEditor(null);run();}}/>}
       {open && (
         <>
           <div className="flex flex-wrap items-center gap-2" hidden={Boolean(embeddedTab)} style={embeddedTab?{display:"none"}:undefined}>
@@ -551,14 +559,14 @@ export default function NotificationCenter({
               {tabs.map(([value, title, Icon]) => (
                 <button
                   key={value}
-                  onClick={() => {
+                  onClick={() => leaveEditor(() => {
                     setTab(value);
                     setRows([]);
                     setEditor(null);
                     setFilter("all");
                     setNotice("");
                     setCancelId("");
-                  }}
+                  })}
                   className={`flex gap-1.5 items-center px-3 py-2 rounded-lg text-xs font-semibold ${tab === value ? (isLight ? "bg-white text-primary-700 shadow-2xs" : "bg-primary-600 text-white") : muted}`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -679,14 +687,14 @@ export default function NotificationCenter({
               )}
               {editor && (
                 <div
-                  className="space-y-4"
+                  className="crm-form-layout notification-form-editor"
                   aria-label={t(
                     "通知配置表单",
                     "Notification configuration form",
                   )}
                 >
                   <header className="admin-edit-header" data-theme={isLight?'light':'dark'}>
-                   <div className="admin-edit-title"><h4>{editor === 'rule'?t('编辑通知策略','Edit notification policy'):t('编辑 Lark 渠道','Edit Lark channel')}</h4><small>{key}</small></div><button type="button" className={`${button} admin-edit-close`} disabled={busy} onClick={()=>setEditor(null)}><X className="w-4 h-4"/><span className="sr-only">{t('关闭编辑','Close editor')}</span></button>
+                   <div className="admin-edit-title"><h4>{editor === 'rule'?t('编辑通知策略','Edit notification policy'):t('编辑 Lark 渠道','Edit Lark channel')}</h4><small>{key}</small>{editorDirty&&<span className="crm-form-draft-status" role="status">{crmFormText(lang,'unsaved')}</span>}</div><button type="button" className={`${button} admin-edit-close`} disabled={busy} onClick={()=>leaveEditor(()=>setEditor(null))}><X className="w-4 h-4"/><span className="sr-only">{t('关闭编辑','Close editor')}</span></button>
                   <div className="admin-edit-actions">
                     {editor === "rule" && (
                       <button

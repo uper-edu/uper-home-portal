@@ -1,4 +1,3 @@
-import {CrmFormLayoutScope} from '../AdminForm';
 import {CrmFormSection,CrmFormSummary} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {CrmIdentityAction} from './CrmIdentityAction';
@@ -30,7 +29,7 @@ import { calendarSample } from "../../utils/workCalendar";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
 import { trustError } from "../../utils/crmTrustLanguage";
-function CrmStageEditorBody({
+export function CrmStageEditor({
   lead, lang, isLight, onSaved, disabled, onDirty, onBusy, initialBasisId, inDrawer=false, onClose, request = fetch,
 }: any) {
  const ui=useCrmUiText(lang);
@@ -667,7 +666,7 @@ function LegacyCrmTrustPanel({
               "随时记录有用信息；保存不计为联系，也不完成任务。",
             )}
           </p>
-          <label>
+          <label className="admin-field">
             {t("Information", "Informasi", "信息内容")}
             <textarea
               disabled={disabled || busy || unknown}
@@ -929,7 +928,7 @@ function LegacyCrmTrustPanel({
                 </button>
               </div>
             )}
-            <form
+            <form data-admin-form=""
               className="crm-workflow-form crm-task-operation-form"
               noValidate
               onSubmit={(e) => {
@@ -1028,10 +1027,10 @@ function LegacyCrmTrustPanel({
                 )}
                 {['create_request','link_request'].includes(editor.kind)&&<div className="crm-sales-task-context"><strong>{t('New customer request','Permintaan pelanggan baru','新的客户请求')}</strong><p>{editor.task.data.text}</p><p>{t('Original response deadline','Tenggat respons awal','原响应截止')} · {time(editor.task.data.dueAt)}</p></div>}
 
-                {editor.kind==='replace'&&<label><input type="checkbox" required checked={sameMatterConfirmed} onChange={e=>setSameMatterConfirmed(e.target.checked)}/>{t('The earlier work for this matter is no longer needed. Cancel it and create the replacement; keep its history.','Pekerjaan sebelumnya untuk urusan ini tidak diperlukan lagi. Batalkan dan buat pengganti; riwayat tetap.','同一事项的原工作已不再需要：取消原任务并建立替代任务，保留原期限及逾期历史。')}</label>}
+                {editor.kind==='replace'&&<label className="admin-field admin-field--choice"><input type="checkbox" required checked={sameMatterConfirmed} onChange={e=>setSameMatterConfirmed(e.target.checked)}/>{t('The earlier work for this matter is no longer needed. Cancel it and create the replacement; keep its history.','Pekerjaan sebelumnya untuk urusan ini tidak diperlukan lagi. Batalkan dan buat pengganti; riwayat tetap.','同一事项的原工作已不再需要：取消原任务并建立替代任务，保留原期限及逾期历史。')}</label>}
                 {["create", "replace", "create_request", "edit"].includes(editor.kind) && (
                   <>
-                    <label>
+                    <label className="admin-field">
                       {["create","create_request"].includes(editor.kind)?t("Task content (required)","Isi tugas (wajib)","任务内容（必填）"):t("Action", "Tindakan", "具体动作")}
                       <input
                         required
@@ -1039,7 +1038,7 @@ function LegacyCrmTrustPanel({
                         onChange={(e) => setAction(e.target.value)}
                       />
                     </label>
-                    {editor.kind==="replace"&&<label>
+                    {editor.kind==="replace"&&<label className="admin-field">
                       {t("Purpose", "Tujuan", "用途")}
                       <input
                         required
@@ -1063,7 +1062,7 @@ function LegacyCrmTrustPanel({
                   </>
                 )}
                 {["create", "replace", "reschedule", "edit"].includes(editor.kind) && (
-                  <label>
+                  <label className="admin-field">
                     <span className="crm-task-current-time">{t('Current time','Waktu saat ini','当前时间')} · {formatCrmOperatingTime(new Date(formNow).toISOString(),timezone)}</span>
                     {editor.kind === "reschedule"
                       ? editor.task?.timing_kind === "review" || editor.task?.kind === "contact_review"
@@ -1138,10 +1137,10 @@ function LegacyCrmTrustPanel({
                 )}
                 {(["create","create_request"].includes(editor.kind)||(editor.kind==='edit'&&date===initialDate.current))?<details className="crm-task-optional-note">
                   <summary>{t("Additional notes (optional)","Catatan tambahan (opsional)","补充说明（选填）")}</summary>
-                  <label>{t("Only add information not covered by the task content.","Tambahkan hanya informasi yang belum tercakup dalam isi tugas.","仅填写任务内容未涵盖的信息。")}
+                  <label className="admin-field">{t("Only add information not covered by the task content.","Tambahkan hanya informasi yang belum tercakup dalam isi tugas.","仅填写任务内容未涵盖的信息。")}
                     <textarea aria-label={t("Additional notes (optional)","Catatan tambahan (opsional)","补充说明（选填）")} value={reason} onChange={e=>setReason(e.target.value)}/>
                   </label>
-                </details>:<label>
+                </details>:<label className="admin-field">
                   {editor.kind === "supplement" ? t("Additional information", "Informasi tambahan", "补充内容") : editor.kind === "edit" ? t("Reschedule reason (required)","Alasan perubahan jadwal (wajib)","改期原因（必填）") : t("Reason / evidence", "Alasan / bukti", "原因／依据")}
                   <textarea
                     required
@@ -1239,5 +1238,3 @@ function LegacyCrmTrustPanel({
     </section>
   );
 }
-
-export function CrmStageEditor(props:Parameters<typeof CrmStageEditorBody>[0]){return <CrmFormLayoutScope><CrmStageEditorBody {...props}/></CrmFormLayoutScope>;}

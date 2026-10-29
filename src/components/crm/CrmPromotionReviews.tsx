@@ -1,4 +1,3 @@
-import {CrmFormLayoutScope} from '../AdminForm';
 import {AdminFormSection,AdminFormActions} from '../AdminFormLayout';
 import {AdminField,AdminFieldLabel,AdminRequiredNote,AdminForm} from '../AdminForm';
 import {
@@ -20,7 +19,7 @@ import {
   campaignPromotionUrl,
 } from "../../utils/campaignPromotion";
 
-function CrmPromotionReviewsBody({
+export function CrmPromotionReviews({
   isLight,
   onChanged,
   onLead,
@@ -715,5 +714,3 @@ function PromotionReviewCard({
     </article>
   );
 }
-
-export function CrmPromotionReviews(props:Parameters<typeof CrmPromotionReviewsBody>[0]){return <CrmFormLayoutScope><CrmPromotionReviewsBody {...props}/></CrmFormLayoutScope>;}

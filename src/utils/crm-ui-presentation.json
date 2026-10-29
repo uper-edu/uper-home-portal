@@ -7319,6 +7319,34 @@
     "More agreements",
     "Kesepakatan lainnya"
   ],
+  "撤回误记约定": [
+    "Withdraw mistaken agreements",
+    "Tarik kesepakatan yang salah dicatat"
+  ],
+  "纠正误记约定": [
+    "Correct mistaken agreement",
+    "Koreksi kesepakatan yang salah dicatat"
+  ],
+  "误记已撤回": [
+    "Mistaken entry withdrawn",
+    "Catatan keliru telah ditarik"
+  ],
+  "仅选择从未实际达成的约定；客户后来取消或改约，请正常记录进展。": [
+    "Select only agreements that were never made. Use normal progress recording for later cancellations or rescheduling.",
+    "Pilih hanya kesepakatan yang tidak pernah dibuat. Untuk pembatalan atau perubahan jadwal kemudian, catat progres seperti biasa."
+  ],
+  "客户约定已有变化，请刷新核对后再修正": [
+    "Agreements changed. Refresh and review before correcting.",
+    "Kesepakatan berubah. Muat ulang dan tinjau sebelum mengoreksi."
+  ],
+  "所选约定已变化或不属于原记录，请刷新核对": [
+    "The selected agreement changed or belongs to another record. Refresh and review.",
+    "Kesepakatan berubah atau berasal dari catatan lain. Muat ulang dan tinjau."
+  ],
+  "请选择误记约定并填写修正原因": [
+    "Select mistaken agreements and provide a correction reason.",
+    "Pilih kesepakatan yang keliru dan isi alasan koreksi."
+  ],
   "请求预约试听": [
     "Trial booking requested",
     "Meminta jadwal kelas percobaan"

@@ -35,7 +35,7 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
   if(!focused){if(extractionLoading)return;setNotice('未在当前历史中定位该依据，原记录不会被删除；可重试读取或核对原始记录。');handled.current=focusRequest.token;return;}
   if(target)return;
   handled.current=focusRequest.token;setFilter('all');setSearch('');setExpanded(v=>new Set([...v,focused.id]));setNotice('已定位对应原始记录。');
-  const row=locateLedgerEvent(data.events,focusRequest.id);if(focusRequest.mode==='amend'&&!disabled&&row&&amendable.has(row.eventType))setTarget(row);
+  const row=locateLedgerEvent(data.events,focusRequest.id);if(focusRequest.mode==='amend'&&!disabled&&row&&amendable.has(row.eventType))setTarget({...row,withdrawCommitmentId:focusRequest.withdrawCommitmentId});
  },[data,focusRequest,disabled,target,focused?.id,extractionLoading]);
  useEffect(()=>{
   if(!focusRequest||!focused||positioned.current===focusRequest.token||filter!=='all'||search||!expanded.has(focused.id)||target)return;

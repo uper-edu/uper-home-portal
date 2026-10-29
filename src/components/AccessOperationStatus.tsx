@@ -51,7 +51,7 @@ export function AccessOperationStatus({
           )}
       </p>
       {pending.map((p) => (
-        <div key={p.operationId}>
+        <div data-admin-form="" key={p.operationId}>
           <small>{p.operationId}</small>
           <button
             type="button"
@@ -115,7 +115,7 @@ export function AccessOperationStatus({
                   "草稿丢失后，先关闭这项未确认操作。服务端会返回已提交结果，或阻止迟到的原请求再提交。",
                 )}
               </p>
-              <label>
+              <label className="admin-field">
                 {t("Reason for closing", "Alasan penutupan", "关闭原因")}
                 <input
                   value={reasons[p.operationId] || ""}

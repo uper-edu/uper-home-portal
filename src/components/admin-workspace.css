@@ -4,7 +4,7 @@
 
 .crm-ops-workspace-sample{--ops-border:#cbd5e1;--ops-surface:#fff;--ops-text:#172b42;color:var(--ops-text)}.crm-ops-workspace-sample[data-theme=dark]{--ops-border:#475569;--ops-surface:#111c2c;--ops-text:#e2e8f0}.crm-ops-workspace-sample[data-theme=dark] .crm-ops-nav button[aria-current=page]{background:#123c3a;color:#91e2d6}.admin-topic .crm-ops-summary{margin:0}.admin-topic .crm-ops-note{font-size:13px!important;opacity:1}.admin-topic-directory aside>div:last-child{font-size:12px}.admin-topic-main form>div>h3{font-size:16px}
 
-.admin-topic .crm-ops-content form h3{display:none}.admin-topic [hidden]{display:none!important}.admin-topic .crm-ops-tools{margin:8px 0}.admin-topic-directory summary{min-height:40px;cursor:pointer}
+.admin-topic .crm-ops-content form h3:not([data-admin-section-title]){display:none}.admin-topic [hidden]{display:none!important}.admin-topic .crm-ops-tools{margin:8px 0}.admin-topic-directory summary{min-height:40px;cursor:pointer}
 
 .admin-topic{overflow-anchor:none}.admin-topic-main{min-height:calc(100dvh - var(--admin-shell-height) - 32px)}.admin-topic-directory{overflow-anchor:none}.admin-topic .crm-ops-commandbar details details{margin-top:12px}.admin-topic .crm-ops-commandbar .crm-ops-tools h3{display:block}
 

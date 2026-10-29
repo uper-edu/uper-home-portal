@@ -1,3 +1,5 @@
+import {CrmFormSection} from './CrmFormLayout';
+import {AdminFormActions} from '../AdminFormLayout';
 import {AdminField} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -137,7 +139,7 @@ export function CampaignMaterials({
     }
   }
   return (
-    <section
+    <section data-admin-form=""
       className="campaign-materials"
       aria-label={t("Marketing materials", "Materi promosi", "推广物料")}
     >
@@ -151,6 +153,7 @@ export function CampaignMaterials({
           "模板依据已保存的活动信息拼装，不调用AI，也不翻译您输入的原文。对外使用前请核对日期和内容。",
         )}
       </p>
+      <CrmFormSection name="materialSetup" lang={lang}>
       {(campaign.promotionModel === "multiple" ||
         !!campaign.promotionLinks?.length) && (
         <div className="my-4">
@@ -218,6 +221,8 @@ export function CampaignMaterials({
           ))}
         </CrmSelect>
       </div>
+      </CrmFormSection>
+      <CrmFormSection name="materialContent" lang={lang}>
       {!value && (
         <p className="campaign-hint">
           {t(
@@ -243,7 +248,8 @@ export function CampaignMaterials({
           }}
         />
       </AdminField>
-      <nav aria-label={t("Draft actions", "Tindakan draf", "草稿操作")}>
+      </CrmFormSection>
+      <AdminFormActions role="group" className="crm-material-actions" aria-label={t("Draft actions", "Tindakan draf", "草稿操作")}>
         {canEdit && (
           <button
             type="button"
@@ -282,7 +288,7 @@ export function CampaignMaterials({
               : t("Save drafts", "Simpan draf", "保存草稿")}
           </button>
         )}
-      </nav>
+      </AdminFormActions>
       {(busy || changed.current.size > 0) && (
         <CrmSaveFeedback lang={lang} state={busy ? "saving" : "dirty"} />
       )}

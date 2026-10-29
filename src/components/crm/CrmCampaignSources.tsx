@@ -1,4 +1,3 @@
-import {CrmFormLayoutScope} from '../AdminForm';
 import {crmFormText} from '../../utils/crmFormLanguage';
 import {X} from 'lucide-react';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
@@ -21,7 +20,7 @@ interface SourceProps {
   onStateChange?: (state: { dirty: boolean; busy: boolean }) => void;
   onCount?: (count: number | null) => void;
 }
-function CrmCampaignSourcesBody(props: SourceProps) {
+export function CrmCampaignSources(props: SourceProps) {
   const u = campaignUi(props.lang);
   const [tab, setTab] = useState(
       props.initialIssue === "promotions" ? "promotions" : "campaigns",
@@ -627,5 +626,3 @@ function UnknownCampaignSources({
     </section>
   );
 }
-
-export function CrmCampaignSources(props:Parameters<typeof CrmCampaignSourcesBody>[0]){return <CrmFormLayoutScope><CrmCampaignSourcesBody {...props}/></CrmFormLayoutScope>;}

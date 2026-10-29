@@ -1,3 +1,4 @@
+import {withdrawMistakenAgreements} from '../../src/utils/crmAgreementCorrection.ts';
 import {extractionRoot} from '../../src/utils/crmExtractionEvidence.ts';
 import {profileFieldResults} from '../../src/utils/crmProfileSaveResult.ts';
 import {queueExtraction} from './aiExtraction.ts';
@@ -21,8 +22,10 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
   const previous=(p.recordAmendments||[]).filter((a:any)=>a.targetFactId===target.id);
   if(b.expectedAmendmentRevision!==previous.length)invalid('该记录已有新的补充／修正，请保留输入并核对后再保存',409);
   const staff=(await c.query('SELECT display_name FROM crm_users WHERE id=:p1',[actor])).rows[0];
-  const amendment={staffName:staff?.display_name||actor,id:randomUUID(),requestId:b.requestId,targetFactId:target.id,targetLogId:originalLog?.id||null,kind:b.kind,text:b.text.trim(),reason:b.kind==='correction'?b.reason.trim():null,contactResult:b.contactResult||null,actor,recordedAt:clock.toISOString()};
+  const amendment={staffName:staff?.display_name||actor,id:randomUUID(),requestId:b.requestId,targetFactId:target.id,targetLogId:originalLog?.id||null,kind:b.kind,text:b.text.trim(),reason:b.kind==='correction'?b.reason.trim():null,contactResult:b.contactResult||null,withdrawCommitmentIds:b.withdrawCommitmentIds||[],actor,recordedAt:clock.toISOString()};
   let next:any={...p,recordAmendments:[...(p.recordAmendments||[]),amendment],simpleRevision:(p.simpleRevision||0)+1};
+  next.commitments=withdrawMistakenAgreements(p,originalLog,b,amendment);
+  for(const id of amendment.withdrawCommitmentIds){await c.query("UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken agreement withdrawn',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2",[leadId,id,clock]);}
   const eventId=randomUUID();let fieldResults:any[]=[];
   if(b.profileUpdates&&Object.keys(b.profileUpdates).length){if(!b.profileVersions)invalid('缺少资料版本，请刷新核对');const updated=await recordProfileUpdates(c,next,b.profileUpdates,b.profileVersions,{actor,sourceType:'sales_edit',sourceRecordId:amendment.id,basisFactIds:[eventId],occurredAt:clock.toISOString(),recordedAt:clock.toISOString(),reason:amendment.text,correction:b.kind==='correction'});next=updated.profile;fieldResults=profileFieldResults(b.profileUpdates,updated.changes,next);}
   let firstRequirementStatus='unchanged';
@@ -51,7 +54,7 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
   await queueExtraction(c,leadId,'sales_amendment',amendment.id,amendment.text,sourceRoot.occurredAt,actor,Object.keys(b.profileUpdates||{}),'1',relationship);
   await fact(c,leadId,'record.amended',actor,{...amendment,firstRequirementStatus,profileUpdates:b.profileUpdates||{},profileFieldResults:fieldResults},eventId);
   await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);
-  await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'record.amend',:p2)",[actor,{leadId,amendmentId:amendment.id,targetFactId:target.id,firstRequirementStatus}]);
+  await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'record.amend',:p2)",[actor,{leadId,amendmentId:amendment.id,targetFactId:target.id,firstRequirementStatus,withdrawCommitmentIds:amendment.withdrawCommitmentIds}]);
   return {saved:true,lead:next,amendment,firstRequirementStatus,profileFieldResults:fieldResults,createdTaskId:null};
  });
 }

@@ -2,8 +2,6 @@ import {createPortal} from 'react-dom';
 import React,{Children,cloneElement,createContext,isValidElement,useContext,useId,useState,useRef,useLayoutEffect,type ReactNode,type ElementType} from 'react';
 type FieldInfo={id:string;required:boolean};
 const FieldContext=createContext<FieldInfo|null>(null);
-const FormLayoutContext=createContext(false);
-export function CrmFormLayoutScope({children}:{children:ReactNode}){return <FormLayoutContext.Provider value={true}>{children}</FormLayoutContext.Provider>;}
 export const useAdminField=()=>useContext(FieldContext);
 /** Only interface label suffixes are normalized; user-entered content is never processed. */
 export function adminFieldName(text:string){return text.replace(/\s*[（(](?:必填|选填|可选|required|optional|wajib|opsional)[）)]/gi,'').replace(/\s*[·・]\s*(?:optional|opsional|选填|可选)\s*$/gi,'').replace(/\s*[*＊]\s*$/,'').trim();}
@@ -43,7 +41,6 @@ export function AdminField({children,required,as:Tag='label',...props}: {childre
   if(Tag==='label'&&!labeled&&typeof node.type!=='string'){labeled=true;return <AdminFieldLabel required={needed}>{node}</AdminFieldLabel>;}
   return typeof node.type==='string'?cloneElement(node as any,{},walk(p.children,insideLabel)):node;
  });
- if(!useContext(FormLayoutContext))return <FieldContext.Provider value={{id,required:needed}}><Tag {...props} {...(Tag==='label'?{htmlFor:id}:{})}>{walk(children)}</Tag></FieldContext.Provider>;
  const kind=controls.some(c=>['checkbox','radio'].includes(c.props.type))?'choice':'value';
  const rendered=Children.toArray(walk(children)),index=kind==='value'&&controls.length===1?rendered.findIndex(nativeField):-1;
  const before=index<0?[]:rendered.slice(0,index),isHelp=(v:any)=>isValidElement(v)&&['p','small'].includes(v.type as string);
@@ -58,6 +55,5 @@ export function firstMissingAdminField(root:HTMLElement){
 /** Validation is a preflight only: callers keep the same submit, idempotency and result-query mechanism. */
 export function AdminForm({children,lang='zh',...props}:any){
  const[error,setError]=useState('');
- const scoped=useContext(FormLayoutContext);
- return <form {...props} data-admin-form={scoped?'':undefined} noValidate onSubmitCapture={e=>{props.onSubmitCapture?.(e);if(e.defaultPrevented)return;const field=firstMissingAdminField(e.currentTarget);if(field){e.preventDefault();e.stopPropagation();field.focus();const label=field.getAttribute('aria-label')||field.labels?.[0]?.textContent||'';setError(lang==='zh'?'请填写必填项：'+adminFieldName(label):lang==='id'?'Lengkapi kolom wajib: '+adminFieldName(label):'Complete the required field: '+adminFieldName(label));field.setAttribute('aria-invalid','true');field.setAttribute('data-admin-invalid','true');}else setError('');}} onInputCapture={e=>{props.onInputCapture?.(e);const field=e.target as HTMLElement;if(field.dataset.adminInvalid){field.removeAttribute('aria-invalid');field.removeAttribute('data-admin-invalid');}setError('');}}>{error&&<p role="alert" className="admin-required-error">{error}</p>}{children}</form>;
+ return <form {...props} data-admin-form="" noValidate onSubmitCapture={e=>{props.onSubmitCapture?.(e);if(e.defaultPrevented)return;const field=firstMissingAdminField(e.currentTarget);if(field){e.preventDefault();e.stopPropagation();field.focus();const label=field.getAttribute('aria-label')||field.labels?.[0]?.textContent||'';setError(lang==='zh'?'请填写必填项：'+adminFieldName(label):lang==='id'?'Lengkapi kolom wajib: '+adminFieldName(label):'Complete the required field: '+adminFieldName(label));field.setAttribute('aria-invalid','true');field.setAttribute('data-admin-invalid','true');}else setError('');}} onInputCapture={e=>{props.onInputCapture?.(e);const field=e.target as HTMLElement;if(field.dataset.adminInvalid){field.removeAttribute('aria-invalid');field.removeAttribute('data-admin-invalid');}setError('');}}>{error&&<p role="alert" className="admin-required-error">{error}</p>}{children}</form>;
 }

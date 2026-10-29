@@ -3,7 +3,7 @@ import {agreementTime,agreementListTime} from '../../utils/crmProgressDetails';
 import {priorityAgreements} from '../../utils/crmAgreementPresentation';
 import {useCrmUiText} from './CrmUiLanguage';
 /** Shared agreement hierarchy in full list, compact list and follow-up. */
-export function CrmListAgreements({lead,lang,timezone,onOpen,detail=false,now=Date.now()}:any){
+export function CrmListAgreements({lead,lang,timezone,onOpen,onCorrect,detail=false,now=Date.now()}:any){
  const ui=useCrmUiText(lang),rows=priorityAgreements(lead,timezone,now);if(!rows.length)return null;
  const row=(entry:any)=>{const {agreement:v,status}=entry;
   const tone=status==='overdue'?'danger':status==='soon'||status==='today'||status==='invalid'?'warning':'info';
@@ -18,6 +18,7 @@ export function CrmListAgreements({lead,lang,timezone,onOpen,detail=false,now=Da
     <button type="button" className="crm-work-link crm-interaction-agreement crm-agreement-list-action" onClick={onOpen} title={v.action} aria-label={ui('客户约定')+'：'+v.action}>{icon}<span className="crm-list-agreement-preview">{v.action}</span></button>
     {status!=='invalid'&&<span className="crm-list-agreement-date" data-undated={status==='undated'||undefined}>{time}</span>}
    </>}
+   {detail&&onCorrect&&(lead.followUpLogs||[]).some((l:any)=>[l.id,l.requestId].filter(Boolean).includes(v.sourceId))&&<button type="button" className="crm-work-link" onClick={()=>onCorrect(v)}>{ui("纠正误记约定")}</button>}
   </div>;
  };
  return <section className={'crm-list-agreements'+(detail?' is-detail':'')} aria-label={ui('客户约定')}>

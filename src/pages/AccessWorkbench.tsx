@@ -1,3 +1,5 @@
+import {AdminFormGuide} from '../components/AdminFormGuide';
+import {AdminFormSection,AdminFormActions} from '../components/AdminFormLayout';
 import {AiServicePanel} from '../components/AiServicePanel';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
@@ -155,18 +157,20 @@ export function AccessWorkspace({
     panel.current?.focus();
     return () => priorFocus.current?.focus();
   }, [!!user, !!role]);
+  const editorHasDraft = Boolean(user || role) && (dirty || why.length > 0 || password.length > 0);
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
-      if (dirty) {
+      if (editorHasDraft) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [dirty]);
+  }, [editorHasDraft]);
   const close = () => {
-    if (dirty) {
+    if (busy) return;
+    if (editorHasDraft) {
       setDiscarding(true);
       return;
     }
@@ -397,7 +401,7 @@ export function AccessWorkspace({
   const selectedPreviewUser =
     data?.users.find((u) => u.id === previewUserId) || data?.users[0];
   return (
-    <div className="access-page" data-admin-workspace="system" data-theme={isLight ? "light" : "dark"}>
+    <div data-admin-form="" className="access-page" data-admin-workspace="system" data-theme={isLight ? "light" : "dark"}>
       <PageMetadata lang={lang} options={{module:tab,state:can("access.read")?undefined:"denied"}}/>
       <a className="admin-skip-link" href="#access-main">
         {t("Skip to workspace", "Lewati ke ruang kerja", "跳到工作区")}
@@ -465,7 +469,7 @@ export function AccessWorkspace({
             </p>
           </div>
           {can("access.read") && tab !== "ai" && (
-            <button disabled={busy || dirty} onClick={() => void load()}>
+            <button disabled={busy || editorHasDraft} onClick={() => void load()}>
               {t("Reload", "Muat ulang", "重新载入")}
             </button>
           )}
@@ -504,7 +508,7 @@ export function AccessWorkspace({
                     "权限逻辑与操作指南",
                   )}
                 </h2>
-                <BrowserMetadataGuide lang={lang}/>
+                <BrowserMetadataGuide lang={lang}/><AdminFormGuide lang={lang}/>
                 <ol>
                   {accessGuide.map((text, i) => (
                     <li key={i}>{text[col]}</li>
@@ -725,21 +729,23 @@ export function AccessWorkspace({
           <section
             ref={panel}
             tabIndex={-1}
-            className="access-panel"
+            data-admin-form="" className="access-panel admin-editor-layout"
             role="dialog"
             aria-modal="true"
             aria-labelledby="access-editor-title"
           >
-            <AdminRequiredNote lang={lang}/><div className="access-toolbar">
+            <div className="access-toolbar admin-editor-heading">
               <h2 id="access-editor-title">
                 {user
                   ? t("User settings", "Pengaturan pengguna", "用户设置")
                   : t("Role settings", "Pengaturan peran", "角色设置")}
               </h2>
+              <AdminRequiredNote lang={lang}/>
               <button onClick={close} disabled={busy}>
                 {t("Close", "Tutup", "关闭")}
               </button>
             </div>
+            <div className="admin-editor-body" data-admin-stack="">
             {discarding && (
               <section role="alert" className="access-impact">
                 <p>
@@ -875,7 +881,7 @@ export function AccessWorkspace({
               </p>
             )}
             {user && (
-              <>
+              <AdminFormSection title={t("User details", "Detail pengguna", "用户信息")}>
                 <AdminField>
                   {t("Login ID", "ID login", "登录ID")}
                   <input
@@ -1071,10 +1077,10 @@ export function AccessWorkspace({
                     </small>
                   </AdminField>
                 )}
-              </>
+              </AdminFormSection>
             )}
             {role && (
-              <>
+              <AdminFormSection title={t("Role details", "Detail peran", "角色信息")}>
                 <AdminField>
                   {t("Stable role ID", "ID peran tetap", "稳定角色ID")}
                   <input
@@ -1087,7 +1093,7 @@ export function AccessWorkspace({
                   />
                 </AdminField>
                 {["names", "description"].map((field) => (
-                  <div key={field} className="access-languages">
+                  <div key={field} className="access-languages" data-admin-grid="">
                     {["English", "Bahasa Indonesia", "中文"].map(
                       (language, i) => (
                         <AdminField key={language}>
@@ -1245,7 +1251,7 @@ export function AccessWorkspace({
                     ))}
                   </section>
                 )}
-              </>
+              </AdminFormSection>
             )}
             <AdminField>
               {t("Change reason", "Alasan perubahan", "变更原因")}
@@ -1256,7 +1262,8 @@ export function AccessWorkspace({
                 onChange={(e) => setWhy(e.target.value)}
               />
             </AdminField>
-            <div className="access-actions">
+            </div>
+            <AdminFormActions className="access-actions admin-editor-footer">
               <button
                 disabled={
                   busy ||
@@ -1330,7 +1337,7 @@ export function AccessWorkspace({
                   </button>
                 </>
               )}
-            </div>
+            </AdminFormActions>
           </section>
         </div>
       )}

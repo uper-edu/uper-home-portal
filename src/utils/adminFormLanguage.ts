@@ -1,0 +1,9 @@
+/** Interface help only; saved customer text and business transactions are unchanged. */
+export const adminFormGuide={
+ title:['Editing and saving','Mengedit dan menyimpan','编辑与保存'],
+ body:[
+  'Fields marked * are required. Closing a section keeps your input; Clear these changes removes only that section’s unsaved changes. Each editor keeps its own save action. CMS content saves and image uploads are confirmed separately. Use Query operation result for an unconfirmed operation; no result found yet does not prove failure. After a not-found query, Retry original request keeps the original ID and content. An upload times out after 20 seconds and can be queried; after refresh, reselect the identical original image before retrying. Storage failures warn that refresh recovery is not guaranteed. Wait for a confirmed result; when a result is unknown, use its existing result query before resubmitting.',
+  'Kolom bertanda * wajib diisi. Menutup bagian tetap mempertahankan isian; Hapus perubahan ini hanya menghapus perubahan yang belum disimpan pada bagian tersebut. Setiap editor memiliki tindakan simpan sendiri. Simpan konten dan unggahan gambar CMS dikonfirmasi terpisah. Gunakan Periksa hasil operasi jika belum pasti; hasil belum ditemukan tidak berarti gagal. Setelah hasil belum ditemukan, Ulangi permintaan semula mempertahankan ID dan isi. Unggahan dibatasi 20 detik lalu dapat diperiksa; setelah muat ulang, pilih gambar asli yang sama sebelum mengulangi. Kegagalan penyimpanan memperingatkan pemulihan tidak terjamin. Tunggu hasil yang pasti; jika belum pasti, gunakan pemeriksaan hasil yang tersedia sebelum mengirim lagi.',
+  '带*的字段必填。收起分区保留填写内容，“清除本次修改”仅清除本区未保存的修改。每个编辑器保留自己的保存入口；CMS内容保存与图片上传分别确认；结果不确定时使用“查询操作结果”，“暂未查到”不等于失败。查询暂未找到后可明确重试原请求，保留原ID和内容。上传20秒超时后可查询；刷新后重试须重新选择相同原图片。浏览器存储失败时明确提示刷新恢复无法保证。等待明确保存结果，结果不明时先使用该操作已有的结果查询，不重复提交。',
+ ],
+}as const;

@@ -17,6 +17,7 @@
 .crm-form-section .crm-stage-options>legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .crm-form-section .crm-stage-draft>textarea{font:inherit;font-size:14px;line-height:1.6;min-height:96px}
 .crm-operation-compose .crm-editor-scroll>.crm-form-section{flex:none}
+.crm-operation-compose .crm-editor-scroll.crm-owner-editor{gap:16px}
 .crm-form-section .crm-profile-batch-fields{margin-top:12px}
 .crm-form-section .crm-profile-field-editor{border:0;border-top:1px solid var(--cw-border);border-radius:0;padding:12px 0 0;gap:8px}
 .crm-form-section .crm-profile-batch-fields>.crm-profile-field-editor:only-child{grid-column:1/-1}
@@ -27,6 +28,10 @@
 .crm-form-section .crm-template-label{font-size:14px;line-height:1.6;margin:0 0 8px}
 .crm-form-section .crm-work-muted{margin:0;font-size:13px;line-height:1.6}
 @media(max-width:760px){.crm-form-grid{grid-template-columns:1fr}}
+.crm-identity-review-layout>.crm-identity-decision.crm-form-section{padding:0;gap:0}
+.crm-identity-decision.crm-form-section>.admin-form-section-heading{padding:12px 16px}
+.crm-identity-decision.crm-form-section>.admin-form-section-body{padding:16px}
+.crm-identity-decision.crm-form-section .crm-identity-actions{padding-top:12px;border-top:1px solid var(--cw-border)}
 /* Campaign modal keeps one body scroller and one original save footer. */
 .campaign-editor.crm-form-campaign-editor>form{height:100%;min-height:0}
 .campaign-editor.crm-form-campaign-editor>form>header,.campaign-editor.crm-form-campaign-editor>form>footer{padding:16px 24px}
@@ -42,11 +47,18 @@
 .campaign-source-review>.crm-form-section{margin:0}
 .campaign-source-review>.crm-form-section+.crm-form-section{margin-top:16px}
 .campaign-source-evidence.crm-form-section{padding:0;border:0;border-radius:0;background:transparent}
+.campaign-materials>.crm-form-section{margin-top:16px}
+.campaign-materials .crm-form-section .my-4{margin:0}
+.campaign-materials .crm-material-actions{justify-content:flex-end;padding-top:12px;border-top:1px solid var(--dw-border,var(--cw-border))}
+.campaign-materials .crm-material-actions>button{padding:9px 12px;border:1px solid var(--dw-border,var(--cw-border));color:inherit;background:transparent}
 .crm-form-layout>fieldset{min-width:0;margin:0;padding:0;border:0}
 .crm-form-section .space-y-4{display:grid;gap:12px}
 .crm-form-section .space-y-4>*{margin-top:0;margin-bottom:0}
 .crm-form-section .crm-form-fields{display:grid;gap:12px}
 .crm-form-layout>.crm-form-section{margin:0}
+.notification-form-editor>.notification-form-section{margin:0}
+.notification-form-section>.admin-form-section-body{padding-bottom:16px}
+.notification-form-section .grid>p{margin:0;font-size:13px;line-height:1.6}
 .crm-form-draft-status{font-size:13px;font-weight:400;color:var(--admin-muted)}
 .crm-source-review-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding-bottom:12px;border-bottom:1px solid var(--dw-border,var(--cw-border));font-size:16px;line-height:1.6;font-weight:600}
 .crm-source-review-heading h3{font:inherit;margin:0}
@@ -59,6 +71,7 @@
 .crm-form-section .crm-profile-batch-fields:empty{display:none;margin:0}
 .crm-form-section>.admin-form-section-body>.crm-profile-basis:first-child{border-top:0;padding-top:0}
 .crm-form-section .admin-form-section-heading h3{font-size:14px;line-height:1.6;font-weight:600}
+.crm-form-section,.notification-form-editor{--af-text:var(--cw-text,var(--dw-text,var(--admin-text)));--af-muted:var(--cw-muted,var(--dw-muted,var(--admin-muted)));--af-border:var(--cw-border,var(--dw-border,#cbd5e1));--af-surface:var(--cw-surface,var(--dw-surface,var(--admin-surface)));--af-soft:var(--cw-soft,var(--dw-soft,var(--admin-surface)))}
 .crm-form-section :is(input,textarea){font-family:inherit}
 /* Source review shares the form rhythm; legacy campaign margins must not stack with section gaps. */
 .campaign-source-review .campaign-field{margin:0;gap:var(--admin-form-label-gap,8px)}

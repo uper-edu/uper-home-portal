@@ -74,7 +74,7 @@ export function AccessHandoverPanel({
   };
   return (
     <section
-      className="access-card access-safety-surface"
+      data-admin-form="" className="access-card access-safety-surface"
       data-theme={isLight ? "light" : "dark"}
       aria-label={t("Staff handover", "Serah terima staf", "人员交接")}
     >
@@ -390,7 +390,7 @@ export function AccessSafetyPanel({
       )}
       {state?.required && (
         <section
-          className="access-card access-safety-surface"
+          data-admin-form="" className="access-card access-safety-surface"
           data-theme={isLight ? "light" : "dark"}
           aria-label={t(
             "Restore security review",

@@ -1,4 +1,3 @@
-import {CrmFormLayoutScope} from '../AdminForm';
 import {CrmFormSection} from './CrmFormLayout';
 import {CrmContactReference} from './CrmContactReference';
 import {copyPreparedContact} from '../../utils/crmContactPreparation';
@@ -14,7 +13,7 @@ import {
   communicationTemplate,
   templateLabel,
 } from "../../utils/crmCommunicationTemplates";
-function CrmContactPreviewBody({
+export function CrmContactPreview({
   lead,
   employee,
   lang,
@@ -343,5 +342,3 @@ function CrmContactPreviewBody({
     </section>
   );
 }
-
-export function CrmContactPreview(props:Parameters<typeof CrmContactPreviewBody>[0]){return <CrmFormLayoutScope><CrmContactPreviewBody {...props}/></CrmFormLayoutScope>;}

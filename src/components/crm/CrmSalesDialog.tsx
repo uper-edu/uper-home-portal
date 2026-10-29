@@ -35,7 +35,7 @@ export function CrmSalesDialog({
     };
   }, []);
   return createPortal(
-    <dialog ref={dialog} aria-labelledby={id} aria-describedby={description?id+"-description":undefined} onCancel={e=>{e.preventDefault();if(!busy&&!suspended)closeRef.current();}}
+    <dialog data-admin-form="" ref={dialog} aria-labelledby={id} aria-describedby={description?id+"-description":undefined} onCancel={e=>{e.preventDefault();if(!busy&&!suspended)closeRef.current();}}
       className="crm-customer-workspace crm-sales-dialog-backdrop"
       data-theme={isLight ? "light" : "dark"}
       onMouseDown={(e) => {

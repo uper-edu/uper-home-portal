@@ -6,6 +6,7 @@ import {CrmSimpleWorkflow} from '../src/components/crm/CrmSimpleWorkflow';
 import {incompleteAgreement,prepareProgressDraft} from '../src/utils/crmProgressDraft';
 import {saveSimpleSalesWorkflow} from '../server/portal/simpleSalesWorkflow';
 import {validateSalesProgress} from '../server/portal/salesProgress';
+import {withdrawMistakenAgreements} from '../src/utils/crmAgreementCorrection';
 
 const original={id:'old',action:'TEST 核对课程资料',status:'active',reason:'原有历史原因',sourceId:'original-request'};
 const lead={id:'TEST-AGREEMENT',owner:'Robert',currentStage:'progress:proposal',simpleRevision:0,commitments:[original],followUpLogs:[{id:'historical',summary:'原文',commitmentChange:{id:'past',status:'cancelled',reason:'历史原因原文'}}]};
@@ -62,4 +63,5 @@ test('explicit older-client reasons are retained; independent corrections and st
  const db=database(),body={...prepareProgressDraft(draft,'America/Vancouver'),commitmentChange:{id:'old',status:'fulfilled',reason:'旧版明确提供的独立说明'}};
  await saveSimpleSalesWorkflow(db,lead.id,'Robert',body,()=>true);assert.equal(db.profile.commitments[0].reason,body.commitmentChange.reason);
  await assert.rejects(()=>validateSalesProgress(database(),lead.id,lead,{newStage:'progress:discovery',expectedStage:lead.currentStage,expectedStageRevision:0,reason:'',basisRefs:[],effectiveTimeMode:'now'}),/依据|事实说明/);
+ assert.throws(()=>withdrawMistakenAgreements(lead,{id:'source'},{kind:'correction',reason:'',withdrawCommitmentIds:['old']},{id:'a',actor:'Robert'}));
 });

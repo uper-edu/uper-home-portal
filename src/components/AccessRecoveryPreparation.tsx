@@ -56,7 +56,7 @@ export function AccessRecoveryPreparation({
     setDownload("");
   }, [userId, reason, database, backupHash, enable, restore]);
   return (
-    <section
+    <section data-admin-form=""
       className="access-card access-safety-surface"
       data-theme={isLight ? "light" : "dark"}
     >

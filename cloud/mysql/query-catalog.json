@@ -488,6 +488,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.upload',?)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.upload',?)",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',:p1)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',:p1)",
     "sources": [
@@ -1235,6 +1241,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "SELECT data FROM portal_audit WHERE actor=? AND action='cms.upload' AND data->>'$.requestId'=?": {
+    "sql": "SELECT data FROM portal_audit WHERE actor=? AND action='cms.upload' AND data->>'$.requestId'=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
   "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff": {
     "sql": "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff",
     "sources": [
@@ -1380,6 +1392,12 @@
     "sql": "SELECT id FROM crm_users WHERE email_key=:p1 AND id<>:p2",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id FROM crm_users WHERE id=? FOR UPDATE": {
+    "sql": "SELECT id FROM crm_users WHERE id=? FOR UPDATE",
+    "sources": [
+      "cloud/mysql/site.mjs"
     ]
   },
   "SELECT id FROM crm_users WHERE lower(login_id)=lower(:p1)": {
@@ -2299,6 +2317,12 @@
     "sql": "UPDATE messages SET status='interrupted',error='request_interrupted' WHERE id=:p1 AND status='generating'",
     "sources": [
       "server/portal/chat.ts"
+    ]
+  },
+  "UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken agreement withdrawn',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2": {
+    "sql": "UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken agreement withdrawn',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2",
+    "sources": [
+      "server/portal/recordAmendments.ts"
     ]
   },
   "UPDATE notification_jobs j SET state=CASE WHEN channel='lark' THEN 'unknown' ELSE 'pending' END,result='Lease expired' WHERE state='sending' AND lease_until<UTC_TIMESTAMP(6) AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id)": {

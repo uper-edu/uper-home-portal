@@ -31,7 +31,7 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  useEffect(()=>{let cancelled=false;setError(false);setData(null);fetch(`/api/crm/leads/${lead.id}/trust`).then(async r=>{if(!r.ok)throw Error();const d=await r.json();if(!cancelled)setData(d);}).catch(()=>{if(!cancelled)setError(true);});return()=>{cancelled=true};},[lead.id,lead.simpleRevision,retry]);
  const extraction=useCrmExtractions(lead.id,lead.simpleRevision,recentSourceId,onRefresh);
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
- const evidence=(id:string,mode='view')=>{if(mode==='amend'&&editing)return;setLedgerOpen(true);setFocusRequest({id,mode,token:++token.current});};
+ const evidence=(id:string,mode='view',withdrawCommitmentId?:string)=>{if(mode==='amend'&&editing)return;setLedgerOpen(true);setFocusRequest({id,mode,withdrawCommitmentId,token:++token.current});};
  const freshHints=dynamicProfileHints(lead,now);
  const hints=[...(lead.informationHints||freshHints).filter((h:any)=>h.kind!=='change'),...freshHints.filter((h:any)=>h.kind==='change')],requests=[...(data?.requests||[])].sort((a:any,b:any)=>Date.parse(b.created_at)-Date.parse(a.created_at));
  const communication=projectInteractionTimeline(lead).communication;
@@ -54,7 +54,7 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  {stageFeedback&&<p role="status" className="crm-stage-saved-notice">{stageFeedback}</p>}
  <CrmSalesBrief evidenceEvents={factProjection.events} lead={lead} lang={lang} isLight={isLight} onEvidence={evidence} onProfile={onViewProfile} onStage={onViewStage} canEdit={canEditProfile} milestones={<CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>}/>
  <section className="crm-followup-now" aria-label={ui("沟通动态与重要信息")}><div className="crm-followup-section-heading"><h3>{t('Communication and important information','Komunikasi dan informasi penting','沟通动态与重要信息')}</h3></div>
- <CrmListAgreements lead={lead} lang={lang} timezone={timezone} detail now={now}/>
+ <CrmListAgreements lead={lead} lang={lang} timezone={timezone} detail now={now} onCorrect={!disabled&&!editing&&!modalSuspended?(v:any)=>{const log=(lead.followUpLogs||[]).find((l:any)=>[l.id,l.requestId].includes(v.sourceId));if(log)evidence(log.id,'amend',v.id);}:undefined}/>
  <CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} summaryMode hideHeading/>
  {lead.firstRequirementReview&&<p role="note">{lead.firstRequirementReview}</p>}
  {error?<p role="alert">{ui("客户请求信息暂不可用")}<button type="button" className="crm-work-link" onClick={()=>setRetry(v=>v+1)}>{ui("重试")}</button></p>:!data&&<p role="status">{ui("正在读取客户请求…")}</p>}
@@ -66,7 +66,7 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  </div>)}</section>)}</div>
  {!sections.some(s=>s.items.length)&&!error&&data&&<p className="crm-work-muted">{ui("当前没有额外变化提示；未记录的信息不代表客户没有相关需求。")}</p>}
 
- {past.length>0&&<details className="crm-followup-secondary"><summary>{ui("客户约定历史 ·")}{past.length}</summary>{past.map((a:any)=><div key={a.id}><p>{a.action}</p><small>{agreementTime(a,timezone,lang)} · {ui(({fulfilled:'已履行',cancelled:'已取消',rescheduled:'已改约'} as any)[a.status])}</small>{a.reason&&<p>{a.reason}</p>}</div>)}</details>}
+ {past.length>0&&<details className="crm-followup-secondary"><summary>{ui("客户约定历史 ·")}{past.length}</summary>{past.map((a:any)=><div key={a.id}><p>{a.action}</p><small>{agreementTime(a,timezone,lang)} · {ui(({fulfilled:'已履行',cancelled:'已取消',rescheduled:'已改约',withdrawn:'误记已撤回'} as any)[a.status])}</small>{a.reason&&<p>{a.reason}</p>}</div>)}</details>}
  {lead.nextAction&&<details className="crm-followup-secondary"><summary>{ui("客户人工备注")}</summary><p className="crm-progress-original">{lead.nextAction}</p></details>}
  </section>
 

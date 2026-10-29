@@ -1,3 +1,4 @@
+import {CrmFormSection} from './CrmFormLayout';
 import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
 import {readSavedPolicy} from '../../utils/crmPolicyTopicClient';
 import {policyTopicKeys,isPolicyTopic,topicPatch,topicDirty,topicChangeFields,reconcilePolicyDraft,policyEqual,type PolicyTopicRequest,type PolicyTopic} from '../../utils/crmPolicyTopics';
@@ -161,7 +162,7 @@ const DurationField: React.FC<DurationFieldProps> = ({
       </p>
 
       <div className="flex items-center gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/60">
-        <div className="relative">
+        <div className="relative admin-field">
           <input
             type="number" required id={"policy-duration-"+fieldPath}
             min="1"
@@ -1168,7 +1169,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         {operationGroups.map((group,i)=><React.Fragment key={i}><h2>{group[languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{setActiveCategory(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
         </div></details><small role="status">{modifiedFieldsCount ? ['Unsaved policy changes','Perubahan kebijakan belum disimpan','有未保存的策略修改'][languageIndex] : ['Policies are up to date','Kebijakan sudah tersimpan','策略无未保存修改'][languageIndex]}</small>
       </nav>}>
-      <div className="crm-ops-content"><AdminForm lang={lang} noValidate onSubmit={handleSave} className="space-y-6 w-full mx-auto">
+      <div className="crm-ops-content"><AdminForm lang={lang} noValidate onSubmit={handleSave} className="crm-form-layout w-full mx-auto">
 <AdminRequiredNote lang={lang}/>
 
 {isNotificationTopic(activeCategory)?<header className="admin-topic-notification-heading"><p className="crm-ops-note">{operationGroups[currentSection.group][languageIndex]}</p><h2>{currentSection.title[languageIndex]}</h2><p>{currentSection.purpose[languageIndex]}</p></header>:<header className="admin-edit-header" data-theme={isLight?"light":"dark"}><div className="admin-edit-title"><h2>{currentSection.title[languageIndex]}</h2></div>      <div className="crm-ops-actions"><span role="status">{activeModifiedCount} {['unsaved changes','perubahan belum disimpan','项修改尚未保存'][languageIndex]}</span><button type="submit" disabled={isSaving||isResetting||activeModifiedCount===0}>{checkingResult?['Checking…','Memeriksa…','正在核对…'][languageIndex]:isSaving?['Saving…','Menyimpan…','正在保存…'][languageIndex]:['Save','Simpan','保存'][languageIndex]}</button><details><summary>{['More actions','Tindakan lain','更多操作'][languageIndex]}</summary><div className="admin-save-menu"><button type="button" disabled={isSaving||isResetting} onClick={handleReset}>{['Restore topic defaults','Pulihkan standar topik','恢复本主题默认值'][languageIndex]}</button>{activeModifiedCount>0&&<button type="button" disabled={isSaving||isResetting} onClick={discard}>{['Discard topic edits','Buang perubahan topik','放弃本主题修改'][languageIndex]}</button>}      <details className="crm-ops-tools"><summary>{["Global presets and activation","Preset global dan aktivasi","全局预设与生效说明"][languageIndex]}</summary>
@@ -1322,7 +1323,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 </header>
 
 
-      {activeCategory === "permissions" && <section className={`p-5 rounded-2xl border space-y-4 ${isLight?"bg-white border-slate-200":"bg-slate-900 border-slate-800"}`} aria-label={lang==='zh'?'核实与归属权限':lang==='id'?'Pengaturan verifikasi dan klaim':'Review and ownership permissions'}>
+      {activeCategory === "permissions" && <CrmFormSection name="permissions" lang={lang}>
         <h2 className="font-semibold text-lg">{lang==='zh'?'核实与归属权限':lang==='id'?'Izin verifikasi dan kepemilikan':'Review and ownership permissions'}</h2>
         {([
           ['identityReviewManagerOnly', ['Lead identity review is restricted to CRM Managers','Verifikasi identitas Lead hanya oleh CRM Manager','Lead身份核实仅限CRM Manager'], ['Enabled by default. If disabled, Sales still need existing read and write access to both records. This does not grant access to other owners’ leads.','Aktif secara standar. Jika nonaktif, Sales tetap memerlukan izin baca dan tulis yang ada atas kedua catatan, tanpa akses tambahan ke pelanggan orang lain.','默认开启。关闭后，Sales仍须拥有双方记录的现有读写权限，不授予他人客户权限。普通Sales无法写入共享池时，仍由Manager核实。']],
@@ -1330,37 +1331,18 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           ['sourceAttributionManagerOnly', ['Unverified source attribution review is restricted to CRM Managers','Verifikasi atribusi sumber hanya oleh CRM Manager','待核实来源归因仅限CRM Manager'], ['Enabled by default. Only unknown campaign codes or promotion link issues with saved leads enter Unverified sources. If disabled, staff still need existing campaign-management and relevant lead-access permissions. Original sources and existing attribution are not changed automatically.','Aktif secara standar. Hanya kode kampanye tidak dikenal atau masalah tautan promosi yang sudah menghasilkan Lead masuk ke Sumber belum diverifikasi. Jika nonaktif, staf tetap memerlukan izin pengelolaan kampanye dan akses Lead terkait. Sumber asli dan atribusi yang ada tidak berubah otomatis.','默认开启。未知活动码或异常推广链接仅在产生Lead后进入待核实来源。关闭后，员工仍须具备现有营销活动管理及相关Lead访问权限；不自动授予权限，不自动改写原始来源或既有归因。']],
         ] as const).map(([key,labels,help])=><AdminField key={key} className="flex items-start gap-3" data-policy-field={key}><input type="checkbox" className="mt-1 accent-teal-700" checked={formData[key]} onChange={e=>setFormData(v=>({...v,[key]:e.target.checked}))}/><span><strong className="block">{labels[lang==='zh'?2:lang==='id'?1:0]}</strong><span className="block text-sm opacity-75 mt-1">{help[lang==='zh'?2:lang==='id'?1:0]}</span></span></AdminField>)}
         <p className="text-sm opacity-75">{lang==='zh'?'使用本主题“保存”后生效；仅配置管理员可修改，变更记录审计，不完成任务或重放通知。':lang==='id'?'Berlaku setelah Simpan topik ini; hanya pengelola konfigurasi dapat mengubah. Perubahan diaudit, tanpa menyelesaikan tugas atau mengirim ulang notifikasi.':'Use Save in this topic to apply. Configuration managers only; changes are audited without completing tasks or replaying notifications.'}</p>
-      </section>}
+      </CrmFormSection>}
       {/* 5. Main Configuration Grid (Clean Layout) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="crm-form-layout">
         {/* CARD 1: Business Hours & Operational Timezone */}
         {(activeCategory === "schedule") && (
-          <div
-            className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
-          >
-            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
-              <span className="p-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <Clock className="w-4 h-4" />
-              </span>
-              <div>
-                <h3
-                  className={`font-bold text-sm ${isLight ? "text-slate-900" : "text-white"}`}
-                >
-                  {t(
-                    "1. Business Hours & Operational Timezone",
-                    "1. 业务服务时间与工作时区",
-                  )}
-                </h3>
-                <p
-                  className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}
-                >
+          <CrmFormSection name="schedule" lang={lang} description={<>
                   {t(
                     "Defines compliant outreach windows to prevent disturbing Indonesian parents at night.",
                     "确定销售顾问合规外呼的时间范围，防止夜间骚扰印尼学员与家长。",
                   )}
-                </p>
-              </div>
-            </div>
+                </>}>
+
 
             <div className="space-y-4">
               {/* Timezone */}
@@ -1402,7 +1384,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
               </div>
 
               {/* Start and End Hours */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3" data-admin-grid="">
                 <AdminField as="div">
                   <label
                     className={`block font-semibold text-xs mb-1 ${isLight ? "text-slate-800" : "text-slate-200"}`}
@@ -1533,34 +1515,18 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 )}
               </p>
             </div>
-          </div>
+          </CrmFormSection>
         )}
 
         {/* CARD 2: First Response SLA (FRT) */}
         {(activeCategory === "first_response") && (
-          <div
-            className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
-          >
-            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
-              <span className="p-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <Zap className="w-4 h-4" />
-              </span>
-              <div>
-                <h3
-                  className={`font-bold text-sm ${isLight ? "text-slate-900" : "text-white"}`}
-                >
-                  {t("2. First Response SLA (FRT)", "2. 新客首次响应时限设定")}
-                </h3>
-                <p
-                  className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}
-                >
+          <CrmFormSection name="response" lang={lang} description={<>
                   {t(
                     "Mandatory maximum timeframe for consultants to initiate first contact based on lead Tier.",
                     "依据意向评级设定不同的首次破冰倒计时窗口，支持自由选择分钟/小时/天。",
                   )}
-                </p>
-              </div>
-            </div>
+                </>}>
+
 
             <div className="space-y-3.5">
               <DurationField
@@ -1635,7 +1601,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 }
               />
             </div>
-          </div>
+          </CrmFormSection>
         )}
 
         {/* CARD 3: No-Response & Call Retry Policy */}
@@ -1769,32 +1735,13 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 
         {/* CARD 4: Inactivity Watchdog Thresholds */}
         {(activeCategory === "watchdog") && (
-          <div
-            className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800"}`}
-          >
-            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
-              <span className="p-1 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                <ShieldAlert className="w-4 h-4" />
-              </span>
-              <div>
-                <h3
-                  className={`font-bold text-sm ${isLight ? "text-slate-900" : "text-white"}`}
-                >
-                  {t(
-                    "4. Inactivity Watchdog Thresholds",
-                    "4. 已联系客户的未联系时长",
-                  )}
-                </h3>
-                <p
-                  className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}
-                >
+          <CrmFormSection name="watchdog" lang={lang} description={<>
                   {t(
                     "Alerts sales reps when an active lead has no scheduled follow-up and exceeds silence threshold.",
                     "当下线索已联系过、但未设定具体下次时间时，超过此阈值即报警提示回访。",
                   )}
-                </p>
-              </div>
-            </div>
+                </>}>
+
 
             <div className="space-y-3.5">
               <DurationField
@@ -1873,7 +1820,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                 }
               />
             </div>
-          </div>
+          </CrmFormSection>
         )}
 
         {/* CARD 5: Milestone Cadence & Offsets */}

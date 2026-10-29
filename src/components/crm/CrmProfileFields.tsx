@@ -1,4 +1,3 @@
-import {CrmFormLayoutScope} from '../AdminForm';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
@@ -419,7 +418,7 @@ export function CrmProfileEvidence({ lead, timezone }: any) {
     </dl>
   );
 }
-function CrmProfileEditorBody({
+export function CrmProfileEditor({
   lead,
   onSaved,
   onDirty,
@@ -1179,5 +1178,3 @@ export function CrmContactPreferences({
     </section>
   );
 }
-
-export function CrmProfileEditor(props:Parameters<typeof CrmProfileEditorBody>[0]){return <CrmFormLayoutScope><CrmProfileEditorBody {...props}/></CrmFormLayoutScope>;}

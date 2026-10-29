@@ -1,3 +1,4 @@
+import {cmsOperationResult} from './cms-operation-result.mjs';
 import {discoverIdentity} from '../../server/portal/identityReview.ts';
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
 import {contactsConflict} from '../../server/portal/trustWorkflow.ts';
@@ -20,10 +21,15 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
   const collection=async(name,c=db)=>{validCollection(name);const [rows]=await c.execute('SELECT items,items_text,revision FROM cms_collections WHERE name=?',[name]);const row=rows[0];return {...row,items:row.items_text===null?row.items:JSON.parse(row.items_text)};};
   app.use('/api/cms',wrap(async(q,r,next)=>{r.setHeader('Cache-Control','no-store');r.locals.cmsEmployee=await staff(q);if(!['GET','HEAD'].includes(q.method)&&(q.headers.origin!==`${q.protocol}://${q.get('host')}`||!q.is('application/json')))fail(403,'Origin or content type rejected');next();}));
   app.get('/api/cms/content/:type',wrap(async(q,r)=>{const row=await collection(q.params.type);r.json({success:true,items:row.items,count:row.items.length,revision:Number(row.revision)});}));
+  app.get('/api/cms/identity',wrap(async(_q,r)=>r.json({id:r.locals.cmsEmployee.id})));
+  app.get('/api/cms/operations/:requestId',wrap(async(q,r)=>{
+    r.json(await cmsOperationResult(db,{actor:r.locals.cmsEmployee.id,requestId:q.params.requestId,kind:q.query.kind,collection:q.query.collection}));
+  }));
   const mutate=async(q,r,remove=false)=>{
     const name=validCollection(q.params.type),key=requestKey(q.body),actor=r.locals.cmsEmployee.id;
     const inputHash=digest({name,remove,id:q.params.id,body:q.body});
     const response=await transaction(db,async c=>{
+      await c.execute('SELECT id FROM crm_users WHERE id=? FOR UPDATE',[actor]);
       const [rows]=await c.execute('SELECT items,items_text,revision FROM cms_collections WHERE name=? FOR UPDATE',[name]);const row={...rows[0],items:rows[0].items_text===null?rows[0].items:JSON.parse(rows[0].items_text)};
       const [old]=await c.execute("SELECT data FROM portal_audit WHERE actor=? AND action='cms.mutation' AND data->>'$.requestId'=?",[actor,key]);
       if(old[0]){if(old[0].data.inputHash!==inputHash)fail(409,'Request ID conflict');return old[0].data.responseText?JSON.parse(old[0].data.responseText):old[0].data.response;}
@@ -56,8 +62,16 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
     const input=Buffer.from(source.split(',')[1],'base64');if(input.length>2097152)fail(413,'Image exceeds 2 MB');
     let content;try{content=await sharp(input,{limitInputPixels:16000000}).rotate().webp({quality:85}).toBuffer();}catch{fail(400,'Invalid image');}
     if(content.length>2097152)fail(413,'Image exceeds 2 MB');const hash=digest(content);
-    await db.execute('INSERT INTO cms_media(id,mime,content,uploaded_by) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[hash,'image/webp',content,r.locals.cmsEmployee.id]);
-    r.json({success:true,url:'/images/uploads/'+hash+'.webp'});
+    const key=requestKey(q.body),actor=r.locals.cmsEmployee.id,inputHash=digest(source);
+    const result=await transaction(db,async c=>{
+      await c.execute('SELECT id FROM crm_users WHERE id=? FOR UPDATE',[actor]);
+      const [old]=await c.execute("SELECT data FROM portal_audit WHERE actor=? AND action='cms.upload' AND data->>'$.requestId'=?",[actor,key]);
+      if(old[0]){if(old[0].data.inputHash!==inputHash)fail(409,'Request ID conflict');return old[0].data.response;}
+      await c.execute('INSERT INTO cms_media(id,mime,content,uploaded_by) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[hash,'image/webp',content,actor]);
+      const response={success:true,url:'/images/uploads/'+hash+'.webp',digest:hash,mime:'image/webp',size:content.length};
+      await c.execute("INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.upload',?)",[actor,JSON.stringify({requestId:key,inputHash,response})]);
+      return response;
+    });r.json(result);
   }));
   app.get('/images/uploads/:asset',wrap(async(q,r)=>{if(!/^[a-zA-Z0-9_.-]{1,191}$/.test(q.params.asset))fail(404,'Image not found');const hash=/^[a-f0-9]{64}\.webp$/.test(q.params.asset);const [rows]=await db.execute(hash?'SELECT mime,content FROM cms_media WHERE id=?':'SELECT mime,content FROM cms_media WHERE legacy_name=?',[hash?q.params.asset.slice(0,-5):q.params.asset]);if(!rows[0])fail(404,'Image not found');r.set({'Content-Type':rows[0].mime,'X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=31536000, immutable'}).send(rows[0].content);}));
   const queryContent=wrap(async(q,r)=>{const query=q.method==='POST'?q.body.query:q.query.query;let params=q.method==='POST'?q.body.params:q.query.params,name;try{if(typeof params==='string')params=JSON.parse(params);name=collectionFor(query);}catch(e){e.status=400;throw e;}const row=await collection(name);let result;try{result=projectContent(row.items.filter(item=>item.isActive!==false),query,params);}catch(e){e.status=400;throw e;}r.setHeader('Cache-Control','no-store');r.json({result});});

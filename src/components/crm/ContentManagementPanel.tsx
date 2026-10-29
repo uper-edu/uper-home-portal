@@ -1,3 +1,8 @@
+import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
+import {AdminFormGuide} from '../AdminFormGuide';
+import {useAdminEditorFocus} from '../useAdminEditorFocus';
+import {CrmDiscardDialog} from './CrmDetailWorkspace';
+import {AdminFormSection,AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
 import {AdminTopicFrame} from "../AdminTopicFrame";
@@ -148,6 +153,15 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
 
 export default function ContentManagementPanel({ isLight, lang }: ContentManagementPanelProps) {
   const cmsRequestId=useRef('');
+  const [pendingCms,setPendingCms]=useState<any>(null),[cmsResult,setCmsResult]=useState(''),[cmsTone,setCmsTone]=useState<'saved'|'error'>('saved');
+  const cmsActor=useRef('');
+  const [cmsNotFound,setCmsNotFound]=useState(false);
+  const cmsUploadBody=useRef<any>(null);
+  const [retryImage,setRetryImage]=useState(false);
+  const [storageWarning,setStorageWarning]=useState(false);
+  const rememberCms=(value:any)=>{setPendingCms(value);setCmsNotFound(false);if(!value){cmsUploadBody.current=null;setRetryImage(false);}if(cmsActor.current){try{if(value)sessionStorage.setItem('cms-pending:'+cmsActor.current,JSON.stringify(value));else sessionStorage.removeItem('cms-pending:'+cmsActor.current);}catch{setStorageWarning(true);}}};
+  useEffect(()=>{let live=true;fetch('/api/cms/identity').then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(!live)return;cmsActor.current=d.id;try{const saved=JSON.parse(sessionStorage.getItem('cms-pending:'+d.id)||'null');if(saved&&(!saved.actor||saved.actor===d.id)){setPendingCms({...saved,actor:d.id});setEditingItem(saved.draft);setActiveSection(saved.collection);setIsModalOpen(true);}}catch{}}).catch(()=>{});return()=>{live=false;};},[]);
+
   const [activeSection, setActiveSection] = useState<CmsSection>('partners');
   const [items, setItems] = useState<any[]>([]);
   const [sectionCounts, setSectionCounts] = useState<Record<CmsSection, number>>({
@@ -163,6 +177,8 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const [searchQuery, setSearchQuery] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const cmsDraftBase=useRef(''),editorPanel=useRef<HTMLDivElement>(null),deletePanel=useRef<HTMLDivElement>(null);
+  const [discardDraft,setDiscardDraft]=useState(false),[isSaving,setIsSaving]=useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadTargetField, setUploadTargetField] = useState<'image' | 'certificateImage'>('image');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -178,6 +194,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const t = (en: string, zh: string) => cmsText(en, zh, lang);
+  const closeEditor=()=>{if(isSaving||isUploading||pendingCms)return;if(JSON.stringify(editingItem)!==cmsDraftBase.current){setDiscardDraft(true);return;}setIsModalOpen(false);};
+  useAdminEditorFocus(isModalOpen,editorPanel,closeEditor);
+  useAdminEditorFocus(Boolean(deleteConfirmTarget),deletePanel,()=>{if(!isDeleting)setDeleteConfirmTarget(null);});
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -232,6 +251,8 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   }, [activeSection]);
 
   const handleOpenAdd = () => {
+    if(pendingCms)return;setCmsResult('');
+    setNotification(null);
     cmsRequestId.current=crypto.randomUUID();
     let emptyItem: any = {};
     if (activeSection === 'partners') {
@@ -320,12 +341,16 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         coverImage: { url: '' }
       };
     }
+    cmsDraftBase.current=JSON.stringify(emptyItem);
     setEditingItem(emptyItem);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (item: any) => {
+    if(pendingCms)return;setCmsResult('');
+    setNotification(null);
     cmsRequestId.current=crypto.randomUUID();
+    cmsDraftBase.current=JSON.stringify(item);
     setEditingItem(JSON.parse(JSON.stringify(item)));
     setIsModalOpen(true);
   };
@@ -375,95 +400,70 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingItem) return;
-
-    try {
-      const res = await fetch(`/api/cms/content/${activeSection}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item: editingItem, requestId: cmsRequestId.current || (cmsRequestId.current=crypto.randomUUID()) })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showNotification('success', t('Saved successfully!', '内容保存成功！'));
-        setIsModalOpen(false);
-        setEditingItem(null);
-        fetchItems(activeSection);
-      } else {
-        showNotification('error', t('Save failed', '保存失败'));
-      }
-    } catch (err: any) {
-      showNotification('error', t('Save failed', '保存失败'));
-    }
+  const finishCmsSave=async(operation:any,result:any)=>{
+    const response=await fetch(`/api/cms/content/${operation.collection}`);if(!response.ok)throw Error();
+    const data=await response.json();
+    const current=data.items.find((v:any)=>(v._id||v.id)===(result.item?._id||operation.draft?._id));
+    rememberCms(null);setCmsTone('saved');cmsRequestId.current='';
+    setEditingItem(current||null);setIsModalOpen(!!current);cmsDraftBase.current=JSON.stringify(current||null);
+    setCmsResult(current&&current._cmsVersion!==result.item?._cmsVersion?t('Saved; a newer version is displayed.','本次已保存；当前显示之后更新的版本。'):t('Saved and reloaded.','已保存并重新载入。'));
+    await fetchItems(operation.collection);
   };
-
-  // Image Upload handler
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-        const base64Data = reader.result as string;
-        const res = await fetch('/api/cms/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: file.name,
-            data: base64Data
-          })
-        });
-        const uploadResult = await res.json();
-        if (uploadResult.success && uploadResult.url) {
-          const uploadedUrl = uploadResult.url;
-          setEditingItem((prev: any) => {
-            const next = { ...prev };
-            if (activeSection === 'partners') {
-              next.logo = { ...(next.logo || {}), url: uploadedUrl };
-            } else if (activeSection === 'news') {
-              next.image = { ...(next.image || {}), url: uploadedUrl };
-              next.images = [{ ...(next.images?.[0] || {}), url: uploadedUrl, asset: { url: uploadedUrl } }];
-            } else if (activeSection === 'trendingPrograms') {
-              next.image = { ...(next.image || {}), url: uploadedUrl };
-            } else if (activeSection === 'studentStories') {
-              next.image = { ...(next.image || {}), url: uploadedUrl };
-              next.avatar = { ...(next.avatar || {}), url: uploadedUrl };
-            } else if (activeSection === 'admissionsList') {
-              if (uploadTargetField === 'certificateImage') {
-                next.certificateImage = { ...(next.certificateImage || {}), url: uploadedUrl };
-              } else {
-                next.image = { ...(next.image || {}), url: uploadedUrl };
-              }
-            } else if (activeSection === 'campaigns') {
-              next.image = { ...(next.image || {}), url: uploadedUrl };
-            } else if (activeSection === 'newsPage') {
-              next.coverImage = { ...(next.coverImage || {}), url: uploadedUrl };
-            }
-            return next;
-          });
-          showNotification('success', t('Image uploaded successfully!', '图片上传成功！'));
-        } else {
-          showNotification('error', t('Upload failed', '上传失败'));
-        }
-        } catch (error:any) {
-          showNotification('error',t('Upload failed; retry the image','上传失败，请重试图片'));
-        } finally {
-          setIsUploading(false);
-          if(fileInputRef.current)fileInputRef.current.value='';
-        }
-      };
-      reader.onerror=()=>{setIsUploading(false);showNotification('error',t('Unable to read image','无法读取图片'));if(fileInputRef.current)fileInputRef.current.value='';};
-      reader.readAsDataURL(file);
-    } catch (err: any) {
-      console.error('Upload error:', err);
-      showNotification('error', t('Upload failed', '上传失败'));
-      setIsUploading(false);
+  const checkCmsResult=async()=>{
+    if(!pendingCms||isSaving||isUploading)return;
+    setIsSaving(true);
+    try{const r=await fetch(`/api/cms/operations/${encodeURIComponent(pendingCms.requestId)}?kind=${pendingCms.kind}&collection=${pendingCms.collection}`,{cache:'no-store',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS)});if(!r.ok)throw Error();const data=await r.json();
+      if(data.state!=='committed'){setCmsNotFound(data.state==='not_found');setCmsResult(t('No committed result found yet. The original request may still be running. Check again.','暂未查到提交结果，原请求可能仍在处理，请再次查询。'));return;}
+      if(pendingCms.kind==='upload'){applyUploadedImage(data.result.url,pendingCms.collection,pendingCms.target);rememberCms(null);setCmsTone('saved');setCmsResult(t('Image upload confirmed. Save content separately.','图片上传已确认，请另行保存内容。'));}
+      else await finishCmsSave(pendingCms,data.result);
+    }catch{setCmsResult(t('Result unavailable. Your draft is retained.','暂时无法查询结果，草稿已保留。'));}finally{setIsSaving(false);}
+  };
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();if(!editingItem||isSaving||isUploading||pendingCms||!cmsActor.current)return;
+    const operation={kind:'save',actor:cmsActor.current,collection:activeSection,requestId:crypto.randomUUID(),draft:structuredClone(editingItem)};
+    rememberCms(operation);setIsSaving(true);setCmsResult('');
+    try{const res=await fetch(`/api/cms/content/${activeSection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});
+      const data=await res.json();
+      if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');setCmsResult(t('Save rejected. Review permissions, fields or the latest version; draft retained.','保存被拒绝，请核对权限、字段或最新版本；草稿保留。'));return;}throw Error();}
+      await finishCmsSave(operation,data);
+    }catch{setCmsResult(t('Save outcome unconfirmed. Query the result before continuing.','保存结果尚未确认，请先查询再继续。'));}finally{setIsSaving(false);}
+  };
+  const applyUploadedImage=(uploadedUrl:string,section:string,target:string)=>{
+    setEditingItem((prev:any)=>{const next={...prev};
+      if(section==='partners')next.logo={...(next.logo||{}),url:uploadedUrl};
+      else if(section==='news'){next.image={...(next.image||{}),url:uploadedUrl};next.images=[{...(next.images?.[0]||{}),url:uploadedUrl,asset:{url:uploadedUrl}}];}
+      else if(section==='studentStories'){next.image={...(next.image||{}),url:uploadedUrl};next.avatar={...(next.avatar||{}),url:uploadedUrl};}
+      else if(section==='admissionsList'&&target==='certificateImage')next.certificateImage={...(next.certificateImage||{}),url:uploadedUrl};
+      else if(section==='newsPage')next.coverImage={...(next.coverImage||{}),url:uploadedUrl};
+      else next.image={...(next.image||{}),url:uploadedUrl};return next;});
+  };
+  const sendCmsUpload=async(operation:any,body:any)=>{
+    setIsUploading(true);setCmsNotFound(false);
+    try{const res=await fetch('/api/cms/upload',{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();
+      if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');setCmsResult(t('Image rejected. Draft retained.','图片被拒绝，草稿已保留。'));return;}throw Error();}
+      applyUploadedImage(data.url,operation.collection,operation.target);rememberCms(null);setCmsTone('saved');setCmsResult(t('Image upload confirmed. Save content separately.','图片上传已确认，请另行保存内容。'));
+    }catch{setCmsResult(t('Upload outcome unconfirmed. Query the result before continuing.','上传结果尚未确认，请先查询再继续。'));}finally{setIsUploading(false);if(fileInputRef.current)fileInputRef.current.value='';}
+  };
+  const retryCms=async()=>{
+    if(isSaving||isUploading||!canRetryCms(pendingCms,cmsActor.current,cmsNotFound))return;
+    if(pendingCms.kind==='upload'){
+      if(!cmsUploadBody.current){setRetryImage(true);setCmsResult(t('Select the original image to retry the original request.','请重新选择原图片，以原请求重试。'));return;}
+      await sendCmsUpload(pendingCms,cmsUploadBody.current);return;
     }
+    const operation=pendingCms;setIsSaving(true);setCmsNotFound(false);
+    try{const res=await fetch(`/api/cms/content/${operation.collection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});const data=await res.json();if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');}setCmsResult(t('Original retry rejected. Draft retained; query before continuing.','原请求重试被拒绝，草稿保留，请查询结果后继续。'));return;}await finishCmsSave(operation,data);}
+    catch{setCmsResult(t('Save outcome unconfirmed. Query the result before continuing.','保存结果尚未确认，请先查询再继续。'));}finally{setIsSaving(false);}
+  };
+  const handleFileUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const file=e.target.files?.[0];if(!file||!cmsActor.current||isSaving||isUploading||(pendingCms&&!retryImage))return;
+    setIsUploading(true);
+    try{const data=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=reject;reader.readAsDataURL(file);});
+      const fingerprint=await cmsImageFingerprint(data);
+      if(pendingCms){
+        if(!canRetryCms(pendingCms,cmsActor.current,cmsNotFound)||fingerprint!==pendingCms.imageFingerprint){setCmsResult(t('This is not the original image. The pending request is unchanged.','图片与原上传不一致，待确认请求保持不变。'));return;}
+        const body={requestId:pendingCms.requestId,name:pendingCms.imageName,data};cmsUploadBody.current=body;await sendCmsUpload(pendingCms,body);
+      }else{const operation={kind:'upload',actor:cmsActor.current,requestId:crypto.randomUUID(),collection:activeSection,target:uploadTargetField,draft:structuredClone(editingItem),imageFingerprint:fingerprint,imageName:file.name};const body={requestId:operation.requestId,name:file.name,data};cmsUploadBody.current=body;rememberCms(operation);setCmsResult('');await sendCmsUpload(operation,body);}
+    }catch{showNotification('error',t('Unable to read image','无法读取图片'));}finally{setIsUploading(false);if(fileInputRef.current)fileInputRef.current.value='';}
   };
 
   // Helper to extract image URL from any section item using urlFor
@@ -492,7 +492,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   });
 
   return (
-    <div data-cms-theme={isLight ? "light" : "dark"} className={`rounded-2xl border transition-all ${
+    <div data-admin-form="" data-cms-theme={isLight ? "light" : "dark"} className={`rounded-2xl border transition-all ${
       isLight ? 'bg-white border-slate-200/90 shadow-sm' : 'bg-slate-900 border-slate-800'
     }`}>
       {/* Toast Notification */}
@@ -508,6 +508,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       )}
 
       <PageMetadata lang={lang} options={{module:activeSection}}/>
+      {pendingCms&&!isModalOpen&&<button type="button" onClick={()=>{setActiveSection(pendingCms.collection);setEditingItem(pendingCms.draft);setIsModalOpen(true);}}>{t('Review pending operation','查看待确认操作')}</button>}
       {/* Panel Top Header Bar */}
       <div className={`p-4 sm:p-5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${
         isLight ? 'border-slate-100 bg-slate-50/50' : 'border-slate-800/80 bg-slate-950/40'
@@ -549,7 +550,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       <details className="p-4 border-t border-slate-200 dark:border-slate-800 text-sm">
         <summary className="cursor-pointer font-semibold">{t('CMS operating guide', 'CMS 操作指南')}</summary>
         <div className="mt-3 space-y-3 max-w-3xl leading-relaxed">
-          <BrowserMetadataGuide lang={lang}/>
+          <BrowserMetadataGuide lang={lang}/><AdminFormGuide lang={lang}/>
           <section><h3 className="font-semibold">{t('Workspace and preferences', '工作区与偏好')}</h3><p>{t('Use the workspace menu to open the workspaces allowed by your staff permissions. Language and theme are shared with CRM. On narrow screens, open Language and appearance.', '从工作区菜单进入有权限的后台；语言与主题在 CMS 和 CRM 间沿用。窄屏中打开“语言与外观”调整偏好。')}</p></section>
           <section><h3 className="font-semibold">{t('Content editing', '内容编辑')}</h3><p>{t('Choose a collection, search or refresh its records, then add or edit content. Save changes in the editor. Opening the website previews saved content; it does not save an open draft.', '选择内容集合，搜索或刷新记录，再新增或编辑内容。在编辑器中保存；查看网站只预览已保存的内容，不会保存尚未提交的草稿。')}</p></section>
           <p>{t('Names and saved content remain in their original language. HSK questions and scoring are not changed by interface preferences.', '姓名及已保存内容保持原文；界面偏好不改变 HSK 题库和评分。')}</p>
@@ -853,24 +854,25 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       {/* Edit / Add Modal */}
       {isModalOpen && editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className={`w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl ${
+          <div ref={editorPanel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="cms-editor-title" aria-busy={isSaving||isUploading} className={`admin-editor-layout w-full max-w-xl max-h-[90vh] rounded-2xl border shadow-2xl ${
             isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
           }`}>
-            <AdminForm lang={lang} onSubmit={handleSave}>
-<AdminRequiredNote lang={lang}/>
+            <AdminForm lang={lang} className="admin-editor-layout admin-editor-form" onSubmit={handleSave}>
 
-              <div className={`p-4 border-b flex items-center justify-between sticky top-0 z-10 ${
+              <div className={`admin-editor-heading ${
                 isLight ? 'bg-white/95 border-slate-100' : 'bg-slate-900/95 border-slate-800'
               }`}>
-                <h3 className="font-bold text-sm flex items-center gap-2">
+                <h3 id="cms-editor-title" className="font-bold text-sm flex items-center gap-2">
                   <Edit3 className="w-4 h-4 text-primary-600" />
                   <span>
                     {editingItem._id ? t('Edit Item', '编辑内容与图片') : t('Create New Item', '新建内容')}
                   </span>
                 </h3>
+                <AdminRequiredNote lang={lang}/>
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeEditor}
+                  disabled={isSaving||isUploading||!!pendingCms}
                   aria-label={t('Close editor', '关闭编辑器')}
                   className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                     isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-slate-800 text-slate-500'
@@ -880,7 +882,14 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 </button>
               </div>
 
-              <div className="p-5 space-y-4 text-xs">
+              <div className="admin-editor-body">
+              {(pendingCms||cmsResult)&&<AdminFormFeedback state={pendingCms?'unknown':cmsTone} lang={lang}>{cmsResult||t('Operation result unconfirmed. Query before continuing.','操作结果尚未确认，请先查询再继续。')}{pendingCms&&<button type="button" disabled={isSaving||isUploading} onClick={()=>void checkCmsResult()}>{t('Query operation result','查询操作结果')}</button>}</AdminFormFeedback>}
+              {pendingCms&&cmsNotFound&&<button type="button" disabled={isSaving||isUploading} onClick={()=>void retryCms()}>{t('Retry original request','重试原请求')}</button>}
+              {pendingCms&&retryImage&&<label>{t('Select original image','重新选择原图片')}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={isSaving||isUploading} onChange={handleFileUpload}/></label>}
+              {storageWarning&&<AdminFormFeedback state="unknown" lang={lang}>{t('Draft remains on this page; refresh recovery is not guaranteed.','本页草稿仍保留；浏览器存储不可用，刷新恢复无法保证。')}</AdminFormFeedback>}
+              <fieldset style={{border:0,padding:0,margin:0,minWidth:0}} data-admin-stack="" disabled={isSaving||isUploading||!!pendingCms} aria-label={t('Content fields','内容字段')}>
+                {isSaving&&<AdminFormFeedback state="saving" lang={lang}/>}
+                {notification&&<AdminFormFeedback state={notification.type==='error'?'error':'saved'} lang={lang}>{notification.message}</AdminFormFeedback>}
                 {/* Primary Image Upload & Preview Box */}
                 <div className={`p-4 rounded-xl border ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'
@@ -952,6 +961,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       {/* Manual URL input fallback */}
                       <input
                         type="text"
+                        aria-label={t('Image URL', '图片地址')}
                         placeholder={t('https://... or /images/uploads/...','https://... 或 /images/uploads/...')}
                         value={getItemImageUrl(editingItem)}
                         onChange={(e) => {
@@ -1019,6 +1029,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         </button>
                         <input
                           type="text"
+                          aria-label={t('Certificate image URL', '证书图片地址')}
                           placeholder={t('https://... or /images/uploads/...', 'https://... 或 /images/uploads/...')}
                           value={urlFor(editingItem.certificateImage)?.url() || ''}
                           onChange={(e) => setEditingItem({
@@ -1034,6 +1045,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   </div>
                 )}
 
+                <AdminFormSection title={t('Content details', '内容信息')}>
                 {/* Primary Name / Title */}
                 <AdminField as="div">
                   <label className="block font-semibold mb-1">
@@ -1458,8 +1470,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   </AdminField>
                 )}
 
+                </AdminFormSection>
+                <AdminFormSection title={t('Display settings', '展示设置')}>
                 {/* Common Settings: Active Toggle & Display Order */}
-                <div className="pt-2 flex items-center justify-between border-t border-slate-200/60 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-4">
                   <AdminField className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1470,8 +1484,8 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                     <span className="font-semibold">{t('Active / Display on website', '在前台页面正常展示')}</span>
                   </AdminField>
 
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-400">{t('Display Order:', '排序权重:')}</span>
+                  <AdminField>
+                    {t('Display Order:', '排序权重:')}
                     <input
                       type="number"
                       value={editingItem.order || 1}
@@ -1480,17 +1494,19 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-700'
                       }`}
                     />
-                  </div>
+                  </AdminField>
                 </div>
-              </div>
+                </AdminFormSection>
+              </fieldset></div>
 
               {/* Modal Footer */}
-              <div className={`p-4 border-t flex items-center justify-end gap-2 sticky bottom-0 ${
+              <AdminFormActions className={`admin-editor-footer ${
                 isLight ? 'bg-white/95 border-slate-100' : 'bg-slate-900/95 border-slate-800'
               }`}>
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeEditor}
+                  disabled={isSaving||isUploading||!!pendingCms}
                   className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                     isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-slate-800 text-slate-300'
                   }`}
@@ -1499,16 +1515,18 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 </button>
                 <button
                   type="submit"
+                  disabled={isSaving||isUploading||!!pendingCms}
                   className="px-4 py-2 rounded-xl text-xs font-medium bg-primary-600 hover:bg-primary-500 text-white flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>{t('Save Changes', '保存生效')}</span>
+                  <span>{isSaving?t('Saving…','正在保存…'):t('Save Changes', '保存生效')}</span>
                 </button>
-              </div>
+              </AdminFormActions>
             </AdminForm>
           </div>
         </div>
       )}
+      {discardDraft&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardDraft(false)} onDiscard={()=>{setDiscardDraft(false);setIsModalOpen(false);}}/>}
       {/* Secondary Deletion Confirmation Modal (二次确认弹窗 - 严格对齐系统整体设计规范) */}
       {deleteConfirmTarget && (
         <div 
@@ -1521,13 +1539,13 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
             }
           }}
         >
-          <div 
-            className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${
+          <div ref={deletePanel} tabIndex={-1} role="alertdialog" aria-modal="true" aria-labelledby="cms-delete-title"
+            className={`admin-editor-layout w-full max-w-md max-h-[90vh] rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${
               isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-white'
             }`}
           >
             {/* Modal Header */}
-            <div className={`px-5 py-3.5 border-b flex items-center justify-between ${
+            <div className={`admin-editor-heading ${
               isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-950/50 border-slate-800/80'
             }`}>
               <div className="flex items-center gap-2.5">
@@ -1537,7 +1555,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   <Trash2 className="w-4 h-4" />
                 </span>
                 <div>
-                  <h3 className={`font-bold text-sm leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  <h3 id="cms-delete-title" className={`font-bold text-sm leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {t('Confirm Item Deletion', '确认删除内容条目')}
                   </h3>
                   <p className={`text-[10px] text-slate-400 dark:text-slate-500`}>
@@ -1560,7 +1578,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 space-y-3.5 text-xs">
+            <div className="admin-editor-body cms-delete-body" data-admin-stack="">
               <p className={`leading-relaxed text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                 {t(
                   'Are you sure you want to permanently delete this content item? Once confirmed, the data will be immediately removed from local persistence and synchronised to the official portal.',
@@ -1619,7 +1637,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
             </div>
 
             {/* Modal Footer */}
-            <div className={`px-5 py-3 border-t flex items-center justify-end gap-2 ${
+            <AdminFormActions className={`admin-editor-footer ${
               isLight ? 'bg-slate-50/60 border-slate-100' : 'bg-slate-950/40 border-slate-800/80'
             }`}>
               <button
@@ -1653,7 +1671,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   </>
                 )}
               </button>
-            </div>
+            </AdminFormActions>
           </div>
         </div>
       )}

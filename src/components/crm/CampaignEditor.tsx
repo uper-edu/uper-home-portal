@@ -1,4 +1,3 @@
-import {CrmFormLayoutScope} from '../AdminForm';
 import {CrmFormSection} from './CrmFormLayout';
 import {CrmDisclosure} from './CrmDisclosure';
 import {X} from 'lucide-react';
@@ -25,7 +24,7 @@ import {
   campaignDateTimeValue,
   type CampaignScheduleParts,
 } from "../../utils/campaignScheduleInput";
-function CampaignEditorBody({
+export function CampaignEditor({
   campaign,
   lang,
   isLight,
@@ -651,5 +650,3 @@ function CampaignEditorBody({
     </>
   );
 }
-
-export function CampaignEditor(props:Parameters<typeof CampaignEditorBody>[0]){return <CrmFormLayoutScope><CampaignEditorBody {...props}/></CrmFormLayoutScope>;}

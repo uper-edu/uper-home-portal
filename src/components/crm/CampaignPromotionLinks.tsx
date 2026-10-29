@@ -1,4 +1,3 @@
-import {CrmFormLayoutScope} from '../AdminForm';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
@@ -200,7 +199,7 @@ function LegacyCampaignLink({
     </article>
   );
 }
-function CampaignPromotionLinksBody({
+export function CampaignPromotionLinks({
   campaign,
   isLight,
   canManage,
@@ -541,5 +540,3 @@ function CampaignPromotionLinksBody({
     </section>
   );
 }
-
-export function CampaignPromotionLinks(props:Parameters<typeof CampaignPromotionLinksBody>[0]){return <CrmFormLayoutScope><CampaignPromotionLinksBody {...props}/></CrmFormLayoutScope>;}

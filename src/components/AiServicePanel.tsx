@@ -1,3 +1,4 @@
+import {AdminFormSection,AdminFormActions,AdminFormFeedback} from './AdminFormLayout';
 import {useEffect,useRef,useState} from 'react';
 import {testAndSaveAi} from '../utils/aiServiceSubmit';
 import type {CrmLanguage} from '../utils/crmLanguage';
@@ -34,23 +35,21 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
  const col=lang==='zh'?2:lang==='id'?1:0,t=(k:keyof typeof aiServiceText)=>aiServiceText[k][col];
  const status=(ok:boolean)=> <span className="ai-check" data-ok={ok}>{ok?<CheckCircle2 size={15} aria-hidden="true"/>:<XCircle size={15} aria-hidden="true"/>}{t(ok?'ready':'failed')}</span>;
  const fields=(value:any)=> <dl className="ai-config-values">{(['primary','fallback'] as const).map(k=><div key={k}><dt>{t(k)}</dt><dd>{value[k]}</dd></div>)}</dl>;
- return <section className="ai-service-panel" aria-busy={busy}>
+ return <section data-admin-form="" className="ai-service-panel" aria-busy={busy}>
   <div className="access-toolbar ai-service-toolbar"><p>{t('shortGuide')}</p><button type="button" disabled={busy} onClick={onQuery}><RefreshCw size={16} aria-hidden="true"/>{t('refresh')}</button></div>
-  {notice&&<p className="ai-service-feedback" data-tone={(notice==='saved'||notice==='verified')?'success':notice==='error'?'danger':'warning'} role="status">{t(notice as keyof typeof aiServiceText)}</p>}
+  {notice&&<AdminFormFeedback className="ai-service-feedback" state={notice==='saved'||notice==='verified'?'saved':notice==='error'?'error':'unknown'} role="status">{t(notice as keyof typeof aiServiceText)}</AdminFormFeedback>}
   {!data?<p role="status">{t(notice?'error':'busy')}</p>:<>
    <div className="access-grid ai-service-grid">
-    <section className="access-card ai-service-card" aria-labelledby="ai-model-heading">
-     <header className="access-record-heading"><h2 id="ai-model-heading"><Settings2 size={19} aria-hidden="true"/>{t('models')}</h2><AdminRequiredNote lang={lang}/></header>
+    <AdminFormSection variant="card" className="access-card ai-service-card" titleId="ai-model-heading" title={<><Settings2 size={19} aria-hidden="true"/>{t('models')}</>} actions={<AdminRequiredNote lang={lang}/>}>
      <div className="ai-config-active"><span>{t('active')}</span>{fields(data.current)}</div>
-     <div className="ai-service-fields">{(['primary','fallback'] as const).map(k=><AdminField as="div" key={k} required><label>{t(k)}</label><CrmSingleSelect label={t(k)} value={selection[k]} options={data.models.map((m:string)=>({value:m,label:m}))} onChange={v=>onSelect({...selection,[k]:v})} lang={lang} isLight={isLight} required disabled={busy}/></AdminField>)}</div>
-    </section>
-    <section className="access-card ai-service-card" aria-labelledby="ai-test-heading">
-     <header className="access-record-heading"><h2 id="ai-test-heading"><FlaskConical size={19} aria-hidden="true"/>{t('testEnable')}</h2></header>
+     <div data-admin-grid="" className="ai-service-fields">{(['primary','fallback'] as const).map(k=><AdminField as="div" key={k} required><label>{t(k)}</label><CrmSingleSelect label={t(k)} value={selection[k]} options={data.models.map((m:string)=>({value:m,label:m}))} onChange={v=>onSelect({...selection,[k]:v})} lang={lang} isLight={isLight} required disabled={busy}/></AdminField>)}</div>
+    </AdminFormSection>
+    <AdminFormSection variant="card" className="access-card ai-service-card" titleId="ai-test-heading" title={<><FlaskConical size={19} aria-hidden="true"/>{t('testEnable')}</>}>
      <div className="ai-test-body" role="status" aria-live="polite">
       {busy?<p className="ai-service-progress"><LoaderCircle size={18} aria-hidden="true"/>{t('busy')}</p>:check?<div className="ai-test-results">{check.results.map((r:any)=><div className="ai-test-result" key={r.model}><div><strong>{r.model}</strong>{r.actualModel&&<span className="ai-service-muted">{t('actualModel')}: {r.actualModel}</span>}</div>{status(r.ok)}</div>)}<p className="ai-service-muted">{t(check.ok?'checksPassed':'testFailed')}</p></div>:<p className="ai-service-muted">{t('testHint')}</p>}
      </div>
-     <footer className="access-record-action ai-service-actions"><button type="button" className="ai-primary" disabled={busy||unresolved} onClick={onSubmit}><FlaskConical size={16} aria-hidden="true"/>{t(busy?'busy':'testSave')}</button></footer>
-    </section>
+     <AdminFormActions className="access-record-action ai-service-actions"><button type="button" className="ai-primary" disabled={busy||unresolved} onClick={onSubmit}><FlaskConical size={16} aria-hidden="true"/>{t(busy?'busy':'testSave')}</button></AdminFormActions>
+    </AdminFormSection>
    </div>
    <section className="access-card ai-service-support" aria-label={t('support')}>
     <CrmDisclosure heading={t('actual')}><p className="ai-service-muted">{t('callNote')}</p><ul className="ai-service-records">{data.attempts.map((a:any,i:number)=><li key={i}><strong>{a.model}</strong>{status(a.ok)}<time>{formatCrmEventTime(a.at)}</time>{a.fallbackModel&&<span>{t('fallbackUsed')}: {a.fallbackModel}</span>}</li>)}{!data.attempts.length&&<li>{t('empty')}</li>}</ul></CrmDisclosure>

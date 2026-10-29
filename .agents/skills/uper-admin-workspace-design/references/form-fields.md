@@ -10,3 +10,7 @@ CRM、CMS、系统管理共用 AdminField、AdminFieldLabel、AdminRequiredNote�
 - 缺必填禁止保存／更新，聚焦缺项并给出可读错误；失败保留草稿。结果未知使用原结果查询，不绕过校验重写。客户端检查不能替代服务端校验。
 
 验收：中文电脑端抽查必填空白、合法值、选填空白、条件开关、禁用字段；确认错误提交不写入。检查星号不重复、标签关联及键盘焦点。其他语言与设备按本次授权范围报告，不自动扩大测试。
+
+## 字段间距
+
+执行[管理工作区表单规范](../../../../docs/design/admin-form-system.md)：标题至首字段8px、标签至控件8px、相邻字段12px、所属说明4px、不同子组16px、底部16px、双列横向16px。复用`admin-form.css`中的共享变量，容器控制间距，字段清除重复margin，不渲染空说明。长文自然换行，保留字号及控件高度。本轮按已批准的[表单盘点](../../../../docs/design/ADMIN-FORM-INVENTORY.md)适配管理表单；其他业务流程变更仍需单独授权。静态分区、操作行和反馈复用AdminFormSection／AdminFormActions／AdminFormFeedback；弹窗和抽屉统一固定头尾及单正文滚动，不合并保存范围。

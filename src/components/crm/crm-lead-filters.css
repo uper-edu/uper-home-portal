@@ -398,6 +398,11 @@
   cursor: not-allowed;
 }
 .crm-detail-choice-popup .crm-filter-option input { flex-shrink: 0; }
+.crm-filter-area .crm-choice-detail{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left;white-space:normal;overflow:visible;text-overflow:clip}
+.crm-filter-area .crm-choice-title{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.6}
+.crm-filter-area .crm-choice-description{font-size:13px;line-height:1.6;color:var(--cf-muted);font-weight:400}
+.crm-detail-choice .crm-filter-dimension-button:has(.crm-choice-detail){height:auto;min-height:var(--cf-control-height);align-items:center;padding-block:10px}
+.crm-detail-choice-popup .crm-filter-option:has(.crm-choice-detail){align-items:flex-start;height:auto}
 
 /* The detail sidebar and full worklist share one filter state and implementation. */
 .crm-filter-sidebar{padding:0 12px 12px;container-type:normal}.crm-filter-sidebar .crm-filter-panel{padding:0;border:0;background:transparent}.crm-filter-sidebar .crm-filter-main{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"search search" "scope scope" "owner owner" "task task" "more more" "reset reset";gap:8px}.crm-filter-sidebar .crm-filter-dimensions{grid-template-columns:minmax(0,1fr)}.crm-filter-sidebar .crm-filter-results{display:flex;flex-direction:column;align-items:stretch;gap:4px}.crm-filter-sidebar .crm-filter-results>p{min-height:30px;margin:0}.crm-filter-sidebar .crm-filter-results .crm-filter-single{width:100%;flex:none;height:auto}.crm-filter-sidebar .crm-filter-popover{position:static;width:100%;max-width:none;margin-top:5px;box-shadow:none}.crm-filter-sidebar .crm-filter-options{max-height:220px}.crm-filter-sidebar .crm-filter-dimension:nth-child(n) .crm-filter-popover{width:100%}.crm-filter-sidebar .crm-filter-reset{justify-self:end}.crm-sidebar-selection-note{margin:0 12px 12px;padding:10px;border:1px solid var(--dw-border);border-radius:8px;color:var(--dw-muted);font-size:12px;line-height:1.5}.crm-filter-sidebar .crm-filter-chip{font-size:12px}

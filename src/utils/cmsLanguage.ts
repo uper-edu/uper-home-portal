@@ -1,6 +1,25 @@
 import type { CrmLanguage } from "./crmLanguage";
 /** Static CMS interface text only. Never pass saved content or people's names. */
 export const cmsIndonesian: Record<string, string> = {
+"Saved; a newer version is displayed.": "Tersimpan; versi lebih baru ditampilkan.",
+"Saved and reloaded.": "Tersimpan dan dimuat ulang.",
+"No committed result found yet. The original request may still be running. Check again.": "Belum ditemukan hasil tersimpan. Permintaan awal mungkin masih berjalan. Periksa lagi.",
+"Result unavailable. Your draft is retained.": "Hasil belum tersedia. Draf tetap disimpan.",
+"Image upload confirmed. Save content separately.": "Unggahan gambar dikonfirmasi. Simpan konten secara terpisah.",
+"Save rejected. Review permissions, fields or the latest version; draft retained.": "Penyimpanan ditolak. Periksa izin, isian atau versi terbaru; draf tetap disimpan.",
+"Save outcome unconfirmed. Query the result before continuing.": "Hasil simpan belum pasti. Periksa hasil sebelum melanjutkan.",
+"Image rejected. Draft retained.": "Gambar ditolak. Draf tetap disimpan.",
+"Upload outcome unconfirmed. Query the result before continuing.": "Hasil unggahan belum pasti. Periksa hasil sebelum melanjutkan.",
+"Review pending operation": "Tinjau operasi yang belum dikonfirmasi",
+"Operation result unconfirmed. Query before continuing.": "Hasil operasi belum pasti. Periksa sebelum melanjutkan.",
+"Query operation result": "Periksa hasil operasi",
+
+  "Saving…": "Menyimpan…",
+  "Content fields": "Kolom konten",
+  "Image URL": "URL gambar",
+  "Certificate image URL": "URL gambar sertifikat",
+  "Content details": "Detail konten",
+  "Display settings": "Pengaturan tampilan",
   "CMS sign in | UPER": "Masuk CMS | UPER",
   "CMS sign in": "Masuk CMS",
   "Content workspace": "Ruang kerja konten",
@@ -160,6 +179,7 @@ export const cmsIndonesian: Record<string, string> = {
     "Pilih koleksi, cari atau muat ulang datanya, lalu tambah atau edit konten. Simpan perubahan dalam editor. Membuka situs menampilkan konten yang sudah disimpan; draf yang masih terbuka tidak ikut disimpan.",
   "Names and saved content remain in their original language. HSK questions and scoring are not changed by interface preferences.":
     "Nama dan konten tersimpan tetap memakai bahasa aslinya. Preferensi antarmuka tidak mengubah soal atau penilaian HSK.",
+"Retry original request":"Ulangi permintaan semula","Select original image":"Pilih kembali gambar asli","Select the original image to retry the original request.":"Pilih gambar asli untuk mengulangi permintaan semula.","This is not the original image. The pending request is unchanged.":"Gambar berbeda dari unggahan asli. Permintaan tertunda tetap utuh.","Original retry rejected. Draft retained; query before continuing.":"Pengulangan ditolak. Draf tetap tersimpan; periksa hasil sebelum melanjutkan.","Draft remains on this page; refresh recovery is not guaranteed.":"Draf tetap ada di halaman ini; pemulihan setelah muat ulang tidak terjamin.",
 };
 export function cmsText(en: string, zh: string, lang: CrmLanguage) {
   return lang === "zh" ? zh : lang === "id" ? cmsIndonesian[en] || en : en;
