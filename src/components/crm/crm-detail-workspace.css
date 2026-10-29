@@ -252,7 +252,10 @@
 .crm-history-bilateral [data-history-lane=customer] .crm-history-card-time{grid-column:2/4}
 
 /* Hover and keyboard focus identify the active card without moving the timeline. */
-.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node:is(:hover,:focus-within){border-color:var(--admin-action);background:var(--admin-selected);box-shadow:0 0 0 1px var(--admin-action)}
+/* Distinct neutral, hover and expanded states; keyboard focus stays an independent outline. */
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node{cursor:pointer;border-color:color-mix(in srgb,var(--admin-muted) 72%,var(--cw-surface));box-shadow:0 1px 3px color-mix(in srgb,var(--admin-text) 8%,transparent);transition:border-color .12s ease,background-color .12s ease,box-shadow .12s ease}
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node:not([open]):hover{border-color:var(--admin-action);background:color-mix(in srgb,var(--admin-selected) 35%,var(--cw-surface));box-shadow:0 0 0 1px var(--admin-action)}
+.crm-history-bilateral>.crm-history-card-stream>[data-history-lane]>.crm-history-node[open]{border-color:var(--admin-action);background:var(--admin-selected);box-shadow:0 0 0 1px var(--admin-action)}
 .crm-history-bilateral .crm-history-node>summary:focus-visible{outline:2px solid var(--admin-focus);outline-offset:4px;border-radius:8px}
 /* Expanded desktop cards retain the direction of their source lane. */
 @media(min-width:761px){

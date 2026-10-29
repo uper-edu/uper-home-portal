@@ -21,5 +21,5 @@ export function CrmHistoryStream({children,enabled}:{children:ReactNode;enabled:
   const observer=new ResizeObserver(layout);rows.forEach(row=>observer.observe(row));window.addEventListener('resize',layout);layout();
   return()=>{cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('resize',layout);};
  },[children,enabled]);
- return <div className={enabled?'crm-history-card-stream':undefined} ref={root} onClickCapture={enabled?event=>{const target=event.target;if(!(target instanceof Element))return;const summary=target.closest('summary'),card=summary?.parentElement;if(card instanceof HTMLDetailsElement&&card.classList.contains('crm-history-node')&&!card.open)pendingReveal.current=card;}:undefined}>{children}</div>;
+ return <div className={enabled?'crm-history-card-stream':undefined} ref={root} onClickCapture={enabled?event=>{const target=event.target;if(!(target instanceof Element))return;const card=target.closest('.crm-history-node');if(card instanceof HTMLDetailsElement&&!card.open&&!target.closest('button,a,input,textarea,select,[contenteditable="true"]'))pendingReveal.current=card;}:undefined}>{children}</div>;
 }
