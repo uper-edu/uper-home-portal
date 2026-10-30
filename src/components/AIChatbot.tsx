@@ -1,3 +1,4 @@
+import {RegistrationSaveError,registrationSaveText} from '../services/registrationSave';
 import type {ChatRequestAction} from '../utils/chatRequestIntent';
 import {visitorKey} from '../services/visitorScope';
 import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
@@ -765,7 +766,7 @@ export default function AIChatbot() {
       console.error('[SUBMIT FORM ERROR]', err);
       trackFormSubmit('chatbot_lead_form', false, { reason: 'api_error', error: err.message || 'unknown' });
       setFormError(
-        currentLang.startsWith('zh') 
+        err instanceof RegistrationSaveError ? registrationSaveText(err.state,currentLang) : currentLang.startsWith('zh')
           ? `提交失败: ${err.message || '网络连接异常，请重试'}` 
           : `Gagal mengirim data: ${err.message || 'masalah jaringan, silakan coba lagi'}`
       );

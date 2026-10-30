@@ -1,3 +1,4 @@
+import {registrationFingerprint,registrationSubmissionId,registrationReceiptKey,publicRegistrationProfile} from './registrationReceipt.ts';
 import {bookingRequestSuppressed} from '../../src/utils/chatRequestIntent.ts';
 import {attachIdentityContactHolds,canonicalIdentity,assertIdentitySalesAllowed,lockIdentityRegistry,projectIdentityProfiles,identityProjectionRows} from './identityConsolidation.ts';
 import {attachQuestionnaireBasicSources} from './questionnaireSources.ts';
@@ -405,8 +406,22 @@ export async function mountPortal(app: Express) {
     }),
   );
   mountHskAssessments(app);
+  app.get('/api/portal/registrations/:submissionId',wrap(async(req,res)=>{
+    const v=await visitor(req,res);
+    const submissionId=registrationSubmissionId({submissionId:req.params.submissionId});
+    const receipt=await tx(async(c:any)=>{
+      const locked=(await c.query('SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE',[v.id])).rows[0];
+      const row=(await c.query("SELECT visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",[registrationReceiptKey(v.id,submissionId)])).rows[0];
+      if(!row||row.visitor_id!==v.id||row.lead_id!==locked.lead_id)fail(404,'Registration result not found');
+      return row.payload;
+    });
+    res.setHeader('Cache-Control','no-store');res.json({success:true,saved:true,submissionId,...receipt});
+  }));
   const register = wrap(async (req, res) => {
-    const b = req.body;
+    validateQuestionnaireAnswers(req.body);
+    const submissionId=registrationSubmissionId(req.body);
+    const fingerprint=registrationFingerprint(req.body);
+    const {submissionId:_submissionId,...b} = req.body;
     validateQuestionnaireAnswers(b);
     const v = await visitor(req, res);
     if (
@@ -453,6 +468,13 @@ export async function mountPortal(app: Express) {
           [v.id],
         )
       ).rows[0];
+      const receiptKey=registrationReceiptKey(v.id,submissionId);
+      const previous=(await c.query("SELECT input_hash,visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",[receiptKey])).rows[0];
+      if(previous){
+        if(previous.input_hash!==fingerprint)fail(409,'Registration submission conflict');
+        if(previous.visitor_id!==v.id||previous.lead_id!==locked.lead_id)fail(409,'Visitor identity changed');
+        return previous.payload.lead;
+      }
       const leadId = locked.lead_id || id();
       const existing =
         (
@@ -629,9 +651,11 @@ export async function mountPortal(app: Express) {
         ]);
       }
       await fact(c,leadId,"questionnaire.submitted","visitor",{answers:b,previous:Object.fromEntries(["fullName","whatsapp","email","goal","goals","city","mode","reportedLevel"].map(k=>[k,existing[k]??null]))},questionnaireFactId);
+      await c.query("INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'registration',:p2,:p3,:p4,:p5,:p6)",[randomUUID(),receiptKey,fingerprint,v.id,leadId,{lead:publicRegistrationProfile(profile)}]);
       return profile;
     });
-    res.json({ success: true, lead: result });
+    res.setHeader('Cache-Control','no-store');
+    res.json({ success: true, saved:true, submissionId, lead: result });
   });
   app.post(
     [

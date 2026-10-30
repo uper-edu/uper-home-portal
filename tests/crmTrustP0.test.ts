@@ -231,6 +231,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         await leader(`/api/crm/leads/${second}/identity-actions`, {
           requestId: "identity-" + stamp,
           candidateId: id,
+          expectedComparisonRevision: (await leader(`/api/crm/leads/${second}/identity-comparison?candidateId=${id}`)).data.revision,
           decision: "same",
           reason: "TEST customer confirmed returning on another device",
         })
@@ -242,6 +243,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         await other(`/api/crm/leads/${second}/identity-actions`, {
           requestId: "badidentity-" + stamp,
           candidateId: id,
+          expectedComparisonRevision: (await leader(`/api/crm/leads/${second}/identity-comparison?candidateId=${id}`)).data.revision,
           decision: "same",
           reason: "TEST unauthorized",
         })

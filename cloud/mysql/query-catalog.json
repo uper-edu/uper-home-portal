@@ -606,6 +606,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'registration',:p2,:p3,:p4,:p5,:p6)": {
+    "sql": "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'registration',:p2,:p3,:p4,:p5,:p6)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,payload,attachment,attachment_name) VALUES(?,'application',?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id": {
     "sql": "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,payload,attachment,attachment_name) VALUES(?,'application',?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
@@ -1720,6 +1726,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT input_hash,visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1": {
+    "sql": "SELECT input_hash,visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "SELECT items,items_text FROM cms_collections WHERE name=?": {
     "sql": "SELECT items,items_text FROM cms_collections WHERE name=?",
     "sources": [
@@ -2068,6 +2080,12 @@
     "sql": "SELECT visitor_id,input_hash,attempt,result FROM hsk_attempts WHERE id=:p1",
     "sources": [
       "server/portal/assessments.ts"
+    ]
+  },
+  "SELECT visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1": {
+    "sql": "SELECT visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
     ]
   },
   "UPDATE access_handovers SET causes=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {

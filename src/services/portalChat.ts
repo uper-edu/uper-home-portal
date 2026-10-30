@@ -1,3 +1,4 @@
+import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './registrationSave';
 import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
@@ -55,7 +56,7 @@ export async function conversation(source: ChatSource) {
   );
   return (await scopedJson(res)).conversationId as string;
 }
-export async function registerContact(profile: object) {
+export async function registerContact(profile: object,options:{queryOnly?:boolean;retryOriginal?:boolean}={}) {
   const expected = visitorScope();
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
@@ -74,15 +75,21 @@ export async function registerContact(profile: object) {
     delete contact[key];
   await session();
   assertVisitorScope(expected);
-  let response=await scopedFetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
-  if(response.status===409&&(await response.clone().json()).error==='Contact identity changed; start a separate visitor session'){
+  let responseScope=expected;
+  let storage:Storage|undefined;try{storage=window.sessionStorage;}catch{}
+  const send=()=>saveRegistration({scope:visitorScope(),payload:contact,fetcher:scopedFetch as typeof fetch,storage,...options});
+  let data:any;
+  try{data=await send();}catch(error){
+  if(error instanceof Error&&error.message==='Contact identity changed; start a separate visitor session'){
     const lang=String((profile as any).language||(profile as any).lang||document.documentElement.lang||'en');
     const agreed=window.confirm(lang.startsWith('zh')?'联系方式与当前客户不同。是否作为另一位使用者开始？原客户记录将保留。':lang.startsWith('id')?'Kontak berbeda dari pelanggan saat ini. Mulai sebagai pengguna lain? Catatan lama tetap tersimpan.':'Contact details differ from the current customer. Start as another user? Existing records will be preserved.');
-    if(!agreed)throw Error(lang.startsWith('zh')?'未覆盖原客户，请核对联系方式。':lang.startsWith('id')?'Catatan lama tidak ditimpa. Periksa kontak.':'Existing customer was preserved. Review contact details.');
+    if(!agreed)throw new RegistrationSaveError('failed',lang.startsWith('zh')?'未覆盖原客户，请核对联系方式。':lang.startsWith('id')?'Catatan lama tidak ditimpa. Periksa kontak.':'Existing customer was preserved. Review contact details.');
     await checked(await scopedFetch('/api/portal/new-person',{method:'POST'}));invalidateVisitorScope();await session();
-    response=await scopedFetch("/api/portal/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(contact)});
+    responseScope=visitorScope();
+    data=await send();
+  }else throw error;
   }
-  const data = await scopedJson(await checked(response));
+  assertVisitorScope(responseScope);
   saveStudentContext({leadProfile:data.lead});
   return data;
 }
@@ -176,6 +183,12 @@ export async function chatFetch(
 }
 
 export async function restoreChat(source: ChatSource) {
+  const owner=visitorScope();
+  let storage:Storage|undefined;try{storage=window.sessionStorage;}catch{}
+  if(hasPendingRegistration(owner,storage)){
+    try{await saveRegistration({scope:owner,payload:{},fetcher:scopedFetch as typeof fetch,storage,queryOnly:true});}catch{/* Keep an unconfirmed tab draft; recovery never submits it. */}
+    assertVisitorScope(owner);
+  }
   const conversationId = await conversation(source);
   const expected = visitorScope();
   const data = await scopedJson(await checked(await scopedFetch("/api/portal/conversations/" + conversationId)));

@@ -1,3 +1,5 @@
+import {RegistrationSaveError,registrationSaveText,hasPendingRegistration,pendingRegistrationDraft} from '../services/registrationSave';
+import {visitorScope} from '../services/visitorScope';
 import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
 import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
 import React, { useState, useEffect, useRef } from 'react';
@@ -31,7 +33,7 @@ import {
 } from '../types/leadSystem';
 
 interface GFormOnboardingModalProps {
-  onComplete: (profile: LeadProfile, lang: 'en' | 'id' | 'zh') => void | Promise<void>;
+  onComplete: (profile: LeadProfile, lang: 'en' | 'id' | 'zh',options?:{queryOnly?:boolean;retryOriginal?:boolean}) => void | Promise<void>;
   isOpen: boolean;
   initialLang?: 'en' | 'id' | 'zh';
 }
@@ -173,6 +175,20 @@ export default function GFormOnboardingModal({
   const [emailRejected, setEmailRejected] = useState(false);
   const [contactFocusRequest, setContactFocusRequest] = useState<{field: 'phone' | 'email'} | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [saveUnknown,setSaveUnknown]=useState(()=>{try{return hasPendingRegistration(visitorScope(),window.sessionStorage);}catch{return false;}});
+  useEffect(()=>{
+    let original:Record<string,any>|null=null;try{original=pendingRegistrationDraft(visitorScope(),window.sessionStorage);}catch{}
+    if(!original)return;
+    const language=['zh','en','id'].includes(original.language)?original.language:initialLang;
+    setLang(language);setFullName(original.fullName||'');setWhatsapp(original.whatsapp||'');setEmail(original.email||'');setCurrentStatus(original.currentStatus||null);setParentContact(original.parentContact||'');
+    setSelectedGoals(original.goals||[]);setReportedLevel(original.reportedLevel||null);setCity(original.city||null);setCityDetail(original.cityDetail||'');setMode(original.mode||null);setSelectedBuyingSignals(original.buyingSignals||[]);setStep(2);setErrorMsg(registrationSaveText('unknown',language));
+  },[]);
+  const querySavedResult=async(retryOriginal=false)=>{
+    if(submitInFlight.current)return;submitInFlight.current=true;setSubmitting(true);
+    try{await onComplete({} as LeadProfile,lang,retryOriginal?{retryOriginal:true}:{queryOnly:true});setSaveUnknown(false);}
+    catch(error){const state=error instanceof RegistrationSaveError?error.state:'unknown';setSaveUnknown(state!=='failed');setErrorMsg(registrationSaveText(state,lang));}
+    finally{submitInFlight.current=false;setSubmitting(false);}
+  };
   const submitInFlight = useRef(false);
   const phoneText = contactPhoneText(lang);
   const phoneInvalid = phoneRejected || (phoneTouched && !validContactPhone(whatsapp));
@@ -325,12 +341,14 @@ export default function GFormOnboardingModal({
     try {
       await onComplete(leadData, lang);
     } catch (error) {
+      if(error instanceof RegistrationSaveError&&error.state==='failed')setSaveUnknown(false);
       if (error instanceof Error && error.message === CONTACT_PHONE_ERROR) {
         setPhoneRejected(true); rejectPhone();
       } else if (error instanceof Error && error.message === CONTACT_EMAIL_ERROR) {
         setEmailRejected(true); rejectEmail();
       } else {
-        setErrorMsg(lang === 'zh' ? '未保存，请重试。已保留您的填写内容。' : lang === 'id' ? 'Belum tersimpan. Coba lagi; isian Anda tetap tersedia.' : 'Not saved. Please retry; your entries have been kept.');
+        const state=error instanceof RegistrationSaveError?error.state:'unknown';
+        setSaveUnknown(state!=='failed');setErrorMsg(registrationSaveText(state,lang));
       }
     } finally {
       submitInFlight.current = false; setSubmitting(false);
@@ -429,12 +447,13 @@ export default function GFormOnboardingModal({
 
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2">
+            <div role="status" className={`p-3 border rounded-xl text-xs font-medium flex items-center gap-2 ${saveUnknown?'bg-amber-50 border-amber-200 text-amber-800':'bg-rose-50 border-rose-200 text-rose-700'}`}>
               <HelpCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
+          <fieldset disabled={submitting||saveUnknown} className="min-w-0">
           {step === 1 ? (
             /* ================= STEP 1: Basic Identity ================= */
             <div className="space-y-4">
@@ -930,6 +949,11 @@ export default function GFormOnboardingModal({
               </div>
             </div>
           )}
+          </fieldset>
+          {saveUnknown&&<div role="status" className="flex flex-wrap gap-2">
+            <button type="button" disabled={submitting} onClick={()=>querySavedResult()} className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm focus-visible:outline-2">{lang==='zh'?'核对保存结果':lang==='id'?'Periksa hasil':'Check save result'}</button>
+            <button type="button" disabled={submitting} onClick={()=>querySavedResult(true)} className="px-4 py-2 rounded-xl border border-slate-300 text-sm focus-visible:outline-2">{lang==='zh'?'使用原提交重试':lang==='id'?'Ulangi kiriman awal':'Retry original submission'}</button>
+          </div>}
         </form>
       </motion.div>
     </div>
