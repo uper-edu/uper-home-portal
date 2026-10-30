@@ -15,8 +15,11 @@ export function assertVisitorScope(expected: string) {
 }
 export function selectVisitorScope(next: string) {
   if (scope === next) return;
+  const hadActiveScope = Boolean(scope);
   scope = next; revision++;
-  for (const listener of listeners) listener();
+  // No personal UI can be mounted while the scope is empty, so the first
+  // successful session selection must not invalidate its own boundary check.
+  if (hadActiveScope) for (const listener of listeners) listener();
 }
 export function subscribeVisitorScope(listener: () => void) {
   listeners.add(listener); return () => { listeners.delete(listener); };
