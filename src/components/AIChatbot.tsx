@@ -1040,16 +1040,6 @@ export default function AIChatbot() {
               maxWidth: isDesktop ? 'calc(100vw - 48px)' : undefined,
               maxHeight: isDesktop ? 'calc(100vh - 120px)' : undefined,
             }}
-            onMouseEnter={() => {
-              if (isDesktop && typeof document !== 'undefined' && document.body) {
-                document.body.style.overflow = 'hidden';
-              }
-            }}
-            onMouseLeave={() => {
-              if (isDesktop && typeof document !== 'undefined' && document.body) {
-                document.body.style.overflow = '';
-              }
-            }}
             id="uper-ai-chat-window"
           >
             {/* Edge Drag Handles for Resizing on Desktop */}
