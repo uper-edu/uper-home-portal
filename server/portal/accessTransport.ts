@@ -1,5 +1,5 @@
 import type { Express, Request } from "express";
-import {exactPrivateProxy,isCompanyTrial,isProductionDeployment} from '../companyTrial.ts';
+import {exactPrivateProxy,isCompanyTrial,isProductionDeployment,publicOrigins} from '../companyTrial.ts';
 export function configureAccessTransport(app: Express, env = process.env) {
   const trusted = (env.ACCESS_TRUSTED_PROXIES || "")
     .split(",")
@@ -11,10 +11,8 @@ export function configureAccessTransport(app: Express, env = process.env) {
     throw Error(
       "Only explicit approved private proxy peers are supported; wildcards and networks are forbidden",
     );
-  if (
-    trusted.length &&
-    !/^https:\/\/[^/]+$/.test(env.ACCESS_PUBLIC_ORIGIN || "")
-  )
+  const origins = publicOrigins(env);
+  if (trusted.length && !origins.length)
     throw Error("A canonical HTTPS origin is required with trusted proxies");
   app.set("trust proxy", (ip: string) => trusted.includes(ip));
   app.use((q, r, next) => {
@@ -29,9 +27,8 @@ export function configureAccessTransport(app: Express, env = process.env) {
       return;
     }
     if (
-      env.ACCESS_PUBLIC_ORIGIN &&
-      (q.protocol !== "https" ||
-        q.get("host") !== new URL(env.ACCESS_PUBLIC_ORIGIN).host)
+      origins.length &&
+      !origins.includes(`${q.protocol}://${q.get("host")}`)
     ) {
       r.status(403).json({ error: "access_origin_rejected" });
       return;
@@ -39,7 +36,14 @@ export function configureAccessTransport(app: Express, env = process.env) {
     next();
   });
 }
-export const trustedOrigin = (q: Request) =>
-  process.env.ACCESS_PUBLIC_ORIGIN || `${q.protocol}://${q.get("host")}`;
-export const validMutationOrigin = (q: Request) =>
-  q.headers.origin === trustedOrigin(q) && !!q.is("application/json");
+export const trustedOrigin = (q: Request) => {
+  const current = `${q.protocol}://${q.get("host")}`;
+  const origins = publicOrigins(process.env);
+  return origins.includes(current) ? current : origins[0] || current;
+};
+export const validMutationOrigin = (q: Request) => {
+  const origin = typeof q.headers.origin === "string" ? q.headers.origin : "";
+  const current = `${q.protocol}://${q.get("host")}`;
+  const origins = publicOrigins(process.env);
+  return !!q.is("application/json") && origin === current && (!origins.length || origins.includes(origin));
+};

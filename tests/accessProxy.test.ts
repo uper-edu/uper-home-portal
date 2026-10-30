@@ -26,6 +26,38 @@ test("forwarded headers require an explicit peer and canonical HTTPS origin", ()
     /HTTPS/,
   );
 });
+test("production transport accepts the approved public-origin aliases", async () => {
+  const app = express();
+  configureAccessTransport(app, {
+    PORTAL_ENV: "prod",
+    PORTAL_DEPLOYMENT: "production",
+    ACCESS_TRUSTED_PROXIES: "127.0.0.1,::ffff:127.0.0.1",
+    ACCESS_PUBLIC_ORIGIN: "https://home.uperedu.com",
+    ACCESS_ALLOWED_ORIGINS: "https://home.uperedu.com,https://www.uperedu.com,https://uperedu.com",
+  });
+  app.get("/api/check", (_q, r) => r.json({ ok: true }));
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const port = (server.address() as any).port;
+  try {
+    const request = (host: string) => new Promise<{ status: number; data: any }>((resolve, reject) => {
+      const req = http.request({ hostname: "127.0.0.1", port, path: "/api/check", headers: { host, "x-forwarded-proto": "https" } }, (res) => {
+        let text = "";
+        res.on("data", (chunk) => text += chunk);
+        res.on("end", () => resolve({ status: res.statusCode!, data: JSON.parse(text) }));
+      });
+      req.on("error", reject);
+      req.end();
+    });
+    const allowed = await request("www.uperedu.com");
+    assert.equal(allowed.status, 200);
+    const rejected = await request("evil.example");
+    assert.equal(rejected.status, 403);
+    assert.equal(rejected.data.error, "access_origin_rejected");
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
 if (process.env.MYSQL_NATIVE_TEST_ENV) {
   await setupNativeTest("access_proxy");
   process.env.PLATFORM_MODE = "local";

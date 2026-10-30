@@ -5,6 +5,20 @@ export const companyOrigin = 'https://home.prototype.uperedu.com';
 export const isCompanyTrial = (env = process.env) => env.PORTAL_DEPLOYMENT === 'company-trial';
 export const productionOrigin = 'https://home.uperedu.com';
 export const isProductionDeployment = (env = process.env) => env.PORTAL_ENV === 'prod' && env.PORTAL_DEPLOYMENT === 'production';
+/** Parse the explicit public-origin allowlist used by the HTTPS transport gate. */
+export function publicOrigins(env = process.env) {
+  const raw = env.ACCESS_ALLOWED_ORIGINS || env.ACCESS_PUBLIC_ORIGIN || '';
+  const values = raw.split(',').map(value => value.trim()).filter(Boolean);
+  const origins = new Set<string>();
+  for (const value of values) {
+    let parsed: URL;
+    try { parsed = new URL(value); } catch { throw Error('Public origins must be explicit HTTPS origins'); }
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash)
+      throw Error('Public origins must be explicit HTTPS origins');
+    origins.add(parsed.origin);
+  }
+  return [...origins];
+}
 /** Explicit deployment gate. Local cutover and test-fault switches never grant server access. */
 export function companyConfiguration(env = process.env) {
   if (!isCompanyTrial(env)) return null;
@@ -44,6 +58,8 @@ export function productionConfiguration(env = process.env) {
     throw Error('Production deployment requires the production transport, database and release gates');
   if (env.APP_URL !== productionOrigin || env.ACCESS_PUBLIC_ORIGIN !== productionOrigin)
     throw Error('Production deployment requires the approved canonical HTTPS origin');
+  if (!env.ACCESS_ALLOWED_ORIGINS || !publicOrigins(env).includes(productionOrigin))
+    throw Error('Production deployment requires an explicit public-origin allowlist containing the canonical origin');
   if (env.MYSQL_TLS_MODE !== 'disabled')
     throw Error('Production deployment requires the explicitly approved internal MySQL direct mode');
   if (!env.ACCESS_TRUSTED_PROXIES || (env.ACCESS_OPERATION_KEY || '').length < 32)
