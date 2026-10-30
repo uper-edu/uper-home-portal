@@ -16,15 +16,22 @@ export function supportsParticipationRecord(campaign: {
 
 /** Resolve only the customer's saved source, never the first available event. */
 export function linkedParticipationCampaign(
-  lead: { campaignId?: string },
+  lead: { campaignId?: string; attributionCampaignId?: string; campaignSourceStatus?: string },
   campaigns: any[],
 ) {
-  if (!lead.campaignId) return null;
-  const byId = campaigns.filter((campaign) => campaign.id === lead.campaignId);
-  if (byId.length === 1) return byId[0];
-  const byCode = campaigns.filter(
-    (campaign) => campaign.code === lead.campaignId,
-  );
+  if (lead.campaignSourceStatus === "invalid" || lead.campaignSourceStatus === "pending") return null;
+  // Verified attribution is a canonical ID, not another raw code. A missing
+  // target must never silently fall back to the original acquisition event.
+  const verifiedId = lead.attributionCampaignId?.trim();
+  if (verifiedId) {
+    const targets = campaigns.filter(campaign => campaign.id === verifiedId);
+    return targets.length === 1 ? targets[0] : null;
+  }
+  const raw = lead.campaignId?.trim();
+  if (!raw) return null;
+  const byId = campaigns.filter(campaign => campaign.id === raw);
+  if (byId.length) return byId.length === 1 ? byId[0] : null;
+  const byCode = campaigns.filter(campaign => campaign.code === raw);
   return byCode.length === 1 ? byCode[0] : null;
 }
 
