@@ -1,6 +1,8 @@
 import fs from "node:fs";
-import ts from "/Users/commando/projects/Uper/uper-home-portal/node_modules/typescript/lib/typescript.js";
+import { createRequire } from "node:module";
 import { validateSql } from "../cloud/mysql/sql.mjs";
+const require = createRequire(import.meta.url);
+const ts = require("typescript");
 const sources = fs
   .readdirSync("server/portal")
   .filter((n) => n.endsWith(".ts"))

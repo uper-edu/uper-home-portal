@@ -15,7 +15,9 @@ export function sourceIdentity(root=process.cwd()){
  const paths=[];function visit(relative){const file=path.join(root,relative);if(!fs.existsSync(file))return;const stat=fs.lstatSync(file);if(stat.isSymbolicLink())return;if(stat.isDirectory()){for(const name of fs.readdirSync(file).sort())if(!name.startsWith('.')&&!['node_modules','data','build','dist'].includes(name))visit(path.posix.join(relative,name));}else if(!path.basename(relative).startsWith('.env')&&!relative.endsWith('.md'))paths.push(relative);}
  for(const entry of ['src','server','public','cloud/mysql','cloud/company-trial','scripts','server.ts','index.html','package.json','package-lock.json','vite.config.ts','tsconfig.json'])visit(entry);paths.sort();
  const hash=crypto.createHash('sha256');for(const name of paths){const file=path.join(root,name);hash.update(name+'\0');if(fs.existsSync(file)&&fs.statSync(file).isFile())hash.update(fs.readFileSync(file));else hash.update('deleted');hash.update('\0');}
- return {gitCommit:execFileSync('git',['-C',root,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),gitCommittedAt:execFileSync('git',['-C',root,'show','-s','--format=%cI','HEAD'],{encoding:'utf8'}).trim(),dirty:!!execFileSync('git',['-C',root,'status','--porcelain'],{encoding:'utf8'}).trim(),sourceDigest:hash.digest('hex')};
+ const gitRoot=execFileSync('git',['-C',root,'rev-parse','--show-toplevel'],{encoding:'utf8'}).trim();
+ const dirtyRoot=path.resolve(gitRoot)!==path.resolve(root);
+ return {gitCommit:execFileSync('git',['-C',root,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),gitCommittedAt:execFileSync('git',['-C',root,'show','-s','--format=%cI','HEAD'],{encoding:'utf8'}).trim(),dirty:dirtyRoot||!!execFileSync('git',['-C',root,'status','--porcelain'],{encoding:'utf8'}).trim(),sourceDigest:hash.digest('hex')};
 }
 export function buildIdentity(environment,root=process.cwd(),publicConfig={}){
  const source=sourceIdentity(root),publicConfigDigest=sha(JSON.stringify(Object.fromEntries(Object.entries(publicConfig).sort())));
