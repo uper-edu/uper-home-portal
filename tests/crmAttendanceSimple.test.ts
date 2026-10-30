@@ -280,3 +280,34 @@ test("explicit confirmation counts without a reason; acquisition, missing actor/
     0,
   );
 });
+
+
+test("748 verified attribution resolves the canonical event without overwriting raw acquisition", async () => {
+  const { campaignMetrics } = await import("../src/utils/crmCampaignMetrics");
+  for (const mode of ["online", "onsite"]) {
+    const linked = {...lead, id:"TEST748-"+mode, campaignId:"TEST748-original-unknown", attributionCampaignId:campaign.id, campaignSourceStatus:"linked"};
+    assert.equal(linkedParticipationCampaign(linked,[campaign]),campaign);
+    const db=database(linked), request={...body,requestId:"TEST748-"+mode,mode};
+    const saved=await saveAttendance(db,linked.id,"Robert",request,[campaign],()=>true);
+    assert.equal(saved.campaignId,linked.campaignId);assert.equal(saved.attributionCampaignId,campaign.id);
+    assert.deepEqual(saved.followUpLogs,linked.followUpLogs);assert.equal(saved.owner,linked.owner);
+    assert.equal(saved.attendanceRecords[0].mode,mode);
+    assert.equal(campaignMetrics([saved],campaign).confirmedAttendanceCount,1);
+    await saveAttendance(db,linked.id,"Robert",request,[campaign],()=>true);
+    assert.equal(db.current.attendanceRecords.length,1);assert.equal(db.audits.length,1);
+    const withdrawn=await saveAttendance(db,linked.id,"Robert",{...request,requestId:request.requestId+"-withdraw",confirmed:false},[campaign],()=>true);
+    assert.equal(withdrawn.campaignId,linked.campaignId);
+    assert.equal(campaignMetrics([withdrawn],campaign).confirmedAttendanceCount,0);
+  }
+});
+test("748 unavailable, changed or unverified attribution never falls back to the raw event", async () => {
+  for(const change of [{attributionCampaignId:"missing"},{campaignSourceStatus:"pending"},{campaignSourceStatus:"invalid"}]){
+    const p={...lead,campaignSourceStatus:"linked",attributionCampaignId:campaign.id,...change};
+    assert.equal(linkedParticipationCampaign(p,[campaign]),null);
+    const db=database(p);await assert.rejects(saveAttendance(db,"TEST748","Robert",body,[campaign],()=>true),{status:409});assert.equal(db.writes,0);
+  }
+  const other={...campaign,id:"new-event",code:"new-code"};
+  const db=database({...lead,attributionCampaignId:other.id,campaignSourceStatus:"linked"});
+  await assert.rejects(saveAttendance(db,"TEST748","Robert",body,[campaign,other],()=>true),{status:409});assert.equal(db.writes,0);
+  assert.equal(linkedParticipationCampaign({...lead,attributionCampaignId:campaign.id,campaignSourceStatus:"linked"},[campaign,{...campaign}]),null);
+});
