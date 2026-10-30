@@ -26,7 +26,7 @@ test('723: list and follow-up share priority, time, text and semantic tone; deta
 test('723: full and compact list both retain agreement component and accessible detail button',()=>{
  const lead:any={id:'t',fullName:'TEST',commitments:[item('a',{date:'2026-10-30'})]};
  for(const children of [undefined,React.createElement('div',null,'TEST detail')]){
-  const html=render(React.createElement(CrmLeadWorkspace,{leads:[lead],selectedId:children?'t':undefined,view:'worklist',lang:'zh',timezone:zone,isLight:true,loading:false,employeeId:'TEST',employees:[],onOpen(){},onReset(){},children}));assert.match(html,/aria-label="客户约定：TEST 约定 a"/);assert.match(html,/10-30/);
+  const html=render(React.createElement(CrmLeadWorkspace,{leads:[lead],selectedId:children?'t':undefined,view:'worklist',lang:'zh',timezone:zone,isLight:true,loading:false,employeeId:'TEST',employees:[],onOpen(){},onReset(){},children}));if(!children)assert.match(html,/aria-label="客户约定：TEST 约定 a"/);else {assert.match(html,/TEST 约定 a/);assert.doesNotMatch(html,/aria-label="客户约定：TEST 约定 a"/);}assert.match(html,/10-30/);
  }
 });
 

@@ -14,6 +14,7 @@ export function CrmFollowUp({
   now,
   compact = false,
   hideStoppedNotice = false,
+  readOnly = false,
 }: {
   lead: CrmLeadRecord;
   lang: "zh" | "en" | "id";
@@ -27,6 +28,7 @@ export function CrmFollowUp({
   now?: number;
   compact?: boolean;
   hideStoppedNotice?: boolean;
+  readOnly?: boolean;
 }) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
@@ -84,7 +86,9 @@ export function CrmFollowUp({
             : t("Follow-up information unavailable", "跟进信息暂不可用")}
         </div>
       )}
-      {summary.note && compact ? (
+      {summary.note && compact && readOnly ? (
+        <div className="crm-followup-secondary">{t("Manual note available", "有人工备注")}</div>
+      ) : summary.note && compact ? (
         <button
           type="button"
           className="crm-followup-more"
@@ -105,7 +109,7 @@ export function CrmFollowUp({
           </div>
         )
       )}
-      {summary.additionalCount > 0 && (
+      {summary.additionalCount > 0 && (readOnly ? <div className="crm-followup-secondary">{lang === "id" ? `+${summary.additionalCount} tugas lainnya` : t(`+${summary.additionalCount} more ${summary.additionalCount === 1 ? "task" : "tasks"}`,`另有 ${summary.additionalCount} 项`)}</div> : (
         <button
           type="button"
           className="crm-followup-more"
@@ -121,7 +125,7 @@ export function CrmFollowUp({
                 `另有 ${summary.additionalCount} 项`,
               )}
         </button>
-      )}
+      ))}
     </div>
   );
 }

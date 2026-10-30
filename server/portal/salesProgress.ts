@@ -3,6 +3,7 @@ import {assessmentOccurrence as assessmentTime,establishedFactMilestones} from '
 import {isSalesProgressStage} from '../../src/utils/crmSalesProgress.ts';
 import {activeExtractionEvidence} from '../../src/utils/crmExtractionEvidence.ts';
 import {stageEventLabels} from '../../src/utils/crmExtractionContract.ts';
+import {isEnrollmentConfirmation,enrollmentVoids} from '../../src/utils/crmEnrollment.ts';
 const invalid=(message:string,status=400):never=>{throw Object.assign(Error(message),{status});};
 const iso=(v:any)=>{if(!v)return null;const d=new Date(typeof v==='string'&&!/(Z|[+-]\d\d:\d\d)$/.test(v)?v.replace(' ','T')+'Z':v);return Number.isFinite(d.getTime())?d.toISOString():null;};
 export async function salesProgressContext(c:any,leadId:string,profile:any){
@@ -24,7 +25,8 @@ export async function salesProgressContext(c:any,leadId:string,profile:any){
  const milestones:any[]=establishedFactMilestones(attempts,facts);
  for(const [index,e] of activeExtractionEvidence(extractions).entries()){const o=e.observation;if(e.supersededBy||o.kind!=='stage_event')continue;const source=sources.find(s=>s.type===e.row.source_type&&s.id===e.row.source_id);milestones.push({id:e.row.id+':'+o.field+':'+index,title:stageEventLabels[o.field]||o.field,source:source?.label||'原始来源待核对',aiDerived:true,occurredAt:source?.occurredAt||null,receivedAt:source?.receivedAt||null,timeBasis:source?.timeBasis||'unknown',recordedAt:iso(e.row.created_at),text:o.quote,temporality:o.temporality,basis:source?{type:source.type,id:source.id}:null,relatedBasis:source?.relatedBasis||null});}
  for(const f of facts.filter((f:any)=>f.kind==='sales.stage_observed'))milestones.push({id:f.id,title:'历史阶段事实',stage:f.data.stage,source:'销售记录',text:f.data.summary||'',occurredAt:iso(f.data.occurredAt),timeBasis:'staff_reported',recordedAt:iso(f.created_at),basis:{type:'sales_record',id:f.data.sourceLogId}});
- return {sources,history,establishedMilestones:milestones.filter(m=>m.established===true),milestones:milestones.sort((a,b)=>(Date.parse(b.occurredAt||'')||0)-(Date.parse(a.occurredAt||'')||0)),current:{stage:profile.currentStage,version:profile.stageRevision||0,effectiveAt:profile.stageEffectiveAt??null,recordedAt:profile.stageUpdatedAt||null}};
+ const voids=enrollmentVoids(facts),enrollmentConfirmations=facts.filter(isEnrollmentConfirmation).map((f:any)=>({id:f.id,text:f.data.reason||'',actor:f.actor,recordedAt:iso(f.created_at),voided:voids.has(f.id)}));
+ return {sources,history,enrollmentConfirmations,establishedMilestones:milestones.filter(m=>m.established===true),milestones:milestones.sort((a,b)=>(Date.parse(b.occurredAt||'')||0)-(Date.parse(a.occurredAt||'')||0)),current:{stage:profile.currentStage,version:profile.stageRevision||0,enrollmentVersion:profile.enrollmentRevision||0,effectiveAt:profile.stageEffectiveAt??null,recordedAt:profile.stageUpdatedAt||null}};
 }
 export async function validateSalesProgress(c:any,leadId:string,current:any,b:any){
  if(!isSalesProgressStage(b.newStage))invalid('请选择新的七阶段；旧阶段仅保留展示');

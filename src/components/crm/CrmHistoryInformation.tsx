@@ -2,6 +2,7 @@ import {CrmSearchHighlight} from './CrmSearchHighlight';
 import {insightValueText,CLASS_EQUIPMENT_KEY} from '../../utils/crmClassEquipment';
 import {insightLabel} from '../../utils/crmCustomerInsights';
 import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
+import {CrmQuestionnaireSalesSummary} from './CrmQuestionnaireSalesSummary';
 import {useCrmUiText,useCrmUiLanguage} from './CrmUiLanguage';
 import React,{useState} from 'react';
 import {historyInformation,historyDisplayInformation,historySharedCitations,historyCitationKey,historyBusinessReasons,historyInformationBatches,historyExtractionScope,historyQuoteRange,type HistoryCitation,type HistoryInformation,type HistoryDisplayInformation} from '../../utils/crmHistoryInformation';
@@ -18,8 +19,9 @@ export function CrmHistoryOriginal({groupId,scope='main',text,citation}:{groupId
  return <p id={historyOriginalId(groupId,scope)} tabIndex={-1} className="crm-progress-original crm-history-original">{range?<><CrmSearchHighlight text={text.slice(0,range.start)}/><mark data-citation-highlight="" tabIndex={-1}>{text.slice(range.start,range.end)}</mark><CrmSearchHighlight text={text.slice(range.end)}/></>:<CrmSearchHighlight text={text}/>}</p>;
 }
 const show=(v:any,lang:any):string=>v===null?crmUiText('明确清空',lang):v===undefined||v===''?crmUiText('未记录',lang):Array.isArray(v)?v.length?v.map(x=>show(x,lang)).join(lang==='zh'?'、':', '):crmUiText('暂无',lang):typeof v==='object'?crmUiText('结构化信息',lang):({en:lang==='zh'?'英语':lang==='id'?'Inggris':'English',id:lang==='zh'?'印尼语':'Bahasa Indonesia',zh:lang==='zh'?'中文':lang==='id'?'Mandarin':'Chinese',unknown:crmUiText('未确认',lang)}as any)[String(v)]||crmValue(String(v),lang);
-const fieldValue=(field:string,v:any,lang:any)=>field===CLASS_EQUIPMENT_KEY?insightValueText(v,field,lang):field==='budgetAmount'?budgetPresentation({budgetAmount:v},lang)?.value||show(v,lang):show(v,lang);
-const status=(i:HistoryInformation)=>i.superseded&&i.status==='applied'?'当时采用，后续已修正':(({withdrawn:'已撤回当前洞察',tentative:'AI推断',review:'需人工确认，未自动修改',applied:'当次已采用',difference:'未采用，保留不同记录',unchanged:'当次保持原值',evidence:'仅保留依据',suggestion:'仅作建议',recorded:'人工记录',unknown:'采用结果未注明'}as any)[i.status]||'采用结果未注明')+(i.superseded?' · 后续已修正':'');
+export const historyInformationValue=(field:string,v:any,lang:any)=>field===CLASS_EQUIPMENT_KEY?insightValueText(v,field,lang):field==='budgetAmount'?budgetPresentation({budgetAmount:v},lang)?.value||show(v,lang):show(v,lang);
+const fieldValue=historyInformationValue;
+const status=(i:HistoryInformation)=>i.superseded&&i.status==='applied'?'当时采用，后续已修正':(({withdrawn:'当时撤回的洞察',tentative:'AI推断',review:'需人工确认，未自动修改',applied:'当次已采用',difference:'未采用，保留不同记录',unchanged:'当次保持原值',evidence:'仅保留依据',suggestion:'仅作建议',recorded:'人工记录',unknown:'采用结果未注明'}as any)[i.status]||'采用结果未注明')+(i.superseded?' · 后续已修正':'');
 export function CrmHistoryInformation({group,items=historyInformation(group),allRows=group.extractions,scope='main',focusedFields=[],loading,error,selectedCitation,onEvidence,onViewAssessment}:any){
  const ui=useCrmUiText(),lang=useCrmUiLanguage();
 
@@ -60,6 +62,8 @@ export function CrmHistoryInformation({group,items=historyInformation(group),all
 }
 
 
-export function CrmHistoryQuestionnaireOriginal({group,citation,action,fields=[]}:{group:any;citation?:HistoryCitation|null;action?:React.ReactNode;fields?:string[]}){
- return <div className="crm-history-questionnaire-original" id={historyOriginalId(group.id,"main")} tabIndex={-1}><CrmQuestionnaireEvidence source={group} highlightFields={fields}/>{action}</div>;
+export function CrmHistoryQuestionnaireOriginal({group,citation,action,fields=[],showTimes=true,salesSummary=false}:{group:any;citation?:HistoryCitation|null;action?:React.ReactNode;fields?:string[];showTimes?:boolean;salesSummary?:boolean}){
+ const ui=useCrmUiText();
+ const original=<div className="crm-history-questionnaire-original" id={historyOriginalId(group.id,"main")} tabIndex={-1}><CrmQuestionnaireEvidence source={group} highlightFields={fields} showTimes={showTimes}/>{action}</div>;
+ return salesSummary?<><CrmQuestionnaireSalesSummary source={group}/><details className="crm-history-complete-questionnaire" open={fields.length||citation?.scope==='main'?true:undefined}><summary>{ui('查看完整原始问卷')}</summary>{original}</details></>:original;
 }

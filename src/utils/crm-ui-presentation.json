@@ -1,4 +1,30 @@
 {
+  "明确清空": ["Explicitly cleared", "Dikosongkan secara eksplisit"],
+  "作废报名误记": ["Void mistaken enrollment confirmation", "Batalkan konfirmasi pendaftaran yang salah"],
+  "已作废 · 报名误记": ["Voided · mistaken enrollment confirmation", "Dibatalkan · salah konfirmasi pendaftaran"],
+  "原报名确认暂不可用，请重试。": ["The original confirmation is unavailable. Please retry.", "Konfirmasi awal belum tersedia. Coba lagi."],
+  "正在加载原报名确认…": ["Loading original enrollment confirmation…", "Memuat konfirmasi pendaftaran awal…"],
+  "该报名确认已作废或不可用，请核对最新记录。": ["This confirmation is already voided or unavailable. Review the latest record.", "Konfirmasi sudah dibatalkan atau tidak tersedia. Periksa catatan terbaru."],
+  "原报名确认": ["Original enrollment confirmation", "Konfirmasi pendaftaran awal"],
+  "仅用于当初没有报名或选错客户；客户后来退课、退款不在此处理。原记录永久保留。": ["Use only when enrollment never happened or the wrong customer was selected. Later withdrawals and refunds are handled separately. The original record is retained.", "Hanya untuk pendaftaran yang tidak pernah terjadi atau salah memilih pelanggan. Pengunduran diri dan pengembalian dana diproses terpisah. Catatan asli tetap disimpan."],
+  "纠错说明": ["Correction explanation", "Penjelasan koreksi"],
+  "纠错后的销售阶段": ["Corrected sales stage", "Tahap penjualan setelah koreksi"],
+  "确认作废误记": ["Confirm voiding mistaken record", "Konfirmasi pembatalan catatan yang salah"],
+  "放弃未保存的纠错？": ["Discard this unsaved correction?", "Buang koreksi yang belum disimpan?"],
+  "报名误记已作废，销售阶段已同步更新。": ["Mistaken enrollment confirmation voided and sales stage updated.", "Konfirmasi pendaftaran yang salah dibatalkan dan tahap penjualan diperbarui."],
+  "报名误记已作废，当前阶段保持不变。": ["Mistaken enrollment confirmation voided. The current stage is unchanged.", "Konfirmasi pendaftaran yang salah dibatalkan. Tahap saat ini tetap."],
+  "无权作废该客户的报名误记": ["You cannot void this customer’s enrollment confirmation.", "Anda tidak berwenang membatalkan konfirmasi pelanggan ini."],
+  "请选择原报名确认记录": ["Select the original enrollment confirmation.", "Pilih konfirmasi pendaftaran awal."],
+  "请填写纠错说明": ["Enter a correction explanation.", "Isi penjelasan koreksi."],
+  "原报名确认不属于当前客户或不可用": ["The confirmation does not belong to this customer or is unavailable.", "Konfirmasi bukan milik pelanggan ini atau tidak tersedia."],
+  "该报名确认已作废，请核对最新记录": ["This confirmation was already voided. Review the latest record.", "Konfirmasi ini sudah dibatalkan. Periksa catatan terbaru."],
+  "客户阶段或报名确认已有变化，请核对后再保存": ["The stage or enrollment confirmation has changed. Review before saving.", "Tahap atau konfirmasi pendaftaran telah berubah. Periksa sebelum menyimpan."],
+  "请选择纠错后的销售阶段": ["Select the corrected sales stage.", "Pilih tahap penjualan setelah koreksi."],
+  "当前无需同步改变销售阶段，请核对最新状态": ["No simultaneous stage change is needed. Review the latest state.", "Tidak perlu mengubah tahap bersamaan. Periksa status terbaru."],
+  "补充／修正已保存。": ["Supplement/correction saved.", "Tambahan/koreksi disimpan."],
+  "原首次联系任务已恢复至当前负责人，原期限不变；未重发旧通知。": ["The original first-contact task is restored to the current owner with its original deadline. Previous notifications were not resent.", "Tugas kontak pertama semula dipulihkan untuk penanggung jawab saat ini dengan tenggat asli. Notifikasi lama tidak dikirim ulang."],
+  "首次联系仍满足要求。": ["The first-contact requirement remains satisfied.", "Persyaratan kontak pertama tetap terpenuhi."],
+  "原首次要求需管理者核对；未新增任务。": ["The original first-contact requirement needs manager review. No task was created.", "Persyaratan kontak pertama semula perlu diperiksa manajer. Tidak ada tugas baru."],
   "不修改": [
     "No change",
     "Tidak diubah"
@@ -1600,8 +1626,8 @@
     "Benar"
   ],
   "跳过题数": [
-    "Skipped",
-    "Dilewati"
+    "Skipped questions",
+    "Soal dilewati"
   ],
   "未作答题数": [
     "Unanswered",
@@ -6125,7 +6151,7 @@
   ],
   "销售阶段变更": [
     "Sales stage change",
-    "Perubahan tahap"
+    "Perubahan tahap penjualan"
   ],
   "新增购买信号": [
     "New buying signals",
@@ -7156,16 +7182,16 @@
     "Asesmen selesai"
   ],
   "未采用，保留不同记录": [
-    "Not adopted; difference retained",
-    "Tidak diterapkan; perbedaan disimpan"
+    "Not applied; different information retained",
+    "Tidak diterapkan; informasi berbeda tetap disimpan"
   ],
   "当次保持原值": [
     "Original value retained then",
     "Nilai semula dipertahankan saat itu"
   ],
   "采用结果未注明": [
-    "Adoption outcome unspecified",
-    "Hasil penerapan tidak disebutkan"
+    "Application outcome not recorded",
+    "Hasil penerapan tidak tercatat"
   ],
   "人工记录": [
     "Recorded by staff",
@@ -7666,5 +7692,225 @@
   "返回上一条依据": [
     "Back to previous evidence",
     "Kembali ke bukti sebelumnya"
+  ],
+  "本条记录修正后": [
+    "Corrected result for this record",
+    "Hasil koreksi untuk catatan ini"
+  ],
+  "查看修正依据": [
+    "View correction evidence",
+    "Lihat dasar koreksi"
+  ],
+  "本条记录修正后的联系结果：": [
+    "Corrected contact result for this record: ",
+    "Hasil kontak setelah koreksi catatan ini: "
+  ],
+  "当时记录的联系结果": [
+    "Contact result recorded at the time",
+    "Hasil kontak yang dicatat saat itu"
+  ],
+  "当时首次联系要求": [
+    "First-contact requirement at the time",
+    "Kewajiban kontak pertama saat itu"
+  ],
+  "当次销售阶段变更": [
+    "Sales stage change in this record",
+    "Perubahan tahap penjualan pada catatan ini"
+  ],
+  "当次主动联系安排": [
+    "Contact arrangement in this record",
+    "Pengaturan kontak pada catatan ini"
+  ],
+  "当时撤回的洞察": [
+    "Insight withdrawn at the time",
+    "Wawasan yang ditarik saat itu"
+  ],
+  "修正历史与处理详情": [
+    "Correction history and processing details",
+    "Riwayat koreksi dan detail pemrosesan"
+  ],
+  "记录与处理详情": [
+    "Record and processing details",
+    "Detail catatan dan pemrosesan"
+  ],
+  "卡片时间：": [
+    "Card timestamp: ",
+    "Waktu kartu: "
+  ],
+  "系统录入时间": [
+    "System recording time",
+    "Waktu pencatatan sistem"
+  ],
+  "原文（修正前）": [
+    "Original text before correction",
+    "Teks asli sebelum koreksi"
+  ],
+  "顾虑与限制": [
+    "Concerns and constraints",
+    "Kekhawatiran dan kendala"
+  ],
+  "本次变化": [
+    "Changes in this record",
+    "Perubahan pada catatan ini"
+  ],
+  "本次提及": [
+    "Mentioned in this record",
+    "Disebutkan pada catatan ini"
+  ],
+  "本条记录重点": [
+    "Key points in this record",
+    "Poin penting catatan ini"
+  ],
+  "当次记录的意向": [
+    "Interest recorded at the time",
+    "Minat yang dicatat saat itu"
+  ],
+  "历史表达": [
+    "Historical statement",
+    "Pernyataan historis"
+  ],
+  "未来表达": [
+    "Future statement",
+    "Pernyataan tentang masa depan"
+  ],
+  "条件表达": [
+    "Conditional statement",
+    "Pernyataan bersyarat"
+  ],
+  "尚不确定": [
+    "Uncertain",
+    "Belum pasti"
+  ],
+  "否定表达": [
+    "Negative statement",
+    "Pernyataan penyangkalan"
+  ],
+  "撤回说明": [
+    "Withdrawal statement",
+    "Pernyataan penarikan"
+  ],
+  "与资料不同": [
+    "Differs from the profile",
+    "Berbeda dari profil"
+  ],
+  "仅作参考": [
+    "For reference",
+    "Sebagai referensi"
+  ],
+  "本次补充": [
+    "Added in this record",
+    "Ditambahkan pada catatan ini"
+  ],
+  "价格咨询": [
+    "Pricing inquiry",
+    "Pertanyaan biaya"
+  ],
+  "上课时间咨询": [
+    "Class schedule inquiry",
+    "Pertanyaan jadwal kelas"
+  ],
+  "顾问联系": [
+    "Advisor contact",
+    "Kontak konsultan"
+  ],
+  "测评意向": [
+    "Assessment interest",
+    "Minat tes"
+  ],
+  "试听意向": [
+    "Trial interest",
+    "Minat kelas percobaan"
+  ],
+  "报名意向": [
+    "Enrollment interest",
+    "Minat pendaftaran"
+  ],
+  "试听请求": [
+    "Trial request",
+    "Permintaan kelas percobaan"
+  ],
+  "报名请求": [
+    "Enrollment request",
+    "Permintaan pendaftaran"
+  ],
+  "问卷中的学习需求": [
+    "Learning needs from this questionnaire",
+    "Kebutuhan belajar dari kuesioner ini"
+  ],
+  "本条问卷暂未记录学习需求，请查看完整原始问卷。": [
+    "Learning needs are not included in this questionnaire record. View the complete original questionnaire.",
+    "Kebutuhan belajar belum tercatat pada kuesioner ini. Lihat kuesioner asli lengkap."
+  ],
+  "修正说明": [
+    "Correction statement",
+    "Pernyataan koreksi"
+  ],
+  "测评结果": [
+    "Assessment result",
+    "Hasil asesmen"
+  ],
+  "资料变更": [
+    "Profile changes",
+    "Perubahan profil"
+  ],
+  "原阶段未记录": [
+    "Previous stage not recorded",
+    "Tahap sebelumnya tidak tercatat"
+  ],
+  "原值未记录": [
+    "Previous value not recorded",
+    "Nilai sebelumnya tidak tercatat"
+  ],
+  "本次新增": [
+    "Added in this record",
+    "Ditambahkan pada catatan ini"
+  ],
+  "原负责人姓名未记录": [
+    "Previous owner name not recorded",
+    "Nama penanggung jawab sebelumnya tidak tercatat"
+  ],
+  "新负责人姓名未记录": [
+    "New owner name not recorded",
+    "Nama penanggung jawab baru tidak tercatat"
+  ],
+  "展开查看全部变更": [
+    "Expand to view all changes",
+    "Buka untuk melihat semua perubahan"
+  ],
+  "变更依据": [
+    "Basis for change",
+    "Dasar perubahan"
+  ],
+  "关联依据原文": [
+    "Linked source text",
+    "Teks sumber terkait"
+  ],
+  "答题概况": [
+    "Answer overview",
+    "Ringkasan jawaban"
+  ],
+  "题目数": [
+    "Questions",
+    "Jumlah soal"
+  ],
+  "答对题数": [
+    "Correct answers",
+    "Jawaban benar"
+  ],
+  "未答题数": [
+    "Unanswered questions",
+    "Soal belum dijawab"
+  ],
+  "当前销售阶段与联系限制": [
+    "Current sales stage and contact restrictions",
+    "Tahap penjualan dan pembatasan kontak saat ini"
+  ],
+  "负责人姓名未记录": [
+    "Owner name not recorded",
+    "Nama penanggung jawab tidak tercatat"
+  ],
+  "核实后可认领和联系": [
+    "Claim and contact after identity review",
+    "Klaim dan hubungi setelah verifikasi identitas"
   ]
 }

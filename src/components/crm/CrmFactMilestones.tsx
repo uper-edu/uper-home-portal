@@ -1,3 +1,4 @@
+import {CrmEnrollmentCorrectionAction} from './CrmEnrollmentCorrection';
 import { useCrmUiText,useCrmUiLanguage } from "./CrmUiLanguage";
 import { useEffect, useState } from "react";
 import { groupFactMilestones } from "../../utils/crmFactMilestones";
@@ -128,7 +129,7 @@ export function CrmFactMilestones({
   ]);
   useEffect(() => {
     setSelection(null);
-  }, [lead.id]);
+  }, [lead.id,lead.enrollmentRevision]);
   const groups = groupFactMilestones(context?.establishedMilestones),
     group = selection && groups.find((g) => g.key === selection.key);
   const source = (s: any, index: number) => (
@@ -237,6 +238,7 @@ export function CrmFactMilestones({
                         </p>
                       )}
                     </details>
+                    {m.factType==='enrollment_confirmation'&&<CrmEnrollmentCorrectionAction factId={m.targetFactId}/> }
                     {m.recordedAt && (
                       <small>
                         {ui("录入：")}

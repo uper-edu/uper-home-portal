@@ -648,3 +648,35 @@
 
 /* Static timestamps and relative labels share normal UI numerals; live countdowns retain tabular numerals. */
 .crm-customer-workspace .crm-list-intent-row>.crm-list-intent-time,.crm-customer-workspace .crm-interaction-heading>.crm-interaction-elapsed,.crm-customer-workspace .crm-sales-brief-compact .crm-fact-milestone-latest{font-family:inherit;font-weight:400;font-variant-numeric:normal;font-feature-settings:normal}
+
+/* Customer 360: provenance is secondary, immutable corrections remain distinct from current profile. */
+.crm-history-processing-details{margin-top:16px;font-size:13px;line-height:1.65;color:var(--cw-muted)}
+.crm-history-processing-details>summary{cursor:pointer;padding:8px 0;min-height:32px}
+.crm-history-processing-details[open]{color:inherit}
+.crm-history-record-corrections{margin:0 0 16px}
+.crm-history-record-corrections>h4{margin:0 0 8px}
+.crm-history-record-corrections .crm-work-link{margin-top:8px}
+.crm-history-record-corrections dd{font-weight:600}
+
+/* Read-only sales highlights use existing type, spacing and neutral provenance tokens. */
+.crm-history-sales-highlights{margin:8px 0 12px}
+.crm-history-business-section+.crm-history-business-section{margin-top:12px}
+.crm-history-business-section>h4{margin:0 0 8px}
+.crm-history-business-point{display:grid;grid-template-columns:140px minmax(0,1fr) auto;gap:8px 12px;align-items:start;font-size:14px;line-height:1.65;margin:8px 0}
+.crm-history-business-point.is-request{grid-template-columns:minmax(0,1fr) auto}
+.crm-history-business-label{font-size:13px;color:var(--cw-muted)}
+.crm-history-business-value{min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.crm-history-business-qualifier{display:inline-block;font-size:12px;color:var(--cw-muted);margin-left:8px}
+.crm-history-business-point .crm-evidence-action{margin:0}
+.crm-history-complete-questionnaire{margin-top:16px;font-size:13px;line-height:1.65}
+.crm-history-complete-questionnaire>summary{cursor:pointer;min-height:32px;padding:8px 0;color:var(--cw-accent)}
+.crm-history-complete-questionnaire[open]>.crm-history-questionnaire-original{margin-top:8px}
+.crm-history-bilateral .crm-history-node[data-history-category="sales"]:not([open]) .crm-history-head>strong,.crm-history-bilateral .crm-history-node[data-history-category="message"]:not([open]) .crm-history-head>strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media(max-width:600px){.crm-history-business-point{grid-template-columns:minmax(0,1fr) auto}.crm-history-business-label{grid-column:1/-1}}
+.crm-history-result-card{display:grid;gap:12px;font-size:14px;line-height:1.6}
+.crm-history-result-card .crm-history-result-primary{margin:0;font-size:14px;font-weight:600;line-height:1.6}
+.crm-history-result-card .crm-history-result-conclusion{margin:0;font-size:14px;line-height:1.6}
+.crm-history-result-card .crm-history-details{margin:0}
+.crm-history-result-evidence{display:grid;gap:8px}
+.crm-history-result-evidence>h4{margin:0;font-size:13px;font-weight:600;color:var(--cw-muted)}
+.crm-history-result-evidence>p{margin:0}

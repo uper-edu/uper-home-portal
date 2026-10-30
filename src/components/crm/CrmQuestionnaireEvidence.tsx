@@ -1,36 +1,21 @@
 import {CrmSearchHighlight} from './CrmSearchHighlight';
+import {questionnaireAnswerText} from '../../utils/crmQuestionnaireSalesContent';
 import {
   questionnaireAnswers,
   questionnaireFields,
   questionnaireTimes,
 } from "../../utils/crmQuestionnaireEvidence";
 import { useCrmUiLanguage, useCrmUiText } from "./CrmUiLanguage";
-import { crmValue } from "../../utils/crmLanguage";
 import {
   formatCrmOperatingTime,
   viewerTimeZone,
 } from "../../utils/crmOperatingTime";
-export function CrmQuestionnaireEvidence({ source, lang: provided,highlightFields=[] }: any) {
+export function CrmQuestionnaireEvidence({ source, lang: provided,highlightFields=[],showTimes=true }: any) {
   const lang = useCrmUiLanguage(provided),
     ui = useCrmUiText(provided),
     answers = questionnaireAnswers(source),
     times = questionnaireTimes(source);
-  const literal = new Set(["fullName", "whatsapp", "email", "campaignName"]);
-  const show = (key: string, v: string) =>
-    literal.has(key)
-      ? v
-      : key === "city" && v === "Jakarta"
-        ? lang === "zh"
-          ? "雅加达"
-          : "Jakarta"
-        : (
-            {
-              standalone_chat: ui("学习咨询入口"),
-              chat: ui("学习咨询入口"),
-              website: ui("官网"),
-              organic: ui("自然访问"),
-            } as any
-          )[v] || crmValue(v, lang);
+  const show = (key:string,value:string)=>questionnaireAnswerText(key,value,lang);
   return (
     <section
       className="crm-questionnaire-evidence"
@@ -65,7 +50,7 @@ export function CrmQuestionnaireEvidence({ source, lang: provided,highlightField
             <dd>{ui("原问卷未记录活动名称")}</dd>
           </div>
         )}
-        {times.submittedAt && (
+        {showTimes && times.submittedAt && (
           <div>
             <dt>{ui("客户提交时间（问卷上报）")}</dt>
             <dd>
@@ -75,7 +60,7 @@ export function CrmQuestionnaireEvidence({ source, lang: provided,highlightField
             </dd>
           </div>
         )}
-        {times.receivedAt && (
+        {showTimes && times.receivedAt && (
           <div>
             <dt>{ui("系统接收时间")}</dt>
             <dd>
@@ -85,7 +70,7 @@ export function CrmQuestionnaireEvidence({ source, lang: provided,highlightField
             </dd>
           </div>
         )}
-        {!times.submittedAt && !times.receivedAt && (
+        {showTimes && !times.submittedAt && !times.receivedAt && (
           <div>
             <dt>{ui("问卷时间")}</dt>
             <dd>{ui("未记录")}</dd>

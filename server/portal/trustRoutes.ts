@@ -1,5 +1,6 @@
 import {attachIdentityContactHolds,activateIdentityLead,mergeIdentityLead,lockIdentityRegistry} from './identityConsolidation.ts';
 import {salesProgressContext,validateSalesProgress} from './salesProgress.ts';
+import {voidEnrollmentConfirmation} from './enrollmentCorrection.ts';
 import {saveProfileUpdates} from './dynamicProfile.ts';
 import {appendRecordAmendment} from './recordAmendments.ts';
 import {projectFactLedger} from '../../src/utils/crmFactLedger.ts';
@@ -196,6 +197,10 @@ export function mountTrustRoutes(
   app.get('/api/crm/leads/:id/stage-context',wrap(async(req:any,res:any)=>{
     const {l}=await leadAccess(req,'crm.read');const {pool}=await import('./store.ts');
     res.set('Cache-Control','no-store').json({leadId:l.id,...await salesProgressContext(pool,l.id,l.profile)});
+  }));
+  app.post('/api/crm/leads/:id/enrollment-void',wrap(async(req:any,res:any)=>{
+    const {l,e}=await leadAccess(req,'crm.write');const {tx}=await import('./store.ts');
+    res.json(await tx((c:any)=>voidEnrollmentConfirmation(c,l.id,e.id,req.body,(p:any)=>requestAllowed(e,p,req))));
   }));
   app.post('/api/crm/leads/:id/stage',wrap(async(req:any,res:any)=>{
     const {l,e}=await leadAccess(req,'crm.write');const {tx}=await import('./store.ts');

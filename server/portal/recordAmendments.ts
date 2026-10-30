@@ -34,6 +34,7 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
   for(const id of amendment.withdrawCommitmentIds){await c.query("UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken agreement withdrawn',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2",[leadId,id,clock]);}
   const eventId=randomUUID();const fieldResults:any[]=[];
   let firstRequirementStatus='unchanged';
+  const restoredTasks:any[]=[];
   if(amendment.contactResult){
    const originalFirst=(p.followUpLogs||[]).find((l:any)=>l.id===p.firstFollowup?.logId);
    const ids=[...new Set<string>(p.firstRequirementTaskIds||originalFirst?.result?.completedTaskIds||[])];
@@ -46,7 +47,15 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
    else if(basis){next.firstRequirementReview=null;next.firstFollowup={outcome,at:basis.at||basis.timestamp,actor:basis.actor,logId:basis.id,dueAt:next.firstRequirementDueAt};firstRequirementStatus='satisfied';}
    else {next.firstFollowup=null;firstRequirementStatus=rows.length?'restored':p.firstFollowup||p.firstRequirementDueAt?'needs_review':'not_present';next.firstRequirementReview=firstRequirementStatus!=='needs_review'?null:'原联系已修正为未发生／重复登记，暂无其他有效记录；原首次要求无法明确定位，需管理者核对，系统未新建任务。';}
    for(const row of rows){if(!basis&&row.status==='completed'&&taskRows.some((other:any)=>other.id!==row.id&&other.status==='open')){firstRequirementStatus='needs_review';next.firstRequirementReview='该客户存在另一条开放的历史首次要求，系统未覆盖或合并；请管理者核对。';continue;}if(!['open','overdue','completed'].includes(row.status))continue;const status=basis?'completed':Date.parse(row.due_at)<clock.getTime()?'overdue':'open';
-    await c.query('UPDATE followup_tasks SET status=:p2,revision=revision+1,details=:p3 WHERE id=:p1',[row.id,status,{...(row.details||{}),recordAmendmentId:amendment.id,currentFirstOutcome:outcome}]);
+    const details={...(row.details||{}),recordAmendmentId:amendment.id,currentFirstOutcome:outcome};
+    if(basis)await c.query('UPDATE followup_tasks SET status=:p2,revision=revision+1,details=:p3 WHERE id=:p1',[row.id,status,details]);
+    else {
+     // The lead lock serializes this with owner transfer. Historical completed actors remain untouched.
+     const owner=p.owner||null;
+     const restored={taskId:row.id,previousOwner:row.owner_id||null,owner,dueAt:row.due_at,originalDueAt:row.original_due_at};
+     await c.query('UPDATE followup_tasks SET status=:p2,revision=revision+1,details=:p3,owner_id=:p4 WHERE id=:p1',[row.id,status,details,owner]);
+     restoredTasks.push(restored);
+    }
     if(!basis){await c.query("INSERT IGNORE INTO notification_migration_holds(kind,id,reason) VALUES('task',:p1,'record_amendment_no_history_replay')",[row.id]);await c.query("INSERT IGNORE INTO notification_migration_holds(kind,id,reason) SELECT 'job',id,'record_amendment_no_history_replay' FROM notification_jobs WHERE state IN ('pending','unknown') AND JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId'))=:p1",[row.id]);}
    }
    const stats=contactStatistics(next);next.connectStatus=stats.lastAttempt?.connectStatus||null;next.lastContactedAt=stats.lastAttempt?.at||stats.lastAttempt?.timestamp||null;
@@ -57,9 +66,9 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
   if(originalLog){const effectiveResult=(next.recordAmendments||[]).filter((a:any)=>a.targetLogId===originalLog.id&&a.contactResult).at(-1)?.contactResult;sourceRoot.countable=!['Not Occurred','Duplicate'].includes(effectiveResult);}
   const relationship={sourceRoot,amendment:{kind:b.kind,sequence:(next.recordAmendments||[]).length,targetFactId:target.id,targetSourceId:sourceId,originalText:originalLog?.summary||target.data.summary||target.data.text||JSON.stringify(target.data.changes||target.data.answers||{}),reason:amendment.reason}};
   await queueExtraction(c,leadId,'sales_amendment',amendment.id,amendment.text,sourceRoot.occurredAt,actor,[],'1',relationship);
-  await fact(c,leadId,'record.amended',actor,{...amendment,firstRequirementStatus,profileUpdates:{},profileFieldResults:fieldResults},eventId);
+  await fact(c,leadId,'record.amended',actor,{...amendment,firstRequirementStatus,restoredTasks,profileUpdates:{},profileFieldResults:fieldResults},eventId);
   await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);
-  await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'record.amend',:p2)",[actor,{leadId,amendmentId:amendment.id,targetFactId:target.id,firstRequirementStatus,withdrawCommitmentIds:amendment.withdrawCommitmentIds}]);
-  return {saved:true,lead:next,amendment,firstRequirementStatus,profileFieldResults:fieldResults,createdTaskId:null};
+  await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'record.amend',:p2)",[actor,{leadId,amendmentId:amendment.id,targetFactId:target.id,firstRequirementStatus,restoredTasks,withdrawCommitmentIds:amendment.withdrawCommitmentIds}]);
+  return {saved:true,lead:next,amendment,firstRequirementStatus,restoredTasks,profileFieldResults:fieldResults,createdTaskId:null};
  });
 }

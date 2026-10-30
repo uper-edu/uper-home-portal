@@ -7,11 +7,13 @@ export function LeadActivity({
   lang,
   onOpen,
   timezone,
+  readOnly = false,
 }: {
   lead: CrmLeadRecord;
   lang: "en" | "zh" | "id";
   onOpen: () => void;
   timezone?: string;
+  readOnly?: boolean;
 }) {
   const a = lead.attention;
   if (!a?.latest) return null;
@@ -41,6 +43,8 @@ export function LeadActivity({
           : lang === "zh"
             ? "客户动态"
             : "Customer activity");
+  const content=<><span>{label}</span><time title={viewerTimeZone()} className="font-normal" dateTime={a.latest.at}>{formatCrmEventTime(a.latest.at).slice(5,16)}</time></>;
+  if(readOnly)return <div className="crm-lead-activity mt-1 flex items-center gap-1 max-w-full">{content}</div>;
   return (
     <button
       type="button"
@@ -51,12 +55,7 @@ export function LeadActivity({
       className="crm-lead-activity mt-1 flex items-center gap-1 max-w-full"
       aria-label={label}
     >
-      <span>
-        {label}
-      </span>
-      <time title={viewerTimeZone()} className="font-normal" dateTime={a.latest.at}>
-        {formatCrmEventTime(a.latest.at).slice(5,16)}
-      </time>
+      {content}
     </button>
   );
 }

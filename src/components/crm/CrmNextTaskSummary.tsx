@@ -1,4 +1,5 @@
 import {CrmFirstContactCountdown} from './CrmFirstContactCountdown';
+import {contactRestriction} from '../../utils/crmContact';
 import { leadFollowUp, emptyFollowUpLabel } from "../../utils/crmFollowUp";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { crmId } from "../../utils/crmIndonesian";
@@ -10,12 +11,14 @@ export function CrmNextTaskSummary({
   timezone,
   onOpen,
   hideFirstContact = false,
+  hideContactNotice = false,
 }: {
   lead: CrmLeadRecord;
   lang: CrmLanguage;
   timezone: string;
   onOpen: () => void;
   hideFirstContact?: boolean;
+  hideContactNotice?: boolean;
 }) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
@@ -23,6 +26,7 @@ export function CrmNextTaskSummary({
     view =
       summary.next && presentFollowUpTask(summary.next.task, lang, timezone);
   if(hideFirstContact&&view?.task.kind==='consultation')return null;
+  if(hideContactNotice&&summary.loaded&&!summary.next&&contactRestriction(lead))return null;
   if(summary.loaded&&!summary.next&&!emptyFollowUpLabel(lead,lang))return null;
   return (
     <div className="crm-next-task-summary">

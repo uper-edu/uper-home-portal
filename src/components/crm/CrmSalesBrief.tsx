@@ -56,6 +56,7 @@ export function CrmSalesBrief({
   onProfile,
   milestones,
   evidenceEvents = [],
+  showStage = true,
 }: any) {
   const ui = useCrmUiText(lang),
     goal = lead.goal,
@@ -67,12 +68,12 @@ export function CrmSalesBrief({
       className="crm-sales-brief crm-sales-brief-compact crm-sales-brief-goal-only"
       aria-label={ui("客户当前情况")}
     >
-      <div className="crm-followup-section-heading crm-sales-brief-heading">
+      {showStage&&<div className="crm-followup-section-heading crm-sales-brief-heading">
         <h3 className="crm-sales-stage-focus">
           <span>{ui("销售阶段")}</span>
           <CrmSalesStage stage={lead.currentStage} lang={lang} />
         </h3>
-      </div>
+      </div>}
       {milestones && <div className="crm-sales-brief-events">{milestones}</div>}
       <section className="crm-sales-goal-context" aria-label={ui("学习目标")}>
         <span className="crm-sales-goal-context-label">{ui("学习目标")}</span>
@@ -110,7 +111,7 @@ export function CrmSalesBrief({
           </button>
         )}
       </section>
-      {lead.contactArrangement?.state === "stopped" && (
+      {showStage&&lead.contactArrangement?.state === "stopped" && (
         <aside className="crm-followup-restriction">
           <strong>
             <CrmStopContact lead={lead} lang={lang} />

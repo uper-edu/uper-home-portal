@@ -278,3 +278,30 @@
 .crm-customer360-button:focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
 
 .crm-operation-history .crm-operation-content{overflow-anchor:none}
+.crm-current-sales-state{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;min-width:0;font-size:14px;line-height:1.6;color:var(--cw-text)}
+.crm-detail-root .crm-panel-next:empty{display:none}
+.crm-current-stage,.crm-current-owner{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:8px;min-width:0}
+.crm-current-state-label{font-size:12px;color:var(--cw-muted);font-weight:400}
+.crm-current-stage>.crm-sales-stage{font-size:14px;font-weight:600;line-height:1.6}
+.crm-current-restriction{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 8px;max-width:100%;font-size:13px;font-weight:600;line-height:1.6}
+.crm-current-restriction>svg{flex:none}
+.crm-current-restriction[data-restriction=identity]{padding:2px 8px;border:1px solid var(--admin-warning-border);border-radius:6px;background:var(--admin-warning-bg);color:var(--admin-warning)}
+.crm-current-restriction[data-restriction=stopped],.crm-current-restriction .crm-stop-contact{font-size:13px;font-weight:600;color:var(--crm-stage-stop)}
+.crm-current-restriction[data-restriction=until],.crm-current-restriction[data-restriction=legacy]{color:var(--admin-warning)}
+.crm-current-restriction time{font:inherit;font-weight:400}
+.crm-detail-current-state{margin:8px 0 0 40px}
+.crm-detail-current-state+.crm-detail-meta{margin-top:4px;font-size:12px}
+.crm-detail-current-state+.crm-detail-meta .crm-owner-trigger{font-size:inherit}
+.crm-customer-workspace[data-open=true] .crm-work-identity>.crm-sidebar-meta{margin-top:4px;font-size:12px;line-height:1.6}
+.crm-customer-workspace[data-open=true] .crm-sidebar-meta+.crm-current-sales-state.is-compact{margin-top:4px}
+.crm-operation-current-state{flex:none;padding:12px 24px;border-bottom:1px solid var(--cw-border);background:var(--cw-surface)}
+.crm-current-sales-state.is-compact{margin-top:8px;gap:4px 8px;font-size:13px}
+.crm-current-sales-state.is-compact .crm-current-stage>.crm-sales-stage{font-size:13px}
+.crm-current-sales-state.is-compact .crm-current-state-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:649px){.crm-detail-current-state{margin-left:0}.crm-operation-current-state{padding:12px 16px}}
+
+/* Sidebar identity is plain status text, sharing the sales-stage size rather than an action badge. */
+.crm-customer-workspace[data-open=true] .crm-work-identity .crm-current-restriction[data-restriction=identity]{padding:0;border:0;border-radius:0;background:transparent;color:var(--admin-warning);font-size:13px;font-weight:600;line-height:1.6}
+.crm-customer-workspace[data-open=true] .crm-work-identity .crm-current-restriction[data-restriction=identity]>svg{display:none}
+
+.crm-customer-workspace[data-open=true] .crm-work-identity .crm-current-stage+.crm-current-restriction[data-restriction=identity]::before{content:"\00b7";color:var(--cw-muted);font-weight:400}

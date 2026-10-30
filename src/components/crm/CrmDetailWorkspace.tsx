@@ -7,6 +7,7 @@ import type { LucideIcon } from "lucide-react";
 export function CrmDetailHeader({
   title,
   meta,
+  status,
   actions,
   navigation,
   identityNavigation,
@@ -15,6 +16,7 @@ export function CrmDetailHeader({
 }: {
   title: ReactNode;
   meta: ReactNode;
+  status?: ReactNode;
   actions?: ReactNode;
   navigation?: ReactNode;
   identityNavigation?: {back: ReactNode; adjacent: ReactNode; label: string};
@@ -31,6 +33,7 @@ export function CrmDetailHeader({
           <h2 id={titleId} ref={titleRef} tabIndex={-1}>{title}</h2>
           <nav className="crm-detail-record-navigation" aria-label={identityNavigation.label}>{identityNavigation.adjacent}</nav>
         </div>:<h2 id={titleId} ref={titleRef} tabIndex={-1}>{title}</h2>}
+        {status&&<div className="crm-detail-current-state">{status}</div>}
         <div className="crm-detail-meta">{meta}</div>
       </div>
       <div className="crm-detail-actions">{actions}</div>

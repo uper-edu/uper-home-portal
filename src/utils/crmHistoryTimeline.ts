@@ -7,17 +7,17 @@ import {profileFields} from './crmDynamicProfile';
 import {crmValue} from './crmLanguage';
 import {budgetPresentation} from './crmLeadPresentation';
 import {interactionInstant} from './crmInteractionTimeline';
-export const historyCategories:Record<string,string>={all:'全部',ownership:'负责人变更',message:'客户对话',sales:'销售记录',questionnaire:'客户问卷',assessment:'测评记录',profile:'资料编辑',other:'其他依据'};
+export const historyCategories:Record<string,string>={all:'全部',ownership:'负责人变更',message:'客户对话',sales:'销售记录',questionnaire:'客户问卷',assessment:'测评记录',stage:'销售阶段',profile:'资料编辑',other:'其他依据'};
 export type HistoryGroup={id:string;category:string;title:string;original:string;occurredAt:string|null;recordedAt:string|null;displayAt?:string|null;timeLabel?:string;events:any[];extractions:any[];log?:any;root?:any;aliases:string[]};
 const short=(s:any,n=92)=>{const text=String(s||'').replace(/\s+/g,' ').trim();return text.length>n?text.slice(0,n)+'…':text;};
 const display=(v:any)=>v==null?'未填写':Array.isArray(v)?v.map(x=>crmValue(String(x),'zh')).join('、'):typeof v==='object'?'结构化资料':crmValue(String(v),'zh');
 export function historyChanges(event:any){return Array.isArray(event?.payload?.changes)?event.payload.changes.filter((v:any)=>v&&typeof v.field==='string'):[];}
 const fieldDisplay=(field:string,value:any)=>field==='budgetAmount'?budgetPresentation({budgetAmount:value})?.value||display(value):display(value);
 function chineseHistoryBusinessTitle(group:HistoryGroup){
+ if(group.root?.eventType==='stage.changed')return '销售阶段：'+display(group.root.payload.before)+' → '+display(group.root.payload.after);
  if(group.root?.eventType==='owner.changed'){const p=group.root.payload;return '负责人：'+(p.beforeName||p.before||'未分配')+' → '+(p.afterName||p.after);}
  if(group.category==='profile'){
   const changes=group.events.flatMap(historyChanges);if(changes.length){const c=changes[0],label=profileFields[c.field]||c.field,value=c.applied===false?c.observation:c.after;return (c.applied===false?'记录不同的':c.before==null?'新增':'更新')+label+'：'+(c.before==null?'':short(fieldDisplay(c.field,c.before),22)+' → ')+short(fieldDisplay(c.field,value),28)+(changes.length>1?' 等'+changes.length+'项':'');}
-  if(group.root?.eventType==='stage.changed')return '销售阶段：'+display(group.root.payload.before)+' → '+display(group.root.payload.after);
   const keys=historyStructuredFields(group.root).map(v=>v.label);if(keys.length)return '更新客户资料：'+keys.slice(0,4).join('、');
  }
  if(group.category==='questionnaire')return '客户提交学习需求问卷';
@@ -27,12 +27,12 @@ function chineseHistoryBusinessTitle(group:HistoryGroup){
 export function historyBusinessTitle(group:HistoryGroup,lang:any='zh'){
  if(lang==='zh')return chineseHistoryBusinessTitle(group);
  const ui=(v:string)=>crmUiText(v,lang);
+ if(group.root?.eventType==='stage.changed')return ui('销售阶段：')+crmValue(group.root.payload.before,lang)+' → '+crmValue(group.root.payload.after,lang);
  const show=(field:string,v:any):string=>field==='budgetAmount'?budgetPresentation({budgetAmount:v},lang)?.value||'—':v==null?ui('未填写'):Array.isArray(v)?v.map(x=>crmValue(String(x),lang)).join(', '):typeof v==='object'?ui('结构化信息'):crmValue(String(v),lang);
  if(group.root?.eventType==='owner.changed'){const p=group.root.payload;return ui('负责人：')+(p.beforeName||p.before||ui('未分配'))+' → '+(p.afterName||p.after);}
  if(group.category==='profile'){
   const changes=group.events.flatMap(historyChanges);
   if(changes.length){const c=changes[0];return ui(c.applied===false?'记录不同的':c.before==null?'新增':'更新')+ui(profileFields[c.field]||c.field)+': '+(c.before==null?'':short(show(c.field,c.before),22)+' → ')+short(show(c.field,c.applied===false?c.observation:c.after),28)+(changes.length>1?(lang==='id'?' dan ':' and ')+(changes.length-1)+(lang==='id'?' lainnya':' more'):'');}
-  if(group.root?.eventType==='stage.changed')return ui('销售阶段：')+crmValue(group.root.payload.before,lang)+' → '+crmValue(group.root.payload.after,lang);
   const keys=historyStructuredFields(group.root).map(v=>ui(v.label));if(keys.length)return ui('更新客户资料：')+keys.slice(0,4).join(', ');
  }
  if(group.category==='questionnaire')return ui('客户提交学习需求问卷');
@@ -56,6 +56,7 @@ export function buildHistoryTimeline(events:any[]=[],lead:any={},rows:any[]=[]):
   if(e.eventType==='customer.message')return 'message:'+e.sourceRecordId;
   if(e.eventType==='followup.recorded')return 'log:'+(p.result?.logId||e.sourceRecordId||e.eventId);
   if(e.eventType==='assessment.submitted')return 'assessment:'+(p.attemptId||e.sourceRecordId||e.eventId);
+  if(e.eventType==='enrollment.confirmation_voided'&&byId.has(p.targetFactId))return resolve(byId.get(p.targetFactId),seen);
   if(e.eventType==='record.amended'&&byId.has(p.targetFactId))return resolve(byId.get(p.targetFactId),seen);
   if(e.eventType==='information.extracted'){
    const r=p.sourceRoot||{type:p.sourceType,id:p.sourceId};if(r.type&&r.id){if(!['customer_message','sales_record'].includes(r.type)&&byId.has(r.id))return resolve(byId.get(r.id),seen);return rootKey(r.type,r.id,p.conversationId);}
@@ -79,8 +80,8 @@ export function buildHistoryTimeline(events:any[]=[],lead:any={},rows:any[]=[]):
   const g=ensure(key);g.extractions.push(row);g.aliases.push(row.id,row.source_id);
  }
  for(const g of groups.values()){
-  const root=g.events.find(e=>['customer.message','followup.recorded','questionnaire.submitted','assessment.submitted'].includes(e.eventType))||g.events.find(e=>!['information.extracted','record.amended','sales.stage_observed'].includes(e.eventType))||g.events[0];g.root=root;
-  g.category=root?.eventType==='owner.changed'?'ownership':g.id.startsWith('log:')?'sales':g.id.startsWith('message:')?'message':g.id.startsWith('assessment:')?'assessment':root?.eventType==='questionnaire.submitted'?'questionnaire':['profile.fields_updated','profile.changed','stage.changed'].includes(root?.eventType)?'profile':'other';
+  const root=g.events.find(e=>['customer.message','followup.recorded','questionnaire.submitted','assessment.submitted'].includes(e.eventType))||g.events.find(e=>!['information.extracted','record.amended','sales.stage_observed','enrollment.confirmation_voided'].includes(e.eventType))||g.events[0];g.root=root;
+  g.category=root?.eventType==='owner.changed'?'ownership':g.id.startsWith('log:')?'sales':g.id.startsWith('message:')?'message':g.id.startsWith('assessment:')?'assessment':root?.eventType==='questionnaire.submitted'?'questionnaire':root?.eventType==='stage.changed'?'stage':['profile.fields_updated','profile.changed'].includes(root?.eventType)?'profile':'other';
   const originalRow=g.extractions.find(r=>!r.input?.amendment)||g.extractions[0];g.original=g.log?.summary||root?.original||originalRow?.input?.text||'';
   if(g.category==='questionnaire'&&!g.original)g.original=historyStructuredFields(root).map(v=>v.label+'：'+display(v.value)).join('\n');
   g.occurredAt=interactionInstant(g.log?.occurredAt)||root&&ledgerOccurrenceTime(scoped,root.eventId)||interactionInstant(originalRow?.input?.occurredAt)||null;
@@ -94,10 +95,14 @@ export function buildHistoryTimeline(events:any[]=[],lead:any={},rows:any[]=[]):
 }
 export function historyGroupFor(groups:HistoryGroup[],id:string){return groups.find(g=>g.events.some(e=>e.eventId===id))||groups.find(g=>g.aliases.includes(id));}
 
-export function historyAssessment(group:HistoryGroup,lang:any='zh'){
+export function historyAssessmentResult(group:HistoryGroup){
  let result=group.root?.payload?.result;
  if(!result&&group.original){try{const parsed=JSON.parse(group.original);if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))result=parsed;}catch{/* Plain original remains available under its exact source event. */}}
  if(!result&&(group.root?.payload?.attempt||group.root?.payload?.score!==undefined))result=group.root.payload;
+ return result;
+}
+export function historyAssessment(group:HistoryGroup,lang:any='zh'){
+ const result=historyAssessmentResult(group);
  return result?crmAssessmentSummary({latestAssessment:result} as any,lang):{conclusion:crmUiText('已保存真实测评记录',lang),detail:crmUiText('本条未附完整结果，请进入测评页核对。',lang)};
 }
 
