@@ -10,12 +10,13 @@ import http from 'node:http';
 import {spawn,execFileSync} from 'node:child_process';
 import express from 'express';
 import mysql from 'mysql2/promise';
-import {companyConfiguration,companyOrigin,exactPrivateProxy} from '../server/companyTrial.ts';
+import {companyConfiguration,companyOrigin,exactPrivateProxy,productionConfiguration,productionOrigin} from '../server/companyTrial.ts';
 import {configureAccessTransport} from '../server/portal/accessTransport.ts';
 import {openTrialDatabase} from '../cloud/mysql/database.mjs';
 import {resolveMetadata,publicPages} from '../src/utils/siteMetadata.ts';
 import {acquireCompanyRuntimeLease,companyRuntimeLock} from '../cloud/mysql/company-maintenance.mjs';
 const valid:any={PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:companyOrigin,ACCESS_PUBLIC_ORIGIN:companyOrigin,ACCESS_TRUSTED_PROXIES:'172.20.0.10',ACCESS_OPERATION_KEY:'x'.repeat(40),TRIAL_FRONTEND_DIRECTORY:'/app/web',MYSQL_CA_PEM:'placeholder',PORTAL_NOTIFICATION_MODE:'simulation',PORTAL_WORKER_ENABLED:'false'};
+const production:any={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_PRODUCTION_READY:'true',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:productionOrigin,ACCESS_PUBLIC_ORIGIN:productionOrigin,ACCESS_TRUSTED_PROXIES:'10.20.0.8',ACCESS_OPERATION_KEY:'x'.repeat(40),MYSQL_TLS_MODE:'disabled',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home',PORT:'8080',PORTAL_NOTIFICATION_MODE:'simulation',PORTAL_WORKER_ENABLED:'false'};
 test('company deployment gate preserves local safeguards and rejects unsafe configuration',()=>{
  assert.equal(companyConfiguration({} as any),null);assert.deepEqual(companyConfiguration(valid),{port:8080,host:'0.0.0.0'});
  for(const [key,value] of Object.entries({NODE_ENV:'development',APP_ENV:'test',TRIAL_DATASET:'local-crm',PLATFORM_MODE:'mock',PORTAL_LOCAL_CUTOVER:'true',PORTAL_FAULT_TEST:'true',ACCESS_ALLOW_TEST_PASSWORDS:'true',APP_URL:'http://home.prototype.uperedu.com',ACCESS_OPERATION_KEY:'short',MYSQL_TRIAL_SOCKET:'/private/local.sock',MYSQL_CA_PEM:'',PORT:'3000',PORTAL_NOTIFICATION_MODE:'',TRIAL_FRONTEND_DIRECTORY:''}))assert.throws(()=>companyConfiguration({...valid,[key]:value}),key);
@@ -24,6 +25,12 @@ test('company deployment gate preserves local safeguards and rejects unsafe conf
  assert.throws(()=>companyConfiguration({...valid,PORTAL_WORKER_ENABLED:''}));
  assert.throws(()=>companyConfiguration({...valid,ACCESS_RECOVERY_MAINTENANCE:'true'}));
  assert.ok(companyConfiguration({...valid,PORTAL_NOTIFICATION_MODE:'configured',LARK_TEST_GROUP:'CRM_Leads_Update'}));
+});
+test('production gate allows the approved internal no-TLS MySQL path and canonical origin',()=>{
+ assert.equal(productionConfiguration({} as any),null);assert.deepEqual(productionConfiguration(production),{port:8080,host:'0.0.0.0'});
+ assert.throws(()=>productionConfiguration({...production,APP_URL:companyOrigin}));
+ assert.throws(()=>productionConfiguration({...production,MYSQL_TLS_MODE:'required'}));
+ assert.throws(()=>productionConfiguration({...production,ACCESS_TRUSTED_PROXIES:'0.0.0.0/0'}));
 });
 test('company runtime lease loss fails closed and never returns a locked session to the pool',async()=>{
  assert.equal(companyRuntimeLock({MYSQL_TRIAL_URL:'mysql://test:test@localhost/uper_trial_lease'}),companyRuntimeLock({MYSQL_TRIAL_URL:'mysql://test:test@localhost/uper%5Ftrial%5Flease'}));

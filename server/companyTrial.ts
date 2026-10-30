@@ -3,6 +3,8 @@ import {internalMysqlDirect} from '../cloud/mysql/transport.mjs';
 
 export const companyOrigin = 'https://home.prototype.uperedu.com';
 export const isCompanyTrial = (env = process.env) => env.PORTAL_DEPLOYMENT === 'company-trial';
+export const productionOrigin = 'https://home.uperedu.com';
+export const isProductionDeployment = (env = process.env) => env.PORTAL_ENV === 'prod' && env.PORTAL_DEPLOYMENT === 'production';
 /** Explicit deployment gate. Local cutover and test-fault switches never grant server access. */
 export function companyConfiguration(env = process.env) {
   if (!isCompanyTrial(env)) return null;
@@ -30,6 +32,30 @@ export function companyConfiguration(env = process.env) {
   const port = Number(env.PORT || '8080');
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || port === 3000)
     throw Error('Company trial requires a distinct unprivileged container port');
+  return { port, host: '0.0.0.0' };
+}
+export function productionConfiguration(env = process.env) {
+  if (!isProductionDeployment(env)) return null;
+  if (env.NODE_ENV !== 'production' || env.APP_ENV !== 'production' ||
+      env.TRIAL_DATASET !== 'synthetic' || env.PLATFORM_MODE !== 'local' ||
+      env.PORTAL_DATABASE_DRIVER !== 'mysql' || env.PORTAL_PRODUCTION_READY !== 'true' ||
+      env.ACCESS_ALLOW_TEST_PASSWORDS === 'true' || env.PORTAL_LOCAL_CUTOVER === 'true' ||
+      env.PORTAL_MIGRATION_REHEARSAL === 'true')
+    throw Error('Production deployment requires the production transport, database and release gates');
+  if (env.APP_URL !== productionOrigin || env.ACCESS_PUBLIC_ORIGIN !== productionOrigin)
+    throw Error('Production deployment requires the approved canonical HTTPS origin');
+  if (env.MYSQL_TLS_MODE !== 'disabled')
+    throw Error('Production deployment requires the explicitly approved internal MySQL direct mode');
+  if (!env.ACCESS_TRUSTED_PROXIES || (env.ACCESS_OPERATION_KEY || '').length < 32)
+    throw Error('Production deployment requires explicit proxy peers and a stable private operation key');
+  const peers=env.ACCESS_TRUSTED_PROXIES.split(',').map(p=>p.trim()).filter(Boolean);
+  if(!peers.length || peers.some(p=>!exactPrivateProxy(p)))throw Error('Production deployment requires exact private proxy peers');
+  if(!['true','false'].includes(env.PORTAL_WORKER_ENABLED || ''))throw Error('Production worker must be explicitly enabled or paused');
+  if (!['simulation','configured'].includes(env.PORTAL_NOTIFICATION_MODE || ''))
+    throw Error('Explicit production notification mode required');
+  const port = Number(env.PORT || '8080');
+  if (!Number.isInteger(port) || port < 1024 || port > 65535 || port === 3000)
+    throw Error('Production deployment requires a distinct unprivileged container port');
   return { port, host: '0.0.0.0' };
 }
 export function exactPrivateProxy(value: string) {

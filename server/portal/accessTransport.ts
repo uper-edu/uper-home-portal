@@ -1,12 +1,12 @@
 import type { Express, Request } from "express";
-import {exactPrivateProxy,isCompanyTrial} from '../companyTrial.ts';
+import {exactPrivateProxy,isCompanyTrial,isProductionDeployment} from '../companyTrial.ts';
 export function configureAccessTransport(app: Express, env = process.env) {
   const trusted = (env.ACCESS_TRUSTED_PROXIES || "")
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
   if (
-    trusted.some((x) => isCompanyTrial(env) ? !exactPrivateProxy(x) : !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(x))
+    trusted.some((x) => (isCompanyTrial(env) || isProductionDeployment(env)) ? !exactPrivateProxy(x) : !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(x))
   )
     throw Error(
       "Only explicit approved private proxy peers are supported; wildcards and networks are forbidden",
