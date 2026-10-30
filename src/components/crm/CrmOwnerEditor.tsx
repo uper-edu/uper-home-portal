@@ -28,5 +28,5 @@ export function CrmOwnerEditor({lead,directory,lang,isLight,onDirty,onBusy,onSav
  {owner&&<p>{name(lead.owner)} → {name(owner)}</p>}
  </CrmFormSection>
  {error&&<CrmSaveFeedback lang={lang} state={unknown?'unknown':'error'}>{ui(error)}</CrmSaveFeedback>}{state==='saved'&&<CrmSaveFeedback lang={lang} state="saved"/>}
- </div><AdminFormActions className="crm-editor-actions">{unknown?<button type="button" className="crm-work-button" onClick={query}>{t('查询保存结果','Check save result','Periksa hasil simpan')}</button>:<button type="button" className="crm-work-button" data-primary disabled={busy||!owner||Boolean(lead.owner&&!reason.trim())} onClick={save}>{t(lead.owner?'确认转交':'确认分配',lead.owner?'Confirm transfer':'Confirm assignment',lead.owner?'Konfirmasi transfer':'Konfirmasi penugasan')}</button>}</AdminFormActions></div>;
+ </div><AdminFormActions className="crm-editor-actions">{unknown?<button type="button" className="crm-work-button" onClick={query}>{t('查询保存结果','Check save result','Periksa hasil simpan')}</button>:<button type="button" className="crm-work-button" data-primary disabled={busy||!owner||Boolean(lead.owner&&!reason.trim())} onClick={save}>{t(lead.owner?'确认更换':'确认分配',lead.owner?'Confirm owner change':'Confirm assignment',lead.owner?'Konfirmasi perubahan penanggung jawab':'Konfirmasi penugasan')}</button>}</AdminFormActions></div>;
 }

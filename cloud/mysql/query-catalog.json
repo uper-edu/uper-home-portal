@@ -452,6 +452,12 @@
       "server/portal/campaignSources.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'commitment.restore',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'commitment.restore',:p2)",
+    "sources": [
+      "server/portal/agreementRestore.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)",
     "sources": [
@@ -2361,6 +2367,12 @@
       "server/portal/recordAmendments.ts"
     ]
   },
+  "UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken fulfilment reversed; no historical replay',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2": {
+    "sql": "UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken fulfilment reversed; no historical replay',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2",
+    "sources": [
+      "server/portal/agreementRestore.ts"
+    ]
+  },
   "UPDATE notification_jobs j SET state=CASE WHEN channel='lark' THEN 'unknown' ELSE 'pending' END,result='Lease expired' WHERE state='sending' AND lease_until<UTC_TIMESTAMP(6) AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id)": {
     "sql": "UPDATE notification_jobs j SET state=CASE WHEN channel='lark' THEN 'unknown' ELSE 'pending' END,result='Lease expired' WHERE state='sending' AND lease_until<UTC_TIMESTAMP(6) AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id)",
     "sources": [
@@ -2581,6 +2593,7 @@
     "sql": "UPDATE portal_leads SET profile=:p2 WHERE id=:p1",
     "sources": [
       "server/portal/accessHandovers.ts",
+      "server/portal/agreementRestore.ts",
       "server/portal/aiExtraction.ts",
       "server/portal/attendance.ts",
       "server/portal/campaignSources.ts",

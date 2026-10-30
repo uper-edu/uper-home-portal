@@ -44,3 +44,10 @@ export function progressSaveSummary(result: any, lang = 'zh') {
   if (result.completed || result.completedTaskIds?.length) parts.push(t('first-contact requirement processed', 'kewajiban kontak pertama diproses', '首次联系要求已处理'));
   return parts.join(lang === 'zh' ? '；' : '; ') + (lang === 'zh' ? '。' : '.');
 }
+
+/** Refresh choices without inferring that a replacement agreement is the same instruction. */
+export function reviewedProgressAgreements(draft:any, latest:any){
+ const selected=draft.commitmentChange?.id;
+ const valid=!selected||(latest.commitments||[]).some((v:any)=>v.id===selected&&v.status==='active');
+ return {invalidated:!valid,patch:valid?{}:{commitmentChange:undefined}};
+}

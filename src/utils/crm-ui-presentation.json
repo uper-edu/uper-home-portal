@@ -1,30 +1,108 @@
 {
-  "明确清空": ["Explicitly cleared", "Dikosongkan secara eksplisit"],
-  "作废报名误记": ["Void mistaken enrollment confirmation", "Batalkan konfirmasi pendaftaran yang salah"],
-  "已作废 · 报名误记": ["Voided · mistaken enrollment confirmation", "Dibatalkan · salah konfirmasi pendaftaran"],
-  "原报名确认暂不可用，请重试。": ["The original confirmation is unavailable. Please retry.", "Konfirmasi awal belum tersedia. Coba lagi."],
-  "正在加载原报名确认…": ["Loading original enrollment confirmation…", "Memuat konfirmasi pendaftaran awal…"],
-  "该报名确认已作废或不可用，请核对最新记录。": ["This confirmation is already voided or unavailable. Review the latest record.", "Konfirmasi sudah dibatalkan atau tidak tersedia. Periksa catatan terbaru."],
-  "原报名确认": ["Original enrollment confirmation", "Konfirmasi pendaftaran awal"],
-  "仅用于当初没有报名或选错客户；客户后来退课、退款不在此处理。原记录永久保留。": ["Use only when enrollment never happened or the wrong customer was selected. Later withdrawals and refunds are handled separately. The original record is retained.", "Hanya untuk pendaftaran yang tidak pernah terjadi atau salah memilih pelanggan. Pengunduran diri dan pengembalian dana diproses terpisah. Catatan asli tetap disimpan."],
-  "纠错说明": ["Correction explanation", "Penjelasan koreksi"],
-  "纠错后的销售阶段": ["Corrected sales stage", "Tahap penjualan setelah koreksi"],
-  "确认作废误记": ["Confirm voiding mistaken record", "Konfirmasi pembatalan catatan yang salah"],
-  "放弃未保存的纠错？": ["Discard this unsaved correction?", "Buang koreksi yang belum disimpan?"],
-  "报名误记已作废，销售阶段已同步更新。": ["Mistaken enrollment confirmation voided and sales stage updated.", "Konfirmasi pendaftaran yang salah dibatalkan dan tahap penjualan diperbarui."],
-  "报名误记已作废，当前阶段保持不变。": ["Mistaken enrollment confirmation voided. The current stage is unchanged.", "Konfirmasi pendaftaran yang salah dibatalkan. Tahap saat ini tetap."],
-  "无权作废该客户的报名误记": ["You cannot void this customer’s enrollment confirmation.", "Anda tidak berwenang membatalkan konfirmasi pelanggan ini."],
-  "请选择原报名确认记录": ["Select the original enrollment confirmation.", "Pilih konfirmasi pendaftaran awal."],
-  "请填写纠错说明": ["Enter a correction explanation.", "Isi penjelasan koreksi."],
-  "原报名确认不属于当前客户或不可用": ["The confirmation does not belong to this customer or is unavailable.", "Konfirmasi bukan milik pelanggan ini atau tidak tersedia."],
-  "该报名确认已作废，请核对最新记录": ["This confirmation was already voided. Review the latest record.", "Konfirmasi ini sudah dibatalkan. Periksa catatan terbaru."],
-  "客户阶段或报名确认已有变化，请核对后再保存": ["The stage or enrollment confirmation has changed. Review before saving.", "Tahap atau konfirmasi pendaftaran telah berubah. Periksa sebelum menyimpan."],
-  "请选择纠错后的销售阶段": ["Select the corrected sales stage.", "Pilih tahap penjualan setelah koreksi."],
-  "当前无需同步改变销售阶段，请核对最新状态": ["No simultaneous stage change is needed. Review the latest state.", "Tidak perlu mengubah tahap bersamaan. Periksa status terbaru."],
-  "补充／修正已保存。": ["Supplement/correction saved.", "Tambahan/koreksi disimpan."],
-  "原首次联系任务已恢复至当前负责人，原期限不变；未重发旧通知。": ["The original first-contact task is restored to the current owner with its original deadline. Previous notifications were not resent.", "Tugas kontak pertama semula dipulihkan untuk penanggung jawab saat ini dengan tenggat asli. Notifikasi lama tidak dikirim ulang."],
-  "首次联系仍满足要求。": ["The first-contact requirement remains satisfied.", "Persyaratan kontak pertama tetap terpenuhi."],
-  "原首次要求需管理者核对；未新增任务。": ["The original first-contact requirement needs manager review. No task was created.", "Persyaratan kontak pertama semula perlu diperiksa manajer. Tidak ada tugas baru."],
+  "明确清空": [
+    "Explicitly cleared",
+    "Dikosongkan secara eksplisit"
+  ],
+  "作废报名误记": [
+    "Void mistaken enrollment confirmation",
+    "Batalkan konfirmasi pendaftaran yang salah"
+  ],
+  "已作废 · 报名误记": [
+    "Voided · mistaken enrollment confirmation",
+    "Dibatalkan · salah konfirmasi pendaftaran"
+  ],
+  "原报名确认暂不可用，请重试。": [
+    "The original confirmation is unavailable. Please retry.",
+    "Konfirmasi awal belum tersedia. Coba lagi."
+  ],
+  "正在加载原报名确认…": [
+    "Loading original enrollment confirmation…",
+    "Memuat konfirmasi pendaftaran awal…"
+  ],
+  "该报名确认已作废或不可用，请核对最新记录。": [
+    "This confirmation is already voided or unavailable. Review the latest record.",
+    "Konfirmasi sudah dibatalkan atau tidak tersedia. Periksa catatan terbaru."
+  ],
+  "原报名确认": [
+    "Original enrollment confirmation",
+    "Konfirmasi pendaftaran awal"
+  ],
+  "仅用于当初没有报名或选错客户；客户后来退课、退款不在此处理。原记录永久保留。": [
+    "Use only when enrollment never happened or the wrong customer was selected. Later withdrawals and refunds are handled separately. The original record is retained.",
+    "Hanya untuk pendaftaran yang tidak pernah terjadi atau salah memilih pelanggan. Pengunduran diri dan pengembalian dana diproses terpisah. Catatan asli tetap disimpan."
+  ],
+  "纠错说明": [
+    "Correction explanation",
+    "Penjelasan koreksi"
+  ],
+  "纠错后的销售阶段": [
+    "Corrected sales stage",
+    "Tahap penjualan setelah koreksi"
+  ],
+  "确认作废误记": [
+    "Confirm voiding mistaken record",
+    "Konfirmasi pembatalan catatan yang salah"
+  ],
+  "放弃未保存的纠错？": [
+    "Discard this unsaved correction?",
+    "Buang koreksi yang belum disimpan?"
+  ],
+  "报名误记已作废，销售阶段已同步更新。": [
+    "Mistaken enrollment confirmation voided and sales stage updated.",
+    "Konfirmasi pendaftaran yang salah dibatalkan dan tahap penjualan diperbarui."
+  ],
+  "报名误记已作废，当前阶段保持不变。": [
+    "Mistaken enrollment confirmation voided. The current stage is unchanged.",
+    "Konfirmasi pendaftaran yang salah dibatalkan. Tahap saat ini tetap."
+  ],
+  "无权作废该客户的报名误记": [
+    "You cannot void this customer’s enrollment confirmation.",
+    "Anda tidak berwenang membatalkan konfirmasi pelanggan ini."
+  ],
+  "请选择原报名确认记录": [
+    "Select the original enrollment confirmation.",
+    "Pilih konfirmasi pendaftaran awal."
+  ],
+  "请填写纠错说明": [
+    "Enter a correction explanation.",
+    "Isi penjelasan koreksi."
+  ],
+  "原报名确认不属于当前客户或不可用": [
+    "The confirmation does not belong to this customer or is unavailable.",
+    "Konfirmasi bukan milik pelanggan ini atau tidak tersedia."
+  ],
+  "该报名确认已作废，请核对最新记录": [
+    "This confirmation was already voided. Review the latest record.",
+    "Konfirmasi ini sudah dibatalkan. Periksa catatan terbaru."
+  ],
+  "客户阶段或报名确认已有变化，请核对后再保存": [
+    "The stage or enrollment confirmation has changed. Review before saving.",
+    "Tahap atau konfirmasi pendaftaran telah berubah. Periksa sebelum menyimpan."
+  ],
+  "请选择纠错后的销售阶段": [
+    "Select the corrected sales stage.",
+    "Pilih tahap penjualan setelah koreksi."
+  ],
+  "当前无需同步改变销售阶段，请核对最新状态": [
+    "No simultaneous stage change is needed. Review the latest state.",
+    "Tidak perlu mengubah tahap bersamaan. Periksa status terbaru."
+  ],
+  "补充／修正已保存。": [
+    "Supplement/correction saved.",
+    "Tambahan/koreksi disimpan."
+  ],
+  "原首次联系任务已恢复至当前负责人，原期限不变；未重发旧通知。": [
+    "The original first-contact task is restored to the current owner with its original deadline. Previous notifications were not resent.",
+    "Tugas kontak pertama semula dipulihkan untuk penanggung jawab saat ini dengan tenggat asli. Notifikasi lama tidak dikirim ulang."
+  ],
+  "首次联系仍满足要求。": [
+    "The first-contact requirement remains satisfied.",
+    "Persyaratan kontak pertama tetap terpenuhi."
+  ],
+  "原首次要求需管理者核对；未新增任务。": [
+    "The original first-contact requirement needs manager review. No task was created.",
+    "Persyaratan kontak pertama semula perlu diperiksa manajer. Tidak ada tugas baru."
+  ],
   "不修改": [
     "No change",
     "Tidak diubah"
@@ -3770,8 +3848,8 @@
     "Buka pelanggan: "
   ],
   "自己认领": [
-    "Claim for myself",
-    "Klaim untuk diri saya"
+    "Assign to me",
+    "Ambil untuk saya"
   ],
   "问卷关注": [
     "Questionnaire interest",
@@ -7912,5 +7990,33 @@
   "核实后可认领和联系": [
     "Claim and contact after identity review",
     "Klaim dan hubungi setelah verifikasi identitas"
+  ],
+  "客户问卷原文只读；新情况请通过记录进展补充。": [
+    "Original customer questionnaires are read-only. Add new information through Record progress.",
+    "Kuesioner asli pelanggan hanya-baca. Tambahkan informasi baru melalui Catat perkembangan."
+  ],
+  "撤销误记履行": [
+    "Undo mistaken fulfilment",
+    "Batalkan pemenuhan yang salah dicatat"
+  ],
+  "确认恢复待处理": [
+    "Restore pending agreement",
+    "Pulihkan kesepakatan tertunda"
+  ],
+  "恢复原约定和原时间，保留履行及纠错历史；历史提醒不补发。": [
+    "Restore the original agreement and time; keep its history. Historical reminders are not resent.",
+    "Pulihkan kesepakatan dan waktu asli; pertahankan riwayatnya. Pengingat historis tidak dikirim ulang."
+  ],
+  "无权处理该客户约定": [
+    "No permission to manage this agreement",
+    "Tidak berwenang menangani kesepakatan ini"
+  ],
+  "约定已有变化或存在后续关联，请核对最新记录": [
+    "The agreement changed or has subsequent links. Review the latest record.",
+    "Kesepakatan berubah atau memiliki kaitan lanjutan. Periksa catatan terbaru."
+  ],
+  "修改尚未保存": [
+    "Unsaved changes",
+    "Perubahan belum disimpan"
   ]
 }

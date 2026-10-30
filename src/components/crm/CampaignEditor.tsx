@@ -1,3 +1,4 @@
+import {campaignEditBase} from '../../utils/campaignEditConflict';
 import {CrmFormSection} from './CrmFormLayout';
 import {CrmDisclosure} from './CrmDisclosure';
 import {X} from 'lucide-react';
@@ -66,6 +67,8 @@ export function CampaignEditor({
     utm_source: campaign?.boundUtm?.utm_source || "",
     utm_medium: campaign?.boundUtm?.utm_medium || "",
   }));
+  const baseCampaign=useRef<any>(campaign);
+  const [reviewed,setReviewed]=useState<any>(null);
   const initial = useRef(v),
     requestId = useRef(crypto.randomUUID()),
     pending = useRef<any>(null),
@@ -191,7 +194,7 @@ export function CampaignEditor({
                 "Pilih layanan awal dan bahasa pelanggan.",
                 "请选择入口服务和客户页面语言。",
               )
-            : code === 'campaign_result_missing' ? t('No saved result found. Keep this request and explicitly retry if needed.','Hasil tersimpan belum ditemukan. Pertahankan permintaan ini dan ulangi secara eksplisit bila perlu.','未查到已保存结果。原请求和草稿保留，可明确重试原请求。') : crmError(code, lang);
+            : code === 'campaign_result_missing' ? t('No saved result found. Keep this request and explicitly retry if needed.','Hasil tersimpan belum ditemukan. Pertahankan permintaan ini dan ulangi secara eksplisit bila perlu.','未查到已保存结果。原请求和草稿保留，可明确重试原请求。') : code === 'campaign_edit_conflict' ? t('This campaign changed. Review the latest values before saving your draft.','Kampanye berubah. Tinjau nilai terbaru sebelum menyimpan draf.','活动已被修改，请核对最新值后再保存草稿。') : crmError(code, lang);
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
     if (savingRef.current) return;
@@ -209,7 +212,7 @@ export function CampaignEditor({
         setError("campaign_schedule_invalid");
         return;
       }
-      const fields: any = { name: v.name.trim(),requestId:requestId.current };
+      const fields: any = {requestId:requestId.current,...(!campaign||v.name!==initial.current.name?{name:v.name.trim()}:{})};
       if (!campaign)
         Object.assign(fields, {
           requestId: requestId.current,
@@ -251,6 +254,7 @@ export function CampaignEditor({
           if (v[k] !== initial.current[k])
             fields.boundUtm = { ...fields.boundUtm, [k]: v[k] };
       }
+      if(campaign)fields.expectedFields=campaignEditBase(baseCampaign.current,fields);
       pending.current = fields;
     }
     savingRef.current = true;
@@ -272,6 +276,7 @@ export function CampaignEditor({
       if (!r.ok) {
         if (r.status < 500) {
           pending.current = null;
+          requestId.current=crypto.randomUUID();setReviewed(null);
           setUnknown(false);
         } else setUnknown(true);
         setError(result.error || "campaign_save_failed");
@@ -360,6 +365,7 @@ export function CampaignEditor({
                   : explainError(error)}
               </p>
             )}
+            {error==='campaign_edit_conflict'&&<aside role="note">{reviewed?<><p>{t('Latest name','Nama terbaru','最新名称')}：{reviewed.name} · {t('Budget','Anggaran','预算')}：{reviewed.stats?.budgetCost??'—'}</p><button type="button" onClick={()=>{baseCampaign.current=reviewed;setReviewed(null);setError('');}}>{t('Keep draft and use reviewed version','Pertahankan draf dan gunakan versi yang ditinjau','保留草稿并使用已核对版本')}</button></>:<button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{const r=await fetch('/api/crm/campaigns/'+encodeURIComponent(campaign!.id));const d=await r.json();if(!r.ok||d.campaign?.id!==campaign!.id)throw Error();setReviewed(d.campaign);}catch{setError('campaign_save_failed');}finally{setBusy(false);}}}>{t('Load latest saved version','Muat versi tersimpan terbaru','加载最新已保存版本')}</button>}</aside>}
             <fieldset disabled={busy || unknown} className="crm-form-layout">
               <CrmFormSection name="campaign" lang={lang}>
               {field(

@@ -24,6 +24,7 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
  if(b.contactResult&&(b.kind!=='correction'||!originalLog||['closure','internal'].includes(originalLog.recordKind)||!contactCorrectionOptions.some(o=>o[0]===b.contactResult)))invalid('联系结果只能通过原联系记录的修正更新');
  if(b.profileUpdates&&Object.keys(b.profileUpdates).length&&!canWrite(p,'crm.write'))invalid('无权更新客户资料',403);
  return operation(c,actor,b,{leadId,kind:'record.amended'},async()=>{
+  if(target.kind==='questionnaire.submitted')invalid('客户问卷原文只读；新情况请通过记录进展补充。',400);
   assertAmendmentProfileBoundary(b);
   const previous=(p.recordAmendments||[]).filter((a:any)=>a.targetFactId===target.id);
   if(b.expectedAmendmentRevision!==previous.length)invalid('该记录已有新的补充／修正，请保留输入并核对后再保存',409);

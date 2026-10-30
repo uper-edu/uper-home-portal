@@ -886,3 +886,27 @@ for(const section of guideSections)if(section.key==='followup')section.body.push
 // The Follow-up chapter shares the enrollment correction instructions with the metrics reference.
 const enrollmentCorrectionGuide=originalGuideSections.find(v=>v.key==="process-and-marketing-metrics")!.body[0];
 guideSections.find(v=>v.key==="followup")?.body.push([...enrollmentCorrectionGuide]);
+
+for(const section of guideSections)if(section.key==='followup')section.body.push([
+ 'Assign and Transfer appear in the customer detail action area according to existing owner-assignment permissions. The owner name below the customer name is read-only. Identity review restrictions remain.',
+ 'Tetapkan dan Alihkan muncul pada area tindakan detail pelanggan sesuai izin penugasan yang berlaku. Nama penanggung jawab di bawah nama pelanggan hanya-baca. Pembatasan verifikasi identitas tetap berlaku.',
+ '分配和转交统一位于客户详情通用操作区，按现有分配权限及客户范围显示；姓名下方负责人仅为只读信息，身份待核实限制保持。'
+]);
+
+const correctionRecoveryGuide = [
+ "Correcting a contact back to replied retains its original initiator and occurrence time. After reviewing a concurrent update, choose an active agreement again if the old selection is no longer valid; your progress text is retained.",
+ "Koreksi kontak kembali ke sudah dibalas mempertahankan pemrakarsa dan waktu aslinya. Setelah meninjau pembaruan bersamaan, pilih kembali kesepakatan aktif jika pilihan lama tidak berlaku; teks perkembangan tetap disimpan.",
+ "联系修正回已回复后沿用原始发起方和发生时间。核对并发更新后，若原选约定已失效，请重新选择有效约定；进展原文保留。"
+];
+
+guideSections.find(v=>v.key==="followup")?.body.push(correctionRecoveryGuide);
+
+guideSections.find(v=>v.key==="followup")?.body.push(["Campaign edits save only changed fields. Concurrent changes to other fields are retained; changes to the same field require reviewing the latest saved values before explicitly saving the retained draft.","Edit kampanye hanya menyimpan bidang yang diubah. Perubahan bersamaan pada bidang lain tetap dipertahankan; perubahan pada bidang yang sama memerlukan peninjauan nilai terbaru sebelum menyimpan draf secara eksplisit.","活动编辑仅保存本次修改字段；其他字段的并发更新保留。同字段冲突时，保留草稿，加载并核对最新值后再明确保存。"]);
+
+guideSections.find(v=>v.key==="followup")?.body.push(["Owner actions use Assign owner, Change owner and Assign to me. Permissions and handover requirements are unchanged.","Tindakan penanggung jawab menggunakan Tetapkan penanggung jawab, Ganti penanggung jawab dan Ambil untuk saya. Izin dan persyaratan serah terima tidak berubah.","负责人操作统一为分配负责人、更换负责人、自己认领，权限和交接说明要求不变。"]);
+
+guideSections.find(v=>v.key==="followup")?.body.push(["Original questionnaires remain read-only before and after identity consolidation. Read the complete original questionnaire from Customer 360; use Record progress to add newly confirmed information. Original answers, history and attribution remain unchanged.","Kuesioner asli tetap hanya-baca sebelum dan sesudah penggabungan identitas. Baca kuesioner asli lengkap melalui Panorama Pelanggan; gunakan Catat perkembangan untuk informasi baru yang dikonfirmasi. Jawaban asli, riwayat dan atribusi tetap utuh.","身份归并前后，客户问卷原文均只读；在客户全景查看完整原始问卷，新确认情况通过记录进展补充，保留原答案、历史和活动归因。"]);
+
+guideSections.find(v=>v.key==="followup")?.body.push(["After consolidation, detail views and actions use the retained customer. Source customer drafts are not copied to the retained customer.","Setelah penggabungan, detail dan tindakan memakai pelanggan yang dipertahankan. Draf pelanggan sumber tidak disalin ke pelanggan tersebut.","归并后，详情和操作使用保留客户；来源客户的草稿不自动复制到保留客户。"]);
+
+guideSections.find(v=>v.key==="followup")?.body.push(["Undo mistaken fulfilment restores the original pending agreement and its time with a required reason. Fulfilment and correction history remain. Past reminders are not resent; future reminders follow the existing policy. Subsequent linked changes require review.","Batalkan pemenuhan yang salah dicatat memulihkan kesepakatan tertunda dan waktu aslinya dengan alasan wajib. Riwayat tetap disimpan. Pengingat lampau tidak dikirim ulang; pengingat mendatang mengikuti kebijakan yang ada. Perubahan terkait lanjutan perlu diperiksa.","约定误标履行后，可在历史中撤销误记履行并必填原因，恢复原约定与原时间，保留履行及纠错历史。过期提醒不补发，未来提醒沿用现有策略；已有后续关联需先核对。"]);

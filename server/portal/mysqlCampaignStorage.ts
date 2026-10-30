@@ -1,3 +1,4 @@
+import {campaignEditConflicts} from '../../src/utils/campaignEditConflict.ts';
 import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
 import {campaignScheduleError} from "../../src/utils/campaignWorkspace.ts";
 import {sourceKey, campaignAliasTarget} from './campaignSources.ts';
@@ -26,7 +27,7 @@ function stableCampaignPayload(value: any): any {
 export async function saveCampaign(input: any, operation: CampaignSaveOperation) {
   if (!operation || !["create", "update"].includes(operation.kind))
     throw campaignError("Explicit campaign operation required", 400);
-  if (typeof input.name !== "string" || !input.name.trim() || input.name.length > 200)
+  if ((operation.kind === "create" || Object.hasOwn(input,"name")) && (typeof input.name !== "string" || !input.name.trim() || input.name.length > 200))
     throw campaignError("Campaign name is required", 400);
   if (input.stats !== undefined && (
     !input.stats || typeof input.stats !== "object" || Array.isArray(input.stats) ||
@@ -43,7 +44,7 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
   }
   const fields = { ...input };
   const basicCreation = operation.kind === "create" && input.savePhase === "basics";
-  for (const key of ["__actor", "id", "code", "requestId", "savePhase", "promotionLinks", "promotionModel"]) delete fields[key];
+  for (const key of ["__actor", "expectedFields", "id", "code", "requestId", "savePhase", "promotionLinks", "promotionModel"]) delete fields[key];
   const fingerprint = createHash("sha256").update(JSON.stringify(stableCampaignPayload({ ...fields, ...(basicCreation ? { savePhase: "basics" } : {}) }))).digest("hex");
   const actor = input.__actor || "unknown";
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -68,6 +69,7 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
             return prior.result;
           }
         }
+        if(old && input.expectedFields !== undefined && campaignEditConflicts(old,fields,input.expectedFields).length) throw campaignError("campaign_edit_conflict",409);
         const at = new Date();
         const code = old?.code || await allocateCampaignCode(db, input.type || "other", input.locationType || "online", at);
         const campaignId = operation.kind === "update" ? operation.id : code;
@@ -77,7 +79,7 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
           nameEn: "", nameId: "", type: "other", organizer: "",
           startDate: "", endDate: "", startTime: "", endTime: "", city: "", venue: "", locationType: "online", address: "",
           targetAudience: [], keyTopics: [], speakers: [],
-          ...old, ...fields, id: campaignId, code, name: input.name.trim(),
+          ...old, ...fields, id: campaignId, code, name: input.name === undefined ? old?.name : input.name.trim(),
           status: basicCreation ? "planning" : fields.status ?? old?.status ?? "planning",
           boundUtm: { utm_source: "", utm_medium: "", defaultLang: "id", defaultHook: "hsk_assessment", defaultContext: "website", ...old?.boundUtm, ...fields.boundUtm, utm_campaign: old?.boundUtm?.utm_campaign ?? code },
           aiAssets: { ...assets, ...old?.aiAssets, ...input.aiAssets,

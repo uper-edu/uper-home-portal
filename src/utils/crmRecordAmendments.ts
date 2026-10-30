@@ -9,7 +9,7 @@ export function effectiveSalesRecords(lead: any): any[] {
   let value=original;
   for(const a of amendments)if(a.kind==='correction'&&a.contactResult){
    const excluded=['Not Occurred','Duplicate'].includes(a.contactResult);
-   value={...value,contactExcluded:excluded,connectStatus:excluded?value.connectStatus:a.contactResult,contactDirection:a.contactResult!=='Connected'&&value.contactDirection==='customer'?'unknown':value.contactDirection,contactCorrectionId:a.id};
+   value={...value,contactExcluded:excluded,connectStatus:excluded?value.connectStatus:a.contactResult,contactDirection:a.contactResult!=='Connected'&&original.contactDirection==='customer'?'unknown':original.contactDirection,contactCorrectionId:a.id};
   }
   return amendments.length?{...value,amendments}:value;
  });

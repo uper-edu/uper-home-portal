@@ -84,7 +84,7 @@ export async function tick(clock = new Date()) {
     const agreements=(await c.query("SELECT id,profile FROM portal_leads WHERE JSON_LENGTH(profile->'$.commitments')>0")).rows;
     for(const row of agreements)for(const v of row.profile.commitments||[]){
       const date=new Intl.DateTimeFormat('en-CA',{timeZone:v.timezone||'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(clock);
-      if(v.status!=='active'||!(v.at?Date.parse(v.at)<=clock.getTime():v.date&&v.date<=date))continue;
+      if(v.status!=='active'||v.reminderSuppressed||!(v.at?Date.parse(v.at)<=clock.getTime():v.date&&v.date<=date))continue;
       await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'commitment.due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",['commitment:'+v.id,row.id,{commitmentId:v.id,action:v.action,agreedAt:v.at||v.date,internalOnly:row.profile.contactArrangement?.state==='stopped'}]);
     }
     const events = (
