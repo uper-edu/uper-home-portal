@@ -338,7 +338,7 @@ export default function GFormOnboardingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
+    <div translate="no" lang={lang === 'zh' ? 'zh-CN' : lang} className="notranslate fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -403,9 +403,7 @@ export default function GFormOnboardingModal({
           )}
 
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            {lang === 'en' && (step === 1 ? 'Personal Information' : 'Learning Goals & Mandarin Level')}
-            {lang === 'id' && (step === 1 ? 'Informasi Pribadi & Kontak' : 'Tujuan Belajar & Tingkat Bahasa')}
-            {lang === 'zh' && (step === 1 ? '个人基本信息登记' : '学习目标与当前中文基础')}
+            <span>{lang === 'zh' ? (step === 1 ? '个人基本信息登记' : '学习目标与当前中文基础') : lang === 'id' ? (step === 1 ? 'Informasi Pribadi & Kontak' : 'Tujuan Belajar & Tingkat Bahasa') : (step === 1 ? 'Personal Information' : 'Learning Goals & Mandarin Level')}</span>
           </h2>
 
           <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">

@@ -1,3 +1,4 @@
+import {reportClientFailure} from './services/clientDiagnostics';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {safeStorage} from './utils/safeStorage.ts';
@@ -26,88 +27,10 @@ import App from './App.tsx';
 import './index.css';
 import './i18n';
 
-const formatError = (err: any) => {
-  if (!err) return null;
-  if (err instanceof Error) {
-    return { message: err.message || err.toString(), stack: err.stack || '' };
-  }
-  if (typeof err === 'object') {
-    try {
-      if (Object.keys(err).length === 0) return null;
-      return { message: err.message || JSON.stringify(err), stack: err.stack || '' };
-    } catch (e) {
-      return null;
-    }
-  }
-  const str = String(err).trim();
-  if (!str || str === 'undefined' || str === 'null' || str === '[object Object]') return null;
-  return { message: str, stack: '' };
-};
-
-window.addEventListener('error', (event) => {
-  if (!event.error && (!event.message || event.message === 'Script error.')) {
-    return;
-  }
-  
-  const msg = (event.error?.message || event.message || '').toLowerCase();
-  if (
-    msg.includes('websocket') || 
-    msg.includes('vite') || 
-    msg.includes('extension') || 
-    msg.includes('hmr') ||
-    msg.includes('cross-origin')
-  ) {
-    return;
-  }
-
-  console.error("GLOBAL ERROR:", event.error || event.message);
-  
-  const errDetail = event.error 
-    ? formatError(event.error) 
-    : { message: event.message || 'Script error or cross-origin error', stack: `${event.filename || ''}:${event.lineno || 0}:${event.colno || 0}` };
-    
-  if (errDetail) {
-    fetch('/api/log', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(errDetail),
-    }).catch(() => {});
-  }
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  if (!event.reason) {
-    return;
-  }
-
-  const reasonDetail = formatError(event.reason);
-  if (!reasonDetail) {
-    return;
-  }
-
-  const msg = reasonDetail.message.toLowerCase();
-  if (
-    msg.includes('websocket') || 
-    msg.includes('vite') || 
-    msg.includes('extension') || 
-    msg.includes('hmr') ||
-    msg.includes('cross-origin')
-  ) {
-    return;
-  }
-
-  console.error("UNHANDLED REJECTION:", event.reason);
-  
-  fetch('/api/log', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(reasonDetail),
-  }).catch(() => {});
-});
+// The same bounded, privacy-safe report is used by React, global errors and module loading.
+window.addEventListener('error',event=>{if(event.error)reportClientFailure(event.error,'window');});
+window.addEventListener('unhandledrejection',event=>{if(event.reason)reportClientFailure(event.reason,'promise');});
+window.addEventListener('vite:preloadError',event=>{reportClientFailure((event as Event & {payload?:unknown}).payload,'preload');});
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
