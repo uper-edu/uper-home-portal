@@ -17,19 +17,19 @@ export const hskId: FAQItem[] = [
     id: "hsk_q3",
     category: "academic",
     question: "3. Apakah HSK wajib untuk kuliah di Tiongkok? Jika ya, minimal level berapa?",
-    answer: "Sebagian besar program yang diajarkan dalam bahasa Mandarin mensyaratkan sertifikat HSK. Program persiapan bahasa (preparatory class): minimal HSK Level 3 ; Program yang diajarkan dalam bahasa Inggris umumnya tidak mewajibkan HSK.\n\nKhusus pelamar Beasiswa CSC Indonesia:\n* Program Sarjana (Bachelor): CSCA wajib, sedangkan HSK mungkin tetap diminta oleh universitas tujuan.\n* Program Magister dan Doktor berbahasa Mandarin: HSK diwajibkan ( HSK 4 untuk Magister, HSK 5 untuk Doktor)"
+    answer: "Sebagian besar program yang diajarkan dalam bahasa Mandarin mensyaratkan sertifikat HSK. Program persiapan bahasa (preparatory class): minimal HSK Level 3 ; Program yang diajarkan dalam bahasa Inggris umumnya tidak mewajibkan HSK.\n\nKhusus pelamar Beasiswa CSC Indonesia:\n* Program Sarjana (Bachelor): CSCA wajib, sedangkan HSK mungkin tetap diminta oleh universitas tujuan.\n* Program Magister dan Doktor berbahasa Mandarin: HSK diwajibkan ( HSK 5 untuk Magister, HSK 5 atau 6 untuk Doktor)"
   },
   {
     id: "hsk_q4",
     category: "academic",
     question: "4. Level HSK berapa yang dibutuhkan untuk masuk universitas?",
-    answer: "Umumnya universitas mensyaratkan HSK Level 4 atau lebih tinggi ; Universitas ternama dan jurusan seperti sastra atau ilmu humaniora biasanya mensyaratkan HSK Level 5."
+    answer: "Umumnya universitas mensyaratkan HSK Level 4 atau lebih tinggi ; Universitas ternama dan jurusan seperti sastra atau ilmu humaniora biasanya mensyaratkan HSK Level 5 atau 6."
   },
   {
     id: "hsk_q5",
     category: "academic",
     question: "5. Level HSK berapa yang diperlukan untuk mendapatkan beasiswa?",
-    answer: "Sebagian besar beasiswa Pemerintah Tiongkok mensyaratkan minimal HSK Level 4; Untuk jurusan Bahasa Mandarin biasanya diperlukan HSK Level 5 atau Level 6.\n\nKhusus pelamar Beasiswa CSC Indonesia:\n* Program Magister berbahasa Mandarin: HSK Level 4\n* Program Doktor berbahasa Mandarin: HSK Level 5\n* Program General Scholar berbahasa Mandarin: HSK Level 3"
+    answer: "Sebagian besar beasiswa Pemerintah Tiongkok mensyaratkan minimal HSK Level 4; Untuk jurusan Bahasa Mandarin biasanya diperlukan HSK Level 5 atau Level 6.\n\nKhusus pelamar Beasiswa CSC Indonesia:\n* Program Magister berbahasa Mandarin: HSK Level 5\n* Program Doktor berbahasa Mandarin: HSK Level 5 atau 6\n* Program General Scholar berbahasa Mandarin: HSK Level 4"
   },
   {
     id: "hsk_q6",
@@ -77,7 +77,7 @@ export const hskId: FAQItem[] = [
     id: "hsk_q13",
     category: "financial",
     question: "13. Berapa biaya pendaftaran ujian HSK?",
-    answer: "Di sebagian besar pusat ujian di Tiongkok Daratan, biaya ujian HSK mengikuti standar yang relatif sama, yaitu sebagai berikut:\n\nBiaya Ujian Tulis HSK (Terpisah): HSK Level 1: 150 RMB; HSK Level 2: 250 RMB\n\nHSK Level 3–6 (Wajib disertai Ujian Lisan HSKK): Sesuai ketentuan, peserta yang mendaftar HSK Level 3 ke atas juga wajib mengikuti ujian lisan (HSKK) sesuai levelnya. Total biaya merupakan penjumlahan biaya HSK and HSKK.\n* HSK Level 3 (350 RMB) + HSKK Dasar (200 RMB) = 550 RMB\n* HSK Level 4 (450 RMB) + HSKK Menengah (300 RMB) = 750 RMB\n* HSK Level 5 (550 RMB) + HSKK Tingkat Lanjut (400 RMB) = 950 RMB\n* HSK Level 6 (650 RMB) + HSKK Tingkat Lanjut (400 RMB) = 1.050 RMB\n\nBiaya ujian HSK berbeda-beda di setiap negara maupun pusat tes. Di Indonesia, biaya ujian ditentukan oleh masing-masing penyelenggara resmi dan dapat berubah sewaktu-waktu. Untuk informasi biaya terbaru, silakan menghubungi pusat tes HSK yang Anda pilih."
+    answer: "Di sebagian besar pusat ujian di Tiongkok Daratan, biaya ujian HSK mengikuti standar yang relatif sama, yaitu sebagai berikut:\n\nBiaya Ujian Tulis HSK (Terpisah): HSK Level 1: 150 RMB; HSK Level 2: 250 RMB\n\nHSK Level 3–6 (Wajib disertai Ujian Lisan HSKK): Sesuai ketentuan, peserta yang mendaftar HSK Level 3 ke atas juga wajib mengikuti ujian lisan (HSKK) sesuai levelnya. Total biaya merupakan penjumlahan biaya HSK and HSKK.\n* HSK Level 3 (350 RMB) + HSKK Dasar (200 RMB) = 550 RMB\n* HSK Level 4 (450 RMB) + HSKK Menengah (300 RMB) = 750 RMB\n* HSK Level 5 (550 RMB) + HSKK Tingkat Lanjut (400 RMB) = 950 RMB\n* HSK Level 6 (650 RMB) + HSKK Tingkat Lanjut (400 RMB) = 1.050 RMB"
   },
   {
     id: "hsk_q14",
@@ -173,7 +173,7 @@ export const hskId: FAQItem[] = [
     id: "hsk_q29",
     category: "academic",
     question: "29. Berapa lama durasi ujian HSK?",
-    answer: "* HSK 1: 40 menit\n* HSK 2: 55 menit\n* HSK 3: 90 menit\n* HSK 4: 105 menit\n* HSK 5: 125 menit\n* HSK 6: 140 menit\n* HSK 7-9: 155 menit"
+    answer: "* HSK 1: 40 menit\n* HSK 2: 40 menit\n* HSK 3: 60 menit\n* HSK 4: 85 menit\n* HSK 5: 125 menit\n* HSK 6: 135 menit"
   },
   {
     id: "hsk_q30",
@@ -317,7 +317,7 @@ export const hskId: FAQItem[] = [
     id: "hsk_q53",
     category: "financial",
     question: "53. Berapa biaya kursus persiapan HSK di UPER dan apa keunggulannya?",
-    answer: "A:\n\n| Level | Jumlah Pertemuan | Biaya (Rp) |\n| --- | --- | --- |\n| HSK 1 | 20 | 1.980.000 |\n| HSK 2 | 22 | 2.178.000 |\n| HSK 3 | 40 | 3.960.000 |\n| HSK 4A | 40 | 3.960.000 |\n| HSK 4B | 40 | 3.960.000 |\n| HSK 5A | 55 | 5.445.000 |\n| HSK 5B | 55 | 5.445.000 |\n| HSK 6A | 61 | 6.039.000 |\n| HSK 6B | 61 | 6.039.000 |\n\nBiaya per pertemuan: Rp99.000.\n\n**Keunggulan Program HSK Level 3–6:**\n* Dikembangkan berdasarkan standar HSK dari negara asalnya.\n* Didukung oleh pengajar profesional penutur asli dari Beijing Language and Culture University (BLCU).\n* Menggunakan metode pembelajaran imersi bahasa Mandarin.\n* Berfokus pada strategi menghadapi ujian sekaligus penerapan bahasa dalam kehidupan nyata.\n\n**Keunggulan Program HSK Level 1–3:**\n* Menggunakan kurikulum HSK profesional dari BLCU.\n* Dirancang untuk membantu siswa lulus ujian HSK secara efektif.\n* Pembelajaran yang praktis dan aplikatif.\n* Membangun dasar bahasa Mandarin yang kuat untuk studi di universitas Tiongkok.\n* Meningkatkan daya saing untuk berkarier di perusahaan Tiongkok maupun perusahaan internasional."
+    answer: "A:\n\n| Level | Jumlah Pertemuan | Biaya (Rp) |\n| --- | --- | --- |\n| HSK 1 | 23 | 1.150.000 |\n| HSK 2 | 24 | 1.200.000 |\n| HSK 3 | 42 | 2.100.000 |\n| HSK 4A | 42 | 2.100.000 |\n| HSK 4B | 42 | 2.100.000 |\n| HSK 5A | 55 | 2.750.000 |\n| HSK 5B | 55 | 2.750.000 |\n| HSK 6A | 61 | 3.050.000 |\n\nBiaya per pertemuan: Rp50.000.\n\n**Keunggulan Program HSK Level 3–6:**\n* Dikembangkan berdasarkan standar HSK dari negara asalnya.\n* Didukung oleh pengajar profesional penutur asli dari Beijing Language and Culture University (BLCU).\n* Menggunakan metode pembelajaran imersi bahasa Mandarin.\n* Berfokus pada strategi menghadapi ujian sekaligus penerapan bahasa dalam kehidupan nyata.\n\n**Keunggulan Program HSK Level 1–3:**\n* Menggunakan kurikulum HSK profesional dari BLCU.\n* Dirancang untuk membantu siswa lulus ujian HSK secara efektif.\n* Pembelajaran yang praktis dan aplikatif.\n* Membangun dasar bahasa Mandarin yang kuat untuk studi di universitas Tiongkok.\n* Meningkatkan daya saing untuk berkarier di perusahaan Tiongkok maupun perusahaan internasional."
   },
   {
     id: "hsk_q54",
@@ -329,6 +329,6 @@ export const hskId: FAQItem[] = [
     id: "hsk_q55",
     category: "academic",
     question: "55. Apakah pelajar Indonesia masih memerlukan HSK jika sudah mengikuti CSCA?",
-    answer: "Tergantung pada program yang dipilih.\n* Program Sarjana (Beasiswa CSC): CSCA wajib, sedangkan HSK mungkin tetap diminta oleh universitas tujuan.\n* Program Magister dan Doktor berbahasa Mandarin: HSK wajib (HSK Level 4 untuk Magister dan HSK Level 5 untuk Doktor).\n* Program yang diajarkan dalam bahasa Inggris: umumnya tidak memerlukan HSK.\n\nHSK dan CSCA memiliki tujuan yang berbeda (kemampuan bahasa vs kesiapan akademik) . Keduanya tidak dapat saling menggantikan dalam sebagian besar persyaratan pendaftaran."
+    answer: "Tergantung pada program yang dipilih.\n* Program Sarjana (Beasiswa CSC): CSCA wajib, sedangkan HSK mungkin tetap diminta oleh universitas tujuan.\n* Program Magister dan Doktor berbahasa Mandarin: HSK wajib (HSK Level 5 untuk Magister dan HSK Level 5 atau 6 untuk Doktor).\n* Program yang diajarkan dalam bahasa Inggris: umumnya tidak memerlukan HSK.\n\nHSK dan CSCA memiliki tujuan yang berbeda (kemampuan bahasa vs kesiapan akademik) . Keduanya tidak dapat saling menggantikan dalam sebagian besar persyaratan pendaftaran."
   }
 ];

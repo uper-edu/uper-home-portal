@@ -17,19 +17,19 @@ export const hskEn: FAQItem[] = [
     id: "hsk_q3",
     category: "academic",
     question: "Q: Is HSK required to study in China? If yes, what is the minimum level required to study in China?",
-    answer: "Most Chinese-taught majors need HSK. The minimum for preparatory class is HSK Level 3. English-taught programs generally do not require HSK.\n\nImportant distinction for Indonesian CSC Scholarship applicants:\n* Bachelor's programs: CSCA is mandatory; HSK may still be required by the university.\n* Master's and doctoral programs (Chinese-taught): HSK is required (Level 4 for master's, Level 5 for doctoral)."
+    answer: "Most Chinese-taught majors need HSK. The minimum for preparatory class is HSK Level 3. English-taught programs generally do not require HSK.\n\nImportant distinction for Indonesian CSC Scholarship applicants:\n* Bachelor's programs: CSCA is mandatory; HSK may still be required by the university.\n* Master's and doctoral programs (Chinese-taught): HSK is required (Level 5 for master's, Level 5 or 6 for doctoral)."
   },
   {
     id: "hsk_q4",
     category: "academic",
     question: "Q: Which HSK level is required for university admission?",
-    answer: "Normally HSK4 or above; top universities and liberal arts require HSK5."
+    answer: "Normally HSK4 or above; top universities and liberal arts require HSK5 or HSK6."
   },
   {
     id: "hsk_q5",
     category: "academic",
     question: "Q: Which HSK level is required for scholarships?",
-    answer: "Most Chinese government scholarships require at least HSK Level 4; Chinese language majors need HSK Level 5 or 6.\n\nFor Indonesian CSC Scholarship applicants:\n* Chinese-taught master's programs: HSK Level 4 required\n* Chinese-taught doctoral programs: HSK Level 5 required\n* Chinese-taught general scholar programs: HSK Level 3 required"
+    answer: "Most Chinese government scholarships require at least HSK Level 4; Chinese language majors need HSK Level 5 or 6.\n\nFor Indonesian CSC Scholarship applicants:\n* Chinese-taught master's programs: HSK Level 5 required\n* Chinese-taught doctoral programs: HSK Level 5 or 6 required\n* Chinese-taught general scholar programs: HSK Level 4 required"
   },
   {
     id: "hsk_q6",
@@ -77,7 +77,7 @@ export const hskEn: FAQItem[] = [
     id: "hsk_q13",
     category: "financial",
     question: "Q: How much does it cost to apply for the HSK?",
-    answer: "In most test centers in mainland China, the HSK exam fees follow a relatively uniform standard, as follows:\n\nHSK Written Exam Fee (Separate): HSK Level 1: 150 RMB; Level 2: 250 RMB. (Official Website)\n\nHSK Levels 3-6 Bundled with HSKK Oral Exam Fee: According to regulations, applicants for HSK Level 3 and above must also register for the corresponding level's oral exam. The total cost is the sum of the two.\n* HSK Level 3 (350 RMB) + HSKK Elementary (200 RMB) = 550 RMB\n* HSK Level 4 (450 RMB) + HSKK Intermediate (300 RMB) = 750 RMB\n* HSK Level 5 (550 RMB) + HSKK Advanced (400 RMB) = 950 RMB\n* HSK Level 6 (650 RMB) + HSKK Advanced (400 RMB) = 1050 RMB\n\nHSK exam fees vary across countries and test centers. In Indonesia, the fee is determined by each authorized testing provider and may change from time to time. For the most up-to-date information, please contact the HSK test center you have selected."
+    answer: "In most test centers in mainland China, the HSK exam fees follow a relatively uniform standard, as follows:\n\nHSK Written Exam Fee (Separate): HSK Level 1: 150 RMB; Level 2: 250 RMB. (Official Website)\n\nHSK Levels 3-6 Bundled with HSKK Oral Exam Fee: According to regulations, applicants for HSK Level 3 and above must also register for the corresponding level's oral exam. The total cost is the sum of the two.\n* HSK Level 3 (350 RMB) + HSKK Elementary (200 RMB) = 550 RMB\n* HSK Level 4 (450 RMB) + HSKK Intermediate (300 RMB) = 750 RMB\n* HSK Level 5 (550 RMB) + HSKK Advanced (400 RMB) = 950 RMB\n* HSK Level 6 (650 RMB) + HSKK Advanced (400 RMB) = 1050 RMB"
   },
   {
     id: "hsk_q14",
@@ -173,7 +173,7 @@ export const hskEn: FAQItem[] = [
     id: "hsk_q29",
     category: "academic",
     question: "Q: How long does the test usually take?",
-    answer: "* HSK 1: 40 min\n* HSK 2: 55 min\n* HSK 3: 90 min\n* HSK 4: 105 min\n* HSK 5: 125 min\n* HSK 6: 140 min\n* HSK 7-9: 155 min"
+    answer: "* HSK 1: 40 min\n* HSK 2: 40 min\n* HSK 3: 60 min\n* HSK 4: 85 min\n* HSK 5: 125 min\n* HSK 6: 135 min"
   },
   {
     id: "hsk_q30",
@@ -317,7 +317,7 @@ export const hskEn: FAQItem[] = [
     id: "hsk_q53",
     category: "financial",
     question: "Q: What are the tuition fees and key advantages of UPER's HSK preparation courses?",
-    answer: "A:\n\n| Level | Lessons | Fee (IDR) |\n| --- | --- | --- |\n| HSK 1 | 20 | 1,980,000 |\n| HSK 2 | 22 | 2,178,000 |\n| HSK 3 | 40 | 3,960,000 |\n| HSK 4A | 40 | 3,960,000 |\n| HSK 4B | 40 | 3,960,000 |\n| HSK 5A | 55 | 5,445,000 |\n| HSK 5B | 55 | 5,445,000 |\n| HSK 6A | 61 | 6,039,000 |\n| HSK 6B | 61 | 6,039,000 |\n\nFee per lesson: IDR 99,000.\n\n**Key Advantages:**\n\n**HSK Levels 3–6**\n* Developed and taught based on the standards of the birthplace of HSK\n* Supported by professional native Chinese-speaking teachers from BLCU (Beijing Language and Culture University)\n* Learn Chinese through Chinese immersion, helping students improve language proficiency naturally and effectively\n* Strong focus on examination skills and practical language application\n\n**HSK Levels 1–3**\n* Based on BLCU's professional HSK curriculum framework\n* Designed to help students pass the HSK examination efficiently\n* Practical and application-oriented learning approach\n* Builds a strong foundation for future study at Chinese universities\n* Enhances competitiveness for opportunities in Chinese enterprises and international careers"
+    answer: "A:\n\n| Level | Lessons | Fee (IDR) |\n| --- | --- | --- |\n| HSK 1 | 23 | 1,150,000 |\n| HSK 2 | 24 | 1,200,000 |\n| HSK 3 | 42 | 2,100,000 |\n| HSK 4A | 42 | 2,100,000 |\n| HSK 4B | 42 | 2,100,000 |\n| HSK 5A | 55 | 2,750,000 |\n| HSK 5B | 55 | 2,750,000 |\n| HSK 6A | 61 | 3,050,000 |\n\nFee per lesson: IDR 50,000.\n\n**Key Advantages:**\n\n**HSK Levels 3–6**\n* Developed and taught based on the standards of the birthplace of HSK\n* Supported by professional native Chinese-speaking teachers from BLCU (Beijing Language and Culture University)\n* Learn Chinese through Chinese immersion, helping students improve language proficiency naturally and effectively\n* Strong focus on examination skills and practical language application\n\n**HSK Levels 1–3**\n* Based on BLCU's professional HSK curriculum framework\n* Designed to help students pass the HSK examination efficiently\n* Practical and application-oriented learning approach\n* Builds a strong foundation for future study at Chinese universities\n* Enhances competitiveness for opportunities in Chinese enterprises and international careers"
   },
   {
     id: "hsk_q54",
@@ -329,6 +329,6 @@ export const hskEn: FAQItem[] = [
     id: "hsk_q55",
     category: "academic",
     question: "Q:Do Indonesian students need HSK if they already take CSCA?",
-    answer: "It depends on the program:\n* Bachelor's (CSC Scholarship): CSCA is mandatory; HSK may still be required by the target university.\n* Master's / Doctoral (Chinese-taught): HSK is required (HSK Level 4 for master's, HSK Level 5 for doctoral).\n* English-taught programs: HSK is generally not required.\n\nHSK and CSCA serve different purposes (language proficiency vs. academic readiness) and are not interchangeable in most cases."
+    answer: "It depends on the program:\n* Bachelor's (CSC Scholarship): CSCA is mandatory; HSK may still be required by the target university.\n* Master's / Doctoral (Chinese-taught): HSK is required (HSK Level 5 for master's, HSK Level 5 or 6 for doctoral).\n* English-taught programs: HSK is generally not required.\n\nHSK and CSCA serve different purposes (language proficiency vs. academic readiness) and are not interchangeable in most cases."
   }
 ];

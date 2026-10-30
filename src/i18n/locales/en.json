@@ -468,6 +468,10 @@
     }
   },
   "contact": {
+    "faqFooterTitle": "Still Have Questions?",
+    "faqFooterDesc": "Speak with our counselors for personalized advice on courses, admissions, and visa preparation.",
+    "chatNow": "Consult via WhatsApp",
+    "visitPage": "Contact Form",
     "tag": "Contact Us",
     "title1": "Get in ",
     "title2": "Touch",
@@ -876,6 +880,11 @@
     }
   },
   "faq": {
+    "noResults": "No matching questions found",
+    "noResultsDesc": "Try different keywords or choose another category.",
+    "clearSearch": "Clear Search",
+    "backToTop": "Back to top",
+    "toggleAiService": "Open or close UPER AI customer service",
     "portal": {
       "hsk": {
         "title": "Have Questions about HSK?",

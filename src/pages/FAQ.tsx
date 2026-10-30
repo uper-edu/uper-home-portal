@@ -560,7 +560,7 @@ export default function FAQ() {
                                   key={tag}
                                   className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md border ${getTagStyles(tag, isApple)}`}
                                 >
-                                  {tag}
+                                  {tag === 'Study Abroad' ? t('faq.programs.studyAbroad') : tag}
                                 </span>
                               ))}
                             </div>
@@ -604,13 +604,13 @@ export default function FAQ() {
                 <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mx-auto mb-3">
                   <Search className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-800 text-lg mb-1">{t('news.noResults', 'No matching results found')}</h3>
-                <p className="text-slate-400 text-sm">{t('news.noResultsDesc', 'Please refine your keywords or select another tab.')}</p>
+                <h3 className="font-bold text-slate-800 text-lg mb-1">{t('faq.noResults', 'No matching questions found')}</h3>
+                <p className="text-slate-400 text-sm">{t('faq.noResultsDesc', 'Try different keywords or choose another category.')}</p>
                 <button 
                   onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }} 
                   className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
                 >
-                  {t('news.clearSearch', 'Clear Search')}
+                  {t('faq.clearSearch', 'Clear Search')}
                 </button>
               </motion.div>
             )}

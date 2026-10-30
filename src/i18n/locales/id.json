@@ -468,6 +468,10 @@
     }
   },
   "contact": {
+    "faqFooterTitle": "Masih Ada Pertanyaan?",
+    "faqFooterDesc": "Hubungi konselor kami untuk saran pribadi tentang kursus, pendaftaran kuliah, dan persiapan visa.",
+    "chatNow": "Konsultasi via WhatsApp",
+    "visitPage": "Formulir Kontak",
     "tag": "Hubungi Kami",
     "title1": "Mari ",
     "title2": "Berbincang",
@@ -876,6 +880,11 @@
     }
   },
   "faq": {
+    "noResults": "Tidak ada pertanyaan yang cocok",
+    "noResultsDesc": "Coba kata kunci lain atau pilih kategori lain.",
+    "clearSearch": "Hapus Pencarian",
+    "backToTop": "Kembali ke atas",
+    "toggleAiService": "Buka atau tutup layanan pelanggan AI UPER",
     "portal": {
       "hsk": {
         "title": "Ada Pertanyaan tentang HSK?",
@@ -1086,8 +1095,8 @@
       {
         "id": "q34",
         "category": "financial",
-        "question": "How can I open a Chinese bank account?",
-        "answer": "Proses pembukaan rekening bank sangat mudah dan teratur begitu Anda tiba secara fisik di China.\n\n* **Dokumen Wajib:** Paspor asli, Kartu Mahasiswa (Student ID), serta lembar bukti pendaftaran domisili apartemen/asrama yang diterbitkan universitas Anda.\n* **Alur Proses:** Biasanya, staf kantor hubungan internasional universitas Anda akan mengatur jadwal mendampingi para mahasiswa baru ke kantor cabang bank lokal terdekat (seperti **Bank of China** atau **ICBC**) demi kelancaran integrasi rekening dengan aplikasi pembayaran digital populer (WeChat Pay / Alipay)."
+        "question": "Bagaimana cara membuka rekening bank di China?",
+        "answer": "Setelah Anda tiba di China, proses pembukaan rekening biasanya cukup sederhana.\n\n* **Dokumen yang diperlukan:** Paspor, kartu mahasiswa, dan formulir pendaftaran tempat tinggal yang disediakan oleh universitas Anda.\n* **Proses:** Kami atau kantor mahasiswa internasional universitas biasanya akan mendampingi mahasiswa baru ke bank setempat (seperti **Bank of China** atau **ICBC**) untuk membantu membuka rekening. Rekening ini penting untuk menerima beasiswa, membayar tagihan, dan menggunakan aplikasi pembayaran seluler."
       },
       {
         "id": "q35",

@@ -1001,7 +1001,7 @@ export default function AIChatbot() {
             ? 'bg-slate-900 text-white hover:bg-slate-800' 
             : 'bg-gradient-to-tr from-primary-600 to-primary-500 text-white hover:shadow-primary-600/45 hover:shadow-xl'
           }`}
-          aria-label="Toggle UPER AI Customer Service"
+          aria-label={t('faq.toggleAiService')}
           id="uper-ai-fab"
         >
           {isOpen ? (

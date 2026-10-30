@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { ChevronUp } from 'lucide-react';
 import { useDesignStyle } from '../../utils/theme';
 
 export const BackToTop: React.FC = () => {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const { isApple } = useDesignStyle();
@@ -57,8 +59,8 @@ export const BackToTop: React.FC = () => {
             exit={{ opacity: 0, scale: 0.8, y: 10 }}
             transition={{ duration: 0.2 }}
             onClick={scrollToTop}
-            aria-label="Back to top"
-            title="Kembali ke Atas / Back to Top"
+            aria-label={t('faq.backToTop')}
+            title={t('faq.backToTop')}
             className={`fixed bottom-20 md:bottom-8 right-5 z-40 p-3 rounded-full shadow-lg border transition-all cursor-pointer active:scale-95 ${
               isApple
                 ? 'bg-white/90 backdrop-blur-md border-slate-200 text-slate-800 hover:bg-white hover:text-slate-950 shadow-slate-200/50'
