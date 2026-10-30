@@ -609,7 +609,7 @@ const Hero = () => {
               <div className="flex -space-x-3 shrink-0">
                 <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[4] shadow-sm"><img src="/blcu-logo.png" alt="BLCU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
                 <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[3] shadow-sm"><img src="/ccnu-logo.png" alt="CCNU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[2] shadow-sm"><img src="/dku-logo.jpg" alt="DKU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
+                {/* 暂时隐藏昆山杜克大学 logo，待确认后恢复显示。 */}
                 <div className="w-10 h-10 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden z-[1] shadow-sm"><img src="/muh-logo.png" alt="MUH" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
               </div>
               <p className="leading-snug max-w-[380px]">

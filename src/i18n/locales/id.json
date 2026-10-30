@@ -18,7 +18,9 @@
     "faq": "Tanya Jawab (FAQ)",
     "careers": "Karir & Karir",
     "contact": "Kontak",
-    "startJourney": "Konsultasi Gratis"
+    "startJourney": "Konsultasi Gratis",
+    "studentLogin": "Masuk Siswa",
+    "studentGreeting": "{{name}}"
   },
   "footer": {
     "description": "Organisasi pendidikan internasional yang didedikasikan untuk studi global, menjembatani budaya, dan memberdayakan siswa melalui pembelajaran berbasis teknologi.",

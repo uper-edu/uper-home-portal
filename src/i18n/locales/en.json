@@ -18,7 +18,9 @@
     "faq": "FAQs",
     "careers": "Careers",
     "contact": "Contact",
-    "startJourney": "Free Consult Now"
+    "startJourney": "Free Consult Now",
+    "studentLogin": "Student Login",
+    "studentGreeting": "{{name}}"
   },
   "footer": {
     "description": "An international educational organization dedicated to global study, bridging cultures, and empowering students through tech-enhanced learning.",

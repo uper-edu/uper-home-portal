@@ -18,7 +18,9 @@
     "faq": "常见问题 (FAQ)",
     "careers": "招贤纳士",
     "contact": "联系我们",
-    "startJourney": "免费咨询"
+    "startJourney": "免费咨询",
+    "studentLogin": "学生登录入口",
+    "studentGreeting": "{{name}}"
   },
   "footer": {
     "description": "一家致力于全球学习、连接多元文化、并通过科技赋能学生体验的国际教育组织。",

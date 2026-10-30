@@ -8,6 +8,7 @@ import AIChatbot from './AIChatbot';
 import { BackToTop } from './ui/BackToTop';
 import { trackLanguageSwitch } from '../utils/analytics';
 import { useDesignStyle, useColorTheme } from '../utils/theme';
+import { useStudentName, STUDENT_PORTAL_URL } from '../utils/studentAuth';
 
 const prefTranslations = {
   id: {
@@ -79,6 +80,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = useLocation();
   const { isApple } = useDesignStyle();
+  const { name: studentName } = useStudentName(i18n.language);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -254,6 +256,28 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
             </div>
           </div>
 
+          {studentName ? (
+            <span className={`border px-4 py-2 rounded-full font-medium flex items-center gap-2 ${
+              isApple
+                ? 'border-slate-800 text-slate-800'
+                : 'border-primary-600 text-primary-600'
+            }`}>
+              <GraduationCap className="w-4 h-4" /> {t('nav.studentGreeting', { name: studentName })}
+            </span>
+          ) : (
+            <a
+              href={STUDENT_PORTAL_URL}
+              target="_self"
+              className={`border px-4 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${
+                isApple
+                  ? 'border-slate-800 text-slate-800 hover:bg-slate-100'
+                  : 'border-primary-600 text-primary-600 hover:bg-primary-50'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" /> {t('nav.studentLogin')}
+            </a>
+          )}
+
           <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className={`px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 ${isApple ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg hover:shadow-primary-500/30'}`}>
             {t('nav.startJourney')} <ArrowRight className="w-4 h-4" />
           </a>
@@ -368,6 +392,28 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
 
             {/* Deeper Settings Link in Mobile Menu */}
             <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+              {studentName ? (
+                <span className={`w-full border p-3 rounded-xl font-medium flex items-center justify-center gap-2 ${
+                  isApple
+                    ? 'border-slate-800 text-slate-800'
+                    : 'border-primary-600 text-primary-600'
+                }`}>
+                  <GraduationCap className="w-5 h-5" /> {t('nav.studentGreeting', { name: studentName })}
+                </span>
+              ) : (
+                <a
+                  href={STUDENT_PORTAL_URL}
+                  target="_self"
+                  className={`w-full border p-3 rounded-xl font-medium flex items-center justify-center gap-2 ${
+                    isApple
+                      ? 'border-slate-800 text-slate-800 hover:bg-slate-100'
+                      : 'border-primary-600 text-primary-600 hover:bg-primary-50'
+                  }`}
+                >
+                  <GraduationCap className="w-5 h-5" /> {t('nav.studentLogin')}
+                </a>
+              )}
+
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);

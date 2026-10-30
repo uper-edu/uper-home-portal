@@ -955,15 +955,6 @@ export default function AIChatbot() {
 
   const currentStarterPrompts = getStarterPrompts();
 
-  // Do not display on the official uperedu.com domain and subdomains
-  const isOfficialProduction = 
-    typeof window !== 'undefined' && 
-    (window.location.hostname === 'uperedu.com' || window.location.hostname.endsWith('.uperedu.com'));
-
-  if (isOfficialProduction) {
-    return null;
-  }
-
   return (
     <>
       {/* Floating Action Button (FAB) */}
