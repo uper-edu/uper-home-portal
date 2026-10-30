@@ -9,7 +9,9 @@ export function validateTrialDatabase(env) {
   const url = new URL(env.MYSQL_TRIAL_URL || '');
   if (url.protocol !== 'mysql:') throw Error('A standard MySQL URL is required');
   const name = decodeURIComponent(url.pathname.slice(1));
-  if (activeLocal ? name!=='uper_local_crm' : !/^uper_trial_[a-z0-9_]+$/.test(name)) throw Error('A dedicated uper_trial_ database is required');
+  const production = env.PORTAL_ENV === 'prod' && env.PORTAL_DEPLOYMENT === 'production';
+  const validSyntheticName = production ? /^prod_uper_trial_[a-z0-9_]+$/.test(name) : /^uper_trial_[a-z0-9_]+$/.test(name);
+  if (activeLocal ? name!=='uper_local_crm' : !validSyntheticName) throw Error('A dedicated production or uper_trial_ database is required');
   if (!url.username || !url.password) throw Error('Database credentials are required');
   if(env.TRIAL_DATASET==='migration-copy' && (!env.MYSQL_TRIAL_SOCKET || !/restore|rehearsal/.test(name)))throw Error('Migration copy requires a private local restore database');
   if(activeLocal && (url.hostname!=='localhost'||env.MYSQL_TRIAL_SOCKET!=='/private/tmp/uper-crm-mysql-local3000.sock'))throw Error('Approved private local CRM MySQL instance required');

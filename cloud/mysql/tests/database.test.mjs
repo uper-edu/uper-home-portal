@@ -8,6 +8,8 @@ test('trial database refuses existing local CRM and implicit fallbacks', () => {
   }
   assert.throws(() => validateTrialDatabase({DATABASE_URL:'mysql://test:test@localhost/uper_trial_test'}));
   assert.equal(validateTrialDatabase({TRIAL_DATASET:'synthetic',MYSQL_TRIAL_URL:'mysql://test:test@localhost/uper_trial_test'}).name,'uper_trial_test');
+  assert.equal(validateTrialDatabase({PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',TRIAL_DATASET:'synthetic',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home'}).name,'prod_uper_trial_home');
+  assert.throws(() => validateTrialDatabase({PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',TRIAL_DATASET:'synthetic',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/uper_trial_home'}));
 });
 test('transaction failure rolls back and always returns its connection', async () => {
   const calls=[];
