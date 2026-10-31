@@ -36,6 +36,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
   });
 }
 
+const LinkHub = lazyWithRetry(() => import('./pages/LinkHub'));
 const About = lazyWithRetry(() => import('./pages/About'));
 const FAQ = lazyWithRetry(() => import('./pages/FAQ'));
 const Partners = lazyWithRetry(() => import('./pages/Partners'));
@@ -78,6 +79,8 @@ export default function App() {
             <AnalyticsTracker />
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>}>
               <Routes>
+                {/* Standalone public link-in-bio hub */}
+                <Route path="link" element={<LinkHub />} />
                 {/* Standalone Seminar & Direct AI Advisory Portals */}
                 <Route path="chat" element={<VisitorBoundary><StandAloneChat /></VisitorBoundary>} />
                 <Route path="consult" element={<VisitorBoundary><StandAloneChat /></VisitorBoundary>} />

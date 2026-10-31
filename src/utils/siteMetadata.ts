@@ -25,6 +25,14 @@ export const publicPages: Record<string, { title: Words; description: Words }> =
         "了解UPER的大学申请支持、奖学金咨询、中文课程与研学服务。",
       ],
     },
+    "/link": {
+      title: ["UPER Links", "Tautan UPER", "UPER官方链接"],
+      description: [
+        "Connect with UPER: free WhatsApp consultation, Handbook 2026, our community and social channels.",
+        "Terhubung dengan UPER: konsultasi WhatsApp gratis, Handbook 2026, komunitas dan media sosial.",
+        "联系UPER：免费WhatsApp咨询、2026手册、社群及官方社交账号。",
+      ],
+    },
     "/about": {
       title: ["About Us", "Tentang Kami", "关于我们"],
       description: [
