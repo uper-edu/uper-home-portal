@@ -1607,5 +1607,16 @@
   "Uneven performance across levels": "Hasil antar tingkat tidak konsisten",
   "Near a starting-point boundary": "Mendekati batas titik awal",
   "Limitations not recorded": "Batasan tidak dicatat",
-  "Sales stage updated to ": "Tahap penjualan diperbarui menjadi "
+  "Sales stage updated to ": "Tahap penjualan diperbarui menjadi ",
+  "Notification language": "Bahasa notifikasi",
+  "Inherit operating timezone": "Warisi zona waktu operasional",
+  "Custom timezone for this policy": "Zona waktu khusus kebijakan",
+  "Operating timezone": "Zona waktu operasional",
+  "Inherits the operating timezone; working days and hours do not restrict new Lark notifications.": "Mewarisi zona waktu operasional; hari dan jam kerja tidak membatasi notifikasi Lark baru.",
+  "Synthetic preview only; no delivery. Standard cards use the selected language and linked source records.": "Pratinjau data simulasi saja, tanpa pengiriman. Kartu standar memakai bahasa terpilih dan catatan sumber terkait.",
+  "In-app reminders include customer and event data. Standard Lark cards use linked records and the selected language; other events use the template. Original text stays in CRM.": "Pengingat aplikasi menampilkan data pelanggan dan peristiwa. Kartu Lark standar memakai catatan terkait dan bahasa terpilih; peristiwa lain memakai templat. Teks asli hanya tersedia di CRM.",
+  "New events: anytime": "Peristiwa baru: kapan saja",
+  "Standard cards show linked needs, privacy-filtered original excerpts or assessment results. Complete evidence remains in CRM.": "Kartu standar menampilkan kebutuhan terkait, kutipan asli yang dilindungi privasi, atau hasil asesmen. Bukti lengkap tersedia di CRM.",
+  "Lark summary runs daily at the set time; in-app summary follows working days": "Ringkasan Lark dibuat setiap hari pada waktu yang ditentukan; ringkasan dalam aplikasi mengikuti hari kerja",
+  "In-app template (Lark uses the standard card)": "Templat dalam aplikasi (Lark memakai kartu standar)"
 }

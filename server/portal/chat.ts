@@ -335,7 +335,7 @@ export function mountChat(app: Express) {
             ],
           );
           if (!modelUsed)
-            await event(c, "ai.failed", conv.lead_id, { source: conv.source });
+            await event(c, "ai.failed", conv.lead_id, { source: conv.source,conversationId:conv.id,messageId:assistantId });
         });
         const result = {
           reply: modelUsed ? reply : "AI 回复失败，消息已保存。请稍后重试。",

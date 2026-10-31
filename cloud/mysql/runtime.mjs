@@ -463,6 +463,6 @@ export async function tx(operation, options = {}) {
 export async function event(client, type, leadId, payload) {
   await client.query(
     "INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,:p2,:p3,:p4)",
-    [id(), type, leadId, payload],
+    [id(), type, leadId, {...payload, notificationPolicyVersion: 2, notificationContentVersion: 3}],
   );
 }

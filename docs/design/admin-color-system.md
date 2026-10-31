@@ -61,3 +61,17 @@
 状态、来源、依据、鼠标提示、无障碍名称及错误／结果未知反馈必须同步ZH／EN／ID。系统界面文案与客户原文分离，不能以自动翻译页面文字的方式改写姓名、自由文本、原问卷答案或补充／修正。固定文案使用crmUiText和现有模块词典，新增文案须有三语条目。列表短标签独立于详情／表单全称：Availability／Jadwal（上课时段）、Start／Mulai（计划开始）、Budget／Anggaran（课程总预算）、Concerns／Kendala（顾虑）。短标签保留字段含义，不改预算口径；不能通过截断原文或缩小字号来容纳标签。英文和印尼文保留独立标签列宽、值列对齐、长原文展开及四列比例。
 
 三条互动时间线的标题由 `interactionTrackLabel` 统一提供：有效沟通／Conversation／Komunikasi，客户互动／Customer activity／Aktivitas pelanggan，销售联系／Sales outreach／Kontak sales。列表与跟进页不另造近义标题；具体发生时间和距今时长独立呈现，无记录的完整无障碍说明保留。
+
+## Lark通知标题区
+
+统一由 `larkNotificationColor` 决定实际卡片和管理页模拟预览的标题色，不允许各发送分支自行配色。Lark实际标题使用平台原生template；管理页预览复用既有语义变量，仅示意类别，不能承诺与Lark客户端像素一致。
+
+|通知类别|Lark template|含义|
+|---|---|---|
+|新客户、重新打开咨询、普通请求及临近／到期提醒|blue|普通信息，不代表已联系或已确认报名|
+|已逾期、通知发送结果未知|orange|需要注意／核实；结果未知不等于失败|
+|测评完成|turquoise|已有测评结果，不评判分数好坏|
+|AI回复失败、通知明确发送失败及系统异常|red|明确执行失败／异常，不包含仅逾期或结果未知|
+|每日汇总|grey|统计概览，不是催办|
+
+保留标题文字，不能仅靠颜色识别。AI失败采用异常红，不套用AI整理的紫色；没有独立的成功事件则不使用成功绿。新旧通知仍按原规则排期和去重，不为补颜色重放旧消息。平台支持色枚举参考：[Lark官方SDK](https://github.com/larksuite/oapi-sdk-go/blob/v3_main/card/model.go)。

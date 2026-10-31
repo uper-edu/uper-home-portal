@@ -1,3 +1,5 @@
+import {targetUnavailable} from '../../utils/crmNotificationTarget';
+import {presentFollowUpTask} from '../../utils/crmTaskPresentation';
 import {CrmAgreementRestore} from './CrmAgreementRestore';
 import {fulfilledAgreementRecord} from '../../utils/crmAgreementRestore';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
@@ -24,7 +26,7 @@ import {dynamicProfileHints} from '../../utils/crmDynamicProfile';
 import {followupOverview} from '../../utils/crmFollowupOverview';
 import {crmMessageTimestamp} from '../../utils/crmMessageTime';
 import {agreementTime} from '../../utils/crmProgressDetails';
-export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,sourceFocus,onViewAssessment,onViewProfile,onViewStage,stageFeedback,now:clockNow}:any){
+export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,sourceFocus,onViewAssessment,onViewProfile,onViewStage,stageFeedback,focusTask,focusAgreement,now:clockNow}:any){
  const ui=useCrmUiText(lang),openHistory=useContext(CrmHistoryAccess);
 
  const [clock,setClock]=useState(Date.now());const now=clockNow??clock;
@@ -44,6 +46,9 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  const [restoreTarget,setRestoreTarget]=useState<any>(null);
  const past=(lead.commitments||[]).filter((v:any)=>v.status!=='active'||v.fulfilmentCorrections?.length);
 
+ const targetTask=focusTask?.id?data?.tasks?.find((v:any)=>v.id===focusTask.id):null;
+ const taskView=targetTask?presentFollowUpTask(targetTask,lang,timezone):null;
+ useEffect(()=>{if(!targetTask)return;const f=requestAnimationFrame(()=>{const node=document.getElementById('crm-notification-task-'+targetTask.id);node?.scrollIntoView({block:'center'});node?.focus({preventScroll:true});});return()=>cancelAnimationFrame(f);},[targetTask?.id,focusTask?.token]);
  const requestOccurred=(r:any)=>{const d=r.data||{},m=(lead.chatTranscript||[]).find((m:any)=>m.role==='user'&&(!d.conversationId||m.conversation_id===d.conversationId)&&[d.messageId,d.sourceMessageId,d.requestId,r.source_id].filter(Boolean).some(id=>id===m.id||id===m.request_id));return m?crmMessageTimestamp(m):null;};
  const lastMessage=followupOverview(lead).message;const latest=lastMessage&&!requests.some((r:any)=>{const d=r.data||{};return (!d.conversationId||d.conversationId===lastMessage.conversation_id)&&[d.messageId,d.sourceMessageId,d.requestId,r.source_id].some(id=>id&&[lastMessage.id,lastMessage.request_id].includes(id));})?lastMessage:null;
  const points=sortFollowupOccurrences<any>([
@@ -57,9 +62,10 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  return <div className="crm-followup-focus"><div className="crm-followup-save-feedback">{feedback}{recentSourceId&&<button type="button" className="crm-work-link" onClick={()=>openRecord(recentSourceId)}>{ui("查看本次记录")}</button>}</div>
  {feedback&&recentSourceId&&onViewStage&&canEditProfile&&<button type="button" className="crm-work-link" onClick={()=>onViewStage(recentSourceId)}>{ui("基于本次记录更新阶段")}</button>}
  {stageFeedback&&<p role="status" className="crm-stage-saved-notice">{stageFeedback}</p>}
+ {focusTask?.id&&data&&<section id={'crm-notification-task-'+focusTask.id} tabIndex={-1} data-notification-focused className="crm-notification-task-target">{taskView?<><h4>{taskView.action}</h4><p>{taskView.status}</p>{taskView.times.map((v:any,i:number)=><p key={i}>{v.label} · {taskView.formatTime(v.value)}</p>)}</>:<p role="alert">{targetUnavailable(lang)}</p>}</section>}
  <CrmSalesBrief showStage={!openHistory} evidenceEvents={factProjection.events} lead={lead} lang={lang} isLight={isLight} onEvidence={evidence} onProfile={onViewProfile} onStage={onViewStage} canEdit={canEditProfile} milestones={<CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>}/>
  <section className="crm-followup-now" aria-label={ui("沟通动态与重要信息")}><div className="crm-followup-section-heading"><h3>{t('Communication and important information','Komunikasi dan informasi penting','沟通动态与重要信息')}</h3></div>
- <CrmListAgreements lead={lead} lang={lang} timezone={timezone} detail now={now} onCorrect={!disabled&&!editing&&!modalSuspended?(v:any)=>{const log=(lead.followUpLogs||[]).find((l:any)=>[l.id,l.requestId].includes(v.sourceId));if(log)evidence(log.id,'amend',v.id);}:undefined}/>
+ <CrmListAgreements focusedId={focusAgreement} lead={lead} lang={lang} timezone={timezone} detail now={now} onCorrect={!disabled&&!editing&&!modalSuspended?(v:any)=>{const log=(lead.followUpLogs||[]).find((l:any)=>[l.id,l.requestId].includes(v.sourceId));if(log)evidence(log.id,'amend',v.id);}:undefined}/>
  <CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} summaryMode hideHeading/>
  {lead.firstRequirementReview&&<p role="note">{lead.firstRequirementReview}</p>}
  {error?<p role="alert">{ui("客户请求信息暂不可用")}<button type="button" className="crm-work-link" onClick={()=>setRetry(v=>v+1)}>{ui("重试")}</button></p>:!data&&<p role="status">{ui("正在读取客户请求…")}</p>}

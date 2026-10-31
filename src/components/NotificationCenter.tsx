@@ -1,3 +1,8 @@
+import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../utils/larkNotificationDefaults';
+import {larkNotificationColor} from '../utils/larkNotificationColors';
+import {dailyDigestPreview} from '../utils/larkDailyDigest';
+import {larkNotificationSample} from '../utils/larkNotificationSamples';
+import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
 import {AdminFormSection} from './AdminFormLayout';
 import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import {crmFormText} from '../utils/crmFormLanguage';
@@ -103,10 +108,10 @@ const initialRule: Rule = {
   start: "09:00",
   end: "20:00",
   dedupeMinutes: 15,
-  maxPerHour: 20,
+  maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
   retries: [1, 5, 15],
   template: "{{event}} · {{name}} · {{owner}} · {{due}}",
-  language: "zh",
+  language: LARK_DEFAULT_LANGUAGE,
 };
 const eventNames: Record<string, [string, string]> = {
   "commitment.due": ["客户约定到期", "Customer agreement due"],
@@ -196,7 +201,7 @@ export default function NotificationCenter({
     [channel, setChannel] = useState<Channel>({
       secretRef: "",
       mode: "simulation",
-      maxPerHour: 20,
+      maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
     });
   const editorBaseline=useRef<string|null>(null);
   const [discardEditor,setDiscardEditor]=useState<null|{run:()=>void}>(null);
@@ -242,7 +247,8 @@ export default function NotificationCenter({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api(tab);
+      const job=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
+      const data = await api(tab+(tab==='notification-jobs'&&job?'?job='+encodeURIComponent(job):''));
       setRows(
         tab === "integration-readiness"
           ? [{ id: "status", ...data }]
@@ -278,6 +284,9 @@ export default function NotificationCenter({
     return () => clearInterval(timer);
   }, [open, load, active]);
   useEffect(()=>{if(notice){noticeRef.current?.focus({preventScroll:true});noticeRef.current?.scrollIntoView({block:'nearest',behavior:'instant'});}},[notice]);
+  const targetJob=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
+  const focusedNotificationJob=useRef<string|null>(null);
+  useEffect(()=>{if(tab!=='notification-jobs'||loading||!targetJob||focusedNotificationJob.current===targetJob)return;const frame=requestAnimationFrame(()=>{const node=document.getElementById('notification-job-'+targetJob);if(node){focusedNotificationJob.current=targetJob;node.querySelectorAll('details').forEach(d=>d.open=true);node.scrollIntoView({block:'center'});node.focus({preventScroll:true});}});return()=>cancelAnimationFrame(frame);},[rows,loading,tab,targetJob]);
   const format = (value: string | undefined) =>
     value ? new Date(value).toLocaleString(crmLocale(lang)) : "—";
   const label = (name: string) =>
@@ -485,12 +494,12 @@ export default function NotificationCenter({
               signingEnabled:
                 row.config?.signingEnabled ?? !!row.config?.signingSecretRef,
               maxPerHour:
-                row.rateLimit?.maxPerHour ?? row.config?.maxPerHour ?? 20,
+                row.rateLimit?.maxPerHour ?? row.config?.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR,
             } as Channel)
           : {
               secretRef: "",
               mode: "simulation",
-              maxPerHour: 20,
+              maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
             },
       );
       if (!row) setKey("lark-" + crypto.randomUUID().slice(0, 12));
@@ -975,8 +984,8 @@ export default function NotificationCenter({
                                     t("汇总时间模式", "Summary timing"),
                                     <p className="text-xs py-2">
                                       {t(
-                                        "按工作日和汇总发送时间生成统计",
-                                        "Generate statistics on configured days at the summary time",
+                                        "Lark每天按汇总时间生成；站内汇总遵循工作日",
+                                        "Lark summary runs daily at the set time; in-app summary follows working days",
                                       )}
                                     </p>,
                                   )
@@ -1024,21 +1033,21 @@ export default function NotificationCenter({
                                   />,
                                 )}
                               {select(
-                                t("工作日历来源", "Work calendar"),
+                                (lang==='zh'?'时区来源':lang==='id'?'Sumber zona waktu':'Timezone source'),
                                 rule.calendarMode || "custom",
                                 [
                                   [
                                     "inherit",
                                     t(
-                                      "遵循全局 SLA 工作日历",
-                                      "Inherit global SLA calendar",
+                                      "继承运营时区",
+                                      "Inherit operating timezone",
                                     ),
                                   ],
                                   [
                                     "custom",
                                     t(
-                                      "此策略自定义时间",
-                                      "Custom calendar for this policy",
+                                      "此策略自定义时区",
+                                      "Custom timezone for this policy",
                                     ),
                                   ],
                                 ],
@@ -1049,38 +1058,16 @@ export default function NotificationCenter({
                               )}
                               {rule.calendarMode === "inherit" && (
                                 <div className="sm:col-span-2 lg:col-span-3 text-xs space-y-2">
-                                  <p>{calendarSummary}</p>
+                                  <p>{calendarSummary.split(" · ")[0]}</p>
                                   <p className={muted}>
                                     {t(
-                                      "来自上方已保存的 SLA 设置；新事件按当前日历安排，待发通知发送前再次检查。不重算已有跟进截止时间。",
-                                      "Uses saved SLA settings above for new events and pre-send checks. Existing follow-up deadlines are preserved.",
+                                      "继承运营时区；工作日和工作时段不限制新版 Lark 通知。",
+                                      "Inherits the operating timezone; working days and hours do not restrict new Lark notifications.",
                                     )}
                                   </p>
                                 </div>
                               )}
-                              {rule.channels.includes("lark") &&
-                                field(
-                                  t("Lark 工作时间限制", "Lark business hours"),
-                                  <AdminField className="flex gap-2 py-2 text-xs">
-                                    <input
-                                      type="checkbox"
-                                      checked={rule.businessOnly}
-                                      onChange={(e) =>
-                                        patch({
-                                          businessOnly: e.target.checked,
-                                        })
-                                      }
-                                    />
-                                    {t(
-                                      "仅在工作时间发送",
-                                      "Send only during business hours",
-                                    )}
-                                  </AdminField>,
-                                  t(
-                                    "关闭后允许全天发送；站内提醒始终即时产生。",
-                                    "Disable for round-the-clock delivery; in-app reminders are always immediate.",
-                                  ),
-                                )}
+                              <p className={muted}>{lang==='zh'?'新 Lark 通知全天可发送，不受工作日历限制；静默时段单独生效。':lang==='id'?'Notifikasi Lark baru dapat dikirim setiap hari sepanjang waktu; jam hening berlaku terpisah.':'New Lark notifications can send at any time on any day; quiet hours apply separately.'}</p>
                               {rule.calendarMode === "custom" && (
                                 <>
                                   {text(
@@ -1089,87 +1076,7 @@ export default function NotificationCenter({
                                     (v) => patch({ timezone: v }),
                                     "Asia/Jakarta",
                                   )}
-                                  {rule.channels.includes("lark") &&
-                                    rule.businessOnly && (
-                                      <>
-                                        {field(
-                                          t(
-                                            "工作时间开始",
-                                            "Business hours start",
-                                          ),
-                                          <input
-                                            className={input}
-                                            type="time"
-                                            value={rule.start}
-                                            onChange={(e) =>
-                                              patch({ start: e.target.value })
-                                            }
-                                          />,
-                                        )}
-                                        {field(
-                                          t(
-                                            "工作时间结束",
-                                            "Business hours end",
-                                          ),
-                                          <input
-                                            className={input}
-                                            type="time"
-                                            value={rule.end}
-                                            onChange={(e) =>
-                                              patch({ end: e.target.value })
-                                            }
-                                          />,
-                                        )}
-                                      </>
-                                    )}
-                                  {(rule.businessOnly ||
-                                    rule.event === "daily.digest" ||
-                                    rule.timing === "digest") &&
-                                    field(
-                                      t("工作日", "Working days"),
-                                      <div className="flex flex-wrap gap-2 py-2">
-                                        {(zh
-                                          ? [
-                                              "日",
-                                              "一",
-                                              "二",
-                                              "三",
-                                              "四",
-                                              "五",
-                                              "六",
-                                            ]
-                                          : [
-                                              "Su",
-                                              "Mo",
-                                              "Tu",
-                                              "We",
-                                              "Th",
-                                              "Fr",
-                                              "Sa",
-                                            ]
-                                        ).map((d, i) => (
-                                          <AdminField
-                                            key={i}
-                                            className="text-xs flex gap-1"
-                                          >
-                                            <input
-                                              type="checkbox"
-                                              checked={rule.days.includes(i)}
-                                              onChange={(e) =>
-                                                patch({
-                                                  days: e.target.checked
-                                                    ? [...rule.days, i].sort()
-                                                    : rule.days.filter(
-                                                        (x) => x !== i,
-                                                      ),
-                                                })
-                                              }
-                                            />
-                                            {d}
-                                          </AdminField>
-                                        ))}
-                                      </div>,
-                                    )}
+
                                 </>
                               )}
                               {rule.channels.includes("lark") &&
@@ -1239,7 +1146,7 @@ export default function NotificationCenter({
                           {rule.channels.includes("lark") && (
                             <>
                               {select(
-                                t("日期显示语言", "Date display language"),
+                                t("通知语言", "Notification language"),
                                 rule.language,
                                 [
                                   ["zh", "中文"],
@@ -1248,9 +1155,9 @@ export default function NotificationCenter({
                                 ],
                                 (v) => patch({ language: v }),
                               )}
-                              <div className="sm:col-span-2 lg:col-span-3">
+                              {!standardLarkKinds.includes(rule.event as LarkKind) && (<div className="sm:col-span-2 lg:col-span-3">
                                 {field(
-                                  t("消息摘要模板", "Message summary template"),
+                                  rule.event === "daily.digest" ? t("站内摘要模板（Lark使用标准卡片）", "In-app template (Lark uses the standard card)") : t("消息摘要模板", "Message summary template"),
                                   <textarea
                                     className={`${input} h-24 py-2`}
                                     value={rule.template}
@@ -1264,43 +1171,21 @@ export default function NotificationCenter({
                                     "Variables: {{event}}, {{name}}, {{owner}}, {{due}}. Language does not translate the template.",
                                   ),
                                 )}
-                              </div>
+                              </div>)}
                               <div
                                 className={`${box} p-3 text-xs sm:col-span-2 lg:col-span-3`}
                               >
-                                <p className="font-semibold mb-2">
-                                  {t(
-                                    "Lark 摘要预览（模拟数据）",
-                                    "Lark summary preview (synthetic data)",
-                                  )}
+                                <p className="font-semibold mb-2">{t('Lark 摘要预览（模拟数据）','Lark summary preview (synthetic data)')}</p>
+                                <p data-lark-header={larkNotificationColor(rule.event).template} className="font-semibold mb-2 rounded px-3 py-2" style={{color:larkNotificationColor(rule.event).foreground,background:larkNotificationColor(rule.event).background}}>
+                                  UPER · TEST · {rule.event==='daily.digest'?dailyDigestPreview({language:rule.language as 'zh'|'en'|'id',date:'2030-01-06',counts:[]}).title:standardLarkKinds.includes(rule.event as LarkKind)?larkNotificationPreview(larkNotificationSample(rule.event as LarkKind,rule.language as 'zh'|'en'|'id')).title:label(rule.event)}
                                 </p>
                                 <p className="whitespace-pre-wrap">
-                                  {rule.template.replace(
-                                    /\{\{(event|name|owner|due)\}\}/g,
-                                    (_, key) =>
-                                      (
-                                        ({
-                                          event: rule.event,
-                                          name: t(
-                                            "测试客户",
-                                            "Sample customer",
-                                          ),
-                                          owner: t(
-                                            "测试顾问",
-                                            "Sample advisor",
-                                          ),
-                                          due: t(
-                                            "测试截止时间",
-                                            "Sample deadline",
-                                          ),
-                                        }) as Record<string, string>
-                                      )[key],
-                                  )}
+                                  {rule.event==='daily.digest' ? (()=>{const preview=dailyDigestPreview({language:rule.language as 'zh'|'en'|'id',date:'2030-01-06',timezone:rule.timezone,counts:[{stage:'progress:unreached',count:8},{stage:'progress:discovery',count:3},{stage:'progress:proposal',count:1}],filtered:!!(rule.tiers.length||rule.states.length||rule.sources.length)});return [...preview.rows.map(row=>row.label+(rule.language==='zh'?'：':': ')+row.value),preview.note].join('\n');})() : standardLarkKinds.includes(rule.event as LarkKind) ? (()=>{const preview=larkNotificationPreview(larkNotificationSample(rule.event as LarkKind,rule.language as 'zh'|'en'|'id'));return [...preview.rows.map(row=>row.label+(rule.language==='zh'?'：':': ')+row.value),preview.note].filter(Boolean).join('\n');})() : rule.template.replace(/\{\{(event|name|owner|due)\}\}/g,(_,key)=>({event:rule.event,name:'Maya Putri',owner:'Sample advisor',due:'2026-10-31 18:00'} as Record<string,string>)[key])}
                                 </p>
                                 <p className={muted}>
                                   {t(
-                                    "仅预览正文替换，不发送消息；实际内容来自事件与客户记录。",
-                                    "Text substitution only; no delivery. Actual values come from the event and lead.",
+                                    "仅展示模拟数据，不发送消息。标准卡片按所选语言展示，实际值关联原始记录。",
+                                    "Synthetic preview only; no delivery. Standard cards use the selected language and linked source records.",
                                   )}
                                 </p>
                               </div>
@@ -1310,8 +1195,8 @@ export default function NotificationCenter({
                             className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
                           >
                             {t(
-                              "站内提醒自动呈现客户与事件信息，无需填写模板；Lark 使用摘要模板，不发送完整聊天。",
-                              "In-app reminders include lead and event data. Lark uses the summary template, not the full transcript.",
+                              "标准卡片展示关联需求、受隐私保护的原文摘录或测评结果；完整依据在CRM查看。",
+                              "Standard cards show linked needs, privacy-filtered original excerpts or assessment results. Complete evidence remains in CRM.",
                             )}
                           </p>
                         </>,
@@ -1558,7 +1443,7 @@ export default function NotificationCenter({
                         <>
                           {number(
                             t("每小时发送上限", "Hourly delivery limit"),
-                            channel.maxPerHour ?? 20,
+                            channel.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR,
                             (v) => setChannel({ ...channel, maxPerHour: v }),
                           )}
                           <p
@@ -1670,13 +1555,13 @@ export default function NotificationCenter({
                                 {" · "}
                                 {row.config!.calendarMode === "inherit"
                                   ? t(
-                                      "继承全局 SLA 日历",
-                                      "Global SLA calendar",
+                                      "继承运营时区",
+                                      "Operating timezone",
                                     )
                                   : row.config!.timezone}
                                 {row.config!.channels.includes("lark") &&
                                 row.config!.businessOnly
-                                  ? " · " + t("遵守工作时间", "Business hours")
+                                  ? " · " + t("新版全天发送", "New events: anytime")
                                   : ""}
                               </>
                             )}
@@ -1712,7 +1597,7 @@ export default function NotificationCenter({
                           <p className="text-xs">{connectionLabel(row)}</p>
                           <p className="text-xs">
                             {t("每小时上限", "Hourly limit")}：
-                            {row.rateLimit?.maxPerHour ?? 20} ·{" "}
+                            {row.rateLimit?.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR} ·{" "}
                             {row.rateLimit?.source === "legacy_strictest"
                               ? t(
                                   "旧策略兼容值（可在此统一设置）",
@@ -1770,6 +1655,7 @@ export default function NotificationCenter({
                   )}
                   {tab === "notification-jobs" && (
                     <>
+                      {targetJob&&!loading&&!error&&rows.length===0&&<p role="alert">{lang==='zh'?'未找到对应发送记录，可能已移除或无权查看。':lang==='id'?'Catatan pengiriman tidak ditemukan atau tidak dapat diakses.':'Delivery record not found or unavailable to this account.'}</p>}
                       <div className="max-w-xs">
                         {select(
                           t("发送状态", "Delivery state"),
@@ -1811,6 +1697,9 @@ export default function NotificationCenter({
                               )
                               .map((row) => (
                                 <tr
+                                  id={"notification-job-"+row.id}
+                                  tabIndex={-1}
+                                  data-notification-focused={targetJob===row.id||undefined}
                                   key={row.id}
                                   className={`border-t ${isLight ? "border-slate-200" : "border-slate-800"}`}
                                 >
@@ -2090,6 +1979,6 @@ export function NotificationTopicPanels({topic,enabled=true,...props}:{topic:Tab
 
 /** Same navigation for notification readers without policy-management permission. */
 export function NotificationWorkspace(props:{isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
- const [topic,setTopic]=useState<Tab>('notification-rules');const col=props.lang==='zh'?2:props.lang==='id'?1:0;const current=notificationTopics.find(s=>s.id===topic)!;
+ const [topic,setTopic]=useState<Tab>(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('policyTopic')==='notification-jobs'?'notification-jobs':'notification-rules');const col=props.lang==='zh'?2:props.lang==='id'?1:0;const current=notificationTopics.find(s=>s.id===topic)!;
  return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>setTopic(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><header className="crm-ops-summary"><h2>{current.title[col]}</h2><p>{current.purpose[col]}</p></header><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
 }

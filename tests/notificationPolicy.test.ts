@@ -605,11 +605,15 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             tid,
           ])
         ).rows[0].due_at;
-        assert.equal(
-          (await api("/api/crm/leads/" + lid, { owner: "test-sales" }, "PATCH"))
-            .status,
-          200,
-        );
+        const {platform}=await import('../server/portal/identity.ts');
+        const target=(await platform.employees()).find(e=>e.id==='test-sales')!;
+        const permissions=[...target.permissions];
+        try {
+          target.permissions=[...permissions,'crm.followup'];
+          const transferred=await api('/api/crm/leads/'+lid,{owner:'test-sales',expectedOwner:'test-admin',expectedOwnerChangedAt:null,ownerChangeReason:'TEST transfer preserves original deadline',ownerChangeRequestId:crypto.randomUUID()},'PATCH');
+          assert.equal(transferred.status,200,JSON.stringify(transferred.data));
+        } finally {target.permissions=permissions;}
+
         const task = (
           await pool.query("select * from followup_tasks where id=:p1", [tid])
         ).rows[0];
@@ -659,7 +663,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         await reset();
         const lid=await lead();
         await pool.query("INSERT INTO notification_channels VALUES('qa',:p1) ON DUPLICATE KEY UPDATE config=VALUES(config)",[{mode:'live',secretRef:'TEST_POLICY_LARK'}]);
-        return job(lid,'lark','qa',{},rule({channels:['lark'],retries:[1,5,15],dedupeMinutes:0}));
+        return job(lid,'lark','qa',{notificationPolicyVersion:2},rule({channels:['lark'],retries:[1,5,15],dedupeMinutes:0}));
       };
       const failures=async()=>Number((await pool.query("SELECT COUNT(*) AS n FROM outbox WHERE type='notification.failed'")).rows[0].n);
       const dueNow=async(jid:string)=>pool.query("UPDATE notification_jobs SET due_at=UTC_TIMESTAMP(6)-INTERVAL 1 day WHERE id=:p1",[jid]);
@@ -757,13 +761,14 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           {},
           rule({ channels: ["lark"], businessOnly: true }),
         );
-        const night = new Date("2026-10-12T14:00:00Z");
+        const night = new Date("2030-01-07T14:00:00Z");
+        await pool.query("UPDATE notification_jobs SET due_at=:p2 WHERE id=:p1",[jid,new Date("2030-01-07T13:00:00Z")]);
         await tick(night);
         const row = await state(jid);
         assert.equal(row.state, "pending");
         assert.equal(
           new Date(row.due_at).toISOString(),
-          "2026-10-13T02:00:00.000Z",
+          "2030-01-08T02:00:00.000Z",
         );
       },
     );

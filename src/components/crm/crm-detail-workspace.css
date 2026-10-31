@@ -305,3 +305,7 @@
 .crm-customer-workspace[data-open=true] .crm-work-identity .crm-current-restriction[data-restriction=identity]>svg{display:none}
 
 .crm-customer-workspace[data-open=true] .crm-work-identity .crm-current-stage+.crm-current-restriction[data-restriction=identity]::before{content:"\00b7";color:var(--cw-muted);font-weight:400}
+
+/* Read-only notification targets use the shared keyboard-focus semantic. */
+[data-notification-focused=true]{outline:2px solid var(--admin-focus);outline-offset:3px;scroll-margin-block:24px}
+.crm-notification-task-target{padding:12px;margin-block:8px}

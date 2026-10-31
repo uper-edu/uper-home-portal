@@ -1,3 +1,4 @@
+import {targetUnavailable} from '../../utils/crmNotificationTarget';
 import React, { useState, useEffect } from "react";
 import {
   ArrowDown,
@@ -64,7 +65,7 @@ export function CrmConversationTimeline({
       setSelected(conversationContext.conversationId);
   }, [conversationContext]);
   const activeGroup =
-    groups.find((value) => value.id === selected) || groups[0];
+    groups.find((value) => value.id === selected) || (conversationContext?.conversationId?undefined:groups[0]);
   useEffect(() => {
     if (!activeGroup || !conversationContext) return;
     const message = activeGroup.messages.find((value) =>
@@ -73,19 +74,19 @@ export function CrmConversationTimeline({
         : value.role === "user" &&
           value.request_id === conversationContext.requestId,
     );
-    if (!message) return;
+    if (!message && conversationContext.messageId) return;
     const frame = requestAnimationFrame(() => {
-      const node = document.getElementById("crm-message-" + message.id);
+      const node = document.getElementById(message ? "crm-message-" + message.id : "crm-conversation-"+activeGroup.id);
       node?.scrollIntoView({ block: "center" });
       node?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [activeGroup?.id, conversationContext]);
-  const group = groups.find((value) => value.id === selected) || groups[0];
+  const group = groups.find((value) => value.id === selected) || (conversationContext?.conversationId?undefined:groups[0]);
   if (!group)
     return (
       <p className="crm-work-muted">
-        {t("No conversations recorded", "暂无对话记录")}
+        {conversationContext?.conversationId?targetUnavailable(lang):t("No conversations recorded", "暂无对话记录")}
       </p>
     );
   const fullTime = (message: ConversationMessage) =>
@@ -185,7 +186,7 @@ export function CrmConversationTimeline({
   };
 
   return (
-    <div className="crm-customer-conversations">
+    <div className="crm-customer-conversations" id={"crm-conversation-"+group.id} tabIndex={-1} data-notification-focused={!!conversationContext?.conversationId&&!conversationContext?.messageId||undefined}>
       <header className="crm-conversation-header">
         <div className="crm-conversation-heading">
           <MessageCircle size={18} aria-hidden="true" />
@@ -263,6 +264,7 @@ export function CrmConversationTimeline({
               )}
               <li className="crm-conversation-item" data-role={role}>
                 <article
+                  data-notification-focused={conversationContext?.messageId===message.id||undefined}
                   id={"crm-message-" + message.id}
                   tabIndex={-1}
                   className="crm-conversation-message"

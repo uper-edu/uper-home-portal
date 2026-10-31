@@ -1,3 +1,4 @@
+import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
 import {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
 export {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
 export type Channel = "inapp" | "lark" | "email" | "sms";
@@ -48,10 +49,10 @@ export const defaults: Rule = {
   start: "09:00",
   end: "20:00",
   dedupeMinutes: 15,
-  maxPerHour: 20,
+  maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
   retries: [1, 5, 15],
   template: "{{event}} · {{name}} · {{owner}} · {{due}}",
-  language: "zh",
+  language: LARK_DEFAULT_LANGUAGE,
 };
 const events = [
   "commitment.due",

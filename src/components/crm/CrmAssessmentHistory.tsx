@@ -1,5 +1,6 @@
+import {targetUnavailable} from '../../utils/crmNotificationTarget';
 import { viewerTimeZone } from "../../utils/crmOperatingTime";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
 import { crmAssessmentSummary } from "../../utils/crmAssessment";
 import {
@@ -21,10 +22,12 @@ export function CrmCustomerAssessment({
   lead,
   lang,
   timezone,
+  focusAttempt,
 }: {
   lead: CrmLeadRecord;
   lang: CrmLanguage;
   timezone: string;
+  focusAttempt?:string;
 }) {
   const [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(false),
@@ -53,6 +56,7 @@ export function CrmCustomerAssessment({
   return (
     <CrmAssessmentHistoryContent
       lead={lead}
+      focusAttempt={focusAttempt}
       data={data}
       error={error}
       onRetry={() => setRetry((v) => v + 1)}
@@ -69,6 +73,7 @@ export function CrmAssessmentHistoryContent({
   onRetry,
   lang,
   timezone,
+  focusAttempt,
 }: any) {
   timezone = viewerTimeZone();
   const t = (en: string, id: string, zh: string) =>
@@ -79,6 +84,9 @@ export function CrmAssessmentHistoryContent({
     data?.leadId === lead.id
       ? assessmentHistory(data.attempts, current.latestAssessment)
       : [];
+  const located=useRef<string>('');
+  const exact=focusAttempt?rows.find((r:any)=>r.id===focusAttempt):null;
+  useEffect(()=>{if(!exact||located.current===lead.id+':'+focusAttempt)return;located.current=lead.id+':'+focusAttempt;const frame=requestAnimationFrame(()=>{const node=document.getElementById('crm-assessment-'+exact.id);if(node){(node as HTMLDetailsElement).open=true;node.scrollIntoView({block:'center'});node.focus({preventScroll:true});}});return()=>cancelAnimationFrame(frame);},[data,exact?.id,focusAttempt,lead.id]);
   const differences = assessmentDifferences(rows);
   const flagged = new Set(differences.flatMap((d) => [d.newerId, d.olderId]));
   const crossType = crossTypeConclusionDifference(rows);
@@ -88,6 +96,7 @@ export function CrmAssessmentHistoryContent({
       : t("Not recorded", "Belum dicatat", "未记录");
   return (
     <div className="crm-assessment-history-view">
+      {focusAttempt&&data&&!exact&&!error&&<p role="alert">{targetUnavailable(lang)}</p>}
       {(data || crmAssessmentSummary(current, lang).kind !== "self") && (
         <CrmAssessmentEvidence
           lead={current}
@@ -209,6 +218,9 @@ export function CrmAssessmentHistoryContent({
                 : summary.detail;
               return (
                 <CrmDisclosure
+                  id={"crm-assessment-"+row.id}
+                  tabIndex={-1}
+                  data-notification-focused={exact?.id===row.id||undefined}
                   key={`${lead.id}:${row.id}`}
                   className="crm-assessment-history-entry"
                   hideChevron

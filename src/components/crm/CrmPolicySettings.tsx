@@ -249,7 +249,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [currentMinutesInDay, setCurrentMinutesInDay] = useState(0);
   const [isCurrentlyWorking, setIsCurrentlyWorking] = useState(true);
   // Active section filter or layout mode
-  const [activeCategory, setActiveCategory] = useState<OperationSection>("schedule");
+  const [activeCategory, setActiveCategory] = useState<OperationSection>(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('policyTopic')==='notification-jobs'?'notification-jobs':'schedule');
   const languageIndex = lang === "zh" ? 2 : lang === "id" ? 1 : 0;
   const currentSection = operationSections.find(section=>section.id===activeCategory)!;
   const [showCascadeDiagram, setShowCascadeDiagram] = useState(false);

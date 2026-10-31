@@ -1,3 +1,4 @@
+import {notificationTarget,targetUnavailable} from '../utils/crmNotificationTarget';
 import {identityReviewedDetail} from '../utils/crmIdentityDetail';
 import {CrmEnrollmentCorrectionAccess,CrmEnrollmentCorrectionForm} from '../components/crm/CrmEnrollmentCorrection';
 import {CrmRecordAmendmentForm} from '../components/crm/CrmRecordAmendmentForm';
@@ -229,12 +230,18 @@ function CrmWorkspace({
   const [administrative,setAdministrative]=useState(false);
   const [contactPreview,setContactPreview]=useState(false);
   const [contactPreviewDirty,setContactPreviewDirty]=useState(false);
+  const [digestJob,setDigestJob]=useState(()=>new URLSearchParams(window.location.search).get('digestJob'));
+  const [notificationScope,setNotificationScope]=useState<any>(null);
+  const [notificationFocus,setNotificationFocus]=useState<any>(null);
+  const [noticeNavigation,setNoticeNavigation]=useState(0);
+  const appliedNotice=useRef<number|undefined>(undefined);
+  const notificationPreviousFilters=useRef<LeadFilters|null>(null);
   const [filters, setFilters] = useState<LeadFilters>(() => {try {
     const current=JSON.parse(localStorage.getItem('crm_filters_v3_'+employee.id)||'null');
     const legacy=JSON.parse(localStorage.getItem('crm_filters_v2_'+employee.id)||'null');
-    return restoreLeadFilterPreferences(current,legacy,employee.roles.includes('crm_leader')?'all':employee.scope);
+    const previous=restoreLeadFilterPreferences(current,legacy,employee.roles.includes('crm_leader')?'all':employee.scope);notificationPreviousFilters.current=previous;return new URLSearchParams(window.location.search).has('digestJob')?defaultLeadFilters('all'):previous;
   }catch{return defaultLeadFilters(employee.scope);}});
-  useEffect(()=>{localStorage.setItem('crm_filters_v3_'+employee.id,JSON.stringify({version:3,filters}));},[filters,employee.id]);
+  useEffect(()=>{if(digestJob)return;localStorage.setItem('crm_filters_v3_'+employee.id,JSON.stringify({version:3,filters}));},[filters,employee.id,digestJob]);
   const [accessibleLeadCount,setAccessibleLeadCount]=useState<number|null>(null);
   const [appliedSearch, setAppliedSearch] = useState("");
   const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
@@ -248,7 +255,7 @@ function CrmWorkspace({
   const [pendingListOrder,setPendingListOrder]=useState(false);
   const [newActivity,setNewActivity]=useState<number|null>(null);
   const cursorRef=useRef("");
-  const queryKey = filterQuery({ ...filters, search: appliedSearch }) + "&viewerTimezone=" + encodeURIComponent(filterTimezone);
+  const queryKey = filterQuery({ ...filters, search: appliedSearch }) + "&viewerTimezone=" + encodeURIComponent(filterTimezone)+(digestJob?"&digestJob="+encodeURIComponent(digestJob):"");
   useEffect(() => {
     const timer = setTimeout(
       () => setAppliedSearch(filters.search),
@@ -485,6 +492,9 @@ function CrmWorkspace({
         if(module==="docs"||(module==="policy"&&canManage)){setCrmModule(module);return;}
         setCrmModule("leads");
         setLeadAnalysis(params.get("leadArea") === "analysis");
+        setDigestJob(params.get("digestJob"));
+        if(params.has("target")){setNoticeNavigation(v=>v+1);return;}
+        setNotificationFocus(null);
         const id=params.get("lead");
         if(!id){setSelectedLead(null);setIsDrawerOpen(false);setLeadActionError("");requestAnimationFrame(()=>window.scrollTo({top:params.get("leadArea") === "analysis" ? 0 : leadAnalysis ? analysisListScroll.current : listScroll.current}));return;}
         try{
@@ -528,6 +538,7 @@ function CrmWorkspace({
       list:async(signal,reason)=>{
         const data=await crmJson(`/api/crm/leads?${queryKey}`,signal);
         if(signal.aborted||disposed)return;
+        setNotificationScope(data.notificationScope||null);
         cursorRef.current=data.changeCursor||"";
         setRefreshProblem("");setLastListRefresh(new Date().toISOString());
         setAccessibleLeadCount(Number.isInteger(data.accessibleCount)?data.accessibleCount:null);setOwnerOptions(data.ownerOptions||[]);
@@ -687,27 +698,26 @@ function CrmWorkspace({
     handleOpenLeadDrawer(lead,"activities",true);
     setAdministrative(false);setTaskOperation('progress');setWorkflowTask(undefined);setWorkflowSource(undefined);setIsAddLogOpen(true);
   };
-  // Deep links from notifications fetch only the lead authorized by the server.
+  // Load the customer and exact target through server-scoped read APIs.
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("lead");
-    if (!id) return;
-    let active = true;
-    fetch(`/api/crm/leads/${encodeURIComponent(id)}`)
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw Error(data.error || "Lead unavailable");
-        if (active) {
-          setCrmModule("leads");
-          handleOpenLeadDrawer(data.lead || data, leadDetailTab(new URLSearchParams(window.location.search).get("leadView")),false,true);
-        }
-      })
-      .catch((error) => {
-        if (active) setLeadActionError(error.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    const url=new URL(window.location.href),id=url.searchParams.get('lead');if(!id){setNotificationFocus(null);return;}
+    let active=true;const controller=new AbortController();
+    (async()=>{try{
+      const response=await fetch(`/api/crm/leads/${encodeURIComponent(id)}`,{signal:controller.signal});const data=await response.json();if(!response.ok)throw Error();
+      if(!active||window.location.href!==url.href)return;const customer=data.lead||data;if(customer.id!==id){url.searchParams.set('lead',customer.id);window.history.replaceState({},'',url);}setCrmModule('leads');handleOpenLeadDrawer(customer,leadDetailTab(url.searchParams.get('leadView')),false,true);
+      const target=notificationTarget(url.href);if(!target){setNotificationFocus(null);return;}
+      const r=await fetch(`/api/crm/leads/${encodeURIComponent(customer.id)}/notification-target?kind=${encodeURIComponent(target.kind)}&ref=${encodeURIComponent(target.id)}`,{signal:controller.signal});const found=await r.json();if(!r.ok||found.leadId!==customer.id)throw Error();
+      if(active)setNotificationFocus({...found,token:Date.now()});
+    }catch{if(active)setLeadActionError('NOTIFICATION_TARGET_UNAVAILABLE');}})();
+    return()=>{active=false;controller.abort();};
+  }, [noticeNavigation]);
+  useEffect(()=>{
+    if(!notificationFocus||notificationFocus.leadId!==selectedLead?.id||hasDraft||isSubmittingLog||appliedNotice.current===notificationFocus.token)return;
+    appliedNotice.current=notificationFocus.token;setActiveDrawerTab(leadDetailTab(notificationFocus.tab));writeLeadRoute(selectedLead.id,leadDetailTab(notificationFocus.tab),true);
+    if(notificationFocus.conversationId)setConversationReturn({conversationId:notificationFocus.conversationId,messageId:notificationFocus.messageId});
+    if(notificationFocus.taskId)setTaskFocus({id:notificationFocus.taskId,token:notificationFocus.token});
+    if(notificationFocus.historyId)setHistoryRequest({leadId:selectedLead.id,id:notificationFocus.historyId,token:notificationFocus.token});
+  },[notificationFocus,selectedLead?.id,hasDraft,isSubmittingLog]);
   useEffect(()=>{if(crmModule==="leads"&&isDrawerOpen&&selectedLead)writeLeadRoute(selectedLead.id,activeDrawerTab,true);},[crmModule,isDrawerOpen,selectedLead?.id,activeDrawerTab]);
   // Generate unified Customer Journey & Touch Timeline events
   const journeyTimelineEvents = useMemo(() => {
@@ -1151,6 +1161,7 @@ function CrmWorkspace({
           )}
           {activeDrawerTab === "assessment" && (
             <CrmCustomerAssessment
+              focusAttempt={notificationFocus?.leadId===selectedLead.id?notificationFocus.assessmentId:undefined}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
@@ -1170,7 +1181,7 @@ function CrmWorkspace({
             {!selectedLead.identityReview?.pending&&!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
             {conversationReturn&&<button type="button" className="crm-work-link" onClick={()=>changeCustomerTab("chat")}>{t("Return to conversation","返回对话")}</button>}
             {taskOpening&&<p role="status">{t("Loading task context…","正在加载任务依据…")}</p>}
-            <CrmTrustPanel feedback={<>{workflowNotice?.taskChange&&<CrmSaveFeedback lang={lang} state="saved">{({create:lang==='zh'?'已新增独立任务':lang==='id'?'Tugas terpisah dibuat':'Separate task created',supplement:lang==='zh'?'已补充原任务，期限不变':lang==='id'?'Informasi tugas ditambahkan; tenggat tetap':'Task information added; deadline unchanged',reschedule:lang==='zh'?'已更新执行时间，原期限及历史保留':lang==='id'?'Waktu pelaksanaan diperbarui; tenggat dan riwayat awal tetap':'Execution time updated; original deadline and history retained',replace:lang==='zh'?'已取消选定原任务并建立替代任务，其他任务保留':lang==='id'?'Tugas lama terpilih dibatalkan dan diganti; tugas lain tetap':'Selected task cancelled and replaced; other tasks retained'}as any)[workflowNotice.taskChange]}</CrmSaveFeedback>}
+            <CrmTrustPanel focusAgreement={notificationFocus?.leadId===selectedLead.id?notificationFocus.agreementId:undefined} feedback={<>{workflowNotice?.taskChange&&<CrmSaveFeedback lang={lang} state="saved">{({create:lang==='zh'?'已新增独立任务':lang==='id'?'Tugas terpisah dibuat':'Separate task created',supplement:lang==='zh'?'已补充原任务，期限不变':lang==='id'?'Informasi tugas ditambahkan; tenggat tetap':'Task information added; deadline unchanged',reschedule:lang==='zh'?'已更新执行时间，原期限及历史保留':lang==='id'?'Waktu pelaksanaan diperbarui; tenggat dan riwayat awal tetap':'Execution time updated; original deadline and history retained',replace:lang==='zh'?'已取消选定原任务并建立替代任务，其他任务保留':lang==='id'?'Tugas lama terpilih dibatalkan dan diganti; tugas lain tetap':'Selected task cancelled and replaced; other tasks retained'}as any)[workflowNotice.taskChange]}</CrmSaveFeedback>}
               {workflowNotice?.leadId===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">{typeof workflowNotice.contactRecorded==='boolean' ? progressSaveSummary(workflowNotice,lang) : workflowNotice.cancelled ? (lang==='zh'?'任务已终止':lang==='id'?'Tugas dihentikan':'Task terminated') : workflowNotice.completed ? (lang==='zh'?'首次跟进要求已处理':lang==='id'?'Tindak lanjut pertama diproses':'First follow-up processed') : workflowNotice.contactPlanChange ? ({review_cancelled:lang==='zh'?'复查安排已更新':lang==='id'?'Pengaturan tinjauan diperbarui':'Review arrangement updated',review_scheduled:lang==='zh'?'已安排复查任务':lang==='id'?'Tugas tinjauan dijadwalkan':'Review task scheduled',stopped:lang==='zh'?'已停止主动联系':lang==='id'?'Kontak proaktif dihentikan':'Proactive contact stopped',restored:lang==='zh'?'联系限制已更新':lang==='id'?'Pembatasan kontak diperbarui':'Contact restriction updated'} as any)[workflowNotice.contactPlanChange] : (lang==='zh'?'进展已保存':lang==='id'?'Progres disimpan':'Progress saved')}</CrmSaveFeedback>}{lang==='zh'&&workflowNotice?.profileFieldResults?.length>0&&<p role="status">{profileSaveSummary(workflowNotice.profileFieldResults)}完整结果见最新跟进记录。</p>}</>} onViewStage={openStageEditor}  onViewProfile={openLearningNeeds} onViewAssessment={()=>{setActiveDrawerTab("assessment");writeLeadRoute(selectedLead.id,"assessment");}} sourceFocus={insightSourceFocus?.leadId===selectedLead.id?insightSourceFocus:undefined} recentSourceId={workflowNotice?.leadId===selectedLead.id?workflowNotice.logId:undefined} key={selectedLead.id+trustReset} canEditProfile={canEditLead(selectedLead)} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} timezone={filterTimezone} disabled={!canEditLead(selectedLead,"crm.followup")||taskOpening} onRefresh={()=>{setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}} focusTask={taskFocus} onProcess={(task:any,operation:any)=>openTaskWorkflow(task,selectedLead,false,operation)} onSource={(task:any)=>viewTaskSource(task)}
               command={followupCommand} onRequestEdit={requestFollowupEdit} workflowOpen={false} modalSuspended={Boolean(pendingNavigation)} workflowTask={workflowTask} onIdentity={()=>openIdentityReview(selectedLead.id)} journey={journeyTimelineEvents}
               context={({data,error}:any)=><CrmFollowupContext lead={selectedLead} lang={lang} timezone={filterTimezone} onSource={viewTaskSource} tasks={data?.tasks} facts={data?.facts} requests={data?.requests} taskError={error} onTask={openTaskList}/>}
@@ -1182,12 +1193,15 @@ function CrmWorkspace({
 
         </div>
         {isAddLogOpen && <CrmOperationLayer progress context={`${selectedLead.fullName} · ${leadDisplayNumber(selectedLead)}`} title={lang==='zh'?'记录进展':lang==='id'?'Catat perkembangan':'Record progress'} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>discardDraft()}><CrmWorkflowForm key={selectedLead.id+String(workflowTask)+String(administrative)+taskOperation} canUpdateStage={canEditLead(selectedLead)} operation={taskOperation} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} timezone={filterTimezone} initialDraft={draftCache.current[selectedLead.id]} onDraft={(draft:any)=>{draftCache.current[selectedLead.id]=draft;}} administrative={administrative} workCalendar={policyConfig.businessHours} selectedTask={workflowTask} sourceMessage={workflowSource} onDirty={setWorkflowDirty} onBusy={setIsSubmittingLog} onCancel={()=>discardDraft()} onSaved={async(data:any,next:boolean)=>{setStageNotice(null);delete draftCache.current[selectedLead.id];if(retainedDraft?.id===selectedLead.id)setRetainedDraft(null);const candidates=filteredLeads.slice(filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+1);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setSelectedLead((current:any)=>current?.id===selectedLead.id?({...current,...data.lead,attention:{...current.attention,tasks:(current.attention?.tasks||[]).filter((task:any)=>!data.completedTaskIds.includes(task.id)&&!(data.cancelledTaskIds||[]).includes(task.id))}}):current);setDetailRefreshVersion(v=>v+1);setIsAddLogOpen(false);setActiveDrawerTab("activities");writeLeadRoute(selectedLead.id,"activities",true);setWorkflowNotice({leadId:selectedLead.id,logId:data.logId,profileFieldResults:data.profileFieldResults,cancelled:data.cancelledTaskIds?.length||0,completed:data.completedTaskIds.length,completedNames:data.completedTaskIds.map((id:string)=>{const task=(selectedLead.attention?.tasks||[]).find((task:any)=>task.id===id);return task?describeFollowUpTask(task,lang,filterTimezone).action:id;}).join("；"),contactPlanChange:data.contactPlanChange,contactRecorded:data.contactRecorded,agreementChange:data.agreementChange,stageUpdated:data.stageUpdated,stageUpdatePending:data.stageUpdatePending,kept:data.lead?.followUpDisposition?.kind==="keep",created:Boolean(data.createdTaskId),recordOnly:data.recordOnly,requestCount:data.handledRequestIds?.length||0,taskChange:data.taskChange?.command});fetchLeads(true);if(next){for(const candidate of candidates){const access=await fetch(`/api/crm/leads/${candidate.id}/tasks`);if([403,404].includes(access.status))continue;if(!access.ok){setLeadActionError(lang==='zh'?'记录已保存，下一位暂不可加载':lang==='id'?'Catatan disimpan; pelanggan berikutnya belum tersedia':'Record saved; next customer unavailable');return;}handleOpenLeadDrawer(candidate,'activities',true);return;}setIsDrawerOpen(false);setSelectedLead(null);writeLeadRoute();setQueueComplete(true);}}}/></CrmOperationLayer>}
+        {notificationFocus?.leadId===selectedLead.id&&notificationFocus.submission&&<CrmOperationLayer history title={lang==='zh'?'官网咨询原文':lang==='id'?'Pesan asli formulir situs':'Original website inquiry'} context={selectedLead.fullName} lang={lang} isLight={isLight} onClose={()=>setNotificationFocus(null)}><p className="crm-progress-original">{notificationFocus.submission.original||targetUnavailable(lang)}</p><p className="crm-work-muted">{formatCrmEventTime(notificationFocus.submission.recordedAt)}</p></CrmOperationLayer>}
         {ownerOpen&&<CrmOperationLayer compose title={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} context={selectedLead.fullName} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>{const close=()=>{setOwnerOpen(false);setOwnerDirty(false);};if(discardDraft(close))close();}}><CrmOwnerEditor lead={selectedLead} directory={salesEmployees} lang={lang} isLight={isLight} onDirty={setOwnerDirty} onBusy={setIsSubmittingLog} onSaved={(lead:any)=>{setOwnerDirty(false);setOwnerOpen(false);setSelectedLead((v:any)=>v?.id===lead.id?{...v,...lead}:v);setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}}/></CrmOperationLayer>}
         {stageOpen&&<CrmOperationLayer compose context={`${selectedLead.fullName} · ${leadDisplayNumber(selectedLead)}`} title={lang==='zh'?'更新销售阶段':lang==='id'?'Perbarui tahap penjualan':'Update sales stage'} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={closeStageEditor}><CrmStageEditor inDrawer initialBasisId={stageBasis} key={selectedLead.id+trustReset} onClose={closeStageEditor} onDirty={setStageDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} disabled={!canEditLead(selectedLead)} onSaved={(updated:any)=>{setStageDirty(false);setStageOpen(false);setStageNotice({leadId:updated.id,text:t('Sales stage updated to ','销售阶段已更新为')+crmValue(updated.currentStage,lang)});setDetailRefreshVersion(v=>v+1);requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('[data-crm-stage-trigger]')?.focus({preventScroll:true}));setSelectedLead((v:any)=>v?.id===updated.id?{...v,...updated}:v);void fetchLeads(true);}}/></CrmOperationLayer>}
         {contactPreview&&<CrmOperationLayer compose context={`${selectedLead.fullName} · ${leadDisplayNumber(selectedLead)}`} title={lang==='zh'?'准备联系':lang==='id'?'Siapkan kontak':'Prepare contact'} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>discardDraft()}><CrmContactPreview inLayer onRequestClose={()=>discardDraft()} onBusy={setIsSubmittingLog} key={"contact-preview-"+selectedLead.id} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} onDirty={setContactPreviewDirty} onClose={()=>{setContactPreview(false);setContactPreviewDirty(false);}} onUpdated={(lead:any)=>{setSelectedLead(lead);void fetchLeads(true);}}/></CrmOperationLayer>}
       </section>
     ) : null;
-  const leadFilterControls = (
+  const leadFilterControls = (<>
+    {notificationScope&&<p role="status" className="crm-work-muted">{lang==='zh'?'通知统计范围':lang==='id'?'Cakupan ringkasan notifikasi':'Notification summary scope'} · {notificationScope.date} · {notificationScope.timezone} <button type="button" className="crm-work-link" onClick={()=>{const u=new URL(window.location.href);u.searchParams.delete('digestJob');window.history.replaceState({},'',u);setDigestJob(null);setNotificationScope(null);setFilters(notificationPreviousFilters.current||defaultLeadFilters('all'));}}>{lang==='zh'?'清除通知范围':lang==='id'?'Hapus cakupan':'Clear notification scope'}</button></p>}
+
             <CrmLeadFilters
               analysis={leadAnalysis}
               compact={Boolean(leadPanel)}
@@ -1213,7 +1227,7 @@ function CrmWorkspace({
               viewMode={viewMode}
               onViewMode={handleSetViewMode}
             />
-  );
+  </>);
   return (
     <CrmEnrollmentCorrectionAccess.Provider value={{open:selectedLead&&canEditLead(selectedLead)?(id:string)=>{setHistoryAmendNotice('');setEnrollmentTarget(id)}:undefined}}><CrmHistoryAccess.Provider value={openCustomerHistory}><div
       data-admin-workspace="crm" data-theme={isLight ? "light" : "dark"}
@@ -1332,7 +1346,7 @@ function CrmWorkspace({
               {pendingListOrder&&<button className="crm-work-button" onClick={()=>void fetchLeads()}>{adminText(lang,'Update order','Perbarui urutan','更新排序')}</button>}
               {refreshProblem&&<><span> · {refreshProblem==='timeout'||refreshProblem==='changes-timeout'?adminText(lang,'Refresh timed out. Displayed data may be outdated.','Pembaruan melewati batas waktu. Data yang ditampilkan mungkin belum terbaru.','刷新超时，已显示数据可能不是最新。'):refreshProblem==='unauthorized'?adminText(lang,'Access changed. Sign in again.','Akses berubah. Silakan masuk kembali.','访问权限已变化，请重新登录。'):adminText(lang,'Refresh unavailable. Displayed data may be outdated.','Pembaruan gagal. Data yang ditampilkan mungkin belum terbaru.','刷新失败，当前显示上次成功加载的数据。')}</span><button disabled={isLoading||refreshProblem==='unauthorized'} className="crm-work-button" onClick={()=>void fetchLeads()}>{adminText(lang,'Retry','Coba lagi','重试')}</button></>}
             </div>}
-            {leadActionError && (
+            {leadActionError && !leadPanel && (
               <p role="alert" className="text-xs text-rose-500">
                 {crmError(leadActionError, lang)}
               </p>

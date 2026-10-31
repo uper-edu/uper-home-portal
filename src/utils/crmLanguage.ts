@@ -1,3 +1,4 @@
+import {targetUnavailable} from './crmNotificationTarget';
 import {isSalesProgressStage,progressLabel} from './crmSalesProgress';
 import {outreachText} from './crmOutreach';
 import {trustError} from "./crmTrustLanguage";
@@ -160,6 +161,7 @@ export function crmValue(value: string | null | undefined, lang: CrmLanguage) {
 /** Current-state display only; historical milestone labels keep their original meaning. */
 export function crmStageValue(value:any,lang:CrmLanguage){return value&&!isSalesProgressStage(value)?(lang==='zh'?'阶段待确认（原：'+crmValue(value,lang)+'）':lang==='id'?'Tahap perlu dikonfirmasi (lama: '+crmValue(value,lang)+')':'Stage needs confirmation (previous: '+crmValue(value,lang)+')'):crmValue(value,lang);}
 export function crmError(message: string, lang: CrmLanguage) {
+  if(message==='NOTIFICATION_TARGET_UNAVAILABLE')return targetUnavailable(lang);
   if(/^(IDENTITY_|CONTACT_|SELF_CLAIM_DISABLED|OWNER_MANAGER_REQUIRED|CLAIM_BEFORE_CONTACT)/.test(message))return outreachText(message,lang);
   const campaignErrors: Record<string, [string, string, string]> = {
     campaign_name_required: ["Enter a campaign name.", "Masukkan nama kampanye.", "请输入活动名称。"],

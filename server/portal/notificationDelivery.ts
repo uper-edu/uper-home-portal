@@ -1,4 +1,9 @@
+import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
+import {larkNotificationColor} from '../../src/utils/larkNotificationColors.ts';
+import {notificationDestination,type NotificationTargetKind} from '../../src/utils/crmNotificationTarget.ts';
 import crypto from "node:crypto";
+import {dailyDigestPreview,type DailyDigestInput} from '../../src/utils/larkDailyDigest.ts';
+import {larkNotificationPreview,type LarkCardInput} from '../../src/utils/larkNotificationPresentation.ts';
 import { permittedRecord } from "../../src/utils/accessControl.ts";
 import { allowed, type Employee } from "./identity.ts";
 import type { Rule } from "./policy.ts";
@@ -118,15 +123,18 @@ export function larkCard(
   leadId: string | undefined,
   secret: string | undefined,
   now: Date,
+  target?:{kind:NotificationTargetKind;id:string},
+  event='',
 ) {
   const url = new URL("/crm", process.env.APP_URL || "http://localhost:3000");
   if (leadId) url.searchParams.set("lead", leadId);
+  if(target&&leadId)url.href=notificationDestination(url.origin,leadId,target).href;
   const body: any = {
     msg_type: "interactive",
     card: {
       config: { wide_screen_mode: true },
       header: {
-        template: "blue",
+        template: larkNotificationColor(event).template,
         title: {
           tag: "plain_text",
           content:
@@ -160,6 +168,42 @@ export function larkCard(
       .update("")
       .digest("base64");
   }
+  return body;
+}
+
+/** Shared by the worker and explicitly authorized live template acceptance. */
+export function standardLarkCard(input:LarkCardInput,leadId:string|undefined,secret:string|undefined,now:Date){
+  const preview=larkNotificationPreview({...input,asOf:now.toISOString()});
+  const body=larkCard('',leadId,secret,now,input.target,input.kind);
+  body.card.header.template=larkNotificationColor(input.kind,input.failure).template;
+  if(leadId&&!input.target){const fallback=new URL(body.card.elements[1].actions[0].url);fallback.searchParams.set('tab','leads');fallback.searchParams.set('leadView',input.kind==='assessment.completed'?'assessment':input.kind==='lead.created'?'profile':['ai.failed','conversation.reactivated'].includes(input.kind)?'chat':'activities');body.card.elements[1].actions[0].url=fallback.toString();}
+  body.card.header.title.content+=' · '+preview.title;
+  body.card.elements[0]={tag:'div',text:{tag:'plain_text',content:[...preview.rows.map(row=>row.label+(input.language==='zh'?'：':': ')+row.value),...(preview.note?[preview.note]:[])].join('\n')}};
+  const buttonLabels:Record<string,[string,string,string]>={
+    'lead.created':input.target?['查看登记依据','View registration source','Lihat sumber pendaftaran']:['查看客户资料','View customer profile','Lihat profil pelanggan'],
+    'assessment.completed':input.target?['查看本次测评','View this assessment','Lihat asesmen ini']:['查看测评页','View assessments','Lihat asesmen'],
+    'handoff.requested':input.target?['查看请求依据','View request evidence','Lihat bukti permintaan']:['查看客户','View customer','Lihat pelanggan'],
+    'booking.requested':input.target?['查看请求依据','View request evidence','Lihat bukti permintaan']:['查看客户','View customer','Lihat pelanggan'],
+    'enrollment.requested':input.target?['查看请求依据','View request evidence','Lihat bukti permintaan']:['查看客户','View customer','Lihat pelanggan'],
+    'conversation.reactivated':input.target?['查看本次会话','View this conversation','Lihat percakapan ini']:['查看客户对话','View conversations','Lihat percakapan'],
+    'task.overdue':input.target?['查看联系要求','View contact requirement','Lihat kewajiban kontak']:['查看客户','View customer','Lihat pelanggan']};
+  const labels=buttonLabels[input.kind];body.card.elements[1].actions[0].text.content=labels?labels[input.language==='zh'?0:input.language==='id'?2:1]:input.language==='zh'?'查看客户':input.language==='id'?'Lihat pelanggan':'View customer';
+  if(input.kind==='notification.failed'||input.kind==='ai.failed'){
+    const url=new URL('/crm',process.env.APP_URL||'http://localhost:3000');
+    if(input.kind==='ai.failed'&&leadId){url.href=notificationDestination(url.origin,leadId,input.target).href;url.searchParams.set('tab','leads');url.searchParams.set('lead',leadId);url.searchParams.set('leadView','chat');}
+    else {url.searchParams.set('tab','policy');url.searchParams.set('policyTopic','notification-jobs');if(input.jobId)url.searchParams.set('job',input.jobId);}
+    body.card.elements[1].actions[0].url=url.toString();
+    body.card.elements[1].actions[0].text.content=input.kind==='ai.failed'&&leadId?(input.target?(input.language==='zh'?'查看失败回复':input.language==='id'?'Lihat balasan gagal':'View failed reply'):(input.language==='zh'?'查看客户对话':input.language==='id'?'Lihat percakapan':'View conversation')):(input.language==='zh'?'查看发送记录':input.language==='id'?'Lihat catatan pengiriman':'View delivery record');
+  }
+  return body;
+}
+
+export function dailyDigestCard(input:DailyDigestInput,secret:string|undefined,now:Date){
+  const preview=dailyDigestPreview(input),body=larkCard('',undefined,secret,now,undefined,'daily.digest');
+  body.card.header.title.content+=' · '+preview.title;
+  body.card.elements[0]={tag:'div',text:{tag:'plain_text',content:[...preview.rows.map(r=>r.label+(input.language==='zh'?'：':': ')+r.value),preview.note].join('\n')}};
+  body.card.elements[1].actions[0].text.content=input.language==='zh'?'查看客户列表':input.language==='id'?'Lihat daftar pelanggan':'View customer list';
+  if(input.jobId){const url=new URL(body.card.elements[1].actions[0].url);url.searchParams.set('tab','leads');url.searchParams.set('digestJob',input.jobId);body.card.elements[1].actions[0].url=url.toString();}
   return body;
 }
 
@@ -216,7 +260,7 @@ export async function groupRateLimit(
     .map((r: any) => r.value)
     .filter((v: any) => Number.isInteger(v) && v >= 0 && v <= 10080);
   return {
-    maxPerHour: limits.length ? Math.min(...limits) : 20,
+    maxPerHour: limits.length ? Math.min(...limits) : LARK_DEFAULT_MAX_PER_HOUR,
     source: limits.length ? "legacy_strictest" : "default",
   };
 }

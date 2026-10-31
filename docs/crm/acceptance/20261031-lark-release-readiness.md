@@ -1,0 +1,92 @@
+# Lark通知发布前收口 — 2026-10-31
+
+本报告只覆盖通知卡片、颜色、来源、排期版本边界及精准按钮定位。未授权GitHub推送、服务器部署、恢复普通worker或启用每日规则。旧记录不回放，业务数据、账号、权限与配置保留。
+
+## 发布范围
+
+冻结基线：`4c207d8c967bbec242eb3c58b1da2bd1635fd2d7`。发布候选仅包含通知源代码、共享定位组件、通知文档及对应测试；私有逐文件哈希清单在`.local-backups/lark-release-ready-20261031/allowlist.json`。
+
+排除：营销／WhatsApp手册与导航、LinkHub及站点元信息／sitemap、历史需求文档重构、其他并行测试修订、全部运行记录、环境文件、备份、日志与输出。共享SQL查询目录从冻结源码重新生成，不携带其他并行查询。冻结副本仅供本地构建验证，不是Git提交或已部署版本。
+
+## 已补齐验收
+
+- 真实模拟Sales、其他Sales、CMS与CRM管理者分别验证未登录401、无能力403、跨客户404；不返回其他客户的来源。
+- 两次中文登录恢复：失败回复与管理者发送记录保持原URL目标，自动聚焦。未登录不清空target参数。现有3000员工会话不退出。
+- 删除模拟来源后404；页面明确说明“无法定位…已移除或无权查看”，只显示一次，不用最新消息代替。收口时发现并修复了原提示被通用错误吞掉及重复显示的问题。
+- 失败回复定位确切消息，客户约定定位确切ID并保留仅日期精度；发送记录在205条更新记录之外仍按jobId准确读取及聚焦。
+- 每日汇总使用原日期2030-01-06与Asia/Jakarta运营时区；模拟Sales只见1位、管理者见2位，排除其他日期；进入详情返回仍保留范围，清除后回到普通列表。未启用每日规则。
+- 本轮授权临时环境全部为新建模拟数据／账号，外发拦截。接口验收16项通过；通知流程与定位隔离套件9项通过；通知取消／历史保护及约定故障回滚隔离套件31项通过。
+- 首次英文初始页切换中文并立即登录时曾出现一次removeChild页面中断；刷新后原目标恢复。随后纯中文Sales登录与Manager登录均无需刷新成功。没有足够证据认定根因或声称已修复此偶发现象；它不属于本次通知改动，保留观察项，严禁将其归因于浏览器翻译而无证据。
+
+## 实发边界
+
+蓝色及请求精准按钮已在前轮原CRM Bot群实收及实际点击验证。本轮4条新视觉TEST分别覆盖逾期橙、明确失败红、发送结果待核实橙、每日汇总灰；只验颜色／排版，明确注明无业务事件，无对应真实来源所以不附误导性按钮。接口均code0接受；用户已逐项人工确认“全部收到，颜色和文字正常”。本项实收／视觉结论来自用户确认，代理桌面工具因锁屏未能独立截图，不用接口回执代替实收。
+
+测评仍按先前授权的既定时间：2026-11-01 18:00 Asia/Jakarta（温哥华11月1日03:00，UTC11:00）。不提前发送、不新增自动化、不改变原排期。既有3条待发送TEST已补齐确切测评编号及已存储的模拟客户测评结果，三语渲染与青色标题、单次测评链接均通过；原ID、状态、发送时间和既有自动化不变，已发送记录未改。到期实收仍未完成。
+
+## 默认跳过测试的影响
+
+默认完整回归的22项跳过是隔离数据库开关未启用，不等于通过。下表列出全部条目；本轮另外运行的套件单独计数，不能将整套默认结果改写为零跳过。
+
+|默认跳过项|本次处理／影响|
+|---|---|
+|历史备份恢复|本次不改备份格式／恢复路径，不作为通知发布阻断；原有能力未重验|
+|活动预算API|不改预算，范围外|
+|活动删除保护|不改删除事务，范围外|
+|推广MySQL验收|不改推广流程，范围外|
+|活动保存MySQL验收|不改活动保存，范围外|
+|来源复核MySQL场景|不改来源复核事务，范围外|
+|活动工作区HTTP验收|不改活动工作区，范围外|
+|AI提供商持久化故障切换|不改模型切换，范围外；只验证失败通知及精确失败消息落点|
+|747客户约定恢复|本轮隔离重跑通过，含失败回滚|
+|原生活动空库存|不改活动初始化，范围外|
+|互动时间线持久化|不改时间线计算／记录事务，范围外|
+|保存结果并发及撤权|不改保存事务，范围外；新只读定位撤权／越权另验|
+|身份／联系事务|不改身份／外呼规则，范围外|
+|策略恢复|不改恢复接口，范围外|
+|主题独立保存|不改保存机制，范围外；预览未保存，配置保护哈希另验|
+|P0身份与回滚|不改身份合并，范围外；合并后精确来源查询另验|
+|Lark V2流程|本轮隔离重跑通过，含新旧版本排期、去重及缺失依据拒绝|
+|通知MySQL取消|本轮隔离重跑通过|
+|通知精准目标|本轮隔离重跑通过，含真实角色／缺失／合并／旧测评／请求原文|
+|657访客隔离|不改访客会话／提交机制，范围外|
+|推广复核事务|不改推广复核，范围外|
+|问卷提交回执|不改提交回执，范围外|
+
+## 发布门槛
+
+1. 冻结版本的完整测试、类型检查、开发及测试构建和差异检查完成，来源文件哈希一致。
+2. 临时测试接口关闭、隔离库及临时数据库用户清理，3000保护表哈希不变。
+3. 对实发未验、既定测评排期与偶发页面中断如实保留结论。若要求全部实收通过，需等客户端核对和测评到期，不能提前宣称完成。
+4. 后续发布须单独授权；发布时普通worker维持暂停、每日规则保持停用。不得依赖进程重启默认值，发布启动前核实暂停参数及队列，恢复另行确认。
+
+## 本次收口结果
+
+- 当前工作区默认全量：1413项，1391通过、0失败、22跳过（修正最终提示前的工作区基线）。
+- 排除并行改动后的最终通知冻结候选：1404项，1383通过、0失败、21跳过。与工作区相差的用例属于排除的并行文档／历史恢复测试修订，不是漏掉通知测试。
+- 最终冻结候选另行运行相关隔离套件：40项通过、0失败、0跳过；只读API及记录删除等补验16项通过。不能将这些计数与默认套件简单相加当作去重总数。
+- 类型检查、开发构建、测试构建及差异检查通过。初始冻结测试曾因缺少私有临时夹具目录而出现3项ENOENT；补齐夹具目录后重新完整运行，最终0失败。未用跳过掩盖。
+- 已在3000实际复测缺失目标：准确说明已移除／无权查看，且仅出现一次；测试未创建客户或业务事件。
+- 隔离接口已关闭，隔离库及数据库用户清理已验证；共享测试MySQL服务保持原状。保护表计数哈希全部一致。
+
+仍不可声称“全部发布验收通过”：
+
+1. 4条视觉TEST已由用户人工确认实收、颜色和文字正常；桌面工具锁屏限制使代理未能独立截图。没有重复发送。
+2. 三语测评TEST仍待11月1日既定排期；未提前执行，也未新建自动化。待发送样稿已补齐准确target及存储结果，并完成三语渲染核对。实际实收和点击仍需到期验收，不能提前宣称完成。
+3. 首次语言切换登录发生过一次DOM中断，后续纯中文两种角色登录未复现，原URL恢复无丢失。作为观察问题保留，不能写成已修复或归因已定。
+
+本次完成所有可即时执行的源码／范围／测试／隔离与3000验收准备；上述受客户端工具和既定时间约束的项目保留明确待验收，不应改写为完成。后续GitHub同步和测试发布尚未授权执行。启动参数必须维持普通worker暂停、每日规则停用；恢复发送须独立确认。
+
+发布准备结论：所有可即时执行的必要代码、发布范围、正反测试和清理均已完成；颜色实收已获用户确认。尚未到时的测评实收是唯一待时间条件的通知验收项，另保留一次未复现的页面中断观察。现有自动化继续按原授权和原时间执行，本轮无新增未来自动化。
+
+## Subsequent defaults update
+
+User subsequently requested English and100/hour as new-configuration defaults. Shared defaults, server policy defaults, new-policy/new-channel forms and empty-config rate fallback now agree. Existing explicit values and all persisted configuration remain unchanged. Local3000 verified a new Lark policy starts at English with an English preview; new channel hourly field starts at100; verification drafts were discarded, not saved. Default unit checks and the related notification tests passed (29 related passed with2 isolation-only skips, plus1 default test); typecheck/build/diff checks passed. No real sends or queue replay.
+
+The40-file frozen release candidate above predates this subsequent source change and is superseded for publication. A later sync/release must include `server/portal/policy.ts`, `src/utils/larkNotificationDefaults.ts`, `tests/larkDefaults.test.ts` and the updated shared notification files/docs, then refresh the freeze and final checks. Do not publish the older frozen package while claiming it contains the new defaults.
+
+## Authorized test release
+
+The user explicitly authorized canonical GitHub main sync and company-test deployment without waiting for scheduled assessment receipt. The release retains remote main0572ff0 and its parallel LinkHub/docs work. Allowlisted changes merged cleanly. Final npm test:1415 tests,1393 passed,0 failed,22 skipped. npm run lint, npm run build and diff checks passed. English/100 per hour defaults are included. The Chinese-content integration fixture now explicitly selects zh rather than relying on the changed default.
+
+Preflight found the test worker enabled. The user explicitly approved pausing only the deployed test process; database/rules/channels/original.env.test are preserved. The standard deployment skill uses the established home same-origin adapter; generated compose adds the approved runtime override PORTAL_WORKER_ENABLED=false. No daily activation, production deployment or history replay. Backups, receipts, protected comparisons and browser evidence remain private.

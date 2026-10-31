@@ -1,3 +1,6 @@
+import {resolveNotificationTarget,digestTargetScope,matchesDigestTarget} from './notificationTarget.ts';
+import {notificationTargetKinds} from '../../src/utils/crmNotificationTarget.ts';
+import {scheduleNotification,scheduleLarkV2} from './larkNotificationV2.ts';
 import {registrationFingerprint,registrationSubmissionId,registrationReceiptKey,publicRegistrationProfile} from './registrationReceipt.ts';
 import {bookingRequestSuppressed} from '../../src/utils/chatRequestIntent.ts';
 import {attachIdentityContactHolds,canonicalIdentity,assertIdentitySalesAllowed,lockIdentityRegistry,projectIdentityProfiles,identityProjectionRows} from './identityConsolidation.ts';
@@ -383,7 +386,7 @@ export async function mountPortal(app: Express) {
             !last ||
             Date.now() - new Date(last.updated_at).getTime() > 86400000
           )
-            await event(c, "conversation.reactivated", v.lead_id, { source });
+            await event(c, "conversation.reactivated", v.lead_id, { source,conversationId:row.id });
         }
         return row;
       });
@@ -581,6 +584,7 @@ export async function mountPortal(app: Express) {
         );
         await event(c, "lead.created", leadId, {
           source: b.entryPoint || "homepage_widget",
+          questionnaireFactId,
           taskId,
           sla: snapshot,
         });
@@ -785,7 +789,9 @@ export async function mountPortal(app: Express) {
     wrap(async (req, res) => {
       const e = await staff(req);
       const changes = await leadChanges(pool,e);
-      const leads = await visibleLeadProfiles(e);
+      let leads = await visibleLeadProfiles(e);
+      let notificationScope:any=null;
+      if(req.query.digestJob){notificationScope=await digestTargetScope(pool,String(req.query.digestJob));if(!notificationScope)fail(404,'Notification scope unavailable');const rows=(await pool.query("SELECT id,profile,created_at FROM portal_leads")).rows;const ids=new Set(rows.filter(r=>matchesDigestTarget(r.profile,r.created_at,notificationScope)).map(r=>r.id));leads=leads.filter(l=>ids.has(l.id));}
       let filters;
       try {
         filters = parseLeadFilters(req.query);
@@ -819,6 +825,7 @@ export async function mountPortal(app: Express) {
       );
       res.json({
         ...result,
+        notificationScope,
         accessibleCount: leads.length,
         changeCursor: changes.cursor,
         processMetrics: processMetrics(result.leads, now),
@@ -843,6 +850,11 @@ export async function mountPortal(app: Express) {
       );
     }),
   );
+  app.get('/api/crm/leads/:id/notification-target',wrap(async(req,res)=>{
+    const {l}=await leadAccess(req);const kind=String(req.query.kind||''),ref=String(req.query.ref||'');
+    if(!notificationTargetKinds.includes(kind as any)||!ref||ref.length>191)fail(400,'Invalid notification target');
+    const target=await resolveNotificationTarget(pool,l.id,kind,ref);if(!target)fail(404,'Notification target unavailable');res.json({leadId:l.id,...target});
+  }));
   app.get(
     "/api/crm/leads/:id",
     wrap(async (req, res) => {
@@ -1340,12 +1352,13 @@ export async function mountPortal(app: Express) {
         calendar: globalWorkCalendar(calendar),
         sendAt: config.channels.map((channel: string) => ({
           channel,
-          at: schedule(
-            eventTime,
+          at: scheduleNotification(
+            channel==='lark' && config.event==='daily.digest' ? scheduleLarkV2(at,{...effective,timing:'digest',quiet:undefined}) : eventTime,
             config.event === "daily.digest"
               ? { ...effective, timing: "immediate" }
               : effective,
             channel as any,
+            {notificationPolicyVersion:2},
           ),
         })),
         simulation: true,
@@ -1446,7 +1459,8 @@ export async function mountPortal(app: Express) {
       res.json(
         (
           await pool.query(
-            "SELECT j.*,EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) AS historicalHold FROM notification_jobs j ORDER BY due_at DESC LIMIT 200",
+            "SELECT j.*,EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) AS historicalHold FROM notification_jobs j WHERE (:p1 IS NULL OR j.id=:p1) ORDER BY due_at DESC LIMIT 200",
+            [typeof req.query.job==='string'?req.query.job:null],
           )
         ).rows,
       );

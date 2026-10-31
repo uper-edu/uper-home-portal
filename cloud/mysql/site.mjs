@@ -103,7 +103,7 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
       const existingTask=(await c.query("SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' FOR UPDATE",[leadId])).rows[0];let taskId=existingTask?.id;
       if(!taskId&&!old){taskId=id();const settings=(await c.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0].value;const {due}=taskDeadline(profile,'consultation',settings);await c.query("INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,details) VALUES(:p1,:p2,'consultation',:p3,:p4,:p5)",[taskId,leadId,profile.owner||null,due,{source:'contact_form',submissionId}]);}
       await c.query("INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'inquiry',:p2,:p3,:p4,:p5,:p6)",[submissionId,key,hash,v.id,leadId,input]);
-      await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,:p2,:p3,:p4)",[id(),old?'conversation.updated':'lead.created',leadId,{source:'contact_form',taskId,submissionId}]);
+      await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,:p2,:p3,:p4)",[id(),old?'conversation.updated':'lead.created',leadId,{source:'contact_form',taskId,submissionId,notificationPolicyVersion:2}]);
       return {id:submissionId,leadId};
     });r.json({success:true,saved:true,...result,emailSent:false});
   }));

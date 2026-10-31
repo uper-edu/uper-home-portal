@@ -6,12 +6,18 @@ import {settleNoResponse} from "./noResponse.ts";
 import { restoreState } from "./accessRecoveryState.ts";
 import { retryLeaseRecovery } from "./notificationLeaseRecovery.ts";
 import { contactPaused } from "../../src/utils/crmContact.ts";
+import {scheduleNotification,digestChannelAllowed,larkEventSource,larkFailureSource} from './larkNotificationV2.ts';
+import {standardLarkKinds,type LarkCardInput} from '../../src/utils/larkNotificationPresentation.ts';
+import {notificationDeadlineStatus} from '../../src/utils/larkNotificationContent.ts';
+import {assessmentOccurrence} from './factMilestones.ts';
 import {
   recipients,
   priority,
   retryAfter,
   validWebhook,
   larkCard,
+  standardLarkCard,
+  dailyDigestCard,
   groupRateLimit,
   resolveRecipients,
 } from "./notificationDelivery.ts";
@@ -47,7 +53,7 @@ export async function tick(clock = new Date()) {
         timeZone: digestRule.timezone,
       }).format(clock);
       const l = local(clock, digestRule);
-      if (digestRule.days.includes(l.day) && l.time >= digestRule.digestTime) {
+      if ((digestRule.days.includes(l.day) || digestRule.channels.includes('lark')) && l.time >= digestRule.digestTime) {
         const counts = (
           await c.dailyStageCounts([
             null,
@@ -62,7 +68,7 @@ export async function tick(clock = new Date()) {
           "INSERT INTO outbox(id,type,payload,created_at) VALUES(:p1,'daily.digest',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
           [
             "digest-" + row.id + "-" + today,
-            { date: today, ruleId: row.id, counts },
+            { date: today, ruleId: row.id, counts, scope:{date:today,timezone:digestRule.timezone,tiers:digestRule.tiers,states:digestRule.states,sources:digestRule.sources}, notificationPolicyVersion:2, inappDigestAllowed:digestRule.days.includes(l.day) },
             clock,
           ],
         );
@@ -85,7 +91,7 @@ export async function tick(clock = new Date()) {
     for(const row of agreements)for(const v of row.profile.commitments||[]){
       const date=new Intl.DateTimeFormat('en-CA',{timeZone:v.timezone||'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(clock);
       if(v.status!=='active'||v.reminderSuppressed||!(v.at?Date.parse(v.at)<=clock.getTime():v.date&&v.date<=date))continue;
-      await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'commitment.due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",['commitment:'+v.id,row.id,{commitmentId:v.id,action:v.action,agreedAt:v.at||v.date,internalOnly:row.profile.contactArrangement?.state==='stopped'}]);
+      await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'commitment.due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",['commitment:'+v.id,row.id,{commitmentId:v.id,action:v.action,agreedAt:v.at||v.date,internalOnly:row.profile.contactArrangement?.state==='stopped',notificationPolicyVersion:2}]);
     }
     const events = (
       await c.query(
@@ -159,6 +165,7 @@ export async function tick(clock = new Date()) {
           : ev.type!=='daily.digest' && r.states.length && !r.states.includes(lead?.currentStage) ? 'stage_mismatch' : '';
         if(excluded){exclusions.push({ruleId:rule.id,reason:excluded});continue;}
         for (const channel of r.channels) {
+          if(ev.type==='daily.digest' && !digestChannelAllowed(channel,ev.payload))continue;
           const route =
             channel === "inapp"
               ? resolveRecipients(r, lead, employees, ev.lead_id)
@@ -188,13 +195,7 @@ export async function tick(clock = new Date()) {
                 rule.version,
                 channel,
                 recipient,
-                schedule(
-                  new Date(ev.created_at),
-                  ev.type === "daily.digest"
-                    ? { ...effective, timing: "immediate" }
-                    : effective,
-                  channel,
-                ),
+                scheduleNotification(new Date(ev.created_at),ev.type==='daily.digest'?{...effective,timing:'immediate'}:effective,channel,ev.payload),
                 {
                   routingReason: route?.reason,
                   priority: priority(ev.type, ev.payload, lead),
@@ -206,6 +207,7 @@ export async function tick(clock = new Date()) {
                   },
                   rule: r,
                   event: ev.type,
+                  eventRecordedAt: new Date(ev.created_at).toISOString(),
                   leadId: ev.lead_id,
                   payload: ev.payload,
                 },
@@ -345,6 +347,8 @@ export async function tick(clock = new Date()) {
     }
     const internalHandling=contactPaused(lead,clock.getTime())||(job.snapshot.leadId&&Boolean((await pendingIdentity(pool,job.snapshot.leadId)).length));
     const taskDue=task?requestDeadline(task,await taskRequests(pool,job.snapshot.leadId)):null;
+    const deadlineValue=agreement ? agreement.at || undefined : sourceRequest?.data?.dueAt || taskDue;
+    const deadlineAt=deadlineValue instanceof Date ? deadlineValue.toISOString() : typeof deadlineValue==='string' ? deadlineValue : undefined;
     const content = {
       event:
         timingEventLabel(job.snapshot.event,task,Boolean(internalHandling && (task||sourceRequest||agreement)),r.language),
@@ -376,7 +380,7 @@ export async function tick(clock = new Date()) {
       });
       return;
     }
-    const next = schedule(clock, { ...r, timing: "immediate" }, "lark");
+    const next = scheduleNotification(clock,{...r,timing:'immediate'},'lark',job.snapshot.payload);
     if (next.getTime() > clock.getTime()) {
       await pool.query(
         "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Deferred by current working hours' WHERE id=:p1",
@@ -482,11 +486,31 @@ export async function tick(clock = new Date()) {
       ).replace(/\{\{(event|name|owner|due|action)\}\}/g, (_, k) =>
         String(content[k]),
       );
+      const deadlineStatus=content.due?notificationDeadlineStatus(deadlineAt,clock.toISOString(),r.language):undefined;
+      let designedCard:any;
+      if(job.snapshot.payload.notificationPolicyVersion===2 && job.snapshot.event==='daily.digest'){
+        designedCard=dailyDigestCard({jobId:job.id,language:r.language,date:job.snapshot.payload.date,timezone:r.timezone,counts:job.snapshot.payload.counts,filtered:!!(r.tiers.length||r.states.length||r.sources.length)},(config.signingEnabled ?? !!config.signingSecretRef)?process.env[config.signingSecretRef]:undefined,clock);
+      }
+      if(job.snapshot.payload.notificationPolicyVersion===2 && standardLarkKinds.includes(job.snapshot.event) && (['lead.created','handoff.requested','assessment.completed'].includes(job.snapshot.event)||job.snapshot.payload.notificationContentVersion===3)){
+        const attempt=job.snapshot.event==='assessment.completed' && job.snapshot.payload.attemptId
+          ? (await pool.query("SELECT id,lead_id,result,created_at FROM hsk_attempts WHERE id=:p1 AND lead_id=:p2",[job.snapshot.payload.attemptId,job.snapshot.leadId])).rows[0] : null;
+        const source=await larkEventSource(pool,job.snapshot.event,job.snapshot.leadId,job.snapshot.payload);
+        const failureSource=job.snapshot.event==='notification.failed'?await larkFailureSource(pool,job.snapshot.payload):null;
+        if((job.snapshot.event==='assessment.completed'&&!attempt)||(['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)&&!source)||(job.snapshot.event==='notification.failed'&&!failureSource)||(job.snapshot.event==='task.overdue'&&!task)){
+          await pool.query("UPDATE notification_jobs SET state='cancelled',result='Original source missing',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
+        }
+        const occurrence=attempt ? assessmentOccurrence(attempt) : ['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event) ? (source && 'occurredAt' in source ? source.occurredAt : null) || null : null;
+        const formatTime=(value:any)=>{const date=new Date(value);return value && Number.isFinite(date.getTime())?new Intl.DateTimeFormat(r.language==='zh'?'zh-CN':r.language==='id'?'id-ID':'en-GB',{timeZone:r.timezone,dateStyle:'medium',timeStyle:'short'}).format(date):undefined;};
+        const payload=job.snapshot.payload;
+        const target:LarkCardInput['target']=job.snapshot.event==='assessment.completed'?{kind:'assessment',id:payload.attemptId}:['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)?{kind:'request',id:payload.requestEvidenceId}:job.snapshot.event==='task.overdue'?{kind:'task',id:payload.taskId}:job.snapshot.event==='ai.failed'&&payload.messageId?{kind:'message',id:payload.messageId}:job.snapshot.event==='conversation.reactivated'&&payload.conversationId?{kind:'conversation',id:payload.conversationId}:job.snapshot.event==='lead.created'&&payload.questionnaireFactId?{kind:'fact',id:payload.questionnaireFactId}:job.snapshot.event==='lead.created'&&payload.submissionId?{kind:'submission',id:payload.submissionId}:undefined;
+        const standardInput:LarkCardInput={target,jobId:job.snapshot.event==='notification.failed'?payload.jobId:undefined,kind:job.snapshot.event,language:r.language,name:content.name,owner:(await platform.employees()).find(e=>e.id===lead.owner)?.displayName || (lead.owner ? (r.language==='zh'?'负责人待核对':r.language==='id'?'Periksa penanggung jawab':'Owner needs review') : (r.language==='zh'?'未分配':r.language==='id'?'Belum ditugaskan':'Unassigned')),excerpt:source && 'excerpt' in source ? source.excerpt:undefined,excerptRestricted:source && 'excerptRestricted' in source ? source.excerptRestricted:false,reportedLevel:source && 'reportedLevel' in source ? source.reportedLevel:undefined,mode:source && 'mode' in source ? source.mode:undefined,city:source && 'city' in source ? source.city:undefined,assessmentResult:attempt?.result,time:formatTime(occurrence),recordedAt:formatTime(attempt?.created_at||source?.recordedAt||failureSource?.recordedAt||job.snapshot.eventRecordedAt),goals:source && 'goals' in source ? source.goals as string[] : undefined,internalReview:!!internalHandling,source:attempt?'assessment':source?.source,score:attempt?.result?.score,maxScore:attempt?.result?.maxScore,due:job.snapshot.event==='task.overdue'||sourceRequest?.data?.dueAt?content.due:undefined,dueAt:deadlineAt,failedEvent:failureSource?.failedEvent,failedChannel:failureSource?.failedChannel,attempts:failureSource?.attempts,failure:failureSource?.failure};
+        designedCard=standardLarkCard(standardInput,job.snapshot.leadId,(config.signingEnabled ?? !!config.signingSecretRef)?process.env[config.signingSecretRef]:undefined,clock);
+      }
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          larkCard(
+          designedCard || larkCard(
             (r.language === "zh"
               ? job.snapshot.event === "notification.failed"
                 ? "[运营异常] "
@@ -499,6 +523,7 @@ export async function tick(clock = new Date()) {
                   ? "[Operations] "
                   : "[Sales] ") +
               text +
+              (deadlineStatus ? '\n'+(r.language==='zh'?'期限状态（发送时）：':r.language==='id'?'Status tenggat (saat dikirim): ':'Deadline status (at send): ')+deadlineStatus : '') +
               (job.snapshot.payload.counts
                 ? "\n" + JSON.stringify(job.snapshot.payload.counts)
                 : ""),
@@ -507,6 +532,8 @@ export async function tick(clock = new Date()) {
               ? process.env[config.signingSecretRef]
               : undefined,
             clock,
+            agreement?{kind:'agreement',id:agreement.id}:task?{kind:'task',id:task.id}:undefined,
+            job.snapshot.event,
           ),
         ),
         signal: AbortSignal.timeout(10000),
