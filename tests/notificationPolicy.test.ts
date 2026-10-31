@@ -1,4 +1,5 @@
 import { setupNativeTest } from "./helpers/mysql.mjs";
+import { disposeNativeTest } from "./helpers/disposeNativeTest.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
@@ -142,7 +143,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   });
   async function reset() {
     await fixture.reset(
-      "notification_inbox,notification_jobs,outbox,followup_tasks,portal_leads,notification_rules,notification_channels,rule_versions,portal_audit",
+      "notification_inbox,notification_jobs,outbox,followup_tasks,crm_ai_extractions,crm_facts,crm_operations,portal_leads,notification_rules,notification_channels,rule_versions,portal_audit",
     );
     delete process.env.MOCK_EMPLOYEE_ID;
     await pool.query(
@@ -164,6 +165,30 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       },
     ]);
     return id;
+  }
+  // A cancellation assertion is meaningful only after the current workflow saved.
+  async function completeFirstContact(lid: string, tid: string) {
+    const before = (await pool.query("SELECT profile FROM portal_leads WHERE id=:p1", [lid])).rows[0].profile;
+    const body = {
+      workflowVersion: 3,
+      requestId: "TEST-complete-" + tid,
+      expectedRevision: before.simpleRevision || 0,
+      recordKind: "contact",
+      channel: "Phone Call",
+      connectStatus: "Connected",
+      contactDirection: "sales",
+      occurrenceMode: "now",
+      summary: "TEST actual first contact completed",
+    };
+    const saved = await api("/api/crm/leads/" + lid + "/logs", body);
+    assert.equal(saved.status, 200, JSON.stringify(saved.data));
+    assert.ok(saved.data.completedTaskIds.includes(tid), "Saved result must identify the processed first-contact task");
+    assert.equal((await pool.query("SELECT status FROM followup_tasks WHERE id=:p1", [tid])).rows[0].status, "completed");
+    const retried = await api("/api/crm/leads/" + lid + "/logs", body);
+    assert.equal(retried.status,200,JSON.stringify(retried.data));
+    assert.equal(retried.data.replayed,true);
+    assert.equal(retried.data.logId,saved.data.logId);
+
   }
   async function event(
     id: string | null,
@@ -219,12 +244,22 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       await pool.query("SELECT * FROM notification_jobs WHERE id=:p1", [jid])
     ).rows[0];
   }
+  // Reproducible targeted run: MYSQL_NOTIFICATION_FOCUS=task-completion.
+  // Without this explicit selector the complete native suite remains unchanged.
+  const focus = process.env.MYSQL_NOTIFICATION_FOCUS;
+  if (focus && focus !== "task-completion") throw Error("Unknown MYSQL_NOTIFICATION_FOCUS");
+  const focusCases = new Set([
+    "task completion immediately cancels future jobs and suppresses unprocessed stale events",
+    "overdue escalation emitted once; read does not complete, completion cancels send",
+  ]);
   await test("notification MySQL acceptance", async (t) => {
+    const caseTest = (name: string, body: (context: any) => any) =>
+      t.test(name, {skip: focus === "task-completion" && !focusCases.has(name) ? "Outside explicit task-completion focus" : false}, body);
     t.after(async () => {
       await new Promise<void>((r) => server.close(() => r()));
-      await pool.end();
+      try { await pool.end(); } finally { await disposeNativeTest(fixture); }
     });
-    await t.test(
+    await caseTest(
       "source/tier/status filters and unpublished drafts never send",
       async () => {
         await reset();
@@ -263,7 +298,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "late delivery dedupes by accepted time and preserves different priorities",
       async () => {
         await reset();
@@ -298,7 +333,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         assert.equal((await state(urgent)).state, "simulated");
       },
     );
-    await t.test(
+    await caseTest(
       "frequency limit counts late sends instead of old due dates",
       async () => {
         await reset();
@@ -318,7 +353,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         assert.ok(new Date(s.due_at).getTime() > Date.now());
       },
     );
-    await t.test(
+    await caseTest(
       "completed follow-up cancels queued notifications",
       async () => {
         await reset();
@@ -340,7 +375,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "task completion immediately cancels future jobs and suppresses unprocessed stale events",
       async () => {
         await reset();
@@ -355,32 +390,37 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           "update notification_jobs set due_at=UTC_TIMESTAMP(6)+INTERVAL 1 day where id=:p1",
           [jid],
         );
+
+        const otherLead = await lead(), otherJob = await job(otherLead);
+        await pool.query("UPDATE notification_jobs SET due_at=UTC_TIMESTAMP(6)+INTERVAL 1 day WHERE id=:p1",[otherJob]);
+        const otherBefore = await state(otherJob);
+        const acceptedJob = await job(lid,"inapp","test-admin",{taskId:tid});
+        await pool.query("UPDATE notification_jobs SET state='accepted',attempts=1,completed_at=UTC_TIMESTAMP(6) WHERE id=:p1",[acceptedJob]);
+        const acceptedBefore = await state(acceptedJob);
+        const note = await api("/api/crm/leads/"+lid+"/logs",{workflowVersion:3,requestId:"TEST-note-"+tid,expectedRevision:0,recordKind:"internal",summary:"TEST information only; no actual contact"});
+        assert.equal(note.status,200,JSON.stringify(note.data));
+        assert.equal(note.data.completedTaskIds.length,0);
+        assert.equal((await pool.query("SELECT status FROM followup_tasks WHERE id=:p1",[tid])).rows[0].status,"open");
+        assert.equal((await state(jid)).state,"pending");
         await saveRule("qa");
         await event(lid, "lead.created", { taskId: tid });
-        await api("/api/crm/leads/" + lid + "/logs", {
-          requestId: "TEST-complete-" + tid,
-          recordKind: "closure",
-          summary: "TEST completed task",
-          completeTaskIds: [tid],
-          disposition: "none",
-          contactArrangement: {
-            state: "stopped",
-            reason: "TEST completed without outbound work",
-            version: 0,
-          },
-        });
+        await completeFirstContact(lid, tid);
         assert.equal((await state(jid)).state, "cancelled");
+        assert.deepEqual(await state(otherJob),otherBefore);
+        assert.deepEqual(await state(acceptedJob),acceptedBefore);
         await tick();
+        assert.deepEqual(await state(otherJob),otherBefore);
+        assert.deepEqual(await state(acceptedJob),acceptedBefore);
         assert.equal(
           Number(
             (await pool.query("select count(*) n from notification_jobs"))
               .rows[0].n,
           ),
-          1,
+          3,
         );
       },
     );
-    await t.test(
+    await caseTest(
       "reassignment merges pending recipients without unique-conflict or old-owner disclosure",
       async () => {
         await reset();
@@ -410,7 +450,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "unassigned sales users are not notified about leads they cannot view",
       async () => {
         await reset();
@@ -426,7 +466,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "same-transaction activation preserves MySQL microsecond precision",
       async () => {
         await reset();
@@ -454,7 +494,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "activation affects new events; old jobs retain their version after disabling",
       async () => {
         await reset();
@@ -500,7 +540,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         assert.equal((await state(oldJob)).state, "accepted");
       },
     );
-    await t.test(
+    await caseTest(
       "overdue escalation emitted once; read does not complete, completion cancels send",
       async () => {
         await reset();
@@ -544,24 +584,13 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           ).rows[0].status,
           "overdue",
         );
-        await api("/api/crm/leads/" + lid + "/logs", {
-          requestId: "TEST-complete-" + tid,
-          recordKind: "closure",
-          summary: "TEST completed task",
-          completeTaskIds: [tid],
-          disposition: "none",
-          contactArrangement: {
-            state: "stopped",
-            reason: "TEST completed without outbound work",
-            version: 0,
-          },
-        });
+        await completeFirstContact(lid, tid);
         const jid = await job(lid, "inapp", "test-admin", { taskId: tid });
         await tick();
         assert.equal((await state(jid)).state, "cancelled");
       },
     );
-    await t.test(
+    await caseTest(
       "assignment updates overdue task owner while preserving deadline",
       async () => {
         await reset();
@@ -588,7 +617,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         assert.equal(task.due_at.toISOString(), before.toISOString());
       },
     );
-    await t.test(
+    await caseTest(
       "explicit cancel is permission checked and audited",
       async () => {
         await reset();
@@ -622,7 +651,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test("BUG604 HTTP200 business throttling retries same job; exhaustion and unknown do not replay", async () => {
+    await caseTest("BUG604 HTTP200 business throttling retries same job; exhaustion and unknown do not replay", async () => {
       const native=globalThis.fetch;
       process.env.TEST_POLICY_LARK="https://open.larksuite.com/open-apis/bot/v2/hook/policy-test";
       process.env.LARK_TEST_GROUP="qa";
@@ -656,7 +685,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         }
       } finally {globalThis.fetch=native;delete process.env.TEST_POLICY_LARK;delete process.env.LARK_TEST_GROUP;}
     });
-    await t.test(
+    await caseTest(
       "Lark Retry-After, 1/5/15 backoff and terminal failure are traceable",
       async () => {
         await reset();
@@ -716,7 +745,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         }
       },
     );
-    await t.test(
+    await caseTest(
       "working hours are checked again when overdue sends are claimed",
       async () => {
         await reset();
@@ -738,7 +767,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "daily digests are per rule/date across the shared pool and do not run early or on disabled days",
       async () => {
         await reset();
@@ -823,7 +852,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "parallel workers do not duplicate internal delivery or Lark group sends",
       async () => {
         await reset();
@@ -849,7 +878,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         assert.equal(Number(rows.find((x) => x.state === "simulated")?.n), 1);
       },
     );
-    await t.test(
+    await caseTest(
       "invalid policies and sending/accepted job cancellation are rejected",
       async () => {
         await reset();
@@ -871,7 +900,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         );
       },
     );
-    await t.test(
+    await caseTest(
       "concurrent reassignment cannot be reverted by a formerly authorized sales patch",
       async () => {
         await reset();
@@ -924,7 +953,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         }
       },
     );
-    await t.test(
+    await caseTest(
       "integration readiness reports missing credentials without leaking webhook values",
       async () => {
         await reset();
@@ -949,7 +978,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         delete process.env.MOCK_EMPLOYEE_ID;
       },
     );
-    await t.test(
+    await caseTest(
       "missing channels fail; only explicitly simulated channels count as simulated",
       async () => {
         await reset();
@@ -967,7 +996,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         assert.equal((await state(jid)).result, "Missing notification channel");
       },
     );
-    await t.test(
+    await caseTest(
       "production-built mock environment still requires designated test group",
       async () => {
         await reset();
@@ -1008,4 +1037,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       },
     );
   });
+} else {
+  test('notification MySQL cancellation requires explicitly authorized isolated MySQL', {skip:"MYSQL_NATIVE_TEST_ENV not supplied; no database verification performed"}, () => {});
 }
