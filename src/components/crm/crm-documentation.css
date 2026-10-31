@@ -85,6 +85,15 @@
 .crm-doc-nav-group {
   margin-top: 16px;
 }
+.crm-doc-nav .crm-doc-start {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: 8px;
+  color: var(--doc-accent);
+  background: var(--doc-surface);
+  border-bottom: 1px solid var(--doc-border);
+}
 .crm-doc-nav-group > button {
   display: flex;
   gap: 8px;
@@ -266,6 +275,59 @@
   overflow: auto;
   max-width: 100%;
 }
+/* Reviewed source document; the CRM supplies navigation, surfaces and status pairs. */
+.crm-doc-playbook { overflow-wrap: anywhere; }
+.crm-doc-playbook-overview { margin: 16px 0 24px; }
+.crm-docs .crm-doc-playbook-subtitle { font-size: 18px; margin-bottom: 8px; }
+.crm-docs :is(.crm-doc-playbook-meta,.crm-doc-playbook-stat-note) { font-size: 12px; color: var(--doc-muted); }
+.crm-doc-playbook-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 20px 0 12px; }
+.crm-doc-playbook-stats > div { border-left: 3px solid var(--doc-border); padding-left: 12px; }
+.crm-doc-playbook-stats dt { font-size: 13px; font-weight: 600; }
+.crm-doc-playbook-stats dd { font-size: 28px; font-weight: 700; line-height: 1.4; margin: 0; }
+.crm-docs .crm-doc-playbook-stats p { font-size: 12px; color: var(--doc-muted); margin: 4px 0 0; }
+.crm-doc-playbook p { margin: 12px 0; }
+.crm-doc-playbook a { color: var(--doc-accent); text-decoration: underline; text-underline-offset: 2px; }
+.crm-doc-playbook h5,
+.crm-doc-whatsapp h5 { margin: 24px 0 10px; font-size: 16px; line-height: 1.5; }
+.crm-doc-playbook h6 { margin: 16px 0 8px; }
+.crm-doc-playbook > section,
+.crm-doc-whatsapp > section { display: flow-root; margin: 24px 0 0; }
+.crm-doc-playbook > section > h4,
+.crm-doc-whatsapp > section > h4 {
+  font-size: 22px;
+  line-height: 1.45;
+  font-weight: 700;
+  margin: 0 0 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--doc-border);
+  color: var(--doc-ink);
+}
+.crm-doc-playbook > section:first-of-type > h4,
+.crm-doc-whatsapp > section:first-of-type > h4 { border-top: 0; padding-top: 0; }
+.crm-doc-playbook > section > h4 + div > h5:first-child { margin-top: 12px; }
+.crm-doc-whatsapp > section > h4 + h5 { margin-top: 12px; }
+.crm-doc-playbook > section > div > :last-child,
+.crm-doc-whatsapp > section > :last-child { margin-bottom: 0; }
+.crm-doc-playbook-number { font-variant-numeric: tabular-nums; }
+.crm-doc-playbook ul { list-style: disc; padding-left: 22px; }
+.crm-doc-playbook li { margin: 6px 0; }
+.crm-doc-playbook .table-wrap { overflow-x: auto; margin: 16px 0; max-width: 100%; }
+.crm-doc-playbook th { font-weight: 650; background: var(--doc-soft); }
+.crm-doc-playbook blockquote { border-left: 3px solid var(--doc-accent); padding: 4px 16px; margin: 16px 0; background: var(--doc-soft); }
+.crm-doc-playbook code { font-size: 13px; overflow-wrap: anywhere; }
+.crm-doc-playbook pre { white-space: pre-wrap; padding: 12px; background: var(--doc-soft); border: 1px solid var(--doc-border); }
+.crm-doc-playbook .diagram { margin: 20px 0; }
+.crm-doc-playbook svg { display: block; width: 100%; height: auto; max-height: 760px; margin-inline: auto; background: #fff; border-radius: 8px; }
+.crm-doc-playbook figcaption { color: var(--doc-muted); font-size: 12px; margin-top: 8px; }
+.crm-doc-playbook hr { margin: 24px 0; border: 0; border-top: 1px solid var(--doc-border); }
+.crm-doc-playbook > section > div > hr:last-child { display: none; }
+.crm-doc-playbook .status { display: inline; padding: 2px 5px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+.crm-doc-playbook :is(.confirmed,.official) { color: var(--admin-success); background: var(--admin-success-bg); }
+.crm-doc-playbook .reported { color: var(--admin-info); background: var(--admin-info-bg); }
+.crm-doc-playbook .analysis { color: var(--doc-muted); background: var(--doc-soft); }
+.crm-doc-playbook :is(.proposed,.pending) { color: var(--admin-warning); background: var(--admin-warning-bg); }
+.crm-doc-playbook [id] { scroll-margin-top: calc(var(--doc-header-height) + 16px); }
+.crm-doc-source-language { color: var(--doc-muted); }
 .crm-doc-dict {
   max-width: 100%;
 }

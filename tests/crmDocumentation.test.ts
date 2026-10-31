@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import React from "react";
+import { createHash } from "node:crypto";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   CrmUserGuide,
@@ -27,7 +28,7 @@ import {
 import { evaluateFullLeadTier } from "../src/types/crmLead.ts";
 import { calculateLeadTier } from "../src/types/leadSystem.ts";
 import { sla } from "../src/utils/workCalendar.ts";
-test("Ten system chapters restore concepts; ten operating groups preserve every existing section", () => {
+test("Ten system chapters and operating groups stay separate from the third WhatsApp part", () => {
   assert.equal(systemChapters.length, 10);
   assert.equal(operationGroups.length, 10);
   assert.deepEqual(
@@ -372,5 +373,112 @@ test("Operational details remain available in their destination chapters in all 
         ][col],
       ),
     );
+  }
+});
+
+for (const lang of ["en", "id", "zh"] as const) {
+  test(`WhatsApp continuous guide preserves all section anchors in ${lang}`, async () => {
+    const { whatsAppSections } = await import("../src/components/crm/CrmWhatsAppGuide.tsx");
+    assert.equal(whatsAppSections.length, 10);
+    assert.equal(new Set(whatsAppSections.map(s => s.key)).size, 10);
+    let allHtml = "";
+    for (const chapter of whatsAppSections) {
+      assert.deepEqual(resolveGuideAnchor("#crm-guide-" + chapter.key), { part: "whatsapp", key: chapter.key });
+      const html = renderToStaticMarkup(React.createElement(CrmUserGuide, { lang, isLight: true, initialChapter: chapter.key }));
+      const text = html.replace(/<[^>]+>/g, " ");
+      assert.ok(text.includes(chapter.title[lang === "zh" ? 2 : lang === "id" ? 1 : 0]));
+      assert.match(html, /id="crm-doc-nav-whatsapp"/);
+      assert.doesNotMatch(html, /Search both parts|Cari kedua bagian|搜索两部分/);
+      const systemNav = html.match(/<ol id="crm-doc-nav-system"[\s\S]*?<\/ol>/)?.[0] || "";
+      assert.ok(!systemNav.includes("whatsapp-hybrid"));
+      assert.ok(html.indexOf("crm-doc-nav-operations") < html.indexOf("crm-doc-nav-whatsapp"));
+      assert.equal((html.match(/id="crm-guide-/g) || []).length, 10);
+      // Every anchor renders the same continuous document with one shared image.
+      const body = html.slice(html.indexOf('class="crm-doc-whatsapp"'));
+      assert.ok(!body.includes("<details"));
+      assert.equal((body.match(/<img /g) || []).length, 1);
+      assert.match(body, /<figcaption/);
+      for (const target of whatsAppSections) assert.ok(body.includes('id="crm-guide-' + target.key + '"'));
+      if (lang !== "zh") assert.doesNotMatch(text, /[\u4e00-\u9fff]/);
+      allHtml += body;
+    }
+    assert.ok(allHtml.includes('https://whatsappbusiness.com/resources/faq/'));
+    assert.ok(allHtml.includes('rel="noopener noreferrer"'));
+    assert.match(allHtml, /ctwa_clid/);
+    assert.match(allHtml, /Rp356.65/);
+    assert.match(allHtml, /scope="col"/);
+  });
+}
+test("Chinese WhatsApp reference matches the online content", () => {
+  const content = JSON.parse(fs.readFileSync("src/components/crm/whatsappGuide.json", "utf8"));
+  const reference = fs.readFileSync("docs/crm/whatsapp-hybrid.md", "utf8");
+  assert.ok(reference.endsWith(content.zh));
+  const urls = (value: string) => [...value.matchAll(/\]\((https:[^)]+)\)/g)].map(m => m[1]).sort();
+  assert.deepEqual(urls(content.en), urls(content.zh));
+  assert.deepEqual(urls(content.id), urls(content.zh));
+});
+
+test("Fourth part preserves the reviewed playbook, all diagrams, tables and resolvable references", async () => {
+  const content = JSON.parse(fs.readFileSync("src/components/crm/marketingPlaybook.json", "utf8"));
+  const source = fs.readFileSync("docs/reference/UPER_Marketing_CRM_Playbook_v2.0.html");
+  assert.equal(createHash("sha256").update(source).digest("hex"), content.sourceSha256);
+  const { marketingPlaybookSections } = await import("../src/components/crm/CrmMarketingPlaybook.tsx");
+  assert.equal(marketingPlaybookSections.length, 13);
+  assert.match(marketingPlaybookSections[0].searchText, /核心原则/);
+  assert.deepEqual(resolveGuideAnchor("#crm-guide-marketing-playbook"), { part: "marketing", key: "marketing-playbook" });
+  for (const section of marketingPlaybookSections) {
+    assert.deepEqual(resolveGuideAnchor("#crm-guide-" + section.key), { part: "marketing", key: section.key });
+  }
+  const html = renderToStaticMarkup(React.createElement(CrmUserGuide, {lang: "zh", isLight: true, initialChapter: "marketing-playbook-sec-10"}));
+  const body = html.slice(html.indexOf('class="crm-doc-playbook"'));
+  assert.equal((body.match(/<table /g) || []).length, 52);
+  assert.equal((body.match(/<svg /g) || []).length, 4);
+  assert.equal((body.match(/<h4>/g) || []).length, 13);
+  assert.ok(html.indexOf('id="crm-doc-nav-whatsapp"') < html.indexOf('id="crm-doc-nav-marketing"'));
+  const ids = [...body.matchAll(/ id="([^"]+)"/g)].map(m => m[1]);
+  assert.equal(ids.length, new Set(ids).size, "All diagram, reference and section IDs must be unique");
+  for (const [, key] of body.matchAll(/href="#crm-guide-([^"]+)"/g)) {
+    assert.ok(ids.includes("crm-guide-" + key), key);
+    assert.deepEqual(resolveGuideAnchor("#crm-guide-" + key), { part: "marketing", key });
+  }
+  assert.doesNotMatch(body, /<script|<style|<iframe|<form|<object|<embed|<img|\son\w+=|javascript:|file:\/\/|url\(/i);
+  for (const [, attributes] of body.matchAll(/<a ([^>]*href="https:[^>]*)>/g)) {
+    assert.match(attributes, /rel="noopener noreferrer"/);
+  }
+  assert.match(body, /46 行 CSV 被接收/);
+  assert.match(body, /不代表独立验证/);
+  assert.match(body, /建议设计/);
+});
+
+test("Playbook import keeps original article text while removing duplicate navigation and standalone scripts", () => {
+  const content = JSON.parse(fs.readFileSync("src/components/crm/marketingPlaybook.json", "utf8"));
+  const source = fs.readFileSync("docs/reference/UPER_Marketing_CRM_Playbook_v2.0.html", "utf8");
+  const text = (value: string) => value.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]*>/g, "")
+    .replace(/&(?:amp|lt|gt|quot|#x27|#39|nbsp);/g, v => ({"&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"', "&#x27;":"'", "&#39;":"'", "&nbsp;":" "}[v]!))
+    .replace(/\s/g, "");
+  const article = source.slice(source.indexOf('<div class="article">'), source.indexOf('<footer class="footer">'))
+    .replace(/<details class="mobile-nav">[\s\S]*?<\/details>/, "")
+    .replace(/<h2>[\s\S]*?<\/h2>/g, "");
+  const imported = content.preamble + content.sections.map((s: {html: string}) => s.html).join("");
+  assert.equal(text(imported), text(article));
+});
+
+test("Playbook has a distinct document-start link, separate from its first section", () => {
+  const start = renderToStaticMarkup(React.createElement(CrmUserGuide, {lang: "zh", isLight: true, initialChapter: "marketing-playbook"}));
+  assert.match(start, /href="#crm-guide-marketing-playbook" aria-label="文档开头" aria-current="page"/);
+  assert.match(start, /id="crm-guide-marketing-playbook" tabindex="-1"/);
+  assert.match(start, /href="#crm-guide-marketing-playbook-sec-1"/);
+  const section = renderToStaticMarkup(React.createElement(CrmUserGuide, {lang: "zh", isLight: true, initialChapter: "marketing-playbook-sec-9"}));
+  assert.match(section, /href="#crm-guide-marketing-playbook" aria-label="文档开头" title=/);
+});
+
+for (const lang of ["en", "id", "zh"] as const) test(`Playbook opens every anchor as a continuous source document in ${lang}`, async () => {
+  const { marketingPlaybookSections } = await import("../src/components/crm/CrmMarketingPlaybook.tsx");
+  for (const section of marketingPlaybookSections) {
+    const html = renderToStaticMarkup(React.createElement(CrmUserGuide, {lang, isLight: true, initialChapter: section.key}));
+    assert.equal((html.match(/<h4>/g) || []).length, 13);
+    assert.match(html, /lang="zh-CN"/);
+    for (const target of marketingPlaybookSections) assert.ok(html.includes('id="crm-guide-' + target.key + '"'));
+    if (lang !== "zh") assert.match(html, /crm-doc-source-language/);
   }
 });

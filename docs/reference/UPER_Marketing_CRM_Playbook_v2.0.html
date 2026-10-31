@@ -1,0 +1,2881 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>UPER 营销获客与 CRM 转化反馈体系 · v2.0</title><meta name="description" content="UPER 营销获客与 CRM 转化反馈体系：概念、数据归属、事件映射、报告诊断与行动路线。"><style>
+:root{--green:#174d3b;--green-2:#287257;--ink:#21392f;--muted:#62746a;--line:#dce5df;--pale:#edf4ef;--gold:#ad853f;--paper:#fff;--background:#f4f5f1}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--background);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;font-size:16px;line-height:1.85;-webkit-font-smoothing:antialiased}
+a{color:var(--green-2);text-decoration:none}a:hover{text-decoration:underline}a:focus-visible,summary:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+.topbar{background:var(--green);color:#fff;min-height:58px;padding:13px 30px;display:flex;justify-content:space-between;align-items:center;gap:20px}.brand{font-size:23px;letter-spacing:3px;font-weight:760}.topnote{font-size:12px;letter-spacing:1px;color:#d9e8df}.shell{display:grid;grid-template-columns:255px minmax(0,1fr);max-width:1550px;margin:auto;align-items:start;gap:30px;padding:30px}
+aside{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow:auto;padding:23px 17px 20px 5px;border-right:1px solid var(--line);font-size:13px;line-height:1.6}.nav-title{font-size:11px;letter-spacing:2px;color:var(--muted);margin:0 0 16px 8px;font-weight:700}aside ol{list-style:none;margin:0;padding:0;counter-reset:nav}aside li{counter-increment:nav;display:flex;gap:10px;margin:0 0 4px;align-items:baseline}aside li:before{content:counter(nav,decimal-leading-zero);font-size:11px;font-weight:700;flex:0 0 22px;color:#7a8b81;padding-left:6px}aside a{display:block;padding:7px 8px;border-radius:6px;color:#52685b}aside a.active{background:#e2ece5;color:var(--green);font-weight:700}.nav-foot{margin-top:24px;padding:16px 8px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+main{min-width:0;max-width:1160px;background:var(--paper);box-shadow:0 5px 25px rgba(24,63,45,.045);border:1px solid #e6ebe6;border-radius:9px;overflow:hidden}.hero{padding:52px 54px 39px;background:linear-gradient(145deg,#eaf3ed 0%,#f8faf6 63%,#fff 100%);border-bottom:1px solid var(--line)}.eyebrow{font-size:12px;font-weight:700;letter-spacing:2px;color:var(--green-2);margin-bottom:15px}.hero h1{font-size:38px;line-height:1.35;letter-spacing:-1px;margin:0 0 16px;max-width:850px}.hero .sub{font-size:18px;color:#536c5d;line-height:1.7;margin:0}.meta{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}.meta span{border:1px solid #cfdfd4;border-radius:30px;padding:3px 11px;font-size:12px;background:#fff8;color:#50695a}.hero-bottom{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:28px}.stat{border-left:3px solid #9cbaaa;padding-left:14px}.stat strong{font-size:31px;line-height:1.2;font-weight:720;color:var(--green)}.stat span{display:block;color:#65776b;font-size:12px;line-height:1.6;margin-top:5px}.hero-note{font-size:11px;color:#7d8c82;margin:15px 0 0}
+.article{padding:12px 54px 58px}.article>p{margin:16px 0}.article h2{font-size:27px;line-height:1.48;letter-spacing:-.4px;color:var(--green);margin:48px 0 24px;padding-top:14px}.article h3{font-size:19px;line-height:1.65;margin:28px 0 13px;color:#235540}.article h4{font-size:16px;line-height:1.65;margin:24px 0 12px;color:#2f5d47}strong{font-weight:700}.article hr{border:0;border-top:1px solid var(--line);margin:35px 0}.article blockquote{margin:20px 0;padding:16px 22px;background:#edf5ef;border-left:4px solid #2f7554;border-radius:0 6px 6px 0}.article blockquote p{margin:0}.article p,.article li{overflow-wrap:anywhere}.article ul{padding-left:22px}.article li{margin:7px 0}
+.table-wrap{overflow-x:auto;margin:18px 0 24px;border:1px solid var(--line);border-radius:7px;max-width:100%;background:white}table{border-collapse:collapse;width:100%;font-size:13.4px;line-height:1.8;table-layout:auto}thead{background:#1e5942;color:white}th{text-align:left;font-weight:650;padding:12px 14px;vertical-align:top;border-right:1px solid #3b6e57;white-space:normal}td{padding:12px 14px;vertical-align:top;border-top:1px solid #e0e8e1;border-right:1px solid #e7ece7;overflow-wrap:anywhere;min-width:95px}td:first-child{font-weight:560;color:#244936}th:last-child,td:last-child{border-right:0}tbody tr:nth-child(even){background:#f6f9f5}td strong{color:#174d3b}.citation{font-size:.9em;font-weight:650;color:#4b7d62;white-space:nowrap}.source-url{font-size:12px;overflow-wrap:anywhere}code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;background:#edf1eb;padding:1px 4px;border-radius:3px;word-break:normal;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7;background:#f3f6f1;padding:15px;border:1px solid #dce5df;border-radius:5px}pre code{padding:0;background:none}
+.diagram{margin:24px 0;padding:18px 17px 11px;background:linear-gradient(160deg,#fafcf9,#f2f7f2);border:1px solid #d8e5dc;border-radius:8px;text-align:center}.diagram svg{width:100%;height:auto;max-height:850px;display:block;margin:auto}.diagram:first-of-type svg{max-height:760px}.diagram figcaption{font-size:12px;color:#6b7e70;padding:10px 0 7px}.diagram-source{text-align:left;font-size:12px;margin-top:5px;color:#688070}.diagram-source summary{cursor:pointer;padding:6px 3px}.diagram-source pre{margin-top:8px}.status{display:inline-block;font-weight:600;font-size:.83em;line-height:1.5;border-radius:4px;padding:1px 5px;vertical-align:baseline;margin:0 2px}.confirmed,.official{background:#e0eee4;color:#24563c}.reported{background:#e9eff5;color:#345a77}.analysis{background:#edf0e8;color:#53623d}.proposed{background:#fcf2db;color:#7b5e23}.pending{background:#fff0e7;color:#965a30}.mobile-nav{display:none}.footer{padding:22px 54px;background:#edf3ed;border-top:1px solid var(--line);color:#657669;font-size:12px;display:flex;gap:15px;justify-content:space-between}
+@media(min-width:1550px){.shell{padding:35px 45px}}@media(max-width:1100px){.shell{grid-template-columns:205px minmax(0,1fr);padding:18px;gap:18px}.hero{padding:36px 30px}.hero h1{font-size:30px}.article{padding:10px 30px 40px}aside{font-size:12px}.footer{padding:18px 30px}td,th{padding:10px 11px}}
+@media(max-width:780px){.topbar{padding:12px 18px}.brand{font-size:20px}.topnote{font-size:10px}.shell{display:block;padding:12px}aside{display:none}.hero{padding:28px 22px}.hero h1{font-size:28px}.hero .sub{font-size:16px}.hero-bottom{gap:10px}.stat{padding-left:8px}.stat strong{font-size:26px}.article{padding:5px 20px 32px}.article h2{font-size:23px}.article h3{font-size:18px}.table-wrap table{min-width:600px}.diagram{padding:10px 3px}.diagram svg{min-width:580px}.diagram{overflow-x:auto}.diagram figcaption{min-width:560px}.footer{padding:18px 22px;flex-direction:column;gap:5px}.mobile-nav{display:block;margin:20px 0 5px;padding:12px 15px;background:#f1f6ef;border-radius:7px;font-size:13px}.mobile-nav summary{font-weight:700;cursor:pointer}.mobile-nav ol{padding-left:20px}.mobile-nav a{padding:3px 0}}
+@media print{body{background:white;font-size:10pt}.topbar,aside,.mobile-nav,.diagram-source{display:none}.shell{display:block;padding:0;margin:0}.hero{padding:20px 0;background:white}.hero h1{font-size:25pt}.article{padding:0}.article h2{break-before:auto;font-size:18pt}.article h3{font-size:13pt}main{border:0;box-shadow:none;max-width:none}.table-wrap{overflow:visible}table{font-size:9pt;min-width:0!important}th,td{padding:7px}thead{display:table-header-group}tr{break-inside:avoid}h2,h3,h4{break-after:avoid}.diagram svg{max-height:500px;min-width:0}.diagram{break-inside:avoid}a{color:inherit}.footer{background:white;padding:12px 0}.status{background:none;border:1px solid #ddd}@page{size:A4;margin:15mm}}
+</style></head><body id="top">
+<header class="topbar"><div class="brand">UPER</div><div class="topnote">MARKETING × CRM · WORKING PLAYBOOK</div></header>
+<div class="shell"><aside aria-label="章节导航"><div class="nav-title">内容导航 / CONTENTS</div><ol>
+<li><a href="#sec-1">管理摘要：现在完成了什么，还缺什么</a></li>
+<li><a href="#sec-2">总体架构：谁负责什么，数据往哪里流</a></li>
+<li><a href="#sec-3">术语地图：按归属分类，并配 UPER 例子</a></li>
+<li><a href="#sec-4">广告从哪里展示，客户去哪里咨询</a></li>
+<li><a href="#sec-5">UPER 如何判断好线索：字段、维护者与回传边界</a></li>
+<li><a href="#sec-6">CRM 如何保存客户、商机、状态与事件</a></li>
+<li><a href="#sec-7">Meta 事件目录与 CRM 映射规则</a></li>
+<li><a href="#sec-8">三个接口、五项验证：怎样形成可用的数据反馈</a></li>
+<li><a href="#sec-9">贯穿案例：一个学生从广告到付款</a></li>
+<li><a href="#sec-10">现状诊断：245 次对话与 46 行上传说明什么</a></li>
+<li><a href="#sec-11">衡量与实验：对话便宜，不等于获客便宜</a></li>
+<li><a href="#sec-12">行动路线、责任分工与待确认问题</a></li>
+<li><a href="#sec-13">附录：修订记录、原文整合索引与资料来源</a></li>
+</ol><div class="nav-foot">v2.0 · 2026-10-30<br>整合审阅版<br>Markdown 为主文件<br>本页无需联网即可阅读</div></aside>
+<main><section class="hero"><div class="eyebrow">从概念理解到经营验证</div><h1>UPER 营销获客与 CRM 转化反馈体系</h1><p class="sub">从概念澄清、数据流转，到现状诊断与行动路线</p><div class="meta"><span>v2.0</span><span>2026-10-30</span><span>管理 · 运营 · 销售 · 工程</span><span>事实 / 建议 / 待验证分开</span></div>
+<div class="hero-bottom"><div class="stat"><strong>3</strong><span>Campaign<br>报告涉及的广告活动</span></div><div class="stat"><strong>245</strong><span>Conversations<br>确切指标口径仍需核实</span></div><div class="stat"><strong>46</strong><span>CSV 行接收成功<br>不等于匹配、归因或优化成功</span></div></div><p class="hero-note">以上为广告团队阶段报告陈述，非后台独立审计。详见第10章证据台账。</p></section>
+<div class="article"><details class="mobile-nav"><summary>打开章节目录</summary><ol>
+<li><a href="#sec-1">管理摘要：现在完成了什么，还缺什么</a></li>
+<li><a href="#sec-2">总体架构：谁负责什么，数据往哪里流</a></li>
+<li><a href="#sec-3">术语地图：按归属分类，并配 UPER 例子</a></li>
+<li><a href="#sec-4">广告从哪里展示，客户去哪里咨询</a></li>
+<li><a href="#sec-5">UPER 如何判断好线索：字段、维护者与回传边界</a></li>
+<li><a href="#sec-6">CRM 如何保存客户、商机、状态与事件</a></li>
+<li><a href="#sec-7">Meta 事件目录与 CRM 映射规则</a></li>
+<li><a href="#sec-8">三个接口、五项验证：怎样形成可用的数据反馈</a></li>
+<li><a href="#sec-9">贯穿案例：一个学生从广告到付款</a></li>
+<li><a href="#sec-10">现状诊断：245 次对话与 46 行上传说明什么</a></li>
+<li><a href="#sec-11">衡量与实验：对话便宜，不等于获客便宜</a></li>
+<li><a href="#sec-12">行动路线、责任分工与待确认问题</a></li>
+<li><a href="#sec-13">附录：修订记录、原文整合索引与资料来源</a></li>
+</ol></details>
+
+<p><strong>版本：v2.0｜资料基线：2026-10-30｜状态：整合审阅版</strong><br/>
+<strong>适用对象：管理层、广告运营、销售顾问、CRM 产品与工程团队</strong><br/>
+<strong>主文件：Markdown；配套 HTML 为同一内容的离线图文阅读版。</strong></p>
+<blockquote>
+<p><strong>核心原则：UPER 定义什么是好客户；销售核实业务事实；CRM 保存证据与转化历史；Meta 接收适用的转化信号。最终由真实付费结果检验广告是否值得继续投入。</strong></p>
+</blockquote>
+<h3>阅读与证据说明</h3>
+<p>本版整合两份原文：[<a class="citation" href="#ref-S1">S1</a>]《UPER 广告与 CRM 转化优化知识文档 v1.0》与 [<a class="citation" href="#ref-S2">S2</a>]《UPER 广告运营体系核心概念解析》，并以 [<a class="citation" href="#ref-S3">S3</a>] 广告团队三页阶段报告核对现状。保留原文的 UPER／CRM／Meta 三层框架，但不沿用重复段落与混合口径。</p>
+<p>文中使用以下标记，避免把建议当成现状、把平台公开能力当成 UPER 已开通能力。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>标记</th>
+<th>含义</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><span class="status confirmed">用户确认</span></strong></td>
+<td>本次讨论中由 UPER 负责人说明；没有另行审计后台</td>
+<td>销售目前在 Instagram Direct 回复客户</td>
+</tr>
+<tr>
+<td><strong><span class="status reported">报告事实</span></strong></td>
+<td>原始报告的陈述或截图能支持；不代表独立验证</td>
+<td>报告称 46 行 CSV 被接收</td>
+</tr>
+<tr>
+<td><strong><span class="status official">官方资料</span></strong></td>
+<td>本次查阅的官方文档、培训或官方代码能支持</td>
+<td>Meta 官方 Pixel 模板列出的事件名称</td>
+</tr>
+<tr>
+<td><strong><span class="status analysis">分析判断</span></strong></td>
+<td>根据现有证据作出的解释，不能冒充平台结论</td>
+<td>上传通道已初步验证，优化效果尚未验证</td>
+</tr>
+<tr>
+<td><strong><span class="status proposed">建议设计</span></strong></td>
+<td>本版提出、尚待团队确认或实施的方案</td>
+<td>资格字段、映射表、验收步骤</td>
+</tr>
+<tr>
+<td><strong><span class="status pending">待确认</span></strong></td>
+<td>当前资料无法给出确定答案</td>
+<td>三个 Campaign 的实际消息目的地</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>示例人物、金额、日期轨迹和 A/B 数据均为教学示例，不是 UPER 实际经营数据。</strong> 文末列出来源、未解决问题及相对原稿的重要修订。图表附近均有文字解释；Markdown 阅读器不支持 Mermaid 时，可打开配套 HTML 阅读已渲染的流程图。</p>
+<hr/>
+
+
+<hr/>
+<p><a id="sec-1"></a></p>
+<h2>1. 管理摘要：现在完成了什么，还缺什么</h2>
+<h3>1.1 当前进展值得肯定，但应准确命名</h3>
+<p><strong><span class="status reported">报告事实</span></strong> 团队报告称，10 月三个 Campaign 产生 245 次 Conversations；账户与 Dataset 完成关联；首次将 46 行人工认定的好线索通过 CSV 上传，全部被接收。匹配情况、归因结果与优化使用情况尚不清楚。[<a class="citation" href="#ref-S3">S3</a>，第1页]</p>
+<p><strong><span class="status analysis">分析判断</span></strong> 当前最准确的阶段定位是：<strong>数据上传的初步验证，而不是广告质量优化已经成功。</strong> 接通数据入口是有效进展，不应被否定；但也不能把“接收了多少行”作为最终商业成果。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>当前证据支持</th>
+<th>当前证据不支持</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>团队已开展账户配置与样本上传</td>
+<td>46 行都是 46 位不同的新客户</td>
+</tr>
+<tr>
+<td>报告称上传无报错</td>
+<td>46 位客户均被 Meta 匹配</td>
+</tr>
+<tr>
+<td>Dataset 内能看到事件活动</td>
+<td>46 个事件全部归因于这三个 Campaign</td>
+</tr>
+<tr>
+<td>团队已意识到需要反馈线索质量</td>
+<td>广告系统已改为寻找更容易付款的人</td>
+</tr>
+<tr>
+<td>已提出销售质量定义与自动化需求</td>
+<td>CPQL、获客成本或收入回报已经改善</td>
+</tr>
+</tbody>
+</table></div>
+<h3>1.2 下一阶段抓住三个问题</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>核心问题</th>
+<th>UPER 必须获得的答案</th>
+<th>验收证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>能不能优化？</strong></td>
+<td>现有广告配置能否使用所选下游事件；还是只能用于测量</td>
+<td>广告组配置、接口适用条件、后台诊断或官方支持答复</td>
+</tr>
+<tr>
+<td><strong>优化什么？</strong></td>
+<td>哪个业务阶段既代表客户价值，又有足够稳定的数据</td>
+<td>由销售与业务负责人确认的资格规则、事件定义</td>
+</tr>
+<tr>
+<td><strong>有没有变好？</strong></td>
+<td>合格线索成本与付费获客成本是否改善</td>
+<td>同口径基线、实验记录、成熟的付费结果</td>
+</tr>
+</tbody>
+</table></div>
+<p>这三个问题是决策顺序，不是要求所有工作串行等待。<strong>销售标准与 CRM 数据整理可以并行推进；广告优化的自动回传路线必须先完成适用性验证。</strong></p>
+<h3>1.3 先建设两个闭环，不要混成一个</h3>
+<p><strong>经营分析闭环：</strong> 广告来源 → CRM 客户与销售结果 → UPER 判断哪个广告值得投。<br/>
+<strong>平台优化闭环：</strong> CRM 真实转化 → Meta 合适的事件接口 → 支持的广告优化配置 → 验证效果。</p>
+<p>前一个闭环不应因为后一个尚未验证就停止建设。即使某种消息广告暂时不能用某个资格事件直接优化，UPER 仍然需要知道它带来了多少合格客户和付费客户。[<a class="citation" href="#ref-S2">S2</a>，第七部分；本版建议]</p>
+<hr/>
+<p><a id="sec-2"></a></p>
+<h2>2. 总体架构：谁负责什么，数据往哪里流</h2>
+<h3>2.1 三层职责，不是三个同义词</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>层次</th>
+<th>由谁维护</th>
+<th>负责回答的问题</th>
+<th>不应该承担的职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>UPER 业务与销售</strong></td>
+<td>业务负责人制定规则，销售顾问核实事实</td>
+<td>这位学生适合哪个项目？是否值得继续跟进？</td>
+<td>不能把主观“聊得很好”直接当作可靠优化信号</td>
+</tr>
+<tr>
+<td><strong>UPER CRM</strong></td>
+<td>产品定义流程，工程实现，销售维护客户资料</td>
+<td>这个人是谁？来自哪里？经历了什么？有没有付款？</td>
+<td>不替 Meta 决定广告产品支持哪些优化事件</td>
+</tr>
+<tr>
+<td><strong>Meta 广告与事件系统</strong></td>
+<td>广告运营配置账户与广告，工程对接接口</td>
+<td>广告怎样分发？哪些互动和转化可统计、可用于优化？</td>
+<td>不能替 UPER 制定 HSK 或留学服务的招生标准</td>
+</tr>
+</tbody>
+</table></div>
+<p>来源：两份原文的共同框架。[<a class="citation" href="#ref-S1">S1</a>，第一部分；<a class="citation" href="#ref-S2">S2</a>，第一部分]</p>
+<h3>2.2 从广告到经营结果的全景图</h3>
+<p><strong><span class="status proposed">建议设计</span>图中 CRM 自动接入与回传为目标方案，不代表已经上线。</strong></p>
+<figure class="diagram"><svg aria-label="流程示意图 1" height="auto" role="img" viewbox="0.00 0.00 747.82 674.32" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(20.16 654.16)">
+<title>whole</title>
+<!-- a -->
+<g class="node" id="node1">
+<title>a</title>
+<path d="M179,-634C179,-634 67,-634 67,-634 61,-634 55,-628 55,-622 55,-622 55,-606 55,-606 55,-600 61,-594 67,-594 67,-594 179,-594 179,-594 185,-594 191,-600 191,-606 191,-606 191,-622 191,-622 191,-628 185,-634 179,-634" fill="#184f3d" stroke="#184f3d" stroke-width="1.3"></path>
+<text fill="white" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-610.2">Meta 广告投放</text>
+</g>
+<!-- b -->
+<g class="node" id="node2">
+<title>b</title>
+<path d="M233.5,-549C233.5,-549 12.5,-549 12.5,-549 6.5,-549 0.5,-543 0.5,-537 0.5,-537 0.5,-503 0.5,-503 0.5,-497 6.5,-491 12.5,-491 12.5,-491 233.5,-491 233.5,-491 239.5,-491 245.5,-497 245.5,-503 245.5,-503 245.5,-537 245.5,-537 245.5,-543 239.5,-549 233.5,-549" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-525.2">学生在 Instagram / Facebook</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-507.2">看到广告</text>
+</g>
+<!-- a&#45;&gt;b -->
+<g class="edge" id="edge1">
+<title>a-&gt;b</title>
+<path d="M123,-593.94C123,-583.22 123,-569.48 123,-556.82" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="125.63,-556.62 123,-549.12 120.38,-556.62 125.63,-556.62" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- i -->
+<g class="node" id="node9">
+<title>i</title>
+<path d="M442,-58C442,-58 250,-58 250,-58 244,-58 238,-52 238,-46 238,-46 238,-12 238,-12 238,-6 244,0 250,0 250,0 442,0 442,0 448,0 454,-6 454,-12 454,-12 454,-46 454,-46 454,-52 448,-58 442,-58" fill="#fff7e8" stroke="#d8be87" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="346" y="-34.2">UPER 经营分析</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="346" y="-16.2">CPQL · 付费 · 获客成本</text>
+</g>
+<!-- a&#45;&gt;i -->
+<g class="edge" id="edge10">
+<title>a-&gt;i</title>
+<path d="M162.84,-593.97C202.34,-575.11 257,-549 257,-549 257,-549 287,-273 287,-273 287,-273 376,-228 376,-228 376,-228 376,-188 376,-188 376,-188 361.64,-112.35 352.79,-65.74" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="355.34,-65.13 351.36,-58.25 350.18,-66.11 355.34,-65.13" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="311.5" y="-298.9">广告报表</text>
+</g>
+<!-- c -->
+<g class="node" id="node3">
+<title>c</title>
+<path d="M234,-446C234,-446 12,-446 12,-446 6,-446 0,-440 0,-434 0,-434 0,-400 0,-400 0,-394 6,-388 12,-388 12,-388 234,-388 234,-388 240,-388 246,-394 246,-400 246,-400 246,-434 246,-434 246,-440 240,-446 234,-446" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-422.2">Instagram Direct / WhatsApp</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-404.2">发起咨询</text>
+</g>
+<!-- b&#45;&gt;c -->
+<g class="edge" id="edge2">
+<title>b-&gt;c</title>
+<path d="M123,-490.87C123,-479.47 123,-466.17 123,-454.08" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="125.63,-453.83 123,-446.33 120.38,-453.83 125.63,-453.83" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- d -->
+<g class="node" id="node4">
+<title>d</title>
+<path d="M198,-331C198,-331 48,-331 48,-331 42,-331 36,-325 36,-319 36,-319 36,-285 36,-285 36,-279 42,-273 48,-273 48,-273 198,-273 198,-273 204,-273 210,-279 210,-285 210,-285 210,-319 210,-319 210,-325 204,-331 198,-331" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-307.2">UPER CRM</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-289.2">客户 · 来源 · 会话</text>
+</g>
+<!-- c&#45;&gt;d -->
+<g class="edge" id="edge3">
+<title>c-&gt;d</title>
+<path d="M123,-387.78C123,-372.95 123,-354.61 123,-338.79" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="125.63,-338.75 123,-331.26 120.38,-338.76 125.63,-338.75" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="147.5" y="-356.4">消息接入</text>
+</g>
+<!-- f -->
+<g class="node" id="node6">
+<title>f</title>
+<path d="M353,-228C353,-228 117,-228 117,-228 111,-228 105,-222 105,-216 105,-216 105,-200 105,-200 105,-194 111,-188 117,-188 117,-188 353,-188 353,-188 359,-188 365,-194 365,-200 365,-200 365,-216 365,-216 365,-222 359,-228 353,-228" fill="#ddede4" stroke="#84ab97" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="235" y="-204.2">资格 · 预约 · 申请 · 付款事实</text>
+</g>
+<!-- d&#45;&gt;f -->
+<g class="edge" id="edge4">
+<title>d-&gt;f</title>
+<path d="M157.21,-272.9C172.64,-260.23 190.67,-245.41 205.49,-233.24" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="207.5,-234.99 211.63,-228.2 204.17,-230.93 207.5,-234.99" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- e -->
+<g class="node" id="node5">
+<title>e</title>
+<path d="M695.5,-331C695.5,-331 578.5,-331 578.5,-331 572.5,-331 566.5,-325 566.5,-319 566.5,-319 566.5,-285 566.5,-285 566.5,-279 572.5,-273 578.5,-273 578.5,-273 695.5,-273 695.5,-273 701.5,-273 707.5,-279 707.5,-285 707.5,-285 707.5,-319 707.5,-319 707.5,-325 701.5,-331 695.5,-331" fill="#fff7e8" stroke="#d8be87" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="637" y="-307.2">UPER 业务规则</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="637" y="-289.2">与销售核实</text>
+</g>
+<!-- e&#45;&gt;f -->
+<g class="edge" id="edge5">
+<title>e-&gt;f</title>
+<path d="M566.44,-278.8C555.64,-275.4 548,-273 548,-273 548,-273 426.97,-248.25 335.43,-229.54" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="335.94,-226.96 328.06,-228.03 334.88,-232.1 335.94,-226.96" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- g -->
+<g class="node" id="node7">
+<title>g</title>
+<path d="M256,-143C256,-143 74,-143 74,-143 68,-143 62,-137 62,-131 62,-131 62,-115 62,-115 62,-109 68,-103 74,-103 74,-103 256,-103 256,-103 262,-103 268,-109 268,-115 268,-115 268,-131 268,-131 268,-137 262,-143 256,-143" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="165" y="-119.2">事件映射与最小数据筛选</text>
+</g>
+<!-- f&#45;&gt;g -->
+<g class="edge" id="edge6">
+<title>f-&gt;g</title>
+<path d="M218.76,-187.75C209.05,-176.23 196.59,-161.45 186.11,-149.03" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="187.99,-147.19 181.15,-143.15 183.98,-150.57 187.99,-147.19" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- f&#45;&gt;i -->
+<g class="edge" id="edge8">
+<title>f-&gt;i</title>
+<path d="M248.2,-187.8C261.16,-168.95 279,-143 279,-143 279,-143 305.74,-97.91 325.43,-64.69" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="327.7,-66.01 329.27,-58.22 323.18,-63.34 327.7,-66.01" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- h -->
+<g class="node" id="node8">
+<title>h</title>
+<path d="M202.5,-49C202.5,-49 43.5,-49 43.5,-49 37.5,-49 31.5,-43 31.5,-37 31.5,-37 31.5,-21 31.5,-21 31.5,-15 37.5,-9 43.5,-9 43.5,-9 202.5,-9 202.5,-9 208.5,-9 214.5,-15 214.5,-21 214.5,-21 214.5,-37 214.5,-37 214.5,-43 208.5,-49 202.5,-49" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="123" y="-25.2">Meta 事件接收与诊断</text>
+</g>
+<!-- g&#45;&gt;h -->
+<g class="edge" id="edge7">
+<title>g-&gt;h</title>
+<path d="M156.3,-102.94C150.1,-89.37 141.7,-70.97 134.89,-56.05" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="137.19,-54.77 131.69,-49.04 132.42,-56.95 137.19,-54.77" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- h&#45;&gt;a -->
+<g class="edge" id="edge9">
+<title>h-&gt;a</title>
+<path d="M163.77,-49.05C243.86,-86.48 414,-166 414,-166 414,-166 559,-188 559,-188 559,-188 559,-228 559,-228 559,-228 369,-273 369,-273 369,-273 329,-353 329,-353 329,-353 298,-549 298,-549 298,-549 232.89,-572.81 182.1,-591.39" fill="none" stroke="#789085" stroke-dasharray="5,2" stroke-width="1.4"></path>
+<polygon fill="#789085" points="181.17,-588.93 175.03,-593.97 182.98,-593.86 181.17,-588.93" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="417.5" y="-298.9">支持且配置正确时</text>
+</g>
+<!-- i&#45;&gt;a -->
+<g class="edge" id="edge11">
+<title>i-&gt;a</title>
+<path d="M386.85,-58.07C452.95,-103.47 576,-188 576,-188 576,-188 576,-228 576,-228 576,-228 506,-273 506,-273 506,-273 467,-331 467,-331 467,-331 320,-549 320,-549 320,-549 254,-572 254,-572 254,-572 222.98,-581.71 191.13,-591.68" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="190.27,-589.19 183.9,-593.94 191.84,-594.21 190.27,-589.19" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="530.5" y="-298.9">人员决策</text>
+</g>
+</g>
+</svg>
+<figcaption>图 1 · 建议架构／说明示例，非 UPER 已部署配置</figcaption><details class="diagram-source"><summary>查看可编辑的 Mermaid 图表源码</summary><pre><code class="language-mermaid">flowchart LR
+    A[Meta 广告投放] --&gt; B[学生在 Instagram 或 Facebook 看到广告]
+    B --&gt; C[Instagram Direct 或 WhatsApp 咨询]
+    C --&gt;|消息接入| D[UPER CRM：客户、来源、会话]
+    E[UPER 业务规则与销售核实] --&gt; F[资格、预约、申请、付款事实]
+    D --&gt; F
+    F --&gt; G[事件映射与最小数据筛选]
+    G --&gt;|适用的 CAPI 路线| H[Meta 事件接收与诊断]
+    H -.-&gt;|支持且配置正确时| A
+    F --&gt; I[UPER 经营分析：CPQL、付费、获客成本]
+    A --&gt;|广告报表| I
+    I --&gt;|人员决策| A
+</code></pre></details></figure>
+<p>这张图有两条回路：<strong>Meta 算法回路</strong>与<strong>UPER 人员决策回路</strong>。上传成功，只证明算法回路中的一个入口初步可用。</p>
+<h3>2.3 四种“数据”必须分开</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>数据</th>
+<th>例子</th>
+<th>主要保存与查看位置</th>
+<th>与 CRM 的关系</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>广告设置和报表</strong></td>
+<td>受众、展示、点击、花费、对话结果</td>
+<td>Meta Ads Manager</td>
+<td>可通过报表/API 接入，用来计算获客成本</td>
+</tr>
+<tr>
+<td><strong>客户消息</strong></td>
+<td>“我想学 HSK 4，什么时候开课？”</td>
+<td>Instagram／WhatsApp 消息系统</td>
+<td>通过相应消息接口接入；不是从广告报表读取</td>
+</tr>
+<tr>
+<td><strong>UPER 业务记录</strong></td>
+<td>当前水平、预算匹配、预约、付款确认</td>
+<td>UPER CRM／交易系统</td>
+<td>由 UPER 维护，不自动等于 Meta 已知道</td>
+</tr>
+<tr>
+<td><strong>发给 Meta 的转化事件</strong></td>
+<td>某客户在某时完成符合条件的转化</td>
+<td>CRM 生成，经适用接口进入 Meta</td>
+<td>是经过筛选的反馈，不是整份客户档案</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>具体例子：</strong> 一条 Instagram 消息的正文、这条广告的花费、学生的课程预算、学生的付款事件，是四种不同数据；不能指望“一次 Meta API 对接”自动解决所有四种数据需求。[<a class="citation" href="#ref-S1">S1</a>，第三至第七部分；<a class="citation" href="#ref-W4">W4</a>、<a class="citation" href="#ref-W5">W5</a>、<a class="citation" href="#ref-W7">W7</a>]</p>
+<hr/>
+<p><a id="sec-3"></a></p>
+<h2>3. 术语地图：按归属分类，并配 UPER 例子</h2>
+<h3>3.1 UPER 业务专属定义</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>谁定义</th>
+<th>UPER 例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>HSK／Career Hub</strong></td>
+<td>UPER 管理层与业务负责人</td>
+<td>中文课程与另一条咨询服务业务，分别管理资格与收益</td>
+</tr>
+<tr>
+<td><strong>Good Lead Criteria</strong></td>
+<td>业务负责人＋销售主管</td>
+<td>学习需求真实、课程匹配、计划明确；具体阈值待确认</td>
+</tr>
+<tr>
+<td><strong>Qualification Rule Version</strong></td>
+<td>业务负责人审批，CRM 留档</td>
+<td>10 月采用规则 v1，11 月改变预算要求时保留版本</td>
+</tr>
+<tr>
+<td><strong>报名／成交／付费标准</strong></td>
+<td>业务负责人＋财务</td>
+<td>预约试听不等于报名；口头答应不等于到账</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>边界：</strong> HSK 是公共考试体系，不是 UPER 发明的概念；这里的“UPER 专属”指 <strong>UPER 的业务划分、适配规则和成交口径</strong>。Career Hub 的确切服务范围仍需确认；本文沿用原文的留学／升学／职业咨询示例，不将全部服务视为已经开展。[<a class="citation" href="#ref-S1">S1</a>，第二、三部分；<a class="citation" href="#ref-S2">S2</a>，第三部分]</p>
+<h3>3.2 CRM 与销售通用概念</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>直接含义</th>
+<th>UPER 例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Contact／客户联系人</strong></td>
+<td>被识别的一个人</td>
+<td>同一学生在 Instagram 和 WhatsApp 各有一个渠道身份</td>
+</tr>
+<tr>
+<td><strong>Lead／线索</strong></td>
+<td>一次尚待评估的潜在购买机会或咨询记录</td>
+<td>“想了解 HSK 晚间班”</td>
+</tr>
+<tr>
+<td><strong>MQL／营销合格线索</strong></td>
+<td>营销侧认为值得交给销售进一步跟进</td>
+<td>需求与课程初步匹配，并有可联系渠道</td>
+</tr>
+<tr>
+<td><strong>SQL／销售合格线索</strong></td>
+<td>销售已核实，认为具备继续成交的条件</td>
+<td>已讨论时间、价格与报名安排</td>
+</tr>
+<tr>
+<td><strong>Opportunity／商机</strong></td>
+<td>围绕具体产品或服务的销售机会</td>
+<td>老学员续报 HSK 4，是一条新商机</td>
+</tr>
+<tr>
+<td><strong>Lifecycle／生命周期</strong></td>
+<td>人与 UPER 的整体关系阶段</td>
+<td>潜在客户、已付费客户、老客户</td>
+</tr>
+<tr>
+<td><strong>Sales Pipeline／销售流程</strong></td>
+<td>一笔商机推进到哪一步</td>
+<td>已咨询、已试听、待支付、成交、流失</td>
+</tr>
+<tr>
+<td><strong>Lead Scoring／线索评分</strong></td>
+<td>用统一规则表达匹配或意向程度</td>
+<td>学习需求明确加分；缺乏关键信息先待核实</td>
+</tr>
+<tr>
+<td><strong>State／状态</strong></td>
+<td>现在是什么情况</td>
+<td>当前资格为 Qualified</td>
+</tr>
+<tr>
+<td><strong>Event／事件</strong></td>
+<td>什么事实在什么时候发生</td>
+<td>今天确认了周六的试听预约</td>
+</tr>
+</tbody>
+</table></div>
+<p>MQL、SQL 是常见术语，但每家企业的规则并不相同。HubSpot 的公开说明也将其分别对应营销与销售的资格判断，并允许自定义阶段；这不意味着 UPER 必须复制 HubSpot 的全部流程。[<a class="citation" href="#ref-W3">W3</a>；<a class="citation" href="#ref-S2">S2</a>，第五部分]</p>
+<h3>3.3 Meta 平台概念</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>直接含义</th>
+<th>UPER 例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ads Manager</strong></td>
+<td>管理广告投放和广告报表的工具</td>
+<td>查看某条课程视频花了多少钱</td>
+</tr>
+<tr>
+<td><strong>Events Manager</strong></td>
+<td>查看事件数据来源、接收与诊断的工具</td>
+<td>检查回传的付款事件是否收到</td>
+</tr>
+<tr>
+<td><strong>Campaign／广告活动</strong></td>
+<td>广告的顶层组织及营销目标设置</td>
+<td>某期 HSK 招生推广</td>
+</tr>
+<tr>
+<td><strong>Ad Set／广告组</strong></td>
+<td>一组具体投放与转化配置</td>
+<td>印尼某受众、某预算策略、某消息目的地</td>
+</tr>
+<tr>
+<td><strong>Ad／广告</strong></td>
+<td>用户实际看到的创意与按钮</td>
+<td>一条课程视频及“发送消息”按钮</td>
+</tr>
+<tr>
+<td><strong>Placement／版位</strong></td>
+<td>广告出现的位置</td>
+<td>Instagram Reels，而不是 WhatsApp 聊天窗口</td>
+</tr>
+<tr>
+<td><strong>Conversion Location／转化位置</strong></td>
+<td>希望用户在哪里完成目标行为</td>
+<td>网站、即时表单或消息应用，取决于产品配置</td>
+</tr>
+<tr>
+<td><strong>Messaging Destination／消息目的地</strong></td>
+<td>点击后进入哪种消息应用</td>
+<td>Instagram Direct 或 WhatsApp</td>
+</tr>
+<tr>
+<td><strong>Performance Goal／成效目标</strong></td>
+<td>系统实际重点争取的结果</td>
+<td>更多消息对话；不自动等于更多付款</td>
+</tr>
+<tr>
+<td><strong>Dataset／数据集</strong></td>
+<td>Meta 组织接收事件的数据资源</td>
+<td>接收 UPER 回传的适用事件，不是 CRM 客户库</td>
+</tr>
+<tr>
+<td><strong>Pixel</strong></td>
+<td>采集网站行为的浏览器端技术</td>
+<td>网站课程详情页上的浏览与报名行为</td>
+</tr>
+<tr>
+<td><strong>Conversions API／CAPI</strong></td>
+<td>服务器端发送转化数据的接口体系</td>
+<td>CRM 把已确认的业务事件发送给 Meta</td>
+</tr>
+<tr>
+<td><strong>Custom Audience／自定义受众</strong></td>
+<td>基于允许使用的客户或互动数据建立的受众</td>
+<td>在适用配置中排除已有付费客户</td>
+</tr>
+<tr>
+<td><strong>Lookalike Audience／相似受众</strong></td>
+<td>以来源受众为参照寻找相似人群</td>
+<td>以符合条件的已有客户作为来源；不保证找到付款者</td>
+</tr>
+</tbody>
+</table></div>
+<p>说明：Meta 官方培训分别讨论广告目标、广告组的转化配置及受众；账户的实际可选项仍需以后台为准。[<a class="citation" href="#ref-W1">W1</a>、<a class="citation" href="#ref-W2">W2</a>、<a class="citation" href="#ref-W12">W12</a>；<a class="citation" href="#ref-S1">S1</a>，第四部分；<a class="citation" href="#ref-S2">S2</a>，第四部分]</p>
+<h3>3.4 跨系统概念</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>直接含义</th>
+<th>UPER 例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Event Mapping／事件映射</strong></td>
+<td>把业务事实转换为接口要求的事件名和参数</td>
+<td><code>PaymentCompleted</code> → 适用路线的 <code>Purchase</code></td>
+</tr>
+<tr>
+<td><strong>Matching／身份匹配</strong></td>
+<td>Meta 尝试把回传事件关联到其可识别的用户</td>
+<td>使用相应接口接受的联系方式或渠道标识</td>
+</tr>
+<tr>
+<td><strong>Attribution／广告归因</strong></td>
+<td>按规则将转化关联到广告接触</td>
+<td>某次付款是否计入某广告的结果</td>
+</tr>
+<tr>
+<td><strong>Deduplication／去重</strong></td>
+<td>避免同一个事实被重复计算</td>
+<td>同一笔付款重试发送三次，业务上仍是一次付款</td>
+</tr>
+<tr>
+<td><strong>Webhook／事件通知</strong></td>
+<td>平台发生消息等事件后主动通知 CRM</td>
+<td>学生发来私信，CRM 收到平台通知</td>
+</tr>
+<tr>
+<td><strong>Custom Event／自定义事件</strong></td>
+<td>在允许的路线中使用业务自定义名称</td>
+<td><code>ConsultationCompleted</code>；不等于一定可优化</td>
+</tr>
+<tr>
+<td><strong>Custom Conversion／自定义转化</strong></td>
+<td>在支持的产品中按事件及条件定义转化口径</td>
+<td>将某类业务的符合条件事件单独统计</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>同名不等义：CRM 的 Lead 是一条业务记录；Meta 的 <code>Lead</code> 是一个事件名称；广告报表的 Conversations 是一个统计指标。</strong> 三者不是自动一一对应。[<a class="citation" href="#ref-S2">S2</a>，第二、四部分；<a class="citation" href="#ref-W4">W4</a>、<a class="citation" href="#ref-W6">W6</a>]</p>
+<h3>3.5 营销效果指标</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>直接含义</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cost per Conversation</strong></td>
+<td>每个广告对话结果的广告成本</td>
+<td>广告费÷相同口径的对话结果</td>
+</tr>
+<tr>
+<td><strong>CPQL</strong></td>
+<td>每条合格线索的广告成本</td>
+<td>广告费÷该广告获客批次中的合格线索</td>
+</tr>
+<tr>
+<td><strong>Paid CAC／广告付费获客成本</strong></td>
+<td>每个广告来源付费新客的广告成本</td>
+<td>只包含广告费，不含销售人工</td>
+</tr>
+<tr>
+<td><strong>Fully Loaded CAC／全成本获客成本</strong></td>
+<td>每个新客分摊的完整获客成本</td>
+<td>广告、相关人员、代理与工具成本等</td>
+</tr>
+<tr>
+<td><strong>ROAS</strong></td>
+<td>归因收入与广告花费之比</td>
+<td>归因收入 300 万印尼盾÷广告费 100 万＝3</td>
+</tr>
+</tbody>
+</table></div>
+<p>指标是营销通用概念；<strong>统计期间、归因方式、成本范围和去重规则必须由 UPER 固定。</strong> 本版第11章给出建议口径，避免所有成本指标都简称 CAC。[<a class="citation" href="#ref-S1">S1</a>，第二、八部分；本版设计]</p>
+<hr/>
+<p><a id="sec-4"></a></p>
+<h2>4. 广告从哪里展示，客户去哪里咨询</h2>
+<h3>4.1 Campaign、Ad Set、Ad：三个不同层级</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>设置什么</th>
+<th>教学示例</th>
+<th>容易误解的地方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Campaign</strong></td>
+<td>营销目标；采用活动预算时也设置预算</td>
+<td>为 HSK 招生建立一项广告活动</td>
+<td>“HSK 招生”是业务命名，不一定是后台 Objective 名称</td>
+</tr>
+<tr>
+<td><strong>Ad Set</strong></td>
+<td>受众、排期、版位、转化位置、消息目的地、成效目标；采用广告组预算时设置预算</td>
+<td>广告组 A 引导到 IG 私信，B 引导到 WhatsApp</td>
+<td>预算不一定只在此层设置；也不是所有目标都提供相同选项</td>
+</tr>
+<tr>
+<td><strong>Ad</strong></td>
+<td>账号身份、图片／视频、文案、按钮及相应创意配置</td>
+<td>课程介绍视频、学员案例图片</td>
+<td>一条广告不是整个 Campaign</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="diagram"><svg aria-label="流程示意图 2" height="auto" role="img" viewbox="0.00 0.00 637.32 300.32" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(20.16 280.16)">
+<title>hierarchy</title>
+<!-- c -->
+<g class="node" id="node1">
+<title>c</title>
+<path d="M351.5,-260C351.5,-260 243.5,-260 243.5,-260 237.5,-260 231.5,-254 231.5,-248 231.5,-248 231.5,-214 231.5,-214 231.5,-208 237.5,-202 243.5,-202 243.5,-202 351.5,-202 351.5,-202 357.5,-202 363.5,-208 363.5,-214 363.5,-214 363.5,-248 363.5,-248 363.5,-254 357.5,-260 351.5,-260" fill="#184f3d" stroke="#184f3d" stroke-width="1.3"></path>
+<text fill="white" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="297.5" y="-236.2">Campaign</text>
+<text fill="white" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="297.5" y="-218.2">HSK 招生推广</text>
+</g>
+<!-- a -->
+<g class="node" id="node2">
+<title>a</title>
+<path d="M286.5,-159C286.5,-159 118.5,-159 118.5,-159 112.5,-159 106.5,-153 106.5,-147 106.5,-147 106.5,-113 106.5,-113 106.5,-107 112.5,-101 118.5,-101 118.5,-101 286.5,-101 286.5,-101 292.5,-101 298.5,-107 298.5,-113 298.5,-113 298.5,-147 298.5,-147 298.5,-153 292.5,-159 286.5,-159" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="202.5" y="-135.2">Ad Set A</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="202.5" y="-117.2">进入 Instagram Direct</text>
+</g>
+<!-- c&#45;&gt;a -->
+<g class="edge" id="edge1">
+<title>c-&gt;a</title>
+<path d="M270.53,-201.9C259.4,-190.3 246.41,-176.75 234.77,-164.63" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="236.62,-162.77 229.54,-159.17 232.84,-166.4 236.62,-162.77" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- b -->
+<g class="node" id="node3">
+<title>b</title>
+<path d="M453.5,-159C453.5,-159 333.5,-159 333.5,-159 327.5,-159 321.5,-153 321.5,-147 321.5,-147 321.5,-113 321.5,-113 321.5,-107 327.5,-101 333.5,-101 333.5,-101 453.5,-101 453.5,-101 459.5,-101 465.5,-107 465.5,-113 465.5,-113 465.5,-147 465.5,-147 465.5,-153 459.5,-159 453.5,-159" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="393.5" y="-135.2">Ad Set B</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="393.5" y="-117.2">进入 WhatsApp</text>
+</g>
+<!-- c&#45;&gt;b -->
+<g class="edge" id="edge2">
+<title>c-&gt;b</title>
+<path d="M324.75,-201.9C336,-190.3 349.13,-176.75 360.89,-164.63" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="362.84,-166.39 366.18,-159.17 359.07,-162.73 362.84,-166.39" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- a1 -->
+<g class="node" id="node4">
+<title>a1</title>
+<path d="M115,-58C115,-58 12,-58 12,-58 6,-58 0,-52 0,-46 0,-46 0,-12 0,-12 0,-6 6,0 12,0 12,0 115,0 115,0 121,0 127,-6 127,-12 127,-12 127,-46 127,-46 127,-52 121,-58 115,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="63.5" y="-34.2">Ad A1</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="63.5" y="-16.2">课程介绍视频</text>
+</g>
+<!-- a&#45;&gt;a1 -->
+<g class="edge" id="edge3">
+<title>a-&gt;a1</title>
+<path d="M163.04,-100.9C146.31,-88.98 126.71,-75.02 109.35,-62.65" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="110.69,-60.39 103.06,-58.17 107.64,-64.66 110.69,-60.39" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- a2 -->
+<g class="node" id="node5">
+<title>a2</title>
+<path d="M265,-58C265,-58 162,-58 162,-58 156,-58 150,-52 150,-46 150,-46 150,-12 150,-12 150,-6 156,0 162,0 162,0 265,0 265,0 271,0 277,-6 277,-12 277,-12 277,-46 277,-46 277,-52 271,-58 265,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="213.5" y="-34.2">Ad A2</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="213.5" y="-16.2">学员案例图片</text>
+</g>
+<!-- a&#45;&gt;a2 -->
+<g class="edge" id="edge4">
+<title>a-&gt;a2</title>
+<path d="M205.62,-100.9C206.83,-90.03 208.23,-77.45 209.51,-65.94" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="212.15,-65.92 210.37,-58.17 206.93,-65.34 212.15,-65.92" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- b1 -->
+<g class="node" id="node6">
+<title>b1</title>
+<path d="M435,-58C435,-58 332,-58 332,-58 326,-58 320,-52 320,-46 320,-46 320,-12 320,-12 320,-6 326,0 332,0 332,0 435,0 435,0 441,0 447,-6 447,-12 447,-12 447,-46 447,-46 447,-52 441,-58 435,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="383.5" y="-34.2">Ad B1</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="383.5" y="-16.2">课程介绍视频</text>
+</g>
+<!-- b&#45;&gt;b1 -->
+<g class="edge" id="edge5">
+<title>b-&gt;b1</title>
+<path d="M390.66,-100.9C389.56,-90.03 388.29,-77.45 387.13,-65.94" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="389.71,-65.37 386.35,-58.17 384.49,-65.9 389.71,-65.37" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- b2 -->
+<g class="node" id="node7">
+<title>b2</title>
+<path d="M585,-58C585,-58 482,-58 482,-58 476,-58 470,-52 470,-46 470,-46 470,-12 470,-12 470,-6 476,0 482,0 482,0 585,0 585,0 591,0 597,-6 597,-12 597,-12 597,-46 597,-46 597,-52 591,-58 585,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="533.5" y="-34.2">Ad B2</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="533.5" y="-16.2">学员案例图片</text>
+</g>
+<!-- b&#45;&gt;b2 -->
+<g class="edge" id="edge6">
+<title>b-&gt;b2</title>
+<path d="M433.24,-100.9C450.09,-88.98 469.83,-75.02 487.32,-62.65" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="489.05,-64.65 493.66,-58.17 486.02,-60.36 489.05,-64.65" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+</g>
+</svg>
+<figcaption>图 2 · 建议架构／说明示例，非 UPER 已部署配置</figcaption><details class="diagram-source"><summary>查看可编辑的 Mermaid 图表源码</summary><pre><code class="language-mermaid">flowchart TD
+    C[Campaign：HSK 招生推广] --&gt; A[Ad Set A：进入 Instagram Direct]
+    C --&gt; B[Ad Set B：进入 WhatsApp]
+    A --&gt; A1[Ad A1：课程介绍视频]
+    A --&gt; A2[Ad A2：学员案例图片]
+    B --&gt; B1[Ad B1：课程介绍视频]
+    B --&gt; B2[Ad B2：学员案例图片]
+</code></pre></details></figure>
+<p><strong>图为结构示例，不是 UPER 当前账户配置，也不是立即增加广告组的建议。</strong> Meta 官方资料将营销目标与广告组的转化位置、事件及成效目标区分讨论。[<a class="citation" href="#ref-W1">W1</a>、<a class="citation" href="#ref-W2">W2</a>]</p>
+<p><strong>一句话：Campaign 定营销方向，Ad Set 定投放与转化配置，Ad 定用户看到什么。</strong></p>
+<h3>4.2 展示平台不等于咨询入口</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>对应对象</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>学生在哪里看到广告？</td>
+<td>展示平台与版位</td>
+<td>Instagram 的 Reels</td>
+</tr>
+<tr>
+<td>学生点击后去哪里？</td>
+<td>点击目的地／转化位置</td>
+<td>Instagram 私信或 WhatsApp</td>
+</tr>
+<tr>
+<td>学生用什么与销售聊天？</td>
+<td>消息应用</td>
+<td>Instagram Direct、Messenger、WhatsApp</td>
+</tr>
+<tr>
+<td>Meta 重点争取什么行为？</td>
+<td>Performance Goal</td>
+<td>对话、线索或购买等；以实际支持选项为准</td>
+</tr>
+</tbody>
+</table></div>
+<p>Instagram Direct 是 Instagram 的私信功能；Messenger 是 Meta 的另一项消息产品，与 Facebook 场景关联；WhatsApp 是独立消息应用。<strong>同样展示在 Instagram 的两条广告，点击后不一定进入同一个消息应用。</strong> Meta 官方培训明确讨论从 Facebook／Instagram 广告发起 WhatsApp 对话，以及消息广告的不同优化场景。[<a class="citation" href="#ref-W9">W9</a>；<a class="citation" href="#ref-S1">S1</a>，第四部分]</p>
+<h3>4.3 UPER 需要确认的两条 WhatsApp 路径</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>路径</th>
+<th>学生实际经历</th>
+<th>广告按钮的直接目的地</th>
+<th>对 UPER 数据记录的影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A：广告直接进入 WhatsApp</strong></td>
+<td>Instagram 广告 → 点击按钮 → WhatsApp 对话</td>
+<td>WhatsApp</td>
+<td>应保留接口实际返回的广告引流信息；不能仅记“WhatsApp 来的”</td>
+</tr>
+<tr>
+<td><strong>B：先私信，再由销售转移</strong></td>
+<td>Instagram 广告 → Instagram Direct → 销售发 WhatsApp 链接／联系方式 → WhatsApp 对话</td>
+<td>Instagram Direct</td>
+<td>CRM 需要把两个渠道身份关联到同一人，并保留转移前的来源</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><span class="status official">官方资料</span></strong> 广告直接进入 WhatsApp 是已有产品路径，不必先扫码。[<a class="citation" href="#ref-W9">W9</a>]<br/>
+<strong>【用户讨论中的可能路径】</strong> UPER 可能采用其中一种或两种；目前没有三个 Campaign 的配置证据，不能写成“两种已在运行”。[<a class="citation" href="#ref-S1">S1</a>，第八部分；本次讨论]</p>
+<p>在允许多消息目的地的广告配置中，需区分“后台选择多个候选入口”与“把同一条消息同时发往两个应用”。<strong>本版不根据概念介绍认定 UPER 的当前 Objective、账户或广告组一定可选择某个组合；由广告运营提交后台截图确认。</strong></p>
+<p><strong>分析建议：</strong> 为了比较 IG 私信与 WhatsApp，分开广告组可以让报表更清楚，但这本身不是严格的随机对照实验；预算很小或事件很少时，也不应为分类而过度拆分。</p>
+<h3>4.4 Meta 到底记录和统计哪些信息？</h3>
+<p>这里讨论<strong>广告管理与测量中可观察的信息类别</strong>，不是声称已知道 Meta 未公开的全部内部日志。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>信息类别</th>
+<th>具体包括什么</th>
+<th>对 UPER 有什么用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>展示与覆盖</strong></td>
+<td>广告展示次数、触达人数、平均展示频次</td>
+<td>判断广告有没有被看到、是否反复触达相同人群</td>
+</tr>
+<tr>
+<td><strong>点击</strong></td>
+<td>广告点击、链接点击等不同点击口径</td>
+<td>判断素材是否引起行动；按钮点击不等于消息发送</td>
+</tr>
+<tr>
+<td><strong>内容互动</strong></td>
+<td>点赞、评论、分享、收藏等适用指标</td>
+<td>判断内容响应；不是付费意向的直接证明</td>
+</tr>
+<tr>
+<td><strong>视频观看</strong></td>
+<td>播放、观看时长或播放进度等适用指标</td>
+<td>判断用户是否愿意继续看课程内容</td>
+</tr>
+<tr>
+<td><strong>消息结果</strong></td>
+<td>符合平台统计口径的对话／消息相关结果</td>
+<td>判断广告是否带来咨询；不等于不同学生人数</td>
+</tr>
+<tr>
+<td><strong>费用与效率</strong></td>
+<td>花费、每次结果成本、不同广告层级的表现</td>
+<td>对照成本与效果</td>
+</tr>
+<tr>
+<td><strong>允许的汇总拆分</strong></td>
+<td>按日期、广告层级、版位等可用维度拆分</td>
+<td>找出哪里有表现差异；不是学生实名清单</td>
+</tr>
+</tbody>
+</table></div>
+<p>以上类别承接原文的广告统计说明，具体指标是否显示受格式、权限及产品口径影响。[<a class="citation" href="#ref-S1">S1</a>，第四部分；<a class="citation" href="#ref-W2">W2</a>]</p>
+<p><strong>例子：</strong> 某广告报表显示 10,000 次展示、200 次点击、40 次消息对话结果。这不表示 UPER 获得了 40 名符合课程条件的新学生，也不表示 UPER 可以从广告报表读到每位学生的聊天正文。</p>
+<p><strong>必须分清：</strong> 广告报表看投放结果；消息接口接收授权范围内的对话；CRM 保存销售判断与成交历史。不能把“广告报表没有聊天明细”扩大成“Meta 消息产品或消息 API 没有消息内容”。[<a class="citation" href="#ref-W7">W7</a>、<a class="citation" href="#ref-W8">W8</a>]</p>
+<hr/>
+<p><a id="sec-5"></a></p>
+<h2>5. UPER 如何判断好线索：字段、维护者与回传边界</h2>
+<h3>5.1 Good Lead 不是一个足够清楚的业务标准</h3>
+<p><strong><span class="status proposed">建议设计</span></strong> 用三个不同维度记录，而不是只留一个 <code>good = yes/no</code>：</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>回答什么</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>匹配度</strong></td>
+<td>学生需求与 UPER 提供的项目是否适配？</td>
+<td>需要晚间中文课，而 UPER 有可用班级</td>
+</tr>
+<tr>
+<td><strong>意向与时机</strong></td>
+<td>学生是否有明确行动计划？</td>
+<td>已确认下月开学并愿意安排试听</td>
+</tr>
+<tr>
+<td><strong>信息完备度</strong></td>
+<td>判断所需信息是否已核实？</td>
+<td>时间已确认，但预算尚未讨论</td>
+</tr>
+</tbody>
+</table></div>
+<p>“预算还没有问到”不等于“不具备预算”；“未回复”不等于“明确不符合条件”。建议区分 <strong>待核实、合格、不合格、暂缓跟进</strong>，并保留原因。</p>
+<h3>5.2 HSK 与 Career Hub 的资格规则应分别定义</h3>
+<p>下表保留原文的业务逻辑，但仍为建议，不是现行招生规则。[<a class="citation" href="#ref-S2">S2</a>，第三部分]</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>判断问题</th>
+<th>HSK 课程示例</th>
+<th>Career Hub 示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>客户要解决什么问题？</td>
+<td>学中文、准备考试、满足升学需要</td>
+<td>中国留学申请或某项已确认服务需求</td>
+</tr>
+<tr>
+<td>UPER 能否提供合适服务？</td>
+<td>水平、课型、时段、授课语言匹配</td>
+<td>学历、项目条件及可提供的服务匹配</td>
+</tr>
+<tr>
+<td>客户计划何时行动？</td>
+<td>计划开课时间</td>
+<td>目标入学或申请时间</td>
+</tr>
+<tr>
+<td>付款安排是否可行？</td>
+<td>是否接受费用、谁付款、是否需家长确认</td>
+<td>是否接受服务费用与相关预算安排</td>
+</tr>
+<tr>
+<td>下一步是否明确？</td>
+<td>同意试听或进一步报名沟通</td>
+<td>同意正式咨询或材料评估</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>管理建议：</strong> 先用少量可核实条件建立规则，不急于构建复杂评分模型。MQL 与 SQL 只有在团队真的需要两个交接门槛时才拆开；否则先保留一个定义清楚的 Qualified 阶段。</p>
+<h3>5.3 最重要的字段责任表</h3>
+<p><strong>规则由业务负责人审批；客户事实由学生提供、销售核实；CRM 产品与工程维护字段和自动化。Meta 不维护 UPER 的课程资格规则。</strong></p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>字段／信息</th>
+<th>由谁提供或维护</th>
+<th>保存在哪里</th>
+<th>向 Meta 发送什么？</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>business_line</code></td>
+<td>CRM 按咨询产品预填，销售纠正</td>
+<td>CRM</td>
+<td>非全局必传；有明确用途且路线支持时发送业务分类</td>
+</tr>
+<tr>
+<td>当前 HSK 水平、目标水平</td>
+<td>学生提供；顾问核实，必要时测评</td>
+<td>CRM</td>
+<td><strong>默认不传</strong>这些学习细节</td>
+</tr>
+<tr>
+<td>学习目的、课程偏好</td>
+<td>学生提供；销售更新</td>
+<td>CRM</td>
+<td><strong>默认不传</strong></td>
+</tr>
+<tr>
+<td>计划开课时间、预算匹配</td>
+<td>销售沟通后记录</td>
+<td>CRM</td>
+<td><strong>默认不传</strong>；用于内部资格判断</td>
+</tr>
+<tr>
+<td>学历、申请项目、目标入学时间</td>
+<td>Career Hub 顾问核实</td>
+<td>CRM</td>
+<td><strong>默认不传</strong>具体申请档案</td>
+</tr>
+<tr>
+<td><code>qualification</code>、认定原因、规则版本</td>
+<td>业务审批规则；销售或受控规则引擎判断</td>
+<td>CRM＋事件历史</td>
+<td>必要时发送“资格达成事件”，不是整个判断档案</td>
+</tr>
+<tr>
+<td>预约时间与到场结果</td>
+<td>顾问／预约系统维护</td>
+<td>CRM／预约系统</td>
+<td>适用时发送预约或到场对应事件</td>
+</tr>
+<tr>
+<td>付款、金额、币种、订单号</td>
+<td>交易系统／财务确认</td>
+<td>交易系统为事实源，CRM 同步</td>
+<td>适用的付款事件及必要交易参数</td>
+</tr>
+<tr>
+<td>手机号、邮箱</td>
+<td>客户提供；销售核实；CRM 管理权限</td>
+<td>CRM</td>
+<td>仅在所选接口需要且有合法处理基础时用于匹配</td>
+</tr>
+<tr>
+<td>平台用户／引流标识</td>
+<td>相应消息或广告接口提供；工程保存</td>
+<td>CRM 渠道身份与来源记录</td>
+<td>按所选路线的要求发送；不能假定与手机号等价</td>
+</tr>
+<tr>
+<td>私信全文、内部备注、申请材料</td>
+<td>消息接口／销售顾问</td>
+<td>受控 CRM／文件存储</td>
+<td><strong>默认不作为广告回传数据发送</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>外部核对：</strong> Meta 官方 SDK 区分事件信息、用户匹配信息与业务参数；并不是把所有 CRM 字段塞进同一个对象。不同标识的规范化和处理方式也不同，不能把每种 ID 都统一哈希。[<a class="citation" href="#ref-W4">W4</a>、<a class="citation" href="#ref-W5">W5</a>]</p>
+<h3>5.4 同一学生的“CRM 档案”与“Meta 反馈”对照</h3>
+<p><strong>【教学示例】</strong> 学生 Rina 想从 HSK 2 学到 HSK 4，计划三个月内开课，能接受课程费用。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>CRM 保存的完整业务依据</th>
+<th>向 Meta 发送的最小转化说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>当前水平：HSK 2</td>
+<td>一个适用的资格转化事件</td>
+</tr>
+<tr>
+<td>目标水平：HSK 4</td>
+<td>资格事件实际发生时间</td>
+</tr>
+<tr>
+<td>学习目的：准备升学</td>
+<td>该接口接受的必要用户匹配标识</td>
+</tr>
+<tr>
+<td>计划开课：三个月内</td>
+<td>用于控制重复发送的事件标识（按接口规则）</td>
+</tr>
+<tr>
+<td>预算匹配：顾问已确认</td>
+<td>可选的必要业务分类；不是所有学习详情</td>
+</tr>
+<tr>
+<td>顾问、认定原因、规则版本</td>
+<td>不发送顾问聊天摘要来替代事件定义</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>逻辑是：学习字段 → UPER 资格判断 → 一项转化事实 → Meta 适用事件。</strong> 不是“上传更多学习字段，Meta 就自动理解 UPER 的招生标准”。</p>
+<h3>5.5 Lead Scoring：保留示例，但不把示例当成规则</h3>
+<p>原文示例为：需求 30 分、课程匹配 25 分、时间 20 分、预算 15 分、联系方式 10 分，总分 100，假设 70 分达标。[<a class="citation" href="#ref-S2">S2</a>，第五部分]</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>这种方法能说明什么</th>
+<th>不能说明什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>用结构化条件减少销售随意判断</td>
+<td>70 分是 UPER 已验证的最佳门槛</td>
+</tr>
+<tr>
+<td>可以追踪客户为什么被评为合格</td>
+<td>高分客户必然付款</td>
+</tr>
+<tr>
+<td>可以比较不同规则的实际付费表现</td>
+<td>只要分数够高，就可忽略明确的不适配条件</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><span class="status proposed">建议设计</span></strong> 先明确必要条件与“不适配原因”，再考虑评分排序；评分与硬性门槛分开维护。规则更新要留版本，避免把规则放宽导致的“合格人数增加”误判成广告变好。</p>
+<hr/>
+<p><a id="sec-6"></a></p>
+<h2>6. CRM 如何保存客户、商机、状态与事件</h2>
+<h3>6.1 一个学生可以有多个渠道身份和多个商机</h3>
+<p><strong><span class="status proposed">建议设计</span></strong> CRM 至少在业务逻辑上区分以下对象，不要求第一版一定建立复杂的大型系统。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>对象</th>
+<th>代表什么</th>
+<th>UPER 例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>联系人</strong></td>
+<td>同一个真实的人</td>
+<td>学生 Rina</td>
+</tr>
+<tr>
+<td><strong>渠道身份</strong></td>
+<td>这个人在某个渠道的账号或联系方式</td>
+<td>Rina 的 Instagram 身份与 WhatsApp 联系方式</td>
+</tr>
+<tr>
+<td><strong>会话</strong></td>
+<td>某渠道的一段交流</td>
+<td>IG 首次询价、WA 后续讨论</td>
+</tr>
+<tr>
+<td><strong>线索／商机</strong></td>
+<td>对某项服务的购买兴趣与销售过程</td>
+<td>本次 HSK 课程报名；之后的留学咨询另建商机</td>
+</tr>
+<tr>
+<td><strong>订单／付款</strong></td>
+<td>真实交易及付款流水</td>
+<td>一笔报名款；其后的退款单独记录</td>
+</tr>
+<tr>
+<td><strong>事件历史</strong></td>
+<td>上述对象发生变化的时间与依据</td>
+<td>资格确认、预约、到场、付款确认</td>
+</tr>
+</tbody>
+</table></div>
+<p>同一个人既是 HSK 老客户，也可能是 Career Hub 的新线索。<strong>人的生命周期与某笔商机的销售阶段应分开</strong>，否则“已经是 Customer”会掩盖新的销售机会。[<a class="citation" href="#ref-S2">S2</a>，第五部分]</p>
+<h3>6.2 状态回答“现在怎样”，事件回答“何时发生了什么”</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>示例时间</th>
+<th>发生的事实／内部事件</th>
+<th>资格状态</th>
+<th>本次商机情况</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第1天</td>
+<td><code>InquiryReceived</code>：发来课程咨询</td>
+<td>待核实</td>
+<td>新咨询</td>
+</tr>
+<tr>
+<td>第2天</td>
+<td><code>LeadQualified</code>：顾问完成资格核实</td>
+<td>合格</td>
+<td>跟进中</td>
+</tr>
+<tr>
+<td>第3天</td>
+<td><code>TrialBooked</code>：试听时间确认</td>
+<td>合格</td>
+<td>已预约</td>
+</tr>
+<tr>
+<td>第5天</td>
+<td><code>TrialAttended</code>：实际参加试听</td>
+<td>合格</td>
+<td>待报名</td>
+</tr>
+<tr>
+<td>第7天</td>
+<td><code>PaymentCompleted</code>：财务确认到账</td>
+<td>保留资格历史</td>
+<td>成交</td>
+</tr>
+</tbody>
+</table></div>
+<p>这里的内部事件名称是 UPER 的建议设计，<strong>不是 Meta API 名称清单</strong>。</p>
+<p>如果只保存“当前已成交”，UPER 就无法知道学生用了多久才付费、是否参加过试听、哪一步容易流失。建议保存带时间、来源、操作者与版本的可审计历史；更正留痕，而不是静默覆盖。<strong>可审计不等于永久不能删除个人信息</strong>，保留期和删除要求应单独管理。</p>
+<h3>6.3 身份合并、事件去重、交易去重是三件事</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>情况</th>
+<th>正确处理</th>
+<th>错误处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>学生从 IG 转去 WA</td>
+<td>有可靠依据时关联两个身份，保留关联依据</td>
+<td>只因姓名相似就自动合并</td>
+</tr>
+<tr>
+<td>同一付款通知重试三次</td>
+<td>用同一交易与业务事件身份防止重复记账／发送</td>
+<td>每次重试生成一个新 Purchase</td>
+</tr>
+<tr>
+<td>同一学生购买两个不同课程</td>
+<td>保留两个真实商机／订单</td>
+<td>因手机号相同删除第二笔真实购买</td>
+</tr>
+<tr>
+<td>顾问先误标不合格，后修正</td>
+<td>记录纠正原因及资格历史</td>
+<td>改时间或反复发送，虚增资格事件</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>关键边界：</strong> CRM 认定两个渠道属于同一学生，不等于 Meta 会自动按相同方式完成广告归因。</p>
+<hr/>
+<p><a id="sec-7"></a></p>
+<h2>7. Meta 事件目录与 CRM 映射规则</h2>
+<h3>7.1 先确定事件属于哪种产品路径</h3>
+<p><strong>不能把“Meta 支持某事件”理解为“所有 Meta 广告、所有接口都支持这个事件优化”。</strong></p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>产品路径</th>
+<th>数据通常从哪里来</th>
+<th>本版能确认什么</th>
+<th>不能直接外推什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>网站 Pixel／适用的服务器回传</strong></td>
+<td>UPER 网站及后台</td>
+<td>官方 Pixel 模板列明第7.2节的18个名称</td>
+<td>这些名称全部适用于商业消息接口</td>
+</tr>
+<tr>
+<td><strong>CRM 线索反馈</strong></td>
+<td>CRM 的资格、销售结果</td>
+<td>官方培训明确覆盖即时表单和网站表单的线索质量优化</td>
+<td>同样配置可直接用于 IG 私信广告</td>
+</tr>
+<tr>
+<td><strong>Business Messaging CAPI</strong></td>
+<td>与消息业务对应的转化事实</td>
+<td>官方存在独立的商业消息 CAPI 课程</td>
+<td>其名称、身份标识和优化条件与网站方案完全相同</td>
+</tr>
+<tr>
+<td><strong>消息收发 API</strong></td>
+<td>Instagram／WhatsApp 的会话</td>
+<td>用来接收和回复客户消息</td>
+<td>每条聊天消息自动成为一个广告转化事件</td>
+</tr>
+</tbody>
+</table></div>
+<p>依据：[<a class="citation" href="#ref-W4">W4</a>、<a class="citation" href="#ref-W6">W6</a>、<a class="citation" href="#ref-W7">W7</a>、<a class="citation" href="#ref-W8">W8</a>、<a class="citation" href="#ref-W10">W10</a>、<a class="citation" href="#ref-W11">W11</a>]。</p>
+<h3>7.2 已核对的 Pixel 标准事件名称：18 项，含基础 PageView</h3>
+<p><strong><span class="status official">官方资料</span></strong> 下列名称在 Meta 官方 Google Tag Manager Pixel 模板的 <code>standardEventNames</code> 中明确列出；<code>PageView</code> 也包含其中。[<a class="citation" href="#ref-W6">W6</a>]</p>
+<p><strong>使用范围：</strong> 这是网站事件词典，不是“所有 Meta 产品通用、全部可优化”的保证。下表中的中文释义为简要解释；UPER 触发例子均是建议，只有真实发生相应行为才可采用。</p>
+<h4>A. UPER 获客与报名更相关的事件</h4>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>事件名</th>
+<th>简要含义</th>
+<th>UPER 触发示例／边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Lead</code></td>
+<td>提交线索或表达明确服务意向</td>
+<td>成功提交课程咨询；不要在后台导入旧客户时假装新线索刚发生</td>
+</tr>
+<tr>
+<td><code>Contact</code></td>
+<td>与企业发生联系</td>
+<td>客户发起一次符合既定定义的电话、邮件或聊天联系；不代表已合格</td>
+</tr>
+<tr>
+<td><code>CompleteRegistration</code></td>
+<td>完成注册流程</td>
+<td>学员账号成功注册；不等于支付学费</td>
+</tr>
+<tr>
+<td><code>Schedule</code></td>
+<td>完成预约安排</td>
+<td>试听／顾问咨询的时间已确认；不等于实际到场</td>
+</tr>
+<tr>
+<td><code>SubmitApplication</code></td>
+<td>提交正式申请</td>
+<td>正式提交某项服务申请；不等于申请获批或录取</td>
+</tr>
+<tr>
+<td><code>StartTrial</code></td>
+<td>开始试用</td>
+<td>实际开始符合试用定义的免费试听／试用服务，不是仅预约</td>
+</tr>
+<tr>
+<td><code>Purchase</code></td>
+<td>完成购买</td>
+<td>已确认真实付款；记录适用金额和币种，不能把口头承诺当付款</td>
+</tr>
+<tr>
+<td><code>Subscribe</code></td>
+<td>开始订阅服务</td>
+<td>确实开通持续订阅型产品；不把关注账号当作付费订阅</td>
+</tr>
+</tbody>
+</table></div>
+<h4>B. 网站浏览与支付路径相关事件</h4>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>事件名</th>
+<th>简要含义</th>
+<th>UPER 可能的例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PageView</code></td>
+<td>浏览网页</td>
+<td>打开网站页面；不是 Instagram 广告展示</td>
+</tr>
+<tr>
+<td><code>ViewContent</code></td>
+<td>查看指定内容</td>
+<td>查看某门 HSK 课程详情</td>
+</tr>
+<tr>
+<td><code>Search</code></td>
+<td>在站内搜索</td>
+<td>搜索课程；不是在 Instagram 搜索品牌</td>
+</tr>
+<tr>
+<td><code>AddToCart</code></td>
+<td>加入购物车</td>
+<td>网站确实有课程购物车功能时才使用</td>
+</tr>
+<tr>
+<td><code>AddToWishlist</code></td>
+<td>加入愿望清单</td>
+<td>网站保存“感兴趣课程”且符合该行为定义</td>
+</tr>
+<tr>
+<td><code>InitiateCheckout</code></td>
+<td>开始结账</td>
+<td>进入课程付款流程；不等于付款成功</td>
+</tr>
+<tr>
+<td><code>AddPaymentInfo</code></td>
+<td>添加支付信息</td>
+<td>用户在支付流程中完成相应动作；不回传银行卡资料</td>
+</tr>
+</tbody>
+</table></div>
+<h4>C. 当前未必适合 UPER 的其他标准事件</h4>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>事件名</th>
+<th>简要含义</th>
+<th>使用原则</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CustomizeProduct</code></td>
+<td>自定义产品</td>
+<td>只有真实产品定制流程才使用，不把一般课程沟通强行对应</td>
+</tr>
+<tr>
+<td><code>Donate</code></td>
+<td>捐赠</td>
+<td>没有捐赠业务就不使用</td>
+</tr>
+<tr>
+<td><code>FindLocation</code></td>
+<td>查找服务地点</td>
+<td>有实际门店／校区地点查询功能时再评估</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>无需追求18项全部接入。</strong> 对当前消息获客项目，先确定真实的咨询、资格与付费事件，比堆满网页事件名称更重要。</p>
+<h3>7.3 QualifiedLead、LeadSubmitted 与 ConvertedLead：必须单独核验</h3>
+<p>原文将 <code>QualifiedLead</code> 写成候选自定义名称。[<a class="citation" href="#ref-S1">S1</a>，第六部分；<a class="citation" href="#ref-S2">S2</a>，第四部分] 本版将表述收紧为：</p>
+<blockquote>
+<p><strong><code>QualifiedLead</code> 不在本次核对的18项 Pixel 标准名称中；这不能证明它在 CRM 或商业消息专用接口里一律只能算自定义事件，也不能证明当前 UPER 广告能用它优化。</strong></p>
+</blockquote>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>名称</th>
+<th>在本版中的位置</th>
+<th>上线前必须查清</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>QualifiedLead</code></td>
+<td>资格结果的候选外部映射名；产品路径待核验</td>
+<td>具体接口是否接受、业务语义、可用参数、当前广告组能否采用</td>
+</tr>
+<tr>
+<td><code>LeadSubmitted</code></td>
+<td>商业消息路线需要专项核验的候选名称</td>
+<td>不能只按拼写把它视为网站 <code>Lead</code> 的同义词</td>
+</tr>
+<tr>
+<td><code>ConvertedLead</code></td>
+<td>CRM 成交阶段需要专项核验的候选名称</td>
+<td>不预设与 <code>Purchase</code> 等价，不把它列入已核对 Pixel 标准表</td>
+</tr>
+<tr>
+<td><code>ConsultationBooked</code>／<code>TrialAttended</code></td>
+<td>UPER 内部业务事件名</td>
+<td>有合适标准事件则映射；否则在支持的路线中评估自定义事件</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>核验限制：</strong> 本次能访问官方培训和官方 Pixel／CAPI SDK 代码，但商业消息、CRM 集成部分开发者参考页返回限流或不可访问；因此不把未直接核实的专用事件全集标成“已经官方验证”。这不是功能不存在的结论。[<a class="citation" href="#ref-W10">W10</a>、<a class="citation" href="#ref-W11">W11</a>；R1]</p>
+<h3>7.4 事件、事件参数、自定义转化不是一回事</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>概念</th>
+<th>例子</th>
+<th>解决什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>事件名</strong></td>
+<td><code>Purchase</code></td>
+<td>发生的是哪类行为</td>
+</tr>
+<tr>
+<td><strong>事件参数</strong></td>
+<td>金额、币种、必要的业务分类</td>
+<td>该行为的补充信息</td>
+</tr>
+<tr>
+<td><strong>自定义事件</strong></td>
+<td><code>TrialAttended</code></td>
+<td>在允许的接口中表达标准词典未覆盖的业务事实</td>
+</tr>
+<tr>
+<td><strong>自定义转化规则</strong></td>
+<td>在支持的产品中筛选特定业务的购买事件</td>
+<td>单独定义一个测量／转化口径</td>
+</tr>
+<tr>
+<td><strong>广告组优化配置</strong></td>
+<td>选择支持的目标、事件或转化</td>
+<td>决定广告系统重点争取什么结果</td>
+</tr>
+</tbody>
+</table></div>
+<p>传入一个自定义参数，不表示 Meta 会自动把它当作投放模型的特征；建立一个自定义转化，也不表示所有消息广告都能采用。[<a class="citation" href="#ref-S2">S2</a>，第四部分；<a class="citation" href="#ref-W1">W1</a>、<a class="citation" href="#ref-W4">W4</a>、<a class="citation" href="#ref-W6">W6</a>]</p>
+<h3>7.5 UPER CRM → Meta 的建议映射表</h3>
+<p><strong><span class="status proposed">建议设计</span></strong> 先定义业务事实，再按实际产品路线映射；不要让 CRM 的核心流程依赖一个平台特定字符串。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>UPER 内部事件</th>
+<th>业务触发条件</th>
+<th>网站／常规事件候选</th>
+<th>消息／CRM 专项路线</th>
+<th>负责确认事实的人</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InquiryReceived</code></td>
+<td>收到真实且符合定义的咨询</td>
+<td><code>Lead</code> 或 <code>Contact</code>，按语义择一</td>
+<td>按路线核验，不能自动照搬网站名称</td>
+<td>销售／接入系统</td>
+</tr>
+<tr>
+<td><code>LeadQualified</code></td>
+<td>首次满足批准的资格规则</td>
+<td>自定义资格事件／适用转化配置，待验证</td>
+<td><code>QualifiedLead</code> 等候选专项验证</td>
+<td>销售主管＋业务负责人</td>
+</tr>
+<tr>
+<td><code>SalesAccepted</code></td>
+<td>销售确认可推进到更深阶段</td>
+<td>自定义事件候选</td>
+<td>单独核验，不预设官方存在同名事件</td>
+<td>销售</td>
+</tr>
+<tr>
+<td><code>ConsultationBooked</code></td>
+<td>双方已确认咨询时间</td>
+<td><code>Schedule</code></td>
+<td>核验是否有适用事件；无则先只留 CRM</td>
+<td>顾问／预约系统</td>
+</tr>
+<tr>
+<td><code>TrialStarted</code></td>
+<td>真正开始符合定义的试用</td>
+<td><code>StartTrial</code></td>
+<td>核验支持范围</td>
+<td>教务／试听系统</td>
+</tr>
+<tr>
+<td><code>ApplicationSubmitted</code></td>
+<td>正式申请已提交</td>
+<td><code>SubmitApplication</code></td>
+<td>核验支持范围</td>
+<td>申请顾问</td>
+</tr>
+<tr>
+<td><code>PaymentCompleted</code></td>
+<td>支付系统／财务已确认到账</td>
+<td><code>Purchase</code></td>
+<td>按实际转化场景使用适用购买回传路线</td>
+<td>交易系统／财务</td>
+</tr>
+<tr>
+<td><code>RefundRecorded</code></td>
+<td>实际退款已确认</td>
+<td>不假定有通用标准 Refund 事件</td>
+<td>按具体产品支持处理；经营报表必须调整</td>
+<td>财务</td>
+</tr>
+</tbody>
+</table></div>
+<h3>7.6 映射表必须同时规定的内容</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>必须明确的项目</th>
+<th>UPER 应写下的内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>何时触发</strong></td>
+<td>资格第一次确认、预约确认还是付款到账；不是每天扫描同一状态就再发一次</td>
+</tr>
+<tr>
+<td><strong>事件发生在哪里</strong></td>
+<td>网站、实际消息业务、线下等；按真实发生场景，不能由 CSV/API 传输方式推定</td>
+</tr>
+<tr>
+<td><strong>用哪个外部事件</strong></td>
+<td>精确名称、适用接口、校验日期及当前配置</td>
+</tr>
+<tr>
+<td><strong>发送哪些数据</strong></td>
+<td>时间、所需匹配标识、去重方案、必要交易参数；业务线是否发送单独决定</td>
+</tr>
+<tr>
+<td><strong>谁不应发送</strong></td>
+<td>测试数据、无可靠事实的状态、无许可的数据、重复事实</td>
+</tr>
+<tr>
+<td><strong>失败怎么办</strong></td>
+<td>留错误、重试、保持同一业务事件身份；重试不改真实发生时间</td>
+</tr>
+</tbody>
+</table></div>
+<p>Meta 官方 SDK 分别定义事件发生时间、事件标识、用户数据与发生来源；网站浏览器与服务器的事件去重使用事件名称和事件 ID 等信息。其他路线仍须核对自己的规则，不能仅靠加一个 <code>event_id</code> 就假设所有重复都会被平台处理。[<a class="citation" href="#ref-W4">W4</a>、<a class="citation" href="#ref-W5">W5</a>、<a class="citation" href="#ref-W13">W13</a>]</p>
+<hr/>
+<p><a id="sec-8"></a></p>
+<h2>8. 三个接口、五项验证：怎样形成可用的数据反馈</h2>
+<h3>8.1 “接 Meta API”实际至少包含三项不同工作</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>工作</th>
+<th>数据方向</th>
+<th>获取／发送什么</th>
+<th>不会自动完成什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>消息集成</strong></td>
+<td>Instagram／WhatsApp ↔ CRM</td>
+<td>收到的消息、可用会话信息、允许的回复操作</td>
+<td>不自动形成可靠的广告成本归因</td>
+</tr>
+<tr>
+<td><strong>广告报表接入</strong></td>
+<td>Meta 广告报表 → UPER 分析系统</td>
+<td>花费、广告层级、互动／结果指标</td>
+<td>不自动提供每个学生的资格与付款</td>
+</tr>
+<tr>
+<td><strong>转化反馈</strong></td>
+<td>CRM／交易系统 → Meta</td>
+<td>经映射的真实转化事件</td>
+<td>不自动把当前广告改成该事件优化</td>
+</tr>
+</tbody>
+</table></div>
+<p>Instagram 官方消息接口面向专业账户的客户交流；WhatsApp 官方 Cloud API 文档包含消息与 Webhook 接入。它们与转化回传接口的任务不同。[<a class="citation" href="#ref-W7">W7</a>、<a class="citation" href="#ref-W8">W8</a>、<a class="citation" href="#ref-W4">W4</a>]</p>
+<figure class="diagram"><svg aria-label="流程示意图 3" height="auto" role="img" viewbox="0.00 0.00 1032.32 143.32" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(20.16 123.16)">
+<title>pipes</title>
+<!-- m -->
+<g class="node" id="node1">
+<title>m</title>
+<path d="M186,-71C186,-71 12,-71 12,-71 6,-71 0,-65 0,-59 0,-59 0,-43 0,-43 0,-37 6,-31 12,-31 12,-31 186,-31 186,-31 192,-31 198,-37 198,-43 198,-43 198,-59 198,-59 198,-65 192,-71 186,-71" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="99" y="-47.2">Instagram / WhatsApp</text>
+</g>
+<!-- c -->
+<g class="node" id="node2">
+<title>c</title>
+<path d="M403,-71C403,-71 315,-71 315,-71 309,-71 303,-65 303,-59 303,-59 303,-43 303,-43 303,-37 309,-31 315,-31 315,-31 403,-31 403,-31 409,-31 415,-37 415,-43 415,-43 415,-59 415,-59 415,-65 409,-71 403,-71" fill="#184f3d" stroke="#184f3d" stroke-width="1.3"></path>
+<text fill="white" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="359" y="-47.2">UPER CRM</text>
+</g>
+<!-- m&#45;&gt;c -->
+<g class="edge" id="edge1">
+<title>m-&gt;c</title>
+<path d="M205.8,-51C236.15,-51 268.26,-51 295.13,-51" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="205.77,-48.38 198.27,-51 205.77,-53.63 205.77,-48.38" stroke="#789085" stroke-width="1.4"></polygon>
+<polygon fill="#789085" points="295.43,-53.63 302.93,-51 295.43,-48.38 295.43,-53.63" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="250.5" y="-54.4">消息与回复</text>
+</g>
+<!-- r -->
+<g class="node" id="node3">
+<title>r</title>
+<path d="M700,-103C700,-103 583,-103 583,-103 577,-103 571,-97 571,-91 571,-91 571,-75 571,-75 571,-69 577,-63 583,-63 583,-63 700,-63 700,-63 706,-63 712,-69 712,-75 712,-75 712,-91 712,-91 712,-97 706,-103 700,-103" fill="#fff7e8" stroke="#d8be87" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="641.5" y="-79.2">UPER 经营分析</text>
+</g>
+<!-- c&#45;&gt;r -->
+<g class="edge" id="edge2">
+<title>c-&gt;r</title>
+<path d="M415.08,-57.28C457.33,-62.1 516.16,-68.81 563.13,-74.17" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="563.11,-76.81 570.85,-75.05 563.7,-71.6 563.11,-76.81" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="485.5" y="-73.4">资格与交易事实</text>
+</g>
+<!-- e -->
+<g class="node" id="node4">
+<title>e</title>
+<path d="M715,-40C715,-40 568,-40 568,-40 562,-40 556,-34 556,-28 556,-28 556,-12 556,-12 556,-6 562,0 568,0 568,0 715,0 715,0 721,0 727,-6 727,-12 727,-12 727,-28 727,-28 727,-34 721,-40 715,-40" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="641.5" y="-16.2">Meta Events / CAPI</text>
+</g>
+<!-- c&#45;&gt;e -->
+<g class="edge" id="edge3">
+<title>c-&gt;e</title>
+<path d="M415.14,-40.26C427.48,-37.85 437,-36 437,-36 437,-36 494.52,-31.48 548.39,-27.24" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="548.69,-29.85 555.97,-26.65 548.28,-24.62 548.69,-29.85" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="485.5" y="-39.4">经筛选的转化事件</text>
+</g>
+<!-- a -->
+<g class="node" id="node5">
+<title>a</title>
+<path d="M980,-71C980,-71 868,-71 868,-71 862,-71 856,-65 856,-59 856,-59 856,-43 856,-43 856,-37 862,-31 868,-31 868,-31 980,-31 980,-31 986,-31 992,-37 992,-43 992,-43 992,-59 992,-59 992,-65 986,-71 980,-71" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="924" y="-47.2">Meta 广告报表</text>
+</g>
+<!-- e&#45;&gt;a -->
+<g class="edge" id="edge5">
+<title>e-&gt;a</title>
+<path d="M727.05,-27.06C778.35,-31.35 834,-36 834,-36 834,-36 839.57,-36.94 847.93,-38.35" fill="none" stroke="#789085" stroke-dasharray="5,2" stroke-width="1.4"></path>
+<polygon fill="#789085" points="847.71,-40.97 855.54,-39.63 848.59,-35.8 847.71,-40.97" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="791.5" y="-39.4">符合产品要求时</text>
+</g>
+<!-- a&#45;&gt;r -->
+<g class="edge" id="edge4">
+<title>a-&gt;r</title>
+<path d="M855.6,-58.69C814.69,-63.36 762.33,-69.33 719.76,-74.19" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="719.35,-71.59 712.2,-75.05 719.95,-76.81 719.35,-71.59" stroke="#789085" stroke-width="1.4"></polygon>
+<text fill="#5e7067" font-family="Noto Sans CJK SC" font-size="12.00" text-anchor="middle" x="791.5" y="-73.4">花费与广告结果</text>
+</g>
+</g>
+</svg>
+<figcaption>图 3 · 建议架构／说明示例，非 UPER 已部署配置</figcaption><details class="diagram-source"><summary>查看可编辑的 Mermaid 图表源码</summary><pre><code class="language-mermaid">flowchart LR
+    M[Instagram / WhatsApp] &lt;--&gt;|消息与回复| C[UPER CRM]
+    A[Meta 广告报表] --&gt;|花费与广告结果| R[UPER 经营分析]
+    C --&gt;|资格与交易事实| R
+    C --&gt;|经筛选的转化事件| E[Meta Events / CAPI]
+    E -.-&gt;|符合产品要求时| A
+</code></pre></details></figure>
+<h3>8.2 当前模式与目标模式</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>当前证据支持的模式</th>
+<th>建议的目标模式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>回复客户</td>
+<td>销售在 Instagram Direct 人工回复<span class="status confirmed">用户确认</span></td>
+<td>在权限和接口规则允许时，通过 CRM 统一接收和回复</td>
+</tr>
+<tr>
+<td>识别好线索</td>
+<td>团队已有人工筛选样本，但统一标准未展示<span class="status reported">报告事实</span></td>
+<td>固定资格规则＋理由＋时间＋认定人</td>
+</tr>
+<tr>
+<td>反馈 Meta</td>
+<td>CSV 样本上传<span class="status reported">报告事实</span></td>
+<td>验证路线后自动回传，保留发送与失败日志</td>
+</tr>
+<tr>
+<td>对照广告结果</td>
+<td>报告只展示汇总对话数</td>
+<td>广告花费与同批线索、合格、付费结果对照</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>提醒：</strong> 不要把“接入消息 API”承诺成“一定能无遗漏同步全部历史聊天、全部原生 App 回复和所有附件”。历史范围、消息回显、权限、账号接入及回复限制都需要单独验收。[<a class="citation" href="#ref-S1">S1</a>，第四、七部分；<a class="citation" href="#ref-W7">W7</a>、<a class="citation" href="#ref-W8">W8</a>]</p>
+<h3>8.3 五项独立验证，不是自动通过的五级流水线</h3>
+<p>下面是项目的<strong>验收顺序</strong>，不是对 Meta 内部算法实现的推断。单条事件是否被归因与是否进入某种优化机制，也不应简单视为同一件事。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>验证项</th>
+<th>具体问题</th>
+<th>合理证据</th>
+<th>不能代替它的证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. 接收</strong></td>
+<td>文件／请求是否被接收，事件是否被处理？</td>
+<td>上传结果、事件活动、错误诊断</td>
+<td>只有“请求发出”的 CRM 日志</td>
+</tr>
+<tr>
+<td><strong>2. 匹配条件与质量</strong></td>
+<td>对应路线接受哪些标识？数据是否足够且格式正确？</td>
+<td>支持的匹配诊断、参数检查；有些界面未提供个人级结果</td>
+<td>上传成功；猜测邮箱一定能匹配</td>
+</tr>
+<tr>
+<td><strong>3. 归因</strong></td>
+<td>符合窗口与规则的结果是否记入广告？</td>
+<td>Ads Manager 对应转化列、归因设置、观察期间</td>
+<td>Dataset 出现相同事件名称</td>
+</tr>
+<tr>
+<td><strong>4. 优化资格与配置</strong></td>
+<td>当前产品是否支持该结果，广告组是否已配置？</td>
+<td>实际后台可选项、保存的配置、官方适用说明</td>
+<td>只建好事件／自定义转化</td>
+</tr>
+<tr>
+<td><strong>5. 经营改善</strong></td>
+<td>是否带来更好的合格与付费成本？</td>
+<td>同口径基线与实验结果</td>
+<td>事件更多、匹配指标更好</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>EMQ 不等于匹配率。</strong> EMQ 关注匹配信息质量；某个分数不能换算成“有多少位学生成功匹配”。官方 CAPI 课程同时区分匹配、覆盖、去重、时效等诊断维度；具体界面支持什么需要按所选路线检查。[<a class="citation" href="#ref-W14">W14</a>；<a class="citation" href="#ref-S2">S2</a>，第四部分]</p>
+<h3>8.4 识别信息：按路线选，不是收得越多越好</h3>
+<p><strong><span class="status proposed">建议设计</span></strong> 工程团队建立“路线—允许标识—处理规则”表，至少区分：</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>数据场景</th>
+<th>应保留的线索</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>网站咨询与付款</td>
+<td>许可范围内的联系方式、实际可获取的网站／点击信息</td>
+<td>把缺失的浏览器标识凭空生成</td>
+</tr>
+<tr>
+<td>平台即时表单</td>
+<td>平台返回的线索标识与来源</td>
+<td>只保留姓名，丢掉原始来源</td>
+</tr>
+<tr>
+<td>Instagram／WhatsApp 消息</td>
+<td>实际返回的渠道身份与引流信息</td>
+<td>以为每条自然私信都带广告 ID</td>
+</tr>
+<tr>
+<td>IG 转 WA</td>
+<td>两边身份、关联依据、原始广告来源</td>
+<td>把 WA 作为最后渠道覆盖最初来源</td>
+</tr>
+</tbody>
+</table></div>
+<p>Meta 官方用户数据结构提供不同类别的标识，证明不能将“邮箱、手机号、平台标识”当成一个无差别字段；具体哪类必需由接口规范决定。[<a class="citation" href="#ref-W5">W5</a>]</p>
+<h3>8.5 数据治理的最小边界</h3>
+<p>以下是实施建议，不是对印尼或其他地区法律的完整判断。</p>
+<p><strong>对销售：</strong> 只收集业务所需资料，记录信息来源及客户意愿，不用猜测填满字段。<br/>
+<strong>对工程：</strong> 访问控制、消息与档案保留期、凭证安全、测试数据隔离、失败重试与去重。<br/>
+<strong>对广告运营：</strong> 上传前核对事件来源、时间、目标 Dataset 与用途；报告中的邮箱和电话号码脱敏。<br/>
+<strong>对业务负责人：</strong> 明确谁批准回传数据范围；哈希不是获得授权的替代品，也不等于完全匿名。</p>
+<hr/>
+<p><a id="sec-9"></a></p>
+<h2>9. 贯穿案例：一个学生从广告到付款</h2>
+<h3>9.1 HSK 示例：从 Instagram 私信转到 WhatsApp</h3>
+<p><strong>【教学示例／目标流程】</strong> Rina 是虚构学生。消息自动接入与 CAPI 反馈为规划流程，不是对 UPER 当前上线能力的描述。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>学生或销售做什么</th>
+<th>Meta 广告／消息侧</th>
+<th>UPER CRM 记录什么</th>
+<th>是否发转化反馈</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. 看到广告</td>
+<td>Rina 看到 HSK 视频</td>
+<td>广告系统统计展示、适用的视频互动</td>
+<td>未产生可识别咨询前，不创建虚构实名客户</td>
+<td>不因一次展示由 CRM 再发送一次 Lead</td>
+</tr>
+<tr>
+<td>2. 发起咨询</td>
+<td>点击进入 IG Direct，发“课程多少钱？”</td>
+<td>消息系统接收正文；广告系统按口径统计结果</td>
+<td>渠道身份、咨询内容、实际可得的来源</td>
+<td>按确认的咨询事件规则决定，不把每句话都当新 Lead</td>
+</tr>
+<tr>
+<td>3. 转去 WA</td>
+<td>销售发送 WhatsApp 链接，学生继续交流</td>
+<td>两个消息渠道分别有对话</td>
+<td>可靠关联为同一联系人；保留 IG 原始来源</td>
+<td>不因换了渠道就再计一个新客户</td>
+</tr>
+<tr>
+<td>4. 核实资格</td>
+<td>顾问确认 HSK 2→4、时间与价格匹配</td>
+<td>不应预设广告系统已知道这些业务结论</td>
+<td>资格、原因、规则版本、认定时间</td>
+<td>发送经验证映射的资格事件；学习详情默认留 CRM</td>
+</tr>
+<tr>
+<td>5. 预约试听</td>
+<td>双方确定周六试听</td>
+<td>不自动证明已到场</td>
+<td><code>TrialBooked</code> 与实际预约时间</td>
+<td>适用路线可以映射预约事件，否则先用于内部测量</td>
+</tr>
+<tr>
+<td>6. 到场与付款</td>
+<td>学生参加试听，之后通过付款链接付款</td>
+<td>转化来源应按真实流程认定</td>
+<td>到场记录、订单、实际到账与币种</td>
+<td>选择真实适用的付款回传路线，不因起点是私信就一概标为消息内购买</td>
+</tr>
+<tr>
+<td>7. 评估广告</td>
+<td>广告运营对照结果</td>
+<td>提供广告花费与可用归因结果</td>
+<td>合格、付费、周期及退款情况</td>
+<td>比较获客成本；不能只比较对话量</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>此例最重要的三点：</strong> 一个学生可以有两段渠道会话；一个客户档案可以包含多种业务事实；每种事实是否反馈 Meta，要逐项映射，不是整份档案自动上传。</p>
+<h3>9.2 Career Hub 对照例子：不要把“有兴趣”提前当成“能成交”</h3>
+<p><strong>【教学示例】</strong> 学生 B 想申请某个中国大学项目。顾问收到咨询，但学历条件尚未核实。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>时点</th>
+<th>CRM 应记录</th>
+<th>不应得出的结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>刚咨询</td>
+<td>有服务意向、资格待核实</td>
+<td>已经是 SQL</td>
+</tr>
+<tr>
+<td>确认条件匹配</td>
+<td>有依据的资格认定</td>
+<td>已支付咨询费用</td>
+</tr>
+<tr>
+<td>预约顾问</td>
+<td>预约事实</td>
+<td>已完成咨询</td>
+</tr>
+<tr>
+<td>正式提交申请</td>
+<td>申请提交事实</td>
+<td>已获录取</td>
+</tr>
+<tr>
+<td>付款确认</td>
+<td>订单和付款事实</td>
+<td>所有留学费用都是 UPER 收入</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>建议：</strong> Career Hub 应把 UPER 服务收入、代收代付与学生向第三方支付的费用区分，避免把不属于 UPER 的款项用于夸大 ROAS。具体业务与收入认定由 UPER 财务确认。</p>
+<hr/>
+<p><a id="sec-10"></a></p>
+<h2>10. 现状诊断：245 次对话与 46 行上传说明什么</h2>
+<h3>10.1 证据台账</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>编号</th>
+<th>当前能确认的陈述</th>
+<th>证据与状态</th>
+<th>分析边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F01</td>
+<td>报告称10月三个 Campaign 产生245次 Conversations</td>
+<td>[<a class="citation" href="#ref-S3">S3</a>，第1页]<span class="status reported">报告事实</span></td>
+<td>报告未给完整时间范围、确切指标名与逐广告组数据</td>
+</tr>
+<tr>
+<td>F02</td>
+<td>报告称账户与指定 Dataset 完成关联</td>
+<td>[<a class="citation" href="#ref-S3">S3</a>，第1页]<span class="status reported">报告事实</span></td>
+<td>未独立检查实际权限、用途与广告组配置</td>
+</tr>
+<tr>
+<td>F03</td>
+<td>46行“好线索”CSV 被接收，报告称无报错</td>
+<td>[<a class="citation" href="#ref-S3">S3</a>，第1页]<span class="status reported">报告事实</span></td>
+<td>不能由行数推定独立人数、匹配数或归因数</td>
+</tr>
+<tr>
+<td>F04</td>
+<td>发送名称为 <code>Lead</code>，来源描述为 Offline／Uploaded</td>
+<td>[<a class="citation" href="#ref-S3">S3</a>，第1页]<span class="status reported">报告事实</span></td>
+<td>需要核对触发定义、来源参数与其他同名数据</td>
+</tr>
+<tr>
+<td>F05</td>
+<td>团队未看到匹配率</td>
+<td>[<a class="citation" href="#ref-S3">S3</a>，第1页]<span class="status reported">报告事实</span></td>
+<td>“仍在处理”是团队推测，不是已证实原因</td>
+</tr>
+<tr>
+<td>F06</td>
+<td>团队认为10月29日关联前的事件不能归因</td>
+<td>[<a class="citation" href="#ref-S3">S3</a>，第1页]<span class="status pending">报告陈述待验证</span></td>
+<td>本版没有足够证据将其认定为普遍平台规则</td>
+</tr>
+<tr>
+<td>F07</td>
+<td>销售目前在 Instagram Direct 内回复</td>
+<td>本次讨论；[<a class="citation" href="#ref-S1">S1</a>，第四部分]<span class="status confirmed">用户确认</span></td>
+<td>不证明 WhatsApp 未被使用，也不证明所有广告只在 IG 展示</td>
+</tr>
+<tr>
+<td>F08</td>
+<td>计划把 IG／WA 消息接入 CRM</td>
+<td>本次讨论；[<a class="citation" href="#ref-S1">S1</a>，第四、七部分]<span class="status proposed">用户确认的规划</span></td>
+<td>不等于双向消息、历史回补与来源采集已上线</td>
+</tr>
+</tbody>
+</table></div>
+<h3>10.2 从截图还能提出哪些核查问题？</h3>
+<p><strong>原始报告第2页截图</strong>能看到 <code>Physical store</code> 来源标签、Conversions API 集成字样，以及局部的12个事件和事件行的9个事件。<strong>这些数字与46行上传不是同一明确统计视图，不能直接互相替代。</strong>[<a class="citation" href="#ref-S3">S3</a>，第2页截图]</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>截图观察</th>
+<th>需要核查什么</th>
+<th>现在不能断言什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>出现 <code>Physical store</code></td>
+<td>这批事件的发生来源是否选对；是否只是其他历史测试／筛选视图</td>
+<td>不能直接认定所有46行都误标线下门店</td>
+</tr>
+<tr>
+<td>显示 Conversions API</td>
+<td>是 Dataset 的集成标识，还是本次确有服务器请求证据</td>
+<td>不能据此宣布 CRM 自动 CAPI 已完成</td>
+</tr>
+<tr>
+<td>日期和事件数为局部视图</td>
+<td>时间筛选、事件日期、批次、时区与处理状态</td>
+<td>不能用9或12代替46，也不能据此认定丢失多少条</td>
+</tr>
+<tr>
+<td>第1页有多次上传活动</td>
+<td>是否存在重复批次，如何幂等和去重</td>
+<td>多次上传不一定等于重复计数，但需证明</td>
+</tr>
+<tr>
+<td>第3页包含真实联系方式</td>
+<td>管理报告是否应脱敏、原始表如何受控共享</td>
+<td>不应在整合文档中再次复制客户个人资料</td>
+</tr>
+</tbody>
+</table></div>
+<h3>10.3 对 <code>Lead</code> 事件的判断需要比原文更准确</h3>
+<p>报告和早期评审容易被理解为：<strong>“用了普通 Lead，Meta 就绝对分不清好线索。”</strong> 这个结论过于绝对，需要修订。</p>
+<p><strong><span class="status analysis">分析判断</span></strong> 如果该数据流中 <code>Lead</code> 始终只在客户达到严格资格标准时发送，那么这个事件样本已经带有筛选含义；<strong>不能仅凭名字判定反馈完全无效。</strong> 反过来，如果普通咨询与合格线索都使用同名事件、相同来源，且没有可用的区分机制，就可能混淆两个业务阶段。</p>
+<p>因此真正要检查的是：</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>核查点</th>
+<th>需要团队回答</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>触发标准</td>
+<td>上传时的 Lead 代表“新咨询”，还是“通过资格核实”？</td>
+</tr>
+<tr>
+<td>其他来源</td>
+<td>同一 Dataset 是否还有 Pixel、表单、其他上传发送 Lead？</td>
+</tr>
+<tr>
+<td>区分方法</td>
+<td>当前产品是否支持所需的阶段事件或筛选条件？</td>
+</tr>
+<tr>
+<td>优化配置</td>
+<td>哪个广告组实际采用了哪个成效目标／转化事件？</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>建议：</strong> 保留 UPER 内部 <code>InquiryReceived</code> 与 <code>LeadQualified</code> 的语义区别，再验证外部映射；不要把“改一个事件名称”当成修复整个优化闭环。</p>
+<h3>10.4 关于10月29日关联时间</h3>
+<p>原报告的结论应作为待验证问题保留，而不是原样变成平台知识。[<a class="citation" href="#ref-S3">S3</a>，第1页]</p>
+<p>核查需同时考虑：账户与 Dataset 关联、事件真实发生时间、回传时间限制、广告接触与归因窗口、事件来源及匹配条件。<strong>关联后的事件也不是必然可归因；关联前的事件也不能仅凭一句描述概括全部处理规则。</strong></p>
+<p>建议使用关联后新产生、能保留完整来源的真实样本做验证；历史事件按真实时间保存，<strong>不要改日期以强行获得归因</strong>。</p>
+<h3>10.5 现阶段不能计算的结论</h3>
+<p><strong>不能将46÷245直接当成合格线索率。</strong> 尚未确认它们是同一时期、同一业务、同一广告来源、同一去重单位；46行还可能不是46位独立客户。</p>
+<p>报告也未提供花费、付费新客、收入及成熟观察期，因此<strong>不能据此计算可靠的 CPQL、CAC 或 ROAS，更不能据此判断广告团队投放好坏</strong>。</p>
+<hr/>
+<p><a id="sec-11"></a></p>
+<h2>11. 衡量与实验：对话便宜，不等于获客便宜</h2>
+<h3>11.1 同样广告费，两组结果可能完全相反</h3>
+<p><strong>【教学示例】</strong> 两组均花费1,000,000印尼盾；假设每个对话对应一个不同的新咨询客户，且全部已完成资格评估。真实数据若不满足此假设，应先去重与对齐口径。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>广告 A</th>
+<th>广告 B</th>
+<th>应如何读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>广告花费</td>
+<td>Rp 1,000,000</td>
+<td>Rp 1,000,000</td>
+<td>成本相同</td>
+</tr>
+<tr>
+<td>对话／去重新咨询</td>
+<td>100</td>
+<td>60</td>
+<td>A 带来更多咨询</td>
+</tr>
+<tr>
+<td>合格线索</td>
+<td>10</td>
+<td>24</td>
+<td>B 带来更多合格客户</td>
+</tr>
+<tr>
+<td>合格率</td>
+<td>10%</td>
+<td>40%</td>
+<td>本例中分母是全部已评估的新咨询</td>
+</tr>
+<tr>
+<td>每次对话成本</td>
+<td>Rp 10,000</td>
+<td>约 Rp 16,667</td>
+<td>只看这一项会选 A</td>
+</tr>
+<tr>
+<td><strong>CPQL</strong></td>
+<td><strong>Rp 100,000</strong></td>
+<td><strong>约 Rp 41,667</strong></td>
+<td>以合格线索为目标会选 B</td>
+</tr>
+<tr>
+<td>成熟观察期内付费新客</td>
+<td>2</td>
+<td>6</td>
+<td>仍需观察期一致</td>
+</tr>
+<tr>
+<td><strong>广告付费获客成本</strong></td>
+<td><strong>Rp 500,000</strong></td>
+<td><strong>约 Rp 166,667</strong></td>
+<td>更接近付费结果</td>
+</tr>
+</tbody>
+</table></div>
+<p>本例说明选择不同目标会产生不同判断，<strong>不证明 B 的所有业务质量都更好</strong>；还需看客单价、服务成本、退款与后续留存。[由 <a class="citation" href="#ref-S2">S2</a> 的 A/B 示例扩展，金额与付费数为本版示意]</p>
+<h3>11.2 建议的 KPI 口径</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>建议算法</th>
+<th>必须固定的边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>评估覆盖率</strong></td>
+<td>已完成资格评估的新线索÷全部去重新线索</td>
+<td>防止团队只评估容易合格的人</td>
+</tr>
+<tr>
+<td><strong>合格率</strong></td>
+<td>合格线索÷已评估线索</td>
+<td>同时展示待评估人数；未评估不等于不合格</td>
+</tr>
+<tr>
+<td><strong>CPQL</strong></td>
+<td>某获客批次广告费÷该批次合格线索</td>
+<td>资格规则、业务线、归因方法与观察期一致</td>
+</tr>
+<tr>
+<td><strong>合格后付费率</strong></td>
+<td>该批次合格线索中最终付费的人数÷该批次合格线索</td>
+<td>观察期足够，不把最近咨询与长期沉淀客户直接比</td>
+</tr>
+<tr>
+<td><strong>广告付费获客成本</strong></td>
+<td>该批次广告费÷该批次付费新客</td>
+<td>老客户复购单列；不是完整 CAC</td>
+</tr>
+<tr>
+<td><strong>全成本 CAC</strong></td>
+<td>对应完整获客成本÷付费新客</td>
+<td>明确计入人员、代理、工具等哪些费用</td>
+</tr>
+<tr>
+<td><strong>ROAS</strong></td>
+<td>按指定规则归因的收入÷广告费</td>
+<td>实收／确认收入、退款、币种、代收代付口径固定</td>
+</tr>
+<tr>
+<td><strong>首次响应时间／预约到场率</strong></td>
+<td>CRM 根据对应事件时间与结果计算</td>
+<td>用于区分广告质量问题和销售承接问题</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>建议按“获客批次”看转化。</strong> 例如10月进入的学生可能11月才付款；用10月广告费除以10月所有付款人数，会混入此前月份的客户。</p>
+<h3>11.3 不要把广告问题与销售问题混在一起</h3>
+<figure class="diagram"><svg aria-label="流程示意图 4" height="auto" role="img" viewbox="0.00 0.00 712.82 405.32" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(20.16 385.16)">
+<title>diagnose</title>
+<!-- a -->
+<g class="node" id="node1">
+<title>a</title>
+<path d="M376,-365C376,-365 241,-365 241,-365 235,-365 229,-359 229,-353 229,-353 229,-337 229,-337 229,-331 235,-325 241,-325 241,-325 376,-325 376,-325 382,-325 388,-331 388,-337 388,-337 388,-353 388,-353 388,-359 382,-365 376,-365" fill="#184f3d" stroke="#184f3d" stroke-width="1.3"></path>
+<text fill="white" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="308.5" y="-341.2">付费获客成本偏高</text>
+</g>
+<!-- b -->
+<g class="node" id="node2">
+<title>b</title>
+<path d="M296.86,-279.07C296.86,-279.07 161.14,-244.93 161.14,-244.93 155.32,-243.46 155.32,-240.54 161.14,-239.07 161.14,-239.07 296.86,-204.93 296.86,-204.93 302.68,-203.46 314.32,-203.46 320.14,-204.93 320.14,-204.93 455.86,-239.07 455.86,-239.07 461.68,-240.54 461.68,-243.46 455.86,-244.93 455.86,-244.93 320.14,-279.07 320.14,-279.07 314.32,-280.54 302.68,-280.54 296.86,-279.07" fill="#fff7e8" stroke="#d8be87" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="308.5" y="-238.2">主要损失在哪里？</text>
+</g>
+<!-- a&#45;&gt;b -->
+<g class="edge" id="edge1">
+<title>a-&gt;b</title>
+<path d="M308.5,-324.53C308.5,-314.56 308.5,-301.95 308.5,-289.66" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="311.13,-289.57 308.5,-282.07 305.88,-289.57 311.13,-289.57" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- c -->
+<g class="node" id="node3">
+<title>c</title>
+<path d="M143.5,-159C143.5,-159 71.5,-159 71.5,-159 65.5,-159 59.5,-153 59.5,-147 59.5,-147 59.5,-113 59.5,-113 59.5,-107 65.5,-101 71.5,-101 71.5,-101 143.5,-101 143.5,-101 149.5,-101 155.5,-107 155.5,-113 155.5,-113 155.5,-147 155.5,-147 155.5,-153 149.5,-159 143.5,-159" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="107.5" y="-135.2">看到广告</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="107.5" y="-117.2">但不咨询</text>
+</g>
+<!-- b&#45;&gt;c -->
+<g class="edge" id="edge2">
+<title>b-&gt;c</title>
+<path d="M259.59,-214.23C230.2,-198.15 192.74,-177.65 162.36,-161.02" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="163.43,-158.62 155.59,-157.32 160.91,-163.22 163.43,-158.62" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- d -->
+<g class="node" id="node4">
+<title>d</title>
+<path d="M285.5,-159C285.5,-159 213.5,-159 213.5,-159 207.5,-159 201.5,-153 201.5,-147 201.5,-147 201.5,-113 201.5,-113 201.5,-107 207.5,-101 213.5,-101 213.5,-101 285.5,-101 285.5,-101 291.5,-101 297.5,-107 297.5,-113 297.5,-113 297.5,-147 297.5,-147 297.5,-153 291.5,-159 285.5,-159" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="249.5" y="-135.2">咨询多</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="249.5" y="-117.2">但匹配少</text>
+</g>
+<!-- b&#45;&gt;d -->
+<g class="edge" id="edge3">
+<title>b-&gt;d</title>
+<path d="M289.99,-206.5C283.03,-193.51 275.11,-178.75 268.14,-165.74" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="270.44,-164.49 264.58,-159.12 265.82,-166.97 270.44,-164.49" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- e -->
+<g class="node" id="node5">
+<title>e</title>
+<path d="M427.5,-159C427.5,-159 355.5,-159 355.5,-159 349.5,-159 343.5,-153 343.5,-147 343.5,-147 343.5,-113 343.5,-113 343.5,-107 349.5,-101 355.5,-101 355.5,-101 427.5,-101 427.5,-101 433.5,-101 439.5,-107 439.5,-113 439.5,-113 439.5,-147 439.5,-147 439.5,-153 433.5,-159 427.5,-159" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="391.5" y="-135.2">合格多</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="391.5" y="-117.2">但推进慢</text>
+</g>
+<!-- b&#45;&gt;e -->
+<g class="edge" id="edge4">
+<title>b-&gt;e</title>
+<path d="M333.4,-208C343.59,-194.5 355.37,-178.88 365.65,-165.25" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="367.84,-166.72 370.26,-159.15 363.65,-163.55 367.84,-166.72" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- f -->
+<g class="node" id="node6">
+<title>f</title>
+<path d="M625,-159C625,-159 506,-159 506,-159 500,-159 494,-153 494,-147 494,-147 494,-113 494,-113 494,-107 500,-101 506,-101 506,-101 625,-101 625,-101 631,-101 637,-107 637,-113 637,-113 637,-147 637,-147 637,-153 631,-159 625,-159" fill="#f1f6f3" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="565.5" y="-135.2">预约多</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="565.5" y="-117.2">但到场或付款少</text>
+</g>
+<!-- b&#45;&gt;f -->
+<g class="edge" id="edge5">
+<title>b-&gt;f</title>
+<path d="M366.18,-216.31C403.51,-200.33 452.45,-179.39 492.5,-162.25" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="494,-164.46 499.86,-159.09 491.94,-159.63 494,-164.46" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- c1 -->
+<g class="node" id="node7">
+<title>c1</title>
+<path d="M131,-58C131,-58 12,-58 12,-58 6,-58 0,-52 0,-46 0,-46 0,-12 0,-12 0,-6 6,0 12,0 12,0 131,0 131,0 137,0 143,-6 143,-12 143,-12 143,-46 143,-46 143,-52 137,-58 131,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="71.5" y="-34.2">检查创意</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="71.5" y="-16.2">广告承诺与入口</text>
+</g>
+<!-- c&#45;&gt;c1 -->
+<g class="edge" id="edge6">
+<title>c-&gt;c1</title>
+<path d="M97.28,-100.9C93.25,-89.82 88.58,-76.97 84.33,-65.28" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="86.78,-64.33 81.75,-58.17 81.84,-66.12 86.78,-64.33" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- d1 -->
+<g class="node" id="node8">
+<title>d1</title>
+<path d="M297,-58C297,-58 178,-58 178,-58 172,-58 166,-52 166,-46 166,-46 166,-12 166,-12 166,-6 172,0 178,0 178,0 297,0 297,0 303,0 309,-6 309,-12 309,-12 309,-46 309,-46 309,-52 303,-58 297,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="237.5" y="-34.2">检查受众</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="237.5" y="-16.2">承诺与资格口径</text>
+</g>
+<!-- d&#45;&gt;d1 -->
+<g class="edge" id="edge7">
+<title>d-&gt;d1</title>
+<path d="M246.09,-100.9C244.78,-90.03 243.25,-77.45 241.86,-65.94" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="244.42,-65.3 240.92,-58.17 239.21,-65.94 244.42,-65.3" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- e1 -->
+<g class="node" id="node9">
+<title>e1</title>
+<path d="M463,-58C463,-58 344,-58 344,-58 338,-58 332,-52 332,-46 332,-46 332,-12 332,-12 332,-6 338,0 344,0 344,0 463,0 463,0 469,0 475,-6 475,-12 475,-12 475,-46 475,-46 475,-52 469,-58 463,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="403.5" y="-34.2">检查响应</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="403.5" y="-16.2">分配与顾问跟进</text>
+</g>
+<!-- e&#45;&gt;e1 -->
+<g class="edge" id="edge8">
+<title>e-&gt;e1</title>
+<path d="M394.91,-100.9C396.22,-90.03 397.75,-77.45 399.14,-65.94" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="401.79,-65.94 400.08,-58.17 396.58,-65.3 401.79,-65.94" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+<!-- f1 -->
+<g class="node" id="node10">
+<title>f1</title>
+<path d="M660.5,-58C660.5,-58 510.5,-58 510.5,-58 504.5,-58 498.5,-52 498.5,-46 498.5,-46 498.5,-12 498.5,-12 498.5,-6 504.5,0 510.5,0 510.5,0 660.5,0 660.5,0 666.5,0 672.5,-6 672.5,-12 672.5,-12 672.5,-46 672.5,-46 672.5,-52 666.5,-58 660.5,-58" fill="white" stroke="#cadbd1" stroke-width="1.3"></path>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="585.5" y="-34.2">检查价格、课程安排</text>
+<text fill="#183f32" font-family="Noto Sans CJK SC" font-size="16.00" text-anchor="middle" x="585.5" y="-16.2">试听与支付流程</text>
+</g>
+<!-- f&#45;&gt;f1 -->
+<g class="edge" id="edge9">
+<title>f-&gt;f1</title>
+<path d="M571.18,-100.9C573.39,-89.92 575.96,-77.21 578.31,-65.61" fill="none" stroke="#789085" stroke-width="1.4"></path>
+<polygon fill="#789085" points="580.9,-66.05 579.81,-58.17 575.75,-65.01 580.9,-66.05" stroke="#789085" stroke-width="1.4"></polygon>
+</g>
+</g>
+</svg>
+<figcaption>图 4 · 建议架构／说明示例，非 UPER 已部署配置</figcaption><details class="diagram-source"><summary>查看可编辑的 Mermaid 图表源码</summary><pre><code class="language-mermaid">flowchart TD
+    A[付费获客成本偏高] --&gt; B{主要损失在哪里？}
+    B --&gt; C[看见广告但不咨询]
+    B --&gt; D[咨询多但匹配少]
+    B --&gt; E[合格多但推进慢]
+    B --&gt; F[预约多但到场或付款少]
+    C --&gt; C1[检查创意、承诺、入口]
+    D --&gt; D1[检查受众、广告承诺、资格口径]
+    E --&gt; E1[检查响应、分配、顾问跟进]
+    F --&gt; F1[检查价格、课程安排、试听与支付流程]
+</code></pre></details></figure>
+<p><strong>【分析框架】</strong> 同样的高获客成本，可能来自不同环节；不能让广告团队为所有销售流失负责，也不能用广告点击便宜掩盖线索不匹配。</p>
+<h3>11.4 一次实验只回答一个主要问题</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>要验证的问题</th>
+<th>主要改变项</th>
+<th>应尽量保持一致</th>
+<th>判断指标</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IG 私信还是直接 WA 更合适？</td>
+<td>消息目的地</td>
+<td>受众、素材、报价、销售响应安排、观察期</td>
+<td>去重后的 CPQL、付费成本、跨渠道流失</td>
+</tr>
+<tr>
+<td>回传后采用下游目标是否有效？</td>
+<td>经验证的优化目标／反馈使用方式</td>
+<td>业务规则、素材、客群、时间和成本口径</td>
+<td>同口径 CPQL 与付费质量</td>
+</tr>
+<tr>
+<td>哪种素材更有效？</td>
+<td>创意表达</td>
+<td>入口、目标、资格规则、销售处理方式</td>
+<td>不只看点击，也看合格与付款</td>
+</tr>
+</tbody>
+</table></div>
+<p>两个广告组的简单前后对比不等于因果证明。建议预先写明分组方式、预算、观察期、成功指标、停测条件与干扰因素。数据不足时报告“方向性观察”，不要宣称已经验证显著提升。</p>
+<h3>11.5 选择优化事件：越深不一定越适合现在</h3>
+<p><strong><span class="status proposed">建议设计</span></strong> 综合看三个因素：<strong>业务价值、事件数量、反馈延迟</strong>。付款最接近收入，但付款很少、周期很长时，早期可评估一个已验证、稳定定义的资格阶段。</p>
+<p>不为了凑数量降低合格门槛；也不凭通用“每周必须多少次”的经验数字替代当前账户诊断。46行历史上传无法单独说明三个 Campaign 中任一广告组已具备稳定优化条件。</p>
+<hr/>
+<p><a id="sec-12"></a></p>
+<h2>12. 行动路线、责任分工与待确认问题</h2>
+<h3>12.1 先补证据和规则，再扩大自动化</h3>
+<p><strong>【建议排期】</strong> 以下为相对顺序与参考时间，不是已经获批的项目承诺。Meta 审核、权限或外部支持可能改变时间。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>任务与主要负责人</th>
+<th>必须交付的成果</th>
+<th>进入下一阶段的条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>P0：1–3个工作日</strong></td>
+<td>广告运营导出现有配置；销售主管整理资格规则；工程检查样本字段</td>
+<td>三个 Campaign 的层级清单、245指标口径、46行批次说明、资格规则草案</td>
+<td>能说清“从哪里来、什么算好、上传了什么”</td>
+</tr>
+<tr>
+<td><strong>P1：第一轮验证</strong></td>
+<td>广告运营＋工程验证具体产品路线；销售提供完整真实样本</td>
+<td>事件映射表、必要标识清单、接收／归因／优化资格证据</td>
+<td>明确哪些能测量、哪些能优化、哪些仍未确认</td>
+</tr>
+<tr>
+<td><strong>P2：小范围接入</strong></td>
+<td>CRM 产品＋工程，销售配合验收</td>
+<td>消息建档、身份关联、事件留痕、失败重试、权限控制</td>
+<td>关键路径真实可重现，不丢来源、不重复计事件</td>
+</tr>
+<tr>
+<td><strong>P3：受控自动化</strong></td>
+<td>工程上线批准的回传；广告运营监控</td>
+<td>合法且真实的事件稳定回传、对账与诊断</td>
+<td>数据覆盖、时效及一致性达到团队批准标准</td>
+</tr>
+<tr>
+<td><strong>P4：效果实验</strong></td>
+<td>广告运营＋销售主管＋业务负责人</td>
+<td>同口径基线、实验结果、是否扩大预算的决定</td>
+<td>观察期成熟；不能只凭上传或对话增长扩量</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>并行原则：</strong> CRM 的客户档案、销售流程与消息接入本身有经营价值，可以并行推进；但不要先把未经验证的事件路由大规模自动化。</p>
+<h3>12.2 第一轮需要广告团队提供什么？</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>资料</th>
+<th>最低内容</th>
+<th>提交形式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Campaign</strong></td>
+<td>名称／ID、Objective、业务线、日期、预算所在层级</td>
+<td>Ads Manager 截图或导出</td>
+</tr>
+<tr>
+<td><strong>Ad Set</strong></td>
+<td>名称／ID、所属 Campaign、受众、版位、转化位置、消息目的地、Performance Goal、归因设置</td>
+<td>设置截图；记录修改时间</td>
+</tr>
+<tr>
+<td><strong>Ad</strong></td>
+<td>名称／ID、所属 Ad Set、素材、文案、按钮、实际点击路径</td>
+<td>预览或截图</td>
+</tr>
+<tr>
+<td><strong>结果</strong></td>
+<td>花费、准确的结果指标名称、日期、时区、币种、可用拆分</td>
+<td>同一时间范围的报表</td>
+</tr>
+<tr>
+<td><strong>回传样本</strong></td>
+<td>46行对应批次、字段说明、真实事件时间、去重、来源、上传结果</td>
+<td>脱敏样本与上传记录，不必额外制作长报告</td>
+</tr>
+</tbody>
+</table></div>
+<p>沿用现有团队沟通风格：<strong>先肯定已有执行，再明确我们需要共同查证的事实，不把资料请求写成追责。</strong></p>
+<h3>12.3 统一资格规则的最小交付</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>需要定义</th>
+<th>示例问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>适用业务</td>
+<td>HSK、Career Hub 是否各自一套规则？</td>
+</tr>
+<tr>
+<td>必要条件</td>
+<td>真实需求、服务适配、时间计划哪些不可缺？</td>
+</tr>
+<tr>
+<td>信息缺失如何处理</td>
+<td>预算未知先待核实，还是暂缓？</td>
+</tr>
+<tr>
+<td>谁批准</td>
+<td>顾问可直接判定，还是主管复核？</td>
+</tr>
+<tr>
+<td>何时产生事件</td>
+<td>第一次达标，还是每次更改阶段？</td>
+</tr>
+<tr>
+<td>如何纠正</td>
+<td>误判、重复客户、规则升级如何留痕？</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>建议上线前：</strong> 让两位顾问独立评估同一批脱敏样本；先解决分歧，再让这个标签进入广告反馈。</p>
+<h3>12.4 最小验收清单：用证据关掉问题</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>测试</th>
+<th>应看到的结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一条新 IG 咨询进入系统</td>
+<td>有渠道身份、时间、消息来源；没有虚构广告 ID</td>
+</tr>
+<tr>
+<td>同一条 Webhook 被重复投递</td>
+<td>CRM 不重复创建同一消息或同一业务事件</td>
+</tr>
+<tr>
+<td>学生转到 WA</td>
+<td>能保留原始来源；有身份关联依据；不错误合并他人</td>
+</tr>
+<tr>
+<td>顾问确认资格</td>
+<td>保存依据、规则版本、时间与操作人；只生成应有的资格事实</td>
+</tr>
+<tr>
+<td>同一资格事件重试发送</td>
+<td>不改变真实发生时间；不因重试制造新的转化事实</td>
+</tr>
+<tr>
+<td>真实付款确认</td>
+<td>CRM 与财务金额、币种、订单一致；事件来源与真实流程一致</td>
+</tr>
+<tr>
+<td>查看 Meta 接收与报表</td>
+<td>分别记录接收、可用诊断、归因与广告优化配置，不混为一个“成功”</td>
+</tr>
+<tr>
+<td>完成第一轮经营对账</td>
+<td>能从广告费追到相同获客批次的合格和付费结果；缺失来源单列</td>
+</tr>
+</tbody>
+</table></div>
+<h3>12.5 第一轮仍待团队确认的五个问题</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>为什么必须回答</th>
+<th>应答负责人</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. 三个 Campaign 各自推广什么、配置什么？</strong></td>
+<td>决定实际产品路径，不再依据名称猜测</td>
+<td>广告运营</td>
+</tr>
+<tr>
+<td><strong>2. 实际是直接进 WA、先 IG 后 WA，还是两者都有？</strong></td>
+<td>决定消息接入、来源保存与身份关联</td>
+<td>广告运营＋销售</td>
+</tr>
+<tr>
+<td><strong>3. 46行与245次是否同一批客户？好线索当时怎样判断？</strong></td>
+<td>决定能否计算合格率及建立基线</td>
+<td>销售主管＋广告运营</td>
+</tr>
+<tr>
+<td><strong>4. Career Hub 的确切服务、成交与收入范围是什么？</strong></td>
+<td>决定资格规则、事件和 ROAS 分子</td>
+<td>业务负责人＋财务</td>
+</tr>
+<tr>
+<td><strong>5. CRM 当前有哪些真实能力，IG／WA 用什么账号与接入方案？</strong></td>
+<td>决定工程范围、授权、消息回补与可用标识</td>
+<td>CRM 产品／工程</td>
+</tr>
+</tbody>
+</table></div>
+<p>这五项没有阻止本版文档完成，但会阻止团队把建议映射表直接当成生产配置。</p>
+<h3>12.6 管理层下一次应看到的报告</h3>
+<p>建议采用一页状态表：<strong>已取得的证据、尚未解决的问题、下一个验证动作、负责人、预期提交时间</strong>。经营指标另列当前值与比较口径。</p>
+<p>团队学习的目标不是“等待管理者给答案”，也不是重复无效试错；而是带着可复现的配置、样本和诊断共同讨论。管理者提供已有经验和支持，团队用真实测试检验适用性。</p>
+<hr/>
+<p><a id="sec-13"></a></p>
+<h2>13. 附录：修订记录、原文整合索引与资料来源</h2>
+<h3>13.1 相对原文的关键澄清与修订</h3>
+<p>以下变化明确记录，避免把修订后的结论误认为原文已完整支持。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>原文／早期讨论中的表达</th>
+<th>本版处理</th>
+<th>依据或理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>“Meta 根据广告目标记录相关互动”</td>
+<td>分开说明平台统计类别与成效目标配置</td>
+<td>记录什么、优化什么是不同问题；见第4章</td>
+</tr>
+<tr>
+<td>直接罗列 HSK／Career Hub 字段</td>
+<td>增加维护者、保存系统、回传范围与对照例子</td>
+<td>用户明确要求；见第5章</td>
+</tr>
+<tr>
+<td>QualifiedLead 作为候选自定义名称</td>
+<td>限定为不在已核对 Pixel 名单中；专项接口单独核验</td>
+<td>不把一种产品的词典外推到全部 Meta 产品</td>
+</tr>
+<tr>
+<td>用 Lead 就无法反馈质量</td>
+<td>修订为检查触发语义、混用来源和优化配置</td>
+<td>名称本身不能证明信号是否含有筛选含义</td>
+</tr>
+<tr>
+<td>接收→匹配→归因→优化被理解为必然流程</td>
+<td>变为独立验收项，并另验经营改善</td>
+<td>不假装知道 Meta 全部内部处理机制</td>
+</tr>
+<tr>
+<td>预算简单归在 Ad Set</td>
+<td>补充 Campaign 预算策略</td>
+<td>原 v1.0 已有此提醒，本版保留</td>
+</tr>
+<tr>
+<td>分两个 Ad Set 就能比较出效果</td>
+<td>区分报表可读性与严格实验</td>
+<td>避免受众、投放量、时间、销售跟进成为干扰</td>
+</tr>
+<tr>
+<td>不可篡改事件历史</td>
+<td>改为可审计、更正留痕，并管理保留和删除</td>
+<td>审计要求不应等于个人信息永久保存</td>
+</tr>
+<tr>
+<td>API 接入＝完整聊天全部同步</td>
+<td>明确历史范围、回显与消息限制待验收</td>
+<td>官方能力与账户实际接入范围不同</td>
+</tr>
+<tr>
+<td>CAC 指标没有固定成本范围</td>
+<td>区分广告成本 CAC 与全成本 CAC</td>
+<td>便于管理层比较真实经济性</td>
+</tr>
+<tr>
+<td>原文散落概念与建议</td>
+<td>重排为概念→数据→事件→案例→证据→指标→行动</td>
+<td>保留内容深度，不进行机械拼接</td>
+</tr>
+</tbody>
+</table></div>
+<h3>13.2 原文内容整合索引</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>原内容</th>
+<th>新版位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>三层架构与职责</td>
+<td>第2章</td>
+</tr>
+<tr>
+<td>术语归属总表</td>
+<td>第3章，按五类重新分组并配例子</td>
+</tr>
+<tr>
+<td>HSK／Career Hub 资格与客户字段</td>
+<td>第5章</td>
+</tr>
+<tr>
+<td>Campaign／Ad Set／Ad、渠道与互动</td>
+<td>第4章</td>
+</tr>
+<tr>
+<td>CRM 生命周期、评分、状态与事件</td>
+<td>第5、6章</td>
+</tr>
+<tr>
+<td>Meta 标准／自定义事件、映射</td>
+<td>第7章</td>
+</tr>
+<tr>
+<td>Dataset、Pixel、CAPI、匹配、归因、EMQ</td>
+<td>第3、7、8章</td>
+</tr>
+<tr>
+<td>实例贯穿</td>
+<td>第9章，分别标明当前与目标流程</td>
+</tr>
+<tr>
+<td>245 Conversations／46行上传</td>
+<td>第1、10章</td>
+</tr>
+<tr>
+<td>CPQL／CAC／ROAS 与广告 A/B 对比</td>
+<td>第11章</td>
+</tr>
+<tr>
+<td>下一步建议与负责人</td>
+<td>第12章</td>
+</tr>
+</tbody>
+</table></div>
+<h3>13.3 版本维护规则</h3>
+<p><strong>本版基线：</strong> v2.0，2026-10-30。两份上传文档整合，并加入事实台账、数据责任、事件范围、验收和实验设计。</p>
+<p>后续每次修订应记录：变更位置、变更原因、证据来源、对工程／广告配置的影响。确认某个待验证问题时，应同时更新正文、事实台账和行动表，而不是只在文末追加一句。</p>
+<p><strong>建议版本方式：</strong> 小范围澄清使用 v2.1、v2.2；涉及事件模型或核心策略变化使用 v3.0。保留旧版文件，不将未经批准的建议标为“已实施”。本文件是可编辑的文档基线，<strong>不是自动同步的在线共享系统</strong>。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>日期</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v1.0</td>
+<td>2026-10-30</td>
+<td>原八章工作草稿</td>
+</tr>
+<tr>
+<td>v2.0</td>
+<td>2026-10-30</td>
+<td>逻辑重组；补充所有权、渠道、事件范围、示例、证据诊断与行动验收</td>
+</tr>
+</tbody>
+</table></div>
+<h3>13.4 内部来源</h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>编号</th>
+<th>来源</th>
+<th>在本版中的用途</th>
+</tr>
+</thead>
+<tbody>
+<tr id="ref-S1">
+<td><strong><a class="citation" href="#ref-S1">S1</a></strong></td>
+<td>用户上传《UPER_Meta_CRM_Knowledge_v1.0(1).md》</td>
+<td>责任边界、字段维护、事件映射初稿、当前状态</td>
+</tr>
+<tr id="ref-S2">
+<td><strong><a class="citation" href="#ref-S2">S2</a></strong></td>
+<td>用户上传《UPER 广告运营体系核心概念解析.md》</td>
+<td>原三层逻辑、术语、CRM 示例、评分与广告对比</td>
+</tr>
+<tr id="ref-S3">
+<td><strong><a class="citation" href="#ref-S3">S3</a></strong></td>
+<td>《Sending good-lead feedback to Meta (UPER HSK &amp; Career Hub ads).pdf》，3页</td>
+<td>阶段报告正文与截图；仅作其所支持的事实依据</td>
+</tr>
+<tr id="ref-S4">
+<td><strong><a class="citation" href="#ref-S4">S4</a></strong></td>
+<td>本次对话中 UPER 负责人的说明</td>
+<td>销售当前在 IG 回复、计划接入 CRM、文档表达与维护要求</td>
+</tr>
+</tbody>
+</table></div>
+<h3>13.5 外部官方资料与核验范围</h3>
+<p><strong>核验日期：2026-10-30。</strong> 只将实际可读取的官方资料用于新增平台结论。培训页面证明存在相应产品／学习路径，不等于证明 UPER 账户已符合全部条件；官方代码中的字段或事件名称，也不等于当前广告组已经开通对应优化能力。</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead>
+<tr>
+<th>编号</th>
+<th>官方来源</th>
+<th>本次实际核对的内容</th>
+</tr>
+</thead>
+<tbody>
+<tr id="ref-W1">
+<td><strong><a class="citation" href="#ref-W1">W1</a></strong></td>
+<td>Meta Blueprint：Selecting campaign objectives and conversion settings</td>
+<td>Campaign 目标；Ad Set 的转化位置、事件与成效目标</td>
+</tr>
+<tr id="ref-W2">
+<td><strong><a class="citation" href="#ref-W2">W2</a></strong></td>
+<td>Meta Blueprint：Meta Ads Manager learning</td>
+<td>投放管理、受众、版位、创意和结果分析的区分</td>
+</tr>
+<tr id="ref-W3">
+<td><strong><a class="citation" href="#ref-W3">W3</a></strong></td>
+<td>HubSpot：Use contact and company lifecycle stages</td>
+<td>MQL／SQL、商机／客户及生命周期的常见定义；不是 UPER 强制流程</td>
+</tr>
+<tr id="ref-W4">
+<td><strong><a class="citation" href="#ref-W4">W4</a></strong></td>
+<td>Meta 官方 Python Business SDK：<code>serverside/event.py</code></td>
+<td>事件名、真实发生时间、事件 ID、用户数据、发生来源和消息渠道字段</td>
+</tr>
+<tr id="ref-W5">
+<td><strong><a class="citation" href="#ref-W5">W5</a></strong></td>
+<td>同一官方 SDK：<code>serverside/user_data.py</code></td>
+<td>不同用户匹配标识及不同处理方式；不提供跨产品必填清单</td>
+</tr>
+<tr id="ref-W6">
+<td><strong><a class="citation" href="#ref-W6">W6</a></strong></td>
+<td>Meta 官方 GTM Pixel 模板：<code>template.tpl</code></td>
+<td>明确列出的18个 Pixel 标准名称，含 PageView</td>
+</tr>
+<tr id="ref-W7">
+<td><strong><a class="citation" href="#ref-W7">W7</a></strong></td>
+<td>Meta 官方 Postman：Instagram API／Send API</td>
+<td>专业账户的消息收发能力及其与广告报告的区别</td>
+</tr>
+<tr id="ref-W8">
+<td><strong><a class="citation" href="#ref-W8">W8</a></strong></td>
+<td>Meta 官方 Postman：WhatsApp Cloud API</td>
+<td>WhatsApp Business Platform 消息接口与 Webhook 订阅</td>
+</tr>
+<tr id="ref-W9">
+<td><strong><a class="citation" href="#ref-W9">W9</a></strong></td>
+<td>Meta Blueprint：Business Messaging</td>
+<td>广告点击发起消息；从 FB／IG 进入 WA；消息购买优化培训</td>
+</tr>
+<tr id="ref-W10">
+<td><strong><a class="citation" href="#ref-W10">W10</a></strong></td>
+<td>Meta Blueprint：Improve lead quality with Meta Conversions API for CRM</td>
+<td>明确面向即时表单／网站表单的质量反馈培训</td>
+</tr>
+<tr id="ref-W11">
+<td><strong><a class="citation" href="#ref-W11">W11</a></strong></td>
+<td>Meta Blueprint：Conversions API for Business Messaging</td>
+<td>独立的商业消息回传、测量和优化学习路径</td>
+</tr>
+<tr id="ref-W12">
+<td><strong><a class="citation" href="#ref-W12">W12</a></strong></td>
+<td>Meta Blueprint：Defining your ad audience</td>
+<td>新受众、自定义受众与相似受众的区分</td>
+</tr>
+<tr id="ref-W13">
+<td><strong><a class="citation" href="#ref-W13">W13</a></strong></td>
+<td>Meta 官方 Python Business SDK：<code>serverside/action_source.py</code></td>
+<td>website、physical_store、business_messaging 等发生来源的区分</td>
+</tr>
+<tr id="ref-W14">
+<td><strong><a class="citation" href="#ref-W14">W14</a></strong></td>
+<td>Meta Blueprint：Optimize Meta Conversions API</td>
+<td>匹配质量、覆盖、去重与时效的诊断维度</td>
+</tr>
+</tbody>
+</table></div>
+<p>资料地址（供后续版本复核）：</p>
+<ul>
+<li><strong><a class="citation" href="#ref-W1">W1</a></strong>：<a class="source-url" href="https://www.facebookblueprint.com/student/path/253165-selecting-objectives-course" rel="noopener noreferrer" target="_blank"><code>https://www.facebookblueprint.com/student/path/253165-selecting-objectives-course</code></a></li>
+<li><strong><a class="citation" href="#ref-W2">W2</a></strong>：<a class="source-url" href="https://metaspark.facebookblueprint.com/student/collection/507005-meta-ads-manager-learning" rel="noopener noreferrer" target="_blank"><code>https://metaspark.facebookblueprint.com/student/collection/507005-meta-ads-manager-learning</code></a></li>
+<li><strong><a class="citation" href="#ref-W3">W3</a></strong>：<a class="source-url" href="https://knowledge.hubspot.com/records/use-lifecycle-stages" rel="noopener noreferrer" target="_blank"><code>https://knowledge.hubspot.com/records/use-lifecycle-stages</code></a></li>
+<li><strong><a class="citation" href="#ref-W4">W4</a></strong>：<a class="source-url" href="https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/serverside/event.py" rel="noopener noreferrer" target="_blank"><code>https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/serverside/event.py</code></a></li>
+<li><strong><a class="citation" href="#ref-W5">W5</a></strong>：<a class="source-url" href="https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/serverside/user_data.py" rel="noopener noreferrer" target="_blank"><code>https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/serverside/user_data.py</code></a></li>
+<li><strong><a class="citation" href="#ref-W6">W6</a></strong>：<a class="source-url" href="https://raw.githubusercontent.com/facebook/GoogleTagManager-WebTemplate-For-FacebookPixel/main/template.tpl" rel="noopener noreferrer" target="_blank"><code>https://raw.githubusercontent.com/facebook/GoogleTagManager-WebTemplate-For-FacebookPixel/main/template.tpl</code></a></li>
+<li><strong><a class="citation" href="#ref-W7">W7</a></strong>：<a class="source-url" href="https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-af579d08-121e-4897-8f45-5fd41ace49df" rel="noopener noreferrer" target="_blank"><code>https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-af579d08-121e-4897-8f45-5fd41ace49df</code></a></li>
+<li><strong><a class="citation" href="#ref-W8">W8</a></strong>：<a class="source-url" href="https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api?entity=request-13382743-d0e227d1-e520-4b12-a8f6-32657a52d26e" rel="noopener noreferrer" target="_blank"><code>https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api?entity=request-13382743-d0e227d1-e520-4b12-a8f6-32657a52d26e</code></a></li>
+<li><strong><a class="citation" href="#ref-W9">W9</a></strong>：<a class="source-url" href="https://www.facebookblueprint.com/student/path/291113/activity/515808" rel="noopener noreferrer" target="_blank"><code>https://www.facebookblueprint.com/student/path/291113/activity/515808</code></a></li>
+<li><strong><a class="citation" href="#ref-W10">W10</a></strong>：<a class="source-url" href="https://www.facebookblueprint.com/student/activity/603002-improve-lead-quality-with-meta-conversions-api-for-crm" rel="noopener noreferrer" target="_blank"><code>https://www.facebookblueprint.com/student/activity/603002-improve-lead-quality-with-meta-conversions-api-for-crm</code></a></li>
+<li><strong><a class="citation" href="#ref-W11">W11</a></strong>：<a class="source-url" href="https://www.facebookblueprint.com/student/path/253198-conversions-api-business-messaging" rel="noopener noreferrer" target="_blank"><code>https://www.facebookblueprint.com/student/path/253198-conversions-api-business-messaging</code></a></li>
+<li><strong><a class="citation" href="#ref-W12">W12</a></strong>：<a class="source-url" href="https://www.facebookblueprint.com/student/path/219694-define-audiences" rel="noopener noreferrer" target="_blank"><code>https://www.facebookblueprint.com/student/path/219694-define-audiences</code></a></li>
+<li><strong><a class="citation" href="#ref-W13">W13</a></strong>：<a class="source-url" href="https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/serverside/action_source.py" rel="noopener noreferrer" target="_blank"><code>https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/serverside/action_source.py</code></a></li>
+<li><strong><a class="citation" href="#ref-W14">W14</a></strong>：<a class="source-url" href="https://trainingworkshops.facebookblueprint.com/student/activity/566594-optimize-meta-conversions-api" rel="noopener noreferrer" target="_blank"><code>https://trainingworkshops.facebookblueprint.com/student/activity/566594-optimize-meta-conversions-api</code></a></li>
+</ul>
+<h3>13.6 外部资料尚未解决的实施问题</h3>
+<p><strong>R1：本次直接读取受限的参考页。</strong> Pixel 标准参考页、CAPI Business Messaging、Conversion Leads Integration 的部分开发者页面返回限流或不可访问。事件名称已用官方 Pixel 模板补充核对；但没有以第三方博客替代尚未读取的商业消息／CRM 专项规范。</p>
+<p>因此仍需广告运营和工程在实施时核验：<strong>消息专用事件清单、每类标识要求、当前 API 版本、适用的时间窗口、账户可选优化目标、支持的消息目的地组合，以及原报告关于10月29日前事件的归因说法。</strong></p>
+<p><strong>本版最终建议：先把“业务事实是什么、谁维护、如何验证”统一，再让技术自动化；先证明数据可信，再讨论扩大预算。</strong></p>
+</div>
+<footer class="footer"><span>UPER · 营销获客与 CRM 转化反馈体系 · v2.0</span><a href="#top">返回顶部 ↑</a></footer></main></div>
+<script>
+const navLinks = Array.from(document.querySelectorAll('aside a[href^="#sec-"]'));
+const targets = navLinks.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+if ('IntersectionObserver' in window) {
+ const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => { if (entry.isIntersecting) {
+   navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id));
+  }});
+ },{rootMargin:'-5% 0px -80% 0px'});
+ targets.forEach(t=>observer.observe(t));
+}
+</script></body></html>
