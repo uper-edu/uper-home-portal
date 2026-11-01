@@ -40,7 +40,8 @@ export async function activateIdentityLead(db:any,profile:any,actor:string){
  await db.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[profile.id,next]);
  const {event}=await import('./store.ts');
  await event(db,'lead.created',profile.id,{taskId,sla:snapshot,source:profile.entryPoint||'standalone_chat',identityReleased:true,actor});
- return next;
+ const {assignNewLead}=await import('./autoAssignment.ts');
+ return await assignNewLead(db,profile.id,'identity_release')||next;
 }
 const supplementFields=['fullName','name','whatsapp','email','currentStatus','goal','goals','reportedLevel','levelState','city','cityDetail','mode','hskExamPlan','communicationLanguage'];
 const empty=(v:any)=>v===null||v===undefined||v===''||Array.isArray(v)&&!v.length;

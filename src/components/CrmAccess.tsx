@@ -1,3 +1,4 @@
+import {PersonalLarkControls} from './PersonalLarkControls';
 import {AdminField,AdminRequiredNote,AdminForm} from './AdminForm';
 import {RuntimeVersionStatus} from './RuntimeVersionStatus';
 import {PageMetadata} from './PageMetadata';
@@ -74,6 +75,7 @@ export function CrmAccountControls({
         className={workspace ? "admin-account-popover" : `absolute right-0 top-full mt-2 z-40 min-w-44 rounded-xl border shadow-lg p-1 text-xs ${isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-900 border-slate-700 text-slate-100"}`}
       >
         {workspace && <div className="admin-account-context"><strong>{employee.displayName || employee.id}</strong>{employee.roles.map(roleLabel).join(" · ")}</div>}
+        <PersonalLarkControls key={employee.id} employeeId={employee.id} lang={lang} isLight={isLight}/>
         <button
           type="button"
           className="block w-full text-left rounded-lg px-3 py-2 hover:bg-primary-500/10"

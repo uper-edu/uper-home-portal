@@ -180,6 +180,7 @@ export function standardLarkCard(input:LarkCardInput,leadId:string|undefined,sec
   body.card.header.title.content+=' · '+preview.title;
   body.card.elements[0]={tag:'div',text:{tag:'plain_text',content:[...preview.rows.map(row=>row.label+(input.language==='zh'?'：':': ')+row.value),...(preview.note?[preview.note]:[])].join('\n')}};
   const buttonLabels:Record<string,[string,string,string]>={
+    'commitment.due':['查看客户约定','View agreement','Lihat kesepakatan'],
     'lead.created':input.target?['查看登记依据','View registration source','Lihat sumber pendaftaran']:['查看客户资料','View customer profile','Lihat profil pelanggan'],
     'assessment.completed':input.target?['查看本次测评','View this assessment','Lihat asesmen ini']:['查看测评页','View assessments','Lihat asesmen'],
     'handoff.requested':input.target?['查看请求依据','View request evidence','Lihat bukti permintaan']:['查看客户','View customer','Lihat pelanggan'],

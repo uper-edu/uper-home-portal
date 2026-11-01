@@ -11,7 +11,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approv
  globalThis.fetch=async()=>{throw Error('Unexpected external request blocked');};
  try{
  const clock=new Date('2030-01-06T01:00:00Z');
- const reset=async()=>{cards=[];await fixture.reset('hsk_attempts,messages,ai_attempts,conversations,visitor_sessions,notification_jobs,notification_inbox,outbox,notification_rules,notification_channels,portal_leads,crm_facts,crm_engagements,crm_ai_extractions,followup_tasks,portal_audit');await pool.query("INSERT INTO portal_leads(id,profile) VALUES('lead-a',:p1)",[{id:'lead-a',fullName:'Maya Putri',owner:'test-admin'}]);await pool.query("INSERT INTO notification_channels(id,config) VALUES('qa',:p1)",[{mode:'simulation'}]);};
+ const reset=async()=>{cards=[];await pool.query("DELETE FROM access_state WHERE id='notification_preferences'");await fixture.reset('hsk_attempts,messages,ai_attempts,conversations,visitor_sessions,notification_jobs,notification_inbox,outbox,notification_rules,notification_channels,portal_leads,crm_facts,crm_engagements,crm_ai_extractions,followup_tasks,portal_audit');await pool.query("INSERT INTO portal_leads(id,profile) VALUES('lead-a',:p1)",[{id:'lead-a',fullName:'Maya Putri',owner:'test-admin'}]);await pool.query("INSERT INTO notification_channels(id,config) VALUES('qa',:p1)",[{mode:'simulation'}]);};
  const rule=async(event='lead.created',channels=['inapp','lark'],timing='immediate')=>{await pool.query("INSERT INTO notification_rules(id,version,config,enabled,effective_at) VALUES('qa',1,:p1,true,'2020-01-01')",[{...defaults,language:'zh',event,channels,group:'qa',timing,dedupeMinutes:0}]);};
  const event=async(key:string,payload:any,type='lead.created')=>{await pool.query('INSERT INTO outbox(id,type,lead_id,payload,created_at) VALUES(:p1,:p2,\'lead-a\',:p3,:p4)',[key,type,payload,clock]);};
  await test('V2 queue gives immediate Sunday Lark; legacy pending event keeps Monday schedule',async()=>{
@@ -80,7 +80,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approv
  await reset();await rule('daily.digest',['inapp','lark'],'digest');
  await pool.query("UPDATE portal_leads SET created_at='2030-01-06 01:00:00',profile=:p1 WHERE id='lead-a'",[{id:'lead-a',fullName:'Maya Putri',currentStage:'progress:discovery',tier:'A',entryPoint:'standalone_chat'}]);
  for(const [key,date,tier] of [['other-day','2030-01-05 01:00:00','A'],['other-tier','2030-01-06 01:00:00','B']])await pool.query('INSERT INTO portal_leads(id,business_number,created_at,profile) VALUES(:p1,:p1,:p2,:p3)',[key,date,{currentStage:'progress:discovery',tier,entryPoint:'standalone_chat'}]);
- await pool.query("UPDATE notification_rules SET config=:p1 WHERE id='qa'",[{...defaults,event:'daily.digest',channels:['inapp','lark'],group:'qa',timing:'digest',digestTime:'18:00',tiers:['A'],states:['progress:discovery'],sources:['standalone_chat'],dedupeMinutes:0}]);
+ await pool.query("UPDATE notification_rules SET config=:p1 WHERE id='qa'",[{...defaults,event:'daily.digest',channels:['inapp','lark'],group:'qa',timing:'digest',language:'zh',digestTime:'18:00',tiers:['A'],states:['progress:discovery'],sources:['standalone_chat'],dedupeMinutes:0}]);
  await pool.query("UPDATE notification_channels SET config=:p1 WHERE id='qa'",[{mode:'live',secretRef:'TEST_LARK_V2'}]);
  globalThis.fetch=async(_url,options)=>{cards.push(JSON.parse(String(options?.body)));return new Response(JSON.stringify({code:0}),{status:200});};
  await tick(new Date('2030-01-06T12:00:00Z'));await tick(new Date('2030-01-06T12:01:00Z'));
@@ -104,6 +104,66 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approv
  globalThis.fetch=async(_url,options)=>{cards.push(JSON.parse(String(options?.body)));return new Response(JSON.stringify({code:0}),{status:200});};
  await event('assessment-source',{notificationPolicyVersion:2,attemptId:'attempt-a'},'assessment.completed');await tick(clock);
  assert.equal(cards.length,1);const text=cards[0].card.elements[0].text.content;assert.ok(text.includes('72 / 100'));assert.ok(text.includes('20/25'));assert.ok(text.includes('HSK 1'));assert.ok(!text.includes('HSK 2'));
+ });
+ await test('personal route retains group, excludes old events and revokes changed owners without sending',async()=>{
+ await reset();await rule('lead.created',['lark']);process.env.LARK_APP_ID='cli_synthetic';
+ await pool.query("INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{ 'test-admin':{appId:'cli_synthetic',openId:'ou_synthetic',email:'maya@example.com',revision:1,updatedAt:'2030-01-05T00:00:00Z'}}]);
+ globalThis.fetch=async()=>{throw Error('Network forbidden');};
+ await event('personal',{notificationPolicyVersion:2});await tick(clock);await tick(clock);
+ const rows=(await pool.query("SELECT recipient,state FROM notification_jobs WHERE event_id='personal'")).rows;
+ assert.deepEqual(rows.map(r=>r.recipient).sort(),['personal:test-admin','qa']);
+ assert.ok(rows.every(r=>r.state==='simulated'));
+ await pool.query("UPDATE portal_leads SET profile=:p1 WHERE id='lead-a'",[{id:'lead-a',owner:'test-sales'}]);
+ await pool.query("UPDATE notification_jobs SET state='pending' WHERE event_id='personal' AND recipient='personal:test-admin'");
+ await tick(clock);
+ assert.equal((await pool.query("SELECT state FROM notification_jobs WHERE recipient='personal:test-admin'")).rows[0].state,'cancelled');
+ delete process.env.LARK_APP_ID;
+ });
+ await test('personal opt-out cancels pending private delivery and never changes group routing; language is private only',async()=>{
+ await reset();await rule('conversation.reactivated',['lark']);
+ Object.assign(process.env,{LARK_APP_ID:'cli_synthetic',LARK_APP_SECRET:'synthetic-only',LARK_PERSONAL_DELIVERY_ENABLED:'true'});
+ await pool.query("INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{'test-admin':{appId:'cli_synthetic',openId:'ou_synthetic',revision:1,updatedAt:'2030-01-05T00:00:00Z'}}]);
+ process.env.LARK_TEST_GROUP='qa';
+ const prefs=async(disabledTypes:string[])=>pool.query("INSERT INTO access_state(id,value) VALUES('notification_preferences',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{'test-admin':{revision:1,language:'id',disabledTypes}}]);
+ await prefs(['conversation.reactivated']);await event('private-off',{notificationPolicyVersion:2},'conversation.reactivated');await tick(clock);
+ assert.deepEqual((await pool.query("SELECT recipient FROM notification_jobs WHERE event_id='private-off'")).rows.map(v=>v.recipient),['qa']);
+ await prefs([]);await event('private-later',{notificationPolicyVersion:2},'conversation.reactivated');await tick(new Date(clock.getTime()-1));
+ await prefs(['conversation.reactivated']);await tick(clock);await tick(clock);
+ assert.equal((await pool.query("SELECT state FROM notification_jobs WHERE event_id='private-later' AND recipient='personal:test-admin'")).rows[0].state,'cancelled');
+ await prefs([]);await pool.query("UPDATE notification_channels SET config=:p1 WHERE id='qa'",[{mode:'live',secretRef:'TEST_LARK_V2'}]);
+ let privateText='',groupText='';globalThis.fetch=async(url,options)=>{if(String(url).includes('/auth/'))return Response.json({code:0,tenant_access_token:'token',expire:7200});const body=JSON.parse(String(options?.body));if(String(url).includes('/im/v1/')){privateText=body.content;return Response.json({code:0,data:{message_id:'synthetic'}});}groupText=JSON.stringify(body);return Response.json({code:0});};
+ await event('private-language',{notificationPolicyVersion:2},'conversation.reactivated');await tick(new Date(clock.getTime()-1));
+ await pool.query("UPDATE notification_jobs SET due_at=:p1 WHERE event_id='private-language' AND recipient='qa'",[new Date(clock.getTime()-2000)]);
+ await pool.query("UPDATE notification_jobs SET due_at=:p1 WHERE event_id='private-language' AND recipient='personal:test-admin'",[new Date(clock.getTime()-1000)]);
+ process.env.LARK_TEST_GROUP='qa';await tick(clock);process.env.LARK_TEST_GROUP='personal:test-admin';await tick(clock);
+ assert.ok(privateText.includes('[Penjualan]'),privateText||'No private card captured');assert.ok(groupText.includes('[销售通知]'),groupText||'No group card captured');assert.ok(!privateText.includes('[销售通知]'));
+ await prefs([]);await pool.query("DELETE FROM access_state WHERE id='notification_preferences'");delete process.env.LARK_APP_ID;delete process.env.LARK_APP_SECRET;delete process.env.LARK_PERSONAL_DELIVERY_ENABLED;process.env.LARK_TEST_GROUP='qa';globalThis.fetch=async()=>{throw Error('Unexpected external request blocked');};
+ });
+ await test('required reminders bypass historical opt-outs without replay or changing group delivery',async()=>{
+ await reset();await rule('handoff.requested',['lark']);process.env.LARK_APP_ID='cli_synthetic';
+ await pool.query("INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{'test-admin':{appId:'cli_synthetic',openId:'ou_synthetic',revision:1,updatedAt:'2030-01-05T00:00:00Z'}}]);
+ await pool.query("INSERT INTO access_state(id,value) VALUES('notification_preferences',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{'test-admin':{revision:1,language:'rule',disabledTypes:['handoff.requested']}}]);
+ await event('required-new',{notificationPolicyVersion:2},'handoff.requested');await tick(clock);await tick(clock);
+ assert.deepEqual((await pool.query("SELECT recipient FROM notification_jobs WHERE event_id='required-new' ORDER BY recipient")).rows.map(v=>v.recipient),['personal:test-admin','qa']);
+ await tick(clock);assert.equal(Number((await pool.query("SELECT COUNT(*) AS n FROM notification_jobs WHERE event_id='required-new'")).rows[0].n),2);
+ delete process.env.LARK_APP_ID;
+ });
+ await test('personal app transport reuses card, uses stable job id and leaves ambiguous delivery unknown',async()=>{
+ await reset();await rule('conversation.reactivated',['lark']);
+ Object.assign(process.env,{LARK_APP_ID:'cli_synthetic',LARK_APP_SECRET:'synthetic-only',LARK_PERSONAL_DELIVERY_ENABLED:'true',LARK_TEST_GROUP:'personal:test-admin'});
+ await pool.query("INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{'test-admin':{appId:'cli_synthetic',openId:'ou_synthetic',email:'maya@example.com',revision:1,updatedAt:'2030-01-05T00:00:00Z'}}]);
+ await pool.query("UPDATE notification_channels SET config=:p1 WHERE id='qa'",[{mode:'live',secretRef:'TEST_LARK_V2'}]);
+ let personalBody:any;globalThis.fetch=async(url,options)=>{
+ if(String(url).includes('/auth/'))return Response.json({code:0,tenant_access_token:'token',expire:7200});
+ assert.ok(String(url).includes('/im/v1/messages?receive_id_type=open_id'));personalBody=JSON.parse(String(options?.body));return Response.json({code:0,data:{message_id:'synthetic'}});
+ };
+ await event('private-send',{notificationPolicyVersion:2},'conversation.reactivated');await tick(clock);await tick(clock);
+ const job=(await pool.query("SELECT * FROM notification_jobs WHERE event_id='private-send' AND recipient='personal:test-admin'")).rows[0];
+ assert.equal(job.state,'accepted');assert.equal(personalBody.receive_id,'ou_synthetic');assert.equal(personalBody.uuid,job.id);assert.ok(JSON.parse(personalBody.content).header);
+ globalThis.fetch=async()=>{throw Error('simulated lost response');};
+ await event('private-unknown',{notificationPolicyVersion:2},'conversation.reactivated');await tick(clock);await tick(clock);
+ assert.equal((await pool.query("SELECT state FROM notification_jobs WHERE event_id='private-unknown' AND recipient='personal:test-admin'")).rows[0].state,'unknown');
+ delete process.env.LARK_PERSONAL_DELIVERY_ENABLED;delete process.env.LARK_APP_SECRET;delete process.env.LARK_APP_ID;process.env.LARK_TEST_GROUP='qa';
  });
  }finally{globalThis.fetch=native;await pool.end();await disposeNativeTest(fixture);delete process.env.TEST_LARK_V2;}
 }

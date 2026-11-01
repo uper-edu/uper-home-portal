@@ -1,3 +1,7 @@
+import {listInbox,readInbox} from './inappInbox.ts';
+import {previewBackfill,confirmBackfill,backfillResult} from './assignmentBackfill.ts';
+import {assignNewLead,prepareAssignmentPolicy} from './autoAssignment.ts';
+import {mountLarkSelfService} from './larkSelfService.ts';
 import {resolveNotificationTarget,digestTargetScope,matchesDigestTarget} from './notificationTarget.ts';
 import {notificationTargetKinds} from '../../src/utils/crmNotificationTarget.ts';
 import {scheduleNotification,scheduleLarkV2} from './larkNotificationV2.ts';
@@ -274,6 +278,7 @@ export async function mountPortal(app: Express) {
   mountAccessHandovers(app);
   mountAccessRecovery(app);
   mountAccessManagement(app);
+  mountLarkSelfService(app);
   mountAiServiceConfig(app);
   for (const r of defaultRules)
     await pool.query(
@@ -654,6 +659,7 @@ export async function mountPortal(app: Express) {
           profile,
         ]);
       }
+      if(!locked.lead_id&&!matches)profile=await assignNewLead(c,leadId,'registration')||profile;
       await fact(c,leadId,"questionnaire.submitted","visitor",{answers:b,previous:Object.fromEntries(["fullName","whatsapp","email","goal","goals","city","mode","reportedLevel"].map(k=>[k,existing[k]??null]))},questionnaireFactId);
       await c.query("INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'registration',:p2,:p3,:p4,:p5,:p6)",[randomUUID(),receiptKey,fingerprint,v.id,leadId,{lead:publicRegistrationProfile(profile)}]);
       return profile;
@@ -933,10 +939,11 @@ export async function mountPortal(app: Express) {
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.claim',:p2)",
           [e.id, { id: l.id, owner: e.id }],
         );
-        await fact(c,l.id,'owner.changed',e.id,{before:null,after:e.id,beforeName:'未分配',afterName:e.displayName||e.id,reason:'自己认领',changedAt:next.ownerChangedAt,requestId:randomUUID()});
+        const ownershipFactId=randomUUID();
+        await fact(c,l.id,'owner.changed',e.id,{before:null,after:e.id,beforeName:'未分配',afterName:e.displayName||e.id,reason:'自己认领',changedAt:next.ownerChangedAt,requestId:randomUUID()},ownershipFactId);
         await event(c, "conversation.updated", l.id, {
           source: "crm_assignment",
-          assignmentChanged: true,
+          assignmentChanged: true,factId:ownershipFactId,
         });
         return next;
       });
@@ -1125,6 +1132,9 @@ export async function mountPortal(app: Express) {
       fail(400, "Record a follow-up result and explicitly select the task");
     }),
   );
+  app.get('/api/crm/notifications/inbox',wrap(async(req,res)=>{const e=await staff(req);res.setHeader('Cache-Control','no-store');res.json(await tx(c=>listInbox(c,e,typeof req.query.cursor==='string'?req.query.cursor:undefined,req.query.summary==='1')));}));
+  app.post('/api/crm/notifications/inbox/:id/read',wrap(async(req,res)=>{const e=await staff(req);res.setHeader('Cache-Control','no-store');res.json(await tx(c=>readInbox(c,e,String(req.params.id),false)));}));
+  app.post('/api/crm/notifications/inbox/:id/open',wrap(async(req,res)=>{const e=await staff(req);res.setHeader('Cache-Control','no-store');res.json(await tx(c=>readInbox(c,e,String(req.params.id),true)));}));
   app.get(
     "/api/crm/notifications",
     wrap(async (req, res) => {
@@ -1594,6 +1604,9 @@ export async function mountPortal(app: Express) {
       res.json(effectivePolicy(configured,v));
     }),
   );
+  app.post('/api/crm/assignment-backfill/preview',wrap(async(req,res)=>{const e=await staff(req,'crm.assign');res.setHeader('Cache-Control','no-store');res.json(await tx(c=>previewBackfill(c,e,req.body)));}));
+  app.post('/api/crm/assignment-backfill/confirm',wrap(async(req,res)=>{const e=await staff(req,'crm.assign');if(!req.body||Object.keys(req.body).some(k=>k!=='token'))fail(400,'backfill_preview_invalid');res.setHeader('Cache-Control','no-store');res.json(await tx(c=>confirmBackfill(c,e,req.body.token)));}));
+  app.get('/api/crm/assignment-backfill/results/:id',wrap(async(req,res)=>{const e=await staff(req,'crm.assign');res.setHeader('Cache-Control','no-store');res.json(await tx(c=>backfillResult(c,e,String(req.params.id))));}));
   app.post('/api/crm/policy-config/topics/:topic',wrap(async(req,res)=>{
     const employee=await staff(req,'notifications.manage');
     const result=await tx(async(db)=>{
@@ -1601,7 +1614,7 @@ export async function mountPortal(app: Express) {
       const sla=rows.find((row:any)=>row.id==='sla').value,configured=rows.find((row:any)=>row.id==='crm_policy')?.value;
       const current=effectivePolicy(configured,sla),merged=mergePolicyTopic(current,String(req.params.topic),req.body);
       if(merged.kind!=='saved')return merged;
-      const value=merged.value;value.updatedAt=new Date().toISOString();
+      const value=merged.value;await prepareAssignmentPolicy(db,current,value,employee);value.updatedAt=new Date().toISOString();
       const before={identityReviewManagerOnly:current.identityReviewManagerOnly,ownerAssignmentManagerOnly:current.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:current.sourceAttributionManagerOnly};
       const after={identityReviewManagerOnly:value.identityReviewManagerOnly,ownerAssignmentManagerOnly:value.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:value.sourceAttributionManagerOnly};
       if(JSON.stringify(before)!==JSON.stringify(after))await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[employee.id,'crm.access-controls.save',{before,after}]);
@@ -1625,6 +1638,7 @@ export async function mountPortal(app: Express) {
         const configured=rows.find((row:any)=>row.id==='crm_policy')?.value;
         const {value,errors}=mergePolicyConfig(effectivePolicy(configured,old),req.body);
         if(Object.keys(errors).length) return {errors};
+        await prepareAssignmentPolicy(db,effectivePolicy(configured,old),value,e);
         const previousControls={identityReviewManagerOnly:configured?.identityReviewManagerOnly!==false,ownerAssignmentManagerOnly:effectivePolicy(configured,old).ownerAssignmentManagerOnly,sourceAttributionManagerOnly:configured?.sourceAttributionManagerOnly!==false};
         const currentControls={identityReviewManagerOnly:value.identityReviewManagerOnly,ownerAssignmentManagerOnly:value.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:value.sourceAttributionManagerOnly};
         if(JSON.stringify(previousControls)!==JSON.stringify(currentControls))await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[e.id,"crm.access-controls.save",{before:previousControls,after:currentControls}]);

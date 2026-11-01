@@ -1,5 +1,8 @@
+import {personalNotificationPreferences,personalNotificationAllowed,personalNotificationLanguage} from './personalNotificationPreferences.ts';
+import {processLarkBindingConfirmations} from './larkSelfService.ts';
+import {larkApp,larkBindings} from './larkApp.ts';
 import {processExtractionBatch} from './aiExtraction.ts';
-import {executionTime,taskNoticeCancellation,timingEventLabel} from './taskTiming.ts';
+import {executionTime,taskNoticeCancellation,timingEventLabel,agreementDueAfterActivation} from './taskTiming.ts';
 import {taskRequests,requestDeadline} from './taskManagement.ts';
 import {pendingIdentity} from './identityReview.ts';
 import {settleNoResponse} from "./noResponse.ts";
@@ -33,6 +36,7 @@ import {
 } from "./policy.ts";
 export async function tick(clock = new Date()) {
   if((await restoreState())?.required)return;
+  await processLarkBindingConfirmations();
   void processExtractionBatch().catch(()=>{});
   await tx(async (c) => {
     await settleNoResponse(c,clock);
@@ -91,7 +95,7 @@ export async function tick(clock = new Date()) {
     for(const row of agreements)for(const v of row.profile.commitments||[]){
       const date=new Intl.DateTimeFormat('en-CA',{timeZone:v.timezone||'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(clock);
       if(v.status!=='active'||v.reminderSuppressed||!(v.at?Date.parse(v.at)<=clock.getTime():v.date&&v.date<=date))continue;
-      await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'commitment.due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",['commitment:'+v.id,row.id,{commitmentId:v.id,action:v.action,agreedAt:v.at||v.date,internalOnly:row.profile.contactArrangement?.state==='stopped',notificationPolicyVersion:2}]);
+      await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'commitment.due',:p2,:p3) ON DUPLICATE KEY UPDATE id=id",['commitment:'+v.id,row.id,{commitmentId:v.id,action:v.action,agreedAt:v.at||v.date,internalOnly:row.profile.contactArrangement?.state==='stopped',notificationPolicyVersion:2,notificationContentVersion:3}]);
     }
     const events = (
       await c.query(
@@ -165,12 +169,17 @@ export async function tick(clock = new Date()) {
           : ev.type!=='daily.digest' && r.states.length && !r.states.includes(lead?.currentStage) ? 'stage_mismatch' : '';
         if(excluded){exclusions.push({ruleId:rule.id,reason:excluded});continue;}
         for (const channel of r.channels) {
+          if(channel==='lark'&&ev.type==='commitment.due'&&!agreementDueAfterActivation(ev.payload.agreedAt,rule.effective_at,(lead?.commitments||[]).find((v:any)=>v.id===ev.payload.commitmentId)?.timezone||r.timezone)){exclusions.push({ruleId:rule.id,reason:'agreement_before_activation'});continue;}
           if(ev.type==='daily.digest' && !digestChannelAllowed(channel,ev.payload))continue;
           const route =
             channel === "inapp"
               ? resolveRecipients(r, lead, employees, ev.lead_id)
               : null;
           const targets = route ? route.ids : [r.group];
+          if(channel==='lark' && ev.lead_id && lead?.owner){
+            const bindings=await larkBindings(c),binding=bindings[lead.owner];
+            if(binding?.openId && binding.appId===process.env.LARK_APP_ID && new Date(binding.updatedAt)<=new Date(ev.created_at) && resolveRecipients(r,lead,employees,ev.lead_id).ids.includes(lead.owner) && personalNotificationAllowed(await personalNotificationPreferences(c,lead.owner),ev.type))targets.push('personal:'+lead.owner);
+          }
           if (route && !targets.length) {
             exclusions.push({ruleId:rule.id,reason:'routing_unresolved'});
             await c.query(
@@ -271,10 +280,14 @@ export async function tick(clock = new Date()) {
     const globalCalendar = (
       await pool.query("SELECT value FROM portal_settings WHERE id='sla'")
     ).rows[0]?.value;
+    const personalEmployee=job.channel==='lark'&&job.recipient.startsWith('personal:')?job.recipient.slice(9):null;
+    const personalPreferences=personalEmployee?await personalNotificationPreferences(pool,personalEmployee):null;
+    if(personalPreferences&&!personalNotificationAllowed(personalPreferences,job.snapshot.event)){await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal notification disabled',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;}
     const r = resolveCalendar(
       { ...storedRule, calendarMode: storedRule.calendarMode || "custom" },
       globalCalendar,
     );
+    if(personalPreferences)r.language=personalNotificationLanguage(personalPreferences,r.language) as Rule['language'];
     const lead =
       (
         await pool.query("SELECT profile FROM portal_leads WHERE id=:p1", [
@@ -414,10 +427,14 @@ export async function tick(clock = new Date()) {
         [job.recipient, clock],
       )
     ).rows[0].count;
+    const personalBinding=personalEmployee?(await larkBindings(pool))[personalEmployee]:null;
+    if(personalEmployee && (!personalBinding?.openId || personalBinding.appId!==process.env.LARK_APP_ID || new Date(personalBinding.updatedAt)>new Date(job.snapshot.eventRecordedAt || 0) || personalEmployee!==lead.owner || !recipients(r,lead,await platform.employees(),job.snapshot.leadId).includes(personalEmployee))){
+      await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal recipient changed or unauthorized',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
+    }
     const config = (
       await pool.query(
         "SELECT config FROM notification_channels WHERE id=:p1",
-        [job.recipient],
+        [personalEmployee ? r.group : job.recipient],
       )
     ).rows[0]?.config;
     const limit = await groupRateLimit(pool, job.recipient, config);
@@ -450,10 +467,13 @@ export async function tick(clock = new Date()) {
       );
       return;
     }
+    if(personalEmployee && process.env.LARK_PERSONAL_DELIVERY_ENABLED!=='true'){
+      await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
+    }
     const url = process.env[config.secretRef];
     if (
-      !validWebhook(url) ||
-      ((config.signingEnabled ?? !!config.signingSecretRef) &&
+      (!personalEmployee && !validWebhook(url)) ||
+      ((!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef)) &&
         !process.env[config.signingSecretRef]) ||
       ((process.env.PORTAL_DEPLOYMENT === 'company-trial' || process.env.PLATFORM_MODE === "mock" ||
         process.env.APP_ENV === "test" ||
@@ -489,9 +509,9 @@ export async function tick(clock = new Date()) {
       const deadlineStatus=content.due?notificationDeadlineStatus(deadlineAt,clock.toISOString(),r.language):undefined;
       let designedCard:any;
       if(job.snapshot.payload.notificationPolicyVersion===2 && job.snapshot.event==='daily.digest'){
-        designedCard=dailyDigestCard({jobId:job.id,language:r.language,date:job.snapshot.payload.date,timezone:r.timezone,counts:job.snapshot.payload.counts,filtered:!!(r.tiers.length||r.states.length||r.sources.length)},(config.signingEnabled ?? !!config.signingSecretRef)?process.env[config.signingSecretRef]:undefined,clock);
+        designedCard=dailyDigestCard({jobId:job.id,language:r.language,date:job.snapshot.payload.date,timezone:r.timezone,counts:job.snapshot.payload.counts,filtered:!!(r.tiers.length||r.states.length||r.sources.length)},(!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))?process.env[config.signingSecretRef]:undefined,clock);
       }
-      if(job.snapshot.payload.notificationPolicyVersion===2 && standardLarkKinds.includes(job.snapshot.event) && (['lead.created','handoff.requested','assessment.completed'].includes(job.snapshot.event)||job.snapshot.payload.notificationContentVersion===3)){
+      if(job.snapshot.payload.notificationPolicyVersion===2 && standardLarkKinds.includes(job.snapshot.event) && (['lead.created','handoff.requested','assessment.completed','commitment.due'].includes(job.snapshot.event)||job.snapshot.payload.notificationContentVersion===3)){
         const attempt=job.snapshot.event==='assessment.completed' && job.snapshot.payload.attemptId
           ? (await pool.query("SELECT id,lead_id,result,created_at FROM hsk_attempts WHERE id=:p1 AND lead_id=:p2",[job.snapshot.payload.attemptId,job.snapshot.leadId])).rows[0] : null;
         const source=await larkEventSource(pool,job.snapshot.event,job.snapshot.leadId,job.snapshot.payload);
@@ -502,11 +522,12 @@ export async function tick(clock = new Date()) {
         const occurrence=attempt ? assessmentOccurrence(attempt) : ['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event) ? (source && 'occurredAt' in source ? source.occurredAt : null) || null : null;
         const formatTime=(value:any)=>{const date=new Date(value);return value && Number.isFinite(date.getTime())?new Intl.DateTimeFormat(r.language==='zh'?'zh-CN':r.language==='id'?'id-ID':'en-GB',{timeZone:r.timezone,dateStyle:'medium',timeStyle:'short'}).format(date):undefined;};
         const payload=job.snapshot.payload;
-        const target:LarkCardInput['target']=job.snapshot.event==='assessment.completed'?{kind:'assessment',id:payload.attemptId}:['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)?{kind:'request',id:payload.requestEvidenceId}:job.snapshot.event==='task.overdue'?{kind:'task',id:payload.taskId}:job.snapshot.event==='ai.failed'&&payload.messageId?{kind:'message',id:payload.messageId}:job.snapshot.event==='conversation.reactivated'&&payload.conversationId?{kind:'conversation',id:payload.conversationId}:job.snapshot.event==='lead.created'&&payload.questionnaireFactId?{kind:'fact',id:payload.questionnaireFactId}:job.snapshot.event==='lead.created'&&payload.submissionId?{kind:'submission',id:payload.submissionId}:undefined;
-        const standardInput:LarkCardInput={target,jobId:job.snapshot.event==='notification.failed'?payload.jobId:undefined,kind:job.snapshot.event,language:r.language,name:content.name,owner:(await platform.employees()).find(e=>e.id===lead.owner)?.displayName || (lead.owner ? (r.language==='zh'?'负责人待核对':r.language==='id'?'Periksa penanggung jawab':'Owner needs review') : (r.language==='zh'?'未分配':r.language==='id'?'Belum ditugaskan':'Unassigned')),excerpt:source && 'excerpt' in source ? source.excerpt:undefined,excerptRestricted:source && 'excerptRestricted' in source ? source.excerptRestricted:false,reportedLevel:source && 'reportedLevel' in source ? source.reportedLevel:undefined,mode:source && 'mode' in source ? source.mode:undefined,city:source && 'city' in source ? source.city:undefined,assessmentResult:attempt?.result,time:formatTime(occurrence),recordedAt:formatTime(attempt?.created_at||source?.recordedAt||failureSource?.recordedAt||job.snapshot.eventRecordedAt),goals:source && 'goals' in source ? source.goals as string[] : undefined,internalReview:!!internalHandling,source:attempt?'assessment':source?.source,score:attempt?.result?.score,maxScore:attempt?.result?.maxScore,due:job.snapshot.event==='task.overdue'||sourceRequest?.data?.dueAt?content.due:undefined,dueAt:deadlineAt,failedEvent:failureSource?.failedEvent,failedChannel:failureSource?.failedChannel,attempts:failureSource?.attempts,failure:failureSource?.failure};
-        designedCard=standardLarkCard(standardInput,job.snapshot.leadId,(config.signingEnabled ?? !!config.signingSecretRef)?process.env[config.signingSecretRef]:undefined,clock);
+        const target:LarkCardInput['target']=agreement?{kind:'agreement',id:agreement.id}:job.snapshot.event==='assessment.completed'?{kind:'assessment',id:payload.attemptId}:['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)?{kind:'request',id:payload.requestEvidenceId}:job.snapshot.event==='task.overdue'?{kind:'task',id:payload.taskId}:job.snapshot.event==='ai.failed'&&payload.messageId?{kind:'message',id:payload.messageId}:job.snapshot.event==='conversation.reactivated'&&payload.conversationId?{kind:'conversation',id:payload.conversationId}:job.snapshot.event==='lead.created'&&payload.questionnaireFactId?{kind:'fact',id:payload.questionnaireFactId}:job.snapshot.event==='lead.created'&&payload.submissionId?{kind:'submission',id:payload.submissionId}:undefined;
+        const standardInput:LarkCardInput={target,agreementAction:agreement?.action,jobId:job.snapshot.event==='notification.failed'?payload.jobId:undefined,kind:job.snapshot.event,language:r.language,name:content.name,owner:(await platform.employees()).find(e=>e.id===lead.owner)?.displayName || (lead.owner ? (r.language==='zh'?'负责人待核对':r.language==='id'?'Periksa penanggung jawab':'Owner needs review') : (r.language==='zh'?'未分配':r.language==='id'?'Belum ditugaskan':'Unassigned')),excerpt:source && 'excerpt' in source ? source.excerpt:undefined,excerptRestricted:source && 'excerptRestricted' in source ? source.excerptRestricted:false,reportedLevel:source && 'reportedLevel' in source ? source.reportedLevel:undefined,mode:source && 'mode' in source ? source.mode:undefined,city:source && 'city' in source ? source.city:undefined,assessmentResult:attempt?.result,time:formatTime(occurrence),recordedAt:formatTime(attempt?.created_at||source?.recordedAt||failureSource?.recordedAt||job.snapshot.eventRecordedAt),goals:source && 'goals' in source ? source.goals as string[] : undefined,internalReview:!!internalHandling,source:attempt?'assessment':source?.source,score:attempt?.result?.score,maxScore:attempt?.result?.maxScore,due:agreement||job.snapshot.event==='task.overdue'||sourceRequest?.data?.dueAt?content.due:undefined,dueAt:deadlineAt,failedEvent:failureSource?.failedEvent,failedChannel:failureSource?.failedChannel,attempts:failureSource?.attempts,failure:failureSource?.failure};
+        designedCard=standardLarkCard(standardInput,job.snapshot.leadId,(!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))?process.env[config.signingSecretRef]:undefined,clock);
       }
-      const response = await fetch(url, {
+      const sendRequest:typeof fetch=personalEmployee?async(_url,options)=>larkApp.send(personalBinding.openId,JSON.parse(String(options?.body)),job.id):fetch;
+      const response = await sendRequest(url || 'https://open.larksuite.com', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
@@ -528,7 +549,7 @@ export async function tick(clock = new Date()) {
                 ? "\n" + JSON.stringify(job.snapshot.payload.counts)
                 : ""),
             job.snapshot.leadId,
-            (config.signingEnabled ?? !!config.signingSecretRef)
+            (!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))
               ? process.env[config.signingSecretRef]
               : undefined,
             clock,

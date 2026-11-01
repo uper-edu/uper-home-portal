@@ -60,3 +60,11 @@ One shared mapping controls both outgoing card headers and synthetic policy prev
 ## New-configuration defaults (2026-10-31)
 
 New notification policies default to English (`en`). New Lark channels and the no-configuration hourly fallback default to100 messages per group per hour. Frontend forms and backend use `larkNotificationDefaults`. Explicit saved language/channel limits remain unchanged, including zero and nondefault limits. Historical rule/job limits still use the existing strictest-legacy fallback when no explicit channel limit is saved; changing a default does not rewrite historical snapshots or existing settings. New policies still require an explicit Lark channel selection and save; nothing is enabled automatically.
+
+## Customer agreement reminders
+
+`commitment.due` defaults to in-app plus Lark, routed to the customer owner and the existing CRM Bot channel. It is an always-on system reminder, not an optional update. New defaults do not silently overwrite existing rules; local activation is explicit, versioned and audited. Existing custom filters, language and limits remain unchanged.
+
+The blue card shows the customer, privacy-screened agreement text, exact agreed time (or original date only), deadline status at send time when an instant exists, and owner. Empty values stay hidden. “View agreement” opens the specific agreement in Follow-up. Paused contact or unresolved identity retains the internal-review warning. No new task, automatic contact or Tier change is created.
+
+New events use the shared localized card. Cancelled/changed-away agreements are not delivered. Activation does not replay processed events or create Lark reminders for agreement instants before activation; date-only agreements compare dates in the agreement timezone without inventing a time. The notification worker remains paused during local acceptance; no real sends are part of this verification.

@@ -1,0 +1,9 @@
+# Customer agreement notification acceptance — 2026-10-31
+
+- Local 3000 only. Source and previous rule backed up in `.local-backups/agreement-notification-20261031/` (private, not for Git).
+- Existing `commitment.due` rule explicitly updated from in-app-only to in-app + existing CRM Bot Lark channel, version 2. Owner routing, language, limits and other settings retained; version history and audit saved.
+- Personal settings verified in Chinese desktop: customer agreement reminder is in always-on System reminders with no unavailable label. Global personal delivery remains disabled and the worker remains paused; enabling this event is not a claim that real personal sending is active.
+- Notification strategy page verified: enabled, both channels selected, localized standard card preview shows customer, agreement action, agreed time, send-time overdue duration, owner and source. No notification was sent.
+- 35 focused tests passed, 0 skipped; TypeScript, dev build and diff checks passed. Tests cover activation/idempotency/routing-review rejection, privacy, date-only precision, historical cutoff, three-language card rendering and exact agreement URL parameters. Real delivery, database-backed worker fault paths and browser click-through for a newly generated real agreement were not run.
+- Notification job/outbox/channel/account/access-state counts and hashes unchanged during activation. No historical notification replay, new tasks or Tier changes.
+- Remaining UX gap found during follow-up: backend `/api/crm/notifications` reads per-employee `notification_inbox`, but no current frontend caller was found. There is no verified personal in-app notification inbox entry. Do not present the in-app channel as a delivered user-visible message center. This does not affect the Lark card template acceptance above.

@@ -1,3 +1,5 @@
+import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
+import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormGuide} from '../components/AdminFormGuide';
 import {AdminFormSection,AdminFormActions} from '../components/AdminFormLayout';
 import {AiServicePanel} from '../components/AiServicePanel';
@@ -41,6 +43,7 @@ type User = {
   id: string;
   loginId: string;
   email?: string | null;
+  larkBound?: boolean;
   displayName: string;
   roles: string[];
   active: boolean;
@@ -91,6 +94,8 @@ export function AccessWorkspace({
     col = lang === "zh" ? 2 : lang === "id" ? 1 : 0,
     t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   const [discarding, setDiscarding] = useState(false);
+  const [larkDirty,setLarkDirty]=useState(false);
+  const [larkDraft,setLarkDraft]=useState<any>(undefined);
   const [tab, setTab] = useState("users"),
     [data, setData] = useState<{ users: User[]; roles: Role[]; testDirectoryAvailable?:boolean } | null>(null),
     [err, setErr] = useState(""),
@@ -123,6 +128,7 @@ export function AccessWorkspace({
       setErr((e as Error).message);
     }
   };
+  useEffect(()=>{const refresh=()=>{void load();};window.addEventListener('uper-lark-changed',refresh);return()=>window.removeEventListener('uper-lark-changed',refresh);},[employee.id]);
   const operationResolved = () => {
     setErr("");
     void api()
@@ -157,7 +163,7 @@ export function AccessWorkspace({
     panel.current?.focus();
     return () => priorFocus.current?.focus();
   }, [!!user, !!role]);
-  const editorHasDraft = Boolean(user || role) && (dirty || why.length > 0 || password.length > 0);
+  const editorHasDraft = Boolean(user || role) && (dirty || larkDirty || why.length > 0 || password.length > 0);
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
       if (editorHasDraft) {
@@ -177,6 +183,8 @@ export function AccessWorkspace({
     resetEditor();
   };
   const resetEditor = () => {
+    setLarkDirty(false);
+    setLarkDraft(undefined);
     setDiscarding(false);
     setUser(null);
     setRole(null);
@@ -187,6 +195,7 @@ export function AccessWorkspace({
     setImpact(null);
   };
   const openUser = (u: User | null) => {
+    setLarkDirty(false);setLarkDraft(undefined);
     setDiscarding(false);
     setLatest(null);
     setRole(null);
@@ -244,6 +253,7 @@ export function AccessWorkspace({
   };
   const save = async () => {
     if (busy) return;
+    if(larkDirty && !larkDraft){setNotice(t("Look up the Lark identity first, or clear the input.","Cari identitas Lark dahulu atau kosongkan input.","请先查询核对Lark身份，或清空查询输入。"));return;}
     const missing=panel.current&&firstMissingAdminField(panel.current);
     if(missing){missing.focus();setErr('admin_required_missing');return;}
     setBusy(true);
@@ -254,12 +264,14 @@ export function AccessWorkspace({
           ...user,
           reason: why,
           temporaryPassword: password,
+          ...(larkDraft?{larkBinding:larkDraft}:{}),
         });
       else if (role) {
         if (!preview) throw Error("access_preview_required");
         await api("/roles/" + role.id, { ...role, reason: why });
       }
       setDirty(false);
+      setLarkDirty(false);setLarkDraft(undefined);
       setUser(null);
       setRole(null);
       setPassword("");
@@ -552,14 +564,14 @@ export function AccessWorkspace({
                         Number(a.id === employee.id),
                     )
                     .map((u) => (
-                      <AccessUserCard
-                        key={u.id}
+                      <AccessUserCard key={u.id}
                         name={u.displayName}
                         active={u.active}
                         current={u.id === employee.id}
                         lang={lang}
                         loginId={u.loginId}
                         email={u.email}
+                        larkBound={u.larkBound}
                         roles={u.roles.map((id) => ({
                           id,
                           label:
@@ -706,6 +718,7 @@ export function AccessWorkspace({
         <div
           className="access-backdrop"
           onKeyDown={(e) => {
+            if(discarding)return;
             if (e.key === "Escape") close();
             if (e.key === "Tab") {
               const controls = Array.from(
@@ -746,27 +759,12 @@ export function AccessWorkspace({
               </button>
             </div>
             <div className="admin-editor-body" data-admin-stack="">
-            {discarding && (
-              <section role="alert" className="access-impact">
-                <p>
-                  {t(
-                    "Discard unsaved changes?",
-                    "Buang perubahan yang belum disimpan?",
-                    "放弃尚未保存的修改？",
-                  )}
-                </p>
-                <button onClick={() => setDiscarding(false)}>
-                  {t("Keep editing", "Lanjutkan mengedit", "继续编辑")}
-                </button>
-                <button onClick={resetEditor}>
-                  {t(
-                    "Discard draft and close",
-                    "Buang draf dan tutup",
-                    "放弃草稿并关闭",
-                  )}
-                </button>
-              </section>
-            )}
+            {discarding && <CrmDiscardDialog lang={lang} isLight={isLight}
+              title={t("Unsaved changes", "Perubahan belum disimpan", "修改尚未保存")}
+              description={t("Keep editing, or discard your unsaved changes and close. Saved records stay unchanged.", "Lanjutkan mengedit atau buang perubahan yang belum disimpan dan tutup. Data tersimpan tidak berubah.", "可以继续编辑，或放弃未保存的修改并关闭；已保存记录保持不变。")}
+              keepLabel={t("Keep editing", "Lanjutkan mengedit", "继续编辑")}
+              discardLabel={t("Discard draft and close", "Buang draf dan tutup", "放弃草稿并关闭")}
+              onKeep={()=>setDiscarding(false)} onDiscard={resetEditor} />}
             <AccessOperationStatus
               actor={employee.id}
               lang={lang}
@@ -1079,6 +1077,11 @@ export function AccessWorkspace({
                 )}
               </AdminFormSection>
             )}
+            {user?.id && can("access.users") && (
+              <AdminFormSection title={t("Lark account", "Akun Lark", "Lark账号")}>
+                <LarkEmployeeBinding key={user.id} employeeId={user.id} lang={lang} onDraftChange={setLarkDirty} onBindingDraft={setLarkDraft} disabled={busy} />
+              </AdminFormSection>
+            )}
             {role && (
               <AdminFormSection title={t("Role details", "Detail peran", "角色信息")}>
                 <AdminField>
@@ -1269,7 +1272,7 @@ export function AccessWorkspace({
                   busy ||
                   !why.trim() ||
                   (!!user && !can("access.users")) ||
-                  !dirty ||
+                  (!dirty && !larkDraft) ||
                   (!!role && !preview) ||
                   (!user?.id && !!user && password.length < 8)
                 }

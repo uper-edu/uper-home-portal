@@ -133,9 +133,9 @@ export const defaultRules = events.map(
       ...defaults,
       event,
       channels:
-        ["conversation.updated","commitment.due"].includes(event) ? ["inapp"] : defaults.channels,
+        ["conversation.updated"].includes(event) ? ["inapp"] : defaults.channels,
       recipient: event.includes("failed") || event === "daily.digest" ? "managers" : "owner",
-      group: (TASK_NOTICE_EVENTS as readonly string[]).includes(event) ? CRM_BOT_CHANNEL : event.includes("failed") ? "ops" : "sales",
+      group: (event==="commitment.due" || (TASK_NOTICE_EVENTS as readonly string[]).includes(event)) ? CRM_BOT_CHANNEL : event.includes("failed") ? "ops" : "sales",
       timing:
         event === "assessment.completed" || event === "daily.digest"
           ? "digest"

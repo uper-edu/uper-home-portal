@@ -24,3 +24,11 @@ export function timingEventLabel(event:string,task:any,internal:boolean,lang:str
     : event==='task.appointment_due' ? ['Agreed execution time reached','Waktu pelaksanaan yang disepakati tiba','约定执行时间已到'] : null;
   return texts?texts[lang==='zh'?2:lang==='id'?1:0]:event;
 }
+
+/** Do not turn old missed agreements into new Lark reminders at activation. */
+export function agreementDueAfterActivation(agreedAt:unknown,activatedAt:Date|string,timezone='Asia/Jakarta'){
+ if(typeof agreedAt!=='string'||!agreedAt)return false;
+ const activated=new Date(activatedAt);if(!Number.isFinite(activated.getTime()))return false;
+ if(/^\d{4}-\d{2}-\d{2}$/.test(agreedAt))return agreedAt>=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(activated);
+ const due=new Date(agreedAt);return Number.isFinite(due.getTime())&&due.getTime()>=activated.getTime();
+}

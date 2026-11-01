@@ -152,10 +152,11 @@ export function mountChat(app: Express) {
               [conv.id],
             );
             if(conv.lead_id&&!introduction)await engagement(c,conv.lead_id,'message',conv.id+':'+messageId,{conversationId:conv.id,requestId:messageId,text:content});
-            if(conv.lead_id&&!introduction){const source=(await c.query("SELECT id,created_at FROM messages WHERE conversation_id=:p1 AND request_id=:p2 AND role='user'",[conv.id,messageId])).rows[0];await queueExtraction(c,conv.lead_id,'customer_message',source.id,content,(source.created_at instanceof Date ? source.created_at : crmInstant(source.created_at))?.toISOString()||null,'visitor');}
+            let notificationMessageId:string|undefined;
+            if(conv.lead_id&&!introduction){const source=(await c.query("SELECT id,created_at FROM messages WHERE conversation_id=:p1 AND request_id=:p2 AND role='user'",[conv.id,messageId])).rows[0];notificationMessageId=source.id;await queueExtraction(c,conv.lead_id,'customer_message',source.id,content,(source.created_at instanceof Date ? source.created_at : crmInstant(source.created_at))?.toISOString()||null,'visitor');}
             if (conv.lead_id)
               await event(c, "conversation.updated", conv.lead_id, {
-                source: conv.source,
+                source: conv.source,conversationId:conv.id,messageId:notificationMessageId,
               });
           });
         }

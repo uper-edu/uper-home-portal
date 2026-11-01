@@ -1,0 +1,35 @@
+.crm-assignment-settings{display:grid;gap:16px;font-size:14px;line-height:1.6;color:var(--admin-text)}
+.crm-assignment-settings p{margin:0;font-size:13px;color:var(--admin-muted)}
+.crm-assignment-settings fieldset{min-width:0;border:0;margin:0;padding:0;display:grid;gap:8px}
+.crm-assignment-settings legend{padding:0 0 8px;font-size:14px;font-weight:600}
+.crm-assignment-enable,.crm-assignment-strategies label,.crm-assignment-people label{display:flex;align-items:center;gap:8px;min-height:40px}
+.crm-assignment-strategies{display:grid;gap:4px;max-width:560px}
+.crm-assignment-strategies label small{margin-left:auto;color:var(--admin-muted);font-size:12px}
+.crm-assignment-strategies label:has(input:disabled),.crm-assignment-settings fieldset:disabled{color:var(--admin-muted)}
+.crm-assignment-settings input{width:16px;height:16px;margin:0;accent-color:var(--admin-action);flex:none}
+.crm-assignment-settings input:focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
+.crm-assignment-people{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:4px 16px}
+
+.crm-assignment-enable{margin:0!important}
+.crm-backfill-preview{display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.6}
+.crm-backfill-preview p{margin:0}
+.crm-backfill-table{width:100%;border-collapse:collapse;text-align:left;font-size:14px;line-height:1.6}
+.crm-backfill-table th{font-weight:600;color:var(--admin-muted);background:var(--cw-soft)}
+.crm-backfill-table th,.crm-backfill-table td{padding:10px 12px;border-bottom:1px solid var(--cw-border);overflow-wrap:anywhere}
+.crm-backfill-drawer .crm-editor-actions{justify-content:flex-end}
+.crm-backfill-drawer .crm-editor-actions button{min-width:88px}
+/* One control and its help form a single group; preserve the label hit area. */
+.crm-assignment-switch-group{align-items:flex-start!important;min-height:40px}
+.crm-assignment-switch-group>input{margin-top:3px}
+.crm-assignment-switch-copy>.admin-field-label{display:flex;flex-direction:column;gap:var(--admin-form-help-gap,4px)}
+.crm-assignment-switch-copy strong{font-size:14px;font-weight:400;line-height:1.6}
+.crm-assignment-switch-copy small{font-size:13px;font-weight:400;line-height:1.6;color:var(--admin-muted)}
+.crm-backfill-summary{font-weight:600}
+.crm-backfill-table{table-layout:fixed}
+.crm-backfill-customer-column{width:60%}.crm-backfill-owner-column{width:40%}
+.crm-backfill-table th{position:sticky;top:0;z-index:1}
+.crm-backfill-table td small{display:block;margin-top:4px;font-size:12px;line-height:1.6}
+.crm-backfill-assigned{color:var(--admin-success)}.crm-backfill-unconfirmed{color:var(--admin-warning)}
+.crm-backfill-button-group{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+.crm-backfill-drawer .crm-editor-actions button{min-width:128px;white-space:nowrap}
+.crm-backfill-button-group button{min-height:40px}

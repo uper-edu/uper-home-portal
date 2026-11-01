@@ -1,6 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{CrmPolicySettings}from'../src/components/crm/CrmPolicySettings';import{DEFAULT_CRM_POLICY_CONFIG}from'../src/types/crmPolicyConfig';import{operationSections,operationGroups,operationSectionForField}from'../src/components/crm/operationsSections';
 test('all operation topics provide three aligned translations and field errors route to the right topic',()=>{
- assert.equal(operationSections.length,12);assert.equal(operationGroups.length,3);for(const s of operationSections){assert.equal(s.title.length,3);for(let i=0;i<3;i++){assert.ok(s.title[i]&&s.purpose[i]);assert.equal(s.steps[i].length,3);}}
+ assert.equal(operationSections.length,13);assert.ok(operationSections.some(s=>s.id==='assignment'));assert.equal(operationGroups.length,3);for(const s of operationSections){assert.equal(s.title.length,3);for(let i=0;i<3;i++){assert.ok(s.title[i]&&s.purpose[i]);assert.equal(s.steps[i].length,3);}}
  for(const [field,topic]of Object.entries({'businessHours.endTime':'schedule','firstResponseSla.hot':'first_response','noResponseCadence.retryInterval':'retry','inactivityWatchdog.hotInactivity':'watchdog','milestones.trialReminderBefore':'milestone','reactivation.reactivatedResponse':'reactivation','identityReviewManagerOnly':'permissions'}))assert.equal(operationSectionForField(field),topic);
 });
 test('single topic initial view preserves configuration and keeps notification content outside the policy form',()=>{

@@ -2,11 +2,12 @@ import type {NotificationTargetKind} from './crmNotificationTarget.ts';
 import {crmValue} from './crmLanguage.ts';
 import {assessmentNotificationDetails,notificationValue,safeNotificationExcerpt,notificationDeadlineStatus} from './larkNotificationContent.ts';
 type Language='zh'|'en'|'id';
-export const standardLarkKinds=['lead.created','handoff.requested','assessment.completed','booking.requested','enrollment.requested','conversation.reactivated','task.overdue','ai.failed','notification.failed'] as const;
+export const standardLarkKinds=['commitment.due','lead.created','handoff.requested','assessment.completed','booking.requested','enrollment.requested','conversation.reactivated','task.overdue','ai.failed','notification.failed'] as const;
 export type LarkKind=typeof standardLarkKinds[number];
-export type LarkCardInput={target?:{kind:NotificationTargetKind;id:string};jobId?:string;kind:LarkKind;language:Language;name:string;time?:string;owner?:string;source?:string;score?:number;maxScore?:number;goals?:string[];recordedAt?:string;internalReview?:boolean;excerpt?:string;excerptRestricted?:boolean;assessmentResult?:any;city?:string;mode?:string;reportedLevel?:string;due?:string;dueAt?:string;asOf?:string;attempts?:number;failedEvent?:LarkKind;failedChannel?:string;failure?:'ai_unavailable'|'delivery_failed'|'delivery_unknown';};
+export type LarkCardInput={target?:{kind:NotificationTargetKind;id:string};jobId?:string;kind:LarkKind;language:Language;name:string;agreementAction?:string;time?:string;owner?:string;source?:string;score?:number;maxScore?:number;goals?:string[];recordedAt?:string;internalReview?:boolean;excerpt?:string;excerptRestricted?:boolean;assessmentResult?:any;city?:string;mode?:string;reportedLevel?:string;due?:string;dueAt?:string;asOf?:string;attempts?:number;failedEvent?:LarkKind;failedChannel?:string;failure?:'ai_unavailable'|'delivery_failed'|'delivery_unknown';};
 export function larkKindTitle(kind:LarkKind,language:Language){
  const labels:Record<LarkKind,[string,string,string]>={
+ 'commitment.due':['客户约定到期','Customer agreement due','Kesepakatan pelanggan jatuh tempo'],
  'lead.created':['新客户','New lead','Pelanggan baru'],
  'handoff.requested':['顾问联系请求','Advisor contact requested','Permintaan konsultan'],
  'assessment.completed':['测评完成','Assessment completed','Asesmen selesai'],
@@ -31,6 +32,7 @@ export function larkNotificationPreview(input:LarkCardInput){
   put(t('授课偏好','Class preference','Preferensi kelas'),notificationValue(input.mode)?crmValue(input.mode,input.language):undefined);
   put(t('城市','City','Kota'),input.city);
  }
+ if(input.kind==='commitment.due')put(t('约定事项','Agreement','Kesepakatan'),safeNotificationExcerpt(input.agreementAction));
  const excerpt=safeNotificationExcerpt(input.excerpt);
  if(excerpt && input.kind!=='assessment.completed')put(input.source==='sales_record'?t('销售记录摘录','Sales record excerpt','Kutipan catatan penjualan'):t('客户原文摘录','Customer excerpt','Kutipan pelanggan'),excerpt+(Array.from(input.excerpt!.trim()).length>Array.from(excerpt).length?'…':''));
  if(input.kind==='assessment.completed'){
@@ -40,7 +42,7 @@ export function larkNotificationPreview(input:LarkCardInput){
  }
  if(input.kind==='booking.requested'||input.kind==='enrollment.requested')put(t('当前状态','Status','Status'),input.kind==='booking.requested'?t('收到预约申请，尚未确认具体安排','Booking requested; arrangements are not confirmed','Permintaan janji diterima; jadwal belum dikonfirmasi'):t('收到报名申请，不代表报名或付款已确认','Enrollment requested; enrollment and payment are not confirmed','Permintaan pendaftaran diterima; pendaftaran dan pembayaran belum dikonfirmasi'));
  if(input.kind==='conversation.reactivated')put(t('当前动态','Activity','Aktivitas'),t('客户重新打开咨询会话，尚不代表已发送新消息','The customer reopened a conversation; this does not establish a new message','Pelanggan membuka kembali percakapan; belum berarti ada pesan baru'));
- put(input.kind==='task.overdue'?t('首次联系期限','First contact deadline','Batas kontak pertama'):t('到期时间','Due','Jatuh tempo'),input.due);
+ put(input.kind==='commitment.due'?t('约定时间','Agreed time','Waktu kesepakatan'):input.kind==='task.overdue'?t('首次联系期限','First contact deadline','Batas kontak pertama'):t('到期时间','Due','Jatuh tempo'),input.due);
  if(notificationValue(input.due))put(t('期限状态（发送时）','Deadline status (at send)','Status tenggat (saat dikirim)'),notificationDeadlineStatus(input.dueAt,input.asOf,input.language));
  if(input.kind==='ai.failed')put(t('处理提示','Handling','Penanganan'),t('AI未能生成完整回复；请在CRM核对会话和服务状态','AI could not generate a complete reply; review the conversation and service status in CRM','AI tidak dapat membuat balasan lengkap; periksa percakapan dan status layanan di CRM'));
  if(input.kind==='notification.failed'){

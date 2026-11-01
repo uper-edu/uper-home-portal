@@ -15,6 +15,7 @@ export function workTimeErrors(value: { startTime?: unknown; endTime?: unknown }
 }
 
 const messages = {
+  policy_assignment_invalid: ['Choose round robin and at least one eligible salesperson before enabling.','Pilih giliran dan minimal satu sales yang memenuhi syarat sebelum mengaktifkan.','开启前请选择轮询策略及至少一名有效销售。'],
   policy_boolean_invalid: ["Choose enabled or disabled.", "Pilih aktif atau nonaktif.", "请选择开启或关闭。"],
   policy_object_invalid: ["Provide a non-empty configuration object.", "Berikan objek konfigurasi yang tidak kosong.", "请提供非空的配置对象。"],
   policy_field_unknown: ["This configuration field is not supported.", "Kolom konfigurasi ini tidak didukung.", "不支持此配置字段。"],
@@ -59,6 +60,10 @@ export function policySaveResponseError(status: number, body: unknown) {
 }
 
 const fieldNames: Record<string, readonly string[]> = {
+ 'autoAssignment':['Automatic assignment','Penugasan otomatis','自动分案'],
+ 'autoAssignment.enabled':['Enable automatic assignment','Aktifkan penugasan otomatis','启用自动分案'],
+ 'autoAssignment.strategy':['Assignment strategy','Strategi penugasan','分案策略'],
+ 'autoAssignment.salesIds':['Participating salespeople','Sales peserta','参与销售'],
  'identityReviewManagerOnly':['Manager-only identity review','Verifikasi identitas hanya Manager','身份核实仅限CRM Manager'],
  'ownerAssignmentManagerOnly':['Manager-only Lead Owner assignment','Penugasan Owner Lead hanya Manager','Lead分配Owner仅限CRM Manager'],
  'sourceAttributionManagerOnly':['Manager-only source attribution review','Verifikasi atribusi sumber hanya Manager','待核实来源归因仅限CRM Manager'],

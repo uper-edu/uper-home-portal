@@ -21,6 +21,7 @@ let policyCache: CrmPolicyConfig | null = null;
 
 function normalizeConfig(parsed: any): CrmPolicyConfig {
   return {
+    autoAssignment: {...DEFAULT_CRM_POLICY_CONFIG.autoAssignment,...parsed.autoAssignment},
     identityReviewManagerOnly: parsed.identityReviewManagerOnly!==false,
     ownerAssignmentManagerOnly: ownerManagerOnly(parsed),
     sourceAttributionManagerOnly: parsed.sourceAttributionManagerOnly!==false,

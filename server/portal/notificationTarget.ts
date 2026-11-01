@@ -4,7 +4,7 @@ export async function resolveNotificationTarget(db:any,leadId:string,kind:string
  const row=async(sql:string)=>(await db.query(sql,[ref,leadId])).rows[0];
  if(kind==='assessment'){const r=await row('SELECT id FROM hsk_attempts WHERE id=:p1 AND '+own);return r?{tab:'assessment',assessmentId:r.id}:null;}
  if(kind==='task'){const r=await row('SELECT id FROM followup_tasks WHERE id=:p1 AND '+own);return r?{tab:'activities',taskId:r.id}:null;}
- if(kind==='fact'){const r=await row('SELECT id FROM crm_facts WHERE id=:p1 AND '+own);return r?{tab:'profile',historyId:r.id}:null;}
+ if(kind==='fact'){const r=await row('SELECT id,kind FROM crm_facts WHERE id=:p1 AND '+own);return r?{tab:['owner.changed','stage.changed'].includes(r.kind)?'activities':'profile',historyId:r.id}:null;}
  if(kind==='submission'){const r=await row('SELECT id,payload,created_at FROM site_submissions WHERE id=:p1 AND '+own);return r?{tab:'profile',submission:{id:r.id,original:typeof r.payload?.message==='string'?r.payload.message:'',recordedAt:r.created_at}}:null;}
  if(kind==='conversation'){const r=await row('SELECT id FROM conversations WHERE id=:p1 AND '+own);return r?{tab:'chat',conversationId:r.id}:null;}
  if(kind==='message'){const r=(await db.query("SELECT m.id,m.conversation_id FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.id=:p1 AND (c.lead_id=:p2 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",[ref,leadId])).rows[0];return r?{tab:'chat',conversationId:r.conversation_id,messageId:r.id}:null;}

@@ -1,3 +1,4 @@
+import {larkApp,larkBindings,larkPublicError,larkLookupInput} from './larkApp.ts';
 import { normalizeStaffEmail } from "../../src/utils/staffEmail.ts";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -170,17 +171,33 @@ export function mountAccessManagement(app: Express) {
         .status(e.status || 503)
         .json({ error: e.status ? e.message : "access_unavailable" }),
     );
+  app.get('/api/admin/access/lark-bindings',wrap(async(q:any,r:any)=>{
+    await guard(q,'access.users');
+    r.setHeader('Cache-Control','no-store');
+    r.json({bindings:await larkBindings(pool),configured:!!process.env.LARK_APP_ID&&!!process.env.LARK_APP_SECRET});
+  }));
+  app.post('/api/admin/access/lark-lookup',wrap(async(q:any,r:any)=>{
+    await guard(q,'access.users',true);
+    try{const input=larkLookupInput(q.body);r.json(await larkApp.lookup(input.value,input.method));}
+    catch(e){error(400,larkPublicError(e));}
+  }));
+  // Binding writes must use the employee mutation and its operation receipt/transaction.
+  app.post('/api/admin/access/lark-bindings/:id',wrap(async(q:any)=>{
+    await guard(q,'access.users',true);error(409,'lark_use_employee_save');
+  }));
   app.get(
     "/api/admin/access",
     wrap(async (q: any, r: any) => {
       const employee=await guard(q, "access.read");
       r.setHeader("Cache-Control", "no-store");
       const roles = await roleRows();
+      const bindings=await larkBindings(pool);
       r.json({
         users: (
           await pool.query("SELECT * FROM crm_users ORDER BY display_name")
         ).rows.map((u: any) => ({
           ...safeUser(u),
+          larkBound:!!bindings[u.id]?.openId && bindings[u.id].appId===process.env.LARK_APP_ID,
           effective: projectEmployee(u, roles),
         })),
         roles,
@@ -317,6 +334,16 @@ export function mountAccessManagement(app: Express) {
         !list(b.roles)
       )
         error(400, "access_invalid_user");
+      let larkCandidate:any=undefined;
+      if(b.larkBinding!==undefined){
+        if(!b.larkBinding || typeof b.larkBinding!=='object' || !Number.isInteger(b.larkBinding.revision) || b.larkBinding.revision<0)error(400,'lark_binding_invalid');
+        if(b.larkBinding.remove===true)larkCandidate=null;
+        else {
+          if(!b.active)error(409,'lark_employee_disabled');
+          try{const input=larkLookupInput(b.larkBinding);larkCandidate=await larkApp.lookup(input.value,input.method);}catch(e){error(400,larkPublicError(e));}
+          if(larkCandidate.openId!==b.larkBinding.openId)error(409,'lark_identity_changed');
+        }
+      }
       const result = await tx(async (c) => {
         await c.query(
           "SELECT value FROM access_state WHERE id='policy' FOR UPDATE",
@@ -379,6 +406,15 @@ export function mountAccessManagement(app: Express) {
             email,
           ],
         );
+        if(larkCandidate!==undefined){
+          const bindings=await larkBindings(c),prior=bindings[old.id];
+          if(Number(b.larkBinding.revision)!==Number(prior?.revision||0))error(409,'lark_binding_conflict');
+          if(larkCandidate&&Object.entries(bindings).some(([id,v]:any)=>id!==old.id&&v.openId===larkCandidate.openId&&v.appId===larkCandidate.appId))error(409,'lark_identity_already_bound');
+          const nextBinding={...larkCandidate,revision:Number(prior?.revision||0)+1,updatedAt:new Date().toISOString(),removed:!larkCandidate};
+          bindings[old.id]=nextBinding;
+          await c.query("INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",[JSON.stringify(bindings)]);
+          await audit(c,actor.id,'lark.binding',{employeeId:old.id,before:prior||null,after:nextBinding,reason:why});
+        }
         await ensureAdministrator(c);
         await c.query("DELETE FROM crm_sessions WHERE user_id=:p1", [old.id]);
         const next = {

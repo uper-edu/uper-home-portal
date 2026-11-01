@@ -222,7 +222,8 @@ for (const lang of ["en", "id", "zh"] as const)
     );
     if (lang !== "zh")
       assert.doesNotMatch(html.replace(/<[^>]+>/g, ""), /[\u4e00-\u9fff]/);
-    assert.equal(accessGuide.length, 13);
+    assert.equal(accessGuide.length, 14);
+    assert.match(html, lang === "zh" ? /自助绑定使用Lark授权/ : lang === "id" ? /Layanan mandiri menggunakan otorisasi Lark/ : /Self-service uses Lark authorization/);
     assert.ok(accessError("access_last_administrator", lang));
     assert.doesNotMatch(html, /<select/);
   });

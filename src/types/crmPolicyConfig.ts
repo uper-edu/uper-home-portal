@@ -67,7 +67,10 @@ export interface ReactivationPolicy {
   reactivatedResponse: TimeDuration; // default: 30 minutes
 }
 
+export interface AutoAssignmentPolicy {enabled:boolean;strategy:'round_robin';salesIds:string[];}
+
 export interface CrmPolicyConfig {
+  autoAssignment: AutoAssignmentPolicy;
   identityReviewManagerOnly: boolean;
   ownerAssignmentManagerOnly: boolean;
   sourceAttributionManagerOnly: boolean;
@@ -82,6 +85,7 @@ export interface CrmPolicyConfig {
 }
 
 export const DEFAULT_CRM_POLICY_CONFIG: CrmPolicyConfig = {
+  autoAssignment: {enabled:false,strategy:'round_robin',salesIds:[]},
   identityReviewManagerOnly: true,
   ownerAssignmentManagerOnly: false,
   sourceAttributionManagerOnly: true,

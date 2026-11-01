@@ -85,11 +85,13 @@ export function AccessUserCard({
   current,
   loginId,
   email,
+  larkBound,
   roles,
 }: Common & {
   current: boolean;
   loginId: string;
   email?: string | null;
+  larkBound?: boolean;
   roles: { id: string; label: string }[];
 }) {
   const t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
@@ -111,6 +113,7 @@ export function AccessUserCard({
           </span>
         )}
       </RecordField>
+      <p className="access-lark-status"><span aria-hidden="true">Lark · </span><span aria-label={t(larkBound?"Lark account bound":"Lark account not bound",larkBound?"Akun Lark terhubung":"Akun Lark belum terhubung",larkBound?"Lark账号已绑定":"Lark账号未绑定")} className={larkBound?"access-role-chip":"access-record-empty"}>{larkBound?t("Bound","Terhubung","已绑定"):t("Not bound","Belum terhubung","未绑定")}</span></p>
       <RecordField label={t("Roles", "Peran", "角色")}>
         {roles.length ? (
           <div className="access-role-list">{roles.slice(0, 2).map(chip)}</div>

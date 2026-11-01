@@ -141,6 +141,7 @@ export function CrmDiscardDialog({
   keepLabel = "Keep editing",
   discardLabel = "Discard and continue",
   lang = "en",
+  tone = "default",
 }: {
   onKeep: () => void;
   onDiscard: () => void;
@@ -150,6 +151,7 @@ export function CrmDiscardDialog({
   description?: string;
   keepLabel?: string;
   discardLabel?: string;
+  tone?: "default" | "danger";
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     opener = useRef<HTMLElement | null>(null);
@@ -165,12 +167,14 @@ export function CrmDiscardDialog({
   return (
     <dialog
       className="crm-discard-dialog"
+      data-tone={tone}
       data-theme={isLight ? "light" : "dark"}
       ref={dialog}
       aria-labelledby="crm-unsaved-title"
       aria-describedby="crm-unsaved-description"
       onCancel={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         onKeep();
       }}
     >

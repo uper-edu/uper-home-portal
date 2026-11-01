@@ -1,6 +1,7 @@
 import type {CrmPolicyConfig} from '../types/crmPolicyConfig';
 import {mergePolicyConfig} from './crmPolicyConfigValidation';
 export const policyTopicKeys={
+ assignment:['autoAssignment'],
  permissions:['identityReviewManagerOnly','ownerAssignmentManagerOnly','sourceAttributionManagerOnly'],
  schedule:['businessHours'],first_response:['firstResponseSla'],retry:['noResponseCadence'],watchdog:['inactivityWatchdog'],milestone:['milestones'],reactivation:['reactivation'],
 } as const;

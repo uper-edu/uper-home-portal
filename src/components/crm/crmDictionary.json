@@ -3041,6 +3041,38 @@
   },
   {
     "layer": "contract",
+    "object": "AutoAssignmentPolicy",
+    "key": "enabled",
+    "type": "boolean",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "AutoAssignmentPolicy",
+    "key": "strategy",
+    "type": "'round_robin'",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "AutoAssignmentPolicy",
+    "key": "salesIds",
+    "type": "string[]",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmPolicyConfig",
+    "key": "autoAssignment",
+    "type": "AutoAssignmentPolicy",
+    "optional": false,
+    "source": "src/types/crmPolicyConfig.ts"
+  },
+  {
+    "layer": "contract",
     "object": "CrmPolicyConfig",
     "key": "identityReviewManagerOnly",
     "type": "boolean",

@@ -1,0 +1,69 @@
+/* Personal settings: shared form tokens/components; layout variant only. */
+.admin-personal-lark-status{padding:0}
+.admin-personal-lark-status button{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;text-align:left}
+.admin-personal-lark-menu-note{margin-left:auto;text-align:right;font-size:12px;line-height:20px;font-weight:400;color:var(--ah-muted)}
+.crm-operation-layer.admin-notification-drawer{width:min(640px,100vw)}
+.admin-notification-drawer .admin-personal-settings-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:var(--admin-form-group-gap);padding:24px;background:var(--cw-soft);scroll-padding:24px}
+.admin-notification-drawer .admin-personal-lark-body,.admin-notification-drawer .admin-personal-preferences{flex:none;border:1px solid var(--cw-border);border-radius:14px;background:var(--cw-surface);padding:16px;display:grid;gap:var(--admin-form-group-gap);min-width:0}
+.admin-notification-drawer .admin-personal-lark-body p,.admin-notification-drawer .admin-personal-preferences p{margin:0;font-size:13px;line-height:1.6}
+.admin-personal-account-row{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.admin-personal-account-heading{display:flex;align-items:center;gap:8px}
+.admin-personal-account-heading h3{margin:0;font-size:14px;line-height:1.6;font-weight:600}
+.admin-personal-account-state{padding:2px 6px;border-radius:6px;background:var(--cw-soft);color:var(--admin-muted);font-size:12px;line-height:20px;white-space:nowrap}
+.admin-personal-account-state[data-connected=true]{color:var(--admin-success);background:var(--admin-success-bg)}
+.admin-personal-lark-binding-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto}
+.admin-personal-lark-binding-actions button,.admin-personal-lark-actions button,.admin-personal-save-feedback button{min-height:40px;padding:8px 12px;border:1px solid var(--cw-border);border-radius:10px;background:var(--cw-surface);color:var(--admin-text);font-size:14px;line-height:1.5;cursor:pointer}
+.admin-personal-lark-binding-actions .admin-personal-refresh{display:inline-flex;justify-content:center;align-items:center;width:40px;padding:8px;border-color:transparent;color:var(--admin-muted)}
+.admin-personal-lark-binding-actions .admin-personal-disconnect{border-color:transparent;color:var(--admin-muted)}
+.admin-personal-lark-binding-actions .admin-personal-connect-primary,.admin-personal-footer-buttons .admin-personal-save-primary:not(:disabled){background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
+.admin-personal-lark-binding-actions button:hover:not(:disabled):not(.admin-personal-connect-primary){background:var(--cw-soft)}
+.admin-personal-lark-binding-actions button:disabled,.admin-personal-lark-actions button:disabled{opacity:.6;cursor:default}
+.admin-personal-bind-help{color:var(--admin-muted);font-size:13px;line-height:1.6}
+.admin-personal-bind-help summary{cursor:pointer;list-style-position:inside}
+.admin-personal-bind-help[open] p{padding-top:8px}
+.admin-personal-authorized-account{display:grid;gap:var(--admin-form-help-gap);border:1px solid var(--cw-border);border-radius:10px;background:var(--cw-soft);padding:12px}
+.admin-personal-authorized-account h3{font-size:14px;line-height:1.6;font-weight:600;margin:0}
+.admin-personal-authorized-account>strong{font-size:16px;color:var(--admin-text)}
+.admin-personal-availability{display:flex;align-items:flex-start;gap:8px;padding:12px;border-radius:10px;border:1px solid var(--admin-info-border);background:var(--admin-info-bg);color:var(--admin-info)}
+.admin-personal-availability>svg{flex:none;margin-top:2px}
+.admin-personal-availability strong{font-size:14px;line-height:1.6;font-weight:600}
+.admin-notification-drawer .admin-personal-availability p{margin-top:var(--admin-form-help-gap);color:var(--admin-muted)}
+.admin-personal-language{display:grid;grid-template-columns:minmax(72px,1fr) minmax(0,220px);align-items:center;gap:16px;font-size:14px;line-height:1.6}
+.admin-personal-language .crm-filter-area{--input-font-size:14px}
+.admin-personal-language .crm-filter-dimension-button{width:100%;min-height:40px;font-size:14px}
+.admin-personal-preferences>.admin-form-section{margin:0;padding-top:var(--admin-form-group-gap);border-top:1px solid var(--cw-border)}
+.admin-personal-managed{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:1.6;color:var(--admin-muted)}
+.admin-personal-required-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:0;margin:0;list-style:none}
+.admin-personal-required-list li{box-sizing:border-box;text-align:center;display:flex;align-items:center;justify-content:center;overflow-wrap:anywhere;border:1px solid var(--cw-border);border-radius:6px;background:var(--cw-soft);color:var(--admin-text);padding:4px 8px;font-size:14px;line-height:20px}
+.admin-personal-type-list{display:grid;gap:0}
+.admin-personal-type,.admin-personal-required-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding:8px 0;font-size:14px;line-height:1.6}
+.admin-personal-type:not(:last-child),.admin-personal-required-row:not(:last-child){border-bottom:1px solid var(--cw-border)}
+.admin-personal-type{cursor:pointer}
+.admin-personal-type input{order:2;flex:0 0 16px;width:16px!important;height:16px!important;margin:0 0 0 auto;accent-color:var(--admin-action)}
+.admin-personal-type>span{display:grid;gap:var(--admin-form-help-gap)}
+.admin-personal-type strong{font-size:14px;font-weight:400}
+.admin-personal-type small,.admin-personal-required-row small{font-size:12px;color:var(--admin-muted);line-height:1.6}
+.admin-personal-type:has(input:disabled),.admin-personal-type[data-unavailable=true],.admin-personal-required-row[data-unavailable=true]{color:var(--admin-muted);cursor:default}
+.admin-personal-type input:disabled{opacity:.65}
+.admin-personal-unavailable,.admin-personal-about{border-top:1px solid var(--cw-border);padding-top:var(--admin-form-group-gap);font-size:13px;line-height:1.6;color:var(--admin-muted)}
+.admin-personal-unavailable summary,.admin-personal-about summary{cursor:pointer;list-style-position:inside}
+.admin-personal-unavailable[open]>.admin-personal-type-list,.admin-personal-about[open]>p{padding-top:8px}
+.admin-personal-lark-actions{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 24px;background:var(--cw-surface);border-top:1px solid var(--cw-border)}
+.admin-personal-footer-buttons{margin-left:auto;flex:none}
+.admin-personal-footer-buttons>button{min-width:80px}
+.admin-personal-save-feedback{min-width:0;flex:1;font-size:13px}
+.admin-personal-save-feedback:empty{display:none}
+.admin-personal-save-feedback .admin-form-feedback{margin:0}
+.admin-personal-save-feedback button{margin-top:4px}
+.admin-notification-drawer :is(button,input,summary):focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
+.crm-discard-dialog[data-tone=danger] footer button:last-child{color:var(--admin-danger);background:var(--admin-danger-bg);border-color:var(--admin-danger-border)}
+@media(max-width:600px){.admin-personal-required-list{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-notification-drawer .admin-personal-settings-scroll{padding:16px}.admin-personal-account-row{align-items:flex-start}.admin-personal-lark-binding-actions{flex-wrap:wrap}.admin-personal-language{grid-template-columns:1fr;gap:8px}.admin-personal-lark-actions{padding:16px}.admin-personal-lark-actions button{min-height:44px}}
+
+/* Optional availability remains in place; only enabled types expose a switch. */
+.admin-personal-type input[role=switch]{appearance:none;position:relative;flex:0 0 32px;width:32px!important;height:20px!important;border:1px solid var(--cw-border);border-radius:999px;background:var(--admin-muted)}
+.admin-personal-type input[role=switch]::after{content:"";position:absolute;width:14px;height:14px;left:2px;top:2px;border-radius:50%;background:var(--admin-on-action)}
+.admin-personal-type input[role=switch]:checked{background:var(--admin-action-fill);border-color:var(--admin-action-fill)}
+.admin-personal-type input[role=switch]:checked::after{left:14px}
+.admin-personal-type>small{margin-left:auto;white-space:nowrap}
+
+.admin-personal-required-list li{flex-direction:column;gap:2px}.admin-personal-required-list li small{font-size:12px;color:var(--admin-muted);font-weight:400}

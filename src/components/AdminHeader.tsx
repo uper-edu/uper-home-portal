@@ -1,3 +1,4 @@
+import {AdminNotificationInbox} from './AdminNotificationInbox';
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
@@ -203,6 +204,7 @@ export function AdminHeader({
               </button>
             </div>
           </details>
+          <AdminNotificationInbox key={employee.id} employee={employee} lang={lang} isLight={isLight}/>
           <CrmAccountControls
             lang={lang}
             isLight={isLight}

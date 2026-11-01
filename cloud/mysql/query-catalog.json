@@ -30,6 +30,12 @@
       "server/portal/localAuth.ts"
     ]
   },
+  "DELETE FROM portal_settings WHERE id LIKE 'lark_oauth:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.expiresAt'))<:p1": {
+    "sql": "DELETE FROM portal_settings WHERE id LIKE 'lark_oauth:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.expiresAt'))<:p1",
+    "sources": [
+      "server/portal/larkSelfService.ts"
+    ]
+  },
   "DELETE FROM trial_campaigns WHERE id=:p1": {
     "sql": "DELETE FROM trial_campaigns WHERE id=:p1",
     "sources": [
@@ -71,6 +77,19 @@
     "sql": "INSERT INTO access_roles(id,config) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1": {
+    "sql": "INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",
+    "sources": [
+      "server/portal/accessManagement.ts",
+      "server/portal/larkSelfService.ts"
+    ]
+  },
+  "INSERT INTO access_state(id,value) VALUES('notification_preferences',:p1) ON DUPLICATE KEY UPDATE value=:p1": {
+    "sql": "INSERT INTO access_state(id,value) VALUES('notification_preferences',:p1) ON DUPLICATE KEY UPDATE value=:p1",
+    "sources": [
+      "server/portal/larkSelfService.ts"
     ]
   },
   "INSERT INTO access_state(id,value) VALUES('policy',:p1) ON DUPLICATE KEY UPDATE id=id": {
@@ -196,6 +215,7 @@
   "INSERT INTO crm_operations(actor,request_id,fingerprint,result) VALUES(:p1,:p2,:p3,:p4)": {
     "sql": "INSERT INTO crm_operations(actor,request_id,fingerprint,result) VALUES(:p1,:p2,:p3,:p4)",
     "sources": [
+      "server/portal/assignmentBackfill.ts",
       "server/portal/trustWorkflow.ts"
     ]
   },
@@ -374,7 +394,10 @@
     "sources": [
       "server/portal/accessManagement.ts",
       "server/portal/accessRecovery.ts",
+      "server/portal/assignmentBackfill.ts",
+      "server/portal/autoAssignment.ts",
       "server/portal/contactPlans.ts",
+      "server/portal/larkSelfService.ts",
       "server/portal/ownerAssignment.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts"
@@ -402,6 +425,12 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.recovery.authorize',:p2)",
     "sources": [
       "server/portal/accessRecovery.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'agreement.notifications.enabled',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'agreement.notifications.enabled',:p2)",
+    "sources": [
+      "server/portal/agreementNotificationActivation.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'ai.configuration',:p2)": {
@@ -556,10 +585,23 @@
       "scripts/portal-migrate.ts"
     ]
   },
+  "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
+    "sources": [
+      "server/portal/larkSelfService.ts"
+    ]
+  },
   "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)",
     "sources": [
       "server/portal/aiServiceConfig.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('crm_assignment_cursor',:p1) ON DUPLICATE KEY UPDATE value=:p1": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('crm_assignment_cursor',:p1) ON DUPLICATE KEY UPDATE value=:p1",
+    "sources": [
+      "server/portal/assignmentBackfill.ts",
+      "server/portal/autoAssignment.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1": {
@@ -597,6 +639,7 @@
   "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3)": {
     "sql": "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3)",
     "sources": [
+      "server/portal/agreementNotificationActivation.ts",
       "server/portal/taskNotificationActivation.ts"
     ]
   },
@@ -686,6 +729,13 @@
       "server/portal/accessHandovers.ts",
       "server/portal/accessManagement.ts",
       "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT * FROM access_roles ORDER BY id FOR SHARE": {
+    "sql": "SELECT * FROM access_roles ORDER BY id FOR SHARE",
+    "sources": [
+      "server/portal/autoAssignment.ts",
+      "server/portal/inappInbox.ts"
     ]
   },
   "SELECT * FROM access_roles WHERE id=:p1 FOR UPDATE": {
@@ -832,6 +882,12 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "SELECT * FROM crm_users ORDER BY id FOR SHARE": {
+    "sql": "SELECT * FROM crm_users ORDER BY id FOR SHARE",
+    "sources": [
+      "server/portal/autoAssignment.ts"
+    ]
+  },
   "SELECT * FROM crm_users WHERE (login_key=lower(:p1) OR email_key=lower(:p1))": {
     "sql": "SELECT * FROM crm_users WHERE (login_key=lower(:p1) OR email_key=lower(:p1))",
     "sources": [
@@ -847,7 +903,14 @@
   "SELECT * FROM crm_users WHERE id=:p1": {
     "sql": "SELECT * FROM crm_users WHERE id=:p1",
     "sources": [
-      "server/portal/accessManagement.ts"
+      "server/portal/accessManagement.ts",
+      "server/portal/larkSelfService.ts"
+    ]
+  },
+  "SELECT * FROM crm_users WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT * FROM crm_users WHERE id=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/inappInbox.ts"
     ]
   },
   "SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE": {
@@ -1012,6 +1075,12 @@
       "server/portal/taskNotificationActivation.ts"
     ]
   },
+  "SELECT * FROM notification_rules WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM notification_rules WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/agreementNotificationActivation.ts"
+    ]
+  },
   "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE": {
     "sql": "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE",
     "sources": [
@@ -1159,6 +1228,12 @@
     "sql": "SELECT config FROM notification_rules",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT config FROM notification_rules WHERE enabled=true AND effective_at<=UTC_TIMESTAMP(6)": {
+    "sql": "SELECT config FROM notification_rules WHERE enabled=true AND effective_at<=UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/personalNotificationPreferences.ts"
     ]
   },
   "SELECT config FROM trial_campaigns": {
@@ -1326,6 +1401,12 @@
       "server/portal/buyingEvidence.ts"
     ]
   },
+  "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE": {
+    "sql": "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE",
+    "sources": [
+      "server/portal/assignmentBackfill.ts"
+    ]
+  },
   "SELECT GET_LOCK(:p1,0) AS acquired": {
     "sql": "SELECT GET_LOCK(:p1,0) AS acquired",
     "sources": [
@@ -1376,6 +1457,12 @@
       "server/portal/identityReview.ts"
     ]
   },
+  "SELECT i.id,i.content,j.snapshot,j.completed_at,j.due_at FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id WHERE i.employee_id=:p1 AND j.channel='inapp' AND j.state='accepted'": {
+    "sql": "SELECT i.id,i.content,j.snapshot,j.completed_at,j.due_at FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id WHERE i.employee_id=:p1 AND j.channel='inapp' AND j.state='accepted'",
+    "sources": [
+      "server/portal/inappInbox.ts"
+    ]
+  },
   "SELECT id FROM campaign_source_reviews WHERE campaign_id=:p1 LIMIT 1": {
     "sql": "SELECT id FROM campaign_source_reviews WHERE campaign_id=:p1 LIMIT 1",
     "sources": [
@@ -1408,12 +1495,6 @@
   },
   "SELECT id FROM crm_facts WHERE data->>'$.result.logId'=:p1 AND": {
     "sql": "SELECT id FROM crm_facts WHERE data->>'$.result.logId'=:p1 AND",
-    "sources": [
-      "server/portal/notificationTarget.ts"
-    ]
-  },
-  "SELECT id FROM crm_facts WHERE id=:p1 AND": {
-    "sql": "SELECT id FROM crm_facts WHERE id=:p1 AND",
     "sources": [
       "server/portal/notificationTarget.ts"
     ]
@@ -1493,6 +1574,7 @@
   "SELECT id FROM notification_channels WHERE id=:p1": {
     "sql": "SELECT id FROM notification_channels WHERE id=:p1",
     "sources": [
+      "server/portal/agreementNotificationActivation.ts",
       "server/portal/taskNotificationActivation.ts"
     ]
   },
@@ -1518,6 +1600,12 @@
     "sql": "SELECT id FROM portal_leads WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/chat.ts"
+    ]
+  },
+  "SELECT id FROM portal_settings WHERE id LIKE 'lark_notice:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.state'))='pending' ORDER BY id LIMIT 5": {
+    "sql": "SELECT id FROM portal_settings WHERE id LIKE 'lark_notice:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.state'))='pending' ORDER BY id LIMIT 5",
+    "sources": [
+      "server/portal/larkSelfService.ts"
     ]
   },
   "SELECT id FROM trial_campaigns WHERE id=:p1 FOR UPDATE": {
@@ -1623,6 +1711,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "SELECT id,kind FROM crm_facts WHERE id=:p1 AND": {
+    "sql": "SELECT id,kind FROM crm_facts WHERE id=:p1 AND",
+    "sources": [
+      "server/portal/notificationTarget.ts"
+    ]
+  },
   "SELECT id,kind,payload,lead_id,created_at,attachment IS NOT NULL has_attachment FROM site_submissions WHERE kind IN (?,?) ORDER BY created_at DESC LIMIT 200": {
     "sql": "SELECT id,kind,payload,lead_id,created_at,attachment IS NOT NULL has_attachment FROM site_submissions WHERE kind IN (?,?) ORDER BY created_at DESC LIMIT 200",
     "sources": [
@@ -1717,6 +1811,18 @@
       "server/portal/identityReview.ts"
     ]
   },
+  "SELECT id,profile FROM portal_leads WHERE id IN (:p1)": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE id IN (:p1)",
+    "sources": [
+      "server/portal/inappInbox.ts"
+    ]
+  },
+  "SELECT id,profile FROM portal_leads WHERE id IN (:p1) ORDER BY id FOR UPDATE": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE id IN (:p1) ORDER BY id FOR UPDATE",
+    "sources": [
+      "server/portal/assignmentBackfill.ts"
+    ]
+  },
   "SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR (:p3<>'' AND REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p3,:p4,:p5))) FOR UPDATE": {
     "sql": "SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR (:p3<>'' AND REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p3,:p4,:p5))) FOR UPDATE",
     "sources": [
@@ -1726,7 +1832,8 @@
   "SELECT id,profile FROM portal_leads WHERE id=:p1": {
     "sql": "SELECT id,profile FROM portal_leads WHERE id=:p1",
     "sources": [
-      "server/portal/identityConsolidation.ts"
+      "server/portal/identityConsolidation.ts",
+      "server/portal/inappInbox.ts"
     ]
   },
   "SELECT id,profile FROM portal_leads WHERE JSON_LENGTH(profile->'$.commitments')>0": {
@@ -1802,6 +1909,12 @@
     "sources": [
       "server/portal/noResponse.ts",
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy') ORDER BY id": {
+    "sql": "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy') ORDER BY id",
+    "sources": [
+      "server/portal/assignmentBackfill.ts"
     ]
   },
   "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy') ORDER BY id FOR UPDATE": {
@@ -1997,6 +2110,7 @@
     "sources": [
       "server/portal/aiExtraction.ts",
       "server/portal/attendance.ts",
+      "server/portal/autoAssignment.ts",
       "server/portal/followup.ts",
       "server/portal/identityConsolidation.ts",
       "server/portal/noResponse.ts",
@@ -2007,6 +2121,12 @@
       "server/portal/trustWorkflow.ts",
       "cloud/mysql/site.mjs",
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT profile FROM portal_leads WHERE NULLIF(profile->>'$.owner','null') IS NULL OR profile->>'$.owner'='' ORDER BY created_at,id": {
+    "sql": "SELECT profile FROM portal_leads WHERE NULLIF(profile->>'$.owner','null') IS NULL OR profile->>'$.owner'='' ORDER BY created_at,id",
+    "sources": [
+      "server/portal/assignmentBackfill.ts"
     ]
   },
   "SELECT profile,created_at FROM portal_leads": {
@@ -2056,6 +2176,7 @@
   "SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2": {
     "sql": "SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2",
     "sources": [
+      "server/portal/assignmentBackfill.ts",
       "server/portal/trustRoutes.ts"
     ]
   },
@@ -2133,6 +2254,19 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT value FROM access_state WHERE id='lark_bindings'": {
+    "sql": "SELECT value FROM access_state WHERE id='lark_bindings'",
+    "sources": [
+      "server/portal/larkApp.ts"
+    ]
+  },
+  "SELECT value FROM access_state WHERE id='notification_preferences'": {
+    "sql": "SELECT value FROM access_state WHERE id='notification_preferences'",
+    "sources": [
+      "server/portal/larkSelfService.ts",
+      "server/portal/personalNotificationPreferences.ts"
+    ]
+  },
   "SELECT value FROM access_state WHERE id='policy' FOR UPDATE": {
     "sql": "SELECT value FROM access_state WHERE id='policy' FOR UPDATE",
     "sources": [
@@ -2140,6 +2274,7 @@
       "server/portal/accessOperations.ts",
       "server/portal/accessRecovery.ts",
       "server/portal/aiServiceConfig.ts",
+      "server/portal/larkSelfService.ts",
       "server/portal/teamlessAccess.ts"
     ]
   },
@@ -2156,10 +2291,29 @@
       "server/portal/teamlessAccess.ts"
     ]
   },
+  "SELECT value FROM portal_settings WHERE id=:p1": {
+    "sql": "SELECT value FROM portal_settings WHERE id=:p1",
+    "sources": [
+      "server/portal/larkSelfService.ts"
+    ]
+  },
   "SELECT value FROM portal_settings WHERE id='ai_service'": {
     "sql": "SELECT value FROM portal_settings WHERE id='ai_service'",
     "sources": [
       "server/portal/aiServiceConfig.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='crm_assignment_cursor' FOR SHARE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='crm_assignment_cursor' FOR SHARE",
+    "sources": [
+      "server/portal/assignmentBackfill.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='crm_assignment_cursor' FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='crm_assignment_cursor' FOR UPDATE",
+    "sources": [
+      "server/portal/assignmentBackfill.ts",
+      "server/portal/autoAssignment.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='crm_policy'": {
@@ -2171,6 +2325,7 @@
   "SELECT value FROM portal_settings WHERE id='crm_policy' FOR SHARE": {
     "sql": "SELECT value FROM portal_settings WHERE id='crm_policy' FOR SHARE",
     "sources": [
+      "server/portal/autoAssignment.ts",
       "server/portal/crmAccessControls.ts"
     ]
   },
@@ -2376,6 +2531,7 @@
     "sql": "UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')",
     "sources": [
       "server/portal/accessHandovers.ts",
+      "server/portal/autoAssignment.ts",
       "server/portal/ownerAssignment.ts",
       "server/portal/runtime.ts"
     ]
@@ -2494,6 +2650,12 @@
       "server/portal/chat.ts"
     ]
   },
+  "UPDATE notification_inbox SET content=JSON_SET(content,'$.inboxReadAt',:p3) WHERE id=:p1 AND employee_id=:p2 AND (JSON_EXTRACT(content,'$.inboxReadAt') IS NULL OR JSON_TYPE(JSON_EXTRACT(content,'$.inboxReadAt'))='NULL')": {
+    "sql": "UPDATE notification_inbox SET content=JSON_SET(content,'$.inboxReadAt',:p3) WHERE id=:p1 AND employee_id=:p2 AND (JSON_EXTRACT(content,'$.inboxReadAt') IS NULL OR JSON_TYPE(JSON_EXTRACT(content,'$.inboxReadAt'))='NULL')",
+    "sources": [
+      "server/portal/inappInbox.ts"
+    ]
+  },
   "UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken agreement withdrawn',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2": {
     "sql": "UPDATE notification_jobs j JOIN outbox o ON o.id=j.event_id SET j.state='cancelled',j.result='Mistaken agreement withdrawn',j.completed_at=:p3 WHERE j.state='pending' AND o.lead_id=:p1 AND JSON_UNQUOTE(JSON_EXTRACT(j.snapshot,'$.payload.commitmentId'))=:p2",
     "sources": [
@@ -2580,6 +2742,24 @@
   },
   "UPDATE notification_jobs SET state='cancelled',result='Original source missing',completed_at=:p2 WHERE id=:p1": {
     "sql": "UPDATE notification_jobs SET state='cancelled',result='Original source missing',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Personal notification disabled',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Personal notification disabled',completed_at=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/worker.ts"
+    ]
+  },
+  "UPDATE notification_jobs SET state='cancelled',result='Personal recipient changed or unauthorized',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='cancelled',result='Personal recipient changed or unauthorized',completed_at=:p2 WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
     ]
@@ -2707,6 +2887,7 @@
   "UPDATE notification_rules SET enabled=true,config=:p2,version=version+1,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
     "sql": "UPDATE notification_rules SET enabled=true,config=:p2,version=version+1,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
+      "server/portal/agreementNotificationActivation.ts",
       "server/portal/taskNotificationActivation.ts"
     ]
   },
@@ -2735,6 +2916,7 @@
       "server/portal/agreementRestore.ts",
       "server/portal/aiExtraction.ts",
       "server/portal/attendance.ts",
+      "server/portal/autoAssignment.ts",
       "server/portal/campaignSources.ts",
       "server/portal/dynamicProfile.ts",
       "server/portal/enrollmentCorrection.ts",
@@ -2748,6 +2930,12 @@
       "server/portal/simpleSalesWorkflow.ts",
       "server/portal/trustRoutes.ts",
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "UPDATE portal_settings SET value=:p1 WHERE id='crm_assignment_cursor'": {
+    "sql": "UPDATE portal_settings SET value=:p1 WHERE id='crm_assignment_cursor'",
+    "sources": [
+      "server/portal/autoAssignment.ts"
     ]
   },
   "UPDATE portal_settings SET value=:p1 WHERE id='sla'": {

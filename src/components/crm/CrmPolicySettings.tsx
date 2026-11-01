@@ -1,9 +1,11 @@
+import {CrmAssignmentBackfill} from './CrmAssignmentBackfill';
+import {CrmAutoAssignmentFields} from './CrmAutoAssignmentFields';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
 import {readSavedPolicy} from '../../utils/crmPolicyTopicClient';
 import {policyTopicKeys,isPolicyTopic,topicPatch,topicDirty,topicChangeFields,reconcilePolicyDraft,policyEqual,type PolicyTopicRequest,type PolicyTopic} from '../../utils/crmPolicyTopics';
 import {notificationTopicIcons} from "./notificationTopicIcons";
-import {Clock3, ShieldCheck, PhoneMissed, Bell, CalendarCheck, Send} from "lucide-react";
+import {Clock3, ShieldCheck, PhoneMissed, Bell, CalendarCheck, Send, UsersRound} from "lucide-react";
 import {AdminTopicFrame} from "../AdminTopicFrame";
 import {operationSections,operationGroups,operationSectionForField,isNotificationTopic,type OperationSection} from "./operationsSections";
 import { policyConfigErrors, type ConfigErrors } from "../../utils/crmPolicyConfigValidation";
@@ -222,6 +224,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   onNavigateNotifications,
   notificationContent,
 }) => {
+  const [includeExisting,setIncludeExisting]=useState(false);
+  const [backfillConfiguration,setBackfillConfiguration]=useState<CrmPolicyConfig['autoAssignment']|null>(null);
   const [policyDraft,setPolicyDraft]=useState({draft:policyConfig,base:policyConfig});
   const formData=policyDraft.draft,savedPolicy=policyDraft.base;
   const setFormData=useCallback((update:React.SetStateAction<CrmPolicyConfig>)=>setPolicyDraft(state=>({...state,draft:typeof update==='function'?update(state.draft):update})),[]);
@@ -535,6 +539,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       if(!result)throw new PolicySaveError();
       const saved=typeof result==='object'?result:submitted;
       setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));
+      if(topic==='assignment'&&includeExisting&&submitted.autoAssignment.enabled){setIncludeExisting(false);setBackfillConfiguration(saved.autoAssignment);}
       setSaveSuccess(true);setTimeout(()=>setSaveSuccess(false),4000);
     }catch(error){
       const failure=error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown');setSaveError(failure);
@@ -542,10 +547,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       if(Object.keys(failure.fields).length)focusConfig(failure.fields);
       else requestAnimationFrame(()=>{saveFeedback.current?.focus({preventScroll:true});saveFeedback.current?.scrollIntoView({block:'nearest'});});
     }finally{inFlight.current=false;setIsSaving(false);}
-  },[formData,savedPolicy,activeCategory,focusConfig]);
+  },[formData,savedPolicy,activeCategory,focusConfig,includeExisting]);
   const checkSaveResult=async()=>{
     if(inFlight.current||!isPolicyTopic(activeCategory))return;const topic=activeCategory,submitted=formData;inFlight.current=true;setIsSaving(true);setCheckingResult(true);
-    try{const saved=await readSavedPolicy();if(policyEqual(topicPatch(saved,topic),topicPatch(submitted,topic))){setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));setSaveError(null);setSaveSuccess(true);}else setSaveError(new PolicySaveError('policy_topic_unknown',{},saved));}
+    try{const saved=await readSavedPolicy();if(policyEqual(topicPatch(saved,topic),topicPatch(submitted,topic))){setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));setSaveError(null);setSaveSuccess(true);if(topic==='assignment'&&includeExisting&&saved.autoAssignment.enabled){setIncludeExisting(false);setBackfillConfiguration(saved.autoAssignment);}}else setSaveError(new PolicySaveError('policy_topic_unknown',{},saved));}
     catch(error){setSaveError(error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown'));}
     finally{inFlight.current=false;setIsSaving(false);setCheckingResult(false);}
   };
@@ -1166,7 +1171,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     <div className="crm-ops-workspace-sample" data-theme={isLight?'light':'dark'}><AdminTopicFrame selection={activeCategory} label={["Configuration topics","Topik konfigurasi","配置主题"][languageIndex]} navigation={
       <nav className="crm-ops-nav" aria-label={['Operations topics','Topik operasional','运营主题'][languageIndex]}>
         <details open><summary>{['Configuration topics','Topik konfigurasi','配置主题'][languageIndex]}</summary><div>
-        {operationGroups.map((group,i)=><React.Fragment key={i}><h2>{group[languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{setActiveCategory(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
+        {operationGroups.map((group,i)=><React.Fragment key={i}><h2>{group[languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{setActiveCategory(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({assignment:UsersRound,permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
         </div></details><small role="status">{modifiedFieldsCount ? ['Unsaved policy changes','Perubahan kebijakan belum disimpan','有未保存的策略修改'][languageIndex] : ['Policies are up to date','Kebijakan sudah tersimpan','策略无未保存修改'][languageIndex]}</small>
       </nav>}>
       <div className="crm-ops-content"><AdminForm lang={lang} noValidate onSubmit={handleSave} className="crm-form-layout w-full mx-auto">
@@ -1323,6 +1328,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
 </header>
 
 
+      {activeCategory==='assignment'&&<CrmAutoAssignmentFields value={formData.autoAssignment} lang={lang} busy={isSaving||isResetting} includeExisting={includeExisting} showIncludeExisting={!savedPolicy.autoAssignment.enabled} onIncludeExistingChange={setIncludeExisting} onPreview={()=>setBackfillConfiguration(structuredClone(formData.autoAssignment))} onChange={autoAssignment=>{if(!autoAssignment.enabled)setIncludeExisting(false);setFormData(v=>({...v,autoAssignment}));}}/>}
       {activeCategory === "permissions" && <CrmFormSection name="permissions" lang={lang}>
         <h2 className="font-semibold text-lg">{lang==='zh'?'核实与归属权限':lang==='id'?'Izin verifikasi dan kepemilikan':'Review and ownership permissions'}</h2>
         {([
@@ -2007,6 +2013,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           </div>
         )}
     </div>
-    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&ruleExplanation}</div></AdminTopicFrame></div>
+    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&ruleExplanation}</div></AdminTopicFrame>{backfillConfiguration&&<CrmAssignmentBackfill configuration={backfillConfiguration} lang={lang} isLight={isLight} onClose={()=>setBackfillConfiguration(null)}/>}</div>
   );
 };

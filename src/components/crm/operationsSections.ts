@@ -4,6 +4,7 @@ export const operationGroups = [
  ['Notifications and audit','Notifikasi dan audit','通知与审计'],
 ] as const;
 export const operationSections = [
+ {id:'assignment',group:1,title:['Automatic assignment','Penugasan otomatis','自动分案'],purpose:['Assign new verified, unassigned customers to selected salespeople.','Tugaskan pelanggan baru terverifikasi tanpa penanggung jawab ke sales terpilih.','将身份已核实且未分配的新客户分配给选定销售。'],steps:[['New verified customer','Round robin','Assignment history'],['Pelanggan baru terverifikasi','Giliran','Riwayat penugasan'],['新客户身份已核实','轮询分配','保留归属历史']]},
  {id:'permissions',group:0,title:['Review and ownership','Verifikasi dan kepemilikan','核实与归属权限'],purpose:['Control who may verify and assign; existing record access still applies.','Atur siapa yang boleh memverifikasi dan menugaskan; izin catatan tetap berlaku.','控制谁可以核实和分配；仍受现有记录访问权限约束。'],steps:[['Existing access','Permitted action','Audit'],['Izin yang ada','Tindakan diizinkan','Audit'],['现有访问权限','允许的操作','保留审计']]},
  {id:'schedule',group:0,title:['Time zone and work calendar','Zona waktu dan kalender kerja','时区与工作日历'],purpose:['Define working periods used by response-deadline calculations.','Tentukan jam kerja untuk perhitungan tenggat respons.','定义响应期限计算采用的运营时区和工作时段。'],steps:[['Inquiry arrives','Work calendar','Response deadline'],['Pertanyaan masuk','Kalender kerja','Tenggat respons'],['咨询进入','核对工作日历','计算响应截止']]},
  {id:'first_response',group:1,title:['First response','Respons pertama','首次响应'],purpose:['Set response windows by priority; explicit adviser requests use the high-priority window.','Atur waktu respons menurut prioritas; permintaan penasihat memakai prioritas tinggi.','按优先级设置响应窗口；明确的顾问请求使用高优先级时限。'],steps:[['New request','Determine priority','Calculate deadline'],['Permintaan baru','Tentukan prioritas','Hitung tenggat'],['新请求','确定优先级','计算截止时间']]},
@@ -19,7 +20,7 @@ export const operationSections = [
 ] as const;
 export type OperationSection = typeof operationSections[number]['id'];
 export function operationSectionForField(field:string):OperationSection {
- const prefix=field.split('.')[0];return ({businessHours:'schedule',firstResponseSla:'first_response',noResponseCadence:'retry',inactivityWatchdog:'watchdog',milestones:'milestone',reactivation:'reactivation'} as Record<string,OperationSection>)[prefix]||'permissions';
+ const prefix=field.split('.')[0];return ({autoAssignment:'assignment',businessHours:'schedule',firstResponseSla:'first_response',noResponseCadence:'retry',inactivityWatchdog:'watchdog',milestones:'milestone',reactivation:'reactivation'} as Record<string,OperationSection>)[prefix]||'permissions';
 }
 
 export const notificationTopics = operationSections.filter(section=>section.group===2);

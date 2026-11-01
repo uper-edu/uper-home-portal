@@ -1,151 +1,34 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-if (process.env.MYSQL_NATIVE_TEST_ENV) {
-  const { setupNativeTest } = await import("./helpers/mysql.mjs");
-  await setupNativeTest("trust_notifications");
-  process.env.PLATFORM_MODE = "local";
-  const { pool, tx } = await import("../server/portal/store.ts");
-  const { initializeLocalAccounts } =
-    await import("../server/portal/localAuth.ts");
-  await initializeLocalAccounts();
-  const { defaults } = await import("../server/portal/policy.ts");
-  const { tick } = await import("../server/portal/worker.ts");
-  const { taskCommand } = await import("../server/portal/trustWorkflow.ts");
-  await test("P0 notifications: reschedule cancels stale version, preserves accepted and held history, and simulates only fresh configured policy", async () => {
-    await pool.query(
-      "INSERT INTO portal_settings(id,value) VALUES('sla',:p1)",
-      [{ ...defaults, hotHours: 3, warmHours: 24, coldHours: 48 }],
-    );
-    await pool.query(
-      "INSERT INTO portal_leads(id,profile) VALUES('trust-worker',:p1)",
-      [
-        {
-          id: "trust-worker",
-          fullName: "TEST notification learner",
-          owner: "Fadhil",
-          tier: "Hot",
-          currentStage: "Contacted",
-        },
-      ],
-    );
-    await pool.query(
-      "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at,original_due_at) VALUES('trust-task','trust-worker','follow_up','Fadhil','2099-01-01','2099-01-01')",
-    );
-    const rule = {
-      ...defaults,
-      event: "task.rescheduled",
-      recipient: "owner",
-      group: "TEST_TRUST",
-      sources: [],
-      tiers: [],
-      states: [],
-      channels: ["lark"],
-      calendarMode: "custom",
-      businessOnly: false,
-      workHours: false,
-      days: [0, 1, 2, 3, 4, 5, 6],
-      timezone: "UTC",
-      start: "00:00",
-      end: "23:59",
-      timing: "immediate",
-      dedupeMinutes: 0,
-      retries: [],
-      language: "en",
-    };
-    await pool.query(
-      "INSERT INTO notification_channels(id,config) VALUES('TEST_TRUST',:p1)",
-      [
-        {
-          mode: "simulation",
-          groupName: "TEST trust notifications",
-          maxPerHour: 1000,
-        },
-      ],
-    );
-    await pool.query(
-      "INSERT INTO notification_rules(id,version,config,enabled) VALUES('TEST_TRUST',1,:p1,true)",
-      [rule],
-    );
-    await pool.query(
-      "INSERT INTO outbox(id,type,lead_id,payload,processed_at) VALUES('old-trust-event','TEST.old','trust-worker',:p1,UTC_TIMESTAMP(6))",
-      [{}],
-    );
-    for (const state of ["pending", "accepted", "unknown"])
-      await pool.query(
-        "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,state,due_at,snapshot) VALUES(:p1,'old-trust-event',:p1,1,'lark','TEST_TRUST',:p2,'2000-01-01',:p3)",
-        [
-          "trust-" + state,
-          state,
-          {
-            rule,
-            event: "TEST.old",
-            leadId: "trust-worker",
-            payload: { taskId: "trust-task" },
-          },
-        ],
-      );
-    await pool.query(
-      "INSERT INTO notification_migration_holds(kind,id,reason) VALUES('job','trust-unknown','TEST history')",
-    );
-    const result = await tx((c: any) =>
-      taskCommand(
-        c,
-        "trust-worker",
-        "Fadhil",
-        {
-          requestId: "reschedule-worker",
-          command: "reschedule",
-          taskId: "trust-task",
-          revision: 0,
-          reason: "TEST client requested another time",
-          scheduledAt: new Date(Date.now() + 86400000).toISOString(),
-        },
-        () => true,
-      ),
-    );
-    assert.equal(result.saved, true);
-    // Simulate a worker queue snapshot captured before the committed reschedule.
-    await pool.query(
-      "INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,state,due_at,snapshot) VALUES('trust-stale','old-trust-event','stale',1,'lark','TEST_TRUST','pending','1999-01-01',:p1)",
-      [
-        {
-          rule,
-          event: "TEST.old",
-          leadId: "trust-worker",
-          payload: { taskId: "trust-task", taskNoticeVersion: 0 },
-        },
-      ],
-    );
-    for (let i = 0; i < 4; i++) await tick();
-    const jobs = (
-      await pool.query("SELECT id,state,attempts FROM notification_jobs")
-    ).rows;
-    assert.equal(
-      jobs.find((j: any) => j.id === "trust-pending").state,
-      "cancelled",
-    );
-    assert.equal(
-      jobs.find((j: any) => j.id === "trust-stale").state,
-      "cancelled",
-    );
-    assert.equal(
-      jobs.find((j: any) => j.id === "trust-accepted").state,
-      "accepted",
-    );
-    assert.equal(
-      jobs.find((j: any) => j.id === "trust-unknown").state,
-      "unknown",
-    );
-    assert.equal(
-      Number(jobs.find((j: any) => j.id === "trust-unknown").attempts),
-      0,
-    );
-    assert.equal(jobs.filter((j: any) => j.state === "simulated").length, 1);
-    const t = (
-      await pool.query("SELECT * FROM followup_tasks WHERE id='trust-task'")
-    ).rows[0];
-    assert.equal(t.due_at.toISOString(), "2099-01-01T00:00:00.000Z");
-    assert.equal(t.original_due_at.toISOString(), t.due_at.toISOString());
-  });
-  await pool.end();
-}
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import mysql from 'mysql2/promise';
+if(!process.env.MYSQL_NATIVE_TEST_ENV)test('agreement delivery chain requires approved isolation',{skip:'Synthetic isolated MySQL only'},()=>{});
+else await test('current agreement workflow: schedule, retry, deduplicate and cancel without replay',async t=>{
+ const {setupNativeTest}=await import('./helpers/mysql.mjs');const f=await setupNativeTest('agreement_chain');
+ process.env.PLATFORM_MODE='local';process.env.LARK_TEST_GROUP='synthetic-channel';process.env.TEST_AGREEMENT_WEBHOOK='https://open.larksuite.com/open-apis/bot/v2/hook/synthetic';
+ const {pool,tx}=await import('../server/portal/store.ts');const {saveSimpleSalesWorkflow}=await import('../server/portal/simpleSalesWorkflow.ts');const {tick}=await import('../server/portal/worker.ts');const {defaults}=await import('../server/portal/policy.ts');
+ const oldFetch=globalThis.fetch;let calls=0;
+ globalThis.fetch=async(url)=>{assert.equal(String(url),process.env.TEST_AGREEMENT_WEBHOOK);calls++;return new Response(JSON.stringify({code:calls===1?11232:0}),{status:200,headers:{'retry-after':'90'}})};
+ t.after(async()=>{globalThis.fetch=oldFetch;delete process.env.TEST_AGREEMENT_WEBHOOK;await pool.end();const c=await mysql.createConnection({user:'root',socketPath:f.socket});try{await c.query('DROP DATABASE IF EXISTS `'+f.name+'`');await c.query('DROP USER IF EXISTS '+mysql.escape(new URL(process.env.MYSQL_TRIAL_URL!).username)+'@localhost');}finally{await c.end()}});
+ const now=new Date(),due=new Date(now.getTime()+3600000),lead='synthetic-agreement';
+ await pool.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)',[lead,{id:lead,fullName:'Maya Putri',owner:'synthetic-sales',simpleRevision:0,identityLifecycle:'independent',currentStage:'progress:proposal',followUpLogs:[]}]);
+ await pool.query("INSERT INTO notification_channels(id,config) VALUES('synthetic-channel',:p1)",[{mode:'live',secretRef:'TEST_AGREEMENT_WEBHOOK',maxPerHour:100}]);
+ const rule={...defaults,event:'commitment.due',group:'synthetic-channel',channels:['lark'],recipient:'owner',sources:[],tiers:[],states:[],calendarMode:'custom',businessOnly:false,days:[0,1,2,3,4,5,6],start:'00:00',end:'23:59',timezone:'UTC',timing:'immediate',dedupeMinutes:0,retries:[1,5,15],language:'en'};
+ await pool.query("INSERT INTO notification_rules(id,version,config,enabled,effective_at) VALUES('synthetic-rule',1,:p1,true,'2020-01-01')",[rule]);
+ const save=(revision:number,requestId:string,extra:any)=>tx(c=>saveSimpleSalesWorkflow(c,lead,'synthetic-sales',{workflowVersion:3,recordKind:'internal',expectedRevision:revision,requestId,summary:'TEST customer confirmed course discussion',...extra},()=>true,now));
+ const created=await save(0,'create',{commitment:{action:'Confirm course schedule',at:due.toISOString(),timezone:'UTC'}});const agreement=created.lead.commitments[0];
+ await tick(now);assert.equal(calls,0);assert.equal((await pool.query('SELECT * FROM notification_jobs')).rows.length,0);
+ await tick(new Date(due.getTime()+1000));let jobs=(await pool.query('SELECT * FROM notification_jobs')).rows;assert.equal(jobs.length,1);const id=jobs[0].id;assert.equal(jobs[0].state,'pending',jobs[0].result);assert.equal(Number(jobs[0].attempts),1);assert.equal(calls,1);
+ // Worker backoff is wall-clock based: explicitly read its persisted next attempt.
+ const retryAt=new Date(jobs[0].due_at);await tick(new Date(retryAt.getTime()-1000));assert.equal(calls,1);
+ await tick(new Date(Math.max(due.getTime()+2000,retryAt.getTime()+1000)));jobs=(await pool.query('SELECT * FROM notification_jobs')).rows;assert.equal(jobs[0].id,id);assert.equal(jobs[0].state,'accepted');assert.equal(Number(jobs[0].attempts),2);assert.equal(calls,2);
+ for(let i=0;i<3;i++)await tick(new Date(due.getTime()+60000));assert.equal(calls,2);assert.equal((await pool.query('SELECT * FROM notification_jobs')).rows.length,1);
+ await save(1,'cancel',{commitmentChange:{id:agreement.id,status:'cancelled',reason:'Customer withdrew agreement'}});await tick(new Date(due.getTime()+120000));assert.equal(calls,2);assert.equal((await pool.query('SELECT * FROM notification_jobs')).rows[0].state,'accepted','accepted history is preserved');
+ const next=await save(2,'replacement',{commitment:{action:'Review another course',at:due.toISOString(),timezone:'UTC'}});const second=next.lead.commitments[1];
+ await save(3,'cancel-before-due',{commitmentChange:{id:second.id,status:'cancelled'}});await tick(new Date(due.getTime()+180000));assert.equal(calls,2);assert.equal((await pool.query('SELECT * FROM notification_jobs')).rows.length,1);
+ const third=await save(4,'pending-create',{commitment:{action:'Confirm revised class',at:due.toISOString(),timezone:'UTC'}});
+ globalThis.fetch=async()=>{calls++;return new Response(JSON.stringify({code:11232}),{status:200,headers:{'retry-after':'90'}})};
+ await tick(new Date(due.getTime()+240000));assert.equal(calls,3);let pending=(await pool.query("SELECT * FROM notification_jobs WHERE state='pending'")).rows;assert.equal(pending.length,1);
+ await save(5,'cancel-backoff',{commitmentChange:{id:third.lead.commitments[2].id,status:'cancelled'}});
+ await tick(new Date(due.getTime()+86400000));assert.equal(calls,3,'cancelled agreement cannot retry');assert.equal((await pool.query('SELECT * FROM notification_jobs WHERE id=:p1',[pending[0].id])).rows[0].state,'cancelled');
+ assert.equal((await pool.query('SELECT * FROM followup_tasks')).rows.length,0);
+});

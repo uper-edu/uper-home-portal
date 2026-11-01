@@ -402,3 +402,9 @@
 .ai-service-feedback[data-tone=danger] {background:var(--admin-danger-bg);color:var(--admin-danger);}
 @media(max-width:900px){.ai-service-grid {grid-template-columns:minmax(0,1fr);}}
 @media(max-width:520px){.ai-service-fields {grid-template-columns:minmax(0,1fr);}}
+
+.access-lark-binding { display: grid; gap: 8px; }
+.access-lark-binding p { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.access-lark-binding label { display: grid; gap: 4px; font-size: 13px; }
+.access-lark-binding button { justify-self: start; }
+.access-lark-status { margin: 0; font-size: 12px; line-height: 1.5; }
