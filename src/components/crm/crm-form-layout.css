@@ -79,3 +79,22 @@
 .campaign-source-review fieldset.space-y-3>*{margin-top:0;margin-bottom:0}
 .campaign-source-review>.crm-form-section>.admin-form-section-body{padding-bottom:0}
 .campaign-source-review.crm-form-layout>.crm-source-review-actions{margin-top:0;gap:8px}
+
+.crm-stage-current{display:inline;font-size:14px;font-weight:400;line-height:inherit;color:var(--admin-muted)}
+/* Stage decisions keep compact choices and a single, selected-stage explanation. */
+.crm-stage-drawer .crm-stage-options>label{align-items:center;min-height:44px;padding:8px 12px;gap:8px}
+.crm-stage-drawer .crm-stage-options input{margin:0;align-self:center}
+.crm-stage-drawer .crm-stage-options span{display:grid;grid-template-columns:minmax(140px,27%) minmax(0,1fr);align-items:baseline;gap:4px 12px;width:100%}
+.crm-stage-drawer .crm-stage-options strong{flex:none}
+.crm-stage-drawer .crm-form-section .crm-stage-choice-help{margin:0;font-size:13px;line-height:1.6;color:var(--cw-muted)}
+.crm-stage-drawer .crm-form-section:has(.crm-stage-options)>.admin-form-section-body{padding-bottom:0}
+.crm-stage-editor .crm-stage-draft{gap:8px}
+.crm-stage-facts-intro{display:grid;gap:4px;min-width:0}
+.crm-stage-facts-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.crm-stage-facts-heading>label{margin:0}
+.crm-stage-facts-heading>button{min-height:40px;padding:4px 8px;flex:none}
+.crm-stage-editor .crm-stage-draft .crm-stage-help{margin:0}
+.crm-stage-editor .crm-stage-draft>textarea{min-height:88px}
+.crm-stage-editor .crm-stage-source-picker{padding-top:8px}
+.crm-stage-editor .crm-stage-source-picker>summary{min-height:40px;align-content:center}
+@media(max-width:600px){.crm-stage-drawer .crm-stage-options span{grid-template-columns:1fr}}

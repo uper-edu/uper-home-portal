@@ -1,4 +1,10 @@
 {
+  "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2": {
+    "sql": "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2",
+    "sources": [
+      "server/portal/payments.ts"
+    ]
+  },
   "DELETE FROM crm_sessions": {
     "sql": "DELETE FROM crm_sessions",
     "sources": [
@@ -69,6 +75,12 @@
   },
   "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)": {
     "sql": "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO access_roles(id,config) SELECT :p1,:p2 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM crm_users WHERE JSON_CONTAINS(roles,JSON_QUOTE(:p1))) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO access_roles(id,config) SELECT :p1,:p2 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM crm_users WHERE JSON_CONTAINS(roles,JSON_QUOTE(:p1))) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/accessManagement.ts"
     ]
@@ -170,6 +182,12 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "INSERT INTO crm_courses(id,revision,value) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE revision=:p2,value=:p3": {
+    "sql": "INSERT INTO crm_courses(id,revision,value) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE revision=:p2,value=:p3",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "INSERT INTO crm_engagements(id,lead_id,kind,source_id,data,state,task_id) VALUES(:p1,:p2,'task_request',:p3,:p4,:p5,:p6)": {
     "sql": "INSERT INTO crm_engagements(id,lead_id,kind,source_id,data,state,task_id) VALUES(:p1,:p2,'task_request',:p3,:p4,:p5,:p6)",
     "sources": [
@@ -217,6 +235,30 @@
     "sources": [
       "server/portal/assignmentBackfill.ts",
       "server/portal/trustWorkflow.ts"
+    ]
+  },
+  "INSERT INTO crm_payment_images(id,lead_id,entry_id,created_by,name,mime,bytes,sha256,content) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,FROM_BASE64(:p9))": {
+    "sql": "INSERT INTO crm_payment_images(id,lead_id,entry_id,created_by,name,mime,bytes,sha256,content) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,FROM_BASE64(:p9))",
+    "sources": [
+      "server/portal/paymentImages.ts"
+    ]
+  },
+  "INSERT INTO crm_payment_ledgers(lead_id,revision,value) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE revision=:p2,value=:p3": {
+    "sql": "INSERT INTO crm_payment_ledgers(lead_id,revision,value) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE revision=:p2,value=:p3",
+    "sources": [
+      "server/portal/payments.ts"
+    ]
+  },
+  "INSERT INTO crm_payment_ledgers(lead_id,revision,value) VALUES(:p1,1,:p2) ON DUPLICATE KEY UPDATE revision=revision+1,value=:p2": {
+    "sql": "INSERT INTO crm_payment_ledgers(lead_id,revision,value) VALUES(:p1,1,:p2) ON DUPLICATE KEY UPDATE revision=revision+1,value=:p2",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
+  "INSERT INTO crm_payment_references(fingerprint,lead_id,entry_id) VALUES(:p1,:p2,:p3)": {
+    "sql": "INSERT INTO crm_payment_references(fingerprint,lead_id,entry_id) VALUES(:p1,:p2,:p3)",
+    "sources": [
+      "server/portal/payments.ts"
     ]
   },
   "INSERT INTO crm_sessions VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 8 hour)": {
@@ -399,6 +441,7 @@
       "server/portal/contactPlans.ts",
       "server/portal/larkSelfService.ts",
       "server/portal/ownerAssignment.ts",
+      "server/portal/payments.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts"
     ]
@@ -485,6 +528,12 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'commitment.restore',:p2)",
     "sources": [
       "server/portal/agreementRestore.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)",
+    "sources": [
+      "server/portal/courseCatalog.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)": {
@@ -664,6 +713,7 @@
   "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id": {
     "sql": "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
+      "server/portal/campaignPresets.ts",
       "server/portal/mysqlCampaignStorage.ts"
     ]
   },
@@ -805,6 +855,24 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT * FROM crm_courses ORDER BY id": {
+    "sql": "SELECT * FROM crm_courses ORDER BY id",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
+  "SELECT * FROM crm_courses WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT * FROM crm_courses WHERE id=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
+  "SELECT * FROM crm_courses WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM crm_courses WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "SELECT * FROM crm_engagements WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND kind='task_request' ORDER BY created_at,id": {
     "sql": "SELECT * FROM crm_engagements WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND kind='task_request' ORDER BY created_at,id",
     "sources": [
@@ -859,6 +927,18 @@
     "sql": "SELECT * FROM crm_operations WHERE actor=:p1 AND request_id=:p2",
     "sources": [
       "server/portal/trustWorkflow.ts"
+    ]
+  },
+  "SELECT * FROM crm_payment_ledgers WHERE lead_id IN (:p1) FOR UPDATE": {
+    "sql": "SELECT * FROM crm_payment_ledgers WHERE lead_id IN (:p1) FOR UPDATE",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
+  "SELECT * FROM crm_payment_ledgers WHERE lead_id IN (:p1) ORDER BY lead_id": {
+    "sql": "SELECT * FROM crm_payment_ledgers WHERE lead_id IN (:p1) ORDER BY lead_id",
+    "sources": [
+      "server/portal/payments.ts"
     ]
   },
   "SELECT * FROM crm_users": {
@@ -1303,6 +1383,12 @@
       "server/portal/customerInsights.ts"
     ]
   },
+  "SELECT data FROM crm_facts WHERE kind='enrollment.confirmation_voided' AND lead_id IN (:p1)": {
+    "sql": "SELECT data FROM crm_facts WHERE kind='enrollment.confirmation_voided' AND lead_id IN (:p1)",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "SELECT data FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1": {
     "sql": "SELECT data FROM crm_facts WHERE lead_id=:p1 AND kind='task.request_evidence' AND data->>'$.messageId'=:p2 AND data->>'$.conversationId'=:p3 AND data->>'$.action'=:p4 LIMIT 1",
     "sources": [
@@ -1399,6 +1485,12 @@
     "sql": "SELECT f.*,EXISTS(SELECT 1 FROM crm_facts x WHERE x.lead_id=f.lead_id AND x.kind='fact.corrected' AND JSON_UNQUOTE(JSON_EXTRACT(x.data,'$.correctionOf'))=f.id) AS withdrawn,m.id AS message_id,m.content AS message_content,m.created_at AS message_at FROM crm_facts f LEFT JOIN conversations c ON c.lead_id=f.lead_id AND c.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.conversationId')) LEFT JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND (m.request_id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId')) OR m.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId'))) WHERE JSON_CONTAINS(:p1,JSON_QUOTE(f.lead_id)) AND f.kind IN ('questionnaire.submitted','followup.recorded','task.request_evidence','information.extracted') ORDER BY f.created_at DESC,f.id",
     "sources": [
       "server/portal/buyingEvidence.ts"
+    ]
+  },
+  "SELECT fingerprint FROM crm_payment_references WHERE fingerprint=:p1": {
+    "sql": "SELECT fingerprint FROM crm_payment_references WHERE fingerprint=:p1",
+    "sources": [
+      "server/portal/payments.ts"
     ]
   },
   "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE": {
@@ -1602,6 +1694,12 @@
       "server/portal/chat.ts"
     ]
   },
+  "SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto' IN (:p1)": {
+    "sql": "SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto' IN (:p1)",
+    "sources": [
+      "server/portal/payments.ts"
+    ]
+  },
   "SELECT id FROM portal_settings WHERE id LIKE 'lark_notice:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.state'))='pending' ORDER BY id LIMIT 5": {
     "sql": "SELECT id FROM portal_settings WHERE id LIKE 'lark_notice:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.state'))='pending' ORDER BY id LIMIT 5",
     "sources": [
@@ -1649,6 +1747,12 @@
     "sources": [
       "server/portal/promotionReviews.ts",
       "server/portal/salesProgress.ts"
+    ]
+  },
+  "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 AND code=:p1": {
+    "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 AND code=:p1",
+    "sources": [
+      "server/portal/campaignPresets.ts"
     ]
   },
   "SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE": {
@@ -1794,6 +1898,7 @@
     "sql": "SELECT id,profile FROM portal_leads",
     "sources": [
       "server/portal/campaignSources.ts",
+      "server/portal/courseCatalog.ts",
       "server/portal/promotionReviews.ts",
       "cloud/mysql/site.mjs",
       "cloud/mysql/runtime.mjs"
@@ -1983,6 +2088,19 @@
       "server/portal/identityReview.ts"
     ]
   },
+  "SELECT lead_id,value FROM crm_payment_ledgers ORDER BY lead_id": {
+    "sql": "SELECT lead_id,value FROM crm_payment_ledgers ORDER BY lead_id",
+    "sources": [
+      "server/portal/paymentWorklist.ts"
+    ]
+  },
+  "SELECT lead_id,value FROM crm_payment_ledgers WHERE lead_id IN (:p1)": {
+    "sql": "SELECT lead_id,value FROM crm_payment_ledgers WHERE lead_id IN (:p1)",
+    "sources": [
+      "server/portal/courseCatalog.ts",
+      "server/portal/payments.ts"
+    ]
+  },
   "SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id": {
     "sql": "SELECT m.* FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id",
     "sources": [
@@ -2068,6 +2186,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "SELECT mime,content FROM crm_payment_images WHERE id=:p1": {
+    "sql": "SELECT mime,content FROM crm_payment_images WHERE id=:p1",
+    "sources": [
+      "server/portal/payments.ts"
+    ]
+  },
   "SELECT model,status,completed_at FROM crm_ai_extractions WHERE model IS NOT NULL ORDER BY completed_at DESC LIMIT 8": {
     "sql": "SELECT model,status,completed_at FROM crm_ai_extractions WHERE model IS NOT NULL ORDER BY completed_at DESC LIMIT 8",
     "sources": [
@@ -2089,7 +2213,8 @@
   "SELECT profile FROM portal_leads": {
     "sql": "SELECT profile FROM portal_leads",
     "sources": [
-      "server/portal/mysqlCampaignStorage.ts"
+      "server/portal/mysqlCampaignStorage.ts",
+      "server/portal/paymentWorklist.ts"
     ]
   },
   "SELECT profile FROM portal_leads WHERE id=:p1": {
@@ -2099,6 +2224,7 @@
       "server/portal/chat.ts",
       "server/portal/identityConsolidation.ts",
       "server/portal/notificationTarget.ts",
+      "server/portal/payments.ts",
       "server/portal/promotionReviews.ts",
       "server/portal/runtime.ts",
       "server/portal/store.ts",
@@ -2111,9 +2237,11 @@
       "server/portal/aiExtraction.ts",
       "server/portal/attendance.ts",
       "server/portal/autoAssignment.ts",
+      "server/portal/courseCatalog.ts",
       "server/portal/followup.ts",
       "server/portal/identityConsolidation.ts",
       "server/portal/noResponse.ts",
+      "server/portal/payments.ts",
       "server/portal/promotionReviews.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts",
@@ -2153,6 +2281,12 @@
       "server/portal/campaignCodeAllocation.ts"
     ]
   },
+  "SELECT raw_code,campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)=:p1 AND status='linked'": {
+    "sql": "SELECT raw_code,campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)=:p1 AND status='linked'",
+    "sources": [
+      "server/portal/campaignPresets.ts"
+    ]
+  },
   "SELECT RELEASE_LOCK(:p1)": {
     "sql": "SELECT RELEASE_LOCK(:p1)",
     "sources": [
@@ -2177,6 +2311,8 @@
     "sql": "SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2",
     "sources": [
       "server/portal/assignmentBackfill.ts",
+      "server/portal/courseCatalog.ts",
+      "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
     ]
   },
@@ -2289,6 +2425,12 @@
     "sql": "SELECT value FROM access_state WHERE id='teamless'",
     "sources": [
       "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT value FROM crm_courses ORDER BY id": {
+    "sql": "SELECT value FROM crm_courses ORDER BY id",
+    "sources": [
+      "server/portal/courseCatalog.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id=:p1": {
@@ -2483,6 +2625,18 @@
     "sql": "UPDATE crm_login_limits SET failures=failures+1 WHERE `key` IN (:p1)",
     "sources": [
       "server/portal/localAuth.ts"
+    ]
+  },
+  "UPDATE crm_payment_ledgers SET value=:p1 WHERE lead_id=:p2": {
+    "sql": "UPDATE crm_payment_ledgers SET value=:p1 WHERE lead_id=:p2",
+    "sources": [
+      "server/portal/payments.ts"
+    ]
+  },
+  "UPDATE crm_payment_references SET lead_id=:p1 WHERE lead_id IN (:p2)": {
+    "sql": "UPDATE crm_payment_references SET lead_id=:p1 WHERE lead_id IN (:p2)",
+    "sources": [
+      "server/portal/payments.ts"
     ]
   },
   "UPDATE crm_users SET display_name=:p2,roles=:p3,teams=:p4,active=:p5,email=:p6,access_revision=access_revision+1 WHERE id=:p1": {

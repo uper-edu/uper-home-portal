@@ -1,3 +1,5 @@
+import {mountCourseRoutes} from './courseCatalog.ts';
+import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {listInbox,readInbox} from './inappInbox.ts';
 import {previewBackfill,confirmBackfill,backfillResult} from './assignmentBackfill.ts';
 import {assignNewLead,prepareAssignmentPolicy} from './autoAssignment.ts';
@@ -219,6 +221,7 @@ async function visibleLeadProfiles(e: any) {
   await attachLeadAttention(e, leads, snapshot);
   await attachBuyingEvidence(pool,leads);
   await attachFactMilestones(pool,leads);
+  await attachPaymentSummaries(pool,leads);
   return leads;
 }
 async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
@@ -271,6 +274,7 @@ export async function mountPortal(app: Express) {
     return;
   }
   await initialize();
+  mountCourseRoutes(app,{wrap,staff});
   await initializeLocalAccounts();
   app.use(accessRestoreGate);
   mountAccessOperations(app);
@@ -886,6 +890,7 @@ export async function mountPortal(app: Express) {
       ).rows;
       await attachBuyingEvidence(pool,[l.profile]);
       await attachFactMilestones(pool,[l.profile]);
+      await attachPaymentSummaries(pool,[l.profile]);
       res.json({
         ...l.profile,
         lead: { ...l.profile, chatTranscript: transcript },
@@ -1663,6 +1668,7 @@ export async function mountPortal(app: Express) {
     }),
   );
   mountTrustRoutes(app,{wrap,leadAccess,requestAllowed,staff});
+  mountPaymentRoutes(app,{wrap,leadAccess,staff});
   app.post(
     [
       "/api/crm/leads/:id/follow-up",

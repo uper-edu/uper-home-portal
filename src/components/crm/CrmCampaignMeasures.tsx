@@ -108,6 +108,7 @@ export function CrmCampaignMeasures({
           </article>
         ))}
       </div>
+      <p className="crm-work-muted">{t('Verified receipts','Penerimaan terverifikasi','已核实收款')}：Rp {sum('verifiedReceived').toLocaleString(crmLocale(lang))} · {t('Refunded','Dikembalikan','已核实退款')}：Rp {sum('verifiedRefunded').toLocaleString(crmLocale(lang))} · {t('Net receipts','Penerimaan bersih','净收款')}：Rp {sum('verifiedNet').toLocaleString(crmLocale(lang))}</p>
       <details>
         <summary>
           {t(

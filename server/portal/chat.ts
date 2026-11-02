@@ -1,3 +1,4 @@
+import {managedCoursePrices} from './courseCatalog.ts';
 import {coursePriceReply,protectGeneratedReply,consultationPriceContext} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
 import {runtimeProviders} from './aiServiceConfig.ts';
@@ -206,8 +207,9 @@ export function mountChat(app: Express) {
             })
           : "";
         const priceContext=consultationPriceContext(ownedProfile,history);
+        const currentPriceBook=await managedCoursePrices(pool);
         const currentQuestion=introduction?(ownedProfile?.buyingSignals||[]).join(' ')||content:content;
-        const fixedReply=coursePriceReply(currentQuestion,priceContext,req.body.lang||'zh');
+        const fixedReply=coursePriceReply(currentQuestion,priceContext,req.body.lang||'zh',currentPriceBook);
         let catalogueUsed=!!fixedReply;
         let reply = fixedReply||"",
           modelUsed: string | null = fixedReply?'course-catalogue':null;
@@ -306,7 +308,7 @@ export function mountChat(app: Express) {
             try {
               partial = JSON.parse(partial).reply || partial;
             } catch {}
-            reply = protectGeneratedReply(partial,content,priceContext,req.body.lang||'zh');
+            reply = protectGeneratedReply(partial,content,priceContext,req.body.lang||'zh',currentPriceBook);
             catalogueUsed=reply!==partial;
             modelUsed = actualModel;
             await db.query(

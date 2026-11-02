@@ -14,7 +14,7 @@ export function promotionInput(input: any) {
  return {name:name||`${source} · ${medium} · ${input.language}`,source,medium,language:input.language as 'en'|'id'|'zh',experience:PROMOTION_EXPERIENCE as typeof PROMOTION_EXPERIENCE};
 }
 export function campaignPromotionUrl(code:string,link:CampaignPromotionLink,origin:string) {
- const url=new URL('/chat',origin);
+ const url=new URL(link.landingPath==='/link'?'/link':'/chat',origin);
  for(const [key,value] of Object.entries({c:code,p:link.id,lang:link.language,utm_campaign:code,utm_source:link.source,utm_medium:link.medium}))url.searchParams.set(key,value);
  return url.toString();
 }

@@ -1,6 +1,9 @@
+import {stageFactsGuidance,stageFactsExample,stageShortDescription} from '../../utils/crmStageFactsGuidance';
+import {CrmEnrollmentFields} from './CrmEnrollmentFields';
+import {enrollmentQuoteError,courseError} from '../../utils/crmCoursePricing';
 import {trackEvent,trackStageReceipt} from '../../utils/analytics';
-import {CrmFormSection,CrmFormSummary} from './CrmFormLayout';
-import {AdminFormActions} from '../AdminFormLayout';
+import {CrmFormSection} from './CrmFormLayout';
+import {AdminFormActions,AdminFormSection} from '../AdminFormLayout';
 import {CrmIdentityAction} from './CrmIdentityAction';
 import {AdminRequiredNote} from '../AdminForm';
 import {useCrmUiText} from './CrmUiLanguage';
@@ -38,8 +41,8 @@ export function CrmStageEditor({
   const t = (en: string, id: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? id : en;
   const currentStage = lead.currentStage || "New";
-  const [baseStage,setBaseStage]=useState(currentStage),[baseRevision,setBaseRevision]=useState(lead.stageRevision||0);
-  const [stageContext,setStageContext]=useState<any>(null),[contextError,setContextError]=useState(''),[basisRefs,setBasisRefs]=useState<any[]>([]),[enrollmentConfirmed,setEnrollmentConfirmed]=useState(false);
+  const [baseStage,setBaseStage]=useState(currentStage),[baseRevision,setBaseRevision]=useState(lead.stageRevision||0),[showExample,setShowExample]=useState(false);
+  const [stageContext,setStageContext]=useState<any>(null),[contextError,setContextError]=useState(''),[basisRefs,setBasisRefs]=useState<any[]>([]),[enrollmentConfirmed,setEnrollmentConfirmed]=useState(false),[enrollment,setEnrollment]=useState<any>(null);
   const loadContext=async()=>{try{const r=await request('/api/crm/leads/'+lead.id+'/stage-context');const d=await r.json();if(!r.ok||d.leadId!==lead.id)throw Error();setStageContext(d);setContextError('');}catch{setContextError('阶段依据与历史暂不可用，请重试加载');}};
   useEffect(()=>{setStageContext(null);void loadContext();},[lead.id,lead.stageRevision]);
 
@@ -60,7 +63,7 @@ export function CrmStageEditor({
   const versionConflict=latestStage.version!==baseRevision||latestStage.stage!==baseStage;
   useEffect(() => {
     setStage(inDrawer?'':currentStage);setBaseStage(currentStage);setBaseRevision(lead.stageRevision||0);
-    setReason("");setBasisRefs(initialBasisId?[{type:'sales_record',id:initialBasisId}]:[]);setEnrollmentConfirmed(false);
+    setReason("");setEnrollment(null);setBasisRefs(initialBasisId?[{type:'sales_record',id:initialBasisId}]:[]);setEnrollmentConfirmed(false);
     setReasonInvalid(false);
   }, [lead.id]);
   useEffect(()=>{if(!changed&&!pending.current){setStage(inDrawer?'':currentStage);setBaseStage(currentStage);setBaseRevision(lead.stageRevision||0);}},[currentStage,lead.stageRevision]);
@@ -84,12 +87,13 @@ export function CrmStageEditor({
     if(!pending.current){
       if(!reason.trim()&&!basisRefs.length){setReasonInvalid(true);reasonRef.current?.focus();return;}
       setReasonInvalid(false);
+      if(stage==='progress:enrolled'&&enrollmentQuoteError(enrollment)){setError(enrollmentQuoteError(enrollment));return;}
       if(stage==='progress:enrolled'&&!enrollmentConfirmed){setError('请明确确认报名已成立');enrollmentRef.current?.focus();return;}
     }
     const body = pending.current || (pending.current = {
       requestId: crypto.randomUUID(), newStage: stage,
       expectedStage: baseStage, expectedStageRevision: baseRevision,
-      reason,basisRefs,...(stage==='progress:enrolled'?{enrollmentScope:'course'}:{}),effectiveTimeMode:'now',effectiveAt:null,enrollmentConfirmed,
+      reason,basisRefs,...(stage==='progress:enrolled'?{enrollmentScope:'course',enrollment}:{}),effectiveTimeMode:'now',effectiveAt:null,enrollmentConfirmed,
     });
     inFlight.current = true;
     setRetryAllowed(false);
@@ -142,7 +146,7 @@ export function CrmStageEditor({
       : error === "stage_result_not_found"
         ? t("No saved result was found for this request. You can retry the original save.", "Hasil tersimpan untuk permintaan ini belum ditemukan. Anda dapat mengulangi penyimpanan awal.", "尚未找到该请求的保存结果，可重试原保存。")
         : error === "stage_save_failed"
-          ? t("The stage was not saved. Your draft is kept.", "Tahap belum tersimpan. Draf tetap tersedia.", "阶段未保存，草稿已保留。") : trustError(error, lang);
+          ? t("The stage was not saved. Your draft is kept.", "Tahap belum tersimpan. Draf tetap tersedia.", "阶段未保存，草稿已保留。") : courseError(error,lang)!==error?courseError(error,lang):trustError(error, lang);
   const options:Array<{value:string,label:string}> = salesProgressStages.map(([value,zh,en,id])=>({value,label:lang==='zh'?zh:lang==='id'?id:en}));
   const chosen=salesProgressStages.find(v=>v[0]===stage);
   if(!isSalesProgressStage(currentStage))options.unshift({value:currentStage as any,label:crmValue(currentStage,lang)+'（旧阶段，待确认）'});
@@ -159,9 +163,8 @@ export function CrmStageEditor({
       <div className={inDrawer?'crm-editor-scroll':undefined}>
       {inDrawer&&<AdminRequiredNote lang={lang}/>}
       {!isSalesProgressStage(currentStage)&&<p className="crm-stage-help">{ui("旧阶段保留为“")}{crmValue(currentStage,lang)}{ui("”，未自动映射。请选择符合实际的新阶段并明确保存。")}</p>}
-      <CrmFormSection name="stage" lang={lang}>
-      {inDrawer&&<CrmFormSummary>{t('Current stage','Tahap saat ini','当前阶段')}：{crmValue(currentStage,lang)}</CrmFormSummary>}
-      {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id,definition])=><label className="admin-field admin-field--choice" key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{progressDefinition(value,lang)}</small></span></label>)}</fieldset>:(
+      <AdminFormSection className="crm-form-section" title={<>{t('New sales stage','Tahap penjualan baru','选择新阶段')}{inDrawer&&<span className="crm-stage-current">{t(' [Current: ',' [Saat ini: ',' [当前：')}{crmValue(currentStage,lang)}]</span>}</>}>
+      {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id])=><label className="admin-field admin-field--choice" key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{stageShortDescription(value,lang)}</small></span></label>)}</fieldset>:(
       <CrmSingleSelect
         label={t("Update sales stage", "Ubah tahap penjualan", "修改销售阶段")}
         value={stage}
@@ -169,25 +172,28 @@ export function CrmStageEditor({
         disabled={disabled || busy || unknown} options={options} lang={lang} isLight={isLight}
       />)}
 
-      </CrmFormSection>
+      {inDrawer&&chosen&&<p className="crm-stage-choice-help">{progressDefinition(chosen[0],lang)}</p>}
+      </AdminFormSection>
       {changed&&versionConflict&&<p role="alert">{ui("服务端阶段已变化，草稿仍保留。最新：")}{crmValue(latestStage.stage,lang)}。<button type="button" disabled={busy||unknown} onClick={()=>{setBaseStage(latestStage.stage);setBaseRevision(latestStage.version);}}>{ui("保留草稿并采用已核对的最新基准")}</button></p>}
       {!inDrawer&&chosen&&<p className="crm-stage-help">{progressDefinition(chosen[0],lang)}</p>}
       {!inDrawer&&!disabled && <p className="crm-stage-help">{t("Stage changes are saved manually. Choose a stage, link evidence or describe the facts, then save.", "Perubahan tahap disimpan secara manual. Pilih tahap, isi alasan wajib, lalu simpan.", "阶段变更需手动保存：选择阶段，关联依据或填写事实说明后保存。")}</p>}
-      {(changed || unknown) && <CrmFormSection name="stageEvidence" lang={lang}><div className="crm-stage-draft">
-        <label htmlFor={id}><AdminFieldLabel required={!basisRefs.length}>{t("Facts supporting the stage", "Fakta pendukung tahap", "具体事实说明")}</AdminFieldLabel></label>
-        <p id={id + "-help"} className="crm-stage-help">{t("Describe the facts supporting this stage. Example: the customer confirmed a Saturday assessment booking.", "Jelaskan fakta yang mendukung tahap ini. Contoh: pelanggan mengonfirmasi jadwal asesmen hari Sabtu.", "请说明支持新阶段的事实。例如：客户已确认预约周六的测评。")}</p>
+      {stage==='progress:enrolled'&&(changed||unknown)&&<CrmEnrollmentFields value={enrollment} onChange={(q:any)=>{setEnrollment(q);setEnrollmentConfirmed(q.confirmed===true);}} lang={lang} isLight={isLight} disabled={disabled||busy||unknown} request={request}/>}
+      {(changed || unknown) && <section className="crm-form-section" aria-label={t("Stage facts and evidence","Fakta dan bukti tahap","阶段事实与依据")}><div className="crm-stage-draft">
+        <div className="crm-stage-facts-intro"><div className="crm-stage-facts-heading"><label htmlFor={id}><AdminFieldLabel required={!basisRefs.length}>{t("Facts supporting the stage", "Fakta pendukung tahap", "具体事实说明")}</AdminFieldLabel></label><button type="button" className="crm-work-link" aria-expanded={showExample} aria-controls={id+'-example'} onClick={()=>setShowExample(v=>!v)}>{t('Example','Contoh','填写示例')}</button></div>
+        <p id={id + "-help"} className="crm-stage-help">{stageFactsGuidance(stage,lang)} {t('Or link an original record below.','Atau tautkan catatan asli di bawah.','也可直接关联下方原文。')}</p>
+        <p id={id+'-example'} className="crm-stage-help" hidden={!showExample}>{stageFactsExample(stage,lang)}</p></div>
         <textarea id={id} ref={reasonRef} rows={3} required={!basisRefs.length} aria-required={!basisRefs.length} aria-invalid={reasonInvalid}
           aria-describedby={id + "-help" + (reasonInvalid ? " " + id + "-error" : "")}
           disabled={disabled || busy || unknown} value={reason}
           onChange={e => { setReason(e.target.value); if (e.target.value.trim()) setReasonInvalid(false); }} />
-        {reasonInvalid && <p id={id + "-error"} role="alert" className="crm-stage-error">{t("Enter the reason for this stage change before saving.", "Isi alasan perubahan tahap sebelum menyimpan.", "请关联依据或填写事实说明，已报名还须明确确认报名成立。")}</p>}
-        <p className="crm-stage-help">{ui("可关联原始记录，也可填写具体事实说明；无需重复抄写已关联原文。")}</p>
+        {reasonInvalid && <p id={id + "-error"} role="alert" className="crm-stage-error">{t("Link original evidence or describe the facts before saving.", "Tautkan bukti asli atau jelaskan fakta sebelum menyimpan.", "请关联原始依据或填写具体事实说明。")}</p>}
         {contextError&&<p role="alert">{contextError}<button type="button" onClick={()=>void loadContext()}>{ui("重新加载依据")}</button></p>}
-        <details className="crm-stage-source-picker crm-form-details" open={Boolean(initialBasisId)}><summary>{ui("关联原始依据（已选")}{basisRefs.length}{ui("，最多5条）")}</summary>{stageContext?.sources.map((source:any)=>{const checked=basisRefs.some(s=>s.type===source.type&&s.id===source.id);return <div key={source.type+source.id}><label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown||(!checked&&basisRefs.length>=5)} checked={checked} onChange={()=>setBasisRefs(v=>checked?v.filter(s=>s.type!==source.type||s.id!==source.id):[...v,{type:source.type,id:source.id}])}/>{ui(source.label)} · {progressSourceTiming(source,lang)}</label><CrmProgressSourceBody source={source} lang={lang}/></div>;})}{stageContext&&!stageContext.sources.length&&<p>{ui("没有可关联的原始记录，请填写具体事实说明。")}</p>}</details>
-        {stage==='progress:enrolled'&&<label className="admin-field admin-field--choice"><input ref={enrollmentRef} type="checkbox" required aria-required="true" disabled={busy||unknown} checked={enrollmentConfirmed} onChange={e=>{setEnrollmentConfirmed(e.target.checked);setError('');}}/>{ui("确认正式课程报名已成立（不含试听预约）；依据须说明具体课程及确认事实 *")}</label>}
+        <details className="crm-stage-source-picker crm-form-details" open={Boolean(initialBasisId)}><summary>{t('Link original evidence','Tautkan bukti asli','关联原始依据')}（{basisRefs.length}）</summary><p className="crm-stage-help">{t('Select up to 5 records. Linked originals can replace the facts description.','Pilih hingga 5 catatan. Catatan asli dapat menggantikan uraian fakta.','最多选择5条；已关联原文可代替事实说明。')}</p>{stageContext?.sources.map((source:any)=>{const checked=basisRefs.some(s=>s.type===source.type&&s.id===source.id);return <div key={source.type+source.id}><label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown||(!checked&&basisRefs.length>=5)} checked={checked} onChange={()=>setBasisRefs(v=>checked?v.filter(s=>s.type!==source.type||s.id!==source.id):[...v,{type:source.type,id:source.id}])}/>{ui(source.label)} · {progressSourceTiming(source,lang)}</label><CrmProgressSourceBody source={source} lang={lang}/></div>;})}{stageContext&&!stageContext.sources.length&&<p>{ui("没有可关联的原始记录，请填写具体事实说明。")}</p>}</details>
 
 
-      </div></CrmFormSection>}
+
+
+      </div></section>}
       {(busy || unknown || savedStage === currentStage) && <p role="status" className="crm-stage-status">
         {busy ? (busyAction === "query" ? t("Checking save result…", "Memeriksa hasil penyimpanan…", "正在查询保存结果…") : t("Saving stage…", "Menyimpan tahap…", "正在保存阶段…"))
           : unknown ? t("Save result unknown; draft retained.", "Hasil penyimpanan belum diketahui; draf dipertahankan.", "保存结果未知，草稿已保留。")

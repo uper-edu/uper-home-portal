@@ -32,6 +32,7 @@ export function campaignMetrics(leads: any[], campaign: any) {
       Number.isFinite(l.revenue) &&
       l.revenue >= 0,
   );
+  const verified=registered.flatMap(l=>(l.verifiedPayments?.sources||[]).filter((s:any)=>origins(l).some((p:any)=>p.id===s.sourceLeadId&&matchesCampaign(p,campaign))));
   return {
     registrationRecordsCount: unique.reduce((n,l)=>n+origins(l).filter(p=>matchesCampaign(p,campaign)).length,0),
     pendingIdentityCount: unique.filter(l=>(l.identityReview?.pending||l.identityLifecycle==='pending')&&matchesCampaign(l,campaign)).length,
@@ -42,6 +43,9 @@ export function campaignMetrics(leads: any[], campaign: any) {
     confirmedAttendanceCount: attendance.length,
     onsiteAttendanceCount: attendance.filter((a) => a.mode === "onsite").length,
     onlineAttendanceCount: attendance.filter((a) => a.mode === "online").length,
+    verifiedReceived: verified.reduce((n,s)=>n+s.received,0),
+    verifiedRefunded: verified.reduce((n,s)=>n+s.refunded,0),
+    verifiedNet: verified.reduce((n,s)=>n+s.net,0),
     totalRevenue: revenueKnown.reduce((n, l) => n + l.revenue, 0),
     revenueMissingCount: enrolled.length - revenueKnown.length,
     conversionRate: registered.length

@@ -1,3 +1,4 @@
+import {courseError} from '../../utils/crmCoursePricing';
 import {trackEvent,trackStageReceipt,trackConfirmedReceipt} from '../../utils/analytics';
 import {progressAnalyticsReceipt} from '../../utils/analyticsReceipts';
 import {reviewedProgressAgreements} from '../../utils/crmProgressRecord';

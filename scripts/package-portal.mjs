@@ -14,7 +14,8 @@ const identity=buildIdentity(target,root,frontendEnvironment(target));
 execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--mode',target,'--outDir',path.join(out,'web')],{stdio:'inherit',env:{...process.env,UPER_BUILD_IDENTITY:JSON.stringify(identity)}});
 // Preserve ESM module boundaries: a single bundle changes import.meta.url and async cycle semantics.
 const graph=await build({entryPoints:['server.ts','cloud/mysql/access-recovery.mjs','cloud/company-trial/maintenance.mjs','cloud/mysql/retire-test-policy.mjs'],outdir:path.join(out,'graph-only'),bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',write:false,metafile:true});
-const inputs=Object.keys(graph.metafile.inputs);
+// esbuild may suffix JSON module identities with import attributes; the disk path is unchanged.
+const inputs=[...new Set(Object.keys(graph.metafile.inputs).map(f=>f.replace(/(\.json) with \{.*\}$/u,'$1')))];
 const runtime=path.join(out,'runtime');await fs.rm(runtime,{recursive:true,force:true});await fs.mkdir(runtime,{recursive:true});
 const compiled=f=>f.replace(/\.(ts|tsx|js)$/u,'.mjs');
 for(const file of inputs){
@@ -31,7 +32,7 @@ for(const file of inputs){
  const {code}=await transform(source,{loader:file.endsWith('.tsx')?'tsx':file.endsWith('.ts')?'ts':'js',format:'esm',target:'node24',jsx:'automatic',sourcemap:false});
  await fs.writeFile(dest,code.replace(/(\bfrom\s+["'][^"']+\.json["'])(?!\s+with\b)/g,'$1 with { type: "json" }'));
 }
-for(const f of ['schema.sql','schema-v2.sql'])await fs.copyFile('cloud/mysql/'+f,path.join(runtime,'cloud/mysql',f));
+for(const f of ['schema.sql','schema-v2.sql','schema-v13.sql','schema-v14.sql','schema-v15.sql'])await fs.copyFile('cloud/mysql/'+f,path.join(runtime,'cloud/mysql',f));
 for(const f of ['package.json','package-lock.json'])await fs.copyFile(f,path.join(out,f));
 const dockerfile=await fs.readFile('cloud/company-trial/Dockerfile','utf8');
 await fs.writeFile(path.join(out,'Dockerfile'),dockerfile+'\nENV PORTAL_ENV='+target+' PORTAL_PACKAGE_ENV='+target+' PORTAL_ENV_SOURCE=injected\n');

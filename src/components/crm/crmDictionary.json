@@ -1818,6 +1818,78 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "verifiedPayments",
+    "type": "{ received: number; refunded: number; net: number; sources?: Array<{ sourceLeadId: string; received: number; refunded: number; net: number; }>; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.received",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.refunded",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.net",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.sources",
+    "type": "Array<{ sourceLeadId: string; received: number; refunded: number; net: number; }>",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.sources.sourceLeadId",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.sources.received",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.sources.refunded",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "verifiedPayments.sources.net",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "followUpLogs",
     "type": "FollowUpLog[]",
     "optional": false,
@@ -2578,6 +2650,14 @@
   {
     "layer": "contract",
     "object": "CrmCampaignRecord",
+    "key": "presetKey",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
     "key": "promotionLinks",
     "type": "CampaignPromotionLink[]",
     "optional": true,
@@ -2829,6 +2909,14 @@
     "key": "updatedAt",
     "type": "string",
     "optional": false,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "landingPath",
+    "type": "'/chat' | '/link'",
+    "optional": true,
     "source": "src/types/crmCampaign.ts"
   },
   {

@@ -9,8 +9,8 @@ import type { Employee } from "./identity.ts";
 const scrypt = promisify(crypto.scrypt);
 const cookie = () => `uper_crm_session_${process.env.PORT || "3000"}`;
 export const accountSeeds = [
-  ["Suki", ["crm_leader"]],
-  ["Robert", ["crm_leader", "cms_admin"]],
+  ["Suki", ["crm_leader", "finance"]],
+  ["Robert", ["crm_leader", "cms_admin", "finance"]],
   ["Fadhil", ["sales"]],
   ["Zainul", ["sales"]],
   ["Wigar", ["sales"]],

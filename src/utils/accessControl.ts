@@ -14,6 +14,7 @@ const p = (
   scoped = false,
 ) => ({ key, module, names: [en, id, zh] as AccessWords, scoped });
 export const permissionCatalog = [
+  p("crm.payments.verify", "crm", "Verify customer payments", "Verifikasi pembayaran pelanggan", "核验客户收款", true),
   p("crm.read", "crm", "View customers", "Lihat pelanggan", "查看客户", true),
   p(
     "crm.write",
@@ -161,6 +162,11 @@ const grants = (
 ): Record<string, AccessScope> =>
   Object.fromEntries(keys.map((key) => [key, scope]));
 export const builtInRoles: Record<string, RoleConfig> = {
+  finance: {
+    names: ['Finance','Keuangan','财务'],
+    description: ['View customers and verify receipts and refunds; no customer or pricing edits','Lihat pelanggan dan verifikasi penerimaan serta pengembalian; tanpa mengubah data atau harga','查看客户并核验收退款；不可修改客户资料、报价或优惠'],
+    grants: grants(['crm.read','crm.payments.verify'],'all'),
+  },
   crm_leader: {
     names: ["CRM Manager", "Manajer CRM", "CRM 管理者"],
     description: [
@@ -398,6 +404,7 @@ export function validateRole(config: RoleConfig) {
     "crm.write",
     "crm.followup",
     "crm.attendance",
+    "crm.payments.verify",
     "crm.assign",
     "crm.export",
     "crm.claim",

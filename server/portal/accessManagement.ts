@@ -57,6 +57,8 @@ export async function initializeAccessAccounts() {
         "SELECT value FROM access_state WHERE id='policy' FOR UPDATE",
       )
     ).rows[0].value;
+    // Add the unassigned financial template only; preserve every existing role and employee grant.
+    await c.query("INSERT INTO access_roles(id,config) SELECT :p1,:p2 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM crm_users WHERE JSON_CONTAINS(roles,JSON_QUOTE(:p1))) ON DUPLICATE KEY UPDATE id=id",['finance',JSON.stringify(builtInRoles.finance)]);
     if (state.initialized) return;
     for (const [role, config] of Object.entries(builtInRoles))
       await c.query(

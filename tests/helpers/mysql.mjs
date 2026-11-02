@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import mysql from "mysql2/promise";
 import { migrate } from "../../cloud/mysql/migrate.mjs";
 import { after } from "node:test";
-export async function setupNativeTest(label) {
+export async function setupNativeTest(label, {initializeSystemDefaults=false} = {}) {
   if (
     process.env.MYSQL_NATIVE_TEST_ENV !==
     "/private/tmp/uper-mysql-native-cleanup.sock"
@@ -70,7 +70,7 @@ export async function setupNativeTest(label) {
     timezone: "Z",
     dateStrings: true,
   });
-  await migrate(raw, name);
+  await migrate(raw, name, {initializeSystemDefaults});
   await raw.end();
   const fixture = {
     name,

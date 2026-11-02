@@ -4,7 +4,7 @@ import {X} from 'lucide-react';
 import {createPortal} from 'react-dom';
 import {useEffect,useId,useRef,useContext,type ReactNode} from 'react';
 /** Native modal keeps the workspace inert and leaves its layout and scroll position intact. */
-export function CrmOperationLayer({title,context,headerSummary,lang,isLight,onClose,children,wide=false,history=false,busy=false,progress=false,compose=false,customerContext=true,className=''}: {title:string;context?:ReactNode;headerSummary?:ReactNode;lang:string;isLight:boolean;onClose:()=>void;children:ReactNode;wide?:boolean;history?:boolean;busy?:boolean;progress?:boolean;compose?:boolean;customerContext?:boolean;className?:string}){
+export function CrmOperationLayer({title,context,headerSummary,lang,isLight,onClose,children,wide=false,history=false,busy=false,progress=false,compose=false,customerContext=true,className=''}: {title:ReactNode;context?:ReactNode;headerSummary?:ReactNode;lang:string;isLight:boolean;onClose:()=>void;children:ReactNode;wide?:boolean;history?:boolean;busy?:boolean;progress?:boolean;compose?:boolean;customerContext?:boolean;className?:string}){
   const openHistory=useContext(CrmHistoryAccess);
   const dialog=useRef<HTMLDialogElement>(null),heading=useRef<HTMLHeadingElement>(null),id=useId(),close=useRef(onClose);close.current=onClose;
   useEffect(()=>{

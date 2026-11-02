@@ -1,8 +1,9 @@
+import {initializeSystemDefaults as seedSystemDefaults} from './system-defaults.mjs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { openTrialDatabase, withLock } from './database.mjs';
 
-export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false}={}) {
+export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false,initializeSystemDefaults=true}={}) {
   return withLock(pool, 'schema:' + name, async connection => {
     const [guards]=await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'access_restore_guard_%'",[name]);
     if(guards.length&&!allowRestoreGuard)throw Error('Interrupted restore: security review barrier not finalized');
@@ -15,7 +16,8 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const [offline]=await connection.query("SELECT state FROM trial_schema_versions WHERE version=0");
     if(offline[0]?.state==='offline_copy'&&!allowOfflineCopy)throw Error('Offline migration copy cannot start application or worker');
     const [versions] = await connection.query('SELECT * FROM trial_schema_versions WHERE version=1');
-    if (versions[0]?.state === 'ready') return applyContentMigration(connection);
+    const finish=async()=>{const result=await applyContentMigration(connection);if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);return result;};
+    if (versions[0]?.state === 'ready') return finish();
     if (versions.length) throw Error('Incomplete schema migration: inspect the trial database before retrying');
     const [tables] = await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name<>'trial_schema_versions'", [name]);
     if (tables.length) throw Error('Initial migration requires an empty trial database');
@@ -23,7 +25,7 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const statements = (await readFile(new URL('./schema.sql', import.meta.url), 'utf8')).split(';').map(s => s.trim()).filter(Boolean);
     for (const statement of statements) await connection.query(statement.replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
     await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=1");
-    return applyContentMigration(connection);
+    return finish();
   });
 }
 
@@ -149,12 +151,12 @@ async function removePersonalReading(c){
 
 async function addAiExtraction(c){
  const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=12');
- if(v[0]?.state==='ready')return {version:12,state:'ready',alreadyApplied:true};
+ if(v[0]?.state==='ready')return addPaymentLedger(c);
  if(v.length)throw Error('Incomplete AI extraction migration');
  await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(12,'applying')");
  await c.query("CREATE TABLE crm_ai_extractions(id CHAR(36) PRIMARY KEY,lead_id VARCHAR(191) NOT NULL,source_type VARCHAR(32) NOT NULL,source_id VARCHAR(191) NOT NULL,source_revision VARCHAR(80) NOT NULL,input_hash CHAR(64) NOT NULL,contract_version VARCHAR(40) NOT NULL,input JSON NOT NULL,status VARCHAR(16) NOT NULL,output JSON,model VARCHAR(100),error_code VARCHAR(80),attempts INT NOT NULL DEFAULT 0,lease_until DATETIME(6),created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),completed_at DATETIME(6),UNIQUE extraction_source(source_type,source_id,source_revision,contract_version),INDEX extraction_ready(status,lease_until),INDEX extraction_lead(lead_id,created_at),FOREIGN KEY(lead_id) REFERENCES portal_leads(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
  await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=12");
- return {version:12,state:'ready'};
+ return addPaymentLedger(c);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -163,4 +165,35 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const pool = await openTrialDatabase(process.env);
   try { console.log(await migrate(pool, new URL(process.env.MYSQL_TRIAL_URL).pathname.slice(1))); }
   finally { await pool.end(); }
+}
+
+async function addPaymentLedger(c){
+ const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=13');
+ if(v[0]?.state==='ready')return addCourseCatalog(c);
+ if(v.length)throw Error('Incomplete payment ledger migration');
+ await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(13,'applying')");
+ const statements=(await readFile(new URL('./schema-v13.sql',import.meta.url),'utf8')).split(';').map(s=>s.trim()).filter(Boolean);
+ for(const sql of statements)await c.query(sql.replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=13");
+ return addCourseCatalog(c);
+}
+
+async function addCourseCatalog(c){
+ const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=14');
+ if(v[0]?.state==='ready')return addPaymentImages(c);
+ if(v.length)throw Error('Incomplete course catalog migration');
+ await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(14,'applying')");
+ await c.query((await readFile(new URL('./schema-v14.sql',import.meta.url),'utf8')).trim().replace(/;$/,'').replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=14");
+ return addPaymentImages(c);
+}
+
+async function addPaymentImages(c){
+ const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=15');
+ if(v[0]?.state==='ready')return {version:15,state:'ready',alreadyApplied:true};
+ if(v.length)throw Error('Incomplete payment images migration');
+ await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(15,'applying')");
+ await c.query((await readFile(new URL('./schema-v15.sql',import.meta.url),'utf8')).trim().replace(/;$/,'').replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=15");
+ return {version:15,state:'ready'};
 }

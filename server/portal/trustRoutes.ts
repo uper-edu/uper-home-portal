@@ -1,3 +1,5 @@
+import {enrollCourse} from './courseCatalog.ts';
+import {randomUUID} from 'node:crypto';
 import {restoreMistakenFulfilment} from './agreementRestore.ts';
 import {attachIdentityContactHolds,activateIdentityLead,mergeIdentityLead,lockIdentityRegistry} from './identityConsolidation.ts';
 import {salesProgressContext,validateSalesProgress} from './salesProgress.ts';
@@ -207,11 +209,14 @@ export function mountTrustRoutes(
   app.post('/api/crm/leads/:id/stage',wrap(async(req:any,res:any)=>{
     const {l,e}=await leadAccess(req,'crm.write');const {tx}=await import('./store.ts');
     res.json(await tx(async(c:any)=>{
+      await lockIdentityRegistry(c);
       const current=await lockLead(c,l.id,(p:any)=>requestAllowed(e,p,req));
       return operation(c,e.id,req.body,{leadId:l.id,kind:'stage'},async()=>{
         const decision=await validateSalesProgress(c,l.id,current,req.body);
         if(req.body.newStage===current.currentStage)invalid('阶段没有变化，请勿重复保存');
-        await fact(c,l.id,'stage.changed',e.id,decision);
+        const stageFactId=randomUUID();
+        if(req.body.newStage==='progress:enrolled')Object.assign(decision,await enrollCourse(c,l.id,e.id,req.body.enrollment,{reason:decision.reason,basis:decision.basis},stageFactId));
+        await fact(c,l.id,'stage.changed',e.id,decision,stageFactId);
         const lead={...current,currentStage:req.body.newStage,stageRevision:(current.stageRevision||0)+1,stageUpdatedAt:decision.recordedAt,stageEffectiveAt:decision.effectiveAt,stagePolicyVersion:2};
         await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[l.id,lead]);
         await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.stage',:p2)",[e.id,{leadId:l.id,...decision}]);

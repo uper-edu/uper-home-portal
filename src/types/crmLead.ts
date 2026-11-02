@@ -196,6 +196,7 @@ export interface CrmLeadRecord {
   outcome?: OutcomeType;
   enrolledClass?: string;
   revenue?: number;
+  verifiedPayments?: {received:number;refunded:number;net:number;sources?: Array<{sourceLeadId:string;received:number;refunded:number;net:number}>};
 
   // ⑨ 历史沟通记录
   followUpLogs: FollowUpLog[];

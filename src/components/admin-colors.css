@@ -1,6 +1,6 @@
 /* Admin semantic pairs. Marketing themes must not redefine these business meanings. */
 :root,[data-theme=light]{
- --admin-text:#17263d;--admin-muted:#52647c;--admin-surface:#ffffff;
+ --admin-border:#dce4ed;--admin-text:#17263d;--admin-muted:#52647c;--admin-surface:#ffffff;
  --admin-action:#087f77;--admin-action-fill:#087f77;--admin-on-action:#ffffff;--admin-selected:#edf9f6;--admin-focus:#087f77;
  --admin-success:#15803d;--admin-success-bg:#f0fdf4;--admin-success-border:#15803d;
  --admin-info:#1d4f91;--admin-info-bg:#eff6ff;--admin-info-border:#1d4f91;
@@ -10,7 +10,7 @@
  --admin-registration:#087568;--admin-quote:#164e63;--admin-quote-bg:#ecfeff;
 }
 [data-theme=dark]{
- --admin-text:#e2e8f0;--admin-muted:#a3b3c7;--admin-surface:#0f1b2d;
+ --admin-border:#334155;--admin-text:#e2e8f0;--admin-muted:#a3b3c7;--admin-surface:#0f1b2d;
  --admin-action:#64dbcc;--admin-action-fill:#64dbcc;--admin-on-action:#092d29;--admin-selected:#103d3a;--admin-focus:#64dbcc;
  --admin-success:#86efac;--admin-success-bg:#173528;--admin-success-border:#86efac;
  --admin-info:#93c5fd;--admin-info-bg:#172d49;--admin-info-border:#93c5fd;

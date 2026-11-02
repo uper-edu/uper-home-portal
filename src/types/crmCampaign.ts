@@ -75,6 +75,7 @@ export interface CampaignClosedLoopStats {
 }
 
 export interface CrmCampaignRecord {
+  presetKey?: string;
   promotionLinks?: CampaignPromotionLink[];
   promotionModel?: "multiple";
   systemManaged?: boolean;
@@ -153,6 +154,7 @@ export const CAMPAIGN_STATUS_OPTIONS: Array<{
 
 /** Immutable configuration for one distribution entry; not proof of actual click origin. */
 export interface CampaignPromotionLink {
+ landingPath?: '/chat' | '/link';
  id: string;
  name: string;
  source: string;

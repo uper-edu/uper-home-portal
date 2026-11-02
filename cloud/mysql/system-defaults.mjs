@@ -1,0 +1,29 @@
+import defaults from './system-defaults.json' with {type:'json'};
+import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
+/** Runs inside the caller's schema lock. Insert missing presets, never reset counters or custom roles. */
+export async function initializeSystemDefaults(c){
+ const at=new Date().toISOString(),records=JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
+ await c.beginTransaction();
+ try{
+  for(const record of records){
+   const [aliases]=await c.execute("SELECT campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)=? AND status='linked'",[record.code]);
+   if(aliases.some(a=>a.campaign_id!==record.id))throw Error('System campaign alias conflict: '+record.id);
+   await c.execute('INSERT INTO trial_campaigns(id,code,config) VALUES(?,?,?) ON DUPLICATE KEY UPDATE id=id',[record.id,record.code,JSON.stringify(record)]);
+   const [rows]=await c.execute('SELECT id,code,config FROM trial_campaigns WHERE id=? OR code=?',[record.id,record.code]);
+   const saved=rows[0],config=typeof saved?.config==='string'?JSON.parse(saved.config):saved?.config;
+   if(rows.length!==1||saved.id!==record.id||saved.code!==record.code||record.systemManaged&&!config?.systemManaged||record.presetKey&&config?.presetKey!==record.presetKey)throw Error('System campaign reserved identity conflict: '+record.id);
+  }
+  await c.execute('INSERT INTO access_roles(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',['finance',JSON.stringify(defaults.finance)]);
+  for(const course of courseBook.courses){
+   const id='hsk-standard-'+course.id.replace(/^HSK /,'').toLowerCase();
+   const [existing]=await c.execute("SELECT id FROM crm_courses WHERE id=? OR JSON_UNQUOTE(JSON_EXTRACT(value,'$.name'))=?",[id,course.id]);
+   if(existing.some(r=>r.id===id))continue;
+   if(existing.length>1)throw Error('Ambiguous existing standard course: '+course.id);
+   if(existing.length)continue; // Older manually seeded IDs retain pricing/history and existing enrollment references.
+   const config={name:course.id,sessions:course.sessions,price:course.total,active:true,maxDiscountBps:0,maxDiscountAmount:null};
+   const value={...config,presetKey:'hsk_standard_v1',updatedAt:at,history:[{id:'system-initialize-'+id,actor:'system',at,before:null,after:config}]};
+   await c.execute('INSERT INTO crm_courses(id,revision,value) VALUES(?,1,?)',[id,JSON.stringify(value)]);
+  }
+  await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:courseBook.courses.length};
+ }catch(e){await c.rollback();throw e;}
+}

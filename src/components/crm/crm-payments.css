@@ -1,0 +1,62 @@
+.crm-payments .crm-editor-scroll{display:flex;flex-direction:column;gap:var(--admin-form-field-gap,12px);font-size:14px}
+.crm-payments .admin-field{margin:0;display:flex;flex-direction:column;gap:8px}
+.crm-payments input,.crm-payments textarea{width:100%;min-height:40px;border:1px solid var(--dw-border,var(--admin-muted));border-radius:10px;padding:8px 12px;background:var(--admin-surface);color:var(--admin-text)}
+.crm-payments textarea{min-height:88px;white-space:pre-wrap}
+.crm-payment-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin:0}
+.crm-payment-summary dt{font-size:12px;color:var(--admin-muted)}
+.crm-payment-summary dd{margin:4px 0 0}
+.crm-payment-entry{border-top:1px solid var(--dw-border,var(--admin-muted));padding-top:12px;margin-top:12px;overflow-wrap:anywhere}
+.crm-payment-entry header,.crm-payment-entry-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.crm-payment-entry p{margin:4px 0;white-space:pre-wrap}
+.crm-payment-entry [data-tone=success]{color:var(--admin-success)}
+.crm-payment-entry [data-tone=warning]{color:var(--admin-warning)}
+.crm-payment-entry-actions{justify-content:flex-end;margin-top:8px}
+.crm-payment-entry summary{cursor:pointer;min-height:40px;display:flex;align-items:center}
+.crm-payments :is(input,textarea,summary):focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+@media(max-width:600px){.crm-payment-summary{grid-template-columns:1fr}}
+
+.crm-payments .crm-editor-scroll>p{margin:0;line-height:1.6}
+
+.crm-payment-images{display:grid;gap:var(--admin-form-help-gap,4px);min-width:0}
+.crm-payment-images-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.crm-payment-images-heading .crm-work-button{display:inline-flex;align-items:center;gap:6px;min-height:40px}
+.crm-payment-images .crm-work-muted{margin:0;font-size:13px}
+.crm-payment-image-error{margin:0;color:var(--admin-danger);font-size:14px}
+.crm-payment-image-list{list-style:none;display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 0;padding:0}
+.crm-payment-image-list li{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;border:1px solid var(--admin-border);border-radius:10px;padding:8px}
+.crm-payment-image-list img{width:64px;height:56px;object-fit:contain;border-radius:4px}
+.crm-payment-image-list span{font-size:13px;overflow-wrap:anywhere;max-width:160px}
+.crm-payment-image-list a{display:flex;align-items:center;gap:8px;color:var(--admin-action)}
+.crm-payment-image-list .crm-work-button{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
+.crm-payment-image-list :is(a,button):focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+
+.crm-payment-course-meta{font-size:13px;font-weight:400;color:var(--admin-muted)}
+.crm-payment-purchase-meta{display:grid;gap:4px}.crm-payment-purchase-meta p{margin:0;font-size:13px;line-height:1.6;color:var(--admin-muted)}
+.crm-payment-project-detail .crm-payment-summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+.crm-payment-records-title{font-size:14px;font-weight:600;margin:0;line-height:1.6}
+.crm-payment-project-detail .crm-payment-entry{margin-top:0}
+.crm-payment-basis summary{cursor:pointer;font-size:13px;min-height:40px;display:flex;align-items:center}
+@media(max-width:600px){.crm-payment-project-detail .crm-payment-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Payment state is shared by the finance list and enrollment detail. */
+.crm-payment-status{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:13px;font-weight:500;line-height:1.5;padding:2px 8px;border:1px solid var(--admin-border);border-radius:6px;color:var(--admin-muted);background:var(--admin-surface);white-space:nowrap}
+.crm-payment-status[data-tone=success]{color:var(--admin-success);background:var(--admin-success-bg);border-color:var(--admin-success-border)}
+.crm-payment-status[data-tone=info]{color:var(--admin-info);background:var(--admin-info-bg);border-color:var(--admin-info-border)}
+.crm-payment-status[data-tone=warning]{color:var(--admin-warning);background:var(--admin-warning-bg);border-color:var(--admin-warning-border)}
+.crm-payment-balance{font-weight:600}.crm-payment-balance[data-tone=info]{color:var(--admin-info)}.crm-payment-balance[data-tone=success]{color:var(--admin-success)}.crm-payment-balance[data-tone=warning]{color:var(--admin-warning)}
+.crm-payment-project-detail [data-admin-section-title]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.crm-payment-project-detail .admin-form-section-body{gap:8px}
+.crm-payment-project-detail .admin-form-section-heading{margin-bottom:8px}
+.crm-payment-summary-notes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.crm-payment-summary-notes p{margin:0;width:100%;font-size:13px}
+.crm-payment-record-tools{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}
+.crm-payment-evidence{flex:1;min-width:0}.crm-payment-evidence>div{padding:0 0 8px}
+.crm-payment-entry .crm-payment-record-tools .crm-payment-more{flex:none}
+.crm-payment-entry .crm-payment-record-tools summary{font-size:13px;min-height:40px;padding-top:0;padding-bottom:0}
+.crm-payment-more{position:relative;font-size:13px}.crm-payment-more>summary{display:flex;align-items:center;min-height:40px;list-style:none;cursor:pointer;white-space:nowrap}
+.crm-payment-more>summary::-webkit-details-marker{display:none}.crm-payment-more>summary[aria-disabled=true]{cursor:default;opacity:.6}
+.crm-payment-more>div{position:absolute;right:0;top:calc(100% + 4px);z-index:10;min-width:220px;max-width:min(320px,80vw);padding:8px;border:1px solid var(--admin-border);border-radius:10px;background:var(--admin-surface);box-shadow:0 4px 12px #0002}
+.crm-payment-more button{display:block;min-height:40px;width:100%;text-align:left;padding:8px;font-size:14px}.crm-payment-more p{margin:4px 8px;font-size:13px}
+.crm-payment-more :is(summary,button):focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+.crm-payment-project-detail .crm-payment-entry{border-top-color:var(--admin-border);padding-top:8px}
+.crm-payment-record-tools .crm-payment-more>summary{border-color:transparent;background:transparent;color:var(--admin-muted);padding-inline:8px}
+.crm-payment-purchase-meta strong{font-weight:500;color:var(--admin-text)}

@@ -1,5 +1,5 @@
 import {adminFieldName,useAdminField} from '../AdminForm';
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { crmId } from "../../utils/crmIndonesian";
 import type { CrmLanguage } from "../../utils/crmLanguage";
@@ -8,6 +8,7 @@ export interface CrmChoice {
   label: string;
   description?: string;
   disabled?: boolean;
+  group?: string;
 }
 /** Reuses the CRM filter trigger, popover, option and focus styles for editing. */
 export function CrmSingleSelect({
@@ -244,7 +245,9 @@ export function CrmSingleSelect({
                 aria-multiselectable={multiple || undefined}
                 className="crm-filter-options"
               >
-                {visible.map((option) => (
+                {visible.map((option,index) => (
+                 <Fragment key={option.value}>
+                  {option.group&&option.group!==visible[index-1]?.group&&<div className="crm-choice-group" role="presentation">{option.group}</div>}
                   <button
                     type="button"
                     role="option"
@@ -285,6 +288,7 @@ export function CrmSingleSelect({
                     )}
                     <span className={option.description?'crm-choice-detail':undefined}>{option.description?<><span className="crm-choice-title">{option.label}</span><span className="crm-choice-description">{option.description}</span></>:option.label}</span>
                   </button>
+                 </Fragment>
                 ))}
               </div>
               {multiple && (

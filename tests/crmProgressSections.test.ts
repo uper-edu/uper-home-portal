@@ -42,7 +42,7 @@ test('clearing a section removes only its unsaved command and retains saved agre
 test('enrollment confirmation remains conditional; no-stage permission removes the entire stage group',()=>{
   const d={...initialProgressRecord(lead),summary:'TEST',stageUpdate:{enabled:true,stage:'progress:enrolled',enrollmentConfirmed:false}};
   assert.equal(progressSectionState(d,lead,'zh','America/Vancouver').incomplete.stage,true);assert.match(render(d,{stage:false}),/待补全/);
-  assert.match(render(d,{stage:true}),/确认正式课程报名已成立/);assert.doesNotMatch(render(undefined,undefined,false),/class="crm-progress-section" aria-label="销售阶段"/);
+  assert.match(render(d,{stage:true}),/课程与应收/);assert.doesNotMatch(render(undefined,undefined,false),/class="crm-progress-section" aria-label="销售阶段"/);
 });
 test('three-language sections share the same shell, explicit clear controls and summaries',()=>{
   const d={...initialProgressRecord(lead),summary:'TEST',contactState:'active'};

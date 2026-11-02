@@ -1,0 +1,18 @@
+.crm-course-catalog{font-size:14px;display:flex;flex-direction:column;gap:16px;color:var(--admin-text)}
+.crm-course-table{overflow-x:auto}.crm-course-table table{width:100%;border-collapse:collapse}.crm-course-table :is(th,td){text-align:left;padding:12px;vertical-align:top;border-bottom:1px solid var(--dw-border,var(--admin-muted))}.crm-course-table th{font-weight:600;white-space:nowrap}.crm-course-table td p{margin:4px 0 0;font-size:12px;color:var(--admin-muted)}
+.crm-course-editor .crm-editor-scroll,.crm-enrollment-fields{display:flex;flex-direction:column;gap:16px;font-size:14px}.crm-course-editor .admin-field,.crm-enrollment-fields .admin-field{display:flex;flex-direction:column;gap:8px;margin:0}.crm-course-editor .admin-field--choice,.crm-enrollment-fields .admin-field--choice{flex-direction:row;align-items:flex-start;min-height:40px;gap:8px}
+.crm-course-editor input:not([type=checkbox]),.crm-enrollment-fields input:not([type=checkbox]){min-height:40px;width:100%;border:1px solid var(--dw-border,var(--admin-muted));border-radius:10px;padding:8px 12px;background:var(--admin-surface);color:var(--admin-text)}
+.crm-course-editor :focus-visible,.crm-enrollment-fields :focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+.crm-enrollment-fields{gap:12px}
+.crm-enrollment-field-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.crm-enrollment-field-heading>label{font-size:14px;font-weight:500;line-height:1.6;margin:0}
+.crm-enrollment-refresh{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;padding:8px;flex:none}
+.crm-enrollment-discount{display:grid;gap:4px;min-width:0}
+.crm-enrollment-discount-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.crm-enrollment-discount-fields:has(>.admin-field:only-child){grid-template-columns:1fr}
+.crm-enrollment-fields .admin-field input:not([type=checkbox]){height:40px;padding:8px 12px;line-height:20px}
+.crm-enrollment-fields .crm-filter-dimension-button{min-height:40px;font-size:14px;line-height:20px}
+.crm-enrollment-discount .crm-work-muted{margin:0;font-size:13px;line-height:1.6}
+.crm-enrollment-fields .crm-enrollment-confirmation{align-items:center;font-size:14px;line-height:1.6}
+[data-admin-form] .crm-enrollment-fields .crm-enrollment-confirmation input[type=checkbox]{flex:none;align-self:center;margin:0}
+@media(max-width:600px){.crm-enrollment-discount-fields{grid-template-columns:1fr}}

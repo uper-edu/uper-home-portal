@@ -483,3 +483,6 @@
 .crm-filter-area .crm-choice-description{font-size:13px;line-height:1.6;color:var(--cf-muted);font-weight:400}
 .crm-detail-choice .crm-filter-dimension-button:has(.crm-choice-detail){height:auto;min-height:var(--cf-control-height);align-items:center;padding-block:10px}
 .crm-detail-choice-popup .crm-filter-option:has(.crm-choice-detail){align-items:flex-start;height:auto}
+
+/* Optional semantic headings do not enter the option keyboard sequence. */
+.crm-filter-area .crm-choice-group{padding:8px 12px 4px;font-size:12px;line-height:1.5;font-weight:600;color:var(--cf-muted)}
