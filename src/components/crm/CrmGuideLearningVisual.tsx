@@ -1,3 +1,4 @@
+import {followupReadingParagraphs} from '../../utils/crmDocumentSearch';
 import {CrmProfileRulesExample} from './CrmProfileRulesExample';
 import {CrmSimpleGuideExamples} from './CrmSimpleGuideExamples';
 import { CrmPanorama } from "./CrmPanorama";
@@ -108,19 +109,20 @@ export function LessonOpening({
           {guideChapterScopes[chapterKey][col]}
         </p>
       )}
-      <p className="crm-learning-subtitle">{s.title[col]}</p>
+
+      {["tasks-sla","visual-status"].includes(chapterKey)&&<p className="crm-learning-subtitle">{s.title[col]}</p>}
       <p className="crm-learning-answer">{s.answer[col]}</p>
       {chapterKey === "tasks-sla" ? (
         <CrmSimpleGuideExamples col={col} />
       ) : chapterKey === "visual-status" ? (
         <StatusLegend col={col} />
       ) : (
-        <LessonFigure
+        <details className="crm-doc-learning-detail"><summary>{t("Diagram and interactive explanation","Diagram dan penjelasan interaktif","图解与交互说明")}</summary><LessonFigure
           key={chapterKey}
           chapterKey={chapterKey}
           lesson={s}
           col={col}
-        />
+        /></details>
       )}
       {s.value[col] !== s.caption[col] && (
         <div className="crm-learning-value">
@@ -129,7 +131,7 @@ export function LessonOpening({
               ? t("Check the result", "Periksa hasil", "怎样判断做对了")
               : t("Why this matters", "Mengapa ini berguna", "它解决什么问题")}
           </h4>
-          <p>{s.value[col]}</p>
+          {(chapterKey==='followup'?followupReadingParagraphs(s.value[col],col):[s.value[col]]).map((paragraph,i)=><p key={i}>{paragraph}</p>)}
         </div>
       )}
       {chapterKey === "entities" && <CrmProfileRulesExample col={col}/>}

@@ -68,7 +68,8 @@ for (const lang of ["en", "id", "zh"] as const)
       (html.match(/<figure[ >]/g) || []).length,
       (html.match(/<figcaption>/g) || []).length,
     );
-    assert.doesNotMatch(html, /<iframe|<script|https?:\/\//);
+    // SVG namespace URLs in the shared print icon are not external navigation or embeds.
+    assert.doesNotMatch(html, /<iframe|<script|(?:href|src)="https?:\/\//);
   });
 
 test("Merged overview keeps one navigation entry and sends architecture and numbered bookmarks to it", () => {

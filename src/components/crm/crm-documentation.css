@@ -1667,3 +1667,42 @@
 .crm-simple-guide-example details>button {min-height:44px;padding:8px 16px;border:1px solid var(--doc-accent);border-radius:10px;background:var(--doc-accent);color:var(--doc-surface);font-weight:600}
 .crm-simple-guide-example button:disabled {opacity:.5;cursor:not-allowed}
 @media(max-width:600px){.crm-simple-guide-example{padding:12px}.crm-simple-guide-example .crm-learning-flow{grid-template-columns:minmax(0,1fr)}}
+
+/* Reading-first document shell: original content and interaction components retained. */
+.crm-doc-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border:0;border-radius:0;background:transparent}
+.crm-doc-intro>p{margin:0;max-width:82ch;font-size:13px;color:var(--doc-muted)}
+.crm-doc-intro .crm-doc-links{margin:0;display:flex;gap:12px;flex-shrink:0}
+.crm-doc-layout{margin-top:0}
+.crm-doc-search-results li{padding:12px 0}
+.crm-doc-search-results li p{margin:4px 0 0;color:var(--doc-muted);font-size:13px}
+.crm-doc-search-return{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:13px}
+.crm-doc-search-return button{min-height:40px;text-decoration:underline;color:var(--admin-action,var(--doc-accent))}
+.crm-doc-content [data-doc-search-hit]{background:var(--admin-quote-bg,var(--doc-soft));outline:2px solid var(--admin-focus,var(--doc-accent));outline-offset:4px;scroll-margin-top:calc(var(--doc-header-height) + 24px)}
+.crm-doc-learning-detail{margin:12px 0}
+.crm-doc-learning-detail>summary{min-height:40px;display:list-item;align-content:center}
+.crm-doc-learning-detail>.crm-learning-figure{margin-top:8px}
+@media(max-width:1023px){.crm-doc-intro{flex-wrap:wrap}.crm-doc-intro .crm-doc-links{flex-wrap:wrap}}
+@media print{.crm-doc-search-return{display:none!important}.crm-doc-learning-detail>*{display:block!important}}
+
+/* Keep search and its related actions visible while only chapter entries scroll. */
+.crm-doc-search-tools{position:sticky;top:-16px;z-index:3;margin:-16px -16px 8px;padding:16px;background:var(--doc-surface);border-bottom:1px solid var(--doc-border)}
+.crm-doc-search-tools .crm-doc-start{position:static}
+.crm-doc-nav{scroll-padding-top:calc(var(--doc-search-height,96px) + 8px)}
+@media print{.crm-doc-search-tools{display:none!important}}
+
+.crm-doc-playbook .crm-marketing-overview-svg{display:block;width:100%;height:auto;max-width:none}
+
+/* Match shared control sizing; document prose line-height must not enlarge inputs. */
+.crm-doc-search{box-sizing:border-box;height:40px;min-height:40px;padding:8px 10px;line-height:22px;font-size:14px}
+/* Before the directory reaches its sticky position it has less viewport space. */
+@media(min-width:1024px) and (min-height:521px){
+ .crm-doc-nav{max-height:var(--doc-nav-available-height,calc(100dvh - var(--doc-header-height) - 32px));padding-bottom:24px}
+}
+
+/* The directory starts below global navigation; page identity belongs to the reading column. */
+.crm-doc-intro{display:block;padding:0;margin-bottom:16px}
+.crm-doc-intro .admin-page-toolbar{margin-bottom:8px}
+.crm-doc-intro .crm-page-identity h1{margin:0}
+.crm-doc-intro .crm-page-action{white-space:nowrap}
+@media print{.crm-doc-intro .admin-page-actions{display:none!important}}
+@media(min-width:1024px){.crm-document-main{padding-block:16px}}

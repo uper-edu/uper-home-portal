@@ -123,7 +123,6 @@ import {
   Globe,
   Settings,
   ChevronDown,
-  Printer,
   Save,
   RotateCcw,
   Undo2,
@@ -1247,9 +1246,9 @@ function CrmWorkspace({
         </>}/>
 
       {/* Main Workspace Body */}
-      <main id="crm-main" tabIndex={-1} className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5">
+      <main id="crm-main" tabIndex={-1} className={`flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5${crmModule === "docs" ? " crm-document-main" : ""}`}>
         {employee.permissions.includes("crm.assign")&&<AccessHandoverPanel actor={employee} lang={lang} isLight={isLight}/>}
-        {crmModule !== "campaigns" && !leadPanel && <div className={`admin-page-toolbar${crmModule === "leads" ? " crm-home-page-heading" : ""}`} data-theme={isLight ? "light" : "dark"}>
+        {crmModule !== "campaigns" && crmModule !== "docs" && !leadPanel && <div className={`admin-page-toolbar${crmModule === "leads" ? " crm-home-page-heading" : ""}`} data-theme={isLight ? "light" : "dark"}>
           {crmModule === "leads" ? (
             <CrmPageIdentity
               title={leadAnalysis ? adminText(lang,"Customer statistics and analysis","Statistik dan analisis pelanggan","客户统计与分析") : adminText(lang, "Customer follow-up", "Tindak lanjut pelanggan", "客户跟进")}
@@ -1278,25 +1277,7 @@ function CrmWorkspace({
               </>
             )}
 
-            {/* Contextual Actions in Docs: Print / PDF */}
-            {crmModule === "docs" && (
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className={`flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                  isLight
-                    ? "bg-white hover:bg-slate-100 text-slate-700 border-slate-200/90 shadow-2xs"
-                    : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
-                }`}
-                title={t(
-                  "Print or Export PDF Handbook",
-                  "打印或导出 PDF 知识库",
-                )}
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                <span>{t("Print / PDF", "打印/PDF")}</span>
-              </button>
-            )}</div>
+          </div>
         </div>}
         {crmModule === "campaigns" ? (
           <CrmCampaignHub

@@ -1,3 +1,4 @@
+import {overviewSectionHtml} from '../../utils/marketingOverviewSvg';
 import React from "react";
 import content from "./marketingPlaybook.json";
 import type { GuideLanguage } from "./CrmGuideContent";
@@ -77,7 +78,7 @@ export function CrmMarketingPlaybook({ lang, onChoose }: {
           className="crm-doc-section"
         >
           <h4><span className="crm-doc-playbook-number">{index + 1}.</span> {section.title[2]}</h4>
-          <div dangerouslySetInnerHTML={{ __html: section.html.replace(/<hr>\s*$/, "") }} />
+          <div dangerouslySetInnerHTML={{ __html: (index===1?overviewSectionHtml(section.html):section.html).replace(/<hr>\s*$/, "") }} />
         </section>)}
       </div>
     </section>

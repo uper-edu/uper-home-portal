@@ -1,3 +1,7 @@
+import { Printer } from "lucide-react";
+import { CrmPageAction } from "./CrmPageAction";
+import { CrmPageIdentity } from "./CrmPageIdentity";
+import {documentSearchExcerpt,locateDocumentMatch} from '../../utils/crmDocumentSearch';
 import { CrmWhatsAppGuide, whatsAppChapter, whatsAppSections, isWhatsAppChapter } from "./CrmWhatsAppGuide";
 import { CrmMarketingPlaybook, marketingPlaybookSections, marketingPlaybookTitle, isMarketingPlaybookAnchor, marketingPlaybookNavKey } from "./CrmMarketingPlaybook";
 import {containPaneKeys} from '../adminScroll';
@@ -123,6 +127,8 @@ export function CrmUserGuide({
     return "panorama";
   });
   const part = resolveGuideAnchor(selectedKey)!.part;
+  const [readingSearch,setReadingSearch]=useState(false);
+  const navigationUntil=useRef(0);
   const [query, setQuery] = useState(""),
     [searchMode, setSearchMode] = useState(false),
     [invalid, setInvalid] = useState(
@@ -162,16 +168,34 @@ export function CrmUserGuide({
         `${Math.ceil(directoryButton.current?.getBoundingClientRect().height || 0)}px`,
       );
     };
-    measure();
-    const observer = new ResizeObserver(measure);
+    const searchTools=guide.current?.querySelector('.crm-doc-search-tools');
+    const measureTools=()=>{guide.current?.style.setProperty('--doc-search-height',`${Math.ceil(searchTools?.getBoundingClientRect().height||0)}px`)};
+    measure();measureTools();
+    const observer = new ResizeObserver(()=>{measure();measureTools()});
     if (header) observer.observe(header);
     if (directoryButton.current) observer.observe(directoryButton.current);
+    if(searchTools)observer.observe(searchTools);
     window.addEventListener("resize", measure);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
   }, []);
+  useEffect(()=>{
+    const nav=directory.current;if(!nav)return;
+    const fit=()=>{
+      const stickyTop=(document.querySelector("[data-admin-header], [data-crm-header]")?.getBoundingClientRect().height || 0)+16;
+      const top=Math.max(stickyTop,nav.getBoundingClientRect().top);
+      const available=Math.max(160,Math.floor(window.innerHeight-top-16));
+      const value=available+'px';if(nav.style.getPropertyValue('--doc-nav-available-height')!==value)nav.style.setProperty('--doc-nav-available-height',value);
+    };
+    fit();const observer=new ResizeObserver(fit);
+    if(layout.current)observer.observe(layout.current);
+    if(guide.current)observer.observe(guide.current);
+    const header=document.querySelector('[data-admin-header],[data-crm-header]');if(header)observer.observe(header);
+    window.addEventListener('scroll',fit,{passive:true});window.addEventListener('resize',fit);
+    return()=>{observer.disconnect();window.removeEventListener('scroll',fit);window.removeEventListener('resize',fit)};
+  },[]);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1023px)"),
       change = () => {
@@ -195,6 +219,7 @@ export function CrmUserGuide({
         if (location.hash !== canonical)
           window.history.replaceState(window.history.state, "", canonical);
         setSelectedKey(next.key);
+        setReadingSearch(false);
         setQuery("");
         setSearchMode(false);
         setExpanded((v) => ({ ...v, [next.part]: true }));
@@ -219,16 +244,17 @@ export function CrmUserGuide({
       const node = document.getElementById("crm-guide-" + selectedKey);
       if (!pane || !layout.current) return;
       // Topic pages scroll the document; never reset or scroll a second content pane.
-      const target=searchMode?pane:node||pane;
+      const match=!searchMode&&readingSearch?locateDocumentMatch(pane,query):null;
+      const target=searchMode?pane:match||node||pane;
       const header=document.querySelector('[data-admin-header],[data-crm-header]');
       const narrow=window.matchMedia('(max-width:1023px)').matches;
       const offset=(header?.getBoundingClientRect().bottom||0)+(narrow?(directoryButton.current?.getBoundingClientRect().height||0)+24:16);
       const delta=target.getBoundingClientRect().top-offset;
       if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:'instant'});
-      (searchMode ? pane : node)?.focus({ preventScroll: true });
+      (searchMode ? pane : match||node)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(request);
-  }, [selectedKey, focusRequest, searchMode]);
+  }, [selectedKey, focusRequest, searchMode,readingSearch,query]);
   useEffect(() => {
     if (query.trim()) {
       const pane=content.current;
@@ -243,17 +269,13 @@ export function CrmUserGuide({
       const bounds = nav.getBoundingClientRect(),
         item = selected.getBoundingClientRect();
       // Move only the directory, and only as far as needed to reveal the selection.
-      if (item.top < bounds.top + 8) nav.scrollTop += item.top - bounds.top - 8;
+      const safeTop=bounds.top+(nav.querySelector('.crm-doc-search-tools')?.getBoundingClientRect().height||0)+8;
+      if (item.top < safeTop) nav.scrollTop += item.top - safeTop;
       else if (item.bottom > bounds.bottom - 8)
         nav.scrollTop += item.bottom - bounds.bottom + 8;
     };
     const frame = requestAnimationFrame(revealSelection);
-    const observer = new ResizeObserver(revealSelection);
-    observer.observe(nav);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
+    return () => cancelAnimationFrame(frame);
   }, [selectedKey, expanded, lang, query, isNarrow, navOpen]);
   useEffect(() => {
     if (!navOpen || !isNarrow) return;
@@ -343,11 +365,13 @@ export function CrmUserGuide({
   for (const row of fieldMatches)
     (fieldsByObject[`${row.layer}:${row.object}`] ??= []).push(row);
   const link = (key: string) => "#crm-guide-" + key;
-  const choose = (key: string) => {
+  const choose = (key: string, fromSearch=false) => {
+    navigationUntil.current=performance.now()+400;
     const next = resolveGuideAnchor(key);
     if (!next) return;
     setSelectedKey(next.key);
-    setQuery("");
+    if(!fromSearch)setQuery("");
+    setReadingSearch(fromSearch);
     setInvalid(false);
     setSearchMode(false);
     setExpanded((v) => ({ ...v, [next.part]: true }));
@@ -358,6 +382,18 @@ export function CrmUserGuide({
     } catch {}
     window.history.pushState(window.history.state, "", link(next.key));
   };
+  useEffect(()=>{
+    if(searchMode||readingSearch||!['whatsapp','marketing'].includes(part))return;
+    let frame=0;
+    const track=()=>{if(frame)return;frame=requestAnimationFrame(()=>{frame=0;if(performance.now()<navigationUntil.current)return;
+      const keys=part==='whatsapp'?whatsAppSections.map(s=>s.key):marketingPlaybookSections.map(s=>s.key);
+      const edge=(document.querySelector('[data-admin-header],[data-crm-header]')?.getBoundingClientRect().bottom||0)+36;
+      const visible=keys.map(key=>({key,node:document.getElementById('crm-guide-'+key)})).filter(v=>v.node);
+      const above=visible.filter(v=>v.node!.getBoundingClientRect().top<=edge);
+      const current=above.at(-1);if(current&&current.key!==selectedKey){setSelectedKey(current.key);window.history.replaceState(window.history.state,'','#crm-guide-'+current.key);}
+    });};
+    window.addEventListener('scroll',track,{passive:true});return()=>{window.removeEventListener('scroll',track);cancelAnimationFrame(frame)};
+  },[part,selectedKey,searchMode,readingSearch]);
   const fullNavigation = [
       ...systemChapters.map((s) => s.key),
       ...operationGroups.flat(),
@@ -384,39 +420,6 @@ export function CrmUserGuide({
       className="crm-docs"
       data-theme={isLight ? "light" : "dark"}
     >
-      <header className="crm-doc-card crm-doc-intro">
-        <h2>{t("CRM documentation", "Dokumentasi CRM", "CRM 系统文档")}</h2>
-        <p>
-          {t(
-            "Customer acquisition, sales follow-up and operations: system explanation, operating guide, WhatsApp integration, and marketing & CRM feedback.",
-            "Akuisisi pelanggan, tindak lanjut penjualan, dan operasional: penjelasan sistem, panduan operasi, integrasi WhatsApp, serta pemasaran dan umpan balik CRM.",
-            "聚焦客户获客、销售跟进与运营，分为系统说明、操作指南、WhatsApp接入方案和营销获客与CRM转化反馈体系。",
-          )}
-        </p>
-        {onNavigateTab && (
-          <div className="crm-doc-links">
-            <button onClick={() => onNavigateTab("leads")}>
-              {t(
-                "Open customer worklist",
-                "Buka daftar pelanggan",
-                "打开客户工作列表",
-              )}
-            </button>
-            <button onClick={() => onNavigateTab?.("campaigns")}>
-              {t("Open campaigns", "Buka kampanye", "打开营销活动")}
-            </button>
-          </div>
-        )}
-      </header>
-      {invalid && (
-        <p role="status">
-          {t(
-            "Chapter link not found. Choose a chapter from the directory.",
-            "Tautan bab tidak ditemukan. Pilih bab dari daftar isi.",
-            "章节链接不存在，请从目录选择章节。",
-          )}
-        </p>
-      )}
       <button
         className="crm-doc-mobile-toggle"
         ref={directoryButton}
@@ -438,6 +441,7 @@ export function CrmUserGuide({
           hidden={isNarrow && !navOpen}
           aria-label={t("Guide chapters", "Bab panduan", "文档章节")}
         >
+          <div className="crm-doc-search-tools">
           {part === "marketing" && <a
             className="crm-doc-start"
             href={link("marketing-playbook")}
@@ -460,17 +464,20 @@ export function CrmUserGuide({
               type="search"
               value={query}
               onChange={(e) => {
+                setReadingSearch(false);
                 setQuery(e.target.value);
                 setSearchMode(!!e.target.value.trim());
               }}
             />
           </label>
+          {readingSearch&&<div className="crm-doc-search-return"><span>{t("Search","Pencarian","搜索")}：{query}</span><button type="button" onClick={()=>{setReadingSearch(false);setSearchMode(true);setFocusRequest(v=>v+1);}}>{t("Back to results","Kembali ke hasil","返回搜索结果")}</button></div>}
           {terms && (
             <button
               className="crm-doc-clear"
               onClick={() => {
                 setQuery("");
                 setSearchMode(false);
+                setReadingSearch(false);
               }}
             >
               {t("Clear search", "Hapus pencarian", "清除搜索")}
@@ -491,25 +498,26 @@ export function CrmUserGuide({
               )}
             </button>
           )}
+          </div>
           {(["system", "operations", "whatsapp", "marketing"] as const).map((root) => (
             <section key={root} className="crm-doc-nav-group">
               <button
                 type="button"
-                aria-expanded={!!terms || expanded[root]}
+                aria-expanded={terms ? navResults.some(s=>s.part===root) : expanded[root]}
                 aria-controls={"crm-doc-nav-" + root}
                 onClick={() => setExpanded((v) => ({ ...v, [root]: !v[root] }))}
               >
                 <span aria-hidden="true">
-                  {terms || expanded[root] ? "▾" : "▸"}
+                  {(terms ? navResults.some(s=>s.part===root) : expanded[root]) ? "▾" : "▸"}
                 </span>
                 {partLabel(root)}
               </button>
-              <ol id={"crm-doc-nav-" + root} hidden={!terms && !expanded[root]}>
+              <ol id={"crm-doc-nav-" + root} hidden={terms ? !navResults.some(s=>s.part===root) : !expanded[root]}>
                 {(root === "system"
                   ? navSystem.map((s) => ({ ...s, group: [s.key] }))
                   : root === "operations" ? navOperations : (root === "whatsapp" ? whatsAppSections : marketingPlaybookSections).map(s => ({ ...s, group: [s.key] }))
                 ).map((s, index) => (
-                  <li key={s.key}>
+                  <li key={s.key} hidden={!!terms&&!resultKeys.has(s.key)&&!s.group.some(key=>resultKeys.has(key))}>
                     <a
                       href={link(s.key)}
                       aria-label={s.title[col]}
@@ -564,6 +572,35 @@ export function CrmUserGuide({
           tabIndex={0}
           aria-label={t("Chapter content", "Isi bab", "章节正文")}
         >
+          <header className="crm-doc-intro">
+            <div className="admin-page-toolbar" data-theme={isLight ? "light" : "dark"}>
+              <CrmPageIdentity title={t("CRM documentation", "Dokumentasi CRM", "CRM 系统文档")} />
+              <div className="admin-page-actions">
+                <CrmPageAction
+                  icon={Printer}
+                  label={t("Print / PDF", "Cetak / PDF", "打印/PDF")}
+                  title={t("Print or export PDF handbook", "Cetak atau ekspor panduan PDF", "打印或导出 PDF 知识库")}
+                  onClick={() => window.print()}
+                />
+              </div>
+            </div>
+            <p>
+              {t(
+                "Customer acquisition, sales follow-up and operations: system explanation, operating guide, WhatsApp integration, and marketing & CRM feedback.",
+                "Akuisisi pelanggan, tindak lanjut penjualan, dan operasional: penjelasan sistem, panduan operasi, integrasi WhatsApp, serta pemasaran dan umpan balik CRM.",
+                "聚焦客户获客、销售跟进与运营，分为系统说明、操作指南、WhatsApp接入方案和营销获客与CRM转化反馈体系。",
+              )}
+            </p>
+          </header>
+          {invalid && (
+            <p role="status">
+              {t(
+                "Chapter link not found. Choose a chapter from the directory.",
+                "Tautan bab tidak ditemukan. Pilih bab dari daftar isi.",
+                "章节链接不存在，请从目录选择章节。",
+              )}
+            </p>
+          )}
           {searchMode ? (
             <section className="crm-doc-card">
               <h3>
@@ -589,17 +626,19 @@ export function CrmUserGuide({
                       href={link(s.key)}
                       onClick={(e) => {
                         e.preventDefault();
-                        choose(s.key);
+                        choose(s.key,true);
                       }}
                     >
                       {s.title[col]}
                     </a>
+                    <p>{documentSearchExcerpt(localizedText(s,col)+ (s.key==="data-implementation"?localizedText(fieldMatches.map(r=>[r.key,dictionaryMeaning(r)[col]]),col):""),query)}</p>
                   </li>
                 ))}
               </ul>
             </section>
           ) : (
             <>
+
               <p className="crm-doc-breadcrumb">
                 {partLabel(part)}{part !== "marketing" && <> <span aria-hidden="true">›</span> {chapterTitle}</>}
               </p>
