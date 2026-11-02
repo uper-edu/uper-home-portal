@@ -208,10 +208,8 @@ export default function CrmAccess({
             }
           }}
         >
-<AdminRequiredNote lang={lang}/>
-
           <div className="crm-sign-in-lock"><LockKeyhole size={22} aria-hidden="true" /></div>
-          <h1>{isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</h1>
+          <h1><span>{isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</span><AdminRequiredNote lang={lang} inline/></h1>
           <p className="crm-sign-in-subtitle">{t("Use your staff account", "请使用员工账号登录")}</p>
           <AdminField className="crm-sign-in-label">
             {st("Login ID or email", "ID login atau email", "登录ID或邮箱")}
@@ -312,11 +310,9 @@ export default function CrmAccess({
               }
             }}
           >
-<AdminRequiredNote lang={lang}/>
-
             <AccessOperationStatus actor={employee.id} lang={lang} onResolved={()=>setError('')}/>
             <h2 className="font-bold">
-              {t("Change your password", "修改自己的密码")}
+              <span>{t("Change your password", "修改自己的密码")}</span><AdminRequiredNote lang={lang} inline/>
             </h2>
             <AdminField className="block text-sm">
               {t("Current password", "当前密码")}

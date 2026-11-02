@@ -1,3 +1,4 @@
+import {trackEvent,trackStageReceipt} from '../../utils/analytics';
 import {CrmFormSection,CrmFormSummary} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {CrmIdentityAction} from './CrmIdentityAction';
@@ -66,6 +67,7 @@ export function CrmStageEditor({
   useEffect(() => { onDirty?.(draftDirty); }, [draftDirty]);
   const finish = (data: any) => {
     confirmedStageLead(data, lead.id, pending.current?.newStage);
+    trackStageReceipt(pending.current?.requestId,baseStage,data.lead.currentStage);
     pending.current = null;
     setUnknown(false);
     setError("");
@@ -92,6 +94,8 @@ export function CrmStageEditor({
     inFlight.current = true;
     setRetryAllowed(false);
     setBusyAction("save"); setBusy(true); onBusy?.(true); setError("");
+    trackEvent("crm_save_result",{operation:"stage",status:"attempt"});
+    let analyticsStatus="unknown";
     let failure = "stage_save_unconfirmed";
     try {
       const r = await request("/api/crm/leads/" + lead.id + "/stage", {
@@ -100,6 +104,7 @@ export function CrmStageEditor({
       });
       const d = await r.json();
       if (!r.ok) {
+        analyticsStatus=r.status===409?"conflict":r.status<500?"failed":"unknown";
         if (r.status < 500) {
           if (!String(d.error).startsWith("Request context conflict")) pending.current = null;
           failure = d.error || "stage_save_failed";
@@ -108,6 +113,7 @@ export function CrmStageEditor({
       }
       finish(d);
     } catch {
+      trackEvent("crm_save_result",{operation:"stage",status:analyticsStatus});
       if(failure==='Stage changed; refresh and review')void loadContext();
       setUnknown(Boolean(pending.current));
       if (failure === "Stage change reason required") { setReasonInvalid(true); reasonRef.current?.focus(); }

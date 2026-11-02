@@ -1,3 +1,5 @@
+import {trackEvent,trackReceipt,trackConfirmedReceipt} from '../utils/analytics';
+import {registrationAnalyticsReceipt,assessmentAnalyticsReceipt,advisorAnalyticsReceipt,registrationAdvisorAnalyticsReceipts} from '../utils/analyticsReceipts';
 import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './registrationSave';
 import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
@@ -57,6 +59,7 @@ export async function conversation(source: ChatSource) {
   return (await scopedJson(res)).conversationId as string;
 }
 export async function registerContact(profile: object,options:{queryOnly?:boolean;retryOriginal?:boolean}={}) {
+  const began=Date.now();
   const expected = visitorScope();
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
@@ -90,6 +93,9 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   }else throw error;
   }
   assertVisitorScope(responseScope);
+  const analyticsReceipt=registrationAnalyticsReceipt(data,String(location.pathname||'').startsWith('/chat')||String(location.pathname||'').startsWith('/consult')?'standalone_chat':'homepage_widget');
+  if(analyticsReceipt)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,response_time_ms:Date.now()-began}});
+  for(const receipt of registrationAdvisorAnalyticsReceipts(data))trackConfirmedReceipt(receipt);
   saveStudentContext({leadProfile:data.lead});
   return data;
 }
@@ -116,7 +122,13 @@ export async function contactInquiry(payload: Record<string,string>, language: s
   const data=await scopedJson(response);
   return Response.json(data,{status:response.status});
 }
-export async function chatFetch(
+const responseStarts=new WeakMap<Response,number>();
+export async function chatFetch(url:string,init:RequestInit,source:ChatSource){
+ const began=Date.now(),owner=visitorScope();trackEvent('consultation_send',{entry_point:source,status:'attempt'});
+ try{const response=await sendChatRequest(url,init,source);responseStarts.set(response,began);return response;}
+ catch(error){if(visitorScope()===owner)trackEvent('consultation_result',{entry_point:source,status:'unknown',reason:'transport',response_time_ms:Date.now()-began});throw error;}
+}
+async function sendChatRequest(
   _url: string,
   init: RequestInit,
   source: ChatSource,
@@ -250,6 +262,7 @@ export async function saveHskAttempt(
   );
   const data = await scopedJson(res);
   assertVisitorScope(expectedScope);
+  trackConfirmedReceipt(assessmentAnalyticsReceipt(data.result,attempt.attemptId));
   return data.result as import("../data/hskAssessment").HskResult;
 }
 export async function restoreHskHistory(lang: import("../data/hskAssessment").HskLanguage = "en") {
@@ -291,9 +304,12 @@ export async function finishChat(
   const owner = responseScopes.get(res) || visitorScope();
   assertVisitorScope(owner);
   const m = draft(source, messageId);
+  const began=responseStarts.get(res)||Date.now();let knownFailure=false;
   try {
     const result = await readChatResponse(res, (e) => {
       assertVisitorScope(owner);
+      if(e.saved&&m)trackReceipt("consultation_message_saved",messageId,{entry_point:source});
+      if(e.error||e.status==='failed'){knownFailure=true;trackEvent("consultation_result",{status:"failed",reason:"provider_failure",entry_point:source,response_time_ms:Date.now()-began});}
       if (e.saved && m)
         saveDraft(source, {
           ...m,
@@ -302,9 +318,12 @@ export async function finishChat(
       onProgress(e);
     });
     assertVisitorScope(owner);
+    trackConfirmedReceipt(advisorAnalyticsReceipt(result,m));
+    if(m&&result?.saved===true)trackReceipt("consultation_result",messageId,{entry_point:source,response_time_ms:Date.now()-began});
     removeDraft(source, messageId);
     return result;
   } catch (e) {
+    if(!knownFailure&&visitorScope()===owner)trackEvent("consultation_result",{status:"unknown",reason:"transport",entry_point:source,response_time_ms:Date.now()-began});
     if (m && visitorScope() === owner) {
       const latest = draft(source, messageId);
       saveDraft(source, {

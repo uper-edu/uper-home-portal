@@ -1,3 +1,4 @@
+import {trackEvent} from '../utils/analytics';
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,6 +15,7 @@ import { PageMetadata } from "../components/PageMetadata";
 import "./link-hub.css";
 import { useSearchParams } from "react-router-dom";
 import LinkHandbookPreview from "../components/LinkHandbookPreview";
+import { linkHubConsultUrl } from '../utils/instagramBioCampaign';
 
 const whatsapp = "https://wa.me/6281116612062";
 const community =
@@ -174,7 +176,7 @@ export default function LinkHub() {
       ? "id"
       : "en";
   const t = words[lang];
-  const consultUrl = `/chat?lang=${lang}`;
+  const consultUrl = linkHubConsultUrl(params, lang);
   const selectLanguage = (value: string) => {
     const next = new URLSearchParams(params);
     next.set("lang", value);
@@ -284,6 +286,7 @@ export default function LinkHub() {
             {(["whatsapp", "tiktok", "youtube"] as const).map((kind) => (
               <a
                 key={kind}
+                onClick={()=>trackEvent('link_click',{target:kind,entry_point:'linkhub'})}
                 href={
                   kind === "whatsapp"
                     ? whatsapp
@@ -308,7 +311,7 @@ export default function LinkHub() {
         </header>
         <section className="linkhub-links" aria-label={t.links}>
           <div className="linkhub-card">
-            <a className="linkhub-card-main" href={consultUrl}>
+            <a className="linkhub-card-main" href={consultUrl} onClick={()=>trackEvent('link_click',{target:'consultation',entry_point:'linkhub'})}>
               <span>{t.consult}</span>
               <small>{t.consultNote}</small>
             </a>
@@ -325,7 +328,7 @@ export default function LinkHub() {
             <button
               type="button"
               className="linkhub-card-main"
-              onClick={() => setDocumentOpen(true)}
+              onClick={() => {trackEvent('link_click',{target:'handbook',entry_point:'linkhub'});setDocumentOpen(true);}}
             >
               <span>Handbook 2026</span>
               <small>
@@ -346,6 +349,7 @@ export default function LinkHub() {
             <a
               className="linkhub-card-main"
               href={community}
+              onClick={()=>trackEvent('link_click',{target:'community',entry_point:'linkhub'})}
               target="_blank"
               rel="noopener noreferrer"
             >

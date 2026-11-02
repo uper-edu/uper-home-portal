@@ -7,4 +7,11 @@ test('required custom select inherits field semantics and reports an empty selec
 test('preflight rejects empty native and custom fields, ignores disabled and hidden fields',()=>{const control=(more:any={})=>({matches:()=>false,readOnly:false,getClientRects:()=>[{}],getAttribute:()=>null,checkValidity:()=>true,dataset:{},...more});const valid=control();const emptyCombo=control({getAttribute:()=> 'combobox',dataset:{adminHasValue:'false'}});const hidden=control({getClientRects:()=>[],checkValidity:()=>false});const disabled=control({matches:()=>true,checkValidity:()=>false});const root=(items:any[])=>({querySelectorAll:()=>items}) as any;assert.equal(firstMissingAdminField(root([valid,hidden,disabled,emptyCombo])),emptyCombo);const empty=control({checkValidity:()=>false});assert.equal(firstMissingAdminField(root([empty])),empty);assert.equal(firstMissingAdminField(root([valid,hidden,disabled])),undefined);});
 test('required note explains the asterisk and labels do not duplicate it',()=>{assert.match(render(h(AdminRequiredNote,{lang:'zh'})),/必填/);assert.doesNotMatch(render(h(AdminRequiredNote,{lang:'zh'})),/<p/);const html=render(h(AdminFieldLabel,{required:true},'字段 *'));assert.equal((html.match(/admin-required-star/g)||[]).length,1);});
 
+test('an authentication heading owns its required note, with no external portal or marker',()=>{
+ const html=render(h('h1',null,h('span',null,'CRM 登录'),h(AdminRequiredNote,{lang:'zh',inline:true})));
+ assert.match(html,/<h1><span>CRM 登录<\/span><span class="admin-required-note"/);
+ assert.doesNotMatch(html,/admin-required-note-sr|hidden=""/);
+ assert.equal((html.match(/class="admin-required-note"/g)||[]).length,1);
+});
+
 test('existing shared label is normalized once rather than appending duplicate stars',()=>{const html=render(h(AdminField,null,h(AdminFieldLabel,null,'活动名称 *'),h('input',{required:true})));assert.equal((html.match(/admin-required-star/g)||[]).length,1);});

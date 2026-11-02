@@ -481,7 +481,7 @@ export async function mountPortal(app: Express) {
       if(previous){
         if(previous.input_hash!==fingerprint)fail(409,'Registration submission conflict');
         if(previous.visitor_id!==v.id||previous.lead_id!==locked.lead_id)fail(409,'Visitor identity changed');
-        return previous.payload.lead;
+        return previous.payload;
       }
       const leadId = locked.lead_id || id();
       const existing =
@@ -601,6 +601,9 @@ export async function mountPortal(app: Express) {
           [v.id],
         )
       ).rows;
+      // Only this registration's newly linked requests become conversion receipts.
+      // Existing recorded requests are not replayed when contact details are edited.
+      const advisorRequests:any[]=[];
       for (const message of pending) {
         const action = message.metadata.followupAction as FollowupAction;
         const outcome = await ensureFollowup(
@@ -614,6 +617,9 @@ export async function mountPortal(app: Express) {
           message.request_id,
           message.metadata.language || "en",
         );
+        if(action==='handoff'&&!['recorded','review_required'].includes(message.metadata.taskOperation)
+          &&outcome.status==='awaiting_advisor'&&['recorded','review_required'].includes(outcome.taskOperation||''))
+          advisorRequests.push({leadId,messageId:message.request_id,action,status:outcome.status,taskOperation:outcome.taskOperation});
         await c.query(
           "UPDATE messages SET metadata=JSON_SET(metadata,'$.taskId',:p2,'$.taskOperation',:p3) WHERE id=:p1",
           [message.id, outcome.taskId, outcome.taskOperation || null],
@@ -661,11 +667,11 @@ export async function mountPortal(app: Express) {
       }
       if(!locked.lead_id&&!matches)profile=await assignNewLead(c,leadId,'registration')||profile;
       await fact(c,leadId,"questionnaire.submitted","visitor",{answers:b,previous:Object.fromEntries(["fullName","whatsapp","email","goal","goals","city","mode","reportedLevel"].map(k=>[k,existing[k]??null]))},questionnaireFactId);
-      await c.query("INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'registration',:p2,:p3,:p4,:p5,:p6)",[randomUUID(),receiptKey,fingerprint,v.id,leadId,{lead:publicRegistrationProfile(profile)}]);
-      return profile;
+      await c.query("INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'registration',:p2,:p3,:p4,:p5,:p6)",[randomUUID(),receiptKey,fingerprint,v.id,leadId,{lead:publicRegistrationProfile(profile),advisorRequests}]);
+      return {lead:profile,advisorRequests};
     });
     res.setHeader('Cache-Control','no-store');
-    res.json({ success: true, saved:true, submissionId, lead: result });
+    res.json({ success: true, saved:true, submissionId, ...result });
   });
   app.post(
     [

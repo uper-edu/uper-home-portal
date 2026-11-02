@@ -9,18 +9,20 @@ function textOf(node:ReactNode):string{return Children.toArray(node).map(v=>type
 function marked(text:string){return /[（(](?:必填|required|wajib)[）)]|[*＊]\s*$/i.test(text.trim());}
 function clean(node:ReactNode):ReactNode{return Children.map(node,v=>typeof v==='string'?adminFieldName(v):isValidElement(v)&&v.type===AdminFieldLabel?clean((v.props as any).children):isValidElement(v)&&typeof v.type==='string'?cloneElement(v as any,{},clean((v.props as any).children)):v);}
 export function AdminFieldLabel({children,required}: {children:ReactNode;required?:boolean}){return <span className="admin-field-label">{clean(children)}{(required??marked(textOf(children)))&&<span className="admin-required-star" aria-hidden="true"> *</span>}</span>;}
-export function AdminRequiredNote({lang='zh'}:{lang?:string}){
+export function AdminRequiredNote({lang='zh',inline=false}:{lang?:string;inline?:boolean}){
  const marker=useRef<HTMLSpanElement>(null),[title,setTitle]=useState<HTMLElement|null>(null);
  useLayoutEffect(()=>{
-  const anchor=marker.current;if(!anchor)return;
+  const anchor=marker.current;if(inline||!anchor)return;
   const dialog=anchor.closest('dialog,[role="dialog"]');
   const scope=dialog||anchor.closest('form,section,article');
   const heading=scope?.querySelector<HTMLElement>('[data-admin-form-title],h1,h2,h3,h4');
   if(heading&&!heading.contains(anchor))setTitle(heading);
- },[]);
+ },[inline]);
  const label=lang==='en'?'Required':lang==='id'?'Wajib':'必填';
  const note=<span className="admin-required-note" title={lang==='en'?'* indicates a required field':lang==='id'?'* menandai kolom wajib diisi':'* 表示必填项'}><span aria-hidden="true">*</span> {label}</span>;
- return <><span ref={marker} hidden aria-hidden="true"/>{title?createPortal(note,title):<span className="admin-required-note-sr">{label}</span>}</>;
+ // Titles that change or unmount during authentication must own their note in React.
+ // A portal into a text-only heading can be removed by React's textContent update.
+ return inline?note:<><span ref={marker} hidden aria-hidden="true"/>{title?createPortal(note,title):<span className="admin-required-note-sr">{label}</span>}</>;
 }
 function nativeField(v:any){return isValidElement(v)&&typeof v.type==='string'&&['input','select','textarea'].includes(v.type)&&!['hidden','button','submit','reset'].includes((v.props as any)?.type);}
 function fields(node:ReactNode):any[]{return Children.toArray(node).flatMap(v=>nativeField(v)?[v]:isValidElement(v)&&typeof v.type==='string'?fields((v.props as any).children):[]);}

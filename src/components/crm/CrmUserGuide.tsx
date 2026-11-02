@@ -4,6 +4,7 @@ import { CrmPageIdentity } from "./CrmPageIdentity";
 import {documentSearchExcerpt,locateDocumentMatch} from '../../utils/crmDocumentSearch';
 import { CrmWhatsAppGuide, whatsAppChapter, whatsAppSections, isWhatsAppChapter } from "./CrmWhatsAppGuide";
 import { CrmMarketingPlaybook, marketingPlaybookSections, marketingPlaybookTitle, isMarketingPlaybookAnchor, marketingPlaybookNavKey } from "./CrmMarketingPlaybook";
+import { CrmAnalyticsGuide, analyticsGuideTitle, analyticsGuideSections, isAnalyticsGuideAnchor } from "./CrmAnalyticsGuide";
 import {containPaneKeys} from '../adminScroll';
 import {
   panoramaRoles,
@@ -78,6 +79,7 @@ export function resolveGuideAnchor(hash: string) {
     : value.replace(/^crm-guide-/, "");
   if (key === "architecture") key = "panorama";
   if (key === "fields") key = "data-implementation";
+  if (isAnalyticsGuideAnchor(key)) return { part: "analytics", key };
   if (isMarketingPlaybookAnchor(key)) return { part: "marketing", key };
   if (isWhatsAppChapter(key)) return { part: "whatsapp", key };
   if (systemChapters.some((s) => s.key === key)) return { part: "system", key };
@@ -142,6 +144,7 @@ export function CrmUserGuide({
       operations: part === "operations",
       whatsapp: part === "whatsapp",
       marketing: part === "marketing",
+      analytics: part === "analytics",
     }),
     [isNarrow, setIsNarrow] = useState(false),
     [navOpen, setNavOpen] = useState(false),
@@ -343,8 +346,9 @@ export function CrmUserGuide({
   const matchesMarketing = marketingPlaybookSections.filter(s =>
     includes([s.title[col], s.searchText, s.key === "marketing-playbook-sec-1" ? "v2.0 UPER 营销获客与 CRM 转化反馈体系" : ""]),
   );
+  const matchesAnalytics = analyticsGuideSections.filter(s => includes([analyticsGuideTitle[col], s.title[col], s.body[col]]));
   const resultKeys = new Set(
-    [...matchesSystem, ...matchesOperations, ...matchesMarketing].map((s) => s.key),
+    [...matchesSystem, ...matchesOperations, ...matchesMarketing, ...matchesAnalytics].map((s) => s.key),
   );
   // Search results are separate; chapter names and numbering stay stable.
   const navSystem = systemChapters;
@@ -383,10 +387,10 @@ export function CrmUserGuide({
     window.history.pushState(window.history.state, "", link(next.key));
   };
   useEffect(()=>{
-    if(searchMode||readingSearch||!['whatsapp','marketing'].includes(part))return;
+    if(searchMode||readingSearch||!['whatsapp','marketing','analytics'].includes(part))return;
     let frame=0;
     const track=()=>{if(frame)return;frame=requestAnimationFrame(()=>{frame=0;if(performance.now()<navigationUntil.current)return;
-      const keys=part==='whatsapp'?whatsAppSections.map(s=>s.key):marketingPlaybookSections.map(s=>s.key);
+      const keys=(part==='analytics'?analyticsGuideSections:part==='whatsapp'?whatsAppSections:marketingPlaybookSections).map(s=>s.key);
       const edge=(document.querySelector('[data-admin-header],[data-crm-header]')?.getBoundingClientRect().bottom||0)+36;
       const visible=keys.map(key=>({key,node:document.getElementById('crm-guide-'+key)})).filter(v=>v.node);
       const above=visible.filter(v=>v.node!.getBoundingClientRect().top<=edge);
@@ -399,21 +403,23 @@ export function CrmUserGuide({
       ...operationGroups.flat(),
       whatsAppChapter.key,
       "marketing-playbook",
+      "ga-analytics",
     ],
-    position = fullNavigation.indexOf(part === "whatsapp" ? whatsAppChapter.key : part === "marketing" ? "marketing-playbook" : selectedKey);
-  const chapterTitle = part === "marketing" ? marketingPlaybookTitle[col] : (part === "whatsapp" ? whatsAppChapter : [...systemChapters, ...guideSections].find(s => s.key === selectedKey)!).title[col];
+    position = fullNavigation.indexOf(part === "analytics" ? "ga-analytics" : part === "whatsapp" ? whatsAppChapter.key : part === "marketing" ? "marketing-playbook" : selectedKey);
+  const chapterTitle = part === "analytics" ? analyticsGuideTitle[col] : part === "marketing" ? marketingPlaybookTitle[col] : (part === "whatsapp" ? whatsAppChapter : [...systemChapters, ...guideSections].find(s => s.key === selectedKey)!).title[col];
   const navResults = [
     ...matchesSystem.filter(s => !isWhatsAppChapter(s.key)).map((s) => ({ ...s, part: "system" })),
     ...matchesOperations.map((s) => ({ ...s, part: "operations" })),
     ...matchesSystem.filter(s => isWhatsAppChapter(s.key)).map(s => ({ ...s, part: "whatsapp" })),
     ...matchesMarketing.map(s => ({ ...s, part: "marketing" })),
+    ...matchesAnalytics.map(s => ({ ...s, part: "analytics" })),
   ];
   const partLabel = (value: string) => value === "system"
     ? t("System explanation", "Penjelasan sistem", "系统说明")
     : value === "operations"
       ? t("Operating guide", "Panduan operasi", "操作指南")
       : value === "whatsapp" ? t("WhatsApp integration", "Integrasi WhatsApp", "WhatsApp接入方案")
-        : marketingPlaybookTitle[col];
+        : value === "analytics" ? analyticsGuideTitle[col] : marketingPlaybookTitle[col];
   return (
     <article
       ref={guide}
@@ -499,7 +505,7 @@ export function CrmUserGuide({
             </button>
           )}
           </div>
-          {(["system", "operations", "whatsapp", "marketing"] as const).map((root) => (
+          {(["system", "operations", "whatsapp", "marketing", "analytics"] as const).map((root) => (
             <section key={root} className="crm-doc-nav-group">
               <button
                 type="button"
@@ -515,7 +521,7 @@ export function CrmUserGuide({
               <ol id={"crm-doc-nav-" + root} hidden={terms ? !navResults.some(s=>s.part===root) : !expanded[root]}>
                 {(root === "system"
                   ? navSystem.map((s) => ({ ...s, group: [s.key] }))
-                  : root === "operations" ? navOperations : (root === "whatsapp" ? whatsAppSections : marketingPlaybookSections).map(s => ({ ...s, group: [s.key] }))
+                  : root === "operations" ? navOperations : (root === "analytics" ? analyticsGuideSections : root === "whatsapp" ? whatsAppSections : marketingPlaybookSections).map(s => ({ ...s, group: [s.key] }))
                 ).map((s, index) => (
                   <li key={s.key} hidden={!!terms&&!resultKeys.has(s.key)&&!s.group.some(key=>resultKeys.has(key))}>
                     <a
@@ -528,7 +534,7 @@ export function CrmUserGuide({
                       }}
                     >
                       <span className="crm-doc-nav-number" aria-hidden="true">
-                        {index + 1}.
+                        {root === "analytics" ? `5.${index + 1}` : `${index + 1}.`}
                       </span>
                       {s.title[col]}
                     </a>
@@ -586,9 +592,9 @@ export function CrmUserGuide({
             </div>
             <p>
               {t(
-                "Customer acquisition, sales follow-up and operations: system explanation, operating guide, WhatsApp integration, and marketing & CRM feedback.",
-                "Akuisisi pelanggan, tindak lanjut penjualan, dan operasional: penjelasan sistem, panduan operasi, integrasi WhatsApp, serta pemasaran dan umpan balik CRM.",
-                "聚焦客户获客、销售跟进与运营，分为系统说明、操作指南、WhatsApp接入方案和营销获客与CRM转化反馈体系。",
+                "Customer acquisition, sales follow-up and operations: system explanation, operating guide, WhatsApp integration, marketing & CRM feedback, and GA environment rules.",
+                "Akuisisi pelanggan, tindak lanjut penjualan, dan operasional: penjelasan sistem, panduan operasi, integrasi WhatsApp, pemasaran dan umpan balik CRM, serta aturan lingkungan GA.",
+                "聚焦客户获客、销售跟进与运营，分为系统说明、操作指南、WhatsApp接入方案、营销获客与CRM转化反馈体系，以及GA接入与三环境统计规范。",
               )}
             </p>
           </header>
@@ -640,9 +646,10 @@ export function CrmUserGuide({
             <>
 
               <p className="crm-doc-breadcrumb">
-                {partLabel(part)}{part !== "marketing" && <> <span aria-hidden="true">›</span> {chapterTitle}</>}
+                {partLabel(part)}{part !== "marketing" && part !== "analytics" && <> <span aria-hidden="true">›</span> {chapterTitle}</>}
               </p>
               {part === "marketing" && <CrmMarketingPlaybook lang={lang} onChoose={choose} />}
+              {part === "analytics" && <CrmAnalyticsGuide lang={lang} />}
               {(part === "system" || part === "whatsapp") &&
                 system.map((s) => (
                   <section

@@ -1,3 +1,4 @@
+import {trackEvent} from '../utils/analytics';
 import {RegistrationSaveError,registrationSaveText,hasPendingRegistration,pendingRegistrationDraft} from '../services/registrationSave';
 import {visitorScope} from '../services/visitorScope';
 import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
@@ -184,9 +185,9 @@ export default function GFormOnboardingModal({
     setSelectedGoals(original.goals||[]);setReportedLevel(original.reportedLevel||null);setCity(original.city||null);setCityDetail(original.cityDetail||'');setMode(original.mode||null);setSelectedBuyingSignals(original.buyingSignals||[]);setStep(2);setErrorMsg(registrationSaveText('unknown',language));
   },[]);
   const querySavedResult=async(retryOriginal=false)=>{
-    if(submitInFlight.current)return;submitInFlight.current=true;setSubmitting(true);
+    if(submitInFlight.current)return;trackEvent('questionnaire_save_result',{operation:'registration',status:'attempt'});submitInFlight.current=true;setSubmitting(true);
     try{await onComplete({} as LeadProfile,lang,retryOriginal?{retryOriginal:true}:{queryOnly:true});setSaveUnknown(false);}
-    catch(error){const state=error instanceof RegistrationSaveError?error.state:'unknown';setSaveUnknown(state!=='failed');setErrorMsg(registrationSaveText(state,lang));}
+    catch(error){const state=error instanceof RegistrationSaveError?error.state:'unknown';trackEvent('questionnaire_save_result',{operation:'registration',status:state});setSaveUnknown(state!=='failed');setErrorMsg(registrationSaveText(state,lang));}
     finally{submitInFlight.current=false;setSubmitting(false);}
   };
   const submitInFlight = useRef(false);
@@ -205,9 +206,15 @@ export default function GFormOnboardingModal({
     setErrorMsg(''); setEmailTouched(true); setStep(1); setContactFocusRequest({field: 'email'});
   };
 
+  const analyticsStarted=useRef(false),analyticsStepBegan=useRef(Date.now());
+  useEffect(()=>{if(isOpen)trackEvent('questionnaire_view',{language:lang});},[isOpen]);
+  useEffect(()=>{if(isOpen){analyticsStepBegan.current=Date.now();trackEvent('questionnaire_step_view',{step,language:lang});}},[isOpen,step]);
+  const recordValidation=()=>trackEvent('questionnaire_validation_error',{step,reason:'validation',language:lang});
   if (!isOpen) return null;
 
   const handleNextStep = () => {
+    trackEvent('questionnaire_step_next',{step,status:'attempt',language:lang,duration_ms:Date.now()-analyticsStepBegan.current});
+    if(!fullName.trim()||phoneRejected||!validContactPhone(whatsapp)||emailRejected||!validContactEmail(email)||!currentStatus)recordValidation();
     if (!fullName.trim()) {
       setErrorMsg(
         lang === 'en' 
@@ -240,6 +247,8 @@ export default function GFormOnboardingModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitInFlight.current) return;
+    trackEvent('questionnaire_submit',{step,status:'attempt',language:lang});
+    if(phoneRejected||!validContactPhone(whatsapp)||emailRejected||!validContactEmail(email)||!selectedGoals.length||!reportedLevel||!city||!mode||!currentStatus)recordValidation();
     if (phoneRejected || !validContactPhone(whatsapp)) {rejectPhone(); return;}
     if (emailRejected || !validContactEmail(email)) {rejectEmail(); return;}
 
@@ -341,6 +350,7 @@ export default function GFormOnboardingModal({
     try {
       await onComplete(leadData, lang);
     } catch (error) {
+      trackEvent('questionnaire_save_result',{status:error instanceof RegistrationSaveError?error.state:'unknown',operation:'registration'});
       if(error instanceof RegistrationSaveError&&error.state==='failed')setSaveUnknown(false);
       if (error instanceof Error && error.message === CONTACT_PHONE_ERROR) {
         setPhoneRejected(true); rejectPhone();
@@ -445,7 +455,7 @@ export default function GFormOnboardingModal({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <form onChangeCapture={()=>{if(!analyticsStarted.current){analyticsStarted.current=true;trackEvent('questionnaire_start',{step,language:lang});}}} onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {errorMsg && (
             <div role="status" className={`p-3 border rounded-xl text-xs font-medium flex items-center gap-2 ${saveUnknown?'bg-amber-50 border-amber-200 text-amber-800':'bg-rose-50 border-rose-200 text-rose-700'}`}>
               <HelpCircle className="w-4 h-4 shrink-0" />

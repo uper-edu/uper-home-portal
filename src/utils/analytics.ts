@@ -1,5 +1,15 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import {
+  analyticsDestinationAllowed,
+  analyticsInternalTest,
+  type AnalyticsConfiguration,
+} from "./analyticsEnvironment";
+import {
+  analyticsContext,
+  createAnalyticsClient,
+  type AnalyticsParams,
+} from "./analyticsPolicy";
 
 declare global {
   interface Window {
@@ -7,141 +17,172 @@ declare global {
     gtag: (...args: any[]) => void;
   }
 }
-
-export const GA_MEASUREMENT_ID = (import.meta as any).env.VITE_UPER_MEASUREMENT_ID || "";
-
-/**
- * Initializes Google Analytics 4 dynamically if the VITE_UPER_MEASUREMENT_ID is provided.
- */
-export const initGA = () => {
-  if (!GA_MEASUREMENT_ID || typeof window === "undefined") {
-    return;
-  }
-
-  // Check if already loaded
-  if (document.getElementById("google-tag-manager")) {
-    return;
-  }
-
-  // Create Google Tag Manager script element
-  const script = document.createElement("script");
-  script.id = "google-tag-manager";
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-  document.head.appendChild(script);
-
-  // Initialize dataLayer and the gtag function
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function () {
-    // eslint-disable-next-line prefer-rest-params
-    window.dataLayer.push(arguments);
+declare const __UPER_BUILD__: { environment: string; buildId: string } | null;
+declare const __UPER_ANALYTICS__: AnalyticsConfiguration | null;
+const build = typeof __UPER_BUILD__ === "undefined" ? null : __UPER_BUILD__;
+const configuration =
+  typeof __UPER_ANALYTICS__ === "undefined" ? null : __UPER_ANALYTICS__;
+export const GA_MEASUREMENT_ID =
+  (import.meta as any).env?.VITE_UPER_MEASUREMENT_ID || "";
+let client: ReturnType<typeof createAnalyticsClient> | undefined;
+let actorRole: string | undefined;
+export function setAnalyticsRole(role?: string) {
+  actorRole = ["sales", "manager", "admin", "staff"].includes(role || "")
+    ? role
+    : undefined;
+}
+const context = (): AnalyticsParams => {
+  let storage: Storage | undefined;
+  try {
+    storage = window.sessionStorage;
+  } catch {}
+  const value = analyticsContext({
+    href: window.location.href,
+    referrer: document.referrer,
+    mode: build?.environment || (import.meta as any).env?.MODE,
+    language: document.documentElement.lang,
+    buildId: build?.buildId,
+    internalTest: analyticsInternalTest(window.location.href, storage),
+  });
+  return {
+    ...value,
+    ...(value.workspace !== "public" && actorRole ? { role: actorRole } : {}),
   };
-
-  window.gtag("js", new Date());
-  window.gtag("config", GA_MEASUREMENT_ID, {
-    send_page_view: false, // Track manually on SPA route changes for accuracy
-  });
-  
-  console.log(`[GA4] Google Analytics initialized with ID: ${GA_MEASUREMENT_ID}`);
 };
-
-/**
- * React hook to automatically initialize GA4 and track page navigation changes.
- */
-export const usePageTracking = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    initGA();
-  }, []);
-
-  useEffect(() => {
-    trackPageView(location.pathname + location.search);
-  }, [location]);
-};
-
-/**
- * Tracks a custom event in Google Analytics.
- */
-export const trackEvent = (eventName: string, eventParams?: Record<string, any>) => {
-  if (typeof window !== "undefined" && window.gtag && GA_MEASUREMENT_ID) {
-    window.gtag("event", eventName, eventParams);
-  } else {
-    // Log in development or when GA is not configured
-    console.debug(`[Analytics Event] ${eventName}:`, eventParams);
-  }
-};
-
-/**
- * Tracks a page view in a single page application context.
- */
-export const trackPageView = (path: string, title?: string) => {
-  if (typeof window !== "undefined" && window.gtag && GA_MEASUREMENT_ID) {
+export function initGA() {
+  if (!GA_MEASUREMENT_ID || typeof window === "undefined" || client) return;
+  if (
+    !analyticsDestinationAllowed(
+      configuration,
+      GA_MEASUREMENT_ID,
+      window.location.href,
+      build?.environment || (import.meta as any).env?.MODE,
+    )
+  )
+    return;
+  try {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag =
+      window.gtag ||
+      function () {
+        window.dataLayer.push(arguments);
+      };
+    const current = context();
+    window.gtag("js", new Date());
     window.gtag("config", GA_MEASUREMENT_ID, {
-      page_path: path,
-      page_title: title || document.title,
+      ...current,
+      send_page_view: false,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false,
+      ...(current.environment !== "production"
+        ? { cookie_prefix: "uper_test" }
+        : {}),
     });
-    console.log(`[GA4 PageView] Path: ${path}, Title: ${title || document.title}`);
+    let storage: Storage | undefined;
+    try {
+      storage = window.sessionStorage;
+    } catch {}
+    client = createAnalyticsClient({
+      id: GA_MEASUREMENT_ID,
+      context,
+      send: (...args) => window.gtag(...args),
+      storage,
+    });
+    if (!document.getElementById("google-tag-manager")) {
+      const script = document.createElement("script");
+      script.id = "google-tag-manager";
+      script.async = true;
+      script.src =
+        "https://www.googletagmanager.com/gtag/js?id=" +
+        encodeURIComponent(GA_MEASUREMENT_ID);
+      document.head.appendChild(script);
+    }
+  } catch {
+    /* Analytics must never block business flows. */
+  }
+}
+export const trackEvent = (
+  event: string,
+  params: Record<string, unknown> = {},
+) => {
+  try {
+    initGA();
+    return client?.track(event, params) || false;
+  } catch {
+    return false;
   }
 };
-
-/**
- * Tracks language switcher actions (ID, EN, ZH).
- */
-export const trackLanguageSwitch = (lang: string) => {
-  trackEvent("change_language", {
-    language: lang,
-  });
+export const trackReceipt = (
+  event: string,
+  key: string,
+  params: Record<string, unknown> = {},
+  confirmed = true,
+) => {
+  try {
+    initGA();
+    return client?.confirmed(event, key, confirmed, params) || false;
+  } catch {
+    return false;
+  }
 };
-
-/**
- * Tracks when a user expands a specific FAQ question.
- */
-export const trackFAQExpand = (faqType: "hsk" | "csca" | "general", qId: string, questionText: string) => {
-  trackEvent("faq_expand", {
-    faq_type: faqType,
-    question_id: qId,
-    question_text: questionText,
-  });
+export const trackPageView = (_path?: string, _title?: string) => {
+  try {
+    initGA();
+    return client?.page() || false;
+  } catch {
+    return false;
+  }
 };
-
-/**
- * Tracks chatbot actions (opening/closing, sending messages, clicking shortcuts).
- */
-export const trackChatbotInteraction = (action: "open" | "close" | "send_message" | "click_shortcut" | "clear_chat", details?: Record<string, any>) => {
-  trackEvent("chatbot_interaction", {
-    chat_action: action,
-    ...details,
-  });
-};
-
-/**
- * Tracks consultations (WhatsApp, WeChat, Email, Phone clicks).
- */
-export const trackConsultationClick = (channel: "whatsapp" | "wechat" | "email" | "phone" | "floating_widget" | "form", label: string) => {
-  trackEvent("consultation_click", {
-    contact_channel: channel,
-    button_label: label,
-  });
-};
-
-/**
- * Tracks form submissions.
- */
-export const trackFormSubmit = (formName: string, success: boolean, details?: Record<string, any>) => {
+export function usePageTracking() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location]);
+}
+export const trackLanguageSwitch = (language: string) =>
+  trackEvent("change_language", { language });
+export const trackFAQExpand = (
+  faq_type: "hsk" | "csca" | "general",
+  question_id: string,
+  _text: string,
+) => trackEvent("faq_expand", { faq_type, question_id });
+export const trackChatbotInteraction = (
+  action: "open" | "close" | "send_message" | "click_shortcut" | "clear_chat",
+  details?: Record<string, unknown>,
+) => trackEvent("chatbot_interaction", { action, ...details });
+export const trackConsultationClick = (
+  contact_channel: string,
+  _label: string,
+) => trackEvent("consultation_click", { contact_channel });
+export const trackFormSubmit = (
+  form_name: string,
+  success: boolean,
+  _details?: Record<string, unknown>,
+) =>
   trackEvent("form_submission", {
-    form_name: formName,
-    status: success ? "success" : "failed",
-    ...details,
+    form_name,
+    status: success ? "saved" : "failed",
   });
-};
+export const trackExternalLinkClick = (_url: string, _label: string) =>
+  trackEvent("external_link_click");
 
-/**
- * Tracks outbound clicks.
- */
-export const trackExternalLinkClick = (url: string, label: string) => {
-  trackEvent("external_link_click", {
-    destination_url: url,
-    link_label: label,
+export function trackConfirmedReceipt(
+  receipt: import("./analyticsReceipts").AnalyticsReceipt | null,
+) {
+  return receipt
+    ? trackReceipt(receipt.event, receipt.key, receipt.params)
+    : false;
+}
+
+export function trackStageReceipt(key: string, from: string, to: string) {
+  trackReceipt("crm_stage_updated", key, {
+    operation: "stage",
+    stage_from: from,
+    stage_to: to,
   });
-};
+  if (to === "progress:enrolled")
+    trackReceipt("course_enrollment_confirmed", key, {
+      operation: "stage",
+      method: "staff_confirmed",
+    });
+}

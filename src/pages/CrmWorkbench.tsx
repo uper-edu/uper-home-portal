@@ -1,3 +1,4 @@
+import {trackEvent,trackPageView,setAnalyticsRole} from '../utils/analytics';
 import {notificationTarget,targetUnavailable} from '../utils/crmNotificationTarget';
 import {identityReviewedDetail} from '../utils/crmIdentityDetail';
 import {CrmEnrollmentCorrectionAccess,CrmEnrollmentCorrectionForm} from '../components/crm/CrmEnrollmentCorrection';
@@ -339,6 +340,11 @@ function CrmWorkspace({
   const [trustDirty,setTrustDirty]=useState(false);
   const [ownerOpen,setOwnerOpen]=useState(false),[ownerDirty,setOwnerDirty]=useState(false);
   const [stageOpen,setStageOpen]=useState(false),[stageDirty,setStageDirty]=useState(false),[stageBasis,setStageBasis]=useState<string|undefined>(),[stageNotice,setStageNotice]=useState<any>(null);
+  useEffect(()=>{if(contactPreview)trackEvent('crm_action_open',{action:'prepare_contact'});},[contactPreview]);
+  useEffect(()=>{trackPageView();},[crmModule,lang,leadAnalysis]);
+  useEffect(()=>{setAnalyticsRole(employee.permissions.includes('access.manage')?'admin':employee.permissions.includes('crm.assign')?'manager':employee.permissions.includes('crm.followup')?'sales':'staff');return()=>setAnalyticsRole();},[employee.id,employee.permissions.join(',')]);
+  useEffect(()=>{if(stageOpen)trackEvent('crm_action_open',{action:'stage'});if(ownerOpen)trackEvent('crm_action_open',{action:'owner'});},[stageOpen,ownerOpen]);
+
   const [profileContactTarget,setProfileContactTarget]=useState<HTMLDivElement|null>(null);
   const [profileActionTarget,setProfileActionTarget]=useState<HTMLDivElement|null>(null);
   const [profileFieldsDirty,setProfileFieldsDirty]=useState(false);
@@ -662,6 +668,12 @@ function CrmWorkspace({
   };
   // Handle Search submit / debounce
   // Open drawer for a lead
+  const analyticsFilters=useRef(filters);
+  useEffect(()=>{const previous=analyticsFilters.current;analyticsFilters.current=filters;
+    const keys=Object.keys(filters).filter(key=>JSON.stringify((filters as any)[key])!==JSON.stringify((previous as any)[key]));if(!keys.length)return;
+    const timer=setTimeout(()=>trackEvent('crm_filter_change',{filter_type:keys.length>1?'multiple':['search','owner','stage'].includes(keys[0])?keys[0]:'other',has_search:!!filters.search.trim(),active_filter_count:Object.values(filters).filter(value=>Array.isArray(value)?value.length:!!value).length}),400);
+    return()=>clearTimeout(timer);
+  },[filters]);
   const handleOpenLeadDrawer = (
     lead: CrmLeadRecord,
     tab?: CustomerTab,
@@ -673,6 +685,7 @@ function CrmWorkspace({
     // Selecting the current customer is a no-op, including its draft and reading position.
     if (sameCustomer && nextTab === activeDrawerTab) return;
     if (!discarded && !discardDraft(() => handleOpenLeadDrawer(lead, nextTab, true))) return;
+    trackEvent('crm_customer_view',{tab:nextTab,entry_point:fromHistory?'direct':'list'});
     leadRouteVersion.current++;
     writeLeadRoute(lead.id,nextTab,fromHistory);
     if (sameCustomer) {

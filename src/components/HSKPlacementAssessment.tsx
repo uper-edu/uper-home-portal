@@ -1,3 +1,5 @@
+import {trackEvent,trackConfirmedReceipt} from '../utils/analytics';
+import {assessmentAnalyticsReceipt} from '../utils/analyticsReceipts';
 import {visitorScope, assertVisitorScope} from '../services/visitorScope';
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -87,6 +89,7 @@ export default function HSKPlacementAssessment({
       )
     : getVersionQuestions(mode);
   const q = questions[index] || questions[0];
+  useEffect(()=>{if(attempt&&!complete)trackEvent('assessment_section_view',{section:q?.section,assessment_mode:attempt.mode});},[attempt?.attemptId,q?.section,complete]);
   const version = requireHskVersion(
     attempt?.examVersion || HSK_EXAM_VERSION,
     attempt?.scoringVersion || HSK_SCORING_VERSION,
@@ -284,6 +287,7 @@ export default function HSKPlacementAssessment({
     const old = restore && continuing ? draft : null;
     const a = old ? old.attempt : newHskAttempt(mode, crypto.randomUUID());
     const i = old ? old.currentIdx : 0;
+    trackEvent(old?'assessment_resume':'assessment_start',{assessment_mode:a.mode});
     setAttempt(a);
     setIndex(i);
     setComplete(old?.reviewing || false);
@@ -293,13 +297,14 @@ export default function HSKPlacementAssessment({
   const recoverSaved = async()=>{
     if(!attempt||savingRef.current)return;
     savingRef.current=true;setSaving(true);setSaveError(false);
-    try{const saved=await restoreHskAttempt(attempt.attemptId,ownerScope);writeHskResult(saved);clearHskDraft();if(mounted.current)onComplete(saved);}
+    try{const saved=await restoreHskAttempt(attempt.attemptId,ownerScope);trackConfirmedReceipt(assessmentAnalyticsReceipt(saved,attempt.attemptId));writeHskResult(saved);clearHskDraft();if(mounted.current)onComplete(saved);}
     catch{if(mounted.current)setSaveError(true);}
     finally{savingRef.current=false;if(mounted.current)setSaving(false);}
   };
   const submit = async () => {
     if (!attempt || savingRef.current) return;
     try { assertVisitorScope(ownerScope); } catch { setSaveError(true); return; }
+    trackEvent('assessment_submit',{assessment_mode:attempt.mode,status:'attempt'});
     savingRef.current = true;
     setSaving(true);
     setSaveError(false);
@@ -318,6 +323,7 @@ export default function HSKPlacementAssessment({
       clearHskDraft();
       if (mounted.current) onComplete(saved);
     } catch (e) {
+      trackEvent('assessment_save_result',{assessment_mode:attempt.mode,status:'unknown',operation:'assessment'});
       if (mounted.current) {setSaveError(true);setSubmissionConflict((e as Error).message==="Attempt already submitted with different answers");}
     } finally {
       savingRef.current = false;

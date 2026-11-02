@@ -1,3 +1,4 @@
+import {trackEvent,trackReceipt} from '../../utils/analytics';
 import {CrmFormSection,CrmFormSummary} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {useRef,useState} from 'react';
@@ -12,12 +13,12 @@ export function CrmOwnerEditor({lead,directory,lang,isLight,onDirty,onBusy,onSav
  const command=useRef<any>(null),busy=state==='saving',unknown=state==='unknown';
  const name=(id:string)=>directory.find((e:any)=>e.id===id)?.displayName||id||t('未分配','Unassigned','Belum ditugaskan');
  const input=(next:string,why:string)=>{setOwner(next);setReason(why);setError('');command.current=null;onDirty(Boolean(next||why));};
- const saved=(receipt:any,profile?:any)=>{setState('saved');onDirty(false);onSaved(profile||{...lead,owner:receipt.after,ownerChangedAt:receipt.changedAt});};
+ const saved=(receipt:any,profile?:any)=>{if(receipt?.requestId===command.current?.ownerChangeRequestId&&profile?.id===lead.id&&receipt.after===profile.owner)trackReceipt('crm_owner_changed',receipt.requestId,{operation:'owner'});setState('saved');onDirty(false);onSaved(profile||{...lead,owner:receipt.after,ownerChangedAt:receipt.changedAt});};
  const save=async()=>{
   if(!owner||owner===lead.owner){setError(t('请选择不同的接收销售','Choose a different salesperson','Pilih staf penjualan lain'));return;}
   if(lead.owner&&!reason.trim()){setError(t('请填写交接说明','Enter a handover note','Isi catatan serah terima'));return;}
-  const body=command.current||{owner,expectedOwner:lead.owner||null,expectedOwnerChangedAt:lead.ownerChangedAt||null,ownerChangeReason:reason,ownerChangeRequestId:crypto.randomUUID()};command.current=body;setState('saving');setError('');onBusy(true);
-  try{const r=await fetch(`/api/crm/leads/${lead.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok){setState('failed');setError(d.error||String(r.status));command.current=null;return;}saved(d.receipt,d.lead);}catch{setState('unknown');setError(t('保存结果待核对，请先查询结果，勿重复提交。','Check the save result before submitting again.','Periksa hasil sebelum mengirim ulang.'));}finally{onBusy(false);}
+  const body=command.current||{owner,expectedOwner:lead.owner||null,expectedOwnerChangedAt:lead.ownerChangedAt||null,ownerChangeReason:reason,ownerChangeRequestId:crypto.randomUUID()};command.current=body;trackEvent('crm_save_result',{operation:'owner',status:'attempt'});setState('saving');setError('');onBusy(true);
+  try{const r=await fetch(`/api/crm/leads/${lead.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok){trackEvent('crm_save_result',{operation:'owner',status:r.status===409?'conflict':r.status<500?'failed':'unknown'});setState('failed');setError(d.error||String(r.status));command.current=null;return;}saved(d.receipt,d.lead);}catch{trackEvent('crm_save_result',{operation:'owner',status:'unknown'});setState('unknown');setError(t('保存结果待核对，请先查询结果，勿重复提交。','Check the save result before submitting again.','Periksa hasil sebelum mengirim ulang.'));}finally{onBusy(false);}
  };
  const query=async()=>{if(!command.current)return;onBusy(true);try{const r=await fetch(`/api/crm/leads/${lead.id}/owner-result/${command.current.ownerChangeRequestId}`);const d=await r.json();if(r.ok)saved(d.receipt,d.lead);else{setError(d.error||String(r.status));if(r.status===404)setState('not_found');}}catch{setError(t('暂时无法核对，请稍后再查询。','Unable to check; try querying later.','Belum dapat diperiksa; coba lagi nanti.'));}finally{onBusy(false);}};
  return <div data-admin-form="" className="crm-editor-compose"><div className="crm-editor-scroll crm-owner-editor" data-admin-stack=""><AdminRequiredNote lang={lang}/>

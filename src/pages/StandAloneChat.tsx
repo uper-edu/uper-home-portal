@@ -1,3 +1,4 @@
+import {trackEvent} from '../utils/analytics';
 import {chatLanguage} from '../utils/chatLanguage';
 import {visitorScope} from '../services/visitorScope';
 import {PageMetadata} from '../components/PageMetadata';
@@ -118,6 +119,7 @@ export default function StandAloneChat() {
   };
 
   const handleAssessmentCancel = () => {
+    trackEvent('assessment_exit',{reason:readHskDraft()?'paused':'skipped'});
     setIsTakingAssessment(false);
     saveStudentContext({ chatAssessmentStatus: readHskDraft()?'paused':'skipped' });
     setMessages(prev=>[...prev.filter(m=>!m.isAssessmentCard && m.id!=='msg-resume' && !m.isProfileWelcome),{id:'profile-welcome',role:'assistant',content:'',timestamp:new Date(),isProfileWelcome:true}]);

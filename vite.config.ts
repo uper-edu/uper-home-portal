@@ -4,6 +4,7 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import {frontendEnvironment} from './server/environment.mjs';
 import {publicBuildIdentity} from './server/runtimeVersion.mjs';
+import {analyticsBuildConfiguration} from './server/analyticsEnvironment.mjs';
 
 const preventFetchOverwritePlugin = () => {
   return {
@@ -22,10 +23,11 @@ const preventFetchOverwritePlugin = () => {
 
 export default defineConfig(({mode}) => {
   const env = frontendEnvironment(mode);
+  const analytics = analyticsBuildConfiguration(mode,env);
   return {
     // Vite must not silently merge legacy .env / .env.local files across targets.
     envDir: false,
-    define: {...Object.fromEntries(Object.entries(env).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)])),__UPER_BUILD__:process.env.UPER_BUILD_IDENTITY?JSON.stringify(publicBuildIdentity(JSON.parse(process.env.UPER_BUILD_IDENTITY))):'null'},
+    define: {...Object.fromEntries(Object.entries(env).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)])),__UPER_ANALYTICS__:JSON.stringify(analytics),__UPER_BUILD__:process.env.UPER_BUILD_IDENTITY?JSON.stringify(publicBuildIdentity(JSON.parse(process.env.UPER_BUILD_IDENTITY))):'null'},
     plugins: [react(), tailwindcss(), preventFetchOverwritePlugin()],
     build: {
       outDir: 'dist',

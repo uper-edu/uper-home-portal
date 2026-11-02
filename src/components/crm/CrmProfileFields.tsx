@@ -1,3 +1,5 @@
+import {trackEvent,trackConfirmedReceipt} from '../../utils/analytics';
+import {profileAnalyticsReceipt} from '../../utils/analyticsReceipts';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
 import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
 import {CrmFormSection} from './CrmFormLayout';
@@ -501,6 +503,7 @@ export function CrmProfileEditor({
         return;
       }
     }
+    trackEvent('crm_save_result',{operation:'profile',status:'attempt'});
     setBusy(true);
     onBusy?.(true);
     setError("");
@@ -566,6 +569,7 @@ export function CrmProfileEditor({
               "项客户资料，请查看各字段结果。",
       );
       setResults(scope === "needs" ? [] : d.profileFieldResults || []);
+      trackConfirmedReceipt(profileAnalyticsReceipt(d,lead.id,body?.requestId,scope));
       onSaved(d.lead);
     } catch (e) {
       if (!knownFailure && !(e as Error).message.includes("未查到"))

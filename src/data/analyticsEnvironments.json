@@ -1,0 +1,35 @@
+{
+  "accountId": "399457165",
+  "environments": {
+    "dev": {
+      "propertyId": "561827503",
+      "propertyName": "UPER Test",
+      "streamId": "16251883595",
+      "streamName": "UPER Local",
+      "measurementId": "G-RTB5CWXVWV",
+      "allowedHosts": ["localhost", "127.0.0.1", "[::1]"],
+      "allowLocalSubdomains": true,
+      "requireHttps": false
+    },
+    "test": {
+      "propertyId": "561827503",
+      "propertyName": "UPER Test",
+      "streamId": "16252453328",
+      "streamName": "UPER Staging",
+      "measurementId": "G-YTELN0GKTF",
+      "allowedHosts": ["home.prototype.uperedu.com"],
+      "allowLocalSubdomains": false,
+      "requireHttps": true
+    },
+    "prod": {
+      "propertyId": "543450253",
+      "propertyName": "UPER Production",
+      "streamId": "15159406809",
+      "streamName": "UPER Web",
+      "measurementId": "G-SZCY9WLK8X",
+      "allowedHosts": ["uperedu.com", "www.uperedu.com"],
+      "allowLocalSubdomains": false,
+      "requireHttps": true
+    }
+  }
+}
