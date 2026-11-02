@@ -32,8 +32,8 @@ test("production transport accepts the approved public-origin aliases", async ()
     PORTAL_ENV: "prod",
     PORTAL_DEPLOYMENT: "production",
     ACCESS_TRUSTED_PROXIES: "127.0.0.1,::ffff:127.0.0.1",
-    ACCESS_PUBLIC_ORIGIN: "https://home.uperedu.com",
-    ACCESS_ALLOWED_ORIGINS: "https://home.uperedu.com,https://www.uperedu.com,https://uperedu.com",
+    ACCESS_PUBLIC_ORIGIN: "https://uperedu.com",
+    ACCESS_ALLOWED_ORIGINS: "https://uperedu.com,https://www.uperedu.com",
   });
   app.get("/api/check", (_q, r) => r.json({ ok: true }));
   const server = app.listen(0, "127.0.0.1");
@@ -49,11 +49,15 @@ test("production transport accepts the approved public-origin aliases", async ()
       req.on("error", reject);
       req.end();
     });
-    const allowed = await request("www.uperedu.com");
-    assert.equal(allowed.status, 200);
-    const rejected = await request("evil.example");
-    assert.equal(rejected.status, 403);
-    assert.equal(rejected.data.error, "access_origin_rejected");
+    for (const host of ["uperedu.com", "www.uperedu.com"]) {
+      const allowed = await request(host);
+      assert.equal(allowed.status, 200, host);
+    }
+    for (const host of ["home.uperedu.com", "evil.example"]) {
+      const rejected = await request(host);
+      assert.equal(rejected.status, 403, host);
+      assert.equal(rejected.data.error, "access_origin_rejected", host);
+    }
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }

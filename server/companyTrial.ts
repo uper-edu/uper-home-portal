@@ -3,7 +3,8 @@ import {internalMysqlDirect} from '../cloud/mysql/transport.mjs';
 
 export const companyOrigin = 'https://home.prototype.uperedu.com';
 export const isCompanyTrial = (env = process.env) => env.PORTAL_DEPLOYMENT === 'company-trial';
-export const productionOrigin = 'https://home.uperedu.com';
+export const productionOrigin = 'https://uperedu.com';
+const productionOrigins = new Set([productionOrigin, 'https://www.uperedu.com']);
 export const isProductionDeployment = (env = process.env) => env.PORTAL_ENV === 'prod' && env.PORTAL_DEPLOYMENT === 'production';
 /** Parse the explicit public-origin allowlist used by the HTTPS transport gate. */
 export function publicOrigins(env = process.env) {
@@ -58,8 +59,9 @@ export function productionConfiguration(env = process.env) {
     throw Error('Production deployment requires the production transport, database and release gates');
   if (env.APP_URL !== productionOrigin || env.ACCESS_PUBLIC_ORIGIN !== productionOrigin)
     throw Error('Production deployment requires the approved canonical HTTPS origin');
-  if (!env.ACCESS_ALLOWED_ORIGINS || !publicOrigins(env).includes(productionOrigin))
-    throw Error('Production deployment requires an explicit public-origin allowlist containing the canonical origin');
+  const origins = publicOrigins(env);
+  if (!env.ACCESS_ALLOWED_ORIGINS || !origins.includes(productionOrigin) || origins.some(origin => !productionOrigins.has(origin)))
+    throw Error('Production deployment requires an explicit allowlist of approved public origins containing the canonical origin');
   if (env.MYSQL_TLS_MODE !== 'disabled')
     throw Error('Production deployment requires the explicitly approved internal MySQL direct mode');
   if (!env.ACCESS_TRUSTED_PROXIES || (env.ACCESS_OPERATION_KEY || '').length < 32)

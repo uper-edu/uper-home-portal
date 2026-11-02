@@ -31,6 +31,8 @@ npm run start:dev
 
 `npm run build` is the development build. Outputs are `build/<environment>/web` and `build/<environment>/runtime`. Frontend builds consume only public `VITE_` variables; server credentials are injected at runtime. Production configuration is reserved and startup remains blocked until explicitly provisioned. See [environment configuration](docs/environment-configuration.md) for file creation, secret custody and environment isolation.
 
+Production uses `https://uperedu.com` as its canonical origin and accepts `https://www.uperedu.com` as an alias. Set `APP_URL` and `ACCESS_PUBLIC_ORIGIN` to the canonical origin and `ACCESS_ALLOWED_ORIGINS` to these two HTTPS origins. Only these two production hosts are supported; both Ingress routing and generated links must use them.
+
 ## AI and notification configuration
 
 Configure `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-4o`) privately. A valid `DEEPSEEK_API_KEY` enables fallback to `deepseek-chat`. Provider attempts and the final consultation response are persisted; a configuration endpoint does not prove live provider health. Unrelated contact/careers forms retain their SMTP handlers.
