@@ -75,7 +75,7 @@ test("published environment reference remains aligned with the build mapping and
     "course_enrollment_confirmed",
     "DebugView",
     "24–48",
-    "尚未发布",
+    "生产配置已准备但未部署",
     "不设置默认货币金额",
   ]) {
     assert.ok(text.includes(fact), fact);

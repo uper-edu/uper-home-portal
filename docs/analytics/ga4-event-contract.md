@@ -68,3 +68,7 @@
 - 不自动清理正式历史测试数据，不启用永久排除过滤器，不重放业务或通知来补统计。
 
 参考：[Google手动页面访问说明](https://developers.google.com/analytics/devguides/collection/ga4/views)、[GA排查与数据处理延迟](https://developers.google.com/analytics/devguides/collection/ga4/troubleshoot)、[自定义活动归因](https://support.google.com/analytics/answer/11259997)。
+
+## 自动采集与业务埋点的分工
+
+基础自动事件不需要逐项编写。增强型衡量在本项目保持关闭，安全SPA页面访问与业务事件复用共享模块。普通自定义事件无需在GA预先创建；用于常规报表的自定义参数须登记维度／指标，关键业务结果须标记为关键事件。不得用GA后台规则或第二套标签重复生成同名事件。新增业务事件须说明分析用途、成立回执、参数白名单、去重和正反例；点击或表单提交不能冒充保存、付款等真实结果。详见在线文档第五章5.6节。
