@@ -1,4 +1,5 @@
 import {canReviewSourceAttribution,assertSourceAttributionReviewer} from './crmAccessControls.ts';
+import {auditLog} from './audit.ts';
 import {campaignSourceEvidence} from "./campaignSourceEvidence.ts";
 import {allocateCampaignCode} from "./campaignCodeAllocation.ts";
 import crypto from "node:crypto";
@@ -280,6 +281,7 @@ export async function reviewCampaignSource(id: string, b: any, employee: any) {
         },
       ],
     );
+    auditLog(employee.id, "campaign.source.review", { requestId: b.requestId });
     return result;
   });
 }

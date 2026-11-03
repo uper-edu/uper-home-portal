@@ -1,4 +1,5 @@
 import {assertIdentitySalesAllowed} from './identityConsolidation.ts';
+import {auditLog} from './audit.ts';
 import {profileFieldResults} from '../../src/utils/crmProfileSaveResult.ts';
 import {observedStageFacts} from '../../src/utils/crmSalesFacts.ts';
 import {queueExtraction} from './aiExtraction.ts';
@@ -55,5 +56,5 @@ export async function saveSimpleSalesWorkflow(c:any,leadId:string,actor:string,b
  if(b.profileUpdates&&Object.keys(b.profileUpdates).length){if(!b.profileVersions)bad('缺少画像字段版本');const updated=await recordProfileUpdates(c,next,b.profileUpdates,b.profileVersions,{actor,sourceType:b.recordKind==='contact'?'sales_contact':'sales_edit',sourceRecordId:result.logId,occurredAt:occurrence?.occurredAt||null,recordedAt:at,reason:b.summary,correction:b.profileCorrection===true});next=updated.profile;result.profileFieldResults=profileFieldResults(b.profileUpdates,updated.changes,next);}
 
  for(const stage of stages)await fact(c,leadId,'sales.stage_observed',actor,{stage,sourceLogId:result.logId,summary:b.summary,occurredAt:occurrence?.occurredAt||null,recordedAt:at});
- await fact(c,leadId,'followup.recorded',actor,{...b,...(commitmentChange?{commitmentChange}:{}),...(b.contactState?{contactReason}:{}),...occurrence,result});await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);await queueExtraction(c,leadId,'sales_record',result.logId,b.summary,occurrence?.occurredAt||null,actor,Object.keys(b.profileUpdates||{}));await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'followup.save',:p2)",[actor,{leadId,...result}]);return {lead:next,...result};
+ await fact(c,leadId,'followup.recorded',actor,{...b,...(commitmentChange?{commitmentChange}:{}),...(b.contactState?{contactReason}:{}),...occurrence,result});await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);await queueExtraction(c,leadId,'sales_record',result.logId,b.summary,occurrence?.occurredAt||null,actor,Object.keys(b.profileUpdates||{}));await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'followup.save',:p2)",[actor,{leadId,...result}]);auditLog(actor,'followup.save',{leadId});return {lead:next,...result};
 }

@@ -1,4 +1,5 @@
 import {campaignEditConflicts} from '../../src/utils/campaignEditConflict.ts';
+import {auditLog} from './audit.ts';
 import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
 import {campaignScheduleError} from "../../src/utils/campaignWorkspace.ts";
 import {sourceKey, campaignAliasTarget} from './campaignSources.ts';
@@ -108,6 +109,7 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
         }
         const audit = { id: campaignId, operation: operation.kind, ...(input.requestId ? { requestId: input.requestId, fingerprint, result: record } : {}) };
         await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.save',:p2)", [actor, audit]);
+        auditLog(actor, 'campaign.save', audit);
         const current = loadCampaigns();
         const index = current.findIndex(c => c.id === campaignId);
         if (index >= 0) current[index] = record;

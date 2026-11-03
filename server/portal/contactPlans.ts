@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { auditLog } from './audit.ts';
 export function contactPlanError(message:string):never {throw Object.assign(Error(message),{status:message.includes('changed')?409:400});}
 export function validateContactPlan(current:any,body:any,tasks:any[],clock:Date){
   const change=body.contactArrangement,plan=body.reviewPlan;
@@ -46,6 +47,7 @@ export async function applyContactPlan(c:any,current:any,body:any,tasks:any[],ac
   const state=change?.state||(legacy&&plan?'active':current.contactArrangement?.state||'active');
   const arrangement={state,reason:change?.reason?.trim()||plan?.reason.trim(),version:(current.contactArrangement?.version||0)+1,at,actor};
   await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[actor,'contact.plan.changed',{leadId:current.id,before:{contactArrangement:current.contactArrangement||null,contactReview:current.contactReview||null},after:{contactArrangement:arrangement,contactReview:review}}]);
+  auditLog(actor,'contact.plan.changed',{leadId:current.id});
   await c.query("INSERT INTO outbox(id,type,lead_id,payload) VALUES(:p1,'contact.arrangement.changed',:p2,:p3)",[randomUUID(),current.id,{state,reviewTaskId:review?.taskId||null}]);
   return {profile:{contactArrangement:arrangement,contactReview:review},createdTaskId,cancelledNotifications};
 }

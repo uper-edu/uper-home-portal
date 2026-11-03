@@ -3,6 +3,7 @@ import {extractionRoot} from '../../src/utils/crmExtractionEvidence.ts';
 import {queueExtraction} from './aiExtraction.ts';
 import {randomUUID}from'node:crypto';
 import{fact,operation,lockLead,invalid}from'./trustWorkflow.ts';
+import{auditLog}from'./audit.ts';
 import{contactCorrectionOptions,firstRequirementBasis,firstBasisOutcome}from'../../src/utils/crmRecordAmendments.ts';
 import{contactStatistics}from'../../src/utils/crmContact.ts';
 /** Empty legacy envelopes are harmless; successful old requests replay before this write boundary. */
@@ -70,6 +71,7 @@ export async function appendRecordAmendment(c:any,leadId:string,actor:string,b:a
   await fact(c,leadId,'record.amended',actor,{...amendment,firstRequirementStatus,restoredTasks,profileUpdates:{},profileFieldResults:fieldResults},eventId);
   await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);
   await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'record.amend',:p2)",[actor,{leadId,amendmentId:amendment.id,targetFactId:target.id,firstRequirementStatus,restoredTasks,withdrawCommitmentIds:amendment.withdrawCommitmentIds}]);
+  auditLog(actor,'record.amend',{leadId});
   return {saved:true,lead:next,amendment,firstRequirementStatus,restoredTasks,profileFieldResults:fieldResults,createdTaskId:null};
  });
 }

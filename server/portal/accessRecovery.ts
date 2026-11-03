@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { auditLog } from "./audit.ts";
 import { pool, tx } from "./store.ts";
 import { platform } from "./identity.ts";
 import { accessDirectory } from "./accessHandovers.ts";
@@ -143,6 +144,7 @@ export function mountAccessRecovery(app: any) {
             },
           ],
         );
+        auditLog(actor.id, "access.recovery.authorize");
         return p;
       });
       r.setHeader("Cache-Control", "no-store");
@@ -253,6 +255,7 @@ export function mountAccessRecovery(app: any) {
               }),
             ],
           );
+          auditLog(e.id, "access.restore." + action);
           return { reviewed: state.reviewed.length, released: !state.required };
         });
         r.json(result);

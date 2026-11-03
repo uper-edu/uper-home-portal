@@ -1,4 +1,5 @@
 import {personalNotificationPreferences,personalNotificationAvailability} from './personalNotificationPreferences.ts';
+import {auditLog} from './audit.ts';
 import {personalNotificationTypes,normalizePersonalPreferences,personalNotificationRequired} from '../../src/utils/personalNotificationPreferences.ts';
 import crypto from 'node:crypto';
 import type {Express,Request} from 'express';
@@ -74,7 +75,7 @@ export function mountLarkSelfService(server:Express){
  if(current.revision!==input.revision)fail(409,'notification_preferences_conflict');
  const saved={...requested,revision:current.revision+1};all[e.id]=saved;
  await c.query("INSERT INTO access_state(id,value) VALUES('notification_preferences',:p1) ON DUPLICATE KEY UPDATE value=:p1",[JSON.stringify(all)]);
- await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[e.id,'access.notifications.preferences',{revision:saved.revision,language:saved.language,disabledTypes:saved.disabledTypes}]);return saved;
+ await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[e.id,'access.notifications.preferences',{revision:saved.revision,language:saved.language,disabledTypes:saved.disabledTypes}]);auditLog(e.id,'access.notifications.preferences');return saved;
  });r.json({preferences});
  }));
  server.post('/api/crm/lark/authorize',wrap(async(q:any,r:any)=>{const e=await staff(q,true),config=larkSelfConfiguration();if(!config.ready)fail(409,'lark_self_service_not_configured');
@@ -124,6 +125,7 @@ export function mountLarkSelfService(server:Express){
  await write(c,noticeKey,{employeeId:e.id,openId:f.openId,bindingRevision:binding.revision,uuid,lang:preference.language==='rule'?f.lang:preference.language,state:'pending',manageUrl:new URL(f.returnTo,f.redirect).origin+new URL(f.returnTo,f.redirect).pathname+'?lark=manage'});
  await write(c,'lark_oauth:'+q.body.flowId,{...f,state:'saved',noticeKey,savedBindingRevision:binding.revision});
  await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[e.id,'access.lark.self.bind',{revision:binding.revision,method:'oauth'}]);
+ auditLog(e.id,'access.lark.self.bind');
  });
  if(noticeKey)await sendLarkBindingNotice(noticeKey);
  const notice=noticeKey?await read(pool,noticeKey):null;r.json({...await summary(e.id),confirmation:notice?.state||'unchanged'});
@@ -133,6 +135,7 @@ export function mountLarkSelfService(server:Express){
  await tx(async(c:any)=>{await locked(c);const all=await larkBindings(c),old=all[e.id];if(!old?.openId)return;if(Number(old.revision)!==q.body.revision)fail(409,'lark_binding_conflict');
  all[e.id]={revision:old.revision+1,removed:true,updatedAt:new Date().toISOString()};await c.query("INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",[JSON.stringify(all)]);
  await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[e.id,'access.lark.self.unbind',{revision:old.revision+1}]);
+ auditLog(e.id,'access.lark.self.unbind');
  });r.json(await summary(e.id));
  }));
 }

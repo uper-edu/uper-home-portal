@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import fs from 'node:fs/promises';import test from 'node:test';import {randomUUID} from 'node:crypto';import {openTrialDatabase,transaction} from '../database.mjs';import {migrate} from '../migrate.mjs';
 test('two real MySQL worker processes recover leases without duplicate inbox or unknown Lark resend',{skip:!process.env.MYSQL_WORKER_TEST,timeout:30000},async()=>{
 const root=new URL('../../../',import.meta.url);
-const env={...process.env,PORTAL_DATABASE_DRIVER:'mysql',PLATFORM_MODE:'local',PORTAL_NOTIFICATION_MODE:'simulation',PORT:'4412'};for(const key of ['DATABASE_URL','LARK_GROUP_CRM'])delete env[key];
+const env={...process.env,PORTAL_DATABASE_DRIVER:'mysql',PLATFORM_MODE:'local',PORTAL_NOTIFICATION_MODE:'simulation',PORT:'4412',PORTAL_LOG_LEVEL:'info'};for(const key of ['DATABASE_URL','LARK_GROUP_CRM'])delete env[key];
 const db=await openTrialDatabase(env);const ids={event:randomUUID(),rule:randomUUID(),inapp:randomUUID(),lark:randomUUID(),simulated:randomUUID(),cancelled:randomUUID(),heldEvent:randomUUID(),heldJob:randomUUID(),heldTask:randomUUID(),heldLead:randomUUID()};
 await migrate(db,new URL(env.MYSQL_TRIAL_URL).pathname.slice(1));
 const {defaults}=await import('../../../server/portal/policy.ts');

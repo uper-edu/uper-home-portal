@@ -1,4 +1,5 @@
 import { retireTeamGrants } from "../../src/utils/accessControl.ts";
+import { auditLog } from "./audit.ts";
 import { tx } from "./store.ts";
 
 /** Preserve historical team values as inert evidence; never widen legacy record grants. */
@@ -30,6 +31,7 @@ export async function initializeTeamlessAccess() {
         "INSERT INTO portal_audit(actor,action,data) VALUES('system','access.teamless.role',:p1)",
         [{ id: role.id, before: role.config, after: config }],
       );
+      auditLog("system", "access.teamless.role", { id: role.id });
     }
     for (const rule of (await c.query("SELECT * FROM notification_rules"))
       .rows) {
@@ -71,6 +73,7 @@ export async function initializeTeamlessAccess() {
           },
         ],
       );
+      auditLog("system", "notification.teamless.policy", { id: rule.id });
     }
     await c.query("INSERT INTO access_state(id,value) VALUES('teamless',:p1)", [
       { version: 1 },

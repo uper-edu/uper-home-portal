@@ -2,6 +2,8 @@ import {personalNotificationPreferences,personalNotificationAllowed,personalNoti
 import {processLarkBindingConfirmations} from './larkSelfService.ts';
 import {larkApp,larkBindings} from './larkApp.ts';
 import {processExtractionBatch} from './aiExtraction.ts';
+import {auditLog} from './audit.ts';
+import {log} from '../logger.ts';
 import {executionTime,taskNoticeCancellation,timingEventLabel,agreementDueAfterActivation} from './taskTiming.ts';
 import {taskRequests,requestDeadline} from './taskManagement.ts';
 import {pendingIdentity} from './identityReview.ts';
@@ -37,7 +39,7 @@ import {
 export async function tick(clock = new Date()) {
   if((await restoreState())?.required)return;
   await processLarkBindingConfirmations();
-  void processExtractionBatch().catch(()=>{});
+  void processExtractionBatch(undefined,(e)=>log.error("ai.extraction_error",{error:e})).catch((e)=>log.error("worker.extraction_batch_error",{error:e}));
   await tx(async (c) => {
     await settleNoResponse(c,clock);
     const globalCalendar = (
@@ -109,6 +111,7 @@ export async function tick(clock = new Date()) {
         const count=(await c.query('SELECT COUNT(*) AS n FROM notification_jobs WHERE event_id=:p1',[ev.id])).rows[0].n;
         await c.query("INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.plan',:p1)",
           [{eventId:ev.id,eventType:ev.type,leadId:ev.lead_id,jobCount:Number(count),reason,exclusions}]);
+        auditLog('system','notification.plan',{leadId:ev.lead_id});
       };
       const lead = ev.lead_id
         ? (
@@ -186,6 +189,7 @@ export async function tick(clock = new Date()) {
               "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',:p1)",
               [{ eventId: ev.id, ruleId: rule.id, reason: route.reason }],
             );
+            auditLog('system','notification.routing_unresolved',{leadId:ev.lead_id});
             if (ev.type !== "notification.failed")
               await event(c, "notification.failed", null, {
                 reason: route.reason,
@@ -313,6 +317,7 @@ export async function tick(clock = new Date()) {
               "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',:p1)",
               [{ jobId: job.id, reason: "no_authorized_recipient" }],
             );
+            auditLog('system','notification.routing_unresolved');
             if (job.snapshot.event !== "notification.failed")
               await event(c, "notification.failed", null, {
                 jobId: job.id,
@@ -488,6 +493,7 @@ export async function tick(clock = new Date()) {
         if (job.snapshot.event !== "notification.failed")
           await event(c, "notification.failed", null, { jobId: job.id });
       });
+      log.error("notification.failed",{jobId:job.id,event:job.snapshot.event,state:"failed",result:"Channel not configured or test group disallowed"});
       return;
     }
     let state = "accepted",
@@ -517,7 +523,9 @@ export async function tick(clock = new Date()) {
         const source=await larkEventSource(pool,job.snapshot.event,job.snapshot.leadId,job.snapshot.payload);
         const failureSource=job.snapshot.event==='notification.failed'?await larkFailureSource(pool,job.snapshot.payload):null;
         if((job.snapshot.event==='assessment.completed'&&!attempt)||(['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)&&!source)||(job.snapshot.event==='notification.failed'&&!failureSource)||(job.snapshot.event==='task.overdue'&&!task)){
-          await pool.query("UPDATE notification_jobs SET state='cancelled',result='Original source missing',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
+          await pool.query("UPDATE notification_jobs SET state='cancelled',result='Original source missing',completed_at=:p2 WHERE id=:p1",[job.id,clock]);
+          log.warn("notification.cancelled",{jobId:job.id,event:job.snapshot.event,result:"Original source missing"});
+          return;
         }
         const occurrence=attempt ? assessmentOccurrence(attempt) : ['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event) ? (source && 'occurredAt' in source ? source.occurredAt : null) || null : null;
         const formatTime=(value:any)=>{const date=new Date(value);return value && Number.isFinite(date.getTime())?new Intl.DateTimeFormat(r.language==='zh'?'zh-CN':r.language==='id'?'id-ID':'en-GB',{timeZone:r.timezone,dateStyle:'medium',timeStyle:'short'}).format(date):undefined;};
@@ -583,8 +591,11 @@ export async function tick(clock = new Date()) {
         "UPDATE notification_jobs SET state='pending',due_at=UTC_TIMESTAMP(6)+INTERVAL (:p2 * 60) SECOND,result=:p3 WHERE id=:p1",
         [job.id, Math.max(r.retries[job.attempts], serverWait / 60), result],
       );
+      log.warn("notification.retry",{jobId:job.id,event:job.snapshot.event,attempts:job.attempts,result});
     } else {
       if (retry) result += "; retry limit reached";
+      if (["failed", "unknown"].includes(state))
+        log.error("notification.failed",{jobId:job.id,event:job.snapshot.event,state,attempts:job.attempts,result});
       await tx(async (c) => {
         await c.query(
           "UPDATE notification_jobs SET state=:p2,result=:p3,completed_at=:p4 WHERE id=:p1",
@@ -604,7 +615,7 @@ export async function tick(clock = new Date()) {
           "lark:" + job.recipient,
         ]);
       } catch (e) {
-        console.error("[WORKER CLEANUP]", (e as Error).message);
+        log.error("worker.lock_release_failed", { recipient: job.recipient, error: e as Error });
       } finally {
         lease?.release();
       }
@@ -615,13 +626,14 @@ const workerRuns = new WeakMap<object, { stop: () => Promise<void> }>();
 export function startWorker() {
   let running: Promise<void> | null = null,
     stopped = false;
+  log.info("worker.started");
   const timer = setInterval(() => {
     if (running || stopped) return;
     running = (async () => {
       try {
         for (let i = 0; i < 20 && !stopped; i++) await tick();
       } catch (e) {
-        console.error("[WORKER]", (e as Error).message);
+        log.error("worker.tick_error", { error: e as Error });
       }
     })().finally(() => {
       running = null;
@@ -642,4 +654,5 @@ export async function stopWorker(timer: ReturnType<typeof startWorker>) {
   if (run) await run.stop();
   else clearInterval(timer);
   workerRuns.delete(timer);
+  log.info("worker.stopped");
 }

@@ -1,4 +1,5 @@
 import {assertIdentitySalesAllowed} from './identityConsolidation.ts';
+import {auditLog} from './audit.ts';
 import {
   attendanceInput,
   linkedParticipationCampaign,
@@ -74,5 +75,6 @@ export async function saveAttendance(
     "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)",
     [actor, { id: leadId, requestId: body.requestId, input }],
   );
+  auditLog(actor, "attendance.record", { leadId, requestId: body.requestId });
   return next;
 }

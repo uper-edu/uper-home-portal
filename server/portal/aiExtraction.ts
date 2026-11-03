@@ -15,6 +15,7 @@ import {extractionFamily,extractionRoot} from '../../src/utils/crmExtractionEvid
 import {sameProfileValue} from '../../src/utils/crmFieldValues.ts';
 import {supportsCourseBudget} from '../../src/utils/crmBudget.ts';
 import {modelParameters} from './modelParameters.ts';
+import {log} from '../logger.ts';
 /** Called in the original source transaction. Technical processing only; never a sales task or notification. */
 export async function queueExtraction(c:any,leadId:string,type:string,sourceId:string,text:string,occurredAt:string|null,actor:string,explicitFields:string[]=[],sourceRevision='1',relationship:any={}){
  const hash=createHash('sha256').update(text).digest('hex');
@@ -46,7 +47,8 @@ export async function extractWithAI(text:string,context:any,request:typeof fetch
    observations.push(...recovered);coverageReview={field:'city',reviewed:true,recovered:recovered.length};
   }
   return {observations,model:actualModel,coverageReview};
- }catch{/* Invalid output, missing coverage and provider errors retry through the configured provider chain. No source or credentials in logs. */}}
+ }catch(e){/* Invalid output, missing coverage and provider errors retry through the configured provider chain. No source or credentials in logs. */
+  log.warn('ai.extraction_provider_failed',{model:p.name,error:e as Error});}}
  throw Error('结构化提取暂不可用，原文已保存');
 }
 let running=false;

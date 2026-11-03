@@ -1,4 +1,5 @@
 import {randomUUID, createHash} from 'node:crypto';
+import {auditLog} from './audit.ts';
 import {tx} from './store.ts';
 import {promotionInput} from '../../src/utils/campaignPromotion.ts';
 import {assertEditableCampaign} from '../../src/utils/organicCampaign.ts';
@@ -17,6 +18,7 @@ export async function addCampaignPromotion(campaignId:string,input:any,actor:str
   const campaign={...row.config,promotionLinks:[...(row.config.promotionLinks||[]),link],updatedAt:link.createdAt};
   await db.query('UPDATE trial_campaigns SET config=:p2 WHERE id=:p1',[campaignId,campaign]);
   await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.create',:p2)",[actor,{campaignId,requestId:input.requestId,fingerprint,link}]);
+  auditLog(actor,'campaign.promotion.create',{requestId:input.requestId});
   return {campaign,link};
  });
 }

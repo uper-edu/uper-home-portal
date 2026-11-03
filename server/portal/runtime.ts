@@ -1,5 +1,7 @@
 import {mountCourseRoutes} from './courseCatalog.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
+import {auditLog} from './audit.ts';
+import {log} from '../logger.ts';
 import {listInbox,readInbox} from './inappInbox.ts';
 import {previewBackfill,confirmBackfill,backfillResult} from './assignmentBackfill.ts';
 import {assignNewLead,prepareAssignmentPolicy} from './autoAssignment.ts';
@@ -137,7 +139,9 @@ async function visitor(req: Request, res: Response) {
 function wrap(fn: (req: Request, res: Response) => Promise<any>) {
   return (req: Request, res: Response) => {
     Promise.resolve().then(()=>{if(containsRemovedProfileMetadata(req.body))fail(400,"不支持的资料字段");return fn(req,res);}).catch((e) => {
-      console.error("[PORTAL]", e.message);
+      const status = (e as any).status || 503;
+      // Business rejections (fail(4xx)) stay at warn; only service failures are error-level.
+      log[status < 500 ? "warn" : "error"]("http.error", { method: req.method, path: req.path, status, traceId: res.locals.traceId, error: e as Error });
       if (!res.headersSent)
         res.status(e.status || 503).json({
           saved: typeof e.saved === "boolean" ? e.saved : undefined,
@@ -950,6 +954,7 @@ export async function mountPortal(app: Express) {
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.claim',:p2)",
           [e.id, { id: l.id, owner: e.id }],
         );
+        auditLog(e.id, "lead.claim", { leadId: l.id });
         const ownershipFactId=randomUUID();
         await fact(c,l.id,'owner.changed',e.id,{before:null,after:e.id,beforeName:'未分配',afterName:e.displayName||e.id,reason:'自己认领',changedAt:next.ownerChangedAt,requestId:randomUUID()},ownershipFactId);
         await event(c, "conversation.updated", l.id, {
@@ -1069,6 +1074,7 @@ export async function mountPortal(app: Express) {
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
           [e.id, "lead.update", { id: l.id, changes: req.body }],
         );
+        auditLog(e.id, "lead.update", { leadId: l.id });
         if (ownerChanged)
           await event(c, "conversation.updated", l.id, {
             source: "crm_assignment",
@@ -1328,6 +1334,7 @@ export async function mountPortal(app: Express) {
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
           [e.id, "rule.save", { id: req.params.id, version }],
         );
+        auditLog(e.id, "rule.save");
       });
       res.json({ success: true });
     }),
@@ -1425,6 +1432,7 @@ export async function mountPortal(app: Express) {
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
           [employee.id, "notification.cancel", { jobId: job.id, reason }],
         );
+        auditLog(employee.id, "notification.cancel");
       });
       res.json({ success: true });
     }),
@@ -1596,6 +1604,7 @@ export async function mountPortal(app: Express) {
           { id: req.params.id, team, mode, maxPerHour: limit },
         ],
       );
+      auditLog(e.id, "channel.save");
       res.json({ success: true });
     }),
   );
@@ -1628,10 +1637,11 @@ export async function mountPortal(app: Express) {
       const value=merged.value;await prepareAssignmentPolicy(db,current,value,employee);value.updatedAt=new Date().toISOString();
       const before={identityReviewManagerOnly:current.identityReviewManagerOnly,ownerAssignmentManagerOnly:current.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:current.sourceAttributionManagerOnly};
       const after={identityReviewManagerOnly:value.identityReviewManagerOnly,ownerAssignmentManagerOnly:value.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:value.sourceAttributionManagerOnly};
-      if(JSON.stringify(before)!==JSON.stringify(after))await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[employee.id,'crm.access-controls.save',{before,after}]);
+      if(JSON.stringify(before)!==JSON.stringify(after)){await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[employee.id,'crm.access-controls.save',{before,after}]);auditLog(employee.id,'crm.access-controls.save');}
       await db.query("UPDATE portal_settings SET value=:p1 WHERE id='sla'",[policySla(sla,value)]);
       await db.query("INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",[value]);
       await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[employee.id,'sla.topic.save',{topic:req.params.topic,before:topicPatch(current,req.params.topic as PolicyTopic),after:topicPatch(value,req.params.topic as PolicyTopic)}]);
+      auditLog(employee.id,'sla.topic.save');
       return {kind:'saved' as const,value};
     });
     if(result.kind==='invalid'){res.status(400).json({error:'policy_topic_invalid'});return;}
@@ -1652,12 +1662,13 @@ export async function mountPortal(app: Express) {
         await prepareAssignmentPolicy(db,effectivePolicy(configured,old),value,e);
         const previousControls={identityReviewManagerOnly:configured?.identityReviewManagerOnly!==false,ownerAssignmentManagerOnly:effectivePolicy(configured,old).ownerAssignmentManagerOnly,sourceAttributionManagerOnly:configured?.sourceAttributionManagerOnly!==false};
         const currentControls={identityReviewManagerOnly:value.identityReviewManagerOnly,ownerAssignmentManagerOnly:value.ownerAssignmentManagerOnly,sourceAttributionManagerOnly:value.sourceAttributionManagerOnly};
-        if(JSON.stringify(previousControls)!==JSON.stringify(currentControls))await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[e.id,"crm.access-controls.save",{before:previousControls,after:currentControls}]);
+        if(JSON.stringify(previousControls)!==JSON.stringify(currentControls)){await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[e.id,"crm.access-controls.save",{before:previousControls,after:currentControls}]);auditLog(e.id,"crm.access-controls.save");}
         const next=policySla(old,value);
         value.updatedAt=new Date().toISOString();
         await db.query("UPDATE portal_settings SET value=:p1 WHERE id='sla'",[next]);
         await db.query("INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",[value]);
         await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",[e.id,"sla.save",next]);
+        auditLog(e.id,"sla.save");
         return {errors:null};
       });
       if(result.errors) {

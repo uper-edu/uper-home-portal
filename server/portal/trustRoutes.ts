@@ -1,4 +1,5 @@
 import {enrollCourse} from './courseCatalog.ts';
+import {auditLog} from './audit.ts';
 import {randomUUID} from 'node:crypto';
 import {restoreMistakenFulfilment} from './agreementRestore.ts';
 import {attachIdentityContactHolds,activateIdentityLead,mergeIdentityLead,lockIdentityRegistry} from './identityConsolidation.ts';
@@ -220,6 +221,7 @@ export function mountTrustRoutes(
         const lead={...current,currentStage:req.body.newStage,stageRevision:(current.stageRevision||0)+1,stageUpdatedAt:decision.recordedAt,stageEffectiveAt:decision.effectiveAt,stagePolicyVersion:2};
         await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[l.id,lead]);
         await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'lead.stage',:p2)",[e.id,{leadId:l.id,...decision}]);
+        auditLog(e.id,'lead.stage',{leadId:l.id});
         return {saved:true,leadId:l.id,lead};
       });
     }));

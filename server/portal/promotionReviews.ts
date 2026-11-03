@@ -1,4 +1,5 @@
 import {canReviewSourceAttribution,assertSourceAttributionReviewer} from './crmAccessControls.ts';
+import {auditLog} from './audit.ts';
 import crypto from 'node:crypto';
 import {pool,tx} from './store.ts';
 import {allowed} from './identity.ts';
@@ -77,6 +78,7 @@ export async function reviewPromotion(leadId:string,b:any,employee:any){
   await db.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,{...row.profile,promotionReview:resolution}]);
   const result={leadId,...resolution,createdLink:b.action==='create',requestId:b.requestId};
   await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.review',:p2)",[employee.id,{leadId,requestId:b.requestId,fingerprint:hash,action:b.action,before:c.current||null,after:resolution,result}]);
+  auditLog(employee.id,'campaign.promotion.review',{leadId,requestId:b.requestId});
   return result;
  });
 }

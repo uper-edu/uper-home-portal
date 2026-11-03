@@ -1,4 +1,5 @@
 import {assertIdentitySalesAllowed} from './identityConsolidation.ts';
+import {auditLog} from './audit.ts';
 import {observedBuyingSignals,appendBuyingSignals,buyingSignalOptions} from '../../src/utils/crmBuyingSignals.ts';
 import {applyTaskChange,handleTaskRequests} from './taskManagement.ts';
 import {validateContactPlan,applyContactPlan} from './contactPlans.ts';
@@ -289,5 +290,6 @@ export async function saveSalesWorkflow(
       { leadId, ...result, disposition: body.disposition },
     ],
   );
+  auditLog(actor, "followup.save", { leadId });
   return { lead: profile, ...result };
 }

@@ -28,6 +28,8 @@ server {
     proxy_set_header X-Forwarded-Proto https;
     # Overwrite attacker-supplied chains; do not use proxy_add_x_forwarded_for.
     proxy_set_header X-Forwarded-For $remote_addr;
+    # Edge-authoritative trace id: always overwrite whatever the client sent.
+    proxy_set_header X-Trace-Id $request_id;
     proxy_set_header Forwarded "";
     proxy_set_header Connection "";
     proxy_buffering off;

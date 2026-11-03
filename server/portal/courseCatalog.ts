@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {auditLog} from './audit.ts';
 import {assignmentDirectory} from './autoAssignment.ts';
 import {invalid,operation} from './trustWorkflow.ts';
 import {permittedRecord} from '../../src/utils/accessControl.ts';
@@ -26,7 +27,7 @@ export async function saveCourse(c:any,actorId:string,b:any){
   const before=old?.value?Object.fromEntries(Object.entries(old.value).filter(([k])=>k!=='history')):null,after=config(b.config),at=new Date().toISOString(),revision=(old?.revision||0)+1;
   const value={...after,updatedAt:at,history:[...(old?.value.history||[]),{id:randomUUID(),actor:actorId,at,before,after}]};
   await c.query('INSERT INTO crm_courses(id,revision,value) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE revision=:p2,value=:p3',[b.id,revision,value]);
-  await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)",[actorId,{courseId:b.id,revision}]);return {courseId:b.id,revision};
+  await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)",[actorId,{courseId:b.id,revision}]);auditLog(actorId,'course.save');return {courseId:b.id,revision};
  });
 }
 export async function enrollCourse(c:any,leadId:string,actorId:string,q:any,basis:any,factId:string){

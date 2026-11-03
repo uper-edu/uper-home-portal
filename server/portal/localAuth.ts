@@ -1,4 +1,5 @@
 import {validStaffPassword} from '../../src/utils/staffPassword.ts';
+import {auditLog} from './audit.ts';
 import { projectEmployee } from "../../src/utils/accessControl.ts";
 import crypto from "node:crypto";
 import { validMutationOrigin } from "./accessTransport.ts";
@@ -214,6 +215,7 @@ export function mountLocalAuth(
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.login','{}')",
           [row.id],
         );
+        auditLog(row.id, "auth.login");
         return {
           status: 200,
           t,
@@ -303,6 +305,7 @@ export function mountLocalAuth(
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'auth.password_changed','{}')",
           [e.id],
         );
+        auditLog(e.id, "auth.password_changed");
       });
       r.json({ success: true });
     }),

@@ -1,4 +1,5 @@
 import {fact,invalid,lockLead,operation}from'./trustWorkflow.ts';
+import {auditLog}from'./audit.ts';
 import{fulfilledAgreementRecord,agreementRestoreIsPast}from'../../src/utils/crmAgreementRestore.ts';
 export async function restoreMistakenFulfilment(c:any,leadId:string,actor:string,b:any,canWrite:(p:any)=>boolean,clock=new Date()){
  const p=await lockLead(c,leadId,()=>true);if(!canWrite(p))invalid('无权处理该客户约定',403);
@@ -15,6 +16,7 @@ export async function restoreMistakenFulfilment(c:any,leadId:string,actor:string
   await fact(c,leadId,'commitment.fulfilment_reversed',actor,{commitmentId:b.commitmentId,...correction,reminderSuppressed:past});
   await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);
   await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'commitment.restore',:p2)",[actor,{leadId,commitmentId:b.commitmentId,...correction}]);
+  auditLog(actor,'commitment.restore',{leadId});
   return {saved:true,lead:next,commitmentId:b.commitmentId};
  });
 }

@@ -3,6 +3,7 @@ import {validatePaymentImages,storePaymentImages} from './paymentImages.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import {assignmentDirectory} from './autoAssignment.ts';
 import {operation,invalid} from './trustWorkflow.ts';
+import {auditLog} from './audit.ts';
 import {canonicalIdentity,assertIdentitySalesAllowed,lockIdentityRegistry} from './identityConsolidation.ts';
 import {permittedRecord} from '../../src/utils/accessControl.ts';
 import {emptyPaymentLedger,paymentAmount,paymentInstant,paymentSummary,type PaymentLedger} from '../../src/utils/crmPayments.ts';
@@ -127,6 +128,7 @@ export async function savePayment(c:any,leadId:string,actorId:string,b:any){
   await c.query('UPDATE crm_payment_references SET lead_id=:p1 WHERE lead_id IN (:p2)',[leadId,ids]);
   await c.query('INSERT INTO crm_payment_ledgers(lead_id,revision,value) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE revision=:p2,value=:p3',[leadId,revision+1,ledger]);
   await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[actorId,'payment.'+b.action,{leadId,historyId:history.id,targetId:after.id}]);
+  auditLog(actorId,'payment.'+b.action,{leadId});
   return {action:b.action,revision:revision+1,targetId:after.id,projectId:project!.id,historyId:history.id};
  });
 }

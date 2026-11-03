@@ -6,6 +6,7 @@ import { validMutationOrigin } from "./accessTransport.ts";
 import {canReadTestDirectory,testDirectoryEnabled,testDirectoryOrigin,testDirectoryUsers} from './testDirectory.ts';
 import type { Express, Request } from "express";
 import { pool, tx } from "./store.ts";
+import { auditLog } from "./audit.ts";
 import { platform } from "./identity.ts";
 import { accountSeeds, hashPassword, passwordChangeKey } from "./localAuth.ts";
 import {
@@ -103,6 +104,7 @@ export async function initializeAccessAccounts() {
         }),
       ],
     );
+    auditLog("system", "access.bootstrap");
   });
 }
 async function ensureAdministrator(c: any) {
@@ -158,6 +160,7 @@ async function audit(c: any, actor: string, action: string, data: any) {
     "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
     [actor, "access." + action, JSON.stringify(data)],
   );
+  auditLog(actor, "access." + action, data);
 }
 export function mountAccessManagement(app: Express) {
   let failureOnce =

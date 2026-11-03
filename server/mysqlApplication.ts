@@ -30,11 +30,13 @@ import {visitor} from './portal/runtime.ts';
 import {leadTier,taskDeadline} from './portal/followup.ts';
 import {campaignsContext} from '../cloud/mysql/campaign-context.mjs';
 import {loadCampaigns,getCurrentCampaigns,saveCampaign,deleteCampaign,trackCampaignImpression,synthesizeCampaignAiAssets,getCampaignByIdOrCode} from './campaignStorage.ts';
+import {log} from './logger.ts';
+import {mountRequestTracing} from './requestTracing.ts';
 export async function startMysqlApplication(){
 const company=companyConfiguration();
 const production=productionConfiguration();
 const deployment=company || production;
-const releaseCompanyLease=company?await acquireCompanyRuntimeLease(nativePool,process.env,()=>{console.error('Company runtime lease lost; stopping');process.exit(1);}):null;
+const releaseCompanyLease=company?await acquireCompanyRuntimeLease(nativePool,process.env,()=>{log.error('company.lease_lost');process.exit(1);}):null;
 if(process.env.PORTAL_DATABASE_DRIVER!=='mysql')throw Error('Explicit MySQL driver required');
 if(process.env.ACCESS_ALLOW_TEST_PASSWORDS==='true'&&(process.env.TRIAL_DATASET!=='synthetic'||process.env.APP_ENV!=='test'))throw Error('Fixed test credentials are forbidden outside isolated synthetic tests');
 const activeLocal=process.env.TRIAL_DATASET==='local-crm'&&process.env.PORTAL_LOCAL_CUTOVER==='true';
@@ -57,7 +59,10 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
   }
 }
 const runtimeVersion=createRuntimeVersion();
-const app=express();mountMetadataHeaders(app);configureAccessTransport(app);mountRuntimeVersion(app,runtimeVersion);app.use('/api/client-diagnostics',express.json({limit:'12kb'}));mountClientDiagnostics(app);app.use(express.json({limit:'16mb'}));
+const app=express();
+// First middleware: trace id adoption plus the per-request access-log line.
+mountRequestTracing(app);
+mountMetadataHeaders(app);configureAccessTransport(app);mountRuntimeVersion(app,runtimeVersion);app.use('/api/client-diagnostics',express.json({limit:'12kb'}));mountClientDiagnostics(app);app.use(express.json({limit:'16mb'}));
 app.use('/api',passwordChangeGate);
 if(company){
  app.get('/robots.txt',(_q,r)=>r.type('text').send('User-agent: *\nDisallow: /\n'));
@@ -75,7 +80,7 @@ mountHskAssets(app);
 app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
 await mountPortal(app);await ensureOrganicCampaign();await tx(ensureInstagramBioCampaign);mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
-const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>r.status(e.status||503).json({error:e.status&&e.status<500?e.message:'Storage unavailable; operation not saved'}));
+const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status<500?e.message:'Storage unavailable; operation not saved'});});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
 app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>r.json({reviews:await listPromotionReviews(r.locals.crmEmployee)})));
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
@@ -103,16 +108,16 @@ if(process.env.TRIAL_FRONTEND_DIRECTORY){
   app.use(express.static(directory,frontendStaticOptions(directory)));
   mountMetadataHtml(app,directory,nativePool);
 }
-app.use((e:any,_q:any,r:any,_next:any)=>r.status(e.status||503).json({error:e.status===413?'Request too large':'Request could not be processed'}));
+app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
 if(process.env.PORTAL_WORKER_ENABLED==='true'&&!activeLocal&&!((company||production)&&process.env.PORTAL_NOTIFICATION_MODE==='configured')){
  if(process.env.PORTAL_NOTIFICATION_MODE!=='simulation')throw Error('This local acceptance requires simulated notifications');
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
  if(channels.some(c=>c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
 }
 const timer=process.env.PORTAL_WORKER_ENABLED==='true'?startWorker():null;
-const server=app.listen(port,deployment?.host || '127.0.0.1',()=>console.log({mysqlReady:true,port,workerEnabled:!!timer}));
+const server=app.listen(port,deployment?.host || '127.0.0.1',()=>log.info('app.ready',{mysqlReady:true,port,workerEnabled:!!timer}));
 let closing=false;
-async function shutdown(){if(closing)return;closing=true;if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{if(releaseCompanyLease)await releaseCompanyLease();await pool.end();process.exit(0);});}
+async function shutdown(){if(closing)return;closing=true;log.info('app.shutdown',{draining:true});if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{if(releaseCompanyLease)await releaseCompanyLease();await pool.end();log.info('app.shutdown',{draining:false});setImmediate(()=>process.exit(0));});}
 process.once('SIGINT',shutdown);process.once('SIGTERM',shutdown);
 return {app,server};
 }

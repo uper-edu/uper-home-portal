@@ -19,6 +19,7 @@ import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import { learnerAssessmentGuidance } from "../../src/data/hskLearnerGuidance.ts";
 import { consultationNextStep } from "./consultationGuidance.ts";
+import { log } from "../logger.ts";
 export function mountChat(app: Express) {
   app.post(
     "/api/chat",
@@ -319,6 +320,7 @@ export function mountChat(app: Express) {
           } catch (e) {
             if (stream && !res.destroyed)
               res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+            log.warn("chat.provider_failed", { model: provider.model, conversationId: conv.id, error: e as Error });
             await db.query(
               "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
               [assistantId, provider.model, partial, (e as Error).message],
@@ -337,8 +339,10 @@ export function mountChat(app: Express) {
               catalogueUsed?'course-fees-v1':null,
             ],
           );
-          if (!modelUsed)
+          if (!modelUsed) {
+            log.error("chat.all_providers_failed", { conversationId: conv.id, messageId: assistantId });
             await event(c, "ai.failed", conv.lead_id, { source: conv.source,conversationId:conv.id,messageId:assistantId });
+          }
         });
         const result = {
           reply: modelUsed ? reply : "AI 回复失败，消息已保存。请稍后重试。",
@@ -365,7 +369,7 @@ export function mountChat(app: Express) {
             );
           await db.query("SELECT RELEASE_LOCK(:p1)", [conv.id]);
         } catch (e) {
-          console.error("[CHAT CLEANUP]", (e as Error).message);
+          log.error("chat.cleanup_failed", { conversationId: conv.id, error: e as Error });
         } finally {
           lease.release();
         }

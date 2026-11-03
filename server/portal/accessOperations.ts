@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { auditLog } from "./audit.ts";
 import { tx, pool } from "./store.ts";
 import { operationContext } from "./operationContext.ts";
 import { platform } from "./identity.ts";
@@ -174,6 +175,7 @@ export function mountAccessOperations(app: any) {
                 }),
               ],
             );
+            auditLog(actor.id, "access.operation.closed");
             return { state: "cancelled", result };
           }),
         );

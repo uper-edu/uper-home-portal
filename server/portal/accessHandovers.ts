@@ -1,4 +1,5 @@
 import {pendingIdentity} from './identityReview.ts';
+import {auditLog} from './audit.ts';
 import {loadCrmAccessControls} from './crmAccessControls.ts';
 import {isCrmManager} from '../../src/utils/crmOutreach.ts';
 import crypto from "node:crypto";
@@ -75,6 +76,7 @@ export async function reconcileHandovers(c: any, before: any[], cause: any) {
         }),
       ],
     );
+    auditLog(cause.actor, "access.handover.required", { id: next.id });
   }
 }
 const deny = (status: number, message: string): never => {
@@ -324,6 +326,7 @@ export function mountAccessHandovers(app: any) {
             }),
           ],
         );
+        auditLog(actor.id, "access.handover.update", { id: h.id });
         return {
           remainingCustomers: remaining.leads.length,
           remainingTasks: remaining.tasks.length,

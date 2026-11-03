@@ -1,4 +1,5 @@
 import {fact,invalid,lockLead,operation} from './trustWorkflow.ts';
+import {auditLog} from './audit.ts';
 import {effectiveEnrollmentFacts,enrollmentVoids,isEnrollmentConfirmation} from '../../src/utils/crmEnrollment.ts';
 import {isSalesProgressStage,isEnrolledStage} from '../../src/utils/crmSalesProgress.ts';
 
@@ -29,6 +30,7 @@ export async function voidEnrollmentConfirmation(c:any,leadId:string,actor:strin
   await fact(c,leadId,'enrollment.confirmation_voided',actor,correction);
   await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[leadId,next]);
   await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)",[actor,{leadId,...correction}]);
+  auditLog(actor,'enrollment.void',{leadId});
   return {saved:true,lead:next,targetFactId:target.id,stageChanged:needsStage,remainingConfirmations:remaining.length};
  });
 }

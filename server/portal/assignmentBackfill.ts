@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {auditLog} from './audit.ts';
 import {lockIdentityRegistry} from './identityConsolidation.ts';
 import {assignmentDirectory,assignmentCandidates,roundRobinNext,writeAssignment} from './autoAssignment.ts';
 import {permittedRecord} from '../../src/utils/accessControl.ts';
@@ -48,5 +49,5 @@ export async function confirmBackfill(c:any,originalActor:any,token:string){
  if(assigned)await c.query("INSERT INTO portal_settings(id,value) VALUES('crm_assignment_cursor',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{...state,lastEmployeeId:lastId}]);
  const result={operationKind:'assignment.backfill',id:snapshot.id,assigned,skipped,total:snapshot.rows.length,entries,completedAt:new Date().toISOString()};
  await c.query('INSERT INTO crm_operations(actor,request_id,fingerprint,result) VALUES(:p1,:p2,:p3,:p4)',[actor.id,receiptKey(snapshot.id),hash(token),result]);
- await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[actor.id,'lead.backfill_completed',result]);return result;
+ await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[actor.id,'lead.backfill_completed',result]);auditLog(actor.id,'lead.backfill_completed');return result;
 }

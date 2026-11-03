@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {auditLog} from './audit.ts';
 import {eligibleOwner,permittedRecord} from '../../src/utils/accessControl.ts';
 import {isCrmManager} from '../../src/utils/crmOutreach.ts';
 const bad=(s:string,status=400):never=>{throw Object.assign(Error(s),{status});};
@@ -42,6 +43,7 @@ export async function changeLeadOwner(c:any,{actor,current,body,directory,manage
  const ownershipFactId=randomUUID();
  await fact(c,current.id,'owner.changed',actor.id,{before:receipt.before,after:receipt.after,beforeName:previous?.displayName||receipt.before||'未分配',afterName:target.displayName||target.id,reason:input.reason,changedAt:receipt.changedAt,requestId:input.requestId},ownershipFactId);
  await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[actor.id,'lead.owner_change',{id:current.id,requestId:input.requestId,input,receipt}]);
+ auditLog(actor.id,'lead.owner_change',{leadId:current.id,requestId:input.requestId});
  await event(c,'conversation.updated',current.id,{source:'crm_assignment',assignmentChanged:true,factId:ownershipFactId});
  return {lead:next,receipt};
 }

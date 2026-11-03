@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {auditLog} from './audit.ts';
 import {eligibleOwner,permittedRecord,projectEmployee} from '../../src/utils/accessControl.ts';
 import {policyEqual} from '../../src/utils/crmPolicyTopics.ts';
 import {fact} from './trustWorkflow.ts';
@@ -39,7 +40,7 @@ export async function assignNewLead(c:any,leadId:string,trigger:'registration'|'
  const {pendingIdentity}=await import('./identityReview.ts');if((await pendingIdentity(c,leadId)).length)return lead;
  const candidates=assignmentCandidates(await assignmentDirectory(c),a.salesIds,lead);
  const nextId=roundRobinNext(candidates.map((e:any)=>e.id),state.lastEmployeeId);
- if(!nextId){await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',['system','lead.auto_assignment_skipped',{id:leadId,reason:'no_eligible_sales',strategy:'round_robin'}]);return lead;}
+ if(!nextId){await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',['system','lead.auto_assignment_skipped',{id:leadId,reason:'no_eligible_sales',strategy:'round_robin'}]);auditLog('system','lead.auto_assignment_skipped',{leadId});return lead;}
  const target=candidates.find((e:any)=>e.id===nextId);
  const next=await writeAssignment(c,lead,target,trigger);
  await c.query("UPDATE portal_settings SET value=:p1 WHERE id='crm_assignment_cursor'",[{...state,lastEmployeeId:nextId}]);
@@ -53,5 +54,6 @@ export async function writeAssignment(c:any,lead:any,target:any,trigger:string,a
  await c.query("UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')",[leadId,nextId]);
  await fact(c,leadId,'owner.changed',actor,{before:null,after:nextId,beforeName:'未分配',afterName:target.displayName||nextId,reason:trigger==='backfill'?'历史补分：轮询':'自动分案：轮询',strategy:'round_robin',trigger,changedAt,requestId});
  await c.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',[actor,trigger==='backfill'?'lead.backfill_assigned':'lead.auto_assigned',{id:leadId,before:null,after:nextId,strategy:'round_robin',trigger,changedAt}]);
+ auditLog(actor,trigger==='backfill'?'lead.backfill_assigned':'lead.auto_assigned',{leadId});
  return next;
 }
