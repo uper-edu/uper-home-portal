@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: middleware
+  labels:
+    app.kubernetes.io/name: filebeat
+    app.kubernetes.io/part-of: logging
+data:
+  filebeat.yml: |
+    # Collect uper-home-portal container stdout/stderr (single-line JSON per line)
+    # and write to the existing Elasticsearch directly. Java services keep their
+    # own direct TCP 5044 -> Logstash path and are deliberately NOT collected here.
+    filebeat.inputs:
+      - type: container
+        stream: all
+        paths:
+          - /var/log/pods/prod_uper-home-portal-*/*/*.log
+        processors:
+          - add_fields:
+              target: ""
+              fields:
+                envName: prod
+                appName: uper-home-portal
+    processors:
+      - decode_json_fields:
+          fields: ["message"]
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+          process_array: false
+          max_depth: 1
+      - drop_fields:
+          fields:
+            - agent.ephemeral_id
+            - agent.id
+            - agent.type
+            - agent.version
+            - ecs.version
+            - input.type
+            - log.file.path
+            - log.offset
+            - container.id
+            - container.runtime
+            - container.image.name
+            - host.architecture
+            - host.os
+            - host.mac
+            - host.ip
+            - host.containerized
+            - host.hostname
+          ignore_missing: true
+    output.elasticsearch:
+      hosts: ["elasticsearch-svc.middleware.svc:9200"]
+      protocol: http
+      username: elastic
+      password: "${ELASTIC_PASSWORD}"
+      index: "prod-uper-home-portal-%{+yyyyMMdd}"
+    setup.template.enabled: false
+    setup.ilm.enabled: false
+    queue.mem:
+      flush.min_events: 64
+      flush.timeout: 1s
+    logging.level: warning
+---
+# The real secret is created out-of-band (see ops/filebeat/README.md):
+#   kubectl -n middleware create secret generic filebeat-es-credentials \
+#     --from-literal=ELASTIC_PASSWORD='<elastic password>'
+# Credentials never belong in this file or in git.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: middleware
+  labels:
+    app.kubernetes.io/name: filebeat
+    app.kubernetes.io/part-of: logging
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: filebeat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: filebeat
+        app.kubernetes.io/part-of: logging
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:8.17.0
+          args: ["-c", "/usr/share/filebeat/filebeat.yml", "-e"]
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: filebeat-es-credentials
+                  key: ELASTIC_PASSWORD
+          securityContext:
+            runAsUser: 0
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/filebeat/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+            - name: data
+              mountPath: /usr/share/filebeat/data
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: filebeat-config
+            defaultMode: 0644
+        - name: data
+          emptyDir: {}
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
