@@ -27,7 +27,7 @@
       "streamId": "15159406809",
       "streamName": "UPER Web",
       "measurementId": "G-SZCY9WLK8X",
-      "allowedHosts": ["uperedu.com", "www.uperedu.com"],
+      "allowedHosts": ["uperedu.com", "www.uperedu.com", "home.uperedu.com"],
       "allowLocalSubdomains": false,
       "requireHttps": true
     }

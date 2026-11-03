@@ -4,7 +4,7 @@ import {internalMysqlDirect} from '../cloud/mysql/transport.mjs';
 export const companyOrigin = 'https://home.prototype.uperedu.com';
 export const isCompanyTrial = (env = process.env) => env.PORTAL_DEPLOYMENT === 'company-trial';
 export const productionOrigin = 'https://uperedu.com';
-const productionOrigins = new Set([productionOrigin, 'https://www.uperedu.com']);
+const productionOrigins = new Set([productionOrigin, 'https://www.uperedu.com', 'https://home.uperedu.com']);
 export const isProductionDeployment = (env = process.env) => env.PORTAL_ENV === 'prod' && env.PORTAL_DEPLOYMENT === 'production';
 /** Parse the explicit public-origin allowlist used by the HTTPS transport gate. */
 export function publicOrigins(env = process.env) {

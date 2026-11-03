@@ -49,7 +49,7 @@ test("runtime host and build gates prevent development, staging and production p
       "http://synthetic.localhost:4452/crm",
     ],
     test: ["https://home.prototype.uperedu.com/chat"],
-    prod: ["https://uperedu.com/link", "https://www.uperedu.com/crm"],
+    prod: ["https://uperedu.com/link", "https://www.uperedu.com/crm", "https://home.uperedu.com/chat"],
   };
   for (const [target, urls] of Object.entries(allowed))
     for (const href of urls)
