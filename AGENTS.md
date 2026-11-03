@@ -17,6 +17,11 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - 保留现有三语与响应式设计能力；产品文案同步范围按本次授权执行，与测试范围分别判断。未测试的语言和设备明确列为未验证，不声称已通过。
 - 保护现有数据、账号、密码、权限及配置，不为测试自行清空数据、停用通知工作进程或修改发送模式，不重放历史通知。危险测试需先确认安全执行方式。此规范维护不授权代码更新、运行环境切换、GitHub推送、服务器部署或通知实发。
 
+## 数据库规范
+
+- 禁止使用外键：新增或修改的 `CREATE TABLE`、`ALTER TABLE` 及迁移脚本不得包含 `FOREIGN KEY`、`REFERENCES` 或 `ON DELETE/ON UPDATE` 级联子句。表间关联只用普通列加索引，引用完整性由应用层在同一事务内校验与维护（沿用 `lockIdentityRegistry`、`SELECT ... FOR UPDATE` 等既有模式）。
+- 存量 schema 中已有的外键（`schema.sql`、`schema-v2.sql`、`schema-v13.sql`、`schema-v15.sql` 中关联 `portal_leads` 的 5 处）仅在因业务需要改动对应表时顺带评审移除，不做单独的外键清理迁移；本规范不授权全局 schema 重构或存量数据迁移。
+
 ## Zentao bug fixes
 
 - Use [fix-zentao-bugs](.agents/skills/fix-zentao-bugs/SKILL.md) for Zentao bug investigation, repair, and disposition.
