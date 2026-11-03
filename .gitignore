@@ -21,3 +21,5 @@ dist/
 
 # Local Zentao credentials
 /.zentao.credentials.local.json
+/.claude/launch.json
+/.zcode/
