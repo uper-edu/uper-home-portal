@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, ArrowRight, Newspaper, Search, X } from 'lucide-react';
 import { Link, useNavigationType } from 'react-router-dom';
-import { client } from '../sanityClient';
-import imageUrlBuilder from '../sanityClient';
+import { client } from '../cmsClient';
+import imageUrlBuilder from '../cmsClient';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
@@ -474,8 +474,8 @@ export default function News() {
             <div className="py-12 bg-amber-50 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 rounded-3xl p-8 text-center max-w-2xl mx-auto">
               <h3 className="font-bold text-lg mb-2">🔧 [DEV MODE] No News Articles Found</h3>
               <p className="text-sm opacity-90">
-                This news listing is empty because no articles were fetched from Sanity.
-                Ensure you have created and published documents of type <code>news</code> in your Sanity Studio.
+                This news listing is empty because no articles were fetched from the CMS.
+                Ensure you have created and published documents of type <code>news</code> in your CMS.
               </p>
             </div>
           ) : (

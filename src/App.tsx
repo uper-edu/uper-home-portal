@@ -50,7 +50,6 @@ const News = lazyWithRetry(() => import('./pages/News'));
 const NewsDetail = lazyWithRetry(() => import('./pages/NewsDetail'));
 const CampaignDetail = lazyWithRetry(() => import('./pages/CampaignDetail'));
 const StyleGuide = lazyWithRetry(() => import('./pages/StyleGuide'));
-const StudioPage = lazyWithRetry(() => import('./pages/Studio'));
 const StandAloneChat = lazyWithRetry(() => import('./pages/StandAloneChat'));
 const CrmWorkbench = lazyWithRetry(() => import('./pages/CrmWorkbench'));
 const AccessWorkbench = lazyWithRetry(() => import('./pages/AccessWorkbench'));
@@ -93,7 +92,6 @@ export default function App() {
                 <Route path="cms" element={<CmsWorkbench />} />
                 <Route path="CMS" element={<CmsWorkbench />} />
 
-                <Route path="studio" element={<StudioPage />} />
 
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Home />} />

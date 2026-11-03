@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { optimizeImageUrl } from '../../sanityClient';
+import { optimizeImageUrl } from '../../cmsClient';
 
 interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;

@@ -4,8 +4,8 @@ import { ArrowRight, Globe2, MessageCircle, Sparkles, MapPin, GraduationCap, Pla
 import { Link, useNavigationType } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
-import { client } from '../sanityClient';
-import imageUrlBuilder from '../sanityClient';
+import { client } from '../cmsClient';
+import imageUrlBuilder from '../cmsClient';
 import { useDesignStyle } from '../utils/theme';
 
 const builder = imageUrlBuilder(client);
@@ -102,7 +102,7 @@ const MarketingCampaign = () => {
             <div className="py-8 bg-amber-50 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 rounded-3xl p-6 text-center">
               <h3 className="font-bold text-lg mb-2">🔧 [DEV MODE] No Active Campaigns Found</h3>
               <p className="text-sm opacity-90">
-                This entire Marketing Campaign section is hidden in <strong>Production</strong>. Publish a document of type <code>campaign</code> with <code>isActive == true</code> in Sanity.
+                This entire Marketing Campaign section is hidden in <strong>Production</strong>. Publish a document of type <code>campaign</code> with <code>isActive == true</code> in the CMS.
               </p>
             </div>
           </div>
@@ -253,7 +253,7 @@ const NewsSection = () => {
             <div className="py-8 bg-amber-50 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 rounded-3xl p-6 text-center">
               <h3 className="font-bold text-lg mb-2">🔧 [DEV MODE] No News Articles Found</h3>
               <p className="text-sm opacity-90">
-                This entire News section is hidden in <strong>Production</strong>. Publish documents of type <code>news</code> in Sanity to populate.
+                This entire News section is hidden in <strong>Production</strong>. Publish documents of type <code>news</code> in the CMS to populate.
               </p>
             </div>
           </div>
@@ -415,7 +415,7 @@ const StudentStories = () => {
             <div className="py-8 bg-amber-50 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 rounded-3xl p-6 text-center">
               <h3 className="font-bold text-lg mb-2">🔧 [DEV MODE] No Student Experiences Found</h3>
               <p className="text-sm opacity-90">
-                This entire Student Stories section is hidden in <strong>Production</strong>. Publish documents of type <code>studentStory</code> in Sanity to populate.
+                This entire Student Stories section is hidden in <strong>Production</strong>. Publish documents of type <code>studentStory</code> in the CMS to populate.
               </p>
             </div>
           </div>
@@ -1590,7 +1590,7 @@ const TrendingSection = () => {
             <div className="py-8 bg-amber-50 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 rounded-3xl p-6 text-center">
               <h3 className="font-bold text-lg mb-2">🔧 [DEV MODE] No Trending Programs Found</h3>
               <p className="text-sm opacity-90">
-                This entire Trending Section is hidden in <strong>Production</strong>. Publish a document of type <code>trendingProgram</code> with <code>isActive == true</code> in Sanity.
+                This entire Trending Section is hidden in <strong>Production</strong>. Publish a document of type <code>trendingProgram</code> with <code>isActive == true</code> in the CMS.
               </p>
             </div>
           </div>

@@ -35,7 +35,7 @@ import {
   Layers,
   AlertTriangle
 } from 'lucide-react';
-import { urlFor } from '../../sanityClient';
+import { urlFor } from '../../cmsClient';
 
 interface ContentManagementPanelProps {
   isLight: boolean;

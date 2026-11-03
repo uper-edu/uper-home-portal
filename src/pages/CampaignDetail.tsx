@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { client } from '../sanityClient';
-import imageUrlBuilder from '../sanityClient';
+import { client } from '../cmsClient';
+import imageUrlBuilder from '../cmsClient';
 import { PortableText } from '@portabletext/react';
 import { ArrowLeft, Calendar, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';

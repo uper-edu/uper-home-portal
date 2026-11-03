@@ -298,7 +298,7 @@ export function resolveMetadata(
     known =
       !!page ||
       dynamic ||
-      /^\/(crm|cms|system|studio|chat|consult|style-guide)$/i.test(path);
+      /^\/(crm|cms|system|chat|consult|style-guide)$/i.test(path);
   let title: string, description: string;
   if (workspaceNames[workspace])
     ({ title, description } = workspaceMetadata(
@@ -315,12 +315,10 @@ export function resolveMetadata(
   else if (page) {
     title = `${metadataWords(page.title, lang)} | UPER`;
     description = metadataWords(page.description, lang);
-  } else if (path === "/studio" || path === "/style-guide") {
+  } else if (path === "/style-guide") {
     title =
       metadataWords(
-        path === "/studio"
-          ? ["Content Studio", "Studio Konten", "内容工作室"]
-          : ["Design Reference", "Referensi Desain", "设计参考"],
+        ["Design Reference", "Referensi Desain", "设计参考"],
         lang,
       ) + " | UPER";
     description = metadataWords(

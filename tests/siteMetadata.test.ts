@@ -186,7 +186,6 @@ test("Initial HTTP responses enforce private indexing policy, language, dynamic 
         "/system",
         "/chat",
         "/consult",
-        "/studio",
         "/style-guide",
       ]) {
         const r = await fetch(base + path + "?lang=" + lang + "&lead=PRIVATE");
@@ -232,6 +231,7 @@ test("Initial HTTP responses enforce private indexing policy, language, dynamic 
       "noindex, nofollow, noarchive",
     );
     assert.equal((await fetch(base + "/absent")).status, 404);
+    assert.equal((await fetch(base + "/studio")).status, 404);
     assert.equal((await fetch(base + "/missing.js")).status, 404);
   } finally {
     await new Promise<void>((r) => server.close(() => r()));

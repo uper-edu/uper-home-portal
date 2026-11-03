@@ -7,8 +7,7 @@ export const client={projectId:'local',dataset:'mysql',async fetch<R=any>(query:
  }catch(error){contentStatus(query,true);throw error;}
 }};
 /**
- * Pure TypeScript drop-in replacement for Sanity Image URL Builder
- * Converts any image source/ref to high-speed CDN or static asset URL
+ * Resolves CMS image URLs, including legacy Sanity image references.
  */
 export function urlFor(source: any) {
   let rawUrl = '';
@@ -77,7 +76,7 @@ export function optimizeImageUrl(url?: string, width: number = 800): string {
 }
 
 /**
- * Drop-in stub for imageUrlBuilder(client)
+ * Image builder used by the public content pages.
  */
 export default function imageUrlBuilder(_client?: any) {
   return {

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Handshake, ExternalLink, ShieldCheck } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { client } from '../sanityClient';
-import imageUrlBuilder from '../sanityClient';
+import { client } from '../cmsClient';
+import imageUrlBuilder from '../cmsClient';
 import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
 import { useDesignStyle } from '../utils/theme';
@@ -55,7 +55,7 @@ function urlFor(source: any) {
   }
 }
 
-// Fallback data in case Sanity is empty
+// Fallback data in case the CMS is empty
 const FALLBACK_PARTNERS = [];
 
 // Bento Scheme Design Architecture
@@ -225,8 +225,8 @@ export default function Partners() {
             <div className="py-12 bg-amber-50 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 rounded-3xl p-8 text-center">
               <h3 className="font-bold text-lg mb-2">🔧 [DEV MODE] No Strategic Partners Found</h3>
               <p className="text-sm opacity-90">
-                This partner grid is completely hidden in <strong>Production</strong> because no items were returned from Sanity.
-                Ensure you have created and published documents of type <code>partner</code> with <code>isActive == true</code> in Sanity Studio.
+                This partner grid is completely hidden in <strong>Production</strong> because no items were returned from the CMS.
+                Ensure you have created and published documents of type <code>partner</code> with <code>isActive == true</code> in CMS.
               </p>
             </div>
           </div>

@@ -27,8 +27,8 @@ import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
 import { useDesignStyle } from '../utils/theme';
 import ProgramFAQPortal from '../components/ProgramFAQPortal';
-import { client } from '../sanityClient';
-import imageUrlBuilder from '../sanityClient';
+import { client } from '../cmsClient';
+import imageUrlBuilder from '../cmsClient';
 
 const builder = imageUrlBuilder(client);
 function urlFor(source: any) {
@@ -100,13 +100,13 @@ export default function StudyAbroad() {
   const [isLoadingStories, setIsLoadingStories] = useState(true);
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
 
-  // Load Stories from Sanity without Fallback
+  // Load Stories from the CMS without Fallback
   useEffect(() => {
     setIsLoadingStories(true);
     client.fetch(`*[_type == "admissionsList"]`)
       .then((data) => {
         if (data && data.length > 0) {
-          // Map Sanity fields to StudentStory
+          // Map CMS fields to StudentStory
           const mapped = data.map((item: any) => ({
             _id: item._id,
             name: item.name,
@@ -124,7 +124,7 @@ export default function StudyAbroad() {
         }
       })
       .catch((err) => {
-        console.error('Failed to fetch stories from Sanity:', err);
+        console.error('Failed to fetch stories from the CMS:', err);
         setStories([]);
       })
       .finally(() => {
@@ -758,7 +758,7 @@ export default function StudyAbroad() {
                 {t("abroad.cases.title", "名校录取与奖学金荣誉墙")}
               </h2>
               <p className="text-slate-600 dark:text-slate-450 text-sm md:text-base leading-relaxed">
-                {t("abroad.cases.desc", "每一个卓越梦校录取，背后都是个性化背景定位与极具说服力的学术故事。可随时在Sanity后台动态配置更新。")}
+                {t("abroad.cases.desc", "每一个卓越梦校录取，背后都是个性化背景定位与极具说服力的学术故事。")}
               </p>
             </div>
 
@@ -772,8 +772,8 @@ export default function StudyAbroad() {
               <div className="py-12 bg-amber-50 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 rounded-3xl p-8 text-center max-w-2xl mx-auto">
                 <h3 className="font-bold text-lg mb-2">🔧 [DEV MODE] No Data Found for Admissions List</h3>
                 <p className="text-sm opacity-90">
-                  This entire section is completely hidden in <strong>Production</strong> because no items were returned from Sanity.
-                  Ensure you have created and published documents of type <code>admissionsList</code> in your Sanity Studio.
+                  This entire section is completely hidden in <strong>Production</strong> because no items were returned from the CMS.
+                  Ensure you have created and published documents of type <code>admissionsList</code> in your CMS.
                 </p>
               </div>
             ) : (
