@@ -346,7 +346,7 @@ export default function CrmAccess({
               />
             </AdminField>
             <AdminField className="block text-sm">{st('Confirm new password','Konfirmasi kata sandi baru','确认新密码')}<input className={field} type="password" autoComplete="new-password" value={confirm} required minLength={12} maxLength={200} onChange={e=>setConfirm(e.target.value)}/></AdminField>
-            <p className="text-xs text-slate-500">{st('12–200 characters, with uppercase and lowercase letters, a number and a symbol. Use a different password from your account name and current password.','12–200 karakter, dengan huruf besar dan kecil, angka, serta simbol. Jangan gunakan nama akun atau kata sandi saat ini.','12–200个字符，包含大小写字母、数字和符号，不得与账号或当前密码相同。')}</p>
+            <p className="text-xs text-slate-500">{st('12–200 characters, with uppercase and lowercase letters and a number. Use a different password from your account name and current password.','12–200 karakter, dengan huruf besar dan kecil serta angka. Jangan gunakan nama akun atau kata sandi saat ini.','12–200个字符，包含大小写字母和数字，不得与账号或当前密码相同。')}</p>
             {error && (
               <p role="alert" className="text-sm text-rose-600">
                 {error==='password_policy_required'?st('Check the password rules and make sure both new passwords match.','Periksa aturan kata sandi dan pastikan keduanya sama.','请按规则设置密码，并确保两次输入一致。'):crmError(error, lang)}
