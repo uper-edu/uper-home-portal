@@ -133,6 +133,7 @@ export const workspaceNames: Record<string, Words> = {
 };
 export const moduleNames: Record<string, Record<string, Words>> = {
   crm: {
+    payments: ["Payment verification","Verifikasi pembayaran","收款核验"],
     leads: ["Customer Worklist", "Daftar Kerja Pelanggan", "客户工作列表"],
     analysis: ["Customer statistics and analysis", "Statistik dan analisis pelanggan", "客户统计与分析"],
     campaigns: ["Marketing Campaigns", "Kampanye Pemasaran", "营销活动"],
@@ -167,6 +168,7 @@ export const moduleNames: Record<string, Record<string, Words>> = {
     studentStories: ["Student Stories", "Kisah Siswa", "学员故事"],
     admissionsList: ["Admissions Honors", "Pencapaian Penerimaan", "录取荣誉"],
     campaigns: ["Special Campaigns", "Kampanye Khusus", "专题活动"],
+    programGallery: ["Home Program Galleries", "Galeri Program Beranda", "首页项目图集"],
     newsPage: ["News Channels", "Kanal Berita", "新闻频道"],
   },
 };

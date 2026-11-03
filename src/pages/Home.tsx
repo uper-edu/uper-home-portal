@@ -566,7 +566,7 @@ const Hero = () => {
               {t('home.hero.desc')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <a 
+              <a
                 href="https://wa.me/6281116612062" 
                 target="_blank" 
                 rel="noopener noreferrer" 
@@ -579,8 +579,8 @@ const Hero = () => {
                 <MessageCircle className="w-5 h-5" />
                 {t('home.hero.chat', 'Free Consult Now')}
               </a>
-              <Link 
-                to="/tours" 
+              <a
+                href="#preparation-programs"
                 className={`px-8 py-4 rounded-full font-medium transition-all flex items-center justify-center gap-2 text-lg ${
                   isApple 
                     ? 'border border-slate-300 text-slate-700 hover:bg-slate-50' 
@@ -588,7 +588,7 @@ const Hero = () => {
                 }`}
               >
                 {t('home.hero.explore', 'Explore Programs')} <ArrowRight className="w-5 h-5" />
-              </Link>
+              </a>
             </div>
             
             <div className="mt-12 flex items-center gap-5 text-sm font-medium text-slate-500">
@@ -1236,7 +1236,6 @@ const AudienceCards = () => {
     link: string;
     cardBg: string;
     tileBg: string;
-    tileText: string;
     tagStyle: string;
     btnStyles: string;
     shadowColor: string;
@@ -1259,10 +1258,9 @@ const AudienceCards = () => {
         <Link key="3" to="/tours" onClick={(e) => e.stopPropagation()} className={`w-full h-full flex items-center justify-center ${isApple ? 'hover:text-[#0071e3] text-primary-700' : 'hover:text-primary-800 text-primary-700'} font-extrabold transition-colors`}>{t('nav.studyTours')}</Link>
       ],
       cta: t('home.audience.students.cta'),
-      link: '/hsk',
+      link: '#preparation-programs',
       cardBg: 'bg-gradient-to-b from-primary-50/40 via-white to-white',
       tileBg: 'bg-gradient-to-b from-primary-400 to-primary-600 border-primary-300/40 shadow-lg shadow-primary-500/15',
-      tileText: 'HSK',
       tagStyle: 'bg-white/80 border-primary-100/70 text-primary-800 hover:bg-white hover:text-primary-900 hover:border-primary-200/80 hover:shadow-sm',
       btnStyles: 'bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:brightness-[1.03] border border-primary-500/20 shadow-lg shadow-primary-500/15',
       shadowColor: 'hover:shadow-2xl hover:shadow-primary-500/15',
@@ -1278,7 +1276,6 @@ const AudienceCards = () => {
       link: '/contact',
       cardBg: 'bg-gradient-to-b from-tech-50/40 via-white to-white',
       tileBg: 'bg-gradient-to-b from-tech-400 to-tech-600 border-tech-300/40 shadow-lg shadow-tech-500/15',
-      tileText: 'CSCA',
       tagStyle: 'bg-white/80 border-tech-100/70 text-tech-700 hover:bg-white hover:text-tech-900 hover:border-tech-200/80 hover:shadow-sm',
       btnStyles: 'bg-gradient-to-r from-tech-500 to-tech-600 text-white hover:brightness-[1.03] border border-tech-500/20 shadow-lg shadow-tech-500/15',
       shadowColor: 'hover:shadow-2xl hover:shadow-tech-500/15',
@@ -1294,7 +1291,6 @@ const AudienceCards = () => {
       link: '/contact',
       cardBg: 'bg-gradient-to-b from-primary-50/15 via-tech-50/15 to-white border-slate-200/80',
       tileBg: 'bg-gradient-to-br from-primary-500 to-tech-500 border-primary-300/30 shadow-lg shadow-primary-500/15',
-      tileText: 'B2B',
       tagStyle: 'bg-white/80 border-slate-200 text-slate-700 hover:bg-white hover:text-slate-900 hover:border-primary-200/80 hover:shadow-sm',
       btnStyles: 'bg-gradient-to-r from-primary-600 to-tech-600 text-white hover:brightness-[1.03] border border-primary-500/20 shadow-lg shadow-primary-500/15',
       shadowColor: 'hover:shadow-2xl hover:shadow-primary-500/15',
@@ -1373,9 +1369,6 @@ const AudienceCards = () => {
                         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent rounded-t-[1.85rem]" />
                       )}
                       <div className="mt-1">{aud.icon}</div>
-                      <span className={`text-[10px] font-extrabold tracking-widest mt-1.5 uppercase font-mono leading-none ${isApple ? idx === 0 ? 'text-primary-600' : idx === 1 ? 'text-tech-600' : 'text-slate-500' : 'text-[#ffffffea]'}`}>
-                        {aud.tileText}
-                      </span>
                     </div>
                   </div>
 
@@ -1394,7 +1387,7 @@ const AudienceCards = () => {
                     {aud.items.map((item, i) => (
                       <div 
                         key={i} 
-                        className={`px-4 h-11 rounded-full text-xs font-bold shadow-[0_2px_8px_rgba(0,0,0,0.015)] transition-all duration-300 hover:scale-[1.02] border ${tagStyleClass} w-full text-center flex items-center justify-center gap-2`}
+                        className={`px-4 h-11 rounded-full text-xs font-bold shadow-[0_2px_8px_rgba(0,0,0,0.015)] border ${typeof item === 'string' ? 'bg-slate-50 border-slate-100 text-slate-700 shadow-none' : tagStyleClass} w-full text-center flex items-center justify-center gap-2`}
                       >
                         {typeof item === 'string' ? <span className="leading-tight px-1">{item}</span> : item}
                       </div>
@@ -1403,6 +1396,15 @@ const AudienceCards = () => {
 
                   {/* Glassy pill solid button aligned beautifully at bottom */}
                   <div className="w-full mt-auto">
+                    {idx === 0 ? (
+                    <a
+                      href={aud.link}
+                      className={`w-[95%] mx-auto py-3.5 px-6 rounded-full font-extrabold text-center flex items-center justify-center gap-2 group/btn transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 ${btnStylesClass}`}
+                    >
+                      <span>{aud.cta}</span>
+                      <ArrowRight className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform duration-300" />
+                    </a>
+                    ) : (
                     <Link 
                       to={aud.link} 
                       className={`w-[95%] mx-auto py-3.5 px-6 rounded-full font-extrabold text-center flex items-center justify-center gap-2 group/btn transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 ${btnStylesClass}`}
@@ -1410,6 +1412,8 @@ const AudienceCards = () => {
                       <span>{aud.cta}</span>
                       <ArrowRight className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform duration-300" />
                     </Link>
+                    )}
+
                   </div>
                 </div>
               </motion.div>
@@ -1422,14 +1426,30 @@ const AudienceCards = () => {
 };
 
 const MainServices = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [activeImages, setActiveImages] = useState<Record<string, number>>({});
+  const [gallery, setGallery] = useState<{ program: string; image: { url: string } }[]>([]);
+  useEffect(() => {
+    let active = true;
+    client.fetch<typeof gallery>('*[_type == "programGallery"] | order(order asc)')
+      .then(items => { if (active) setGallery(items); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const language = i18n.language.split('-')[0];
+  const controls = {
+    zh: ['上一张图片', '下一张图片'],
+    en: ['Previous image', 'Next image'],
+    id: ['Gambar sebelumnya', 'Gambar berikutnya'],
+  }[language] ?? ['Previous image', 'Next image'];
   const { isApple } = useDesignStyle();
   const services = [
     {
       id: 'hsk',
       title: t('home.servicesData.hsk.title', 'AI-Assisted HSK Training'),
       desc: t('home.servicesData.hsk.desc', 'Master Chinese with our AI-assisted training for all levels.'),
-      image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1600',
+      images: ['https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1600', 'https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&q=80&w=1200'],
       link: '/hsk',
       icon: <Bot className="w-6 h-6" />,
       color: 'from-tech-500 to-purple-500'
@@ -1438,7 +1458,7 @@ const MainServices = () => {
       id: 'csca',
       title: t('home.servicesData.csca.title', 'CSCA Coaching'),
       desc: t('home.servicesData.csca.desc', 'Expert coaching for the CSCA exam.'),
-      image: 'https://images.unsplash.com/photo-1544717297-fa95b6ee9643?auto=format&fit=crop&q=80&w=1600',
+      images: ['https://images.unsplash.com/photo-1544717297-fa95b6ee9643?auto=format&fit=crop&q=80&w=1600', 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1000'],
       link: '/csca',
       icon: <Target className="w-6 h-6" />,
       color: 'from-rose-500 to-red-500'
@@ -1447,7 +1467,7 @@ const MainServices = () => {
       id: 'consultancy',
       title: t('home.servicesData.consultancy.title', 'Study Abroad Consultancy'),
       desc: t('home.servicesData.consultancy.desc', 'Comprehensive guidance for studying in China, from university selection to visa processing and scholarship applications.'),
-      image: '/consultancy-meeting.jpg',
+      images: ['/consultancy-meeting.jpg', 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200'],
       fallbackImage: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=1600',
       link: '/consultancy',
       icon: <GraduationCap className="w-6 h-6" />,
@@ -1457,7 +1477,7 @@ const MainServices = () => {
       id: 'tours',
       title: t('home.servicesData.tours.title', 'Study Tours to China'),
       desc: t('home.servicesData.tours.desc', 'Immersive programs blending language learning, cultural experiences, and visits to tech giants and historical landmarks.'),
-      image: 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&q=80&w=1600',
+      images: ['https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&q=80&w=1600', 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&q=80&w=800'],
       link: '/tours',
       icon: <Plane className="w-6 h-6" />,
       color: 'from-blue-500 to-cyan-500'
@@ -1465,7 +1485,7 @@ const MainServices = () => {
   ];
 
   return (
-    <section className={`py-24 transition-colors duration-300 ${isApple ? 'bg-white' : 'bg-slate-50'}`}>
+    <section id="preparation-programs" className={`scroll-mt-24 py-24 transition-colors duration-300 ${isApple ? 'bg-white' : 'bg-slate-50'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-20">
           <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold uppercase tracking-widest mb-6 ${
@@ -1483,6 +1503,16 @@ const MainServices = () => {
             const titleHoverClass = isApple ? 'group-hover:text-[#0071e3]' : 'group-hover:text-primary-600';
             const linkTextClass = isApple ? 'text-[#0071e3] group-hover:text-[#0077ed]' : 'text-primary-600 group-hover:text-primary-700';
 
+            const configuredImages = gallery.filter(item => item.program === srv.id).map(item => item.image?.url).filter(Boolean);
+            const images = configuredImages.length ? configuredImages : srv.images;
+            const activeImage = (activeImages[srv.id] ?? 0) % images.length;
+            const moveImage = (direction: number) => {
+              setActiveImages(current => ({
+                ...current,
+                [srv.id]: ((current[srv.id] ?? 0) + direction + images.length) % images.length,
+              }));
+            };
+
             return (
               <motion.div 
                 key={srv.id}
@@ -1492,37 +1522,41 @@ const MainServices = () => {
                 transition={{ duration: 0.6, delay: 0.1 }}
                 className="block group"
               >
-                <Link to={srv.link} className={`flex flex-col ${idx % 2 !== 0 ? 'md:flex-row-reverse' : 'md:flex-row'} bg-white rounded-3xl overflow-hidden transition-all duration-500 ${
+                <div className={`flex flex-col ${idx % 2 !== 0 ? 'md:flex-row-reverse' : 'md:flex-row'} bg-white rounded-3xl overflow-hidden transition-all duration-500 ${
                   isApple 
                     ? 'border border-slate-200/50 shadow-sm hover:border-slate-300 hover:shadow-xl hover:shadow-slate-200/40' 
                     : 'shadow-xl shadow-slate-200/50 border border-slate-100 hover:shadow-2xl hover:border-primary-200'
                 }`}>
                   <div className="md:w-1/2 relative overflow-hidden aspect-[4/3] md:aspect-auto">
-                    <img 
-                      src={srv.image} 
-                      alt={srv.title} 
-                      loading="lazy"
-                      decoding="async"
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (srv.id === 'consultancy') {
-                          if (!target.dataset.triedAlt) {
-                            target.dataset.triedAlt = 'true';
-                            target.src = '/consultancy.jpg';
-                            return;
+                    <Link to={srv.link} tabIndex={-1} aria-hidden="true" className="absolute inset-0">
+                      <img
+                        key={images[activeImage]}
+                        src={images[activeImage]}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={({ currentTarget }) => {
+                          if (srv.fallbackImage && currentTarget.src !== srv.fallbackImage) {
+                            currentTarget.src = srv.fallbackImage;
                           }
-                        }
-                        const fallback = (srv as any).fallbackImage;
-                        if (fallback && target.src !== fallback) {
-                          target.src = fallback;
-                        }
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        }}
+                      />
+                    </Link>
+                    {images.length > 1 && (
+                      <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-slate-950/80 p-1 text-white">
+                        <button type="button" aria-label={srv.title + ' · ' + controls[0]} onClick={() => moveImage(-1)} className="grid size-10 place-items-center rounded-full hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white">
+                          <ChevronLeft size={18} aria-hidden="true" />
+                        </button>
+                        <span aria-live="polite" className="min-w-10 text-center text-xs tabular-nums">{activeImage + 1} / {images.length}</span>
+                        <button type="button" aria-label={srv.title + ' · ' + controls[1]} onClick={() => moveImage(1)} className="grid size-10 place-items-center rounded-full hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white">
+                          <ChevronRight size={18} aria-hidden="true" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center relative overflow-hidden">
+                  <Link to={srv.link} className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center relative overflow-hidden">
                     {!isApple && (
                       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${srv.color} opacity-5 rounded-bl-full -z-0 transition-transform duration-500 group-hover:scale-150`}></div>
                     )}
@@ -1533,11 +1567,11 @@ const MainServices = () => {
                       <h3 className={`text-3xl md:text-4xl font-bold mb-4 text-slate-900 transition-colors ${titleHoverClass}`}>{srv.title}</h3>
                       <p className="text-lg text-slate-600 leading-relaxed mb-8">{srv.desc}</p>
                       <div className={`inline-flex items-center gap-2 font-bold text-lg transition-colors ${linkTextClass}`}>
-                        {t('home.services.explore')} <ArrowRight className="w-5 h-5 transform group-hover:translate-x-2 transition-transform duration-300" />
+                        {t(`home.servicesData.${srv.id}.cta`)} <ArrowRight className="w-5 h-5 transform group-hover:translate-x-2 transition-transform duration-300" />
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               </motion.div>
             );
           })}

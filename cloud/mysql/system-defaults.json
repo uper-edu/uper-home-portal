@@ -1,4 +1,10 @@
 {
+  "crmLarkBot": {
+    "groupName": "CRM Lark Bot",
+    "mode": "live",
+    "secretRef": "LARK_GROUP_CRM",
+    "signingEnabled": false
+  },
   "campaigns": [
     {
       "id": "organic",

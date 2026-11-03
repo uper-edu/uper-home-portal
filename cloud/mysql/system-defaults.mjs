@@ -1,5 +1,9 @@
 import defaults from './system-defaults.json' with {type:'json'};
 import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
+import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
+import {validWebhook} from '../../server/portal/notificationDelivery.ts';
+import {CRM_BOT_CHANNEL} from '../../server/portal/policy.ts';
+
 /** Runs inside the caller's schema lock. Insert missing presets, never reset counters or custom roles. */
 export async function initializeSystemDefaults(c){
  const at=new Date().toISOString(),records=JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
@@ -14,6 +18,14 @@ export async function initializeSystemDefaults(c){
    if(rows.length!==1||saved.id!==record.id||saved.code!==record.code||record.systemManaged&&!config?.systemManaged||record.presetKey&&config?.presetKey!==record.presetKey)throw Error('System campaign reserved identity conflict: '+record.id);
   }
   await c.execute('INSERT INTO access_roles(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',['finance',JSON.stringify(defaults.finance)]);
+  const larkPreset = defaults.crmLarkBot;
+  if (validWebhook(process.env[larkPreset.secretRef])) {
+   const config = {...larkPreset, maxPerHour: LARK_DEFAULT_MAX_PER_HOUR};
+   await c.execute(
+    'INSERT INTO notification_channels(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',
+    [CRM_BOT_CHANNEL, JSON.stringify(config)],
+   );
+  }
   for(const course of courseBook.courses){
    const id='hsk-standard-'+course.id.replace(/^HSK /,'').toLowerCase();
    const [existing]=await c.execute("SELECT id FROM crm_courses WHERE id=? OR JSON_UNQUOTE(JSON_EXTRACT(value,'$.name'))=?",[id,course.id]);

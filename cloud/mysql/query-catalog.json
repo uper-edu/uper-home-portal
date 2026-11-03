@@ -1505,12 +1505,6 @@
       "server/portal/buyingEvidence.ts"
     ]
   },
-  "SELECT fingerprint FROM crm_payment_references WHERE fingerprint=:p1": {
-    "sql": "SELECT fingerprint FROM crm_payment_references WHERE fingerprint=:p1",
-    "sources": [
-      "server/portal/payments.ts"
-    ]
-  },
   "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE": {
     "sql": "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE",
     "sources": [

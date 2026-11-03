@@ -48,6 +48,12 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
         const at=new Date().toISOString();saved={...current,...item,_id:itemId,_createdAt:current?._createdAt||at,_updatedAt:at,_cmsVersion:(current?._cmsVersion||0)+1};
         items=current?items.map(x=>(x._id||x.id)===itemId?saved:x):[saved,...items];
       }
+      if(name==='programGallery'&&!remove&&items.some(item=>
+        !['hsk','csca','consultancy','tours'].includes(item.program)||
+        typeof item.title!=='string'||!item.title.trim()||
+        !Number.isSafeInteger(item.order)||item.order<1||
+        typeof item.image?.url!=='string'||!/^\/images\/uploads\/[a-f0-9]{64}\.webp$/.test(item.image.url)
+      ))fail(400,'Program, image title, display order and uploaded image are required');
       if(JSON.stringify(items).length>10000000)fail(413,'Collection size limit exceeded');
       await c.execute('UPDATE cms_collections SET items=?,items_text=?,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE name=?',[JSON.stringify(items),JSON.stringify(items),name]);
       const response={success:true,...(saved?{item:saved}:{}),count:items.length,revision:Number(row.revision)+1};

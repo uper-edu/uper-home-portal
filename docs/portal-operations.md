@@ -6,6 +6,17 @@ Use Node.js 24+, MySQL 8 and the explicit dev/test/prod environment loader. Foll
 
 Local3000 uses its existing MySQL database. Do not start another process, replace its build output or migrate/restore data as part of a documentation update. Company testing uses its own synthetic schema and the unified home domain. Production remains separately gated.
 
+| Configuration | Where to maintain it | When it takes effect |
+| --- | --- | --- |
+| Deployment presets for the CRM Lark Bot, reserved campaigns and Finance role | [System defaults](../cloud/mysql/system-defaults.json), read by the [initializer](../cloud/mysql/system-defaults.mjs) | Initialization inserts missing records. Existing records retain their saved values. |
+| Standard HSK course presets | [Course catalog](../src/data/crmCoursePrices.json) | Initialization adds missing courses. Manage saved courses in CRM. |
+| SLA, work hours and automatic assignment | [CRM policy defaults](../src/types/crmPolicyConfig.ts) and CRM policy settings | Code supplies defaults where applicable. CRM saves environment-specific settings in MySQL. |
+| Notification rules and delivery limits | [Rule defaults](../server/portal/policy.ts), [Lark defaults](../src/utils/larkNotificationDefaults.ts) and CRM notification settings | CRM uses saved rules and channels for delivery. |
+| Webhook URLs, signing secrets and other credentials | [Server environment configuration](environment-configuration.md) | The service reads the environment values at startup. The channel record stores the variable name. |
+| Initial CMS content and images | Versioned CMS initialization bundle. Edit imported content in CMS. | Run the bundle importer for the selected empty database. |
+
+The CRM Lark Bot preset creates a missing `CRM_Leads_Update` channel when `LARK_GROUP_CRM` contains a valid Webhook URL. It creates the channel in live mode with the shared hourly limit and signing disabled by default. Match the signing setting to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
+
 ## Permissions and notifications
 
 CRM, CMS and system management use persisted staff accounts and server-side permissions. Workspace access does not grant other business roles. Customer ownership and shared-pool claim rules apply at the API; filters cannot expand access. Current user/role configuration is authoritative, not a historical account list.

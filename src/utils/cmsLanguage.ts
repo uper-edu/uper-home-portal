@@ -1,6 +1,13 @@
 import type { CrmLanguage } from "./crmLanguage";
 /** Static CMS interface text only. Never pass saved content or people's names. */
 export const cmsIndonesian: Record<string, string> = {
+"Home Program Galleries": "Galeri Program Beranda",
+"Manage program images and display order": "Kelola gambar program dan urutan tampil",
+"Choose a program and upload an image.": "Pilih program dan unggah gambar.",
+"Program": "Program",
+"Study Abroad": "Studi di Luar Negeri",
+"Study Tours": "Tur Studi",
+
 "Saved; a newer version is displayed.": "Tersimpan; versi lebih baru ditampilkan.",
 "Saved and reloaded.": "Tersimpan dan dimuat ulang.",
 "No committed result found yet. The original request may still be running. Check again.": "Belum ditemukan hasil tersimpan. Permintaan awal mungkin masih berjalan. Periksa lagi.",

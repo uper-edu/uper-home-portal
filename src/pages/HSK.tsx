@@ -382,7 +382,7 @@ const HSKFAQsAccordion = () => {
   // Specific list of top 5 HSK FAQs that are most relevant
   const selectedIds = ['hsk_q1', 'hsk_q2', 'hsk_q3', 'hsk_q6', 'hsk_q53'];
   const allFaqs = hskFaqsByLang[currentLang] || hskFaqsByLang['en'] || [];
-  const faqs = allFaqs.filter(f => selectedIds.includes(f.id));
+  const faqs = selectedIds.flatMap(id => allFaqs.filter(faq => faq.id === id));
 
   return (
     <div className="mt-32 mb-20">
@@ -400,7 +400,7 @@ const HSKFAQsAccordion = () => {
       </div>
 
       <div className="max-w-4xl mx-auto space-y-4">
-        {faqs.map((faq) => {
+        {faqs.map((faq, index) => {
           const isOpen = openId === faq.id;
           return (
             <div 
@@ -415,7 +415,10 @@ const HSKFAQsAccordion = () => {
                 onClick={() => setOpenId(isOpen ? null : faq.id)}
                 className="w-full flex items-center justify-between p-6 text-left font-bold text-slate-800 gap-4"
               >
-                <span>{faq.question}</span>
+                <span className="flex items-baseline gap-3">
+                  <span className="shrink-0 tabular-nums">{index + 1}.</span>
+                  <span>{faq.question}</span>
+                </span>
                 <ChevronDown className={`w-5 h-5 shrink-0 transition-transform duration-300 ${
                   isOpen 
                     ? isApple 

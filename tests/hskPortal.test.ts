@@ -76,7 +76,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           attempt: a,
           score: 0,
           levelConfirmed: "FAKE",
-          lang: "id",
+          lang: "zh",
         });
         assert.equal(saved.status, 200);
         assert.equal(saved.data.result.score, 100);
@@ -90,6 +90,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         });
         assert.equal(retry.status, 200);
         assert.match(retry.data.result.levelConfirmed, /门槛/);
+        assert.deepEqual(retry.data.result, saved.data.result);
         assert.equal(
           Number(
             (
@@ -242,8 +243,13 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             email: "hsk@example.invalid",
           })
         ).data.lead;
-        assert.equal(refreshed.levelConfirmed, "HSK 4");
-        assert.equal(refreshed.levelSource, "trial");
+        // Registration exposes questionnaire fields, not internal placement or assessment records.
+        assert.equal(refreshed.levelConfirmed, undefined);
+        assert.equal(refreshed.levelSource, undefined);
+        const retained = (await pool.query("SELECT profile FROM portal_leads WHERE id=:p1",[leadId])).rows[0].profile;
+        assert.equal(retained.levelConfirmed, "HSK 4");
+        assert.equal(retained.levelSource, "trial");
+        assert.equal(retained.latestAssessment.score, 0);
       },
     );
     await t.test(
@@ -308,13 +314,15 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           email: "hsk@example.invalid",
         });
         assert.equal(registered.status, 200);
-        assert.equal(
-          registered.data.lead.latestAssessment.attempt.examVersion,
-          a.examVersion,
-        );
-        assert.equal(registered.data.lead.latestAssessment.score, 0);
-        assert.equal(registered.data.lead.levelSource, "trial");
-        assert.equal(registered.data.lead.levelConfirmed, "HSK 4");
+        assert.equal(registered.data.lead.latestAssessment, undefined);
+        assert.equal(registered.data.lead.levelSource, undefined);
+        assert.equal(registered.data.lead.levelConfirmed, undefined);
+        const visitorProfile = (await pool.query("SELECT lead_id FROM visitor_sessions WHERE id=:p1",[visitorId])).rows[0];
+        const retained = (await pool.query("SELECT profile FROM portal_leads WHERE id=:p1",[visitorProfile.lead_id])).rows[0].profile;
+        assert.equal(retained.latestAssessment.attempt.examVersion,a.examVersion);
+        assert.equal(retained.latestAssessment.score,0);
+        assert.equal(retained.levelSource,"trial");
+        assert.equal(retained.levelConfirmed,"HSK 4");
         const raw = (
           await pool.query("SELECT result FROM hsk_attempts WHERE id=:p1", [
             legacyAttempt.attemptId,

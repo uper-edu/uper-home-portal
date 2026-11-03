@@ -16,7 +16,7 @@
     "aboutUs": "Tentang Kami",
     "aboutUsSub": "Tentang UPER",
     "faq": "Tanya Jawab (FAQ)",
-    "careers": "Karir & Karir",
+    "careers": "Karier",
     "contact": "Kontak",
     "startJourney": "Konsultasi Gratis",
     "studentLogin": "Masuk Siswa",
@@ -53,9 +53,9 @@
       "tag": "Jembatan Pendidikan Utama dari Indonesia ke Tiongkok",
       "heading1": "Memberdayakan Masa Depan Global Anda:",
       "heading2": "Jalan Anda Menuju Universitas Top Tiongkok.",
-      "desc": "Bahasa bukan sekadar alat, melainkan kunci masa depan. Kami memadukan pembelajaran cerdas AI dan panduan pendaftaran ahli untuk membantu siswa Indonesia bertransisi dengan lancar ke universitas terkemuka di Tiongkok dan peluang karier yang luas.",
-      "explore": "Mulai Perjalanan Belajar Anda",
-      "chat": "Konsultasi dengan kami sekarang!",
+      "desc": "Dapatkan panduan memilih universitas, mencari beasiswa, mempersiapkan HSK dan CSCA, serta mengurus pendaftaran kuliah.",
+      "explore": "Lihat Program Persiapan",
+      "chat": "Konsultasi Rencana Kuliah",
       "join": "Bergabung dengan",
       "students": "500+ siswa dari Indonesia",
       "partnership": {
@@ -66,38 +66,38 @@
     },
     "audience": {
       "students": {
-        "tag": "Untuk Individu",
-        "title": "Orang Tua / Siswa",
-        "desc": "Rencana belajar khusus, persiapan mandiri, dan bimbingan HSK komprehensif",
+        "tag": "Untuk Siswa & Orang Tua",
+        "title": "Siswa & Orang Tua",
+        "desc": "Jelajahi pilihan studi di Tiongkok, persiapkan HSK dan CSCA, serta dapatkan panduan pendaftaran.",
         "items": [
           "HSK",
           "CSCA",
           "Studi Luar Negeri",
           "Tur Kampus"
         ],
-        "cta": "Pelajari Lebih Lanjut"
+        "cta": "Lihat Layanan Siswa"
       },
       "schools": {
-        "tag": "Untuk Institusi",
-        "title": "Sekolah",
-        "desc": "Solusi studi ke luar negeri satu atap, mendukung kemitraan institusi",
+        "tag": "Untuk Sekolah & Institusi",
+        "title": "Sekolah & Institusi",
+        "desc": "Jelajahi peluang kerja sama untuk sekolah dan institusi.",
         "items": [
           "Kelas Wajib HSK / Kelas Peminatan HSK",
           "Pusat Bahasa",
           "Kemitraan"
         ],
-        "cta": "Bermitra dengan Kami"
+        "cta": "Hubungi Tim Kemitraan"
       },
       "companies": {
         "tag": "Untuk Perusahaan",
         "title": "Perusahaan",
-        "desc": "Pelatihan Mandarin korporat & lintas budaya eksklusif untuk bisnis global",
+        "desc": "Hubungi UPER untuk membahas kerja sama perusahaan.",
         "items": [
           "Pelatihan Bahasa Mandarin Perusahaan",
           "Perekrutan Bakat",
           "Kerja Sama Sekolah-Perusahaan"
         ],
-        "cta": "Dapatkan Penawaran"
+        "cta": "Hubungi Tim UPER"
       }
     },
     "services": {
@@ -164,20 +164,24 @@
     },
     "servicesData": {
       "hsk": {
-        "title": "Pelatihan HSK Bantuan AI",
-        "desc": "Kuasai bahasa Mandarin secara efisien dengan platform bantuan AI kami dan guru ahli, jalur pembelajaran khusus untuk semua level."
+        "title": "Persiapan HSK Sesuai Level Anda",
+        "desc": "Persiapkan diri untuk level HSK yang Anda tuju bersama pengajar dan platform belajar UPER.",
+        "cta": "Lihat Kelas HSK"
       },
       "csca": {
-        "title": "Pelatihan CSCA",
-        "desc": "Pembinaan ahli untuk ujian CSCA. Tingkatkan kredensial profesional Anda dengan kurikulum khusus kami."
+        "title": "Persiapan Ujian CSCA",
+        "desc": "Kenali isi dan format ujian CSCA, lalu rencanakan persiapan sesuai mata pelajaran yang Anda perlukan.",
+        "cta": "Tanya tentang Persiapan CSCA"
       },
       "tours": {
-        "title": "Tur Studi ke Tiongkok",
-        "desc": "Program mendalam yang menggabungkan pembelajaran bahasa, budaya, dan kunjungan ke perusahaan teknologi terkemuka."
+        "title": "Program Kunjungan Belajar ke Tiongkok",
+        "desc": "Jelajahi pengalaman pendidikan dan budaya di Tiongkok melalui kegiatan dalam program pilihan Anda.",
+        "cta": "Lihat Detail Program"
       },
       "consultancy": {
-        "title": "Konsultasi Studi",
-        "desc": "Panduan komprehensif untuk belajar di Tiongkok, dari pemilihan universitas hingga visa & beasiswa."
+        "title": "Konsultasi Studi di Tiongkok",
+        "desc": "Diskusikan pilihan universitas, peluang beasiswa, dan persiapan pendaftaran sesuai rencana studi Anda.",
+        "cta": "Diskusikan Rencana Studi Anda"
       }
     },
     "corporate": {

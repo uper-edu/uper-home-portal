@@ -284,3 +284,7 @@ At this checkpoint, 8 of the 9 enabled Lark types have a real TEST receipt (incl
 - 中文电脑端：Dewi两个不同request分别定位到aafdd768-0e5a-49a2-8141-a3fe974dd024和a595707e-3a2d-4b24-846f-2044972a2547，自动展开、聚焦、可视；第二条保留已有补充信息；第一条刷新后恢复。逾期橙色、AI失败红色、普通请求蓝色预览实测通过。
 - 20项定向测试通过，含三语卡片生成、未知／失败区分、请求原始事件关联、路由及期限展示；类型检查、构建、diff检查通过。未启动新隔离环境；本次未重跑隔离数据库套件，既有隔离结果不冒充新结果。三语页面及新版Lark客户端实发未验证。
 - 无新增发送，无重放；普通worker保持暂停；保护表计数哈希全部一致，无数据／权限／配置／队列变更。未推送或部署。此前实发的橙色请求卡片保留原颜色，不重发；其请求定位URL由当前3000解析为全景事件。
+
+## Scheduled assessment TEST outcome — 2026-11-02
+
+The three authorized zh/en/id assessment.completed TEST cases were submitted once at 2026-11-02T10:00:54–55Z. All received HTTP200/provider code0 and are now accepted; no pending or unknown cases remain. Execution was approximately23 hours late relative to the authorized 2026-11-01T11:00Z time; the previous heartbeat occurred before the due time and this was the next observed execution. Machine sleep is not established as the cause. No ordinary notification worker was started and no prior accepted record was replayed. The local manifest retains exact TEST IDs, rendered cards, hashes and target assessment links. Lark desktop was unavailable to the UI tool (Invalid app), so client receipt, visual formatting and actual link clicking remain unconfirmed; API acceptance is not treated as receipt. No repeat sending is permitted.

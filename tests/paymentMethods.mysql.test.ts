@@ -5,6 +5,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV)test('payment methods and private images r
  const at=new Date(Date.now()-90000).toISOString(),profile={owner:'seller',team:'sales',currentStage:'progress:enrolled',tier:'Warm'};
  const png=await sharp({create:{width:16,height:16,channels:3,background:'#ffffff'}}).png().toBuffer(),image={name:'TEST-receipt.png',type:'image/png',data:png.toString('base64')};
  const webp=await sharp({create:{width:16,height:16,channels:3,background:'#00aaaa'}}).webp().toBuffer(),image2={name:'TEST-check.webp',type:'image/webp',data:webp.toString('base64')};
+ const storedPng=await sharp(png).rotate().png().toBuffer(),storedWebp=await sharp(webp).rotate().webp().toBuffer();
  const project=async(id:string)=>{await pool.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)',[id,{...profile,id,fullName:'Synthetic '+id}]);return tx(c=>enrollCourse(c,id,'seller',{courseId:'course',courseRevision:1,discountMode:'none',discountValue:'',confirmed:true},{reason:'Synthetic course enrollment'},randomUUID()));};
  const body=(projectId:string,reference:string,patch:any={})=>({action:'receive',requestId:randomUUID(),revision:1,projectId,method:'bank_transfer',provider:'BCA',account:'COMPANY-1234',reference,amount:100000,receivedAt:at,evidence:'',...patch});
  const counts=async()=>Promise.all(['crm_payment_images','crm_payment_references','crm_operations','portal_audit'].map(async t=>Number((await pool.query('SELECT COUNT(*) n FROM '+t)).rows[0].n)));
@@ -30,35 +31,78 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV)test('payment methods and private images r
   await assert.rejects(()=>tx(c=>savePayment(c,'notes','finance',{action:'void',entryId:r.targetId,revision:refund.revision,requestId:randomUUID(),reason:''})),/information_required/);
  });
  let privateImageId='',privateEntryId='';
- await test('private images preserve exact original bytes, stay out of ledgers/audits/results, and are committed once with the actual receipt',async()=>{
+ await test('private images store re-encoded bytes, stay out of ledgers/audits/results, and are committed once with the actual receipt',async()=>{
   const p=await project('private'),q=body(p.projectId,'PRIVATE',{images:[image]});const r=await tx(c=>savePayment(c,'private','finance',q));privateEntryId=r.targetId;
-  const d=await tx(c=>readPayments(c,'private','finance'));privateImageId=d.ledger.entries[0].images![0].id;const file=await tx(c=>readPaymentImage(c,'private','finance',privateImageId));assert.equal(file.mime,'image/png');assert.deepEqual(file.content,png);assert.equal(d.ledger.entries[0].images![0].sha256,createHash('sha256').update(png).digest('hex'));
+  const d=await tx(c=>readPayments(c,'private','finance'));privateImageId=d.ledger.entries[0].images![0].id;const file=await tx(c=>readPaymentImage(c,'private','finance',privateImageId));assert.equal(file.mime,'image/png');assert.deepEqual(file.content,storedPng);assert.equal(d.ledger.entries[0].images![0].sha256,createHash('sha256').update(storedPng).digest('hex'));
   assert.ok(!JSON.stringify(d.ledger).includes(image.data));assert.ok(!JSON.stringify((await pool.query("SELECT data FROM portal_audit WHERE action='payment.receive'")).rows).includes(image.data));assert.ok(!JSON.stringify(await tx(c=>paymentResult(c,'private','finance',q.requestId))).includes(image.data));
   const before=await counts();assert.equal((await tx(c=>savePayment(c,'private','finance',q))).replayed,true);assert.deepEqual(await counts(),before);const list=await tx(c=>listPaymentVerification(c,'finance',{}));assert.ok(!JSON.stringify(list).includes(privateImageId));
  });
+ await test('JPEG uploaded with GPS metadata is returned without EXIF and with its orientation applied',async()=>{
+  const jpeg=await sharp({create:{width:24,height:12,channels:3,background:'#ffffff'}})
+   .jpeg().withMetadata({orientation:6}).withExifMerge({IFD3:{GPSLatitudeRef:'N',GPSLatitude:'51/1 30/1 0/1'}}).toBuffer();
+  assert.ok((await sharp(jpeg).metadata()).exif?.includes(Buffer.from([0x25,0x88])));
+  const lead='jpeg-gps',p=await project(lead);
+  await tx(c=>savePayment(c,lead,'finance',body(p.projectId,'GPS-JPEG',{images:[{name:'receipt.jpg',type:'image/jpeg',data:jpeg.toString('base64')}]})));
+  const {ledger}=await tx(c=>readPayments(c,lead,'finance'));
+  const meta=ledger.entries[0].images![0];
+  const {content,mime}=await tx(c=>readPaymentImage(c,lead,'finance',meta.id));
+  const decoded=await sharp(content).metadata();
+  assert.equal(mime,'image/jpeg');
+  assert.equal(decoded.exif,undefined);
+  assert.deepEqual([decoded.width,decoded.height],[12,24]);
+  assert.equal(meta.bytes,content.length);
+  assert.equal(meta.sha256,createHash('sha256').update(content).digest('hex'));
+ });
  await test('images cannot be read across customers or by another customer owner; revoked read permission denies immediately',async()=>{
-  await assert.rejects(()=>tx(c=>readPaymentImage(c,'notes','finance',privateImageId)),/missing/);await assert.rejects(()=>tx(c=>readPaymentImage(c,'private','other',privateImageId)),/forbidden/);assert.deepEqual((await tx(c=>readPaymentImage(c,'private','seller',privateImageId))).content,png);
+  await assert.rejects(()=>tx(c=>readPaymentImage(c,'notes','finance',privateImageId)),/missing/);await assert.rejects(()=>tx(c=>readPaymentImage(c,'private','other',privateImageId)),/forbidden/);assert.deepEqual((await tx(c=>readPaymentImage(c,'private','seller',privateImageId))).content,storedPng);
   await pool.query("UPDATE crm_users SET roles='[]' WHERE id='finance2'");await assert.rejects(()=>tx(c=>readPaymentImage(c,'private','finance2',privateImageId)),/forbidden/);await pool.query('UPDATE crm_users SET roles=:p1 WHERE id=\'finance2\'',[JSON.stringify(['finance'])]);
  });
  await test('submitted and verification images remain separately attached, and voiding keeps both originals and audit history',async()=>{
   const p=await project('two-images'),q=body(p.projectId,'TWO-IMAGES',{action:'submit',kind:'receipt',reportedAt:at,images:[image]});const submitted=await tx(c=>savePayment(c,'two-images','seller',q));
   const verified=await tx(c=>savePayment(c,'two-images','finance',{action:'verify',requestId:randomUUID(),revision:2,entryId:submitted.targetId,amount:q.amount,receivedAt:at,account:q.account,reference:q.reference,evidence:'',images:[image2]}));
-  const d=await tx(c=>readPayments(c,'two-images','finance')),e=d.ledger.entries[0];assert.equal(e.images!.length,1);assert.equal(e.verificationImages!.length,1);assert.deepEqual((await tx(c=>readPaymentImage(c,'two-images','finance',e.verificationImages![0].id))).content,webp);
-  await tx(c=>savePayment(c,'two-images','finance',{action:'void',requestId:randomUUID(),revision:verified.revision,entryId:verified.targetId,reason:'Synthetic mistaken association'}));assert.deepEqual((await tx(c=>readPaymentImage(c,'two-images','finance',e.images![0].id))).content,png);assert.equal((await tx(c=>readPayments(c,'two-images','finance'))).ledger.history.at(-1)?.before.images[0].id,e.images![0].id);
+  const d=await tx(c=>readPayments(c,'two-images','finance')),e=d.ledger.entries[0];assert.equal(e.images!.length,1);assert.equal(e.verificationImages!.length,1);assert.deepEqual((await tx(c=>readPaymentImage(c,'two-images','finance',e.verificationImages![0].id))).content,storedWebp);
+  await tx(c=>savePayment(c,'two-images','finance',{action:'void',requestId:randomUUID(),revision:verified.revision,entryId:verified.targetId,reason:'Synthetic mistaken association'}));assert.deepEqual((await tx(c=>readPaymentImage(c,'two-images','finance',e.images![0].id))).content,storedPng);assert.equal((await tx(c=>readPayments(c,'two-images','finance'))).ledger.history.at(-1)?.before.images[0].id,e.images![0].id);
  });
  await test('invalid or duplicate images and a post-write failure leave no image, reference, ledger, receipt or audit residue',async()=>{
   const p=await project('image-rollback'),q=body(p.projectId,'ROLLBACK',{images:[image]});const before=await counts();const original=await tx(c=>readPayments(c,'image-rollback','finance'));
   for(const images of [[{...image,type:'image/jpeg'}],[image,image],[{...image,data:Buffer.from('<svg/>').toString('base64')}],[{...image,data:image.data.substring(0,20)}]])await assert.rejects(()=>tx(c=>savePayment(c,'image-rollback','finance',{...q,images})),/image/);
   await assert.rejects(()=>tx(async c=>{await savePayment(c,'image-rollback','finance',q);throw Error('Synthetic rollback after image insert');}));assert.deepEqual(await counts(),before);assert.deepEqual((await tx(c=>readPayments(c,'image-rollback','finance'))).ledger,original.ledger);await assert.rejects(()=>tx(c=>paymentResult(c,'image-rollback','finance',q.requestId)),/missing/);
  });
- await test('provider/account/reference uniqueness prevents real duplicates without conflating different banks or cash receipt books',async()=>{
+ await test('account/reference uniqueness applies across methods and providers',async()=>{
   const p=await project('namespaces'),q=body(p.projectId,'SAME-REF');let r=await tx(c=>savePayment(c,'namespaces','finance',q));await assert.rejects(()=>tx(c=>savePayment(c,'namespaces','finance',{...q,revision:r.revision,requestId:randomUUID(),provider:' bca '})),/duplicate/);
-  r=await tx(c=>savePayment(c,'namespaces','finance',{...q,revision:r.revision,requestId:randomUUID(),provider:'Mandiri'}));assert.equal((await tx(c=>readPayments(c,'namespaces','finance'))).ledger.entries.length,2);
+  await assert.rejects(()=>tx(c=>savePayment(c,'namespaces','finance',{...q,revision:r.revision,requestId:randomUUID(),provider:'Mandiri'})),/duplicate/);
   const cash=body(p.projectId,'KAS-1',{revision:r.revision,method:'cash',provider:'',account:'Cash book 2026'});r=await tx(c=>savePayment(c,'namespaces','finance',cash));await assert.rejects(()=>tx(c=>savePayment(c,'namespaces','finance',{...cash,revision:r.revision,requestId:randomUUID()})),/duplicate/);
   const qr=body(p.projectId,'QRIS-SAME',{revision:r.revision,method:'qris',provider:'',account:'UPER merchant'});r=await tx(c=>savePayment(c,'namespaces','finance',qr));await assert.rejects(()=>tx(c=>savePayment(c,'namespaces','finance',{...qr,revision:r.revision,requestId:randomUUID(),provider:'BCA'})),/duplicate/);
  });
+ for(const modernFirst of [true,false]){
+  await test((modernFirst?'modern then legacy':'legacy then modern')+' rejects duplicate verification and void releases the reservation',async()=>{
+   const tag=modernFirst?'modern-first':'legacy-first';
+   const modernLead=tag+'-modern',legacyLead=tag+'-legacy';
+   const modernProject=await project(modernLead),legacyProject=await project(legacyLead);
+   const modern=body(modernProject.projectId,tag);
+   const submitted=await tx(c=>savePayment(c,legacyLead,'seller',{
+    ...body(legacyProject.projectId,tag),action:'submit',kind:'receipt',reportedAt:at,
+   }));
+   const {ledger}=await tx(c=>readPayments(c,legacyLead,'finance'));
+   // Represent an existing pending receipt from before payment methods were structured.
+   const legacyEntry=ledger.entries.find(e=>e.id===submitted.targetId)!;
+   legacyEntry.method='Legacy transfer';
+   await pool.query('UPDATE crm_payment_ledgers SET value=:p1 WHERE lead_id=:p2',[ledger,legacyLead]);
+   const legacy={action:'verify',requestId:randomUUID(),revision:submitted.revision,entryId:submitted.targetId,
+    amount:modern.amount,receivedAt:at,account:modern.account,reference:modern.reference,evidence:''};
+   const [firstLead,first,secondLead,second]=modernFirst
+    ? [modernLead,modern,legacyLead,legacy] as const
+    : [legacyLead,legacy,modernLead,modern] as const;
+   const saved=await tx(c=>savePayment(c,firstLead,'finance',first));
+   await assert.rejects(()=>tx(c=>savePayment(c,secondLead,'finance',second)),{message:'payment_duplicate_reference',status:409});
+   await tx(c=>savePayment(c,firstLead,'finance',{action:'void',revision:saved.revision,entryId:saved.targetId,
+    requestId:randomUUID(),reason:'Synthetic duplicate-check cleanup'}));
+   const retried=await tx(c=>savePayment(c,secondLead,'finance',{...second,requestId:randomUUID()}));
+   assert.equal((await tx(c=>readPayments(c,secondLead,'finance'))).ledger.entries.find(e=>e.id===retried.targetId)?.state,'verified');
+  });
+ }
  await test('concurrent financial saves with images only commit one receipt, attachment and unique reference',async()=>{
-  const p=await project('image-concurrent'),q=body(p.projectId,'IMAGE-CONCURRENT',{images:[image]});const before=await counts(),all=await Promise.allSettled(['finance','finance2'].map(actor=>tx(c=>savePayment(c,'image-concurrent',actor,{...q,requestId:randomUUID()}))));assert.equal(all.filter(r=>r.status==='fulfilled').length,1);const after=await counts();assert.equal(after[0],before[0]+1);assert.equal(after[1],before[1]+1);assert.equal((await tx(c=>readPayments(c,'image-concurrent','finance'))).ledger.entries.length,1);
+  const p=await project('image-concurrent'),q=body(p.projectId,'IMAGE-CONCURRENT',{images:[image]});const before=await counts(),all=await Promise.allSettled(['finance','finance2'].map(actor=>tx(c=>savePayment(c,'image-concurrent',actor,{...q,requestId:randomUUID()}))));assert.equal(all.filter(r=>r.status==='fulfilled').length,1);const after=await counts();assert.equal(after[0],before[0]+1);assert.equal(after[1],before[1]+2);assert.equal((await tx(c=>readPayments(c,'image-concurrent','finance'))).ledger.entries.length,1);
  });
  await test('one enrollment supports multiple partial receipts, different channels and private images; voiding one installment restores exactly its balance',async()=>{
   const p=await project('installments'),first=await tx(c=>savePayment(c,'installments','finance',body(p.projectId,'INST-1',{amount:400000,images:[image]})));let d=await tx(c=>readPayments(c,'installments','finance'));assert.equal(d.summary[0].remaining,600000);assert.equal(d.summary[0].state,'partial');
@@ -68,14 +112,14 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV)test('payment methods and private images r
  await test('existing identity consolidation retains private original images and follows the current customer owner',async()=>{
   const p=await project('image-merge-source');await tx(c=>savePayment(c,'image-merge-source','finance',body(p.projectId,'IMAGE-MERGE',{images:[image]})));const d=await tx(c=>readPayments(c,'image-merge-source','finance')),imageId=d.ledger.entries[0].images![0].id;
   await pool.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)',['image-merge-target',{...profile,id:'image-merge-target',owner:'other',fullName:'Synthetic merged customer'}]);await pool.query('UPDATE portal_leads SET profile=:p1 WHERE id=:p2',[{...profile,id:'image-merge-source',identityMergedInto:'image-merge-target'},'image-merge-source']);
-  assert.deepEqual((await tx(c=>readPaymentImage(c,'image-merge-target','finance',imageId))).content,png);assert.deepEqual((await tx(c=>readPaymentImage(c,'image-merge-target','other',imageId))).content,png);await assert.rejects(()=>tx(c=>readPaymentImage(c,'image-merge-target','seller',imageId)),/forbidden/);
+  assert.deepEqual((await tx(c=>readPaymentImage(c,'image-merge-target','finance',imageId))).content,storedPng);assert.deepEqual((await tx(c=>readPaymentImage(c,'image-merge-target','other',imageId))).content,storedPng);await assert.rejects(()=>tx(c=>readPaymentImage(c,'image-merge-target','seller',imageId)),/forbidden/);
  });
  await test('actual image HTTP endpoints reject anonymous/cross-customer/revoked access and serve only private no-store image responses',async()=>{
   process.env.PLATFORM_MODE='local';const {platform}=await import('../server/portal/identity'),{assignmentDirectory}=await import('../server/portal/autoAssignment');const oldAuth=platform.authenticate,oldFetch=globalThis.fetch;platform.authenticate=async(req:any)=>(await assignmentDirectory(pool)).find((e:any)=>e.id===req.headers['x-payment-test-user'])||null;
   const express=(await import('express')).default,{mountPortal}=await import('../server/portal/runtime');const app=express();app.use(express.json({limit:'16mb'}));await mountPortal(app);const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));const base='http://127.0.0.1:'+(server.address() as any).port;globalThis.fetch=async(url,options)=>{if(!String(url).startsWith(base+'/'))throw Error('External calls blocked');return oldFetch(url,options);};
   const get=(lead:string,user:string,id=privateImageId)=>fetch(base+'/api/crm/leads/'+lead+'/payment-images/'+id,{headers:{'x-payment-test-user':user}});
   try{assert.equal((await get('private','')).status,401);assert.equal((await get('private','other')).status,404);assert.equal((await get('notes','finance')).status,404);assert.equal((await get('private','finance','missing')).status,404);
-   const response=await get('private','finance');assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');assert.equal(response.headers.get('x-content-type-options'),'nosniff');assert.match(response.headers.get('content-type')! ,/^image\/png/);assert.deepEqual(Buffer.from(await response.arrayBuffer()),png);
+   const response=await get('private','finance');assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');assert.equal(response.headers.get('x-content-type-options'),'nosniff');assert.match(response.headers.get('content-type')! ,/^image\/png/);assert.deepEqual(Buffer.from(await response.arrayBuffer()),storedPng);
    await pool.query("UPDATE crm_users SET roles='[]' WHERE id='finance2'");assert.equal((await get('private','finance2')).status,403);
    const p=await project('http-image'),input=body(p.projectId,'HTTP-IMAGE',{images:[image]});const post=(actor:string,origin=base)=>fetch(base+'/api/crm/leads/http-image/payments',{method:'POST',headers:{'Content-Type':'application/json','x-payment-test-user':actor,Origin:origin},body:JSON.stringify(input)});assert.equal((await post('seller')).status,403);assert.equal((await post('finance','http://invalid.test')).status,403);const saved=await post('finance');assert.equal(saved.status,200,await saved.clone().text());const result=await saved.json();const checked=await fetch(base+'/api/crm/leads/http-image/payments/results/'+input.requestId,{headers:{'x-payment-test-user':'finance'}});assert.equal((await checked.json()).targetId,result.targetId);const filesBefore=await counts();assert.equal((await (await post('finance')).json()).replayed,true);assert.deepEqual(await counts(),filesBefore);
    for(const table of ['outbox','notification_jobs'])assert.equal(Number((await pool.query('SELECT COUNT(*) n FROM '+table)).rows[0].n),0);

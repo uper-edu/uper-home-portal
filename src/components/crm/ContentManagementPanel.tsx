@@ -1,3 +1,4 @@
+import {CrmSingleSelect} from './CrmSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
 import {AdminFormGuide} from '../AdminFormGuide';
 import {useAdminEditorFocus} from '../useAdminEditorFocus';
@@ -49,7 +50,8 @@ export type CmsSection =
   | 'studentStories' 
   | 'admissionsList' 
   | 'campaigns' 
-  | 'newsPage';
+  | 'newsPage'
+  | 'programGallery';
 
 export interface CmsSectionItem {
   id: CmsSection;
@@ -89,6 +91,15 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         descEn: 'HSK courses, study tours & scholarship tracks',
         descZh: 'HSK考级班、名校游学营与奖学金直通班型',
         defaultCount: 8
+      },
+      {
+        id: 'programGallery',
+        titleEn: 'Home Program Galleries',
+        titleZh: '首页项目图集',
+        icon: LayoutList,
+        descEn: 'Manage program images and display order',
+        descZh: '管理项目图片与展示顺序',
+        defaultCount: 0
       },
       {
         id: 'admissionsList',
@@ -171,7 +182,8 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     studentStories: 5,
     admissionsList: 1,
     campaigns: 2,
-    newsPage: 7
+    newsPage: 7,
+    programGallery: 0
   });
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -234,7 +246,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
   // Sync all collection counts in background on mount
   useEffect(() => {
-    const sections: CmsSection[] = ['partners', 'news', 'trendingPrograms', 'studentStories', 'admissionsList', 'campaigns', 'newsPage'];
+    const sections: CmsSection[] = ['partners', 'news', 'trendingPrograms', 'studentStories', 'admissionsList', 'campaigns', 'newsPage', 'programGallery'];
     sections.forEach(async (sec) => {
       try {
         const res = await fetch(`/api/cms/content/${sec}`);
@@ -333,6 +345,8 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
           }
         ]
       };
+    } else if (activeSection === 'programGallery') {
+      emptyItem = { title: '', program: '', order: items.length + 1, image: { url: '' } };
     } else if (activeSection === 'newsPage') {
       emptyItem = {
         title: '',
@@ -420,6 +434,11 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   };
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();if(!editingItem||isSaving||isUploading||pendingCms||!cmsActor.current)return;
+    if (activeSection === 'programGallery' && (!editingItem.program || !editingItem.image?.url)) {
+      setCmsTone('error');
+      setCmsResult(t('Choose a program and upload an image.', '请选择项目并上传图片。'));
+      return;
+    }
     const operation={kind:'save',actor:cmsActor.current,collection:activeSection,requestId:crypto.randomUUID(),draft:structuredClone(editingItem)};
     rememberCms(operation);setIsSaving(true);setCmsResult('');
     try{const res=await fetch(`/api/cms/content/${activeSection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});
@@ -944,7 +963,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           onClick={() => {
                             if (activeSection === 'partners') setEditingItem({ ...editingItem, logo: { url: '' } });
                             else if (activeSection === 'news') setEditingItem({ ...editingItem, image: { url: '' }, images: [] });
-                            else if (activeSection === 'trendingPrograms') setEditingItem({ ...editingItem, image: { url: '' } });
+                            else if (['trendingPrograms', 'programGallery'].includes(activeSection)) setEditingItem({ ...editingItem, image: { url: '' } });
                             else if (activeSection === 'studentStories') setEditingItem({ ...editingItem, image: { url: '' }, avatar: { url: '' } });
                             else if (activeSection === 'campaigns') setEditingItem({ ...editingItem, image: { url: '' } });
                             else if (activeSection === 'admissionsList') setEditingItem({ ...editingItem, image: { url: '' } });
@@ -973,7 +992,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                               next.image = { ...(next.image || {}), url: val };
                               next.images = [{ ...(next.images?.[0] || {}), url: val }];
                             }
-                            else if (activeSection === 'trendingPrograms') next.image = { ...(next.image || {}), url: val };
+                            else if (['trendingPrograms', 'programGallery'].includes(activeSection)) next.image = { ...(next.image || {}), url: val };
                             else if (activeSection === 'studentStories') {
                               next.image = { ...(next.image || {}), url: val };
                               next.avatar = { ...(next.avatar || {}), url: val };
@@ -1069,6 +1088,24 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                     }`}
                   />
                 </AdminField>
+
+                {activeSection === 'programGallery' && (
+                  <AdminField as="div" required>
+                    <CrmSingleSelect
+                      label={t('Program', '所属项目')}
+                      value={editingItem.program || ''}
+                      options={[
+                        { value: 'hsk', label: 'HSK' },
+                        { value: 'csca', label: 'CSCA' },
+                        { value: 'consultancy', label: t('Study Abroad', '赴华留学咨询') },
+                        { value: 'tours', label: t('Study Tours', '中国研学') },
+                      ]}
+                      onChange={program => setEditingItem({ ...editingItem, program })}
+                      lang={lang}
+                      isLight={isLight}
+                    />
+                  </AdminField>
+                )}
 
                 {/* Conditional Fields: Partners */}
                 {activeSection === 'partners' && (

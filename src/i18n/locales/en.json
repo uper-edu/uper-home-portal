@@ -53,9 +53,9 @@
       "tag": "The Premier Educational Bridge from Indonesia to China",
       "heading1": "Empowering Your Global Future:",
       "heading2": "Your Pathway to China's Top Universities.",
-      "desc": "Language is more than just a tool; it's the key to the future. We combine AI-powered learning with expert application guidance to help Indonesian students seamlessly transition to top Chinese universities and broad career opportunities.",
-      "explore": "Start Your Journey",
-      "chat": "Free Consult Now",
+      "desc": "Get guidance on choosing a university, exploring scholarships, preparing for HSK and CSCA, and applying to study in China.",
+      "explore": "View Preparation Programs",
+      "chat": "Discuss Your Study Plans",
       "join": "Join",
       "students": "500+ students from Indonesia",
       "partnership": {
@@ -66,38 +66,38 @@
     },
     "audience": {
       "students": {
-        "tag": "For Individuals",
-        "title": "Parents / Students",
-        "desc": "Customized study plans, self-paced prep, and comprehensive HSK coaching",
+        "tag": "For Students & Parents",
+        "title": "Students & Parents",
+        "desc": "Explore study options in China, prepare for HSK and CSCA, and get application guidance.",
         "items": [
           "HSK",
           "CSCA",
           "Study Abroad",
           "Study Tours"
         ],
-        "cta": "Learn More"
+        "cta": "View Student Services"
       },
       "schools": {
-        "tag": "For Institutions",
-        "title": "Schools",
-        "desc": "One-stop study abroad & articulation solutions, promoting institutional partnerships",
+        "tag": "For Schools & Institutions",
+        "title": "Schools & Institutions",
+        "desc": "Explore partnership opportunities for schools and institutions.",
         "items": [
           "HSK Compulsory / Interest Classes",
           "Language Centers",
           "Partnerships"
         ],
-        "cta": "Partner With Us"
+        "cta": "Contact the Partnerships Team"
       },
       "companies": {
-        "tag": "For Corporates",
+        "tag": "For Companies",
         "title": "Companies",
-        "desc": "Exclusive corporate Mandarin & cross-cultural training customized for global ventures",
+        "desc": "Contact UPER to discuss corporate partnerships.",
         "items": [
           "Corporate Chinese Training",
           "Talent Recruitment",
           "School-Enterprise Collaboration"
         ],
-        "cta": "Request a Quote"
+        "cta": "Contact UPER"
       }
     },
     "services": {
@@ -164,20 +164,24 @@
     },
     "servicesData": {
       "hsk": {
-        "title": "AI-Assisted HSK Training",
-        "desc": "Master Chinese efficiently with our AI-assisted platform and expert teachers, personalized learning paths for all levels."
+        "title": "HSK Preparation for Your Level",
+        "desc": "Prepare for your target HSK level with UPER’s teachers and learning platform.",
+        "cta": "View HSK Classes"
       },
       "csca": {
-        "title": "CSCA Training",
-        "desc": "Expert coaching for the CSCA exam. Elevate your professional credentials with our specialized curriculum and dedicated instructors."
+        "title": "CSCA Exam Preparation",
+        "desc": "Understand the CSCA exam content and format, then plan your preparation around the subjects you need.",
+        "cta": "Ask About CSCA Preparation"
       },
       "tours": {
         "title": "Study Tours to China",
-        "desc": "Immersive programs blending language learning, cultural experiences, and visits to tech giants and historical landmarks."
+        "desc": "Explore educational and cultural experiences in China through the activities included in your chosen program.",
+        "cta": "View Tour Details"
       },
       "consultancy": {
-        "title": "Study Abroad Consultancy",
-        "desc": "Comprehensive guidance for studying in China, from university selection to visa processing and scholarship applications."
+        "title": "Consultation for Studying in China",
+        "desc": "Discuss university options, scholarship opportunities, and application preparation based on your study plans.",
+        "cta": "Discuss Your Study Plans"
       }
     },
     "corporate": {

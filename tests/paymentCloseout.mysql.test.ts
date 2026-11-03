@@ -36,7 +36,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV)test('direct refunds require authorized is
    assert.equal(e.kind,'refund');assert.equal(e.accountRole,'refund_destination');assert.equal(e.state,'verified');assert.equal(e.account,body.account);assert.equal(e.evidence,body.evidence);assert.equal(e.receivedAt,at);assert.equal(e.verifiedBy,'finance');
    assert.deepEqual(d.ledger.projects,before.ledger.projects);assert.equal(d.summary[0].refunded,200000);assert.equal(d.summary[0].net,800000);assert.equal(d.summary[0].remaining,200000);
    assert.equal(d.ledger.history.at(-1)?.actor,'finance');assert.equal(d.ledger.history.at(-1)?.reason,body.evidence);
-   assert.deepEqual((await tx(c=>readPaymentImage(c,id,'finance',e.images![0].id))).content,png);
+   assert.deepEqual((await tx(c=>readPaymentImage(c,id,'finance',e.images![0].id))).content,await sharp(png).rotate().png().toBuffer());
    const after=await counts();assert.equal((await tx(c=>savePayment(c,id,'finance',body))).replayed,true);assert.equal((await tx(c=>paymentResult(c,id,'finance',body.requestId))).targetId,result.targetId);assert.deepEqual(await counts(),after);
    await assert.rejects(()=>tx(c=>paymentResult(c,id,'finance2',body.requestId)),/missing/);
    assert.deepEqual((await pool.query('SELECT profile FROM portal_leads WHERE id=:p1',[id])).rows[0].profile,beforeProfile);

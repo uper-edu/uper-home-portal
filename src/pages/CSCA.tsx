@@ -697,7 +697,7 @@ const CSCAFAQsAccordion = () => {
   // Specific list of top 5 CSCA FAQs that are most relevant
   const selectedIds = ['csca_q1', 'csca_q2', 'csca_q4', 'csca_q8', 'csca_q14'];
   const allFaqs = cscaFaqsByLang[currentLang] || cscaFaqsByLang['en'] || [];
-  const faqs = allFaqs.filter(f => selectedIds.includes(f.id));
+  const faqs = selectedIds.flatMap(id => allFaqs.filter(faq => faq.id === id));
 
   return (
     <div className="mt-32 mb-20">
@@ -715,7 +715,7 @@ const CSCAFAQsAccordion = () => {
       </div>
 
       <div className="max-w-4xl mx-auto space-y-4">
-        {faqs.map((faq) => {
+        {faqs.map((faq, index) => {
           const isOpen = openId === faq.id;
           return (
             <div 
@@ -730,7 +730,10 @@ const CSCAFAQsAccordion = () => {
                 onClick={() => setOpenId(isOpen ? null : faq.id)}
                 className="w-full flex items-center justify-between p-6 text-left font-bold text-slate-800 gap-4 cursor-pointer"
               >
-                <span>{faq.question}</span>
+                <span className="flex items-baseline gap-3">
+                  <span className="shrink-0 tabular-nums">{index + 1}.</span>
+                  <span>{faq.question}</span>
+                </span>
                 <ChevronDown className={`w-5 h-5 shrink-0 transition-transform duration-300 ${
                   isOpen 
                     ? isApple 

@@ -1,5 +1,5 @@
-export const collections=['partners','news','newsPage','trendingPrograms','studentStories','campaigns','admissionsList'];
-const types={partner:'partners',news:'news',newspage:'newsPage',trendingprogram:'trendingPrograms',studentstory:'studentStories',campaign:'campaigns',admissionslist:'admissionsList'};
+export const collections=['partners','news','newsPage','trendingPrograms','studentStories','campaigns','admissionsList','programGallery'];
+const types={partner:'partners',news:'news',newspage:'newsPage',trendingprogram:'trendingPrograms',studentstory:'studentStories',campaign:'campaigns',admissionslist:'admissionsList',programgallery:'programGallery'};
 export function collectionFor(query){
   if(typeof query!=='string'||query.length>3000)throw Error('Invalid content query');
   const type=query.match(/_type\s*==\s*["'](\w+)["']/i)?.[1]?.toLowerCase();

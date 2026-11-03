@@ -1,5 +1,5 @@
 import VisitorBoundary from './VisitorBoundary';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Outlet, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
 import { Globe2, ArrowRight, Menu, X, MapPin, User, Phone, MessageCircle, FileText, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
@@ -821,6 +821,7 @@ export default function Layout() {
   // Scroll to top on route change, but restore scroll on back navigation
   const { pathname } = location;
   const navType = useNavigationType();
+  const scrollPath = useRef<string | null>(null);
 
   useEffect(() => {
     // Set the language on body
@@ -829,6 +830,10 @@ export default function Layout() {
   }, [i18n.language]);
 
   useEffect(() => {
+    // Language switching replaces the query string without leaving the page.
+    if (scrollPath.current === pathname) return;
+    scrollPath.current = pathname;
+
     const isCustomScrollRestoredPage = pathname === '/' || pathname === '/news' || pathname === '/faq';
     if (navType === 'POP') {
       if (!isCustomScrollRestoredPage) {

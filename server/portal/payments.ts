@@ -27,12 +27,23 @@ function paymentDetails(b:any,entry?:any){
  const accountRole=b.accountRole||(['receive','refund'].includes(b.action)?expectedRole:undefined);
  return {method,provider,methodName,account,reference,...(accountRole?{accountRole}:{})};
 }
-async function reservePaymentReference(c:any,leadId:string,entryId:string,d:any){
+export async function reservePaymentReference(c:any,leadId:string,entryId:string,d:any){
  const legacyKey=referenceKey(d.account,d.reference);
- const key=isPaymentMethod(d.method)?referenceKey(JSON.stringify([d.method,paymentMethods[d.method].providerRequired?d.provider.trim().toUpperCase():'',d.methodName.trim().toUpperCase(),d.account.trim().toUpperCase()]),d.reference):legacyKey;
- // Legacy account/reference reservations continue to block reuse; they are never rewritten.
- if(key!==legacyKey&&(await c.query('SELECT fingerprint FROM crm_payment_references WHERE fingerprint=:p1',[legacyKey])).rows.length)invalid('payment_duplicate_reference',409);
- try{await c.query('INSERT INTO crm_payment_references(fingerprint,lead_id,entry_id) VALUES(:p1,:p2,:p3)',[key,leadId,entryId]);}catch(e:any){if(e.code==='ER_DUP_ENTRY')invalid('payment_duplicate_reference',409);throw e;}
+ const keys=[legacyKey];
+ if(isPaymentMethod(d.method)){
+  const provider=paymentMethods[d.method].providerRequired?d.provider.trim().toUpperCase():'';
+  const scopedAccount=JSON.stringify([d.method,provider,d.methodName.trim().toUpperCase(),d.account.trim().toUpperCase()]);
+  keys.push(referenceKey(scopedAccount,d.reference));
+ }
+ // Reserve the shared key first in the same transaction as the receipt.
+ for(const key of new Set(keys)){
+  try {
+   await c.query('INSERT INTO crm_payment_references(fingerprint,lead_id,entry_id) VALUES(:p1,:p2,:p3)',[key,leadId,entryId]);
+  } catch(e:any) {
+   if(e.code==='ER_DUP_ENTRY')invalid('payment_duplicate_reference',409);
+   throw e;
+  }
+ }
 }
 async function authorize(c:any,actorId:string,profile:any,permission:string){
  const actor=(await assignmentDirectory(c)).find((e:any)=>e.id===actorId);
