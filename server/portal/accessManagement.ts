@@ -7,7 +7,7 @@ import {canReadTestDirectory,testDirectoryEnabled,testDirectoryOrigin,testDirect
 import type { Express, Request } from "express";
 import { pool, tx } from "./store.ts";
 import { platform } from "./identity.ts";
-import { accountSeeds, hashPassword } from "./localAuth.ts";
+import { accountSeeds, hashPassword, passwordChangeKey } from "./localAuth.ts";
 import {
   builtInRoles,
   canDelegate,
@@ -41,7 +41,9 @@ function initialPassword(name: string) {
   const file=process.env.ACCESS_INITIAL_PASSWORDS_FILE;
   if(!file||fs.statSync(file).mode&0o077)throw Error('Private 0600 initial-password file required for first initialization');
   const password=JSON.parse(fs.readFileSync(file,'utf8'))[name];
-  if(typeof password!=='string'||password.length<12||password.length>200||password.toLowerCase()===name.toLowerCase())throw Error('Strong initial credential required');
+  const forcedInitial=process.env.ACCESS_REQUIRE_INITIAL_PASSWORD_CHANGE==='true';
+  if(forcedInitial&&(process.env.PORTAL_DEPLOYMENT!=='company-trial'||process.env.PORTAL_ENV!=='test'))throw Error('Temporary initial credentials are test-site only');
+  if(typeof password!=='string'||password.length<(forcedInitial?8:12)||password.length>200||password.toLowerCase()===name.toLowerCase())throw Error('Strong initial credential required');
   return password;
 }
 export async function initializeAccessAccounts() {
@@ -65,7 +67,8 @@ export async function initializeAccessAccounts() {
         "INSERT INTO access_roles(id,config) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
         [role, JSON.stringify(config)],
       );
-    for (const [name, roles] of accountSeeds)
+    for (const [name, roles] of accountSeeds){
+      const exists=(await c.query("SELECT id FROM crm_users WHERE id=:p1",[name])).rows.length>0;
       await c.query(
         "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams) VALUES(:p1,:p1,:p1,:p2,:p3,:p4) ON DUPLICATE KEY UPDATE id=id",
         [
@@ -75,6 +78,8 @@ export async function initializeAccessAccounts() {
           JSON.stringify([]),
         ],
       );
+      if(!exists&&process.env.ACCESS_REQUIRE_INITIAL_PASSWORD_CHANGE==='true')await c.query("INSERT INTO access_state(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",[passwordChangeKey(name),{required:true}]);
+    }
     const robert = (
       await c.query("SELECT * FROM crm_users WHERE id='Robert' FOR UPDATE")
     ).rows[0];
@@ -307,6 +312,7 @@ export function mountAccessManagement(app: Express) {
             email,
           ],
         );
+        await c.query("INSERT INTO access_state(id,value) VALUES(:p1,:p2)",[passwordChangeKey(id),{required:true}]);
         await audit(c, e.id, "user.create", {
           id,
           loginId: b.loginId,
@@ -597,6 +603,7 @@ export function mountAccessManagement(app: Express) {
           "UPDATE crm_users SET password_hash=:p2,access_revision=access_revision+1 WHERE id=:p1",
           [user.id, await hashPassword(b.temporaryPassword)],
         );
+        await c.query("INSERT INTO access_state(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",[passwordChangeKey(user.id),{required:true}]);
         await c.query("DELETE FROM crm_sessions WHERE user_id=:p1", [user.id]);
         await audit(c, e.id, "password.reset", { id: user.id, reason: why });
       });

@@ -7,6 +7,7 @@ import {
 import type { Request } from "express";
 
 export interface Employee {
+  passwordChangeRequired?: boolean;
   id: string;
   displayName?: string;
   roles?: string[];

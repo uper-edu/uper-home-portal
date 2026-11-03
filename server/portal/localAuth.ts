@@ -1,3 +1,4 @@
+import {validStaffPassword} from '../../src/utils/staffPassword.ts';
 import { projectEmployee } from "../../src/utils/accessControl.ts";
 import crypto from "node:crypto";
 import { validMutationOrigin } from "./accessTransport.ts";
@@ -46,6 +47,7 @@ const token = (req: Request) =>
     ?.slice(cookie().length + 1);
 const digest = (value: string) =>
   crypto.createHash("sha256").update(value).digest("hex");
+export const passwordChangeKey=(id:string)=>'pw:'+digest(id).slice(0,29);
 export async function localEmployee(req: Request) {
   const t = token(req);
   if (!t || !/^[a-f0-9]{64}$/.test(t)) return null;
@@ -59,7 +61,15 @@ export async function localEmployee(req: Request) {
   const restore = await restoreState();
   if (restore?.required && !restore.recoveryAdmins?.includes(row.id))
     return null;
-  return employee(row);
+  const projected=await employee(row);
+  const state=(await pool.query("SELECT value FROM access_state WHERE id=:p1",[passwordChangeKey(row.id)])).rows[0]?.value;
+  if(state?.required)return {...projected,passwordChangeRequired:true,permissions:[],grants:{}};
+  return {...projected,passwordChangeRequired:false};
+}
+/** Restrict temporary-password sessions before any CRM, CMS or administration routes. */
+export function passwordChangeGate(req:any,res:any,next:any){
+ if(!token(req)||(req.method==='GET'&&/^\/crm\/auth\/operations\/[a-zA-Z0-9_-]{16,100}$/.test(req.path))||['/crm/auth/me','/crm/auth/login','/crm/auth/logout','/crm/auth/password'].includes(req.path))return next();
+ localEmployee(req).then(e=>e?.passwordChangeRequired?res.status(403).json({error:'password_change_required'}):next()).catch(()=>res.status(503).json({error:'Authentication service unavailable'}));
 }
 export async function localDirectory() {
   const rows = (
@@ -207,10 +217,10 @@ export function mountLocalAuth(
         return {
           status: 200,
           t,
-          user: projectEmployee(
+          user: {...projectEmployee(
             row,
             (await c.query("SELECT * FROM access_roles ORDER BY id")).rows,
-          ),
+          ),passwordChangeRequired:!!(await c.query("SELECT value FROM access_state WHERE id=:p1",[passwordChangeKey(row.id)])).rows[0]?.value?.required},
         };
       });
       if (result.status === 423) {
@@ -228,6 +238,7 @@ export function mountLocalAuth(
       }
       setCookie(r, result.t!, 8 * 3600000);
       r.setHeader("Cache-Control", "no-store");
+      if(result.user?.passwordChangeRequired){result.user.permissions=[];result.user.grants={};}
       r.json({ employee: result.user });
     }),
   );
@@ -258,19 +269,19 @@ export function mountLocalAuth(
         typeof currentPassword !== "string" ||
         currentPassword.length > 200 ||
         typeof newPassword !== "string" ||
-        newPassword.length < 8 ||
-        newPassword.length > 200
+        !validStaffPassword(newPassword,e.id,currentPassword)
       ) {
         r.status(400).json({
-          error: "New password must contain 8–200 characters",
+          error: "password_policy_required",
         });
         return;
       }
       const row = (
-        await pool.query("SELECT password_hash FROM crm_users WHERE id=:p1", [
+        await pool.query("SELECT password_hash,login_id FROM crm_users WHERE id=:p1", [
           e.id,
         ])
       ).rows[0];
+      if(!validStaffPassword(newPassword,row.login_id,currentPassword)){r.status(400).json({error:"password_policy_required"});return;}
       if (!(await matches(currentPassword, row.password_hash))) {
         r.status(401).json({ error: "Current password is incorrect" });
         return;
@@ -283,6 +294,7 @@ export function mountLocalAuth(
           [hash, e.id, row.password_hash],
         );
         if (!updated.rowCount) throw Error("Password changed concurrently");
+        await c.query("DELETE FROM access_state WHERE id=:p1",[passwordChangeKey(e.id)]);
         await c.query(
           "DELETE FROM crm_sessions WHERE user_id=:p1 AND token_hash<>:p2",
           [e.id, digest(t)],

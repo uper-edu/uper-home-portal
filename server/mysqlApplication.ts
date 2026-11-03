@@ -1,3 +1,4 @@
+import {passwordChangeGate} from './portal/localAuth.ts';
 import {mountClientDiagnostics} from './clientDiagnostics.ts';
 import {listPromotionReviews,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
 import {campaignPromotionUrl} from "../src/utils/campaignPromotion.ts";
@@ -57,6 +58,7 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
 }
 const runtimeVersion=createRuntimeVersion();
 const app=express();mountMetadataHeaders(app);configureAccessTransport(app);mountRuntimeVersion(app,runtimeVersion);app.use('/api/client-diagnostics',express.json({limit:'12kb'}));mountClientDiagnostics(app);app.use(express.json({limit:'16mb'}));
+app.use('/api',passwordChangeGate);
 if(company){
  app.get('/robots.txt',(_q,r)=>r.type('text').send('User-agent: *\nDisallow: /\n'));
  app.get(['/sitemap.xml','/llms.txt','/llms-full.txt'],(_q,r)=>r.status(404).end());

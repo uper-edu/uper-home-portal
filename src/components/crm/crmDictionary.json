@@ -3466,6 +3466,14 @@
   {
     "layer": "contract",
     "object": "Employee",
+    "key": "passwordChangeRequired",
+    "type": "boolean",
+    "optional": true,
+    "source": "server/portal/identity.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Employee",
     "key": "id",
     "type": "string",
     "optional": false,

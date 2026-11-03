@@ -1,3 +1,4 @@
+import {validStaffPassword} from '../utils/staffPassword';
 import {PersonalLarkControls} from './PersonalLarkControls';
 import {AdminField,AdminRequiredNote,AdminForm} from './AdminForm';
 import {RuntimeVersionStatus} from './RuntimeVersionStatus';
@@ -18,6 +19,7 @@ import {
 } from "../utils/crmLanguage";
 import { createContext, useContext, useEffect, useState } from "react";
 export interface CrmEmployee {
+  passwordChangeRequired?: boolean;
   id: string;
   displayName?: string;
   roles: string[];
@@ -141,6 +143,7 @@ export default function CrmAccess({
     [change, setChange] = useState(false),
     [current, setCurrent] = useState(""),
     [next, setNext] = useState(""),
+    [confirm, setConfirm] = useState(""),
     [notice, setNotice] = useState("");
   useEffect(() => {
     auth("me")
@@ -237,7 +240,7 @@ export default function CrmAccess({
           </AdminField>
           {error && (
             <p role="alert" className="crm-sign-in-error">
-              {crmError(error, lang)}
+              {error==='password_policy_required'?st('Check the password rules and make sure both new passwords match.','Periksa aturan kata sandi dan pastikan keduanya sama.','请按规则设置密码，并确保两次输入一致。'):crmError(error, lang)}
             </p>
           )}
           <button
@@ -286,13 +289,14 @@ export default function CrmAccess({
       }}
     >
       {connectionProblem&&<p role="status" className="p-3 border border-amber-500">{lang==='zh'?'连接暂不可用，工作区和草稿仍保留；请恢复连接后重试。':lang==='id'?'Koneksi sementara tidak tersedia. Ruang kerja dan draf tetap disimpan; coba lagi setelah tersambung.':'Connection temporarily unavailable. Your workspace and draft remain; retry after reconnecting.'}</p>}
-      {children(employee, lang, setLang)}
-      {change && (
+      {!employee.passwordChangeRequired&&children(employee, lang, setLang)}
+      {(change||employee.passwordChangeRequired) && (
         <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6">
           <AdminForm lang={lang}
             className="w-full max-w-sm bg-white rounded-2xl p-6 space-y-4"
             onSubmit={async (e) => {
               e.preventDefault();
+              if(!validStaffPassword(next,employee.id,current)||next!==confirm){setError('password_policy_required');return;}
               setBusy(true);
               setError("");
               try {
@@ -302,7 +306,9 @@ export default function CrmAccess({
                 });
                 setCurrent("");
                 setNext("");
-                setNotice("password_updated");
+                setConfirm("");
+                const refreshed=await auth('me');setEmployee(refreshed.employee);
+                setChange(false);setNotice("password_updated");
               } catch (e) {
                 setError((e as Error).message);
               } finally {
@@ -312,8 +318,9 @@ export default function CrmAccess({
           >
             <AccessOperationStatus actor={employee.id} lang={lang} onResolved={()=>setError('')}/>
             <h2 className="font-bold">
-              <span>{t("Change your password", "修改自己的密码")}</span><AdminRequiredNote lang={lang} inline/>
+              <span>{employee.passwordChangeRequired?st("Set a new password","Buat kata sandi baru","设置新密码"):t("Change your password", "修改自己的密码")}</span><AdminRequiredNote lang={lang} inline/>
             </h2>
+            {employee.passwordChangeRequired&&<p className="text-sm text-slate-600">{st('Change your initial or reset password before continuing.','Ganti kata sandi awal atau reset sebelum melanjutkan.','请先修改初始或重置密码，再进入工作区。')}</p>}
             <AdminField className="block text-sm">
               {t("Current password", "当前密码")}
               <input
@@ -331,19 +338,18 @@ export default function CrmAccess({
                 className={field}
                 type="password"
                 autoComplete="new-password"
-                minLength={8}
+                minLength={12}
                 maxLength={200}
                 value={next}
                 onChange={(e) => setNext(e.target.value)}
                 required
               />
             </AdminField>
-            <p className="text-xs text-slate-500">
-              {t("At least 8 characters", "至少 8 个字符")}
-            </p>
+            <AdminField className="block text-sm">{st('Confirm new password','Konfirmasi kata sandi baru','确认新密码')}<input className={field} type="password" autoComplete="new-password" value={confirm} required minLength={12} maxLength={200} onChange={e=>setConfirm(e.target.value)}/></AdminField>
+            <p className="text-xs text-slate-500">{st('12–200 characters, with uppercase and lowercase letters, a number and a symbol. Use a different password from your account name and current password.','12–200 karakter, dengan huruf besar dan kecil, angka, serta simbol. Jangan gunakan nama akun atau kata sandi saat ini.','12–200个字符，包含大小写字母、数字和符号，不得与账号或当前密码相同。')}</p>
             {error && (
               <p role="alert" className="text-sm text-rose-600">
-                {crmError(error, lang)}
+                {error==='password_policy_required'?st('Check the password rules and make sure both new passwords match.','Periksa aturan kata sandi dan pastikan keduanya sama.','请按规则设置密码，并确保两次输入一致。'):crmError(error, lang)}
               </p>
             )}
             {notice && (
@@ -354,7 +360,7 @@ export default function CrmAccess({
                 )}
               </p>
             )}
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-3">
               <button
                 type="submit"
                 disabled={busy}
@@ -364,14 +370,17 @@ export default function CrmAccess({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                disabled={busy}
+                className="order-first"
+                onClick={async () => {
+                  if(employee.passwordChangeRequired){await auth('logout',{});setEmployee(null);}
                   setChange(false);
                   setCurrent("");
                   setNext("");
                   setError("");
                 }}
               >
-                {t("Close", "关闭")}
+                {employee.passwordChangeRequired?st("Sign out","Keluar","退出登录"):t("Close", "关闭")}
               </button>
             </div>
           </AdminForm>
