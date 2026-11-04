@@ -32,7 +32,7 @@ export {resolvePromotion, publicPromotion, promotionAttribution} from './attribu
 export async function createIndexedPromotion(db: any, campaignId: string, values: ReturnType<typeof promotionInput>) {
  const prefix = promotionIdPrefix(values);
  const createdAt = new Date().toISOString();
- const timestamp = createdAt.slice(0,19).replace(/[-:]/g,'') + 'Z';
+ const timestamp = createdAt.slice(2,19).replace(/[-:]/g,'') + 'Z';
  const baseId = prefix + '-' + timestamp;
  for (let sequence = 1; sequence <= 1000; sequence++) {
   const id = sequence === 1 ? baseId : baseId + '-' + sequence;

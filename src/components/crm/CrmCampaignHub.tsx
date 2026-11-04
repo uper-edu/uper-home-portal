@@ -756,7 +756,6 @@ export function CrmCampaignHub({
             <CampaignCards
               campaigns={filteredCampaigns}
               lang={lang}
-              isLight={isLight}
               reviewCounts={promotionReviews}
               onReview={
                 canManageCampaigns ? reviewCampaignPromotions : undefined
@@ -965,14 +964,7 @@ export function CrmCampaignHub({
                 <CrmDetailHeader
                   titleId="campaign-page-title"
                   titleRef={pageHeading}
-                  title={
-                    <span className="campaign-preset-heading">
-                      {organicDetail ? organicCampaignName(lang) : campaignName(activeDetailCampaign, lang)}
-                      {(activeDetailCampaign.presetKey || activeDetailCampaign.systemManaged) && (
-                        <span className="campaign-preset-badge">{u("System preset")}</span>
-                      )}
-                    </span>
-                  }
+                  title={organicDetail ? organicCampaignName(lang) : campaignName(activeDetailCampaign, lang)}
                   meta={
                     <>
                       <code>{activeDetailCampaign.code}</code>
@@ -989,6 +981,11 @@ export function CrmCampaignHub({
                   }
                   actions={
                     <>
+                      {(activeDetailCampaign.presetKey || activeDetailCampaign.systemManaged) && (
+                        <div className="campaign-detail-preset">
+                          <span className="campaign-preset-badge">{u("System preset")}</span>
+                        </div>
+                      )}
                       {detailTab === "overview" && canManageCampaigns && !addingPromotion && (
                         <button type="button" className="campaign-workspace-action campaign-primary"
                           onClick={() => setPromotionForm({id:activeDetailCampaign.id,open:true})}>

@@ -47,12 +47,43 @@ function LinkCard({
   return (
     <article className="campaign-promotion-card">
       <div>
-        <h3 className="campaign-preset-heading">
-          {link.name}
-          {isPreset && (
-            <span className="campaign-preset-badge">{u("System preset")}</span>
-          )}
-        </h3>
+        <div className="campaign-link-heading">
+          <h3 className="campaign-preset-heading">
+            {link.name}
+            {isPreset && (
+              <span className="campaign-preset-badge">{u("System preset")}</span>
+            )}
+          </h3>
+          <div className="campaign-promotion-actions">
+            <button
+              type="button"
+              className="campaign-workspace-action campaign-primary"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setFeedback("Link copied.");
+                } catch {
+                  setFeedback(
+                    "Copy unavailable. Select and copy the link above.",
+                  );
+                }
+              }}
+            >
+              {u("Copy link")}
+            </button>
+            <button type="button" className="campaign-workspace-action" onClick={() => setQrOpen(true)}>
+              {u("QR code")}
+            </button>
+            <a
+              className="campaign-workspace-action"
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {u("Preview entry")}
+            </a>
+          </div>
+        </div>
         <p>
           {link.source} ·{" "}
           {u(PROMOTION_MEDIUM_LABELS[link.medium] || link.medium)} ·{" "}
@@ -76,35 +107,6 @@ function LinkCard({
             onFocus={(e) => e.target.select()}
           />
         </AdminField>
-        <div className="campaign-promotion-actions">
-          <button
-            type="button"
-            className="campaign-workspace-action campaign-primary"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(url);
-                setFeedback("Link copied.");
-              } catch {
-                setFeedback(
-                  "Copy unavailable. Select and copy the link above.",
-                );
-              }
-            }}
-          >
-            {u("Copy link")}
-          </button>
-          <a
-            className="campaign-workspace-action"
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {u("Preview entry")}
-          </a>
-          <button type="button" className="campaign-workspace-action" onClick={() => setQrOpen(true)}>
-            {u("QR code")}
-          </button>
-        </div>
         <p role="status">{feedback && u(feedback)}</p>
         <details>
           <summary>{u("Tracking details")}</summary>
