@@ -5,6 +5,7 @@ import {documentSearchExcerpt,locateDocumentMatch} from '../../utils/crmDocument
 import { CrmWhatsAppGuide, whatsAppChapter, whatsAppSections, isWhatsAppChapter } from "./CrmWhatsAppGuide";
 import { CrmMarketingPlaybook, marketingPlaybookSections, marketingPlaybookTitle, isMarketingPlaybookAnchor, marketingPlaybookNavKey } from "./CrmMarketingPlaybook";
 import { CrmAnalyticsGuide, analyticsGuideTitle, analyticsGuideSections, isAnalyticsGuideAnchor } from "./CrmAnalyticsGuide";
+import { CrmPromotionAttributionGuide, promotionAttributionGuideTitle, promotionAttributionGuideSections, isPromotionAttributionGuideAnchor } from "./CrmPromotionAttributionGuide";
 import {containPaneKeys} from '../adminScroll';
 import {
   panoramaRoles,
@@ -80,6 +81,7 @@ export function resolveGuideAnchor(hash: string) {
   if (key === "architecture") key = "panorama";
   if (key === "fields") key = "data-implementation";
   if (isAnalyticsGuideAnchor(key)) return { part: "analytics", key };
+  if (isPromotionAttributionGuideAnchor(key)) return { part: "promotion", key };
   if (isMarketingPlaybookAnchor(key)) return { part: "marketing", key };
   if (isWhatsAppChapter(key)) return { part: "whatsapp", key };
   if (systemChapters.some((s) => s.key === key)) return { part: "system", key };
@@ -145,6 +147,7 @@ export function CrmUserGuide({
       whatsapp: part === "whatsapp",
       marketing: part === "marketing",
       analytics: part === "analytics",
+      promotion: part === "promotion",
     }),
     [isNarrow, setIsNarrow] = useState(false),
     [navOpen, setNavOpen] = useState(false),
@@ -347,8 +350,11 @@ export function CrmUserGuide({
     includes([s.title[col], s.searchText, s.key === "marketing-playbook-sec-1" ? "v2.0 UPER 营销获客与 CRM 转化反馈体系" : ""]),
   );
   const matchesAnalytics = analyticsGuideSections.filter(s => includes([analyticsGuideTitle[col], s.title[col], s.body[col]]));
+  const matchesPromotion = promotionAttributionGuideSections.filter(s =>
+    includes([promotionAttributionGuideTitle[col], s.title[col], s.body[col]]),
+  );
   const resultKeys = new Set(
-    [...matchesSystem, ...matchesOperations, ...matchesMarketing, ...matchesAnalytics].map((s) => s.key),
+    [...matchesSystem, ...matchesOperations, ...matchesMarketing, ...matchesAnalytics, ...matchesPromotion].map((s) => s.key),
   );
   // Search results are separate; chapter names and numbering stay stable.
   const navSystem = systemChapters;
@@ -387,10 +393,16 @@ export function CrmUserGuide({
     window.history.pushState(window.history.state, "", link(next.key));
   };
   useEffect(()=>{
-    if(searchMode||readingSearch||!['whatsapp','marketing','analytics'].includes(part))return;
+    const sections = {
+      analytics: analyticsGuideSections,
+      whatsapp: whatsAppSections,
+      marketing: marketingPlaybookSections,
+      promotion: promotionAttributionGuideSections,
+    };
+    if (searchMode || readingSearch || part === "system" || part === "operations") return;
+    const keys = sections[part].map((section) => section.key);
     let frame=0;
     const track=()=>{if(frame)return;frame=requestAnimationFrame(()=>{frame=0;if(performance.now()<navigationUntil.current)return;
-      const keys=(part==='analytics'?analyticsGuideSections:part==='whatsapp'?whatsAppSections:marketingPlaybookSections).map(s=>s.key);
       const edge=(document.querySelector('[data-admin-header],[data-crm-header]')?.getBoundingClientRect().bottom||0)+36;
       const visible=keys.map(key=>({key,node:document.getElementById('crm-guide-'+key)})).filter(v=>v.node);
       const above=visible.filter(v=>v.node!.getBoundingClientRect().top<=edge);
@@ -398,28 +410,44 @@ export function CrmUserGuide({
     });};
     window.addEventListener('scroll',track,{passive:true});return()=>{window.removeEventListener('scroll',track);cancelAnimationFrame(frame)};
   },[part,selectedKey,searchMode,readingSearch]);
+  const partOpening = {
+    analytics: "ga-analytics",
+    marketing: "marketing-playbook",
+    whatsapp: whatsAppChapter.key,
+    promotion: "promotion-attribution",
+    system: selectedKey,
+    operations: selectedKey,
+  };
+  const numberedChapters = {
+    analytics: { number: 5, title: analyticsGuideTitle, sections: analyticsGuideSections },
+    promotion: { number: 6, title: promotionAttributionGuideTitle, sections: promotionAttributionGuideSections },
+  };
   const fullNavigation = [
       ...systemChapters.map((s) => s.key),
       ...operationGroups.flat(),
       whatsAppChapter.key,
       "marketing-playbook",
-      "ga-analytics",
+      partOpening.analytics,
+      partOpening.promotion,
     ],
-    position = fullNavigation.indexOf(part === "analytics" ? "ga-analytics" : part === "whatsapp" ? whatsAppChapter.key : part === "marketing" ? "marketing-playbook" : selectedKey);
-  const chapterTitle = part === "analytics" ? analyticsGuideTitle[col] : part === "marketing" ? marketingPlaybookTitle[col] : (part === "whatsapp" ? whatsAppChapter : [...systemChapters, ...guideSections].find(s => s.key === selectedKey)!).title[col];
+    position = fullNavigation.indexOf(partOpening[part]);
+  const chapterTitle = (part === "system" || part === "operations"
+    ? [...systemChapters, ...guideSections].find(s => s.key === selectedKey)?.title
+    : part === "whatsapp" ? whatsAppChapter.title : undefined)?.[col];
   const navResults = [
     ...matchesSystem.filter(s => !isWhatsAppChapter(s.key)).map((s) => ({ ...s, part: "system" })),
     ...matchesOperations.map((s) => ({ ...s, part: "operations" })),
     ...matchesSystem.filter(s => isWhatsAppChapter(s.key)).map(s => ({ ...s, part: "whatsapp" })),
     ...matchesMarketing.map(s => ({ ...s, part: "marketing" })),
     ...matchesAnalytics.map(s => ({ ...s, part: "analytics" })),
+    ...matchesPromotion.map(s => ({ ...s, part: "promotion" })),
   ];
   const partLabel = (value: string) => value === "system"
     ? t("System explanation", "Penjelasan sistem", "系统说明")
     : value === "operations"
       ? t("Operating guide", "Panduan operasi", "操作指南")
       : value === "whatsapp" ? t("WhatsApp integration", "Integrasi WhatsApp", "WhatsApp接入方案")
-        : value === "analytics" ? analyticsGuideTitle[col] : marketingPlaybookTitle[col];
+        : value === "analytics" || value === "promotion" ? numberedChapters[value].title[col] : marketingPlaybookTitle[col];
   return (
     <article
       ref={guide}
@@ -505,7 +533,7 @@ export function CrmUserGuide({
             </button>
           )}
           </div>
-          {(["system", "operations", "whatsapp", "marketing", "analytics"] as const).map((root) => (
+          {(["system", "operations", "whatsapp", "marketing", "analytics", "promotion"] as const).map((root) => (
             <section key={root} className="crm-doc-nav-group">
               <button
                 type="button"
@@ -521,7 +549,7 @@ export function CrmUserGuide({
               <ol id={"crm-doc-nav-" + root} hidden={terms ? !navResults.some(s=>s.part===root) : !expanded[root]}>
                 {(root === "system"
                   ? navSystem.map((s) => ({ ...s, group: [s.key] }))
-                  : root === "operations" ? navOperations : (root === "analytics" ? analyticsGuideSections : root === "whatsapp" ? whatsAppSections : marketingPlaybookSections).map(s => ({ ...s, group: [s.key] }))
+                  : root === "operations" ? navOperations : (root === "analytics" || root === "promotion" ? numberedChapters[root].sections : root === "whatsapp" ? whatsAppSections : marketingPlaybookSections).map(s => ({ ...s, group: [s.key] }))
                 ).map((s, index) => (
                   <li key={s.key} hidden={!!terms&&!resultKeys.has(s.key)&&!s.group.some(key=>resultKeys.has(key))}>
                     <a
@@ -534,7 +562,7 @@ export function CrmUserGuide({
                       }}
                     >
                       <span className="crm-doc-nav-number" aria-hidden="true">
-                        {root === "analytics" ? `5.${index + 1}` : `${index + 1}.`}
+                        {root === "analytics" || root === "promotion" ? `${numberedChapters[root].number}.${index + 1}` : `${index + 1}.`}
                       </span>
                       {s.title[col]}
                     </a>
@@ -646,10 +674,11 @@ export function CrmUserGuide({
             <>
 
               <p className="crm-doc-breadcrumb">
-                {partLabel(part)}{part !== "marketing" && part !== "analytics" && <> <span aria-hidden="true">›</span> {chapterTitle}</>}
+                {partLabel(part)}{chapterTitle && <> <span aria-hidden="true">›</span> {chapterTitle}</>}
               </p>
               {part === "marketing" && <CrmMarketingPlaybook lang={lang} onChoose={choose} />}
               {part === "analytics" && <CrmAnalyticsGuide lang={lang} />}
+              {part === "promotion" && <CrmPromotionAttributionGuide lang={lang} />}
               {(part === "system" || part === "whatsapp") &&
                 system.map((s) => (
                   <section
