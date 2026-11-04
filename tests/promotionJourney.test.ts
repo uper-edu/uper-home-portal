@@ -130,3 +130,20 @@ test('one browser lookup is shared and explicit conflicting parameters never hit
   assert.deepEqual(lookupPromotion(new URLSearchParams('p=lookup-fixture&c=one&cid=two')),{state:'unverified'});
   assert.equal(calls,1);
 });
+
+test('a delayed promotion response cannot replace the timed-out context', async t => {
+  let finish!: (response: Response) => void;
+  let signal: AbortSignal | null | undefined;
+  t.mock.method(globalThis, 'fetch', (_input: unknown, init: RequestInit) => {
+    signal = init.signal;
+    return new Promise<Response>(resolve => { finish = resolve; });
+  });
+  const params = new URLSearchParams('p=timeout-fixture');
+  const result = await lookupPromotion(params);
+  assert.deepEqual(result, { state: 'unavailable' });
+  assert.equal(signal?.aborted, true);
+  finish(Response.json({promotion:{id:'timeout-fixture',campaignId:'c',campaignCode:'c',source:'youtube',
+    medium:'social',language:'zh',landingPath:'/link',promotionKind:'unpaid'}}));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(await lookupPromotion(params), result);
+});
