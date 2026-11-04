@@ -1,3 +1,4 @@
+import {promotionJourneyUrl, promotionLandingPaths} from '../utils/promotionNavigation';
 import VisitorBoundary from './VisitorBoundary';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -6,7 +7,7 @@ import { Globe2, ArrowRight, Menu, X, MapPin, User, Phone, MessageCircle, FileTe
 import { useTranslation } from 'react-i18next';
 import AIChatbot from './AIChatbot';
 import { BackToTop } from './ui/BackToTop';
-import { trackLanguageSwitch } from '../utils/analytics';
+import { trackLanguageSwitch, trackEvent } from '../utils/analytics';
 import { useDesignStyle, useColorTheme } from '../utils/theme';
 import { useStudentName, STUDENT_PORTAL_URL } from '../utils/studentAuth';
 
@@ -137,6 +138,10 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
     { code: 'zh', shortLabel: '中文', name: '简体中文', flag: '🇨🇳' },
   ];
 
+  const promotionQuery = new URLSearchParams(location.search);
+  const journeyLink = (path: string) => promotionLandingPaths.some(item => item === path)
+    ? promotionJourneyUrl(path, promotionQuery) : path;
+
   const navLinks = [
     { nameKey: 'nav.home', path: '/' },
     { 
@@ -164,7 +169,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'glass-card py-3 shadow-xs' : 'bg-transparent py-5'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-        <Link to="/" className="flex items-center gap-1.5 md:gap-2 group">
+        <Link to={journeyLink("/")} className="flex items-center gap-1.5 md:gap-2 group">
           <img 
             src="/uper-logo-mark.svg" 
             alt="UPER Logo" 
@@ -205,7 +210,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                       {link.dropdown.map(dropLink => (
                         <Link
                           key={dropLink.nameKey}
-                          to={dropLink.path}
+                          to={journeyLink(dropLink.path)}
                           className={`block px-4 py-2 text-sm transition-colors ${location.pathname === dropLink.path ? (isApple ? 'bg-slate-100 text-slate-900 font-bold' : 'bg-primary-50 text-primary-600 font-semibold') : (isApple ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-primary-600')}`}
                         >
                           {t(dropLink.nameKey)}
@@ -369,7 +374,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                     {link.dropdown.map(dropLink => (
                       <Link 
                         key={dropLink.nameKey} 
-                        to={dropLink.path} 
+                        to={journeyLink(dropLink.path)}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`p-2.5 rounded-lg font-medium text-sm ${location.pathname === dropLink.path ? (isApple ? 'bg-slate-100 text-slate-900 font-bold' : 'bg-primary-50 text-primary-600') : (isApple ? 'hover:bg-slate-50 text-slate-600 hover:text-slate-900' : 'hover:bg-white/50 text-slate-600')}`}
                       >
@@ -612,7 +617,12 @@ const AppearanceModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 };
 
 const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const promotionQuery = new URLSearchParams(location.search);
+  const websiteEntry = location.pathname === '/' ? 'homepage_widget' : 'website';
+  const journeyLink = (path: string) => promotionJourneyUrl(path, promotionQuery);
+  const footerEntry = (path: '/chat' | '/link') => promotionJourneyUrl(path, promotionQuery, websiteEntry);
   const { isApple } = useDesignStyle();
 
   return (
@@ -653,17 +663,27 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
             }`}>{t('footer.quickLinks')}</h4>
             <ul className="space-y-3 text-sm">
               <li>
-                <Link to="/hsk" className={`transition-colors ${isApple ? 'hover:text-slate-900 text-slate-500' : 'hover:text-primary-400'}`}>
+                <Link to={footerEntry('/link')} className="transition-colors" onClick={() => trackEvent('link_click', {target:'hub', entry_point:websiteEntry})}>
+                  {i18n.language.startsWith('zh') ? '更多资源' : i18n.language.startsWith('id') ? 'Sumber lainnya' : 'More resources'}
+                </Link>
+              </li>
+              <li>
+                <Link to={footerEntry('/chat')} className="transition-colors" onClick={() => trackEvent('link_click', {target:'consultation', entry_point:websiteEntry})}>
+                  {i18n.language.startsWith('zh') ? '在线咨询' : i18n.language.startsWith('id') ? 'Konsultasi online' : 'Online consultation'}
+                </Link>
+              </li>
+              <li>
+                <Link to={journeyLink("/hsk")} className={`transition-colors ${isApple ? 'hover:text-slate-900 text-slate-500' : 'hover:text-primary-400'}`}>
                   {t('nav.hskAi')}
                 </Link>
               </li>
               <li>
-                <Link to="/tours" className={`transition-colors ${isApple ? 'hover:text-slate-900 text-slate-500' : 'hover:text-primary-400'}`}>
+                <Link to={journeyLink("/tours")} className={`transition-colors ${isApple ? 'hover:text-slate-900 text-slate-500' : 'hover:text-primary-400'}`}>
                   {t('nav.studyTours')}
                 </Link>
               </li>
               <li>
-                <Link to="/consultancy" className={`transition-colors ${isApple ? 'hover:text-slate-900 text-slate-500' : 'hover:text-primary-400'}`}>
+                <Link to={journeyLink("/consultancy")} className={`transition-colors ${isApple ? 'hover:text-slate-900 text-slate-500' : 'hover:text-primary-400'}`}>
                   {t('nav.studyAbroad')}
                 </Link>
               </li>

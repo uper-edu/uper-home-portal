@@ -29,11 +29,12 @@ test('distribution links use each current environment origin and open /link befo
   const old = {id:'p_other', name:'Other', source:'instagram', medium:'paid_social', language:'en' as const, experience:PROMOTION_EXPERIENCE, createdAt:at};
   assert.equal(new URL(campaignPromotionUrl('ordinary', old, 'https://example.test')).pathname, '/chat');
 });
-test('language switching selects only a known preset variant; unknown sources and promotion mismatches are not repaired', () => {
+test('language switching preserves the original promotion ID and does not repair mismatches', () => {
   const original = new URLSearchParams('c=instagram-bio&p=p_instagram_bio_id&utm_source=instagram&utm_medium=social&utm_campaign=instagram-bio');
   const before = original.toString();
   const next = new URL(linkHubConsultUrl(original, 'zh'), 'https://example.test');
-  assert.equal(next.searchParams.get('p'), 'p_instagram_bio_zh'); assert.equal(original.toString(), before);
+  assert.equal(next.searchParams.get('p'), 'p_instagram_bio_id');
+  assert.equal(next.searchParams.get('lang'), 'zh'); assert.equal(original.toString(), before);
   for (const source of ['c=instagram-bio&p=p_foreign', 'c=other&p=p_instagram_bio_id']) {
     const input = new URLSearchParams(source), output = new URL(linkHubConsultUrl(input, 'zh'), 'https://example.test');
     assert.equal(output.searchParams.get('p'), input.get('p')); assert.equal(output.searchParams.get('c'), input.get('c'));
@@ -59,6 +60,8 @@ function database(initial?: any, alias?: string) {
     if (sql.startsWith('SELECT raw_code,campaign_id')) return {rows:alias?[{raw_code:INSTAGRAM_BIO_CAMPAIGN,campaign_id:alias}]:[]};
     if (sql.startsWith('INSERT INTO trial_campaigns')) { assert.match(sql, /ON DUPLICATE KEY UPDATE id=id$/); saved ??= {id:values[0],code:values[0],config:structuredClone(values[1])}; return {rowCount:1}; }
     if (sql.startsWith('SELECT id,code,config')) return {rows:saved?.id===values[0]&&saved?.code===values[0]?[saved]:[]};
+    if (sql.startsWith('INSERT INTO campaign_promotion_index')) return {rowCount:1};
+    if (sql.startsWith('SELECT campaign_id FROM campaign_promotion_index')) return {rows:[{campaign_id:saved.id}]};
     throw Error('Unexpected write or query');
   }};
 }

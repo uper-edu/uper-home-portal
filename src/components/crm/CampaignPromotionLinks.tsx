@@ -1,3 +1,4 @@
+import {promotionLandingPaths, promotionKindForMedium} from '../../utils/promotionNavigation';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
@@ -228,6 +229,9 @@ export function CampaignPromotionLinks({
     medium: "",
     language: "id",
     experience: PROMOTION_EXPERIENCE,
+    landingPath: "/chat",
+    promotionKind: "",
+    content: "",
   });
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -237,7 +241,7 @@ export function CampaignPromotionLinks({
     saving = useRef(false);
   const dirty =
     adding &&
-    (!!v.name || !!v.source || !!v.medium || v.language !== "id" || unknown);
+    (!!v.name || !!v.source || !!v.medium || v.language !== "id" || v.landingPath !== "/chat" || !!v.promotionKind || !!v.content || unknown);
   useEffect(() => {
     onStateChange({ dirty, busy });
     return () => onStateChange({ dirty: false, busy: false });
@@ -260,6 +264,9 @@ export function CampaignPromotionLinks({
       medium: "",
       language: "id",
       experience: PROMOTION_EXPERIENCE,
+    landingPath: "/chat",
+    promotionKind: "",
+    content: "",
     });
     setCustomSource(false);
     pending.current = null;
@@ -270,6 +277,7 @@ export function CampaignPromotionLinks({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (saving.current) return;
+    if (!v.promotionKind) { setError("Select promotion type"); return; }
     pending.current ||= { ...v, requestId: crypto.randomUUID() };
     saving.current = true;
     setBusy(true);
@@ -304,6 +312,9 @@ export function CampaignPromotionLinks({
         medium: "",
         language: "id",
         experience: PROMOTION_EXPERIENCE,
+    landingPath: "/chat",
+    promotionKind: "",
+    content: "",
       });
       onSaved(d.campaign);
       setNotice(
@@ -443,7 +454,10 @@ export function CampaignPromotionLinks({
                   lang={lang}
                   isLight={isLight}
                   disabled={busy || unknown}
-                  onChange={(medium) => setV({ ...v, medium })}
+                  onChange={(medium) => {
+                    const kind = promotionKindForMedium(medium);
+                    setV({ ...v, medium, promotionKind: kind === "unclassified" ? "" : kind });
+                  }}
                 >
                   <option value="" disabled>
                     {u("Select delivery method")}
@@ -455,6 +469,28 @@ export function CampaignPromotionLinks({
                   ))}
                 </CrmSelect>
               </div>
+              <div className="campaign-field">
+                <AdminFieldLabel required>{u("Landing page")}</AdminFieldLabel>
+                <CrmSelect required label={u("Landing page")} value={v.landingPath} lang={lang} isLight={isLight}
+                  disabled={busy || unknown} onChange={(landingPath) => setV({ ...v, landingPath })}>
+                  {promotionLandingPaths.map(path => <option key={path} value={path}>{path}</option>)}
+                </CrmSelect>
+              </div>
+              <div className="campaign-field">
+                <AdminFieldLabel required>{u("Promotion type")}</AdminFieldLabel>
+                <CrmSelect required label={u("Promotion type")} value={v.promotionKind} lang={lang} isLight={isLight}
+                  disabled={busy || unknown || promotionKindForMedium(v.medium) !== "unclassified"}
+                  onChange={(promotionKind) => setV({ ...v, promotionKind })}>
+                  <option value="" disabled>{u("Select promotion type")}</option>
+                  <option value="unpaid">{u("Unpaid promotion")}</option>
+                  <option value="paid">{u("Paid promotion")}</option>
+                </CrmSelect>
+              </div>
+              <AdminField className="campaign-field">
+                <AdminFieldLabel>{u("Placement or creative code")}</AdminFieldLabel>
+                <input maxLength={80} pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}" value={v.content}
+                  placeholder="profile-bio" onChange={event => setV({ ...v, content: event.target.value })} />
+              </AdminField>
               <div className="campaign-field">
                 <AdminFieldLabel required>{u("Customer language *")}</AdminFieldLabel>
                 <CrmSelect

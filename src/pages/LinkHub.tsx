@@ -1,3 +1,5 @@
+import {lookupPromotion} from '../utils/promotionLookup';
+import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import {trackEvent} from '../utils/analytics';
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -175,6 +177,14 @@ export default function LinkHub() {
     : i18n.language.startsWith("id")
       ? "id"
       : "en";
+  useEffect(() => {
+    if (params.has('lang')) return;
+    let active = true;
+    void Promise.resolve(lookupPromotion(params)).then(result => {
+      if (active && result?.state === 'verified') void i18n.changeLanguage(result.promotion.language);
+    });
+    return () => { active = false; };
+  }, [params, i18n]);
   const t = words[lang];
   const consultUrl = linkHubConsultUrl(params, lang);
   const selectLanguage = (value: string) => {
@@ -183,6 +193,8 @@ export default function LinkHub() {
     setParams(next, { replace: true });
     void i18n.changeLanguage(value);
   };
+  const trackHandbook = (handbook_action: string) =>
+    trackEvent('link_click', {target:'handbook', entry_point:'linkhub', asset_id:'handbook_2026', handbook_action});
   const [documentOpen, setDocumentOpen] = useState(false),
     [share, setShare] = useState<{ title: string; url: string } | null>(null),
     [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
@@ -193,7 +205,7 @@ export default function LinkHub() {
   const profileShare = () =>
     shareItem(
       "UPER Education & Technology",
-      `/link${lang === "en" ? "" : `?lang=${lang}`}`,
+      promotionJourneyUrl(`/link?lang=${lang}`, params),
     );
   const copy = async () => {
     try {
@@ -328,7 +340,7 @@ export default function LinkHub() {
             <button
               type="button"
               className="linkhub-card-main"
-              onClick={() => {trackEvent('link_click',{target:'handbook',entry_point:'linkhub'});setDocumentOpen(true);}}
+              onClick={() => {trackHandbook('preview');setDocumentOpen(true);}}
             >
               <span>Handbook 2026</span>
               <small>
@@ -340,7 +352,7 @@ export default function LinkHub() {
               className="linkhub-card-share"
               type="button"
               aria-label={`${t.share}: Handbook 2026`}
-              onClick={() => shareItem("Handbook 2026", handbook)}
+              onClick={() => { trackHandbook("share"); shareItem("Handbook 2026", handbook); }}
             >
               <MoreVertical size={19} />
             </button>
@@ -367,7 +379,7 @@ export default function LinkHub() {
           </div>
         </section>
         <footer className="linkhub-footer">
-          <a href="/">UPER Education &amp; Technology</a>
+          <a href={promotionJourneyUrl("/", params)}>UPER Education &amp; Technology</a>
         </footer>
       </main>
       {documentOpen && (
@@ -380,17 +392,17 @@ export default function LinkHub() {
           <p className="linkhub-document-summary">{t.description}</p>
           <LinkHandbookPreview url={handbook} errorText={t.pdfError} />
           <footer>
-            <a href={handbook} target="_blank" rel="noopener noreferrer">
+            <a href={handbook} target="_blank" rel="noopener noreferrer" onClick={() => trackHandbook("view")}>
               <ExternalLink size={17} />
               {t.view}
             </a>
-            <a href={handbook} download>
+            <a href={handbook} download onClick={() => trackHandbook("download_click")}>
               <Download size={17} />
               {t.download}
             </a>
             <button
               type="button"
-              onClick={() => shareItem("Handbook 2026", handbook)}
+              onClick={() => { trackHandbook("share"); shareItem("Handbook 2026", handbook); }}
             >
               <Share2 size={17} />
               {t.share}

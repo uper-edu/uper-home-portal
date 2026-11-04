@@ -1,3 +1,4 @@
+import {bareInstagramFallback, promotionEntryPoint, promotionIdentity, type PublicPromotion} from './promotionNavigation';
 import { salesProgressStages } from "./crmSalesProgress";
 import { normalizeSiteLanguage, resolveMetadata } from "./siteMetadata";
 
@@ -12,6 +13,9 @@ export type AnalyticsInput = {
   language?: string;
   buildId?: string;
   internalTest?: boolean;
+  promotion?: PublicPromotion;
+  promotionState?: 'unverified' | 'unavailable';
+  bareInstagram?: boolean;
 };
 const privateRoots = new Set(["crm", "cms", "system", "studio"]);
 const crmTabs = new Set(["leads", "campaigns", "policy", "docs"]);
@@ -29,6 +33,7 @@ const knownPaths = new Set([
   "/partners",
   "/tours",
   "/study-abroad",
+  "/consultancy",
   "/news",
   "/crm",
   "/cms",
@@ -60,7 +65,7 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
         ? "internal_employee"
         : "customer";
   const language = normalizeSiteLanguage(
-    url.searchParams.get("lang") || input.language,
+    url.searchParams.get("lang") || (workspace === "public" ? input.promotion?.language : undefined) || input.language,
   );
   let path = knownPaths.has(url.pathname)
     ? url.pathname
@@ -77,20 +82,24 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
     const ref = new URL(input.referrer || "");
     if (["https:", "http:"].includes(ref.protocol)) referrer = ref.origin + "/";
   } catch {}
-  const dedicatedBio =
-    url.pathname === "/link" &&
-    !["c", "cid", "campaign", "p"].some((k) => url.searchParams.get(k));
-  const bio = dedicatedBio || url.searchParams.get("c") === "instagram-bio";
-  const campaign = bio
-    ? "instagram-bio"
-    : code(
-        url.searchParams.get("utm_campaign") ||
-          url.searchParams.get("c") ||
-          url.searchParams.get("cid") ||
-          url.searchParams.get("campaign"),
-      );
-  const source = bio ? "instagram" : code(url.searchParams.get("utm_source"));
-  const medium = bio ? "social" : code(url.searchParams.get("utm_medium"));
+  const identity = promotionIdentity(url.searchParams);
+  const publicPage = workspace === "public";
+  const verified = publicPage ? input.promotion : undefined;
+  const unresolved = publicPage && !verified && (identity.invalid || url.searchParams.has("p"));
+  const entry = publicPage ? promotionEntryPoint(url.searchParams.get("entry_point")) : undefined;
+  const dedicatedBio = publicPage && (input.bareInstagram ?? bareInstagramFallback) &&
+    url.pathname === "/link" && !identity.tagged && !entry;
+  const campaign = verified ? code(verified.campaignCode)
+    : dedicatedBio ? "instagram-bio"
+    : publicPage && !unresolved ? code(identity.campaign || url.searchParams.get("utm_campaign")) : undefined;
+  const source = verified ? code(verified.source) : dedicatedBio ? "instagram"
+    : publicPage && !unresolved ? code(url.searchParams.get("utm_source")) : undefined;
+  const medium = verified ? code(verified.medium) : dedicatedBio ? "social"
+    : publicPage && !unresolved ? code(url.searchParams.get("utm_medium")) : undefined;
+  const term = publicPage && !unresolved && !verified ? code(url.searchParams.get("utm_term")) : undefined;
+  const manualCampaignId = publicPage && !unresolved && !verified ? code(url.searchParams.get("utm_id")) : undefined;
+  const content = publicPage && !unresolved
+    ? code(verified ? verified.content ?? null : url.searchParams.get("utm_content")) : undefined;
   return {
     page_location: url.origin + path,
     page_referrer: referrer,
@@ -112,12 +121,17 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
           : "external",
     ...(environment !== "production" ? { debug_mode: true } : {}),
     ...(input.buildId ? { app_version: input.buildId.slice(0, 64) } : {}),
-    ...(campaign ? { campaign_id: campaign, campaign_name: campaign } : {}),
+    ...(campaign ? { campaign_name: campaign } : {}),
+    ...(verified || campaign || manualCampaignId ? { campaign_id: code(verified?.campaignId ?? null) ?? manualCampaignId ?? campaign } : {}),
     ...(source ? { campaign_source: source } : {}),
     ...(medium ? { campaign_medium: medium } : {}),
-    source_basis: dedicatedBio
+    ...(content ? {campaign_content: content} : {}),
+    ...(term ? {campaign_term: term} : {}),
+    ...(verified ? {promotion_link_id: verified.id, promotion_kind: verified.promotionKind} : {}),
+    ...(entry || url.pathname === "/chat" || url.pathname === "/consult" ? {entry_point: entry ?? "direct"} : {}),
+    source_basis: verified ? "verified_promotion" : unresolved ? (input.promotionState ?? "unverified") : dedicatedBio
       ? "dedicated_entry"
-      : campaign
+      : campaign || source || medium
         ? "campaign_parameter"
         : "untagged",
     event_contract_version: "v1",
@@ -206,15 +220,19 @@ const choices: Record<string, string[]> = {
   entry_point: [
     "standalone_chat",
     "homepage_widget",
+    "website",
     "linkhub",
     "list",
     "direct",
     "detail",
   ],
+  asset_id: ["handbook_2026"],
+  handbook_action: ["preview", "view", "download_click", "share"],
   assessment_mode: ["full", "express"],
   section: ["listening", "reading", "writing", "review"],
   validation_mode: ["simulated", "live"],
   target: [
+    "hub",
     "consultation",
     "handbook",
     "community",
@@ -315,12 +333,24 @@ export function createAnalyticsClient(options: {
         .filter((x) => typeof x === "string")
         .forEach((x) => receipts.add(x));
   } catch {}
+  const attribution = (context: AnalyticsParams) => ({
+    campaign_source: context.campaign_source || null,
+    campaign_medium: context.campaign_medium || null,
+    campaign_name: context.campaign_name || null,
+    campaign_id: context.campaign_id || null,
+    campaign_content: context.campaign_content || null,
+    campaign_term: context.campaign_term || null,
+    promotion_link_id: context.promotion_link_id || null,
+    promotion_kind: context.promotion_kind || null,
+    entry_point: context.entry_point || null,
+  });
   const track = (event: string, params: Record<string, unknown> = {}) => {
     try {
       if (!options.id || !ANALYTICS_EVENTS.has(event)) return false;
       const context = options.context();
       options.send("event", event, {
         ...context,
+        ...attribution(context),
         ...safeAnalyticsParams(params),
         send_to: options.id,
       });
@@ -334,7 +364,7 @@ export function createAnalyticsClient(options: {
     page() {
       try {
         const context = options.context(),
-          key = String(context.page_location) + "|" + context.language;
+          key = [context.page_location, context.language, context.promotion_link_id, context.campaign_name, context.campaign_source, context.campaign_medium, context.campaign_content, context.entry_point].join("|");
         if (key === lastPage) return false;
         // Clear prior route source overrides; untagged pages leave attribution to GA's session rules.
         const page = {
@@ -343,13 +373,10 @@ export function createAnalyticsClient(options: {
         };
         options.send("set", {
           ...page,
-          campaign_source: context.campaign_source || null,
-          campaign_medium: context.campaign_medium || null,
-          campaign_name: context.campaign_name || null,
-          campaign_id: context.campaign_id || null,
+          ...attribution(context),
         });
         if (!options.id) return false;
-        options.send("event", "page_view", { ...page, send_to: options.id });
+        options.send("event", "page_view", { ...page, ...attribution(context), send_to: options.id });
         lastPage = key;
         previousLocation = String(context.page_location);
         return true;

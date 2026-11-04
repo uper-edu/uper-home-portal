@@ -1,3 +1,4 @@
+import {lookupPromotion} from '../utils/promotionLookup';
 import {trackEvent} from '../utils/analytics';
 import {chatLanguage} from '../utils/chatLanguage';
 import {visitorScope} from '../services/visitorScope';
@@ -103,17 +104,19 @@ export default function StandAloneChat() {
   // A saved promotion entry also selects the interface language for returning visitors.
   // Existing customer records, messages and assessment state are not rewritten.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search), code = params.get('c'), entry = params.get('p');
-    if (!code || !entry) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('lang')) return;
     let active = true;
-    fetch(`/api/campaigns/${encodeURIComponent(code)}/links/${encodeURIComponent(entry)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (active && ['en','id','zh'].includes(data?.link?.language)) setLang(data.link.language); })
-      .catch(() => {});
+    void Promise.resolve(lookupPromotion(params)).then(result => {
+      if (active && !new URLSearchParams(window.location.search).has('lang') && result?.state === 'verified') setLang(result.promotion.language);
+    });
     return () => { active = false; };
   }, []);
 
   const changeLanguage = (language: 'en' | 'id' | 'zh') => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', language);
+    window.history.replaceState(window.history.state, '', url);
     setLang(language);
     saveStudentContext({ preferredLanguage: language });
   };

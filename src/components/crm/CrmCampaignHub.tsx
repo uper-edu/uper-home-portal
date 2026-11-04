@@ -1,3 +1,4 @@
+import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
 import {containPaneKeys,revealRecord} from '../adminScroll';
 import {loadCampaignWorkspace} from "../../utils/campaignWorkspaceRefresh";
@@ -580,6 +581,19 @@ export function CrmCampaignHub({
         campaigns.filter((c) => matchesCampaign(l, c)).length === 1,
     );
   }, [activeDetailCampaign, campaignLeads, campaigns]);
+  const [promotionSelection, setPromotionSelection] = useState<{campaignId: string; key: string}>();
+  const activePromotionKey = promotionSelection?.campaignId === activeDetailCampaign?.id ? promotionSelection?.key : undefined;
+  const shownCampaignLeads = activePromotionKey && activeDetailCampaign
+    ? campaignLeads.filter(lead => {
+        if (lead.identityReview?.pending || lead.identityLifecycle === 'pending') return false;
+        if (campaigns.filter(c => matchesCampaign(lead, c)).length > 1) return false;
+        const origin = promotionResultOrigins(lead, activeDetailCampaign)[0];
+        return origin && promotionResultKey(origin, activeDetailCampaign) === activePromotionKey;
+      })
+    : matchedLeadsForActiveCampaign;
+  const promotionLabel = (key: string, name?: string) => name || u(
+    key === ':unverified' ? 'Unverified promotion' : key === ':untagged' ? 'Untagged visits' : 'Campaign without a promotion link',
+  );
   const getTypeIcon = (type: CampaignType | "") => {
     switch (type) {
       case "campus_seminar":
@@ -1166,6 +1180,32 @@ export function CrmCampaignHub({
                           organicDetail ? u("This system source") : undefined
                         }
                       />
+                      {!!activeDetailCampaign.promotionResults?.length && (
+                        <div className="crm-doc-table-scroll">
+                          <table className="crm-doc-table">
+                            <caption>{u("Results by promotion link")}</caption>
+                            <thead><tr>
+                              {["Promotion link", "Promotion type", "Customers", "Enrollments", "Verified receipts", "Verified refunds", "Net receipts"].map(label =>
+                                <th key={label} scope="col">{u(label)}</th>)}
+                            </tr></thead>
+                            <tbody>{activeDetailCampaign.promotionResults.map(row => (
+                              <tr key={row.key}>
+                                <th scope="row">
+                                  <button type="button" className="campaign-workspace-action" aria-pressed={activePromotionKey === row.key}
+                                    onClick={() => setPromotionSelection(activePromotionKey === row.key ? undefined : {campaignId:activeDetailCampaign.id, key:row.key})}>
+                                    {promotionLabel(row.key, row.name)}
+                                  </button>
+                                  {row.source && <small>{row.source} · {row.medium}</small>}
+                                </th>
+                                <td>{row.kind ? u(row.kind === 'paid' ? 'Paid promotion' : row.kind === 'unpaid' ? 'Unpaid promotion' : 'Unclassified') : '—'}</td>
+                                <td>{row.customers}</td><td>{row.enrolled}</td>
+                                {[row.received, row.refunded, row.net].map((amount, index) =>
+                                  <td key={index}>Rp {amount.toLocaleString(crmLocale(lang))}</td>)}
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-400">
                           {organicDetail
@@ -1176,7 +1216,7 @@ export function CrmCampaignHub({
                               )}
                         </span>
                         <span className="font-bold text-primary-600">
-                          {matchedLeadsForActiveCampaign.length}{" "}
+                          {shownCampaignLeads.length}{" "}
                           {organicDetail
                             ? u("Customers")
                             : t("Leads Total", "条线索")}
@@ -1190,7 +1230,7 @@ export function CrmCampaignHub({
                             "活动客户列表暂不可用，请重新打开重试。",
                           )}
                         </p>
-                      ) : matchedLeadsForActiveCampaign.length === 0 ? (
+                      ) : shownCampaignLeads.length === 0 ? (
                         <div
                           className={`p-8 text-center rounded-2xl border ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
                         >
@@ -1208,7 +1248,7 @@ export function CrmCampaignHub({
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {matchedLeadsForActiveCampaign.map((lead) => (
+                          {shownCampaignLeads.map((lead) => (
                             <div
                               key={lead.id}
                               className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all ${isLight ? "bg-white border-slate-200 hover:border-slate-300" : "bg-slate-900 border-slate-800 hover:border-slate-700"}`}

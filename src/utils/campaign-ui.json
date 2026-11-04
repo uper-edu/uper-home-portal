@@ -1666,5 +1666,73 @@
   "The attendance link is separate from customer acquisition links.": [
     "Tautan kehadiran terpisah dari tautan akuisisi pelanggan.",
     "参会链接与获客推广链接相互独立。"
+  ],
+  "Landing page": [
+    "Halaman tujuan",
+    "落地页"
+  ],
+  "Promotion type": [
+    "Jenis promosi",
+    "推广方式"
+  ],
+  "Select promotion type": [
+    "Pilih jenis promosi",
+    "选择推广方式"
+  ],
+  "Unpaid promotion": [
+    "Promosi tanpa biaya",
+    "自然推广"
+  ],
+  "Paid promotion": [
+    "Promosi berbayar",
+    "付费推广"
+  ],
+  "Placement or creative code": [
+    "Kode penempatan atau materi",
+    "位置或素材代码"
+  ],
+  "Messaging": [
+    "Pesan",
+    "即时通讯"
+  ],
+  "Check the landing page, promotion type and placement code.": [
+    "Periksa halaman tujuan, jenis promosi, dan kode penempatan.",
+    "请检查落地页、推广方式和位置代码。"
+  ],
+  "Unverified promotion": [
+    "Promosi belum terverifikasi",
+    "未核验推广"
+  ],
+  "Untagged visits": [
+    "Kunjungan tanpa penanda",
+    "无标记来源"
+  ],
+  "Campaign without a promotion link": [
+    "Kampanye tanpa tautan promosi",
+    "仅活动归因"
+  ],
+  "Results by promotion link": [
+    "Hasil per tautan promosi",
+    "按推广链接查看结果"
+  ],
+  "Enrollments": [
+    "Pendaftaran kelas",
+    "报名"
+  ],
+  "Verified receipts": [
+    "Penerimaan terverifikasi",
+    "已核验收款"
+  ],
+  "Verified refunds": [
+    "Pengembalian terverifikasi",
+    "已核验退款"
+  ],
+  "Net receipts": [
+    "Penerimaan bersih",
+    "净收款"
+  ],
+  "Unclassified": [
+    "Belum diklasifikasikan",
+    "未分类"
   ]
 }
