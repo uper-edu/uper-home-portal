@@ -25,9 +25,9 @@ test('Chapter six tagged paths keep one promotion ID and apply verified GA field
     const promotion: PublicPromotion = {id, source, medium, campaignId:campaignCode, campaignCode, content, landingPath,
       language:'id', promotionKind:medium==='paid_social'?'paid':'unpaid'};
     const link = {...instagramBioCampaign().promotionLinks![0], ...promotion};
-    const landing = new URL(campaignPromotionUrl(link, origin));
+    const landing = new URL(campaignPromotionUrl(link, origin, campaignCode));
     assert.equal(landing.pathname, landingPath);
-    assert.equal(landing.search, '?p=' + id);
+    assert.deepEqual(Object.fromEntries(landing.searchParams), {p:id,lang:'id',utm_source:source,utm_medium:medium,utm_campaign:campaignCode,utm_content:content});
     const hub = landingPath === '/' ? new URL(promotionJourneyUrl('/link', landing.searchParams, 'homepage_widget'), origin) : landing;
     const chat = hub.pathname === '/link' ? new URL(linkHubConsultUrl(hub.searchParams, 'zh'), origin) : hub;
     for (const page of [landing, hub, chat]) {

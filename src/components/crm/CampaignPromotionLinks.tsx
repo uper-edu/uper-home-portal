@@ -1,4 +1,5 @@
 import {crmInstant,formatCrmEventTime} from '../../utils/crmOperatingTime';
+import {INSTAGRAM_BIO_CAMPAIGN,isInstagramBioPromotion} from '../../utils/instagramBioCampaign';
 import evergreenLinks from '../../data/evergreenPromotionLinks.json';
 import {promotionLandingPaths, promotionKindForMedium} from '../../utils/promotionNavigation';
 import {CrmFormSection} from './CrmFormLayout';
@@ -20,6 +21,7 @@ import {
   PROMOTION_MEDIUM_LABELS,
 } from "../../utils/campaignPromotion";
 import { CrmSelect } from "./CrmSelect";
+import { CrmSalesDialog } from "./CrmSalesDialog";
 import { CampaignQrImage } from "./CampaignQrImage";
 import { useCampaignQr } from "./useCampaignQr";
 
@@ -27,21 +29,30 @@ function LinkCard({
   campaign,
   link,
   lang,
+  isLight,
 }: {
   lang: "en" | "id" | "zh";
   campaign: CrmCampaignRecord;
   link: CampaignPromotionLink;
+  isLight: boolean;
 }) {
   const u = campaignUi(lang);
   const createdAt = crmInstant(link.createdAt);
-  const url = campaignPromotionUrl(link, window.location.origin),
-    qr = useCampaignQr(url);
+  const isPreset = (campaign.id === "social-bio" && evergreenLinks.some(preset => preset.id === link.id))
+    || (campaign.id === INSTAGRAM_BIO_CAMPAIGN && isInstagramBioPromotion(link, link.language));
+  const url = campaignPromotionUrl(link, window.location.origin, campaign.code);
+  const [qrOpen, setQrOpen] = useState(false);
+  const qr = useCampaignQr(qrOpen ? url : null);
   const [feedback, setFeedback] = useState("");
   return (
     <article className="campaign-promotion-card">
       <div>
-        <h3>{link.name}</h3>
-        {evergreenLinks.some(preset => preset.id === link.id) && <p className="campaign-hint">{u("System preset")}</p>}
+        <h3 className="campaign-preset-heading">
+          {link.name}
+          {isPreset && (
+            <span className="campaign-preset-badge">{u("System preset")}</span>
+          )}
+        </h3>
         <p>
           {link.source} ·{" "}
           {u(PROMOTION_MEDIUM_LABELS[link.medium] || link.medium)} ·{" "}
@@ -56,7 +67,6 @@ function LinkCard({
             ? <time dateTime={createdAt.toISOString()}>{formatCrmEventTime(link.createdAt).slice(0,16)}</time>
             : u(link.createdAt ? "Time needs review" : "Time not recorded")}
         </p>
-        <p className="campaign-hint">{u(PROMOTION_EXPERIENCE_LABEL)}</p>
         <AdminField className="campaign-field">
           <span>{u("Promotion link")}</span>
           <input
@@ -91,15 +101,9 @@ function LinkCard({
           >
             {u("Preview entry")}
           </a>
-          {qr.status === "ready" && (
-            <a
-              className="campaign-workspace-action"
-              download={`${campaign.code}-${link.id}.png`}
-              href={qr.dataUrl}
-            >
-              {u("Download QR")}
-            </a>
-          )}
+          <button type="button" className="campaign-workspace-action" onClick={() => setQrOpen(true)}>
+            {u("QR code")}
+          </button>
         </div>
         <p role="status">{feedback && u(feedback)}</p>
         <details>
@@ -120,14 +124,30 @@ function LinkCard({
           </p>
         </details>
       </div>
-      <div className="campaign-promotion-qr">
-        <CampaignQrImage
-          qr={qr}
-          lang={lang}
-          alt={u("QR code for {name}", { name: link.name })}
-        />
-        <p>{u("QR encodes the exact link shown.")}</p>
-      </div>
+      {qrOpen && (
+        <CrmSalesDialog
+          title={u("QR code for {name}", { name: link.name })}
+          description={u("QR encodes the exact link shown.")}
+          onClose={() => setQrOpen(false)}
+          isLight={isLight}
+        >
+          <div className="campaign-promotion-qr">
+            <CampaignQrImage qr={qr} lang={lang} alt={u("QR code for {name}", { name: link.name })} className="campaign-promotion-qr-image" />
+            <p className="campaign-promotion-qr-url">{url}</p>
+          </div>
+          <div className="crm-sales-editor-footer">
+            <button type="button" className="campaign-workspace-action" onClick={() => setQrOpen(false)}>
+              {u("Close")}
+            </button>
+            {qr.ready && (
+              <a tabIndex={0} className="campaign-workspace-action campaign-primary"
+                download={campaign.code + "-" + link.id + ".png"} href={qr.dataUrl}>
+                {u("Download QR")}
+              </a>
+            )}
+          </div>
+        </CrmSalesDialog>
+      )}
     </article>
   );
 }
@@ -246,7 +266,7 @@ export function CampaignPromotionLinks({
       });
       onSaved(d.campaign);
       setNotice(
-        "Promotion link saved. Copy the link or download its matching QR code below.",
+        "Promotion link saved. Copy the link or open its QR code.",
       );
     } catch {
       setUnknown(true);
@@ -452,7 +472,7 @@ export function CampaignPromotionLinks({
         </AdminForm>
       )}
       {(campaign.promotionLinks || []).map((link) => (
-        <LinkCard lang={lang} key={link.id} campaign={campaign} link={link} />
+        <LinkCard isLight={isLight} lang={lang} key={link.id} campaign={campaign} link={link} />
       ))}
 
       <p className="campaign-hint">

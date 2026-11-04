@@ -105,7 +105,7 @@ app.post('/api/crm/campaigns/:id/templates',wrap(async(q:any,r:any)=>{
  if(!['en','id','zh'].includes(q.body.lang))return r.status(400).json({error:'campaign_entry_invalid'});
  const link=c.promotionLinks?.find((link:any)=>link.id===q.body.promotionLinkId);
  if(!link)return r.status(400).json({error:'Select a saved promotion link before preparing materials.'});
- r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),campaignPromotionUrl(link,process.env.APP_URL||'http://localhost:3000'))});
+ r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),campaignPromotionUrl(link,process.env.APP_URL||'http://localhost:3000',c.code))});
 }));
 app.post('/api/crm/campaigns/ai-generate',wrap(async(q:any,r:any)=>{if(typeof q.body.name!=='string'||!q.body.name.trim())return r.status(400).json({error:'Campaign name required'});r.json({success:true,aiAssets:synthesizeCampaignAiAssets(q.body)});}));
 app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/impression'],wrap(async(q:any,r:any)=>r.json({success:await trackCampaignImpression(q.params.idOrCode)})));

@@ -18,17 +18,20 @@ test('distribution links use each current environment origin and open /link befo
   const c = instagramBioCampaign(at);
   for (const origin of ['http://localhost:3000', 'https://home.prototype.uperedu.com', 'https://www.uperedu.com']) {
     for (const link of c.promotionLinks!) {
-      const bio = new URL(campaignPromotionUrl(link, origin));
+      const bio = new URL(campaignPromotionUrl(link, origin, c.code));
       assert.equal(bio.origin, origin); assert.equal(bio.pathname, '/link');
       const chat = new URL(linkHubConsultUrl(bio.searchParams, link.language), origin);
       assert.equal(chat.origin, origin); assert.equal(chat.pathname, '/chat');
-      assert.equal(bio.search, '?p=' + link.id);
+      assert.equal(bio.searchParams.get('p'), link.id);
+      assert.equal(bio.searchParams.get('lang'), link.language);
+      assert.equal(bio.searchParams.get('utm_campaign'), c.code);
+      assert.equal(bio.searchParams.has('c'), false);
       assert.equal(chat.searchParams.get('p'), link.id);
       assert.equal(chat.searchParams.get('lang'), link.language);
     }
   }
   const old = {id:'p_other', name:'Other', source:'instagram', medium:'paid_social', language:'en' as const, experience:PROMOTION_EXPERIENCE, createdAt:at};
-  assert.equal(new URL(campaignPromotionUrl(old, 'https://example.test')).pathname, '/chat');
+  assert.equal(new URL(campaignPromotionUrl(old, 'https://example.test', 'ordinary')).pathname, '/chat');
 });
 test('language switching preserves the original promotion ID and does not repair mismatches', () => {
   const original = new URLSearchParams('c=instagram-bio&p=p_instagram_bio_id&utm_source=instagram&utm_medium=social&utm_campaign=instagram-bio');

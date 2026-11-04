@@ -394,6 +394,7 @@ function PromotionReviewCard({
             href={campaignPromotionUrl(
               row.resolution.snapshot,
               window.location.origin,
+              row.campaignCode,
             )}
             target="_blank"
             rel="noreferrer"
@@ -401,6 +402,7 @@ function PromotionReviewCard({
             {campaignPromotionUrl(
               row.resolution.snapshot,
               window.location.origin,
+              row.campaignCode,
             )}
           </a>
         </p>

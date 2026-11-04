@@ -307,6 +307,8 @@
     "Buang rincian tautan promosi yang belum disimpan? Tautan tersimpan tetap sama.",
     "放弃尚未保存的推广链接信息？已有链接保持不变。"
   ],
+  "QR code": ["Kode QR", "二维码"],
+  "Close": ["Tutup", "关闭"],
   "Download QR": [
     "Unduh kode QR",
     "下载二维码"
@@ -1239,9 +1241,9 @@
     "Tidak dapat menyalin. Pilih dan salin tautan di atas secara manual.",
     "暂时无法复制，请选中上方链接手动复制。"
   ],
-  "Promotion link saved. Copy the link or download its matching QR code below.": [
-    "Tautan promosi tersimpan. Salin tautan atau unduh kode QR yang sesuai di bawah.",
-    "推广链接已保存，请复制链接或下载对应二维码。"
+  "Promotion link saved. Copy the link or open its QR code.": [
+    "Tautan promosi tersimpan. Salin tautan atau buka kode QR-nya.",
+    "推广链接已保存。可复制链接或打开二维码。"
   ],
   "Could not save promotion link.": [
     "Tautan promosi belum berhasil disimpan.",

@@ -966,22 +966,25 @@ export function CrmCampaignHub({
                   titleId="campaign-page-title"
                   titleRef={pageHeading}
                   title={
-                    isOrganicCampaign(activeDetailCampaign)
-                      ? organicCampaignName(lang)
-                      : campaignName(activeDetailCampaign, lang)
+                    <span className="campaign-preset-heading">
+                      {organicDetail ? organicCampaignName(lang) : campaignName(activeDetailCampaign, lang)}
+                      {(activeDetailCampaign.presetKey || activeDetailCampaign.systemManaged) && (
+                        <span className="campaign-preset-badge">{u("System preset")}</span>
+                      )}
+                    </span>
                   }
                   meta={
                     <>
                       <code>{activeDetailCampaign.code}</code>
-                      <span className="campaign-workpage-status">
-                        {presetDetail ? u("System preset") : organicDetail
+                      {!presetDetail && <span className="campaign-workpage-status">
+                        {organicDetail
                           ? u("Read-only · System source")
                           : u(
                               CAMPAIGN_STATUS_OPTIONS.find(
                                 (o) => o.value === activeDetailCampaign.status,
                               )?.labelEn || activeDetailCampaign.status,
                             )}
-                      </span>
+                      </span>}
                     </>
                   }
                   actions={

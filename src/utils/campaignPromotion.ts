@@ -23,9 +23,16 @@ export function promotionInput(input: any) {
   throw Object.assign(Error('Check the landing page, promotion type and placement code.'), {status:400});
  return {...(landingPath ? {landingPath} : {}), ...(input.promotionKind !== undefined ? {promotionKind} : {}), ...(content ? {content} : {}), name:name||`${source} · ${medium} · ${input.language}`,source,medium,language:input.language as 'en'|'id'|'zh',experience:PROMOTION_EXPERIENCE as typeof PROMOTION_EXPERIENCE};
 }
-export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string) {
+export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string,campaignCode:string) {
  const url=new URL(promotionLandingPaths.find(path => path === link.landingPath) ?? '/chat',origin);
- url.searchParams.set('p',link.id);
+ url.search = new URLSearchParams({
+   p: link.id,
+   lang: link.language,
+   utm_source: link.source,
+   utm_medium: link.medium,
+   utm_campaign: campaignCode,
+   ...(link.content ? {utm_content:link.content} : {}),
+ }).toString();
  return url.toString();
 }
 

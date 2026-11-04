@@ -1,4 +1,4 @@
-import {randomUUID, createHash} from 'node:crypto';
+import {createHash} from 'node:crypto';
 import {auditLog} from './audit.ts';
 import {tx} from './store.ts';
 import {promotionInput,promotionIdPrefix} from '../../src/utils/campaignPromotion.ts';
@@ -31,14 +31,18 @@ export {resolvePromotion, publicPromotion, promotionAttribution} from './attribu
 
 export async function createIndexedPromotion(db: any, campaignId: string, values: ReturnType<typeof promotionInput>) {
  const prefix = promotionIdPrefix(values);
- for (let attempt=0; attempt<3; attempt++) {
-  const link={id:prefix+'-'+randomUUID().replaceAll('-','').slice(0,16),...values,createdAt:new Date().toISOString()};
+ const createdAt = new Date().toISOString();
+ const timestamp = createdAt.slice(0,19).replace(/[-:]/g,'') + 'Z';
+ const baseId = prefix + '-' + timestamp;
+ for (let sequence = 1; sequence <= 1000; sequence++) {
+  const id = sequence === 1 ? baseId : baseId + '-' + sequence;
+  const link = {id, ...values, createdAt};
   try {
    await insertPromotionIndex(db,link.id,campaignId);
    return link;
   } catch (error:any) {
-   if (error.code!=='ER_DUP_ENTRY' || attempt===2) throw error;
+   if (error.code !== 'ER_DUP_ENTRY') throw error;
   }
  }
- throw Error('Could not allocate promotion link ID');
+ throw Object.assign(Error('Could not allocate promotion link ID.'), {status:503});
 }

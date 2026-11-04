@@ -2,7 +2,7 @@
 
 在 `feat_new_promotion_design` 上维护第六章的实现。详细业务口径和 12 个场景见[第六章设计](./promotion-attribution-design.md)。
 
-当前版本统一生成 `?p=…`。CRM 复制、二维码和新物料共用这一地址。裸 `/link` 保持未标记。官网入口在无推广参数时使用 `home-link` 或 `home-chat`，已带推广标记时沿用原来源。
+当前版本统一生成带 `p`、`lang` 和已配置 UTM 的链接。CRM 复制、二维码和新物料共用这一地址。裸 `/link` 保持未标记。官网入口在无推广参数时使用 `home-link` 或 `home-chat`，已带推广标记时沿用原来源。
 
 1. 目标库更新前备份并核对 `social-bio` 和八条固定编号。初始化只补齐缺少的系统链接，并在同一事务同步 v17 索引。发现编号归属或预置配置冲突时停止更新，保留现场供核对。
 2. 核对每条预置链接的页面和来源，确认 CRM 复制、二维码与物料地址一致。用新会话分别核对 GA 事件和流量获取报表。推广链接、推广方式、手册动作和资源编号分别用 `promotion_link_id`、`promotion_kind`、`handbook_action`、`asset_id`。

@@ -82,6 +82,7 @@ export function CampaignSidebarSummary({
     date = campaignDateRange(campaign, lang);
   return (
     <>
+      {(campaign.presetKey || campaign.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
       <strong>
         {organic ? organicCampaignName(lang) : campaignName(campaign, lang)}
       </strong>
@@ -221,7 +222,10 @@ export function CampaignCards({
                       )}
                     </span>
                   </div>
-                  <h2 title={name}>{name}</h2>
+                  <h2 title={name} className="campaign-preset-heading">
+                    {name}
+                    {(c.presetKey || c.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
+                  </h2>
                   <div className="campaign-home-context">
                     {schedule && (
                       <p
@@ -374,6 +378,7 @@ export function CampaignCards({
                   >
                     {organicCampaignName(lang)}
                   </button>
+                  {c.systemManaged && <span className="campaign-preset-badge">{u("System preset")}</span>}
                   <p>{u("No specific campaign at first registration")}</p>
                 </div>
               </div>
