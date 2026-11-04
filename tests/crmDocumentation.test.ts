@@ -51,7 +51,7 @@ test("Ten system chapters and operating groups stay separate from the third What
   });
   assert.equal(resolveGuideAnchor("#chapter-55"), null);
 });
-test("Dictionary includes all 36 tables, nested properties, expanded enum values and latest schema fields", () => {
+test("Dictionary includes all 37 tables, nested properties, expanded enum values and latest schema fields", () => {
   execFileSync(process.execPath, [
     "scripts/crm-documentation-dictionary.mjs",
     "--check",
@@ -60,7 +60,7 @@ test("Dictionary includes all 36 tables, nested properties, expanded enum values
     new Set(
       dictionary.filter((r) => r.layer === "storage").map((r) => r.object),
     ).size,
-    36,
+    37,
   );
   assert.equal(
     dictionary.filter(
@@ -197,7 +197,7 @@ test("CRM display dictionary excludes CMS and public submission objects without 
         .filter((r) => r.layer === "storage")
         .map((r) => r.object),
     ).size,
-    33,
+    34,
   );
   for (const row of crmDocumentationFields)
     assert.ok(

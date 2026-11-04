@@ -2666,6 +2666,14 @@
   {
     "layer": "contract",
     "object": "CrmCampaignRecord",
+    "key": "promotionResults",
+    "type": "import('../utils/crmCampaignMetrics').PromotionResultRow[]",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmCampaignRecord",
     "key": "promotionModel",
     "type": "\"multiple\"",
     "optional": true,
@@ -2915,7 +2923,23 @@
     "layer": "contract",
     "object": "CampaignPromotionLink",
     "key": "landingPath",
-    "type": "'/chat' | '/link'",
+    "type": "PromotionLandingPath",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "promotionKind",
+    "type": "PromotionKind",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
+    "key": "content",
+    "type": "string",
     "optional": true,
     "source": "src/types/crmCampaign.ts"
   },
@@ -5149,6 +5173,22 @@
     "key": "completed_at",
     "type": "DATETIME(6)",
     "optional": true,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_promotion_index",
+    "key": "p",
+    "type": "VARCHAR(100)",
+    "optional": false,
+    "source": "cloud/mysql/migrate.mjs"
+  },
+  {
+    "layer": "storage",
+    "object": "campaign_promotion_index",
+    "key": "campaign_id",
+    "type": "VARCHAR(191)",
+    "optional": false,
     "source": "cloud/mysql/migrate.mjs"
   },
   {

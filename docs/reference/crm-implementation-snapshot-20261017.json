@@ -4,15 +4,15 @@
   "references": [
     {
       "path": "server/mysqlApplication.ts",
-      "sha256": "542b7f9965c9280c1926eff08c65f02b274ee604363d78461fa9e65753b11e4f"
+      "sha256": "c6fae95459a03e3dbff7c05c822829f8300a20b9e4da342901262cda9fede0eb"
     },
     {
       "path": "server/portal/identity.ts",
-      "sha256": "422f0b04987d8a46db6dd0a314a355a0d84d48ecd4e00b0d2a1b9065869dadd6"
+      "sha256": "cb0bdcd6960e9aa6c06cbe733452da2b7613696cbc6da158c5c2c141c64f840b"
     },
     {
       "path": "server/portal/runtime.ts",
-      "sha256": "656b8019425ae409d573f6fa148bea098eb9bf78109701882ee34b4cec49ba70"
+      "sha256": "fe8746ad8717a786437ccbacdf6814d71148cf965b3ab7433261baaeca0e8cb3"
     },
     {
       "path": "cloud/mysql/schema.sql",
@@ -20,11 +20,11 @@
     },
     {
       "path": "server/portal/attribution.ts",
-      "sha256": "632ab17e320e2ede77ee718d4ec120a18cd854070f80c7185209c36085513988"
+      "sha256": "30beac1f0782bd487eaf618910a5a719fdbfaadd7f5ec2a65548370c4f870dfc"
     },
     {
       "path": "src/utils/crmCampaignMetrics.ts",
-      "sha256": "fb25e040534124226195f1650c09719b49da5019f2b750e9568503842ac67e2e"
+      "sha256": "bf6ddba401b28803af8d12ccaff500b55ec1541c62e5f1fd9e4d2b61b647cc59"
     },
     {
       "path": "src/types/leadSystem.ts",
@@ -32,11 +32,11 @@
     },
     {
       "path": "src/types/crmLead.ts",
-      "sha256": "81e37c6b9d0808e502ffd47f198096af0118e2208cffaf8005d8e1d06120f770"
+      "sha256": "346cdf9bfc00a86e9e8eb14ee35f0040f162dc804ea2606ac12ad05087457aad"
     },
     {
       "path": "server/portal/salesWorkflow.ts",
-      "sha256": "a578466948d7a39aa0d8b353952bad7e3a1babb9c8494c9c2a74552d694b0513"
+      "sha256": "2d0b0c736bfddbde6c1aaef4add56733a80354f02a68d85e0150b5c8f1da8b43"
     },
     {
       "path": "src/utils/crmContact.ts",
@@ -44,43 +44,43 @@
     },
     {
       "path": "server/portal/policy.ts",
-      "sha256": "50eda340d44e6c133b3ac4244b2b392ab45d6cef3a0f3b03be17f8db2e287f55"
+      "sha256": "80ab661259c5311210a4741cafe7cf998e6c2ac6a26ff13706343b4f7965b39f"
     },
     {
       "path": "server/portal/followup.ts",
-      "sha256": "6e008762294b88f8bb87c1ed1c4a783a58c3837de224f10e1ec143bca80eec1e"
+      "sha256": "9059977a2c40d2e471d5e97f31722a011bd0712977d64fe44bf0a77ae1a27b79"
     },
     {
       "path": "server/portal/worker.ts",
-      "sha256": "37f1e3eaf9e5f456acecbcd90a1f5c47c0d07d0554ec1e4be4e6cceb4a73202d"
+      "sha256": "d83fa751fd272e56643287bf283e06e602512bb4468bf2231a0c0d2ce4d03fb3"
     },
     {
       "path": "server/portal/notificationDelivery.ts",
-      "sha256": "9a3fa42f082a1ab9162ecab97ca713be1d0f343c029cbc69d19b814824ebedd1"
+      "sha256": "8cc262b0c5fcf31722186ac61fbb89704a25e0d98d4d871161bc8257fe49a674"
     },
     {
       "path": "src/utils/crmProcessMetrics.ts",
-      "sha256": "3b9cbc9bc54939b886b0b33862d3fafd4cafc28bd5471f0e7706ff25a846f1f3"
+      "sha256": "630478c485cc61115605307a2832db05340dc68e5f22a901f3ae3a73ee228e4c"
     },
     {
       "path": "server/portal/chat.ts",
-      "sha256": "0195a0aec8fbd7f80a72003cd27caf99042a67735f4ac04946605baeb08752ad"
+      "sha256": "9816918e0372a4cfb6806ba1073aca3894d2d5fe2c4afb752fc94ffe0b3f0e3d"
     },
     {
       "path": "server/portal/assessments.ts",
-      "sha256": "ee41f3076a3cca798113733e7f0c479b7ff8d66e7de5144800ea839fa809d8df"
+      "sha256": "5d3d1cb27d1bb2f41789856859d97dd957f87f16bc176952f16c510d2a500e30"
     },
     {
       "path": "src/types/crmCampaign.ts",
-      "sha256": "466635c224ad007351e5402d9a335f78dc5754cd517db26953d2c0022f175f4b"
+      "sha256": "59df3002753a64d3350e260b79ea48f37e6870d1f317500a87ba98639821eb55"
     },
     {
       "path": "src/types/crmPolicyConfig.ts",
-      "sha256": "ebbe2c8cd05e4ecbaffdcfddee3aaf89faa8ccb6d2523a67fdee22dae48fb3ba"
+      "sha256": "fdfbd96a39453a2fb3c5de52fd862e06253b39d611333a001f98e7dd74e4c846"
     },
     {
       "path": "cloud/mysql/migrate.mjs",
-      "sha256": "242bf09fc1f8d8a55004d88be85922bad9768f5eccbe0a1c7a19ed68294b4117"
+      "sha256": "49cee85c3213cabf217346285ad223d391e72ce096319d3ba7c972559af93155"
     },
     {
       "path": "cloud/mysql/schema-v2.sql",
@@ -1686,6 +1686,22 @@
       "key": "completed_at",
       "type": "DATETIME(6)",
       "optional": true,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_promotion_index",
+      "key": "p",
+      "type": "VARCHAR(100)",
+      "optional": false,
+      "source": "cloud/mysql/migrate.mjs"
+    },
+    {
+      "layer": "storage",
+      "object": "campaign_promotion_index",
+      "key": "campaign_id",
+      "type": "VARCHAR(191)",
+      "optional": false,
       "source": "cloud/mysql/migrate.mjs"
     },
     {
