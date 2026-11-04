@@ -446,10 +446,10 @@ export function CampaignPromotionLinks({
                 </small>
               </div>
               <div className="campaign-field">
-                <AdminFieldLabel required>{u("Medium *")}</AdminFieldLabel>
+                <AdminFieldLabel required>{u("Delivery medium")}</AdminFieldLabel>
                 <CrmSelect
                   required
-                  label={u("Medium")}
+                  label={u("Delivery medium")}
                   value={v.medium}
                   lang={lang}
                   isLight={isLight}
