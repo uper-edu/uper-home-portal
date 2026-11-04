@@ -201,7 +201,7 @@ async function addPaymentImages(c){
 
 
 async function addPromotionIndex(c) {
-  const [versions] = await c.query('SELECT state FROM trial_schema_versions WHERE version=16');
+  const [versions] = await c.query('SELECT state FROM trial_schema_versions WHERE version=17');
   const state = versions[0]?.state;
   if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected promotion migration state');
   if (state !== 'ready') {
@@ -214,15 +214,15 @@ async function addPromotionIndex(c) {
     }
     const [aliases] = await c.query("SELECT campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)='social-bio' AND status='linked'");
     if (aliases.some(row => row.campaign_id !== 'social-bio')) throw Error('System campaign alias conflict: social-bio');
-    if (!state) await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(16,'applying')");
+    if (!state) await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(17,'applying')");
     await c.query('CREATE TABLE IF NOT EXISTS campaign_promotion_index (p VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,campaign_id VARCHAR(191) NOT NULL,INDEX campaign_promotion_owner(campaign_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin');
   }
   await c.beginTransaction();
   try {
     await syncPromotionIndex(c);
-    if (state !== 'ready') await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=16");
+    if (state !== 'ready') await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=17");
     await c.commit();
-    return {version:16,state:'ready',alreadyApplied:state==='ready'};
+    return {version:17,state:'ready',alreadyApplied:state==='ready'};
   } catch (error) {
     await c.rollback();
     throw error;

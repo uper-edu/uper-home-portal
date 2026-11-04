@@ -80,7 +80,7 @@
     },
     {
       "path": "cloud/mysql/migrate.mjs",
-      "sha256": "49cee85c3213cabf217346285ad223d391e72ce096319d3ba7c972559af93155"
+      "sha256": "2818efdff0a0cb89bd8acc987c0dbb9badcd0fac555da5306738282025af8ae1"
     },
     {
       "path": "cloud/mysql/schema-v2.sql",
