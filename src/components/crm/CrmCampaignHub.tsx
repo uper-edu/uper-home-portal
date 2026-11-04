@@ -203,9 +203,8 @@ export function CrmCampaignHub({
       ? pageParams.get("campaignView")
       : "overview"
   ) as DetailTab;
-  const [promotionForm, setPromotionForm] = useState<{id:string;open:boolean}>();
-  const addingPromotion = !!activeDetailCampaign && canManageCampaigns &&
-    (promotionForm?.id === activeDetailCampaign.id ? promotionForm.open : !activeDetailCampaign.promotionLinks?.length && activeDetailCampaign.promotionModel === "multiple");
+  const [promotionCampaignId, setPromotionCampaignId] = useState<string>();
+  const addingPromotion = canManageCampaigns && activeDetailCampaign?.id === promotionCampaignId && !!promotionCampaignId;
   const presetDetail = !!activeDetailCampaign && isEvergreenCampaign(activeDetailCampaign);
   const organicDetail =
     !!activeDetailCampaign && isOrganicCampaign(activeDetailCampaign);
@@ -300,7 +299,7 @@ export function CrmCampaignHub({
     }
     requestLeave(() => {
       setSaveNotice(false);
-      setPromotionForm(undefined);
+      setPromotionCampaignId(undefined);
       setMobileList(false);
       navigateCampaign(c, tab);
     });
@@ -308,7 +307,7 @@ export function CrmCampaignHub({
   const closeCampaign = () =>
     requestLeave(() => {
       setSaveNotice(false);
-      setPromotionForm(undefined);
+      setPromotionCampaignId(undefined);
       setMobileList(true);
       navigateCampaign(null);
     });
@@ -316,7 +315,7 @@ export function CrmCampaignHub({
     if (activeDetailCampaign && tab !== detailTab)
       requestLeave(() => {
         setSaveNotice(false);
-        setPromotionForm(undefined);
+        setPromotionCampaignId(undefined);
         navigateCampaign(activeDetailCampaign, tab);
       });
   };
@@ -964,7 +963,14 @@ export function CrmCampaignHub({
                 <CrmDetailHeader
                   titleId="campaign-page-title"
                   titleRef={pageHeading}
-                  title={organicDetail ? organicCampaignName(lang) : campaignName(activeDetailCampaign, lang)}
+                  title={
+                    <span className="campaign-preset-heading">
+                      {organicDetail ? organicCampaignName(lang) : campaignName(activeDetailCampaign, lang)}
+                      {(activeDetailCampaign.presetKey || activeDetailCampaign.systemManaged) && (
+                        <span className="campaign-preset-badge">{u("System preset")}</span>
+                      )}
+                    </span>
+                  }
                   meta={
                     <>
                       <code>{activeDetailCampaign.code}</code>
@@ -981,14 +987,9 @@ export function CrmCampaignHub({
                   }
                   actions={
                     <>
-                      {(activeDetailCampaign.presetKey || activeDetailCampaign.systemManaged) && (
-                        <div className="campaign-detail-preset">
-                          <span className="campaign-preset-badge">{u("System preset")}</span>
-                        </div>
-                      )}
-                      {detailTab === "overview" && canManageCampaigns && !addingPromotion && (
+                      {detailTab === "overview" && canManageCampaigns && (
                         <button type="button" className="campaign-workspace-action campaign-primary"
-                          onClick={() => setPromotionForm({id:activeDetailCampaign.id,open:true})}>
+                          onClick={() => setPromotionCampaignId(activeDetailCampaign.id)}>
                           {u(activeDetailCampaign.promotionLinks?.length ? "Add another promotion link" : "Add promotion link")}
                         </button>
                       )}
@@ -1085,7 +1086,7 @@ export function CrmCampaignHub({
                         campaign={activeDetailCampaign}
                         isLight={isLight}
                         adding={addingPromotion}
-                        onCloseForm={() => setPromotionForm({id:activeDetailCampaign.id,open:false})}
+                        onCloseForm={() => setPromotionCampaignId(undefined)}
                         onSaved={(c) => {
                           updateCampaign(c);
                           void fetchCampaigns();

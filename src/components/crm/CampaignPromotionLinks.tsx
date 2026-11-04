@@ -1,7 +1,7 @@
 import {crmInstant,formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {INSTAGRAM_BIO_CAMPAIGN,isInstagramBioPromotion} from '../../utils/instagramBioCampaign';
 import evergreenLinks from '../../data/evergreenPromotionLinks.json';
-import {promotionLandingPaths, promotionKindForMedium} from '../../utils/promotionNavigation';
+import {promotionLandingPaths, promotionKindForMedium, promotionCodePattern} from '../../utils/promotionNavigation';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
@@ -15,15 +15,53 @@ import type {
 import {
   campaignPromotionUrl,
   PROMOTION_EXPERIENCE,
-  PROMOTION_EXPERIENCE_LABEL,
   PROMOTION_SOURCES,
   PROMOTION_MEDIA,
   PROMOTION_MEDIUM_LABELS,
 } from "../../utils/campaignPromotion";
 import { CrmSelect } from "./CrmSelect";
+import { CrmOperationLayer } from "./CrmOperationLayer";
 import { CrmSalesDialog } from "./CrmSalesDialog";
 import { CampaignQrImage } from "./CampaignQrImage";
 import { useCampaignQr } from "./useCampaignQr";
+
+const newPromotionDraft = {
+  name: "",
+  source: "",
+  medium: "",
+  language: "id",
+  experience: PROMOTION_EXPERIENCE,
+  landingPath: "/chat",
+  promotionKind: "",
+  content: "",
+};
+
+const landingExperience: Record<(typeof promotionLandingPaths)[number], string> = {
+  "/chat": "Opens the consultation entry directly. Assessment depends on eligibility.",
+  "/link": "Opens Link Hub. Visitors can choose online consultation, the handbook, or the community.",
+  "/": "Opens the UPER homepage. Visitors can browse the site or choose an online consultation.",
+  "/hsk": "Opens the HSK page for course and exam information.",
+  "/csca": "Opens the CSCA page for assessment and preparation information.",
+  "/consultancy": "Opens the study abroad advisory page.",
+  "/tours": "Opens the study tours page for programme information.",
+};
+
+function placementSuggestions(source: string, medium: string, promotionKind: string) {
+  if (promotionKind === "paid") return [["ad-01", "Ad"], ["creative-01", "Creative"]];
+  if (medium === "social") {
+    return source === "youtube"
+      ? [["channel-description", "Channel description"], ["video-description", "Video description"]]
+      : [["profile-bio", "Profile bio"], ["organic-post", "Organic post"]];
+  }
+  if (medium === "messaging" || medium === "group_message") {
+    return [["group-post", "Group post"], ["broadcast", "Broadcast"]];
+  }
+  if (medium === "email") return [["newsletter", "Newsletter"]];
+  if (medium === "poster") return [["poster-01", "Poster"]];
+  if (medium === "flyer") return [["flyer-01", "Flyer"]];
+  if (medium === "table_card") return [["table-card-01", "Table card"]];
+  return [];
+}
 
 function LinkCard({
   campaign,
@@ -173,20 +211,12 @@ export function CampaignPromotionLinks({
   const u = campaignUi(lang);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [customSource, setCustomSource] = useState(false);
-  const [v, setV] = useState({
-    name: "",
-    source: "",
-    medium: "",
-    language: "id",
-    experience: PROMOTION_EXPERIENCE,
-    landingPath: "/chat",
-    promotionKind: "",
-    content: "",
-  });
+  const [v, setV] = useState(newPromotionDraft);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [unknown, setUnknown] = useState(false),
     [notice, setNotice] = useState("");
+  const suggestedPlacements = placementSuggestions(v.source, v.medium, v.promotionKind);
   const pending = useRef<any>(null),
     saving = useRef(false);
   const dirty =
@@ -208,27 +238,28 @@ export function CampaignPromotionLinks({
   }, [dirty]);
   function closeForm() {
     onCloseForm();
-    setV({
-      name: "",
-      source: "",
-      medium: "",
-      language: "id",
-      experience: PROMOTION_EXPERIENCE,
-    landingPath: "/chat",
-    promotionKind: "",
-    content: "",
-    });
+    setV(newPromotionDraft);
     setCustomSource(false);
     pending.current = null;
     setUnknown(false);
     setError("");
     setConfirmCancel(false);
   }
+  function requestClose() {
+    if (busy) return;
+    if (dirty) setConfirmCancel(true);
+    else closeForm();
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (saving.current) return;
     if (!v.promotionKind) { setError("Select promotion type"); return; }
-    pending.current ||= { ...v, requestId: crypto.randomUUID() };
+    const content = v.content.trim();
+    if (content && !promotionCodePattern.test(content)) {
+      setError("Use letters, numbers, hyphens or underscores for the placement code. Start with a letter or number.");
+      return;
+    }
+    pending.current ||= { ...v, content, requestId: crypto.randomUUID() };
     saving.current = true;
     setBusy(true);
     setError("");
@@ -256,16 +287,7 @@ export function CampaignPromotionLinks({
       setUnknown(false);
       onCloseForm();
       setCustomSource(false);
-      setV({
-        name: "",
-        source: "",
-        medium: "",
-        language: "id",
-        experience: PROMOTION_EXPERIENCE,
-    landingPath: "/chat",
-    promotionKind: "",
-    content: "",
-      });
+      setV(newPromotionDraft);
       onSaved(d.campaign);
       setNotice(
         "Promotion link saved. Copy the link or open its QR code.",
@@ -295,183 +317,177 @@ export function CampaignPromotionLinks({
         </CrmSaveFeedback>
       )}
       {adding && (
-        <AdminForm lang={lang} onSubmit={save} className="campaign-promotion-form">
-<AdminRequiredNote lang={lang}/>
-
-
-          <p className="campaign-hint">
-            {u(
-              "Use a separate link for each placement you want to distinguish.",
-            )}
-          </p>
-          {(dirty || busy) && !error && (
-            <CrmSaveFeedback lang={lang} state={busy ? "saving" : "dirty"} />
-          )}
-          {error && (
-            <CrmSaveFeedback lang={lang} state={unknown ? "unknown" : "error"}>
-              {campaignUiError(lang, error)}
-            </CrmSaveFeedback>
-          )}
-          <fieldset disabled={busy || unknown}>
-            <CrmFormSection name="promotion" lang={lang}>
-            <AdminField className="campaign-field">
-              <span>{u("Link name · optional")}</span>
-              <input
-                maxLength={120}
-                value={v.name}
-                placeholder={u("e.g. Instagram October ad")}
-                onChange={(e) => setV({ ...v, name: e.target.value })}
-              />
-            </AdminField>
-            <div className="campaign-fields-grid" data-admin-grid="">
-              <div className="campaign-field">
-                <AdminFieldLabel required>{u("Source *")}</AdminFieldLabel>
-                <CrmSelect
-                  required
-                  label={u("Source")}
-                  value={customSource ? "custom" : v.source}
-                  lang={lang}
-                  isLight={isLight}
-                  disabled={busy || unknown}
-                  onChange={(source) => {
-                    setCustomSource(source === "custom");
-                    setV({ ...v, source: source === "custom" ? "" : source });
-                  }}
-                >
-                  <option value="" disabled>
-                    {u("Select platform or institution")}
-                  </option>
-                  {PROMOTION_SOURCES.map((s) => (
-                    <option key={s} value={s}>
-                      {s === "uper_newsletter"
-                        ? u("UPER newsletter")
-                        : s === "whatsapp"
-                          ? u("WhatsApp")
-                          : s.charAt(0).toUpperCase() + s.slice(1)}
-                    </option>
-                  ))}
-                  <option value="custom">
-                    {u("Other platform / institution")}
-                  </option>
-                </CrmSelect>
-                {customSource && (
-                  <AdminField className="campaign-field">
-                    <AdminFieldLabel required>{u("Source code *")}</AdminFieldLabel>
-                    <input
-                      required
-                      maxLength={80}
-                      pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}"
-                      value={v.source}
-                      placeholder={u("e.g. campus_jakarta_a")}
-                      onChange={(e) => setV({ ...v, source: e.target.value })}
-                    />
-                  </AdminField>
-                )}
-                <small>
-                  {u(
-                    "Use the same source code for the same institution across links.",
-                  )}
-                </small>
-              </div>
-              <div className="campaign-field">
-                <AdminFieldLabel required>{u("Delivery medium")}</AdminFieldLabel>
-                <CrmSelect
-                  required
-                  label={u("Delivery medium")}
-                  value={v.medium}
-                  lang={lang}
-                  isLight={isLight}
-                  disabled={busy || unknown}
-                  onChange={(medium) => {
-                    const kind = promotionKindForMedium(medium);
-                    setV({ ...v, medium, promotionKind: kind === "unclassified" ? "" : kind });
-                  }}
-                >
-                  <option value="" disabled>
-                    {u("Select delivery method")}
-                  </option>
-                  {PROMOTION_MEDIA.map((m) => (
-                    <option key={m} value={m}>
-                      {u(PROMOTION_MEDIUM_LABELS[m])}
-                    </option>
-                  ))}
-                </CrmSelect>
-              </div>
-              <div className="campaign-field">
-                <AdminFieldLabel required>{u("Landing page")}</AdminFieldLabel>
-                <CrmSelect required label={u("Landing page")} value={v.landingPath} lang={lang} isLight={isLight}
-                  disabled={busy || unknown} onChange={(landingPath) => setV({ ...v, landingPath })}>
-                  {promotionLandingPaths.map(path => <option key={path} value={path}>{path}</option>)}
-                </CrmSelect>
-              </div>
-              <div className="campaign-field">
-                <AdminFieldLabel required>{u("Promotion type")}</AdminFieldLabel>
-                <CrmSelect required label={u("Promotion type")} value={v.promotionKind} lang={lang} isLight={isLight}
-                  disabled={busy || unknown || promotionKindForMedium(v.medium) !== "unclassified"}
-                  onChange={(promotionKind) => setV({ ...v, promotionKind })}>
-                  <option value="" disabled>{u("Select promotion type")}</option>
-                  <option value="unpaid">{u("Unpaid promotion")}</option>
-                  <option value="paid">{u("Paid promotion")}</option>
-                </CrmSelect>
-              </div>
-              <AdminField className="campaign-field">
-                <AdminFieldLabel>{u("Placement or creative code")}</AdminFieldLabel>
-                <input maxLength={80} pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}" value={v.content}
-                  placeholder="profile-bio" onChange={event => setV({ ...v, content: event.target.value })} />
-              </AdminField>
-              <div className="campaign-field">
-                <AdminFieldLabel required>{u("Customer language *")}</AdminFieldLabel>
-                <CrmSelect
-                  required
-                  label={u("Customer language")}
-                  value={v.language}
-                  lang={lang}
-                  isLight={isLight}
-                  disabled={busy || unknown}
-                  onChange={(language) => setV({ ...v, language })}
-                >
-                  <option value="en">{u("English")}</option>
-                  <option value="id">{u("Bahasa Indonesia")}</option>
-                  <option value="zh">{u("Chinese")}</option>
-                </CrmSelect>
-              </div>
-            </div>
-            <div className="campaign-field">
-              <span>{u("Entry experience")}</span>
-              <p>{u(PROMOTION_EXPERIENCE_LABEL)}</p>
-              <small>
+        <CrmOperationLayer compose customerContext={false}
+          title={u("Add promotion link")} context={campaign.name} lang={lang} isLight={isLight}
+          busy={busy} onClose={requestClose}>
+          <AdminForm lang={lang} onSubmit={save} className="crm-editor-compose">
+            <div className="crm-editor-scroll" data-admin-stack="">
+              <AdminRequiredNote lang={lang} />
+              <p className="campaign-hint">
                 {u(
-                  "This is the currently supported flow. Assessment eligibility follows existing rules; this does not book a class or promise materials.",
+                  "Use a separate link for each placement you want to distinguish.",
                 )}
-              </small>
+              </p>
+              {(dirty || busy) && !error && (
+                <CrmSaveFeedback lang={lang} state={busy ? "saving" : "dirty"} />
+              )}
+              {error && (
+                <CrmSaveFeedback lang={lang} state={unknown ? "unknown" : "error"}>
+                  {campaignUiError(lang, error)}
+                </CrmSaveFeedback>
+              )}
+              <fieldset disabled={busy || unknown}>
+                <CrmFormSection name="promotion" lang={lang}>
+                <AdminField className="campaign-field">
+                  <span>{u("Link name · optional")}</span>
+                  <input
+                    maxLength={120}
+                    value={v.name}
+                    placeholder={u("e.g. Instagram October ad")}
+                    onChange={(e) => setV({ ...v, name: e.target.value })}
+                  />
+                </AdminField>
+                <div className="campaign-fields-grid" data-admin-grid="">
+                  <div className="campaign-field">
+                    <AdminFieldLabel required>{u("Source *")}</AdminFieldLabel>
+                    <CrmSelect
+                      required
+                      label={u("Source")}
+                      value={customSource ? "custom" : v.source}
+                      lang={lang}
+                      isLight={isLight}
+                      disabled={busy || unknown}
+                      onChange={(source) => {
+                        setCustomSource(source === "custom");
+                        setV({ ...v, source: source === "custom" ? "" : source });
+                      }}
+                    >
+                      <option value="" disabled>
+                        {u("Select platform or institution")}
+                      </option>
+                      {PROMOTION_SOURCES.map((s) => (
+                        <option key={s} value={s}>
+                          {s === "uper_newsletter"
+                            ? u("UPER newsletter")
+                            : s === "whatsapp"
+                              ? u("WhatsApp")
+                              : s.charAt(0).toUpperCase() + s.slice(1)}
+                        </option>
+                      ))}
+                      <option value="custom">
+                        {u("Other platform / institution")}
+                      </option>
+                    </CrmSelect>
+                    {customSource && (
+                      <AdminField className="campaign-field">
+                        <AdminFieldLabel required>{u("Source code *")}</AdminFieldLabel>
+                        <input
+                          required
+                          maxLength={80}
+                          pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}"
+                          value={v.source}
+                          placeholder={u("e.g. campus_jakarta_a")}
+                          onChange={(e) => setV({ ...v, source: e.target.value })}
+                        />
+                      </AdminField>
+                    )}
+                    <small>
+                      {u(
+                        "Use the same source code for the same institution across links.",
+                      )}
+                    </small>
+                  </div>
+                  <div className="campaign-field">
+                    <AdminFieldLabel required>{u("Delivery medium")}</AdminFieldLabel>
+                    <CrmSelect
+                      required
+                      label={u("Delivery medium")}
+                      value={v.medium}
+                      lang={lang}
+                      isLight={isLight}
+                      disabled={busy || unknown}
+                      onChange={(medium) => {
+                        const kind = promotionKindForMedium(medium);
+                        setV({ ...v, medium, promotionKind: kind === "unclassified" ? "" : kind });
+                      }}
+                    >
+                      <option value="" disabled>
+                        {u("Select delivery method")}
+                      </option>
+                      {PROMOTION_MEDIA.map((m) => (
+                        <option key={m} value={m}>
+                          {u(PROMOTION_MEDIUM_LABELS[m])}
+                        </option>
+                      ))}
+                    </CrmSelect>
+                  </div>
+                  <div className="campaign-field">
+                    <AdminFieldLabel required>{u("Landing page")}</AdminFieldLabel>
+                    <CrmSelect required label={u("Landing page")} value={v.landingPath} lang={lang} isLight={isLight}
+                      disabled={busy || unknown} onChange={(landingPath) => setV({ ...v, landingPath })}>
+                      {promotionLandingPaths.map(path => <option key={path} value={path}>{path}</option>)}
+                    </CrmSelect>
+                  </div>
+                  <div className="campaign-field">
+                    <AdminFieldLabel required>{u("Promotion type")}</AdminFieldLabel>
+                    <CrmSelect required label={u("Promotion type")} value={v.promotionKind} lang={lang} isLight={isLight}
+                      disabled={busy || unknown || promotionKindForMedium(v.medium) !== "unclassified"}
+                      onChange={(promotionKind) => setV({ ...v, promotionKind })}>
+                      <option value="" disabled>{u("Select promotion type")}</option>
+                      <option value="unpaid">{u("Unpaid promotion")}</option>
+                      <option value="paid">{u("Paid promotion")}</option>
+                    </CrmSelect>
+                  </div>
+                  <div className="campaign-field">
+                    <AdminFieldLabel required>{u("Customer language *")}</AdminFieldLabel>
+                    <CrmSelect
+                      required
+                      label={u("Customer language")}
+                      value={v.language}
+                      lang={lang}
+                      isLight={isLight}
+                      disabled={busy || unknown}
+                      onChange={(language) => setV({ ...v, language })}
+                    >
+                      <option value="en">{u("English")}</option>
+                      <option value="id">{u("Bahasa Indonesia")}</option>
+                      <option value="zh">{u("Chinese")}</option>
+                    </CrmSelect>
+                  </div>
+                </div>
+                <div className="campaign-field" aria-live="polite">
+                  <span>{u("Entry experience")}</span>
+                  <p>{u(landingExperience[v.landingPath as keyof typeof landingExperience])}</p>
+                </div>
+                <AdminField className="campaign-field">
+                  <AdminFieldLabel>{u("Placement or creative code")}</AdminFieldLabel>
+                  <input maxLength={80} pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}" value={v.content}
+                    onChange={event => setV({ ...v, content: event.target.value })} />
+                  <small className="crm-simple-help">{u("Optional. Use a code to compare placements or creatives in reports.")}</small>
+                </AdminField>
+                {!!suggestedPlacements.length && (
+                  <div className="campaign-promotion-actions campaign-placement-suggestions" role="group" aria-label={u("Suggested placement codes")}>
+                    {suggestedPlacements.map(([code, label]) => (
+                      <button key={code} type="button" className="crm-work-button" aria-pressed={v.content === code}
+                        onClick={() => setV({ ...v, content: code })}>
+                        {u(label)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                </CrmFormSection>
+              </fieldset>
             </div>
-            </CrmFormSection>
-          </fieldset>
-          <AdminFormActions className="campaign-promotion-actions">
-            <button
-              type="submit"
-              className="campaign-workspace-action campaign-primary"
-              disabled={busy}
-            >
-              {busy
-                ? u("Saving…")
-                : unknown
-                  ? u("Retry original request")
-                  : u("Create promotion link & QR")}
-            </button>
-            <button
-              type="button"
-              className="campaign-workspace-action"
-              disabled={busy}
-              onClick={() => {
-                if (dirty) setConfirmCancel(true);
-                else closeForm();
-              }}
-            >
-              {u("Add later / cancel")}
-            </button>
-          </AdminFormActions>
-        </AdminForm>
+            <AdminFormActions className="crm-editor-actions">
+              <button type="button" className="crm-work-button" disabled={busy} onClick={requestClose}>
+                {u("Cancel")}
+              </button>
+              <button type="submit" className="crm-work-button crm-editor-primary" disabled={busy}>
+                {busy ? u("Saving…") : unknown ? u("Retry original request") : u("Create promotion link & QR")}
+              </button>
+            </AdminFormActions>
+          </AdminForm>
+        </CrmOperationLayer>
       )}
       {(campaign.promotionLinks || []).map((link) => (
         <LinkCard isLight={isLight} lang={lang} key={link.id} campaign={campaign} link={link} />

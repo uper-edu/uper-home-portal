@@ -205,24 +205,24 @@ export function CampaignCards({
                         {campaignDeliveryLabel(c, lang)}
                       </span>
                     </span>
-                    <div className="campaign-card-markers">
-                      {(c.presetKey || c.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
-                      <span
-                        className="crm-campaign-status"
-                        title={u(
-                          "Manually maintained campaign status; not a link availability check",
-                        )}
-                        data-state={c.status}
-                      >
-                        {u(
-                          CAMPAIGN_STATUS_OPTIONS.find(
-                            (o) => o.value === c.status,
-                          )?.labelEn || c.status,
-                        )}
-                      </span>
-                    </div>
+                    <span
+                      className="crm-campaign-status"
+                      title={u(
+                        "Manually maintained campaign status; not a link availability check",
+                      )}
+                      data-state={c.status}
+                    >
+                      {u(
+                        CAMPAIGN_STATUS_OPTIONS.find(
+                          (o) => o.value === c.status,
+                        )?.labelEn || c.status,
+                      )}
+                    </span>
                   </div>
-                  <h2 title={name}>{name}</h2>
+                  <h2 title={name}>
+                    {name}
+                    {(c.presetKey || c.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
+                  </h2>
                   <div className="campaign-home-context">
                     {schedule && (
                       <p
@@ -367,17 +367,12 @@ export function CampaignCards({
                   >
                     {organicCampaignName(lang)}
                   </button>
-
+                  {c.systemManaged && <span className="campaign-preset-badge">{u("System preset")}</span>}
                   <p>{u("No specific campaign at first registration")}</p>
                 </div>
               </div>
               <CustomerMetrics campaign={c} lang={lang} />
               <div className="campaign-system-actions">
-                {c.systemManaged && (
-                  <div className="campaign-detail-preset">
-                    <span className="campaign-preset-badge">{u("System preset")}</span>
-                  </div>
-                )}
                 <button
                   type="button"
                   className="campaign-card-results"

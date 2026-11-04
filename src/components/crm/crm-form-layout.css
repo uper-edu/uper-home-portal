@@ -43,7 +43,6 @@
 .campaign-editor .crm-form-details>.crm-disclosure-body{padding:12px 0 0;margin:0}
 .campaign-editor .crm-form-section .campaign-field,.campaign-editor .crm-form-details .campaign-field{margin-bottom:0;gap:8px}
 .campaign-editor .crm-form-section .campaign-fields-grid,.campaign-editor .crm-form-details .campaign-fields-grid{gap:12px 16px}
-.campaign-promotion-form>.crm-form-section,.campaign-promotion-form>fieldset{min-width:0}
 .campaign-source-review>.crm-form-section{margin:0}
 .campaign-source-review>.crm-form-section+.crm-form-section{margin-top:16px}
 .campaign-source-evidence.crm-form-section{padding:0;border:0;border-radius:0;background:transparent}
