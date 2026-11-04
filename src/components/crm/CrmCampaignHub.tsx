@@ -203,8 +203,9 @@ export function CrmCampaignHub({
       ? pageParams.get("campaignView")
       : "overview"
   ) as DetailTab;
-  const [promotionCampaignId, setPromotionCampaignId] = useState<string>();
-  const addingPromotion = canManageCampaigns && activeDetailCampaign?.id === promotionCampaignId && !!promotionCampaignId;
+  const [promotionForm, setPromotionForm] = useState<{id:string;open:boolean}>();
+  const addingPromotion = !!activeDetailCampaign && canManageCampaigns &&
+    (promotionForm?.id === activeDetailCampaign.id ? promotionForm.open : !activeDetailCampaign.promotionLinks?.length && activeDetailCampaign.promotionModel === "multiple");
   const presetDetail = !!activeDetailCampaign && isEvergreenCampaign(activeDetailCampaign);
   const organicDetail =
     !!activeDetailCampaign && isOrganicCampaign(activeDetailCampaign);
@@ -299,7 +300,7 @@ export function CrmCampaignHub({
     }
     requestLeave(() => {
       setSaveNotice(false);
-      setPromotionCampaignId(undefined);
+      setPromotionForm(undefined);
       setMobileList(false);
       navigateCampaign(c, tab);
     });
@@ -307,7 +308,7 @@ export function CrmCampaignHub({
   const closeCampaign = () =>
     requestLeave(() => {
       setSaveNotice(false);
-      setPromotionCampaignId(undefined);
+      setPromotionForm(undefined);
       setMobileList(true);
       navigateCampaign(null);
     });
@@ -315,7 +316,7 @@ export function CrmCampaignHub({
     if (activeDetailCampaign && tab !== detailTab)
       requestLeave(() => {
         setSaveNotice(false);
-        setPromotionCampaignId(undefined);
+        setPromotionForm(undefined);
         navigateCampaign(activeDetailCampaign, tab);
       });
   };
@@ -989,7 +990,7 @@ export function CrmCampaignHub({
                     <>
                       {detailTab === "overview" && canManageCampaigns && (
                         <button type="button" className="campaign-workspace-action campaign-primary"
-                          onClick={() => setPromotionCampaignId(activeDetailCampaign.id)}>
+                          onClick={() => setPromotionForm({id:activeDetailCampaign.id,open:true})}>
                           {u(activeDetailCampaign.promotionLinks?.length ? "Add another promotion link" : "Add promotion link")}
                         </button>
                       )}
@@ -1086,7 +1087,7 @@ export function CrmCampaignHub({
                         campaign={activeDetailCampaign}
                         isLight={isLight}
                         adding={addingPromotion}
-                        onCloseForm={() => setPromotionCampaignId(undefined)}
+                        onCloseForm={() => setPromotionForm({id:activeDetailCampaign.id,open:false})}
                         onSaved={(c) => {
                           updateCampaign(c);
                           void fetchCampaigns();
