@@ -1,3 +1,4 @@
+import {promotionIndexEntries, syncPromotionIndex} from './promotion-index.mjs';
 import {initializeSystemDefaults as seedSystemDefaults} from './system-defaults.mjs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -190,10 +191,40 @@ async function addCourseCatalog(c){
 
 async function addPaymentImages(c){
  const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=15');
- if(v[0]?.state==='ready')return {version:15,state:'ready',alreadyApplied:true};
+ if(v[0]?.state==='ready')return addPromotionIndex(c);
  if(v.length)throw Error('Incomplete payment images migration');
  await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(15,'applying')");
  await c.query((await readFile(new URL('./schema-v15.sql',import.meta.url),'utf8')).trim().replace(/;$/,'').replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
  await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=15");
- return {version:15,state:'ready'};
+ return addPromotionIndex(c);
+}
+
+
+async function addPromotionIndex(c) {
+  const [versions] = await c.query('SELECT state FROM trial_schema_versions WHERE version=16');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected promotion migration state');
+  if (state !== 'ready') {
+    const [campaigns] = await c.query('SELECT id,code,config FROM trial_campaigns');
+    promotionIndexEntries(campaigns);
+    const social = campaigns.filter(row => row.id === 'social-bio' || row.code === 'social-bio');
+    if (social.some(row => row.id !== 'social-bio' || row.code !== 'social-bio' ||
+      (typeof row.config === 'string' ? JSON.parse(row.config) : row.config).presetKey !== 'social_bio_v1')) {
+      throw Error('System campaign reserved identity conflict: social-bio');
+    }
+    const [aliases] = await c.query("SELECT campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)='social-bio' AND status='linked'");
+    if (aliases.some(row => row.campaign_id !== 'social-bio')) throw Error('System campaign alias conflict: social-bio');
+    if (!state) await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(16,'applying')");
+    await c.query('CREATE TABLE IF NOT EXISTS campaign_promotion_index (p VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,campaign_id VARCHAR(191) NOT NULL,INDEX campaign_promotion_owner(campaign_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin');
+  }
+  await c.beginTransaction();
+  try {
+    await syncPromotionIndex(c);
+    if (state !== 'ready') await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=16");
+    await c.commit();
+    return {version:16,state:'ready',alreadyApplied:state==='ready'};
+  } catch (error) {
+    await c.rollback();
+    throw error;
+  }
 }

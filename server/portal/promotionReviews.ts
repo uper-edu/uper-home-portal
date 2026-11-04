@@ -1,3 +1,4 @@
+import {insertPromotionIndex} from './campaignPromotion.ts';
 import {canReviewSourceAttribution,assertSourceAttributionReviewer} from './crmAccessControls.ts';
 import {auditLog} from './audit.ts';
 import crypto from 'node:crypto';
@@ -69,6 +70,7 @@ export async function reviewPromotion(leadId:string,b:any,employee:any){
    }else{
     assertEditableCampaign({...target,id:c.campaign.id});
     const values=promotionInput(b.entry||{});selected={id:'p_'+crypto.randomUUID().replaceAll('-',''),...values,createdAt:new Date().toISOString()};
+    await insertPromotionIndex(db, selected.id, c.campaign.id);
     await db.query('UPDATE trial_campaigns SET config=:p2 WHERE id=:p1',[c.campaign.id,{...target,promotionModel:'multiple',promotionLinks:[...(target.promotionLinks||[]),selected],updatedAt:selected.createdAt}]);
    }
   }

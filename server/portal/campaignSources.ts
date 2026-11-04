@@ -1,3 +1,5 @@
+import {sourceKey, readCampaignAlias} from './attribution.ts';
+export {sourceKey} from './attribution.ts';
 import {canReviewSourceAttribution,assertSourceAttributionReviewer} from './crmAccessControls.ts';
 import {auditLog} from './audit.ts';
 import {campaignSourceEvidence} from "./campaignSourceEvidence.ts";
@@ -7,17 +9,12 @@ import { pool, tx } from "./store.ts";
 import { allowed } from "./identity.ts";
 import { matchesCampaign } from "../../src/utils/crmCampaignLink.ts";
 import { canonicalCampaignId } from "../../src/utils/organicCampaign.ts";
-export const sourceKey = (code: string) =>
-  crypto.createHash("sha256").update(code.trim().toLowerCase()).digest("hex");
 const fail = (status: number, message: string) => {
   throw Object.assign(Error(message), { status });
 };
 /** Verified aliases resolve without changing the original URL or lead source. */
 export async function campaignAliasTarget(code: string, db: any = pool) {
-  return (await db.query(
-    "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'",
-    [sourceKey(code)],
-  )).rows[0]?.campaign_id || null;
+  return readCampaignAlias(db, code);
 }
 /** Called only inside the saved-lead transaction. A URL visit alone never reaches here. */
 export async function recordCampaignSource(c: any, profile: any) {

@@ -152,6 +152,18 @@
       "server/portal/chat.ts"
     ]
   },
+  "INSERT INTO campaign_promotion_index(p,campaign_id) VALUES(:p1,:p2)": {
+    "sql": "INSERT INTO campaign_promotion_index(p,campaign_id) VALUES(:p1,:p2)",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
+  "INSERT INTO campaign_promotion_index(p,campaign_id) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE p=p": {
+    "sql": "INSERT INTO campaign_promotion_index(p,campaign_id) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE p=p",
+    "sources": [
+      "server/portal/campaignPresets.ts"
+    ]
+  },
   "INSERT INTO campaign_source_reviews(id,raw_code,status,revision,config) VALUES(:p1,:p2,'pending',1,:p3) ON DUPLICATE KEY UPDATE id=id": {
     "sql": "INSERT INTO campaign_source_reviews(id,raw_code,status,revision,config) VALUES(:p1,:p2,'pending',1,:p3) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
@@ -1285,10 +1297,17 @@
       "server/portal/interactionTimeline.ts"
     ]
   },
+  "SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1": {
+    "sql": "SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1",
+    "sources": [
+      "server/portal/attribution.ts",
+      "server/portal/campaignPresets.ts"
+    ]
+  },
   "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'": {
     "sql": "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'",
     "sources": [
-      "server/portal/campaignSources.ts"
+      "server/portal/attribution.ts"
     ]
   },
   "SELECT candidate_id FROM identity_candidates WHERE lead_id=:p1 AND candidate_id<>:p2 AND decision='pending'": {
@@ -1357,12 +1376,6 @@
     "sources": [
       "server/portal/campaignPromotion.ts",
       "server/portal/promotionReviews.ts"
-    ]
-  },
-  "SELECT config FROM trial_campaigns WHERE id=:p1 OR code=:p1": {
-    "sql": "SELECT config FROM trial_campaigns WHERE id=:p1 OR code=:p1",
-    "sources": [
-      "server/portal/campaignPromotion.ts"
     ]
   },
   "SELECT conversation_id,request_id FROM messages WHERE id=:p1 AND role='user'": {
@@ -1767,10 +1780,22 @@
       "server/portal/salesProgress.ts"
     ]
   },
+  "SELECT id,code,config FROM trial_campaigns WHERE id=:p1": {
+    "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1",
+    "sources": [
+      "server/portal/attribution.ts"
+    ]
+  },
   "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 AND code=:p1": {
     "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 AND code=:p1",
     "sources": [
       "server/portal/campaignPresets.ts"
+    ]
+  },
+  "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1": {
+    "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1",
+    "sources": [
+      "server/portal/attribution.ts"
     ]
   },
   "SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE": {

@@ -1,3 +1,4 @@
+import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
@@ -518,6 +519,7 @@ export async function mountPortal(app: Express) {
         tier: existing.tier || "Unqualified",
         submittedAt: existing.submittedAt || new Date().toISOString(),
         entryPoint: existing.entryPoint || b.entryPoint || "homepage_widget",
+        promotionEntryPoint: existing.promotionEntryPoint || (!locked.lead_id ? promotionEntryPoint(b.promotionEntryPoint) : undefined),
         ...promotion,
       };
       if (!locked.lead_id) {

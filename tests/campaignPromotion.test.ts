@@ -11,14 +11,15 @@ test('promotion configuration validates actual experience, source encoding and c
  for(const bad of [{source:'x?x=1'},{medium:'qr'},{language:'xx'},{experience:'trial_class'}])assert.throws(()=>promotionInput({...v,...bad}));
 });
 if(process.env.MYSQL_NATIVE_TEST_ENV){
- const {setupNativeTest}=await import('./helpers/mysql.mjs');await setupNativeTest('campaign_promotion');
+ const {setupNativeTest}=await import('./helpers/mysql.mjs');const fixture=await setupNativeTest('campaign_promotion');
+ const {disposeNativeTest}=await import('./helpers/disposeNativeTest.mjs');
  const lease=createServer().listen(0,'127.0.0.1');await new Promise<void>(r=>lease.once('listening',r));const port=(lease.address() as any).port;await new Promise<void>(r=>lease.close(()=>r()));
  Object.assign(process.env,{PORT:String(port),PLATFORM_MODE:'local',APP_URL:`http://127.0.0.1:${port}`});
  const {startMysqlApplication}=await import('../server/mysqlApplication.ts');const {pool}=await import('../server/portal/store.ts');const {server}=await startMysqlApplication();if(!server.listening)await new Promise<void>(r=>server.once('listening',r));
  let staffCookie='';
  async function req(url:string,body?:any,method=body===undefined?'GET':'POST',cookie=staffCookie){const r=await fetch(process.env.APP_URL+url,{method,headers:{'Content-Type':'application/json',Origin:process.env.APP_URL!,cookie},...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]||cookie};}
  await test('independent MySQL multiple promotion entries and first-touch persistence',async t=>{
-  t.after(async()=>{await new Promise<void>(r=>server.close(()=>r()));await pool.end();});
+  t.after(async()=>{await new Promise<void>(r=>server.close(()=>r()));await pool.end();await disposeNativeTest(fixture);});
   staffCookie=(await req('/api/crm/auth/login',{loginId:'Robert',password:'Robert'})).cookie;
   const body={name:'TEST Multi-channel campaign',savePhase:'basics',requestId:randomUUID()};
   const created=await req('/api/crm/campaigns',body);assert.equal(created.status,200);const c=created.data.campaign;
@@ -39,14 +40,18 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
   await t.test('public resolution and registration use each saved entry, not spoofed UTM fields',async()=>{
    for(let i=0;i<links.length;i++){
     const link=links[i];assert.equal((await req(`/api/campaigns/${c.code}/links/${link.id}`,undefined,'GET','')).data.link.language,link.language);
+    const publicLink=await req(`/api/promotion-links/${link.id}`,undefined,'GET','');
+    assert.equal(publicLink.data.promotion.campaignId,c.id);
     const visitor=(await req('/api/portal/session',undefined,'GET','')).cookie;
-    const result=await req('/api/portal/register',{fullName:'TEST Entry '+i,email:`entry${i}@example.invalid`,campaignId:c.code,promotionLinkId:link.id,placement:'forged',entryPoint:'forged',hookType:'trial_class'},'POST',visitor);assert.equal(result.status,200);
+    const result=await req('/api/portal/register',{fullName:'TEST Entry '+i,email:`entry${i}@example.invalid`,...(i===0?{}:{campaignId:c.code}),promotionLinkId:link.id,placement:'forged',entryPoint:'forged',hookType:'trial_class'},'POST',visitor);assert.equal(result.status,200);
     const profile=(await pool.query("SELECT profile FROM portal_leads WHERE JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email'))=:p1",[`entry${i}@example.invalid`])).rows[0].profile;
     assert.equal(profile.promotionLinkId,link.id);assert.equal(profile.entryPoint,link.source);assert.equal(profile.placement,link.medium);assert.equal(profile.promotionSnapshot.language,link.language);assert.equal(profile.hookType,'hsk_assessment');
     await req('/api/portal/register',{fullName:'TEST Entry '+i,email:`entry${i}@example.invalid`,campaignId:c.code,promotionLinkId:links[(i+1)%links.length].id},'POST',visitor);
     const again=(await pool.query('SELECT profile FROM portal_leads WHERE id=:p1',[profile.id])).rows[0].profile;assert.deepEqual(again.promotionSnapshot,profile.promotionSnapshot);
    }
-   assert.equal((await req('/api/crm/campaigns/'+c.id)).data.campaign.stats.leadsCount,3);
+   const report=(await req('/api/crm/campaigns/'+c.id)).data.campaign;
+   assert.equal(report.stats.leadsCount,3);
+   assert.equal(report.promotionResults.reduce((sum,row)=>sum+row.customers,0),3);
   });
   await t.test('mismatched or unknown p is flagged, never borrows a foreign source',async()=>{
    const other=(await req('/api/crm/campaigns',{...body,name:'TEST Other',requestId:randomUUID()})).data.campaign;

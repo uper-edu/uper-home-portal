@@ -2,7 +2,7 @@ import {passwordChangeGate} from './portal/localAuth.ts';
 import {mountClientDiagnostics} from './clientDiagnostics.ts';
 import {listPromotionReviews,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
 import {campaignPromotionUrl} from "../src/utils/campaignPromotion.ts";
-import {addCampaignPromotion,resolvePromotion} from "./portal/campaignPromotion.ts";
+import {addCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
 import {campaignChatLink} from "../src/utils/crmCampaignLink.ts";
@@ -77,10 +77,18 @@ app.post('/api/crm/leads/:id/logs',(_q,r,next)=>{
   failFollowup=false;r.status(503).json({error:'TEST injected unavailable service; retry the same request'});
 });
 mountHskAssets(app);
+const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status<500?e.message:'Storage unavailable; operation not saved'});});
+app.get('/api/promotion-links/:p',wrap(async(q:any,r:any)=>{
+ const code=q.query.c;
+ r.set('Cache-Control','no-store');
+ if (code!==undefined && typeof code!=='string') return r.status(400).json({status:'unverified'});
+ const resolved=await resolvePromotion(pool,code||'',q.params.p);
+ if(!resolved)return r.status(404).json({status:'unverified'});
+ r.json({status:'verified',promotion:publicPromotion(resolved)});
+}));
 app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
 await mountPortal(app);await ensureOrganicCampaign();await tx(ensureInstagramBioCampaign);mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
-const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status<500?e.message:'Storage unavailable; operation not saved'});});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
 app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>r.json({reviews:await listPromotionReviews(r.locals.crmEmployee)})));
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
@@ -98,7 +106,7 @@ app.post('/api/crm/campaigns/:id/templates',wrap(async(q:any,r:any)=>{
  if(!['en','id','zh'].includes(q.body.lang))return r.status(400).json({error:'campaign_entry_invalid'});
  const link=c.promotionLinks?.find((link:any)=>link.id===q.body.promotionLinkId);
  if((q.body.promotionLinkId&&!link)||(c.promotionModel==='multiple'&&!link))return r.status(400).json({error:'Select a saved promotion link before preparing materials.'});
- r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),link?campaignPromotionUrl(c.code,link,process.env.APP_URL||'http://localhost:3000'):campaignChatLink(c.code,process.env.APP_URL||'http://localhost:3000'))});
+ r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),link?campaignPromotionUrl(c.code,link,process.env.APP_URL||'http://localhost:3000',process.env.VITE_PROMOTION_SHORT_LINKS==='true'):campaignChatLink(c.code,process.env.APP_URL||'http://localhost:3000'))});
 }));
 app.post('/api/crm/campaigns/ai-generate',wrap(async(q:any,r:any)=>{if(typeof q.body.name!=='string'||!q.body.name.trim())return r.status(400).json({error:'Campaign name required'});r.json({success:true,aiAssets:synthesizeCampaignAiAssets(q.body)});}));
 app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/impression'],wrap(async(q:any,r:any)=>r.json({success:await trackCampaignImpression(q.params.idOrCode)})));

@@ -1,3 +1,4 @@
+import type { PromotionKind, PromotionLandingPath } from '../utils/promotionNavigation';
 import type { HookType, HookContextType } from './leadSystem.ts';
 
 export type CampaignType = 
@@ -77,6 +78,7 @@ export interface CampaignClosedLoopStats {
 export interface CrmCampaignRecord {
   presetKey?: string;
   promotionLinks?: CampaignPromotionLink[];
+  promotionResults?: import('../utils/crmCampaignMetrics').PromotionResultRow[];
   promotionModel?: "multiple";
   systemManaged?: boolean;
   nameId?: string;
@@ -154,7 +156,9 @@ export const CAMPAIGN_STATUS_OPTIONS: Array<{
 
 /** Immutable configuration for one distribution entry; not proof of actual click origin. */
 export interface CampaignPromotionLink {
- landingPath?: '/chat' | '/link';
+ landingPath?: PromotionLandingPath;
+ promotionKind?: PromotionKind;
+ content?: string;
  id: string;
  name: string;
  source: string;

@@ -4,7 +4,7 @@ import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './r
 import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
-import {canonicalCampaignId} from '../utils/organicCampaign';
+import {promotionIdentity, promotionEntryPoint} from '../utils/promotionNavigation';
 import {
   setDraftScope,
   drafts,
@@ -64,8 +64,13 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
   const params=new URLSearchParams(location.search);
-  contact.promotionLinkId=params.get('p')||undefined;
-  contact.campaignId=canonicalCampaignId(params.get('c')||params.get('cid')||params.get('campaign'));
+  const identity = promotionIdentity(params);
+  contact.promotionLinkId = params.has('p') ? identity.p ?? '' : undefined;
+  contact.campaignId = identity.campaign;
+  contact.utmCampaign = params.get('utm_campaign') || undefined;
+  contact.promotionParametersInvalid = identity.invalid || undefined;
+  contact.promotionEntryPoint = promotionEntryPoint(params.get('entry_point'))
+    ?? (location.pathname.startsWith('/chat') || location.pathname.startsWith('/consult') ? 'direct' : 'homepage_widget');
   for (const key of [
     "quizScore",
     "quizMaxScore",
@@ -94,7 +99,7 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   }
   assertVisitorScope(responseScope);
   const analyticsReceipt=registrationAnalyticsReceipt(data,String(location.pathname||'').startsWith('/chat')||String(location.pathname||'').startsWith('/consult')?'standalone_chat':'homepage_widget');
-  if(analyticsReceipt)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,response_time_ms:Date.now()-began}});
+  if(analyticsReceipt)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,entry_point:contact.promotionEntryPoint,response_time_ms:Date.now()-began}});
   for(const receipt of registrationAdvisorAnalyticsReceipts(data))trackConfirmedReceipt(receipt);
   saveStudentContext({leadProfile:data.lead});
   return data;

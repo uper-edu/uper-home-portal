@@ -1,5 +1,5 @@
 /** Read-only, allowlisted evidence. Do not recreate a URL or infer missing marketing facts. */
-const keys=['c','cid','campaign','p','lang','utm_source','utm_medium','utm_campaign','utm_content','utm_term'];
+const keys=['c','cid','campaign','p','lang','utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id','entry_point'];
 const text=(v:unknown)=>typeof v==='string'?v:null;
 export function campaignSourceEvidence(profile:any,conversations:any[],rawCode:string){
  const entries=conversations.flatMap(row=>{
@@ -8,7 +8,9 @@ export function campaignSourceEvidence(profile:any,conversations:any[],rawCode:s
    const url=new URL(page,'https://saved-entry.invalid');
    if(!['http:','https:'].includes(url.protocol))return [];
    const code=url.searchParams.get('c')||url.searchParams.get('cid')||url.searchParams.get('campaign');
-   if(!code||code.trim().toLowerCase()!==rawCode.trim().toLowerCase())return [];
+   const p=url.searchParams.get('p');
+   const savedPromotion=text(profile.rawPromotionLinkId)||text(profile.promotionLinkId);
+   if ((!code || code.trim().toLowerCase()!==rawCode.trim().toLowerCase()) && (!p || p!==savedPromotion)) return [];
    const parameters=keys.flatMap(key=>url.searchParams.getAll(key).map(value=>({key,value})));
    return [{conversationId:String(row.id),lastActivityAt:row.updated_at instanceof Date?row.updated_at.toISOString():text(row.updated_at),surface:text(row.source),path:url.pathname,parameters,possiblyTruncated:page.length>=300}];
   }catch{return [];}

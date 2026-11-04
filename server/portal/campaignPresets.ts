@@ -14,5 +14,10 @@ export async function ensureInstagramBioCampaign(db: { query: (...args: any[]) =
       || !['id', 'en', 'zh'].every(language => saved.config.promotionLinks?.some((link: any) => isInstagramBioPromotion(link, language)))) {
     throw Error('Instagram Bio preset conflicts with an existing campaign. Review the reserved code without replacing existing data.');
   }
+  for (const link of saved.config.promotionLinks) {
+    await db.query('INSERT INTO campaign_promotion_index(p,campaign_id) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE p=p', [link.id, saved.id]);
+    const owner = (await db.query('SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1', [link.id])).rows[0];
+    if (owner?.campaign_id !== saved.id) throw Error('Instagram promotion index ownership mismatch.');
+  }
   return saved.config;
 }

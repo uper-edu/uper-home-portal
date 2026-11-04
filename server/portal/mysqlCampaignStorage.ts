@@ -1,3 +1,4 @@
+import {attachPaymentSummaries} from './payments.ts';
 import {campaignEditConflicts} from '../../src/utils/campaignEditConflict.ts';
 import {auditLog} from './audit.ts';
 import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
@@ -7,7 +8,7 @@ import {assertEditableCampaign,canonicalCampaignId,organicCampaignRecord} from '
 import {campaignsContext} from '../../cloud/mysql/campaign-context.mjs';
 import {pool,tx} from '../portal/store.ts';
 import {platform,allowed} from '../portal/identity.ts';
-import {campaignMetrics} from '../../src/utils/crmCampaignMetrics.ts';
+import {campaignMetrics, campaignPromotionResults} from '../../src/utils/crmCampaignMetrics.ts';
 import {matchesCampaign} from '../../src/utils/crmCampaignLink.ts';
 import { createHash } from "node:crypto";
 import { allocateCampaignCode } from "./campaignCodeAllocation.ts";
@@ -15,7 +16,26 @@ import { CAMPAIGN_LINK_PLACEHOLDER, resolveCampaignLinks } from "../../src/utils
 import { campaignChatLink } from "../../src/utils/crmCampaignLink.ts";
 import { validCampaignBudget, CAMPAIGN_BUDGET_ERROR } from "../../src/utils/campaignBudget.ts";
 export function loadCampaigns(){return campaignsContext.getStore() || [];}
-export async function getCurrentCampaigns(employee?:any){const campaigns=loadCampaigns(),profiles=(await pool.query("SELECT profile FROM portal_leads")).rows.map((r:any)=>r.profile).filter((p:any)=>!employee||allowed(employee,p));await attachEnrollmentEvidence(pool,profiles);const reviews=(await pool.query("SELECT * FROM campaign_source_reviews")).rows;for(const p of profiles){const review=reviews.find((r:any)=>r.id===sourceKey(String(p.campaignId||p.campaign||'').trim()));if(review){p.campaignSourceStatus=review.status;if(review.status==='linked')p.attributionCampaignId=review.campaign_id;}}const resolved=profiles.filter((p:any)=>campaigns.filter((c:any)=>matchesCampaign(p,c)).length<=1);return campaigns.map((c:any)=>({...c,stats:{...c.stats,...campaignMetrics(resolved,c),roi:null}}));}
+export async function getCurrentCampaigns(employee?: any) {
+ const campaigns = loadCampaigns();
+ const profiles = (await pool.query('SELECT profile FROM portal_leads')).rows
+  .map((row: any) => row.profile).filter((profile: any) => !employee || allowed(employee, profile));
+ await attachEnrollmentEvidence(pool, profiles);
+ await attachPaymentSummaries(pool, profiles);
+ const reviews = (await pool.query('SELECT * FROM campaign_source_reviews')).rows;
+ for (const profile of profiles) {
+  const review = reviews.find((item: any) => item.id === sourceKey(String(profile.campaignId || profile.campaign || '').trim()));
+  if (!review) continue;
+  profile.campaignSourceStatus = review.status;
+  if (review.status === 'linked') profile.attributionCampaignId = review.campaign_id;
+ }
+ const resolved = profiles.filter((profile: any) => campaigns.filter(campaign => matchesCampaign(profile, campaign)).length <= 1);
+ return campaigns.map(campaign => ({
+  ...campaign,
+  stats: {...campaign.stats, ...campaignMetrics(resolved, campaign), roi:null},
+  promotionResults: campaignPromotionResults(resolved, campaign),
+ }));
+}
 type CampaignSaveOperation = { kind: "create" } | { kind: "update"; id: string };
 const campaignError = (message: string, status: number) =>
   Object.assign(Error(message), { status });
@@ -45,7 +65,7 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
   }
   const fields = { ...input };
   const basicCreation = operation.kind === "create" && input.savePhase === "basics";
-  for (const key of ["__actor", "expectedFields", "id", "code", "requestId", "savePhase", "promotionLinks", "promotionModel"]) delete fields[key];
+  for (const key of ["__actor", "expectedFields", "id", "code", "requestId", "savePhase", "promotionLinks", "promotionModel", "promotionResults"]) delete fields[key];
   const fingerprint = createHash("sha256").update(JSON.stringify(stableCampaignPayload({ ...fields, ...(basicCreation ? { savePhase: "basics" } : {}) }))).digest("hex");
   const actor = input.__actor || "unknown";
   for (let attempt = 0; attempt < 3; attempt++) {
