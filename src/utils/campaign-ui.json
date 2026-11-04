@@ -1671,6 +1671,10 @@
     "Halaman tujuan",
     "落地页"
   ],
+  "System preset": ["Bawaan sistem", "系统预置"],
+  "Created:": ["Dibuat:", "创建时间："],
+  "Time needs review": ["Waktu perlu diperiksa", "时间待核对"],
+  "Time not recorded": ["Waktu tidak tercatat", "未记录时间"],
   "Delivery medium": [
     "Media penayangan",
     "投放媒介"

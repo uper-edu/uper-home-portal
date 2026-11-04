@@ -1,3 +1,5 @@
+import evergreenLinks from '../data/evergreenPromotionLinks.json';
+
 export const promotionParameters = ['c', 'cid', 'campaign', 'p', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id'] as const;
 export const promotionLandingPaths = ['/chat', '/link', '/', '/hsk', '/csca', '/consultancy', '/tours'] as const;
 export type PromotionLandingPath = typeof promotionLandingPaths[number];
@@ -25,11 +27,6 @@ export function promotionKindForMedium(medium: string): PromotionKind {
   if (medium === 'paid_social' || medium === 'cpc') return 'paid';
   return medium === 'social' ? 'unpaid' : 'unclassified';
 }
-declare const __UPER_PROMOTION_SHORT_LINKS__: boolean;
-declare const __UPER_PROMOTION_BARE_INSTAGRAM__: boolean;
-export const shortPromotionLinks = typeof __UPER_PROMOTION_SHORT_LINKS__ !== 'undefined' && __UPER_PROMOTION_SHORT_LINKS__;
-export const bareInstagramFallback = typeof __UPER_PROMOTION_BARE_INSTAGRAM__ === 'undefined' || __UPER_PROMOTION_BARE_INSTAGRAM__;
-
 export function promotionIdentity(params: URLSearchParams) {
   const campaigns = ['c', 'cid', 'campaign'].flatMap(key => params.getAll(key)).filter(Boolean);
   const promotions = params.getAll('p');
@@ -54,4 +51,16 @@ export function promotionJourneyUrl(target: string, input: URLSearchParams, entr
     if (previous) url.searchParams.set('entry_point', previous);
   }
   return url.pathname + url.search + url.hash;
+}
+
+export function isWebsitePromotion(id: string) {
+  return evergreenLinks.some(link => link.id === id && link.source === 'website');
+}
+
+export function websitePromotionUrl(target: '/link' | '/chat', input: URLSearchParams, entry: PromotionEntryPoint, language?: string) {
+  const preset = evergreenLinks.find(link => link.source === 'website' && link.landingPath === target);
+  const destination = !promotionIdentity(input).tagged && preset
+    ? target + '?' + new URLSearchParams({p:preset.id, ...(/^(en|id|zh)(?:-|$)/i.test(language || '') ? {lang:language!.slice(0,2).toLowerCase()} : {})})
+    : target;
+  return promotionJourneyUrl(destination, input, entry);
 }

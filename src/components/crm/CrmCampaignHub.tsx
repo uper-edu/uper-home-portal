@@ -33,9 +33,10 @@ import { CrmCampaignSources } from "./CrmCampaignSources";
 import {
   isOrganicCampaign,
   organicCampaignName,
+  isEvergreenCampaign,
 } from "../../utils/organicCampaign";
 import { CrmCampaignMeasures } from "./CrmCampaignMeasures";
-import { campaignChatLink, matchesCampaign } from "../../utils/crmCampaignLink";
+import { matchesCampaign } from "../../utils/crmCampaignLink";
 import { CAMPAIGN_LINK_PLACEHOLDER } from "../../utils/campaignCode";
 import {
   campaignBudgetFromInput,
@@ -45,7 +46,6 @@ import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import { crmValue, crmError, crmLocale } from "../../utils/crmLanguage";
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useCampaignQr } from "./useCampaignQr";
 import { CampaignQrImage } from "./CampaignQrImage";
 import {
   PanelLeftClose,
@@ -159,10 +159,6 @@ export function CrmCampaignHub({
   );
   // Active view: 'cards' | 'table'
   const [viewLayout, setViewLayout] = useState<"cards" | "table">("cards");
-  // QR Modal State
-  const [activeQrCampaign, setActiveQrCampaign] =
-    useState<CrmCampaignRecord | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   type DetailTab = "overview" | "info" | "leads" | "collaterals";
   const [pageUrl, setPageUrl] = useState(() =>
     typeof window === "undefined"
@@ -207,6 +203,10 @@ export function CrmCampaignHub({
       ? pageParams.get("campaignView")
       : "overview"
   ) as DetailTab;
+  const [promotionForm, setPromotionForm] = useState<{id:string;open:boolean}>();
+  const addingPromotion = !!activeDetailCampaign && canManageCampaigns &&
+    (promotionForm?.id === activeDetailCampaign.id ? promotionForm.open : !activeDetailCampaign.promotionLinks?.length && activeDetailCampaign.promotionModel === "multiple");
+  const presetDetail = !!activeDetailCampaign && isEvergreenCampaign(activeDetailCampaign);
   const organicDetail =
     !!activeDetailCampaign && isOrganicCampaign(activeDetailCampaign);
   const detailTab: DetailTab =
@@ -300,6 +300,7 @@ export function CrmCampaignHub({
     }
     requestLeave(() => {
       setSaveNotice(false);
+      setPromotionForm(undefined);
       setMobileList(false);
       navigateCampaign(c, tab);
     });
@@ -307,6 +308,7 @@ export function CrmCampaignHub({
   const closeCampaign = () =>
     requestLeave(() => {
       setSaveNotice(false);
+      setPromotionForm(undefined);
       setMobileList(true);
       navigateCampaign(null);
     });
@@ -314,6 +316,7 @@ export function CrmCampaignHub({
     if (activeDetailCampaign && tab !== detailTab)
       requestLeave(() => {
         setSaveNotice(false);
+        setPromotionForm(undefined);
         navigateCampaign(activeDetailCampaign, tab);
       });
   };
@@ -361,6 +364,7 @@ export function CrmCampaignHub({
       setEditor(null);
     });
   const handleOpenEditWizard = (c: CrmCampaignRecord, materials = false) => {
+    if (isEvergreenCampaign(c)) return;
     if (materials) openCampaign(c, "collaterals");
     else requestLeave(() => setEditor(c));
   };
@@ -511,10 +515,6 @@ export function CrmCampaignHub({
   useEffect(() => {
     fetchCampaigns();
   }, []);
-  // Each surface owns its current saved link and independent generation lifecycle.
-  const popupQr = useCampaignQr(
-    activeQrCampaign ? campaignChatLink(activeQrCampaign.code) : null,
-  );
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
     return campaigns.filter((c) => {
@@ -534,12 +534,6 @@ export function CrmCampaignHub({
       return true;
     });
   }, [campaigns, selectedType, selectedStatus, searchQuery]);
-  // Copy helper
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2500);
-  };
   // Delete Campaign
   const handleDeleteCampaign = async (id: string, name: string) => {
     if (
@@ -980,7 +974,7 @@ export function CrmCampaignHub({
                     <>
                       <code>{activeDetailCampaign.code}</code>
                       <span className="campaign-workpage-status">
-                        {organicDetail
+                        {presetDetail ? u("System preset") : organicDetail
                           ? u("Read-only · System source")
                           : u(
                               CAMPAIGN_STATUS_OPTIONS.find(
@@ -992,8 +986,14 @@ export function CrmCampaignHub({
                   }
                   actions={
                     <>
+                      {detailTab === "overview" && canManageCampaigns && !addingPromotion && (
+                        <button type="button" className="campaign-workspace-action campaign-primary"
+                          onClick={() => setPromotionForm({id:activeDetailCampaign.id,open:true})}>
+                          {u(activeDetailCampaign.promotionLinks?.length ? "Add another promotion link" : "Add promotion link")}
+                        </button>
+                      )}
                       {canManageCampaigns &&
-                        !isOrganicCampaign(activeDetailCampaign) && (
+                        !organicDetail && !presetDetail && (
                           <button
                             className="campaign-workspace-action"
                             onClick={() =>
@@ -1084,10 +1084,8 @@ export function CrmCampaignHub({
                         key={activeDetailCampaign.id + workspaceEpoch}
                         campaign={activeDetailCampaign}
                         isLight={isLight}
-                        canManage={
-                          canManageCampaigns &&
-                          !isOrganicCampaign(activeDetailCampaign)
-                        }
+                        adding={addingPromotion}
+                        onCloseForm={() => setPromotionForm({id:activeDetailCampaign.id,open:false})}
                         onSaved={(c) => {
                           updateCampaign(c);
                           void fetchCampaigns();
@@ -1138,7 +1136,7 @@ export function CrmCampaignHub({
                         />
                       )}
                       {canManageCampaigns &&
-                        !isOrganicCampaign(activeDetailCampaign) && (
+                        !organicDetail && !presetDetail && (
                           <details className="campaign-info-section">
                             <summary>{u("More campaign actions")}</summary>
                             <p className="campaign-hint">
@@ -1317,7 +1315,7 @@ export function CrmCampaignHub({
                       isLight={isLight}
                       canEdit={
                         canManageCampaigns &&
-                        !isOrganicCampaign(activeDetailCampaign)
+                        !organicDetail && !presetDetail
                       }
                       onStateChange={(dirty, busy) => {
                         materialState.current = { dirty, busy };

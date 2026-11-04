@@ -8,7 +8,7 @@
 - 构建时要求目标环境与分配的衡量ID一致，页面运行时再核对主机和HTTPS；错配时停止统计，不影响业务页面。环境文件和凭证不入Git。本轮只更新本地配置和3000运行版本，不部署测试站或生产站。
 - `environment`：development / test / production / unknown。非生产使用 `traffic_category=internal_test`，生产管理工作区使用 `internal_employee`，生产公开页面使用 `customer`。
 - 生产公开页面的验收使用 `?analytics_test=1`，同一标签页后续访问保持测试标记，`?analytics_test=0`解除。正常CRM使用属于员工业务使用，`traffic_type=staff`；测试流量为 `internal`，公开客户为 `external`。报表应分别看客户与员工的真实使用；不能把全部员工使用排除，也不能声称自动识别了所有人工测试或机器人。
-- `/link`经产品约定为Instagram Bio专用入口。无c/cid/campaign/p参数时，在初始GA配置、first_visit和session_start之前就设置Instagram / social / instagram-bio；`source_basis=dedicated_entry`表示按入口约定归因，并不证明HTTP引荐来自Instagram。
+- 社媒简介使用预置 `?p=…` 短链。没有推广标记的 `/link` 不推定平台来源。官网预置编号用于 CRM 和 GA 事件分组，保留 GA 识别的搜索或外部来源。
 - `/chat`通用入口不默认Instagram。带活动参数的入口保留活动标记；普通无参数页面后续归因交给GA的会话规则。
 - 本地使用独立GA Cookie前缀，不清理已有Cookie。已打开的旧页面需刷新后加载新的统计标识。
 

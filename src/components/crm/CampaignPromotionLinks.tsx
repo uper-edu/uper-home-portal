@@ -1,3 +1,5 @@
+import {crmInstant,formatCrmEventTime} from '../../utils/crmOperatingTime';
+import evergreenLinks from '../../data/evergreenPromotionLinks.json';
 import {promotionLandingPaths, promotionKindForMedium} from '../../utils/promotionNavigation';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
@@ -17,7 +19,6 @@ import {
   PROMOTION_MEDIA,
   PROMOTION_MEDIUM_LABELS,
 } from "../../utils/campaignPromotion";
-import { campaignChatLink } from "../../utils/crmCampaignLink";
 import { CrmSelect } from "./CrmSelect";
 import { CampaignQrImage } from "./CampaignQrImage";
 import { useCampaignQr } from "./useCampaignQr";
@@ -32,13 +33,15 @@ function LinkCard({
   link: CampaignPromotionLink;
 }) {
   const u = campaignUi(lang);
-  const url = campaignPromotionUrl(campaign.code, link, window.location.origin),
+  const createdAt = crmInstant(link.createdAt);
+  const url = campaignPromotionUrl(link, window.location.origin),
     qr = useCampaignQr(url);
   const [feedback, setFeedback] = useState("");
   return (
     <article className="campaign-promotion-card">
       <div>
         <h3>{link.name}</h3>
+        {evergreenLinks.some(preset => preset.id === link.id) && <p className="campaign-hint">{u("System preset")}</p>}
         <p>
           {link.source} ·{" "}
           {u(PROMOTION_MEDIUM_LABELS[link.medium] || link.medium)} ·{" "}
@@ -47,6 +50,11 @@ function LinkCard({
               link.language
             ],
           )}
+        </p>
+        <p className="campaign-hint">
+          {u("Created:")} {createdAt
+            ? <time dateTime={createdAt.toISOString()}>{formatCrmEventTime(link.createdAt).slice(0,16)}</time>
+            : u(link.createdAt ? "Time needs review" : "Time not recorded")}
         </p>
         <p className="campaign-hint">{u(PROMOTION_EXPERIENCE_LABEL)}</p>
         <AdminField className="campaign-field">
@@ -123,87 +131,11 @@ function LinkCard({
     </article>
   );
 }
-function LegacyCampaignLink({
-  campaign,
-  lang,
-}: {
-  lang: "en" | "id" | "zh";
-  campaign: CrmCampaignRecord;
-}) {
-  const u = campaignUi(lang);
-  const url = campaignChatLink(campaign.code),
-    qr = useCampaignQr(url),
-    [feedback, setFeedback] = useState("");
-  return (
-    <article className="campaign-promotion-card">
-      <div>
-        <h3>{u("Existing campaign-only link")}</h3>
-        <p className="campaign-hint">
-          {u(
-            "Retained for this legacy campaign. It attributes customers to the campaign without a separate promotion entry. Use a new promotion entry when you need independent source, medium and language settings.",
-          )}
-        </p>
-        <AdminField className="campaign-field">
-          <span>{u("Campaign link")}</span>
-          <input
-            readOnly
-            value={url}
-            aria-label={u("Legacy campaign link")}
-            onFocus={(e) => e.target.select()}
-          />
-        </AdminField>
-        <div className="campaign-promotion-actions">
-          <button
-            type="button"
-            className="campaign-workspace-action campaign-primary"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(url);
-                setFeedback("Link copied.");
-              } catch {
-                setFeedback(
-                  "Copy unavailable. Select and copy the link above.",
-                );
-              }
-            }}
-          >
-            {u("Copy link")}
-          </button>
-          <a
-            className="campaign-workspace-action"
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {u("Preview entry")}
-          </a>
-          {qr.ready && (
-            <a
-              className="campaign-workspace-action"
-              download={campaign.code + "-legacy.png"}
-              href={qr.dataUrl}
-            >
-              {u("Download QR")}
-            </a>
-          )}
-        </div>
-        <p role="status">{feedback && u(feedback)}</p>
-      </div>
-      <div className="campaign-promotion-qr">
-        <CampaignQrImage
-          qr={qr}
-          lang={lang}
-          alt={u("QR for legacy campaign {name}", { name: campaign.name })}
-          className="w-40 h-40"
-        />
-      </div>
-    </article>
-  );
-}
 export function CampaignPromotionLinks({
   campaign,
   isLight,
-  canManage,
+  adding,
+  onCloseForm,
   onSaved,
   onStateChange,
   lang = "en",
@@ -211,18 +143,14 @@ export function CampaignPromotionLinks({
   lang?: "en" | "id" | "zh";
   campaign: CrmCampaignRecord;
   isLight: boolean;
-  canManage: boolean;
+  adding: boolean;
+  onCloseForm: () => void;
   onSaved: (c: CrmCampaignRecord) => void;
   onStateChange: (state: { dirty: boolean; busy: boolean }) => void;
 }) {
   const u = campaignUi(lang);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [customSource, setCustomSource] = useState(false);
-  const [adding, setAdding] = useState(
-    !campaign.promotionLinks?.length &&
-      canManage &&
-      campaign.promotionModel === "multiple",
-  );
   const [v, setV] = useState({
     name: "",
     source: "",
@@ -257,7 +185,7 @@ export function CampaignPromotionLinks({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
   function closeForm() {
-    setAdding(false);
+    onCloseForm();
     setV({
       name: "",
       source: "",
@@ -304,7 +232,7 @@ export function CampaignPromotionLinks({
       if (!d.link?.id || !d.campaign) throw Error("Invalid result");
       pending.current = null;
       setUnknown(false);
-      setAdding(false);
+      onCloseForm();
       setCustomSource(false);
       setV({
         name: "",
@@ -330,13 +258,9 @@ export function CampaignPromotionLinks({
       setBusy(false);
     }
   }
-  const legacy = campaign.promotionModel !== "multiple";
   return (
     <section className="campaign-promotion" aria-label={u("Promotion links")}>
       <header>
-        {!campaign.promotionLinks?.length && !legacy && (
-          <h3>{u("Step 2 · Add your first promotion link")}</h3>
-        )}
         <p>
           {u(
             "One campaign can have multiple links for ads, groups, posters and other placements. Each link has its own source, medium and customer language.",
@@ -347,24 +271,6 @@ export function CampaignPromotionLinks({
         <CrmSaveFeedback lang={lang} state="saved">
           {u(notice)}
         </CrmSaveFeedback>
-      )}
-      {!campaign.promotionLinks?.length && !legacy && (
-        <p className="campaign-hint">
-          {u(
-            "Campaign saved. Add an entry to record a source, medium and customer language.",
-          )}
-        </p>
-      )}
-      {legacy && <LegacyCampaignLink lang={lang} campaign={campaign} />}
-      {!adding && canManage && (
-        <button
-          className="campaign-workspace-action campaign-primary"
-          onClick={() => setAdding(true)}
-        >
-          {campaign.promotionLinks?.length
-            ? u("Add another promotion link")
-            : u("Add promotion link")}
-        </button>
       )}
       {adding && (
         <AdminForm lang={lang} onSubmit={save} className="campaign-promotion-form">

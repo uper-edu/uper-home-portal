@@ -1,5 +1,5 @@
 import type {CampaignPromotionLink} from '../types/crmCampaign.ts';
-import {promotionLandingPaths, promotionKindForMedium, promotionCodePattern, shortPromotionLinks} from './promotionNavigation';
+import {promotionLandingPaths, promotionKindForMedium, promotionCodePattern} from './promotionNavigation';
 
 export const PROMOTION_EXPERIENCE = 'questionnaire_assessment_consultation';
 export const PROMOTION_EXPERIENCE_LABEL = 'Questionnaire → assessment when applicable → AI consultation';
@@ -23,9 +23,16 @@ export function promotionInput(input: any) {
   throw Object.assign(Error('Check the landing page, promotion type and placement code.'), {status:400});
  return {...(landingPath ? {landingPath} : {}), ...(input.promotionKind !== undefined ? {promotionKind} : {}), ...(content ? {content} : {}), name:name||`${source} · ${medium} · ${input.language}`,source,medium,language:input.language as 'en'|'id'|'zh',experience:PROMOTION_EXPERIENCE as typeof PROMOTION_EXPERIENCE};
 }
-export function campaignPromotionUrl(code:string,link:CampaignPromotionLink,origin:string, short = shortPromotionLinks) {
+export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string) {
  const url=new URL(promotionLandingPaths.find(path => path === link.landingPath) ?? '/chat',origin);
- if (short) { url.searchParams.set('p', link.id); return url.toString(); }
- for(const [key,value] of Object.entries({c:code,p:link.id,lang:link.language,utm_campaign:code,utm_source:link.source,utm_medium:link.medium}))url.searchParams.set(key,value);
+ url.searchParams.set('p',link.id);
  return url.toString();
+}
+
+export function promotionIdPrefix(values: ReturnType<typeof promotionInput>) {
+ const landing = values.landingPath === '/' ? 'home' : (values.landingPath ?? '/chat').slice(1);
+ const kind = values.promotionKind ?? promotionKindForMedium(values.medium);
+ return [values.source.slice(0,20), kind,
+   (values.content || values.medium).toLowerCase().slice(0,24), landing, values.language]
+   .join('-').replaceAll('_','-');
 }

@@ -4,7 +4,7 @@
   "references": [
     {
       "path": "server/mysqlApplication.ts",
-      "sha256": "c6fae95459a03e3dbff7c05c822829f8300a20b9e4da342901262cda9fede0eb"
+      "sha256": "674cf0af21c15e0bd5911d8ea215eff816a2c1802383f9918df8d3ac7c522839"
     },
     {
       "path": "server/portal/identity.ts",

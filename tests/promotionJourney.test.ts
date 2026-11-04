@@ -6,7 +6,7 @@ import { analyticsContext, createAnalyticsClient } from '../src/utils/analyticsP
 import { campaignPromotionUrl } from '../src/utils/campaignPromotion';
 import { instagramBioCampaign, linkHubConsultUrl } from '../src/utils/instagramBioCampaign';
 import { lookupPromotion } from '../src/utils/promotionLookup';
-import { promotionIdentity, promotionJourneyUrl, type PublicPromotion } from '../src/utils/promotionNavigation';
+import { promotionIdentity, promotionJourneyUrl, websitePromotionUrl, type PublicPromotion } from '../src/utils/promotionNavigation';
 import { campaignPromotionResults } from '../src/utils/crmCampaignMetrics';
 
 const origin = 'http://localhost:3000';
@@ -25,7 +25,7 @@ test('Chapter six tagged paths keep one promotion ID and apply verified GA field
     const promotion: PublicPromotion = {id, source, medium, campaignId:campaignCode, campaignCode, content, landingPath,
       language:'id', promotionKind:medium==='paid_social'?'paid':'unpaid'};
     const link = {...instagramBioCampaign().promotionLinks![0], ...promotion};
-    const landing = new URL(campaignPromotionUrl(campaignCode, link, origin, true));
+    const landing = new URL(campaignPromotionUrl(link, origin));
     assert.equal(landing.pathname, landingPath);
     assert.equal(landing.search, '?p=' + id);
     const hub = landingPath === '/' ? new URL(promotionJourneyUrl('/link', landing.searchParams, 'homepage_widget'), origin) : landing;
@@ -54,8 +54,8 @@ test('handbook actions share their link context while untagged site and chat pat
     ['preview','view','download_click','share'].map(action => [id,action]));
   const homeChat = promotionJourneyUrl('/chat', new URLSearchParams(), 'homepage_widget');
   const homeHub = promotionJourneyUrl('/link', new URLSearchParams(), 'homepage_widget');
-  for (const path of [homeChat, homeHub, '/link', '/chat', linkHubConsultUrl(new URLSearchParams(), 'id', false)]) {
-    const result = analyticsContext({href:origin + path, bareInstagram:false,referrer:'https://www.google.com/search?q=PRIVATE'});
+  for (const path of [homeChat, homeHub, '/link', '/chat', linkHubConsultUrl(new URLSearchParams(), 'id')]) {
+    const result = analyticsContext({href:origin + path,referrer:'https://www.google.com/search?q=PRIVATE'});
     assert.equal(result.campaign_source, undefined);
     assert.equal(result.page_referrer, 'https://www.google.com/');
     assert.equal(result.source_basis,'untagged');
@@ -146,4 +146,16 @@ test('a delayed promotion response cannot replace the timed-out context', async 
     medium:'social',language:'zh',landingPath:'/link',promotionKind:'unpaid'}}));
   await new Promise<void>(resolve => setImmediate(resolve));
   assert.deepEqual(await lookupPromotion(params), result);
+});
+
+test('website presets preserve external attribution and give bare website entries distinct promotion IDs', () => {
+  assert.equal(websitePromotionUrl('/link', new URLSearchParams(), 'website'), '/link?p=home-link&entry_point=website');
+  assert.equal(websitePromotionUrl('/chat', new URLSearchParams(), 'homepage_widget'), '/chat?p=home-chat&entry_point=homepage_widget');
+  assert.equal(websitePromotionUrl('/chat', new URLSearchParams('p=bio-ig'), 'website'), '/chat?p=bio-ig&entry_point=website');
+  assert.equal(websitePromotionUrl('/chat', new URLSearchParams('utm_source=google'), 'website'), '/chat?utm_source=google&entry_point=website');
+  const result = analyticsContext({href:origin + '/chat?p=home-chat', promotion:{id:'home-chat',campaignId:'social-bio',
+    campaignCode:'social-bio',source:'website',medium:'internal',promotionKind:'unpaid',landingPath:'/chat',language:'id'}});
+  assert.equal(result.promotion_link_id,'home-chat');
+  assert.equal(result.campaign_source,undefined);
+  assert.equal(result.campaign_name,undefined);
 });

@@ -1,4 +1,4 @@
-import {promotionJourneyUrl} from '../utils/promotionNavigation';
+import {websitePromotionUrl} from '../utils/promotionNavigation';
 import {RegistrationSaveError,registrationSaveText} from '../services/registrationSave';
 import type {ChatRequestAction} from '../utils/chatRequestIntent';
 import {visitorKey} from '../services/visitorScope';
@@ -1396,7 +1396,7 @@ export default function AIChatbot() {
                             {chooseText(currentLang.startsWith('zh')?'zh':currentLang.startsWith('en')?'en':'id',showAssessmentCard?'收起':'详情',showAssessmentCard?'Hide':'Details',showAssessmentCard?'Tutup':'Rincian')}
                           </button>
                           <a 
-                            href={promotionJourneyUrl('/chat', new URLSearchParams(window.location.search), 'homepage_widget')}
+                            href={websitePromotionUrl('/chat', new URLSearchParams(window.location.search), 'homepage_widget', currentLang)}
                             onClick={() => trackEvent('link_click', {target:'consultation', entry_point:'homepage_widget'})}
                             className="text-[11px] font-semibold text-primary-600 hover:text-primary-800 underline decoration-primary-300 flex items-center gap-0.5 ml-1 whitespace-nowrap group cursor-pointer"
                             title={currentLang.startsWith('zh') ? '前往全景独立舱' : 'Open Placement Lab'}
@@ -1426,7 +1426,7 @@ export default function AIChatbot() {
                               {currentLang.startsWith('zh') ? '🎯 一键为该成绩定制规划' : '🎯 Tailor Study Plan'}
                             </button>
                             <a
-                              href={promotionJourneyUrl('/chat', new URLSearchParams(window.location.search), 'homepage_widget')}
+                              href={websitePromotionUrl('/chat', new URLSearchParams(window.location.search), 'homepage_widget', currentLang)}
                             onClick={() => trackEvent('link_click', {target:'consultation', entry_point:'homepage_widget'})}
                               className="py-1 px-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-[10px] rounded-lg transition-colors text-center cursor-pointer"
                             >

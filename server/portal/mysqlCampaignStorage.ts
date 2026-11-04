@@ -12,8 +12,7 @@ import {campaignMetrics, campaignPromotionResults} from '../../src/utils/crmCamp
 import {matchesCampaign} from '../../src/utils/crmCampaignLink.ts';
 import { createHash } from "node:crypto";
 import { allocateCampaignCode } from "./campaignCodeAllocation.ts";
-import { CAMPAIGN_LINK_PLACEHOLDER, resolveCampaignLinks } from "../../src/utils/campaignCode.ts";
-import { campaignChatLink } from "../../src/utils/crmCampaignLink.ts";
+import { CAMPAIGN_LINK_PLACEHOLDER } from "../../src/utils/campaignCode.ts";
 import { validCampaignBudget, CAMPAIGN_BUDGET_ERROR } from "../../src/utils/campaignBudget.ts";
 export function loadCampaigns(){return campaignsContext.getStore() || [];}
 export async function getCurrentCampaigns(employee?: any) {
@@ -117,7 +116,6 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
             || !["en","id","zh"].includes(record.boundUtm.defaultLang)) throw campaignError("campaign_entry_invalid",400);
         }
         if (operation.kind === "create") {
-          record.aiAssets = resolveCampaignLinks(record.aiAssets, campaignChatLink(code, process.env.APP_URL || "http://localhost:3000"));
           try {
             await db.query("INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3)", [campaignId, code, record]);
           } catch (error: any) {
@@ -163,6 +161,6 @@ export async function deleteCampaign(id: string) {
 export async function trackCampaignImpression(code:string){code=canonicalCampaignId(code);return tx(async(db:any)=>{const target=await campaignAliasTarget(code,db);const old=(await db.query("SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE",[target || code])).rows[0];if(!old)return false;old.record.stats.impressions=(old.record.stats.impressions||0)+1;await db.query("UPDATE trial_campaigns SET config=:p2 WHERE id=:p1",[old.id,old.record]);return true;});}
 export function getEnrichedCampaigns(leads:any[]=[]){const campaigns=loadCampaigns();const resolved=leads.filter(p=>campaigns.filter(c=>matchesCampaign(p,c)).length<=1);return campaigns.map(c=>({...c,stats:{...c.stats,...campaignMetrics(resolved,c),roi:null}}));}
 export async function getCampaignByIdOrCode(input:string){const canonical=canonicalCampaignId(input);const key=(await campaignAliasTarget(canonical) || canonical).toLowerCase();return loadCampaigns().find(c=>[c.id,c.code,c.name,c.nameEn].some(v=>v?.toLowerCase()===key));}
-export function synthesizeCampaignAiAssets(data:any){const title=data.name;const details=[data.startDate,data.startTime,data.venue,data.city].filter(Boolean).join(' · ');const link=data.code?campaignChatLink(data.code,process.env.APP_URL||'http://localhost:3000'):CAMPAIGN_LINK_PLACEHOLDER;const assets={posterHeading:title,posterSubheading:details,socialCopy:[title,details,link.toString()].join('\n'),whatsappInvitation:[title,details,link.toString()].join('\n'),chatWelcomeGreeting:title,presentationOutline:(data.keyTopics||[]).join('\n'),deskTentBullets:data.keyTopics||[]};return {...assets,idAssets:assets,enAssets:assets};}
+export function synthesizeCampaignAiAssets(data:any){const title=data.name;const details=[data.startDate,data.startTime,data.venue,data.city].filter(Boolean).join(' · ');const link=CAMPAIGN_LINK_PLACEHOLDER;const assets={posterHeading:title,posterSubheading:details,socialCopy:[title,details,link.toString()].join('\n'),whatsappInvitation:[title,details,link.toString()].join('\n'),chatWelcomeGreeting:title,presentationOutline:(data.keyTopics||[]).join('\n'),deskTentBullets:data.keyTopics||[]};return {...assets,idAssets:assets,enAssets:assets};}
 
 export async function ensureOrganicCampaign(){const record=organicCampaignRecord();await pool.query("INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id",[record.id,record]);const existing=(await pool.query("SELECT config FROM trial_campaigns WHERE id=:p1 AND code=:p1",[record.id])).rows[0]?.config;if(!existing?.systemManaged)throw Error("Reserved organic campaign conflicts with an existing record; review without rewriting history");}

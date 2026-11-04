@@ -392,7 +392,6 @@ function PromotionReviewCard({
           <a
             className="underline break-all"
             href={campaignPromotionUrl(
-              row.campaignCode,
               row.resolution.snapshot,
               window.location.origin,
             )}
@@ -400,7 +399,6 @@ function PromotionReviewCard({
             rel="noreferrer"
           >
             {campaignPromotionUrl(
-              row.campaignCode,
               row.resolution.snapshot,
               window.location.origin,
             )}

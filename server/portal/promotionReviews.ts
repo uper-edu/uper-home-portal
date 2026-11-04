@@ -1,4 +1,4 @@
-import {insertPromotionIndex} from './campaignPromotion.ts';
+import {createIndexedPromotion} from './campaignPromotion.ts';
 import {canReviewSourceAttribution,assertSourceAttributionReviewer} from './crmAccessControls.ts';
 import {auditLog} from './audit.ts';
 import crypto from 'node:crypto';
@@ -8,7 +8,7 @@ import {sourceKey} from './campaignSources.ts';
 import {campaignSourceEvidence} from './campaignSourceEvidence.ts';
 import {matchesCampaign} from '../../src/utils/crmCampaignLink.ts';
 import {promotionInput} from '../../src/utils/campaignPromotion.ts';
-import {assertEditableCampaign} from '../../src/utils/organicCampaign.ts';
+import {assertEditableCampaign,isEvergreenCampaign} from '../../src/utils/organicCampaign.ts';
 const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
 const permitted=(employee:any,profile?:any)=>{if(!employee||employee.active===false||!employee.permissions?.includes('campaigns.manage')||(profile&&!allowed(employee,profile)))fail(403,'Permission denied.');};
 const rawId=(p:any)=>String(p.rawPromotionLinkId||p.promotionLinkId||'');
@@ -68,9 +68,8 @@ export async function reviewPromotion(leadId:string,b:any,employee:any){
    if(b.action==='link'){
     selected=target.promotionLinks?.find((link:any)=>link.id===b.linkId);if(!selected)fail(400,'Choose a promotion entry belonging to this campaign.');
    }else{
-    assertEditableCampaign({...target,id:c.campaign.id});
-    const values=promotionInput(b.entry||{});selected={id:'p_'+crypto.randomUUID().replaceAll('-',''),...values,createdAt:new Date().toISOString()};
-    await insertPromotionIndex(db, selected.id, c.campaign.id);
+    if (!isEvergreenCampaign({...target,id:c.campaign.id})) assertEditableCampaign({...target,id:c.campaign.id});
+    selected=await createIndexedPromotion(db,c.campaign.id,promotionInput(b.entry||{}));
     await db.query('UPDATE trial_campaigns SET config=:p2 WHERE id=:p1',[c.campaign.id,{...target,promotionModel:'multiple',promotionLinks:[...(target.promotionLinks||[]),selected],updatedAt:selected.createdAt}]);
    }
   }

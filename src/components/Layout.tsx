@@ -1,4 +1,4 @@
-import {promotionJourneyUrl, promotionLandingPaths} from '../utils/promotionNavigation';
+import {promotionJourneyUrl, promotionLandingPaths, websitePromotionUrl} from '../utils/promotionNavigation';
 import VisitorBoundary from './VisitorBoundary';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -622,7 +622,7 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
   const promotionQuery = new URLSearchParams(location.search);
   const websiteEntry = location.pathname === '/' ? 'homepage_widget' : 'website';
   const journeyLink = (path: string) => promotionJourneyUrl(path, promotionQuery);
-  const footerEntry = (path: '/chat' | '/link') => promotionJourneyUrl(path, promotionQuery, websiteEntry);
+  const footerEntry = (path: '/chat' | '/link') => websitePromotionUrl(path, promotionQuery, websiteEntry, i18n.language);
   const { isApple } = useDesignStyle();
 
   return (

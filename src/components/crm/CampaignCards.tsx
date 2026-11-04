@@ -22,6 +22,7 @@ import {
 import { campaignName } from "../../utils/campaignWorkspace";
 import {
   isOrganicCampaign,
+  isEvergreenCampaign,
   organicCampaignName,
 } from "../../utils/organicCampaign";
 import {
@@ -325,7 +326,7 @@ export function CampaignCards({
                     value=""
                     options={[
                       { value: "materials", label: u("Materials") },
-                      ...(onEdit
+                      ...(onEdit && !isEvergreenCampaign(c)
                         ? [{ value: "edit", label: u("Edit information") }]
                         : []),
                     ]}

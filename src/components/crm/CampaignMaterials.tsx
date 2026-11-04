@@ -154,8 +154,7 @@ export function CampaignMaterials({
         )}
       </p>
       <CrmFormSection name="materialSetup" lang={lang}>
-      {(campaign.promotionModel === "multiple" ||
-        !!campaign.promotionLinks?.length) && (
+      {canEdit && (
         <div className="my-4">
           <CrmSelect
             label={u("Link to include in the template")}
@@ -256,7 +255,7 @@ export function CampaignMaterials({
             onClick={() => void generate()}
             disabled={
               busy ||
-              (campaign.promotionModel === "multiple" && !promotionLinkId)
+              !promotionLinkId
             }
           >
             {t("Prepare template", "Siapkan templat", "准备模板草稿")}

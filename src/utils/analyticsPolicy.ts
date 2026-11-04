@@ -1,4 +1,4 @@
-import {bareInstagramFallback, promotionEntryPoint, promotionIdentity, type PublicPromotion} from './promotionNavigation';
+import {isWebsitePromotion, promotionEntryPoint, promotionIdentity, type PublicPromotion} from './promotionNavigation';
 import { salesProgressStages } from "./crmSalesProgress";
 import { normalizeSiteLanguage, resolveMetadata } from "./siteMetadata";
 
@@ -15,7 +15,6 @@ export type AnalyticsInput = {
   internalTest?: boolean;
   promotion?: PublicPromotion;
   promotionState?: 'unverified' | 'unavailable';
-  bareInstagram?: boolean;
 };
 const privateRoots = new Set(["crm", "cms", "system", "studio"]);
 const crmTabs = new Set(["leads", "campaigns", "policy", "docs"]);
@@ -87,19 +86,17 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
   const verified = publicPage ? input.promotion : undefined;
   const unresolved = publicPage && !verified && (identity.invalid || url.searchParams.has("p"));
   const entry = publicPage ? promotionEntryPoint(url.searchParams.get("entry_point")) : undefined;
-  const dedicatedBio = publicPage && (input.bareInstagram ?? bareInstagramFallback) &&
-    url.pathname === "/link" && !identity.tagged && !entry;
-  const campaign = verified ? code(verified.campaignCode)
-    : dedicatedBio ? "instagram-bio"
+  const external = verified && !isWebsitePromotion(verified.id) ? verified : undefined;
+  const campaign = verified ? code(external?.campaignCode ?? null)
     : publicPage && !unresolved ? code(identity.campaign || url.searchParams.get("utm_campaign")) : undefined;
-  const source = verified ? code(verified.source) : dedicatedBio ? "instagram"
+  const source = verified ? code(external?.source ?? null)
     : publicPage && !unresolved ? code(url.searchParams.get("utm_source")) : undefined;
-  const medium = verified ? code(verified.medium) : dedicatedBio ? "social"
+  const medium = verified ? code(external?.medium ?? null)
     : publicPage && !unresolved ? code(url.searchParams.get("utm_medium")) : undefined;
   const term = publicPage && !unresolved && !verified ? code(url.searchParams.get("utm_term")) : undefined;
   const manualCampaignId = publicPage && !unresolved && !verified ? code(url.searchParams.get("utm_id")) : undefined;
   const content = publicPage && !unresolved
-    ? code(verified ? verified.content ?? null : url.searchParams.get("utm_content")) : undefined;
+    ? code(verified ? external?.content ?? null : url.searchParams.get("utm_content")) : undefined;
   return {
     page_location: url.origin + path,
     page_referrer: referrer,
@@ -122,15 +119,14 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
     ...(environment !== "production" ? { debug_mode: true } : {}),
     ...(input.buildId ? { app_version: input.buildId.slice(0, 64) } : {}),
     ...(campaign ? { campaign_name: campaign } : {}),
-    ...(verified || campaign || manualCampaignId ? { campaign_id: code(verified?.campaignId ?? null) ?? manualCampaignId ?? campaign } : {}),
+    ...(external || campaign || manualCampaignId ? { campaign_id: code(external?.campaignId ?? null) ?? manualCampaignId ?? campaign } : {}),
     ...(source ? { campaign_source: source } : {}),
     ...(medium ? { campaign_medium: medium } : {}),
     ...(content ? {campaign_content: content} : {}),
     ...(term ? {campaign_term: term} : {}),
     ...(verified ? {promotion_link_id: verified.id, promotion_kind: verified.promotionKind} : {}),
     ...(entry || url.pathname === "/chat" || url.pathname === "/consult" ? {entry_point: entry ?? "direct"} : {}),
-    source_basis: verified ? "verified_promotion" : unresolved ? (input.promotionState ?? "unverified") : dedicatedBio
-      ? "dedicated_entry"
+    source_basis: verified ? "verified_promotion" : unresolved ? (input.promotionState ?? "unverified")
       : campaign || source || medium
         ? "campaign_parameter"
         : "untagged",

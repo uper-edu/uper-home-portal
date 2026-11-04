@@ -21,12 +21,12 @@ const make = (href: string, mode = "prod") =>
     referrer:
       "https://www.instagram.com/uper.education/?email=private@example.test",
   });
-test("bare Bio entry sets campaign source before any event without changing its visible URL", () => {
+test("bare link hub does not infer a promotion from the URL", () => {
   const c = make("https://uperedu.com/link");
-  assert.equal(c.campaign_source, "instagram");
-  assert.equal(c.campaign_medium, "social");
-  assert.equal(c.campaign_id, "instagram-bio");
-  assert.equal(c.source_basis, "dedicated_entry");
+  assert.equal(c.campaign_source, undefined);
+  assert.equal(c.campaign_medium, undefined);
+  assert.equal(c.campaign_id, undefined);
+  assert.equal(c.source_basis, "untagged");
   assert.equal(c.page_location, "https://uperedu.com/link");
   assert.equal(c.page_referrer, "https://www.instagram.com/");
   const chat = make("https://uperedu.com/chat");

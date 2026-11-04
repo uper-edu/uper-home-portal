@@ -69,7 +69,7 @@ test("published environment reference remains aligned with the build mapping and
     "internal_test",
     "analytics_test=1",
     "analytics_test=0",
-    "dedicated_entry",
+    "verified_promotion",
     "untagged",
     "questionnaire_complete",
     "course_enrollment_confirmed",

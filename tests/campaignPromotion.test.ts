@@ -2,12 +2,14 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {createServer} from 'node:net';
-import {promotionInput,campaignPromotionUrl,PROMOTION_EXPERIENCE} from '../src/utils/campaignPromotion.ts';
+import {promotionInput,promotionIdPrefix,campaignPromotionUrl,PROMOTION_EXPERIENCE} from '../src/utils/campaignPromotion.ts';
 test('promotion configuration validates actual experience, source encoding and canonical link',()=>{
  const v=promotionInput({source:' Instagram ',medium:'paid_social',language:'en',experience:PROMOTION_EXPERIENCE});
  assert.equal(v.source,'instagram');
- const u=new URL(campaignPromotionUrl('legacy+code',{id:'p_123',...v,createdAt:''},'https://example.test'));
- assert.equal(u.searchParams.get('c'),'legacy+code');assert.equal(u.searchParams.get('p'),'p_123');assert.equal(u.searchParams.get('utm_source'),'instagram');assert.equal(u.searchParams.get('lang'),'en');
+ assert.equal(promotionIdPrefix(v),'instagram-paid-paid-social-chat-en');
+ assert.equal(promotionIdPrefix(promotionInput({...v,landingPath:'/link',content:'Profile_Bio'})),'instagram-paid-profile-bio-link-en');
+ const u=new URL(campaignPromotionUrl({id:'p_123',...v,createdAt:''},'https://example.test'));
+ assert.equal(u.search,'?p=p_123');
  for(const bad of [{source:'x?x=1'},{medium:'qr'},{language:'xx'},{experience:'trial_class'}])assert.throws(()=>promotionInput({...v,...bad}));
 });
 if(process.env.MYSQL_NATIVE_TEST_ENV){

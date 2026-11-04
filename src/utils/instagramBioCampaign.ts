@@ -1,6 +1,6 @@
 import type { CampaignPromotionLink, CrmCampaignRecord } from '../types/crmCampaign';
 import { PROMOTION_EXPERIENCE } from './campaignPromotion';
-import {bareInstagramFallback, promotionEntryPoint, promotionIdentity, promotionJourneyUrl} from './promotionNavigation';
+import {promotionJourneyUrl} from './promotionNavigation';
 
 export const INSTAGRAM_BIO_CAMPAIGN = 'instagram-bio';
 export const INSTAGRAM_BIO_PRESET = 'instagram_bio_v1';
@@ -29,16 +29,8 @@ export function instagramBioCampaign(at = new Date().toISOString()): CrmCampaign
   };
 }
 
-export function linkHubConsultUrl(input: URLSearchParams, language: 'en' | 'id' | 'zh', fallback = bareInstagramFallback) {
-  const source = new URLSearchParams(input);
-  if (fallback && !promotionIdentity(source).tagged && !promotionEntryPoint(source.get('entry_point'))) {
-    source.set('c', INSTAGRAM_BIO_CAMPAIGN);
-    source.set('p', `p_instagram_bio_${language}`);
-    source.set('utm_source', 'instagram');
-    source.set('utm_medium', 'social');
-    source.set('utm_campaign', INSTAGRAM_BIO_CAMPAIGN);
-  }
-  return promotionJourneyUrl('/chat?' + new URLSearchParams({lang:language}), source, 'linkhub');
+export function linkHubConsultUrl(input: URLSearchParams, language: 'en' | 'id' | 'zh') {
+  return promotionJourneyUrl('/chat?' + new URLSearchParams({lang:language}), input, 'linkhub');
 }
 
 export function isInstagramBioPromotion(value: CampaignPromotionLink, language: string) {

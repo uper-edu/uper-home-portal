@@ -48,6 +48,6 @@ test("chapter six has six directory entries and stable deep links", () => {
   assert.match(html, /href="#crm-guide-promotion-attribution-examples"[^>]*aria-current="page"/);
   assert.match(html, /第六章 · 推广链接、来源归因与转化跟踪/);
   assert.match(html, /6\.6/);
-  assert.match(html, /待实施/);
+  assert.match(html, /当前设计和验收口径/);
   assert.match(html, /https:\/\/github\.com\/uper-edu\/uper-home-portal\/blob\/main\/server\/portal\/campaignPromotion\.ts/);
 });

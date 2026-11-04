@@ -18,16 +18,17 @@ test('distribution links use each current environment origin and open /link befo
   const c = instagramBioCampaign(at);
   for (const origin of ['http://localhost:3000', 'https://home.prototype.uperedu.com', 'https://www.uperedu.com']) {
     for (const link of c.promotionLinks!) {
-      const bio = new URL(campaignPromotionUrl(c.code, link, origin));
+      const bio = new URL(campaignPromotionUrl(link, origin));
       assert.equal(bio.origin, origin); assert.equal(bio.pathname, '/link');
       const chat = new URL(linkHubConsultUrl(bio.searchParams, link.language), origin);
       assert.equal(chat.origin, origin); assert.equal(chat.pathname, '/chat');
-      for (const key of ['c', 'p', 'utm_source', 'utm_medium', 'utm_campaign', 'lang']) assert.equal(chat.searchParams.get(key), bio.searchParams.get(key));
-      assert.equal(chat.searchParams.get('utm_medium'), 'social');
+      assert.equal(bio.search, '?p=' + link.id);
+      assert.equal(chat.searchParams.get('p'), link.id);
+      assert.equal(chat.searchParams.get('lang'), link.language);
     }
   }
   const old = {id:'p_other', name:'Other', source:'instagram', medium:'paid_social', language:'en' as const, experience:PROMOTION_EXPERIENCE, createdAt:at};
-  assert.equal(new URL(campaignPromotionUrl('ordinary', old, 'https://example.test')).pathname, '/chat');
+  assert.equal(new URL(campaignPromotionUrl(old, 'https://example.test')).pathname, '/chat');
 });
 test('language switching preserves the original promotion ID and does not repair mismatches', () => {
   const original = new URLSearchParams('c=instagram-bio&p=p_instagram_bio_id&utm_source=instagram&utm_medium=social&utm_campaign=instagram-bio');
@@ -40,17 +41,17 @@ test('language switching preserves the original promotion ID and does not repair
     assert.equal(output.searchParams.get('p'), input.get('p')); assert.equal(output.searchParams.get('c'), input.get('c'));
   }
   const plain = new URL(linkHubConsultUrl(new URLSearchParams('redirect=https://other.test&lead=private'), 'zh'), 'https://example.test');
-  assert.equal(plain.pathname, '/chat'); assert.equal(plain.searchParams.get('c'), INSTAGRAM_BIO_CAMPAIGN);
-  assert.equal(plain.searchParams.get('p'), 'p_instagram_bio_zh');
+  assert.equal(plain.pathname, '/chat'); assert.equal(plain.searchParams.get('c'), null);
+  assert.equal(plain.searchParams.get('p'), null);
   assert.equal(plain.searchParams.get('redirect'), null); assert.equal(plain.searchParams.get('lead'), null);
   const lead = {campaignId:'original',campaign:'Original'};
   assert.deepEqual(firstTouchAttribution(lead, {campaignId:INSTAGRAM_BIO_CAMPAIGN}), lead);
 });
-test('bare dedicated /link supplies Bio attribution in the consultation link; a plain /chat retains the existing organic default', () => {
+test('bare /link leaves attribution unspecified in the consultation link; a plain /chat retains the existing organic default', () => {
   for (const lang of ['id','en','zh'] as const) {
     const next = new URL(linkHubConsultUrl(new URLSearchParams(), lang), 'https://example.test');
-    assert.equal(next.searchParams.get('utm_source'),'instagram'); assert.equal(next.searchParams.get('utm_medium'),'social');
-    assert.equal(next.searchParams.get('p'), 'p_instagram_bio_'+lang);
+    assert.equal(next.searchParams.get('utm_source'),null); assert.equal(next.searchParams.get('utm_medium'),null);
+    assert.equal(next.searchParams.get('p'), null);
   }
   assert.deepEqual(firstTouchAttribution({}, {}), {campaign:'organic', campaignId:'organic'});
 });

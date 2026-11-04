@@ -1,3 +1,4 @@
+import evergreenLinks from '../../src/data/evergreenPromotionLinks.json' with {type:'json'};
 import {syncPromotionIndex} from './promotion-index.mjs';
 import defaults from './system-defaults.json' with {type:'json'};
 import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
@@ -13,7 +14,8 @@ export async function initializeSystemDefaults(c){
   ...instagram, id:'social-bio', code:'social-bio', presetKey:'social_bio_v1',
   name:'日常自然推广', nameEn:'Evergreen unpaid promotion', nameId:'Promosi rutin tanpa biaya',
   boundUtm:{...instagram.boundUtm,utm_source:'',utm_medium:'',utm_campaign:'social-bio'},
-  promotionLinks:[],
+  systemManaged:true,
+  promotionLinks:evergreenLinks.map(link=>({...link,language:'id',promotionKind:'unpaid',experience:'questionnaire_assessment_consultation',createdAt:at})),
  });
  await c.beginTransaction();
  try{
@@ -23,7 +25,20 @@ export async function initializeSystemDefaults(c){
    await c.execute('INSERT INTO trial_campaigns(id,code,config) VALUES(?,?,?) ON DUPLICATE KEY UPDATE id=id',[record.id,record.code,JSON.stringify(record)]);
    const [rows]=await c.execute('SELECT id,code,config FROM trial_campaigns WHERE id=? OR code=?',[record.id,record.code]);
    const saved=rows[0],config=typeof saved?.config==='string'?JSON.parse(saved.config):saved?.config;
-   if(rows.length!==1||saved.id!==record.id||saved.code!==record.code||record.systemManaged&&!config?.systemManaged||record.presetKey&&config?.presetKey!==record.presetKey)throw Error('System campaign reserved identity conflict: '+record.id);
+   if(rows.length!==1||saved.id!==record.id||saved.code!==record.code||record.systemManaged&&record.id!=='social-bio'&&!config?.systemManaged||record.presetKey&&config?.presetKey!==record.presetKey)throw Error('System campaign reserved identity conflict: '+record.id);
+   if (record.id==='social-bio') {
+    const existing=config.promotionLinks ?? [];
+    for (const preset of record.promotionLinks) {
+     const found=existing.find(link=>link.id===preset.id);
+     if(found && Object.keys(preset).some(key=>key!=='createdAt' && found[key]!==preset[key]))
+      throw Error('System promotion reserved identity conflict: '+preset.id);
+    }
+    const missing=record.promotionLinks.filter(preset=>!existing.some(link=>link.id===preset.id));
+    if (missing.length || !config.systemManaged) {
+     const next={...config,systemManaged:true,promotionLinks:[...existing,...missing],updatedAt:at};
+     await c.execute('UPDATE trial_campaigns SET config=? WHERE id=?',[JSON.stringify(next),record.id]);
+    }
+   }
   }
   await c.execute('INSERT INTO access_roles(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',['finance',JSON.stringify(defaults.finance)]);
   const larkPreset = defaults.crmLarkBot;

@@ -27,7 +27,7 @@ export default defineConfig(({mode}) => {
   return {
     // Vite must not silently merge legacy .env / .env.local files across targets.
     envDir: false,
-    define: {...Object.fromEntries(Object.entries(env).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)])),__UPER_ANALYTICS__:JSON.stringify(analytics),__UPER_PROMOTION_SHORT_LINKS__:JSON.stringify(env.VITE_PROMOTION_SHORT_LINKS==='true'),__UPER_PROMOTION_BARE_INSTAGRAM__:JSON.stringify(env.VITE_PROMOTION_BARE_INSTAGRAM!=='false'),__UPER_BUILD__:process.env.UPER_BUILD_IDENTITY?JSON.stringify(publicBuildIdentity(JSON.parse(process.env.UPER_BUILD_IDENTITY))):'null'},
+    define: {...Object.fromEntries(Object.entries(env).map(([key,value])=>['import.meta.env.'+key,JSON.stringify(value)])),__UPER_ANALYTICS__:JSON.stringify(analytics),__UPER_BUILD__:process.env.UPER_BUILD_IDENTITY?JSON.stringify(publicBuildIdentity(JSON.parse(process.env.UPER_BUILD_IDENTITY))):'null'},
     plugins: [react(), tailwindcss(), preventFetchOverwritePlugin()],
     build: {
       outDir: 'dist',

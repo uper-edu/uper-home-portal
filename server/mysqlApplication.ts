@@ -5,7 +5,6 @@ import {campaignPromotionUrl} from "../src/utils/campaignPromotion.ts";
 import {addCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
-import {campaignChatLink} from "../src/utils/crmCampaignLink.ts";
 import {listCampaignSources,reviewCampaignSource} from './portal/campaignSources.ts';
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
@@ -105,8 +104,8 @@ app.post('/api/crm/campaigns/:id/templates',wrap(async(q:any,r:any)=>{
  const c=await getCampaignByIdOrCode(q.params.id);if(!c)return r.status(404).json({error:'campaign_not_found'});
  if(!['en','id','zh'].includes(q.body.lang))return r.status(400).json({error:'campaign_entry_invalid'});
  const link=c.promotionLinks?.find((link:any)=>link.id===q.body.promotionLinkId);
- if((q.body.promotionLinkId&&!link)||(c.promotionModel==='multiple'&&!link))return r.status(400).json({error:'Select a saved promotion link before preparing materials.'});
- r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),link?campaignPromotionUrl(c.code,link,process.env.APP_URL||'http://localhost:3000',process.env.VITE_PROMOTION_SHORT_LINKS==='true'):campaignChatLink(c.code,process.env.APP_URL||'http://localhost:3000'))});
+ if(!link)return r.status(400).json({error:'Select a saved promotion link before preparing materials.'});
+ r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),campaignPromotionUrl(link,process.env.APP_URL||'http://localhost:3000'))});
 }));
 app.post('/api/crm/campaigns/ai-generate',wrap(async(q:any,r:any)=>{if(typeof q.body.name!=='string'||!q.body.name.trim())return r.status(400).json({error:'Campaign name required'});r.json({success:true,aiAssets:synthesizeCampaignAiAssets(q.body)});}));
 app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/impression'],wrap(async(q:any,r:any)=>r.json({success:await trackCampaignImpression(q.params.idOrCode)})));
