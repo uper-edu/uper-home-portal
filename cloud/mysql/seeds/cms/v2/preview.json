@@ -1,0 +1,21 @@
+{
+  "collections": {
+    "news": 20,
+    "newsPage": 7,
+    "partners": 54,
+    "trendingPrograms": 8,
+    "studentStories": 5,
+    "campaigns": 2,
+    "admissionsList": 1,
+    "programGallery": 9
+  },
+  "content": 106,
+  "media": 208,
+  "bytes": 51352764,
+  "programGallery": {
+    "hsk": 3,
+    "csca": 2,
+    "consultancy": 2,
+    "tours": 2
+  }
+}
