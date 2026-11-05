@@ -54,8 +54,17 @@ export function firstMissingAdminField(root:HTMLElement){
  const fields=Array.from(root.querySelectorAll<HTMLInputElement>('input[required],textarea[required],select[required],[role="combobox"][aria-required="true"]'));
  return fields.find(field=>!field.matches(':disabled')&&!field.readOnly&&field.getClientRects().length>0&&(field.getAttribute('role')==='combobox'?field.dataset.adminHasValue==='false':!field.checkValidity()));
 }
+export function adminFieldValidationMessage(field:HTMLInputElement,lang='zh'){
+ const label=adminFieldName(field.getAttribute('aria-label')||field.labels?.[0]?.textContent||'');
+ const missing=field.getAttribute('role')==='combobox'?field.dataset.adminHasValue==='false':field.validity.valueMissing;
+ // A required field may be populated but fail another native constraint.
+ if(missing)return lang==='zh'?'请填写必填项：'+label:lang==='id'?'Lengkapi kolom wajib: '+label:'Complete the required field: '+label;
+ if(field.validity?.tooShort)return lang==='zh'?`${label}：至少输入 ${field.minLength} 个字符`:lang==='id'?`${label}: Masukkan minimal ${field.minLength} karakter`:`${label}: Enter at least ${field.minLength} characters`;
+ if(field.validity?.tooLong)return lang==='zh'?`${label}：最多输入 ${field.maxLength} 个字符`:lang==='id'?`${label}: Masukkan maksimal ${field.maxLength} karakter`:`${label}: Enter no more than ${field.maxLength} characters`;
+ return lang==='zh'?'请检查填写内容：'+label:lang==='id'?'Periksa isian: '+label:'Check the value for: '+label;
+}
 /** Validation is a preflight only: callers keep the same submit, idempotency and result-query mechanism. */
 export function AdminForm({children,lang='zh',...props}:any){
  const[error,setError]=useState('');
- return <form {...props} data-admin-form="" noValidate onSubmitCapture={e=>{props.onSubmitCapture?.(e);if(e.defaultPrevented)return;const field=firstMissingAdminField(e.currentTarget);if(field){e.preventDefault();e.stopPropagation();field.focus();const label=field.getAttribute('aria-label')||field.labels?.[0]?.textContent||'';setError(lang==='zh'?'请填写必填项：'+adminFieldName(label):lang==='id'?'Lengkapi kolom wajib: '+adminFieldName(label):'Complete the required field: '+adminFieldName(label));field.setAttribute('aria-invalid','true');field.setAttribute('data-admin-invalid','true');}else setError('');}} onInputCapture={e=>{props.onInputCapture?.(e);const field=e.target as HTMLElement;if(field.dataset.adminInvalid){field.removeAttribute('aria-invalid');field.removeAttribute('data-admin-invalid');}setError('');}}>{error&&<p role="alert" className="admin-required-error">{error}</p>}{children}</form>;
+ return <form {...props} data-admin-form="" noValidate onSubmitCapture={e=>{props.onSubmitCapture?.(e);if(e.defaultPrevented)return;const field=firstMissingAdminField(e.currentTarget);if(field){e.preventDefault();e.stopPropagation();field.focus();setError(adminFieldValidationMessage(field,lang));field.setAttribute('aria-invalid','true');field.setAttribute('data-admin-invalid','true');}else setError('');}} onInputCapture={e=>{props.onInputCapture?.(e);const field=e.target as HTMLElement;if(field.dataset.adminInvalid){field.removeAttribute('aria-invalid');field.removeAttribute('data-admin-invalid');}setError('');}}>{error&&<p role="alert" className="admin-required-error">{error}</p>}{children}</form>;
 }
