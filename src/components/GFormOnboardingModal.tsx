@@ -383,7 +383,7 @@ export default function GFormOnboardingModal({
             </div>
           </div>
 
-          {campaignMeta && canonicalCampaignId(campaignMeta.id)!=='organic' && (
+          {campaignMeta && !['organic', 'social-bio'].includes(canonicalCampaignId(campaignMeta.id)) && (
             <div className="mb-3 p-2.5 bg-emerald-500/15 border border-emerald-400/30 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-200">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-300 font-bold text-[10px] uppercase tracking-wider">
