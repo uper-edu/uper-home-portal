@@ -79,6 +79,17 @@
 .campaign-source-review>.crm-form-section>.admin-form-section-body{padding-bottom:0}
 .campaign-source-review.crm-form-layout>.crm-source-review-actions{margin-top:0;gap:8px}
 
+.crm-promotion-editor fieldset{min-inline-size:0;margin:0;padding:0;border:0}
+.crm-promotion-editor .admin-form-section-body{padding-bottom:0}
+.crm-promotion-editor .crm-detail-choice{--cf-control-height:40px;--cf-radius:10px;font-size:14px;line-height:1.6}
+.crm-promotion-editor .admin-field input{height:40px;padding-block:0}
+.crm-promotion-custom-source{grid-column:1/-1}
+.crm-promotion-placement{display:grid;gap:var(--admin-form-label-gap)}
+.campaign-placement-suggestions{display:flex;flex-wrap:wrap;gap:8px}
+.campaign-placement-suggestions>button{min-height:40px}
+.crm-promotion-editor .admin-form-guide{border-top:1px solid var(--af-border);padding-top:var(--admin-form-field-gap)}
+.crm-promotion-editor .admin-form-guide p{font-size:13px;color:var(--af-muted)}
+
 .crm-stage-current{display:inline;font-size:14px;font-weight:400;line-height:inherit;color:var(--admin-muted)}
 /* Stage decisions keep compact choices and a single, selected-stage explanation. */
 .crm-stage-drawer .crm-stage-options>label{align-items:center;min-height:44px;padding:8px 12px;gap:8px}

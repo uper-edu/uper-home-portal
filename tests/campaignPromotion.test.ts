@@ -29,6 +29,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
   assert.equal((await req('/api/crm/campaigns',body)).data.campaign.id,c.id);
   const input={source:'instagram',medium:'paid_social',language:'en',experience:PROMOTION_EXPERIENCE,requestId:randomUUID()};
   const first=await req(`/api/crm/campaigns/${c.id}/links`,input);assert.equal(first.status,200);const a=first.data.link;
+  assert.match(a.id,/^instagram-paid-social-\d{12}(?:-\d+)?$/);
   await t.test('retry ten times and concurrent adds preserve every immutable link',async()=>{
    for(let i=0;i<10;i++)assert.equal((await req(`/api/crm/campaigns/${c.id}/links`,input)).data.link.id,a.id);
    assert.equal((await req(`/api/crm/campaigns/${c.id}/links`,{...input,medium:'poster'})).status,409);
