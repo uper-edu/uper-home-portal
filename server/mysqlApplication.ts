@@ -25,6 +25,7 @@ import {startWorker,stopWorker} from './portal/worker.ts';
 import {pool,tx} from './portal/store.ts';
 import {nativePool} from '../cloud/mysql/runtime.mjs';
 import {mountSite} from '../cloud/mysql/site.mjs';
+import {approvedRemoteDevelopment} from '../cloud/mysql/transport.mjs';
 import {platform} from './portal/identity.ts';
 import {visitor} from './portal/runtime.ts';
 import {leadTier,taskDeadline} from './portal/followup.ts';
@@ -43,7 +44,9 @@ const activeLocal=process.env.TRIAL_DATASET==='local-crm'&&process.env.PORTAL_LO
 if(!activeLocal&&process.env.TRIAL_DATASET!=='synthetic')throw Error('Migration-copy databases cannot run the application');
 if(process.env.PLATFORM_MODE!=='local')throw Error('Local acceptance only; server deployment requires a separate gate');
 const port=deployment?.port || Number(process.env.PORT || 4412);
-if(!Number.isInteger(port)||port<1024||port>65535||(port===3000&&!activeLocal))throw Error('Independent local MySQL port required; 3000 cutover not authorized');
+const remoteDev=approvedRemoteDevelopment(process.env);
+if(remoteDev&&(port!==3000||process.env.PORTAL_WORKER_ENABLED==='true'))throw Error('Remote development requires port 3000 and no notification worker');
+if(!Number.isInteger(port)||port<1024||port>65535||(port===3000&&!activeLocal&&!remoteDev))throw Error('Independent local MySQL port required; 3000 cutover not authorized');
 const faults=process.env.PORTAL_FAULT_TEST==='true';
 if(!faults && ['TRIAL_MODEL_STUB','TRIAL_PRIMARY_FAILURE','TRIAL_CONTENT_FAILURE_ONCE','TRIAL_FOLLOWUP_FAILURE_ONCE'].some(k=>process.env[k]==='true'))throw Error('Fault injection requires explicit local test mode');
 let modelStub:any;

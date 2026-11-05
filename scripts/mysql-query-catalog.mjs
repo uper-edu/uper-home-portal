@@ -11,6 +11,8 @@ const sources = fs
     "server/mysqlApplication.ts",
     "server/siteMetadata.ts",
     "cloud/mysql/site.mjs",
+    "cloud/mysql/cms-media-upload.mjs",
+    "cloud/mysql/cms-seed.mjs",
     "cloud/mysql/runtime.mjs",
     "scripts/portal-migrate.ts",
     "scripts/crm-channel-map.ts",

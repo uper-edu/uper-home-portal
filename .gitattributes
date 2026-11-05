@@ -1,0 +1,6 @@
+# CMS bundle checksums must be stable on Windows and Unix checkouts.
+/cloud/mysql/seeds/cms/v2/*.json text eol=lf
+/cloud/mysql/seeds/cms/v2/*.md text eol=lf
+/cloud/mysql/seeds/cms/v2/*.mjs text eol=lf
+/cloud/mysql/seeds/cms/v2/SHA256SUMS text eol=lf
+/cloud/mysql/seeds/cms/v2/media/*.webp binary

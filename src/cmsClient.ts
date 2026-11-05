@@ -31,28 +31,29 @@ export function urlFor(source: any) {
     }
   }
 
+  const sanityImage = /^https:\/\/cdn\.sanity\.io\//.test(rawUrl);
   const helper: any = {
     width: (w: number) => {
-      if (rawUrl && !rawUrl.includes('w=')) {
+      if (sanityImage && !rawUrl.includes('w=')) {
         rawUrl += (rawUrl.includes('?') ? '&' : '?') + `w=${w}`;
       }
       return helper;
     },
     height: (h: number) => {
-      if (rawUrl && !rawUrl.includes('h=')) {
+      if (sanityImage && !rawUrl.includes('h=')) {
         rawUrl += (rawUrl.includes('?') ? '&' : '?') + `h=${h}`;
       }
       return helper;
     },
     fit: () => helper,
     auto: () => {
-      if (rawUrl && !rawUrl.includes('auto=')) {
+      if (sanityImage && !rawUrl.includes('auto=')) {
         rawUrl += (rawUrl.includes('?') ? '&' : '?') + `auto=format`;
       }
       return helper;
     },
     quality: (q: number) => {
-      if (rawUrl && !rawUrl.includes('q=')) {
+      if (sanityImage && !rawUrl.includes('q=')) {
         rawUrl += (rawUrl.includes('?') ? '&' : '?') + `q=${q}`;
       }
       return helper;

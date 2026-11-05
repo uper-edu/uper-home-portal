@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { isIP } from 'node:net';
-import {mysqlTlsRequired} from './transport.mjs';
+import {mysqlTlsRequired,approvedRemoteDevelopment} from './transport.mjs';
 
 // No fallback to DATABASE_URL: this runtime must never connect to local CRM.
 export function validateTrialDatabase(env) {
+  if(env.PORTAL_DEPLOYMENT==='remote-dev'&&!approvedRemoteDevelopment(env))throw Error('Unapproved remote development database');
   const activeLocal=env.TRIAL_DATASET==='local-crm'&&env.PORTAL_LOCAL_CUTOVER==='true';
   if (!activeLocal && env.TRIAL_DATASET !== 'synthetic' && !(env.TRIAL_DATASET==='migration-copy' && env.PORTAL_MIGRATION_REHEARSAL==='true')) throw Error('Synthetic trial dataset or explicit offline migration rehearsal is required');
   const url = new URL(env.MYSQL_TRIAL_URL || '');

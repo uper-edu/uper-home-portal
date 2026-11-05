@@ -13,7 +13,7 @@ Local3000 uses its existing MySQL database. Do not start another process, replac
 | SLA, work hours and automatic assignment | [CRM policy defaults](../src/types/crmPolicyConfig.ts) and CRM policy settings | Code supplies defaults where applicable. CRM saves environment-specific settings in MySQL. |
 | Notification rules and delivery limits | [Rule defaults](../server/portal/policy.ts), [Lark defaults](../src/utils/larkNotificationDefaults.ts) and CRM notification settings | CRM uses saved rules and channels for delivery. |
 | Webhook URLs, signing secrets and other credentials | [Server environment configuration](environment-configuration.md) | The service reads the environment values at startup. The channel record stores the variable name. |
-| Initial CMS content and images | [CMS initialization bundle v2](../cloud/mysql/seeds/cms/v2/README.md). Edit imported content in CMS. | Preview the bundle, then run the importer against the approved empty local development database. |
+| Initial CMS content and images | [CMS initialization bundle v2](../cloud/mysql/seeds/cms/v2/README.md) and [COS/bootstrap operations](operations/cms-cos-bootstrap.md). Edit imported content in CMS. | Explicitly publish and verify COS resources, then import URL metadata into an approved empty CMS; existing databases require a reviewed incremental migration. |
 
 The CRM Lark Bot preset creates a missing `CRM_Leads_Update` channel when `LARK_GROUP_CRM` contains a valid Webhook URL. It creates the channel in live mode with the shared hourly limit and signing disabled by default. Match the signing setting to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
 

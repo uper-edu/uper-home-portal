@@ -1,0 +1,88 @@
+# CMS COS 存储与生产初始化
+
+## 数据来源与范围
+
+- CMS：仓库 `cloud/mysql/seeds/cms/v2`，8类106条内容、208张图片。
+- 账号：用户指定SQL备份中的全部账号、原密码哈希、角色及权限状态；不重设密码。
+- 完整初始化包：40张表（schema v16），不含外键；9账号、6角色、10权限状态记录、项目CMS及必要系统活动和课程初值。
+- 不包含旧登录会话、审计、客户对话、待发送任务或通知凭据。生产必须单独配置集成凭据。
+- 最终SQL是空库初始化包，不是验收完成后的无筛选全库备份。账号哈希仍是敏感信息，不提交Git、不公开分享。
+
+## 存储配置
+
+服务器设置以下变量（真实值只放私有环境文件或部署秘密管理）：
+
+```dotenv
+PORTAL_COS_BUCKET=uper-portal-public-20261104191752-1433456541
+PORTAL_COS_REGION=ap-jakarta
+PORTAL_COS_PREFIX=cms/
+PORTAL_COS_SECRET_ID=REPLACE_WITH_SCOPED_SECRET_ID
+PORTAL_COS_SECRET_KEY=REPLACE_WITH_SCOPED_SECRET_KEY
+PORTAL_COS_SECURITY_TOKEN=
+```
+
+凭据限定目标桶的 `cms/` 前缀，服务端需要读取和上传权限。对象应允许匿名HTTPS读取；不需要前端直传凭据。工具不修改桶ACL、CORS或策略，不提供对象删除。
+
+新媒体结构：`storage_type='cos'`、`cos_url`、`object_key`、`byte_size`，`content=NULL`。对象键按最终WebP字节SHA-256命名。上传前核对已有对象，不覆盖不同内容；上传后公开下载验证摘要。内容JSON保存永久无签名URL，不保存过期签名地址。
+
+保留原上传权限、同源保护、2MB和像素上限、WebP转码、请求幂等。网络上传不持有数据库行锁；事务提交失败不返回成功，也不删除可能被其他记录引用的对象。同一请求可重试或查询原操作结果。
+
+## 本次开发目标
+
+应用：本地 `http://localhost:3000`；数据库：获准的 `cn60.monite.cn:3306/uper_trial_home`。
+
+用户单独批准此dev目标直接连接：`PORTAL_DEPLOYMENT=remote-dev`、`PORTAL_REMOTE_DEV_APPROVED=true`、`PORTAL_ENV=dev`、`TRIAL_DATASET=synthetic`，并使用 `MYSQL_TLS_MODE=disabled`。该连接不受TLS加密保护，只限精确主机、端口、库名；不能复制到prod。其他远端TLS及既有生产安全规则不变。
+
+该开发模式要求应用端口3000，不允许启动通知worker。未修改既有通知发送配置或重放任务。运行需Node >=24；本次未另建数据库或启用额外应用端口。
+
+## 初始化与增量操作
+
+首先只读预检并备份，命令参数只传文件路径，不传密码：
+
+```sh
+node scripts/cms-bootstrap-preflight.mjs SOURCE.sql PRIVATE_ENV NEW_PRIVATE_BACKUP_DIRECTORY
+node scripts/cms-seed-publish.mjs PRIVATE_ENV NEW_PRIVATE_RECEIPT.json
+node --import tsx scripts/cms-bootstrap-apply.mjs preview PRIVATE_BACKUP/before-cos.json PRIVATE_RECEIPT.json NEW_PRIVATE_OUTPUT
+```
+
+`cms-bootstrap-preflight` 会读取所有现有表作为本次变更前私有快照，核对账号、权限和CMS差异。该快照可能含敏感数据，必须位于受保护且Git忽略的位置，使用新的输出目录，不能覆盖旧快照。
+
+确认目标和差异后执行 `apply`。它是针对经核验的现有库的一次增量操作：升级schema、在事务中精确改媒体引用并补齐URL元数据，保留非媒体内容及现有更新时间，对变化的条目/集合递增并发版本。不用于强制覆盖其他CMS内容。执行前和事务内均检查内容是否变化；DDL中断会留下迁移状态，需排查后恢复，不自动删表重来。不得在已经执行成功后盲目重复apply；先核对回执及库状态。新运行在写库前建立 `bootstrap-state.json`，固定输入摘要和导出时间；数据库已提交而导出中断时，同一输入和目录可识别已提交版本并继续导出，不再重复递增。相同导出文件可以重入，不同内容拒绝覆盖；旧版无操作记录的交付目录需使用新的输出目录，不能覆盖原交付物。
+
+导出初始化包与实际增量库的CMS编辑元数据可不同：初始化包使用仓库种子的原始内容，实际库保留既有编辑状态并递增版本。业务内容和资源URL必须一致。
+
+完整SQL可以在指定开发库的**连接级临时表**中验证：
+
+```sh
+node scripts/cms-bootstrap-verify.mjs PRIVATE_OUTPUT/uper-production-initialization.sql
+```
+
+验证器先检查整个语句清单，仅在当前连接建立同名临时表并导入，断开后临时表消失；不创建其他数据库、不覆盖持久业务表。此验证证明MySQL8语法和种子数据可执行，不代表已在生产导入。
+
+## 已执行的开发业务验收
+
+本地 3000 中文电脑端已用用户单独批准的 CMS-only 临时账号，走标准登录、真实上传、保存、刷新回读、再次编辑、首页图集展示及二次确认删除。浏览器生成的图片作为 File 输入触发实际上传处理器，COS 下载摘要及数据库 URL-only 存储均有核对，不是 mock 网络。原生 OS 文件选择器未单独稳定验证。
+
+真实 API 验收脚本 `scripts/cms-acceptance.mjs` 在临时图集尚存在时完成 37 项检查，覆盖幂等、请求冲突、权限/来源/匿名拒绝、超限和非法图片、不可信 URL 及版本冲突。该脚本绑定本次临时账号和清理前 fixture，不是通用生产自检；未经重新准备获准 fixture 不应直接重跑，也不能为重跑而恢复旧密码文件。
+
+验收结束仅删除本次临时图集、临时账号及其会话和临时密码文件。原 9 账号、6 角色、10 条权限状态保持不变；八类 106 条 CMS 业务内容与种子一致，首页 HSK 恢复 3 张。开发库额外保留 4 条验收媒体和相关审计，COS 对象不物理删除；生产初始化 SQL 仍仅含 208 条种子媒体，不含验收数据。
+
+最终定向 35/35、lint、build、diff-check 通过；全量 1586 项中 1543 通过、8 项已存在于改造前的失败、35 跳过，不能称全量通过。英文/印尼文实际页面、三语切换、移动端和生产不在本次验收范围。固定上传说明已同步三语，实际仅核验中文最终页面。
+
+## 生产手动初始化
+
+1. 保存生产现状备份，明确选定一个已获准的**空白目标库**，确认MySQL8和utf8mb4支持。不要向现存业务库直接执行完整初始化包。
+2. 校验交付目录的 `SHA256SUMS`，保护SQL及账号哈希；确认DDL含 `cos_url`、schema版本16，无外键和DROP/TRUNCATE。
+3. 使用数据库客户端明确选择生产库，再执行 `uper-production-initialization.sql`。文件不含CREATE DATABASE或USE，不写死测试库名；遇到错误立即停止，不能使用继续忽略错误选项。
+4. 配置生产独立的数据库、COS、通知和其他服务秘密。保留已有生产部署与TLS门禁，不使用remote-dev配置。
+5. 使用包含v16及COS支持的应用版本启动；旧代码不能作为URL-only数据的兼容运行时。
+6. 核对9账号及权限、8类CMS内容、208条URL媒体、首页图片，以及持有CMS权限的账号上传/保存流程。
+
+本次不执行生产初始化、部署、提交或推送。
+
+## 恢复与资源保留
+
+- 增量前快照保留原schema和数据，包含私密信息；生产应采用既有数据库备份方案，而不是把一次开发JSON快照当作通用生产恢复工具。
+- 增量迁移不删除旧BLOB，旧URL仍可读取或安全重定向。新COS行没有BLOB，不能只回退应用到旧版本。
+- 内容删除只解除业务引用，不删除COS对象。COS生命周期/版本保留及垃圾回收需独立审批，不能按单个内容条目删除共享摘要对象。
+- 新媒体已不在数据库备份内，必须独立保护COS资源；保留仓库原始初始化图片以便核验和恢复。

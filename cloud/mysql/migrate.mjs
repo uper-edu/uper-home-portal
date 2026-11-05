@@ -190,10 +190,20 @@ async function addCourseCatalog(c){
 
 async function addPaymentImages(c){
  const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=15');
- if(v[0]?.state==='ready')return {version:15,state:'ready',alreadyApplied:true};
+ if(v[0]?.state==='ready')return addCmsCosMedia(c);
  if(v.length)throw Error('Incomplete payment images migration');
  await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(15,'applying')");
  await c.query((await readFile(new URL('./schema-v15.sql',import.meta.url),'utf8')).trim().replace(/;$/,'').replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
  await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=15");
- return {version:15,state:'ready'};
+ return addCmsCosMedia(c);
+}
+
+async function addCmsCosMedia(c){
+ const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=16');
+ if(v[0]?.state==='ready')return {version:16,state:'ready',alreadyApplied:true};
+ if(v.length)throw Error('Incomplete CMS COS media migration');
+ await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(16,'applying')");
+ await c.query((await readFile(new URL('./schema-v16.sql',import.meta.url),'utf8')).trim().replace(/;$/,''));
+ await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=16");
+ return {version:16,state:'ready'};
 }

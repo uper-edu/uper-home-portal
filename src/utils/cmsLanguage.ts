@@ -107,8 +107,8 @@ export const cmsIndonesian: Record<string, string> = {
   "Edit Item": "Edit konten dan gambar",
   "Create New Item": "Buat konten",
   "Primary Image / Logo": "Gambar utama atau logo",
-  "PNG, JPEG or WebP up to 2 MB; stored in MySQL":
-    "PNG, JPEG, atau WebP hingga 2 MB; disimpan di MySQL",
+  "PNG, JPEG or WebP up to 2 MB; uploaded to COS, only the URL is stored in the database":
+    "PNG, JPEG, atau WebP hingga 2 MB; diunggah ke COS, hanya URL yang disimpan di basis data",
   "Uploading...": "Mengunggah...",
   "Upload New Image": "Unggah gambar",
   Clear: "Kosongkan",

@@ -164,10 +164,11 @@
       "cloud/mysql/site.mjs"
     ]
   },
-  "INSERT INTO cms_media(id,mime,content,uploaded_by) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE id=id": {
-    "sql": "INSERT INTO cms_media(id,mime,content,uploaded_by) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+  "INSERT INTO cms_media(id,mime,content,uploaded_by,storage_type,cos_url,object_key,byte_size) VALUES(?,'image/webp',NULL,?,'cos',?,?,?) ON DUPLICATE KEY UPDATE storage_type='cos',cos_url=VALUES(cos_url),object_key=VALUES(object_key),byte_size=VALUES(byte_size)": {
+    "sql": "INSERT INTO cms_media(id,mime,content,uploaded_by,storage_type,cos_url,object_key,byte_size) VALUES(?,'image/webp',NULL,?,'cos',?,?,?) ON DUPLICATE KEY UPDATE storage_type='cos',cos_url=VALUES(cos_url),object_key=VALUES(object_key),byte_size=VALUES(byte_size)",
     "sources": [
-      "cloud/mysql/site.mjs"
+      "cloud/mysql/cms-media-upload.mjs",
+      "cloud/mysql/cms-seed.mjs"
     ]
   },
   "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution)": {
@@ -599,7 +600,7 @@
   "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.upload',?)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.upload',?)",
     "sources": [
-      "cloud/mysql/site.mjs"
+      "cloud/mysql/cms-media-upload.mjs"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',:p1)": {
@@ -1453,7 +1454,7 @@
   "SELECT data FROM portal_audit WHERE actor=? AND action='cms.upload' AND data->>'$.requestId'=?": {
     "sql": "SELECT data FROM portal_audit WHERE actor=? AND action='cms.upload' AND data->>'$.requestId'=?",
     "sources": [
-      "cloud/mysql/site.mjs"
+      "cloud/mysql/cms-media-upload.mjs"
     ]
   },
   "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff": {
@@ -1636,7 +1637,8 @@
   "SELECT id FROM crm_users WHERE id=? FOR UPDATE": {
     "sql": "SELECT id FROM crm_users WHERE id=? FOR UPDATE",
     "sources": [
-      "cloud/mysql/site.mjs"
+      "cloud/mysql/site.mjs",
+      "cloud/mysql/cms-media-upload.mjs"
     ]
   },
   "SELECT id FROM crm_users WHERE lower(login_id)=lower(:p1)": {
@@ -2192,22 +2194,22 @@
       "server/portal/trustRoutes.ts"
     ]
   },
-  "SELECT mime,content FROM cms_media WHERE id=?": {
-    "sql": "SELECT mime,content FROM cms_media WHERE id=?",
-    "sources": [
-      "cloud/mysql/site.mjs"
-    ]
-  },
-  "SELECT mime,content FROM cms_media WHERE legacy_name=?": {
-    "sql": "SELECT mime,content FROM cms_media WHERE legacy_name=?",
-    "sources": [
-      "cloud/mysql/site.mjs"
-    ]
-  },
   "SELECT mime,content FROM crm_payment_images WHERE id=:p1": {
     "sql": "SELECT mime,content FROM crm_payment_images WHERE id=:p1",
     "sources": [
       "server/portal/payments.ts"
+    ]
+  },
+  "SELECT mime,content,cos_url FROM cms_media WHERE id=?": {
+    "sql": "SELECT mime,content,cos_url FROM cms_media WHERE id=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT mime,content,cos_url FROM cms_media WHERE legacy_name=?": {
+    "sql": "SELECT mime,content,cos_url FROM cms_media WHERE legacy_name=?",
+    "sources": [
+      "cloud/mysql/site.mjs"
     ]
   },
   "SELECT model,status,completed_at FROM crm_ai_extractions WHERE model IS NOT NULL ORDER BY completed_at DESC LIMIT 8": {

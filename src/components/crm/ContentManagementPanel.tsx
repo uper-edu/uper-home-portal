@@ -916,7 +916,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   <AdminField className="block font-semibold mb-2 flex items-center justify-between">
                     <span>{t('Primary Image / Logo', '主图片 / Logo 封面')}</span>
                     <span className="text-[10px] text-primary-600 font-normal">
-                      {t('PNG, JPEG or WebP up to 2 MB; stored in MySQL', 'PNG、JPEG 或 WebP，最大 2 MB；保存到 MySQL')}
+                      {t('PNG, JPEG or WebP up to 2 MB; uploaded to COS, only the URL is stored in the database', 'PNG、JPEG 或 WebP，最大 2 MB；上传到 COS，数据库仅保存资源地址')}
                     </span>
                   </AdminField>
 

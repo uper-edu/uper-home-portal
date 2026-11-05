@@ -1,5 +1,7 @@
 import {assignNewLead} from '../../server/portal/autoAssignment.ts';
 import {cmsOperationResult} from './cms-operation-result.mjs';
+import {createCmsMediaStorage,validCmsImageUrl,trustedCmsMediaUrl} from './cms-media-storage.mjs';
+import {uploadCmsMedia} from './cms-media-upload.mjs';
 import {discoverIdentity} from '../../server/portal/identityReview.ts';
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
 import {contactsConflict} from '../../server/portal/trustWorkflow.ts';
@@ -15,7 +17,7 @@ const fail=(status,message)=>{throw Object.assign(Error(message),{status});};
 const requestKey=b=>{if(typeof b.requestId!=='string'||!b.requestId.trim()||b.requestId.length>100)fail(400,'Request ID required; refresh the page and retry');return b.requestId;};
 const validCollection=name=>{if(!collections.includes(name))fail(400,'Invalid collection');return name;};
 const text=(b,key,max,required=false)=>{const value=b[key]??'';if(typeof value!=='string'||value.length>max||(required&&!value.trim()))fail(400,'Invalid '+key);return value.trim();};
-export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskDeadline,runtimeVersion}){
+export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskDeadline,runtimeVersion,mediaStorage=createCmsMediaStorage()}){
   for(const name of collections)await db.execute('INSERT INTO cms_collections(name,items) VALUES(?,JSON_ARRAY()) ON DUPLICATE KEY UPDATE name=name',[name]);
   const wrap=fn=>(q,r,next)=>Promise.resolve(fn(q,r,next)).catch(e=>r.status(e.status||503).json({error:e.status&&e.status<500?e.message:'Storage unavailable; operation not saved'}));
   const staff=async q=>{const employee=await platform.authenticate(q);if(!employee)fail(401,'Login required');if(!employee.permissions.includes('cms.manage'))fail(403,'CMS management permission required');return employee;};
@@ -52,7 +54,7 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
         !['hsk','csca','consultancy','tours'].includes(item.program)||
         typeof item.title!=='string'||!item.title.trim()||
         !Number.isSafeInteger(item.order)||item.order<1||
-        typeof item.image?.url!=='string'||!/^\/images\/uploads\/[a-f0-9]{64}\.webp$/.test(item.image.url)
+        !validCmsImageUrl(item.image?.url)
       ))fail(400,'Program, image title, display order and uploaded image are required');
       if(JSON.stringify(items).length>10000000)fail(413,'Collection size limit exceeded');
       await c.execute('UPDATE cms_collections SET items=?,items_text=?,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE name=?',[JSON.stringify(items),JSON.stringify(items),name]);
@@ -68,19 +70,11 @@ export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskD
     if(typeof source!=='string'||source.length>3000000||!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(source))fail(400,'Use PNG, JPEG or WebP up to 2 MB');
     const input=Buffer.from(source.split(',')[1],'base64');if(input.length>2097152)fail(413,'Image exceeds 2 MB');
     let content;try{content=await sharp(input,{limitInputPixels:16000000}).rotate().webp({quality:85}).toBuffer();}catch{fail(400,'Invalid image');}
-    if(content.length>2097152)fail(413,'Image exceeds 2 MB');const hash=digest(content);
+    if(content.length>2097152)fail(413,'Image exceeds 2 MB');
     const key=requestKey(q.body),actor=r.locals.cmsEmployee.id,inputHash=digest(source);
-    const result=await transaction(db,async c=>{
-      await c.execute('SELECT id FROM crm_users WHERE id=? FOR UPDATE',[actor]);
-      const [old]=await c.execute("SELECT data FROM portal_audit WHERE actor=? AND action='cms.upload' AND data->>'$.requestId'=?",[actor,key]);
-      if(old[0]){if(old[0].data.inputHash!==inputHash)fail(409,'Request ID conflict');return old[0].data.response;}
-      await c.execute('INSERT INTO cms_media(id,mime,content,uploaded_by) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[hash,'image/webp',content,actor]);
-      const response={success:true,url:'/images/uploads/'+hash+'.webp',digest:hash,mime:'image/webp',size:content.length};
-      await c.execute("INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.upload',?)",[actor,JSON.stringify({requestId:key,inputHash,response})]);
-      return response;
-    });r.json(result);
+    r.json(await uploadCmsMedia(db,mediaStorage,{actor,key,inputHash,content}));
   }));
-  app.get('/images/uploads/:asset',wrap(async(q,r)=>{if(!/^[a-zA-Z0-9_.-]{1,191}$/.test(q.params.asset))fail(404,'Image not found');const hash=/^[a-f0-9]{64}\.webp$/.test(q.params.asset);const [rows]=await db.execute(hash?'SELECT mime,content FROM cms_media WHERE id=?':'SELECT mime,content FROM cms_media WHERE legacy_name=?',[hash?q.params.asset.slice(0,-5):q.params.asset]);if(!rows[0])fail(404,'Image not found');r.set({'Content-Type':rows[0].mime,'X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=31536000, immutable'}).send(rows[0].content);}));
+  app.get('/images/uploads/:asset',wrap(async(q,r)=>{if(!/^[a-zA-Z0-9_.-]{1,191}$/.test(q.params.asset))fail(404,'Image not found');const hash=/^[a-f0-9]{64}\.webp$/.test(q.params.asset);const [rows]=await db.execute(hash?'SELECT mime,content,cos_url FROM cms_media WHERE id=?':'SELECT mime,content,cos_url FROM cms_media WHERE legacy_name=?',[hash?q.params.asset.slice(0,-5):q.params.asset]);if(!rows[0])fail(404,'Image not found');if(rows[0].content===null){if(!trustedCmsMediaUrl(rows[0].cos_url))fail(404,'Image not found');return r.redirect(302,rows[0].cos_url);}r.set({'Content-Type':rows[0].mime,'X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=31536000, immutable'}).send(rows[0].content);}));
   const queryContent=wrap(async(q,r)=>{const query=q.method==='POST'?q.body.query:q.query.query;let params=q.method==='POST'?q.body.params:q.query.params,name;try{if(typeof params==='string')params=JSON.parse(params);name=collectionFor(query);}catch(e){e.status=400;throw e;}const row=await collection(name);let result;try{result=projectContent(row.items.filter(item=>item.isActive!==false),query,params);}catch(e){e.status=400;throw e;}r.setHeader('Cache-Control','no-store');r.json({result});});
   for(const route of ['/api/content','/api/sanity']){app.get(route,queryContent);app.post(route,queryContent);}
   app.get('/api/health',wrap(async(_q,r)=>{await db.query("SELECT 1");r.setHeader('Cache-Control','no-store');r.json({status:'ok',database:'mysql',dataset:process.env.TRIAL_DATASET||'unknown',environment:runtimeEnvironment(),...(runtimeVersion?{version:runtimeVersion}:{})});}));
