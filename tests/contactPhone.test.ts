@@ -57,7 +57,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     assert.deepEqual(await snapshot(), before);
     const campaign = {id: "TEST-phone-campaign", code: "TEST-phone-campaign", name: "TEST Phone Validation", stats: {}};
     await pool.query("INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3)", [campaign.id,campaign.code,campaign]);
-    const created = await request("/api/portal/register", {fullName: "TEST Phone Learner", whatsapp: "+62 812-3456-7890", email: "test-phone@example.invalid", campaignId: campaign.code, goal: "Work in China", city: "Jakarta", mode: "Online"});
+    const created = await request("/api/portal/register", {fullName: "TEST Phone Learner", whatsapp: "+62 812-3456-7890", email: "test-phone@example.invalid", utmCampaign: campaign.code, goal: "Work in China", city: "Jakarta", mode: "Online"});
     assert.equal(created.status, 200);
     const lead = created.data.lead;
     assert.equal(lead.whatsapp, "+62 812-3456-7890");
@@ -70,7 +70,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     assert.equal(blocked.status, 400);
     assert.deepEqual(await snapshot(), afterValid);
     // Same visitor retries do not create another lead or replace first attribution.
-    const retry = await request("/api/portal/register", {fullName: lead.fullName, whatsapp: lead.whatsapp, email: lead.email, campaignId: "different-campaign"});
+    const retry = await request("/api/portal/register", {fullName: lead.fullName, whatsapp: lead.whatsapp, email: lead.email, utmCampaign: "different-campaign"});
     assert.equal(retry.status, 200); assert.equal(retry.data.lead.id, lead.id); assert.equal(retry.data.lead.campaignId, campaign.code);
     const retried = await snapshot();
     assert.deepEqual(retried.followup_tasks, afterValid.followup_tasks);

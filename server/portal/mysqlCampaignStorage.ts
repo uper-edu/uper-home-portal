@@ -14,9 +14,11 @@ import { createHash } from "node:crypto";
 import { allocateCampaignCode } from "./campaignCodeAllocation.ts";
 import { CAMPAIGN_LINK_PLACEHOLDER } from "../../src/utils/campaignCode.ts";
 import { validCampaignBudget, CAMPAIGN_BUDGET_ERROR } from "../../src/utils/campaignBudget.ts";
+import {attachPromotionShortCodes,promotionShortCodes} from './campaignPromotion.ts';
 export function loadCampaigns(){return campaignsContext.getStore() || [];}
 export async function getCurrentCampaigns(employee?: any) {
  const campaigns = loadCampaigns();
+ const shortCodes = await promotionShortCodes(pool);
  const profiles = (await pool.query('SELECT profile FROM portal_leads')).rows
   .map((row: any) => row.profile).filter((profile: any) => !employee || allowed(employee, profile));
  await attachEnrollmentEvidence(pool, profiles);
@@ -30,7 +32,7 @@ export async function getCurrentCampaigns(employee?: any) {
  }
  const resolved = profiles.filter((profile: any) => campaigns.filter(campaign => matchesCampaign(profile, campaign)).length <= 1);
  return campaigns.map(campaign => ({
-  ...campaign,
+  ...attachPromotionShortCodes(campaign,shortCodes),
   stats: {...campaign.stats, ...campaignMetrics(resolved, campaign), roi:null},
   promotionResults: campaignPromotionResults(resolved, campaign),
  }));

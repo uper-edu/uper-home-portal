@@ -1,4 +1,5 @@
 import {promotionIndexEntries, syncPromotionIndex} from './promotion-index.mjs';
+import {backfillPromotionShortLinks} from './promotion-short-links.mjs';
 import {initializeSystemDefaults as seedSystemDefaults} from './system-defaults.mjs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -17,7 +18,12 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const [offline]=await connection.query("SELECT state FROM trial_schema_versions WHERE version=0");
     if(offline[0]?.state==='offline_copy'&&!allowOfflineCopy)throw Error('Offline migration copy cannot start application or worker');
     const [versions] = await connection.query('SELECT * FROM trial_schema_versions WHERE version=1');
-    const finish=async()=>{const result=await applyContentMigration(connection);if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);return result;};
+    const finish=async()=>{
+      await applyContentMigration(connection);
+      const result=await addPromotionShortLinks(connection);
+      if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
+      return result;
+    };
     if (versions[0]?.state === 'ready') return finish();
     if (versions.length) throw Error('Incomplete schema migration: inspect the trial database before retrying');
     const [tables] = await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name<>'trial_schema_versions'", [name]);
@@ -223,6 +229,26 @@ async function addPromotionIndex(c) {
     if (state !== 'ready') await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=17");
     await c.commit();
     return {version:17,state:'ready',alreadyApplied:state==='ready'};
+  } catch (error) {
+    await c.rollback();
+    throw error;
+  }
+}
+
+async function addPromotionShortLinks(c) {
+  const [versions] = await c.query('SELECT state FROM trial_schema_versions WHERE version=18');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected promotion short-link migration state');
+  if (state !== 'ready') {
+    if (!state) await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(18,'applying')");
+    await c.query('CREATE TABLE IF NOT EXISTS campaign_promotion_short_links (short_code CHAR(6) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,p VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE) ENGINE=InnoDB');
+  }
+  await c.beginTransaction();
+  try {
+    await backfillPromotionShortLinks(c);
+    if (state !== 'ready') await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=18");
+    await c.commit();
+    return {version:18,state:'ready',alreadyApplied:state==='ready'};
   } catch (error) {
     await c.rollback();
     throw error;

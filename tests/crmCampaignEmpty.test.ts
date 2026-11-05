@@ -52,7 +52,7 @@ test("registration keeps first marketing attribution and does not grant caller-s
         owner: "Robert",
       },
     ),
-    { campaign: "TEST campaign", campaignId: "test-new", placement: "qr" },
+    { campaign: "organic", campaignId: "organic", placement: "qr" },
   );
   assert.deepEqual(
     firstTouchAttribution(

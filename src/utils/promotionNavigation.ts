@@ -1,6 +1,6 @@
 import evergreenLinks from '../data/evergreenPromotionLinks.json';
 
-export const promotionParameters = ['c', 'cid', 'campaign', 'p', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id'] as const;
+export const promotionParameters = ['p', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id'] as const;
 export const promotionEvidenceKeys = ['p', 'lang', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'entry_point'] as const;
 export const promotionLandingPaths = ['/chat', '/link', '/', '/hsk', '/csca', '/consultancy', '/tours'] as const;
 export type PromotionLandingPath = typeof promotionLandingPaths[number];
@@ -29,13 +29,10 @@ export function promotionKindForMedium(medium: string): PromotionKind {
   return medium === 'social' ? 'unpaid' : 'unclassified';
 }
 export function promotionIdentity(params: URLSearchParams) {
-  const campaigns = ['c', 'cid', 'campaign'].flatMap(key => params.getAll(key)).filter(Boolean);
   const promotions = params.getAll('p');
   return {
-    campaign: campaigns[0] || undefined,
     p: promotions[0] || undefined,
-    invalid: (promotions.length > 0 && (new Set(promotions).size > 1 || !promotionIdPattern.test(promotions[0])))
-      || new Set(campaigns.map(value => value.toLowerCase())).size > 1,
+    invalid: promotions.length > 0 && (new Set(promotions).size > 1 || !promotionIdPattern.test(promotions[0])),
     tagged: promotionParameters.some(key => params.has(key)),
   };
 }

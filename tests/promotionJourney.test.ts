@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { promotionIndexEntries, syncPromotionIndex } from '../cloud/mysql/promotion-index.mjs';
-import { sourceKey, promotionAttribution, publicPromotion, resolvePromotion } from '../server/portal/attribution';
+import { promotionAttribution, publicPromotion, resolvePromotion } from '../server/portal/attribution';
 import { analyticsContext, createAnalyticsClient } from '../src/utils/analyticsPolicy';
 import { campaignPromotionUrl } from '../src/utils/campaignPromotion';
 import { instagramBioCampaign, linkHubConsultUrl } from '../src/utils/instagramBioCampaign';
@@ -66,21 +66,17 @@ test('handbook actions share their link context while untagged site and chat pat
   assert.equal(promotionIdentity(new URLSearchParams('p=valid&p=other')).invalid,true);
 });
 
-test('public resolver, save verification and legacy alias share the indexed owner', async () => {
+test('public resolver and save verification rely on the indexed promotion owner', async () => {
   const config = instagramBioCampaign();
   const link = config.promotionLinks![0];
   const row = {id:config.id, code:config.code, config};
   const db = {query:async (sql: string, values: string[]) => {
     if (sql.includes('campaign_promotion_index')) return {rows: values[0] === link.id ? [{campaign_id:row.id}] : []};
-    if (sql.includes('campaign_source_reviews')) return {rows: values[0] === sourceKey('legacy-alias') ? [{campaign_id:row.id}] : []};
     return {rows:values[0] === row.id ? [row] : []};
   }};
-  const verified = await resolvePromotion(db, '', link.id);
+  const verified = await resolvePromotion(db, link.id);
   assert.equal(publicPromotion(verified!).campaignCode, config.code);
-  assert.equal((await resolvePromotion(db, config.code, link.id))?.link.id, link.id);
-  assert.equal((await resolvePromotion(db, 'legacy-alias', link.id))?.link.id, link.id);
-  assert.equal(await resolvePromotion(db, 'other', link.id), null);
-  const saved = await promotionAttribution(db, {}, {promotionLinkId:link.id,utmCampaign:'forged'});
+  const saved = await promotionAttribution(db, {}, {promotionLinkId:link.id,utmCampaign:'forged',campaignId:'ignored-old-code'});
   assert.equal(saved.campaignId, config.code);
   assert.equal(saved.promotionLinkStatus, 'verified');
   assert.deepEqual(await promotionAttribution(db, saved, {promotionLinkId:'different'}), {});
@@ -148,7 +144,7 @@ test('campaign results separate manual confirmations from system attribution', (
   ]);
 });
 
-test('one browser lookup is shared and explicit conflicting parameters never hit the network', async t => {
+test('one browser lookup is shared and conflicting promotion IDs never hit the network', async t => {
   let calls = 0;
   t.mock.method(globalThis,'fetch',async () => {
     calls++;
@@ -158,7 +154,8 @@ test('one browser lookup is shared and explicit conflicting parameters never hit
   const first = lookupPromotion(params);
   assert.equal(first,lookupPromotion(params));
   assert.equal((await first)?.state,'verified');
-  assert.deepEqual(lookupPromotion(new URLSearchParams('p=lookup-fixture&c=one&cid=two')),{state:'unverified'});
+  assert.equal((await lookupPromotion(new URLSearchParams('p=lookup-fixture&c=one&cid=two')))?.state,'verified');
+  assert.deepEqual(lookupPromotion(new URLSearchParams('p=lookup-fixture&p=foreign')),{state:'unverified'});
   assert.equal(calls,1);
 });
 

@@ -53,7 +53,7 @@ export async function conversation(source: ChatSource) {
     await scopedFetch("/api/portal/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, page: location.pathname + location.search, campaign: new URLSearchParams(location.search).get("c") || "" }),
+      body: JSON.stringify({ source, page: location.pathname + location.search }),
     }),
   );
   return (await scopedJson(res)).conversationId as string;

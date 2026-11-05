@@ -83,7 +83,7 @@ export interface CrmCampaignRecord {
   systemManaged?: boolean;
   nameId?: string;
   id: string;                // e.g. 'seminar_2026', 'c_ui_career_2026'
-  code: string;              // Short code used in URL parameter "?c=..."
+  code: string;              // Stable campaign code used in utm_campaign
   name: string;              // Single campaign name, kept as entered
   nameEn: string;            // Legacy value retained; not a display-name override
   type: CampaignType | "";
@@ -113,7 +113,7 @@ export interface CrmCampaignRecord {
     bio?: string;
   }>;
 
-  // 绑定的渠道 UTM 属性 (对外仅需使用短链 ?c=CODE)
+  // 活动级渠道配置。对外推广由具体推广链接配置决定。
   boundUtm: BoundUtmConfig;
 
   // AI 自动化营销物料包
@@ -156,6 +156,7 @@ export const CAMPAIGN_STATUS_OPTIONS: Array<{
 
 /** Immutable configuration for one distribution entry; not proof of actual click origin. */
 export interface CampaignPromotionLink {
+ shortCode?: string;
  landingPath?: PromotionLandingPath;
  promotionKind?: PromotionKind;
  content?: string;

@@ -28,11 +28,11 @@ export function testDirectoryText(data: TestDirectory, lang: CrmLanguage) {
     ],
     [
       t(
-        "Campaign attribution (replace campaignID with an actual campaign ID)",
-        "Atribusi kampanye (ganti campaignID dengan ID kampanye yang sebenarnya)",
-        "Campaign归因（将campaignID替换为实际活动ID）",
+        "Campaign attribution (preset Instagram link)",
+        "Atribusi kampanye (tautan bawaan Instagram)",
+        "活动归因（Instagram 预置链接）",
       ),
-      "/chat?c=campaignID",
+      "/s/bio-ig",
     ],
     [
       t("CRM sales management", "Manajemen penjualan CRM", "CRM销售管理"),

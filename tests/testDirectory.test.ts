@@ -110,7 +110,7 @@ test("Directory uses preset IDs, current roles and verified initial credentials;
       { origin: testDirectoryOrigin, generatedAt: "TEST", users },
       lang,
     );
-    assert.ok(text.includes(testDirectoryOrigin + "/chat?c=campaignID"));
+    assert.ok(text.includes(testDirectoryOrigin + "/s/bio-ig"));
     assert.ok(text.includes(testDirectoryOrigin + "/crm?tab=docs"));
     assert.ok(text.includes(old));
     assert.ok(!text.includes(changed));

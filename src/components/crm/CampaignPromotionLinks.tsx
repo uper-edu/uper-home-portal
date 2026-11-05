@@ -13,6 +13,7 @@ import type {
   CrmCampaignRecord,
 } from "../../types/crmCampaign";
 import {
+  campaignPromotionShortUrl,
   campaignPromotionUrl,
   PROMOTION_EXPERIENCE,
   PROMOTION_SOURCES,
@@ -79,9 +80,11 @@ function LinkCard({
   const isPreset = (campaign.id === "social-bio" && evergreenLinks.some(preset => preset.id === link.id))
     || (campaign.id === INSTAGRAM_BIO_CAMPAIGN && isInstagramBioPromotion(link, link.language));
   const url = campaignPromotionUrl(link, window.location.origin, campaign.code);
+  const shortUrl = campaignPromotionShortUrl(link.id, window.location.origin, link.shortCode);
   const [qrOpen, setQrOpen] = useState(false);
-  const qr = useCampaignQr(qrOpen ? url : null);
+  const qr = useCampaignQr(qrOpen ? shortUrl : null);
   const [feedback, setFeedback] = useState("");
+  const [fullLinkFeedback, setFullLinkFeedback] = useState("");
   return (
     <article className="campaign-promotion-card">
       <div>
@@ -98,23 +101,23 @@ function LinkCard({
               className="campaign-workspace-action campaign-primary"
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(url);
-                  setFeedback("Link copied.");
+                  await navigator.clipboard.writeText(shortUrl);
+                  setFeedback("Short link copied.");
                 } catch {
                   setFeedback(
-                    "Copy unavailable. Select and copy the link above.",
+                    "Copy unavailable. Select the short link and copy it manually.",
                   );
                 }
               }}
             >
-              {u("Copy link")}
+              {u("Copy short link")}
             </button>
             <button type="button" className="campaign-workspace-action" onClick={() => setQrOpen(true)}>
               {u("QR code")}
             </button>
             <a
               className="campaign-workspace-action"
-              href={url}
+              href={shortUrl}
               target="_blank"
               rel="noreferrer"
             >
@@ -137,17 +140,30 @@ function LinkCard({
             : u(link.createdAt ? "Time needs review" : "Time not recorded")}
         </p>
         <AdminField className="campaign-field">
-          <span>{u("Promotion link")}</span>
+          <span>{u("Short link")}</span>
           <input
-            aria-label={u("Promotion link: {name}", { name: link.name })}
+            aria-label={u("Short link: {name}", { name: link.name })}
             readOnly
-            value={url}
+            value={shortUrl}
             onFocus={(e) => e.target.select()}
           />
         </AdminField>
         <p role="status">{feedback && u(feedback)}</p>
         <details>
           <summary>{u("Tracking details")}</summary>
+          <AdminField className="campaign-field">
+            <span>{u("Full link")}</span>
+            <input readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
+          </AdminField>
+          <button type="button" className="crm-work-button" onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(url);
+              setFullLinkFeedback("Full link copied.");
+            } catch {
+              setFullLinkFeedback("Copy unavailable. Select and copy the link above.");
+            }
+          }}>{u("Copy full link")}</button>
+          <p role="status">{fullLinkFeedback && u(fullLinkFeedback)}</p>
           <p>
             {u("Campaign:")} {campaign.code}
           </p>
@@ -173,7 +189,7 @@ function LinkCard({
         >
           <div className="campaign-promotion-qr">
             <CampaignQrImage qr={qr} lang={lang} alt={u("QR code for {name}", { name: link.name })} className="campaign-promotion-qr-image" />
-            <p className="campaign-promotion-qr-url">{url}</p>
+            <p className="campaign-promotion-qr-url">{shortUrl}</p>
           </div>
           <div className="crm-sales-editor-footer">
             <button type="button" className="campaign-workspace-action" onClick={() => setQrOpen(false)}>

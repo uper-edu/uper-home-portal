@@ -2,12 +2,25 @@
 
 在 `feat_new_promotion_design` 上维护第六章的实现。详细业务口径和 12 个场景见[第六章设计](./promotion-attribution-design.md)。
 
-当前版本统一生成带 `p`、`lang` 和已配置 UTM 的链接。CRM 复制、二维码和新物料共用这一地址。裸 `/link` 保持未标记。官网入口在无推广参数时使用 `home-link` 或 `home-chat`，已带推广标记时沿用原来源。
+自建推广分发地址为 `/s/<短码>`，预置入口为 `/s/<可读编号>`。两种地址均跳转到带 `p`、`lang` 和已配置 UTM 的完整地址。裸 `/link` 保持未标记。官网入口在无推广参数时使用 `home-link` 或 `home-chat`，已带推广标记时沿用原来源。
 
-1. 目标库更新前备份并核对 `social-bio` 和八条固定编号。初始化只补齐缺少的系统链接，并在同一事务同步 v17 索引。发现编号归属或预置配置冲突时停止更新，保留现场供核对。
-2. 核对每条预置链接的页面和来源，确认 CRM 复制、二维码与物料地址一致。用新会话分别核对 GA 事件和流量获取报表。推广链接、推广方式、手册动作和资源编号分别用 `promotion_link_id`、`promotion_kind`、`handbook_action`、`asset_id`。
-3. 回退时保留已分发的编号、活动和 v17 索引，选择支持按 `p` 查询和写入索引的构建。回退构建的 CRM 可能恢复旧链接展示与裸 `/link` 默认归因，需核对运营入口。
+1. 目标库更新前备份并核对 `social-bio` 和八条固定编号。初始化只补齐缺少的系统链接，并在同一事务同步 v17 索引。v18 为索引中缺少短码的自建链接补发短码。发现归属或预置配置冲突时停止更新，保留现场供核对。
+2. 核对每条预置链接以及抽样自建短链的落地页和来源。用新会话分别核对 GA 事件和流量获取报表。推广链接、推广方式、手册动作和资源编号分别用 `promotion_link_id`、`promotion_kind`、`handbook_action`、`asset_id`。
+3. 回退时保留已分发的编号、活动、v17 索引和 v18 映射表。已经分发 `/s/` 地址的环境须回退至支持该路径的构建，否则这些地址无法解析。恢复后抽查短码和预置地址是否仍指向原推广。
 4. 广告预算没有实际花费依据时，获客成本和报名成本保持为空。
+
+## 2026-11-04 本地 6 位短链 GA 实收
+
+使用已有自建推广 `/s/qr37rz` 对照其完整链接。两者落到本地 3000 的 `/chat`，页面地址带 `p`、`lang=id` 与 UTM。测试只打开落地页，未提交问卷或发送消息。数据进入 `UPER Test → UPER Local`（`G-RTB5CWXVWV`）。
+
+| 证据 | 短链访问 | 完整链接访问 |
+| --- | --- | --- |
+| 同域 Chrome 请求对照 | 新会话访问 `localhost:3000/s/qr37rz`，一次 302 后到 `/chat`。收集端返回 204，只有 1 次 `page_view` | 另一新会话直达相同的 `localhost:3000/chat` 完整地址。收集端返回 204，只有 1 次 `page_view` |
+| DebugView 实收对照（温哥华时间） | 19:40:19，通过 `127.0.0.1:3000/s/qr37rz` 补验。会话 `1793846419`，实收 1 次 `/chat` 的 `page_view` | 19:39:40，会话 `1793846380`，实收 1 次 `/chat` 的 `page_view` |
+
+两条实收事件的 `promotion_link_id=google-cpc-ad-01-261105T001921Z`、`campaign=campaign_id=social-bio` 一致，`source/medium/content` 分别为 `google/cpc/ad-01`，对应完整地址的 `utm_source/utm_medium/utm_content`。两条均为 `source_basis=verified_promotion`、`environment=development`、`traffic_category=internal_test`。短链的 302 本身没有独立的 `page_view`。`session_start`、`questionnaire_view` 和 `questionnaire_step_view` 是独立事件。
+
+结论覆盖该样本的浏览器发出与 DebugView 实收。两条实收证据使用同一台本地 3000 的两个回环地址，同域对照由 Chrome 网络记录单独确认。常规流量报表、正式环境和其他渠道样本不在本轮验收范围内。
 
 ## 2026-11-04 本地兼容版历史验收
 

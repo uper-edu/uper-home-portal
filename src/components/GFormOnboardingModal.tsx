@@ -1,5 +1,4 @@
 import {lookupPromotion} from '../utils/promotionLookup';
-import {promotionIdentity} from '../utils/promotionNavigation';
 import {trackEvent} from '../utils/analytics';
 import {RegistrationSaveError,registrationSaveText,hasPendingRegistration,pendingRegistrationDraft} from '../services/registrationSave';
 import {visitorScope} from '../services/visitorScope';
@@ -76,12 +75,10 @@ export default function GFormOnboardingModal({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
-      const identity = promotionIdentity(sp);
-      const shortCode = canonicalCampaignId(identity.campaign);
       const urlLang = sp.get('lang');
       const explicitLanguage = urlLang === 'id' || urlLang === 'zh' || urlLang === 'en';
       if (explicitLanguage) setLang(urlLang);
-      if (sp.has('p') || identity.invalid) {
+      if (sp.has('p')) {
         let active = true;
         void Promise.resolve(lookupPromotion(sp)).then(result => {
           if (!active) return;
@@ -102,32 +99,7 @@ export default function GFormOnboardingModal({
         });
         return () => { active = false; };
       }
-      setUrlParams({
-        entry: sp.get('entry') || (shortCode==='organic'?'organic':'unverified_source'),
-        campaign: shortCode,
-        placement: sp.get('placement') || (shortCode==='organic'?'website':'unrecorded'),
-        hook: (sp.get('hook') as HookType) || 'hsk_assessment',
-        context: (sp.get('context') as HookContextType) || 'website'
-      });
-      let active = true;
-      fetch(`/api/campaigns/${encodeURIComponent(shortCode)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (!active || !data?.campaign) return;
-          const c = data.campaign;
-          setCampaignMeta({id:c.id, name:c.name, nameEn:c.nameEn, venue:c.venue, city:c.city, startDate:c.startDate, startTime:c.startTime});
-          setUrlParams({
-            entry:c.boundUtm?.utm_source || sp.get('entry') || 'unrecorded',
-            campaign:c.name || c.code || shortCode,
-            placement:c.boundUtm?.utm_medium || sp.get('placement') || 'unrecorded',
-            hook:(c.boundUtm?.defaultHook as HookType) || (sp.get('hook') as HookType) || 'hsk_assessment',
-            context:(c.boundUtm?.defaultContext as HookContextType) || (sp.get('context') as HookContextType) || 'website'
-          });
-          if (!explicitLanguage && ['en','id','zh'].includes(c.boundUtm?.defaultLang)) setLang(c.boundUtm.defaultLang);
-          fetch(`/api/campaigns/${encodeURIComponent(shortCode)}/impression`, {method:'POST'}).catch(() => {});
-        })
-        .catch(() => {});
-      return () => { active = false; };
+
     }
   }, []);
 

@@ -4,13 +4,12 @@ type Lookup = { state: 'verified'; promotion: PublicPromotion } | { state: 'unve
 const cache = new Map<string, Lookup | Promise<Lookup>>();
 
 export function lookupPromotion(params: URLSearchParams): Lookup | Promise<Lookup> | undefined {
-  const { p, campaign, invalid } = promotionIdentity(params);
+  const { p, invalid } = promotionIdentity(params);
   if (invalid) return { state: 'unverified' };
   if (!p) return;
-  const key = JSON.stringify([p, campaign]);
+  const key = p;
   const previous = cache.get(key);
   if (previous) return previous;
-  const query = campaign ? '?' + new URLSearchParams({ c: campaign }) : '';
   const abort = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
   const deadline = new Promise<Lookup>(resolve => {
@@ -21,7 +20,7 @@ export function lookupPromotion(params: URLSearchParams): Lookup | Promise<Looku
   });
   const request = (async (): Promise<Lookup> => {
     try {
-      const response = await fetch('/api/promotion-links/' + encodeURIComponent(p) + query, {
+      const response = await fetch('/api/promotion-links/' + encodeURIComponent(p), {
         signal: abort.signal,
       });
       if (response.status === 404 || response.status === 400) return { state: 'unverified' };

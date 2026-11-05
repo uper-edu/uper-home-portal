@@ -3,6 +3,18 @@ import {auditLog} from './audit.ts';
 import {tx} from './store.ts';
 import {promotionInput,promotionIdPrefix} from '../../src/utils/campaignPromotion.ts';
 import {assertEditableCampaign,isEvergreenCampaign} from '../../src/utils/organicCampaign.ts';
+import {allocatePromotionShortCode} from '../../cloud/mysql/promotion-short-links.mjs';
+import type {CampaignPromotionLink} from '../../src/types/crmCampaign.ts';
+
+export async function promotionShortCodes(db:any) {
+ const {rows}=await db.query('SELECT p,short_code FROM campaign_promotion_short_links');
+ return new Map<string,string>(rows.map(({p,short_code}: {p:string;short_code:string})=>[p,short_code]));
+}
+
+export function attachPromotionShortCodes<T extends {promotionLinks?:CampaignPromotionLink[]}>(campaign:T,codes:ReadonlyMap<string,string>):T {
+ if(!campaign.promotionLinks?.length)return campaign;
+ return {...campaign,promotionLinks:campaign.promotionLinks.map(link=>({...link,shortCode:codes.get(link.id)}))};
+}
 
 export async function addCampaignPromotion(campaignId:string,input:any,actor:string) {
  if(typeof input.requestId!=='string'||!/^[-a-zA-Z0-9]{8,100}$/.test(input.requestId))throw Object.assign(Error('A request ID is required.'),{status:400});
@@ -13,13 +25,20 @@ export async function addCampaignPromotion(campaignId:string,input:any,actor:str
   if(!row)throw Object.assign(Error('Campaign not found.'),{status:404});
   if (!isEvergreenCampaign({...row.config,id:campaignId})) assertEditableCampaign({...row.config,id:campaignId});
   const prior=(await db.query("SELECT data FROM portal_audit WHERE actor=:p1 AND action='campaign.promotion.create' AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId'))=:p2 ORDER BY id DESC LIMIT 1",[actor,input.requestId])).rows[0]?.data;
-  if(prior){if(prior.fingerprint!==fingerprint)throw Object.assign(Error('Request already used with different values.'),{status:409});return {campaign:row.config,link:prior.link};}
+  if(prior){
+   if(prior.fingerprint!==fingerprint)throw Object.assign(Error('Request already used with different values.'),{status:409});
+   const codes=await promotionShortCodes(db);
+   return {campaign:attachPromotionShortCodes(row.config,codes),link:{...prior.link,shortCode:codes.get(prior.link.id)}};
+  }
   const link=await createIndexedPromotion(db,campaignId,values);
+  const shortCode=await allocatePromotionShortCode(link.id,(code:string,p:string)=>db.query(
+   'INSERT INTO campaign_promotion_short_links(short_code,p) VALUES(:p1,:p2)',[code,p],
+  ));
   const campaign={...row.config,promotionModel:'multiple',promotionLinks:[...(row.config.promotionLinks||[]),link],updatedAt:link.createdAt};
   await db.query('UPDATE trial_campaigns SET config=:p2 WHERE id=:p1',[campaignId,campaign]);
   await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.create',:p2)",[actor,{campaignId,requestId:input.requestId,fingerprint,link}]);
   auditLog(actor,'campaign.promotion.create',{requestId:input.requestId});
-  return {campaign,link};
+  return {campaign:attachPromotionShortCodes(campaign,await promotionShortCodes(db)),link:{...link,shortCode}};
  });
 }
 

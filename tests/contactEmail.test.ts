@@ -52,13 +52,13 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     assert.deepEqual(await snapshot(),before);
     const campaign={id:"TEST-email-campaign",code:"TEST-email-campaign",name:"TEST Email Validation",stats:{}};
     await pool.query("INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3)",[campaign.id,campaign.code,campaign]);
-    const created=await request("/api/portal/register",{fullName:"TEST Email Learner",whatsapp:"+6281234567890",email:"  QA+Trial@Sub.Example-Domain.INVALID  ",campaignId:campaign.code});
+    const created=await request("/api/portal/register",{fullName:"TEST Email Learner",whatsapp:"+6281234567890",email:"  QA+Trial@Sub.Example-Domain.INVALID  ",utmCampaign:campaign.code});
     assert.equal(created.status,200);const lead=created.data.lead;
     assert.equal(lead.email,"qa+trial@sub.example-domain.invalid");assert.equal(lead.campaignId,campaign.code);
     const stored=await snapshot();
     const blocked=await request("/api/portal/register",{fullName:"MUST NOT OVERWRITE",whatsapp:lead.whatsapp,email:"qa@@example.invalid"});
     assert.equal(blocked.status,400);assert.deepEqual(await snapshot(),stored);
-    const retry=await request("/api/portal/register",{fullName:lead.fullName,whatsapp:lead.whatsapp,email:lead.email,campaignId:"different-campaign"});
+    const retry=await request("/api/portal/register",{fullName:lead.fullName,whatsapp:lead.whatsapp,email:lead.email,utmCampaign:"different-campaign"});
     assert.equal(retry.status,200);assert.equal(retry.data.lead.id,lead.id);assert.equal(retry.data.lead.campaignId,campaign.code);
     const retried=await snapshot();assert.deepEqual(retried.followup_tasks,stored.followup_tasks);assert.deepEqual(retried.outbox,stored.outbox);
     assert.equal((await request("/api/portal/register",{fullName:"TEST Phone Only",phone:"+6281234567891"},true)).status,200);

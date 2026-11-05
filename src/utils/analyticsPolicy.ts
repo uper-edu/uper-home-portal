@@ -88,7 +88,7 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
   const entry = publicPage ? promotionEntryPoint(url.searchParams.get("entry_point")) : undefined;
   const external = verified && !isWebsitePromotion(verified.id) ? verified : undefined;
   const campaign = verified ? code(external?.campaignCode ?? null)
-    : publicPage && !unresolved ? code(identity.campaign || url.searchParams.get("utm_campaign")) : undefined;
+    : publicPage && !unresolved ? code(url.searchParams.get("utm_campaign")) : undefined;
   const source = verified ? code(external?.source ?? null)
     : publicPage && !unresolved ? code(url.searchParams.get("utm_source")) : undefined;
   const medium = verified ? code(external?.medium ?? null)

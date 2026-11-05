@@ -164,6 +164,12 @@
       "server/portal/campaignPresets.ts"
     ]
   },
+  "INSERT INTO campaign_promotion_short_links(short_code,p) VALUES(:p1,:p2)": {
+    "sql": "INSERT INTO campaign_promotion_short_links(short_code,p) VALUES(:p1,:p2)",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
   "INSERT INTO cms_collections(name,items) VALUES(?,JSON_ARRAY()) ON DUPLICATE KEY UPDATE name=name": {
     "sql": "INSERT INTO cms_collections(name,items) VALUES(?,JSON_ARRAY()) ON DUPLICATE KEY UPDATE name=name",
     "sources": [
@@ -2199,6 +2205,18 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT p FROM campaign_promotion_short_links WHERE short_code=:p1": {
+    "sql": "SELECT p FROM campaign_promotion_short_links WHERE short_code=:p1",
+    "sources": [
+      "server/mysqlApplication.ts"
+    ]
+  },
+  "SELECT p,short_code FROM campaign_promotion_short_links": {
+    "sql": "SELECT p,short_code FROM campaign_promotion_short_links",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
   "SELECT password_hash,login_id FROM crm_users WHERE id=:p1": {
     "sql": "SELECT password_hash,login_id FROM crm_users WHERE id=:p1",
     "sources": [
@@ -2329,6 +2347,12 @@
     "sql": "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
     "sources": [
       "server/portal/chat.ts"
+    ]
+  },
+  "SELECT short_code FROM campaign_promotion_short_links WHERE p=:p1": {
+    "sql": "SELECT short_code FROM campaign_promotion_short_links WHERE p=:p1",
+    "sources": [
+      "server/mysqlApplication.ts"
     ]
   },
   "SELECT snapshot FROM notification_jobs WHERE id=:p1": {

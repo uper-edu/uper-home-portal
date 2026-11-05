@@ -383,7 +383,6 @@ export async function mountPortal(app: Express) {
               source,
               {
                 page: String(req.body.page || "").slice(0, 300),
-                campaign: String(req.body.campaign || "").slice(0, 100),
               },
             ],
           )

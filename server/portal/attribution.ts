@@ -9,7 +9,6 @@ export function firstTouchAttribution(
   const result: Record<string, string> = {};
   const hasExistingCampaign=!!(existing.campaignId||existing.campaign);
   if (!hasExistingCampaign && existing.promotionLinkStatus) return result;
-  const incomingId=canonicalCampaignId(input.campaignId||input.campaign);
   for (const key of [
     "campaign",
     "campaignId",
@@ -18,13 +17,13 @@ export function firstTouchAttribution(
     "hookContext",
   ]) {
     if(key==='campaignId' && existing.campaign && !existing.campaignId)continue;
-    const value = existing[key] || input[key];
+    const value = existing[key] || (key === 'campaign' || key === 'campaignId' ? undefined : input[key]);
     if (typeof value === "string" && value.trim())
       result[key] = value.trim().slice(0, key === "campaign" ? 200 : 100);
   }
   if (!hasExistingCampaign) {
-    result.campaignId = incomingId;
-    if (incomingId === 'organic') result.campaign = 'organic';
+    result.campaignId = 'organic';
+    result.campaign = 'organic';
   }
   return result;
 }
@@ -41,17 +40,15 @@ export async function readCampaignAlias(db: any, code: string) {
 
 async function campaignForCode(db: any, code: string) {
  if (!code || code.length > 191) return null;
- const alias = await readCampaignAlias(db, code);
- return (await db.query('SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1', [alias || code])).rows[0] || null;
+ return (await db.query('SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1', [code])).rows[0] || null;
 }
 
-/** A supplied legacy campaign must agree with the globally indexed owner. */
-export async function resolvePromotion(db: any, code: string, p: string) {
+export async function resolvePromotion(db: any, p: string) {
  if (!promotionIdPattern.test(p)) return null;
  const index = (await db.query('SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1', [p])).rows[0];
  if (!index) return null;
  const row = (await db.query('SELECT id,code,config FROM trial_campaigns WHERE id=:p1', [index.campaign_id])).rows[0];
- if (!row || (code && (await campaignForCode(db, code))?.id !== row.id)) return null;
+ if (!row) return null;
  const link = row.config?.promotionLinks?.find((item: any) => item.id === p);
  return link ? {campaign: {...row.config, id:row.id, code:row.code}, link} : null;
 }
@@ -70,7 +67,6 @@ export function publicPromotion(resolved: NonNullable<Awaited<ReturnType<typeof 
 export async function promotionAttribution(db: any, existing: any, input: any) {
  // Preserve the original attribution as a unit, including an originally unrecorded p.
  if (existing.campaignId || existing.campaign || existing.promotionLinkStatus) return {};
- const rawCampaign = typeof input.campaignId === 'string' ? input.campaignId.trim() : '';
  const rawPromotion = typeof input.promotionLinkId === 'string' ? input.promotionLinkId.slice(0, 191) : '';
  if (input.promotionLinkId !== undefined || input.promotionParametersInvalid === true) {
   const parameters = Array.isArray(input.promotionParameters)
@@ -79,23 +75,23 @@ export async function promotionAttribution(db: any, existing: any, input: any) {
       .map(({key, value}) => ({key, value:value.slice(0, 191)})) : [];
   const malformed = input.promotionParametersInvalid === true || !promotionIdPattern.test(rawPromotion)
     || parameters.some(item => item.key === 'p' && item.value !== rawPromotion);
-  const resolved = malformed ? null : await resolvePromotion(db, rawCampaign, rawPromotion);
+  const resolved = malformed ? null : await resolvePromotion(db, rawPromotion);
   if (!resolved) return {
-   rawCampaignCode: rawCampaign.slice(0,191) || undefined, rawPromotionLinkId: rawPromotion,
+   rawPromotionLinkId: rawPromotion,
    rawPromotionParameters: parameters,
    promotionException: malformed ? 'invalid_p' : 'unknown_p',
    promotionLinkStatus:'unverified', placement:'unrecorded', entryPoint:'unverified_source',
    hookType:'hsk_assessment', hookContext:'website',
-   ...(!rawCampaign ? {campaignId: undefined, campaign: undefined, campaignSourceStatus:'pending'} : {}),
+   campaignId: undefined, campaign: undefined, campaignSourceStatus:'pending',
   };
   const {link, campaign} = resolved;
   return {
-   campaignId:campaign.code, campaign:campaign.name, rawCampaignCode:rawCampaign || undefined,
+   campaignId:campaign.code, campaign:campaign.name,
    rawPromotionLinkId:rawPromotion, promotionLinkId:link.id, promotionLinkStatus:'verified',
    promotionSnapshot:{...link}, placement:link.medium, entryPoint:link.source, hookType:'hsk_assessment', hookContext:'website',
   };
  }
- if (!rawCampaign && typeof input.utmCampaign === 'string' && input.utmCampaign.length <= 191) {
+ if (typeof input.utmCampaign === 'string' && input.utmCampaign.length <= 191) {
   const campaign = await campaignForCode(db, canonicalCampaignId(input.utmCampaign));
   if (campaign) return {campaignId:campaign.code,campaign:campaign.config.name,rawCampaignCode:input.utmCampaign};
  }

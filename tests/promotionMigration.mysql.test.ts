@@ -30,8 +30,9 @@ test('promotion migration preflight, interrupted backfill and re-upgrade preserv
     await db.execute('UPDATE trial_campaigns SET config=? WHERE id=?',[JSON.stringify({...other,promotionLinks:[]}),other.id]);
     const snapshot = async () => JSON.stringify((await db.query('SELECT id,config FROM trial_campaigns ORDER BY id'))[0]);
     const before = await snapshot();
-    assert.equal((await run()).version,17);
+    assert.equal((await run()).version,18);
     assert.equal(await count('SELECT COUNT(*) n FROM campaign_promotion_index'),3);
+    assert.equal(await count('SELECT COUNT(*) n FROM campaign_promotion_short_links'),0);
     assert.equal(await snapshot(), before);
     assert.equal(await count("SELECT COUNT(*) n FROM trial_schema_versions WHERE version=16 AND state='ready'"),1);
     assert.equal((await run()).alreadyApplied,true);
@@ -41,6 +42,11 @@ test('promotion migration preflight, interrupted backfill and re-upgrade preserv
     await db.execute('UPDATE trial_campaigns SET config=? WHERE id=?',[JSON.stringify({...other,promotionLinks:[extra]}),other.id]);
     await run();
     assert.equal(await count('SELECT COUNT(*) n FROM campaign_promotion_index'),4);
+    const shortCodes=async()=>(await db.query('SELECT p,short_code FROM campaign_promotion_short_links ORDER BY p'))[0];
+    const mappings=await shortCodes();
+    assert.equal(mappings.length,1);
+    assert.equal(mappings[0].p,extra.id);
+    assert.match(mappings[0].short_code,/^[a-z2-9]{6}$/);
 
     await db.query("UPDATE trial_schema_versions SET state='applying' WHERE version=17");
     await db.query("UPDATE campaign_promotion_index SET campaign_id='other' WHERE p='p_instagram_bio_en'");
@@ -50,6 +56,7 @@ test('promotion migration preflight, interrupted backfill and re-upgrade preserv
     await run();
     assert.equal(await count("SELECT COUNT(*) n FROM trial_schema_versions WHERE version=17 AND state='ready'"),1);
     assert.equal(await count('SELECT COUNT(*) n FROM campaign_promotion_index'),4);
+    assert.deepEqual(await shortCodes(),mappings);
   } finally {
     await db.end();
     await disposeNativeTest(fixture);

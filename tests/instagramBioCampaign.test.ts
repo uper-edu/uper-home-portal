@@ -33,7 +33,7 @@ test('distribution links use each current environment origin and open /link befo
   const old = {id:'p_other', name:'Other', source:'instagram', medium:'paid_social', language:'en' as const, experience:PROMOTION_EXPERIENCE, createdAt:at};
   assert.equal(new URL(campaignPromotionUrl(old, 'https://example.test', 'ordinary')).pathname, '/chat');
 });
-test('language switching preserves the original promotion ID and does not repair mismatches', () => {
+test('language switching preserves the promotion ID and drops retired campaign query parameters', () => {
   const original = new URLSearchParams('c=instagram-bio&p=p_instagram_bio_id&utm_source=instagram&utm_medium=social&utm_campaign=instagram-bio');
   const before = original.toString();
   const next = new URL(linkHubConsultUrl(original, 'zh'), 'https://example.test');
@@ -41,7 +41,7 @@ test('language switching preserves the original promotion ID and does not repair
   assert.equal(next.searchParams.get('lang'), 'zh'); assert.equal(original.toString(), before);
   for (const source of ['c=instagram-bio&p=p_foreign', 'c=other&p=p_instagram_bio_id']) {
     const input = new URLSearchParams(source), output = new URL(linkHubConsultUrl(input, 'zh'), 'https://example.test');
-    assert.equal(output.searchParams.get('p'), input.get('p')); assert.equal(output.searchParams.get('c'), input.get('c'));
+    assert.equal(output.searchParams.get('p'), input.get('p')); assert.equal(output.searchParams.get('c'), null);
   }
   const plain = new URL(linkHubConsultUrl(new URLSearchParams('redirect=https://other.test&lead=private'), 'zh'), 'https://example.test');
   assert.equal(plain.pathname, '/chat'); assert.equal(plain.searchParams.get('c'), null);

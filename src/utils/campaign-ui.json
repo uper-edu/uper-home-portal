@@ -267,6 +267,38 @@
     "Salin tautan",
     "复制链接"
   ],
+  "Short link": [
+    "Tautan singkat",
+    "短链接"
+  ],
+  "Short link: {name}": [
+    "Tautan singkat: {name}",
+    "短链接：{name}"
+  ],
+  "Full link": [
+    "Tautan lengkap",
+    "完整链接"
+  ],
+  "Copy full link": [
+    "Salin tautan lengkap",
+    "复制完整链接"
+  ],
+  "Full link copied.": [
+    "Tautan lengkap disalin.",
+    "已复制完整链接。"
+  ],
+  "Copy short link": [
+    "Salin tautan singkat",
+    "复制短链接"
+  ],
+  "Short link copied.": [
+    "Tautan singkat disalin.",
+    "已复制短链接。"
+  ],
+  "Copy unavailable. Select the short link and copy it manually.": [
+    "Penyalinan tidak tersedia. Pilih tautan singkat lalu salin secara manual.",
+    "无法自动复制，请选中短链接后手动复制。"
+  ],
   "Create promotion link & QR": [
     "Buat tautan promosi & kode QR",
     "创建推广链接及二维码"

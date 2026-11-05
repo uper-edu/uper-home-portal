@@ -23,17 +23,28 @@ export function promotionInput(input: any) {
   throw Object.assign(Error('Check the landing page, promotion type and placement code.'), {status:400});
  return {...(landingPath ? {landingPath} : {}), ...(input.promotionKind !== undefined ? {promotionKind} : {}), ...(content ? {content} : {}), name:name||`${source} · ${medium} · ${input.language}`,source,medium,language:input.language as 'en'|'id'|'zh',experience:PROMOTION_EXPERIENCE as typeof PROMOTION_EXPERIENCE};
 }
-export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string,campaignCode:string) {
- const url=new URL(promotionLandingPaths.find(path => path === link.landingPath) ?? '/chat',origin);
- url.search = new URLSearchParams({
+export function campaignPromotionPath(link:CampaignPromotionLink,campaignCode:string) {
+ const path = promotionLandingPaths.find(path => path === link.landingPath) ?? '/chat';
+ const params = new URLSearchParams({
    p: link.id,
    lang: link.language,
    utm_source: link.source,
    utm_medium: link.medium,
    utm_campaign: campaignCode,
    ...(link.content ? {utm_content:link.content} : {}),
- }).toString();
- return url.toString();
+ });
+ return `${path}?${params}`;
+}
+
+export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string,campaignCode:string) {
+ return new URL(campaignPromotionPath(link,campaignCode),origin).toString();
+}
+
+export const PROMOTION_SHORT_CODE_PREFIX = '/s';
+
+export function campaignPromotionShortUrl(id:string,origin:string,shortCode?:string) {
+ const path=`${PROMOTION_SHORT_CODE_PREFIX}/${encodeURIComponent(shortCode ?? id)}`;
+ return new URL(path,origin).toString();
 }
 
 export function promotionIdPrefix(values: ReturnType<typeof promotionInput>) {
