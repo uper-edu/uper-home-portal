@@ -6,8 +6,8 @@ import {promotionInput,promotionIdPrefix,campaignPromotionUrl,PROMOTION_EXPERIEN
 test('promotion configuration validates actual experience, source encoding and canonical link',()=>{
  const v=promotionInput({source:' Instagram ',medium:'paid_social',language:'en',experience:PROMOTION_EXPERIENCE});
  assert.equal(v.source,'instagram');
- assert.equal(promotionIdPrefix(v),'instagram-paid-paid-social-chat-en');
- assert.equal(promotionIdPrefix(promotionInput({...v,landingPath:'/link',content:'Profile_Bio'})),'instagram-paid-profile-bio-link-en');
+ assert.equal(promotionIdPrefix(v),'instagram-paid-social');
+ assert.equal(promotionIdPrefix(promotionInput({...v,landingPath:'/link',content:'Profile_Bio'})),'instagram-paid-social-profile-bio');
  const u=new URL(campaignPromotionUrl({id:'p_123',...v,createdAt:''},'https://example.test','demo'));
  assert.deepEqual(Object.fromEntries(u.searchParams),{p:'p_123',lang:'en',utm_source:'instagram',utm_medium:'paid_social',utm_campaign:'demo'});
  for(const bad of [{source:'x?x=1'},{medium:'qr'},{language:'xx'},{experience:'trial_class'}])assert.throws(()=>promotionInput({...v,...bad}));

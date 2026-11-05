@@ -318,7 +318,9 @@ export function CampaignPromotionLinks({
       )}
       {adding && (
         <CrmOperationLayer compose customerContext={false}
-          title={u("Add promotion link")} context={campaign.name} lang={lang} isLight={isLight}
+          title={u("Add promotion link")}
+          context={<>{campaign.name} · {u("Link parameter: utm_campaign.")} <code>{campaign.code}</code></>}
+          lang={lang} isLight={isLight}
           busy={busy} onClose={requestClose}>
           <AdminForm lang={lang} onSubmit={save} className="crm-editor-compose">
             <div className="crm-editor-scroll" data-admin-stack="">
@@ -346,6 +348,7 @@ export function CampaignPromotionLinks({
                     placeholder={u("e.g. Instagram October ad")}
                     onChange={(e) => setV({ ...v, name: e.target.value })}
                   />
+                  <small className="crm-simple-help">{u("Display name in CRM.")}</small>
                 </AdminField>
                 <div className="campaign-fields-grid" data-admin-grid="">
                   <div className="campaign-field">
@@ -393,7 +396,7 @@ export function CampaignPromotionLinks({
                     )}
                     <small>
                       {u(
-                        "Use the same source code for the same institution across links.",
+                        "Link parameter: utm_source. Use a consistent code for the same source.",
                       )}
                     </small>
                   </div>
@@ -420,6 +423,7 @@ export function CampaignPromotionLinks({
                         </option>
                       ))}
                     </CrmSelect>
+                    <small className="crm-simple-help">{u("Link parameter: utm_medium.")}</small>
                   </div>
                   <div className="campaign-field">
                     <AdminFieldLabel required>{u("Landing page")}</AdminFieldLabel>
@@ -427,6 +431,7 @@ export function CampaignPromotionLinks({
                       disabled={busy || unknown} onChange={(landingPath) => setV({ ...v, landingPath })}>
                       {promotionLandingPaths.map(path => <option key={path} value={path}>{path}</option>)}
                     </CrmSelect>
+                    <small className="crm-simple-help">{u("Sets the link path.")}</small>
                   </div>
                   <div className="campaign-field">
                     <AdminFieldLabel required>{u("Promotion type")}</AdminFieldLabel>
@@ -437,6 +442,7 @@ export function CampaignPromotionLinks({
                       <option value="unpaid">{u("Unpaid promotion")}</option>
                       <option value="paid">{u("Paid promotion")}</option>
                     </CrmSelect>
+                    <small className="crm-simple-help">{u("CRM reporting category.")}</small>
                   </div>
                   <div className="campaign-field">
                     <AdminFieldLabel required>{u("Customer language *")}</AdminFieldLabel>
@@ -453,17 +459,14 @@ export function CampaignPromotionLinks({
                       <option value="id">{u("Bahasa Indonesia")}</option>
                       <option value="zh">{u("Chinese")}</option>
                     </CrmSelect>
+                    <small className="crm-simple-help">{u("Link parameter: lang.")}</small>
                   </div>
-                </div>
-                <div className="campaign-field" aria-live="polite">
-                  <span>{u("Entry experience")}</span>
-                  <p>{u(landingExperience[v.landingPath as keyof typeof landingExperience])}</p>
                 </div>
                 <AdminField className="campaign-field">
                   <AdminFieldLabel>{u("Placement or creative code")}</AdminFieldLabel>
                   <input maxLength={80} pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}" value={v.content}
                     onChange={event => setV({ ...v, content: event.target.value })} />
-                  <small className="crm-simple-help">{u("Optional. Use a code to compare placements or creatives in reports.")}</small>
+                  <small className="crm-simple-help">{u("Optional. When filled, adds utm_content to compare placements or creatives in reports.")}</small>
                 </AdminField>
                 {!!suggestedPlacements.length && (
                   <div className="campaign-promotion-actions campaign-placement-suggestions" role="group" aria-label={u("Suggested placement codes")}>
@@ -475,6 +478,10 @@ export function CampaignPromotionLinks({
                     ))}
                   </div>
                 )}
+                <div className="campaign-field" aria-live="polite">
+                  <span>{u("Entry experience")}</span>
+                  <p>{u(landingExperience[v.landingPath as keyof typeof landingExperience])}</p>
+                </div>
                 </CrmFormSection>
               </fieldset>
             </div>

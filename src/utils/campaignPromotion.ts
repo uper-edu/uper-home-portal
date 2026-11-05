@@ -37,9 +37,7 @@ export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string,ca
 }
 
 export function promotionIdPrefix(values: ReturnType<typeof promotionInput>) {
- const landing = values.landingPath === '/' ? 'home' : (values.landingPath ?? '/chat').slice(1);
- const kind = values.promotionKind ?? promotionKindForMedium(values.medium);
- return [values.source.slice(0,20), kind,
-   (values.content || values.medium).toLowerCase().slice(0,24), landing, values.language]
-   .join('-').replaceAll('_','-');
+ const parts = [values.source.slice(0,20), values.medium];
+ if (values.content) parts.push(values.content.toLowerCase().slice(0,24));
+ return parts.join('-').replaceAll('_','-');
 }
