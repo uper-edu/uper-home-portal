@@ -231,6 +231,7 @@ const choices: Record<string, string[]> = {
     "facebook",
     "linkedin",
     "instagram",
+    "threads",
     "hub",
     "consultation",
     "handbook",

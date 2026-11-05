@@ -659,7 +659,7 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                 {t('footer.followUs')}
               </h4>
               <ul className="flex flex-wrap gap-1.5">
-                {(['whatsapp', 'instagram', 'tiktok', 'youtube', 'linkedin', 'facebook'] as const).map((platform) => (
+                {(['whatsapp', 'instagram', 'tiktok', 'youtube', 'linkedin', 'threads', 'facebook'] as const).map((platform) => (
                   <li key={platform}>
                     <a
                       href={socialProfiles[platform].url}

@@ -1,6 +1,7 @@
 export const socialProfiles = {
   whatsapp: { name: 'WhatsApp', url: 'https://wa.me/6281116612062' },
   instagram: { name: 'Instagram', url: 'https://www.instagram.com/uper.education/' },
+  threads: { name: 'Threads', url: 'https://www.threads.com/@upereducationtech' },
   facebook: { name: 'Facebook', url: 'https://www.facebook.com/profile.php?id=61566249203241' },
   tiktok: { name: 'TikTok', url: 'https://www.tiktok.com/@upereducation' },
   youtube: { name: 'YouTube', url: 'https://www.youtube.com/@UperEducation' },
@@ -32,6 +33,15 @@ export function SocialProfileIcon({
           </g>
           <circle cx="17.5" cy="6.5" r="1.2" />
         </>
+      ) : platform === 'threads' ? (
+        <path
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M20 7C18.8 3.5 16.2 2 12 2 5.5 2 3 6 3 12s2.5 10 9 10c5.2 0 8-2.8 8-6.2 0-3.6-3.2-5.6-7.3-5.6-3.1 0-5 1.4-5 3.6 0 1.8 1.4 3 3.4 3 3.2 0 4.8-2.2 4.8-5.3 0-3-1.5-4.7-4.1-4.7-1.7 0-3 .7-3.8 1.9"
+        />
       ) : platform === 'facebook' ? (
         <path d="M14 22v-9h3l.5-3H14V8c0-.9.3-1.5 1.5-1.5H18V3.2c-.4-.1-1.8-.2-3.3-.2C11.4 3 9 5 9 8.7V10H6v3h3v9h5Z" />
       ) : platform === 'tiktok' ? (
