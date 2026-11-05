@@ -1,3 +1,4 @@
+import {lookupPromotion} from '../utils/promotionLookup';
 import {trackEvent} from '../utils/analytics';
 import {RegistrationSaveError,registrationSaveText,hasPendingRegistration,pendingRegistrationDraft} from '../services/registrationSave';
 import {visitorScope} from '../services/visitorScope';
@@ -74,61 +75,31 @@ export default function GFormOnboardingModal({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
-      const shortCode = canonicalCampaignId(sp.get('c') || sp.get('cid') || sp.get('campaign'));
-
-      setUrlParams({
-        entry: sp.get('entry') || (shortCode==='organic'?'organic':'unverified_source'),
-        campaign: shortCode,
-        placement: sp.get('placement') || (shortCode==='organic'?'website':'unrecorded'),
-        hook: (sp.get('hook') as HookType) || 'hsk_assessment',
-        context: (sp.get('context') as HookContextType) || 'website'
-      });
-
       const urlLang = sp.get('lang');
-      if (urlLang === 'id' || urlLang === 'zh' || urlLang === 'en') {
-        setLang(urlLang);
+      const explicitLanguage = urlLang === 'id' || urlLang === 'zh' || urlLang === 'en';
+      if (explicitLanguage) setLang(urlLang);
+      if (sp.has('p')) {
+        let active = true;
+        void Promise.resolve(lookupPromotion(sp)).then(result => {
+          if (!active) return;
+          if (result?.state !== 'verified') {
+            setUrlParams(prev => ({...prev, entry:'unverified_source', placement:'unrecorded'}));
+            return;
+          }
+          const link = result.promotion;
+          if (!explicitLanguage) setLang(link.language);
+          setUrlParams(prev => ({...prev, entry:link.source, campaign:link.campaignCode, placement:link.medium}));
+          fetch(`/api/campaigns/${encodeURIComponent(link.campaignCode)}`)
+            .then(response => response.ok ? response.json() : null)
+            .then(data => {
+              const c = data?.campaign;
+              if (active && c) setCampaignMeta({id:c.id, name:c.name, nameEn:c.nameEn, venue:c.venue, city:c.city, startDate:c.startDate, startTime:c.startTime});
+            }).catch(() => {});
+          fetch(`/api/campaigns/${encodeURIComponent(link.campaignCode)}/impression`, {method:'POST'}).catch(() => {});
+        });
+        return () => { active = false; };
       }
 
-      // If short campaign code is present, resolve full campaign attributes
-      if (shortCode) {
-        fetch(`/api/campaigns/${encodeURIComponent(shortCode)}`)
-          .then(res => res.json())
-          .then(async data => {
-            if (data?.campaign) {
-              const c = data.campaign;
-              const p = sp.get("p");
-              if (p) {
-                const response = await fetch(`/api/campaigns/${encodeURIComponent(shortCode)}/links/${encodeURIComponent(p)}`);
-                if (!response.ok) return;
-                const {link} = await response.json();
-                c.boundUtm = {...c.boundUtm,utm_source:link.source,utm_medium:link.medium,defaultLang:link.language,defaultHook:"hsk_assessment",defaultContext:"website"};
-                setLang(link.language);
-              }
-              setCampaignMeta({
-                id: c.id,
-                name: c.name,
-                nameEn: c.nameEn,
-                venue: c.venue,
-                city: c.city,
-                startDate: c.startDate,
-                startTime: c.startTime
-              });
-              setUrlParams({
-                entry: c.boundUtm?.utm_source || sp.get('entry') || 'unrecorded',
-                campaign: c.name || c.code || shortCode,
-                placement: c.boundUtm?.utm_medium || sp.get('placement') || 'unrecorded',
-                hook: (c.boundUtm?.defaultHook as HookType) || (sp.get('hook') as HookType) || 'hsk_assessment',
-                context: (c.boundUtm?.defaultContext as HookContextType) || (sp.get('context') as HookContextType) || 'website'
-              });
-              if (c.boundUtm?.defaultLang && !sp.get('lang')) {
-                setLang(c.boundUtm.defaultLang);
-              }
-              // Track impression in background
-              fetch(`/api/campaigns/${encodeURIComponent(shortCode)}/impression`, { method: 'POST' }).catch(() => {});
-            }
-          })
-          .catch(() => {});
-      }
     }
   }, []);
 
@@ -412,7 +383,7 @@ export default function GFormOnboardingModal({
             </div>
           </div>
 
-          {campaignMeta && canonicalCampaignId(campaignMeta.id)!=='organic' && (
+          {campaignMeta && !['organic', 'social-bio'].includes(canonicalCampaignId(campaignMeta.id)) && (
             <div className="mb-3 p-2.5 bg-emerald-500/15 border border-emerald-400/30 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-200">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-300 font-bold text-[10px] uppercase tracking-wider">

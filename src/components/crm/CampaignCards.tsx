@@ -22,6 +22,7 @@ import {
 import { campaignName } from "../../utils/campaignWorkspace";
 import {
   isOrganicCampaign,
+  isEvergreenCampaign,
   organicCampaignName,
 } from "../../utils/organicCampaign";
 import {
@@ -32,7 +33,6 @@ import {
   campaignEntrySummary,
   campaignAttendanceUrl,
 } from "../../utils/campaignPresentation";
-import { CrmSingleSelect } from "./CrmSingleSelect";
 export type CampaignCardTab = "overview" | "info" | "collaterals" | "leads";
 export type PromotionReviewCounts = {
   available: boolean;
@@ -81,6 +81,7 @@ export function CampaignSidebarSummary({
     date = campaignDateRange(campaign, lang);
   return (
     <>
+      {(campaign.presetKey || campaign.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
       <strong>
         {organic ? organicCampaignName(lang) : campaignName(campaign, lang)}
       </strong>
@@ -132,7 +133,6 @@ export function CampaignSidebarSummary({
 export function CampaignCards({
   campaigns,
   lang,
-  isLight = true,
   onOpen,
   onEdit,
   reviewCounts,
@@ -140,7 +140,6 @@ export function CampaignCards({
 }: {
   campaigns: CrmCampaignRecord[];
   lang: "en" | "id" | "zh";
-  isLight?: boolean;
   onOpen: (campaign: CrmCampaignRecord, tab?: CampaignCardTab) => void;
   onEdit?: (campaign: CrmCampaignRecord) => void;
   reviewCounts?: PromotionReviewCounts;
@@ -220,7 +219,10 @@ export function CampaignCards({
                       )}
                     </span>
                   </div>
-                  <h2 title={name}>{name}</h2>
+                  <h2 title={name}>
+                    {name}
+                    {(c.presetKey || c.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
+                  </h2>
                   <div className="campaign-home-context">
                     {schedule && (
                       <p
@@ -319,23 +321,15 @@ export function CampaignCards({
                   >
                     {u("Results")}
                   </button>
-                  <CrmSingleSelect
-                    label={u("More actions for {name}", { name })}
-                    displayValue={u("More")}
-                    value=""
-                    options={[
-                      { value: "materials", label: u("Materials") },
-                      ...(onEdit
-                        ? [{ value: "edit", label: u("Edit information") }]
-                        : []),
-                    ]}
-                    onChange={(value) =>
-                      value === "edit" ? onEdit?.(c) : onOpen(c, "collaterals")
-                    }
-                    lang={lang}
-                    isLight={isLight}
-                    className="campaign-card-more"
-                  />
+                  {onEdit && !isEvergreenCampaign(c) && (
+                    <button
+                      type="button"
+                      className="campaign-card-results"
+                      onClick={() => onEdit(c)}
+                    >
+                      {u("Edit")}
+                    </button>
+                  )}
                 </div>
               </article>
             );
@@ -373,6 +367,7 @@ export function CampaignCards({
                   >
                     {organicCampaignName(lang)}
                   </button>
+                  {c.systemManaged && <span className="campaign-preset-badge">{u("System preset")}</span>}
                   <p>{u("No specific campaign at first registration")}</p>
                 </div>
               </div>

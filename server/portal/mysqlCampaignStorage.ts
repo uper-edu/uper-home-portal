@@ -1,21 +1,42 @@
+import {attachPaymentSummaries} from './payments.ts';
 import {campaignEditConflicts} from '../../src/utils/campaignEditConflict.ts';
 import {auditLog} from './audit.ts';
 import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
 import {campaignScheduleError} from "../../src/utils/campaignWorkspace.ts";
-import {sourceKey, campaignAliasTarget} from './campaignSources.ts';
+import {sourceKey, readCampaignAlias} from './attribution.ts';
 import {assertEditableCampaign,canonicalCampaignId,organicCampaignRecord} from '../../src/utils/organicCampaign.ts';
 import {campaignsContext} from '../../cloud/mysql/campaign-context.mjs';
 import {pool,tx} from '../portal/store.ts';
 import {platform,allowed} from '../portal/identity.ts';
-import {campaignMetrics} from '../../src/utils/crmCampaignMetrics.ts';
+import {campaignMetrics, campaignPromotionResults} from '../../src/utils/crmCampaignMetrics.ts';
 import {matchesCampaign} from '../../src/utils/crmCampaignLink.ts';
 import { createHash } from "node:crypto";
 import { allocateCampaignCode } from "./campaignCodeAllocation.ts";
-import { CAMPAIGN_LINK_PLACEHOLDER, resolveCampaignLinks } from "../../src/utils/campaignCode.ts";
-import { campaignChatLink } from "../../src/utils/crmCampaignLink.ts";
+import { CAMPAIGN_LINK_PLACEHOLDER } from "../../src/utils/campaignCode.ts";
 import { validCampaignBudget, CAMPAIGN_BUDGET_ERROR } from "../../src/utils/campaignBudget.ts";
+import {attachPromotionShortCodes,promotionShortCodes} from './campaignPromotion.ts';
 export function loadCampaigns(){return campaignsContext.getStore() || [];}
-export async function getCurrentCampaigns(employee?:any){const campaigns=loadCampaigns(),profiles=(await pool.query("SELECT profile FROM portal_leads")).rows.map((r:any)=>r.profile).filter((p:any)=>!employee||allowed(employee,p));await attachEnrollmentEvidence(pool,profiles);const reviews=(await pool.query("SELECT * FROM campaign_source_reviews")).rows;for(const p of profiles){const review=reviews.find((r:any)=>r.id===sourceKey(String(p.campaignId||p.campaign||'').trim()));if(review){p.campaignSourceStatus=review.status;if(review.status==='linked')p.attributionCampaignId=review.campaign_id;}}const resolved=profiles.filter((p:any)=>campaigns.filter((c:any)=>matchesCampaign(p,c)).length<=1);return campaigns.map((c:any)=>({...c,stats:{...c.stats,...campaignMetrics(resolved,c),roi:null}}));}
+export async function getCurrentCampaigns(employee?: any) {
+ const campaigns = loadCampaigns();
+ const shortCodes = await promotionShortCodes(pool);
+ const profiles = (await pool.query('SELECT profile FROM portal_leads')).rows
+  .map((row: any) => row.profile).filter((profile: any) => !employee || allowed(employee, profile));
+ await attachEnrollmentEvidence(pool, profiles);
+ await attachPaymentSummaries(pool, profiles);
+ const reviews = (await pool.query('SELECT * FROM campaign_source_reviews')).rows;
+ for (const profile of profiles) {
+  const review = reviews.find((item: any) => item.id === sourceKey(String(profile.campaignId || profile.campaign || '').trim()));
+  if (!review) continue;
+  profile.campaignSourceStatus = review.status;
+  if (review.status === 'linked') profile.attributionCampaignId = review.campaign_id;
+ }
+ const resolved = profiles.filter((profile: any) => campaigns.filter(campaign => matchesCampaign(profile, campaign)).length <= 1);
+ return campaigns.map(campaign => ({
+  ...attachPromotionShortCodes(campaign,shortCodes),
+  stats: {...campaign.stats, ...campaignMetrics(resolved, campaign), roi:null},
+  promotionResults: campaignPromotionResults(resolved, campaign),
+ }));
+}
 type CampaignSaveOperation = { kind: "create" } | { kind: "update"; id: string };
 const campaignError = (message: string, status: number) =>
   Object.assign(Error(message), { status });
@@ -45,7 +66,7 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
   }
   const fields = { ...input };
   const basicCreation = operation.kind === "create" && input.savePhase === "basics";
-  for (const key of ["__actor", "expectedFields", "id", "code", "requestId", "savePhase", "promotionLinks", "promotionModel"]) delete fields[key];
+  for (const key of ["__actor", "expectedFields", "id", "code", "requestId", "savePhase", "promotionLinks", "promotionModel", "promotionResults"]) delete fields[key];
   const fingerprint = createHash("sha256").update(JSON.stringify(stableCampaignPayload({ ...fields, ...(basicCreation ? { savePhase: "basics" } : {}) }))).digest("hex");
   const actor = input.__actor || "unknown";
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -97,7 +118,6 @@ export async function saveCampaign(input: any, operation: CampaignSaveOperation)
             || !["en","id","zh"].includes(record.boundUtm.defaultLang)) throw campaignError("campaign_entry_invalid",400);
         }
         if (operation.kind === "create") {
-          record.aiAssets = resolveCampaignLinks(record.aiAssets, campaignChatLink(code, process.env.APP_URL || "http://localhost:3000"));
           try {
             await db.query("INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3)", [campaignId, code, record]);
           } catch (error: any) {
@@ -136,13 +156,15 @@ export async function deleteCampaign(id: string) {
       throw campaignError("Campaign has promotion links; archive it to preserve existing links and attribution", 409);
     if ((await db.query("SELECT id FROM campaign_source_reviews WHERE campaign_id=:p1 LIMIT 1", [id])).rows.length)
       throw campaignError("Campaign has verified source links; preserve its attribution history", 409);
+    if ((await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND data->>'$.after.status'='linked' AND data->>'$.after.campaignId'=:p1 LIMIT 1", [id])).rows.length)
+      throw campaignError("Campaign has verified source links; preserve its attribution history", 409);
     const result = await db.query("DELETE FROM trial_campaigns WHERE id=:p1", [id]);
     return result.rowCount > 0;
   });
 }
-export async function trackCampaignImpression(code:string){code=canonicalCampaignId(code);return tx(async(db:any)=>{const target=await campaignAliasTarget(code,db);const old=(await db.query("SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE",[target || code])).rows[0];if(!old)return false;old.record.stats.impressions=(old.record.stats.impressions||0)+1;await db.query("UPDATE trial_campaigns SET config=:p2 WHERE id=:p1",[old.id,old.record]);return true;});}
+export async function trackCampaignImpression(code:string){code=canonicalCampaignId(code);return tx(async(db:any)=>{const target=await readCampaignAlias(db,code);const old=(await db.query("SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE",[target || code])).rows[0];if(!old)return false;old.record.stats.impressions=(old.record.stats.impressions||0)+1;await db.query("UPDATE trial_campaigns SET config=:p2 WHERE id=:p1",[old.id,old.record]);return true;});}
 export function getEnrichedCampaigns(leads:any[]=[]){const campaigns=loadCampaigns();const resolved=leads.filter(p=>campaigns.filter(c=>matchesCampaign(p,c)).length<=1);return campaigns.map(c=>({...c,stats:{...c.stats,...campaignMetrics(resolved,c),roi:null}}));}
-export async function getCampaignByIdOrCode(input:string){const canonical=canonicalCampaignId(input);const key=(await campaignAliasTarget(canonical) || canonical).toLowerCase();return loadCampaigns().find(c=>[c.id,c.code,c.name,c.nameEn].some(v=>v?.toLowerCase()===key));}
-export function synthesizeCampaignAiAssets(data:any){const title=data.name;const details=[data.startDate,data.startTime,data.venue,data.city].filter(Boolean).join(' · ');const link=data.code?campaignChatLink(data.code,process.env.APP_URL||'http://localhost:3000'):CAMPAIGN_LINK_PLACEHOLDER;const assets={posterHeading:title,posterSubheading:details,socialCopy:[title,details,link.toString()].join('\n'),whatsappInvitation:[title,details,link.toString()].join('\n'),chatWelcomeGreeting:title,presentationOutline:(data.keyTopics||[]).join('\n'),deskTentBullets:data.keyTopics||[]};return {...assets,idAssets:assets,enAssets:assets};}
+export async function getCampaignByIdOrCode(input:string){const canonical=canonicalCampaignId(input);const key=(await readCampaignAlias(pool,canonical) || canonical).toLowerCase();return loadCampaigns().find(c=>[c.id,c.code,c.name,c.nameEn].some(v=>v?.toLowerCase()===key));}
+export function synthesizeCampaignAiAssets(data:any){const title=data.name;const details=[data.startDate,data.startTime,data.venue,data.city].filter(Boolean).join(' · ');const link=CAMPAIGN_LINK_PLACEHOLDER;const assets={posterHeading:title,posterSubheading:details,socialCopy:[title,details,link.toString()].join('\n'),whatsappInvitation:[title,details,link.toString()].join('\n'),chatWelcomeGreeting:title,presentationOutline:(data.keyTopics||[]).join('\n'),deskTentBullets:data.keyTopics||[]};return {...assets,idAssets:assets,enAssets:assets};}
 
 export async function ensureOrganicCampaign(){const record=organicCampaignRecord();await pool.query("INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id",[record.id,record]);const existing=(await pool.query("SELECT config FROM trial_campaigns WHERE id=:p1 AND code=:p1",[record.id])).rows[0]?.config;if(!existing?.systemManaged)throw Error("Reserved organic campaign conflicts with an existing record; review without rewriting history");}

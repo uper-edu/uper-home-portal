@@ -50,7 +50,7 @@ export function CampaignWorkspaceHeading({
       data-theme={isLight ? "light" : "dark"}
     >
       <CrmPageIdentity
-        title={reviewing ? u("Source review") : u(title)}
+        title={reviewing ? u("Promotion source exceptions") : u(title)}
         headingRef={headingRef}
         subtitle={
           showSubtitle && !reviewing
@@ -80,12 +80,12 @@ export function CampaignWorkspaceHeading({
           canManage && (
             <CrmPageAction
               id="campaign-source-review-trigger"
-              label={u("Source review")}
+              label={u("Promotion source exceptions")}
               icon={ClipboardCheck}
               onClick={onOpen}
               title={
                 status ||
-                u("Review unknown campaign codes and promotion link issues")
+                u("Review promotion links that could not be identified")
               }
             >
               {state.pending && (

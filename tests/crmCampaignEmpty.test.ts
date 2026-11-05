@@ -39,17 +39,6 @@ test(
   },
 );
 
-test("campaign links preserve local environment and safely encode the campaign ID", async () => {
-  const { campaignChatLink } = await import("../src/utils/crmCampaignLink.ts");
-  assert.equal(
-    campaignChatLink("test_new", "http://127.0.0.1:4392"),
-    "http://127.0.0.1:4392/chat?c=test_new",
-  );
-  const link = new URL(campaignChatLink("a & b", "https://example.invalid"));
-  assert.equal(link.searchParams.get("c"), "a & b");
-  assert.equal([...link.searchParams].length, 1);
-});
-
 test("registration keeps first marketing attribution and does not grant caller-supplied ownership", async () => {
   const { firstTouchAttribution } =
     await import("../server/portal/attribution.ts");
@@ -63,7 +52,7 @@ test("registration keeps first marketing attribution and does not grant caller-s
         owner: "Robert",
       },
     ),
-    { campaign: "TEST campaign", campaignId: "test-new", placement: "qr" },
+    { campaign: "organic", campaignId: "organic", placement: "qr" },
   );
   assert.deepEqual(
     firstTouchAttribution(

@@ -52,7 +52,7 @@ test('657: storage notification while another tab invalidates identity does not 
 
 test('657: updating the same visitor profile preserves that visitor assessment',async()=>{
  const e=environment(), original=Object.getOwnPropertyDescriptor(globalThis,'location');try{
- Object.defineProperty(globalThis,'location',{configurable:true,value:{search:''}});
+ Object.defineProperty(globalThis,'location',{configurable:true,value:{search:'',pathname:'/chat'}});
  const r=result();saveStudentContext({leadProfile:{fullName:'TEST A'} as any,assessment:{completed:true,result:r}});
  globalThis.fetch=async(url:any,init:any)=>String(url).endsWith('/session')?Response.json({registered:true,cacheScope:A}):Response.json({success:true,saved:true,submissionId:JSON.parse(init.body).submissionId,lead:{id:'A',fullName:'TEST A Updated'}});
  await registerContact({fullName:'TEST A Updated'});assert.equal(getStudentContext()?.assessment?.result?.attempt.attemptId,r.attempt.attemptId);

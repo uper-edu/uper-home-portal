@@ -54,22 +54,35 @@ export const isAnalyticsGuideAnchor = (key: string) =>
 
 /** Read-only documentation. Public IDs come from the same mapping used by the build guard. */
 export function CrmAnalyticsGuide({ lang }: { lang: GuideLanguage }) {
+  return <CrmNumberedMarkdownGuide lang={lang} id="crm-analytics-document" number={5} title={analyticsGuideTitle} sections={analyticsGuideSections} />;
+}
+
+export function CrmNumberedMarkdownGuide({
+  lang, id, number, title, sections, resolveLink,
+}: {
+  lang: GuideLanguage;
+  id: string;
+  number: number;
+  title: readonly string[];
+  sections: readonly { key: string; title: readonly string[]; body: readonly string[] }[];
+  resolveLink?: (href: string) => string;
+}) {
   const col = lang === "zh" ? 2 : lang === "id" ? 1 : 0;
   return (
     <section
-      id="crm-analytics-document"
+      id={id}
       className="crm-doc-card crm-doc-section"
     >
-      {analyticsGuideSections.map((section, index) => (
+      {sections.map((section, index) => (
         <section
           key={section.key}
           id={"crm-guide-" + section.key}
           tabIndex={-1}
           className="crm-doc-section"
         >
-          {index === 0 && <h3>{analyticsGuideTitle[col]}</h3>}
+          {index === 0 && <h3>{title[col]}</h3>}
           <h4>
-            <span className="crm-doc-playbook-number">5.{index + 1}</span>{" "}
+            <span className="crm-doc-playbook-number">{number}.{index + 1}</span>{" "}
             {section.title[col]}
           </h4>
           <ReactMarkdown
@@ -100,7 +113,7 @@ export function CrmAnalyticsGuide({ lang }: { lang: GuideLanguage }) {
               ),
               th: ({ children }) => <th scope="col">{children}</th>,
               a: ({ href, children }) => (
-                <a href={href} target="_blank" rel="noopener noreferrer">
+                <a href={href && resolveLink ? resolveLink(href) : href} target="_blank" rel="noopener noreferrer">
                   {children}
                 </a>
               ),

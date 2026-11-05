@@ -1,3 +1,4 @@
+import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
@@ -37,7 +38,6 @@ import {leadChanges} from "./leadChanges.ts";
 import {promotionAttribution} from "./campaignPromotion.ts";
 import {validContactEmail, CONTACT_EMAIL_ERROR} from "../../src/utils/contactEmail.ts";
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
-import {recordCampaignSource} from './campaignSources.ts';
 import {attachFactMilestones} from "./factMilestones.ts";
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
@@ -383,7 +383,6 @@ export async function mountPortal(app: Express) {
               source,
               {
                 page: String(req.body.page || "").slice(0, 300),
-                campaign: String(req.body.campaign || "").slice(0, 100),
               },
             ],
           )
@@ -518,6 +517,7 @@ export async function mountPortal(app: Express) {
         tier: existing.tier || "Unqualified",
         submittedAt: existing.submittedAt || new Date().toISOString(),
         entryPoint: existing.entryPoint || b.entryPoint || "homepage_widget",
+        promotionEntryPoint: existing.promotionEntryPoint || (!locked.lead_id ? promotionEntryPoint(b.promotionEntryPoint) : undefined),
         ...promotion,
       };
       if (!locked.lead_id) {
@@ -551,7 +551,6 @@ export async function mountPortal(app: Express) {
         typeof b.hskExamPlan === "string"
       )
         profile.hskExamPlan = b.hskExamPlan.slice(0, 160);
-      await recordCampaignSource(c,profile);
       const numbered = await c.query(
         locked.lead_id
           ? "UPDATE portal_leads SET profile=:p2 WHERE id=:p1"

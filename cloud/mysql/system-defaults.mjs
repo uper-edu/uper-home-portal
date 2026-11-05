@@ -1,3 +1,5 @@
+import {systemCampaignDefaults} from './system-campaign-defaults.mjs';
+import {syncPromotionIndex} from './promotion-index.mjs';
 import defaults from './system-defaults.json' with {type:'json'};
 import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
 import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
@@ -6,7 +8,7 @@ import {CRM_BOT_CHANNEL} from '../../server/portal/policy.ts';
 
 /** Runs inside the caller's schema lock. Insert missing presets, never reset counters or custom roles. */
 export async function initializeSystemDefaults(c){
- const at=new Date().toISOString(),records=JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
+ const at=new Date().toISOString(),records=systemCampaignDefaults(at);
  await c.beginTransaction();
  try{
   for(const record of records){
@@ -15,7 +17,20 @@ export async function initializeSystemDefaults(c){
    await c.execute('INSERT INTO trial_campaigns(id,code,config) VALUES(?,?,?) ON DUPLICATE KEY UPDATE id=id',[record.id,record.code,JSON.stringify(record)]);
    const [rows]=await c.execute('SELECT id,code,config FROM trial_campaigns WHERE id=? OR code=?',[record.id,record.code]);
    const saved=rows[0],config=typeof saved?.config==='string'?JSON.parse(saved.config):saved?.config;
-   if(rows.length!==1||saved.id!==record.id||saved.code!==record.code||record.systemManaged&&!config?.systemManaged||record.presetKey&&config?.presetKey!==record.presetKey)throw Error('System campaign reserved identity conflict: '+record.id);
+   if(rows.length!==1||saved.id!==record.id||saved.code!==record.code||record.systemManaged&&record.id!=='social-bio'&&!config?.systemManaged||record.presetKey&&config?.presetKey!==record.presetKey)throw Error('System campaign reserved identity conflict: '+record.id);
+   if (record.id==='social-bio') {
+    const existing=config.promotionLinks ?? [];
+    for (const preset of record.promotionLinks) {
+     const found=existing.find(link=>link.id===preset.id);
+     if(found && Object.keys(preset).some(key=>key!=='createdAt' && found[key]!==preset[key]))
+      throw Error('System promotion reserved identity conflict: '+preset.id);
+    }
+    const missing=record.promotionLinks.filter(preset=>!existing.some(link=>link.id===preset.id));
+    if (missing.length || !config.systemManaged) {
+     const next={...config,systemManaged:true,promotionLinks:[...existing,...missing],updatedAt:at};
+     await c.execute('UPDATE trial_campaigns SET config=? WHERE id=?',[JSON.stringify(next),record.id]);
+    }
+   }
   }
   await c.execute('INSERT INTO access_roles(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',['finance',JSON.stringify(defaults.finance)]);
   const larkPreset = defaults.crmLarkBot;
@@ -36,6 +51,7 @@ export async function initializeSystemDefaults(c){
    const value={...config,presetKey:'hsk_standard_v1',updatedAt:at,history:[{id:'system-initialize-'+id,actor:'system',at,before:null,after:config}]};
    await c.execute('INSERT INTO crm_courses(id,revision,value) VALUES(?,1,?)',[id,JSON.stringify(value)]);
   }
+  await syncPromotionIndex(c);
   await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:courseBook.courses.length};
  }catch(e){await c.rollback();throw e;}
 }

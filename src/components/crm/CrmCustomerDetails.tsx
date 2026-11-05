@@ -95,33 +95,26 @@ export function CrmCustomerProfile({
   };
   const hasValue = (value: unknown) =>
     typeof value === "string" && Boolean(value.trim());
-  const sourceItems: Array<[string, React.ReactNode]> = [
-    ...(hasValue(lead.entryPoint)
-      ? [
-          [
-            t("Acquisition entry", "获客入口"),
-            lang === "en" && lead.entryPoint === "unverified_source"
-              ? "Original promotion entry unverified"
-              : crmValue(lead.entryPoint, lang),
-          ] as [string, React.ReactNode],
-        ]
-      : []),
-    ...(hasValue(lead.campaign)
-      ? [
-          [t("Campaign", "营销活动"), lead.campaign] as [
-            string,
-            React.ReactNode,
-          ],
-        ]
-      : hasValue(lead.campaignId)
-        ? [
-            [
-              t("Campaign", "营销活动"),
-              t("Campaign name not recorded", "活动名称未记录"),
-            ] as [string, React.ReactNode],
-          ]
-        : []),
-  ];
+  const manualSource = lead.promotionReview?.status === 'linked' ? lead.promotionReview : null;
+  const adoptedCampaign = manualSource?.campaignName || manualSource?.campaignCode || manualSource?.campaignId || lead.campaign;
+  const adoptedLink = manualSource ? manualSource.linkId : lead.promotionLinkId;
+  const rawParameters = lead.rawPromotionParameters ?? [];
+  const parameterKeys = [...new Set(rawParameters.map(parameter => parameter.key))];
+  const sourceItems: Array<[string, React.ReactNode]> = [];
+  if (manualSource || lead.promotionLinkStatus) {
+    sourceItems.push([u("Attribution method"), u(manualSource ? "Manually confirmed"
+      : lead.promotionLinkStatus === 'verified' ? "System identified"
+      : lead.promotionReview?.status === 'invalid' ? "Invalid promotion attribution" : "Unverified promotion")]);
+  }
+  if (!manualSource && hasValue(lead.entryPoint)) {
+    sourceItems.push([t("Acquisition entry", "获客入口"), lead.entryPoint === 'unverified_source'
+      ? u("Unverified promotion") : crmValue(lead.entryPoint, lang)]);
+  }
+  if (adoptedCampaign || hasValue(lead.campaignId)) {
+    sourceItems.push([t("Campaign", "营销活动"), adoptedCampaign || t("Campaign name not recorded", "活动名称未记录")]);
+  }
+  if (adoptedLink) sourceItems.push([u("Promotion link"),
+    manualSource?.snapshot?.name ? <>{manualSource.snapshot.name} · <code>{adoptedLink}</code></> : <code>{adoptedLink}</code>]);
   if (hasValue(lead.submittedAt))
     sourceItems.push([
       t("Registered", "登记时间"),
@@ -154,7 +147,7 @@ export function CrmCustomerProfile({
       : []),
   ];
   const trackingItems: Array<[string, React.ReactNode]> = [
-    ...(hasValue(lead.campaignId)
+    ...(!manualSource && hasValue(lead.campaignId)
       ? [
           [t("Campaign ID", "活动标识"), lead.campaignId] as [
             string,
@@ -162,7 +155,7 @@ export function CrmCustomerProfile({
           ],
         ]
       : []),
-    ...(hasValue(lead.placement)
+    ...(!manualSource && hasValue(lead.placement)
       ? [
           [
             t("Link placement", "链接投放位置"),
@@ -239,56 +232,23 @@ export function CrmCustomerProfile({
               ...(hasValue(lead.tierUpdatedAt) ? [[t("Group updated", "分组更新时间"), knownDate(lead.tierUpdatedAt, timezone, lang)] as [string,React.ReactNode]] : []),
               ...trackingItems,
             ]}/>
-        {(lead.promotionReview || activityRecords.length > 0 || lead.attendanceConfirmed !== undefined) && <CrmDisclosure className="crm-acquisition-records" heading={t("Source and activity evidence", "来源与活动依据")}>
+        {(lead.promotionReview || lead.rawPromotionLinkId !== undefined || activityRecords.length > 0 || lead.attendanceConfirmed !== undefined) && <CrmDisclosure className="crm-acquisition-records" heading={t("Source and activity evidence", "来源与活动依据")}>
           <div className="crm-acquisition-body">
-            {lead.promotionReview && (
+            {(lead.promotionReview || lead.rawPromotionLinkId !== undefined) && (
               <section className="crm-detail-subsection">
-                <h4>{u("Promotion entry review")}</h4>
-                <Facts
-                  items={[
-                    [
-                      u("Review status"),
-                      lead.promotionReview.status === "linked"
-                        ? u("Manually verified")
-                        : lead.promotionReview.status === "deferred"
-                          ? u("Left unconfirmed")
-                          : u("Invalid promotion attribution"),
-                    ],
-                    [
-                      u("Original promotion ID (p)"),
-                      lead.promotionReview.rawPromotionLinkId,
-                    ],
-                    [
-                      u("Verified promotion entry"),
-                      lead.promotionReview.snapshot?.name || u("Not linked"),
-                    ],
-                    [
-                      u("Verified source / medium"),
-                      lead.promotionReview.snapshot
-                        ? lead.promotionReview.snapshot.source +
-                          " / " +
-                          lead.promotionReview.snapshot.medium
-                        : u("Not confirmed"),
-                    ],
-                    [
-                      u("Verified entry ID"),
-                      lead.promotionReview.linkId || u("Not linked"),
-                    ],
+                <h4>{u("Source evidence")}</h4>
+                <Facts items={[
+                  [u("Original promotion ID (p)"), lead.rawPromotionLinkId || lead.promotionReview?.rawPromotionLinkId || u("(empty value)")],
+                  ...parameterKeys.flatMap((key): Array<[string, React.ReactNode]> => {
+                    const values = rawParameters.filter(parameter => parameter.key === key).map(parameter => parameter.value);
+                    return key === 'p' && values.length === 1 ? [] : [[key, values.map((value, index) =>
+                      <code key={index}>{index > 0 && " · "}{value || u("(empty value)")}</code>)]];
+                  }),
+                  ...(lead.promotionReview ? [
                     [u("Review reason"), lead.promotionReview.reason],
-                    [
-                      u("Reviewed by / time"),
-                      lead.promotionReview.actor +
-                        " · " +
-                        knownDate(lead.promotionReview.at, timezone, lang),
-                    ],
-                    [
-                      u("Applies to"),
-                      u(
-                        "This customer only; original parameters retained. No future alias.",
-                      ),
-                    ],
-                  ]}
-                />
+                    [u("Reviewed by / time"), lead.promotionReview.actor + " · " + knownDate(lead.promotionReview.at, timezone, lang)],
+                  ] as Array<[string, React.ReactNode]> : []),
+                ]} />
               </section>
             )}
             {(activityRecords.length > 0 ||

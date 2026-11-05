@@ -93,7 +93,6 @@ test("Campaign system messages have complete ID/ZH translations and preserve int
     "CampaignPromotionLinks",
     "CrmPromotionReviews",
     "CrmCampaignHub",
-    "CrmCampaignSources",
     "CampaignDateTimeField",
   ];
   for (const name of files) {
@@ -125,7 +124,7 @@ test("Campaign system messages have complete ID/ZH translations and preserve int
     ...CAMPAIGN_STATUS_OPTIONS.map((o) => o.labelEn),
     ...PROMOTION_MEDIA.map((m) => PROMOTION_MEDIUM_LABELS[m]),
     PROMOTION_EXPERIENCE_LABEL,
-    ...promotionReviewActions.flatMap((a) => [a.label, a.scenario, a.effect]),
+    ...promotionReviewActions.map(a => a.label),
   ])
     assert.ok(campaignUiMessages[key], key);
 });
@@ -181,21 +180,11 @@ test("Campaign cards, four-tab facts, editor, materials and source evidence loca
     assert.ok(materials.includes(u("Link to include in the template")));
     const evidence = render(CampaignSourceEvidence, {
       lang,
-      source: {
-        rawCode: "UNKNOWN-original",
-        leads: [
-          {
-            id: "test",
-            name: c.name,
-            rawCode: "UNKNOWN-original",
-            evidence: {},
-          },
-        ],
-      },
+      leadId: "test",
+      evidence: {parameters: [{key:"p",value:"UNKNOWN-original"}]},
     });
-    assert.ok(evidence.includes(u("What triggered this review?")));
+    assert.ok(evidence.includes(u("Source evidence")));
     assert.ok(evidence.includes("UNKNOWN-original"));
-    assert.ok(evidence.includes(c.name));
     assert.equal(JSON.stringify(c), before);
   }
 });
@@ -219,7 +208,7 @@ test("home page actions/subtitle, overview, review and save/discard feedback fol
     for (const key of [
       "Create campaign",
       "Refresh campaigns",
-      "Source review",
+      "Promotion source exceptions",
       "Create campaigns and promotion links, verify acquisition sources, and review customer and enrollment results.",
     ])
       assert.ok(html.includes(u(key)), `${lang}: ${key}`);
@@ -244,9 +233,8 @@ test("home page actions/subtitle, overview, review and save/discard feedback fol
         lang,
         isLight: true,
         onChanged: () => {},
-        reloadToken: 0,
-        onCount: () => {},
-      }).includes(u("Unverified promotion entries")),
+        campaigns: [],
+      }).includes(u("Review customers whose promotion link could not be identified.")),
     );
     assert.ok(
       render(CrmSaveFeedback, { lang, state: "unknown" }).includes(

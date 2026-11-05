@@ -1,3 +1,4 @@
+import {lookupPromotion} from './promotionLookup';
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -36,6 +37,9 @@ const context = (): AnalyticsParams => {
   try {
     storage = window.sessionStorage;
   } catch {}
+  const route = new URL(window.location.href);
+  const lookup = /^\/(crm|cms|system|studio)(?:\/|$)/i.test(route.pathname) ? undefined : lookupPromotion(route.searchParams);
+  const resolved = lookup instanceof Promise ? undefined : lookup;
   const value = analyticsContext({
     href: window.location.href,
     referrer: document.referrer,
@@ -43,13 +47,15 @@ const context = (): AnalyticsParams => {
     language: document.documentElement.lang,
     buildId: build?.buildId,
     internalTest: analyticsInternalTest(window.location.href, storage),
+    promotion: resolved?.state === 'verified' ? resolved.promotion : undefined,
+    promotionState: resolved && resolved.state !== 'verified' ? resolved.state : undefined,
   });
   return {
     ...value,
     ...(value.workspace !== "public" && actorRole ? { role: actorRole } : {}),
   };
 };
-export function initGA() {
+function initGA() {
   if (!GA_MEASUREMENT_ID || typeof window === "undefined" || client) return;
   if (
     !analyticsDestinationAllowed(
@@ -101,38 +107,35 @@ export function initGA() {
     /* Analytics must never block business flows. */
   }
 }
-export const trackEvent = (
-  event: string,
-  params: Record<string, unknown> = {},
-) => {
+function withAnalytics(send: (current: NonNullable<typeof client>) => boolean) {
   try {
-    initGA();
-    return client?.track(event, params) || false;
+    const href = window.location.href;
+    if (!GA_MEASUREMENT_ID || !analyticsDestinationAllowed(
+      configuration, GA_MEASUREMENT_ID, href, build?.environment || (import.meta as any).env?.MODE,
+    )) return false;
+    const route = new URL(href);
+    const publicPage = !/^\/(crm|cms|system|studio)(?:\/|$)/i.test(route.pathname);
+    const lookup = publicPage ? lookupPromotion(route.searchParams) : undefined;
+    const sendCurrent = () => {
+      if (window.location.href !== href) return false;
+      initGA();
+      return client ? send(client) : false;
+    };
+    if (lookup instanceof Promise) {
+      void lookup.then(sendCurrent).catch(() => {});
+      return true;
+    }
+    return sendCurrent();
   } catch {
     return false;
   }
-};
-export const trackReceipt = (
-  event: string,
-  key: string,
-  params: Record<string, unknown> = {},
-  confirmed = true,
-) => {
-  try {
-    initGA();
-    return client?.confirmed(event, key, confirmed, params) || false;
-  } catch {
-    return false;
-  }
-};
-export const trackPageView = (_path?: string, _title?: string) => {
-  try {
-    initGA();
-    return client?.page() || false;
-  } catch {
-    return false;
-  }
-};
+}
+export const trackEvent = (event: string, params: Record<string, unknown> = {}) =>
+  withAnalytics(current => current.track(event, params));
+export const trackReceipt = (event: string, key: string, params: Record<string, unknown> = {}, confirmed = true) =>
+  withAnalytics(current => current.confirmed(event, key, confirmed, params));
+export const trackPageView = (_path?: string, _title?: string) =>
+  withAnalytics(current => current.page());
 export function usePageTracking() {
   const location = useLocation();
   useEffect(() => {

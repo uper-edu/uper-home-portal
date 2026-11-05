@@ -1,3 +1,4 @@
+import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
 import {containPaneKeys,revealRecord} from '../adminScroll';
 import {loadCampaignWorkspace} from "../../utils/campaignWorkspaceRefresh";
@@ -28,13 +29,14 @@ import { CampaignPromotionLinks } from "./CampaignPromotionLinks";
 import { CampaignEditor } from "./CampaignEditor";
 import { CampaignMaterials } from "./CampaignMaterials";
 import { campaignText, campaignName } from "../../utils/campaignWorkspace";
-import { CrmCampaignSources } from "./CrmCampaignSources";
+import { CrmPromotionReviews } from "./CrmPromotionReviews";
 import {
   isOrganicCampaign,
   organicCampaignName,
+  isEvergreenCampaign,
 } from "../../utils/organicCampaign";
 import { CrmCampaignMeasures } from "./CrmCampaignMeasures";
-import { campaignChatLink, matchesCampaign } from "../../utils/crmCampaignLink";
+import { matchesCampaign } from "../../utils/crmCampaignLink";
 import { CAMPAIGN_LINK_PLACEHOLDER } from "../../utils/campaignCode";
 import {
   campaignBudgetFromInput,
@@ -44,7 +46,6 @@ import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import { crmValue, crmError, crmLocale } from "../../utils/crmLanguage";
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useCampaignQr } from "./useCampaignQr";
 import { CampaignQrImage } from "./CampaignQrImage";
 import {
   PanelLeftClose,
@@ -135,9 +136,6 @@ export function CrmCampaignHub({
   const [promotionReviews, setPromotionReviews] =
     useState<PromotionReviewCounts>({ available: false, counts: {} });
   const [reviewCountsLoading, setReviewCountsLoading] = useState(true);
-  const [unknownSourcesPending, setUnknownSourcesPending] = useState<
-    boolean | null
-  >(null);
   const [searchQuery, setSearchQuery] = useState(
     () =>
       new URLSearchParams(
@@ -158,10 +156,6 @@ export function CrmCampaignHub({
   );
   // Active view: 'cards' | 'table'
   const [viewLayout, setViewLayout] = useState<"cards" | "table">("cards");
-  // QR Modal State
-  const [activeQrCampaign, setActiveQrCampaign] =
-    useState<CrmCampaignRecord | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   type DetailTab = "overview" | "info" | "leads" | "collaterals";
   const [pageUrl, setPageUrl] = useState(() =>
     typeof window === "undefined"
@@ -206,6 +200,10 @@ export function CrmCampaignHub({
       ? pageParams.get("campaignView")
       : "overview"
   ) as DetailTab;
+  const [promotionForm, setPromotionForm] = useState<{id:string;open:boolean}>();
+  const addingPromotion = !!activeDetailCampaign && canManageCampaigns &&
+    (promotionForm?.id === activeDetailCampaign.id ? promotionForm.open : !activeDetailCampaign.promotionLinks?.length && activeDetailCampaign.promotionModel === "multiple");
+  const presetDetail = !!activeDetailCampaign && isEvergreenCampaign(activeDetailCampaign);
   const organicDetail =
     !!activeDetailCampaign && isOrganicCampaign(activeDetailCampaign);
   const detailTab: DetailTab =
@@ -299,6 +297,7 @@ export function CrmCampaignHub({
     }
     requestLeave(() => {
       setSaveNotice(false);
+      setPromotionForm(undefined);
       setMobileList(false);
       navigateCampaign(c, tab);
     });
@@ -306,6 +305,7 @@ export function CrmCampaignHub({
   const closeCampaign = () =>
     requestLeave(() => {
       setSaveNotice(false);
+      setPromotionForm(undefined);
       setMobileList(true);
       navigateCampaign(null);
     });
@@ -313,6 +313,7 @@ export function CrmCampaignHub({
     if (activeDetailCampaign && tab !== detailTab)
       requestLeave(() => {
         setSaveNotice(false);
+        setPromotionForm(undefined);
         navigateCampaign(activeDetailCampaign, tab);
       });
   };
@@ -360,6 +361,7 @@ export function CrmCampaignHub({
       setEditor(null);
     });
   const handleOpenEditWizard = (c: CrmCampaignRecord, materials = false) => {
+    if (isEvergreenCampaign(c)) return;
     if (materials) openCampaign(c, "collaterals");
     else requestLeave(() => setEditor(c));
   };
@@ -455,30 +457,22 @@ export function CrmCampaignHub({
     let active = true;
     setReviewCountsLoading(true);
     setPromotionReviews({ available: false, counts: {} });
-    setUnknownSourcesPending(null);
-    const read = async (url: string) => {
-      const response = await fetch(url);
+    fetch("/api/crm/campaigns/sources/promotions").then(async response => {
       if (!response.ok) throw Error("Review data unavailable");
-      return response.json();
-    };
-    Promise.allSettled([
-      read("/api/crm/campaigns/sources/promotions"),
-      read("/api/crm/campaigns/sources"),
-    ]).then(([promotions, sources]) => {
+      const { reviews } = await response.json();
       if (!active) return;
-      if (promotions.status === "fulfilled") {
-        const counts: Record<string, number> = {};
-        for (const row of promotions.value.reviews)
-          if (["pending", "deferred"].includes(row.status))
-            counts[row.campaignId] = (counts[row.campaignId] || 0) + 1;
-        setPromotionReviews({ available: true, counts });
-      } else setPromotionReviews({ available: false, counts: {} });
-      setUnknownSourcesPending(
-        sources.status === "fulfilled"
-          ? sources.value.sources.some((row: any) => row.status === "pending")
-          : null,
-      );
-      setReviewCountsLoading(false);
+      const counts: Record<string, number> = Object.create(null);
+      for (const row of reviews) {
+        if (["pending", "deferred"].includes(row.status)) {
+          const key = row.campaignId ?? "";
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+      setPromotionReviews({ available: true, counts });
+    }).catch(() => {
+      if (active) setPromotionReviews({ available: false, counts: {} });
+    }).finally(() => {
+      if (active) setReviewCountsLoading(false);
     });
     return () => {
       active = false;
@@ -510,10 +504,6 @@ export function CrmCampaignHub({
   useEffect(() => {
     fetchCampaigns();
   }, []);
-  // Each surface owns its current saved link and independent generation lifecycle.
-  const popupQr = useCampaignQr(
-    activeQrCampaign ? campaignChatLink(activeQrCampaign.code) : null,
-  );
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
     return campaigns.filter((c) => {
@@ -533,12 +523,6 @@ export function CrmCampaignHub({
       return true;
     });
   }, [campaigns, selectedType, selectedStatus, searchQuery]);
-  // Copy helper
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2500);
-  };
   // Delete Campaign
   const handleDeleteCampaign = async (id: string, name: string) => {
     if (
@@ -580,6 +564,19 @@ export function CrmCampaignHub({
         campaigns.filter((c) => matchesCampaign(l, c)).length === 1,
     );
   }, [activeDetailCampaign, campaignLeads, campaigns]);
+  const [promotionSelection, setPromotionSelection] = useState<{campaignId: string; key: string}>();
+  const activePromotionKey = promotionSelection?.campaignId === activeDetailCampaign?.id ? promotionSelection?.key : undefined;
+  const shownCampaignLeads = activePromotionKey && activeDetailCampaign
+    ? campaignLeads.filter(lead => {
+        if (lead.identityReview?.pending || lead.identityLifecycle === 'pending') return false;
+        if (campaigns.filter(c => matchesCampaign(lead, c)).length > 1) return false;
+        const origin = promotionResultOrigins(lead, activeDetailCampaign)[0];
+        return origin && promotionResultKey(origin, activeDetailCampaign) === activePromotionKey;
+      })
+    : matchedLeadsForActiveCampaign;
+  const promotionLabel = (key: string, name?: string) => name || u(
+    key === ':invalid' ? 'Invalid promotion attribution' : key === ':unverified' ? 'Unverified promotion' : key === ':untagged' ? 'Untagged visits' : 'Campaign without a promotion link',
+  );
   const getTypeIcon = (type: CampaignType | "") => {
     switch (type) {
       case "campus_seminar":
@@ -618,23 +615,18 @@ export function CrmCampaignHub({
         reviewing={campaignArea === "sources"}
         canManage={canManageCampaigns}
         isLight={isLight}
-        state={sourceReviewState(
-          unknownSourcesPending,
-          promotionReviews,
-          reviewCountsLoading,
-        )}
+        state={sourceReviewState(promotionReviews, reviewCountsLoading)}
         onOpen={() => openSourceReview()}
         onReturn={returnFromSourceReview}
         headingRef={workspaceHeading}
       />
       {campaignArea === "sources" && canManageCampaigns && (
-        <section aria-label={u("Source review")}>
-          <CrmCampaignSources
-            initialIssue={pageParams.get("sourceIssue") || undefined}
-            promotionCampaign={campaigns.find(
+        <section aria-label={u("Promotion source exceptions")}>
+          <CrmPromotionReviews
+            campaignFilter={campaigns.find(
               (c) => c.id === pageParams.get("sourceCampaign"),
             )}
-            onClearPromotionCampaign={clearPromotionFilter}
+            onClearCampaignFilter={clearPromotionFilter}
             key={workspaceEpoch}
             onStateChange={(state) => {
               materialState.current = state;
@@ -643,7 +635,7 @@ export function CrmCampaignHub({
             isLight={isLight}
             campaigns={campaigns}
             onChanged={fetchCampaigns}
-            onLead={onSelectLeadInCrm}
+            onLead={onSelectLeadInCrm && (id => requestLeave(() => onSelectLeadInCrm(id)))}
           />
         </section>
       )}
@@ -718,7 +710,7 @@ export function CrmCampaignHub({
                 >
                   {u("Retry")}
                 </button>{" "}
-                {u("or open Source review to check.")}
+                {u("or open Promotion source exceptions to check.")}
               </p>
             )}
           {campaignError ? (
@@ -748,7 +740,6 @@ export function CrmCampaignHub({
             <CampaignCards
               campaigns={filteredCampaigns}
               lang={lang}
-              isLight={isLight}
               reviewCounts={promotionReviews}
               onReview={
                 canManageCampaigns ? reviewCampaignPromotions : undefined
@@ -958,14 +949,17 @@ export function CrmCampaignHub({
                   titleId="campaign-page-title"
                   titleRef={pageHeading}
                   title={
-                    isOrganicCampaign(activeDetailCampaign)
-                      ? organicCampaignName(lang)
-                      : campaignName(activeDetailCampaign, lang)
+                    <span className="campaign-preset-heading">
+                      {organicDetail ? organicCampaignName(lang) : campaignName(activeDetailCampaign, lang)}
+                      {(activeDetailCampaign.presetKey || activeDetailCampaign.systemManaged) && (
+                        <span className="campaign-preset-badge">{u("System preset")}</span>
+                      )}
+                    </span>
                   }
                   meta={
                     <>
                       <code>{activeDetailCampaign.code}</code>
-                      <span className="campaign-workpage-status">
+                      {!presetDetail && <span className="campaign-workpage-status">
                         {organicDetail
                           ? u("Read-only · System source")
                           : u(
@@ -973,13 +967,19 @@ export function CrmCampaignHub({
                                 (o) => o.value === activeDetailCampaign.status,
                               )?.labelEn || activeDetailCampaign.status,
                             )}
-                      </span>
+                      </span>}
                     </>
                   }
                   actions={
                     <>
+                      {detailTab === "overview" && canManageCampaigns && (
+                        <button type="button" className="campaign-workspace-action campaign-primary"
+                          onClick={() => setPromotionForm({id:activeDetailCampaign.id,open:true})}>
+                          {u(activeDetailCampaign.promotionLinks?.length ? "Add another promotion link" : "Add promotion link")}
+                        </button>
+                      )}
                       {canManageCampaigns &&
-                        !isOrganicCampaign(activeDetailCampaign) && (
+                        !organicDetail && !presetDetail && (
                           <button
                             className="campaign-workspace-action"
                             onClick={() =>
@@ -1070,10 +1070,8 @@ export function CrmCampaignHub({
                         key={activeDetailCampaign.id + workspaceEpoch}
                         campaign={activeDetailCampaign}
                         isLight={isLight}
-                        canManage={
-                          canManageCampaigns &&
-                          !isOrganicCampaign(activeDetailCampaign)
-                        }
+                        adding={addingPromotion}
+                        onCloseForm={() => setPromotionForm({id:activeDetailCampaign.id,open:false})}
                         onSaved={(c) => {
                           updateCampaign(c);
                           void fetchCampaigns();
@@ -1124,7 +1122,7 @@ export function CrmCampaignHub({
                         />
                       )}
                       {canManageCampaigns &&
-                        !isOrganicCampaign(activeDetailCampaign) && (
+                        !organicDetail && !presetDetail && (
                           <details className="campaign-info-section">
                             <summary>{u("More campaign actions")}</summary>
                             <p className="campaign-hint">
@@ -1166,6 +1164,33 @@ export function CrmCampaignHub({
                           organicDetail ? u("This system source") : undefined
                         }
                       />
+                      {!!activeDetailCampaign.promotionResults?.length && (
+                        <div className="crm-doc-table-scroll">
+                          <table className="crm-doc-table">
+                            <caption>{u("Results by promotion link")}</caption>
+                            <thead><tr>
+                              {["Promotion link", "Attribution method", "Promotion type", "Customers", "Enrollments", "Verified receipts", "Verified refunds", "Net receipts"].map(label =>
+                                <th key={label} scope="col">{u(label)}</th>)}
+                            </tr></thead>
+                            <tbody>{activeDetailCampaign.promotionResults.map(row => (
+                              <tr key={row.key}>
+                                <th scope="row">
+                                  <button type="button" className="campaign-workspace-action" aria-pressed={activePromotionKey === row.key}
+                                    onClick={() => setPromotionSelection(activePromotionKey === row.key ? undefined : {campaignId:activeDetailCampaign.id, key:row.key})}>
+                                    {promotionLabel(row.key, row.name)}
+                                  </button>
+                                  {row.source && <small>{row.source} · {row.medium}</small>}
+                                </th>
+                                <td>{row.attribution ? u(row.attribution === 'manual' ? 'Manually confirmed' : 'System identified') : '—'}</td>
+                                <td>{row.kind ? u(row.kind === 'paid' ? 'Paid promotion' : row.kind === 'unpaid' ? 'Unpaid promotion' : 'Unclassified') : '—'}</td>
+                                <td>{row.customers}</td><td>{row.enrolled}</td>
+                                {[row.received, row.refunded, row.net].map((amount, index) =>
+                                  <td key={index}>Rp {amount.toLocaleString(crmLocale(lang))}</td>)}
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-400">
                           {organicDetail
@@ -1176,7 +1201,7 @@ export function CrmCampaignHub({
                               )}
                         </span>
                         <span className="font-bold text-primary-600">
-                          {matchedLeadsForActiveCampaign.length}{" "}
+                          {shownCampaignLeads.length}{" "}
                           {organicDetail
                             ? u("Customers")
                             : t("Leads Total", "条线索")}
@@ -1190,7 +1215,7 @@ export function CrmCampaignHub({
                             "活动客户列表暂不可用，请重新打开重试。",
                           )}
                         </p>
-                      ) : matchedLeadsForActiveCampaign.length === 0 ? (
+                      ) : shownCampaignLeads.length === 0 ? (
                         <div
                           className={`p-8 text-center rounded-2xl border ${isLight ? "bg-white border-slate-200" : "bg-slate-900 border-slate-800"}`}
                         >
@@ -1208,7 +1233,7 @@ export function CrmCampaignHub({
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {matchedLeadsForActiveCampaign.map((lead) => (
+                          {shownCampaignLeads.map((lead) => (
                             <div
                               key={lead.id}
                               className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all ${isLight ? "bg-white border-slate-200 hover:border-slate-300" : "bg-slate-900 border-slate-800 hover:border-slate-700"}`}
@@ -1277,7 +1302,7 @@ export function CrmCampaignHub({
                       isLight={isLight}
                       canEdit={
                         canManageCampaigns &&
-                        !isOrganicCampaign(activeDetailCampaign)
+                        !organicDetail && !presetDetail
                       }
                       onStateChange={(dirty, busy) => {
                         materialState.current = { dirty, busy };

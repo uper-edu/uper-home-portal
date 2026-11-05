@@ -1,3 +1,5 @@
+import {lookupPromotion} from '../utils/promotionLookup';
+import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import {trackEvent} from '../utils/analytics';
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +17,7 @@ import { PageMetadata } from "../components/PageMetadata";
 import "./link-hub.css";
 import { useSearchParams } from "react-router-dom";
 import LinkHandbookPreview from "../components/LinkHandbookPreview";
+import { SocialProfileIcon, socialProfiles } from "../components/SocialProfileIcon";
 import { linkHubConsultUrl } from '../utils/instagramBioCampaign';
 
 const whatsapp = "https://wa.me/6281116612062";
@@ -94,25 +97,14 @@ const words = {
     pdfError: "预览暂不可用，请使用下方打开PDF或下载。",
   },
 };
-function SocialIcon({ kind }: { kind: "whatsapp" | "tiktok" | "youtube" }) {
+function WhatsAppIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-      {kind === "youtube" ? (
-        <>
-          <path d="M23 7s-.2-1.7-.9-2.4c-.9-.9-1.9-.9-2.4-1C16.4 3.3 12 3.3 12 3.3s-4.4 0-7.7.3c-.5.1-1.5.1-2.4 1C1.2 5.3 1 7 1 7S.7 9 .7 11v2c0 2 .3 4 .3 4s.2 1.7.9 2.4c.9.9 2.1.9 2.7 1 2 .2 7.4.3 7.4.3s4.4 0 7.7-.3c.5-.1 1.5-.1 2.4-1 .7-.7.9-2.4.9-2.4s.3-2 .3-4v-2c0-2-.3-4-.3-4Z" />
-          <path d="m9.7 8.2 6 3.8-6 3.8Z" fill="#91a2a4" />
-        </>
-      ) : kind === "tiktok" ? (
-        <path d="M16.6 1h-4v14.2a3.1 3.1 0 1 1-2.7-3.1V8a7.2 7.2 0 1 0 6.8 7.2V8.1a10 10 0 0 0 5.3 1.6V5.6A6.1 6.1 0 0 1 16.6 1Z" />
-      ) : (
-        <>
-          <path
-            fillRule="evenodd"
-            d="M12 1a11 11 0 0 0-9.5 16.5L1 23l5.6-1.5A11 11 0 1 0 12 1Zm0 2a9 9 0 1 1-4.6 16.8l-.4-.2-3.2.8.9-3.1-.3-.4A9 9 0 0 1 12 3Z"
-          />
-          <path d="M8.2 6.6c-.3-.1-.6 0-.9.3-.6.6-.9 1.3-.8 2.2.2 2.8 3.7 6.5 7 7.3 1.2.3 2.4-.3 2.8-.9.2-.4.4-1.1.2-1.4l-2.3-1.2c-.3-.1-.4 0-.6.2l-.9 1c-.2.2-.4.2-.7 0a9 9 0 0 1-3.3-3c-.2-.3-.2-.4 0-.6l.7-.9c.2-.2.2-.4.1-.6L8.5 7c-.1-.2-.1-.4-.3-.4Z" />
-        </>
-      )}
+      <path
+        fillRule="evenodd"
+        d="M12 1a11 11 0 0 0-9.5 16.5L1 23l5.6-1.5A11 11 0 1 0 12 1Zm0 2a9 9 0 1 1-4.6 16.8l-.4-.2-3.2.8.9-3.1-.3-.4A9 9 0 0 1 12 3Z"
+      />
+      <path d="M8.2 6.6c-.3-.1-.6 0-.9.3-.6.6-.9 1.3-.8 2.2.2 2.8 3.7 6.5 7 7.3 1.2.3 2.4-.3 2.8-.9.2-.4.4-1.1.2-1.4l-2.3-1.2c-.3-.1-.4 0-.6.2l-.9 1c-.2.2-.4.2-.7 0a9 9 0 0 1-3.3-3c-.2-.3-.2-.4 0-.6l.7-.9c.2-.2.2-.4.1-.6L8.5 7c-.1-.2-.1-.4-.3-.4Z" />
     </svg>
   );
 }
@@ -175,6 +167,14 @@ export default function LinkHub() {
     : i18n.language.startsWith("id")
       ? "id"
       : "en";
+  useEffect(() => {
+    if (params.has('lang')) return;
+    let active = true;
+    void Promise.resolve(lookupPromotion(params)).then(result => {
+      if (active && result?.state === 'verified') void i18n.changeLanguage(result.promotion.language);
+    });
+    return () => { active = false; };
+  }, [params, i18n]);
   const t = words[lang];
   const consultUrl = linkHubConsultUrl(params, lang);
   const selectLanguage = (value: string) => {
@@ -183,6 +183,8 @@ export default function LinkHub() {
     setParams(next, { replace: true });
     void i18n.changeLanguage(value);
   };
+  const trackHandbook = (handbook_action: string) =>
+    trackEvent('link_click', {target:'handbook', entry_point:'linkhub', asset_id:'handbook_2026', handbook_action});
   const [documentOpen, setDocumentOpen] = useState(false),
     [share, setShare] = useState<{ title: string; url: string } | null>(null),
     [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
@@ -193,7 +195,7 @@ export default function LinkHub() {
   const profileShare = () =>
     shareItem(
       "UPER Education & Technology",
-      `/link${lang === "en" ? "" : `?lang=${lang}`}`,
+      promotionJourneyUrl(`/link?lang=${lang}`, params),
     );
   const copy = async () => {
     try {
@@ -287,24 +289,12 @@ export default function LinkHub() {
               <a
                 key={kind}
                 onClick={()=>trackEvent('link_click',{target:kind,entry_point:'linkhub'})}
-                href={
-                  kind === "whatsapp"
-                    ? whatsapp
-                    : kind === "tiktok"
-                      ? "https://www.tiktok.com/@upereducation"
-                      : "https://www.youtube.com/@UperEducation"
-                }
+                href={kind === "whatsapp" ? whatsapp : socialProfiles[kind].url}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={
-                  kind === "whatsapp"
-                    ? "WhatsApp"
-                    : kind === "tiktok"
-                      ? "TikTok"
-                      : "YouTube"
-                }
+                aria-label={kind === "whatsapp" ? "WhatsApp" : socialProfiles[kind].name}
               >
-                <SocialIcon kind={kind} />
+                {kind === "whatsapp" ? <WhatsAppIcon /> : <SocialProfileIcon platform={kind} />}
               </a>
             ))}
           </nav>
@@ -328,7 +318,7 @@ export default function LinkHub() {
             <button
               type="button"
               className="linkhub-card-main"
-              onClick={() => {trackEvent('link_click',{target:'handbook',entry_point:'linkhub'});setDocumentOpen(true);}}
+              onClick={() => {trackHandbook('preview');setDocumentOpen(true);}}
             >
               <span>Handbook 2026</span>
               <small>
@@ -340,7 +330,7 @@ export default function LinkHub() {
               className="linkhub-card-share"
               type="button"
               aria-label={`${t.share}: Handbook 2026`}
-              onClick={() => shareItem("Handbook 2026", handbook)}
+              onClick={() => { trackHandbook("share"); shareItem("Handbook 2026", handbook); }}
             >
               <MoreVertical size={19} />
             </button>
@@ -367,7 +357,7 @@ export default function LinkHub() {
           </div>
         </section>
         <footer className="linkhub-footer">
-          <a href="/">UPER Education &amp; Technology</a>
+          <a href={promotionJourneyUrl("/", params)}>UPER Education &amp; Technology</a>
         </footer>
       </main>
       {documentOpen && (
@@ -380,17 +370,17 @@ export default function LinkHub() {
           <p className="linkhub-document-summary">{t.description}</p>
           <LinkHandbookPreview url={handbook} errorText={t.pdfError} />
           <footer>
-            <a href={handbook} target="_blank" rel="noopener noreferrer">
+            <a href={handbook} target="_blank" rel="noopener noreferrer" onClick={() => trackHandbook("view")}>
               <ExternalLink size={17} />
               {t.view}
             </a>
-            <a href={handbook} download>
+            <a href={handbook} download onClick={() => trackHandbook("download_click")}>
               <Download size={17} />
               {t.download}
             </a>
             <button
               type="button"
-              onClick={() => shareItem("Handbook 2026", handbook)}
+              onClick={() => { trackHandbook("share"); shareItem("Handbook 2026", handbook); }}
             >
               <Share2 size={17} />
               {t.share}

@@ -10,6 +10,7 @@ import {loadCmsSeed,mapSeedMedia,seedBusinessContent,saveCmsMediaMetadata} from 
 import {fingerprint,withoutForeignKeys} from './lib/mysql-dump.mjs';
 import {mediaDigest} from '../cloud/mysql/cms-media-storage.mjs';
 import {identityDifferences,cmsChangeState,writePrivateArtifact} from './lib/bootstrap-safety.mjs';
+import {bootstrapSchemaVersion,bootstrapRows,verifyBootstrapTables,inspectInitializationSql} from './lib/cms-bootstrap-contract.mjs';
 
 export function sqlInsert(table,rows,columns){
  if(!/^[a-z0-9_]+$/.test(table)||columns.some(x=>!/^\w+$/.test(x)))throw Error('Invalid export identifiers');
@@ -54,14 +55,14 @@ export async function applyBootstrap({backupPath,receiptPath,output,apply=false}
   if(!apply){console.log(JSON.stringify({mode:'preview',...summary,accounts:backup.accounts.crm_users.length,alreadyApplied:changes.every(x=>x.state==='applied'),ready:true}));return;}
   const operationPath=path.join(output,'bootstrap-state.json');
   // Do not bind the journal to the observed pending/applied state: a commit changes that state.
-  const stableDigest=fingerprint({accounts:backup.accounts,changes:changes.map(({state,...change})=>change),bundle});
+  const stableDigest=fingerprint({schemaVersion:bootstrapSchemaVersion,accounts:backup.accounts,changes:changes.map(({state,...change})=>change),bundle});
   let operation;
   try{operation=JSON.parse(await fs.readFile(operationPath,'utf8'));}catch(error){if(error.code!=='ENOENT')throw error;}
   if(operation){if(operation.inputDigest!==stableDigest)throw Error('Bootstrap input differs from the saved operation');}
   else{
    const existing=await fs.readdir(output).catch(error=>{if(error.code==='ENOENT')return [];throw error;});
    if(existing.length)throw Error('Output contains artifacts without a matching operation; choose a new private output directory');
-   operation={inputDigest:stableDigest,at:new Date().toISOString()};
+   operation={schemaVersion:bootstrapSchemaVersion,inputDigest:stableDigest,at:new Date().toISOString()};
    await writePrivateArtifact(operationPath,JSON.stringify(operation,null,2));
   }
   const migration=await migrate(db,'uper_trial_home',{initializeSystemDefaults:false});
@@ -84,23 +85,17 @@ export async function applyBootstrap({backupPath,receiptPath,output,apply=false}
    const [ddl]=await db.query('SHOW CREATE TABLE `'+table+'`');schema[table]=withoutForeignKeys(ddl[0]['Create Table']);
    const [fields]=await db.query('SHOW FULL COLUMNS FROM `'+table+'`');columns[table]=fields.filter(f=>!/(?:VIRTUAL|STORED) GENERATED/.test(f.Extra)).map(f=>f.Field);
   }
-  const defaults=JSON.parse(await fs.readFile(new URL('../cloud/mysql/system-defaults.json',import.meta.url)));
-  const courseBook=JSON.parse(await fs.readFile(new URL('../src/data/crmCoursePrices.json',import.meta.url)));
-  const at=operation.at;
-  const records=JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
-  const seedRows={...backup.accounts,
-   trial_schema_versions:Array.from({length:migration.version},(_,i)=>({version:i+1,state:'ready'})),
-   cms_collections:Object.entries(bundle.collections).map(([name,items])=>({name,items,items_text:JSON.stringify(items),revision:1})),
-   cms_media:bundle.media.map(x=>({id:x.id,mime:'image/webp',content:null,uploaded_by:'cms-initialization',storage_type:'cos',cos_url:x.url,object_key:x.objectKey,byte_size:x.bytes})),
-   trial_campaigns:records.map(config=>({id:config.id,code:config.code,config})),
-   crm_courses:courseBook.courses.map(course=>{const id='hsk-standard-'+course.id.replace(/^HSK /,'').toLowerCase();const config={name:course.id,sessions:course.sessions,price:course.total,active:true,maxDiscountBps:0,maxDiscountAmount:null};return {id,revision:1,value:{...config,presetKey:'hsk_standard_v1',updatedAt:at,history:[{id:'system-initialize-'+id,actor:'system',at,before:null,after:config}]}};})
-  };
+  verifyBootstrapTables(Object.keys(schema));
+  if(migration.version!==bootstrapSchemaVersion)throw Error('Unexpected bootstrap migration version');
+  const [versions]=await db.query('SELECT version,state FROM trial_schema_versions ORDER BY version');
+  const seedRows=bootstrapRows({accounts:backup.accounts,bundle,versions,at:operation.at});
   const parts=['-- Sensitive account bootstrap. Import only into an explicitly selected EMPTY MySQL 8 database.','-- Contains password hashes, not plaintext passwords. Do not commit or publish.','SET NAMES utf8mb4;',"SET time_zone = '+00:00';","SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION';"];
   for(const name of Object.keys(schema).sort())parts.push(schema[name]+';');
   parts.push('START TRANSACTION;');
   for(const [name,rows] of Object.entries(seedRows))parts.push(sqlInsert(name,rows,columns[name]));
   parts.push('COMMIT;');const sql=parts.join('\n\n')+'\n';
   if(/\b(?:FOREIGN KEY|REFERENCES|DROP TABLE|TRUNCATE|CREATE DATABASE|USE\s+`)/i.test(sql))throw Error('Unsafe initialization SQL');
+  inspectInitializationSql(sql);
   await fs.mkdir(output,{recursive:true});
   const sqlPath=path.join(output,'uper-production-initialization.sql'),sqlSha256=mediaDigest(Buffer.from(sql));
   await writePrivateArtifact(sqlPath,sql);

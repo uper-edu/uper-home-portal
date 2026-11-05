@@ -4,7 +4,7 @@ import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './r
 import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
-import {canonicalCampaignId} from '../utils/organicCampaign';
+import {promotionEvidenceKeys, promotionEntryPoint} from '../utils/promotionNavigation';
 import {
   setDraftScope,
   drafts,
@@ -53,7 +53,7 @@ export async function conversation(source: ChatSource) {
     await scopedFetch("/api/portal/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, page: location.pathname + location.search, campaign: new URLSearchParams(location.search).get("c") || "" }),
+      body: JSON.stringify({ source, page: location.pathname + location.search }),
     }),
   );
   return (await scopedJson(res)).conversationId as string;
@@ -64,8 +64,18 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
   const params=new URLSearchParams(location.search);
-  contact.promotionLinkId=params.get('p')||undefined;
-  contact.campaignId=canonicalCampaignId(params.get('c')||params.get('cid')||params.get('campaign'));
+  const promotionId = params.get('p');
+  contact.promotionLinkId = promotionId ?? undefined;
+  delete contact.campaignId;
+  delete contact.campaign;
+  if (promotionId !== null) {
+    contact.promotionParametersInvalid = new Set(params.getAll('p')).size > 1 || undefined;
+    contact.promotionParameters = promotionEvidenceKeys.flatMap(key =>
+      params.getAll(key).map(value => ({ key, value: value.slice(0, 191) }))).slice(0, 24);
+  }
+  contact.utmCampaign = params.get('utm_campaign') || undefined;
+  contact.promotionEntryPoint = promotionEntryPoint(params.get('entry_point'))
+    ?? (location.pathname.startsWith('/chat') || location.pathname.startsWith('/consult') ? 'direct' : 'homepage_widget');
   for (const key of [
     "quizScore",
     "quizMaxScore",
@@ -94,7 +104,7 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   }
   assertVisitorScope(responseScope);
   const analyticsReceipt=registrationAnalyticsReceipt(data,String(location.pathname||'').startsWith('/chat')||String(location.pathname||'').startsWith('/consult')?'standalone_chat':'homepage_widget');
-  if(analyticsReceipt)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,response_time_ms:Date.now()-began}});
+  if(analyticsReceipt)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,entry_point:contact.promotionEntryPoint,response_time_ms:Date.now()-began}});
   for(const receipt of registrationAdvisorAnalyticsReceipts(data))trackConfirmedReceipt(receipt);
   saveStudentContext({leadProfile:data.lead});
   return data;

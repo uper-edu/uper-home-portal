@@ -234,7 +234,7 @@ test("Promotion review facts render in three languages while preserving raw evid
     assert.match(html, /p-raw/);
     assert.match(html, /TEST Original Entry/);
     assert.match(html, /TEST Human 原文/);
-    assert.match(html, lang === "zh" ? /推广入口核实/ : lang === "id" ? /Verifikasi entri promosi/ : /Promotion entry review/);
+    assert.match(html, lang === "zh" ? /人工确认/ : lang === "id" ? /Dikonfirmasi manual/ : /Manually confirmed/);
     if(lang !== "en") assert.doesNotMatch(html, /Reviewed by \/ time|Invalid promotion attribution/);
   }
 });

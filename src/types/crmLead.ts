@@ -109,7 +109,11 @@ export interface CrmLeadRecord {
   identityLifecycle?:string;
   identityContactHold?:string[];
   identityReview?: {crossConflict?:boolean;pending:boolean;count:number;canReview:boolean;blocked:boolean;ownerAssignmentManagerOnly?:boolean;identityReviewManagerOnly?:boolean};
-  promotionReview?: {status:'linked'|'deferred'|'invalid';revision:number;rawCampaignCode:string;rawPromotionLinkId:string;campaignId:string;linkId:string|null;snapshot:any;actor:string;at:string;reason:string;scope:'this_customer_only'};
+  rawPromotionLinkId?: string;
+  rawPromotionParameters?: {key: string; value: string}[];
+  promotionLinkId?: string;
+  promotionLinkStatus?: 'verified' | 'unverified';
+  promotionReview?: {status:'linked'|'deferred'|'invalid';revision:number;rawCampaignCode:string;rawPromotionLinkId:string;campaignId:string|null;campaignName?:string;campaignCode?:string;linkId:string|null;snapshot:any;actor:string;at:string;reason:string;scope:'this_customer_only'};
   ownerChangedAt?: string;
   attendanceRecords?: Array<{campaignId:string;confirmed:boolean;mode:"onsite"|"online";reason:string;actor:string;recordedAt:string}>;
   communicationLanguage?: "en"|"id"|"zh"|"unknown";

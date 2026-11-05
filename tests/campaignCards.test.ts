@@ -17,7 +17,9 @@ test('catalogue preserves original identity, type, delivery format, complete dat
 test('configuration states separate new setup, retained campaign-only links, saved entries and system attribution',()=>{
  const fresh={...campaign,promotionModel:'multiple',promotionLinks:[]},legacy={...campaign,promotionLinks:[]},organic={...fresh,id:'organic',code:'organic'};
  assert.equal(campaignEntrySummary(fresh as any).kind,'empty');assert.equal(campaignEntrySummary(legacy).kind,'legacy');assert.equal(campaignEntrySummary(organic as any).kind,'system');assert.equal(campaignEntrySummary(campaign).kind,'saved');
- assert.match(render([fresh],{onEdit:()=>{}}),/>Add promotion link</);assert.match(render([fresh]),/>View link setup</);assert.match(render([legacy]),/Legacy campaign link retained/);assert.doesNotMatch(render([legacy]),/No promotion entry saved|>Add promotion link</);
+ const editable=render([fresh],{onEdit:()=>{}});
+ assert.match(editable,/>Add promotion link</);assert.match(editable,/>Edit<\/button>/);assert.doesNotMatch(editable,/>Materials<|More actions/);
+ assert.doesNotMatch(render([fresh]),/>Edit<\/button>/);assert.match(render([fresh]),/>View link setup</);assert.match(render([legacy]),/Legacy campaign link retained/);assert.doesNotMatch(render([legacy]),/No promotion entry saved|>Add promotion link</);
  const html=render([organic],{onEdit:()=>{}});assert.match(html,/System sources/);assert.match(html,/Non-campaign source/);assert.match(html,/View customers/);assert.doesNotMatch(html,/Links &amp; QR|More actions|Materials|Edit information|Other Activity|No promotion entry saved/);
  assert.equal(campaignCollectionLabel([fresh,legacy,organic] as any),'2 campaigns · 1 system source');
 });

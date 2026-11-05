@@ -1,3 +1,6 @@
+import {verifyCmsMediaSchema} from './cms-media-schema.mjs';
+import {promotionIndexEntries, syncPromotionIndex} from './promotion-index.mjs';
+import {backfillPromotionShortLinks} from './promotion-short-links.mjs';
 import {initializeSystemDefaults as seedSystemDefaults} from './system-defaults.mjs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -16,7 +19,12 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const [offline]=await connection.query("SELECT state FROM trial_schema_versions WHERE version=0");
     if(offline[0]?.state==='offline_copy'&&!allowOfflineCopy)throw Error('Offline migration copy cannot start application or worker');
     const [versions] = await connection.query('SELECT * FROM trial_schema_versions WHERE version=1');
-    const finish=async()=>{const result=await applyContentMigration(connection);if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);return result;};
+    const finish=async()=>{
+      await applyContentMigration(connection);
+      const result=await addPromotionShortLinks(connection);
+      if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
+      return result;
+    };
     if (versions[0]?.state === 'ready') return finish();
     if (versions.length) throw Error('Incomplete schema migration: inspect the trial database before retrying');
     const [tables] = await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name<>'trial_schema_versions'", [name]);
@@ -200,10 +208,63 @@ async function addPaymentImages(c){
 
 async function addCmsCosMedia(c){
  const [v]=await c.query('SELECT * FROM trial_schema_versions WHERE version=16');
- if(v[0]?.state==='ready')return {version:16,state:'ready',alreadyApplied:true};
+ if(v[0]?.state==='ready'){
+  await verifyCmsMediaSchema(c);
+  return addPromotionIndex(c);
+ }
  if(v.length)throw Error('Incomplete CMS COS media migration');
  await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(16,'applying')");
  await c.query((await readFile(new URL('./schema-v16.sql',import.meta.url),'utf8')).trim().replace(/;$/,''));
+ await verifyCmsMediaSchema(c);
  await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=16");
- return {version:16,state:'ready'};
+ return addPromotionIndex(c);
+}
+
+async function addPromotionIndex(c) {
+  const [versions] = await c.query('SELECT state FROM trial_schema_versions WHERE version=17');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected promotion migration state');
+  if (state !== 'ready') {
+    const [campaigns] = await c.query('SELECT id,code,config FROM trial_campaigns');
+    promotionIndexEntries(campaigns);
+    const social = campaigns.filter(row => row.id === 'social-bio' || row.code === 'social-bio');
+    if (social.some(row => row.id !== 'social-bio' || row.code !== 'social-bio' ||
+      (typeof row.config === 'string' ? JSON.parse(row.config) : row.config).presetKey !== 'social_bio_v1')) {
+      throw Error('System campaign reserved identity conflict: social-bio');
+    }
+    const [aliases] = await c.query("SELECT campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)='social-bio' AND status='linked'");
+    if (aliases.some(row => row.campaign_id !== 'social-bio')) throw Error('System campaign alias conflict: social-bio');
+    if (!state) await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(17,'applying')");
+    await c.query('CREATE TABLE IF NOT EXISTS campaign_promotion_index (p VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,campaign_id VARCHAR(191) NOT NULL,INDEX campaign_promotion_owner(campaign_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin');
+  }
+  await c.beginTransaction();
+  try {
+    await syncPromotionIndex(c);
+    if (state !== 'ready') await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=17");
+    await c.commit();
+    return {version:17,state:'ready',alreadyApplied:state==='ready'};
+  } catch (error) {
+    await c.rollback();
+    throw error;
+  }
+}
+
+async function addPromotionShortLinks(c) {
+  const [versions] = await c.query('SELECT state FROM trial_schema_versions WHERE version=18');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected promotion short-link migration state');
+  if (state !== 'ready') {
+    if (!state) await c.query("INSERT INTO trial_schema_versions(version,state) VALUES(18,'applying')");
+    await c.query('CREATE TABLE IF NOT EXISTS campaign_promotion_short_links (short_code CHAR(6) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,p VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE) ENGINE=InnoDB');
+  }
+  await c.beginTransaction();
+  try {
+    await backfillPromotionShortLinks(c);
+    if (state !== 'ready') await c.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=18");
+    await c.commit();
+    return {version:18,state:'ready',alreadyApplied:state==='ready'};
+  } catch (error) {
+    await c.rollback();
+    throw error;
+  }
 }

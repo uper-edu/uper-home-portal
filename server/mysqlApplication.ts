@@ -1,12 +1,11 @@
 import {passwordChangeGate} from './portal/localAuth.ts';
 import {mountClientDiagnostics} from './clientDiagnostics.ts';
 import {listPromotionReviews,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
-import {campaignPromotionUrl} from "../src/utils/campaignPromotion.ts";
-import {addCampaignPromotion,resolvePromotion} from "./portal/campaignPromotion.ts";
+import {campaignPromotionPath,campaignPromotionShortUrl,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
+import {presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
+import {addCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
-import {campaignChatLink} from "../src/utils/crmCampaignLink.ts";
-import {listCampaignSources,reviewCampaignSource} from './portal/campaignSources.ts';
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
 import {ensureInstagramBioCampaign} from './portal/campaignPresets.ts';
@@ -80,19 +79,33 @@ app.post('/api/crm/leads/:id/logs',(_q,r,next)=>{
   failFollowup=false;r.status(503).json({error:'TEST injected unavailable service; retry the same request'});
 });
 mountHskAssets(app);
+const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status<500?e.message:'Storage unavailable; operation not saved'});});
+app.get(`${PROMOTION_SHORT_CODE_PREFIX}/:code`,wrap(async(q:any,r:any)=>{
+ r.set('Cache-Control','no-store');
+ const code=q.params.code;
+ const presetOwner=presetPromotionOwner(code);
+ const p=presetOwner ? code : promotionShortCodePattern.test(code)
+  ? (await pool.query('SELECT p FROM campaign_promotion_short_links WHERE short_code=:p1',[code])).rows[0]?.p
+  : undefined;
+ const resolved=p?await resolvePromotion(pool,p):null;
+ if(!resolved||(presetOwner&&resolved.campaign.id!==presetOwner))return r.status(404).type('text').send('Promotion link not found.');
+ return r.redirect(302,campaignPromotionPath(resolved.link,resolved.campaign.code));
+}));
+app.get('/api/promotion-links/:p',wrap(async(q:any,r:any)=>{
+ r.set('Cache-Control','no-store');
+ const resolved=await resolvePromotion(pool,q.params.p);
+ if(!resolved)return r.status(404).json({status:'unverified'});
+ r.json({status:'verified',promotion:publicPromotion(resolved)});
+}));
 app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
 await mountPortal(app);await ensureOrganicCampaign();await tx(ensureInstagramBioCampaign);mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
-const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status<500?e.message:'Storage unavailable; operation not saved'});});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
 app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>r.json({reviews:await listPromotionReviews(r.locals.crmEmployee)})));
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
 app.post('/api/crm/campaigns/sources/promotions/:leadId/review',wrap(async(q:any,r:any)=>r.json(await reviewPromotion(q.params.leadId,q.body,r.locals.crmEmployee))));
-app.get('/api/crm/campaigns/sources',wrap(async(q:any,r:any)=>r.json({sources:await listCampaignSources(r.locals.crmEmployee)})));
-app.post('/api/crm/campaigns/sources/:id/review',wrap(async(q:any,r:any)=>r.json(await reviewCampaignSource(q.params.id,q.body,r.locals.crmEmployee))));
 app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const resolved=await getCampaignByIdOrCode(q.params.idOrCode);const campaign=resolved && list.find(c=>c.id===resolved.id);if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
 app.post('/api/crm/campaigns/:id/links',wrap(async(q:any,r:any)=>r.json({success:true,...await addCampaignPromotion(q.params.id,q.body,r.locals.crmEmployee.id)})));
-app.get('/api/campaigns/:idOrCode/links/:linkId',wrap(async(q:any,r:any)=>{const resolved=await resolvePromotion(pool,q.params.idOrCode,q.params.linkId);if(!resolved)return r.status(404).json({error:'Promotion link does not belong to this campaign.'});r.json({link:resolved.link});}));
 app.post('/api/crm/campaigns',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,__actor:r.locals.crmEmployee.id},{kind:"create"})})));
 app.put('/api/crm/campaigns/:id',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,__actor:r.locals.crmEmployee.id},{kind:"update",id:q.params.id})})));
 app.delete('/api/crm/campaigns/:id',wrap(async(q:any,r:any)=>r.json({success:await deleteCampaign(q.params.id)})));
@@ -100,8 +113,10 @@ app.post('/api/crm/campaigns/:id/templates',wrap(async(q:any,r:any)=>{
  const c=await getCampaignByIdOrCode(q.params.id);if(!c)return r.status(404).json({error:'campaign_not_found'});
  if(!['en','id','zh'].includes(q.body.lang))return r.status(400).json({error:'campaign_entry_invalid'});
  const link=c.promotionLinks?.find((link:any)=>link.id===q.body.promotionLinkId);
- if((q.body.promotionLinkId&&!link)||(c.promotionModel==='multiple'&&!link))return r.status(400).json({error:'Select a saved promotion link before preparing materials.'});
- r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),link?campaignPromotionUrl(c.code,link,process.env.APP_URL||'http://localhost:3000'):campaignChatLink(c.code,process.env.APP_URL||'http://localhost:3000'))});
+ if(!link)return r.status(400).json({error:'Select a saved promotion link before preparing materials.'});
+ const shortCode=(await pool.query('SELECT short_code FROM campaign_promotion_short_links WHERE p=:p1',[link.id])).rows[0]?.short_code;
+ const url=campaignPromotionShortUrl(link.id,process.env.APP_URL||'http://localhost:3000',shortCode);
+ r.json({success:true,kind:'template',lang:q.body.lang,draft:resolveCampaignLinks(campaignTemplate(c,q.body.lang),url)});
 }));
 app.post('/api/crm/campaigns/ai-generate',wrap(async(q:any,r:any)=>{if(typeof q.body.name!=='string'||!q.body.name.trim())return r.status(400).json({error:'Campaign name required'});r.json({success:true,aiAssets:synthesizeCampaignAiAssets(q.body)});}));
 app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/impression'],wrap(async(q:any,r:any)=>r.json({success:await trackCampaignImpression(q.params.idOrCode)})));
