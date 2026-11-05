@@ -2986,6 +2986,14 @@
   {
     "layer": "contract",
     "object": "CampaignPromotionLink",
+    "key": "shortCode",
+    "type": "string",
+    "optional": true,
+    "source": "src/types/crmCampaign.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CampaignPromotionLink",
     "key": "landingPath",
     "type": "PromotionLandingPath",
     "optional": true,
