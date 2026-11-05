@@ -38,7 +38,6 @@ import {leadChanges} from "./leadChanges.ts";
 import {promotionAttribution} from "./campaignPromotion.ts";
 import {validContactEmail, CONTACT_EMAIL_ERROR} from "../../src/utils/contactEmail.ts";
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
-import {recordCampaignSource} from './campaignSources.ts';
 import {attachFactMilestones} from "./factMilestones.ts";
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
@@ -553,7 +552,6 @@ export async function mountPortal(app: Express) {
         typeof b.hskExamPlan === "string"
       )
         profile.hskExamPlan = b.hskExamPlan.slice(0, 160);
-      await recordCampaignSource(c,profile);
       const numbered = await c.query(
         locked.lead_id
           ? "UPDATE portal_leads SET profile=:p2 WHERE id=:p1"

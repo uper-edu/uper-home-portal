@@ -88,6 +88,22 @@ test('public resolver, save verification and legacy alias share the indexed owne
   assert.equal((await promotionAttribution(db, {}, {utmCampaign:config.code})).campaignId, config.code);
 });
 
+test('invalid p retains original promotion parameters without assigning a campaign', async () => {
+  const db = {query: async () => { throw Error('Malformed p should not query the index'); }};
+  const unknown = await promotionAttribution(db, {}, {
+    promotionLinkId: '',
+    promotionParameters: [{key:'p',value:''},{key:'p',value:'different'},{key:'utm_source',value:'instagram'},{key:'email',value:'private@example.invalid'}],
+    utmCampaign: 'sample-campaign',
+  });
+  assert.equal(unknown.promotionException, 'invalid_p');
+  assert.equal(unknown.promotionLinkStatus, 'unverified');
+  assert.equal(unknown.campaignId, undefined);
+  assert.equal(unknown.rawPromotionLinkId, '');
+  assert.deepEqual(unknown.rawPromotionParameters, [
+    {key:'p',value:''}, {key:'p',value:'different'}, {key:'utm_source',value:'instagram'},
+  ]);
+});
+
 test('index migration rejects duplicate IDs and is idempotent on replay', async () => {
   const config = instagramBioCampaign();
   const campaign = {id:config.id,code:config.code,config};
@@ -115,6 +131,21 @@ test('promotion results use verified source and assign refunds to their original
   const rows = campaignPromotionResults([lead,lead,{id:'bad',campaignId:campaign.id,promotionLinkStatus:'unverified',rawPromotionLinkId:first.id}],campaign);
   assert.deepEqual(rows.filter(row=>row.customers||row.received).map(row=>[row.key,row.customers,row.received,row.refunded,row.net]),
     [[first.id,1,0,0,0],[second.id,0,100,25,75],[':unverified',1,0,0,0]]);
+});
+
+test('campaign results separate manual confirmations from system attribution', () => {
+  const campaign = instagramBioCampaign();
+  const [link] = campaign.promotionLinks!;
+  const profile = {promotionLinkStatus:'unverified', campaignSourceStatus:'pending', rawPromotionLinkId:'unknown'};
+  const rows = campaignPromotionResults([
+    {id:'system',campaignId:campaign.code,promotionLinkStatus:'verified',promotionLinkId:link.id},
+    {...profile,id:'manual-link',promotionReview:{status:'linked',campaignId:campaign.id,linkId:link.id}},
+    {...profile,id:'manual-campaign',promotionReview:{status:'linked',campaignId:campaign.id,linkId:null}},
+    {...profile,id:'pending'},
+  ],campaign);
+  assert.deepEqual(rows.filter(row => row.customers).map(row => [row.key,row.attribution,row.customers]), [
+    [link.id,'system',1], [':manual:'+link.id,'manual',1], [':manual-campaign','manual',1],
+  ]);
 });
 
 test('one browser lookup is shared and explicit conflicting parameters never hit the network', async t => {

@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {promotionIdPattern, promotionKindForMedium, promotionLandingPaths} from '../../src/utils/promotionNavigation.ts';
+import {promotionEvidenceKeys, promotionIdPattern, promotionKindForMedium, promotionLandingPaths} from '../../src/utils/promotionNavigation.ts';
 import {canonicalCampaignId} from '../../src/utils/organicCampaign.ts';
 /** Marketing attribution is first-touch metadata, never an identity or permission grant. */
 export function firstTouchAttribution(
@@ -8,6 +8,7 @@ export function firstTouchAttribution(
 ) {
   const result: Record<string, string> = {};
   const hasExistingCampaign=!!(existing.campaignId||existing.campaign);
+  if (!hasExistingCampaign && existing.promotionLinkStatus) return result;
   const incomingId=canonicalCampaignId(input.campaignId||input.campaign);
   for (const key of [
     "campaign",
@@ -21,7 +22,10 @@ export function firstTouchAttribution(
     if (typeof value === "string" && value.trim())
       result[key] = value.trim().slice(0, key === "campaign" ? 200 : 100);
   }
-  if(!hasExistingCampaign){result.campaignId=incomingId;if(incomingId==='organic')result.campaign='organic';}
+  if (!hasExistingCampaign) {
+    result.campaignId = incomingId;
+    if (incomingId === 'organic') result.campaign = 'organic';
+  }
   return result;
 }
 
@@ -67,15 +71,22 @@ export async function promotionAttribution(db: any, existing: any, input: any) {
  // Preserve the original attribution as a unit, including an originally unrecorded p.
  if (existing.campaignId || existing.campaign || existing.promotionLinkStatus) return {};
  const rawCampaign = typeof input.campaignId === 'string' ? input.campaignId.trim() : '';
- const rawPromotion = typeof input.promotionLinkId === 'string' ? input.promotionLinkId.slice(0, 100) : '';
+ const rawPromotion = typeof input.promotionLinkId === 'string' ? input.promotionLinkId.slice(0, 191) : '';
  if (input.promotionLinkId !== undefined || input.promotionParametersInvalid === true) {
-  const resolved = input.promotionParametersInvalid !== true && typeof input.promotionLinkId === 'string'
-    ? await resolvePromotion(db, rawCampaign, input.promotionLinkId) : null;
+  const parameters = Array.isArray(input.promotionParameters)
+    ? input.promotionParameters.slice(0, 24)
+      .filter(item => item && promotionEvidenceKeys.includes(item.key) && typeof item.value === 'string')
+      .map(({key, value}) => ({key, value:value.slice(0, 191)})) : [];
+  const malformed = input.promotionParametersInvalid === true || !promotionIdPattern.test(rawPromotion)
+    || parameters.some(item => item.key === 'p' && item.value !== rawPromotion);
+  const resolved = malformed ? null : await resolvePromotion(db, rawCampaign, rawPromotion);
   if (!resolved) return {
-   rawCampaignCode: rawCampaign.slice(0,191) || undefined, rawPromotionLinkId: rawPromotion || undefined,
+   rawCampaignCode: rawCampaign.slice(0,191) || undefined, rawPromotionLinkId: rawPromotion,
+   rawPromotionParameters: parameters,
+   promotionException: malformed ? 'invalid_p' : 'unknown_p',
    promotionLinkStatus:'unverified', placement:'unrecorded', entryPoint:'unverified_source',
    hookType:'hsk_assessment', hookContext:'website',
-   ...(!rawCampaign ? {campaignSourceStatus:'pending'} : {}),
+   ...(!rawCampaign ? {campaignId: undefined, campaign: undefined, campaignSourceStatus:'pending'} : {}),
   };
   const {link, campaign} = resolved;
   return {

@@ -66,6 +66,7 @@ export type PromotionResultRow = {
   source?: string;
   medium?: string;
   kind?: PromotionKind;
+  attribution?: 'system' | 'manual';
   customers: number;
   enrolled: number;
   received: number;
@@ -75,8 +76,11 @@ export type PromotionResultRow = {
 
 export function promotionResultKey(lead: any, campaign: CrmCampaignRecord): string {
   const reviewed = lead.promotionReview;
-  const p = reviewed?.status === 'linked' && reviewed.campaignId === campaign.id
-    ? reviewed.linkId : lead.promotionLinkStatus === 'verified' ? lead.promotionLinkId : undefined;
+  if (reviewed?.status === 'linked' && reviewed.campaignId === campaign.id) {
+    return reviewed.linkId ? ':manual:' + reviewed.linkId : ':manual-campaign';
+  }
+  if (reviewed?.status === 'invalid') return ':invalid';
+  const p = lead.promotionLinkStatus === 'verified' ? lead.promotionLinkId : undefined;
   if (p && campaign.promotionLinks?.some(link => link.id === p)) return p;
   if (lead.promotionLinkStatus === 'unverified' || lead.rawPromotionLinkId || p) return ':unverified';
   return campaign.code === 'organic' ? ':untagged' : ':campaign';
@@ -85,7 +89,8 @@ export function promotionResultKey(lead: any, campaign: CrmCampaignRecord): stri
 export function promotionResultOrigins(lead: any, campaign: CrmCampaignRecord) {
   return [lead, ...(lead.identitySources ?? [])].filter(origin =>
     matchesCampaign(origin, campaign) ||
-    (campaign.code === 'organic' && origin.campaignId === 'organic'
+    (campaign.code === 'organic' && origin.promotionReview?.status !== 'linked'
+      && (!origin.campaignId || origin.campaignId === 'organic')
       && origin.campaignSourceStatus === 'pending' && origin.promotionLinkStatus === 'unverified'
       && !origin.rawCampaignCode));
 }
@@ -95,10 +100,13 @@ export function campaignPromotionResults(leads: any[], campaign: CrmCampaignReco
   function row(key: string) {
     const existing = rows.get(key);
     if (existing) return existing;
-    const link = campaign.promotionLinks?.find(item => item.id === key);
+    const manual = key === ':manual-campaign' || key.startsWith(':manual:');
+    const linkId = manual ? key.slice(':manual:'.length) : key;
+    const link = (key === ':manual-campaign' ? undefined : campaign.promotionLinks?.find(item => item.id === linkId));
     const created: PromotionResultRow = {
       key, name:link?.name, source:link?.source, medium:link?.medium,
       kind:link ? link.promotionKind ?? promotionKindForMedium(link.medium) : undefined,
+      attribution:manual ? 'manual' : link || key === ':campaign' || key === ':untagged' ? 'system' : undefined,
       customers:0, enrolled:0, received:0, refunded:0, net:0,
     };
     rows.set(key, created);

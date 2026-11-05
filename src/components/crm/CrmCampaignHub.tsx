@@ -29,7 +29,7 @@ import { CampaignPromotionLinks } from "./CampaignPromotionLinks";
 import { CampaignEditor } from "./CampaignEditor";
 import { CampaignMaterials } from "./CampaignMaterials";
 import { campaignText, campaignName } from "../../utils/campaignWorkspace";
-import { CrmCampaignSources } from "./CrmCampaignSources";
+import { CrmPromotionReviews } from "./CrmPromotionReviews";
 import {
   isOrganicCampaign,
   organicCampaignName,
@@ -136,9 +136,6 @@ export function CrmCampaignHub({
   const [promotionReviews, setPromotionReviews] =
     useState<PromotionReviewCounts>({ available: false, counts: {} });
   const [reviewCountsLoading, setReviewCountsLoading] = useState(true);
-  const [unknownSourcesPending, setUnknownSourcesPending] = useState<
-    boolean | null
-  >(null);
   const [searchQuery, setSearchQuery] = useState(
     () =>
       new URLSearchParams(
@@ -460,30 +457,22 @@ export function CrmCampaignHub({
     let active = true;
     setReviewCountsLoading(true);
     setPromotionReviews({ available: false, counts: {} });
-    setUnknownSourcesPending(null);
-    const read = async (url: string) => {
-      const response = await fetch(url);
+    fetch("/api/crm/campaigns/sources/promotions").then(async response => {
       if (!response.ok) throw Error("Review data unavailable");
-      return response.json();
-    };
-    Promise.allSettled([
-      read("/api/crm/campaigns/sources/promotions"),
-      read("/api/crm/campaigns/sources"),
-    ]).then(([promotions, sources]) => {
+      const { reviews } = await response.json();
       if (!active) return;
-      if (promotions.status === "fulfilled") {
-        const counts: Record<string, number> = {};
-        for (const row of promotions.value.reviews)
-          if (["pending", "deferred"].includes(row.status))
-            counts[row.campaignId] = (counts[row.campaignId] || 0) + 1;
-        setPromotionReviews({ available: true, counts });
-      } else setPromotionReviews({ available: false, counts: {} });
-      setUnknownSourcesPending(
-        sources.status === "fulfilled"
-          ? sources.value.sources.some((row: any) => row.status === "pending")
-          : null,
-      );
-      setReviewCountsLoading(false);
+      const counts: Record<string, number> = Object.create(null);
+      for (const row of reviews) {
+        if (["pending", "deferred"].includes(row.status)) {
+          const key = row.campaignId ?? "";
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+      setPromotionReviews({ available: true, counts });
+    }).catch(() => {
+      if (active) setPromotionReviews({ available: false, counts: {} });
+    }).finally(() => {
+      if (active) setReviewCountsLoading(false);
     });
     return () => {
       active = false;
@@ -586,7 +575,7 @@ export function CrmCampaignHub({
       })
     : matchedLeadsForActiveCampaign;
   const promotionLabel = (key: string, name?: string) => name || u(
-    key === ':unverified' ? 'Unverified promotion' : key === ':untagged' ? 'Untagged visits' : 'Campaign without a promotion link',
+    key === ':invalid' ? 'Invalid promotion attribution' : key === ':unverified' ? 'Unverified promotion' : key === ':untagged' ? 'Untagged visits' : 'Campaign without a promotion link',
   );
   const getTypeIcon = (type: CampaignType | "") => {
     switch (type) {
@@ -626,23 +615,18 @@ export function CrmCampaignHub({
         reviewing={campaignArea === "sources"}
         canManage={canManageCampaigns}
         isLight={isLight}
-        state={sourceReviewState(
-          unknownSourcesPending,
-          promotionReviews,
-          reviewCountsLoading,
-        )}
+        state={sourceReviewState(promotionReviews, reviewCountsLoading)}
         onOpen={() => openSourceReview()}
         onReturn={returnFromSourceReview}
         headingRef={workspaceHeading}
       />
       {campaignArea === "sources" && canManageCampaigns && (
-        <section aria-label={u("Source review")}>
-          <CrmCampaignSources
-            initialIssue={pageParams.get("sourceIssue") || undefined}
-            promotionCampaign={campaigns.find(
+        <section aria-label={u("Promotion source exceptions")}>
+          <CrmPromotionReviews
+            campaignFilter={campaigns.find(
               (c) => c.id === pageParams.get("sourceCampaign"),
             )}
-            onClearPromotionCampaign={clearPromotionFilter}
+            onClearCampaignFilter={clearPromotionFilter}
             key={workspaceEpoch}
             onStateChange={(state) => {
               materialState.current = state;
@@ -651,7 +635,7 @@ export function CrmCampaignHub({
             isLight={isLight}
             campaigns={campaigns}
             onChanged={fetchCampaigns}
-            onLead={onSelectLeadInCrm}
+            onLead={onSelectLeadInCrm && (id => requestLeave(() => onSelectLeadInCrm(id)))}
           />
         </section>
       )}
@@ -726,7 +710,7 @@ export function CrmCampaignHub({
                 >
                   {u("Retry")}
                 </button>{" "}
-                {u("or open Source review to check.")}
+                {u("or open Promotion source exceptions to check.")}
               </p>
             )}
           {campaignError ? (
@@ -1185,7 +1169,7 @@ export function CrmCampaignHub({
                           <table className="crm-doc-table">
                             <caption>{u("Results by promotion link")}</caption>
                             <thead><tr>
-                              {["Promotion link", "Promotion type", "Customers", "Enrollments", "Verified receipts", "Verified refunds", "Net receipts"].map(label =>
+                              {["Promotion link", "Attribution method", "Promotion type", "Customers", "Enrollments", "Verified receipts", "Verified refunds", "Net receipts"].map(label =>
                                 <th key={label} scope="col">{u(label)}</th>)}
                             </tr></thead>
                             <tbody>{activeDetailCampaign.promotionResults.map(row => (
@@ -1197,6 +1181,7 @@ export function CrmCampaignHub({
                                   </button>
                                   {row.source && <small>{row.source} · {row.medium}</small>}
                                 </th>
+                                <td>{row.attribution ? u(row.attribution === 'manual' ? 'Manually confirmed' : 'System identified') : '—'}</td>
                                 <td>{row.kind ? u(row.kind === 'paid' ? 'Paid promotion' : row.kind === 'unpaid' ? 'Unpaid promotion' : 'Unclassified') : '—'}</td>
                                 <td>{row.customers}</td><td>{row.enrolled}</td>
                                 {[row.received, row.refunded, row.net].map((amount, index) =>

@@ -16,11 +16,10 @@ export function campaignReviewUrl(href:string,filters:CampaignFilters,campaignId
  const url=new URL(campaignReviewReturnUrl(href,filters));
  for(const key of ['campaign','campaignView','lead','leadView'])url.searchParams.delete(key);
  url.searchParams.set('campaignArea','sources');
- if(campaignId){url.searchParams.set('sourceIssue','promotions');url.searchParams.set('sourceCampaign',campaignId);}
+ if(campaignId)url.searchParams.set('sourceCampaign',campaignId);
  return url.href;
 }
 export type SourceReviewState={pending:boolean;loading:boolean;unavailable:boolean};
-/** Categories have different units. Expose presence and availability, never a misleading summed count. */
-export function sourceReviewState(unknownPending:boolean|null,promotions:{available:boolean;counts:Record<string,number>},loading:boolean):SourceReviewState{
- return {pending:unknownPending===true||promotions.available&&Object.values(promotions.counts).some(n=>n>0),loading,unavailable:!loading&&(unknownPending===null||!promotions.available)};
+export function sourceReviewState(promotions:{available:boolean;counts:Record<string,number>},loading:boolean):SourceReviewState{
+ return {pending:promotions.available&&Object.values(promotions.counts).some(n=>n>0),loading,unavailable:!loading&&!promotions.available};
 }

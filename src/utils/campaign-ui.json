@@ -1773,5 +1773,70 @@
   "Unclassified": [
     "Belum diklasifikasikan",
     "未分类"
-  ]
+  ],
+  "Promotion source exceptions": [
+    "Masalah sumber promosi",
+    "推广来源异常"
+  ],
+  "Promotion exception list": [
+    "Daftar masalah promosi",
+    "推广来源异常列表"
+  ],
+  "Review promotion links that could not be identified": [
+    "Tinjau tautan promosi yang tidak dikenali",
+    "核实无法识别的推广链接"
+  ],
+  "Review customers whose promotion link could not be identified.": [
+    "Tinjau pelanggan dengan tautan promosi yang tidak dikenali.",
+    "核实推广链接无法识别的客户来源。"
+  ],
+  "No additional entry parameters recorded.": [
+    "Tidak ada parameter masuk tambahan.",
+    "未记录其他入口参数。"
+  ],
+  "No campaign assigned": [
+    "Kampanye belum ditetapkan",
+    "尚无活动归属"
+  ],
+  "Invalid promotion ID": [
+    "ID promosi tidak valid",
+    "推广编号格式无效"
+  ],
+  "Unknown promotion ID": [
+    "ID promosi tidak dikenal",
+    "未识别的推广编号"
+  ],
+  "Confirm campaign only": [
+    "Konfirmasi kampanye saja",
+    "仅确认到活动"
+  ],
+  "Choose a campaign": [
+    "Pilih kampanye",
+    "选择活动"
+  ],
+  "No links in this campaign. Confirm the campaign only if supported by the evidence.": [
+    "Kampanye ini belum memiliki tautan. Konfirmasi kampanye saja jika ada bukti.",
+    "该活动暂无推广链接。有依据时可仅确认到活动。"
+  ],
+  "This decision applies only to this customer.": [
+    "Keputusan ini hanya berlaku untuk pelanggan ini.",
+    "本次核实仅适用于此客户。"
+  ],
+  "Attribution method": [
+    "Cara atribusi",
+    "归因方式"
+  ],
+  "Manually confirmed": [
+    "Dikonfirmasi manual",
+    "人工确认"
+  ],
+  "System identified": [
+    "Diidentifikasi sistem",
+    "系统识别"
+  ],
+  "or open Promotion source exceptions to check.": [
+    "atau buka Masalah sumber promosi untuk memeriksa.",
+    "也可打开「推广来源异常」核对。"
+  ],
+  "Campaign": ["Kampanye", "营销活动"]
 }

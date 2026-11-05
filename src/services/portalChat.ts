@@ -4,7 +4,7 @@ import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './r
 import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
-import {promotionIdentity, promotionEntryPoint} from '../utils/promotionNavigation';
+import {promotionEvidenceKeys, promotionEntryPoint} from '../utils/promotionNavigation';
 import {
   setDraftScope,
   drafts,
@@ -64,11 +64,16 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
   const params=new URLSearchParams(location.search);
-  const identity = promotionIdentity(params);
-  contact.promotionLinkId = params.has('p') ? identity.p ?? '' : undefined;
-  contact.campaignId = identity.campaign;
+  const promotionId = params.get('p');
+  contact.promotionLinkId = promotionId ?? undefined;
+  delete contact.campaignId;
+  delete contact.campaign;
+  if (promotionId !== null) {
+    contact.promotionParametersInvalid = new Set(params.getAll('p')).size > 1 || undefined;
+    contact.promotionParameters = promotionEvidenceKeys.flatMap(key =>
+      params.getAll(key).map(value => ({ key, value: value.slice(0, 191) }))).slice(0, 24);
+  }
   contact.utmCampaign = params.get('utm_campaign') || undefined;
-  contact.promotionParametersInvalid = identity.invalid || undefined;
   contact.promotionEntryPoint = promotionEntryPoint(params.get('entry_point'))
     ?? (location.pathname.startsWith('/chat') || location.pathname.startsWith('/consult') ? 'direct' : 'homepage_widget');
   for (const key of [

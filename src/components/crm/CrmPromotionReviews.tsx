@@ -1,5 +1,5 @@
 import {AdminFormSection,AdminFormActions} from '../AdminFormLayout';
-import {AdminField,AdminFieldLabel,AdminRequiredNote,AdminForm} from '../AdminForm';
+import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
 import {
   campaignUi,
   campaignUiLocale,
@@ -10,21 +10,14 @@ import { CrmSingleSelect } from "./CrmSingleSelect";
 import { CrmSaveFeedback } from "./CrmDetailWorkspace";
 import { CampaignSourceEvidence } from "./CampaignSourceEvidence";
 import { promotionReviewActions } from "../../utils/promotionReviewActions";
-import {
-  PROMOTION_SOURCES,
-  PROMOTION_MEDIA,
-  PROMOTION_MEDIUM_LABELS,
-  PROMOTION_EXPERIENCE,
-  PROMOTION_EXPERIENCE_LABEL,
-  campaignPromotionUrl,
-} from "../../utils/campaignPromotion";
+import { PROMOTION_MEDIUM_LABELS } from "../../utils/campaignPromotion";
+import type { CrmCampaignRecord } from "../../types/crmCampaign";
 
 export function CrmPromotionReviews({
   isLight,
   onChanged,
   onLead,
-  reloadToken,
-  onCount,
+  campaigns,
   onStateChange,
   campaignFilter,
   onClearCampaignFilter,
@@ -36,8 +29,7 @@ export function CrmPromotionReviews({
   isLight: boolean;
   onChanged: () => void;
   onLead?: (id: string) => void;
-  reloadToken: number;
-  onCount: (count: number | null) => void;
+  campaigns: CrmCampaignRecord[];
   onStateChange?: (state: { dirty: boolean; busy: boolean }) => void;
 }) {
   const u = campaignUi(lang);
@@ -46,30 +38,25 @@ export function CrmPromotionReviews({
     [error, setError] = useState(""),
     [history, setHistory] = useState(false),
     [receipt, setReceipt] = useState<any>(null);
+  const loadRevision = useRef(0);
   async function load() {
+    const revision = ++loadRevision.current;
     setLoading(true);
     setError("");
-    onCount(null);
     try {
       const r = await fetch("/api/crm/campaigns/sources/promotions");
       if (!r.ok) throw Error();
       const data = await r.json();
-      setRows(data.reviews);
-      onCount(
-        data.reviews.filter((r: any) =>
-          ["pending", "deferred"].includes(r.status),
-        ).length,
-      );
+      if (revision === loadRevision.current) setRows(data.reviews);
     } catch {
-      onCount(null);
-      setError("Promotion review data unavailable. Retry.");
+      if (revision === loadRevision.current) setError("Promotion review data unavailable. Retry.");
     } finally {
-      setLoading(false);
+      if (revision === loadRevision.current) setLoading(false);
     }
   }
   useEffect(() => {
     void load();
-  }, [reloadToken]);
+  }, []);
   const draftStates = useRef(
     new Map<string, { dirty: boolean; busy: boolean }>(),
   );
@@ -90,11 +77,10 @@ export function CrmPromotionReviews({
   );
   return (
     <section
-      aria-label={u("Promotion link verification")}
+      aria-label={u("Promotion exception list")}
       className="space-y-3"
     >
       <div className="flex flex-wrap gap-3 items-center">
-        <h2 className="font-bold">{u("Unverified promotion entries")}</h2>
         <button
           type="button"
           className="underline"
@@ -106,11 +92,7 @@ export function CrmPromotionReviews({
           {u("Refresh promotion reviews")}
         </button>
       </div>
-      <p>
-        {u(
-          "Known campaign, unverified or mismatched p. Review one customer at a time; missing p on a legacy campaign-only link is not an error. Unknown campaigns must be verified in Unknown campaign codes first.",
-        )}
-      </p>
+      <p>{u("Review customers whose promotion link could not be identified.")}</p>
       {campaignFilter && (
         <p className="campaign-review-filter">
           {u("Showing promotion issues for {name}.", {
@@ -125,25 +107,6 @@ export function CrmPromotionReviews({
           </button>
         </p>
       )}
-      <details className="campaign-review-action-guide">
-        <summary>{u("Actions and typical scenarios")}</summary>
-        {promotionReviewActions.map((a) => (
-          <div key={a.value}>
-            <h3>{u(a.label)}</h3>
-            <p>
-              <strong>{u("Typical scenario:")}</strong> {u(a.scenario)}
-            </p>
-            <p>
-              <strong>{u("Result:")}</strong> {u(a.effect)}
-            </p>
-          </div>
-        ))}
-      </details>
-      <p className="campaign-hint">
-        {u(
-          "All actions apply only to the selected customer. No batch approval, future alias, task completion or notification replay.",
-        )}
-      </p>
       {loading && <p role="status">{u("Loading promotion reviews…")}</p>}
       {error && (
         <p role="alert">
@@ -155,16 +118,13 @@ export function CrmPromotionReviews({
         <CrmSaveFeedback lang={lang} state="saved">
           {u("Review saved for {name}.", { name: receipt.name })}{" "}
           {receipt.status === "linked"
-            ? u("Promotion entry manually verified.")
+            ? u("Manually confirmed")
             : receipt.status === "deferred"
               ? u("Left unconfirmed; remains in Needs review.")
               : u(
                   "Promotion attribution marked invalid; customer retained.",
                 )}{" "}
-          {receipt.createdLink ? u("New promotion entry created. ") : ""}
-          {u(
-            "Original parameters retained; future incorrect links are not approved.",
-          )}
+
         </CrmSaveFeedback>
       )}
       {!loading && !error && !visible.length && (
@@ -175,11 +135,13 @@ export function CrmPromotionReviews({
           <PromotionReviewCard
             lang={lang}
             row={row}
+            campaigns={campaigns}
             isLight={isLight}
             onLead={onLead}
             onStateChange={(state) => report(row.leadId, state)}
             onSaved={(result) => {
               setReceipt({ ...result, name: row.name });
+              void load();
               onChanged();
             }}
           />
@@ -190,6 +152,7 @@ export function CrmPromotionReviews({
 }
 function PromotionReviewCard({
   row,
+  campaigns,
   isLight,
   onLead,
   onSaved,
@@ -198,6 +161,7 @@ function PromotionReviewCard({
 }: {
   lang: "en" | "id" | "zh";
   row: any;
+  campaigns: CrmCampaignRecord[];
   isLight: boolean;
   onLead?: (id: string) => void;
   onSaved: (result: any) => void;
@@ -208,14 +172,7 @@ function PromotionReviewCard({
     [action, setAction] = useState(""),
     [target, setTarget] = useState(""),
     [reason, setReason] = useState(""),
-    [entry, setEntry] = useState({
-      name: "",
-      source: "",
-      medium: "",
-      language: "",
-      experience: PROMOTION_EXPERIENCE,
-    }),
-    [custom, setCustom] = useState(false),
+    [campaignId, setCampaignId] = useState(""),
     [busy, setBusy] = useState(false),
     [unknown, setUnknown] = useState(false),
     [error, setError] = useState("");
@@ -225,16 +182,10 @@ function PromotionReviewCard({
     saving = useRef(false);
   const endpoint =
     "/api/crm/campaigns/sources/promotions/" + encodeURIComponent(row.leadId);
-  const choice = promotionReviewActions.find((a) => a.value === action);
-  const dirty = Boolean(
-    action ||
-    reason ||
-    target ||
-    entry.name ||
-    entry.source ||
-    entry.medium ||
-    entry.language,
-  );
+  const needsCampaign = action === "link" || action === "campaign";
+  const campaign = campaigns.find(item => item.id === campaignId);
+  const links = campaign?.promotionLinks || [];
+  const dirty = Boolean(action || reason || target);
   useEffect(() => {
     onStateChange({ dirty: dirty || unknown, busy: busy || unknown });
   }, [dirty, busy, unknown]);
@@ -249,17 +200,10 @@ function PromotionReviewCard({
   }, [dirty, unknown]);
   const reset = () => {
     setOpen(false);
-    setCustom(false);
     setAction("");
     setTarget("");
     setReason("");
-    setEntry({
-      name: "",
-      source: "",
-      medium: "",
-      language: "",
-      experience: PROMOTION_EXPERIENCE,
-    });
+    setCampaignId("");
     pending.current = null;
     baseline.current = null;
     setUnknown(false);
@@ -278,12 +222,11 @@ function PromotionReviewCard({
     setError("");
     pending.current ||= {
       action,
-      linkId: target,
-      entry: { ...entry },
+      linkId: action === "link" ? target : undefined,
+      campaignId: needsCampaign ? campaignId : undefined,
       reason,
       ...(baseline.current || {
         revision: row.revision,
-        campaignId: row.campaignId,
         rawCode: row.rawCode,
         rawPromotionLinkId: row.rawPromotionLinkId,
       }),
@@ -350,7 +293,7 @@ function PromotionReviewCard({
         <strong>{row.name}</strong>
         <span>
           {row.status === "linked"
-            ? u("Manually verified")
+            ? u("Manually confirmed")
             : row.status === "deferred"
               ? u("Left unconfirmed")
               : row.status === "invalid"
@@ -359,12 +302,10 @@ function PromotionReviewCard({
         </span>
       </header>
       <p>
-        {u("Campaign:")} {row.campaignName} · <code>{row.rawCode}</code>
+        {u("Original p:")} <code className="break-all">{row.rawPromotionLinkId || u("(empty value)")}</code>
+        {" · "}{u(row.exception === 'invalid_p' ? 'Invalid promotion ID' : row.exception === 'unknown_p' ? 'Unknown promotion ID' : 'Unverified promotion')}
       </p>
-      <p>
-        {u("Original p:")}{" "}
-        <code className="break-all">{row.rawPromotionLinkId}</code>
-      </p>
+      <p>{row.campaignName ? <>{u("Campaign:")} {row.campaignName}</> : u("No campaign assigned")}</p>
       {row.resolution && (
         <p>
           {u("Latest decision:")} {row.resolution.reason} ·{" "}
@@ -386,27 +327,6 @@ function PromotionReviewCard({
           · <code>{row.resolution.linkId}</code>
         </p>
       )}
-      {row.resolution?.snapshot && (
-        <p className="campaign-hint">
-          {u("Verified promotion link:")}{" "}
-          <a
-            className="underline break-all"
-            href={campaignPromotionUrl(
-              row.resolution.snapshot,
-              window.location.origin,
-              row.campaignCode,
-            )}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {campaignPromotionUrl(
-              row.resolution.snapshot,
-              window.location.origin,
-              row.campaignCode,
-            )}
-          </a>
-        </p>
-      )}
       <button
         type="button"
         ref={trigger}
@@ -416,13 +336,14 @@ function PromotionReviewCard({
         aria-expanded={open}
         aria-controls={"promotion-review-" + row.leadId}
         onClick={() => {
-          if (!open && !dirty)
+          if (!open && !dirty) {
+            setCampaignId(row.campaignId ?? "");
             baseline.current = {
               revision: row.revision,
-              campaignId: row.campaignId,
-              rawCode: row.rawCode,
+                rawCode: row.rawCode,
               rawPromotionLinkId: row.rawPromotionLinkId,
             };
+          }
           setOpen((v) => !v);
         }}
       >
@@ -441,22 +362,7 @@ function PromotionReviewCard({
 <h3 data-admin-form-title className="crm-source-review-heading">{u("Review promotion entry for {name}",{name:row.name})}</h3>
 <AdminRequiredNote lang={lang}/>
 
-          <CampaignSourceEvidence
-            lang={lang}
-            source={{
-              ...row,
-              promotionIssue: true,
-              leads: [
-                {
-                  id: row.leadId,
-                  name: row.name,
-                  rawCode: row.rawCode,
-                  evidence: row.evidence,
-                },
-              ],
-            }}
-            onLead={onLead}
-          />
+          <CampaignSourceEvidence lang={lang} leadId={row.leadId} evidence={row.evidence} onLead={onLead} />
           <AdminFormSection className="crm-form-section" title={u("Review decision · this customer only")}>
           {error && (
             <CrmSaveFeedback lang={lang} state={unknown ? "unknown" : "error"}>
@@ -464,166 +370,42 @@ function PromotionReviewCard({
             </CrmSaveFeedback>
           )}
           <fieldset disabled={busy || unknown || row.canReview===false} className="space-y-3">
-            <div className="campaign-field"><AdminFieldLabel required>{u("Review action")}</AdminFieldLabel><CrmSingleSelect required
-              label={u("Review action")}
-              value={action}
-              options={[
-                { value: "", label: u("Choose an action"), disabled: true },
-                ...promotionReviewActions.map((a) => ({
-                  value: a.value,
-                  label: u(a.label),
-                })),
-              ]}
-              onChange={setAction}
-              lang={lang}
-              isLight={isLight}
-            /></div>
-            {choice && (
-              <details className="campaign-review-action-context"><summary>{u("Typical scenario:")}</summary>
-                <p>
-                  <strong>{u("Typical scenario:")}</strong> {u(choice.scenario)}
-                </p>
-                <p>
-                  <strong>{u("What this action does:")}</strong>{" "}
-                  {u(choice.effect)}
-                </p>
-              </details>
-            )}
-            {action === "link" && (
-              <div className="campaign-field"><AdminFieldLabel required>{u("Existing promotion entry")}</AdminFieldLabel><CrmSingleSelect required
-                label={u("Existing promotion entry")}
-                searchable
-                value={target}
+            <AdminField as="div" required>
+              <label>{u("Review action")}</label>
+              <CrmSingleSelect required label={u("Review action")} value={action}
                 options={[
-                  {
-                    value: "",
-                    label: u("Choose an entry from this campaign"),
-                    disabled: true,
-                  },
-                  ...row.links.map((l: any) => ({
-                    value: l.id,
-                    label:
-                      l.name +
-                      " · " +
-                      l.source +
-                      " / " +
-                      u(PROMOTION_MEDIUM_LABELS[l.medium] || l.medium) +
-                      " · " +
-                      u(
-                        (
-                          {
-                            en: "English",
-                            id: "Bahasa Indonesia",
-                            zh: "Chinese",
-                          } as Record<string, string>
-                        )[l.language] || l.language,
-                      ),
-                  })),
+                  { value: "", label: u("Choose an action"), disabled: true },
+                  ...promotionReviewActions.map(({value, label}) => ({value, label: u(label)})),
                 ]}
-                onChange={setTarget}
-                lang={lang}
-                isLight={isLight}
-              /></div>
-            )}
-            {action === "link" && !row.links.length && (
-              <p>
-                {u(
-                  "This campaign has no saved promotion entries. Create one only if the placement is supported by evidence.",
-                )}
-              </p>
-            )}
-            {action === "create" && (
-              <div className="campaign-fields-grid" data-admin-grid="">
-                <AdminField className="campaign-field">
-                  <span>{u("Entry name · optional")}</span>
-                  <input
-                    maxLength={120}
-                    value={entry.name}
-                    onChange={(e) =>
-                      setEntry({ ...entry, name: e.target.value })
-                    }
-                  />
-                </AdminField>
-                <div className="campaign-field">
-                  <AdminFieldLabel required>{u("Source *")}</AdminFieldLabel>
-                  <CrmSingleSelect
-                    label={u("New entry source")} required
-                    value={custom ? "custom" : entry.source}
-                    options={[
-                      {
-                        value: "",
-                        label: u("Choose a source"),
-                        disabled: true,
-                      },
-                      ...PROMOTION_SOURCES.map((value) => ({
-                        value,
-                        label: value,
-                      })),
-                      {
-                        value: "custom",
-                        label: u("Other platform / institution"),
-                      },
-                    ]}
-                    onChange={(v) => {
-                      setCustom(v === "custom");
-                      setEntry({ ...entry, source: v === "custom" ? "" : v });
-                    }}
-                    lang={lang}
-                    isLight={isLight}
-                  />
-                  {custom && (
-                    <AdminField>
-                      {u("Source code *")}
-                      <input
-                        required
-                        maxLength={80}
-                        pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}"
-                        value={entry.source}
-                        onChange={(e) =>
-                          setEntry({ ...entry, source: e.target.value })
-                        }
-                      />
-                    </AdminField>
-                  )}
-                </div>
-                <div className="campaign-field"><AdminFieldLabel required>{u("Medium *")}</AdminFieldLabel><CrmSingleSelect required
-                  label={u("New entry medium")}
-                  value={entry.medium}
+                onChange={value => {setAction(value); setTarget("");}}
+                lang={lang} isLight={isLight} />
+            </AdminField>
+            {needsCampaign && (
+              <AdminField as="div" required>
+                <label>{u("Campaign")}</label>
+                <CrmSingleSelect required searchable label={u("Campaign")} value={campaignId}
                   options={[
-                    { value: "", label: u("Choose a medium"), disabled: true },
-                    ...PROMOTION_MEDIA.map((value) => ({
-                      value,
-                      label: u(PROMOTION_MEDIUM_LABELS[value]),
-                    })),
+                    { value: "", label: u("Choose a campaign"), disabled: true },
+                    ...campaigns.map(item => ({value: item.id, label: item.name + " · " + item.code})),
                   ]}
-                  onChange={(medium) => setEntry({ ...entry, medium })}
-                  lang={lang}
-                  isLight={isLight}
-                /></div>
-                <div className="campaign-field"><AdminFieldLabel required>{u("Customer language *")}</AdminFieldLabel><CrmSingleSelect required
-                  label={u("New entry customer language")}
-                  value={entry.language}
-                  options={[
-                    {
-                      value: "",
-                      label: u("Choose a customer language"),
-                      disabled: true,
-                    },
-                    { value: "en", label: u("English") },
-                    { value: "id", label: u("Bahasa Indonesia") },
-                    { value: "zh", label: u("Chinese") },
-                  ]}
-                  onChange={(language) => setEntry({ ...entry, language })}
-                  lang={lang}
-                  isLight={isLight}
-                /></div>
-                <p>
-                  {u("Entry experience:")} {u(PROMOTION_EXPERIENCE_LABEL)}
-                </p>
-              </div>
+                  onChange={value => {setCampaignId(value); setTarget("");}}
+                  lang={lang} isLight={isLight} />
+              </AdminField>
             )}
-            <AdminField className="campaign-field">
-              <span>{u("Review reason / evidence *")}</span>
+            {action === "link" && campaign && (
+              <AdminField as="div" required>
+                <label>{u("Existing promotion entry")}</label>
+                <CrmSingleSelect required searchable label={u("Existing promotion entry")} value={target}
+                  options={[
+                    { value: "", label: u("Choose an entry from this campaign"), disabled: true },
+                    ...links.map(link => ({value: link.id, label: link.name + " · " + link.id})),
+                  ]}
+                  onChange={setTarget} lang={lang} isLight={isLight} />
+                {!links.length && <p className="crm-work-muted">{u("No links in this campaign. Confirm the campaign only if supported by the evidence.")}</p>}
+              </AdminField>
+            )}
+            <AdminField>
+              {u("Review reason / evidence *")}
               <textarea
                 required
                 maxLength={1000}
@@ -632,12 +414,7 @@ function PromotionReviewCard({
               />
             </AdminField>
           </fieldset>
-          <p className="campaign-hint">
-            {u(
-              "Applies to {name} only. Original c/p and first-touch fields stay unchanged. No future alias, campaign move, task completion or notification replay.",
-              { name: row.name },
-            )}
-          </p>
+          <p className="campaign-hint">{u("This decision applies only to this customer.")}</p>
           </AdminFormSection>
           <AdminFormActions className="crm-source-review-actions flex flex-wrap gap-2">
             <button
@@ -647,9 +424,8 @@ function PromotionReviewCard({
                 busy ||
                 !action ||
                 !reason.trim() ||
-                (action === "link" && !target) ||
-                (action === "create" &&
-                  (!entry.source || !entry.medium || !entry.language))
+                (needsCampaign && !campaign) ||
+                (action === "link" && !target)
               }
             >
               {busy
@@ -692,7 +468,7 @@ function PromotionReviewCard({
               <p>
                 {u(
                   promotionReviewActions.find((a) => a.value === h.action)
-                    ?.label || h.action,
+                    ?.label || (h.action === "create" ? "Create promotion entry and link" : h.action),
                 )}{" "}
                 · {h.actor} ·{" "}
                 {new Date(h.at).toLocaleString(campaignUiLocale(lang), {
@@ -701,6 +477,7 @@ function PromotionReviewCard({
 
               </p>
               <p>{h.after.reason}</p>
+              {h.after.campaignName && <p>{u("Campaign:")} {h.after.campaignName}</p>}
               <p>
                 {u("Original:")} <code>{h.after.rawPromotionLinkId}</code>{" "}
                 {u("· Verified entry:")}{" "}

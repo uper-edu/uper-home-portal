@@ -5,7 +5,6 @@ import {campaignPromotionUrl} from "../src/utils/campaignPromotion.ts";
 import {addCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
-import {listCampaignSources,reviewCampaignSource} from './portal/campaignSources.ts';
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
 import {ensureInstagramBioCampaign} from './portal/campaignPresets.ts';
@@ -92,8 +91,6 @@ app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json(
 app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>r.json({reviews:await listPromotionReviews(r.locals.crmEmployee)})));
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
 app.post('/api/crm/campaigns/sources/promotions/:leadId/review',wrap(async(q:any,r:any)=>r.json(await reviewPromotion(q.params.leadId,q.body,r.locals.crmEmployee))));
-app.get('/api/crm/campaigns/sources',wrap(async(q:any,r:any)=>r.json({sources:await listCampaignSources(r.locals.crmEmployee)})));
-app.post('/api/crm/campaigns/sources/:id/review',wrap(async(q:any,r:any)=>r.json(await reviewCampaignSource(q.params.id,q.body,r.locals.crmEmployee))));
 app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const resolved=await getCampaignByIdOrCode(q.params.idOrCode);const campaign=resolved && list.find(c=>c.id===resolved.id);if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
 app.post('/api/crm/campaigns/:id/links',wrap(async(q:any,r:any)=>r.json({success:true,...await addCampaignPromotion(q.params.id,q.body,r.locals.crmEmployee.id)})));
 app.get('/api/campaigns/:idOrCode/links/:linkId',wrap(async(q:any,r:any)=>{const resolved=await resolvePromotion(pool,q.params.idOrCode,q.params.linkId);if(!resolved)return r.status(404).json({error:'Promotion link does not belong to this campaign.'});r.json({link:resolved.link});}));
