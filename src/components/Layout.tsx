@@ -10,6 +10,7 @@ import { BackToTop } from './ui/BackToTop';
 import { trackLanguageSwitch, trackEvent } from '../utils/analytics';
 import { useDesignStyle, useColorTheme } from '../utils/theme';
 import { useStudentName, STUDENT_PORTAL_URL } from '../utils/studentAuth';
+import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 
 const prefTranslations = {
   id: {
@@ -653,6 +654,32 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
             <p className={`mb-5 text-sm leading-relaxed ${isApple ? 'text-slate-500' : 'text-slate-400'}`}>
               {t('footer.description')}
             </p>
+            <nav aria-labelledby="footer-social-heading">
+              <h4 id="footer-social-heading" className={`mb-2 text-xs font-semibold ${isApple ? 'text-slate-700' : 'text-slate-300'}`}>
+                {t('footer.followUs')}
+              </h4>
+              <ul className="flex flex-wrap gap-1.5">
+                {(['whatsapp', 'instagram', 'tiktok', 'youtube', 'linkedin', 'facebook'] as const).map((platform) => (
+                  <li key={platform}>
+                    <a
+                      href={socialProfiles[platform].url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={socialProfiles[platform].name}
+                      onClick={() => trackEvent('link_click', { target: platform, entry_point: websiteEntry })}
+                      className={`inline-flex size-10 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                        isApple
+                          ? 'border-slate-200 bg-white text-slate-700 hover:border-primary-400 hover:text-primary-700 focus-visible:outline-primary-600'
+                          : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-primary-400 hover:text-white focus-visible:outline-primary-400'
+                      }`}
+                    >
+                      <SocialProfileIcon platform={platform} className="size-5 shrink-0" />
+                      <span className="sr-only">{socialProfiles[platform].name}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           </div>
           
           <div>

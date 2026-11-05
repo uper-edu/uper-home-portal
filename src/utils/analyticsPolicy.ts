@@ -228,6 +228,9 @@ const choices: Record<string, string[]> = {
   section: ["listening", "reading", "writing", "review"],
   validation_mode: ["simulated", "live"],
   target: [
+    "facebook",
+    "linkedin",
+    "instagram",
     "hub",
     "consultation",
     "handbook",
