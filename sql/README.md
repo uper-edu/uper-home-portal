@@ -28,7 +28,7 @@ v<YYYYMMDDHHMMSS>_<简短用途>.sql
 3. **禁止外键**：增量 SQL 不得新增 `FOREIGN KEY`/`REFERENCES`/级联子句，与 `AGENTS.md` 数据库规范一致。
 4. **可移植**：不硬编码 IP、库名、账号、密码或某次私有备份；连接信息由执行者自己提供。
 5. **遇错即停**：SQL 必须自带校验与明确的错误信号；文档中写明允许的执行客户端与终止行为。
-6. **发布流程不变**：改动在功能分支完成，跑 `npm test`、`npm run lint`、`npm run build`、`git diff --check`，审查后合并 `main`；生产执行仍需单独确认与备份。
+6. **发布流程**：直接在 `main` 开发或经功能分支开发均可（用户 2026-11-06 确认两种方式并行允许；较大或多端并行的改动建议功能分支隔离）。推送前跑 `npm test`、`npm run lint`、`npm run build`、`git diff --check`；生产执行仍需单独确认与备份。
 
 ## 与其他 SQL 的关系
 
