@@ -21,6 +21,7 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 
 - 禁止使用外键：新增或修改的 `CREATE TABLE`、`ALTER TABLE` 及迁移脚本不得包含 `FOREIGN KEY`、`REFERENCES` 或 `ON DELETE/ON UPDATE` 级联子句。表间关联只用普通列加索引，引用完整性由应用层在同一事务内校验与维护（沿用 `lockIdentityRegistry`、`SELECT ... FOR UPDATE` 等既有模式）。
 - 存量 schema 中已有的外键（`schema.sql`、`schema-v2.sql`、`schema-v13.sql`、`schema-v15.sql` 中关联 `portal_leads` 的 5 处）仅在因业务需要改动对应表时顺带评审移除，不做单独的外键清理迁移；本规范不授权全局 schema 重构或存量数据迁移。
+- 增量 SQL 统一放在 `sql/` 目录管理，命名用 `v` + 创建时刻时间戳：`v<YYYYMMDDHHMMSS>_<简短用途>.sql`（例 `v20261106115022_cms_cos_incremental.sql`）。禁止 `v1`、`v2`…`v20` 连续编号——并行开发会互相占用编号导致冲突；时间戳创建时取当前时刻，不复用、不改写已发布文件的时间戳。每次新增/移动/废弃增量必须同次提交更新 [`sql/README.md`](sql/README.md) 的登记表（文件、创建时间、目标结构、作用、执行方式、验证），保持目录对人和 AI 都自解释。增量必须自带结构门禁、可重复执行（已应用目标数据零变更）、不硬编码连接信息、不破坏目标库自己的业务内容与账号；细节见该 README。应用启动自动迁移链（`cloud/mysql/schema*.sql` + `migrate.mjs`）仍由运行时管理，不放入 `sql/` 目录。
 
 ## Zentao bug fixes
 

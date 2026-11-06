@@ -4,7 +4,7 @@
 
 ## 使用哪个文件
 
-- 执行文件：[`cms-cos-incremental.sql`](../../cloud/mysql/updates/cms-cos-incremental.sql)。包含208个已提交正式媒体的真实COS URL、对象键和字节数。
+- 执行文件：[`v20261105220918_cms_cos_incremental.sql`](../../sql/v20261105220918_cms_cos_incremental.sql)（位于统一的 `sql/` 增量目录，命名规则见 [`sql/README.md`](../../sql/README.md)）。包含208个已提交正式媒体的真实COS URL、对象键和字节数。
 - 生成器：`scripts/generate-cms-cos-incremental.mjs`。维护者使用Node 24或以上从仓库正式种子生成SQL；数据库使用者执行已生成SQL不需要Node，也不需要任何人的私有备份或验收脚本。
 - 数据来源：`cloud/mysql/seeds/cms/v2`，由 `loadCmsSeed()` 校验媒体文件摘要。不能用本地验收数据、账号备份或客户记录生成此公开于项目的增量文件。
 - 空库初始化是另一项操作，见[CMS COS存储与生产初始化](cms-cos-bootstrap.md)。**不要向已有业务库导入完整初始化包。**
@@ -40,7 +40,7 @@
 推荐使用**新的 mysql 命令行批处理进程**，通过标准输入重定向完整文件。先配置自己的安全登录配置和可信TLS设置，明确指定目标数据库。例如在Bash或Windows CMD中执行（替换示例登录配置名和库名）：
 
 ```sh
-mysql --login-path=portal --database=YOUR_DATABASE < cloud/mysql/updates/cms-cos-incremental.sql
+mysql --login-path=portal --database=YOUR_DATABASE < sql/v20261105220918_cms_cos_incremental.sql
 ```
 
 此示例的 `<` 是Shell重定向语法，不是SQL，也不能原样当作PowerShell命令使用。登录配置由执行者管理，文件不包含密码。**禁止 `--force`；任何错误必须使整个批处理立即终止。普通交互式 `SOURCE` 默认可能遇错继续，不作为安全等价执行方式。**
