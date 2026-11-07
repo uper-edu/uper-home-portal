@@ -257,8 +257,23 @@ export default function AIChatbot() {
   const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  useEffect(() => { let active=true; restoreChat('homepage_widget').then(rows => { if(active && rows.length) setMessages(rows); }).catch(() => {}); return () => { active=false; }; }, []);
   const [messages, setMessages] = useState<Message[]>([]);
+  const chatReset = useRef(false);
+  useEffect(() => {
+    let active = true;
+    restoreChat('homepage_widget').then(rows => {
+      if (!active || chatReset.current || !rows.length) return;
+      setMessages(current => {
+        const liveMessages = current.filter(message => message.id !== 'welcome');
+        // A live request owns both messages in its turn, even if its reply is still pending.
+        const liveIds = new Set(liveMessages.flatMap(({ id, role }) =>
+          role === 'user' ? [id, `reply-${id}`] : [id],
+        ));
+        return [...rows.filter(row => !liveIds.has(row.id)), ...liveMessages];
+      });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const sendingRef = useRef(false);
@@ -536,6 +551,7 @@ export default function AIChatbot() {
 
   const handleResetChat = () => {
     // Clear all messages
+    chatReset.current = true;
     setMessages([]);
     // Remove lead submitted flag
     setLeadSubmitted(false);
@@ -742,7 +758,7 @@ export default function AIChatbot() {
   // Initial greeting message when chat opens the first time
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([
+      setMessages(current => current.length ? current : [
         {
           id: 'welcome',
           role: 'assistant',
