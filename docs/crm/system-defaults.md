@@ -4,8 +4,8 @@
 
 默认记录：
 
-- organic：无参数/chat的自然来源，保留现有归因规则和只读边界。
-- instagram-bio：无参数/link独有来源，包含中英印尼三条推广链接，转往/chat时保留活动身份。不会把所有无参数/chat归为Instagram。
+- `organic` 是 CRM 为没有来源信息的新登记使用的自然来源。从无推广参数的 `/link` 进入咨询，只会记录 `linkhub` 页面入口。
+- `instagram-bio` 是预置的 Instagram Bio 活动，包含中、英、印尼语三条推广链接。通过这些链接进入 `/link`，再转到 `/chat` 时，页面会保留推广标识 `p` 和已有的 UTM 参数。直接访问无推广参数的 `/link` 不会自动归到此活动。
 - finance角色：仅crm.read和crm.payments.verify，不扩大CRM经理模板。
 - 8门HSK标准课程和报价：直接读取src/data/crmCoursePrices.json，来源为已确认的FAQ q53；发布状态开启，默认优惠权限为0，金额为IDR。报名仍保存当时报价快照。
 
