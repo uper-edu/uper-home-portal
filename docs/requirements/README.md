@@ -12,3 +12,4 @@
 | 需求 | 状态 | 说明 |
 | --- | --- | --- |
 | [CRM轻量销售机会](backlog/crm-lightweight-sales-opportunities.md) | 待细化／未实施 | 客户档案与本次课程销售机会分离；已讨论方向，实施细节待确认 |
+| [产品与业务优化Backlog](backlog/product-improvement-backlog.md) | 持续维护；UX系列10条、BR系列14条 | UX中6项暂缓；BR已纳入、方案待确认。保留优先级、跨项依赖、决定及变更历史，重叠主题不重复开发 |
