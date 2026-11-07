@@ -30,6 +30,7 @@ import {
   profileChangeReason,
   visibleProfileNeedsGroups,
   learningGoalEntries,
+  reportedLevelQuestionnaires,
 } from "../../utils/crmProfileEvidence";
 import { CrmAiIndicator } from "./CrmAiIndicator";
 import { CrmSingleSelect } from "./CrmSingleSelect";
@@ -447,6 +448,14 @@ export function CrmProfileEvidence({ lead, timezone }: any) {
     </dl>
   );
 }
+export function CrmReportedLevel({lead,lang:provided}:any){
+  const lang=useCrmUiLanguage(provided),ui=useCrmUiText(provided);
+  if(!lead.reportedLevel)return null;
+  return <div className="crm-current-field"><dt>{ui('客户自报水平')}</dt><dd>
+    <div className="crm-current-field-value">{crmValue(lead.reportedLevel,lang)}</div>
+    <div className="crm-current-field-source"><ProfileSource key={lead.id+':reportedLevel:'+lead.reportedLevel} leadId={lead.id} field="reportedLevel" label="客户自报水平" questionnaireValue={lead.reportedLevel}/></div>
+  </dd></div>;
+}
 export function CrmProfileEditor({
   lead,
   onSaved,
@@ -466,8 +475,6 @@ export function CrmProfileEditor({
   const [scope, setScope] = useState("needs"),
     [basisIds, setBasisIds] = useState<string[]>([]),
     [availableFacts, setAvailableFacts] = useState<any[]>([]);
-  const moreActions=useRef<HTMLDetailsElement>(null);
-  useEffect(()=>{const outside=(e:PointerEvent)=>{if(moreActions.current&&!moreActions.current.contains(e.target as Node))moreActions.current.open=false;};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
   const openEditor = (nextScope: string, key?: string) => {
     setScope(nextScope);
     if (key) {
@@ -616,18 +623,13 @@ export function CrmProfileEditor({
         <h3 id="crm-profile-learning-needs" tabIndex={-1}>
           {ui("客户洞察")}
         </h3>
-        {!disabled&&<details className="crm-insights-more" ref={moreActions} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();e.currentTarget.open=false;e.currentTarget.querySelector('summary')?.focus();}}}><summary className="crm-work-button">{ui('更多操作')}</summary><div><button type="button" className="crm-work-link" disabled={busy||open} onClick={()=>{if(moreActions.current){moreActions.current.open=false;moreActions.current.querySelector('summary')?.focus();}openEditor('needs');}}>{ui('人工纠正学习需求')}</button></div></details>}
+        {editAction('needs','人工纠正学习需求')}
       </header>
       {success && <p role="status">{success}</p>}
       <CrmProfileSaveResult results={results} />
       {(lead.reportedLevel||visibleProfileNeedsGroups(lead).length>0)&&<section className="crm-insights-group" aria-label={ui('学习需求与偏好')}><h4>{ui('学习需求与偏好')}</h4><div className="crm-profile-needs-group">
         <dl>
-          {lead.reportedLevel && (
-            <div>
-              <dt>{ui("客户自报水平")}</dt>
-              <dd>{crmValue(lead.reportedLevel, lang)}</dd>
-            </div>
-          )}
+          <CrmReportedLevel lead={lead}/>
           <CrmLearningGoals lead={lead} timezone={timezone}/>
           {visibleProfileNeedsGroups(lead).map(({ title, fields: keys }) => (
             <Fragment key={title}>
@@ -1081,8 +1083,11 @@ export function CrmProfileSourceContent({
 
 export function CrmProfileOriginalRecord({event}:any){return event.payload?.answers?<CrmQuestionnaireEvidence source={{answers:event.payload.answers,recordedAt:event.recordedAt,root:{payload:event.payload}}}/>:<blockquote className="crm-progress-original">{event.original}</blockquote>;}
 
-function ProfileSource({ leadId, ids, field, fields, availableEvents, label }: any) {
+function ProfileSource({ leadId, ids = [], field, fields, availableEvents, label, questionnaireValue }: any) {
   const openHistory=useContext(CrmHistoryAccess);
+  const lang=useCrmUiLanguage();
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const ui = useCrmUiText(),
     contentId = useId();
   const [data, setData] = useState<any[] | null>(null),
@@ -1100,7 +1105,7 @@ function ProfileSource({ leadId, ids, field, fields, availableEvents, label }: a
         behavior={openHistory?"open":undefined}
         controls={contentId}
         onClick={async () => {
-          if(openHistory){openHistory({id:ids[0],fields:fields||[field]});return;}
+          if(openHistory&&ids.length){openHistory({id:ids[0],fields:fields||[field]});return;}
           if (busy) return;
           if (data) {
             setData(null);
@@ -1118,13 +1123,15 @@ function ProfileSource({ leadId, ids, field, fields, availableEvents, label }: a
               events = (await response.json()).events;
             }
             if (!Array.isArray(events)) throw Error("原始依据暂不可用，请重试");
-            const selected = linkedProfileEvidence(events, ids, leadId);
-            if (!selected.length) throw Error("原始依据暂不可用，请重试");
+            if (!mounted.current) return;
+            const selected = questionnaireValue === undefined ? linkedProfileEvidence(events, ids, leadId) : reportedLevelQuestionnaires(events,leadId,questionnaireValue);
+            if (!selected.length) throw Error(questionnaireValue === undefined ? "原始依据暂不可用，请重试" : lang==='zh'?'未找到与当前自报水平对应的原始问卷。':lang==='id'?'Kuesioner asli yang sesuai dengan tingkat yang dilaporkan belum ditemukan.':'No original questionnaire matching the current self-reported level was found.');
+            if(openHistory&&selected.length===1){openHistory({id:selected[0].eventId,fields:fields||[field]});return;}
             setData(selected);
           } catch (error) {
-            setError((error as Error).message);
+            if(mounted.current)setError((error as Error).message);
           } finally {
-            setBusy(false);
+            if(mounted.current)setBusy(false);
           }
         }}
       />

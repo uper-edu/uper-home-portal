@@ -7,6 +7,7 @@ import {
   fieldEvidenceDetails,
   visibleProfileNeedsGroups,
   profileChangeReason,
+  reportedLevelQuestionnaires,
 } from "../src/utils/crmProfileEvidence";
 import {
   CrmProfileSourceContent,
@@ -20,6 +21,17 @@ const event = (eventId: string, payload: any, extra = {}) => ({
   actor: "Robert",
   recordedAt: "2026-10-26T12:00:00Z",
   ...extra,
+});
+test('self-reported level evidence uses matching original questionnaire answers for this customer only',()=>{
+  const original=event('original',{answers:{reportedLevel:'Beginner'}},{eventType:'questionnaire.submitted'});
+  const rows=[original,event('other-customer',{answers:{reportedLevel:'Beginner'}},{eventType:'questionnaire.submitted',leadId:'other'}),event('different-answer',{answers:{reportedLevel:'HSK 2'}},{eventType:'questionnaire.submitted'}),event('ai',{answers:{reportedLevel:'Beginner'}},{eventType:'information.extracted'})];
+  const before=JSON.stringify(rows);
+  assert.deepEqual(reportedLevelQuestionnaires(rows,'arif','Beginner'),[original]);
+  assert.deepEqual(reportedLevelQuestionnaires(rows,'arif',''),[]);
+  assert.deepEqual(reportedLevelQuestionnaires(rows,'arif','HSK 3'),[]);
+  const repeat=event('repeat',{answers:{reportedLevel:'Beginner'}},{eventType:'questionnaire.submitted'});
+  assert.deepEqual(reportedLevelQuestionnaires([...rows,repeat],'arif','Beginner'),[original,repeat]);
+  assert.equal(JSON.stringify(rows),before);
 });
 test("empty needs groups are omitted, while zero, explicit clearing and conflict-only records remain available", () => {
   assert.deepEqual(

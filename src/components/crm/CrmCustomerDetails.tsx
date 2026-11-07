@@ -1,6 +1,6 @@
 import {CrmCustomerInsights} from './CrmCustomerInsights';
 import {useCrmUiText} from './CrmUiLanguage';
-import { CrmCurrentField, CrmContactPreferences, CrmLearningGoals } from "./CrmProfileFields";
+import { CrmCurrentField, CrmContactPreferences, CrmLearningGoals, CrmReportedLevel } from "./CrmProfileFields";
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmBuyingEvidence } from "./CrmBuyingEvidence";
 import { CrmDisclosure } from "./CrmDisclosure";
@@ -209,7 +209,7 @@ export function CrmCustomerProfile({
         <section aria-label={ui('客户洞察')}>
           <h3>{ui('客户洞察')}</h3>
           {(lead.reportedLevel||lead.goal||lead.goals?.length||lead.mode)&&<div className="crm-insights-group"><h4>{ui('学习需求与偏好')}</h4>
-          {lead.reportedLevel&&<Facts items={[[t("Self-reported level","客户自报水平"),crmValue(lead.reportedLevel,lang)]]}/>}
+          {lead.reportedLevel&&<dl><CrmReportedLevel lead={lead} lang={lang}/></dl>}
           <dl><CrmLearningGoals lead={lead} timezone={timezone}/></dl>
           <Facts
             items={[
