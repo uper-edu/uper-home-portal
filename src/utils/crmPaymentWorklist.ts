@@ -1,13 +1,13 @@
 import {isPaymentMethod} from './crmPaymentMethods';
 import {permittedRecord,type AccessEmployee} from './accessControl';
 import {paymentSummary,type PaymentEntry,type PaymentLedger} from './crmPayments';
-export type PaymentListFilters={state:'outstanding'|'unpaid'|'partial'|'paid'|'unpriced'|'nocharge'|'pending'|'verified'|'rejected'|'void'|'all';kind:'all'|'receipt'|'refund';search:string;page:number};
-export type PaymentListRow={leadId:string;projectId:string;customer:string;course:string;expected:number|null;received:number;refunded:number;remaining:number|null;overpaid:number;pending:number;pendingReceipts:number;state:ReturnType<typeof paymentSummary>['state'];enrolledAt:string;ownerId:string;owner:string};
+export type PaymentListFilters={state:'outstanding'|'terminated'|'unpaid'|'partial'|'paid'|'unpriced'|'nocharge'|'pending'|'verified'|'rejected'|'void'|'all';kind:'all'|'receipt'|'refund';search:string;page:number};
+export type PaymentListRow={leadId:string;projectId:string;customer:string;course:string;expected:number|null;received:number;refunded:number;remaining:number|null;overpaid:number;pending:number;pendingReceipts:number;settlement?:ReturnType<typeof paymentSummary>['settlement'];state:ReturnType<typeof paymentSummary>['state'];enrolledAt:string;ownerId:string;owner:string};
 const fail=(message:string,status=400):never=>{throw Object.assign(Error(message),{status});};
 export function canVerifyPayments(actor:AccessEmployee){return actor.active!==false&&actor.permissions.includes('crm.read')&&actor.permissions.includes('crm.payments.verify');}
 export function paymentListFilters(raw:any={}):PaymentListFilters{
  const state=raw.state??'outstanding',kind=raw.kind??'all',search=raw.search??'',page=raw.page??'1';
- if(!['outstanding','unpaid','partial','paid','unpriced','nocharge','pending','verified','rejected','void','all'].includes(state)||!['all','receipt','refund'].includes(kind)||typeof search!=='string'||search.length>120||!['string','number'].includes(typeof page)||!/^\d{1,6}$/.test(String(page))||Number(page)<1)fail('payment_filters_invalid');
+ if(!['outstanding','terminated','unpaid','partial','paid','unpriced','nocharge','pending','verified','rejected','void','all'].includes(state)||!['all','receipt','refund'].includes(kind)||typeof search!=='string'||search.length>120||!['string','number'].includes(typeof page)||!/^\d{1,6}$/.test(String(page))||Number(page)<1)fail('payment_filters_invalid');
  return {state,kind,search:search.trim(),page:Number(page)};
 }
 /** One row per enrollment, including enrollments with no reported payment. Never expose bank details or infer receipts from a stage. */
@@ -24,14 +24,16 @@ export function paymentWorklist(actor:AccessEmployee,profiles:any[],ledgers:Arra
   const owner=people.find(e=>e.id===p.owner)?.displayName||p.owner||'';
   for(const project of projects.values()){
    const summary=paymentSummary(ledger,project),payments=ledger.entries.filter(e=>e.projectId===project.id),matching=payments.filter(e=>filters.kind==='all'||e.kind===filters.kind);
-   const outstanding = summary.pending > 0 || (summary.state !== 'paid' && summary.state !== 'nocharge');
+   const outstanding = summary.pending > 0 || (summary.settlement
+     ? summary.settlement.state === 'collect' || summary.settlement.state === 'refund'
+     : summary.state !== 'paid' && summary.state !== 'nocharge');
    if(outstanding)outstandingCount++;
    if(filters.kind!=='all'&&!matching.length)continue;
    if(filters.state==='outstanding'){if(!outstanding)continue;}
    else if(['pending','verified','rejected','void'].includes(filters.state)){if(!matching.some(e=>e.state===filters.state))continue;}
    else if(filters.state!=='all'&&summary.state!==filters.state)continue;
    if(filters.search&&![p.fullName||'',p.id,project.course,owner].join(' ').toLocaleLowerCase().includes(filters.search.toLocaleLowerCase()))continue;
-   result.push({leadId,projectId:project.id,customer:p.fullName||p.id,course:project.course,expected:project.expected,received:summary.received,refunded:summary.refunded,remaining:summary.remaining,overpaid:summary.overpaid,pending:summary.pending,pendingReceipts:payments.filter(e=>e.kind==='receipt'&&e.state==='pending').length,state:summary.state,enrolledAt:project.createdAt,ownerId:p.owner||'',owner});
+   result.push({leadId,projectId:project.id,customer:p.fullName||p.id,course:project.course,expected:project.expected,received:summary.received,refunded:summary.refunded,remaining:summary.remaining,overpaid:summary.overpaid,pending:summary.pending,pendingReceipts:payments.filter(e=>e.kind==='receipt'&&e.state==='pending').length,...(summary.settlement?{settlement:summary.settlement}:{}),state:summary.state,enrolledAt:project.createdAt,ownerId:p.owner||'',owner});
   }
  }
  result.sort((a,b)=>b.enrolledAt.localeCompare(a.enrolledAt)||a.leadId.localeCompare(b.leadId)||a.projectId.localeCompare(b.projectId));
@@ -41,8 +43,15 @@ export function paymentWorklist(actor:AccessEmployee,profiles:any[],ledgers:Arra
 export const paymentVerificationForm=(entry:PaymentEntry)=>({action:'verify',entryId:entry.id,amount:String(entry.amount),time:'',method:isPaymentMethod(entry.method)?entry.method:'other',methodName:entry.methodName||(!isPaymentMethod(entry.method)?entry.method:''),provider:entry.provider||'',account:entry.account,reference:entry.reference,evidence:'',images:[]});
 export const paymentReceiptForm=(projectId:string)=>({action:'receive',projectId,amount:'',time:'',method:'',methodName:'',provider:'',account:'',reference:'',evidence:'',images:[]});
 export const paymentRefundForm=(projectId:string)=>({...paymentReceiptForm(projectId),action:'refund'});
-export function paymentListNextAction(row:Pick<PaymentListRow,'pendingReceipts'|'pending'|'remaining'|'state'>){
- return row.pendingReceipts>0?'review_receipt':row.pending>0?'review_refund':row.state==='paid'||row.state==='nocharge'?null:'receive';
+export function paymentListNextAction(row:Pick<PaymentListRow,'pendingReceipts'|'pending'|'remaining'|'state'|'settlement'>){
+ if(row.pendingReceipts>0)return 'review_receipt';
+ if(row.pending>0)return 'review_refund';
+ if(row.state==='terminated'){
+  if(row.settlement?.state==='collect')return 'receive';
+  if(row.settlement?.state==='refund')return 'refund';
+  return null;
+ }
+ return row.state==='paid'||row.state==='nocharge'?null:'receive';
 }
 /** Select only the requested kind in the freshly authorized project, never another customer's record. */
 export function paymentNextReview(ledger:PaymentLedger,projectId:string,kind:'receipt'|'refund'){

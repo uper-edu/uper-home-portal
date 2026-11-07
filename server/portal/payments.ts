@@ -6,9 +6,9 @@ import {operation,invalid} from './trustWorkflow.ts';
 import {auditLog} from './audit.ts';
 import {canonicalIdentity,assertIdentitySalesAllowed,lockIdentityRegistry} from './identityConsolidation.ts';
 import {permittedRecord} from '../../src/utils/accessControl.ts';
-import {emptyPaymentLedger,paymentAmount,paymentInstant,paymentSummary,type PaymentLedger} from '../../src/utils/crmPayments.ts';
+import {emptyPaymentLedger,paymentAmount,paymentInstant,paymentSummary,type PaymentLedger,type PaymentProject} from '../../src/utils/crmPayments.ts';
 const verifyActions=new Set(['receive','refund','verify','reject','void']);
-const commandPermission=(action:string)=>action==='revise_project'?'crm.operations.manage':verifyActions.has(action)?'crm.payments.verify':'crm.followup';
+const commandPermission=(action:string)=>action==='terminate'?'payment.terminate':['revise_project','settle'].includes(action)?'crm.operations.manage':verifyActions.has(action)?'crm.payments.verify':'crm.followup';
 const text=(v:any,max=4000)=>{if(typeof v!=='string'||!v.trim()||v.length>max)invalid('payment_information_required');return v;};
 const referenceKey=(account:string,reference:string)=>createHash('sha256').update(JSON.stringify([account.trim().toUpperCase(),reference.trim().toUpperCase()])).digest('hex');
 const optionalText=(v:any,max=4000)=>{if(v===undefined)return '';if(typeof v!=='string'||v.length>max)invalid('payment_information_required');return v.trim()?v:'';};
@@ -45,9 +45,17 @@ export async function reservePaymentReference(c:any,leadId:string,entryId:string
   }
  }
 }
+const mayTerminate = (actor:any, profile:any) =>
+ permittedRecord(actor,profile,'crm.followup') || permittedRecord(actor,profile,'crm.operations.manage');
+function assertReceiptAllowed(ledger:PaymentLedger, project:PaymentProject, receivedAt:string, amount:number) {
+ if (!project.termination || Date.parse(receivedAt)<Date.parse(project.termination.effectiveAt)) return;
+ const due=paymentSummary(ledger,project).settlement?.due ?? 0;
+ if (!due) invalid('payment_settlement_not_collectible',409);
+ if (amount>due) invalid('payment_settlement_receipt_exceeds_due',409);
+}
 async function authorize(c:any,actorId:string,profile:any,permission:string){
  const actor=(await assignmentDirectory(c)).find((e:any)=>e.id===actorId);
- if(!actor?.active||!permittedRecord(actor,profile,'crm.read')||(permission!=='crm.read'&&!permittedRecord(actor,profile,permission)))invalid('payment_forbidden',403);
+ if(!actor?.active||!permittedRecord(actor,profile,'crm.read')||(permission==='payment.terminate'?!mayTerminate(actor,profile):permission!=='crm.read'&&!permittedRecord(actor,profile,permission)))invalid('payment_forbidden',403);
  return actor;
 }
 async function family(c:any,leadId:string){
@@ -68,7 +76,7 @@ export async function readPayments(c:any,leadId:string,actorId:string){
  const {ledger,revision}=await ledgerState(c,leadId);
  const directory=await assignmentDirectory(c),ids=new Set([profile.owner,...ledger.projects.map(p=>p.createdBy),...ledger.entries.flatMap(e=>[e.createdBy,e.verifiedBy]),...ledger.history.map(h=>h.actor)].filter(Boolean));
  const people=Object.fromEntries([...ids].map(id=>[id,directory.find((e:any)=>e.id===id)?.displayName||id]));
- return {leadId,customerName:profile.fullName||leadId,ownerName:people[profile.owner]||'',people,revision,ledger,summary:ledger.projects.map(project=>({projectId:project.id,...paymentSummary(ledger,project)})),canSubmit:permittedRecord(actor,profile,'crm.followup'),canVerify:permittedRecord(actor,profile,'crm.payments.verify'),canReviseProject:permittedRecord(actor,profile,'crm.operations.manage')};
+ return {leadId,customerName:profile.fullName||leadId,ownerName:people[profile.owner]||'',people,revision,ledger,summary:ledger.projects.map(project=>({projectId:project.id,...paymentSummary(ledger,project)})),canSubmit:permittedRecord(actor,profile,'crm.followup'),canVerify:permittedRecord(actor,profile,'crm.payments.verify'),canReviseProject:permittedRecord(actor,profile,'crm.operations.manage'),canTerminate:mayTerminate(actor,profile)};
 }
 export async function paymentResult(c:any,leadId:string,actorId:string,requestId:string){
  await readPayments(c,leadId,actorId);
@@ -79,8 +87,8 @@ export async function paymentResult(c:any,leadId:string,actorId:string,requestId
  await authorize(c,actorId,profile,commandPermission(r.action));return r;
 }
 export async function savePayment(c:any,leadId:string,actorId:string,b:any){
- if(!b||typeof b!=='object'||!['project','revise_project','submit','receive','refund','verify','reject','void'].includes(b.action))invalid('payment_action_invalid');
- const keys=['action','requestId','revision','projectId','entryId','course','expected','kind','amount','reportedAt','method','evidence','reference','account','accountRole','receivedAt','reason','provider','methodName','images'];
+ if(!b||typeof b!=='object'||!['project','revise_project','terminate','settle','submit','receive','refund','verify','reject','void'].includes(b.action))invalid('payment_action_invalid');
+ const keys=['action','requestId','revision','projectId','entryId','course','expected','kind','amount','reportedAt','method','evidence','reference','account','accountRole','receivedAt','reason','provider','methodName','images','effectiveAt'];
  if(Object.keys(b).some(k=>!keys.includes(k)))invalid('payment_action_invalid');
  await lockIdentityRegistry(c);
  const profile=(await c.query('SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE',[leadId])).rows[0]?.profile;
@@ -96,11 +104,25 @@ export async function savePayment(c:any,leadId:string,actorId:string,b:any){
   if(b.action==='project'){
    after={id:randomUUID(),sourceLeadId:leadId,course:text(b.course,200),expected:b.expected===null?null:paymentAmount(b.expected,true),createdAt:at,createdBy:actorId};ledger.projects.push(after);
   }else if(b.action==='revise_project'){
-   if(!project)invalid('payment_missing',404);if(project.priceSnapshot)invalid('已确认报价不可在收款核验中更改');before=structuredClone(project);text(b.reason);project.course=text(b.course,200);project.expected=b.expected===null?null:paymentAmount(b.expected,true);after=project;
+   if(!project)invalid('payment_missing',404);if(project.priceSnapshot)invalid('已确认报价不可在收款核验中更改');if(project.termination)invalid('payment_termination_conflict',409);before=structuredClone(project);text(b.reason);project.course=text(b.course,200);project.expected=b.expected===null?null:paymentAmount(b.expected,true);after=project;
+  }else if(b.action==='terminate'){
+   if(!project||project.termination)invalid('payment_termination_conflict',409);
+   const effectiveAt=paymentInstant(b.effectiveAt);
+   if(Date.parse(effectiveAt)<Date.parse(project.createdAt))invalid('payment_termination_before_enrollment');
+   before=structuredClone(project);
+   project.termination={effectiveAt,reason:text(b.reason),actor:actorId,recordedAt:at};
+   after=project;
+  }else if(b.action==='settle'){
+   if(!project?.termination)invalid('payment_termination_conflict',409);
+   before=structuredClone(project);
+   project.settlement={amount:paymentAmount(b.amount,true),basis:text(b.reason),actor:actorId,recordedAt:at};
+   after=project;
   }else if(b.action==='submit'){
    if(!project||!['receipt','refund'].includes(b.kind))invalid('payment_project_required');
    const details=paymentDetails(b);
-   after={id:randomUUID(),projectId:project.id,kind:b.kind,amount:paymentAmount(b.amount),reportedAt:paymentInstant(b.reportedAt),...details,evidence:optionalText(b.evidence),state:'pending',createdAt:at,createdBy:actorId};
+   const amount=paymentAmount(b.amount),reportedAt=paymentInstant(b.reportedAt);
+   if(b.kind==='receipt')assertReceiptAllowed(ledger,project,reportedAt,amount);
+   after={id:randomUUID(),projectId:project.id,kind:b.kind,amount,reportedAt,...details,evidence:optionalText(b.evidence),state:'pending',createdAt:at,createdBy:actorId};
    const images=await storePaymentImages(c,leadId,actorId,after.id,uploads);if(images.length)after.images=images;ledger.entries.push(after);
   }else if(b.action==='receive'||b.action==='refund'){
    if(!project)invalid('payment_project_required');
@@ -108,6 +130,7 @@ export async function savePayment(c:any,leadId:string,actorId:string,b:any){
    // Review existing reports before recording another receipt; never silently duplicate them.
    if(ledger.entries.some(e=>e.projectId===project.id&&e.kind===(refund?'refund':'receipt')&&e.state==='pending'))invalid(refund?'payment_pending_refund':'payment_pending_receipt',409);
    const amount=paymentAmount(b.amount),receivedAt=paymentInstant(b.receivedAt),details=paymentDetails(b),evidence=optionalText(b.evidence);
+   if(!refund)assertReceiptAllowed(ledger,project,receivedAt,amount);
    if(paymentExceptionNoteRequired(b.action,amount,paymentSummary(ledger,project).remaining))text(evidence);
    if(refund&&amount>paymentSummary(ledger,project).net)invalid('payment_refund_exceeds_received');
    after={id:randomUUID(),projectId:project.id,kind:refund?'refund':'receipt',amount,reportedAt:receivedAt,...details,evidence,state:'verified',createdAt:at,createdBy:actorId,verifiedAmount:amount,receivedAt,verificationEvidence:evidence,verifiedBy:actorId,verifiedAt:at};
@@ -119,6 +142,7 @@ export async function savePayment(c:any,leadId:string,actorId:string,b:any){
    if(b.action==='verify'){
     if(entry.state!=='pending')invalid('payment_state_conflict',409);
     const amount=paymentAmount(b.amount),receivedAt=paymentInstant(b.receivedAt),details=paymentDetails(b,entry),evidence=optionalText(b.evidence);
+    if(entry.kind==='receipt')assertReceiptAllowed(ledger,project,receivedAt,amount);
     if(paymentExceptionNoteRequired('verify',amount,paymentSummary(ledger,project).remaining,entry,details))text(evidence);
     if(entry.kind==='refund'&&amount>paymentSummary(ledger,project).net)invalid('payment_refund_exceeds_received');
     await reservePaymentReference(c,leadId,entry.id,details);

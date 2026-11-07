@@ -1,7 +1,7 @@
 import type {PaymentEntry} from './crmPayments';
 
 export function paymentStateTone(state:string){
- return state==='paid'||state==='verified'?'success':state==='partial'?'info':state==='pending'||state==='unpriced'?'warning':'neutral';
+ return state==='paid'||state==='verified'||state==='settlement_settled'?'success':state==='partial'?'info':['pending','unpriced','settlement_pending','settlement_collect','settlement_refund'].includes(state)?'warning':'neutral';
 }
 export function paymentRemainingTone(summary:{state:string;remaining:number|null;overpaid:number}){
  return summary.overpaid>0?'warning':summary.state==='paid'?'success':summary.remaining!==null&&summary.remaining>0?'info':'neutral';

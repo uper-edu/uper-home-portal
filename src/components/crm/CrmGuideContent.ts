@@ -933,6 +933,12 @@ guideSections.find(v=>v.key==='followup')?.body.push([
 ]);
 
 guideSections.find(v=>v.key==='followup')?.body.push([
+ 'In Enrollment & payments, eligible staff record the termination time and reason. Operations confirms the final amount and its basis. Finance can verify receipts that actually occurred before termination. Later collections are limited to the settlement balance. Payment verification includes enrollments with pending entries, money to collect, or money to refund.',
+  'Di Pendaftaran dan pembayaran, staf berwenang mencatat waktu dan alasan penghentian. Operasional mengonfirmasi jumlah akhir dan dasarnya. Bagian keuangan dapat memverifikasi penerimaan yang terjadi sebelum penghentian. Penerimaan setelah penghentian dibatasi oleh sisa penyelesaian. Daftar verifikasi mencakup catatan tertunda serta jumlah yang perlu ditagih atau dikembalikan.',
+  '在「报名与收款」记录终止时间和原因，由有权限的运营人员确认最终应结金额及依据。财务可按凭证核实终止前实际到账的旧款，终止后补收不超过待追收余额。收款核验待办包含待核验流水、待追收和待退款项目。'
+]);
+
+guideSections.find(v=>v.key==='followup')?.body.push([
  'Manage published courses, prices and sales discount limits in Sales operations → Courses & pricing. On changing to Enrolled, select a course, apply an allowed discount and confirm the final amount due. The enrollment price snapshot and stage save together; future price edits do not change confirmed amounts. Course statistics separate enrollment, net paying customers and verified receipts/refunds. Finance cannot change the confirmed commercial price. Repeat enrollment is not supported in this version.',
  'Kelola kursus, harga dan batas diskon di Operasional penjualan → Kursus & harga. Saat mengubah ke Terdaftar, pilih kursus, terapkan diskon yang diizinkan dan konfirmasi tagihan akhir. Cuplikan harga dan tahap disimpan bersama; perubahan harga berikutnya tidak mengubah nilai terkonfirmasi. Statistik memisahkan pendaftaran, pelanggan membayar neto serta penerimaan/pengembalian terverifikasi. Keuangan tidak dapat mengubah harga komersial. Pendaftaran ulang belum didukung.',
  '销售运营→课程与报价统一维护已发布课程、标准价格和销售优惠上限。更新为已报名时选择课程、设置权限内优惠并确认最终应收，报名价格快照与阶段一同保存；后续调价不改变已确认金额。课程统计分别展示报名、净付款、已收齐及核实收退款，财务不能修改已确认商业价格。本版暂不支持再次报名。'
