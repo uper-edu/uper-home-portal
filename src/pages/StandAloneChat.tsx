@@ -98,6 +98,7 @@ export default function StandAloneChat() {
     }];
   });
   const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [lang, setLang] = useState<'en' | 'id' | 'zh'>(()=>chatLanguage(initialContext?.preferredLanguage,window.location.search));
 
@@ -366,7 +367,11 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
   const handleSendMessage = async (textToSend?: string, retry?: ChatMessage) => {
     const messageContent=(retry?.content || textToSend || inputValue).trim();
     if(!messageContent || isTyping)return;
-    setInputValue('');setIsTyping(true);
+    if (!textToSend && !retry) {
+      setInputValue('');
+      inputRef.current?.focus({ preventScroll: true });
+    }
+    setIsTyping(true);
     const userMessage:ChatMessage=retry || {id:crypto.randomUUID(),role:'user',content:messageContent,timestamp:new Date()};
     const botMessageId='reply-'+userMessage.id;
     setMessages(prev=>[...prev.filter(m=>m.id!==botMessageId && m.id!==userMessage.id),{...userMessage,delivery:'pending'},{id:botMessageId,role:'assistant',content:'',timestamp:new Date()}]);
@@ -609,16 +614,12 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
           className="max-w-4xl mx-auto flex items-center gap-2"
         >
           <input
+            ref={inputRef}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            disabled={isTakingAssessment || isTyping}
-            placeholder={
-              isTakingAssessment
-                ? chooseText(lang,'请先完成上方测评…','Please complete the assessment above…','Selesaikan tes di atas terlebih dahulu…')
-                : chooseText(lang,'请输入课程、HSK或学习规划问题…','Ask about courses, HSK or study planning…','Tanyakan tentang kursus, HSK atau rencana belajar…')
-            }
-            className="min-w-0 flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900 disabled:opacity-60 disabled:cursor-not-allowed"
+            placeholder={chooseText(lang,'请输入课程、HSK或学习规划问题…','Ask about courses, HSK or study planning…','Tanyakan tentang kursus, HSK atau rencana belajar…')}
+            className="min-w-0 flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
           />
           <button
             type="submit"
