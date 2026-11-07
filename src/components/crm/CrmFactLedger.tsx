@@ -21,6 +21,7 @@ import {CrmHistoryInformation,historyInformationValue,CrmHistoryOriginal,CrmHist
 import {CrmHistorySources} from './CrmHistorySources';
 import {CrmHistoryAttribution} from './CrmHistoryAttribution';
 import {revealRecord} from '../adminScroll';
+import {historyFieldCitation} from '../../utils/crmHistoryFieldFocus';
 import {locateLedgerEvent} from '../../utils/crmFollowupPresentation';
 import {buildHistoryTimeline,historyCategories,historyGroupFor,historyAssessment,historyContactCorrection,historyStructuredFields,historyPreview} from '../../utils/crmHistoryTimeline';
 import {profileSaveSummary} from '../../utils/crmProfileSaveResult';
@@ -52,26 +53,39 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
   return()=>document.removeEventListener('pointerdown',collapseOutside,true);
  },[windowMode,suspended]);
  useEffect(()=>{let active=true;setError('');onProjection?.({state:'loading',events:[]});fetch(`/api/crm/leads/${leadId}/facts`).then(async r=>{if(!r.ok)throw Error('历史依据暂不可用，请重试');return r.json();}).then(d=>{if(active){setData(d);onProjection?.({state:'ready',events:d.events});}}).catch(e=>{if(active){setError(e.message);onProjection?.({state:'error',events:[]});}});return()=>{active=false};},[leadId,revision,retry]);
+ const [preparedFocus,setPreparedFocus]=useState<any>(null);
  const handled=useRef<any>(null),positioned=useRef<any>(null),focusNode=useRef<HTMLDetailsElement>(null),groups=buildHistoryTimeline(data?.events||[],lead,extractions),focused=focusRequest&&data?historyGroupFor(groups,focusRequest.id):null;
  useEffect(()=>{onEditing?.(!!target)},[target]);
  useEffect(()=>{
   if(!data||!focusRequest||handled.current===focusRequest.token)return;
   if(!focused){if(extractionLoading)return;setNotice('未在当前历史中定位该依据，原记录不会被删除；可重试读取或核对原始记录。');handled.current=focusRequest.token;return;}
   if(target)return;
+  if(focusRequest.fields?.length&&extractionLoading)return;
   handled.current=focusRequest.token;setFilter(focusRequest.filter||'all');setSearch(focusRequest.search||'');setExpanded(v=>new Set(windowMode?[focused.id]:[...v,focused.id]));
+  const fieldCitation=focusRequest.quote?null:historyFieldCitation(focused,focusRequest.fields||[],extractions,focusRequest.id);
+  setEvidenceSelection(fieldCitation?{groupId:focused.id,citation:fieldCitation}:null);
   if(focusRequest.quote){const sources=[{scope:"main",text:focused.original},...focused.events.filter((e:any)=>e.eventType==="record.amended").map((e:any)=>({scope:e.payload.id||e.eventId,text:e.original||e.payload.text||""}))];const matching=sources.filter(v=>historyQuoteRange(v.text,{scope:v.scope,quote:focusRequest.quote} as any));if(matching.length===1)setEvidenceSelection({groupId:focused.id,citation:{id:"open-source",scope:matching[0].scope,quote:focusRequest.quote,sourceText:matching[0].text}});}
   setNotice('已定位对应原始记录。');
+  setPreparedFocus(focusRequest.token);
   const row=locateLedgerEvent(data.events,focusRequest.id);if(focusRequest.mode==='amend'&&!disabled&&row&&amendable.has(row.eventType))setTarget({...row,withdrawCommitmentId:focusRequest.withdrawCommitmentId});
  },[data,focusRequest,disabled,target,focused?.id,extractionLoading]);
  useEffect(()=>{
-  if(!focusRequest||!focused||positioned.current===focusRequest.token||filter!==(focusRequest.filter||'all')||search!==(focusRequest.search||'')||!expanded.has(focused.id)||target)return;
-  const summary=focusNode.current?.querySelector('summary');if(!summary)return;
-  const pane=summary.closest<HTMLElement>('.crm-customer-panel-body');
-  if(pane&&['auto','scroll'].includes(getComputedStyle(pane).overflowY)&&pane.scrollHeight>pane.clientHeight)revealRecord(pane,summary);
-  else summary.scrollIntoView({block:'start'});
-  summary.focus({preventScroll:true});positioned.current=focusRequest.token;
-  if(windowMode&&focusRequest.quote)requestAnimationFrame(()=>{const mark=focusNode.current?.querySelector<HTMLElement>('mark[data-citation-highlight]');mark?.scrollIntoView({block:'nearest'});});
- },[focusRequest,focused?.id,filter,search,expanded,target]);
+  if(!focusRequest||!focused||preparedFocus!==focusRequest.token||positioned.current===focusRequest.token||filter!==(focusRequest.filter||'all')||search!==(focusRequest.search||'')||!expanded.has(focused.id)||target)return;
+  const frame=requestAnimationFrame(()=>{
+   const node=focusNode.current,summary=node?.querySelector<HTMLElement>('summary');if(!node||!summary)return;
+   const destination=node.querySelector<HTMLElement>('mark[data-citation-highlight]')||node.querySelector<HTMLElement>('.crm-history-field-match')||summary;
+   if(destination!==summary){destination.tabIndex=-1;for(let disclosure=destination.closest('details');disclosure;disclosure=disclosure.parentElement?.closest('details')||null)disclosure.open=true;}
+   const pane=destination.closest<HTMLElement>('.crm-operation-content')||destination.closest<HTMLElement>('.crm-customer-panel-body');
+   if(pane&&['auto','scroll'].includes(getComputedStyle(pane).overflowY)&&pane.scrollHeight>pane.clientHeight){
+    revealRecord(pane,destination);
+    const toolbar=ledgerRoot.current?.querySelector<HTMLElement>('.crm-history-toolbar'),safeTop=Math.max(pane.getBoundingClientRect().top,toolbar?.getBoundingClientRect().bottom||0)+12;
+    const rect=destination.getBoundingClientRect(),safeBottom=pane.getBoundingClientRect().bottom-16;
+    if(rect.top<safeTop||rect.bottom>safeBottom)pane.scrollTop+=rect.top-(safeTop+Math.max(0,(safeBottom-safeTop-rect.height)/2));
+   }else destination.scrollIntoView({block:'nearest'});
+   destination.focus({preventScroll:true});positioned.current=focusRequest.token;
+  });
+  return()=>cancelAnimationFrame(frame);
+ },[focusRequest,focused?.id,preparedFocus,filter,search,expanded,target]);
  const time=(v:string|null)=>v?formatCrmOperatingTime(v,viewerTimeZone()):'未注明';
  const firstInstant=historyFirstInstant(groups);
  const visible=groups.filter(g=>(filter==='all'||g.category===filter)&&(!search.trim()||[g.title,g.original,...g.events.map(e=>e.original||''),...g.extractions.map(r=>r.input?.text||'')].join('\n').toLowerCase().includes(search.trim().toLowerCase())));
@@ -106,7 +120,7 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
  {root?.effective===false&&<p className="crm-work-muted">{ui("原依据已有历史调整，原文保留。")}</p>}
  {correction&&<p role="note"><strong>{ui(windowMode?"本条记录修正后的联系结果：":"当前采用的联系结果：")}{ui(contactCorrectionOptions.find(o=>o[0]===correction.contactResult)?.[1]||'')}</strong>{ui("；下方保留原记录当时填写的联系信息。")}</p>}
  {windowMode&&contactDetails}
- {windowMode&&<CrmHistorySalesHighlights groupId={g.id} points={salesPoints} onEvidence={showEvidence}/>}
+ {windowMode&&<CrmHistorySalesHighlights groupId={g.id} points={salesPoints} focusedFields={focused?.id===g.id?focusRequest?.fields:undefined} onEvidence={showEvidence}/>}
  {root?.eventType==='stage.changed'&&root.payload?.enrollmentConfirmed===true&&<><CrmEnrollmentVoidStatus value={root.payload.enrollmentVoid}/><CrmEnrollmentCorrectionAction factId={root.eventId} voided={root.payload.enrollmentVoid}/></>}
  {resultCard?<CrmHistoryResultCard group={g} citation={citation}/>:g.category==='questionnaire'?<CrmHistoryQuestionnaireOriginal group={g} citation={citation} salesSummary={windowMode} showTimes={!windowMode} fields={windowMode&&focused?.id===g.id?focusRequest?.fields:undefined} action={amendmentAction}/>:<><div className="crm-history-original-heading">{(!windowMode||recordCorrections.length>0||salesPoints.length>0)&&<h4>{windowMode?ui(recordCorrections.length?'原文（修正前）':g.category==='message'?'客户原文':'销售原文'):g.category==='assessment'?ui('测评原始结果'):ui('原文与当时记录')}</h4>}{amendmentAction}</div>{g.category==='assessment'?<>{!windowMode&&<><p><strong>{historyAssessment(g).conclusion}</strong></p><p>{historyAssessment(g).detail}</p></>}{onViewAssessment&&<button className="crm-work-link" type="button" onClick={onViewAssessment}>{ui("查看历次测评")}</button>}</>:g.original?<CrmHistoryOriginal groupId={g.id} text={g.original} citation={citation}/>:!windowMode&&<p>{ui("原记录为结构化信息，相关字段见下方。")}</p>}</>}
  {!windowMode&&<CrmHistoryAttribution author={g.log?.staffName||root?.payload?.staffName||root?.actorName||root?.actor} recordedAt={g.recordedAt}/>}
