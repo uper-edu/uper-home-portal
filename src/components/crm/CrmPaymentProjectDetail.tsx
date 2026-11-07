@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import {AdminFormSection} from '../AdminFormLayout';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {paymentSummary,type PaymentLedger,type PaymentProject} from '../../utils/crmPayments';
@@ -11,7 +12,7 @@ export {paymentDetailStateLabel} from './CrmPaymentStatus';
 /** Read-only purchase and receipt facts; commands are explicitly chosen by the parent. */
 export function CrmPaymentProjectDetail({project:p,ledger,leadId,ownerName='',people={},lang,canVerify=false,canSubmit=false,canReviseProject=false,verificationOnly=false,focusEntryId,disabled=false,onChoose}: {project:PaymentProject;ledger:PaymentLedger;leadId:string;ownerName?:string;people?:Record<string,string>;lang:string;canVerify?:boolean;canSubmit?:boolean;canReviseProject?:boolean;verificationOnly?:boolean;focusEntryId?:string;disabled?:boolean;onChoose:(form:any)=>void}){
  const t=(zh:string,en:string,id:string)=>lang==='zh'?zh:lang==='id'?id:en;
- const money=(n:number|null)=>n===null?t('未确定','Not agreed','Belum ditetapkan'):'Rp '+n.toLocaleString('id-ID');
+ const money=(n:number|null)=>n===null?t('未确定','Not agreed','Belum ditetapkan'):formatCurrency(n,lang);
  const s=paymentSummary(ledger,p),entries=ledger.entries.filter(e=>e.projectId===p.id&&(!focusEntryId||e.id===focusEntryId)).sort((a,b)=>String(paymentEntryFact(b).at||b.createdAt).localeCompare(String(paymentEntryFact(a).at||a.createdAt))||b.createdAt.localeCompare(a.createdAt));
  const person=(id:string)=>people[id]||id;
  const pendingReceipt=ledger.entries.some(e=>e.projectId===p.id&&e.kind==='receipt'&&e.state==='pending');

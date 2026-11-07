@@ -191,5 +191,5 @@ test('old values, non-adoption causes and different independent records survive 
 test('single course budget uses the common evidence control and retains conflicts',()=>{
  const lead={id:'arif',budgetAmount:1500000,profileFieldMeta:{budgetAmount:{sourceType:'ai_customer_text',effectiveAt:'2026-10-26T12:00:00Z',sourceFactIds:['budget-source'],pendingDifferences:[{value:1800000,sourceType:'sales_contact',effective:true}]}}},before=JSON.stringify(lead);
  const html=render(React.createElement(CrmCurrentField,{lead,field:'budgetAmount'}));
- assert.match(html,/课程总预算/);assert.match(html,/Rp1,500,000/);assert.match(html,/查看课程总预算的原始依据/);assert.match(html,/有不同记录/);assert.match(html,/Rp1,800,000/);assert.doesNotMatch(html,/预算来源与调整|币种|周期/);assert.equal(JSON.stringify(lead),before);
+ assert.match(html,/课程总预算/);assert.match(html,/Rp 1,500,000/);assert.match(html,/查看课程总预算的原始依据/);assert.match(html,/有不同记录/);assert.match(html,/Rp 1,800,000/);assert.doesNotMatch(html,/预算来源与调整|币种|周期/);assert.equal(JSON.stringify(lead),before);
 });

@@ -69,10 +69,10 @@ test('only known per-campaign pending review counts are displayed, without infer
 
 test('planned budget is distinct from customer measures, preserves zero and does not invent a missing amount',()=>{
  const zero=render([{...campaign,stats:{...campaign.stats,budgetCost:0}}]);
- assert.match(zero,/Planned budget<\/span><span>IDR 0<\/span>/);
+ assert.match(zero,/Planned budget<\/span><span>Rp 0<\/span>/);
  const missing=render([{...campaign,stats:{...campaign.stats,budgetCost:null}}]);
- assert.match(missing,/Planned budget<\/span><span>Not recorded<\/span>/);assert.doesNotMatch(missing,/IDR 0/);
- const positive=render([{...campaign,stats:{...campaign.stats,budgetCost:1500000}}]);assert.match(positive,/IDR 1,500,000/);
+ assert.match(missing,/Planned budget<\/span><span>Not recorded<\/span>/);assert.doesNotMatch(missing,/Rp 0/);
+ const positive=render([{...campaign,stats:{...campaign.stats,budgetCost:1500000}}]);assert.match(positive,/Rp 1,500,000/);
  assert.equal((positive.match(/<dt>/g)||[]).length,3);
 });
 

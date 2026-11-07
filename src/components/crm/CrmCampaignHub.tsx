@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
 import {containPaneKeys,revealRecord} from '../adminScroll';
@@ -1185,7 +1186,7 @@ export function CrmCampaignHub({
                                 <td>{row.kind ? u(row.kind === 'paid' ? 'Paid promotion' : row.kind === 'unpaid' ? 'Unpaid promotion' : 'Unclassified') : '—'}</td>
                                 <td>{row.customers}</td><td>{row.enrolled}</td>
                                 {[row.received, row.refunded, row.net].map((amount, index) =>
-                                  <td key={index}>Rp {amount.toLocaleString(crmLocale(lang))}</td>)}
+                                  <td key={index}>{formatCurrency(amount,lang)}</td>)}
                               </tr>
                             ))}</tbody>
                           </table>
@@ -1265,9 +1266,7 @@ export function CrmCampaignHub({
                                 {lead.revenue ? (
                                   <span className="text-xs font-mono font-bold text-emerald-600">
                                     {" "}
-                                    {u("Rp")}{" "}
-                                    {(lead.revenue / 1000000).toFixed(1)}
-                                    {t("M", "百万")}
+                                    {formatCurrency(lead.revenue,lang)}
                                   </span>
                                 ) : null}
 

@@ -1,3 +1,4 @@
+import {formatCurrencyNumber} from '../../utils/currency';
 import {campaignViewerSchedule} from '../../utils/campaignScheduleInput';
 import { campaignUi, campaignUiLocale } from "../../utils/campaignI18n";
 import { CrmDisclosure } from "./CrmDisclosure";
@@ -154,7 +155,7 @@ export function CampaignInformation({
           <Field label={u("Planned budget (IDR)")}>
             {c.stats.budgetCost == null
               ? u("Not recorded")
-              : c.stats.budgetCost.toLocaleString(campaignUiLocale(lang))}
+              : formatCurrencyNumber(c.stats.budgetCost,lang)}
           </Field>
           <Field label={u("Target audience")}>
             {c.targetAudience?.length ? (

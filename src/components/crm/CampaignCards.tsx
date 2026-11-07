@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import { campaignUi, campaignUiLocale } from "../../utils/campaignI18n";
 import React from "react";
 import {
@@ -297,7 +298,7 @@ export function CampaignCards({
                     <span>
                       {typeof c.stats?.budgetCost === "number" &&
                       Number.isFinite(c.stats.budgetCost)
-                        ? `IDR ${c.stats.budgetCost.toLocaleString(campaignUiLocale(lang))}`
+                        ? formatCurrency(c.stats.budgetCost,lang)
                         : u("Not recorded")}
                     </span>
                   </div>

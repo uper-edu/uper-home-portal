@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import {CrmCustomerInsights} from './CrmCustomerInsights';
 import {useCrmUiText} from './CrmUiLanguage';
 import { CrmCurrentField, CrmContactPreferences, CrmLearningGoals, CrmReportedLevel } from "./CrmProfileFields";
@@ -141,7 +142,7 @@ export function CrmCustomerProfile({
       ? [
           [
             t("Recorded amount", "登记金额"),
-            `Rp ${lead.revenue.toLocaleString(crmLocale(lang))}`,
+            formatCurrency(lead.revenue,lang),
           ] as [string, React.ReactNode],
         ]
       : []),

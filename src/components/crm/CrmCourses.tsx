@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import {useEffect,useRef,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormActions} from '../AdminFormLayout';
@@ -9,7 +10,7 @@ export function CrmCourses({lang,isLight}:any){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const [data,setData]=useState<any>(null),[form,setForm]=useState<any>(null),[error,setError]=useState(''),[state,setState]=useState(''),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[latest,setLatest]=useState<any>(null);
  const pending=useRef<any>(null),gate=useRef(false);const busy=['saving','checking'].includes(state),unknown=state==='unknown';
- const money=(n:number)=>'Rp '+n.toLocaleString('id-ID');
+ const money=(n:number)=>formatCurrency(n,lang);
  const load=async()=>{const r=await fetch('/api/crm/courses?stats=1',{cache:'no-store'});if(!r.ok)throw Error();const d=await r.json();setData(d);try{const id=sessionStorage.getItem('uper_course_pending:'+d.actorId);if(id&&!pending.current){pending.current={requestId:id};setState('unknown');}}catch{}};
  useEffect(()=>{void load().catch(()=>setError(t('Unable to load courses.','Kursus belum dapat dimuat.','课程暂时无法加载。')));},[]);
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty||unknown){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty,unknown]);

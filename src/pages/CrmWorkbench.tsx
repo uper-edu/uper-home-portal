@@ -1,3 +1,4 @@
+import {formatCurrency} from '../utils/currency';
 import '../components/crm/crm-payments.css';
 import '../components/crm/crm-finance-workspace.css';
 import {CrmFinanceWorkspace} from '../components/crm/CrmFinanceWorkspace';
@@ -926,7 +927,7 @@ function CrmWorkspace({
           ? `${t("Recorded class:", "登记班级：")} ${selectedLead.enrolledClass}`
           : t("Class not recorded; enrollment status only.", "未登记班级；仅有报名状态。"),
         subtitle: selectedLead.revenue
-          ? `${t("Recorded amount:", "登记金额:")} Rp ${selectedLead.revenue.toLocaleString(crmLocale(lang))} · ${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)}`
+          ? `${t("Recorded amount:", "登记金额:")} ${formatCurrency(selectedLead.revenue,lang)} · ${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)}`
           : `${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)} · ${t("City:", "城市:")} ${selectedLead.city}`,
         content: t(
           "Enrollment record; payment and attendance are recorded separately.",

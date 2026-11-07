@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import {useEffect,useState} from 'react';
 import {RefreshCw} from 'lucide-react';
 import {AdminField} from '../AdminForm';
@@ -12,7 +13,7 @@ export function CrmEnrollmentFields({value,onChange,lang,isLight,disabled,reques
  let price:any=null,priceError='';if(course)try{price=courseDiscount(course,q.discountMode,q.discountValue);}catch(e:any){priceError=courseError(e.message,lang);}
  const stale=course&&course.revision!==q.courseRevision;
  const change=(p:any)=>onChange({...q,...p,confirmed:false});
- const money=(v:number)=>'Rp '+v.toLocaleString('id-ID');
+ const money=(v:number)=>formatCurrency(v,lang);
  return <section className="crm-enrollment-fields" aria-label={t('Course and amount due','Kursus dan tagihan','课程与应收')}>
  {error&&<p role="alert">{error}</p>}{loading&&<p role="status">{t('Loading courses…','Memuat kursus…','正在加载课程…')}</p>}
  <AdminField required as="div" className="crm-enrollment-course"><div className="crm-enrollment-field-heading"><label>{t('Course','Kursus','课程')}</label><button type="button" className="crm-work-link crm-enrollment-refresh" aria-label={t('Refresh courses','Segarkan kursus','刷新课程')} title={t('Refresh courses','Segarkan kursus','刷新课程')} disabled={disabled||loading} onClick={()=>{onChange({...q,confirmed:false});void load();}}><RefreshCw size={16} aria-hidden="true"/></button></div><CrmSingleSelect label={t('Course','Kursus','课程')} required value={q.courseId||''} lang={lang} isLight={isLight} disabled={disabled||loading} options={[{value:'',label:t('Select a published course','Pilih kursus diterbitkan','选择已发布课程')},...courses.filter(c=>c.active||c.id===q.courseId).map(c=>({value:c.id,label:`${c.name} · ${c.sessions}${t(' sessions',' pertemuan','课时')} · ${money(c.price)}`,disabled:!c.active}))]} onChange={id=>{const c=courses.find(c=>c.id===id);change({courseId:id,courseRevision:c?.revision,discountMode:'none',discountValue:''});}}/></AdminField>
