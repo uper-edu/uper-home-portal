@@ -6940,8 +6940,8 @@
     "Diterapkan saat itu"
   ],
   "当次未采用": [
-    "Not applied at that time",
-    "Tidak diterapkan saat itu"
+    "Not adopted at the time",
+    "Belum digunakan saat itu"
   ],
   "采用状态未记录": [
     "Adoption status not recorded",
@@ -8018,5 +8018,21 @@
   "修改尚未保存": [
     "Unsaved changes",
     "Perubahan belum disimpan"
+  ],
+  "含义相符的目标表述": [
+    "Equivalent goal wording",
+    "Ungkapan tujuan sepadan"
+  ],
+  "补充的目标表述": [
+    "Additional goal detail",
+    "Rincian tujuan tambahan"
+  ],
+  "待核对的目标表述": [
+    "Goal wording to review",
+    "Ungkapan tujuan perlu ditinjau"
+  ],
+  "当次未采用，保留不同记录": [
+    "Not adopted at the time; alternative record retained",
+    "Belum digunakan saat itu; catatan lain disimpan"
   ]
 }

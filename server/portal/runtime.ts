@@ -49,6 +49,7 @@ import { accessRestoreGate } from "./accessRecoveryState.ts";
 import { trustedOrigin, validMutationOrigin } from "./accessTransport.ts";
 import {initializeTeamlessAccess} from "./teamlessAccess.ts";
 import {mountAiServiceConfig} from './aiServiceConfig.ts';
+import {mountGoalReviewRoute} from './goalReview.ts';
 import {mountAccessManagement} from './accessManagement.ts';
 import {permittedRecord,canClaimRecord} from '../../src/utils/accessControl.ts';
 import { contactStatistics } from "../../src/utils/crmContact.ts";
@@ -332,6 +333,7 @@ export async function mountPortal(app: Express) {
   mountAccessManagement(app);
   mountLarkSelfService(app);
   mountAiServiceConfig(app);
+  mountGoalReviewRoute(app,{wrap,leadAccess});
   const systemGroup = findSystemLarkGroup(
     (await pool.query("SELECT id,config FROM notification_channels ORDER BY id")).rows, [],
   );

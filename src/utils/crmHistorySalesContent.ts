@@ -40,7 +40,7 @@ export function historySalesPoints(group:HistoryGroup,items:HistoryInformation[]
   const withdrawing=o?.operation==='withdraw'||o?.operation==='remove';
   if(withdrawing)qualifiers.push('撤回说明');
   if(o&&temporalWords[o.temporality]&&(!withdrawing||o.temporality!=='negated'))qualifiers.push(temporalWords[o.temporality]);
-  if(item.status==='difference')qualifiers.push('与资料不同');
+  if(item.status==='difference')qualifiers.push(['goal','goals'].includes(item.field)?'当次未采用':'与资料不同');
   if(['review','suggestion'].includes(item.status))qualifiers.push('仅作参考');
   if(item.status==='tentative'||o?.basis==='inferred')qualifiers.push('AI推断');
   if(o?.operation==='add')qualifiers.push('本次补充');

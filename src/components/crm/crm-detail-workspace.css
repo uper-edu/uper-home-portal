@@ -107,6 +107,7 @@
 .crm-current-field-source{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--cw-muted);margin-top:4px}
 .crm-profile-source-action{display:inline-flex;align-items:center;gap:4px;font-size:12px}
 .crm-profile-difference{font-size:13px;margin-top:8px;color:var(--cw-text)}
+.crm-learning-goals>dd>dl{display:block}
 .crm-profile-business>section{margin-top:16px}.crm-profile-basis{margin:16px 0}
 .crm-profile-basis label{display:flex;align-items:flex-start;gap:8px}.crm-profile-basis input[type=checkbox]{width:auto;flex:none}
 @media(max-width:700px){.crm-profile-needs-group dl{grid-template-columns:minmax(0,1fr)}}

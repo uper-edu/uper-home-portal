@@ -33,6 +33,8 @@ import {
   reportedLevelQuestionnaires,
 } from "../../utils/crmProfileEvidence";
 import { CrmAiIndicator } from "./CrmAiIndicator";
+import {useCrmGoalReview} from './useCrmGoalReview';
+import {goalRelation} from '../../utils/crmGoalReview';
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmValue } from "../../utils/crmLanguage";
 import {
@@ -308,6 +310,7 @@ export function CrmCurrentField({
   const lang = useCrmUiLanguage(),
     ui = useCrmUiText(),
     m = lead.profileFieldMeta?.[field];
+  const goalReview=useCrmGoalReview(lead,field==='goal');
   const value = (v: any) =>
     v === null
       ? ui("已明确清空")
@@ -332,8 +335,11 @@ export function CrmCurrentField({
     (d: any) =>
       d.effective !== false &&
       !d.supersededBy &&
-      !compatibleProfileValue(field, lead[field], d.value),
+      !(field==='goal'?sameProfileValue(field,lead[field],d.value):compatibleProfileValue(field, lead[field], d.value)),
   );
+  const differenceGroups=field==='goal'?
+    ['equivalent','compatible','conflict','uncertain'].map(relation=>({label:({equivalent:'含义相符的目标表述',compatible:'补充的目标表述',conflict:'有不同记录',uncertain:'待核对的目标表述'} as any)[relation],rows:differences.filter((d:any)=>goalRelation(lead,d,goalReview)===relation)})).filter(group=>group.rows.length):
+    [{label:'有不同记录',rows:differences}].filter(group=>group.rows.length);
   if (
     (lead[field] === undefined ||
       lead[field] === null ||
@@ -383,12 +389,13 @@ export function CrmCurrentField({
           )}
         </div>
         </>}
-        {differences.length > 0 && (
-          <details className="crm-profile-difference">
+        {differenceGroups.map(group=>(
+          <details key={group.label} className="crm-profile-difference">
             <summary>
-              {ui("有不同记录")} · {differences.length}
+              {ui(group.label)} · {group.rows.length}
+              {field==='goal'&&goalReview&&group.label!=='待核对的目标表述'&&<CrmAiIndicator/>}
             </summary>
-            {differences.map((d: any, i: number) => (
+            {group.rows.map((d: any, i: number) => (
               <div key={i}>
                 <p>
                   {value(d.value)} ·{" "}
@@ -409,7 +416,7 @@ export function CrmCurrentField({
               </div>
             ))}
           </details>
-        )}
+        ))}
         {m?.valueState === "correction_pending" && (
           <p className="crm-profile-difference">
             {ui("原依据已有修正，请对照原文")}

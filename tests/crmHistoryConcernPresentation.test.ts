@@ -69,5 +69,5 @@ test('annotations follow the main information in both summary and expanded conte
 test('profile differences are secondary annotations and negated goal wording stays self-contained',()=>{
  const text='客户暂不把申请奖学金作为学习目标。';const {group,points}=fixture(text,[{field:'goal',value:'申请奖学金',quote:text,temporality:'negated',decision:'difference'}]);
  const summary=historyPointSummary(points[0],'zh'),out=html(group,points);
- assert.ok(summary.includes(text));assert.ok(summary.indexOf(text)<summary.indexOf('与资料不同'));assert.ok(out.indexOf(text)<out.indexOf('与资料不同'));
+ assert.ok(summary.includes(text));assert.ok(out.includes(text));assert.ok(summary.indexOf(text)<summary.indexOf('当次未采用'));assert.ok(out.indexOf(text)<out.indexOf('当次未采用'));
 });

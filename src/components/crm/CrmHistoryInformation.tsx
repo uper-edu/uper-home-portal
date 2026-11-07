@@ -21,7 +21,7 @@ export function CrmHistoryOriginal({groupId,scope='main',text,citation}:{groupId
 const show=(v:any,lang:any):string=>v===null?crmUiText('明确清空',lang):v===undefined||v===''?crmUiText('未记录',lang):Array.isArray(v)?v.length?v.map(x=>show(x,lang)).join(lang==='zh'?'、':', '):crmUiText('暂无',lang):typeof v==='object'?crmUiText('结构化信息',lang):({en:lang==='zh'?'英语':lang==='id'?'Inggris':'English',id:lang==='zh'?'印尼语':'Bahasa Indonesia',zh:lang==='zh'?'中文':lang==='id'?'Mandarin':'Chinese',unknown:crmUiText('未确认',lang)}as any)[String(v)]||crmValue(String(v),lang);
 export const historyInformationValue=(field:string,v:any,lang:any)=>field===CLASS_EQUIPMENT_KEY?insightValueText(v,field,lang):field==='budgetAmount'?budgetPresentation({budgetAmount:v},lang)?.value||show(v,lang):show(v,lang);
 const fieldValue=historyInformationValue;
-const status=(i:HistoryInformation)=>i.superseded&&i.status==='applied'?'当时采用，后续已修正':(({withdrawn:'当时撤回的洞察',tentative:'AI推断',review:'需人工确认，未自动修改',applied:'当次已采用',difference:'未采用，保留不同记录',unchanged:'当次保持原值',evidence:'仅保留依据',suggestion:'仅作建议',recorded:'人工记录',unknown:'采用结果未注明'}as any)[i.status]||'采用结果未注明')+(i.superseded?' · 后续已修正':'');
+const status=(i:HistoryInformation)=>i.superseded&&i.status==='applied'?'当时采用，后续已修正':(({withdrawn:'当时撤回的洞察',tentative:'AI推断',review:'需人工确认，未自动修改',applied:'当次已采用',difference:'当次未采用，保留不同记录',unchanged:'当次保持原值',evidence:'仅保留依据',suggestion:'仅作建议',recorded:'人工记录',unknown:'采用结果未注明'}as any)[i.status]||'采用结果未注明')+(i.superseded?' · 后续已修正':'');
 export function CrmHistoryInformation({group,items=historyInformation(group),allRows=group.extractions,scope='main',focusedFields=[],loading,error,selectedCitation,onEvidence,onViewAssessment}:any){
  const ui=useCrmUiText(),lang=useCrmUiLanguage();
 
