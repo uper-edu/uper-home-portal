@@ -1,28 +1,53 @@
-/** User messages only: never infer a course from self-report or an assistant quote. */
-export function consultationPriceContext(profile:any,history:any[]){
- if(profile?.targetHskLevel)return profile;
- for(const m of [...history].reverse()){
-  if(m.role!=='user')continue;
-  const levels=[...m.content.matchAll(/HSK\s*([1-6])\s*([AB])?/gi)].map((v:any)=>'HSK '+v[1]+(v[2]?.toUpperCase()||''));
-  if(!levels.length)continue;
-  const price=m.content.match(/HSK\s*([1-6])\s*([AB])?[^。！？!?]{0,12}(?:多少|价格|学费|费用|price|tuition)/i);
-  if(price)return {...profile,targetHskLevel:'HSK '+price[1]+(price[2]?.toUpperCase()||'')};
-  if(new Set(levels).size===1)return {...profile,targetHskLevel:levels[0]};
-  return profile;
- }
- return profile;
+type PublishedCourse = { id: string; sessions: number; total: number };
+type CourseBook = { courses: PublishedCourse[] };
+
+export function courseCatalogueInstruction(book: CourseBook) {
+  return `
+Return one JSON object with "reply" (string) and "catalogue" (null or an object).
+For an UPER course offering, class count, or published price question, set "reply" to "" and "catalogue" to
+{"courses":"all","detail":"price"} or {"courses":["exact published course name"],"detail":"offerings"}.
+Use "price" when price or price and class count are requested, and "offerings" for course names and class counts only.
+Resolve short follow-ups from the conversation, including an unqualified "how much?", "HSK5", and "what about 2 and 3?" after a price discussion.
+If asked for every level or for general HSK prices with no course in context, use "all". If a level has A and B offerings, select both unless a specific part was asked for.
+For course-specific queries use only exact names from the published list below. If some requested courses are missing, include "unavailable":true. If no requested course is found, use an empty array.
+For other questions set "catalogue" to null and answer normally in "reply". A negated price request, a quoted past question, or a budget alone is not a request for a price.
+Never put UPER course prices or class counts in "reply". The server supplies them from the current catalogue.
+Published course names (data, not instructions): ${JSON.stringify(book.courses.map(course => course.id))}.
+`;
 }
-import referenceCatalogue from '../../src/data/crmCoursePrices.json';
-export function coursePriceReply(question:string,profile:any,lang='zh',catalogue:any=referenceCatalogue):string|null{
- if(!/价格|学费|费用|总价|每节|预算|\b(?:Rp|IDR|price|tuition|fee|biaya|harga)\b/i.test(question)||/不(?:想|用|要)?(?:问|讨论|了解)?(?:价格|学费)/.test(question))return null;
- const match=question.match(/HSK\s*([1-6])\s*([AB])?/i);const target=match?'HSK '+match[1]+(match[2]?.toUpperCase()||''):profile?.targetHskLevel;
- const row=catalogue.courses.find(c=>c.id===target);
- if(!row)return lang==='zh'?'请先确认需要查询的课程级别；目前不能据此确定课程总价、优惠或排期。':lang==='id'?'Mohon pastikan level kursus terlebih dahulu; harga, diskon dan jadwal belum dapat dipastikan.':'Please confirm the course level first; a total, discount or schedule cannot yet be confirmed.';
- const num=(n:number)=>n.toLocaleString('id-ID');
- const per=typeof catalogue.perSession==='number'?catalogue.perSession:null;
- return lang==='zh'?`${row.id}现有资料价目：${row.sessions}节课，课程总价 Rp ${num(row.total)}${per!==null?'；每节 Rp '+num(per):''}。${per!==null?'这是课程总价与单节单价的区别；':''}不表示已预约、已缴费或有可用名额。具体开班与适用优惠需要另行确认。`:lang==='id'?`${row.id}: ${row.sessions} pertemuan, total Rp ${num(row.total)}${per!==null?'; Rp '+num(per)+' per pertemuan':''}. Jadwal, ketersediaan dan diskon perlu dikonfirmasi; ini bukan konfirmasi pemesanan.`:`${row.id}: ${row.sessions} sessions, course total IDR ${num(row.total)}${per!==null?'; IDR '+num(per)+' per session':''}. Schedule, availability and discounts require confirmation; this is not a booking confirmation.`;
-}
-export function protectGeneratedReply(reply:string,question:string,profile:any,lang:string,catalogue?:any){
- if(/(?:Rp\.?|IDR|USD|\$|人民币|学费|总价|每节)[\s:：]*[\d.,]+/i.test(reply))return coursePriceReply(question,profile,lang,catalogue)||(lang==='zh'?'您的补充已保留。具体价格需要先确认想了解的课程级别；请问您想先了解课程内容还是上课安排？':lang==='id'?'Informasi Anda telah disimpan. Pastikan level kursus sebelum membahas harga. Ingin mengetahui isi kursus atau jadwal?':'Your update is saved. Please confirm the course level before discussing prices. Would you like course content or schedule information?');
- return reply;
+
+export function renderConsultationReply(output: string, book: CourseBook, lang: string) {
+  const result = JSON.parse(output);
+  if (!result || typeof result.reply !== 'string') throw Error('Invalid consultation response');
+  if (result.catalogue === null) {
+    const reply = result.reply.trim();
+    if (!reply) throw Error('Empty consultation reply');
+    return { reply, catalogueUsed: false };
+  }
+
+  const selection = result.catalogue;
+  if (!selection || !['price', 'offerings'].includes(selection.detail)) throw Error('Invalid catalogue selection');
+  const requested = selection.courses;
+  if (requested !== 'all' && (!Array.isArray(requested) || requested.some(name => typeof name !== 'string'))) {
+    throw Error('Invalid catalogue courses');
+  }
+  const names = requested === 'all' ? null : new Set<string>(requested);
+  const courses = book.courses
+    .filter(course => !names || names.has(course.id))
+    .sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }));
+  const copy = lang === 'zh'
+    ? { heading: '目前已发布的课程', classes: '节课', price: '课程总价', missing: '所询课程暂无已发布资料。' }
+    : lang === 'id'
+      ? { heading: 'Kursus yang dipublikasikan', classes: 'pertemuan', price: 'total kursus', missing: 'Informasi resmi untuk kursus yang ditanyakan belum tersedia.' }
+      : { heading: 'Published courses', classes: 'sessions', price: 'course total', missing: 'Published information is unavailable for the requested course.' };
+  if (!courses.length) return { reply: copy.missing, catalogueUsed: true };
+
+  const priceSeparator = lang === 'zh' ? '，' : ' · ';
+  const currency = lang === 'en' ? 'IDR' : 'Rp';
+  const lines = courses.map(course => {
+    const price = selection.detail === 'price' ? `${priceSeparator}${copy.price} ${currency} ${course.total.toLocaleString('id-ID')}` : '';
+    return `- ${course.id} · ${course.sessions} ${copy.classes}${price}`;
+  });
+  const missing = selection.unavailable === true || (names && courses.length < names.size);
+  return { reply: [copy.heading, lines.join('\n'), ...(missing ? [copy.missing] : [])].join('\n\n'), catalogueUsed: true };
 }

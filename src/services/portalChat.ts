@@ -159,7 +159,7 @@ async function sendChatRequest(
   };
   if (old.action !== undefined && !['handoff','booking','enrollment'].includes(old.action)) throw Error('Invalid request action');
   // Explicit product controls do not depend on localized prose matching an intent regex.
-  const action = previous?.action || old.action || (old.isHumanMode ? 'handoff' : undefined);
+  const action = previous?.action || old.action;
   saveDraft(source, {...queued,action});
   const conversationId =
     previous?.conversationId || (await conversation(source));
@@ -184,6 +184,7 @@ async function sendChatRequest(
         conversationId,
         messageId,
         content: user.content,
+        lang: old.language,
         stream: old.stream,
       }),
     });

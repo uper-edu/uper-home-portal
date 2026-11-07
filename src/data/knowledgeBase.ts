@@ -44,14 +44,7 @@ export const UPER_KNOWLEDGE_BASE = `### I. BRAND GOLD-STANDARD PATHWAY & SYSTEMI
     * Doktor (S3) Chinese-Medium Program: Minimum HSK Level 5.
     * General Scholar Chinese-Medium Program: Minimum HSK Level 3.
     * S1 (Undergraduate) programs: CSCA is 100% mandatory, HSK requirements depend on the university.
-  * **UPER HSK Prep Course Structure & Fees (Biaya Kursus Persiapan HSK di UPER)**:
-    * HSK 1: 20 sessions (Rp 1.980.000)
-    * HSK 2: 22 sessions (Rp 2.178.000)
-    * HSK 3: 40 sessions (Rp 3.960.000)
-    * HSK 4A: 40 sessions (Rp 3.960.000) | HSK 4B: 40 sessions (Rp 3.960.000)
-    * HSK 5A: 55 sessions (Rp 5.445.000) | HSK 5B: 55 sessions (Rp 5.445.000)
-    * HSK 6A: 61 sessions (Rp 6.039.000) | HSK 6B: 61 sessions (Rp 6.039.000)
-    * *Standard Price per Session*: Rp 99.000.
+  * **UPER HSK Prep Courses**: Current offerings, class counts and prices are supplied by the published CRM course catalogue.
     * *Program Advantages*: Developed in cooperation with the Beijing Language and Culture University (BLCU). Taught by BLCU native Chinese lecturers and local Indonesian bilingual experts. Employs language immersion, focuses heavily on exam-passing strategies, and builds a powerful foundation for elite Chinese university enrollment and future career competitiveness.
 * **Elite China Study Tours (研学/游学营 - "Global Vision Tours") [Source: UPER Global Experience Office]**:
   * *Beijing Tour*: Elite Universities Cultural Exploration (Visits to **Tsinghua University (清华)**, **Peking University (北大)**, Great Wall cultural heritage).

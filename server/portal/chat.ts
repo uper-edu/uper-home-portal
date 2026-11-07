@@ -1,5 +1,5 @@
 import {managedCoursePrices} from './courseCatalog.ts';
-import {coursePriceReply,protectGeneratedReply,consultationPriceContext} from './coursePrices.ts';
+import {courseCatalogueInstruction,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
 import {runtimeProviders} from './aiServiceConfig.ts';
 import {modelParameters} from './modelParameters.ts';
@@ -207,15 +207,11 @@ export function mountChat(app: Express) {
               ),
             })
           : "";
-        const priceContext=consultationPriceContext(ownedProfile,history);
-        const currentPriceBook=await managedCoursePrices(pool);
-        const currentQuestion=introduction?(ownedProfile?.buyingSignals||[]).join(' ')||content:content;
-        const fixedReply=coursePriceReply(currentQuestion,priceContext,req.body.lang||'zh',currentPriceBook);
-        let catalogueUsed=!!fixedReply;
-        let reply = fixedReply||"",
-          modelUsed: string | null = fixedReply?'course-catalogue':null;
-        const providers = await runtimeProviders();
-        for (const provider of (fixedReply?[]:providers)) {
+        const currentPriceBook = await managedCoursePrices(pool) ?? { courses: [] };
+        const lang = req.body.lang === 'id' || req.body.lang === 'en' ? req.body.lang : 'zh';
+        let catalogueUsed = false;
+        let reply = "", modelUsed: string | null = null;
+        for (const provider of await runtimeProviders()) {
           if (!provider.key) continue;
           let partial = "", actualModel = provider.model;
           try {
@@ -231,7 +227,9 @@ export function mountChat(app: Express) {
                   {
                     role: "system",
                     content:
-                      getSystemInstruction(false) + "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. Never invent prices; monetary answers are produced from a server catalogue. A stored request is not a completed contact or booking. No new tasks are created." +
+                      getSystemInstruction(false) +
+                      "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
+                      courseCatalogueInstruction(currentPriceBook) +
                       placementContext +
                       introInstruction +
                       consultationNextStep(
@@ -261,6 +259,7 @@ export function mountChat(app: Express) {
                     : []),
                 ],
                 stream: true,
+                response_format: { type: "json_object" },
                 ...modelParameters(provider.model, 1200),
               }),
               signal: AbortSignal.timeout(45000),
@@ -306,11 +305,7 @@ export function mountChat(app: Express) {
               complete = payload.choices?.[0]?.finish_reason !== "length";
             }
             if (!partial || !complete) throw Error("Incomplete answer");
-            try {
-              partial = JSON.parse(partial).reply || partial;
-            } catch {}
-            reply = protectGeneratedReply(partial,content,priceContext,req.body.lang||'zh',currentPriceBook);
-            catalogueUsed=reply!==partial;
+            ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, lang));
             modelUsed = actualModel;
             await db.query(
               "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",

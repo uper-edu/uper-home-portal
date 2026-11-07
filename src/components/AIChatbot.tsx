@@ -342,15 +342,7 @@ export default function AIChatbot() {
     return unsubscribe;
   }, []);
 
-  const [isHumanMode, setIsHumanMode] = useState<boolean>(() => {
-    try {
-      return typeof window !== 'undefined' && sessionStorage.getItem(visitorKey('uper_chat_human_mode')) === 'true';
-    } catch (_) {
-      return false;
-    }
-  });
-
-  const [switchingStep, setSwitchingStep] = useState<string>('');
+  const [sendingAdvisorRequest, setSendingAdvisorRequest] = useState(false);
 
   const [activeModelUsed, setActiveModelUsed] = useState<string>('gpt-4o');
 
@@ -373,38 +365,6 @@ export default function AIChatbot() {
     if (lower.includes('gpt-4o')) return 'GPT-4o';
     if (lower.includes('deepseek')) return 'DeepSeek-V3';
     return modelName;
-  };
-
-  const [activeCounselorId, setActiveCounselorId] = useState<string>(() => {
-    try {
-      return (typeof window !== 'undefined' && sessionStorage.getItem(visitorKey('uper_chat_counselor_id'))) || 'scholarship';
-    } catch (_) {
-      return 'scholarship';
-    }
-  });
-
-  const getCurrentCounselor = (): Counselor => {
-    return UPER_COUNSELORS.find((c) => c.id === activeCounselorId) || UPER_COUNSELORS[0];
-  };
-
-  const toggleCounselor = (id: string, notify = true) => {
-    setActiveCounselorId(id);
-    try {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem(visitorKey('uper_chat_counselor_id'), id);
-      }
-    } catch (_) {}
-
-    if(notify)toggleHumanMode(false);
-  };
-
-  const toggleHumanMode = (val: boolean) => {
-    setIsHumanMode(val);
-    try {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem(visitorKey('uper_chat_human_mode'), String(val));
-      }
-    } catch (_) {}
   };
 
   const [isDesktop, setIsDesktop] = useState<boolean>(false);
@@ -589,14 +549,10 @@ export default function AIChatbot() {
     try {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem(visitorKey('uper_lead_submitted'));
-        sessionStorage.removeItem(visitorKey('uper_chat_human_mode'));
-        sessionStorage.removeItem(visitorKey('uper_chat_counselor_id'));
         sessionStorage.removeItem(visitorKey('uper_pending_lead'));
       }
     } catch (_) {}
     // Reset other states
-    setIsHumanMode(false);
-    setActiveCounselorId('scholarship');
     setSuggestedPrompts(getStarterPrompts());
     setShowForm(false);
     setFormName('');
@@ -870,7 +826,7 @@ export default function AIChatbot() {
     };
 
     const requestAction = retry ? draft('homepage_widget',retry.id)?.action : explicitAction;
-    const activeHumanMode = retry ? requestAction==='handoff' : requestAction==='handoff' || isHumanMode;
+    setSendingAdvisorRequest(requestAction === 'handoff');
     const extraSystemMsg: Message | null = null;
     setMessages(prev=>[...prev.filter(m=>m.id!==userMsg.id && m.id!==('reply-'+userMsg.id)),{...userMsg,delivery:'pending'}]);
     setIsLoading(true);
@@ -891,12 +847,11 @@ export default function AIChatbot() {
 
         const botMsgId='reply-'+userMsg.id;
         setMessages(prev=>[...prev.filter(m=>m.id!==botMsgId),{id:botMsgId,role:'assistant',content:'',timestamp:new Date(),isComplete:true}]);
-        const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historyContext,isHumanMode:activeHumanMode,action:requestAction,language:currentLang.slice(0,2),stream:!activeHumanMode}),signal:controller.signal},'homepage_widget');
+        const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historyContext,action:requestAction,language:currentLang.slice(0,2),stream:!requestAction}),signal:controller.signal},'homepage_widget');
         const result=await finishChat(res,'homepage_widget',userMsg.id,e=>{
           if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply&&!e.chunk)reply=e.reply;
           setMessages(prev=>prev.map(m=>m.id===userMsg.id&&e.saved?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:reply}:m));
         });
-        if(activeHumanMode)toggleHumanMode(true);
         if(result.status==='contact_required')setShowForm(true);
         if(result.modelUsed)setActiveModelUsed(result.modelUsed);
         setMessages(prev=>prev.map(m=>m.id===userMsg.id?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:result.reply,isComplete:true}:m));
@@ -1085,66 +1040,22 @@ export default function AIChatbot() {
                   <h3 className={`font-bold text-sm tracking-tight flex items-center gap-1.5 whitespace-nowrap ${
                     isApple ? 'text-slate-850 font-semibold' : 'text-white'
                   }`}>
-                    {isHumanMode ? (
-                      <span>{currentLang.startsWith('zh')?'顾问跟进申请':currentLang.startsWith('en')?'Advisor follow-up':'Tindak lanjut konsultan'}</span>
-                    ) : (
-                      <span>UPER AI Assistant</span>
-                    )}
-                    {!isHumanMode && (
-                      <span className="flex h-2 w-2 rounded-full bg-emerald-400"></span>
-                    )}
+                    <span>UPER AI Assistant</span>
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-400"></span>
                   </h3>
                   <p className={`text-[10px] font-sans max-w-[150px] md:max-w-[200px] truncate ${
                     isApple ? 'text-slate-500' : 'text-slate-400'
                   }`}>
-                    {isHumanMode ? (
-                      currentLang.startsWith('zh') 
-                        ? '非实时人工聊天 · 消息保存至 CRM'
-                        : currentLang.startsWith('en') 
-                        ? 'Not live agent chat · Messages saved to CRM'
-                        : 'Bukan chat langsung · Pesan tersimpan di CRM'
-                    ) : (
-                      currentLang.startsWith('zh') 
-                        ? '智能顾问 • 24小时在线' 
-                        : currentLang.startsWith('en') 
-                        ? 'Smart Advisor • Active 24/7' 
-                        : 'Konsultan Pintar • Online 24/7'
-                    )}
+                    {currentLang.startsWith('zh')
+                      ? '智能顾问 • 24小时在线'
+                      : currentLang.startsWith('en')
+                        ? 'Smart Advisor • Active 24/7'
+                        : 'Konsultan Pintar • Online 24/7'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 {!showForm && (
-                  isHumanMode ? (
-                    <button
-                      onClick={() => {
-                        toggleHumanMode(false);
-                        setMessages((prev) => [
-                          ...prev,
-                          {
-                            id: 'sys_' + Math.random().toString(36).substring(7),
-                            role: 'assistant',
-                            content: currentLang.startsWith('zh')
-                              ? '🔄 **[系统提示]** 已为您成功切换回 **UPER AI 智能助手模式**。您现在可以继续与智能助手进行快速多语种咨询。'
-                              : currentLang.startsWith('en')
-                              ? '🔄 **[System]** Successfully returned to **UPER AI Assistant**. You are now chatting with our automated intelligence system again.'
-                              : '🔄 **[Sistem]** Berhasil kembali ke **Mode UPER AI Assistant**. Anda kini dapat mengajukan pertanyaan cepat ke model AI kami kembali.',
-                            timestamp: new Date(),
-                            isComplete: true,
-                          }
-                        ]);
-                      }}
-                      className={`mr-1 shadow-sm px-2.5 py-1.5 text-[11px] font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer border ${
-                        isApple 
-                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200/50 shadow-none' 
-                          : 'bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 border-slate-700'
-                      }`}
-                      title={currentLang.startsWith('zh') ? '切换回 AI 助手' : 'Switch to AI'}
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span>{currentLang.startsWith('zh') ? '切换为AI' : currentLang.startsWith('en') ? 'Switch to AI' : 'Tanya AI'}</span>
-                    </button>
-                  ) : (
                     <button
                       onClick={() => handleInitiateHumanMode()}
                       disabled={isLoading}
@@ -1159,7 +1070,6 @@ export default function AIChatbot() {
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>{currentLang.startsWith('zh') ? '申请顾问跟进' : currentLang.startsWith('en') ? 'Advisor follow-up' : 'Minta tindak lanjut'}</span>
                     </button>
-                  )
                 )}
                 <button
                   onClick={handleResetChat}
@@ -1462,9 +1372,9 @@ export default function AIChatbot() {
                                   <button
                                     key={c.id}
                                     onClick={() => handleInitiateHumanMode(c.id)}
-                                    disabled={isHumanMode || isLoading}
+                                    disabled={isLoading}
                                     className={`w-full text-left p-3.5 rounded-2xl border border-slate-150/80 bg-slate-50 hover:bg-slate-100 hover:border-slate-250 transition-all cursor-pointer flex items-center gap-3.5 active:scale-[0.985] ${
-                                      isHumanMode || isLoading ? 'opacity-60 cursor-not-allowed' : ''
+                                      isLoading ? 'opacity-60 cursor-not-allowed' : ''
                                     }`}
                                   >
                                     <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${c.gradient} flex items-center justify-center shrink-0 shadow-sm border border-white/20`}>
@@ -1554,13 +1464,9 @@ export default function AIChatbot() {
                       <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm rounded-bl-none flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin text-primary-600 shrink-0" />
                         <span className="text-xs text-slate-400 font-medium whitespace-pre-line animate-pulse">
-                          {switchingStep || (
-                            isHumanMode ? (
-                              currentLang.startsWith('zh')?'正在保存跟进申请…':currentLang.startsWith('en')?'Saving follow-up request…':'Menyimpan permintaan tindak lanjut…'
-                            ) : (
-                              currentLang.startsWith('zh') ? 'UPER AI 正在思考中...' : currentLang.startsWith('en') ? 'UPER AI is typing...' : 'UPER AI sedang mengetik...'
-                            )
-                          )}
+                          {sendingAdvisorRequest
+                            ? (currentLang.startsWith('zh')?'正在保存跟进申请…':currentLang.startsWith('en')?'Saving follow-up request…':'Menyimpan permintaan tindak lanjut…')
+                            : (currentLang.startsWith('zh')?'UPER AI 正在思考中...':currentLang.startsWith('en')?'UPER AI is typing...':'UPER AI sedang mengetik...')}
                         </span>
                       </div>
                     </div>
@@ -1644,7 +1550,7 @@ export default function AIChatbot() {
                   {/* Powered by dynamic model badge footer */}
                   <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400/80 select-none">
                     <Sparkles className="w-3 h-3 text-primary-500 animate-pulse" />
-                    <span>{isHumanMode?(currentLang.startsWith('zh')?'CRM 顾问跟进登记':currentLang.startsWith('en')?'CRM advisor follow-up':'Tindak lanjut konsultan CRM'):`Powered by ${formatModelName(activeModelUsed)}`}</span>
+                    <span>Powered by {formatModelName(activeModelUsed)}</span>
                   </div>
                 </div>
               </>
