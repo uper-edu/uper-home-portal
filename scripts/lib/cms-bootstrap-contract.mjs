@@ -6,7 +6,9 @@ import {presetPromotionOwner} from '../../cloud/mysql/promotion-short-links.mjs'
 import {cmsMediaUrl} from '../../cloud/mysql/cms-media-storage.mjs';
 import {splitSql,parseInsert,fingerprint} from './mysql-dump.mjs';
 
-export const bootstrapSchemaVersion=18;
+import {paymentAnalyticsSchemaVersion} from '../../cloud/mysql/payment-analytics-schema.mjs';
+
+export const bootstrapSchemaVersion=paymentAnalyticsSchemaVersion;
 const legacyTables=[
  'access_handovers','access_operations','access_roles','access_state','ai_attempts','campaign_source_reviews',
  'cms_collections','cms_media','conversations','crm_ai_extractions','crm_courses','crm_engagements','crm_facts',
@@ -17,8 +19,8 @@ const legacyTables=[
  'trial_campaigns','trial_members','trial_schema_versions','visitor_sessions',
 ];
 export function bootstrapTables(schemaVersion=bootstrapSchemaVersion){
- if(![16,18].includes(schemaVersion))throw Error('Unsupported initialization schema version');
- return [...legacyTables,...(schemaVersion===18?['campaign_promotion_index','campaign_promotion_short_links']:[])].sort();
+ if(![16,18,19].includes(schemaVersion))throw Error('Unsupported initialization schema version');
+ return [...legacyTables,...(schemaVersion>=18?['campaign_promotion_index','campaign_promotion_short_links']:[]),...(schemaVersion>=19?['crm_payment_analytics']:[])].sort();
 }
 export function verifyBootstrapTables(tables,schemaVersion=bootstrapSchemaVersion){
  if(fingerprint([...tables].sort())!==fingerprint(bootstrapTables(schemaVersion)))throw Error('Initialization table set does not match schema v'+schemaVersion);
@@ -50,7 +52,7 @@ export function bootstrapRows({accounts,bundle,versions,at}){
 const json=value=>typeof value==='string'?JSON.parse(value):value;
 export function verifyBootstrapRows(rows,schemaVersion=bootstrapSchemaVersion){
  verifiedBootstrapVersions(rows.trial_schema_versions??[],schemaVersion);
- const allowed=new Set(['crm_users','access_roles','access_state','trial_schema_versions','cms_collections','cms_media','trial_campaigns','crm_courses',...(schemaVersion===18?['campaign_promotion_index','campaign_promotion_short_links']:[])]);
+ const allowed=new Set(['crm_users','access_roles','access_state','trial_schema_versions','cms_collections','cms_media','trial_campaigns','crm_courses',...(schemaVersion>=18?['campaign_promotion_index','campaign_promotion_short_links']:[])]);
  for(const [table,items] of Object.entries(rows))if(items.length&&!allowed.has(table))throw Error('Unexpected runtime or secret records: '+table);
  for(const table of ['crm_users','access_roles','access_state'])if(!rows[table]?.length)throw Error('Missing identity bootstrap rows: '+table);
  const media=rows.cms_media??[];
@@ -65,10 +67,10 @@ export function verifyBootstrapRows(rows,schemaVersion=bootstrapSchemaVersion){
  const campaigns=(rows.trial_campaigns??[]).map(row=>({...row,config:json(row.config)}));
  const at=campaigns.find(row=>row.id==='organic')?.config.createdAt;
  if(typeof at!=='string'||!Number.isFinite(Date.parse(at)))throw Error('Missing initialization timestamp');
- const expected=schemaVersion===18?systemCampaignDefaults(at):JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
+ const expected=schemaVersion>=18?systemCampaignDefaults(at):JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
  const sort=items=>[...items].sort((a,b)=>a.id.localeCompare(b.id));
  if(fingerprint(sort(campaigns.map(({id,code,config})=>({id,code,config}))))!==fingerprint(sort(expected.map(config=>({id:config.id,code:config.code,config})))))throw Error('System campaign bootstrap differs from standard presets');
- if(schemaVersion===18){
+ if(schemaVersion>=18){
   const actual=rows.campaign_promotion_index??[],entries=promotionIndexEntries(campaigns);
   if(actual.length!==entries.size||new Set(actual.map(row=>row.p)).size!==entries.size||actual.some(row=>entries.get(row.p)!==row.campaign_id))throw Error('Initialization promotion index mismatch');
   if((rows.campaign_promotion_short_links??[]).length)throw Error('Preset initialization must not contain allocated short links');

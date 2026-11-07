@@ -1,3 +1,4 @@
+import {paymentAnalyticsSchemaVersion,verifyPaymentAnalyticsSchema} from './payment-analytics-schema.mjs';
 import {verifyCmsMediaSchema} from './cms-media-schema.mjs';
 import {promotionIndexEntries, syncPromotionIndex} from './promotion-index.mjs';
 import {backfillPromotionShortLinks} from './promotion-short-links.mjs';
@@ -21,7 +22,8 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const [versions] = await connection.query('SELECT * FROM trial_schema_versions WHERE version=1');
     const finish=async()=>{
       await applyContentMigration(connection);
-      const result=await addPromotionShortLinks(connection);
+      await addPromotionShortLinks(connection);
+      const result=await addPaymentAnalytics(connection);
       if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
       return result;
     };
@@ -267,4 +269,20 @@ async function addPromotionShortLinks(c) {
     await c.rollback();
     throw error;
   }
+}
+
+async function addPaymentAnalytics(connection) {
+  const [versions] = await connection.query('SELECT state FROM trial_schema_versions WHERE version=19');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected payment analytics migration state');
+  if (!state) await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(19,'applying')");
+  if (state !== 'ready') {
+    const sql = await readFile(new URL('./schema-v19.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }
+  await verifyPaymentAnalyticsSchema(connection);
+  if (state !== 'ready') {
+    await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=19");
+  }
+  return {version:paymentAnalyticsSchemaVersion,state:'ready',alreadyApplied:state==='ready'};
 }

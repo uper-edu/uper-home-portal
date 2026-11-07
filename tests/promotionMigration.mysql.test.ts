@@ -33,7 +33,7 @@ test('promotion migration preflight, interrupted backfill and re-upgrade preserv
     await db.execute('UPDATE trial_campaigns SET config=? WHERE id=?',[JSON.stringify({...other,promotionLinks:[]}),other.id]);
     const snapshot = async () => JSON.stringify((await db.query('SELECT id,config FROM trial_campaigns ORDER BY id'))[0]);
     const before = await snapshot();
-    assert.equal((await run()).version,18);
+    assert.equal((await run()).version,19);
     assert.equal(await count('SELECT COUNT(*) n FROM campaign_promotion_index'),3);
     assert.equal(await count('SELECT COUNT(*) n FROM campaign_promotion_short_links'),0);
     assert.equal(await snapshot(), before);

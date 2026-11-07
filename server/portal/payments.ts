@@ -1,3 +1,4 @@
+import {queuePaymentAnalytics} from './paymentAnalytics.ts';
 import {isPaymentMethod,paymentMethods,paymentExceptionNoteRequired,paymentImageTypes} from '../../src/utils/crmPaymentMethods.ts';
 import {validatePaymentImages,storePaymentImages} from './paymentImages.ts';
 import {createHash,randomUUID} from 'node:crypto';
@@ -157,6 +158,7 @@ export async function savePayment(c:any,leadId:string,actorId:string,b:any){
    }
    after=entry;
   }
+  if(project&&['receive','refund','verify','void'].includes(b.action))await queuePaymentAnalytics(c,ledger,project,after,b.action);
   const history={id:randomUUID(),action:b.action,actor:actorId,at,before,after:structuredClone(after),...(['verify','receive','refund'].includes(b.action)?{reason:after.verificationEvidence}:b.reason?{reason:b.reason}:{})};ledger.history.push(history);
   // Preserve archived ledgers verbatim; consolidate only identities already merged by the existing workflow.
   for(const row of rows.filter((r:any)=>r.lead_id!==leadId&&!r.value.transferredTo))await c.query('UPDATE crm_payment_ledgers SET value=:p1 WHERE lead_id=:p2',[{...row.value,transferredTo:leadId},row.lead_id]);

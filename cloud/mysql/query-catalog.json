@@ -268,6 +268,12 @@
       "server/portal/trustWorkflow.ts"
     ]
   },
+  "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)": {
+    "sql": "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)",
+    "sources": [
+      "server/portal/paymentAnalytics.ts"
+    ]
+  },
   "INSERT INTO crm_payment_images(id,lead_id,entry_id,created_by,name,mime,bytes,sha256,content) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,FROM_BASE64(:p9))": {
     "sql": "INSERT INTO crm_payment_images(id,lead_id,entry_id,created_by,name,mime,bytes,sha256,content) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,FROM_BASE64(:p9))",
     "sources": [
@@ -1333,6 +1339,12 @@
       "server/portal/identityConsolidation.ts"
     ]
   },
+  "SELECT COALESCE(MAX(sequence_no),0) AS last_sequence FROM crm_payment_analytics WHERE environment=:p1 AND project_id=:p2": {
+    "sql": "SELECT COALESCE(MAX(sequence_no),0) AS last_sequence FROM crm_payment_analytics WHERE environment=:p1 AND project_id=:p2",
+    "sources": [
+      "server/portal/paymentAnalytics.ts"
+    ]
+  },
   "SELECT code,config FROM trial_campaigns WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT code,config FROM trial_campaigns WHERE id=:p1 FOR UPDATE",
     "sources": [
@@ -1404,6 +1416,12 @@
     "sql": "SELECT COUNT(*) AS n FROM notification_jobs WHERE event_id=:p1",
     "sources": [
       "server/portal/worker.ts"
+    ]
+  },
+  "SELECT course_id,state FROM crm_payment_analytics WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT course_id,state FROM crm_payment_analytics WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/paymentAnalytics.ts"
     ]
   },
   "SELECT created_at,content FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1": {
@@ -2716,6 +2734,18 @@
     "sql": "UPDATE crm_login_limits SET failures=failures+1 WHERE `key` IN (:p1)",
     "sources": [
       "server/portal/localAuth.ts"
+    ]
+  },
+  "UPDATE crm_payment_analytics SET state='cancelled' WHERE environment=:p1 AND project_id=:p2 AND state='held'": {
+    "sql": "UPDATE crm_payment_analytics SET state='cancelled' WHERE environment=:p1 AND project_id=:p2 AND state='held'",
+    "sources": [
+      "server/portal/paymentAnalytics.ts"
+    ]
+  },
+  "UPDATE crm_payment_analytics SET state='cancelled' WHERE id=:p1 AND state='held'": {
+    "sql": "UPDATE crm_payment_analytics SET state='cancelled' WHERE id=:p1 AND state='held'",
+    "sources": [
+      "server/portal/paymentAnalytics.ts"
     ]
   },
   "UPDATE crm_payment_ledgers SET value=:p1 WHERE lead_id=:p2": {
