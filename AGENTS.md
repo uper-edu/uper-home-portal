@@ -9,6 +9,13 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - A request to sync code authorizes a push to the canonical repository, but does not authorize production deployment.
 - Keep lesson content and grading rules unchanged during infrastructure fixes unless the user requests content changes.
 
+## 生产发布分支
+
+- 生产发布分支固定为 `release`。Jenkins 生产构建、镜像和 TKE 发布只取 `release` 的已推送提交，不从 `main`、功能分支或本地未推送提交发布。
+- `release` 只接收准备发布的代码。功能开发可在 `main` 或功能分支进行；进入生产前必须把已验证提交合入 `release`。
+- 创建或更新 `release`、推送 `release`，以及触发生产发布，各自需要明确授权。本次规范本身不创建发布、不推送、不部署。
+- 公司测试环境和本地 3000 不使用 `release` 作为开发分支。测试发布仍按当次授权的测试版本执行。
+
 ## 本地开发与验证范围
 
 - 默认只在本地3000环境开发和验证，不自行启动其他端口、独立服务或独立数据库进行开发与验收，也不自行先在其他环境开发后再合并到3000。
