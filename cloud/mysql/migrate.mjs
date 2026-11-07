@@ -23,7 +23,8 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const finish=async()=>{
       await applyContentMigration(connection);
       await addPromotionShortLinks(connection);
-      const result=await addPaymentAnalytics(connection);
+      await addPaymentAnalytics(connection);
+      const result=await addPaymentAnalyticsDispatch(connection);
       if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
       return result;
     };
@@ -280,9 +281,31 @@ async function addPaymentAnalytics(connection) {
     const sql = await readFile(new URL('./schema-v19.sql',import.meta.url),'utf8');
     await connection.query(sql.trim().replace(/;$/,''));
   }
+  if (state !== 'ready') {
+    await verifyPaymentAnalyticsSchema(connection, 19);
+    await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=19");
+  }
+}
+
+async function addPaymentAnalyticsDispatch(connection) {
+  const [versions] = await connection.query('SELECT state FROM trial_schema_versions WHERE version=20');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected payment dispatch migration state');
+  if (!state) {
+    await verifyPaymentAnalyticsSchema(connection, 19);
+    await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(20,'applying')");
+  }
+  if (state !== 'ready') {
+    const [columns] = await connection.query('SHOW FULL COLUMNS FROM crm_payment_analytics');
+    if (!columns.some(row => row.Field === 'attempted_at')) {
+      await verifyPaymentAnalyticsSchema(connection, 19);
+      const sql = await readFile(new URL('./schema-v20.sql', import.meta.url), 'utf8');
+      await connection.query(sql.trim().replace(/;$/, ''));
+    }
+  }
   await verifyPaymentAnalyticsSchema(connection);
   if (state !== 'ready') {
-    await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=19");
+    await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=20");
   }
   return {version:paymentAnalyticsSchemaVersion,state:'ready',alreadyApplied:state==='ready'};
 }

@@ -143,6 +143,7 @@ test('GA holds one contract purchase and two distinct partial refunds in ledger 
  const partial1=await f.command('verify',{...f.receipt(100000),receivedAt:'2026-01-02T10:00:00Z',entryId:reported.result.targetId});
  const replay=await f.tx((c:any)=>savePayment(c,f.profile.id,'finance',partial1.body));
  assert.equal(replay.replayed,true);
+ f.db.analytics[0].dispatch_state='accepted';
  await f.command('refund',{...f.receipt(50000),receivedAt:'2026-01-03T10:00:00Z'});
  assert.deepEqual(f.db.analytics.map(({kind,sequence_no,amount}:any)=>[kind,sequence_no,amount]),[
   ['purchase',0,1000000],['refund',1,100000],['refund',2,50000],
@@ -151,6 +152,7 @@ test('GA holds one contract purchase and two distinct partial refunds in ledger 
  assert.equal((await f.read()).summary[0].net,350000);
  assert.equal(new Set(f.db.analytics.map((row:any)=>row.id)).size,3);
  assert.ok(f.db.analytics.every((row:any)=>row.project_id===f.project.id&&row.state==='held'));
+ assert.deepEqual(f.db.analytics.map((row:any)=>row.dispatch_state??null),['accepted',null,null]);
  assert.doesNotMatch(JSON.stringify(f.db.analytics),/PRIVATE|@example|evidence|client_id|referr/i);
 }));
 

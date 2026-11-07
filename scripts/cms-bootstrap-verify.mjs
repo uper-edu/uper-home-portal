@@ -22,7 +22,7 @@ export async function verifyInitializationSql(sqlPath,{schemaVersion=bootstrapSc
   const counts={},rows={};
   for(const table of tables){const [items]=await c.query('SELECT * FROM `'+table+'`');rows[table]=items;counts[table]=items.length;}
   verifyBootstrapRows(rows,schemaVersion);
-  if(schemaVersion>=19)await verifyPaymentAnalyticsSchema(c);
+  if(schemaVersion>=19)await verifyPaymentAnalyticsSchema(c,schemaVersion);
   if(schemaVersion>=18){
    for(const [table,required] of [['campaign_promotion_index',['p','campaign_id']],['campaign_promotion_short_links',['p','short_code']]]){
     const [columns]=await c.query('SHOW FULL COLUMNS FROM `'+table+'`');
@@ -36,6 +36,7 @@ export async function verifyInitializationSql(sqlPath,{schemaVersion=bootstrapSc
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const [sqlPath,option]=process.argv.slice(2);
- if(!sqlPath||option&&!['--legacy-v16','--legacy-v18'].includes(option)||process.argv.length>4)throw Error('Usage: cms-bootstrap-verify.mjs PRIVATE_INITIALIZATION_SQL [--legacy-v16|--legacy-v18]');
- verifyInitializationSql(sqlPath,{schemaVersion:option==='--legacy-v16'?16:option==='--legacy-v18'?18:bootstrapSchemaVersion}).catch(e=>{console.error(JSON.stringify({error:e.code||'SQL_VERIFICATION_FAILED',message:e.code?undefined:e.message}));process.exitCode=1;});
+ const legacyVersions={'--legacy-v16':16,'--legacy-v18':18,'--legacy-v19':19};
+ if(!sqlPath||option&&!Object.hasOwn(legacyVersions,option)||process.argv.length>4)throw Error('Usage: cms-bootstrap-verify.mjs PRIVATE_INITIALIZATION_SQL [--legacy-v16|--legacy-v18|--legacy-v19]');
+ verifyInitializationSql(sqlPath,{schemaVersion:legacyVersions[option]??bootstrapSchemaVersion}).catch(e=>{console.error(JSON.stringify({error:e.code||'SQL_VERIFICATION_FAILED',message:e.code?undefined:e.message}));process.exitCode=1;});
 }

@@ -2363,6 +2363,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT q.id,q.environment,q.project_id,q.source_entry_id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED": {
+    "sql": "SELECT q.id,q.environment,q.project_id,q.source_entry_id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED",
+    "sources": [
+      "server/portal/paymentAnalyticsDispatch.ts"
+    ]
+  },
   "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200": {
     "sql": "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200",
     "sources": [
@@ -2734,6 +2740,30 @@
     "sql": "UPDATE crm_login_limits SET failures=failures+1 WHERE `key` IN (:p1)",
     "sources": [
       "server/portal/localAuth.ts"
+    ]
+  },
+  "UPDATE crm_payment_analytics SET dispatch_state=:p2 WHERE id=:p1 AND dispatch_state='sending'": {
+    "sql": "UPDATE crm_payment_analytics SET dispatch_state=:p2 WHERE id=:p1 AND dispatch_state='sending'",
+    "sources": [
+      "server/portal/paymentAnalyticsDispatch.ts"
+    ]
+  },
+  "UPDATE crm_payment_analytics SET dispatch_state='blocked' WHERE id=:p1 AND state='held' AND dispatch_state IS NULL": {
+    "sql": "UPDATE crm_payment_analytics SET dispatch_state='blocked' WHERE id=:p1 AND state='held' AND dispatch_state IS NULL",
+    "sources": [
+      "server/portal/paymentAnalyticsDispatch.ts"
+    ]
+  },
+  "UPDATE crm_payment_analytics SET dispatch_state='sending',attempted_at=:p2 WHERE id=:p1 AND state='held' AND dispatch_state IS NULL": {
+    "sql": "UPDATE crm_payment_analytics SET dispatch_state='sending',attempted_at=:p2 WHERE id=:p1 AND state='held' AND dispatch_state IS NULL",
+    "sources": [
+      "server/portal/paymentAnalyticsDispatch.ts"
+    ]
+  },
+  "UPDATE crm_payment_analytics SET dispatch_state='unknown' WHERE environment=:p1 AND dispatch_state='sending' AND attempted_at<=:p2": {
+    "sql": "UPDATE crm_payment_analytics SET dispatch_state='unknown' WHERE environment=:p1 AND dispatch_state='sending' AND attempted_at<=:p2",
+    "sources": [
+      "server/portal/paymentAnalyticsDispatch.ts"
     ]
   },
   "UPDATE crm_payment_analytics SET state='cancelled' WHERE environment=:p1 AND project_id=:p2 AND state='held'": {

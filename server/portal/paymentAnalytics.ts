@@ -5,9 +5,7 @@ function eventId(environment:string, projectId:string, kind:'purchase'|'refund',
   return createHash('sha256').update(JSON.stringify([environment, projectId, kind, entryId ?? null])).digest('hex');
 }
 
-/** Store a minimal candidate in the same transaction as the verified ledger entry.
- * There is no dispatch path in this release. Consent and destination must be checked before any future send.
- */
+/** Store a minimal candidate in the same transaction as the verified ledger entry. */
 export async function queuePaymentAnalytics(
   db:any, ledger:PaymentLedger, project:PaymentProject, entry:PaymentEntry, action:string,
   environment=process.env.PORTAL_ENV,

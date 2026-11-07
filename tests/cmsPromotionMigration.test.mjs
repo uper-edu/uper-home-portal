@@ -4,18 +4,20 @@ import {migrate} from '../cloud/mysql/migrate.mjs';
 import {bootstrapTables} from '../scripts/lib/cms-bootstrap-contract.mjs';
 
 const cosColumns=()=>Object.entries({content:['mediumblob','YES'],storage_type:['varchar(16)','NO'],cos_url:['varchar(1024)','YES'],object_key:['varchar(255)','YES'],byte_size:['bigint unsigned','YES']}).map(([Field,[Type,Null]])=>({Field,Type,Null}));
-const queueColumns=()=>Object.entries({
+const queueColumns=(version=19)=>Object.entries({
  id:'char(64)',environment:"enum('dev','test','prod')",project_id:'varchar(191)',
  source_entry_id:'char(36)',kind:"enum('purchase','refund')",sequence_no:'int unsigned',
  amount:'bigint unsigned',course_id:'varchar(191)',state:"enum('held','cancelled')",created_at:'datetime(6)',
-}).map(([Field,Type])=>({Field,Type,Null:'NO',Default:Field==='state'?'held':Field==='created_at'?'CURRENT_TIMESTAMP(6)':null}));
-const queueIndexes=()=>[
+ ...(version===20?{attempted_at:'datetime(6)',dispatch_state:"enum('sending','accepted','rejected','unknown','blocked')"}:{}),
+}).map(([Field,Type])=>({Field,Type,Null:['attempted_at','dispatch_state'].includes(Field)?'YES':'NO',Default:Field==='state'?'held':Field==='created_at'?'CURRENT_TIMESTAMP(6)':null}));
+const queueIndexes=(version=19)=>[
  ['PRIMARY',0,['id']],['payment_analytics_order',0,['environment','project_id','sequence_no']],
  ['payment_analytics_queue',1,['environment','state','created_at']],
+ ...(version===20?[['payment_analytics_dispatch',1,['environment','dispatch_state','created_at']]]:[]),
 ].flatMap(([Key_name,Non_unique,fields])=>fields.map((Column_name,i)=>({Key_name,Non_unique,Column_name,Seq_in_index:i+1})));
 function fixture(ready){
- const versions=new Map(ready.map(version=>[version,'ready'])),queries=[],tables=new Set(ready.length?bootstrapTables(ready.includes(19)?19:ready.includes(18)?18:16):[]);
- let paymentColumns=queueColumns(),paymentIndexes=queueIndexes(),crashAfterDdl=false;
+ const versions=new Map(ready.map(version=>[version,'ready'])),queries=[],tables=new Set(ready.length?bootstrapTables(ready.includes(20)?20:ready.includes(19)?19:ready.includes(18)?18:16):[]);
+ let paymentColumns=queueColumns(ready.includes(20)?20:19),paymentIndexes=queueIndexes(ready.includes(20)?20:19),crashAfterDdl=false,crashAfterDispatchDdl=false;
  let columns=ready.includes(16)?cosColumns():[{Field:'content',Type:'mediumblob',Null:'NO'}];
  let indexes=[{Key_name:'idx_cms_media_storage',Column_name:'storage_type',Seq_in_index:1}];
  const media=[{id:'old-image',content:Buffer.from('legacy image')},{id:'cos-image',content:null,cos_url:'https://example.invalid/unchanged.webp'}];
@@ -43,6 +45,13 @@ function fixture(ready){
    if(sql.startsWith('CREATE TABLE IF NOT EXISTS crm_payment_analytics')&&crashAfterDdl){
     tables.add('crm_payment_analytics');crashAfterDdl=false;throw Error('Interrupted after DDL');
    }
+   if(sql.startsWith('ALTER TABLE crm_payment_analytics')){
+    if(paymentColumns.some(row=>row.Field==='attempted_at'))throw Error('Dispatch ALTER repeated');
+    paymentColumns=queueColumns(20);
+    paymentIndexes=queueIndexes(20);
+    if(crashAfterDispatchDdl){crashAfterDispatchDdl=false;throw Error('Interrupted after dispatch DDL');}
+    return [{}];
+   }
    if(sql==='SHOW INDEX FROM cms_media')return [structuredClone(indexes)];
    if(sql.startsWith('ALTER TABLE cms_media')&&sql.includes('ADD COLUMN cos_url')){
     if(columns.some(row=>row.Field==='cos_url'))throw Error('COS ALTER repeated');columns=cosColumns();return [{}];
@@ -61,14 +70,14 @@ function fixture(ready){
   async execute(sql,args){return this.query(sql,args);},
   async beginTransaction(){queries.push('BEGIN');},async commit(){queries.push('COMMIT');},async rollback(){queries.push('ROLLBACK');},release(){queries.push('RELEASE');},
  };
- return {versions,queries,tables,media,campaigns,index,shortLinks,connection,interruptAfterDdl(){crashAfterDdl=true;},setPaymentColumns(value){paymentColumns=value;},setPaymentIndexes(value){paymentIndexes=value;},setColumns(value){columns=value;},setIndexes(value){indexes=value;},pool:{async getConnection(){return connection;}}};
+ return {versions,queries,tables,media,campaigns,index,shortLinks,connection,interruptAfterDdl(){crashAfterDdl=true;},interruptAfterDispatchDdl(){crashAfterDispatchDdl=true;},setPaymentColumns(value){paymentColumns=value;},setPaymentIndexes(value){paymentIndexes=value;},setColumns(value){columns=value;},setIndexes(value){indexes=value;},pool:{async getConnection(){return connection;}}};
 }
 const run=f=>migrate(f.pool,'uper_trial_mock',{initializeSystemDefaults:false});
 const range=n=>Array.from({length:n},(_,i)=>i+1);
 
 test('COS-MERGE-01: main v17/v18 without v16 gains COS without changing promotions or media',async()=>{
  const f=fixture([...range(15),17,18]),before=structuredClone({media:f.media,campaigns:f.campaigns,index:f.index,shortLinks:f.shortLinks});
- assert.equal((await run(f)).version,19);assert.equal(f.versions.get(16),'ready');
+ assert.equal((await run(f)).version,20);assert.equal(f.versions.get(16),'ready');
  assert.deepEqual(structuredClone({media:f.media,campaigns:f.campaigns,index:f.index,shortLinks:f.shortLinks}),before);
  assert.ok(f.queries.indexOf('SHOW FULL COLUMNS FROM cms_media')<f.queries.indexOf('SELECT state FROM trial_schema_versions WHERE version=17'));
  const changes=f.queries.filter(sql=>sql.startsWith('ALTER TABLE cms_media')).length;
@@ -78,14 +87,14 @@ test('COS-MERGE-01: main v17/v18 without v16 gains COS without changing promotio
 });
 test('COS-MERGE-02: existing COS v16 runs main promotion migrations and keeps assigned short codes on rerun',async()=>{
  const f=fixture(range(16)),before=structuredClone(f.media);
- assert.equal((await run(f)).version,19);assert.deepEqual(structuredClone(f.media),before);
+ assert.equal((await run(f)).version,20);assert.deepEqual(structuredClone(f.media),before);
  assert.equal(f.index.length,1);assert.equal(f.shortLinks.length,1);
  const saved=structuredClone(f.shortLinks);await run(f);assert.deepEqual(f.shortLinks,saved);
  assert.ok(!f.queries.some(sql=>sql.startsWith('ALTER TABLE cms_media')));
 });
-test('COS-MERGE-03: empty schema executes all 19 real migration stages in order',async()=>{
- const f=fixture([]);assert.equal((await run(f)).version,19);
- assert.deepEqual([...f.versions.keys()],range(19));assert.ok([...f.versions.values()].every(state=>state==='ready'));
+test('COS-MERGE-03: empty schema executes all 20 real migration stages in order',async()=>{
+ const f=fixture([]);assert.equal((await run(f)).version,20);
+ assert.deepEqual([...f.versions.keys()],range(20));assert.ok([...f.versions.values()].every(state=>state==='ready'));
  assert.deepEqual([...f.tables].sort(),bootstrapTables());
  const before=f.queries.filter(sql=>/^CREATE TABLE|^ALTER TABLE/.test(sql)).length;
  await run(f);
@@ -120,7 +129,7 @@ test('COS-MERGE-06: main ownership and short-code corruption checks still fail c
 
 test('GA migration adds an empty queue to v18 and reruns without creating or rewriting rows',async()=>{
  const f=fixture(range(18)),existing=structuredClone({media:f.media,campaigns:f.campaigns,index:f.index,shortLinks:f.shortLinks});
- assert.deepEqual(await run(f),{version:19,state:'ready',alreadyApplied:false});
+ assert.deepEqual(await run(f),{version:20,state:'ready',alreadyApplied:false});
  const ddl=()=>f.queries.filter(sql=>sql.startsWith('CREATE TABLE IF NOT EXISTS crm_payment_analytics')).length;
  assert.equal(ddl(),1);
  assert.equal((await run(f)).alreadyApplied,true);
@@ -132,11 +141,23 @@ test('GA migration resumes interrupted DDL and rejects incompatible tables even 
  const f=fixture(range(18));f.interruptAfterDdl();
  await assert.rejects(run(f),/Interrupted after DDL/);
  assert.equal(f.versions.get(19),'applying');
- assert.equal((await run(f)).version,19);
+ assert.equal((await run(f)).version,20);
  assert.equal(f.versions.get(19),'ready');
- f.setPaymentColumns(queueColumns().filter(column=>column.Field!=='source_entry_id'));
+ f.setPaymentColumns(queueColumns(20).filter(column=>column.Field!=='source_entry_id'));
  await assert.rejects(run(f),/schema mismatch: source_entry_id/);
- f.setPaymentColumns(queueColumns());
- f.setPaymentIndexes(queueIndexes().map(index=>index.Key_name==='payment_analytics_order'?{...index,Non_unique:1}:index));
+ f.setPaymentColumns(queueColumns(20));
+ f.setPaymentIndexes(queueIndexes(20).map(index=>index.Key_name==='payment_analytics_order'?{...index,Non_unique:1}:index));
  await assert.rejects(run(f),/index mismatch: payment_analytics_order/);
+});
+
+test('GA dispatch migration resumes from v19 after interrupted ALTER and validates ready columns',async()=>{
+ const f=fixture(range(19));f.interruptAfterDispatchDdl();
+ await assert.rejects(run(f),/Interrupted after dispatch DDL/);
+ assert.equal(f.versions.get(20),'applying');
+ assert.deepEqual(await run(f),{version:20,state:'ready',alreadyApplied:false});
+ assert.equal((await run(f)).alreadyApplied,true);
+ assert.equal(f.queries.filter(sql=>sql.startsWith('ALTER TABLE crm_payment_analytics')).length,1);
+ assert.ok(!f.queries.some(sql=>/^(INSERT INTO|UPDATE|DELETE FROM) crm_payment_analytics/.test(sql)));
+ f.setPaymentColumns(queueColumns(20).filter(column=>column.Field!=='attempted_at'));
+ await assert.rejects(run(f),/schema mismatch: attempted_at/);
 });

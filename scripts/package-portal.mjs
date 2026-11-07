@@ -32,7 +32,7 @@ for(const file of inputs){
  const {code}=await transform(source,{loader:file.endsWith('.tsx')?'tsx':file.endsWith('.ts')?'ts':'js',format:'esm',target:'node24',jsx:'automatic',sourcemap:false});
  await fs.writeFile(dest,code.replace(/(\bfrom\s+["'][^"']+\.json["'])(?!\s+with\b)/g,'$1 with { type: "json" }'));
 }
-for(const f of ['schema.sql','schema-v2.sql','schema-v13.sql','schema-v14.sql','schema-v15.sql','schema-v16.sql','schema-v19.sql'])await fs.copyFile('cloud/mysql/'+f,path.join(runtime,'cloud/mysql',f));
+for(const f of ['schema.sql','schema-v2.sql','schema-v13.sql','schema-v14.sql','schema-v15.sql','schema-v16.sql','schema-v19.sql','schema-v20.sql'])await fs.copyFile('cloud/mysql/'+f,path.join(runtime,'cloud/mysql',f));
 for(const f of ['package.json','package-lock.json'])await fs.copyFile(f,path.join(out,f));
 const dockerfile=await fs.readFile('cloud/company-trial/Dockerfile','utf8');
 await fs.writeFile(path.join(out,'Dockerfile'),dockerfile+'\nENV PORTAL_ENV='+target+' PORTAL_PACKAGE_ENV='+target+' PORTAL_ENV_SOURCE=injected\n');

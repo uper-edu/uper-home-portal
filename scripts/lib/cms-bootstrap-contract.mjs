@@ -19,7 +19,7 @@ const legacyTables=[
  'trial_campaigns','trial_members','trial_schema_versions','visitor_sessions',
 ];
 export function bootstrapTables(schemaVersion=bootstrapSchemaVersion){
- if(![16,18,19].includes(schemaVersion))throw Error('Unsupported initialization schema version');
+ if(![16,18,19,20].includes(schemaVersion))throw Error('Unsupported initialization schema version');
  return [...legacyTables,...(schemaVersion>=18?['campaign_promotion_index','campaign_promotion_short_links']:[]),...(schemaVersion>=19?['crm_payment_analytics']:[])].sort();
 }
 export function verifyBootstrapTables(tables,schemaVersion=bootstrapSchemaVersion){

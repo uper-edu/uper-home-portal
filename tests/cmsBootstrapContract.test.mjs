@@ -10,7 +10,7 @@ import {presetPromotionOwner} from '../cloud/mysql/promotion-short-links.mjs';
 import {bootstrapRows,bootstrapTables,verifiedBootstrapVersions,verifyBootstrapTables,verifyBootstrapRows,inspectInitializationSql} from '../scripts/lib/cms-bootstrap-contract.mjs';
 import {sqlInsert} from '../scripts/cms-bootstrap-apply.mjs';
 
-const at='2026-11-05T00:00:00.000Z',versions=Array.from({length:19},(_,i)=>({version:i+1,state:'ready'}));
+const at='2026-11-05T00:00:00.000Z',versions=Array.from({length:20},(_,i)=>({version:i+1,state:'ready'}));
 const {bundle}=await loadCmsSeed();
 const accounts={crm_users:[{id:'fixture',password_hash:'not-a-real-hash'}],access_roles:[{id:'fixture-role'}],access_state:[{id:'fixture-state'}],portal_audit:[{data:'not exported'}]};
 const fresh=()=>bootstrapRows({accounts,bundle,versions,at});
@@ -36,7 +36,7 @@ test('COS-MERGE-08: initialization includes only source identities, seed CMS and
 test('COS-MERGE-09: highest version cannot fabricate missing migration markers or hide extra tables',()=>{
  assert.throws(()=>verifiedBootstrapVersions(versions.filter(row=>row.version!==16)),/incomplete/);
  assert.throws(()=>verifiedBootstrapVersions(versions.map(row=>row.version===17?{...row,state:'applying'}:row)),/not ready/);
- assert.throws(()=>verifiedBootstrapVersions([...versions,{version:20,state:'ready'}]),/incomplete/);
+ assert.throws(()=>verifiedBootstrapVersions([...versions,{version:21,state:'ready'}]),/incomplete/);
  assert.throws(()=>verifyBootstrapTables([...bootstrapTables().filter(x=>x!=='campaign_promotion_index'),'unexpected']),/table set/);
  assert.equal(bootstrapTables().length,43);assert.equal(bootstrapTables(18).length,42);assert.equal(bootstrapTables(16).length,40);
 });
@@ -57,18 +57,18 @@ function sqlPackage(rows,version){
  // Parser-only fixtures: actual MySQL DDL execution requires separately authorized verification.
  return [...tables.map(name=>'CREATE TABLE `'+name+'` (`fixture` INT);'),...Object.entries(rows).filter(([,items])=>items.length).map(([name,items])=>sqlInsert(name,items,[...new Set(items.flatMap(Object.keys))]))].join('\n');
 }
-test('COS-MERGE-11: v19 SQL serialization round-trip checks explicit versions and derived promotions before connection',()=>{
- const parsed=inspectInitializationSql(sqlPackage(fresh(),19));
- assert.equal(parsed.tables.size,43);assert.equal(parsed.rows.trial_schema_versions.length,19);
+test('COS-MERGE-11: v20 SQL serialization round-trip checks explicit versions and derived promotions before connection',()=>{
+ const parsed=inspectInitializationSql(sqlPackage(fresh(),20));
+ assert.equal(parsed.tables.size,43);assert.equal(parsed.rows.trial_schema_versions.length,20);
  assert.equal(parsed.rows.trial_campaigns.length,3);
- assert.throws(()=>inspectInitializationSql(sqlPackage(fresh(),19)+'\nDELETE FROM crm_users;'),/Unexpected initialization SQL/);
+ assert.throws(()=>inspectInitializationSql(sqlPackage(fresh(),20)+'\nDELETE FROM crm_users;'),/Unexpected initialization SQL/);
 });
 test('COS-MERGE-12: historical v16 packages require explicit legacy mode and are not relabelled v18',()=>{
  const rows=fresh();rows.trial_schema_versions=versions.slice(0,16);
  rows.trial_campaigns=JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at)).map(config=>({id:config.id,code:config.code,config}));
  delete rows.campaign_promotion_index;delete rows.campaign_promotion_short_links;
  const sql=sqlPackage(rows,16);
- assert.throws(()=>inspectInitializationSql(sql),/schema v19/);
+ assert.throws(()=>inspectInitializationSql(sql),/schema v20/);
  assert.equal(inspectInitializationSql(sql,{schemaVersion:16}).schemaVersion,16);
 });
 test('COS-MERGE-13: initializer binds journals to schema version and never infers ready versions from MAX',async()=>{
@@ -86,5 +86,5 @@ test('historical v18 bootstrap remains verifiable with its original table and ma
  const rows=fresh();rows.trial_schema_versions=versions.slice(0,18);
  const sql=sqlPackage(rows,18);
  assert.equal(inspectInitializationSql(sql,{schemaVersion:18}).tables.size,42);
- assert.throws(()=>inspectInitializationSql(sql),/schema v19/);
+ assert.throws(()=>inspectInitializationSql(sql),/schema v20/);
 });

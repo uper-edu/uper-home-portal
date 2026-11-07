@@ -9,6 +9,7 @@ import {assignmentNoticeTargets, currentAssignmentRecipient, LEAD_ASSIGNED_EVENT
 import {processExtractionBatch} from './aiExtraction.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
+import {dispatchPaymentAnalytics,type ResolvePaymentAnalyticsIdentity} from './paymentAnalyticsDispatch.ts';
 import {executionTime,taskNoticeCancellation,timingEventLabel,agreementDueAfterActivation} from './taskTiming.ts';
 import {taskRequests,requestDeadline} from './taskManagement.ts';
 import {pendingIdentity} from './identityReview.ts';
@@ -654,12 +655,21 @@ export async function tick(clock = new Date()) {
   }
 }
 const workerRuns = new WeakMap<object, { stop: () => Promise<void> }>();
-export function startWorker() {
+export function startWorker(resolvePaymentAnalyticsIdentity?: ResolvePaymentAnalyticsIdentity) {
   let running: Promise<void> | null = null,
+    paymentAnalyticsRunning: Promise<void> | null = null,
     stopped = false;
   log.info("worker.started");
   const timer = setInterval(() => {
-    if (running || stopped) return;
+    if (stopped) return;
+    if (resolvePaymentAnalyticsIdentity && !paymentAnalyticsRunning) {
+      paymentAnalyticsRunning = (async () => {
+        if ((await restoreState())?.required) return;
+        await dispatchPaymentAnalytics({transaction:tx, resolveIdentity:resolvePaymentAnalyticsIdentity});
+      })().catch(() => log.error("worker.payment_analytics_dispatch_error"))
+        .finally(() => { paymentAnalyticsRunning = null; });
+    }
+    if (running) return;
     running = (async () => {
       try {
         for (let i = 0; i < 20 && !stopped; i++) await tick();
@@ -675,7 +685,7 @@ export function startWorker() {
     async stop() {
       stopped = true;
       clearInterval(timer);
-      await running;
+      await Promise.all([running,paymentAnalyticsRunning]);
     },
   });
   return timer;
