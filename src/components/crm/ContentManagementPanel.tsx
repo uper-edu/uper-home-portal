@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
 import {AdminFormGuide} from '../AdminFormGuide';
@@ -301,7 +302,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         category: '📚 HSK',
         badge: '📚 In Progress',
         desc: '',
-        price: 'IDR 1.000.000',
+        price: '',
         term: '10 Weeks',
         startDate: 'July 15, 2026',
         seats: '15 Seats',
@@ -1267,7 +1268,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                           type="text"
                           value={editingItem.price || ''}
                           onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
-                          placeholder={t('Example: IDR 1,000,000', '例如：1,000,000 印尼盾')}
+                          placeholder={`${lang==='zh'?'例如：':lang==='id'?'Contoh: ':'Example: '}${formatCurrency(1000000,lang)}`}
                           className={`w-full px-3 py-1.5 rounded-lg border ${
                             isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
                           }`}
