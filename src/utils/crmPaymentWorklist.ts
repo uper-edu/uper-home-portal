@@ -19,12 +19,15 @@ export function paymentWorklist(actor:AccessEmployee,profiles:any[],ledgers:Arra
   groups.set(profile.id,[...(groups.get(profile.id)||[]),row.value]);
  }
  const result:PaymentListRow[]=[];
+ let outstandingCount = 0;
  for(const [leadId,values]of groups){const p=byId.get(leadId)!,projects=new Map(values.flatMap(v=>v.projects).map(v=>[v.id,v])),entries=new Map(values.flatMap(v=>v.entries).map(v=>[v.id,v])),ledger={projects:[...projects.values()],entries:[...entries.values()],history:[]};
   const owner=people.find(e=>e.id===p.owner)?.displayName||p.owner||'';
   for(const project of projects.values()){
    const summary=paymentSummary(ledger,project),payments=ledger.entries.filter(e=>e.projectId===project.id),matching=payments.filter(e=>filters.kind==='all'||e.kind===filters.kind);
+   const outstanding = summary.pending > 0 || (summary.state !== 'paid' && summary.state !== 'nocharge');
+   if(outstanding)outstandingCount++;
    if(filters.kind!=='all'&&!matching.length)continue;
-   if(filters.state==='outstanding'){if(!summary.pending&&(summary.state==='paid'||summary.state==='nocharge'))continue;}
+   if(filters.state==='outstanding'){if(!outstanding)continue;}
    else if(['pending','verified','rejected','void'].includes(filters.state)){if(!matching.some(e=>e.state===filters.state))continue;}
    else if(filters.state!=='all'&&summary.state!==filters.state)continue;
    if(filters.search&&![p.fullName||'',p.id,project.course,owner].join(' ').toLocaleLowerCase().includes(filters.search.toLocaleLowerCase()))continue;
@@ -33,7 +36,7 @@ export function paymentWorklist(actor:AccessEmployee,profiles:any[],ledgers:Arra
  }
  result.sort((a,b)=>b.enrolledAt.localeCompare(a.enrolledAt)||a.leadId.localeCompare(b.leadId)||a.projectId.localeCompare(b.projectId));
  const pageSize=25,total=result.length,page=Math.min(filters.page,Math.max(1,Math.ceil(total/pageSize)));
- return {rows:result.slice((page-1)*pageSize,page*pageSize),total,page,pageSize};
+ return {rows:result.slice((page-1)*pageSize,page*pageSize),total,page,pageSize,outstandingCount};
 }
 export const paymentVerificationForm=(entry:PaymentEntry)=>({action:'verify',entryId:entry.id,amount:String(entry.amount),time:'',method:isPaymentMethod(entry.method)?entry.method:'other',methodName:entry.methodName||(!isPaymentMethod(entry.method)?entry.method:''),provider:entry.provider||'',account:entry.account,reference:entry.reference,evidence:'',images:[]});
 export const paymentReceiptForm=(projectId:string)=>({action:'receive',projectId,amount:'',time:'',method:'',methodName:'',provider:'',account:'',reference:'',evidence:'',images:[]});

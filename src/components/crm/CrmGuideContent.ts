@@ -665,6 +665,11 @@ const originalGuideSections = [
         "打开「推广来源异常」，核实已登记客户的未知或无效推广编号。查看记录的参数后，可关联已有推广链接、仅确认到活动、暂不确认或标记参数无效。每次核实须填写依据。创建推广链接请到活动详情页。",
       ],
       [
+        "CRM navigation shows the work you can act on: enrollments with an outstanding balance or pending verification, leads needing identity review, and customers with unresolved promotion sources (including deferred reviews). Each enrollment, lead, or customer counts once in its own queue. The badge disappears when the count is zero.",
+        "Navigasi CRM menampilkan pekerjaan yang dapat Anda tangani: pendaftaran yang belum lunas atau menunggu verifikasi, prospek yang perlu diperiksa identitasnya, dan pelanggan dengan sumber promosi yang belum diselesaikan (termasuk tinjauan yang ditunda). Setiap pendaftaran, prospek, atau pelanggan dihitung satu kali dalam antreannya. Lencana tidak tampil saat jumlahnya nol.",
+        "CRM 导航显示你有权处理的待办数量：尚未收齐或有待核验款项的报名、待核实身份的销售线索，以及推广来源待核实的客户（含暂不确认）。每个报名、线索或客户在各自队列中只计一次，数量为零时不显示徽标。",
+      ],
+      [
         "The customer record and campaign results distinguish system-identified sources from manual confirmations. History retains the original parameters, decision, reason, reviewer and time. Leaving a source unconfirmed keeps it in Needs review. Marking it invalid closes the exception.",
         "Catatan pelanggan dan hasil kampanye membedakan sumber yang diidentifikasi sistem dan konfirmasi manual. Riwayat menyimpan parameter asli, keputusan, alasan, peninjau, dan waktu. Sumber yang belum dikonfirmasi tetap perlu ditinjau. Penandaan tidak valid menutup masalah.",
         "客户资料与活动结果区分系统识别和人工确认。历史记录保留原始参数、决定、依据、操作人和时间。暂不确认的记录仍待核实，标记无效后转入历史记录。",

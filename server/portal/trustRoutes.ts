@@ -67,8 +67,12 @@ export function mountTrustRoutes(
       const key=[r.lead_id,r.candidate_id].sort().join(':');
       if(seen.has(key)||!requestAllowed(e,r.source_profile,req,'crm.read')||!requestAllowed(e,r.candidate_profile,req,'crm.read')||!permittedRecord(e,r.source_profile,'crm.followup')||!permittedRecord(e,r.candidate_profile,'crm.followup'))return false;
       seen.add(key);return true;
-    }).map((r:any)=>({leadId:r.lead_id,candidateId:r.candidate_id,name:r.source_profile.fullName||r.lead_id,candidateName:r.candidate_profile.fullName||r.candidate_id,basis:identityMatch(r.source_profile,r.candidate_profile)}));
-    res.json({reviews});
+    });
+    res.set('Cache-Control','no-store');
+    if(req.query?.summary==='1'){
+      return res.json({pendingCount:new Set(reviews.map((r:any)=>r.lead_id)).size});
+    }
+    res.json({reviews:reviews.map((r:any)=>({leadId:r.lead_id,candidateId:r.candidate_id,name:r.source_profile.fullName||r.lead_id,candidateName:r.candidate_profile.fullName||r.candidate_id,basis:identityMatch(r.source_profile,r.candidate_profile)}))});
   }));
   app.get('/api/crm/leads/:id/identity-comparison',wrap(async(req:any,res:any)=>{
     const {l,e}=await leadAccess(req);

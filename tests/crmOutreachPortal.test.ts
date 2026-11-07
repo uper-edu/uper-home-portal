@@ -19,7 +19,9 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('outreach transactions require isola
   assert.equal((await a(path(pending,'claim'),{})).data.error,'IDENTITY_REVIEW_REQUIRED');
   assert.equal((await a(path(peer),intent())).data.error,'CLAIM_BEFORE_CONTACT');
   assert.equal((await a('/api/crm/identity-reviews')).status,403);
+  assert.equal((await a('/api/crm/identity-reviews?summary=1')).status,403);
   const queue=await m('/api/crm/identity-reviews');assert.equal(queue.status,200);assert.equal(queue.data.reviews.length,1);
+  assert.deepEqual((await m('/api/crm/identity-reviews?summary=1')).data,{pendingCount:1});
   const reverse=await m(path(peer,'identity-comparison')+'?candidateId='+pending);assert.equal(reverse.data.candidateId,pending);
   const claims=await Promise.all([a(path(normal,'claim'),{}),b(path(normal,'claim'),{})]);assert.deepEqual(claims.map(r=>r.status).sort(),[200,409]);const winner=claims[0].status===200?a:b,loser=winner===a?b:a,owner=winner===a?'Fadhil':'Wigar';
   for(const action of ['phone','whatsapp','copy']){
@@ -34,6 +36,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('outreach transactions require isola
   assert.equal((await m(path(peer,'identity-actions'),decision)).status,200);
   assert.equal((await m(path(peer,'identity-actions'),decision)).data.replayed,true);
   assert.equal((await m('/api/crm/identity-reviews')).data.reviews.length,0);
+  assert.deepEqual((await m('/api/crm/identity-reviews?summary=1')).data,{pendingCount:0});
   assert.equal((await a(path(pending,'claim'),{})).status,200);
   assert.equal((await b(path(falseId,'claim'),{})).status,200);
   assert.equal((await pool.query("SELECT decision FROM identity_candidates WHERE lead_id=:p1",[falseId])).rows[0].decision,'pending');
@@ -53,6 +56,10 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('outreach transactions require isola
   for(const id of [emailA,emailB,phoneA,phoneB])assert.equal((await m(path(id,'trust'))).data.identityReview.pending,false);
   const duplicate=await reg({fullName:'TEST same mailbox',email:stamp+'a@example.invalid'});
   assert.equal((await m(path(duplicate,'trust'))).data.identityReview.pending,true);
+  const multiple=await reg({fullName:'TEST two possible matches',email:stamp+'b@example.invalid',whatsapp:'081234567890'});
+  const reviewRows=(await m('/api/crm/identity-reviews')).data.reviews;
+  assert.equal(reviewRows.filter((r:any)=>r.leadId===multiple).length,2);
+  assert.deepEqual((await m('/api/crm/identity-reviews?summary=1')).data,{pendingCount:2});
   assert.equal((await a(path(duplicate,'claim'),{})).data.error,'IDENTITY_REVIEW_REQUIRED');
  });
 }

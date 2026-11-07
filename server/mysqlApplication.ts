@@ -1,6 +1,6 @@
 import {passwordChangeGate} from './portal/localAuth.ts';
 import {mountClientDiagnostics} from './clientDiagnostics.ts';
-import {listPromotionReviews,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
+import {listPromotionReviews,promotionReviewCounts,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
 import {campaignPromotionPath,campaignPromotionShortUrl,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
 import {presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
 import {addCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
@@ -103,7 +103,11 @@ app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT con
 await mountPortal(app);await ensureOrganicCampaign();await tx(ensureInstagramBioCampaign);mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
-app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>r.json({reviews:await listPromotionReviews(r.locals.crmEmployee)})));
+app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>{
+ const actor=r.locals.crmEmployee;
+ r.set('Cache-Control','no-store');
+ r.json(q.query.summary==='1' ? await promotionReviewCounts(actor) : {reviews:await listPromotionReviews(actor)});
+}));
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
 app.post('/api/crm/campaigns/sources/promotions/:leadId/review',wrap(async(q:any,r:any)=>r.json(await reviewPromotion(q.params.leadId,q.body,r.locals.crmEmployee))));
 app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const resolved=await getCampaignByIdOrCode(q.params.idOrCode);const campaign=resolved && list.find(c=>c.id===resolved.id);if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));

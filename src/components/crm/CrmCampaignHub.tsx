@@ -106,6 +106,9 @@ import type { CrmLeadRecord } from "../../types/crmLead";
 import type { HookType, HookContextType } from "../../types/leadSystem";
 interface CrmCampaignHubProps {
   canManageCampaigns?: boolean;
+  reviewCounts?: PromotionReviewCounts;
+  reviewCountsLoading?: boolean;
+  onRefreshReviewCounts?: () => void;
   isLight: boolean;
   lang: "en" | "zh" | "id";
   leads: CrmLeadRecord[];
@@ -114,6 +117,9 @@ interface CrmCampaignHubProps {
 }
 export function CrmCampaignHub({
   canManageCampaigns = false,
+  reviewCounts: promotionReviews = { available: false, counts: {} },
+  reviewCountsLoading = false,
+  onRefreshReviewCounts,
   isLight,
   lang,
   leads: initialLeads,
@@ -134,9 +140,6 @@ export function CrmCampaignHub({
   const [campaigns, setCampaigns] = useState<CrmCampaignRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [campaignError, setCampaignError] = useState(false);
-  const [promotionReviews, setPromotionReviews] =
-    useState<PromotionReviewCounts>({ available: false, counts: {} });
-  const [reviewCountsLoading, setReviewCountsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(
     () =>
       new URLSearchParams(
@@ -453,32 +456,6 @@ export function CrmCampaignHub({
     const item=selectedListItem.current,pane=item?.closest<HTMLElement>(".campaign-list-items");
     if(campaignArea==="campaigns"&&item&&pane)revealRecord(pane,item);
   }, [requestedCampaign, listCollapsed, campaignArea]);
-  useEffect(() => {
-    if (!canManageCampaigns) return;
-    let active = true;
-    setReviewCountsLoading(true);
-    setPromotionReviews({ available: false, counts: {} });
-    fetch("/api/crm/campaigns/sources/promotions").then(async response => {
-      if (!response.ok) throw Error("Review data unavailable");
-      const { reviews } = await response.json();
-      if (!active) return;
-      const counts: Record<string, number> = Object.create(null);
-      for (const row of reviews) {
-        if (["pending", "deferred"].includes(row.status)) {
-          const key = row.campaignId ?? "";
-          counts[key] = (counts[key] || 0) + 1;
-        }
-      }
-      setPromotionReviews({ available: true, counts });
-    }).catch(() => {
-      if (active) setPromotionReviews({ available: false, counts: {} });
-    }).finally(() => {
-      if (active) setReviewCountsLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [canManageCampaigns, campaigns]);
   // Canonicalize old organic links without exposing irrelevant promotion/material tabs.
   useEffect(() => {
     if (!organicDetail || detailTab === requestedDetailTab) return;
@@ -488,7 +465,8 @@ export function CrmCampaignHub({
     setPageUrl(url.href);
   }, [organicDetail, detailTab, requestedDetailTab]);
   // Fetch campaigns
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = async (refreshReviews = true) => {
+    if (refreshReviews) onRefreshReviewCounts?.();
     setIsLoading(true);
     setCampaignError(false);
     try {
@@ -503,7 +481,7 @@ export function CrmCampaignHub({
     }
   };
   useEffect(() => {
-    fetchCampaigns();
+    void fetchCampaigns(false);
   }, []);
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
@@ -707,7 +685,7 @@ export function CrmCampaignHub({
                 <button
                   type="button"
                   className="underline"
-                  onClick={() => void fetchCampaigns()}
+                  onClick={onRefreshReviewCounts}
                 >
                   {u("Retry")}
                 </button>{" "}
