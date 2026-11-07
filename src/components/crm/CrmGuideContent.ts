@@ -670,6 +670,11 @@ const originalGuideSections = [
         "CRM 导航显示你有权处理的待办数量：尚未收齐或有待核验款项的报名、待核实身份的销售线索，以及推广来源待核实的客户（含暂不确认）。每个报名、线索或客户在各自队列中只计一次，数量为零时不显示徽标。",
       ],
       [
+        "Each exception shows the original promotion ID once and keeps distinct source evidence and earlier decisions available for review. Use Keep draft & close to collapse a draft. If the outcome is unknown, use Check saved result before retrying the original request.",
+        "Setiap masalah menampilkan ID promosi asli satu kali. Bukti sumber yang berbeda dan keputusan sebelumnya tetap dapat ditinjau. Gunakan Pertahankan draf & tutup untuk menciutkan draf. Jika hasil belum diketahui, periksa hasil penyimpanan sebelum mengulang permintaan awal.",
+        "每条异常只展示一次原推广编号，不同的来源依据及历次决定仍可查阅。点击「保留草稿并收起」可收起表单。保存结果待确认时，先查询原请求的保存结果，再决定是否重试原请求。",
+      ],
+      [
         "The customer record and campaign results distinguish system-identified sources from manual confirmations. History retains the original parameters, decision, reason, reviewer and time. Leaving a source unconfirmed keeps it in Needs review. Marking it invalid closes the exception.",
         "Catatan pelanggan dan hasil kampanye membedakan sumber yang diidentifikasi sistem dan konfirmasi manual. Riwayat menyimpan parameter asli, keputusan, alasan, peninjau, dan waktu. Sumber yang belum dikonfirmasi tetap perlu ditinjau. Penandaan tidak valid menutup masalah.",
         "客户资料与活动结果区分系统识别和人工确认。历史记录保留原始参数、决定、依据、操作人和时间。暂不确认的记录仍待核实，标记无效后转入历史记录。",

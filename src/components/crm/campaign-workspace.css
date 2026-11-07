@@ -35,13 +35,109 @@
 
 @container campaign-process (min-width:1320px){.campaign-overview .crm-process-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
-.campaign-source-evidence{font-size:14px;line-height:1.6;min-width:0}.campaign-source-evidence h4{font-size:16px;font-weight:650;margin:14px 0 8px}.campaign-source-evidence h5{font-size:14px;font-weight:650}.campaign-source-evidence p{margin:8px 0}.campaign-source-evidence code{overflow-wrap:anywhere;font-size:12px}.campaign-source-lead-evidence{border:1px solid var(--dw-border);border-radius:12px;padding:16px;margin:14px 0;background:var(--dw-surface)}.campaign-source-lead-evidence>header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.campaign-source-lead-evidence button{border:1px solid var(--dw-border);border-radius:8px;padding:8px 12px;min-height:40px}.campaign-source-evidence-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px;margin:12px 0}.campaign-source-evidence-fields>div{min-width:0}.campaign-source-evidence-fields dt{font-size:12px;color:var(--dw-muted)}.campaign-source-evidence-fields dd{overflow-wrap:anywhere;white-space:pre-wrap}.campaign-source-evidence details{border-top:1px solid var(--dw-border);padding:12px 0}.campaign-source-evidence summary{cursor:pointer;font-weight:600;overflow-wrap:anywhere}.campaign-source-param{display:block}.campaign-source-evidence [role=note]{color:var(--dw-muted);font-size:12px}@media(max-width:600px){.campaign-source-evidence-fields{grid-template-columns:minmax(0,1fr)}}
-
-.campaign-source-review{scroll-margin-top:calc(var(--crm-shell-height,120px) + 12px)}
-
-.campaign-source-card[data-review-open=true]{border-color:var(--dw-accent)}.campaign-source-card>.campaign-source-review{margin-top:16px;background:var(--dw-surface)}.campaign-source-card>button:disabled{opacity:.5;cursor:wait}
-
-.campaign-review-action-guide{border:1px solid var(--dw-border);border-radius:10px;padding:14px}.campaign-review-action-guide summary{cursor:pointer;font-weight:650}.campaign-review-action-guide h3{font-size:14px;font-weight:650;margin-top:14px}.campaign-review-action-guide p{font-size:13px;line-height:1.6;margin-top:6px}.campaign-review-action-context{padding:12px;border-left:3px solid var(--dw-accent);background:var(--dw-soft);border-radius:6px;font-size:13px;line-height:1.6}.campaign-review-history-item{padding:12px;border-top:1px solid var(--dw-border);font-size:13px}.campaign-source-review fieldset{min-width:0}.campaign-source-review input,.campaign-source-review textarea{max-width:100%;min-width:0;width:100%;border:1px solid var(--dw-border);border-radius:8px;padding:9px;background:transparent}
+/* Promotion exceptions are a collection with a review form within each record. */
+.crm-campaigns[data-campaign-area=sources] > .campaign-page-heading,
+.campaign-review-workspace {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+}
+.campaign-review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.campaign-review-toolbar .crm-detail-tabs {padding: 0; border: 0;}
+.campaign-review-toolbar .crm-detail-tabs button {min-height: 44px;}
+.campaign-review-records {display: grid; gap: 12px; padding-block: 16px;}
+.campaign-review-filter, .campaign-review-message {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+.campaign-review-message button {margin-inline-start: 8px;}
+.campaign-source-card {
+  padding: 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  background: var(--admin-surface);
+  font-size: 14px;
+  line-height: 1.5;
+  min-width: 0;
+}
+.campaign-review-card-header, .campaign-review-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.campaign-review-card-header {justify-content: space-between;}
+.campaign-review-card-title h2 {margin: 0; font-size: 16px; font-weight: 650; overflow-wrap: anywhere;}
+.campaign-review-card-header > button {display: inline-flex; align-items: center; gap: 8px;}
+.campaign-review-card-header > button svg {flex: none;}
+.campaign-review-card-header > button[aria-expanded=true] {justify-content: center; min-width: 44px;}
+.campaign-review-card-header > button[aria-expanded=true] svg {transform: rotate(180deg);}
+.campaign-review-facts, .campaign-source-evidence-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 208px), 1fr));
+  gap: 8px 24px;
+  margin: 12px 0 0;
+}
+.campaign-source-evidence-fields {margin: 0;}
+.campaign-review-facts dt, .campaign-source-evidence-fields dt,
+.campaign-review-last-decision > div {color: var(--admin-muted); font-size: 13px;}
+.campaign-review-facts dd, .campaign-source-evidence-fields dd {margin: 4px 0 0; overflow-wrap: anywhere;}
+.campaign-review-facts dd span {display: block; color: var(--admin-muted); font-size: 13px;}
+.campaign-review-facts code, .campaign-source-evidence-fields code {font-size: 13px;}
+.campaign-review-last-decision, .campaign-review-history {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--admin-border);
+}
+.campaign-review-last-decision p {margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere;}
+.campaign-review-history .crm-disclosure-heading {min-height: 40px; padding: 0; font-size: 13px;}
+.campaign-review-history .crm-disclosure-body {padding: 0; gap: 0;}
+.campaign-review-history-item {padding-block: 12px; border-top: 1px solid var(--admin-border); overflow-wrap: anywhere;}
+.campaign-review-history-item p {margin: 0;}
+.campaign-review-history-item p + p {margin-top: 4px;}
+.campaign-source-review {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--admin-border);
+  scroll-margin-top: calc(var(--crm-shell-height, 120px) + 12px);
+}
+.campaign-review-form-grid {display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px;}
+.campaign-review-form-grid .admin-form-section-heading {padding: 0 0 8px; min-height: 52px;}
+.campaign-review-form-title {display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;}
+.campaign-source-evidence summary {cursor: pointer; font-weight: 500; overflow-wrap: anywhere;}
+.campaign-source-evidence details + details {border-top: 1px solid var(--admin-border); padding-top: 8px;}
+.campaign-review-evidence-entry .crm-disclosure-heading {min-height: 40px; padding: 4px 0; font-size: 13px;}
+.campaign-review-evidence-entry .crm-disclosure-body {padding: 8px 0 0;}
+.campaign-review-evidence-entry:not(details) {color: var(--admin-muted); font-size: 13px;}
+.campaign-source-evidence [role=note] {color: var(--admin-muted); font-size: 13px;}
+.campaign-source-review textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+.campaign-source-review .crm-source-review-actions {margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--admin-border);}
+@media(max-width: 700px) {
+  .campaign-review-form-grid {grid-template-columns: minmax(0, 1fr); gap: 16px;}
+}
+@media(max-width: 480px) {
+  .campaign-review-facts, .campaign-source-evidence-fields {grid-template-columns: minmax(0, 1fr);}
+  .campaign-review-card-header > button {margin-inline-start: auto;}
+}
 
 /* Catalogue summaries: identity/configuration first; three comparable customer measures. */
 .campaign-home-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,350px),1fr));gap:20px;align-items:stretch}
@@ -102,9 +198,7 @@
 
 
 
-.campaign-review-dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#945100}
 .campaign-review-status{font-size:12px;color:var(--dw-muted)}
-.crm-campaigns[data-theme=dark] .campaign-review-dot{background:#f4ce82}
 
 
 .campaign-card-budget{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-height:20px;margin-top:6px;font-size:12px;line-height:1.5;color:var(--dw-muted)}
@@ -118,11 +212,7 @@
 .campaign-page-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;max-width:100%}
 .campaign-home-card-heading{width:100%}.campaign-home-card-heading>.campaign-home-type{flex:1;flex-shrink:1;min-width:0}.campaign-home-card-heading>.crm-campaign-status{max-width:45%;white-space:normal;overflow-wrap:anywhere}.campaign-home-metrics>div{display:flex;flex-direction:column;min-width:0}.campaign-home-metrics dt{flex:1}
 @media(max-width:767px){.campaign-page-actions{width:100%}}
-@media(max-width:480px){.campaign-page-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px;align-items:stretch}.campaign-page-actions>button{min-width:0;padding:9px 8px}.campaign-page-actions>.campaign-source-return{grid-column:1/-1;justify-self:end}}
-/* Source review remains contextual; only its own decisions are grouped here. */
-.campaign-source-review .crm-source-review-actions,.campaign-source-card .crm-source-review-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;border-top:1px solid #94a3b844;padding-top:16px;margin-top:16px}
-.crm-source-review-actions button{min-height:40px;border-radius:10px;padding:8px 16px}
-.campaign-review-action-context summary{cursor:pointer;font-size:13px;color:inherit}
+@media(max-width:480px){.campaign-page-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px;align-items:stretch}.campaign-page-actions>button{min-width:0;padding:9px 8px}.crm-campaigns[data-campaign-area=sources] .campaign-page-actions{display:flex}}
 .campaign-editor-body>.admin-required-note{margin:0 0 16px}
 
 .campaign-preset-heading {
@@ -203,3 +293,5 @@
   border-color: var(--admin-action);
   color: var(--admin-action);
 }
+
+.campaign-review-dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:var(--admin-warning)}

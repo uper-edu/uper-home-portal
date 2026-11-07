@@ -185,6 +185,23 @@ test("Campaign cards, four-tab facts, editor, materials and source evidence loca
     });
     assert.ok(evidence.includes(u("Source evidence")));
     assert.ok(evidence.includes("UNKNOWN-original"));
+    const dedupedEvidence = render(CampaignSourceEvidence, {
+      lang,
+      leadId: "test",
+      originalPromotionId: "KNOWN-P",
+      evidence: {
+        parameters: [{key:"p",value:"KNOWN-P"},{key:"utm_source",value:"SAVED"},{key:"utm_source",value:"SAVED"}],
+        entries: [
+          {conversationId:"a",path:"/chat",parameters:[{key:"utm_source",value:"SAVED"},{key:"p",value:"KNOWN-P"}]},
+          {conversationId:"b",path:"/link",parameters:[{key:"p",value:"OTHER-P"}],possiblyTruncated:true},
+        ],
+      },
+    });
+    assert.doesNotMatch(dedupedEvidence,/KNOWN-P/);
+    assert.equal((dedupedEvidence.match(/SAVED/g)||[]).length,1);
+    assert.match(dedupedEvidence,/OTHER-P/);
+    assert.match(dedupedEvidence,/\/chat/);
+    assert.match(dedupedEvidence,/\/link/);
     assert.equal(JSON.stringify(c), before);
   }
 });
@@ -234,7 +251,7 @@ test("home page actions/subtitle, overview, review and save/discard feedback fol
         isLight: true,
         onChanged: () => {},
         campaigns: [],
-      }).includes(u("Review customers whose promotion link could not be identified.")),
+      }).includes(u("Loading promotion reviews…")),
     );
     assert.ok(
       render(CrmSaveFeedback, { lang, state: "unknown" }).includes(

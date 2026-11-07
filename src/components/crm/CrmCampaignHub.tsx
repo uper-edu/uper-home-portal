@@ -139,6 +139,8 @@ export function CrmCampaignHub({
           : en;
   const [campaigns, setCampaigns] = useState<CrmCampaignRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [reviewRefresh, setReviewRefresh] = useState(0);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [campaignError, setCampaignError] = useState(false);
   const [searchQuery, setSearchQuery] = useState(
     () =>
@@ -579,6 +581,7 @@ export function CrmCampaignHub({
       className="crm-campaigns crm-detail-root space-y-5 animate-in fade-in duration-300"
       data-theme={isLight ? "light" : "dark"}
       data-record-scroll={scrollMode}
+      data-campaign-area={campaignArea}
       onKeyDown={containPaneKeys}
       style={
         { "--crm-shell-height": `${shellHeight}px` } as React.CSSProperties
@@ -586,8 +589,11 @@ export function CrmCampaignHub({
     >
       <CampaignWorkspaceHeading
         onCreate={!requestedCampaign ? handleOpenCreateWizard : undefined}
-        onRefresh={!requestedCampaign ? () => void fetchCampaigns() : undefined}
-        refreshing={isLoading}
+        onRefresh={campaignArea === "sources" && canManageCampaigns ? () => {
+          setReviewRefresh(value => value + 1);
+          onRefreshReviewCounts?.();
+        } : !requestedCampaign ? () => void fetchCampaigns() : undefined}
+        refreshing={campaignArea === "sources" ? reviewsLoading : isLoading}
         showSubtitle={!requestedCampaign}
         lang={lang}
         title={t("Marketing Campaigns", "营销活动中心")}
@@ -595,7 +601,7 @@ export function CrmCampaignHub({
         canManage={canManageCampaigns}
         isLight={isLight}
         state={sourceReviewState(promotionReviews, reviewCountsLoading)}
-        onOpen={() => openSourceReview()}
+        onOpen={campaignArea === "campaigns" && !requestedCampaign ? () => openSourceReview() : undefined}
         onReturn={returnFromSourceReview}
         headingRef={workspaceHeading}
       />
@@ -607,6 +613,8 @@ export function CrmCampaignHub({
             )}
             onClearCampaignFilter={clearPromotionFilter}
             key={workspaceEpoch}
+            refreshRevision={reviewRefresh}
+            onLoadingChange={setReviewsLoading}
             onStateChange={(state) => {
               materialState.current = state;
             }}

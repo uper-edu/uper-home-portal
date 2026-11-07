@@ -29,7 +29,7 @@ export function CampaignWorkspaceHeading({
   canManage: boolean;
   isLight: boolean;
   state: SourceReviewState;
-  onOpen: () => void;
+  onOpen?: () => void;
   onReturn: () => void;
   headingRef?: React.Ref<HTMLHeadingElement>;
 }) {
@@ -77,7 +77,7 @@ export function CampaignWorkspaceHeading({
             onClick={onReturn}
           />
         ) : (
-          canManage && (
+          canManage && onOpen && (
             <CrmPageAction
               id="campaign-source-review-trigger"
               label={u("Promotion source exceptions")}
@@ -102,9 +102,9 @@ export function CampaignWorkspaceHeading({
             </CrmPageAction>
           )
         )}
-        {!reviewing && onRefresh && (
+        {onRefresh && (
           <CrmPageAction
-            label={u("Refresh campaigns")}
+            label={u(reviewing ? "Refresh promotion reviews" : "Refresh campaigns")}
             icon={RefreshCw}
             iconOnly
             loading={refreshing}
