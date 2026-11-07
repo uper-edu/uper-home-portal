@@ -11,13 +11,25 @@ const book = {courses:[
 const render = (courses: 'all' | string[], detail = 'price') =>
   renderConsultationReply(JSON.stringify({reply:'Rp 99,999 for 5 classes',catalogue:{courses,detail}}),book,'zh').reply;
 
+test('published quotes localize the same Rupiah amount and session count in all three languages', () => {
+  const output = JSON.stringify({ reply: '', catalogue: { courses: ['HSK 2'], detail: 'price' } });
+  const expected = {
+    zh: '目前已发布的课程\n\n- HSK 2 · 24 节课，课程总价 Rp 1,200,000',
+    en: 'Published courses\n\n- HSK 2 · 24 sessions · course total Rp 1,200,000',
+    id: 'Kursus yang dipublikasikan\n\n- HSK 2 · 24 pertemuan · total kursus Rp 1.200.000',
+  };
+  for (const [lang, reply] of Object.entries(expected)) {
+    assert.deepEqual(renderConsultationReply(output, book, lang), { reply, catalogueUsed: true });
+  }
+});
+
 test('all and selected catalogue replies render only published courses, amounts and hours',()=>{
-  assert.match(render('all'),/HSK 2.*24 节课.*1\.200\.000[\s\S]*HSK 5B.*55 节课.*2\.750\.000/);
-  assert.match(render(['HSK 5A','HSK 5B']),/HSK 5A.*55 节课.*2\.750\.000[\s\S]*HSK 5B.*55 节课.*2\.750\.000/);
+  assert.match(render('all'),/HSK 2.*24 节课.*1,200,000[\s\S]*HSK 5B.*55 节课.*2,750,000/);
+  assert.match(render(['HSK 5A','HSK 5B']),/HSK 5A.*55 节课.*2,750,000[\s\S]*HSK 5B.*55 节课.*2,750,000/);
   assert.doesNotMatch(render(['HSK 5A','HSK 5B']),/HSK 2|99,999/);
-  assert.match(render(['HSK 2','HSK 3']),/HSK 2.*1\.200\.000[\s\S]*HSK 3.*42 节课.*2\.100\.000/);
+  assert.match(render(['HSK 2','HSK 3']),/HSK 2.*1,200,000[\s\S]*HSK 3.*42 节课.*2,100,000/);
   assert.doesNotMatch(render('all','offerings'),/Rp|99,999/);
-  assert.match(render(['HSK 2','not published']),/HSK 2.*1\.200\.000[\s\S]*暂无已发布资料/);
+  assert.match(render(['HSK 2','not published']),/HSK 2.*1,200,000[\s\S]*暂无已发布资料/);
   assert.doesNotMatch(render(['not published']),/Rp|99,999/);
   assert.doesNotMatch(renderConsultationReply('{"reply":"","catalogue":{"courses":"all","detail":"price"}}',{courses:[]},'zh').reply,/Rp/);
 });

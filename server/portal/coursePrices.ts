@@ -1,3 +1,5 @@
+import { formatCurrency } from '../../src/utils/currency';
+
 type PublishedCourse = { id: string; sessions: number; total: number };
 type CourseBook = { courses: PublishedCourse[] };
 
@@ -43,9 +45,8 @@ export function renderConsultationReply(output: string, book: CourseBook, lang: 
   if (!courses.length) return { reply: copy.missing, catalogueUsed: true };
 
   const priceSeparator = lang === 'zh' ? '，' : ' · ';
-  const currency = lang === 'en' ? 'IDR' : 'Rp';
   const lines = courses.map(course => {
-    const price = selection.detail === 'price' ? `${priceSeparator}${copy.price} ${currency} ${course.total.toLocaleString('id-ID')}` : '';
+    const price = selection.detail === 'price' ? `${priceSeparator}${copy.price} ${formatCurrency(course.total, lang)}` : '';
     return `- ${course.id} · ${course.sessions} ${copy.classes}${price}`;
   });
   const missing = selection.unavailable === true || (names && courses.length < names.size);
