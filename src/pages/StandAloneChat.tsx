@@ -454,9 +454,9 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
               onClick={()=>{
                 if(hasResults&&!readHskDraft())setRetakeConfirm(true);else handleStartVoluntaryAssessment();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300"
             >
-              <Award className="w-3.5 h-3.5 text-white" />
+              <Award className="w-3.5 h-3.5" aria-hidden="true" />
               <span>{readHskDraft()?chooseText(lang,'继续测评','Resume assessment','Lanjutkan tes'):hasResults?chooseText(lang,'重新测评','Retake assessment','Ulangi tes'):chooseText(lang,'HSK 摸底测验','Take HSK Test','Ikuti Tes HSK')}</span>
             </button>
           )}

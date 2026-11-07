@@ -45,6 +45,8 @@ test("WhatsApp draft safely encodes a localized whitelist and recomputed assessm
     assert.ok(draft.includesResult);
     assert.match(draft.message, /15\/15/);
     assert.match(draft.message, /HSK 3/);
+    assert.match(draft.message, /HSK 1 5\/5 · HSK 2 5\/5 · HSK 3 5\/5/);
+    assert.doesNotMatch(draft.message, /★/);
     assert.doesNotMatch(
       draft.message,
       /999|HSK 9|excluded@example|0000000000|EXCLUDED PRIVATE TRANSCRIPT/,

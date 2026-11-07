@@ -101,12 +101,19 @@ export default function HskAssessmentReport({
     );
   const { result, version } = view;
   const guidance = learnerAssessmentGuidance(result,lang);
+  const levelPerformance = <>
+    <table className="w-full text-left"><caption className="text-left font-semibold pb-2">{t("各级题目答题情况","Performance by HSK level","Hasil per tingkat HSK")}</caption>
+      <thead className="text-xs text-slate-500"><tr><th scope="col" className="pb-2 font-normal">{t("题目级别","Question level","Tingkat soal")}</th><th scope="col" className="pb-2 text-right font-normal">{t("答对／总题数","Correct / Total","Benar / Total")}</th></tr></thead>
+      <tbody>{[1,2,3].filter(n=>result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown]>0).map(n=><tr key={n} className="border-t border-slate-200"><th scope="row" className="py-2 font-normal">HSK {n}</th><td className="text-right">{result.breakdown[`hsk${n}Correct` as keyof typeof result.breakdown]}/{result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown]}</td></tr>)}</tbody>
+    </table>
+    <p className="text-xs text-slate-500">{t("仅反映本次题目表现，不代表已达到对应HSK等级。","These results reflect this assessment only and do not establish proficiency at the corresponding HSK level.","Hasil ini hanya menunjukkan performa pada tes ini, bukan bukti telah mencapai tingkat HSK tersebut.")}</p>
+  </>;
   if (!detailed) return <section aria-label={t("测评结果","Assessment results","Hasil tes")} className="space-y-4 scroll-mt-4">
     <h3 className="text-lg font-bold">{result.attempt.mode === "express" ? t("HSK 1–3快速测评结果","HSK 1–3 quick assessment results","Hasil tes singkat HSK 1–3") : t("HSK 1–3完整测评结果","HSK 1–3 full assessment results","Hasil tes lengkap HSK 1–3")}</h3>
     {guidance && <div className="rounded-xl border border-primary-200 bg-primary-50 p-3 space-y-1"><p className="text-xs text-slate-600">{t("建议学习起点","Suggested learning start","Titik awal yang disarankan")}</p><p className="font-semibold">{guidance.start}</p>{guidance.review && <p className="text-sm text-amber-800">{guidance.review}</p>}</div>}
     <p className="rounded-xl bg-primary-50 p-3"><strong className="text-xl">{result.correctCount}/{result.questionCount}</strong> {t("题正确","items correct","soal benar")}<span className="block text-sm mt-1">{t("已作答","Answered","Dijawab")}: {result.questionCount-result.skippedCount-result.unansweredCount} · {t("未作答","Unanswered","Belum dijawab")}: {result.skippedCount+result.unansweredCount}</span></p>
     <table className="w-full text-left"><caption className="text-left font-semibold pb-2">{t("题型表现","By section","Per bagian")}</caption><tbody>{Object.entries(result.sections).filter(([,v])=>v.total>0).map(([key,v])=><tr key={key} className="border-t border-slate-200"><th className="py-2 font-normal">{key==="listening"?t("听力","Listening","Menyimak"):key==="reading"?t("阅读","Reading","Membaca"):t("识字选择","Character recognition","Pengenalan karakter")}</th><td className="text-right">{v.correct}/{v.total}</td></tr>)}</tbody></table>
-    <table className="w-full text-left"><caption className="text-left font-semibold pb-2">{t("原卷星级表现","By source star level","Per tingkat bintang")}</caption><tbody>{[1,2,3].map(n=><tr key={n} className="border-t border-slate-200"><th className="py-2 font-normal">{"★".repeat(n)}</th><td className="text-right">{result.breakdown[`hsk${n}Correct` as keyof typeof result.breakdown]}/{result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown]}</td></tr>)}</tbody></table>
+    {levelPerformance}
     <p className="text-xs text-slate-500">{t("学习起点参考，非官方HSK成绩。","Learning guidance, not an official HSK score.","Panduan belajar, bukan nilai HSK resmi.")}</p>
     {!guidance && !!result.attempt.audioFailures.length && <p role="alert" className="text-sm text-amber-800">{t("部分听力未正常播放，建议请顾问进一步确认听力基础。","Some listening audio did not play correctly. Ask an advisor to help check your listening.","Sebagian audio tidak diputar dengan benar. Minta konsultan membantu memeriksa kemampuan menyimak.")}</p>}
     {result.saveStatus!=="saved" && <p role="status" className="text-xs text-amber-800">{saving?t("正在同步结果…","Syncing results…","Menyinkronkan hasil…"):t("结果暂未同步，请重试。","Results have not synced. Please retry.","Hasil belum tersinkron. Silakan coba lagi.")}</p>}
@@ -187,38 +194,7 @@ export default function HskAssessmentReport({
           </tbody>
         </table>
       </div>
-      <div className="rounded-xl border border-slate-200 p-3 space-y-2">
-        <p className="font-semibold">
-          {t(
-            "按原题星级的正确题数",
-            "Correct items by source star level",
-            "Jawaban benar per tingkat bintang sumber",
-          )}
-        </p>
-        {[1, 2, 3].map((n) => {
-          const count =
-            result.breakdown[`hsk${n}Correct` as keyof typeof result.breakdown];
-          const total =
-            result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown];
-          return (
-            <p key={n}>
-              HSK {n}: {count}/{total}
-              {result.attempt.mode === "express" && (
-                <>
-                  {" "}
-                  ·{" "}
-                  {t(
-                    "一题会改变比例",
-                    "One item changes the proportion by",
-                    "Satu soal mengubah proporsi sebesar",
-                  )}{" "}
-                  {Math.round(100 / total)}%
-                </>
-              )}
-            </p>
-          );
-        })}
-      </div>
+      <div className="rounded-xl border border-slate-200 p-3 space-y-2">{levelPerformance}</div>
       {result.thresholds.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-semibold">

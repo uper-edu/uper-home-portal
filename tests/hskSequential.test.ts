@@ -162,7 +162,7 @@ test("navigation evidence is versioned, bounded, preserved for v3 and cannot cha
   };
   assert.equal(gradeHskAttempt(old).attempt.navigation, undefined);
 });
-test("learner results show sections and source stars without grading badges, explanations or retest controls", () => {
+test("learner results show explicit HSK question levels without grading badges, explanations or retest controls", () => {
   const a = newHskAttempt("express", randomUUID());
   a.completedAt = new Date().toISOString();
   const r = gradeHskAttempt(a);
@@ -171,7 +171,10 @@ test("learner results show sections and source stars without grading badges, exp
       React.createElement(HskAssessmentReport, { result: r, lang }),
     );
     assert.match(html, /0\/15/);
-    assert.match(html, /★★★/);
+    assert.match(html, /scope="row"[^>]*>HSK 1/);
+    assert.match(html, /scope="row"[^>]*>HSK 2/);
+    assert.match(html, /scope="row"[^>]*>HSK 3/);
+    assert.doesNotMatch(html, /★|原卷星级表现|By source star level|Per tingkat bintang/);
     assert.doesNotMatch(
       html,
       /undetermined|Continue review|Take another|thresholds|查看逐题/,

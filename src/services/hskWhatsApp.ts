@@ -114,9 +114,10 @@ export function hskWhatsAppDraft(
     );
     lines.push(
       [1, 2, 3]
+        .filter(n=>result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown]>0)
         .map(
           (n) =>
-            `${"★".repeat(n)} ${result.breakdown[`hsk${n}Correct` as keyof typeof result.breakdown]}/${result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown]}`,
+            `HSK ${n} ${result.breakdown[`hsk${n}Correct` as keyof typeof result.breakdown]}/${result.breakdown[`hsk${n}Total` as keyof typeof result.breakdown]}`,
         )
         .join(" · "),
     );
