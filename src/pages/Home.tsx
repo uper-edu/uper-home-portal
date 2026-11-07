@@ -135,7 +135,7 @@ const MarketingCampaign = () => {
                     : 'from-primary-900/60 to-primary-600/30'
                 }`}></div>
                 <img 
-                  src={urlFor(camp.image)?.width(2000).url() || "https://images.unsplash.com/photo-1555899434-94d1368aa7af?auto=format&fit=crop&q=80&w=2000"} 
+                  src={urlFor(camp.image)?.width(2000).url() || "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/5e1efcfd3fa07a456807bd853532b4e393c1dac775f1a5de2c5d1d9c80f81b65.webp"}
                   alt={camp.title} 
                   className="absolute inset-0 w-full h-full object-cover"
                   referrerPolicy="no-referrer"
@@ -316,7 +316,7 @@ const NewsSection = () => {
                     src={(() => {
                       const imgToUse = (item.images && item.images.length > 0) ? item.images[0] : item.image;
                       return imgToUse ? urlFor(imgToUse)?.width(800).url() : null;
-                    })() || "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=800"} 
+                    })() || "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/695dcca885c945106725b3a32ac03edb61cccaa08f25feb53f6cf7f9174e870e.webp"}
                     alt={item.title} 
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     referrerPolicy="no-referrer"
@@ -475,7 +475,7 @@ const StudentStories = () => {
               <div className="absolute -top-12 right-8 z-20">
                 <div className="relative">
                   <img 
-                    src={urlFor(story.image)?.width(200).url() || "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=200&h=200"} 
+                    src={urlFor(story.image)?.width(200).url() || "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/98af543bcc7ba5f7f000acb120d379066d38653b31947fd050fb02b69f37dab4.webp"}
                     alt={story.name} 
                     className="w-24 h-24 rounded-full object-cover border-[6px] border-white shadow-xl bg-white" 
                     draggable={false}
@@ -521,16 +521,16 @@ const Hero = () => {
 
   const heroImages = [
     {
-      src: "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&q=80&w=1200",
+      src: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/2c2c50a4e2e750183d2b783fa3a0e8eed67dc05d90b58a110249eb161a7e11b4.webp",
       alt: "Vibrant and modern university campus in China"
     },
     {
-      src: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200",
+      src: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/dcc62ba470084355d9d083f4d2f22cee18fc5d9207ff2981628a999fede153ff.webp",
       alt: "Modern university campus and tech labs - The destination"
     },
     {
       src: "/hero-classroom.jpg",
-      fallbackSrc: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200",
+      fallbackSrc: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/94bf998842e45fad38d2b89b3da8768b9e55a4993e1e148fbc3298481a7d3542.webp",
       alt: "UPER Mandarin Training Classroom - Professional Chinese Language Education in Indonesia"
     }
   ];
@@ -594,10 +594,10 @@ const Hero = () => {
             <div className="mt-12 flex items-center gap-5 text-sm font-medium text-slate-500">
               <div className="flex -space-x-3 shrink-0">
                 {[
-                  "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=100&h=100",
-                  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=100&h=100",
-                  "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=100&h=100",
-                  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100"
+                  "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/98af543bcc7ba5f7f000acb120d379066d38653b31947fd050fb02b69f37dab4.webp",
+                  "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/10469edb1f5dfc570fda4b3b2e62557355b3d287d847ccf0d9c2b9a97d985293.webp",
+                  "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/775f35fc29c16e4645ef5d4450135d9436ec229f04a2a3a948f894d7fb408aa6.webp",
+                  "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/43efc29f6081e06993280913cad1c6c61484ff9e83066bf9068e4ad9720a982b.webp"
                 ].map((src, i) => (
                   <img key={i} src={src} alt="Student" width="40" height="40" loading="lazy" decoding="async" className="w-10 h-10 rounded-full border-2 border-white object-cover" />
                 ))}
@@ -1449,7 +1449,7 @@ const MainServices = () => {
       id: 'hsk',
       title: t('home.servicesData.hsk.title', 'AI-Assisted HSK Training'),
       desc: t('home.servicesData.hsk.desc', 'Master Chinese with our AI-assisted training for all levels.'),
-      images: ['https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1600', 'https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&q=80&w=1200'],
+      images: ['https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/ac5d7d082e8e7712cba6dd1cde0468a09b5219d2ab75af5b8382bfafea5fc63d.webp', 'https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/54fd778e38665f70033101a0a574eb017a84b7ec99da74b2fc7f3ce6e3688bbf.webp'],
       link: '/hsk',
       icon: <Bot className="w-6 h-6" />,
       color: 'from-tech-500 to-purple-500'
@@ -1458,7 +1458,7 @@ const MainServices = () => {
       id: 'csca',
       title: t('home.servicesData.csca.title', 'CSCA Coaching'),
       desc: t('home.servicesData.csca.desc', 'Expert coaching for the CSCA exam.'),
-      images: ['https://images.unsplash.com/photo-1544717297-fa95b6ee9643?auto=format&fit=crop&q=80&w=1600', 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1000'],
+      images: ['https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/c5eefd807984f2983eb65324166b07b3ba2fd12c0065dc1f7a76024b89fda77f.webp', 'https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/52baf858410748e3da33693b8de042a10618f7e3b30dd32cb7e255cac195acb8.webp'],
       link: '/csca',
       icon: <Target className="w-6 h-6" />,
       color: 'from-rose-500 to-red-500'
@@ -1467,8 +1467,8 @@ const MainServices = () => {
       id: 'consultancy',
       title: t('home.servicesData.consultancy.title', 'Study Abroad Consultancy'),
       desc: t('home.servicesData.consultancy.desc', 'Comprehensive guidance for studying in China, from university selection to visa processing and scholarship applications.'),
-      images: ['/consultancy-meeting.jpg', 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200'],
-      fallbackImage: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=1600',
+      images: ['/consultancy-meeting.jpg', 'https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/dcc62ba470084355d9d083f4d2f22cee18fc5d9207ff2981628a999fede153ff.webp'],
+      fallbackImage: 'https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/f46eae01c47640db765a639bb394f95a072b1833d4957d590a19721ba685e2f4.webp',
       link: '/consultancy',
       icon: <GraduationCap className="w-6 h-6" />,
       color: 'from-emerald-500 to-teal-500'
@@ -1477,7 +1477,7 @@ const MainServices = () => {
       id: 'tours',
       title: t('home.servicesData.tours.title', 'Study Tours to China'),
       desc: t('home.servicesData.tours.desc', 'Immersive programs blending language learning, cultural experiences, and visits to tech giants and historical landmarks.'),
-      images: ['https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&q=80&w=1600', 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&q=80&w=800'],
+      images: ['https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/88e162a9d7f1cfeda60404aaae567999dbfe438d0d3b9808d430312d03eec818.webp', 'https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/4728004d391f5ec56c38b4b5a5830ec6f90b192abe9599c86b5b186a76f01f37.webp'],
       link: '/tours',
       icon: <Plane className="w-6 h-6" />,
       color: 'from-blue-500 to-cyan-500'
@@ -1597,7 +1597,7 @@ const TrendingSection = () => {
           category: item.category,
           title: item.title,
           desc: item.desc,
-          image: urlFor(item.image)?.url() || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
+          image: urlFor(item.image)?.url() || 'https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/ac5d7d082e8e7712cba6dd1cde0468a09b5219d2ab75af5b8382bfafea5fc63d.webp',
           badge: item.badge,
           link: item.link,
           meta: {

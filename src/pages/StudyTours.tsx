@@ -42,28 +42,28 @@ export default function StudyTours() {
     {
       id: "wuhan",
       title: toursItems[0]?.title || "Wuhan Summer Camp",
-      image: "https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?auto=format&fit=crop&q=80&w=800",
+      image: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/98bd0eabb066639d8474d69581de43886b3b2ec5732553791f4cf3503062aaf8.webp",
       desc: toursItems[0]?.desc || "Immerse yourself in the vibrant culture and academic excellence of central China. Visit Huanghelou, explore Wuhan University's campus, and experience local traditions.",
       tags: toursItems[0]?.tags || ["Summer 2025", "Language", "Culture"]
     },
     {
       id: "beijing",
       title: toursItems[1]?.title || "Beijing Cultural Immersion",
-      image: "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&q=80&w=800",
+      image: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/4728004d391f5ec56c38b4b5a5830ec6f90b192abe9599c86b5b186a76f01f37.webp",
       desc: toursItems[1]?.desc || "A full 14-day guided experience exploring top universities like Tsinghua and Peking University, tech innovations in Zhongguancun, and historical heritage like the Great Wall.",
       tags: toursItems[1]?.tags || ["Capital", "Top Universities", "Heritage"]
     },
     {
       id: "shanghai-hangzhou",
       title: toursItems[2]?.title || "Shanghai & Hangzhou Business Tour",
-      image: "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&q=80&w=800",
+      image: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/2802a77005e8aabe9cd899bf8abd10225c97a27e09744d1673b42d78f125c8c8.webp",
       desc: toursItems[2]?.desc || "Experience the magic of modern metropolises. Includes visits to Alibaba headquarters, modern tech hubs, and the serene beauty of the West Lake.",
       tags: toursItems[2]?.tags || ["Tech Giants", "Modern City", "E-commerce"]
     },
     {
       id: "shenzhen",
       title: toursItems[3]?.title || "Shenzhen Tech & Innovation Tour",
-      image: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=800",
+      image: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/bc16333e74ba72c42bb70c91a84f9cfe6f984a986a66d515f11142a5b12f0ea0.webp",
       desc: toursItems[3]?.desc || "Step into the heart of China's silicon valley. Exclusive access to leading technological giants, hardware markets, and networking with local innovators.",
       tags: toursItems[3]?.tags || ["Innovation", "Networking", "Tech Hub"]
     }
@@ -278,15 +278,15 @@ const Destinations = () => {
   const { t } = useTranslation();
   const { isApple } = useDesignStyle();
   const places = [
-    { name: "Peking University", img: "https://images.unsplash.com/photo-1599827552599-2f3dbdb95945?auto=format&fit=crop&q=80&w=800" },
-    { name: "Beijing Language and Culture University", img: "https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?auto=format&fit=crop&q=80&w=800" },
-    { name: "Shanghai Disneyland", img: "https://images.unsplash.com/photo-1505809850792-4dcf0b89b1c0?auto=format&fit=crop&q=80&w=800" },
-    { name: "Shanghai BeiDou Navigation Satellite Industry Base", img: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800" },
-    { name: "Alibaba", img: "https://images.unsplash.com/photo-1549417229-aa67d3263c09?auto=format&fit=crop&q=80&w=800" },
-    { name: "Wuhan University", img: "https://images.unsplash.com/photo-1523841589119-b444fe6e7a57?auto=format&fit=crop&q=80&w=800" },
-    { name: "Geely", img: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800" },
-    { name: "Wuzhen", img: "https://images.unsplash.com/photo-1552554749-cc19cbe35fb8?auto=format&fit=crop&q=80&w=800" },
-    { name: "China Central Normal University", img: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=800" },
+    { name: "Peking University", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/54343bf26281f0f93b166920fc9f8b00699144799b04e2ef38808487addb9f18.webp" },
+    { name: "Beijing Language and Culture University", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/d6c9ee69d7208eeadb613f330db56f41fdecee46984cd3210c88616df035986f.webp" },
+    { name: "Shanghai Disneyland", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/00dcf7e20024d558a2da3eaba593f6a990a110f758532f2f33901d67e812b7eb.webp" },
+    { name: "Shanghai BeiDou Navigation Satellite Industry Base", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/52adfbaf2e8fde94ad463f3c6ed4e033eb92283060cb8e0c31a868c5c05164fd.webp" },
+    { name: "Alibaba", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/117c77da363537a9e20b8a1e8682f27cc5984101a093fbc7de2943775751cfc7.webp" },
+    { name: "Wuhan University", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/8a4ff32e1f7125a15515f3a1607df90b4a99925ba52029a97de4365fbf383e09.webp" },
+    { name: "Geely", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/ff8b6665d6d28d66adf554e2ec0db0b5d90325be815771e8b1b9a1259cdcc648.webp" },
+    { name: "Wuzhen", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/455f030e7776afa1f4bd7c1a3342ca5c7f1adb0beffa4fb7319c3480cf5fc548.webp" },
+    { name: "China Central Normal University", img: "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/dcc62ba470084355d9d083f4d2f22cee18fc5d9207ff2981628a999fede153ff.webp" },
   ];
 
   return (

@@ -138,7 +138,7 @@ export default function About() {
           className="rounded-3xl overflow-hidden relative aspect-[21/9] shadow-2xl"
         >
           <img 
-            src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1600" 
+            src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/52baf858410748e3da33693b8de042a10618f7e3b30dd32cb7e255cac195acb8.webp"
             alt="Students collaborating" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"

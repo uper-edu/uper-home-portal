@@ -454,7 +454,7 @@ export default function Careers() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="group rounded-2xl overflow-hidden shadow-lg border border-slate-100 relative aspect-[4/3] bg-slate-150">
               <img 
-                src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600" 
+                src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/96d5e579ccd5fd4d6a92c427042e8f4172e336c479908a17d2976649c43342de.webp"
                 alt="Jakarta PIK Waterfront Office" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                 referrerPolicy="no-referrer" 
@@ -469,7 +469,7 @@ export default function Careers() {
             
             <div className="group rounded-2xl overflow-hidden shadow-lg border border-slate-100 relative aspect-[4/3] bg-slate-150">
               <img 
-                src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=600" 
+                src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/bc16333e74ba72c42bb70c91a84f9cfe6f984a986a66d515f11142a5b12f0ea0.webp"
                 alt="Shenzhen Center" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                 referrerPolicy="no-referrer" 
@@ -484,7 +484,7 @@ export default function Careers() {
             
             <div className="group rounded-2xl overflow-hidden shadow-lg border border-slate-100 relative aspect-[4/3] bg-slate-150">
               <img 
-                src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&q=80&w=600" 
+                src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/ee99040e96f95566275ff001281fbaed2ca9c03902815b209bcbc666b1797c42.webp"
                 alt="Wuhan Academic Labs" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                 referrerPolicy="no-referrer" 
@@ -499,7 +499,7 @@ export default function Careers() {
             
             <div className="group rounded-2xl overflow-hidden shadow-lg border border-slate-100 relative aspect-[4/3] bg-slate-150">
               <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600" 
+                src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/94bf998842e45fad38d2b89b3da8768b9e55a4993e1e148fbc3298481a7d3542.webp"
                 alt="Collaborative meeting rooms" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                 referrerPolicy="no-referrer" 

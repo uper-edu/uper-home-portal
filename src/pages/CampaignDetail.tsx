@@ -162,7 +162,7 @@ export default function CampaignDetail() {
       {/* Hero Section */}
       <div className="relative h-[40vh] md:h-[60vh] w-full bg-slate-900">
         <img
-          src={urlFor(campaign.image)?.width(2000).url() || "https://images.unsplash.com/photo-1555899434-94d1368aa7af?auto=format&fit=crop&q=80&w=2000"}
+          src={urlFor(campaign.image)?.width(2000).url() || "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/5e1efcfd3fa07a456807bd853532b4e393c1dac775f1a5de2c5d1d9c80f81b65.webp"}
           alt={campaign.title}
           className="absolute inset-0 w-full h-full object-cover opacity-60"
           referrerPolicy="no-referrer"

@@ -780,13 +780,13 @@ export default function StudyAbroad() {
               <div className="grid md:grid-cols-3 gap-8">
                 {stories.map((story, idx) => {
                   const storyImage = story.image ? urlFor(story.image)?.width(400).height(400).url() : null;
-                  const finalImage = storyImage || story.image || "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=400&h=400";
+                  const finalImage = storyImage || story.image || "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/98af543bcc7ba5f7f000acb120d379066d38653b31947fd050fb02b69f37dab4.webp";
                   
                   const storyCert = story.certificateImage ? (typeof story.certificateImage === 'string' ? story.certificateImage : urlFor(story.certificateImage)?.url()) : null;
                   const certFallbacks = [
-                    "https://images.unsplash.com/photo-1589330694653-ded6df53f6ee?auto=format&fit=crop&q=80&w=800",
-                    "https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?auto=format&fit=crop&q=80&w=800",
-                    "https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&q=80&w=800"
+                    "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/174aa5ed2b6e5f291f03d89cac4e14adae36610970a929498c6c343e26c5dbd7.webp",
+                    "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/acdaee96e926a7a861c10654db226ddac0e0312ae1c0f78968eb16fcf073247f.webp",
+                    "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/d6d205d4c5af458bc049b6d91ae0c74c67e57e5ea8071dbc0aaecec3700662c5.webp"
                   ];
                   const finalCert = storyCert || (typeof story.certificateImage === 'string' ? story.certificateImage : null) || certFallbacks[idx % certFallbacks.length];
                   
@@ -914,7 +914,7 @@ export default function StudyAbroad() {
           <div className="md:w-1/2 w-full">
             <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
               <img 
-                src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1200" 
+                src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/dcc62ba470084355d9d083f4d2f22cee18fc5d9207ff2981628a999fede153ff.webp"
                 alt="University campus" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"

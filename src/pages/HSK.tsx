@@ -132,7 +132,7 @@ export default function HSK() {
             className="rounded-3xl overflow-hidden shadow-2xl border border-slate-100 aspect-square md:aspect-[4/3]"
           >
             <img 
-              src="https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&q=80&w=1200" 
+              src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/54fd778e38665f70033101a0a574eb017a84b7ec99da74b2fc7f3ce6e3688bbf.webp"
               alt="Students studying" 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
@@ -200,7 +200,7 @@ export default function HSK() {
               <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-xl border border-white/60 relative z-10 bg-slate-100">
                 <img 
                   id="hsk-blcu-academic-image"
-                  src="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&q=80&w=800" 
+                  src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/2c2c50a4e2e750183d2b783fa3a0e8eed67dc05d90b58a110249eb161a7e11b4.webp"
                   alt="BLCU academic campus building" 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   referrerPolicy="no-referrer"

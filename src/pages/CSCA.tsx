@@ -103,7 +103,7 @@ const CSCA = () => {
         >
           <div className="absolute inset-0 bg-slate-900/10 z-10"></div>
           <img 
-            src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=2000" 
+            src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/dcc62ba470084355d9d083f4d2f22cee18fc5d9207ff2981628a999fede153ff.webp"
             alt="Modern University Campus" 
             className="w-full h-full object-cover relative z-0"
             referrerPolicy="no-referrer"
@@ -574,7 +574,7 @@ const CSCA = () => {
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-tr from-primary-500/20 to-tech-500/20 blur-3xl rounded-full"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1000" 
+                  src="https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/52baf858410748e3da33693b8de042a10618f7e3b30dd32cb7e255cac195acb8.webp"
                   alt="Elite Students" 
                   className="relative rounded-3xl shadow-2xl border border-slate-100"
                 />
