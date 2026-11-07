@@ -52,7 +52,7 @@ let modelStub:any;
 if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='true'){
   const stub=express();stub.use(express.json());
   stub.post('/openai',(_q,r)=>{r.setHeader('Content-Type','text/event-stream');r.end('data: '+JSON.stringify({choices:[{delta:{content:'FAILED PRIMARY PARTIAL'}}]})+'\n\n');});
-  stub.post('/deepseek',(_q,r)=>r.json({choices:[{message:{content:'TEST DeepSeek response: What schedule works for you?'},finish_reason:'stop'}]}));
+  stub.post('/deepseek',(_q,r)=>r.json({choices:[{message:{content:JSON.stringify({reply:'TEST DeepSeek response: What schedule works for you?',catalogue:null})},finish_reason:'stop'}]}));
   modelStub=stub.listen(4413,'127.0.0.1');
   process.env.OPENAI_API_BASE_URL='http://127.0.0.1:4413/openai';
   if(process.env.TRIAL_MODEL_STUB==='true'){
