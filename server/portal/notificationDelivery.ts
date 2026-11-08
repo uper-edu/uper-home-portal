@@ -106,7 +106,7 @@ export function validWebhook(value: string | undefined) {
     const u = new URL(value || "");
     return (
       u.protocol === "https:" &&
-      u.hostname === "open.larksuite.com" &&
+      ["open.larksuite.com", "open.feishu.cn"].includes(u.hostname) &&
       !u.username &&
       !u.password &&
       !u.port &&

@@ -92,6 +92,14 @@ test("quiet windows, DST, exact boundary rounding and card receipt helpers", asy
     validWebhook("https://open.larksuite.com/open-apis/bot/v2/hook/test"),
     true,
   );
+  assert.equal(
+    validWebhook("https://open.feishu.cn/open-apis/bot/v2/hook/test"),
+    true,
+  );
+  assert.equal(
+    validWebhook("https://open.feishu.cn.evil.test/open-apis/bot/v2/hook/test"),
+    false,
+  );
   const old = process.env.APP_URL;
   process.env.APP_URL = "https://portal.example.invalid";
   try {
