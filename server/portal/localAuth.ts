@@ -69,6 +69,7 @@ export async function localEmployee(req: Request) {
 }
 /** Restrict temporary-password sessions before any CRM, CMS or administration routes. */
 export function passwordChangeGate(req:any,res:any,next:any){
+ if(!/^\/(?:crm|cms|admin|staff)(?:\/|$)/.test(req.path))return next();
  if(!token(req)||(req.method==='GET'&&/^\/crm\/auth\/operations\/[a-zA-Z0-9_-]{16,100}$/.test(req.path))||['/crm/auth/me','/crm/auth/login','/crm/auth/logout','/crm/auth/password'].includes(req.path))return next();
  localEmployee(req).then(e=>e?.passwordChangeRequired?res.status(403).json({error:'password_change_required'}):next()).catch(()=>res.status(503).json({error:'Authentication service unavailable'}));
 }
