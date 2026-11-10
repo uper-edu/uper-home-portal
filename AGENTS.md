@@ -5,12 +5,15 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - Confirm the destination remote before any push. Do not push to the former personal repository unless explicitly requested.
 - Never commit environment files containing credentials, runtime customer records in `data/`, logs, or local backups. `.env.example` contains placeholders only.
 - Stage only reviewed source and documentation changes; do not blindly stage all files.
-- Run `npm test`, `npm run lint`, `npm run build`, and `git diff --check` before syncing.
+- Before syncing, follow the [final-version checks](#本地开发与验证范围).
 - A request to sync code authorizes a push to the canonical repository, but does not authorize production deployment.
 - Keep lesson content and grading rules unchanged during infrastructure fixes unless the user requests content changes.
 
 ## 本地开发与验证范围
 
+- 日常按改动风险做定向验证。文档、注释或不改变文件内容的 Git 历史整理，检查相关差异即可。文案、样式和单个交互，验证受影响的页面和状态。权限、数据库迁移、收退款、通知等高风险改动，验证关键流程、拒绝和失败场景，并遵守下述隔离要求。
+- 推送前对最终待推送版本执行一次 `npm test`、`npm run lint`、`npm run build` 和 `git diff --check`。同一版本已有可核对的通过记录时，直接复用。最终版本有变更时，按新版本执行。
+- 验收报告先列实际验证的流程和结果，再列未验证项、跳过原因及其对验收的影响。全量测试统计放在这些信息之后。
 - 默认只在本地3000环境开发和验证，不自行启动其他端口、独立服务或独立数据库进行开发与验收，也不自行先在其他环境开发后再合并到3000。
 - 复杂改动确需隔离时（如数据破坏、迁移、故障注入或不可控通知），先向用户说明原因、范围、数据与通知风险及回到3000的方式，取得用户对本次独立环境的明确确认后再启动。风险理由本身不构成授权；未获确认前不执行依赖隔离环境的操作，也不改在3000冒险执行。
 - 默认只验证中文电脑端，按改动选择必要的桌面布局、交互、权限及相关自动化测试。三语切换、英文／印尼文及移动端／窄屏测试，须用户明确要求后再执行，不因旧验收矩阵自动扩大范围。
