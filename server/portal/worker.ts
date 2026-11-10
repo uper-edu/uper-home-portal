@@ -1,7 +1,7 @@
 import {personalNotificationPreferences,personalNotificationAllowed,personalNotificationLanguage} from './personalNotificationPreferences.ts';
 import {processLarkBindingConfirmations} from './larkSelfService.ts';
 import {larkApp,larkBindings} from './larkApp.ts';
-import {larkTestDeliveryRestriction} from './larkDeliveryAccess.ts';
+import {larkTestGroupDisallowed} from './larkDeliveryAccess.ts';
 import {processExtractionBatch} from './aiExtraction.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
@@ -476,17 +476,12 @@ export async function tick(clock = new Date()) {
     if(personalEmployee && process.env.LARK_PERSONAL_DELIVERY_ENABLED!=='true'){
       await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
     }
-    const testRestriction = larkTestDeliveryRestriction(process.env, job.recipient, personalEmployee);
-    if (testRestriction === 'personal') {
-      await pool.query("UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=:p3 WHERE id=:p1", [job.id, 'Test personal recipient not allowed', clock]);
-      return;
-    }
     const url = process.env[config.secretRef];
     if (
       (!personalEmployee && !validWebhook(url)) ||
       ((!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef)) &&
         !process.env[config.signingSecretRef]) ||
-      testRestriction === 'group'
+      (!personalEmployee && larkTestGroupDisallowed(process.env, job.recipient))
     ) {
       await tx(async (c) => {
         await c.query(

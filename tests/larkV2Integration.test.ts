@@ -5,7 +5,7 @@ import {disposeNativeTest} from './helpers/disposeNativeTest.mjs';
 import {defaults} from '../server/portal/policy.ts';
 if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approved isolated database',{skip:true},()=>{});}else{
  const fixture=await setupNativeTest('lark_v2');
- process.env.PLATFORM_MODE='mock'; process.env.LARK_TEST_GROUP='qa';process.env.LARK_TEST_PERSONAL_EMPLOYEE_IDS='test-admin';process.env.TEST_LARK_V2='https://open.larksuite.com/open-apis/bot/v2/hook/fixture';
+ process.env.PLATFORM_MODE='mock'; process.env.LARK_TEST_GROUP='qa';process.env.TEST_LARK_V2='https://open.larksuite.com/open-apis/bot/v2/hook/fixture';
  const {pool}=await import('../server/portal/store.ts');const {tick}=await import('../server/portal/worker.ts');
  const native=globalThis.fetch;let cards:any[]=[];
  globalThis.fetch=async()=>{throw Error('Unexpected external request blocked');};
@@ -165,5 +165,5 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approv
  assert.equal((await pool.query("SELECT state FROM notification_jobs WHERE event_id='private-unknown' AND recipient='personal:test-admin'")).rows[0].state,'unknown');
  delete process.env.LARK_PERSONAL_DELIVERY_ENABLED;delete process.env.LARK_APP_SECRET;delete process.env.LARK_APP_ID;process.env.LARK_TEST_GROUP='qa';
  });
- }finally{globalThis.fetch=native;await pool.end();await disposeNativeTest(fixture);delete process.env.TEST_LARK_V2;delete process.env.LARK_TEST_PERSONAL_EMPLOYEE_IDS;}
+ }finally{globalThis.fetch=native;await pool.end();await disposeNativeTest(fixture);delete process.env.TEST_LARK_V2;}
 }
