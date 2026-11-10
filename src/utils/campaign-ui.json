@@ -119,10 +119,6 @@
     "Semua status",
     "全部状态"
   ],
-  "Campaigns with customer attribution or verified source associations can be archived in Edit information.": [
-    "Kampanye dengan atribusi pelanggan atau asosiasi sumber terverifikasi dapat diarsipkan melalui Edit informasi.",
-    "已有客户归因或已核实来源关联的活动，可在「编辑信息」中归档。"
-  ],
   "This campaign has customer attribution and cannot be deleted.": [
     "Kampanye ini memiliki atribusi pelanggan dan tidak dapat dihapus.",
     "此活动已有客户归因，无法删除。"
@@ -505,10 +501,6 @@
   "Medium *": [
     "Media promosi *",
     "推广方式 *"
-  ],
-  "More campaign actions": [
-    "Tindakan kampanye lainnya",
-    "更多活动操作"
   ],
   "More filters": [
     "Filter lainnya",

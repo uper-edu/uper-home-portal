@@ -141,7 +141,7 @@ export function CampaignCards({
 }: {
   campaigns: CrmCampaignRecord[];
   lang: "en" | "id" | "zh";
-  onOpen: (campaign: CrmCampaignRecord, tab?: CampaignCardTab) => void;
+  onOpen: (campaign: CrmCampaignRecord, tab?: CampaignCardTab, addPromotion?: boolean) => void;
   onEdit?: (campaign: CrmCampaignRecord) => void;
   reviewCounts?: PromotionReviewCounts;
   onReview?: (campaign: CrmCampaignRecord) => void;
@@ -308,7 +308,7 @@ export function CampaignCards({
                   <button
                     type="button"
                     className="campaign-card-primary"
-                    onClick={() => onOpen(c, "overview")}
+                    onClick={() => onOpen(c, "overview", entry.kind === "empty" && !!onEdit)}
                   >
                     <QrCode size={15} aria-hidden="true" />
                     {entry.kind === "empty" && !onEdit

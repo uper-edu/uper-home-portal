@@ -206,9 +206,9 @@ export function CrmCampaignHub({
       ? pageParams.get("campaignView")
       : "overview"
   ) as DetailTab;
-  const [promotionForm, setPromotionForm] = useState<{id:string;open:boolean}>();
+  const [promotionFormCampaignId, setPromotionFormCampaignId] = useState<string>();
   const addingPromotion = !!activeDetailCampaign && canManageCampaigns &&
-    (promotionForm?.id === activeDetailCampaign.id ? promotionForm.open : !activeDetailCampaign.promotionLinks?.length && activeDetailCampaign.promotionModel === "multiple");
+    promotionFormCampaignId === activeDetailCampaign.id;
   const presetDetail = !!activeDetailCampaign && isEvergreenCampaign(activeDetailCampaign);
   const organicDetail =
     !!activeDetailCampaign && isOrganicCampaign(activeDetailCampaign);
@@ -297,15 +297,18 @@ export function CrmCampaignHub({
   const openCampaign = (
     c: CrmCampaignRecord,
     tab: DetailTab = activeDetailCampaign ? detailTab : "overview",
+    addPromotion = false,
   ) => {
     if (isOrganicCampaign(c) && !["leads", "info"].includes(tab)) tab = "leads";
+    const formCampaignId = addPromotion && canManageCampaigns && tab === "overview" ? c.id : undefined;
     if (c.id === requestedCampaign && tab === detailTab) {
+      if (formCampaignId) setPromotionFormCampaignId(formCampaignId);
       setMobileList(false);
       return;
     }
     requestLeave(() => {
       setSaveNotice(false);
-      setPromotionForm(undefined);
+      setPromotionFormCampaignId(formCampaignId);
       setMobileList(false);
       navigateCampaign(c, tab);
     });
@@ -313,7 +316,7 @@ export function CrmCampaignHub({
   const closeCampaign = () =>
     requestLeave(() => {
       setSaveNotice(false);
-      setPromotionForm(undefined);
+      setPromotionFormCampaignId(undefined);
       setMobileList(true);
       navigateCampaign(null);
     });
@@ -321,7 +324,7 @@ export function CrmCampaignHub({
     if (activeDetailCampaign && tab !== detailTab)
       requestLeave(() => {
         setSaveNotice(false);
-        setPromotionForm(undefined);
+        setPromotionFormCampaignId(undefined);
         navigateCampaign(activeDetailCampaign, tab);
       });
   };
@@ -390,10 +393,12 @@ export function CrmCampaignHub({
         requestLeave(() => {
           window.history.replaceState({}, "", target);
           setSaveNotice(false);
+          setPromotionFormCampaignId(undefined);
           setPageUrl(target);
         });
       } else {
         setSaveNotice(false);
+        setPromotionFormCampaignId(undefined);
         setPageUrl(target);
       }
     };
@@ -725,7 +730,7 @@ export function CrmCampaignHub({
               onReview={
                 canManageCampaigns ? reviewCampaignPromotions : undefined
               }
-              onOpen={(c, tab) => openCampaign(c, tab || "overview")}
+              onOpen={(c, tab, addPromotion) => openCampaign(c, tab || "overview", addPromotion)}
               onEdit={
                 canManageCampaigns ? (c) => handleOpenEditWizard(c) : undefined
               }
@@ -955,21 +960,33 @@ export function CrmCampaignHub({
                     <>
                       {detailTab === "overview" && canManageCampaigns && (
                         <button type="button" className="campaign-workspace-action campaign-primary"
-                          onClick={() => setPromotionForm({id:activeDetailCampaign.id,open:true})}>
+                          onClick={() => setPromotionFormCampaignId(activeDetailCampaign.id)}>
                           {u(activeDetailCampaign.promotionLinks?.length ? "Add another promotion link" : "Add promotion link")}
                         </button>
                       )}
                       {canManageCampaigns &&
                         !organicDetail && !presetDetail && (
-                          <button
-                            className="campaign-workspace-action"
-                            onClick={() =>
-                              handleOpenEditWizard(activeDetailCampaign)
-                            }
-                          >
-                            <Edit3 size={16} />
-                            {u("Edit information")}
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              className="campaign-workspace-action"
+                              onClick={() => handleOpenEditWizard(activeDetailCampaign)}
+                            >
+                              <Edit3 size={16} />
+                              {u("Edit information")}
+                            </button>
+                            <button
+                              type="button"
+                              className="campaign-workspace-action"
+                              onClick={() => {
+                                setCampaignDeleteError("");
+                                setCampaignDeleteTarget(activeDetailCampaign);
+                              }}
+                            >
+                              <Trash2 size={16} aria-hidden="true" />
+                              {u("Delete campaign")}
+                            </button>
+                          </>
                         )}
                       <button
                         type="button"
@@ -982,6 +999,24 @@ export function CrmCampaignHub({
                     </>
                   }
                 />
+                {canManageCampaigns && !organicDetail && !presetDetail &&
+                  campaignDeleteTarget?.id === activeDetailCampaign.id && (
+                    <CrmDiscardDialog
+                      lang={lang}
+                      isLight={isLight}
+                      tone="danger"
+                      busy={campaignDeleting}
+                      announceDescription
+                      title={u("Delete {name}?", {name: campaignDeleteTarget.name})}
+                      description={campaignDeleteError
+                        ? campaignUiError(lang, campaignDeleteError)
+                        : u("Shared short links and QR codes will stop working after deletion.")}
+                      keepLabel={u(campaignDeleteError ? "Close" : "Cancel")}
+                      discardLabel={u(campaignDeleting ? "Working…" : "Delete campaign")}
+                      onKeep={() => setCampaignDeleteTarget(null)}
+                      onDiscard={campaignDeleteError ? undefined : () => void handleDeleteCampaign()}
+                    />
+                  )}
                 <CrmDetailTabs
                   id="crm-campaign"
                   contentId="crm-campaign-content"
@@ -1053,7 +1088,7 @@ export function CrmCampaignHub({
                         isLight={isLight}
                         adding={addingPromotion}
                         canManage={canManageCampaigns}
-                        onCloseForm={() => setPromotionForm({id:activeDetailCampaign.id,open:false})}
+                        onCloseForm={() => setPromotionFormCampaignId(undefined)}
                         onSaved={(c) => {
                           updateCampaign(c);
                           void fetchCampaigns();
@@ -1103,43 +1138,6 @@ export function CrmCampaignHub({
                           campaign={activeDetailCampaign}
                         />
                       )}
-                      {canManageCampaigns &&
-                        !organicDetail && !presetDetail && (
-                          <details className="campaign-info-section">
-                            <summary>{u("More campaign actions")}</summary>
-                            <p className="campaign-hint">
-                              {u(
-                                "Campaigns with customer attribution or verified source associations can be archived in Edit information.",
-                              )}
-                            </p>
-                            <button
-                              className="campaign-workspace-action"
-                              onClick={() => {
-                                setCampaignDeleteError("");
-                                setCampaignDeleteTarget(activeDetailCampaign);
-                              }}
-                            >
-                              {u("Delete campaign")}
-                            </button>
-                            {campaignDeleteTarget?.id === activeDetailCampaign.id && (
-                              <CrmDiscardDialog
-                                lang={lang}
-                                isLight={isLight}
-                                tone="danger"
-                                busy={campaignDeleting}
-                                announceDescription
-                                title={u("Delete {name}?", {name: campaignDeleteTarget.name})}
-                                description={campaignDeleteError
-                                  ? campaignUiError(lang, campaignDeleteError)
-                                  : u("Shared short links and QR codes will stop working after deletion.")}
-                                keepLabel={u(campaignDeleteError ? "Close" : "Cancel")}
-                                discardLabel={u(campaignDeleting ? "Working…" : "Delete campaign")}
-                                onKeep={() => setCampaignDeleteTarget(null)}
-                                onDiscard={campaignDeleteError ? undefined : () => void handleDeleteCampaign()}
-                              />
-                            )}
-                          </details>
-                        )}
                     </>
                   )}
 
