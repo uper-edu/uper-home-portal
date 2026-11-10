@@ -1,4 +1,4 @@
-> Historical design dated 2026-10-14. Current deployment and environment policy: [2026-10-15 acceptance](company-host-deployment-20261015.md) and [environment configuration](environment-configuration.md). The approved test-only internal MySQL direct mode supersedes the TLS-only requirement below; shared certificates were not changed. Server environment is now `.env.test`.
+> Historical design dated 2026-10-14. See the [current notification release checklist](#测试站通知进程发布检查) for every company test release. See [2026-10-15 acceptance](company-host-deployment-20261015.md) and [environment configuration](environment-configuration.md) for current deployment policy. The approved test-only internal MySQL direct mode supersedes the TLS-only requirement below; shared certificates were not changed. Server environment is now `.env.test`.
 
 # Company trial deployment — local adaptation and release checklist
 
@@ -34,6 +34,14 @@ Target: `https://home.prototype.uperedu.com`, including `/chat`, `/crm`, `/cms`,
 - After a separately approved TEST receipt check: `PORTAL_WORKER_ENABLED=true`, `PORTAL_NOTIFICATION_MODE=configured`, `LARK_TEST_GROUP=CRM_Leads_Update`. Map policies to this existing logical channel, display CRM Bot, use `secretRef=LARK_GROUP_CRM`, signing off. Only this channel may send live in company trial. Cards always say `UPER · TEST` and link to the same-domain CRM.
 - Owner → CRM Manager routing, policy snapshots, unknown-result handling, task cancellation and migration holds remain intact. Starting a worker is not permission to replay old failed/unknown/held jobs. Use the empty synthetic DB or individually reviewed NEW events only. API accepted is not actual group receipt.
 - Local acceptance uses only a stubbed Lark transport and synthetic credentials. It does not send a real group notification or call AI.
+
+### 测试站通知进程发布检查
+
+- [ ] **发布前**，在公司测试服务器只读核对 `/opt/project/home/api/.env.test`，确认 `PORTAL_WORKER_ENABLED=false`。
+- [ ] **发布前**，用本次发布实际采用的 Compose 文件和覆盖设置做只读解析，确认 `api` 服务的有效 `PORTAL_WORKER_ENABLED` 也为 `false`。两项都通过才继续发布。任一结果缺失或不同，暂停发布并查明配置来源。
+- [ ] **发布后**，只读核对新容器中实际运行的应用进程，确认它加载的 `PORTAL_WORKER_ENABLED=false`，且通知后台进程保持关闭。两项都通过才完成验收。
+
+验收记录仅保存开关值和核对结果。检查时只提取指定变量，避免输出完整环境、密钥或通知内容。无需发送测试通知。
 
 ## Release order and outstanding host checks
 
