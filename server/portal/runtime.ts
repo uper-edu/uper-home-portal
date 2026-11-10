@@ -549,7 +549,8 @@ export async function mountPortal(app: Express) {
           )
         ).rows[0]?.profile || {};
       if(contactsConflict(existing,b)) fail(409,"Contact identity changed; start a separate visitor session");
-      const promotion = await promotionAttribution(c, existing, b);
+      // Hold the campaign row through registration, just as manual review does.
+      const promotion = await promotionAttribution(c, existing, b, true);
       let profile:any = {
         ...existing,
         ...firstTouchAttribution(existing, b),

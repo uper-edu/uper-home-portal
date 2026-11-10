@@ -5,6 +5,18 @@
       "server/portal/localAuth.ts"
     ]
   },
+  "DELETE FROM campaign_promotion_index WHERE p=:p1 AND campaign_id=:p2": {
+    "sql": "DELETE FROM campaign_promotion_index WHERE p=:p1 AND campaign_id=:p2",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
+  "DELETE FROM campaign_promotion_short_links WHERE p=:p1": {
+    "sql": "DELETE FROM campaign_promotion_short_links WHERE p=:p1",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
   "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2": {
     "sql": "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2",
     "sources": [
@@ -536,6 +548,12 @@
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.create',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.create',:p2)",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.delete',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.delete',:p2)",
     "sources": [
       "server/portal/campaignPromotion.ts"
     ]
@@ -1727,6 +1745,12 @@
       "server/portal/notificationGroupChannels.ts"
     ]
   },
+  "SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND (data->>'$.before.linkId'=:p1 OR data->>'$.after.linkId'=:p1) LIMIT 1": {
+    "sql": "SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND (data->>'$.before.linkId'=:p1 OR data->>'$.after.linkId'=:p1) LIMIT 1",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
   "SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND data->>'$.after.status'='linked' AND data->>'$.after.campaignId'=:p1 LIMIT 1": {
     "sql": "SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND data->>'$.after.status'='linked' AND data->>'$.after.campaignId'=:p1 LIMIT 1",
     "sources": [
@@ -1749,6 +1773,12 @@
     "sql": "SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto' IN (:p1)",
     "sources": [
       "server/portal/payments.ts"
+    ]
+  },
+  "SELECT id FROM portal_leads WHERE profile->>'$.promotionLinkId'=:p1 OR profile->>'$.promotionReview.linkId'=:p1 OR JSON_CONTAINS(JSON_EXTRACT(profile,'$.identitySources[*].promotionLinkId'),JSON_QUOTE(:p1)) LIMIT 1": {
+    "sql": "SELECT id FROM portal_leads WHERE profile->>'$.promotionLinkId'=:p1 OR profile->>'$.promotionReview.linkId'=:p1 OR JSON_CONTAINS(JSON_EXTRACT(profile,'$.identitySources[*].promotionLinkId'),JSON_QUOTE(:p1)) LIMIT 1",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
     ]
   },
   "SELECT id FROM portal_settings WHERE id LIKE 'lark_notice:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.state'))='pending' ORDER BY id LIMIT 5": {
@@ -1790,6 +1820,12 @@
   },
   "SELECT id,code,config FROM trial_campaigns WHERE id=:p1": {
     "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1",
+    "sources": [
+      "server/portal/attribution.ts"
+    ]
+  },
+  "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 FOR SHARE",
     "sources": [
       "server/portal/attribution.ts"
     ]

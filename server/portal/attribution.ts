@@ -43,11 +43,13 @@ async function campaignForCode(db: any, code: string) {
  return (await db.query('SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1', [code])).rows[0] || null;
 }
 
-export async function resolvePromotion(db: any, p: string) {
+export async function resolvePromotion(db: any, p: string, lockCampaign = false) {
  if (!promotionIdPattern.test(p)) return null;
  const index = (await db.query('SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1', [p])).rows[0];
  if (!index) return null;
- const row = (await db.query('SELECT id,code,config FROM trial_campaigns WHERE id=:p1', [index.campaign_id])).rows[0];
+ const row = (await db.query(lockCampaign
+  ? 'SELECT id,code,config FROM trial_campaigns WHERE id=:p1 FOR SHARE'
+  : 'SELECT id,code,config FROM trial_campaigns WHERE id=:p1', [index.campaign_id])).rows[0];
  if (!row) return null;
  const link = row.config?.promotionLinks?.find((item: any) => item.id === p);
  return link ? {campaign: {...row.config, id:row.id, code:row.code}, link} : null;
@@ -64,7 +66,7 @@ export function publicPromotion(resolved: NonNullable<Awaited<ReturnType<typeof 
  };
 }
 
-export async function promotionAttribution(db: any, existing: any, input: any) {
+export async function promotionAttribution(db: any, existing: any, input: any, lockCampaign = false) {
  // Preserve the original attribution as a unit, including an originally unrecorded p.
  if (existing.campaignId || existing.campaign || existing.promotionLinkStatus) return {};
  const rawPromotion = typeof input.promotionLinkId === 'string' ? input.promotionLinkId.slice(0, 191) : '';
@@ -75,7 +77,7 @@ export async function promotionAttribution(db: any, existing: any, input: any) {
       .map(({key, value}) => ({key, value:value.slice(0, 191)})) : [];
   const malformed = input.promotionParametersInvalid === true || !promotionIdPattern.test(rawPromotion)
     || parameters.some(item => item.key === 'p' && item.value !== rawPromotion);
-  const resolved = malformed ? null : await resolvePromotion(db, rawPromotion);
+  const resolved = malformed ? null : await resolvePromotion(db, rawPromotion, lockCampaign);
   if (!resolved) return {
    rawPromotionLinkId: rawPromotion,
    rawPromotionParameters: parameters,

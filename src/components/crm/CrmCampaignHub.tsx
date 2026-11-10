@@ -1058,6 +1058,7 @@ export function CrmCampaignHub({
                         campaign={activeDetailCampaign}
                         isLight={isLight}
                         adding={addingPromotion}
+                        canManage={canManageCampaigns}
                         onCloseForm={() => setPromotionForm({id:activeDetailCampaign.id,open:false})}
                         onSaved={(c) => {
                           updateCampaign(c);

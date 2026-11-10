@@ -3,7 +3,7 @@ import {auditLog} from './audit.ts';
 import {tx} from './store.ts';
 import {promotionInput,promotionIdPrefix} from '../../src/utils/campaignPromotion.ts';
 import {assertEditableCampaign,isEvergreenCampaign} from '../../src/utils/organicCampaign.ts';
-import {allocatePromotionShortCode} from '../../cloud/mysql/promotion-short-links.mjs';
+import {allocatePromotionShortCode,presetPromotionOwner} from '../../cloud/mysql/promotion-short-links.mjs';
 import type {CampaignPromotionLink} from '../../src/types/crmCampaign.ts';
 
 export async function promotionShortCodes(db:any) {
@@ -27,6 +27,8 @@ export async function addCampaignPromotion(campaignId:string,input:any,actor:str
   const prior=(await db.query("SELECT data FROM portal_audit WHERE actor=:p1 AND action='campaign.promotion.create' AND JSON_UNQUOTE(JSON_EXTRACT(data,'$.requestId'))=:p2 ORDER BY id DESC LIMIT 1",[actor,input.requestId])).rows[0]?.data;
   if(prior){
    if(prior.fingerprint!==fingerprint)throw Object.assign(Error('Request already used with different values.'),{status:409});
+   if(!row.config.promotionLinks?.some((link:CampaignPromotionLink)=>link.id===prior.link.id))
+    throw Object.assign(Error('This promotion link was deleted.'),{status:410});
    const codes=await promotionShortCodes(db);
    return {campaign:attachPromotionShortCodes(row.config,codes),link:{...prior.link,shortCode:codes.get(prior.link.id)}};
   }
@@ -39,6 +41,26 @@ export async function addCampaignPromotion(campaignId:string,input:any,actor:str
   await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.create',:p2)",[actor,{campaignId,requestId:input.requestId,fingerprint,link}]);
   auditLog(actor,'campaign.promotion.create',{requestId:input.requestId});
   return {campaign:attachPromotionShortCodes(campaign,await promotionShortCodes(db)),link:{...link,shortCode}};
+ });
+}
+
+export async function deleteCampaignPromotion(campaignId:string, linkId:string, actor:string) {
+ const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
+ return tx(async(db:any)=>{
+  // Registration and manual review take the same campaign lock before recording attribution.
+  const row=(await db.query('SELECT config FROM trial_campaigns WHERE id=:p1 FOR UPDATE',[campaignId])).rows[0];
+  const links:CampaignPromotionLink[]=row?.config?.promotionLinks ?? [];
+  if(!links.some(link=>link.id===linkId))fail(404,'Promotion link not found.');
+  if(presetPromotionOwner(linkId)===campaignId)fail(409,'System preset links cannot be deleted.');
+  const linked=(await db.query("SELECT id FROM portal_leads WHERE profile->>'$.promotionLinkId'=:p1 OR profile->>'$.promotionReview.linkId'=:p1 OR JSON_CONTAINS(JSON_EXTRACT(profile,'$.identitySources[*].promotionLinkId'),JSON_QUOTE(:p1)) LIMIT 1",[linkId])).rows.length>0;
+  const reviewed=linked || (await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND (data->>'$.before.linkId'=:p1 OR data->>'$.after.linkId'=:p1) LIMIT 1",[linkId])).rows.length>0;
+  if(reviewed)fail(409,'This promotion link has customer attribution and cannot be deleted.');
+  const promotionLinks=links.filter(link=>link.id!==linkId);
+  await db.query('DELETE FROM campaign_promotion_short_links WHERE p=:p1',[linkId]);
+  await db.query('DELETE FROM campaign_promotion_index WHERE p=:p1 AND campaign_id=:p2',[linkId,campaignId]);
+  await db.query('UPDATE trial_campaigns SET config=:p2 WHERE id=:p1',[campaignId,{...row.config,promotionLinks,updatedAt:new Date().toISOString()}]);
+  await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.delete',:p2)",[actor,{campaignId,linkId}]);
+  return {success:true};
  });
 }
 

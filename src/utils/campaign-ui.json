@@ -1870,5 +1870,61 @@
     "atau buka Masalah sumber promosi untuk memeriksa.",
     "也可打开「推广来源异常」核对。"
   ],
-  "Campaign": ["Kampanye", "营销活动"]
+  "Campaign": ["Kampanye", "营销活动"],
+  "Delete promotion link": [
+    "Hapus tautan promosi",
+    "删除推广链接"
+  ],
+  "Delete promotion link: {name}": [
+    "Hapus tautan promosi: {name}",
+    "删除推广链接：{name}"
+  ],
+  "Delete {name}?": [
+    "Hapus {name}?",
+    "删除「{name}」？"
+  ],
+  "Shared short links and QR codes will stop working after deletion.": [
+    "Tautan pendek dan kode QR yang sudah dibagikan tidak akan berfungsi setelah dihapus.",
+    "删除后，已分享的短链和二维码将失效。"
+  ],
+  "Promotion link not found.": [
+    "Tautan promosi tidak ditemukan.",
+    "找不到这条推广链接。"
+  ],
+  "System preset links cannot be deleted.": [
+    "Tautan bawaan sistem tidak dapat dihapus.",
+    "系统预置链接不可删除。"
+  ],
+  "This promotion link has customer attribution and cannot be deleted.": [
+    "Tautan ini sudah dikaitkan dengan pelanggan dan tidak dapat dihapus.",
+    "这条推广链接已有客户归因，不可删除。"
+  ],
+  "This promotion link was deleted.": [
+    "Tautan promosi ini sudah dihapus.",
+    "这条推广链接已删除。"
+  ],
+  "Could not delete the promotion link.": [
+    "Tautan promosi gagal dihapus.",
+    "无法删除推广链接。"
+  ],
+  "Deletion result unknown. Check whether the link is still listed.": [
+    "Hasil penghapusan belum diketahui. Periksa apakah tautan masih ada di daftar.",
+    "删除结果尚未确认，请核对链接是否仍在列表中。"
+  ],
+  "The link is still listed. Refresh before trying again.": [
+    "Tautan masih ada di daftar. Muat ulang sebelum mencoba lagi.",
+    "链接仍在列表中，请刷新后再操作。"
+  ],
+  "Check deletion result": [
+    "Periksa hasil penghapusan",
+    "核对删除结果"
+  ],
+  "Promotion link deleted.": [
+    "Tautan promosi dihapus.",
+    "推广链接已删除。"
+  ],
+  "Working…": [
+    "Memproses…",
+    "处理中…"
+  ]
 }

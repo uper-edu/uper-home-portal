@@ -143,6 +143,7 @@ export function CrmDiscardDialog({
   lang = "en",
   tone = "default",
   announceDescription = false,
+  busy = false,
 }: {
   onKeep: () => void;
   onDiscard?: () => void;
@@ -154,6 +155,7 @@ export function CrmDiscardDialog({
   discardLabel?: string;
   tone?: "default" | "danger";
   announceDescription?: boolean;
+  busy?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     opener = useRef<HTMLElement | null>(null);
@@ -177,16 +179,16 @@ export function CrmDiscardDialog({
       onCancel={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onKeep();
+        if (!busy) onKeep();
       }}
     >
       <h2 id="crm-unsaved-title">{campaignUi(lang)(title)}</h2>
       <p id="crm-unsaved-description" aria-live={announceDescription ? "polite" : undefined}>{campaignUi(lang)(description)}</p>
       <footer>
-        <button type="button" autoFocus onClick={onKeep}>
+        <button type="button" autoFocus disabled={busy} onClick={onKeep}>
           {campaignUi(lang)(keepLabel)}
         </button>
-        {onDiscard && <button type="button" onClick={onDiscard}>
+        {onDiscard && <button type="button" disabled={busy} onClick={onDiscard}>
           {campaignUi(lang)(discardLabel)}
         </button>}
       </footer>

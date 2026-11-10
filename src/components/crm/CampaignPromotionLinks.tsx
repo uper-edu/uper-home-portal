@@ -69,11 +69,13 @@ function LinkCard({
   link,
   lang,
   isLight,
+  onDelete,
 }: {
   lang: "en" | "id" | "zh";
   campaign: CrmCampaignRecord;
   link: CampaignPromotionLink;
   isLight: boolean;
+  onDelete?: () => void;
 }) {
   const u = campaignUi(lang);
   const createdAt = crmInstant(link.createdAt);
@@ -123,6 +125,12 @@ function LinkCard({
             >
               {u("Preview entry")}
             </a>
+            {!isPreset && onDelete && (
+              <button type="button" className="campaign-workspace-action" onClick={onDelete}
+                aria-label={u("Delete promotion link: {name}", {name:link.name})}>
+                {u("Delete promotion link")}
+              </button>
+            )}
           </div>
         </div>
         <p>
@@ -214,6 +222,7 @@ export function CampaignPromotionLinks({
   onCloseForm,
   onSaved,
   onStateChange,
+  canManage,
   lang = "en",
 }: {
   lang?: "en" | "id" | "zh";
@@ -223,9 +232,16 @@ export function CampaignPromotionLinks({
   onCloseForm: () => void;
   onSaved: (c: CrmCampaignRecord) => void;
   onStateChange: (state: { dirty: boolean; busy: boolean }) => void;
+  canManage: boolean;
 }) {
   const u = campaignUi(lang);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CampaignPromotionLink | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteUnknown, setDeleteUnknown] = useState(false);
+  const list = useRef<HTMLElement>(null);
+  const deleting = useRef(false);
   const [customSource, setCustomSource] = useState(false);
   const [v, setV] = useState(newPromotionDraft);
   const [error, setError] = useState(""),
@@ -239,9 +255,9 @@ export function CampaignPromotionLinks({
     adding &&
     (!!v.name || !!v.source || !!v.medium || v.language !== "id" || v.landingPath !== "/chat" || !!v.promotionKind || !!v.content || unknown);
   useEffect(() => {
-    onStateChange({ dirty, busy });
+    onStateChange({ dirty, busy: busy || deleteBusy });
     return () => onStateChange({ dirty: false, busy: false });
-  }, [dirty, busy, onStateChange]);
+  }, [dirty, busy, deleteBusy, onStateChange]);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -318,8 +334,47 @@ export function CampaignPromotionLinks({
       setBusy(false);
     }
   }
+  async function removeLink(checkOnly = false) {
+    if (!deleteTarget || deleting.current) return;
+    const linkId = deleteTarget.id;
+    const base = `/api/crm/campaigns/${encodeURIComponent(campaign.id)}`;
+    deleting.current = true;
+    setDeleteBusy(true);
+    try {
+      const response = await fetch(checkOnly ? base : `${base}/links/${encodeURIComponent(linkId)}`, {
+        ...(checkOnly ? {cache:"no-store"} : {method:"DELETE", headers:{"Content-Type":"application/json"}, body:"{}"}),
+        signal:AbortSignal.timeout(20000),
+      });
+      const result = await response.json();
+      if (checkOnly) {
+        if (!response.ok || result.campaign?.id !== campaign.id) throw Error("Unknown result");
+        if (result.campaign.promotionLinks?.some((link:CampaignPromotionLink)=>link.id===linkId)) {
+          setDeleteError("The link is still listed. Refresh before trying again.");
+          setDeleteUnknown(false);
+          return;
+        }
+        onSaved(result.campaign);
+      } else {
+        if (!response.ok && response.status < 500) {
+          setDeleteError(result.error || "Could not delete the promotion link.");
+          return;
+        }
+        if (!response.ok || result.success !== true) throw Error("Unknown result");
+        onSaved({...campaign,promotionLinks:campaign.promotionLinks?.filter(link=>link.id!==linkId)});
+      }
+      setNotice("Promotion link deleted.");
+      setDeleteTarget(null);
+      requestAnimationFrame(()=>list.current?.focus({preventScroll:true}));
+    } catch {
+      setDeleteUnknown(true);
+      setDeleteError("Deletion result unknown. Check whether the link is still listed.");
+    } finally {
+      deleting.current = false;
+      setDeleteBusy(false);
+    }
+  }
   return (
-    <section className="campaign-promotion" aria-label={u("Promotion links")}>
+    <section className="campaign-promotion" aria-label={u("Promotion links")} ref={list} tabIndex={-1}>
       <header>
         <p>
           {u(
@@ -521,8 +576,22 @@ export function CampaignPromotionLinks({
         </CrmOperationLayer>
       )}
       {(campaign.promotionLinks || []).map((link) => (
-        <LinkCard isLight={isLight} lang={lang} key={link.id} campaign={campaign} link={link} />
+        <LinkCard isLight={isLight} lang={lang} key={link.id} campaign={campaign} link={link}
+          onDelete={canManage ? () => {
+            setDeleteError("");
+            setDeleteUnknown(false);
+            setDeleteTarget(link);
+          } : undefined} />
       ))}
+      {deleteTarget && (
+        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger" busy={deleteBusy} announceDescription
+          title={u("Delete {name}?", {name:deleteTarget.name})}
+          description={deleteError ? campaignUiError(lang,deleteError) : u("Shared short links and QR codes will stop working after deletion.")}
+          keepLabel={deleteError ? u("Close") : u("Cancel")}
+          discardLabel={u(deleteBusy ? "Working…" : deleteUnknown ? "Check deletion result" : "Delete promotion link")}
+          onKeep={()=>setDeleteTarget(null)}
+          onDiscard={deleteError && !deleteUnknown ? undefined : ()=>void removeLink(deleteUnknown)} />
+      )}
 
       <p className="campaign-hint">
         {u("Environment:")} {window.location.origin}
