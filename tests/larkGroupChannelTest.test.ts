@@ -8,14 +8,14 @@ const id = "ops-group";
 const code = "a7b465db-9fa4-41e4-b871-752ebd7b6b17";
 const secret = "fixture-signing-key";
 const env = {
-  NODE_ENV: "production", APP_ENV: "production", PORTAL_DEPLOYMENT: "company-trial",
+  NODE_ENV: "production", APP_ENV: "production", PORTAL_DEPLOYMENT: "company-trial", PORTAL_ENV: "test",
   LARK_TEST_GROUP: id,
-  LARK_FIXTURE_GROUP: url,
+  LARK_GROUP_CRM: url,
   LARK_FIXTURE_SIGNING: secret,
 };
 const config = {
   mode: "live", groupName: "A label that must not be in the test message",
-  secretRef: "LARK_FIXTURE_GROUP",
+  secretRef: "LARK_GROUP_CRM",
   signingEnabled: true, signingSecretRef: "LARK_FIXTURE_SIGNING",
 };
 
@@ -24,7 +24,7 @@ test("simulation requires a saved destination and signing config and skips the t
   const local = { ...env, TRIAL_DATASET: "local-crm" };
   const simulated = {...config, mode: "simulation"};
   assert.equal(await sendGroupChannelTest(planGroupChannelTest(id, simulated, local), code, transport), "accepted");
-  const replacement = {...local, LARK_FIXTURE_GROUP: url + "-replacement"};
+  const replacement = {...local, LARK_GROUP_CRM: url + "-replacement"};
   assert.equal(planGroupChannelTest(id, simulated, replacement).url, url + "-replacement");
   assert.equal(await sendGroupChannelTest(planGroupChannelTest(id, simulated, replacement), code, transport), "accepted");
   assert.equal(planGroupChannelTest(id, config, {...local, LARK_FIXTURE_SIGNING: ""}).blocked, "missing_signing_secret");
@@ -52,7 +52,7 @@ test("live group tests keep the existing destination and company simulation rest
     [{ LARK_TEST_GROUP: "other" }, "test_group_blocked"],
     [{ PORTAL_NOTIFICATION_MODE: "simulation" }, "live_unavailable"],
     [{ PLATFORM_MODE: "mock" }, "live_unavailable"],
-    [{ LARK_FIXTURE_GROUP: "https://example.invalid" }, "missing_webhook"],
+    [{ LARK_GROUP_CRM: "https://example.invalid" }, "missing_webhook"],
   ] as const) {
     const plan = planGroupChannelTest(id, config, { ...env, ...overrides });
     assert.equal(plan.blocked, reason);
@@ -60,6 +60,6 @@ test("live group tests keep the existing destination and company simulation rest
     assert.equal(await sendGroupChannelTest(plan, code, forbidden), "rejected");
   }
   const plan = planGroupChannelTest(id, config, env);
-  assert.notEqual(plan.version, planGroupChannelTest(id, config, {...env, LARK_FIXTURE_GROUP: url + "-new"}).version);
+  assert.notEqual(plan.version, planGroupChannelTest(id, config, {...env, LARK_GROUP_CRM: url + "-new"}).version);
   assert.notEqual(plan.version, planGroupChannelTest(id, config, {...env, LARK_FIXTURE_SIGNING: "new-signature"}).version);
 });

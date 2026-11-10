@@ -1,3 +1,5 @@
+import { resolveGroupWebhook } from "./larkGroupWebhook.ts";
+export { validWebhook } from "./larkGroupWebhook.ts";
 import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
 import {larkNotificationColor} from '../../src/utils/larkNotificationColors.ts';
 import {notificationDestination,type NotificationTargetKind} from '../../src/utils/crmNotificationTarget.ts';
@@ -101,23 +103,6 @@ export function retryAfter(value: string | null, now: Date) {
   const time = Date.parse(value);
   return Number.isFinite(time) ? Math.max(0, (time - now.getTime()) / 1000) : 0;
 }
-export function validWebhook(value: string | undefined) {
-  try {
-    const u = new URL(value || "");
-    return (
-      u.protocol === "https:" &&
-      u.hostname === "open.larksuite.com" &&
-      !u.username &&
-      !u.password &&
-      !u.port &&
-      /^\/open-apis\/bot\/v2\/hook\/[a-zA-Z0-9_-]+$/.test(u.pathname) &&
-      !u.search &&
-      !u.hash
-    );
-  } catch {
-    return false;
-  }
-}
 export function larkCard(
   text: string,
   leadId: string | undefined,
@@ -209,7 +194,7 @@ export function dailyDigestCard(input:DailyDigestInput,secret:string|undefined,n
 }
 
 export function channelConnection(id: string, config: any) {
-  const webhookConfigured = validWebhook(process.env[config.secretRef]);
+  const webhookConfigured = Boolean(resolveGroupWebhook(id, config));
   const signingSecretConfigured =
     !(config.signingEnabled ?? !!config.signingSecretRef) ||
     !!process.env[config.signingSecretRef];

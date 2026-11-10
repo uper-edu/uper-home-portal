@@ -185,6 +185,7 @@ export default function NotificationCenter({
     [tab, setTab] = useState<Tab>(embeddedTab || "notification-rules"),
     [rows, setRows] = useState<Row[]>([]),
     [channels, setChannels] = useState<Row[]>([]);
+  const [environmentGroupWebhook, setEnvironmentGroupWebhook] = useState(false);
   useEffect(() => {
     if (navigationRequest > 0) setOpen(true);
   }, [navigationRequest]);
@@ -253,6 +254,7 @@ export default function NotificationCenter({
     try {
       const job=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
       const data = await api(tab+(tab==='notification-jobs'&&job?'?job='+encodeURIComponent(job):''));
+      if (tab === "notification-channels") setEnvironmentGroupWebhook(data.groupWebhookUsesEnvironment === true);
       setRows(
         tab === "integration-readiness"
           ? [{ id: "status", ...data }]
@@ -438,12 +440,13 @@ export default function NotificationCenter({
           throw Error(t("请填写实际群名称", "Enter the group name"));
         delete config.team;
         delete config.teamName;
+        if (environmentGroupWebhook) delete config.secretRef;
         if (config.mode === "simulation") {
           delete config.secretRef;
           delete config.signingSecretRef;
           delete config.signingEnabled;
         } else {
-          if (!config.secretRef?.trim())
+          if (!environmentGroupWebhook && !config.secretRef?.trim())
             throw Error(
               t(
                 "真实发送需要 机器人连接 配置引用",
@@ -1367,11 +1370,19 @@ export default function NotificationCenter({
                           </p>
                         </>,
                       )}
+                      {environmentGroupWebhook && section(
+                        t("群机器人 Webhook", "Group bot Webhook"),
+                        <div className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}>
+                          <p role="status">{rows.find(row => row.id === key)?.connection?.webhookConfigured
+                            ? t("已配置", "Configured") : t("未配置", "Not configured")}</p>
+                          <p>{t("群地址由服务端维护。", "The group address is managed on the server.")}</p>
+                        </div>,
+                      )}
                       {channel.mode === "live"
                         ? section(
                             t("2 · 连接配置", "2 · Connection settings"),
                             <>
-                              {text(
+                              {!environmentGroupWebhook && text(
                                 t(
                                   "机器人连接 配置引用（必填）",
                                   "Webhook configuration reference (required)",
@@ -1649,7 +1660,7 @@ export default function NotificationCenter({
                                 {t("标识：", "ID:")}
                                 {row.id}
                               </p>
-                              {row.config!.mode === "live" && (
+                              {row.config!.mode === "live" && !environmentGroupWebhook && (
                                 <p>
                                   {t("机器人连接 配置引用", "Webhook reference")}
                                   ：{row.config!.secretRef}

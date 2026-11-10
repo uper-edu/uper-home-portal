@@ -75,11 +75,11 @@ import { normalizeCrmMessage } from "../../src/utils/crmMessageTime.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import type { Express, Request, Response } from "express";
 import {
-  validWebhook,
   channelConnection,
   groupRateLimit,
   CRM_LEADER_ROLE,
 } from "./notificationDelivery.ts";
+import { groupWebhookUsesEnvironment, resolveGroupWebhook, usesEnvironmentGroupWebhook } from "./larkGroupWebhook.ts";
 import crypto from "node:crypto";
 import { DEFAULT_CRM_POLICY_CONFIG } from "../../src/types/crmPolicyConfig.ts";
 import { effectivePolicy, mergePolicyConfig, policySla } from "../../src/utils/crmPolicyConfigValidation.ts";
@@ -1452,7 +1452,7 @@ export async function mountPortal(app: Express) {
           id: row.id,
           team: config.team,
           mode: config.mode,
-          webhookConfigured: validWebhook(process.env[config.secretRef]),
+          webhookConfigured: channelConnection(row.id, config).webhookConfigured,
           signingSecretConfigured:
             !(config.signingEnabled ?? !!config.signingSecretRef) ||
             !!process.env[config.signingSecretRef],
@@ -1556,6 +1556,7 @@ export async function mountPortal(app: Express) {
             latest: personalLatest?.data.version === personal.version ? personalLatest.data : null,
           },
         },
+        groupWebhookUsesEnvironment: groupWebhookUsesEnvironment(),
       });
     }),
   );
@@ -1643,7 +1644,12 @@ export async function mountPortal(app: Express) {
           [req.params.id],
         )
       ).rows[0]?.config;
-      const ref = secretRef ?? previous?.secretRef;
+      const environmentWebhook = groupWebhookUsesEnvironment();
+      if (environmentWebhook && (secretRef !== undefined || req.body.webhook !== undefined))
+        fail(409, "The group Webhook is managed in the server environment.");
+      const ref = environmentWebhook
+        ? previous && usesEnvironmentGroupWebhook(previous) ? previous.secretRef : undefined
+        : secretRef ?? previous?.secretRef;
       const signing =
         signingEnabled ??
         previous?.signingEnabled ??
@@ -1657,8 +1663,9 @@ export async function mountPortal(app: Express) {
         (signingSecretRef !== undefined &&
           (typeof signingSecretRef !== "string" ||
             !/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))) ||
-        (mode === "live" &&
-          (typeof ref !== "string" || !/^[A-Z0-9_]{1,80}$/.test(ref))) ||
+        (mode === "live" && (environmentWebhook
+          ? previous?.mode !== "live" && !resolveGroupWebhook(String(req.params.id), {secretRef: ref})
+          : typeof ref !== "string" || !/^[A-Z0-9_]{1,80}$/.test(ref))) ||
         (signingEnabled !== undefined && typeof signingEnabled !== "boolean") ||
         (mode === "live" &&
           signing &&

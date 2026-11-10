@@ -1,5 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
-import { validWebhook } from "./notificationDelivery.ts";
+import { resolveGroupWebhook } from "./larkGroupWebhook.ts";
 import { larkTestGroupDisallowed } from "./larkDeliveryAccess.ts";
 
 export function liveTestUnavailable(env: NodeJS.ProcessEnv) {
@@ -27,12 +27,12 @@ type GroupTestConfig = {
 };
 
 export function planGroupChannelTest(id: string, config: GroupTestConfig, env = process.env) {
-  const url = config.secretRef ? env[config.secretRef] : undefined;
+  const url = resolveGroupWebhook(id, config, env);
   const signingEnabled = config.signingEnabled ?? Boolean(config.signingSecretRef);
   const signingSecret = signingEnabled && config.signingSecretRef ? env[config.signingSecretRef] : undefined;
   const simulated = config.mode !== "live";
   const blocked = !simulated && liveTestUnavailable(env) ? "live_unavailable"
-    : !validWebhook(url) ? "missing_webhook"
+    : !url ? "missing_webhook"
       : signingEnabled && !signingSecret ? "missing_signing_secret"
         : !simulated && larkTestGroupDisallowed(env, id) ? "test_group_blocked" : null;
   const version = createHash("sha256").update(JSON.stringify([

@@ -20,7 +20,6 @@ import {
   recipients,
   priority,
   retryAfter,
-  validWebhook,
   larkCard,
   standardLarkCard,
   dailyDigestCard,
@@ -28,6 +27,7 @@ import {
   resolveRecipients,
 } from "./notificationDelivery.ts";
 import { pool, tx, id, event, connection } from "./store.ts";
+import { resolveGroupWebhook } from "./larkGroupWebhook.ts";
 import { platform } from "./identity.ts";
 import {
   schedule,
@@ -476,9 +476,9 @@ export async function tick(clock = new Date()) {
     if(personalEmployee && process.env.LARK_PERSONAL_DELIVERY_ENABLED!=='true'){
       await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
     }
-    const url = process.env[config.secretRef];
+    const url = resolveGroupWebhook(job.recipient, config);
     if (
-      (!personalEmployee && !validWebhook(url)) ||
+      (!personalEmployee && !url) ||
       ((!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef)) &&
         !process.env[config.signingSecretRef]) ||
       (!personalEmployee && larkTestGroupDisallowed(process.env, job.recipient))

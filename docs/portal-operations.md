@@ -12,10 +12,10 @@ Local3000 uses its existing MySQL database. Do not start another process, replac
 | Standard HSK course presets | [Course catalog](../src/data/crmCoursePrices.json) | Initialization adds missing courses. Manage saved courses in CRM. |
 | SLA, work hours and automatic assignment | [CRM policy defaults](../src/types/crmPolicyConfig.ts) and CRM policy settings | Code supplies defaults where applicable. CRM saves environment-specific settings in MySQL. |
 | Notification rules and delivery limits | [Rule defaults](../server/portal/policy.ts), [Lark defaults](../src/utils/larkNotificationDefaults.ts) and CRM notification settings | CRM uses saved rules and channels for delivery. |
-| Webhook URLs, signing secrets and other credentials | [Server environment configuration](environment-configuration.md) | The service reads the environment values at startup. The channel record stores the variable name. |
+| Group Webhook, signing secrets and other credentials | [Server environment configuration](environment-configuration.md) | The service reads the environment values at startup. The channel record stores the variable name. |
 | Initial CMS content and images | [CMS initialization bundle v2](../cloud/mysql/seeds/cms/v2/README.md) and [COS/bootstrap operations](operations/cms-cos-bootstrap.md). Edit imported content in CMS. | Explicitly publish and verify COS resources, then import URL metadata into an approved empty CMS; existing databases require a reviewed incremental migration. |
 
-The CRM Lark Bot preset creates a missing `CRM_Leads_Update` channel when `LARK_GROUP_CRM` contains a valid Webhook URL. It creates the channel in live mode with the shared hourly limit and signing disabled by default. Match the signing setting to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
+The CRM Lark Bot preset creates a missing `CRM_Leads_Update` channel when `LARK_GROUP_CRM` contains a valid Webhook URL. It creates the channel in live mode with the shared hourly limit and signing disabled by default. For local CRM and company test, set `LARK_GROUP_CRM` in the environment's private server file and reload the service after replacing or removing the address. The CRM channel stores the variable name and displays connection status. Match the signing setting to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
 
 ## Permissions and notifications
 
