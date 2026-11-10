@@ -5,7 +5,7 @@ import {disposeNativeTest} from './helpers/disposeNativeTest.mjs';
 import {defaults} from '../server/portal/policy.ts';
 if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approved isolated database',{skip:true},()=>{});}else{
  const fixture=await setupNativeTest('lark_v2');
- process.env.PLATFORM_MODE='mock'; process.env.LARK_TEST_GROUP='qa';process.env.TEST_LARK_V2='https://open.larksuite.com/open-apis/bot/v2/hook/fixture';
+ process.env.PLATFORM_MODE='mock'; process.env.LARK_TEST_GROUP='qa';process.env.LARK_TEST_PERSONAL_EMPLOYEE_IDS='test-admin';process.env.TEST_LARK_V2='https://open.larksuite.com/open-apis/bot/v2/hook/fixture';
  const {pool}=await import('../server/portal/store.ts');const {tick}=await import('../server/portal/worker.ts');
  const native=globalThis.fetch;let cards:any[]=[];
  globalThis.fetch=async()=>{throw Error('Unexpected external request blocked');};
@@ -135,7 +135,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approv
  await event('private-language',{notificationPolicyVersion:2},'conversation.reactivated');await tick(new Date(clock.getTime()-1));
  await pool.query("UPDATE notification_jobs SET due_at=:p1 WHERE event_id='private-language' AND recipient='qa'",[new Date(clock.getTime()-2000)]);
  await pool.query("UPDATE notification_jobs SET due_at=:p1 WHERE event_id='private-language' AND recipient='personal:test-admin'",[new Date(clock.getTime()-1000)]);
- process.env.LARK_TEST_GROUP='qa';await tick(clock);process.env.LARK_TEST_GROUP='personal:test-admin';await tick(clock);
+ await tick(clock);await tick(clock);
  assert.ok(privateText.includes('[Penjualan]'),privateText||'No private card captured');assert.ok(groupText.includes('[销售通知]'),groupText||'No group card captured');assert.ok(!privateText.includes('[销售通知]'));
  await prefs([]);await pool.query("DELETE FROM access_state WHERE id='notification_preferences'");delete process.env.LARK_APP_ID;delete process.env.LARK_APP_SECRET;delete process.env.LARK_PERSONAL_DELIVERY_ENABLED;process.env.LARK_TEST_GROUP='qa';globalThis.fetch=async()=>{throw Error('Unexpected external request blocked');};
  });
@@ -150,7 +150,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approv
  });
  await test('personal app transport reuses card, uses stable job id and leaves ambiguous delivery unknown',async()=>{
  await reset();await rule('conversation.reactivated',['lark']);
- Object.assign(process.env,{LARK_APP_ID:'cli_synthetic',LARK_APP_SECRET:'synthetic-only',LARK_PERSONAL_DELIVERY_ENABLED:'true',LARK_TEST_GROUP:'personal:test-admin'});
+ Object.assign(process.env,{LARK_APP_ID:'cli_synthetic',LARK_APP_SECRET:'synthetic-only',LARK_PERSONAL_DELIVERY_ENABLED:'true',LARK_TEST_GROUP:'other-test-group'});
  await pool.query("INSERT INTO access_state(id,value) VALUES('lark_bindings',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{'test-admin':{appId:'cli_synthetic',openId:'ou_synthetic',email:'maya@example.com',revision:1,updatedAt:'2030-01-05T00:00:00Z'}}]);
  await pool.query("UPDATE notification_channels SET config=:p1 WHERE id='qa'",[{mode:'live',secretRef:'TEST_LARK_V2'}]);
  let personalBody:any;globalThis.fetch=async(url,options)=>{
@@ -165,5 +165,5 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark V2 integration requires approv
  assert.equal((await pool.query("SELECT state FROM notification_jobs WHERE event_id='private-unknown' AND recipient='personal:test-admin'")).rows[0].state,'unknown');
  delete process.env.LARK_PERSONAL_DELIVERY_ENABLED;delete process.env.LARK_APP_SECRET;delete process.env.LARK_APP_ID;process.env.LARK_TEST_GROUP='qa';
  });
- }finally{globalThis.fetch=native;await pool.end();await disposeNativeTest(fixture);delete process.env.TEST_LARK_V2;}
+ }finally{globalThis.fetch=native;await pool.end();await disposeNativeTest(fixture);delete process.env.TEST_LARK_V2;delete process.env.LARK_TEST_PERSONAL_EMPLOYEE_IDS;}
 }
