@@ -119,9 +119,25 @@
     "Semua status",
     "全部状态"
   ],
-  "Archive a campaign by changing its status in Edit information. Campaigns with promotion links or verified source associations cannot be deleted.": [
-    "Untuk mengarsipkan kampanye, ubah statusnya melalui Edit informasi. Kampanye yang memiliki tautan promosi atau asosiasi sumber terverifikasi tidak dapat dihapus.",
-    "可在“编辑信息”中将活动状态改为已归档。已有推广链接或已核实来源关联的活动不能删除。"
+  "Campaigns with customer attribution or verified source associations can be archived in Edit information.": [
+    "Kampanye dengan atribusi pelanggan atau asosiasi sumber terverifikasi dapat diarsipkan melalui Edit informasi.",
+    "已有客户归因或已核实来源关联的活动，可在「编辑信息」中归档。"
+  ],
+  "This campaign has customer attribution and cannot be deleted.": [
+    "Kampanye ini memiliki atribusi pelanggan dan tidak dapat dihapus.",
+    "此活动已有客户归因，无法删除。"
+  ],
+  "Campaign has verified source links; preserve its attribution history": [
+    "Kampanye ini memiliki asosiasi sumber terverifikasi dan tidak dapat dihapus.",
+    "此活动已有核实的来源关联，无法删除。"
+  ],
+  "Campaign could not be deleted.": [
+    "Kampanye tidak dapat dihapus.",
+    "无法删除此活动。"
+  ],
+  "Deletion could not be confirmed. Check the campaign list before trying again.": [
+    "Penghapusan belum dapat dikonfirmasi. Periksa daftar kampanye sebelum mencoba lagi.",
+    "暂时无法确认删除结果，请先查看活动列表。"
   ],
   "Asia/Jakarta (UTC+7)": [
     "Asia/Jakarta (UTC+7)",

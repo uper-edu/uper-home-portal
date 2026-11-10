@@ -1842,6 +1842,12 @@
       "server/portal/attribution.ts"
     ]
   },
+  "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1 FOR SHARE": {
+    "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/attribution.ts"
+    ]
+  },
   "SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE": {
     "sql": "SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE",
     "sources": [

@@ -38,9 +38,11 @@ export async function readCampaignAlias(db: any, code: string) {
   )).rows[0]?.campaign_id || null;
 }
 
-async function campaignForCode(db: any, code: string) {
+async function campaignForCode(db: any, code: string, lockCampaign: boolean) {
  if (!code || code.length > 191) return null;
- return (await db.query('SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1', [code])).rows[0] || null;
+ return (await db.query(lockCampaign
+  ? 'SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1 FOR SHARE'
+  : 'SELECT id,code,config FROM trial_campaigns WHERE id=:p1 OR code=:p1', [code])).rows[0] || null;
 }
 
 export async function resolvePromotion(db: any, p: string, lockCampaign = false) {
@@ -94,7 +96,7 @@ export async function promotionAttribution(db: any, existing: any, input: any, l
   };
  }
  if (typeof input.utmCampaign === 'string' && input.utmCampaign.length <= 191) {
-  const campaign = await campaignForCode(db, canonicalCampaignId(input.utmCampaign));
+  const campaign = await campaignForCode(db, canonicalCampaignId(input.utmCampaign), lockCampaign);
   if (campaign) return {campaignId:campaign.code,campaign:campaign.config.name,rawCampaignCode:input.utmCampaign};
  }
  return {};

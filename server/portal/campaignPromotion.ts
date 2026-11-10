@@ -44,6 +44,16 @@ export async function addCampaignPromotion(campaignId:string,input:any,actor:str
  });
 }
 
+export async function hasPromotionCustomerAttribution(db:any, linkId:string) {
+ const linked=(await db.query("SELECT id FROM portal_leads WHERE profile->>'$.promotionLinkId'=:p1 OR profile->>'$.promotionReview.linkId'=:p1 OR JSON_CONTAINS(JSON_EXTRACT(profile,'$.identitySources[*].promotionLinkId'),JSON_QUOTE(:p1)) LIMIT 1",[linkId])).rows.length>0;
+ return linked || (await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND (data->>'$.before.linkId'=:p1 OR data->>'$.after.linkId'=:p1) LIMIT 1",[linkId])).rows.length>0;
+}
+
+export async function removePromotionIndexes(db:any, campaignId:string, linkId:string) {
+ await db.query('DELETE FROM campaign_promotion_short_links WHERE p=:p1',[linkId]);
+ await db.query('DELETE FROM campaign_promotion_index WHERE p=:p1 AND campaign_id=:p2',[linkId,campaignId]);
+}
+
 export async function deleteCampaignPromotion(campaignId:string, linkId:string, actor:string) {
  const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
  return tx(async(db:any)=>{
@@ -52,12 +62,9 @@ export async function deleteCampaignPromotion(campaignId:string, linkId:string, 
   const links:CampaignPromotionLink[]=row?.config?.promotionLinks ?? [];
   if(!links.some(link=>link.id===linkId))fail(404,'Promotion link not found.');
   if(presetPromotionOwner(linkId)===campaignId)fail(409,'System preset links cannot be deleted.');
-  const linked=(await db.query("SELECT id FROM portal_leads WHERE profile->>'$.promotionLinkId'=:p1 OR profile->>'$.promotionReview.linkId'=:p1 OR JSON_CONTAINS(JSON_EXTRACT(profile,'$.identitySources[*].promotionLinkId'),JSON_QUOTE(:p1)) LIMIT 1",[linkId])).rows.length>0;
-  const reviewed=linked || (await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND (data->>'$.before.linkId'=:p1 OR data->>'$.after.linkId'=:p1) LIMIT 1",[linkId])).rows.length>0;
-  if(reviewed)fail(409,'This promotion link has customer attribution and cannot be deleted.');
+  if(await hasPromotionCustomerAttribution(db,linkId))fail(409,'This promotion link has customer attribution and cannot be deleted.');
   const promotionLinks=links.filter(link=>link.id!==linkId);
-  await db.query('DELETE FROM campaign_promotion_short_links WHERE p=:p1',[linkId]);
-  await db.query('DELETE FROM campaign_promotion_index WHERE p=:p1 AND campaign_id=:p2',[linkId,campaignId]);
+  await removePromotionIndexes(db,campaignId,linkId);
   await db.query('UPDATE trial_campaigns SET config=:p2 WHERE id=:p1',[campaignId,{...row.config,promotionLinks,updatedAt:new Date().toISOString()}]);
   await db.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'campaign.promotion.delete',:p2)",[actor,{campaignId,linkId}]);
   return {success:true};

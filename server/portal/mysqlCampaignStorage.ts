@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 import { allocateCampaignCode } from "./campaignCodeAllocation.ts";
 import { CAMPAIGN_LINK_PLACEHOLDER } from "../../src/utils/campaignCode.ts";
 import { validCampaignBudget, CAMPAIGN_BUDGET_ERROR } from "../../src/utils/campaignBudget.ts";
-import {attachPromotionShortCodes,promotionShortCodes} from './campaignPromotion.ts';
+import {attachPromotionShortCodes,hasPromotionCustomerAttribution,promotionShortCodes,removePromotionIndexes} from './campaignPromotion.ts';
 export function loadCampaigns(){return campaignsContext.getStore() || [];}
 export async function getCurrentCampaigns(employee?: any) {
  const campaigns = loadCampaigns();
@@ -152,12 +152,22 @@ export async function deleteCampaign(id: string) {
     // Historical records can have a non-reserved ID and a reserved source code.
     assertEditableCampaign({ ...saved.config, id });
     assertEditableCampaign({ id, code: saved.code });
-    if (saved.config?.promotionLinks?.length)
-      throw campaignError("Campaign has promotion links; archive it to preserve existing links and attribution", 409);
+    const campaign = {...saved.config, id, code: saved.code};
+    const attributionConflict = "This campaign has customer attribution and cannot be deleted.";
+    const profiles = (await db.query('SELECT profile FROM portal_leads')).rows;
+    if (profiles.some(({profile}: any) => matchesCampaign(profile, campaign) ||
+      profile.identitySources?.some((source: any) => matchesCampaign(source, campaign))))
+      throw campaignError(attributionConflict, 409);
+    const linkIds: string[] = (campaign.promotionLinks ?? []).map((link: {id: string}) => link.id);
+    for (const linkId of linkIds) {
+      if (await hasPromotionCustomerAttribution(db, linkId))
+        throw campaignError(attributionConflict, 409);
+    }
     if ((await db.query("SELECT id FROM campaign_source_reviews WHERE campaign_id=:p1 LIMIT 1", [id])).rows.length)
       throw campaignError("Campaign has verified source links; preserve its attribution history", 409);
     if ((await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND data->>'$.after.status'='linked' AND data->>'$.after.campaignId'=:p1 LIMIT 1", [id])).rows.length)
       throw campaignError("Campaign has verified source links; preserve its attribution history", 409);
+    for (const linkId of linkIds) await removePromotionIndexes(db, id, linkId);
     const result = await db.query("DELETE FROM trial_campaigns WHERE id=:p1", [id]);
     return result.rowCount > 0;
   });

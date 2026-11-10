@@ -3,7 +3,7 @@ import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaig
 import {CrmSalesStage} from "./CrmSalesStage";
 import {containPaneKeys,revealRecord} from '../adminScroll';
 import {loadCampaignWorkspace} from "../../utils/campaignWorkspaceRefresh";
-import { campaignUi, campaignUiMessages } from "../../utils/campaignI18n";
+import { campaignUi, campaignUiError, campaignUiMessages } from "../../utils/campaignI18n";
 import { CampaignWorkspaceHeading } from "./CampaignWorkspaceHeading";
 import {
   campaignReviewUrl,
@@ -45,7 +45,7 @@ import {
 } from "../../utils/campaignBudget";
 import { CrmSelect } from "./CrmSelect";
 import { crmId } from "../../utils/crmIndonesian";
-import { crmValue, crmError, crmLocale } from "../../utils/crmLanguage";
+import { crmValue, crmLocale } from "../../utils/crmLanguage";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CampaignQrImage } from "./CampaignQrImage";
 import {
@@ -236,7 +236,9 @@ export function CrmCampaignHub({
     undefined,
   );
   const [saveNotice, setSaveNotice] = useState(false);
-  const [campaignActionError, setCampaignActionError] = useState("");
+  const [campaignDeleteTarget, setCampaignDeleteTarget] = useState<{id:string;name:string} | null>(null);
+  const [campaignDeleteError, setCampaignDeleteError] = useState("");
+  const [campaignDeleting, setCampaignDeleting] = useState(false);
   const shellHeight = useCrmShellHeight();
   const scrollMode=useRecordScrollMode(shellHeight);
   const w = (en: string, id: string, zh: string) =>
@@ -504,33 +506,25 @@ export function CrmCampaignHub({
       return true;
     });
   }, [campaigns, selectedType, selectedStatus, searchQuery]);
-  // Delete Campaign
-  const handleDeleteCampaign = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        u('Are you sure you want to delete campaign "{name}"?', { name }),
-      )
-    ) {
-      return;
-    }
+  const handleDeleteCampaign = async () => {
+    if (!campaignDeleteTarget || campaignDeleting) return;
+    const {id} = campaignDeleteTarget;
+    setCampaignDeleting(true);
     try {
-      const res = await fetch(`/api/crm/campaigns/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/crm/campaigns/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!res.ok) {
         const result = await res.json();
-        setCampaignActionError(
-          result.error || "Campaign could not be deleted.",
-        );
+        setCampaignDeleteError(result.error || "Campaign could not be deleted.");
         return;
       }
-      if (res.ok) {
-        setCampaignActionError("");
-        if (activeDetailCampaign?.id === id) {
-          navigateCampaign(null);
-        }
-        fetchCampaigns();
-      }
-    } catch (err) {
-      console.error("Delete error:", err);
+      setCampaignDeleteTarget(null);
+      if (activeDetailCampaign?.id === id) navigateCampaign(null);
+      void fetchCampaigns();
+    } catch {
+      setCampaignDeleteError("Deletion could not be confirmed. Check the campaign list before trying again.");
+      void fetchCampaigns();
+    } finally {
+      setCampaignDeleting(false);
     }
   };
   const campaignLeads = leads;
@@ -1115,24 +1109,34 @@ export function CrmCampaignHub({
                             <summary>{u("More campaign actions")}</summary>
                             <p className="campaign-hint">
                               {u(
-                                "Archive a campaign by changing its status in Edit information. Campaigns with promotion links or verified source associations cannot be deleted.",
+                                "Campaigns with customer attribution or verified source associations can be archived in Edit information.",
                               )}
                             </p>
                             <button
                               className="campaign-workspace-action"
-                              onClick={() =>
-                                void handleDeleteCampaign(
-                                  activeDetailCampaign.id,
-                                  activeDetailCampaign.name,
-                                )
-                              }
+                              onClick={() => {
+                                setCampaignDeleteError("");
+                                setCampaignDeleteTarget(activeDetailCampaign);
+                              }}
                             >
                               {u("Delete campaign")}
                             </button>
-                            {campaignActionError && (
-                              <p role="alert">
-                                {crmError(campaignActionError, lang)}
-                              </p>
+                            {campaignDeleteTarget?.id === activeDetailCampaign.id && (
+                              <CrmDiscardDialog
+                                lang={lang}
+                                isLight={isLight}
+                                tone="danger"
+                                busy={campaignDeleting}
+                                announceDescription
+                                title={u("Delete {name}?", {name: campaignDeleteTarget.name})}
+                                description={campaignDeleteError
+                                  ? campaignUiError(lang, campaignDeleteError)
+                                  : u("Shared short links and QR codes will stop working after deletion.")}
+                                keepLabel={u(campaignDeleteError ? "Close" : "Cancel")}
+                                discardLabel={u(campaignDeleting ? "Working…" : "Delete campaign")}
+                                onKeep={() => setCampaignDeleteTarget(null)}
+                                onDiscard={campaignDeleteError ? undefined : () => void handleDeleteCampaign()}
+                              />
                             )}
                           </details>
                         )}

@@ -635,9 +635,9 @@ const originalGuideSections = [
     ],
     body: [
       [
-        "Reserved sources organic and historical home are read-only, including records with a different activity ID. They cannot be deleted. Existing promotion-link and verified-source protections still apply to ordinary campaigns.",
-        "Sumber khusus organic dan home lama bersifat hanya-baca, termasuk catatan dengan ID aktivitas berbeda. Sumber ini tidak dapat dihapus. Perlindungan tautan promosi dan sumber terverifikasi tetap berlaku untuk kampanye biasa.",
-        "organic及历史home是只读保留来源，即使活动ID不同也不可删除。普通活动原有的推广链接及已核实来源保护继续生效。",
+        "Reserved sources organic and historical home are read-only, including records with a different activity ID. You can delete a custom campaign when neither the campaign nor its links have customer attribution and it has no verified source associations. Deleting it disables its shared short links and QR codes.",
+        "Sumber khusus organic dan home lama bersifat hanya-baca, termasuk catatan dengan ID aktivitas berbeda. Kampanye buatan pengguna dapat dihapus jika kampanye dan tautannya belum memiliki atribusi pelanggan serta tidak ada asosiasi sumber terverifikasi. Penghapusan menonaktifkan tautan pendek dan kode QR yang telah dibagikan.",
+        "organic 和历史 home 是只读保留来源，即使活动 ID 不同也受保护。自建活动及其推广链接均无客户归因，且无已核实的来源关联时，可删除该活动。删除后，已分享的短链和二维码会失效。",
       ],
       [
         "Create a campaign, then add promotion links. Step 1 requires only one campaign name. Type and delivery format are optional internal context; neither defines all the campaign’s sources. Saving creates one Planning campaign with a new immutable camp- code. Existing codes remain unchanged. No dates, times, location or budget are invented. If the result is unknown, retry the original request rather than creating again.",
