@@ -1,3 +1,7 @@
+import { validMutationOrigin } from "./accessTransport.ts";
+import { larkBindings } from "./larkApp.ts";
+import { findLarkChannelTest, planGroupChannelTest, recordLarkChannelTest, sendGroupChannelTest, type LarkChannelTestReceipt } from "./larkGroupChannelTest.ts";
+import { planPersonalChannelTest, sendPersonalChannelTest } from "./larkPersonalChannelTest.ts";
 import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
@@ -1494,28 +1498,129 @@ export async function mountPortal(app: Express) {
       );
     }),
   );
+  const personalTestChannelId = "lark:personal";
+  const testAuditId = (channelId: string, employeeId: string) => {
+    if (channelId.startsWith(personalTestChannelId + ":")) fail(404, "Notification channel not found.");
+    return channelId === personalTestChannelId ? channelId + ":" + employeeId : channelId;
+  };
+  async function personalTestPlan(db: Pick<typeof pool, "query">, employeeId: string, lock = false) {
+    // Use the same lock as binding and access changes before pinning the channel mode.
+    if (lock) await db.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");
+    const binding = (await larkBindings(db))[employeeId];
+    return planPersonalChannelTest(binding);
+  }
+  async function lockedChannelTestPlan(db: Pick<typeof pool, "query">, channelId: string, employeeId: string) {
+    if (channelId === personalTestChannelId)
+      return { kind: "personal" as const, plan: await personalTestPlan(db, employeeId, true) };
+    const channel = (await db.query(
+      "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE", [channelId],
+    )).rows[0];
+    if (!channel || channel.config.deleted) fail(404, "Notification channel not found.");
+    return { kind: "group" as const, plan: planGroupChannelTest(channelId, channel.config) };
+  }
   app.get(
     "/api/crm/notification-channels",
     wrap(async (req, res) => {
-      await staff(req, "notifications.manage");
+      const employee = await staff(req, "notifications.manage");
+      const [personal, personalLatest] = await Promise.all([
+        personalTestPlan(pool, employee.id),
+        findLarkChannelTest(pool, testAuditId(personalTestChannelId, employee.id), null),
+      ]);
+      res.setHeader("Cache-Control", "no-store");
       res.json({
         channels: await Promise.all(
           (await pool.query("SELECT * FROM notification_channels")).rows.map(
-            async (row) => ({
-              ...row,
-              connection: channelConnection(row.id, row.config),
-              rateLimit: await groupRateLimit(pool, row.id, row.config),
-              usage: (
-                await pool.query(
-                  "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))",
-                  [row.id],
-                )
-              ).rows[0],
-            }),
+            async (row) => {
+              const { blocked, simulated, version } = planGroupChannelTest(row.id, row.config);
+              const latest = await findLarkChannelTest(pool, row.id, null);
+              return {
+                ...row,
+                testDelivery: { blocked, simulated, version, latest: latest?.data.version === version ? latest.data : null },
+                connection: channelConnection(row.id, row.config),
+                rateLimit: await groupRateLimit(pool, row.id, row.config),
+                usage: (
+                  await pool.query(
+                    "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))",
+                    [row.id],
+                  )
+                ).rows[0],
+              };
+            },
           ),
         ),
         unconnected: ["email", "sms"],
+        personalChannel: {
+          enabled: personal.enabled, appConfigured: personal.appConfigured,
+          testDelivery: {
+            blocked: personal.blocked, simulated: personal.simulated, version: personal.version,
+            latest: personalLatest?.data.version === personal.version ? personalLatest.data : null,
+          },
+        },
       });
+    }),
+  );
+  app.post(
+    "/api/crm/notification-channels/:id/test-message",
+    wrap(async (req, res) => {
+      const employee = await staff(req, "notifications.manage");
+      if (!validMutationOrigin(req)) fail(403, "Permission denied");
+      const channelId = String(req.params.id);
+      const auditId = testAuditId(channelId, employee.id);
+      const { requestId, version, confirmed } = req.body;
+      if (typeof requestId !== "string" || !/^[a-f0-9-]{36}$/.test(requestId) || confirmed !== true)
+        fail(400, "Confirm the test destination first.");
+      const attempt = await tx(async (c) => {
+        const target = await lockedChannelTestPlan(c, channelId, employee.id);
+        const prior = await findLarkChannelTest(c, auditId, requestId);
+        if (prior) return { receipt: prior.data, target: null };
+        const { plan } = target;
+        if (version !== plan.version) fail(409, "Channel settings changed. Refresh before testing.");
+        if (plan.blocked) fail(409, "Channel is not ready for a test message.");
+        const latest = await findLarkChannelTest(c, auditId, null);
+        if (latest && Date.now() - new Date(latest.created_at).getTime() < 60000)
+          fail(429, "Wait one minute between tests for this channel.");
+        const receipt: LarkChannelTestReceipt = { requestId, channelId: auditId, version: plan.version, simulated: plan.simulated, state: "pending", received: false };
+        await recordLarkChannelTest(c, employee.id, "start", receipt);
+        return { receipt, target };
+      });
+      if (!attempt.target) { res.json(attempt.receipt); return; }
+      const state = attempt.target.kind === "personal"
+        ? await sendPersonalChannelTest(attempt.target.plan, requestId)
+        : await sendGroupChannelTest(attempt.target.plan, requestId);
+      const receipt = { ...attempt.receipt, state };
+      await recordLarkChannelTest(pool, employee.id, "result", receipt);
+      res.json(receipt);
+    }),
+  );
+  app.get(
+    "/api/crm/notification-channels/:id/test-message/:requestId",
+    wrap(async (req, res) => {
+      const employee = await staff(req, "notifications.manage");
+      const attempt = await findLarkChannelTest(pool, testAuditId(String(req.params.id), employee.id), String(req.params.requestId));
+      if (!attempt) fail(404, "Test result not found.");
+      res.setHeader("Cache-Control", "no-store");
+      res.json(attempt.data);
+    }),
+  );
+  app.post(
+    "/api/crm/notification-channels/:id/test-message/:requestId/received",
+    wrap(async (req, res) => {
+      const employee = await staff(req, "notifications.manage");
+      if (!validMutationOrigin(req)) fail(403, "Permission denied");
+      const channelId = String(req.params.id);
+      const auditId = testAuditId(channelId, employee.id);
+      const receipt = await tx(async (c) => {
+        const { plan } = await lockedChannelTestPlan(c, channelId, employee.id);
+        const latest = await findLarkChannelTest(c, auditId, null);
+        if (!latest || latest.data.requestId !== req.params.requestId || latest.data.simulated ||
+            latest.data.state !== "accepted" || latest.data.version !== plan.version)
+          fail(409, "This test cannot be confirmed as received.");
+        if (latest.data.received) return latest.data;
+        const confirmed = { ...latest.data, received: true };
+        await recordLarkChannelTest(c, employee.id, "received", confirmed);
+        return confirmed;
+      });
+      res.json(receipt);
     }),
   );
   app.post(

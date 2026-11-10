@@ -470,6 +470,7 @@
       "server/portal/assignmentBackfill.ts",
       "server/portal/autoAssignment.ts",
       "server/portal/contactPlans.ts",
+      "server/portal/larkGroupChannelTest.ts",
       "server/portal/larkSelfService.ts",
       "server/portal/ownerAssignment.ts",
       "server/portal/payments.ts",
@@ -1316,6 +1317,12 @@
       "server/portal/worker.ts"
     ]
   },
+  "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "SELECT config FROM notification_rules": {
     "sql": "SELECT config FROM notification_rules",
     "sources": [
@@ -1435,6 +1442,12 @@
     "sql": "SELECT data FROM portal_audit WHERE actor=? AND action='cms.upload' AND data->>'$.requestId'=?",
     "sources": [
       "cloud/mysql/cms-media-upload.mjs"
+    ]
+  },
+  "SELECT data,created_at FROM portal_audit WHERE action IN ('channel.test.start','channel.test.result','channel.test.received') AND data->>'$.channelId'=:p1 AND (:p2 IS NULL OR data->>'$.requestId'=:p2) ORDER BY id DESC LIMIT 1": {
+    "sql": "SELECT data,created_at FROM portal_audit WHERE action IN ('channel.test.start','channel.test.result','channel.test.received') AND data->>'$.channelId'=:p1 AND (:p2 IS NULL OR data->>'$.requestId'=:p2) ORDER BY id DESC LIMIT 1",
+    "sources": [
+      "server/portal/larkGroupChannelTest.ts"
     ]
   },
   "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff": {
@@ -2438,6 +2451,7 @@
       "server/portal/accessRecovery.ts",
       "server/portal/aiServiceConfig.ts",
       "server/portal/larkSelfService.ts",
+      "server/portal/runtime.ts",
       "server/portal/teamlessAccess.ts"
     ]
   },

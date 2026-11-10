@@ -600,6 +600,11 @@ const originalGuideSections = [
         "通知事件与触发条件保留搜索及历史值，多选面板选择后保持打开；清除只取消筛选条件，不删除客户数据。发送安排、工作日历、接收对象和渠道模式等固定选项使用相同面板，无搜索。选择本身不会启用草稿，仍须使用对应保存按钮。",
       ],
       [
+        "In Notification channels, Send test message uses the selected channel's saved mode. A live personal test sends one message to your linked Lark account without customer data. Results appear in the test dialog. For a live test, confirm receipt only after finding the matching verification code in Lark.",
+        "Di Kanal notifikasi, Kirim pesan uji menggunakan mode tersimpan pada kanal yang dipilih. Uji pribadi langsung mengirim satu pesan tanpa data pelanggan ke akun Lark yang Anda tautkan. Hasil ditampilkan di dialog uji. Untuk uji langsung, konfirmasi penerimaan setelah menemukan kode verifikasi yang cocok di Lark.",
+        "在「通知渠道」中，「发送测试消息」按所选渠道已保存的模式执行。个人渠道真实测试仅向你已绑定的 Lark 账号发送一条不含客户资料的消息。结果在测试弹窗中查看。真实测试请在 Lark 中找到相同核对码后再确认实收。",
+      ],
+      [
         "Configure the business event, searchable multi-select conditions, recipients, delivery timing, and reliability controls. Customer notifications go to the valid Owner; unassigned or invalid Owners route to CRM Managers globally. Draft rules do not send. Enabled changes apply to new events; queued jobs retain their saved rule version.",
         "Konfigurasikan peristiwa bisnis, kondisi pilihan jamak yang dapat dicari, penerima, waktu pengiriman, dan kontrol keandalan. Notifikasi pelanggan ditujukan ke Penanggung jawab yang valid; Penanggung jawab tidak valid atau belum ditugaskan dialihkan secara global ke Manajer CRM. Aturan draf tidak mengirim. Perubahan yang diaktifkan berlaku untuk peristiwa baru; tugas antrean mempertahankan versi aturan tersimpan.",
         "配置业务事件、可搜索多选触发条件、接收对象、发送时间和可靠性控制。客户通知发送给有效 负责人；未分配或 负责人 无效时全局路由给 CRM 管理者。草稿不发送；启用后的修改作用于新事件，待发任务保留已保存的策略版本。",

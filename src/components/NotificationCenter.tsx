@@ -5,6 +5,7 @@ import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
 import {AdminFormSection} from './AdminFormLayout';
 import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
+import {LarkChannelTestControls, type LarkChannelTest} from './crm/LarkChannelTestControls';
 import {crmFormText} from '../utils/crmFormLanguage';
 import {isSalesProgressStage,progressLabel} from '../utils/crmSalesProgress';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
@@ -83,8 +84,11 @@ interface Channel {
   signingEnabled?: boolean;
   signingSecretRef?: string;
 }
+const PERSONAL_CHANNEL_ROW = "lark:personal";
 interface Row {
   id: string;
+  personalChannel?: { enabled: boolean; appConfigured: boolean };
+  testDelivery?: LarkChannelTest;
   config?: Rule & Channel;
   enabled?: boolean;
   version?: number;
@@ -254,7 +258,9 @@ export default function NotificationCenter({
           ? [{ id: "status", ...data }]
           : Array.isArray(data)
             ? data
-            : data.channels || [],
+            : tab === "notification-channels" && data.personalChannel
+              ? [...(data.channels || []), { id: PERSONAL_CHANNEL_ROW, personalChannel: data.personalChannel, testDelivery: data.personalChannel.testDelivery }]
+              : data.channels || [],
       );
       if (tab === "notification-rules") {
         const [d, calendar, options, routingConfig] = await Promise.all([
@@ -1579,67 +1585,89 @@ export default function NotificationCenter({
                   )}
                   {tab === "notification-channels" && (
                     <div className="grid md:grid-cols-2 gap-3">
-                      {rows.map((row) => (
-                        <article
-                          key={row.id}
-                          className={`${box} p-4 space-y-3`}
-                        >
-                          <h4 className="font-bold text-sm">
-                            Lark ·{" "}
-                            {row.config!.groupName ||
-                              t("未命名群", "Unnamed group")}
-                          </h4>
-                          <p className="text-xs">
-                            {row.config!.mode === "live"
-                              ? t("真实发送", "Live")
-                              : t("模拟发送", "Simulation")}
-                          </p>
-                          <p className="text-xs">{connectionLabel(row)}</p>
-                          <p className="text-xs">
-                            {t("每小时上限", "Hourly limit")}：
-                            {row.rateLimit?.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR} ·{" "}
-                            {row.rateLimit?.source === "legacy_strictest"
-                              ? t(
-                                  "旧策略兼容值（可在此统一设置）",
-                                  "Legacy compatibility limit (configure here)",
-                                )
-                              : t(
-                                  "群内所有策略共用",
-                                  "Shared by all group policies",
-                                )}
-                          </p>
-                          <p className={`text-xs ${muted}`}>
-                            {t(
-                              "被通知策略引用",
-                              "Used by notification policies",
-                            )}
-                            ：{row.usage?.total ?? 0} · {t("已启用", "Enabled")}
-                            ：{row.usage?.enabled ?? 0}
-                          </p>
-                          <details className={`text-[11px] ${muted}`}>
-                            <summary className="cursor-pointer">
-                              {t("技术信息", "Technical information")}
-                            </summary>
-                            <p>
-                              {t("标识：", "ID:")}
-                              {row.id}
-                            </p>
-                            {row.config!.mode === "live" && (
-                              <p>
-                                {t("机器人连接 配置引用", "Webhook reference")}
-                                ：{row.config!.secretRef}
-                              </p>
-                            )}
-                          </details>
-                          <button
-                            className={button}
-                            disabled={!canEdit}
-                            onClick={() => edit(row)}
+                      {rows.map((row) => {
+                        if (row.personalChannel) {
+                          const name = t("Lark 个人通知", "Lark personal notifications");
+                          return (
+                            <article key={row.id} aria-label={name} className={`${box} flex flex-col gap-3 p-4`}>
+                              <h4 className="font-bold text-sm">{name}</h4>
+                              <p className="text-xs">{row.personalChannel.enabled ? t("真实发送", "Live") : t("未启用", "Disabled")}</p>
+                              <p className="text-xs">{row.personalChannel.appConfigured
+                                ? t("Lark 应用已配置", "Lark app configured") : t("Lark 应用未配置", "Lark app not configured")}</p>
+                              {canEdit && row.testDelivery && (
+                                <div className="mt-auto flex flex-wrap justify-end gap-2">
+                                  <LarkChannelTestControls id={row.id} name={name} test={row.testDelivery}
+                                    lang={lang} isLight={isLight} request={api} buttonClassName={button} personal />
+                                </div>
+                              )}
+                            </article>
+                          );
+                        }
+                        const name = row.config?.groupName || t("未命名群", "Unnamed group");
+                        return (
+                          <article
+                            key={row.id}
+                            aria-label={name}
+                            className={`${box} flex flex-col gap-3 p-4`}
                           >
-                            {t("编辑渠道", "Edit channel")}
-                          </button>
-                        </article>
-                      ))}
+                            <h4 className="font-bold text-sm">
+                              Lark ·{" "}
+                              {name}
+                            </h4>
+                            <p className="text-xs">
+                              {row.config!.mode === "live"
+                                ? t("真实发送", "Live")
+                                : t("模拟发送", "Simulation")}
+                            </p>
+                            <p className="text-xs">{row.connection?.status === "configured" ? t("已配置", "Configured") : connectionLabel(row)}</p>
+                            <p className="text-xs">
+                              {t("每小时上限", "Hourly limit")}：
+                              {row.rateLimit?.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR} ·{" "}
+                              {row.rateLimit?.source === "legacy_strictest"
+                                ? t(
+                                    "旧策略兼容值（可在此统一设置）",
+                                    "Legacy compatibility limit (configure here)",
+                                  )
+                                : t(
+                                    "群内所有策略共用",
+                                    "Shared by all group policies",
+                                  )}
+                            </p>
+                            <p className={`text-xs ${muted}`}>
+                              {t(
+                                "被通知策略引用",
+                                "Used by notification policies",
+                              )}
+                              ：{row.usage?.total ?? 0} · {t("已启用", "Enabled")}
+                              ：{row.usage?.enabled ?? 0}
+                            </p>
+                            <details className={`text-[11px] ${muted}`}>
+                              <summary className="cursor-pointer">
+                                {t("技术信息", "Technical information")}
+                              </summary>
+                              <p>
+                                {t("标识：", "ID:")}
+                                {row.id}
+                              </p>
+                              {row.config!.mode === "live" && (
+                                <p>
+                                  {t("机器人连接 配置引用", "Webhook reference")}
+                                  ：{row.config!.secretRef}
+                                </p>
+                              )}
+                            </details>
+                            <div className="mt-auto flex flex-wrap justify-end gap-2">
+                              <button type="button" className={button} disabled={!canEdit} onClick={() => edit(row)}>
+                                {t("编辑渠道", "Edit channel")}
+                              </button>
+                              {canEdit && row.testDelivery && (
+                                <LarkChannelTestControls id={row.id} name={name} test={row.testDelivery}
+                                  lang={lang} isLight={isLight} request={api} buttonClassName={button} />
+                              )}
+                            </div>
+                          </article>
+                        );
+                      })}
                       {["Email", "SMS"].map((c) => (
                         <article key={c} className={`${box} p-4 opacity-60`}>
                           <h4 className="font-bold text-sm">{c}</h4>
