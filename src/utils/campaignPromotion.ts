@@ -42,8 +42,18 @@ export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string,ca
 
 export const PROMOTION_SHORT_CODE_PREFIX = '/s';
 
+const presetShortSlugs = new Map([
+ ['threads-social-profile-bio-261110092327','bio-th'],
+ ['threads-social-profile-bio-261110093006','chat-th'],
+]);
+const presetIdsByShortSlug = new Map([...presetShortSlugs].map(([id,slug])=>[slug,id]));
+
+export function promotionIdForShortSlug(slug:string) {
+ return presetIdsByShortSlug.get(slug) ?? slug;
+}
+
 export function campaignPromotionShortUrl(id:string,origin:string,shortCode?:string) {
- const path=`${PROMOTION_SHORT_CODE_PREFIX}/${encodeURIComponent(shortCode ?? id)}`;
+ const path=`${PROMOTION_SHORT_CODE_PREFIX}/${encodeURIComponent(presetShortSlugs.get(id) ?? shortCode ?? id)}`;
  return new URL(path,origin).toString();
 }
 

@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {createServer} from 'node:net';
-import {promotionInput,promotionIdPrefix,campaignPromotionPath,campaignPromotionShortUrl,campaignPromotionUrl,PROMOTION_EXPERIENCE} from '../src/utils/campaignPromotion.ts';
+import {promotionInput,promotionIdPrefix,campaignPromotionPath,campaignPromotionShortUrl,campaignPromotionUrl,promotionIdForShortSlug,PROMOTION_EXPERIENCE} from '../src/utils/campaignPromotion.ts';
 import {allocatePromotionShortCode,backfillPromotionShortLinks,presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
 import {systemCampaignDefaults} from '../cloud/mysql/system-campaign-defaults.mjs';
 test('promotion configuration validates actual experience, source encoding and canonical link',()=>{
@@ -47,8 +47,12 @@ test('Threads presets reuse the two production IDs and accept already issued sho
   query:async(sql:string)=>[sql.includes('campaign_promotion_index')?index:saved],
   execute:async()=>assert.fail('Existing aliases and fresh presets need no short-code writes'),
  };
- for(const link of threads){
+ for(const [i,link] of threads.entries()){
   assert.equal(presetPromotionOwner(link.id),'social-bio');
+  const slug=['bio-th','chat-th'][i];
+  assert.equal(campaignPromotionShortUrl(link.id,'https://example.test',saved[i].short_code),'https://example.test/s/'+slug);
+  assert.equal(promotionIdForShortSlug(slug),link.id);
+  assert.equal(promotionIdForShortSlug(link.id),link.id);
   assert.deepEqual(Object.fromEntries(new URL(campaignPromotionUrl(link,'https://example.test','social-bio')).searchParams),{
    p:link.id,lang:'id',utm_source:'threads',utm_medium:'social',utm_campaign:'social-bio',utm_content:'profile-bio',
   });
@@ -105,7 +109,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
      assert.deepEqual(saved,ids.map((p,i)=>({p,short_code:aliases[i]})));
     }
     for(const [i,link] of threads.entries()){
-     for(const slug of [aliases[i],link.id]){
+     for(const slug of [aliases[i],link.id,['bio-th','chat-th'][i]]){
       const redirect=await fetch(process.env.APP_URL+'/s/'+slug,{redirect:'manual'});
       assert.equal(redirect.status,302);
       assert.equal(redirect.headers.get('location'),campaignPromotionPath(link,'social-bio'));

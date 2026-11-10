@@ -1,7 +1,7 @@
 import {passwordChangeGate} from './portal/localAuth.ts';
 import {mountClientDiagnostics} from './clientDiagnostics.ts';
 import {listPromotionReviews,promotionReviewCounts,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
-import {campaignPromotionPath,campaignPromotionShortUrl,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
+import {campaignPromotionPath,campaignPromotionShortUrl,promotionIdForShortSlug,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
 import {presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
 import {addCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
@@ -84,8 +84,9 @@ const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>{con
 app.get(`${PROMOTION_SHORT_CODE_PREFIX}/:code`,wrap(async(q:any,r:any)=>{
  r.set('Cache-Control','no-store');
  const code=q.params.code;
- const presetOwner=presetPromotionOwner(code);
- const p=presetOwner ? code : promotionShortCodePattern.test(code)
+ const presetId=promotionIdForShortSlug(code);
+ const presetOwner=presetPromotionOwner(presetId);
+ const p=presetOwner ? presetId : promotionShortCodePattern.test(code)
   ? (await pool.query('SELECT p FROM campaign_promotion_short_links WHERE short_code=:p1',[code])).rows[0]?.p
   : undefined;
  const resolved=p?await resolvePromotion(pool,p):null;
