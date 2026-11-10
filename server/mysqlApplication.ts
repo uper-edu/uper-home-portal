@@ -25,6 +25,7 @@ import {pool,tx} from './portal/store.ts';
 import {nativePool} from '../cloud/mysql/runtime.mjs';
 import {mountSite} from '../cloud/mysql/site.mjs';
 import {approvedRemoteDevelopment} from '../cloud/mysql/transport.mjs';
+import {portalWorkerEnabled} from './environment.mjs';
 import {platform} from './portal/identity.ts';
 import {visitor} from './portal/runtime.ts';
 import {leadTier,taskDeadline} from './portal/followup.ts';
@@ -44,7 +45,8 @@ if(!activeLocal&&process.env.TRIAL_DATASET!=='synthetic')throw Error('Migration-
 if(process.env.PLATFORM_MODE!=='local')throw Error('Local acceptance only; server deployment requires a separate gate');
 const port=deployment?.port || Number(process.env.PORT || 4412);
 const remoteDev=approvedRemoteDevelopment(process.env);
-if(remoteDev&&(port!==3000||process.env.PORTAL_WORKER_ENABLED==='true'))throw Error('Remote development requires port 3000 and no notification worker');
+const workerEnabled=portalWorkerEnabled();
+if(remoteDev&&port!==3000)throw Error('Remote development requires port 3000 and no notification worker');
 if(!Number.isInteger(port)||port<1024||port>65535||(port===3000&&!activeLocal&&!remoteDev))throw Error('Independent local MySQL port required; 3000 cutover not authorized');
 const faults=process.env.PORTAL_FAULT_TEST==='true';
 if(!faults && ['TRIAL_MODEL_STUB','TRIAL_PRIMARY_FAILURE','TRIAL_CONTENT_FAILURE_ONCE','TRIAL_FOLLOWUP_FAILURE_ONCE'].some(k=>process.env[k]==='true'))throw Error('Fault injection requires explicit local test mode');
@@ -127,12 +129,11 @@ if(process.env.TRIAL_FRONTEND_DIRECTORY){
   mountMetadataHtml(app,directory,nativePool);
 }
 app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
-if(process.env.PORTAL_WORKER_ENABLED==='true'&&!activeLocal&&!((company||production)&&process.env.PORTAL_NOTIFICATION_MODE==='configured')){
- if(process.env.PORTAL_NOTIFICATION_MODE!=='simulation')throw Error('This local acceptance requires simulated notifications');
+if(workerEnabled&&!activeLocal&&!company&&!production){
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
- if(channels.some(c=>c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
+ if(channels.some(c=>!c.config.deleted&&c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
 }
-const timer=process.env.PORTAL_WORKER_ENABLED==='true'?startWorker():null;
+const timer=workerEnabled?startWorker():null;
 const server=app.listen(port,deployment?.host || '127.0.0.1',()=>log.info('app.ready',{mysqlReady:true,port,workerEnabled:!!timer}));
 let closing=false;
 async function shutdown(){if(closing)return;closing=true;log.info('app.shutdown',{draining:true});if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{if(releaseCompanyLease)await releaseCompanyLease();await pool.end();log.info('app.shutdown',{draining:false});setImmediate(()=>process.exit(0));});}

@@ -16,19 +16,20 @@ import {configureAccessTransport} from '../server/portal/accessTransport.ts';
 import {openTrialDatabase} from '../cloud/mysql/database.mjs';
 import {resolveMetadata,publicPages} from '../src/utils/siteMetadata.ts';
 import {acquireCompanyRuntimeLease,companyRuntimeLock} from '../cloud/mysql/company-maintenance.mjs';
-const valid:any={PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:companyOrigin,ACCESS_PUBLIC_ORIGIN:companyOrigin,ACCESS_TRUSTED_PROXIES:'172.20.0.10',ACCESS_OPERATION_KEY:'x'.repeat(40),TRIAL_FRONTEND_DIRECTORY:'/app/web',MYSQL_CA_PEM:'placeholder',PORTAL_NOTIFICATION_MODE:'simulation',PORTAL_WORKER_ENABLED:'false'};
-const production:any={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_PRODUCTION_READY:'true',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:productionOrigin,ACCESS_PUBLIC_ORIGIN:productionOrigin,ACCESS_ALLOWED_ORIGINS:'https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com',ACCESS_TRUSTED_PROXIES:'10.20.0.8',ACCESS_OPERATION_KEY:'x'.repeat(40),MYSQL_TLS_MODE:'disabled',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home',PORT:'8080',PORTAL_NOTIFICATION_MODE:'simulation',PORTAL_WORKER_ENABLED:'false'};
+const valid:any={PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:companyOrigin,ACCESS_PUBLIC_ORIGIN:companyOrigin,ACCESS_TRUSTED_PROXIES:'172.20.0.10',ACCESS_OPERATION_KEY:'x'.repeat(40),TRIAL_FRONTEND_DIRECTORY:'/app/web',MYSQL_CA_PEM:'placeholder',PORTAL_WORKER_ENABLED:'false'};
+const production:any={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_PRODUCTION_READY:'true',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:productionOrigin,ACCESS_PUBLIC_ORIGIN:productionOrigin,ACCESS_ALLOWED_ORIGINS:'https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com',ACCESS_TRUSTED_PROXIES:'10.20.0.8',ACCESS_OPERATION_KEY:'x'.repeat(40),MYSQL_TLS_MODE:'disabled',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home',PORT:'8080',PORTAL_WORKER_ENABLED:'false'};
 test('company deployment gate preserves local safeguards and rejects unsafe configuration',()=>{
  assert.equal(companyConfiguration({} as any),null);assert.deepEqual(companyConfiguration(valid),{port:8080,host:'0.0.0.0'});
- for(const [key,value] of Object.entries({NODE_ENV:'development',APP_ENV:'test',TRIAL_DATASET:'local-crm',PLATFORM_MODE:'mock',PORTAL_LOCAL_CUTOVER:'true',PORTAL_FAULT_TEST:'true',ACCESS_ALLOW_TEST_PASSWORDS:'true',APP_URL:'http://home.prototype.uperedu.com',ACCESS_OPERATION_KEY:'short',MYSQL_TRIAL_SOCKET:'/private/local.sock',MYSQL_CA_PEM:'',PORT:'3000',PORTAL_NOTIFICATION_MODE:'',TRIAL_FRONTEND_DIRECTORY:''}))assert.throws(()=>companyConfiguration({...valid,[key]:value}),key);
- assert.throws(()=>companyConfiguration({...valid,PORTAL_NOTIFICATION_MODE:'configured'}));
+ for(const [key,value] of Object.entries({NODE_ENV:'development',APP_ENV:'test',TRIAL_DATASET:'local-crm',PLATFORM_MODE:'mock',PORTAL_LOCAL_CUTOVER:'true',PORTAL_FAULT_TEST:'true',ACCESS_ALLOW_TEST_PASSWORDS:'true',APP_URL:'http://home.prototype.uperedu.com',ACCESS_OPERATION_KEY:'short',MYSQL_TRIAL_SOCKET:'/private/local.sock',MYSQL_CA_PEM:'',PORT:'3000',TRIAL_FRONTEND_DIRECTORY:''}))assert.throws(()=>companyConfiguration({...valid,[key]:value}),key);
  assert.throws(()=>companyConfiguration({...valid,ACCESS_TRUSTED_PROXIES:'0.0.0.0/0'}));
+ assert.deepEqual(companyConfiguration({...valid,PORTAL_WORKER_ENABLED:undefined}),{port:8080,host:'0.0.0.0'});
  assert.throws(()=>companyConfiguration({...valid,PORTAL_WORKER_ENABLED:''}));
  assert.throws(()=>companyConfiguration({...valid,ACCESS_RECOVERY_MAINTENANCE:'true'}));
- assert.ok(companyConfiguration({...valid,PORTAL_NOTIFICATION_MODE:'configured',LARK_TEST_GROUP:'CRM_Leads_Update'}));
 });
 test('production gate allows the approved internal no-TLS MySQL path and canonical origin',()=>{
  assert.equal(productionConfiguration({} as any),null);assert.deepEqual(productionConfiguration(production),{port:8080,host:'0.0.0.0'});
+ assert.deepEqual(productionConfiguration({...production,PORTAL_WORKER_ENABLED:undefined}),{port:8080,host:'0.0.0.0'});
+ assert.throws(()=>productionConfiguration({...production,PORTAL_WORKER_ENABLED:''}));
  assert.throws(()=>productionConfiguration({...production,APP_URL:companyOrigin}));
  assert.throws(()=>productionConfiguration({...production,MYSQL_TLS_MODE:'required'}));
  assert.throws(()=>productionConfiguration({...production,ACCESS_TRUSTED_PROXIES:'0.0.0.0/0'}));
@@ -104,7 +105,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  const users=['Suki','Robert','Fadhil','Zainul','Wigar','Tester','Fenny','Ethan','Monite'],passwords=Object.fromEntries(users.map(u=>[u,'TEST-'+u+'-'+crypto.randomBytes(10).toString('hex')]));
  const initial=path.join(dir,'initial.json');await fs.writeFile(initial,JSON.stringify(passwords),{mode:0o600});
  const env:any={...process.env,...valid,PORTAL_ENV:'test',PORTAL_ENV_SOURCE:'injected',PORT:String(appPort),ACCESS_TRUSTED_PROXIES:'127.0.0.1',MYSQL_CA_PEM:await fs.readFile(caCert,'utf8'),MYSQL_TRIAL_URL:`mysql://trial:${password}@localhost:${sqlPort}/${name}`,TRIAL_FRONTEND_DIRECTORY:path.resolve('.local-backups/company-trial-20261014/package/web'),ACCESS_INITIAL_PASSWORDS_FILE:initial,PORTAL_WORKER_ENABLED:'false'};
- for(const k of ['MYSQL_TRIAL_SOCKET','PORTAL_LOCAL_CUTOVER','PORTAL_ENV_FILE','ACCESS_ALLOW_TEST_PASSWORDS','PORTAL_FAULT_TEST','OPENAI_API_KEY','DEEPSEEK_API_KEY','LARK_GROUP_CRM'])delete env[k];
+ for(const k of ['MYSQL_TRIAL_SOCKET','PORTAL_LOCAL_CUTOVER','PORTAL_ENV_FILE','ACCESS_ALLOW_TEST_PASSWORDS','PORTAL_FAULT_TEST','OPENAI_API_KEY','DEEPSEEK_API_KEY','LARK_WEBHOOK_ENCRYPTION_KEY'])delete env[k];
  await assert.rejects(async()=>{const p=await openTrialDatabase({...env,MYSQL_CA_PEM:''});try{await p.query('SELECT 1');}finally{await p.end();}});
  await assert.rejects(async()=>{const p=await openTrialDatabase({...env,MYSQL_CA_PEM:'invalid CA'});try{await p.query('SELECT 1');}finally{await p.end();}});
  await assert.rejects(async()=>{const p=await openTrialDatabase({...env,MYSQL_TRIAL_URL:env.MYSQL_TRIAL_URL.replace('@localhost:', '@127.0.0.1:')});try{await p.query('SELECT 1');}finally{await p.end();}});
@@ -157,15 +158,15 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  await db.query('UPDATE notification_rules SET enabled=false');
  const ev=crypto.randomUUID();await db.execute("INSERT INTO outbox(id,type,lead_id,payload,processed_at) VALUES(?,'TEST.company',?,'{}',UTC_TIMESTAMP(6))",[ev,leadId]);
  const makeJob=async(channel:string,recipient:string,held=false,overrides:any={})=>{const id=crypto.randomUUID();await db.execute("INSERT INTO notification_jobs(id,event_id,rule_id,version,channel,recipient,state,due_at,snapshot) VALUES(?,?,?,1,?,?,'pending','2000-01-01',?)",[id,ev,crypto.randomUUID(),channel,recipient,JSON.stringify({rule:{...defaults,event:'TEST.company',workHours:false,businessOnly:false,calendarMode:'custom',channels:[channel],dedupeMinutes:0,retries:[],...overrides},event:'TEST.company',leadId,payload:{test:true}})]);if(held)await db.execute("INSERT INTO notification_migration_holds(kind,id,reason) VALUES('job',?,'TEST no replay')",[id]);return id;};
- const group='CRM_Leads_Update';await db.execute('INSERT INTO notification_channels(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE config=VALUES(config)',[group,JSON.stringify({mode:'simulation',groupName:'CRM Bot',maxPerHour:1000})]);
+ const group='ops-company-fixture';await db.execute('INSERT INTO notification_channels(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE config=VALUES(config)',[group,JSON.stringify({mode:'simulation',groupName:'CRM Bot',maxPerHour:1000})]);
  const inbox=await makeJob('inapp','Fadhil'),simulated=await makeJob('lark',group),missing=await makeJob('lark','missing'),held=await makeJob('lark',group,true);
  const native=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error('No external calls in simulation');};
  try{for(let i=0;i<4;i++)await tick();}finally{globalThis.fetch=native;}
  const state=async(id:string)=>(await db.execute('SELECT state,attempts,result FROM notification_jobs WHERE id=?',[id]))[0][0];
  assert.equal((await state(inbox)).state,'accepted');assert.equal((await state(simulated)).state,'simulated');assert.equal((await state(missing)).state,'failed');assert.equal((await state(held)).state,'pending');assert.equal(calls,0);
+ process.env.LARK_GROUP_CRM='https://open.larksuite.com/open-apis/bot/v2/hook/TEST_COMPANY_ONLY';
  await db.execute('UPDATE notification_channels SET config=? WHERE id=?',[JSON.stringify({mode:'live',groupName:'CRM Bot',secretRef:'LARK_GROUP_CRM',signingEnabled:false,maxPerHour:1000}),group]);
- const blocked=await makeJob('lark',group);await tick();assert.equal((await state(blocked)).state,'failed');
- process.env.PORTAL_NOTIFICATION_MODE='configured';process.env.LARK_TEST_GROUP=group;process.env.LARK_GROUP_CRM='https://open.larksuite.com/open-apis/bot/v2/hook/TEST_COMPANY_ONLY';
+
  const accepted=await makeJob('lark',group),unknown=await makeJob('lark',group);let first=true;let card:any;
  globalThis.fetch=async(url:any,options:any)=>{assert.equal(url,process.env.LARK_GROUP_CRM);calls++;card=JSON.parse(options.body);if(first){first=false;return new Response(JSON.stringify({code:0}),{status:200});}throw new DOMException('TEST send timeout','TimeoutError');};
  try{await tick();await tick();const statuses=[(await state(accepted)).state,(await state(unknown)).state];assert.deepEqual(statuses.sort(),['accepted','unknown']);const before=calls;await tick();assert.equal(calls,before);assert.equal(card.card.header.title.content,'UPER · TEST');assert.ok(JSON.stringify(card).includes(companyOrigin+'/crm?lead='));}finally{globalThis.fetch=native;}

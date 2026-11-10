@@ -1,7 +1,11 @@
+import {allowsLarkPersonal,LARK_GROUP,LARK_PERSONAL} from '../../src/utils/notificationGroupTargets.ts';
+import {policyLarkChannelConfig,policyLarkRecipients} from './notificationGroupChannels.ts';
+import {isolatedLarkRuntime} from './larkChannelModes.ts';
 import {personalNotificationPreferences,personalNotificationAllowed,personalNotificationLanguage} from './personalNotificationPreferences.ts';
 import {processLarkBindingConfirmations} from './larkSelfService.ts';
 import {larkApp,larkBindings} from './larkApp.ts';
-import {larkTestGroupDisallowed} from './larkDeliveryAccess.ts';
+import {resolveGroupWebhook} from './larkGroupWebhook.ts';
+import {assignmentNoticeTargets, currentAssignmentRecipient, LEAD_ASSIGNED_EVENT} from '../../src/utils/leadAssignmentNotification.ts';
 import {processExtractionBatch} from './aiExtraction.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
@@ -13,7 +17,7 @@ import { restoreState } from "./accessRecoveryState.ts";
 import { retryLeaseRecovery } from "./notificationLeaseRecovery.ts";
 import { contactPaused } from "../../src/utils/crmContact.ts";
 import {scheduleNotification,digestChannelAllowed,larkEventSource,larkFailureSource} from './larkNotificationV2.ts';
-import {standardLarkKinds,type LarkCardInput} from '../../src/utils/larkNotificationPresentation.ts';
+import {larkKindTitle,standardLarkKinds,type LarkCardInput} from '../../src/utils/larkNotificationPresentation.ts';
 import {notificationDeadlineStatus} from '../../src/utils/larkNotificationContent.ts';
 import {assessmentOccurrence} from './factMilestones.ts';
 import {
@@ -27,7 +31,6 @@ import {
   resolveRecipients,
 } from "./notificationDelivery.ts";
 import { pool, tx, id, event, connection } from "./store.ts";
-import { resolveGroupWebhook } from "./larkGroupWebhook.ts";
 import { platform } from "./identity.ts";
 import {
   schedule,
@@ -60,7 +63,7 @@ export async function tick(clock = new Date()) {
         timeZone: digestRule.timezone,
       }).format(clock);
       const l = local(clock, digestRule);
-      if ((digestRule.days.includes(l.day) || digestRule.channels.includes('lark')) && l.time >= digestRule.digestTime) {
+      if ((digestRule.days.includes(l.day) || digestRule.channels.includes('lark') || digestRule.channels.includes(LARK_GROUP)) && l.time >= digestRule.digestTime) {
         const counts = (
           await c.dailyStageCounts([
             null,
@@ -125,6 +128,12 @@ export async function tick(clock = new Date()) {
         await recordPlan(lead.identityMergedInto?'identity_consolidated':'identity_pending');
         await c.query('UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1',[ev.id]);continue;
       }
+      const assignmentNotice = ev.type === LEAD_ASSIGNED_EVENT;
+      if (assignmentNotice && !currentAssignmentRecipient(lead,ev.payload)) {
+        await recordPlan("assignment_superseded");
+        await c.query("UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1",[ev.id]);
+        continue;
+      }
       if(ev.payload.requestEvidenceId){
         const sourceRequest=(await c.query("SELECT * FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",[ev.payload.requestEvidenceId,ev.lead_id])).rows[0];
         if(!sourceRequest||!['pending','linked'].includes(sourceRequest.state)){
@@ -168,23 +177,33 @@ export async function tick(clock = new Date()) {
         }
         if(r.event!==ev.type || (ev.type==='daily.digest' && ev.payload.ruleId!==rule.id))continue;
         const excluded=r.requiresRoutingReview || !!r.teams?.length ? 'routing_review'
-          : ev.type!=='daily.digest' && r.sources.length && !r.sources.includes(ev.payload.source) ? 'source_mismatch'
+          : ev.type!=='daily.digest' && r.sources.length && !r.sources.includes(assignmentNotice ? lead?.entryPoint || 'legacy_unknown' : ev.payload.source) ? 'source_mismatch'
           : ev.type!=='daily.digest' && r.tiers.length && !r.tiers.includes(lead?.tier) ? 'tier_mismatch'
           : ev.type!=='daily.digest' && r.states.length && !r.states.includes(lead?.currentStage) ? 'stage_mismatch' : '';
         if(excluded){exclusions.push({ruleId:rule.id,reason:excluded});continue;}
-        for (const channel of r.channels) {
+        for (const option of r.channels) {
+          const channel = option === LARK_GROUP || option === LARK_PERSONAL ? "lark" : option;
+          if ((option === LARK_GROUP && assignmentNotice) || (option === LARK_PERSONAL && !allowsLarkPersonal(ev.type))) continue;
           if(channel==='lark'&&ev.type==='commitment.due'&&!agreementDueAfterActivation(ev.payload.agreedAt,rule.effective_at,(lead?.commitments||[]).find((v:any)=>v.id===ev.payload.commitmentId)?.timezone||r.timezone)){exclusions.push({ruleId:rule.id,reason:'agreement_before_activation'});continue;}
           if(ev.type==='daily.digest' && !digestChannelAllowed(channel,ev.payload))continue;
           const route =
-            channel === "inapp"
+            channel === "inapp" || assignmentNotice
               ? resolveRecipients(r, lead, employees, ev.lead_id)
               : null;
-          const targets = route ? route.ids : [r.group];
-          if(channel==='lark' && ev.lead_id && lead?.owner){
-            const bindings=await larkBindings(c),binding=bindings[lead.owner];
-            if(binding?.openId && binding.appId===process.env.LARK_APP_ID && new Date(binding.updatedAt)<=new Date(ev.created_at) && resolveRecipients(r,lead,employees,ev.lead_id).ids.includes(lead.owner) && personalNotificationAllowed(await personalNotificationPreferences(c,lead.owner),ev.type))targets.push('personal:'+lead.owner);
-          }
-          if (route && !targets.length) {
+          const personalOwner = (option === LARK_PERSONAL || option === "lark") && ev.lead_id && lead?.owner
+            && (route ?? resolveRecipients(r,lead,employees,ev.lead_id)).ids.includes(lead.owner)
+            ? lead.owner : undefined;
+          const binding = personalOwner ? (await larkBindings(c))[personalOwner] : undefined;
+          const canSendPersonal = !!(personalOwner && binding?.openId && binding.appId === process.env.LARK_APP_ID &&
+            new Date(binding.updatedAt) <= new Date(ev.created_at) &&
+            personalNotificationAllowed(await personalNotificationPreferences(c,personalOwner),ev.type));
+          const targets = assignmentNotice
+            ? channel === 'inapp' || channel === 'lark' ? assignmentNoticeTargets(channel,route?.ids[0],canSendPersonal) : []
+            : channel === 'inapp' ? route!.ids
+              : await policyLarkRecipients(c,r,option,canSendPersonal ? personalOwner : undefined);
+          if (assignmentNotice && !targets.length) {
+            exclusions.push({ruleId:rule.id,reason:'assignment_no_recipient'});
+          } else if (route && !targets.length) {
             exclusions.push({ruleId:rule.id,reason:'routing_unresolved'});
             await c.query(
               "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',:p1)",
@@ -279,6 +298,7 @@ export async function tick(clock = new Date()) {
   }
   try {
     const storedRule = job.snapshot.rule as Rule;
+    const assignmentNotice = job.snapshot.event === LEAD_ASSIGNED_EVENT;
     if(storedRule.teams?.length || storedRule.requiresRoutingReview || storedRule.event==='daily.digest' && storedRule.team){
       await pool.query("UPDATE notification_jobs SET state='cancelled',result='Retired team scope requires review',completed_at=UTC_TIMESTAMP(6) WHERE id=:p1",[job.id]);return;
     }
@@ -302,6 +322,13 @@ export async function tick(clock = new Date()) {
     if(lead.identityLifecycle==='pending'||lead.identityMergedInto){
       await pool.query("UPDATE notification_jobs SET state='cancelled',result='Identity review or consolidation; no historical replay',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
     }
+    if (assignmentNotice) {
+      const owner = currentAssignmentRecipient(lead,job.snapshot.payload);
+      if (!owner || (job.channel === "inapp" ? job.recipient !== owner : personalEmployee !== owner)) {
+        await pool.query("UPDATE notification_jobs SET state='cancelled',result='Recipient changed or no longer authorized',completed_at=:p2 WHERE id=:p1",[job.id,clock]);
+        return;
+      }
+    }
     const agreement=job.snapshot.payload.commitmentId?(lead.commitments||[]).find((v:any)=>v.id===job.snapshot.payload.commitmentId):null;
     if(job.snapshot.payload.commitmentId){const agreement=(lead.commitments||[]).find((v:any)=>v.id===job.snapshot.payload.commitmentId);if(!agreement||agreement.status!=='active'){await pool.query("UPDATE notification_jobs SET state='cancelled',result='Agreement changed',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;}}
     if (job.channel === "inapp") {
@@ -312,7 +339,7 @@ export async function tick(clock = new Date()) {
         job.snapshot.leadId,
       );
       if (!targets.includes(job.recipient)) {
-        if (!targets.length)
+        if (!targets.length && !assignmentNotice)
           await tx(async (c) => {
             await c.query(
               "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.routing_unresolved',:p1)",
@@ -369,7 +396,7 @@ export async function tick(clock = new Date()) {
     const deadlineValue=agreement ? agreement.at || undefined : sourceRequest?.data?.dueAt || taskDue;
     const deadlineAt=deadlineValue instanceof Date ? deadlineValue.toISOString() : typeof deadlineValue==='string' ? deadlineValue : undefined;
     const content = {
-      event:
+      event: assignmentNotice ? larkKindTitle(LEAD_ASSIGNED_EVENT,r.language) :
         timingEventLabel(job.snapshot.event,task,Boolean(internalHandling && (task||sourceRequest||agreement)),r.language),
       name: lead.fullName || lead.name || "Anonymous",
       owner: lead.owner || "Unassigned",
@@ -388,6 +415,14 @@ export async function tick(clock = new Date()) {
     };
     if (job.channel === "inapp") {
       await tx(async (c) => {
+        if (assignmentNotice) {
+          const latest = (await c.query("SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE",[job.snapshot.leadId])).rows[0]?.profile;
+          if (latest?.identityMergedInto || latest?.identityLifecycle === 'pending' ||
+              currentAssignmentRecipient(latest,job.snapshot.payload) !== job.recipient) {
+            await c.query("UPDATE notification_jobs SET state='cancelled',result='Recipient changed or no longer authorized',completed_at=:p2 WHERE id=:p1",[job.id,clock]);
+            return;
+          }
+        }
         await c.query(
           "INSERT INTO notification_inbox(id,employee_id,content) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
           [job.id, job.recipient, content],
@@ -437,21 +472,8 @@ export async function tick(clock = new Date()) {
     if(personalEmployee && (!personalBinding?.openId || personalBinding.appId!==process.env.LARK_APP_ID || new Date(personalBinding.updatedAt)>new Date(job.snapshot.eventRecordedAt || 0) || personalEmployee!==lead.owner || !recipients(r,lead,await platform.employees(),job.snapshot.leadId).includes(personalEmployee))){
       await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal recipient changed or unauthorized',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
     }
-    const config = (
-      await pool.query(
-        "SELECT config FROM notification_channels WHERE id=:p1",
-        [personalEmployee ? r.group : job.recipient],
-      )
-    ).rows[0]?.config;
-    const limit = await groupRateLimit(pool, job.recipient, config);
-    if (Number(count) >= limit.maxPerHour) {
-      await pool.query(
-        "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Group hourly limit reached' WHERE id=:p1",
-        [job.id, new Date(clock.getTime() + 3600000)],
-      );
-      return;
-    }
-    if (!config) {
+    const config = await policyLarkChannelConfig(pool, r, job.recipient, Boolean(personalEmployee));
+    if (!config || config.deleted) {
       await tx(async (c) => {
         await c.query(
           "UPDATE notification_jobs SET state='failed',result='Missing notification channel',completed_at=:p2 WHERE id=:p1",
@@ -462,36 +484,36 @@ export async function tick(clock = new Date()) {
       });
       return;
     }
-    if (process.env.PORTAL_DEPLOYMENT === 'company-trial' && process.env.PORTAL_NOTIFICATION_MODE === 'simulation' && config.mode !== 'simulation') {
-      await pool.query("UPDATE notification_jobs SET state='failed',result='Company trial simulation mode blocks live channel',completed_at=:p2 WHERE id=:p1",[job.id,clock]);
+    const limit = await groupRateLimit(pool, job.recipient, config);
+    if (Number(count) >= limit.maxPerHour) {
+      await pool.query(
+        "UPDATE notification_jobs SET state='pending',due_at=:p2,result=:p3 WHERE id=:p1",
+        [job.id, new Date(clock.getTime() + 3600000), personalEmployee ? 'Personal hourly limit reached' : 'Group hourly limit reached'],
+      );
       return;
     }
-    if (config.mode === "simulation") {
+    if (config.mode !== "live" || isolatedLarkRuntime()) {
       await pool.query(
         "UPDATE notification_jobs SET state='simulated',result='No live channel configured',completed_at=:p2 WHERE id=:p1",
         [job.id, clock],
       );
       return;
     }
-    if(personalEmployee && process.env.LARK_PERSONAL_DELIVERY_ENABLED!=='true'){
-      await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
-    }
-    const url = resolveGroupWebhook(job.recipient, config);
+    const url = personalEmployee ? undefined : resolveGroupWebhook(job.recipient, config);
     if (
       (!personalEmployee && !url) ||
       ((!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef)) &&
-        !process.env[config.signingSecretRef]) ||
-      (!personalEmployee && larkTestGroupDisallowed(process.env, job.recipient))
+        !process.env[config.signingSecretRef])
     ) {
       await tx(async (c) => {
         await c.query(
-          "UPDATE notification_jobs SET state='failed',result='Channel not configured or test group disallowed',completed_at=:p2 WHERE id=:p1",
+          "UPDATE notification_jobs SET state='failed',result='Channel not configured',completed_at=:p2 WHERE id=:p1",
           [job.id, clock],
         );
         if (job.snapshot.event !== "notification.failed")
           await event(c, "notification.failed", null, { jobId: job.id });
       });
-      log.error("notification.failed",{jobId:job.id,event:job.snapshot.event,state:"failed",result:"Channel not configured or test group disallowed"});
+      log.error("notification.failed",{jobId:job.id,event:job.snapshot.event,state:"failed",result:"Channel not configured"});
       return;
     }
     let state = "accepted",
@@ -525,16 +547,25 @@ export async function tick(clock = new Date()) {
           log.warn("notification.cancelled",{jobId:job.id,event:job.snapshot.event,result:"Original source missing"});
           return;
         }
-        const occurrence=attempt ? assessmentOccurrence(attempt) : ['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event) ? (source && 'occurredAt' in source ? source.occurredAt : null) || null : null;
+        const occurrence=assignmentNotice ? job.snapshot.payload.changedAt : attempt ? assessmentOccurrence(attempt) : ['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event) ? (source && 'occurredAt' in source ? source.occurredAt : null) || null : null;
         const formatTime=(value:any)=>{const date=new Date(value);return value && Number.isFinite(date.getTime())?new Intl.DateTimeFormat(r.language==='zh'?'zh-CN':r.language==='id'?'id-ID':'en-GB',{timeZone:r.timezone,dateStyle:'medium',timeStyle:'short'}).format(date):undefined;};
         const payload=job.snapshot.payload;
-        const target:LarkCardInput['target']=agreement?{kind:'agreement',id:agreement.id}:job.snapshot.event==='assessment.completed'?{kind:'assessment',id:payload.attemptId}:['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)?{kind:'request',id:payload.requestEvidenceId}:job.snapshot.event==='task.overdue'?{kind:'task',id:payload.taskId}:job.snapshot.event==='ai.failed'&&payload.messageId?{kind:'message',id:payload.messageId}:job.snapshot.event==='conversation.reactivated'&&payload.conversationId?{kind:'conversation',id:payload.conversationId}:job.snapshot.event==='lead.created'&&payload.questionnaireFactId?{kind:'fact',id:payload.questionnaireFactId}:job.snapshot.event==='lead.created'&&payload.submissionId?{kind:'submission',id:payload.submissionId}:undefined;
+        const target:LarkCardInput['target']=assignmentNotice&&payload.factId?{kind:'fact',id:payload.factId}:agreement?{kind:'agreement',id:agreement.id}:job.snapshot.event==='assessment.completed'?{kind:'assessment',id:payload.attemptId}:['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)?{kind:'request',id:payload.requestEvidenceId}:job.snapshot.event==='task.overdue'?{kind:'task',id:payload.taskId}:job.snapshot.event==='ai.failed'&&payload.messageId?{kind:'message',id:payload.messageId}:job.snapshot.event==='conversation.reactivated'&&payload.conversationId?{kind:'conversation',id:payload.conversationId}:job.snapshot.event==='lead.created'&&payload.questionnaireFactId?{kind:'fact',id:payload.questionnaireFactId}:job.snapshot.event==='lead.created'&&payload.submissionId?{kind:'submission',id:payload.submissionId}:undefined;
         const standardInput:LarkCardInput={target,agreementAction:agreement?.action,jobId:job.snapshot.event==='notification.failed'?payload.jobId:undefined,kind:job.snapshot.event,language:r.language,name:content.name,owner:(await platform.employees()).find(e=>e.id===lead.owner)?.displayName || (lead.owner ? (r.language==='zh'?'负责人待核对':r.language==='id'?'Periksa penanggung jawab':'Owner needs review') : (r.language==='zh'?'未分配':r.language==='id'?'Belum ditugaskan':'Unassigned')),excerpt:source && 'excerpt' in source ? source.excerpt:undefined,excerptRestricted:source && 'excerptRestricted' in source ? source.excerptRestricted:false,reportedLevel:source && 'reportedLevel' in source ? source.reportedLevel:undefined,mode:source && 'mode' in source ? source.mode:undefined,city:source && 'city' in source ? source.city:undefined,assessmentResult:attempt?.result,time:formatTime(occurrence),recordedAt:formatTime(attempt?.created_at||source?.recordedAt||failureSource?.recordedAt||job.snapshot.eventRecordedAt),goals:source && 'goals' in source ? source.goals as string[] : undefined,internalReview:!!internalHandling,source:attempt?'assessment':source?.source,score:attempt?.result?.score,maxScore:attempt?.result?.maxScore,due:agreement||job.snapshot.event==='task.overdue'||sourceRequest?.data?.dueAt?content.due:undefined,dueAt:deadlineAt,failedEvent:failureSource?.failedEvent,failedChannel:failureSource?.failedChannel,attempts:failureSource?.attempts,failure:failureSource?.failure};
         designedCard=standardLarkCard(standardInput,job.snapshot.leadId,(!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))?process.env[config.signingSecretRef]:undefined,clock);
       }
-      const sendRequest:typeof fetch=personalEmployee?async(_url,options)=>larkApp.send(personalBinding.openId,JSON.parse(String(options?.body)),job.id):fetch;
+      if (assignmentNotice) {
+        const latest = (await pool.query("SELECT profile FROM portal_leads WHERE id=:p1",[job.snapshot.leadId])).rows[0]?.profile;
+        if (latest?.identityMergedInto || latest?.identityLifecycle === 'pending' ||
+            currentAssignmentRecipient(latest,job.snapshot.payload) !== personalEmployee) {
+          await pool.query("UPDATE notification_jobs SET state='cancelled',result='Recipient changed or no longer authorized',completed_at=:p2 WHERE id=:p1",[job.id,clock]);
+          return;
+        }
+      }
+      const sendRequest:typeof fetch=personalEmployee?async(_url,options)=>larkApp.send(personalBinding.openId,JSON.parse(String(options?.body)),job.id,config.mode):fetch;
       const response = await sendRequest(url || 'https://open.larksuite.com', {
         method: "POST",
+        redirect: "error",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           designedCard || larkCard(
@@ -574,15 +605,16 @@ export async function tick(clock = new Date()) {
         throw Error("Invalid Lark receipt");
       if (!response.ok || Number(body?.code ?? body?.StatusCode) !== 0) {
         state = "failed";
-        result = `HTTP ${response.status}; code ${body?.code ?? body?.StatusCode}`;
+        const code = Number(body?.code ?? body?.StatusCode);
+        result = Number.isSafeInteger(code) ? `HTTP ${response.status}; code ${code}` : `HTTP ${response.status}`;
         // Lark can return a rate-limit rejection in an HTTP 200 receipt.
         // Only this documented transient business code joins the existing HTTP retries.
         retry = response.status === 429 || response.status >= 500 ||
-          Number(body?.code ?? body?.StatusCode) === 11232;
+          code === 11232;
       }
     } catch (e) {
       state = "unknown";
-      result = (e as Error).message;
+      result = personalEmployee ? (e as Error).message : "Lark group delivery could not be confirmed";
     }
     if (retry && job.attempts < r.retries.length) {
       await pool.query(
@@ -601,7 +633,8 @@ export async function tick(clock = new Date()) {
         );
         if (
           ["failed", "unknown"].includes(state) &&
-          job.snapshot.event !== "notification.failed"
+          job.snapshot.event !== "notification.failed" &&
+          !assignmentNotice
         )
           await event(c, "notification.failed", null, { jobId: job.id });
       });

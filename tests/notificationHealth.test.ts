@@ -7,7 +7,6 @@ test("migration-frozen failures stay auditable without impersonating current cha
       {
         mode: "live",
         webhookConfigured: true,
-        designatedTestGroup: true,
         signingSecretConfigured: true,
       },
     ],

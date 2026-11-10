@@ -16,7 +16,13 @@ In-app notifications retain their existing behavior. Daily aggregate events can 
 
 ## Operations
 
-Local 3000 is currently running with an explicitly authorized process-only worker pause. Environment files, notification channel configuration and rule values are unchanged. Re-enable workers or send real acceptance messages only with explicit authorization. Simulated acceptance does not establish actual group receipt or Lark-client visual rendering.
+Deleting a policy removes it from the active list and stops it from being used for future events. Queued notifications retain their original schedule and snapshot. Delivery and change history remain available. A deleted default policy is not recreated on restart.
+
+Policies can select Lark group notifications and Lark personal notifications independently. Personal notifications use the enterprise app and the policy's per-owner limit, without a group channel or Webhook. Live app delivery requires the personal channel to be in live mode, the app credentials and a matching, authorized owner binding. The same channel mode applies to account binding confirmations. Simulated confirmations do not contact Lark. Personal preferences continue to apply. Customer assignment supports the eligible new owner's private message. Daily summaries and notification delivery failures support group delivery. The editor displays the equivalent options for existing combined Lark rules. Untouched legacy rules and already queued snapshots retain their original recipient and group restrictions. The personal channel can further restrict those private deliveries to simulation. Saving the split options makes future events follow the explicit selection.
+
+Local 3000 and company test use `PORTAL_WORKER_ENABLED=false` during maintenance. The pause applies again when the service restarts with that setting. Re-enable workers or send real acceptance messages only with explicit authorization. Simulated acceptance does not establish actual group receipt or Lark-client visual rendering.
+
+On first upgrade, keep the two retired variables in the running environment until the migration has recorded the modes. Existing live groups stay live only if legacy configuration allowed live sending. The personal channel inherits live mode only if both legacy settings permitted business delivery. Missing settings migrate to simulation. If binding confirmations used to bypass a business delivery restriction, the new shared personal channel also applies simulation to those confirmations. Check the saved modes before removing the variables. The process switch remains in force. Local CRM and company test read the built-in group destination from `LARK_GROUP_CRM` in the private server environment. The test button follows its saved channel mode.
 
 ## Content update
 
@@ -24,7 +30,7 @@ Empty and unknown fields are hidden, including unknown occurrence time and unass
 
 ### 每日汇总正文
 
-新版 `daily.digest` Lark 正文使用每日新增客户卡片，页面预览和发送共用渲染器。统计源为 `dailyStageCounts`：指定运营日期新建的客户、按汇总时当前销售阶段分组，保留既有规则筛选；不表示全量客户分布或阶段推进次数。只展示非零阶段；已知零新增显示0，异常数据提示核对，旧阶段不推断映射。站内模板仍独立保留，Lark使用标准卡片。每日策略当前停用及历史范围复核要求不因模板支持而自动改变。测试发送不代表启用了每日定时推送。
+新版 `daily.digest` Lark 正文使用每日新增客户卡片，页面预览和发送共用渲染器。统计源为 `dailyStageCounts`：指定运营日期新建的客户、按汇总时当前销售阶段分组，保留既有规则筛选；不表示全量客户分布或阶段推进次数。只展示非零阶段；已知零新增显示0，异常数据提示核对，旧阶段不推断映射。站内模板仍独立保留，Lark使用标准卡片。系统预置的每日汇总默认启用，使用「Lark 群通知」和站内消息。曾因旧团队范围待复核而停用的预置策略会恢复启用，保留已有渠道、筛选和排期。管理员后来主动停用时，重启不会重新开启。
 
 ## Other six active event types
 
@@ -41,7 +47,7 @@ New request cards verify customer ownership and action type. Missing mandatory r
 
 ### Remaining activation and acceptance boundaries
 
-The daily rule remains disabled pending historical routing-scope review and explicit activation; its statistics remain daily new customers, not all-customer health or conversions. Simulation verifies aggregation-to-delivery without establishing real group receipt. The already-authorized three assessment TEST cards are scheduled for 2026-11-01 18:00 Asia/Jakarta; until receipt they remain pending. No additional real sends occur in the current continuation.
+The daily rule reports daily new customers, rather than all-customer health or conversions. Simulation verifies aggregation-to-delivery without establishing real group receipt. See the dated acceptance records for assessment test deliveries.
 
 ## Deadline context in Lark notifications
 
@@ -63,7 +69,7 @@ New notification policies default to English (`en`). New Lark channels and the n
 
 ## Customer agreement reminders
 
-`commitment.due` defaults to in-app plus Lark, routed to the customer owner and the existing CRM Bot channel. It is an always-on system reminder, not an optional update. New defaults do not silently overwrite existing rules; local activation is explicit, versioned and audited. Existing custom filters, language and limits remain unchanged.
+`commitment.due` defaults to in-app, Lark group and Lark personal delivery. The policy uses the existing system group and sends the personal copy to an eligible, bound customer owner. It is an always-on system reminder, not an optional update. New defaults do not silently overwrite existing rules; local activation is explicit, versioned and audited. Existing custom filters, language and limits remain unchanged.
 
 The blue card shows the customer, privacy-screened agreement text, exact agreed time (or original date only), deadline status at send time when an instant exists, and owner. Empty values stay hidden. “View agreement” opens the specific agreement in Follow-up. Paused contact or unresolved identity retains the internal-review warning. No new task, automatic contact or Tier change is created.
 

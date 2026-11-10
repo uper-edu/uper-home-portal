@@ -8,22 +8,29 @@ Local3000 uses its existing MySQL database. Do not start another process, replac
 
 | Configuration | Where to maintain it | When it takes effect |
 | --- | --- | --- |
-| Deployment presets for the CRM Lark Bot, reserved campaigns and Finance role | [System defaults](../cloud/mysql/system-defaults.json), read by the [initializer](../cloud/mysql/system-defaults.mjs) | Initialization inserts missing records. Existing records retain their saved values. |
+| Deployment presets for the system Lark group, reserved campaigns and Finance role | [System defaults](../cloud/mysql/system-defaults.json), read by the [initializer](../cloud/mysql/system-defaults.mjs) | Initialization inserts missing records. Existing records retain their saved values. |
 | Standard HSK course presets | [Course catalog](../src/data/crmCoursePrices.json) | Initialization adds missing courses. Manage saved courses in CRM. |
 | SLA, work hours and automatic assignment | [CRM policy defaults](../src/types/crmPolicyConfig.ts) and CRM policy settings | Code supplies defaults where applicable. CRM saves environment-specific settings in MySQL. |
 | Notification rules and delivery limits | [Rule defaults](../server/portal/policy.ts), [Lark defaults](../src/utils/larkNotificationDefaults.ts) and CRM notification settings | CRM uses saved rules and channels for delivery. |
-| Group Webhook, signing secrets and other credentials | [Server environment configuration](environment-configuration.md) | The service reads the environment values at startup. The channel record stores the variable name. |
+| Lark group Webhook in local CRM and company test | Private environment file, `LARK_GROUP_CRM` | CRM shows the configuration status. Reload the service after changing the address. |
+| Group Webhook, signing secrets and other credentials | [Server environment configuration](environment-configuration.md) | The service reads these at startup. |
 | Initial CMS content and images | [CMS initialization bundle v2](../cloud/mysql/seeds/cms/v2/README.md) and [COS/bootstrap operations](operations/cms-cos-bootstrap.md). Edit imported content in CMS. | Explicitly publish and verify COS resources, then import URL metadata into an approved empty CMS; existing databases require a reviewed incremental migration. |
 
-The CRM Lark Bot preset creates a missing `CRM_Leads_Update` channel when `LARK_GROUP_CRM` contains a valid Webhook URL. It creates the channel in live mode with the shared hourly limit and signing disabled by default. For local CRM and company test, set `LARK_GROUP_CRM` in the environment's private server file and reload the service after replacing or removing the address. The CRM channel stores the variable name and displays connection status. Match the signing setting to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
+The built-in Lark group channel starts in simulation mode with the shared hourly limit and signing disabled. An existing CRM Bot channel keeps its ID and delivery settings when renamed to Lark 群通知. The group name is fixed. The group and personal system channels can be configured but cannot be deleted. For local CRM and company test, set `LARK_GROUP_CRM` in the environment's private server file and reload the service after replacing or removing the address. The CRM channel stores the variable name and displays connection status. Match signing to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
 
 ## Permissions and notifications
 
 CRM, CMS and system management use persisted staff accounts and server-side permissions. Workspace access does not grant other business roles. Customer ownership and shared-pool claim rules apply at the API; filters cannot expand access. Current user/role configuration is authoritative, not a historical account list.
 
-Sales Operations manages notification policies, channels and delivery audit. Owner routes fall back to CRM Manager when necessary. CRM Bot uses channel `CRM_Leads_Update` and server variable `LARK_GROUP_CRM`; browser responses must never contain the Webhook. Reading messages or opening contact tools does not complete business tasks.
+Sales Operations manages notification policies, channels and delivery audit. Owner routes fall back to CRM Manager when necessary. Each group channel sends to the group associated with its saved Webhook. The channel mode controls whether it sends or records a simulation. Personal notifications use their own channel mode, the Lark application and employee binding. Reading messages or opening contact tools does not complete business tasks. In local CRM and company test, the group Webhook comes from `LARK_GROUP_CRM`.
 
-New environments start with workers paused or explicitly simulated. Real sending requires its own reviewed configuration and TEST receipt check. Distinguish pending, sending, accepted, simulated, unknown, failed and cancelled; accepted does not prove human receipt. Unknown external outcomes must be investigated before retrying. Historical holds and cancelled work remain protected after restart, recovery and channel fixes.
+Use `PORTAL_WORKER_ENABLED=false` to keep the worker paused during maintenance and first-start checks. Real sending requires its own reviewed configuration and TEST receipt check. Distinguish pending, sending, accepted, simulated, unknown, failed and cancelled; accepted does not prove human receipt. Unknown external outcomes must be investigated before retrying. Historical holds and cancelled work remain protected after restart, recovery and channel fixes.
+
+Before changing the Webhook storage method, back up the channel configuration and the private environment file. Verify that the new runtime resolves the original group address while the worker is paused. A rollback uses the saved channel configuration and its matching environment.
+
+A policy can select Lark group and personal delivery independently. CRM schedules one delivery per selected group and up to one personal delivery for the eligible bound owner. Explicit personal delivery follows the personal channel mode and the policy’s per-owner limit. Untouched combined rules and queued snapshots retain their saved routing. The customer assignment policy routes privately.
+
+Before deleting a group channel, remove it from all editable policies and clear or finish pending deliveries. Deletion clears the saved connection and preserves past delivery and audit records. The initializer leaves a deleted channel ID retired. Create a new channel to reconnect the group.
 
 ## Backup, restore and release
 

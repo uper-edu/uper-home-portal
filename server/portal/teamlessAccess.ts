@@ -37,6 +37,7 @@ export async function initializeTeamlessAccess() {
       .rows) {
       const previous = rule.config,
         config = structuredClone(previous);
+      if (previous.deleted) continue;
       const review =
         !!previous.teams?.length ||
         (previous.event === "daily.digest" && !!previous.team);

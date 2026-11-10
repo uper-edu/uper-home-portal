@@ -1,8 +1,8 @@
 {
   "crmLarkBot": {
-    "groupName": "CRM Lark Bot",
-    "mode": "live",
-    "secretRef": "LARK_GROUP_CRM",
+    "groupName": "Lark 群通知",
+    "systemManaged": true,
+    "mode": "simulation",
     "signingEnabled": false
   },
   "campaigns": [

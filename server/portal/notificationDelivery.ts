@@ -1,14 +1,14 @@
-import { resolveGroupWebhook } from "./larkGroupWebhook.ts";
-export { validWebhook } from "./larkGroupWebhook.ts";
 import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
 import {larkNotificationColor} from '../../src/utils/larkNotificationColors.ts';
 import {notificationDestination,type NotificationTargetKind} from '../../src/utils/crmNotificationTarget.ts';
-import crypto from "node:crypto";
+import {LEAD_ASSIGNED_EVENT} from '../../src/utils/leadAssignmentNotification.ts';
 import {dailyDigestPreview,type DailyDigestInput} from '../../src/utils/larkDailyDigest.ts';
 import {larkNotificationPreview,type LarkCardInput} from '../../src/utils/larkNotificationPresentation.ts';
 import { permittedRecord } from "../../src/utils/accessControl.ts";
 import { allowed, type Employee } from "./identity.ts";
 import type { Rule } from "./policy.ts";
+import { groupWebhookUsesEnvironment, larkWebhookSignature, resolveGroupWebhook, usesLegacyProductionGroupWebhook } from "./larkGroupWebhook.ts";
+export { validWebhook } from "./larkGroupWebhook.ts";
 export const CRM_LEADER_ROLE = "crm_leader";
 export function resolveRecipients(
   rule: Rule,
@@ -16,6 +16,7 @@ export function resolveRecipients(
   employees: Employee[],
   leadId?: string,
 ) {
+  if (!leadId && rule.event === LEAD_ASSIGNED_EVENT) return { ids: [], reason: "assignment_owner_unavailable" };
   if (!leadId || rule.event === "notification.failed")
     return {
       ids: employees
@@ -54,6 +55,7 @@ export function resolveRecipients(
             permittedRecord(e, profile, "crm.followup"))),
     );
     if (owner) return { ids: [owner.id], reason: "valid_owner" };
+    if (rule.event === LEAD_ASSIGNED_EVENT) return { ids: [], reason: "assignment_owner_unavailable" };
     const leaders = visible.filter(
       (e) =>
         (e.grants
@@ -146,13 +148,7 @@ export function larkCard(
       ],
     },
   };
-  if (secret) {
-    body.timestamp = String(Math.floor(now.getTime() / 1000));
-    body.sign = crypto
-      .createHmac("sha256", body.timestamp + "\n" + secret)
-      .update("")
-      .digest("base64");
-  }
+  Object.assign(body, larkWebhookSignature(secret, now));
   return body;
 }
 
@@ -162,10 +158,17 @@ export function standardLarkCard(input:LarkCardInput,leadId:string|undefined,sec
   const body=larkCard('',leadId,secret,now,input.target,input.kind);
   body.card.header.template=larkNotificationColor(input.kind,input.failure).template;
   if(leadId&&!input.target){const fallback=new URL(body.card.elements[1].actions[0].url);fallback.searchParams.set('tab','leads');fallback.searchParams.set('leadView',input.kind==='assessment.completed'?'assessment':input.kind==='lead.created'?'profile':['ai.failed','conversation.reactivated'].includes(input.kind)?'chat':'activities');body.card.elements[1].actions[0].url=fallback.toString();}
+  if (leadId && input.kind === LEAD_ASSIGNED_EVENT) {
+    const action = body.card.elements[1].actions[0];
+    const url = new URL(action.url);
+    url.searchParams.set('leadView','activities');
+    action.url = url.toString();
+  }
   body.card.header.title.content+=' · '+preview.title;
   body.card.elements[0]={tag:'div',text:{tag:'plain_text',content:[...preview.rows.map(row=>row.label+(input.language==='zh'?'：':': ')+row.value),...(preview.note?[preview.note]:[])].join('\n')}};
   const buttonLabels:Record<string,[string,string,string]>={
     'commitment.due':['查看客户约定','View agreement','Lihat kesepakatan'],
+    [LEAD_ASSIGNED_EVENT]:input.target?['查看分配记录','View assignment','Lihat penugasan']:['查看跟进','View follow-up','Lihat tindak lanjut'],
     'lead.created':input.target?['查看登记依据','View registration source','Lihat sumber pendaftaran']:['查看客户资料','View customer profile','Lihat profil pelanggan'],
     'assessment.completed':input.target?['查看本次测评','View this assessment','Lihat asesmen ini']:['查看测评页','View assessments','Lihat asesmen'],
     'handoff.requested':input.target?['查看请求依据','View request evidence','Lihat bukti permintaan']:['查看客户','View customer','Lihat pelanggan'],
@@ -194,16 +197,11 @@ export function dailyDigestCard(input:DailyDigestInput,secret:string|undefined,n
 }
 
 export function channelConnection(id: string, config: any) {
-  const webhookConfigured = Boolean(resolveGroupWebhook(id, config));
+  const url = resolveGroupWebhook(id, config);
+  const webhookConfigured = Boolean(url);
   const signingSecretConfigured =
     !(config.signingEnabled ?? !!config.signingSecretRef) ||
     !!process.env[config.signingSecretRef];
-  const testMode =
-    process.env.PORTAL_DEPLOYMENT === 'company-trial' ||
-    process.env.PLATFORM_MODE === "mock" ||
-    process.env.APP_ENV === "test" ||
-    process.env.NODE_ENV !== "production";
-  const designatedTestGroup = process.env.LARK_TEST_GROUP === id;
   const status =
     config.mode !== "live"
       ? "simulation"
@@ -211,14 +209,13 @@ export function channelConnection(id: string, config: any) {
         ? "missing_webhook"
         : !signingSecretConfigured
           ? "missing_signing_secret"
-          : testMode && !designatedTestGroup
-            ? "test_group_blocked"
-            : "configured";
+          : "configured";
   return {
     status,
     webhookConfigured,
+    webhookStored: groupWebhookUsesEnvironment() ? webhookConfigured :
+      Boolean(config.encryptedWebhook) || usesLegacyProductionGroupWebhook(config),
     signingSecretConfigured,
-    designatedTestGroup,
     realReceiptVerified: false,
   };
 }
@@ -238,7 +235,7 @@ export async function groupRateLimit(
     return { maxPerHour: config.maxPerHour, source: "channel" };
   const rows = (
     await db.query(
-      "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null')=:p1 AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1",
+      "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE (CASE WHEN JSON_TYPE(config->'$.groupIds')='ARRAY' THEN JSON_CONTAINS(config->'$.groupIds',JSON_QUOTE(:p1)) ELSE config->>'$.group'=:p1 END) AND (JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark')) OR JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark_group'))) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1",
       [group],
     )
   ).rows;

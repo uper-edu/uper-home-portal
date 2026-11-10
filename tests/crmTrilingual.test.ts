@@ -115,6 +115,7 @@ test("work-calendar weekdays, durations and guidance render without language lea
   for (const lang of ["en", "id", "zh"] as const) {
     const html = renderToStaticMarkup(
       React.createElement(CrmPolicySettings, {
+        initialTopic: "schedule",
         lang,
         isLight: true,
         policyConfig: DEFAULT_CRM_POLICY_CONFIG,

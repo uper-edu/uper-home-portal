@@ -1,5 +1,6 @@
 import { isIP } from 'node:net';
 import {internalMysqlDirect} from '../cloud/mysql/transport.mjs';
+import {portalWorkerEnabled} from './environment.mjs';
 
 export const companyOrigin = 'https://home.prototype.uperedu.com';
 export const isCompanyTrial = (env = process.env) => env.PORTAL_DEPLOYMENT === 'company-trial';
@@ -39,11 +40,7 @@ export function companyConfiguration(env = process.env) {
     throw Error('Company trial requires explicit proxy peers, stable private key, frontend directory and an approved MySQL transport');
   const peers=env.ACCESS_TRUSTED_PROXIES.split(',').map(p=>p.trim()).filter(Boolean);
   if(!peers.length || peers.some(p=>!exactPrivateProxy(p)))throw Error('Company trial requires exact private proxy peers, never wildcard networks');
-  if(!['true','false'].includes(env.PORTAL_WORKER_ENABLED || ''))throw Error('Company trial worker must be explicitly enabled or paused');
-  if (!['simulation','configured'].includes(env.PORTAL_NOTIFICATION_MODE || ''))
-    throw Error('Explicit company notification mode required');
-  if (env.PORTAL_NOTIFICATION_MODE === 'configured' && env.LARK_TEST_GROUP !== 'CRM_Leads_Update')
-    throw Error('Company trial live notifications are restricted to the designated CRM Bot channel');
+  portalWorkerEnabled(env);
   const port = Number(env.PORT || '8080');
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || port === 3000)
     throw Error('Company trial requires a distinct unprivileged container port');
@@ -68,9 +65,7 @@ export function productionConfiguration(env = process.env) {
     throw Error('Production deployment requires explicit proxy peers and a stable private operation key');
   const peers=env.ACCESS_TRUSTED_PROXIES.split(',').map(p=>p.trim()).filter(Boolean);
   if(!peers.length || peers.some(p=>!exactPrivateProxy(p)))throw Error('Production deployment requires exact private proxy peers');
-  if(!['true','false'].includes(env.PORTAL_WORKER_ENABLED || ''))throw Error('Production worker must be explicitly enabled or paused');
-  if (!['simulation','configured'].includes(env.PORTAL_NOTIFICATION_MODE || ''))
-    throw Error('Explicit production notification mode required');
+  portalWorkerEnabled(env);
   const port = Number(env.PORT || '8080');
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || port === 3000)
     throw Error('Production deployment requires a distinct unprivileged container port');

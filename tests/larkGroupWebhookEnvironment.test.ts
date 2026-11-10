@@ -24,3 +24,10 @@ test("remote development, other test installations and production stay outside t
   assert.equal(groupWebhookUsesEnvironment({ PORTAL_ENV: "test" }), false);
   assert.equal(groupWebhookUsesEnvironment({ PORTAL_ENV: "prod", PORTAL_DEPLOYMENT: "production" }), false);
 });
+
+test("production can still read existing Webhook references before a separate migration", () => {
+  const env = { PORTAL_ENV: "prod", PORTAL_DEPLOYMENT: "production", OTHER_WEBHOOK: fixtureAddress };
+  const legacy = { secretRef: "OTHER_WEBHOOK" };
+  assert.equal(resolveGroupWebhook("fixture", legacy, env), fixtureAddress);
+  assert.equal(resolveGroupWebhook("fixture", { ...legacy, encryptedWebhook: "invalid" }, env), undefined);
+});

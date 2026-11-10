@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {environmentName,readEnvironment,frontendEnvironment,loadPortalEnvironment} from '../server/environment.mjs';
+import {environmentName,readEnvironment,frontendEnvironment,loadPortalEnvironment,portalWorkerEnabled} from '../server/environment.mjs';
 function fixture(t){const directory=fs.mkdtempSync(path.join(os.tmpdir(),'uper-env-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));return directory;}
 test('environment selection never falls back to .env or mixes dev and test credentials',t=>{
  const directory=fixture(t);
@@ -32,4 +32,25 @@ test('injected container and isolated fixtures preserve supplied environment wit
  const env={PORTAL_ENV:'test',PORTAL_ENV_SOURCE:'injected',PORTAL_PACKAGE_ENV:'test',MYSQL_TRIAL_URL:'mysql://fixture'};
  assert.equal(loadPortalEnvironment({env,directory:'/nonexistent'}).injected,true);assert.equal(env.MYSQL_TRIAL_URL,'mysql://fixture');
  const legacy={MYSQL_TRIAL_URL:'mysql://fixture',APP_ENV:'test'};loadPortalEnvironment({env:legacy,directory:'/nonexistent'});assert.equal(legacy.MYSQL_TRIAL_URL,'mysql://fixture');
+});
+
+test('normal environments default to running the worker and honor an explicit pause',()=>{
+ const environments=[
+  {TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true'},
+  {PORTAL_DEPLOYMENT:'company-trial',PORTAL_ENV:'test',TRIAL_DATASET:'synthetic'},
+  {PORTAL_DEPLOYMENT:'production',PORTAL_ENV:'prod',TRIAL_DATASET:'synthetic'},
+ ];
+ for(const env of environments){
+  assert.equal(portalWorkerEnabled(env),true);
+  assert.equal(portalWorkerEnabled({...env,PORTAL_WORKER_ENABLED:'false'}),false);
+  assert.throws(()=>portalWorkerEnabled({...env,PORTAL_WORKER_ENABLED:''}),/must be true or false/);
+ }
+});
+test('remote development cannot start a worker and standalone fixtures still opt in',()=>{
+ const remote={PORTAL_DEPLOYMENT:'remote-dev',PORTAL_ENV:'dev',TRIAL_DATASET:'synthetic'};
+ assert.equal(portalWorkerEnabled(remote),false);
+ assert.equal(portalWorkerEnabled({...remote,PORTAL_WORKER_ENABLED:'false'}),false);
+ assert.throws(()=>portalWorkerEnabled({...remote,PORTAL_WORKER_ENABLED:'true'}),/Remote development/);
+ assert.equal(portalWorkerEnabled({TRIAL_DATASET:'synthetic'}),false);
+ assert.equal(portalWorkerEnabled({TRIAL_DATASET:'synthetic',PORTAL_WORKER_ENABLED:'true'}),true);
 });

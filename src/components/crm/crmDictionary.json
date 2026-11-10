@@ -3403,7 +3403,7 @@
     "layer": "contract",
     "object": "Rule",
     "key": "channels",
-    "type": "Channel[]",
+    "type": "(Channel | typeof LARK_GROUP | typeof LARK_PERSONAL)[]",
     "optional": false,
     "source": "server/portal/policy.ts"
   },
@@ -3429,6 +3429,14 @@
     "key": "group",
     "type": "string",
     "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "groupIds",
+    "type": "string[]",
+    "optional": true,
     "source": "server/portal/policy.ts"
   },
   {

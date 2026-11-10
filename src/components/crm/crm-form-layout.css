@@ -58,6 +58,103 @@
 .notification-form-editor>.notification-form-section{margin:0}
 .notification-form-section>.admin-form-section-body{padding-bottom:16px}
 .notification-form-section .grid>p{margin:0;font-size:13px;line-height:1.6}
+.notification-channel-editor,.notification-rule-editor{gap:0;width:100%;border:1px solid var(--af-border);border-radius:14px;background:var(--af-surface)}
+.notification-channel-editor{max-width:688px}
+.notification-rule-editor{max-width:880px;scroll-margin-top:calc(var(--admin-shell-height,116px) + 8px)}
+:is(.notification-channel-editor,.notification-rule-editor)>.admin-edit-header{margin:0;padding:8px 16px;border-width:0 0 1px;border-color:var(--af-border);border-radius:13px 13px 0 0;box-shadow:none;background:var(--af-surface)}
+:is(.notification-channel-editor,.notification-rule-editor) .admin-edit-title h4{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px}
+.notification-channel-body{gap:16px;padding:16px}
+.notification-rule-body{padding:0 16px}
+.notification-rule-body>.notification-form-section{margin:0;border:0;border-radius:0;background:transparent}
+.notification-rule-body>.notification-form-section+.notification-form-section,.notification-rule-disclosure+.notification-form-section,.notification-rule-disclosure{border-top:1px solid var(--af-border)}
+.notification-rule-body .notification-form-section>.admin-form-section-heading{padding:12px 0 0;border:0;background:transparent}
+.notification-rule-body .notification-form-section>.admin-form-section-body{padding:var(--admin-form-panel-top) 0 var(--admin-form-panel-bottom)}
+.notification-rule-channel-group{margin:0;padding:0;border:0;min-width:0}
+.notification-rule-channel-group>legend{font-weight:500}
+.notification-rule-body .notification-rule-channels{display:flex;flex-wrap:wrap;gap:4px 16px}
+[data-admin-form] .notification-rule-body .admin-field--choice{min-height:40px;align-items:center}
+[data-admin-form] .notification-rule-body .admin-field--choice input[type=checkbox]{align-self:center;width:16px;height:16px;margin:0;accent-color:var(--admin-action)}
+.notification-rule-disclosure>summary{align-content:center;min-height:44px;font-size:14px;font-weight:600;cursor:pointer}
+.notification-rule-disclosure[open]>div{margin:0;padding:var(--admin-form-panel-top) 0 var(--admin-form-panel-bottom)}
+.notification-rule-preview{display:grid;gap:var(--admin-form-field-gap)}
+.notification-rule-preview>p{margin:0}
+.notification-rule-editor .admin-edit-close{display:grid;place-items:center;padding:0}
+.notification-rule-editor .admin-edit-title h4>.admin-required-note{margin-left:0!important}
+.notification-rule-editor .admin-edit-title h4:focus{outline:none}
+
+:is(.notification-channel-editor,.notification-rule-editor) .crm-work-button{min-width:40px;min-height:40px;border-radius:10px;font-size:14px}
+:is(.notification-channel-editor,.notification-rule-editor) .crm-work-button:not([data-primary=true]),:is(.notification-channel-card-actions,.notification-policy-card-footer) .crm-work-button{border:1px solid var(--af-border);background:var(--af-surface);color:var(--af-text)}
+:is(.notification-channel-editor,.notification-rule-editor) .crm-work-button:not([data-primary=true]):hover,:is(.notification-channel-card-actions,.notification-policy-card-footer) .crm-work-button:hover{background:var(--af-soft)}
+:is(.notification-channel-editor,.notification-rule-editor) .crm-work-button[data-primary=true]{background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
+:is(.notification-channel-editor,.notification-rule-editor) .crm-work-button:focus-visible,:is(.notification-channel-card-actions,.notification-policy-card-footer) .crm-work-button:focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+.notification-channel-body .notification-channel-row{display:grid;grid-template-columns:minmax(0,144px) minmax(0,1fr);align-items:start;column-gap:var(--admin-form-column-gap)}
+[data-admin-form] .notification-channel-editor .admin-field.notification-channel-row{column-gap:var(--admin-form-column-gap)}
+.notification-channel-row>:is(.admin-field-label,.notification-channel-label){padding-top:9px;font-size:14px;font-weight:500;line-height:1.6}
+.notification-channel-label{margin:0}
+.notification-channel-mode{display:grid;align-content:start;gap:var(--admin-form-help-gap)}
+.notification-channel-mode .crm-filter-dimension-button{min-height:40px}
+.notification-channel-help{display:block;margin:0;color:var(--af-muted);font-size:13px;line-height:1.6}
+.notification-channel-webhook,.notification-channel-delivery{border-top:1px solid var(--af-border);padding-top:var(--admin-form-field-gap)}
+.notification-channel-webhook-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;min-height:40px}
+.notification-channel-limit input{width:112px}
+.notification-channel-signing.admin-field--choice{min-height:40px;align-items:center}
+.notification-channel-signing.admin-field--choice input[type=checkbox]{align-self:center;margin:0}
+.notification-channel-list,.notification-channel-heading{max-width:1120px}
+.notification-config-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;min-height:40px}
+.notification-config-heading-row h2{margin:0}
+.notification-config-heading-row .notification-topic-actions{width:auto}
+.notification-config-heading-row .notification-topic-actions>button:first-child{display:grid;place-items:center;min-width:40px}
+.notification-channel-list,.notification-policy-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,312px),1fr));gap:12px}
+.notification-policy-list{grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))}
+.notification-channel-card,.notification-policy-card{display:grid;gap:8px;min-width:0;padding:12px;border:1px solid var(--af-border);border-radius:14px;background:var(--af-surface)}
+.notification-channel-card-header,.notification-channel-card-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.notification-channel-card-header{justify-content:space-between;align-items:start;gap:8px}
+.notification-channel-card-identity h4{margin:0;color:var(--af-text);font-size:16px;font-weight:650;line-height:1.4;overflow-wrap:anywhere}
+.notification-channel-card-identity p{margin-top:var(--admin-form-help-gap)}
+.notification-channel-card-icon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:10px;background:var(--admin-info-bg);color:var(--admin-info)}
+.notification-channel-card-status{padding:4px 8px;border-radius:8px;background:var(--af-soft);color:var(--af-muted);font-size:13px;line-height:1.5}
+.notification-channel-card-status[data-tone=ready]{background:var(--admin-info-bg);color:var(--admin-info)}
+.notification-channel-card-status[data-tone=warning]{background:var(--admin-warning-bg);color:var(--admin-warning)}
+.notification-channel-card{min-block-size:196px;align-content:start}
+.notification-channel-card:has(>.notification-channel-card-actions){grid-template-rows:auto 1fr auto}
+.notification-channel-placeholder .notification-channel-card-icon{background:var(--af-soft);color:var(--af-muted)}
+.notification-channel-placeholder>.notification-channel-help{padding-top:8px;border-top:1px solid var(--af-border)}
+.notification-policy-card{display:flex;flex-direction:column}
+.notification-policy-card-header,.notification-policy-card-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.notification-policy-card-header h4{margin:0;font-size:16px;font-weight:650;color:var(--af-text);overflow-wrap:anywhere}
+.notification-policy-card-header .notification-channel-card-status{flex:none}
+.notification-channel-card-status[data-tone=enabled]{background:var(--admin-success-bg);color:var(--admin-success)}
+.notification-policy-card-details{display:grid;grid-template-columns:minmax(80px,auto) minmax(0,1fr);align-content:start;gap:4px 12px;margin:0;padding:8px 0;border-block:1px solid var(--af-border);font-size:13px;line-height:1.6}
+.notification-policy-card-details dt,.notification-policy-card-footer small{color:var(--af-muted)}
+.notification-policy-card-details dd{margin:0;color:var(--af-text);overflow-wrap:anywhere}
+.notification-policy-card-footer{margin-block-start:auto}
+.notification-policy-card-footer small{font-size:12px;overflow-wrap:anywhere}
+.notification-policy-card-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-inline-start:auto}
+.notification-policy-card-actions button{flex:none}
+.notification-policy-card-review{margin:0;color:var(--admin-warning)}
+.notification-channel-card-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--admin-form-column-gap);margin:0;padding:8px 0;border-block:1px solid var(--af-border)}
+.notification-channel-card-metrics dt,.notification-channel-card-metrics small{color:var(--af-muted);font-size:13px;line-height:1.6}
+.notification-channel-card-metrics dd{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:4px 0 0;color:var(--af-text);font-size:16px;line-height:1.4}
+.notification-channel-card-metrics strong{font-weight:650;font-variant-numeric:tabular-nums}
+.notification-channel-card-header>.notification-channel-card-status{max-width:50%;margin-inline-start:auto;text-align:end;overflow-wrap:anywhere}
+.notification-channel-remove{display:grid;place-items:center;flex:none;width:40px;min-height:40px;padding:0;border:1px solid var(--af-border);border-radius:10px;background:var(--af-surface);color:var(--admin-muted)}
+.notification-channel-remove:not([aria-disabled=true]):hover{color:var(--admin-danger);background:var(--admin-danger-bg);border-color:var(--admin-danger-border)}
+.notification-channel-remove[aria-disabled=true]{color:var(--admin-muted);cursor:not-allowed}
+.notification-channel-remove:focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+.notification-channel-delete-error{margin:0;font-size:13px;color:var(--admin-danger)}
+.notification-channel-delete-error[data-unknown=true]{color:var(--admin-warning)}
+.notification-rule-group-select{min-width:0}
+.notification-rule-group-select>.notification-channel-help{margin-top:var(--admin-form-help-gap)}
+.notification-channel-card-actions{display:flex;align-self:end;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+:is(.notification-channel-card-actions,.notification-policy-card-footer) .crm-work-button{min-height:40px;font-size:14px;border-radius:10px}
+.notification-channel-test-help{order:1;flex:0 0 100%;margin:0;overflow-wrap:anywhere}
+@media(max-width:600px){
+  .notification-config-heading-row{flex-wrap:wrap}
+  .notification-channel-remove{width:44px;min-height:44px}
+  .notification-channel-body .notification-channel-row{grid-template-columns:minmax(0,1fr)}
+  .notification-channel-row>:is(.admin-field-label,.notification-channel-label){padding-top:0}
+  :is(.notification-channel-editor,.notification-rule-editor) .crm-work-button,:is(.notification-channel-card-actions,.notification-policy-card-footer) .crm-work-button{min-height:44px}
+}
 .crm-form-draft-status{font-size:13px;font-weight:400;color:var(--admin-muted)}
 .crm-source-review-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding-bottom:12px;border-bottom:1px solid var(--dw-border,var(--cw-border));font-size:16px;line-height:1.6;font-weight:600}
 .crm-source-review-heading h3{font:inherit;margin:0}

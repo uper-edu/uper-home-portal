@@ -13,8 +13,8 @@ test('personal sending requires explicit enablement and never calls network by d
  await assert.rejects(app.send('ou_sales',{},'job'),/disabled/);assert.equal(calls,0);
 });
 test('enabled sending uses app token, stable idempotency key and private recipient',async()=>{
- const bodies:any[]=[];const app=new LarkApp({...env,LARK_PERSONAL_DELIVERY_ENABLED:'true'},async(_url,o)=>{bodies.push(JSON.parse(String(o?.body)));return Response.json(bodies.length===1?{code:0,tenant_access_token:'token',expire:7200}:{code:0,data:{message_id:'msg'}});});
- await app.send('ou_sales',{msg_type:'interactive',card:{header:{}}},'stable-job');
+ const bodies:any[]=[];const app=new LarkApp(env,async(_url,o)=>{bodies.push(JSON.parse(String(o?.body)));return Response.json(bodies.length===1?{code:0,tenant_access_token:'token',expire:7200}:{code:0,data:{message_id:'msg'}});});
+ await app.send('ou_sales',{msg_type:'interactive',card:{header:{}}},'stable-job','live');
  assert.deepEqual(bodies[1],{receive_id:'ou_sales',msg_type:'interactive',content:'{"header":{}}',uuid:'stable-job'});
 });
 test('provider errors do not expose credentials or response details',async()=>{

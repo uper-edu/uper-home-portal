@@ -71,6 +71,7 @@ export interface CrmPolicySettingsProps {
   onResetPolicy: () => Promise<boolean>;
   onNavigateTab?: (tab: "leads" | "docs") => void;
   onNavigateNotifications?: () => void;
+  initialTopic?: OperationSection;
   notificationContent?: React.ReactNode | ((topic:string,active:boolean)=>React.ReactNode);
   onActionControlsChange?: (controls: PolicyActionControls | null) => void;
 }
@@ -224,6 +225,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   onActionControlsChange,
   onNavigateNotifications,
   notificationContent,
+  initialTopic = operationSections[0].id,
 }) => {
   const [includeExisting,setIncludeExisting]=useState(false);
   const [backfillConfiguration,setBackfillConfiguration]=useState<CrmPolicyConfig['autoAssignment']|null>(null);
@@ -254,7 +256,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [currentMinutesInDay, setCurrentMinutesInDay] = useState(0);
   const [isCurrentlyWorking, setIsCurrentlyWorking] = useState(true);
   // Active section filter or layout mode
-  const [activeCategory, setActiveCategory] = useState<OperationSection>(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('policyTopic')==='notification-jobs'?'notification-jobs':'schedule');
+  const [activeCategory, setActiveCategory] = useState<OperationSection>(initialTopic);
   const languageIndex = lang === "zh" ? 2 : lang === "id" ? 1 : 0;
   const currentSection = operationSections.find(section=>section.id===activeCategory)!;
   const [showCascadeDiagram, setShowCascadeDiagram] = useState(false);
@@ -1173,12 +1175,12 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       <nav className="crm-ops-nav" aria-label={['Operations topics','Topik operasional','运营主题'][languageIndex]}>
         <details open><summary>{['Configuration topics','Topik konfigurasi','配置主题'][languageIndex]}</summary><div>
         {operationGroups.map((group,i)=><React.Fragment key={i}><h2>{group[languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{setActiveCategory(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({assignment:UsersRound,permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
-        </div></details><small role="status">{modifiedFieldsCount ? ['Unsaved policy changes','Perubahan kebijakan belum disimpan','有未保存的策略修改'][languageIndex] : ['Policies are up to date','Kebijakan sudah tersimpan','策略无未保存修改'][languageIndex]}</small>
+        </div></details>{modifiedFieldsCount > 0 && <small role="status">{['Unsaved policy changes','Perubahan kebijakan belum disimpan','有未保存的策略修改'][languageIndex]}</small>}
       </nav>}>
       <div className="crm-ops-content">{activeCategory==='courses'?<CrmCourses lang={lang} isLight={isLight}/>:<AdminForm lang={lang} noValidate onSubmit={handleSave} className="crm-form-layout w-full mx-auto">
-<AdminRequiredNote lang={lang}/>
+{!isNotificationTopic(activeCategory) && <AdminRequiredNote lang={lang}/>}
 
-{isNotificationTopic(activeCategory)?<header className="admin-topic-notification-heading"><p className="crm-ops-note">{operationGroups[currentSection.group][languageIndex]}</p><h2>{currentSection.title[languageIndex]}</h2><p>{currentSection.purpose[languageIndex]}</p></header>:<header className="admin-edit-header" data-theme={isLight?"light":"dark"}><div className="admin-edit-title"><h2>{currentSection.title[languageIndex]}</h2></div>      <div className="crm-ops-actions"><span role="status">{activeModifiedCount} {['unsaved changes','perubahan belum disimpan','项修改尚未保存'][languageIndex]}</span><button type="submit" disabled={isSaving||isResetting||activeModifiedCount===0}>{checkingResult?['Checking…','Memeriksa…','正在核对…'][languageIndex]:isSaving?['Saving…','Menyimpan…','正在保存…'][languageIndex]:['Save','Simpan','保存'][languageIndex]}</button><details><summary>{['More actions','Tindakan lain','更多操作'][languageIndex]}</summary><div className="admin-save-menu"><button type="button" disabled={isSaving||isResetting} onClick={handleReset}>{['Restore topic defaults','Pulihkan standar topik','恢复本主题默认值'][languageIndex]}</button>{activeModifiedCount>0&&<button type="button" disabled={isSaving||isResetting} onClick={discard}>{['Discard topic edits','Buang perubahan topik','放弃本主题修改'][languageIndex]}</button>}      <details className="crm-ops-tools"><summary>{["Global presets and activation","Preset global dan aktivasi","全局预设与生效说明"][languageIndex]}</summary>
+{!isNotificationTopic(activeCategory)&&<header className="admin-edit-header" data-theme={isLight?"light":"dark"}><div className="admin-edit-title"><h2>{currentSection.title[languageIndex]}</h2></div>      <div className="crm-ops-actions"><span role="status">{activeModifiedCount} {['unsaved changes','perubahan belum disimpan','项修改尚未保存'][languageIndex]}</span><button type="submit" disabled={isSaving||isResetting||activeModifiedCount===0}>{checkingResult?['Checking…','Memeriksa…','正在核对…'][languageIndex]:isSaving?['Saving…','Menyimpan…','正在保存…'][languageIndex]:['Save','Simpan','保存'][languageIndex]}</button><details><summary>{['More actions','Tindakan lain','更多操作'][languageIndex]}</summary><div className="admin-save-menu"><button type="button" disabled={isSaving||isResetting} onClick={handleReset}>{['Restore topic defaults','Pulihkan standar topik','恢复本主题默认值'][languageIndex]}</button>{activeModifiedCount>0&&<button type="button" disabled={isSaving||isResetting} onClick={discard}>{['Discard topic edits','Buang perubahan topik','放弃本主题修改'][languageIndex]}</button>}      <details className="crm-ops-tools"><summary>{["Global presets and activation","Preset global dan aktivasi","全局预设与生效说明"][languageIndex]}</summary>
       {/* 1. Header & Live Status Banner */}
       <div
         className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800 shadow-md"}`}
@@ -2014,6 +2016,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           </div>
         )}
     </div>
-    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm>}<div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&ruleExplanation}</div></AdminTopicFrame>{backfillConfiguration&&<CrmAssignmentBackfill configuration={backfillConfiguration} lang={lang} isLight={isLight} onClose={()=>setBackfillConfiguration(null)}/>}</div>
+    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm>}<div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&activeCategory!=='notification-channels'&&ruleExplanation}</div></AdminTopicFrame>{backfillConfiguration&&<CrmAssignmentBackfill configuration={backfillConfiguration} lang={lang} isLight={isLight} onClose={()=>setBackfillConfiguration(null)}/>}</div>
   );
 };

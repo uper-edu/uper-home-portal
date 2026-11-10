@@ -1,18 +1,20 @@
 import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../utils/larkNotificationDefaults';
+import {allowsLarkGroup, allowsLarkPersonal, LARK_GROUP, LARK_PERSONAL, MAX_NOTIFICATION_GROUPS, notificationGroupIds, policyDeliveryChannels} from '../utils/notificationGroupTargets';
+import {LEAD_ASSIGNED_EVENT} from '../utils/leadAssignmentNotification';
 import {larkNotificationColor} from '../utils/larkNotificationColors';
 import {dailyDigestPreview} from '../utils/larkDailyDigest';
 import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
 import {AdminFormSection} from './AdminFormLayout';
 import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
-import {LarkChannelTestControls, type LarkChannelTest} from './crm/LarkChannelTestControls';
+import { LarkChannelTestControls, type LarkChannelTest } from "./crm/LarkChannelTestControls";
 import {crmFormText} from '../utils/crmFormLanguage';
 import {isSalesProgressStage,progressLabel} from '../utils/crmSalesProgress';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
 import {notificationTopicIcons} from "./crm/notificationTopicIcons";
 import {createElement} from "react";
 import {AdminTopicFrame} from "./AdminTopicFrame";
-import {notificationTopics} from "./crm/operationsSections";
+import {notificationTopics, operationGroups} from "./crm/operationsSections";
 import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
 import { notificationPlanningSummary } from '../utils/notificationPlanning';
@@ -33,9 +35,11 @@ import {
   Settings2,
   Radio,
   History,
+  Mail,
+  MessageSquare,
   ShieldCheck,
-  Save,
   Play,
+  Trash2,
   X,
 } from "lucide-react";
 export type Tab =
@@ -51,6 +55,7 @@ interface Rule {
   recipient: string;
   team?: string;
   group: string;
+  groupIds?: string[];
   sources: string[];
   tiers: string[];
   states: string[];
@@ -75,19 +80,23 @@ interface Rule {
   };
 }
 interface Channel {
+  revision?: number;
+  appConfigured?: boolean;
   maxPerHour?: number;
   groupName?: string;
   teamName?: string;
   team?: string;
-  secretRef?: string;
+  webhookRevision?: string | null;
   mode: string;
   signingEnabled?: boolean;
   signingSecretRef?: string;
 }
 const PERSONAL_CHANNEL_ROW = "lark:personal";
+// Older policy snapshots and delivery records can outlive the original channel row.
+const historicalSystemGroupId = "CRM_Leads_Update";
 interface Row {
   id: string;
-  personalChannel?: { enabled: boolean; appConfigured: boolean };
+  systemManaged?: boolean;
   testDelivery?: LarkChannelTest;
   config?: Rule & Channel;
   enabled?: boolean;
@@ -99,7 +108,8 @@ const initialRule: Rule = {
   event: "lead.created",
   channels: ["inapp"],
   recipient: "owner",
-  group: "crm-test",
+  group: "",
+  groupIds: undefined,
   sources: [],
   tiers: [],
   states: [],
@@ -117,9 +127,11 @@ const initialRule: Rule = {
   template: "{{event}} · {{name}} · {{owner}} · {{due}}",
   language: LARK_DEFAULT_LANGUAGE,
 };
+const editorTriggerId = (kind: "rule" | "channel", id: string) => `notification-${kind}-edit-${id}`;
 const eventNames: Record<string, [string, string]> = {
   "commitment.due": ["客户约定到期", "Customer agreement due"],
   "lead.created": ["客户登记", "New lead"],
+  [LEAD_ASSIGNED_EVENT]: ["客户已分配", "Customer assigned"],
   "conversation.updated": ["聊天更新", "Chat updated"],
   "conversation.reactivated": ["客户重新咨询", "Consultation reopened"],
   "handoff.requested": ["请求人工", "Human follow-up requested"],
@@ -143,9 +155,9 @@ const stateNames: Record<string, [string, string]> = {
   unknown: ["结果未知", "Unknown"],
   cancelled: ["已取消", "Cancelled"],
 };
-async function api(path: string, body?: unknown) {
+async function api(path: string, body?: unknown, method = body === undefined ? "GET" : "POST") {
   const r = await fetch("/api/crm/" + path, {
-    method: body === undefined ? "GET" : "POST",
+    method,
     headers:
       body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -181,11 +193,11 @@ export default function NotificationCenter({
   const noticeRef=useRef<HTMLParagraphElement>(null);
   const zh = lang === "zh",
     t = (a: string, b: string) => (lang === "id" ? crmId(b) : zh ? a : b);
+  const languageIndex = zh ? 2 : lang === "id" ? 1 : 0;
   const [open, setOpen] = useState(Boolean(embeddedTab)),
     [tab, setTab] = useState<Tab>(embeddedTab || "notification-rules"),
     [rows, setRows] = useState<Row[]>([]),
     [channels, setChannels] = useState<Row[]>([]);
-  const [environmentGroupWebhook, setEnvironmentGroupWebhook] = useState(false);
   useEffect(() => {
     if (navigationRequest > 0) setOpen(true);
   }, [navigationRequest]);
@@ -204,15 +216,47 @@ export default function NotificationCenter({
     [routingReviewed, setRoutingReviewed] = useState(false),
     [rule, setRule] = useState<Rule>(initialRule),
     [channel, setChannel] = useState<Channel>({
-      secretRef: "",
       mode: "simulation",
       maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
     });
+  const [webhookDraft, setWebhookDraft] = useState<string | null>();
+  const [webhookStored, setWebhookStored] = useState(false);
+  const [webhookConfigured, setWebhookConfigured] = useState(false);
+  const [environmentGroupWebhook, setEnvironmentGroupWebhook] = useState(false);
+  const [editingWebhook, setEditingWebhook] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<{id: string; name: string; version: string} | null>(null);
+  const [channelDeleteError, setChannelDeleteError] = useState("");
+  const [ruleToDelete, setRuleToDelete] = useState<{id: string; name: string; version: number} | null>(null);
+  const [ruleDeleteError, setRuleDeleteError] = useState("");
+  const [confirmWebhookClear, setConfirmWebhookClear] = useState(false);
+  const editorPanel = useRef<HTMLDivElement>(null);
+  const editorHeading = useRef<HTMLHeadingElement>(null);
+  const editorReturn = useRef<string | null>(null);
+  useEffect(() => {
+    if (editor) {
+      editorPanel.current?.scrollIntoView({ block: "start" });
+      editorHeading.current?.focus({ preventScroll: true });
+      return;
+    }
+    if (!editorReturn.current) return;
+    const trigger = document.getElementById(editorReturn.current);
+    editorReturn.current = null;
+    trigger?.focus();
+  }, [editor]);
+  const channelNameInput = useRef<HTMLInputElement>(null);
+  const signingRefInput = useRef<HTMLInputElement>(null);
+  const webhookInput = useRef<HTMLInputElement>(null);
+  const webhookAction = useRef<HTMLButtonElement>(null);
+  const undoWebhookAction = useRef<HTMLButtonElement>(null);
   const editorBaseline=useRef<string|null>(null);
   const [discardEditor,setDiscardEditor]=useState<null|{run:()=>void}>(null);
-  const editorSnapshot=JSON.stringify({key,config:editor==='rule'?rule:channel,routingReviewed});
+  const editorSnapshot=JSON.stringify({key,config:editor==='rule'?rule:channel,routingReviewed,webhookEdited:webhookDraft!==undefined});
   const editorDirty=Boolean(editor&&editorBaseline.current!==null&&editorBaseline.current!==editorSnapshot);
   useEffect(()=>{if(editor&&editorBaseline.current===null)editorBaseline.current=editorSnapshot;if(!editor)editorBaseline.current=null;});
+  useEffect(()=>{if(!editor){setWebhookDraft(undefined);setEditingWebhook(false);}},[editor]);
+  useEffect(() => {
+    if (webhookDraft === null) undoWebhookAction.current?.focus();
+  }, [webhookDraft]);
   useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(editorDirty||busy){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[editorDirty,busy]);
   const leaveEditor=(run:()=>void)=>{if(busy)return;if(editorDirty)setDiscardEditor({run});else run();};
   const [filterOptions, setFilterOptions] = useState<Record<string, string[]>>({
@@ -261,7 +305,7 @@ export default function NotificationCenter({
           : Array.isArray(data)
             ? data
             : tab === "notification-channels" && data.personalChannel
-              ? [...(data.channels || []), { id: PERSONAL_CHANNEL_ROW, personalChannel: data.personalChannel, testDelivery: data.personalChannel.testDelivery }]
+              ? [...(data.channels || []), { id: PERSONAL_CHANNEL_ROW, config: data.personalChannel, systemManaged: true, testDelivery: data.personalChannel.testDelivery }]
               : data.channels || [],
       );
       if (tab === "notification-rules") {
@@ -276,7 +320,7 @@ export default function NotificationCenter({
         setFilterOptions(options);
         setRouting(routingConfig);
       }
-      setError("");
+      if (editorBaseline.current === null) setError("");
       setDenied(false);
     } catch (e) {
       setError((e as Error).message);
@@ -306,16 +350,12 @@ export default function NotificationCenter({
       ({
         simulation: t("模拟模式 · 不真实发送", "Simulation · no live delivery"),
         missing_webhook: t(
-          "未连接 · 缺少 机器人连接",
-          "Not connected · missing Webhook",
+          "未连接 · Webhook 未配置或无法读取",
+          "Not connected · Webhook missing or unreadable",
         ),
         missing_signing_secret: t(
           "未连接 · 缺少签名密钥",
           "Not connected · missing signing secret",
-        ),
-        test_group_blocked: t(
-          "受限 · 非指定测试群",
-          "Blocked · not designated test group",
         ),
         configured: t(
           "已配置 · 待群内实收确认",
@@ -324,11 +364,36 @@ export default function NotificationCenter({
       }) as Record<string, string>
     )[row.connection?.status] ||
     t("配置状态未确认", "Configuration status unverified");
-  const groupLabel = (row: Row) =>
-    `${row.config?.groupName || t("未命名群", "Unnamed group")} · ${connectionLabel(row)}`;
-  const calendarSummary = `${globalCalendar.timezone} · ${globalCalendar.start}–${globalCalendar.end} · ${globalCalendar.days.map((d) => (zh ? ["日", "一", "二", "三", "四", "五", "六"] : lang === "id" ? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])[d]).join(", ")}`;
-  const timed = rule.channels.includes("lark") || rule.event === "daily.digest";
-  const field = (title: string, child: React.ReactNode, hint?: string, required?:boolean) => title===t("通知渠道", "Delivery channels") ? <div data-admin-form="" className="space-y-1.5"><AdminFieldLabel required>{title}</AdminFieldLabel><div role="group" aria-label={title} aria-required="true">{child}</div></div> : (
+  const assignmentRule = rule.event === LEAD_ASSIGNED_EVENT;
+  const personalChannelEditor = editor === "channel" && key === PERSONAL_CHANNEL_ROW;
+  const systemGroupEditor = editor === "channel" && !personalChannelEditor && rows.some(row => row.id === key && row.systemManaged);
+  const selectedGroupIds = notificationGroupIds(rule);
+  const ruleConfig = { ...rule, group: "", groupIds: selectedGroupIds };
+  const systemGroupLabel = t("Lark 群通知", "Lark group notifications");
+  const isSystemGroupReference = (id: string) => {
+    const row = channels.find(channel => channel.id === id);
+    return row ? row.systemManaged === true : id === historicalSystemGroupId;
+  };
+  const groupName = (id: string) => isSystemGroupReference(id)
+    ? systemGroupLabel : channels.find(channel => channel.id === id)?.config?.groupName || id;
+  const groupChoices = channels.map(row => ({value: row.id, label: groupName(row.id)}));
+  if (selectedGroupIds.includes(historicalSystemGroupId) && !channels.some(row => row.id === historicalSystemGroupId)) {
+    groupChoices.push({value: historicalSystemGroupId, label: systemGroupLabel});
+  }
+  const groupNames = (ids: string[]) => ids.map(groupName).join(zh ? "、" : ", ");
+  const channelLabel = (channel: string) => channel === LARK_GROUP
+    ? systemGroupLabel
+    : channel === LARK_PERSONAL ? t("Lark 个人通知", "Lark personal notifications") : t("站内消息", "In-app messages");
+  const groupDeliveryLabel = (ids: string[]) => ids.length === 1 && isSystemGroupReference(ids[0])
+    ? channelLabel(LARK_GROUP)
+    : channelLabel(LARK_GROUP) + " · " + (groupNames(ids) || t("未命名群", "Unnamed group"));
+  const usesGroup = rule.channels.includes(LARK_GROUP);
+  const usesPersonal = rule.channels.includes(LARK_PERSONAL);
+  const usesLark = usesGroup || usesPersonal;
+  const channelOptions = ["inapp", ...(allowsLarkGroup(rule.event) ? [LARK_GROUP] : []),
+    ...(allowsLarkPersonal(rule.event) ? [LARK_PERSONAL] : [])];
+  const timed = usesLark || rule.event === "daily.digest";
+  const field = (title: string, child: React.ReactNode, hint?: string, required?:boolean) => (
     <AdminField required={required} className="block space-y-1.5">
       <span className="text-xs font-semibold">{title}</span>
       {child}
@@ -400,70 +465,77 @@ export default function NotificationCenter({
         onChange={(e) => onChange(Number(e.target.value))}
       />,
     );
-  const section = (title: string, children: React.ReactNode) => (
-    <AdminFormSection className="crm-form-section notification-form-section" title={title}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" data-admin-grid="">{children}</div>
-    </AdminFormSection>
-  );
+  const section = (title: string | undefined, children: React.ReactNode) => {
+    const fields = <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" data-admin-grid="">{children}</div>;
+    return title
+      ? <AdminFormSection className="crm-form-section notification-form-section" title={title}>{fields}</AdminFormSection>
+      : fields;
+  };
   async function save(enabled: boolean) {
     setBusy(true);
     setError("");
     try {
-      if (!/^[a-zA-Z0-9_.-]{1,100}$/.test(key))
-        throw Error(
-          t(
-            "标识只能包含字母、数字、点、横线和下划线",
-            "Use letters, numbers, dots, hyphens and underscores for the ID",
-          ),
-        );
+      if (!personalChannelEditor && !/^[a-zA-Z0-9_.-]{1,100}$/.test(key))
+        throw Error("Use letters, numbers, dots, hyphens and underscores for the ID");
       if (editor === "rule") {
-        if (!rule.channels.length)
-          throw Error(t("至少选择一个渠道", "Select at least one channel"));
-        if (
-          rule.channels.includes("lark") &&
-          !channels.some((c) => c.id === rule.group)
-        )
-          throw Error(
-            t(
-              "请先配置对应的 Lark 群渠道",
-              "Configure the selected Lark channel first",
-            ),
-          );
+        if (!rule.channels.length) {
+          editorPanel.current?.querySelector<HTMLInputElement>(".notification-rule-channels input")?.focus();
+          throw Error("Select at least one channel");
+        }
+        if (usesGroup &&
+            (!selectedGroupIds.length || selectedGroupIds.length > MAX_NOTIFICATION_GROUPS ||
+              selectedGroupIds.some(id => !channels.some(channel => channel.id === id)))) {
+          editorPanel.current?.querySelector<HTMLButtonElement>(".notification-rule-group-select [role=combobox]")?.focus();
+          throw Error(!selectedGroupIds.length ? "Select at least one Lark group channel."
+            : selectedGroupIds.length > MAX_NOTIFICATION_GROUPS ? "Select up to 20 distinct Lark group channels."
+            : "One or more Lark group channels are no longer available.");
+        }
         await api("notification-rules/" + encodeURIComponent(key), {
-          config: rule,
+          config: ruleConfig,
           enabled,
           confirmRoutingReset: routingReviewed,
         });
+      } else if (personalChannelEditor) {
+        const target = { mode: channel.mode, revision: channel.revision };
+        try {
+          await api("notification-personal-channel", target);
+        } catch (error) {
+          const status = (error as {status?: number}).status;
+          if (status && status < 500) throw error;
+          const current = await api("notification-channels").catch(() => null);
+          if (current?.personalChannel?.mode !== target.mode)
+            throw Error("Channel save outcome is unknown. Refresh to check the current mode.");
+        }
       } else {
         const config = { ...channel };
-        if (!config.groupName?.trim())
-          throw Error(t("请填写实际群名称", "Enter the group name"));
+        if (!systemGroupEditor && !config.groupName?.trim()) {
+          channelNameInput.current?.focus();
+          throw Error("Enter a channel name.");
+        }
+        if (systemGroupEditor) delete config.groupName;
         delete config.team;
         delete config.teamName;
-        if (environmentGroupWebhook) delete config.secretRef;
+        if (editingWebhook && !webhookDraft?.trim()) {
+          webhookInput.current?.focus();
+          throw Error("Paste the Lark group bot Webhook address.");
+        }
         if (config.mode === "simulation") {
-          delete config.secretRef;
           delete config.signingSecretRef;
           delete config.signingEnabled;
         } else {
-          if (!environmentGroupWebhook && !config.secretRef?.trim())
-            throw Error(
-              t(
-                "真实发送需要 机器人连接 配置引用",
-                "Live delivery requires a Webhook reference",
-              ),
-            );
+          if (!webhookStored && !webhookDraft && (!existing || rows.find(row => row.id === key)?.config?.mode !== "live"))
+            throw Error("Save a Webhook before enabling live delivery.");
           config.signingEnabled = !!config.signingEnabled;
-          if (config.signingEnabled && !config.signingSecretRef?.trim())
-            throw Error(
-              t(
-                "开启签名验证后需填写签名密钥引用",
-                "Signing requires a secret reference",
-              ),
-            );
+          if (config.signingEnabled && !config.signingSecretRef?.trim()) {
+            signingRefInput.current?.focus();
+            throw Error("Signing requires a secret reference");
+          }
           if (!config.signingEnabled) delete config.signingSecretRef;
         }
-        await api("notification-channels/" + encodeURIComponent(key), config);
+        await api("notification-channels/" + encodeURIComponent(key), {
+          ...config,
+          webhook: typeof webhookDraft === "string" ? webhookDraft.trim() : webhookDraft,
+        });
       }
       setEditor(null);
       setNotice(
@@ -480,22 +552,76 @@ export default function NotificationCenter({
       setBusy(false);
     }
   }
+  async function deleteChannel(target: NonNullable<typeof channelToDelete>) {
+    const path = "notification-channels/" + encodeURIComponent(target.id);
+    setChannelToDelete(null);
+    setChannelDeleteError("");
+    setNotice("");
+    setBusy(true);
+    try {
+      try {
+        await api(path, {version: target.version}, "DELETE");
+      } catch (error) {
+        const status = (error as {status?: number}).status;
+        if (status && status < 500) throw error;
+        const current = await api("notification-channels").catch(() => null);
+        if (!Array.isArray(current?.channels) || current.channels.some((row: Row) => row.id === target.id))
+          throw Error("Deletion outcome could not be confirmed. Refresh the channel list to check.");
+      }
+      setRows(current => current.filter(row => row.id !== target.id));
+      setNotice(t("通知渠道已删除。", "Notification channel deleted."));
+      await load();
+    } catch (error) {
+      setChannelDeleteError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function deleteRule(target: NonNullable<typeof ruleToDelete>) {
+    setRuleToDelete(null);
+    setRuleDeleteError("");
+    setNotice("");
+    setBusy(true);
+    try {
+      try {
+        await api("notification-rules/" + encodeURIComponent(target.id), {version: target.version}, "DELETE");
+      } catch (error) {
+        const status = (error as {status?: number}).status;
+        if (status && status < 500) throw error;
+        const current = await api("notification-rules").catch(() => null);
+        if (!Array.isArray(current) || current.some((row: Row) => row.id === target.id))
+          throw Error("Policy deletion outcome is unknown. Refresh the list to check.");
+      }
+      setRows(current => current.filter(row => row.id !== target.id));
+      setNotice(t("通知策略已删除。", "Notification policy deleted."));
+      await load();
+    } catch (error) {
+      setRuleDeleteError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   function edit(row?: Row) {leaveEditor(()=>openEditor(row));}
   function openEditor(row?: Row) {
-    if(row?.config&&["task.created","task.rescheduled","task.appointment_due"].includes(row.config.event)){setNotice(t("旧任务通知已退役，仅保留配置供核对，不执行或重放。","Retired task notification: configuration retained for reference; no execution or replay."));return;}
     editorBaseline.current=null;
+    setWebhookDraft(undefined);
+    setEditingWebhook(false);
     setNotice("");
+    setError("");
     setRoutingReviewed(false);
     setSimulation([]);
     setSimulateAt("");
     setExisting(!!row);
     setKey(row?.id || "");
+    editorReturn.current = editorTriggerId(tab === "notification-rules" ? "rule" : "channel", row?.id || "");
     if (tab === "notification-rules") {
       setRule(
-        row ? { ...initialRule, ...row.config } : structuredClone(initialRule),
+        row?.config ? { ...initialRule, ...row.config, channels: policyDeliveryChannels(row.config) } : structuredClone(initialRule),
       );
       setEditor("rule");
     } else {
+      setWebhookStored(Boolean(row?.connection?.webhookStored));
+      setWebhookConfigured(Boolean(row?.connection?.webhookConfigured));
       setChannel(
         row
           ? ({
@@ -506,7 +632,6 @@ export default function NotificationCenter({
                 row.rateLimit?.maxPerHour ?? row.config?.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR,
             } as Channel)
           : {
-              secretRef: "",
               mode: "simulation",
               maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
             },
@@ -516,12 +641,15 @@ export default function NotificationCenter({
     }
   }
   const tabs: [Tab, string, typeof Bell][] = [
-    ["notification-rules", t("通知策略", "Policies"), Settings2],
     ["notification-channels", t("渠道配置", "Channels"), Radio],
+    ["notification-rules", t("通知策略", "Policies"), Settings2],
     ["notification-jobs", t("发送记录", "Delivery records"), Bell],
     ["notification-audit", lang==='id'?'Riwayat eksekusi dan perubahan':t("执行与修改记录", "Execution & change history"), History],
     ["integration-readiness", t("联调检查", "Integration checks"), ShieldCheck],
   ];
+  const isRuleTopic = tab === "notification-rules";
+  const isChannelTopic = tab === "notification-channels";
+  const notificationHeading = notificationTopics.find(topic => topic.id === tab)!;
   return (
     <section
       data-admin-form="" ref={panelRef}
@@ -567,6 +695,41 @@ export default function NotificationCenter({
         </button>
       </div>
       {discardEditor&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardEditor(null)} onDiscard={()=>{const run=discardEditor.run;setDiscardEditor(null);run();}}/>}
+      {channelToDelete && (
+        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+          title={t("删除通知渠道？", "Delete notification channel?")}
+          description={t("将删除 {name} 的连接设置。历史发送记录仍可查看。", "Connection settings for {name} will be deleted. Past delivery records remain available.").replace("{name}", () => channelToDelete.name)}
+          keepLabel={t("取消", "Cancel")}
+          discardLabel={t("确认删除", "Confirm deletion")}
+          onKeep={() => setChannelToDelete(null)}
+          onDiscard={() => void deleteChannel(channelToDelete)}
+        />
+      )}
+      {channelDeleteError && <p role="alert" className="notification-channel-delete-error" data-unknown={channelDeleteError.startsWith("Deletion outcome")}>{crmError(channelDeleteError, lang)}</p>}
+      {ruleToDelete && (
+        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+          title={t("删除通知策略？", "Delete notification policy?")}
+          description={t(
+            "删除「{name}」后，后续事件将不再使用此策略。已排队的通知仍按原计划处理，发送记录和变更历史仍可查看。",
+            "After deleting {name}, future events will no longer use this policy. Queued notifications will still be processed, and delivery and change history will remain available.",
+          ).replace("{name}", () => ruleToDelete.name)}
+          keepLabel={t("取消", "Cancel")}
+          discardLabel={t("确认删除", "Confirm deletion")}
+          onKeep={() => setRuleToDelete(null)}
+          onDiscard={() => void deleteRule(ruleToDelete)}
+        />
+      )}
+      {ruleDeleteError && <p role="alert" className="notification-channel-delete-error" data-unknown={ruleDeleteError.startsWith("Policy deletion outcome")}>{crmError(ruleDeleteError, lang)}</p>}
+      {confirmWebhookClear && (
+        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+          title={t("清除群机器人地址？", "Clear the group bot address?")}
+          description={t("保存后，此渠道将无法向 Lark 群发送通知。", "After saving, this channel will stop sending to the Lark group.")}
+          keepLabel={t("取消", "Cancel")}
+          discardLabel={t("标记为待清除", "Mark for removal")}
+          onKeep={() => setConfirmWebhookClear(false)}
+          onDiscard={() => {setConfirmWebhookClear(false);setWebhookDraft(null);}}
+        />
+      )}
       {open && (
         <>
           <div className="flex flex-wrap items-center gap-2" hidden={Boolean(embeddedTab)} style={embeddedTab?{display:"none"}:undefined}>
@@ -592,17 +755,29 @@ export default function NotificationCenter({
                 </button>
               ))}
             </div>
-            <button
-              className={button}
-              onClick={() => void load()}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
-              />
-              <span className="sr-only">{t("刷新", "Refresh")}</span>
-            </button>
           </div>
+          <header className={`admin-topic-notification-heading${isChannelTopic ? " notification-channel-heading" : ""}`}>
+            <p className="crm-ops-note">{operationGroups[notificationHeading.group][languageIndex]}</p>
+            <div className="notification-config-heading-row">
+              <h2>{notificationHeading.title[languageIndex]}</h2>
+              {!editor && !denied && (
+                <div className="notification-topic-actions">
+                  <button type="button" className={button} disabled={loading} onClick={() => void load()}
+                    aria-label={t("刷新", "Refresh")} title={t("刷新", "Refresh")}>
+                    <RefreshCw aria-hidden="true" className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}/>
+                  </button>
+                  {(isRuleTopic || (isChannelTopic && canEdit)) && (
+                    <button type="button" id={editorTriggerId(isRuleTopic ? "rule" : "channel", "")}
+                      className={`${primary} flex items-center gap-1`} disabled={!canEdit} onClick={() => edit()}>
+                      <Plus className="w-3.5 h-3.5" aria-hidden="true"/>
+                      {isRuleTopic ? t("新增策略", "Add policy") : t("新增渠道", "Add channel")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <p>{notificationHeading.purpose[languageIndex]}</p>
+          </header>
           {error && !editor && (
             <p
               role="alert"
@@ -626,18 +801,13 @@ export default function NotificationCenter({
           )}
           {!denied && (
             <>
-              <div className="notification-topic-toolbar">
+              {tab !== "notification-channels" && !editor && <div className="notification-topic-toolbar">
                 <p className={`text-xs ${muted}`}>
                   {tab === "notification-rules"
                     ? t(
                         "启用仅作用于新事件。已排队任务保留原版本，停用规则不会自动取消它们。生效前已错过的约定时间不补发，历史失败仍可查。",
                         "Activation applies to new events. Queued jobs retain their policy version; disabling does not cancel them. Appointments missed before activation are not replayed; historical failures remain visible.",
                       )
-                    : tab === "notification-channels"
-                      ? t(
-                          "站内提醒显示在客户列表。Lark 用于群通知；邮件／短信 尚未接入。",
-                          "In-app reminders appear in Leads. Lark sends group notifications; Email / SMS are not connected.",
-                        )
                       : tab === "notification-jobs"
                         ? t(
                             "接口接受不代表员工已读或已跟进。结果未知请人工核查，避免重复发送。",
@@ -653,23 +823,8 @@ export default function NotificationCenter({
                               "Configuration checks do not prove live identity integration or receipt in the group.",
                             )}
                 </p>
-                <div className="notification-topic-actions">{embeddedTab&&<button type="button" className={button} disabled={loading} onClick={()=>void load()} aria-label={t("刷新","Refresh")}><RefreshCw className={`w-4 h-4 ${loading?"animate-spin":""}`}/></button>}
-                {(tab === "notification-rules" ||
-                  tab === "notification-channels") &&
-                  !editor && (
-                    <button
-                      className={`${primary} flex items-center gap-1`}
-                      disabled={!canEdit}
-                      onClick={() => edit()}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      {tab === "notification-rules"
-                        ? t("新增策略", "Add policy")
-                        : t("新增渠道", "Add channel")}
-                    </button>
-                  )}</div>
-              </div>
-              {tab === "notification-rules" && routing && (
+              </div>}
+              {tab === "notification-rules" && routing && !editor && (
                 <details className="notification-routing text-xs">
                   <summary className="font-bold cursor-pointer">
                     {t("全局通知路由", "Global notification routing")}
@@ -682,8 +837,8 @@ export default function NotificationCenter({
                   </p>
                   <p className={muted}>
                     {t(
-                      "CRM 管理者 来自可信平台角色及权限，不把所有管理员当作 管理者。Lark 仍发往策略指定群。运营异常和每日汇总按管理者权限接收。找不到接收者时记录路由异常。",
-                      "CRM Managers come from trusted roles and permissions, not administrator status. Lark keeps its configured group destination. Operational incidents and summaries use manager permissions. Missing recipients produce a routing incident.",
+                      "客户分配只通知新负责人。其他 Lark 通知按各策略发送。运营异常和每日汇总由有权限的 CRM 管理者接收。",
+                      "Assignment notices go only to the new owner. Other Lark notices follow their policies. Authorized CRM Managers receive operational incidents and daily summaries.",
                     )}
                   </p>
                   <p>
@@ -705,18 +860,28 @@ export default function NotificationCenter({
               )}
               {editor && (
                 <div
-                  className="crm-form-layout notification-form-editor"
+                  ref={editorPanel}
+                  className={`crm-form-layout notification-form-editor${editor === "channel" ? " notification-channel-editor" : " notification-rule-editor"}`}
                   aria-label={t(
                     "通知配置表单",
                     "Notification configuration form",
                   )}
                 >
                   <header className="admin-edit-header" data-theme={isLight?'light':'dark'}>
-                   <div className="admin-edit-title"><h4>{editor === 'rule'?t('编辑通知策略','Edit notification policy'):t('编辑 Lark 渠道','Edit Lark channel')}</h4><small>{key}</small>{editorDirty&&<span className="crm-form-draft-status" role="status">{crmFormText(lang,'unsaved')}</span>}</div><button type="button" className={`${button} admin-edit-close`} disabled={busy} onClick={()=>leaveEditor(()=>setEditor(null))}><X className="w-4 h-4"/><span className="sr-only">{t('关闭编辑','Close editor')}</span></button>
+                    <div className="admin-edit-title">
+                      <h4 ref={editorHeading} tabIndex={-1}>
+                        {editor === 'rule'
+                          ? (existing ? t('编辑通知策略','Edit notification policy') : t('新增策略','Add policy'))
+                          : personalChannelEditor ? t("编辑 Lark 个人渠道", "Edit Lark personal channel") : t('编辑 Lark 渠道','Edit Lark channel')}
+                        <AdminRequiredNote lang={lang} inline/>
+                      </h4>
+                      {editorDirty && <span className="crm-form-draft-status" role="status">{crmFormText(lang,'unsaved')}</span>}
+                    </div>
                   <div className="admin-edit-actions">
                     {editor === "rule" && (
                       <button
-                        className={button}
+                        type="button"
+                        className="crm-work-button"
                         disabled={!canEdit || busy}
                         onClick={() => void save(false)}
                       >
@@ -724,63 +889,37 @@ export default function NotificationCenter({
                       </button>
                     )}
                     <button
-                      className={`${primary} flex items-center gap-1`}
+                      type="button"
+                      className="crm-work-button"
+                      data-primary="true"
                       disabled={!canEdit || busy}
                       onClick={() => void save(true)}
                     >
-                      <Save className="w-3.5 h-3.5" />
                       {busy
                         ? t("保存中…", "Saving…")
                         : editor === "rule"
                           ? t("保存并启用", "Save and enable")
-                          : t("保存渠道", "Save channel")}
+                          : t("保存", "Save")}
                     </button>
                   </div>
+                    <button type="button" className="crm-work-button admin-edit-close"
+                      disabled={busy} onClick={() => leaveEditor(() => {setEditor(null);setError("");})}>
+                      <X className="w-4 h-4" aria-hidden="true"/><span className="sr-only">{t('关闭编辑','Close editor')}</span>
+                    </button>
                     {error&&<p role="alert" className="admin-edit-feedback">{crmError(error,lang)}</p>}
                   </header>
-                  <AdminRequiredNote lang={lang}/>
-                  {editor === "channel" ? (
-                    <details className={`${box} p-3 text-xs`}>
-                      <summary className="cursor-pointer">
-                        {t(
-                          "技术信息（只读）",
-                          "Technical information (read only)",
-                        )}
-                      </summary>
-                      <p className="mt-2">
-                        {t("内部渠道 ID", "Internal channel ID")}：{key}
-                      </p>
-                      <p className={muted}>
-                        {t(
-                          "系统生成；现有策略通过此 ID 引用渠道，改名不改变关联。",
-                          "Generated internally. Existing policies reference this ID; renaming the display label preserves links.",
-                        )}
-                      </p>
-                    </details>
-                  ) : (
-                    <>
-                      {field(
-                        t("配置标识", "Configuration ID"),
-                        <input
-                          className={input}
-                          value={key}
-                          required={!existing}
-                          disabled={existing}
-                          onChange={(e) => setKey(e.target.value)}
-                          placeholder="crm-followup"
-                        />,
-                        t(
-                          "唯一标识；保存后不可在此修改。",
-                          "Unique ID; cannot be renamed after saving.",
-                        ),
-                      )}
-                    </>
-                  )}
                   {editor === "rule" ? (
-                    <>
+                    <div className="notification-rule-body">
                       {section(
-                        t("1 · 触发条件", "1 · Trigger conditions"),
+                        t("触发条件", "Trigger conditions"),
                         <>
+                          {!existing && field(
+                            t("配置标识", "Configuration ID"),
+                            <input className={input} value={key} required
+                              onChange={(e) => setKey(e.target.value)} placeholder="crm-followup"/>,
+                            undefined,
+                            true,
+                          )}
                           <SearchableChoices
                             required
                             title={t("业务事件", "Business event")}
@@ -792,7 +931,16 @@ export default function NotificationCenter({
                                   lang === "id" ? crmId(n[1]) : n[zh ? 0 : 1],
                               }),
                             )}
-                            onChange={(values) => patch({ event: values[0] })}
+                            onChange={([event]) => {
+                              if (!event) return;
+                              patch({
+                                event,
+                                channels: rule.channels.filter(channel =>
+                                  (channel !== LARK_GROUP || allowsLarkGroup(event)) &&
+                                  (channel !== LARK_PERSONAL || allowsLarkPersonal(event))),
+                                ...(!allowsLarkGroup(event) ? { group: "", groupIds: [] } : {}),
+                              });
+                            }}
                             zh={zh}
                             lang={lang}
                             isLight={isLight}
@@ -802,8 +950,8 @@ export default function NotificationCenter({
                             className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
                           >
                             {t(
-                              "事件单选；范围可多选。未选择表示全部；同字段任一满足，不同字段同时满足。",
-                              "One event per policy; filters allow multiple selections. Empty means all. Values within a field use OR; different fields use AND.",
+                              "各项筛选需同时满足，留空表示不限。",
+                              "All selected filters must match. Leave blank for all.",
                             )}
                           </p>
                           {(["sources", "tiers", "states"] as const).map(
@@ -887,11 +1035,12 @@ export default function NotificationCenter({
                         </>,
                       )}
                       {section(
-                        t("2 · 通知对象", "2 · Notification recipients"),
+                        t("收件人与渠道", "Recipients and channels"),
                         <>
                           <p className="sm:col-span-2 lg:col-span-3">
-                            {rule.event.includes("failed") ||
-                            rule.event === "daily.digest"
+                            {assignmentRule
+                              ? t("仅新负责人收到通知。Lark 私信需已绑定账号。", "Only the new owner is notified. Lark direct messages require a linked account.")
+                              : rule.event.includes("failed") || rule.event === "daily.digest"
                               ? t(
                                   "运营异常及汇总通知 CRM 管理者；全量汇总仅对有全量查看权限的管理者开放。",
                                   "Operational incidents and summaries go to CRM Managers. Full summaries require access to all customers.",
@@ -916,10 +1065,10 @@ export default function NotificationCenter({
                               )}
                             </AdminField>
                           )}
-                          {field(
-                            t("通知渠道", "Delivery channels"),
-                            <div className="flex gap-4 py-2 text-xs">
-                              {["inapp", "lark"].map((c) => (
+                          <fieldset className="notification-rule-channel-group">
+                            <legend><AdminFieldLabel required>{t("通知渠道", "Delivery channels")}</AdminFieldLabel></legend>
+                            <div className="notification-rule-channels">
+                              {channelOptions.map((c) => (
                                 <AdminField
                                   key={c}
                                   className="flex gap-2 items-center"
@@ -937,52 +1086,35 @@ export default function NotificationCenter({
                                       })
                                     }
                                   />
-                                  {c === "inapp"
-                                    ? t("客户列表站内提醒", "Leads reminder")
-                                    : "Lark"}
+                                  {channelLabel(c)}
                                 </AdminField>
                               ))}
-                            </div>,
+                            </div>
+                          </fieldset>
+                          {usesGroup && (
+                            <div className="notification-rule-group-select">
+                              <SearchableChoices
+                                title={t("Lark 群渠道", "Lark group channel")}
+                                values={selectedGroupIds}
+                                choices={groupChoices}
+                                onChange={groupIds => patch({group: "", groupIds})}
+                                required zh={zh} lang={lang} isLight={isLight}
+                              />
+                              <p className="notification-channel-help">{t("可选择多个群，系统会分别发送。", "Select multiple groups for separate deliveries.")}</p>
+                            </div>
                           )}
-                          {rule.channels.includes("lark") &&
-                            select(
-                              t("Lark 群渠道", "Lark group channel"),
-                              rule.group,
-                              [
-                                [
-                                  rule.group,
-                                  channels.some((c) => c.id === rule.group)
-                                    ? groupLabel(
-                                        channels.find(
-                                          (c) => c.id === rule.group,
-                                        )!,
-                                      )
-                                    : t(
-                                        `未配置渠道（${rule.group}）`,
-                                        `Unconfigured channel (${rule.group})`,
-                                      ),
-                                ],
-                                ...channels
-                                  .filter((c) => c.id !== rule.group)
-                                  .map(
-                                    (c) =>
-                                      [c.id, groupLabel(c)] as [string, string],
-                                  ),
-                              ],
-                              (v) => patch({ group: v }),
-                            )}
                         </>,
                       )}
                       {section(
-                        t("3 · 发送安排", "3 · Delivery schedule"),
+                        t("发送安排", "Delivery schedule"),
                         <>
                           {!timed && (
                             <p
                               className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
                             >
                               {t(
-                                "站内提醒始终即时产生，无需配置外发时间。",
-                                "In-app reminders are immediate; no external delivery timing is required.",
+                                "站内消息即时发送。",
+                                "In-app messages are sent immediately.",
                               )}
                             </p>
                           )}
@@ -1067,16 +1199,9 @@ export default function NotificationCenter({
                               )}
                               {rule.calendarMode === "inherit" && (
                                 <div className="sm:col-span-2 lg:col-span-3 text-xs space-y-2">
-                                  <p>{calendarSummary.split(" · ")[0]}</p>
-                                  <p className={muted}>
-                                    {t(
-                                      "继承运营时区；工作日和工作时段不限制新版 Lark 通知。",
-                                      "Inherits the operating timezone; working days and hours do not restrict new Lark notifications.",
-                                    )}
-                                  </p>
+                                  <p>{globalCalendar.timezone}</p>
                                 </div>
                               )}
-                              <p className={muted}>{lang==='zh'?'新 Lark 通知全天可发送，不受工作日历限制；静默时段单独生效。':lang==='id'?'Notifikasi Lark baru dapat dikirim setiap hari sepanjang waktu; jam hening berlaku terpisah.':'New Lark notifications can send at any time on any day; quiet hours apply separately.'}</p>
                               {rule.calendarMode === "custom" && (
                                 <>
                                   {text(
@@ -1088,7 +1213,7 @@ export default function NotificationCenter({
 
                                 </>
                               )}
-                              {rule.channels.includes("lark") &&
+                              {usesLark &&
                                 field(
                                   t("静默时段", "Quiet hours"),
                                   <AdminField className="flex gap-2 py-2 text-xs">
@@ -1109,7 +1234,8 @@ export default function NotificationCenter({
                                     )}
                                   </AdminField>,
                                 )}
-                              {rule.channels.includes("lark") && rule.quiet && (
+                              {usesLark && <p className={`sm:col-span-2 lg:col-span-3 ${muted}`}>{lang==='zh'?'Lark 通知不受工作日历限制，静默时段仍然生效。':lang==='id'?'Notifikasi Lark tidak dibatasi kalender kerja; jam hening tetap berlaku.':'Lark notifications are independent of the working calendar. Quiet hours still apply.'}</p>}
+                              {usesLark && rule.quiet && (
                                 <>
                                   {field(
                                     t("静默开始", "Quiet hours start"),
@@ -1149,10 +1275,10 @@ export default function NotificationCenter({
                           )}
                         </>,
                       )}
-                      {section(
-                        t("4 · 消息内容", "4 · Message content"),
+                      {usesLark && section(
+                        t("消息内容", "Message content"),
                         <>
-                          {rule.channels.includes("lark") && (
+                          {usesLark && (
                             <>
                               {select(
                                 t("通知语言", "Notification language"),
@@ -1184,7 +1310,7 @@ export default function NotificationCenter({
                               <div
                                 className={`${box} p-3 text-xs sm:col-span-2 lg:col-span-3`}
                               >
-                                <p className="font-semibold mb-2">{t('Lark 摘要预览（模拟数据）','Lark summary preview (synthetic data)')}</p>
+                                <p className="font-semibold mb-2">{t('Lark 卡片预览','Lark card preview')}</p>
                                 <p data-lark-header={larkNotificationColor(rule.event).template} className="font-semibold mb-2 rounded px-3 py-2" style={{color:larkNotificationColor(rule.event).foreground,background:larkNotificationColor(rule.event).background}}>
                                   UPER · TEST · {rule.event==='daily.digest'?dailyDigestPreview({language:rule.language as 'zh'|'en'|'id',date:'2030-01-06',counts:[]}).title:standardLarkKinds.includes(rule.event as LarkKind)?larkNotificationPreview(larkNotificationSample(rule.event as LarkKind,rule.language as 'zh'|'en'|'id')).title:label(rule.event)}
                                 </p>
@@ -1200,30 +1326,19 @@ export default function NotificationCenter({
                               </div>
                             </>
                           )}
-                          <p
-                            className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
-                          >
-                            {t(
-                              "标准卡片展示关联需求、受隐私保护的原文摘录或测评结果；完整依据在CRM查看。",
-                              "Standard cards show linked needs, privacy-filtered original excerpts or assessment results. Complete evidence remains in CRM.",
-                            )}
-                          </p>
                         </>,
                       )}
-                      {rule.channels.includes("lark") ? (
-                        <details className={`${box} p-4`}>
+                      {usesLark && (
+                        <details className="notification-rule-disclosure">
                           <summary className="text-xs font-bold cursor-pointer">
                             {t(
-                              "5 · 发送保护（高级设置）",
-                              "5 · Delivery safeguards (advanced)",
+                              "去重与重试",
+                              "Deduplication and retries",
                             )}
                           </summary>
-                          <div className="mt-4">
+                          <div>
                             {section(
-                              t(
-                                "Lark 重复抑制与重试",
-                                "Lark deduplication and retries",
-                              ),
+                              undefined,
                               <>
                                 {number(
                                   t(
@@ -1245,33 +1360,23 @@ export default function NotificationCenter({
                                     "Default 1, 5, 15; unknown results are not retried automatically.",
                                   ),
                                 )}
-                                <p
-                                  className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
-                                >
+                                {usesPersonal ? number(
+                                  t("每位负责人每小时发送上限", "Hourly limit per owner"),
+                                  rule.maxPerHour,
+                                  (v) => patch({ maxPerHour: v }),
+                                ) : <p className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}>
                                   {t(
                                     "同一群、客户、事件与紧急级别的后续通知会被抑制，不合并内容，也不影响聊天保存。每群限流统一在渠道设置中配置。",
                                     "Subsequent notifications for the same group, lead, event and priority are suppressed. Content is not merged and chats remain saved. Configure hourly limits in channel settings.",
                                   )}
-                                </p>
+                                </p>}
                               </>,
                             )}
                           </div>
                         </details>
-                      ) : (
-                        <p className={`text-xs ${muted}`}>
-                          {t(
-                            "5 · 发送保护：站内提醒无需 Lark 重试、重复抑制或限流参数。",
-                            "5 · Delivery safeguards: in-app reminders do not use Lark retry, deduplication or rate limits.",
-                          )}
-                        </p>
                       )}
-                      <div className={`${box} p-4 space-y-3`}>
-                        <h4 className="text-xs font-bold">
-                          {t(
-                            "时间预览 · 不发送消息",
-                            "Timing preview · no messages sent",
-                          )}
-                        </h4>
+                      <AdminFormSection className="crm-form-section notification-form-section" title={t("发送时间预览", "Delivery timing preview")}>
+                        <div className="notification-rule-preview">
                         <div className="flex flex-wrap gap-3 items-end">
                           <div>
                             {field(
@@ -1288,7 +1393,8 @@ export default function NotificationCenter({
                             )}
                           </div>
                           <button
-                            className={`${button} flex gap-1 items-center`}
+                            type="button"
+                            className="crm-work-button flex gap-1 items-center"
                             disabled={!canEdit || busy}
                             onClick={async () => {
                               setBusy(true);
@@ -1296,8 +1402,8 @@ export default function NotificationCenter({
                                 const d = await api("notification-simulate", {
                                   config:
                                     rule.event === "daily.digest"
-                                      ? { ...rule, timing: "digest" }
-                                      : rule,
+                                      ? { ...ruleConfig, timing: "digest" }
+                                      : ruleConfig,
                                   ...(simulateAt
                                     ? { at: new Date(simulateAt).toISOString() }
                                     : {}),
@@ -1317,7 +1423,8 @@ export default function NotificationCenter({
                         </div>
                         {simulation.map((s) => (
                           <p key={s.channel} className="text-xs">
-                            {s.channel} ·{" "}
+                            {s.channel === LARK_GROUP
+                              ? groupDeliveryLabel(selectedGroupIds) : channelLabel(s.channel)} ·{" "}
                             {new Date(s.at).toLocaleString(crmLocale(lang), {
                               timeZone:
                                 rule.calendarMode === "inherit"
@@ -1330,150 +1437,142 @@ export default function NotificationCenter({
                               : rule.timezone}
                           </p>
                         ))}
-                      </div>
-                    </>
+                        </div>
+                      </AdminFormSection>
+                    </div>
                   ) : (
-                    <>
-                      {section(
-                        t("1 · 基本信息", "1 · Basic information"),
-                        <>
-                          {text(
-                            t("渠道名称（必填）", "Channel name (required)"),
-                            channel.groupName || "",
-                            (v) => setChannel({ ...channel, groupName: v }),
-                            t(
-                              "仅在 CRM 渠道列表与策略群选择器中显示；不修改 Lark 群名，不决定发送目标。",
-                              "Displayed in CRM channel lists and policy selectors. Does not rename a Lark group or determine the delivery target.",
-                            ),
-                          )}
-                          {select(
-                            t("运行方式", "Operation mode"),
-                            channel.mode,
-                            [
-                              ["simulation", t("模拟测试", "Simulation")],
-                              ["live", t("真实发送", "Live delivery")],
-                            ],
-                            (v) => setChannel({ ...channel, mode: v }),
-                          )}
-                          <p
-                            className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
-                          >
-                            {channel.mode === "simulation"
-                              ? t(
-                                  "只生成模拟发送记录，不向 Lark 发消息，无需 机器人连接。已有连接信息保留，但在模拟模式中不使用。",
-                                  "Records simulated deliveries only. No messages sent to Lark; no Webhook required. Existing connection settings are retained but unused.",
-                                )
-                              : t(
-                                  "将向 机器人连接 对应的群发送。切换模式影响引用此渠道的待发任务；保存配置本身不发送测试消息。",
-                                  "Sends to the group identified by the Webhook. Mode changes affect pending jobs. Saving does not send a test message.",
-                                )}
-                          </p>
-                        </>,
-                      )}
-                      {environmentGroupWebhook && section(
-                        t("群机器人 Webhook", "Group bot Webhook"),
-                        <div className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}>
-                          <p role="status">{rows.find(row => row.id === key)?.connection?.webhookConfigured
-                            ? t("已配置", "Configured") : t("未配置", "Not configured")}</p>
-                          <p>{t("群地址由服务端维护。", "The group address is managed on the server.")}</p>
-                        </div>,
-                      )}
-                      {channel.mode === "live"
-                        ? section(
-                            t("2 · 连接配置", "2 · Connection settings"),
-                            <>
-                              {!environmentGroupWebhook && text(
-                                t(
-                                  "机器人连接 配置引用（必填）",
-                                  "Webhook configuration reference (required)",
-                                ),
-                                channel.secretRef || "",
-                                (v) => setChannel({ ...channel, secretRef: v }),
-                                t(
-                                  "填写服务端环境变量名，例如 LARK_GROUP_CRM。变量中的 机器人地址 决定目标群；不要在此填写 地址或密钥。",
-                                  "Enter a server environment variable such as LARK_GROUP_CRM. Its Webhook URL determines the target group; never enter a URL or secret here.",
-                                ),
-                              )}
-                              {field(
-                                t("签名验证", "Signature verification"),
-                                <AdminField className="flex gap-2 py-2 text-xs">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!channel.signingEnabled}
-                                    onChange={(e) =>
-                                      setChannel({
-                                        ...channel,
-                                        signingEnabled: e.target.checked,
-                                      })
-                                    }
-                                  />
-                                  {t(
-                                    "机器人已开启签名验证",
-                                    "Bot requires signature verification",
+                    <div className="notification-channel-body" data-admin-stack="">
+                      <div className="notification-channel-fields" data-admin-stack="">
+                        {!personalChannelEditor && (systemGroupEditor ? <div className="notification-channel-row">
+                          <span className="notification-channel-label">{t("渠道名称", "Channel name")}</span>
+                          <span>{systemGroupLabel}</span>
+                        </div> : <AdminField className="notification-channel-row" required>
+                          {t("渠道名称", "Channel name")}
+                          <input ref={channelNameInput} className={input} required maxLength={100}
+                            disabled={busy || !canEdit} value={channel.groupName || ""}
+                            onChange={e => setChannel({ ...channel, groupName: e.target.value })}
+                          />
+                        </AdminField>)}
+                        <AdminField as="div" className="notification-channel-row" required>
+                          <AdminFieldLabel required>{t("发送模式", "Delivery mode")}</AdminFieldLabel>
+                          <div className="notification-channel-mode">
+                            <CrmSingleSelect label={t("发送模式", "Delivery mode")} value={channel.mode}
+                              options={[
+                                {value: "simulation", label: t("模拟发送", "Simulation")},
+                                {value: "live", label: t("真实发送", "Live delivery"),
+                                  disabled: personalChannelEditor && !channel.appConfigured},
+                              ]}
+                              disabled={busy || !canEdit}
+                              onChange={mode => setChannel({ ...channel, mode })}
+                              lang={lang} isLight={isLight}
+                            />
+                            {channel.mode === "simulation" && <p className="notification-channel-help">
+                              {t("通知触发后只记模拟结果，不发到 Lark。", "Triggered notifications are recorded without sending to Lark.")}
+                            </p>}
+                            {personalChannelEditor && <p className="notification-channel-help">
+                              {t("个人业务通知和绑定确认使用此模式。", "This mode applies to personal business notifications and binding confirmations.")}
+                            </p>}
+                          </div>
+                        </AdminField>
+                      </div>
+
+                      {!personalChannelEditor && <>
+                      <section className="notification-channel-webhook" aria-label={t("群机器人 Webhook", "Group bot Webhook")} data-admin-stack="">
+                        <div className="notification-channel-row">
+                          <h3 className="notification-channel-label">{t("群机器人 Webhook", "Group bot Webhook")}</h3>
+                          <div className="notification-channel-webhook-row">
+                            <p className="notification-channel-help" role="status">
+                              {webhookDraft === null ? t("待清除", "Pending removal")
+                                : webhookConfigured ? t("已配置", "Configured")
+                                  : webhookStored ? t("已保存，暂不可用", "Saved, currently unavailable")
+                                    : t("未配置", "Not configured")}
+                            </p>
+                            {!environmentGroupWebhook && <div className="admin-form-actions">
+                              {editingWebhook || webhookDraft === null ? (
+                                <button ref={undoWebhookAction} type="button" className="crm-work-button" disabled={busy || !canEdit}
+                                  onClick={() => {
+                                    setEditingWebhook(false);
+                                    setWebhookDraft(undefined);
+                                    requestAnimationFrame(() => webhookAction.current?.focus());
+                                  }}>
+                                  {t("撤销地址更改", "Undo address change")}
+                                </button>
+                              ) : (
+                                <>
+                                  <button ref={webhookAction} type="button" className="crm-work-button" disabled={busy || !canEdit}
+                                    onClick={() => setEditingWebhook(true)}>
+                                    {webhookStored ? t("替换地址", "Replace address") : t("粘贴地址", "Paste address")}
+                                  </button>
+                                  {webhookStored && (
+                                    <button type="button" className="crm-work-button" disabled={busy || !canEdit}
+                                      onClick={() => setConfirmWebhookClear(true)}>
+                                      {t("清除地址", "Clear address")}
+                                    </button>
                                   )}
-                                </AdminField>,
-                                t(
-                                  "仅在 Lark 机器人开启签名验证时勾选。",
-                                  "Enable only if signature verification is enabled on the Lark bot.",
-                                ),
+                                </>
                               )}
-                              {channel.signingEnabled &&
-                                text(
-                                  t(
-                                    "签名密钥引用（必填）",
-                                    "Signing secret reference (required)",
-                                  ),
-                                  channel.signingSecretRef || "",
-                                  (v) =>
-                                    setChannel({
-                                      ...channel,
-                                      signingSecretRef: v,
-                                    }),
-                                  t(
-                                    "填写服务端变量名，不填写实际密钥。",
-                                    "Enter the server variable name, not the secret.",
-                                  ),
-                                )}
-                              <p
-                                className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
-                              >
-                                {t(
-                                  "连接检查以保存后的配置为准。“配置就绪”不代表群内已收到消息；实际接口接受结果在发送记录查询。测试环境仅允许指定测试群。",
-                                  "Connection checks use saved settings. Configured does not prove group receipt; API acceptance appears in delivery records. Only the designated test group may receive live test messages.",
-                                )}
-                              </p>
-                            </>,
-                          )
-                        : section(
-                            t("2 · 连接配置", "2 · Connection settings"),
-                            <p
-                              className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
-                            >
-                              {t(
-                                "模拟测试不需要连接配置。",
-                                "Simulation requires no connection settings.",
-                              )}
-                            </p>,
-                          )}
-                      {section(
-                        t("3 · 发送保护", "3 · Delivery safeguards"),
-                        <>
-                          {number(
-                            t("每小时发送上限", "Hourly delivery limit"),
-                            channel.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR,
-                            (v) => setChannel({ ...channel, maxPerHour: v }),
-                          )}
-                          <p
-                            className={`text-xs sm:col-span-2 lg:col-span-3 ${muted}`}
-                          >
-                            {t(
-                              "引用此渠道的所有策略共用。默认 20；0 暂停发送；达到上限后顺延，不丢弃通知。模拟模式也可验证限流。",
-                              "Shared by all policies using this channel. Default 20; zero pauses delivery. Excess jobs are deferred, not discarded. Simulation also exercises rate limits.",
-                            )}
+                            </div>}
+                          </div>
+                        </div>
+                        {environmentGroupWebhook && <p className="notification-channel-help">
+                          {t("群地址由服务端维护。", "The group address is managed on the server.")}
+                        </p>}
+                        {editingWebhook && (
+                          <AdminField className="notification-channel-row" required>
+                            {t("Lark 群 Webhook 地址", "Lark group Webhook address")}
+                            <input ref={webhookInput} className={input} type="password" autoComplete="new-password" autoFocus
+                              required spellCheck={false} maxLength={512} disabled={busy || !canEdit}
+                              value={webhookDraft ?? ""} onChange={e => setWebhookDraft(e.target.value)}
+                            />
+                            <small>{t("加密保存，保存后不显示。", "Encrypted and hidden after saving.")}</small>
+                          </AdminField>
+                        )}
+                        {webhookDraft === null && (
+                          <p className="admin-form-feedback" data-tone="warning">
+                            {t("保存后，此渠道将无法向 Lark 群发送通知。", "After saving, this channel will stop sending to the Lark group.")}
                           </p>
-                        </>,
-                      )}
-                    </>
+                        )}
+                      </section>
+
+                      <div className="notification-channel-fields notification-channel-delivery" data-admin-stack="">
+                        <AdminField className="notification-channel-row notification-channel-limit">
+                          {t("每小时发送上限", "Hourly delivery limit")}
+                          <input className={input} type="number" min={0} max={10080} disabled={busy || !canEdit}
+                            value={channel.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR}
+                            onChange={e => setChannel({ ...channel, maxPerHour: Number(e.target.value) })}
+                          />
+                          <small>{t("0 表示暂停，超出上限的通知顺延。", "0 pauses delivery. Excess notifications are deferred.")}</small>
+                        </AdminField>
+                        {channel.mode === "live" && <>
+                            <div className="notification-channel-row">
+                              <span className="notification-channel-label" aria-hidden="true">{t("签名验证", "Signature verification")}</span>
+                              <div className="notification-channel-mode">
+                                <AdminField className="notification-channel-signing">
+                                  <input type="checkbox" aria-label={t("启用签名验证", "Enable signature verification")}
+                                    checked={!!channel.signingEnabled} disabled={busy || !canEdit}
+                                    onChange={e => setChannel({ ...channel, signingEnabled: e.target.checked })}
+                                  />
+                                  {t("启用", "Enable")}
+                                </AdminField>
+                                <p className="notification-channel-help">
+                                  {t("仅在 Lark 群机器人启用签名时开启。", "Enable if the Lark group bot requires signing.")}
+                                </p>
+                              </div>
+                            </div>
+                            {channel.signingEnabled && (
+                              <AdminField className="notification-channel-row" required>
+                                {t("签名密钥引用", "Signing secret reference")}
+                                <input ref={signingRefInput} className={input} required disabled={busy || !canEdit}
+                                  value={channel.signingSecretRef || ""}
+                                  onChange={e => setChannel({ ...channel, signingSecretRef: e.target.value })}
+                                />
+                                <small>{t("填写服务器变量名。", "Enter the server variable name.")}</small>
+                              </AdminField>
+                            )}
+                        </>}
+                      </div>
+                      </>}
+                    </div>
                   )}
 
                 </div>
@@ -1486,210 +1585,187 @@ export default function NotificationCenter({
                     </p>
                   )}
                   {tab === "notification-rules" && (
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {rows.map((row) => (
-                        <article
-                          key={row.id}
-                          className={`${box} p-4 space-y-3`}
-                        >
-                          <div className="flex justify-between gap-2">
-                            <h4 className="font-bold text-sm">
-                              {label(row.config!.event)}
-                            </h4>
-                            <span
-                              className={`text-[11px] rounded-md px-2 py-1 ${row.enabled && !["task.created","task.rescheduled","task.appointment_due"].includes(row.config!.event) ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-500/10 " + muted}`}
-                            >
-                              {["task.created","task.rescheduled","task.appointment_due"].includes(row.config!.event) ? t("已退役 · 不再执行", "Retired · not executed") : row.enabled
-                                ? t("已启用", "Enabled")
-                                : t("停用 / 草稿", "Inactive / draft")}
-                            </span>
-                          </div>
-                          <p className={`text-[11px] ${muted}`}>
-                            {row.id} · v{row.version}
-                          </p>
-                          <p className={`text-xs ${muted}`}>
-                            {t("适用范围", "Applies to")}：
-                            {[
-                              [t("来源", "Source"), row.config!.sources],
-                              [t("等级", "Tier"), row.config!.tiers],
-                              [t("状态", "State"), row.config!.states],
-                            ]
-                              .filter(
-                                ([, values]) => (values as string[]).length,
-                              )
-                              .map(
-                                ([name, values]) =>
-                                  `${name}: ${(values as string[]).join(", ")}`,
-                              )
-                              .join(" · ") || t("全部客户", "All leads")}
-                          </p>
-                          <p className="text-xs">
-                            {row
-                              .config!.channels.map((c) =>
-                                c === "inapp"
-                                  ? t("客户列表提醒", "Leads reminder")
-                                  : "Lark · " +
-                                    (channels.find(
-                                      (x) => x.id === row.config!.group,
-                                    )?.config?.groupName ||
-                                      t("未命名群", "Unnamed group")),
-                              )
-                              .join(" + ")}{" "}
-                            ·{" "}
-                            {row.config!.channels.includes("inapp")
-                              ? row.config!.event.includes("failed") ||
-                                row.config!.event === "daily.digest"
-                                ? t(
-                                    "有权限的 CRM 管理者",
-                                    "Authorized CRM Managers",
-                                  )
-                                : t(
-                                    "有效负责人 → CRM 管理者",
-                                    "Valid Owner → CRM Manager",
-                                  )
-                              : t("仅群通知", "Group delivery only")}
-                            {row.config!.requiresRoutingReview && (
-                              <strong>
-                                {t(
-                                  "历史范围待复核，保持停用",
-                                  "Historical scope needs review; remains inactive",
-                                )}
-                              </strong>
-                            )}
-                          </p>
-                          <p className={`text-xs ${muted}`}>
-                            {!row.config!.channels.includes("lark") &&
-                            row.config!.event !== "daily.digest" ? (
-                              t("站内提醒即时产生", "Immediate in-app reminder")
-                            ) : (
-                              <>
-                                {row.config!.event === "daily.digest" ||
-                                row.config!.timing === "digest"
-                                  ? `${row.config!.event === "daily.digest" ? t("每日统计汇总", "Daily summary") : t("指定时刻逐条发送", "Individual sends at set time")} ${row.config!.digestTime}`
-                                  : row.config!.timing === "delay"
-                                    ? `${row.config!.delayMinutes} ${t("分钟延迟", "minute delay")}`
-                                    : t("立即发送", "Immediate")}
-                                {" · "}
-                                {row.config!.calendarMode === "inherit"
-                                  ? t(
-                                      "继承运营时区",
-                                      "Operating timezone",
-                                    )
-                                  : row.config!.timezone}
-                                {row.config!.channels.includes("lark") &&
-                                row.config!.businessOnly
-                                  ? " · " + t("新版全天发送", "New events: anytime")
-                                  : ""}
-                              </>
-                            )}
-                          </p>
-                          <button
-                            className={button}
-                            disabled={!canEdit}
-                            onClick={() => edit(row)}
-                          >
-                            {t("编辑策略", "Edit policy")}
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                  {tab === "notification-channels" && (
-                    <div className="grid md:grid-cols-2 gap-3">
+                    <div className="notification-policy-list">
                       {rows.map((row) => {
-                        if (row.personalChannel) {
-                          const name = t("Lark 个人通知", "Lark personal notifications");
-                          return (
-                            <article key={row.id} aria-label={name} className={`${box} flex flex-col gap-3 p-4`}>
-                              <h4 className="font-bold text-sm">{name}</h4>
-                              <p className="text-xs">{row.personalChannel.enabled ? t("真实发送", "Live") : t("未启用", "Disabled")}</p>
-                              <p className="text-xs">{row.personalChannel.appConfigured
-                                ? t("Lark 应用已配置", "Lark app configured") : t("Lark 应用未配置", "Lark app not configured")}</p>
-                              {canEdit && row.testDelivery && (
-                                <div className="mt-auto flex flex-wrap justify-end gap-2">
-                                  <LarkChannelTestControls id={row.id} name={name} test={row.testDelivery}
-                                    lang={lang} isLight={isLight} request={api} buttonClassName={button} personal />
-                                </div>
-                              )}
-                            </article>
-                          );
-                        }
-                        const name = row.config?.groupName || t("未命名群", "Unnamed group");
+                        const config = row.config!;
+                        const version = row.version;
+                        const status = row.enabled ? t("已启用", "Enabled") : t("停用 / 草稿", "Inactive / draft");
+                        const assignment = config.event === LEAD_ASSIGNED_EVENT;
+                        const deliveryOptions = policyDeliveryChannels(config);
+                        const usesLark = deliveryOptions.includes(LARK_GROUP) || deliveryOptions.includes(LARK_PERSONAL);
+                        const usesInApp = config.channels.includes("inapp");
+                        const deliveryChannels = deliveryOptions.map(channel =>
+                          channel === LARK_GROUP ? groupDeliveryLabel(notificationGroupIds(config)) : channelLabel(channel),
+                        ).join(" + ");
+                        const inAppRecipient = assignment ? t("仅新负责人", "New owner only")
+                          : config.event.includes("failed") || config.event === "daily.digest"
+                            ? t("有权限的 CRM 管理者", "Authorized CRM Managers")
+                            : t("有效负责人 → CRM 管理者", "Valid Owner → CRM Manager");
+                        const schedule = config.event === "daily.digest"
+                          ? t("每日统计汇总", "Daily summary") + " " + config.digestTime
+                          : config.timing === "digest"
+                            ? t("指定时刻逐条发送", "Individual sends at set time") + " " + config.digestTime
+                            : config.timing === "delay"
+                              ? config.delayMinutes + " " + t("分钟延迟", "minute delay")
+                              : t("立即发送", "Immediate");
+                        const deliveryTiming = usesLark || config.event === "daily.digest"
+                          ? schedule + " · " + (config.calendarMode === "inherit" ? t("继承运营时区", "Operating timezone") : config.timezone)
+                          : t("立即发送", "Immediate");
+                        const filters = [
+                          {label: t("来源", "Source"), values: config.sources},
+                          {label: t("等级", "Tier"), values: config.tiers},
+                          {label: t("阶段", "Stage"), values: config.states},
+                        ].filter(filter => filter.values.length);
                         return (
-                          <article
-                            key={row.id}
-                            aria-label={name}
-                            className={`${box} flex flex-col gap-3 p-4`}
-                          >
-                            <h4 className="font-bold text-sm">
-                              Lark ·{" "}
-                              {name}
-                            </h4>
-                            <p className="text-xs">
-                              {row.config!.mode === "live"
-                                ? t("真实发送", "Live")
-                                : t("模拟发送", "Simulation")}
-                            </p>
-                            <p className="text-xs">{row.connection?.status === "configured" ? t("已配置", "Configured") : connectionLabel(row)}</p>
-                            <p className="text-xs">
-                              {t("每小时上限", "Hourly limit")}：
-                              {row.rateLimit?.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR} ·{" "}
-                              {row.rateLimit?.source === "legacy_strictest"
-                                ? t(
-                                    "旧策略兼容值（可在此统一设置）",
-                                    "Legacy compatibility limit (configure here)",
-                                  )
-                                : t(
-                                    "群内所有策略共用",
-                                    "Shared by all group policies",
-                                  )}
-                            </p>
-                            <p className={`text-xs ${muted}`}>
-                              {t(
-                                "被通知策略引用",
-                                "Used by notification policies",
-                              )}
-                              ：{row.usage?.total ?? 0} · {t("已启用", "Enabled")}
-                              ：{row.usage?.enabled ?? 0}
-                            </p>
-                            <details className={`text-[11px] ${muted}`}>
-                              <summary className="cursor-pointer">
-                                {t("技术信息", "Technical information")}
-                              </summary>
-                              <p>
-                                {t("标识：", "ID:")}
-                                {row.id}
-                              </p>
-                              {row.config!.mode === "live" && !environmentGroupWebhook && (
-                                <p>
-                                  {t("机器人连接 配置引用", "Webhook reference")}
-                                  ：{row.config!.secretRef}
-                                </p>
-                              )}
-                            </details>
-                            <div className="mt-auto flex flex-wrap justify-end gap-2">
-                              <button type="button" className={button} disabled={!canEdit} onClick={() => edit(row)}>
-                                {t("编辑渠道", "Edit channel")}
-                              </button>
-                              {canEdit && row.testDelivery && (
-                                <LarkChannelTestControls id={row.id} name={name} test={row.testDelivery}
-                                  lang={lang} isLight={isLight} request={api} buttonClassName={button} />
-                              )}
-                            </div>
+                          <article key={row.id} className="notification-policy-card">
+                            <header className="notification-policy-card-header">
+                              <h4>{label(config.event)}</h4>
+                              <span className="notification-channel-card-status" data-tone={row.enabled ? "enabled" : undefined}>{status}</span>
+                            </header>
+                            <dl className="notification-policy-card-details">
+                              <dt>{t("通知渠道", "Delivery channels")}</dt><dd>{deliveryChannels}</dd>
+                              {(assignment || usesInApp) && <><dt>{assignment ? t("收件人", "Recipients") : t("站内收件人", "In-app recipients")}</dt><dd>{inAppRecipient}</dd></>}
+                              <dt>{t("发送安排", "Delivery schedule")}</dt><dd>{deliveryTiming}</dd>
+                              <dt>{t("适用范围", "Applies to")}</dt>
+                              <dd>{filters.length ? filters.map(({label, values}) => (
+                                <div key={label}>{label} · {values.map(value => crmValue(value, lang)).join(zh ? "、" : ", ")}</div>
+                              )) : t("全部客户", "All leads")}</dd>
+                            </dl>
+                            {config.requiresRoutingReview && <p className="notification-policy-card-review">{t("历史范围待复核，保持停用", "Historical scope needs review; remains inactive")}</p>}
+                            <footer className="notification-policy-card-footer">
+                              <small>{row.id} · v{row.version}</small>
+                              {canEdit && <div className="notification-policy-card-actions">
+                                <button type="button" id={editorTriggerId("rule", row.id)} className="crm-work-button"
+                                  disabled={busy} onClick={() => edit(row)}>
+                                  {t("编辑策略", "Edit policy")}
+                                </button>
+                                {typeof version === "number" && <button type="button"
+                                  className="crm-work-button notification-channel-remove"
+                                  aria-label={t("删除通知策略", "Delete notification policy")}
+                                  title={t("删除通知策略", "Delete notification policy")}
+                                  disabled={busy} onClick={() => {
+                                    setRuleDeleteError("");
+                                    setRuleToDelete({id: row.id, name: label(config.event), version});
+                                  }}>
+                                  <Trash2 size={16} aria-hidden="true"/>
+                                </button>}
+                              </div>}
+                            </footer>
                           </article>
                         );
                       })}
-                      {["Email", "SMS"].map((c) => (
-                        <article key={c} className={`${box} p-4 opacity-60`}>
-                          <h4 className="font-bold text-sm">{c}</h4>
-                          <p className={`text-xs mt-2 ${muted}`}>
-                            {t(
-                              "未接入 · 暂不可发送",
-                              "Not connected · unavailable for delivery",
+                    </div>
+                  )}
+                  {tab === "notification-channels" && (
+                    <div className="notification-channel-list">
+                      {rows.map((row) => {
+                        const config = row.config!;
+                        if (row.id === PERSONAL_CHANNEL_ROW) return (
+                          <article key={row.id} className="notification-channel-card" aria-label={t("Lark 个人通知", "Lark personal notifications")}>
+                            <header className="notification-channel-card-header">
+                              <div className="notification-channel-card-identity">
+                                <span className="notification-channel-card-icon"><img src="/images/lark-mark.png" alt="" width={24} height={24}/></span>
+                                <div>
+                                  <h4>{t("Lark 个人通知", "Lark personal notifications")}</h4>
+                                  <p className="notification-channel-help">{t("系统渠道", "System channel")} · {config.mode === "live" ? t("真实发送", "Live") : t("模拟发送", "Simulation")}</p>
+                                </div>
+                              </div>
+                              <span className="notification-channel-card-status" data-tone={config.appConfigured ? "ready" : "warning"}>
+                                {config.appConfigured ? t("Lark 应用已配置", "Lark app configured") : t("Lark 应用未配置", "Lark app not configured")}
+                              </span>
+                            </header>
+                            <p className="notification-channel-help">{t("个人业务通知和绑定确认使用此模式。", "This mode applies to personal business notifications and binding confirmations.")}</p>
+                            {canEdit && <div className="notification-channel-card-actions">
+                              <button type="button" id={editorTriggerId("channel", row.id)} className="crm-work-button" disabled={busy} onClick={() => edit(row)}>
+                                {t("编辑渠道", "Edit channel")}
+                              </button>
+                              {row.testDelivery && <LarkChannelTestControls id={row.id} personal
+                                name={t("Lark 个人通知", "Lark personal notifications")} test={row.testDelivery}
+                                lang={lang} isLight={isLight} request={api}/>}
+                            </div>}
+                          </article>
+                        );
+                        const name = row.systemManaged ? systemGroupLabel : config.groupName || t("未命名群", "Unnamed group");
+                        const limit = row.rateLimit?.maxPerHour ?? LARK_DEFAULT_MAX_PER_HOUR;
+                        const status = row.connection?.status;
+                        const webhookReady = row.connection?.webhookConfigured;
+                        const deleteBlocked = (row.usage?.total ?? 0) > 0;
+                        const deleteReason = deleteBlocked
+                          ? t("仍有关联策略，解除关联后可删除。", "Remove linked policies before deleting this channel.")
+                          : t("删除通知渠道", "Delete notification channel");
+                        const connection = status === "configured" || (status === "simulation" && webhookReady)
+                          ? t("Webhook 已配置", "Webhook configured")
+                          : status === "simulation" ? t("Webhook 未配置", "Webhook not configured") : connectionLabel(row);
+                        return (
+                          <article key={row.id} className="notification-channel-card" aria-label={name}>
+                            <header className="notification-channel-card-header">
+                              <div className="notification-channel-card-identity">
+                                <span className="notification-channel-card-icon">
+                                  <img src="/images/lark-mark.png" alt="" width={24} height={24}/>
+                                </span>
+                                <div>
+                                  <h4>{name}</h4>
+                                  <p className="notification-channel-help">
+                                    {row.systemManaged ? t("系统渠道", "System channel") : systemGroupLabel} · {config.mode === "live"
+                                      ? t("真实发送", "Live") : t("模拟发送", "Simulation")}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="notification-channel-card-status" data-tone={
+                                status === "configured" || (status === "simulation" && webhookReady) ? "ready"
+                                  : status === "simulation" ? "neutral" : "warning"
+                              }>{connection}</span>
+                            </header>
+                            <dl className="notification-channel-card-metrics">
+                              <div>
+                                <dt>{t("每小时上限", "Hourly limit")}</dt>
+                                <dd>
+                                  <strong>{limit === 0 ? t("已暂停", "Paused") : limit}</strong>
+                                  {row.rateLimit?.source === "legacy_strictest" && (
+                                    <small>{t("沿用旧策略上限", "Uses legacy policy limit")}</small>
+                                  )}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>{t("通知策略", "Notification policies")}</dt>
+                                <dd>
+                                  <strong>{row.usage?.enabled ?? 0} / {row.usage?.total ?? 0}</strong>
+                                  <small>{t("已启用 / 已关联", "Enabled / linked")}</small>
+                                </dd>
+                              </div>
+                            </dl>
+                            {canEdit && (
+                              <div className="notification-channel-card-actions">
+                                <button type="button" id={editorTriggerId("channel", row.id)} className="crm-work-button" disabled={busy} onClick={() => edit(row)}>
+                                  {t("编辑渠道", "Edit channel")}
+                                </button>
+                                {row.testDelivery && <LarkChannelTestControls id={row.id}
+                                  name={name} test={row.testDelivery} lang={lang} isLight={isLight} request={api}/>}
+                                {row.testDelivery && !row.systemManaged && <button type="button"
+                                  className="crm-work-button notification-channel-remove"
+                                  aria-label={t("删除通知渠道", "Delete notification channel")}
+                                  aria-disabled={deleteBlocked || undefined} disabled={busy}
+                                  aria-description={deleteBlocked ? deleteReason : undefined} title={deleteReason}
+                                  onClick={() => { if (!deleteBlocked) setChannelToDelete({id: row.id, name, version: row.testDelivery!.version}); }}>
+                                  <Trash2 size={16} aria-hidden="true"/>
+                                </button>}
+                              </div>
                             )}
-                          </p>
-                        </article>
-                      ))}
+                          </article>
+                        );
+                      })}
+                        {([["Email", Mail], ["SMS", MessageSquare]] as const).map(([name, Icon]) => (
+                          <article key={name} className="notification-channel-card notification-channel-placeholder">
+                            <header className="notification-channel-card-header">
+                              <div className="notification-channel-card-identity">
+                                <span className="notification-channel-card-icon"><Icon size={20} aria-hidden="true"/></span>
+                                <h4>{name}</h4>
+                              </div>
+                              <span className="notification-channel-card-status">{t("暂未接入", "Not connected")}</span>
+                            </header>
+                            <p className="notification-channel-help">{t("接入后可在通知策略中选择此渠道。", "This channel will be available in notification policies once connected.")}</p>
+                          </article>
+                        ))}
                     </div>
                   )}
                   {tab === "notification-jobs" && (
@@ -1762,9 +1838,11 @@ export default function NotificationCenter({
                                     </p>
                                   </td>
                                   <td className="p-3">
-                                    {crmValue(row.channel, lang)}
-                                    <br />
-                                    {row.recipient}
+                                    {(row.systemGroupRecipient || (row.channel === "lark" && row.recipient === historicalSystemGroupId)) ? systemGroupLabel : <>
+                                      {crmValue(row.channel, lang)}
+                                      <br />
+                                      {row.recipient}
+                                    </>}
                                   </td>
                                   <td className="p-3">
                                     <span
@@ -1913,6 +1991,7 @@ export default function NotificationCenter({
                                 {{
                                   "notification.plan": lang==='id'?'Perencanaan notifikasi':t('通知规划','Notification planning'),
                                   "rule.save": t("保存策略", "Policy saved"),
+                                  "rule.delete": t("删除策略", "Policy deleted"),
                                   "channel.save": t(
                                     "保存渠道",
                                     "Channel saved",
@@ -1924,7 +2003,8 @@ export default function NotificationCenter({
                                 }[row.action] || row.action}
                               </td>
                               <td className="p-3 break-words">
-                                {row.data?.id || row.data?.jobId || row.data?.eventId || "—"}
+                                {(row.systemGroupChannel || (row.action.startsWith("channel.") && (row.data?.channelId ?? row.data?.id) === historicalSystemGroupId))
+                                  ? systemGroupLabel : row.data?.id || row.data?.jobId || row.data?.eventId || "—"}
                                 {row.action==='notification.plan' && <p className="mt-1">{notificationPlanningSummary(row.data,lang)}</p>}
                                 {row.data?.version
                                   ? " · v" + row.data.version
@@ -1964,7 +2044,7 @@ export default function NotificationCenter({
                               key={c.id}
                               className={`${box} p-4 text-xs space-y-2`}
                             >
-                              <h4 className="font-bold">Lark · {c.id}</h4>
+                              <h4 className="font-bold">{c.systemManaged ? systemGroupLabel : c.groupName || c.id}</h4>
                               <p>
                                 {t("机器人连接 配置", "Webhook configured")}：
                                 {c.webhookConfigured
@@ -1978,12 +2058,6 @@ export default function NotificationCenter({
                                 )}
                                 ：
                                 {c.signingSecretConfigured
-                                  ? t("是", "Yes")
-                                  : t("否", "No")}
-                              </p>
-                              <p>
-                                {t("指定测试群", "Designated test group")}：
-                                {c.designatedTestGroup
                                   ? t("是", "Yes")
                                   : t("否", "No")}
                               </p>
@@ -2018,6 +2092,6 @@ export function NotificationTopicPanels({topic,enabled=true,...props}:{topic:Tab
 
 /** Same navigation for notification readers without policy-management permission. */
 export function NotificationWorkspace(props:{isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
- const [topic,setTopic]=useState<Tab>(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('policyTopic')==='notification-jobs'?'notification-jobs':'notification-rules');const col=props.lang==='zh'?2:props.lang==='id'?1:0;const current=notificationTopics.find(s=>s.id===topic)!;
- return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>setTopic(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><header className="crm-ops-summary"><h2>{current.title[col]}</h2><p>{current.purpose[col]}</p></header><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
+ const [topic,setTopic]=useState<Tab>(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('policyTopic')==='notification-jobs'?'notification-jobs':'notification-rules');const col=props.lang==='zh'?2:props.lang==='id'?1:0;
+ return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>setTopic(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
 }

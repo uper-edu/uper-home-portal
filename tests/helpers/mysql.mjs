@@ -52,12 +52,11 @@ export async function setupNativeTest(label, {initializeSystemDefaults=false} = 
     APP_ENV: "test",
     ACCESS_ALLOW_TEST_PASSWORDS: "true",
     ACCESS_OPERATION_KEY: randomBytes(32).toString("hex"),
-    PORTAL_NOTIFICATION_MODE: "simulation",
     PORTAL_WORKER_ENABLED: "false",
   });
   for (const key of [
     "DATABASE_URL",
-    "LARK_GROUP_CRM",
+    "LARK_WEBHOOK_ENCRYPTION_KEY",
     "OPENAI_API_KEY",
     "DEEPSEEK_API_KEY",
   ])

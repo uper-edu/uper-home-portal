@@ -553,7 +553,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             PORT: "4474",
             PLATFORM_MODE: "local",
             PORTAL_WORKER_ENABLED: "true",
-            PORTAL_NOTIFICATION_MODE: "simulation",
             TRIAL_FRONTEND_DIRECTORY: "",
             OPENAI_API_KEY: "",
             DEEPSEEK_API_KEY: "",

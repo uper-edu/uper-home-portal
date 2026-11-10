@@ -11,7 +11,30 @@ export const directoryScrollTarget=scrollKeyTarget;
 /** Presentation only: changing selection does not remount business forms. */
 export function AdminTopicFrame({navigation,children,label,selection}:{navigation:React.ReactNode;children:React.ReactNode;label:string;selection:string}){
  const [open,setOpen]=useState(false);const root=useRef<HTMLDivElement>(null);const previous=useRef(selection);const toggle=useRef<HTMLButtonElement>(null);const source=useRef<'pointer'|'keyboard'>('pointer');const nav=useRef<HTMLDivElement>(null);
- useLayoutEffect(()=>{const header=document.querySelector('[data-admin-header],[data-crm-header]');const measure=()=>root.current?.style.setProperty('--admin-shell-height',`${header?.getBoundingClientRect().height||116}px`);measure();if(!header)return;const observer=new ResizeObserver(measure);observer.observe(header);return()=>observer.disconnect();},[]);
+ useLayoutEffect(() => {
+  const workspace = root.current;
+  if (!workspace) return;
+  const header = document.querySelector('[data-admin-header],[data-crm-header]');
+  const measure = () => {
+   const shellHeight = header?.getBoundingClientRect().height || 116;
+   const stickyTop = shellHeight + 16;
+   // Before the directory sticks, the workspace heading also uses part of the viewport.
+   const directoryTop = Math.max(stickyTop, workspace.getBoundingClientRect().top);
+   workspace.style.setProperty('--admin-shell-height', `${shellHeight}px`);
+   workspace.style.setProperty('--admin-directory-top', `${directoryTop}px`);
+  };
+  measure();
+  const observer = new ResizeObserver(measure);
+  observer.observe(workspace);
+  if (header) observer.observe(header);
+  window.addEventListener('scroll', measure, { passive: true });
+  window.addEventListener('resize', measure);
+  return () => {
+   observer.disconnect();
+   window.removeEventListener('scroll', measure);
+   window.removeEventListener('resize', measure);
+  };
+ }, []);
  useLayoutEffect(()=>{
   if(previous.current===selection)return;previous.current=selection;
   const narrow=window.matchMedia('(max-width:1023px)').matches;

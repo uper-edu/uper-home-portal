@@ -1,5 +1,8 @@
+import {LEAD_ASSIGNED_EVENT} from './leadAssignmentNotification.ts';
+
 export const personalNotificationTypes = [
  ['lead.created','新客户','New customer','Pelanggan baru'],
+ [LEAD_ASSIGNED_EVENT,'客户已分配','Customer assigned','Pelanggan ditugaskan'],
  ['handoff.requested','顾问请求','Advisor request','Permintaan konsultan'],
  ['booking.requested','预约请求','Booking request','Permintaan jadwal'],
  ['enrollment.requested','报名请求','Enrollment request','Permintaan pendaftaran'],

@@ -3,8 +3,12 @@ import {syncPromotionIndex} from './promotion-index.mjs';
 import defaults from './system-defaults.json' with {type:'json'};
 import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
 import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
-import {validWebhook} from '../../server/portal/notificationDelivery.ts';
 import {CRM_BOT_CHANNEL} from '../../server/portal/policy.ts';
+import {findSystemLarkGroup, SYSTEM_LARK_GROUP_NAME} from '../../server/portal/larkSystemChannels.ts';
+import {GROUP_WEBHOOK_ENV_KEY, groupWebhookUsesEnvironment} from '../../server/portal/larkGroupWebhook.ts';
+import {notificationGroupIds} from '../../src/utils/notificationGroupTargets.ts';
+
+const parseConfig = value => typeof value === 'string' ? JSON.parse(value) : value;
 
 /** Runs inside the caller's schema lock. Insert missing presets, never reset counters or custom roles. */
 export async function initializeSystemDefaults(c){
@@ -33,12 +37,27 @@ export async function initializeSystemDefaults(c){
    }
   }
   await c.execute('INSERT INTO access_roles(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',['finance',JSON.stringify(defaults.finance)]);
-  const larkPreset = defaults.crmLarkBot;
-  if (validWebhook(process.env[larkPreset.secretRef])) {
-   const config = {...larkPreset, maxPerHour: LARK_DEFAULT_MAX_PER_HOUR};
+  const environmentWebhook = groupWebhookUsesEnvironment();
+  const larkConfig = {...defaults.crmLarkBot, maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
+   ...(environmentWebhook ? {secretRef: GROUP_WEBHOOK_ENV_KEY} : {})};
+  const [existingChannels] = await c.execute('SELECT id,config FROM notification_channels ORDER BY id FOR UPDATE');
+  const [daily] = await c.execute("SELECT config FROM notification_rules WHERE id='daily.digest'");
+  const dailyConfig = parseConfig(daily[0]?.config);
+  const systemGroup = findSystemLarkGroup(
+   existingChannels.map(row => ({...row,config:parseConfig(row.config)})),
+   Array.isArray(dailyConfig?.channels) ? notificationGroupIds(dailyConfig) : [],
+  );
+  if (systemGroup) {
+   const addWebhookReference = environmentWebhook && !systemGroup.config.secretRef && !systemGroup.config.encryptedWebhook;
+   if (!systemGroup.config.systemManaged || systemGroup.config.groupName !== SYSTEM_LARK_GROUP_NAME || addWebhookReference) {
+    const config = {...systemGroup.config,groupName:SYSTEM_LARK_GROUP_NAME,systemManaged:true,
+     ...(addWebhookReference ? {secretRef: GROUP_WEBHOOK_ENV_KEY} : {})};
+    await c.execute('UPDATE notification_channels SET config=? WHERE id=?',[JSON.stringify(config),systemGroup.id]);
+   }
+  } else {
    await c.execute(
     'INSERT INTO notification_channels(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',
-    [CRM_BOT_CHANNEL, JSON.stringify(config)],
+    [CRM_BOT_CHANNEL, JSON.stringify(larkConfig)],
    );
   }
   for(const course of courseBook.courses){

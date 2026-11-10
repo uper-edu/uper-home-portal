@@ -14,18 +14,17 @@ type Receipt = {
 export type LarkChannelTest = {
   version: string;
   simulated: boolean;
-  blocked: "missing_webhook" | "missing_signing_secret" | "missing_app" | "missing_binding" | "live_unavailable" | "test_group_blocked" | "personal_disabled" | null;
+  blocked: "missing_webhook" | "missing_signing_secret" | "missing_app" | "missing_binding" | "live_unavailable" | null;
   latest: Receipt | null;
 };
 
-export function LarkChannelTestControls({ id, name, test, lang, isLight, request, buttonClassName, personal = false }: {
+export function LarkChannelTestControls({ id, name, test, lang, isLight, request, personal = false }: {
   id: string;
   name: string;
   test: LarkChannelTest;
   lang: CrmLanguage;
   isLight: boolean;
   request: (path: string, body?: unknown) => Promise<any>;
-  buttonClassName: string;
   personal?: boolean;
 }) {
   const t = (en: string, zh: string) => lang === "zh" ? zh : lang === "id" ? crmId(en) : en;
@@ -46,8 +45,6 @@ export function LarkChannelTestControls({ id, name, test, lang, isLight, request
     missing_signing_secret: t("Configure the signing secret first.", "请先配置签名密钥。"),
     missing_app: t("Configure the Lark app before testing.", "请先配置 Lark 应用。"),
     missing_binding: t("Link your Lark account in Notification settings before testing.", "请先在右上角账号菜单的「通知设置」中绑定 Lark。"),
-    test_group_blocked: t("Only the designated test group can receive a live test.", "只有指定测试群可接收真实测试消息。"),
-    personal_disabled: t("Personal Lark delivery is disabled.", "Lark 个人发送未启用。"),
     live_unavailable: t("Live sending is unavailable in this environment.", "此环境无法真实发送。"),
   })[test.blocked];
 
@@ -150,11 +147,11 @@ export function LarkChannelTestControls({ id, name, test, lang, isLight, request
     onDiscard: () => void run("receive"),
   } : null;
   return <>
-    <button type="button" className={buttonClassName} disabled={Boolean(test.blocked)}
+    <button type="button" className="crm-work-button" disabled={Boolean(test.blocked)}
       title={blockedText || undefined} onClick={open}>
       {t("Send test message", "发送测试消息")}
     </button>
-    {blockedText && <p className="basis-full text-xs">{blockedText}</p>}
+    {blockedText && <p className="notification-channel-help notification-channel-test-help">{blockedText}</p>}
     {dialog && <CrmDiscardDialog {...dialog} lang={lang} isLight={isLight} announceDescription onKeep={close}/>}
   </>;
 }

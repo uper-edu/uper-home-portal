@@ -1,3 +1,4 @@
+import {syntheticGroupWebhook} from "./helpers/larkGroupWebhook.ts";
 import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test, after } from "node:test";
 import crypto from "node:crypto";
@@ -358,10 +359,9 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const native = globalThis.fetch;
         process.env.TEST_LARK =
           "https://open.larksuite.com/open-apis/bot/v2/hook/test";
-        process.env.LARK_TEST_GROUP = "verification";
         await pool.query(
           "INSERT INTO notification_channels(id,config) VALUES('verification',:p1) ON DUPLICATE KEY UPDATE config=:p1",
-          [{ mode: "live", secretRef: "TEST_LARK" }],
+          [{ mode: "live", encryptedWebhook: syntheticGroupWebhook("verification", process.env.TEST_LARK!) }],
         );
         for (const scenario of ["business", "timeout"]) {
           const eventId = crypto.randomUUID(),

@@ -431,8 +431,8 @@
       "server/portal/runtime.ts"
     ]
   },
-  "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
-    "sql": "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+  "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -472,6 +472,8 @@
       "server/portal/contactPlans.ts",
       "server/portal/larkGroupChannelTest.ts",
       "server/portal/larkSelfService.ts",
+      "server/portal/notificationGroupChannels.ts",
+      "server/portal/notificationPolicyDeletion.ts",
       "server/portal/ownerAssignment.ts",
       "server/portal/payments.ts",
       "server/portal/runtime.ts",
@@ -628,6 +630,18 @@
       "server/portal/teamlessAccess.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('system','channel.mode.migrate',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('system','channel.mode.migrate',:p1)",
+    "sources": [
+      "server/portal/larkChannelModes.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.daily_summary.enabled',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.daily_summary.enabled',:p1)",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.plan',:p1)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.plan',:p1)",
     "sources": [
@@ -658,6 +672,12 @@
       "server/portal/runtime.ts",
       "cloud/mysql/site.mjs",
       "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/larkChannelModes.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2": {
@@ -715,7 +735,16 @@
     "sql": "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3)",
     "sources": [
       "server/portal/agreementNotificationActivation.ts",
+      "server/portal/notificationPolicyDeletion.ts",
+      "server/portal/runtime.ts",
       "server/portal/taskNotificationActivation.ts"
+    ]
+  },
+  "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/notificationPolicyDeletion.ts",
+      "server/portal/runtime.ts"
     ]
   },
   "INSERT INTO site_submissions(id,kind,request_id,input_hash,visitor_id,lead_id,payload) VALUES(:p1,'inquiry',:p2,:p3,:p4,:p5,:p6)": {
@@ -1130,6 +1159,12 @@
       "server/mysqlApplication.ts"
     ]
   },
+  "SELECT * FROM notification_channels ORDER BY id FOR UPDATE": {
+    "sql": "SELECT * FROM notification_channels ORDER BY id FOR UPDATE",
+    "sources": [
+      "server/portal/larkChannelModes.ts"
+    ]
+  },
   "SELECT * FROM notification_jobs j WHERE state='pending' AND due_at<=:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) ORDER BY due_at LIMIT 1 FOR UPDATE SKIP LOCKED": {
     "sql": "SELECT * FROM notification_jobs j WHERE state='pending' AND due_at<=:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) ORDER BY due_at LIMIT 1 FOR UPDATE SKIP LOCKED",
     "sources": [
@@ -1147,6 +1182,12 @@
     "sources": [
       "server/portal/runtime.ts",
       "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "SELECT * FROM notification_rules WHERE config->'$.groupIds' IS NULL AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND (JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) OR JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark_group'))) ORDER BY id FOR UPDATE": {
+    "sql": "SELECT * FROM notification_rules WHERE config->'$.groupIds' IS NULL AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND (JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) OR JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark_group'))) ORDER BY id FOR UPDATE",
+    "sources": [
+      "scripts/crm-channel-map.ts"
     ]
   },
   "SELECT * FROM notification_rules WHERE enabled=true AND effective_at<=(SELECT created_at FROM outbox WHERE id=:p1)": {
@@ -1171,12 +1212,6 @@
     "sql": "SELECT * FROM notification_rules WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/agreementNotificationActivation.ts"
-    ]
-  },
-  "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE": {
-    "sql": "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE",
-    "sources": [
-      "scripts/crm-channel-map.ts"
     ]
   },
   "SELECT * FROM outbox o WHERE processed_at IS NULL AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='event' AND h.id=o.id) ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED": {
@@ -1313,13 +1348,13 @@
   "SELECT config FROM notification_channels WHERE id=:p1": {
     "sql": "SELECT config FROM notification_channels WHERE id=:p1",
     "sources": [
-      "server/portal/runtime.ts",
-      "server/portal/worker.ts"
+      "server/portal/notificationGroupChannels.ts"
     ]
   },
   "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE",
     "sources": [
+      "server/portal/notificationGroupChannels.ts",
       "server/portal/runtime.ts"
     ]
   },
@@ -1369,12 +1404,6 @@
     "sql": "SELECT COUNT(*) AS n FROM notification_jobs WHERE event_id=:p1",
     "sources": [
       "server/portal/worker.ts"
-    ]
-  },
-  "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))": {
-    "sql": "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))",
-    "sources": [
-      "server/portal/runtime.ts"
     ]
   },
   "SELECT created_at,content FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1": {
@@ -1675,23 +1704,17 @@
       "server/portal/notificationTarget.ts"
     ]
   },
-  "SELECT id FROM notification_channels WHERE id=:p1": {
-    "sql": "SELECT id FROM notification_channels WHERE id=:p1",
+  "SELECT id FROM notification_channels WHERE id=:p1 AND COALESCE(config->>'$.deleted','false')<>'true' FOR SHARE": {
+    "sql": "SELECT id FROM notification_channels WHERE id=:p1 AND COALESCE(config->>'$.deleted','false')<>'true' FOR SHARE",
     "sources": [
-      "server/portal/agreementNotificationActivation.ts",
-      "server/portal/taskNotificationActivation.ts"
-    ]
-  },
-  "SELECT id FROM notification_channels WHERE id='CRM_Leads_Update'": {
-    "sql": "SELECT id FROM notification_channels WHERE id='CRM_Leads_Update'",
-    "sources": [
+      "server/portal/taskNotificationActivation.ts",
       "scripts/crm-channel-map.ts"
     ]
   },
-  "SELECT id FROM notification_rules WHERE id=:p1 FOR UPDATE": {
-    "sql": "SELECT id FROM notification_rules WHERE id=:p1 FOR UPDATE",
+  "SELECT id FROM notification_jobs WHERE channel='lark' AND state IN ('pending','sending') AND (recipient=:p1 OR (LEFT(recipient,9)='personal:' AND COALESCE(JSON_CONTAINS(snapshot->'$.rule.channels',JSON_QUOTE('lark_personal')),0)=0 AND COALESCE(snapshot->>'$.rule.groupIds[0]',snapshot->>'$.rule.group')=:p1)) LIMIT 1": {
+    "sql": "SELECT id FROM notification_jobs WHERE channel='lark' AND state IN ('pending','sending') AND (recipient=:p1 OR (LEFT(recipient,9)='personal:' AND COALESCE(JSON_CONTAINS(snapshot->'$.rule.channels',JSON_QUOTE('lark_personal')),0)=0 AND COALESCE(snapshot->>'$.rule.groupIds[0]',snapshot->>'$.rule.group')=:p1)) LIMIT 1",
     "sources": [
-      "server/portal/runtime.ts"
+      "server/portal/notificationGroupChannels.ts"
     ]
   },
   "SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND data->>'$.after.status'='linked' AND data->>'$.after.campaignId'=:p1 LIMIT 1": {
@@ -1783,6 +1806,36 @@
     "sql": "SELECT id,config AS record FROM trial_campaigns WHERE LOWER(id)=LOWER(:p1) OR LOWER(code)=LOWER(:p1) FOR UPDATE",
     "sources": [
       "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
+  "SELECT id,config FROM notification_channels": {
+    "sql": "SELECT id,config FROM notification_channels",
+    "sources": [
+      "server/portal/larkSystemChannels.ts"
+    ]
+  },
+  "SELECT id,config FROM notification_channels ORDER BY id": {
+    "sql": "SELECT id,config FROM notification_channels ORDER BY id",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT id,config FROM notification_channels ORDER BY id FOR SHARE": {
+    "sql": "SELECT id,config FROM notification_channels ORDER BY id FOR SHARE",
+    "sources": [
+      "server/portal/agreementNotificationActivation.ts"
+    ]
+  },
+  "SELECT id,config FROM notification_channels WHERE id IN (:p1) ORDER BY id FOR SHARE": {
+    "sql": "SELECT id,config FROM notification_channels WHERE id IN (:p1) ORDER BY id FOR SHARE",
+    "sources": [
+      "server/portal/notificationGroupChannels.ts"
+    ]
+  },
+  "SELECT id,config,enabled FROM notification_rules": {
+    "sql": "SELECT id,config,enabled FROM notification_rules",
+    "sources": [
+      "server/portal/notificationGroupChannels.ts"
     ]
   },
   "SELECT id,created_at FROM messages WHERE conversation_id=:p1 AND request_id=:p2 AND role='user'": {
@@ -2080,8 +2133,8 @@
       "server/portal/worker.ts"
     ]
   },
-  "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null')=:p1 AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1": {
-    "sql": "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null')=:p1 AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1",
+  "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE (CASE WHEN JSON_TYPE(config->'$.groupIds')='ARRAY' THEN JSON_CONTAINS(config->'$.groupIds',JSON_QUOTE(:p1)) ELSE config->>'$.group'=:p1 END) AND (JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark')) OR JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark_group'))) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1": {
+    "sql": "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE (CASE WHEN JSON_TYPE(config->'$.groupIds')='ARRAY' THEN JSON_CONTAINS(config->'$.groupIds',JSON_QUOTE(:p1)) ELSE config->>'$.group'=:p1 END) AND (JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark')) OR JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark_group'))) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1",
     "sources": [
       "server/portal/notificationDelivery.ts"
     ]
@@ -2275,6 +2328,7 @@
       "server/portal/salesWorkflow.ts",
       "server/portal/simpleSalesWorkflow.ts",
       "server/portal/trustWorkflow.ts",
+      "server/portal/worker.ts",
       "cloud/mysql/site.mjs",
       "cloud/mysql/runtime.mjs"
     ]
@@ -2289,12 +2343,6 @@
     "sql": "SELECT profile,created_at FROM portal_leads",
     "sources": [
       "cloud/mysql/runtime.mjs"
-    ]
-  },
-  "SELECT r.id,r.enabled,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL": {
-    "sql": "SELECT r.id,r.enabled,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL",
-    "sources": [
-      "server/portal/runtime.ts"
     ]
   },
   "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200": {
@@ -2477,7 +2525,14 @@
   "SELECT value FROM portal_settings WHERE id=:p1": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1",
     "sources": [
+      "server/portal/larkChannelModes.ts",
       "server/portal/larkSelfService.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/larkChannelModes.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='ai_service'": {
@@ -2523,9 +2578,10 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
-  "SELECT version,config FROM notification_rules WHERE id=:p1": {
-    "sql": "SELECT version,config FROM notification_rules WHERE id=:p1",
+  "SELECT version,config FROM notification_rules WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT version,config FROM notification_rules WHERE id=:p1 FOR UPDATE",
     "sources": [
+      "server/portal/notificationPolicyDeletion.ts",
       "server/portal/runtime.ts"
     ]
   },
@@ -2839,6 +2895,13 @@
       "server/portal/chat.ts"
     ]
   },
+  "UPDATE notification_channels SET config=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_channels SET config=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/larkChannelModes.ts",
+      "server/portal/notificationGroupChannels.ts"
+    ]
+  },
   "UPDATE notification_inbox SET content=JSON_SET(content,'$.inboxReadAt',:p3) WHERE id=:p1 AND employee_id=:p2 AND (JSON_EXTRACT(content,'$.inboxReadAt') IS NULL OR JSON_TYPE(JSON_EXTRACT(content,'$.inboxReadAt'))='NULL')": {
     "sql": "UPDATE notification_inbox SET content=JSON_SET(content,'$.inboxReadAt',:p3) WHERE id=:p1 AND employee_id=:p2 AND (JSON_EXTRACT(content,'$.inboxReadAt') IS NULL OR JSON_TYPE(JSON_EXTRACT(content,'$.inboxReadAt'))='NULL')",
     "sources": [
@@ -2935,12 +2998,6 @@
       "server/portal/worker.ts"
     ]
   },
-  "UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1": {
-    "sql": "UPDATE notification_jobs SET state='cancelled',result='Personal delivery not enabled; no replay',completed_at=:p2 WHERE id=:p1",
-    "sources": [
-      "server/portal/worker.ts"
-    ]
-  },
   "UPDATE notification_jobs SET state='cancelled',result='Personal notification disabled',completed_at=:p2 WHERE id=:p1": {
     "sql": "UPDATE notification_jobs SET state='cancelled',result='Personal notification disabled',completed_at=:p2 WHERE id=:p1",
     "sources": [
@@ -3013,14 +3070,8 @@
       "server/portal/salesWorkflow.ts"
     ]
   },
-  "UPDATE notification_jobs SET state='failed',result='Channel not configured or test group disallowed',completed_at=:p2 WHERE id=:p1": {
-    "sql": "UPDATE notification_jobs SET state='failed',result='Channel not configured or test group disallowed',completed_at=:p2 WHERE id=:p1",
-    "sources": [
-      "server/portal/worker.ts"
-    ]
-  },
-  "UPDATE notification_jobs SET state='failed',result='Company trial simulation mode blocks live channel',completed_at=:p2 WHERE id=:p1": {
-    "sql": "UPDATE notification_jobs SET state='failed',result='Company trial simulation mode blocks live channel',completed_at=:p2 WHERE id=:p1",
+  "UPDATE notification_jobs SET state='failed',result='Channel not configured',completed_at=:p2 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='failed',result='Channel not configured',completed_at=:p2 WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
     ]
@@ -3031,14 +3082,14 @@
       "server/portal/worker.ts"
     ]
   },
-  "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Deferred by current working hours' WHERE id=:p1": {
-    "sql": "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Deferred by current working hours' WHERE id=:p1",
+  "UPDATE notification_jobs SET state='pending',due_at=:p2,result=:p3 WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='pending',due_at=:p2,result=:p3 WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
     ]
   },
-  "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Group hourly limit reached' WHERE id=:p1": {
-    "sql": "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Group hourly limit reached' WHERE id=:p1",
+  "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Deferred by current working hours' WHERE id=:p1": {
+    "sql": "UPDATE notification_jobs SET state='pending',due_at=:p2,result='Deferred by current working hours' WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
     ]
@@ -3073,6 +3124,12 @@
       "scripts/crm-channel-map.ts"
     ]
   },
+  "UPDATE notification_rules SET config=:p2,version=:p3,enabled=true,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE notification_rules SET config=:p2,version=:p3,enabled=true,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "UPDATE notification_rules SET enabled=true,config=:p2,version=version+1,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
     "sql": "UPDATE notification_rules SET enabled=true,config=:p2,version=version+1,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
@@ -3084,6 +3141,12 @@
     "sql": "UPDATE notification_rules SET version=:p2,config=:p3,enabled=:p4,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
       "server/portal/teamlessAccess.ts"
+    ]
+  },
+  "UPDATE notification_rules SET version=:p2,config=:p3,enabled=false,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE notification_rules SET version=:p2,config=:p3,enabled=false,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/notificationPolicyDeletion.ts"
     ]
   },
   "UPDATE outbox SET processed_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
@@ -3129,6 +3192,13 @@
   "UPDATE portal_settings SET value=:p1 WHERE id='sla'": {
     "sql": "UPDATE portal_settings SET value=:p1 WHERE id='sla'",
     "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "UPDATE portal_settings SET value=:p2 WHERE id=:p1": {
+    "sql": "UPDATE portal_settings SET value=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/larkChannelModes.ts",
       "server/portal/runtime.ts"
     ]
   },

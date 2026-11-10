@@ -1,13 +1,6 @@
-import { createHash, createHmac } from "node:crypto";
-import { resolveGroupWebhook } from "./larkGroupWebhook.ts";
-import { larkTestGroupDisallowed } from "./larkDeliveryAccess.ts";
-
-export function liveTestUnavailable(env: NodeJS.ProcessEnv) {
-  return env.PLATFORM_MODE === "mock" ||
-    (env.PORTAL_DEPLOYMENT === "company-trial" && env.PORTAL_NOTIFICATION_MODE === "simulation") ||
-    (env.TRIAL_DATASET === "synthetic" && !["company-trial", "production"].includes(env.PORTAL_DEPLOYMENT || ""));
-}
-
+import { createHash } from "node:crypto";
+import { larkWebhookSignature, resolveGroupWebhook } from "./larkGroupWebhook.ts";
+import { larkTestDeliveryMode } from "./larkChannelModes.ts";
 
 export type LarkChannelTestReceipt = {
   requestId: string;
@@ -21,7 +14,9 @@ export type LarkChannelTestReceipt = {
 type GroupTestConfig = {
   groupName?: string;
   mode?: string;
+  encryptedWebhook?: string;
   secretRef?: string;
+  webhookRevision?: string;
   signingSecretRef?: string;
   signingEnabled?: boolean;
 };
@@ -30,22 +25,16 @@ export function planGroupChannelTest(id: string, config: GroupTestConfig, env = 
   const url = resolveGroupWebhook(id, config, env);
   const signingEnabled = config.signingEnabled ?? Boolean(config.signingSecretRef);
   const signingSecret = signingEnabled && config.signingSecretRef ? env[config.signingSecretRef] : undefined;
-  const simulated = config.mode !== "live";
-  const blocked = !simulated && liveTestUnavailable(env) ? "live_unavailable"
+  const { simulated, liveUnavailable } = larkTestDeliveryMode(config.mode, env);
+  const blocked = liveUnavailable ? "live_unavailable"
     : !url ? "missing_webhook"
-      : signingEnabled && !signingSecret ? "missing_signing_secret"
-        : !simulated && larkTestGroupDisallowed(env, id) ? "test_group_blocked" : null;
+    : signingEnabled && !signingSecret ? "missing_signing_secret"
+    : null;
   const version = createHash("sha256").update(JSON.stringify([
-    id, config.groupName, config.mode, url, signingEnabled, signingSecret, simulated, blocked,
+    id, config.groupName, config.mode, config.webhookRevision, config.encryptedWebhook,
+    url, signingEnabled, signingSecret, simulated, blocked,
   ])).digest("hex");
   return { url, signingSecret, simulated, blocked, version };
-}
-
-function larkWebhookSignature(secret: string | undefined, now: Date) {
-  if (!secret) return {};
-  const timestamp = String(Math.floor(now.getTime() / 1000));
-  const sign = createHmac("sha256", timestamp + "\n" + secret).update("").digest("base64");
-  return { timestamp, sign };
 }
 
 export async function sendGroupChannelTest(

@@ -1,7 +1,3 @@
-import { validMutationOrigin } from "./accessTransport.ts";
-import { larkBindings } from "./larkApp.ts";
-import { findLarkChannelTest, planGroupChannelTest, recordLarkChannelTest, sendGroupChannelTest, type LarkChannelTestReceipt } from "./larkGroupChannelTest.ts";
-import { planPersonalChannelTest, sendPersonalChannelTest } from "./larkPersonalChannelTest.ts";
 import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
@@ -50,11 +46,11 @@ import { mountAccessOperations } from "./accessOperations.ts";
 import { mountAccessHandovers } from "./accessHandovers.ts";
 import { mountAccessRecovery } from "./accessRecovery.ts";
 import { accessRestoreGate } from "./accessRecoveryState.ts";
-import { trustedOrigin } from "./accessTransport.ts";
+import { trustedOrigin, validMutationOrigin } from "./accessTransport.ts";
 import {initializeTeamlessAccess} from "./teamlessAccess.ts";
 import {mountAiServiceConfig} from './aiServiceConfig.ts';
 import {mountAccessManagement} from './accessManagement.ts';
-import {eligibleOwner,permittedRecord,canClaimRecord} from '../../src/utils/accessControl.ts';
+import {permittedRecord,canClaimRecord} from '../../src/utils/accessControl.ts';
 import { contactStatistics } from "../../src/utils/crmContact.ts";
 import { processMetrics } from "../../src/utils/crmProcessMetrics.ts";
 import { firstTouchAttribution } from "./attribution.ts";
@@ -74,12 +70,20 @@ import { initializeLocalAccounts, mountLocalAuth } from "./localAuth.ts";
 import { normalizeCrmMessage } from "../../src/utils/crmMessageTime.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import type { Express, Request, Response } from "express";
+import {LARK_GROUP,notificationGroupIds} from "../../src/utils/notificationGroupTargets.ts";
+import {deleteNotificationGroupChannel, lockNotificationGroupChannels, notificationGroupPolicyReferences} from "./notificationGroupChannels.ts";
+import {deleteNotificationPolicy} from "./notificationPolicyDeletion.ts";
+import {findSystemLarkGroup, isSystemLarkGroup, readSystemLarkGroupIds, systemLarkGroupName} from "./larkSystemChannels.ts";
+import {isolatedLarkRuntime,migrateLarkChannelModes,personalLarkChannel,PERSONAL_CHANNEL_SETTING} from "./larkChannelModes.ts";
+import { encryptGroupWebhook, groupWebhookUsesEnvironment, publicGroupChannelConfig, resolveGroupWebhook, usesEnvironmentGroupWebhook, usesLegacyProductionGroupWebhook, validWebhook } from "./larkGroupWebhook.ts";
+import { findLarkChannelTest, planGroupChannelTest, recordLarkChannelTest, sendGroupChannelTest, type LarkChannelTestReceipt } from "./larkGroupChannelTest.ts";
+import { larkBindings } from "./larkApp.ts";
+import { planPersonalChannelTest, sendPersonalChannelTest } from "./larkPersonalChannelTest.ts";
 import {
   channelConnection,
   groupRateLimit,
   CRM_LEADER_ROLE,
 } from "./notificationDelivery.ts";
-import { groupWebhookUsesEnvironment, resolveGroupWebhook, usesEnvironmentGroupWebhook } from "./larkGroupWebhook.ts";
 import crypto from "node:crypto";
 import { DEFAULT_CRM_POLICY_CONFIG } from "../../src/types/crmPolicyConfig.ts";
 import { effectivePolicy, mergePolicyConfig, policySla } from "../../src/utils/crmPolicyConfigValidation.ts";
@@ -95,6 +99,8 @@ import { platform, allowed, type Employee } from "./identity.ts";
 import {
   defaults,
   defaultRules,
+  CRM_BOT_CHANNEL,
+  isRetiredNotificationEvent,
   validate,
   sla,
   schedule,
@@ -266,6 +272,39 @@ async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
   }
 
 }
+async function initializeDailySummaryPolicy() {
+  await tx(async (c) => {
+    const ruleId = "daily.digest";
+    const row = (await c.query(
+      "SELECT version,config FROM notification_rules WHERE id=:p1 FOR UPDATE",
+      [ruleId],
+    )).rows[0];
+    // Only remove the migration hold. A later intentional pause must survive restart.
+    if (row?.config.event !== ruleId || !row.config.requiresRoutingReview) return;
+    const config = { ...row.config };
+    delete config.requiresRoutingReview;
+    delete config.team;
+    delete config.teams;
+    const version = Number(row.version) + 1;
+    await c.query(
+      "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
+      [ruleId, row.version, row.config],
+    );
+    await c.query(
+      "UPDATE notification_rules SET config=:p2,version=:p3,enabled=true,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+      [ruleId, config, version],
+    );
+    await c.query(
+      "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3)",
+      [ruleId, version, config],
+    );
+    await c.query(
+      "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.daily_summary.enabled',:p1)",
+      [{ id: ruleId, version }],
+    );
+  });
+}
+
 export async function mountPortal(app: Express) {
   if (!databaseConfigured()) {
     app.use(
@@ -282,6 +321,7 @@ export async function mountPortal(app: Express) {
     return;
   }
   await initialize();
+  await tx(c => migrateLarkChannelModes(c));
   mountCourseRoutes(app,{wrap,staff});
   await initializeLocalAccounts();
   app.use(accessRestoreGate);
@@ -292,12 +332,16 @@ export async function mountPortal(app: Express) {
   mountAccessManagement(app);
   mountLarkSelfService(app);
   mountAiServiceConfig(app);
+  const systemGroup = findSystemLarkGroup(
+    (await pool.query("SELECT id,config FROM notification_channels ORDER BY id")).rows, [],
+  );
   for (const r of defaultRules)
     await pool.query(
-      "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
-      [r.event, r, !["task.created","task.rescheduled","task.appointment_due"].includes(r.event)],
+      "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
+      [r.event, r.group === CRM_BOT_CHANNEL && systemGroup ? {...r, group: systemGroup.id} : r],
     );
   await initializeTeamlessAccess();
+  await initializeDailySummaryPolicy();
   await pool.query(
     "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id",
     [{ ...defaults, hotHours: 3, warmHours: 24, coldHours: 48 }],
@@ -1003,12 +1047,6 @@ export async function mountPortal(app: Express) {
           )
         )
           fail(400, "Invalid communication language");
-        if (
-          req.body.owner !== undefined &&
-          req.body.owner !== null &&
-          typeof req.body.owner !== "string"
-        )
-          fail(400, "Owner must be an active Sales employee");
         if(req.body.currentStage!==undefined&&req.body.currentStage!==current.currentStage)fail(400,'请使用销售阶段独立保存入口并关联依据');
         let next = { ...current };
         if(req.body.tier!==undefined){
@@ -1018,7 +1056,6 @@ export async function mountPortal(app: Express) {
           next.tierUpdatedAt=new Date().toISOString();
         }
         for (const k of [
-          "owner",
           "currentStage",
           "tier",
           "nextAction",
@@ -1040,24 +1077,6 @@ export async function mountPortal(app: Express) {
         )
           fail(400, "Invalid sales stage");
         if(req.body.communicationLanguage!==undefined){const changed=await recordProfileUpdates(c,{...next,communicationLanguage:current.communicationLanguage,profileFieldMeta:current.profileFieldMeta},{communicationLanguage:req.body.communicationLanguage},null,{actor:e.id,sourceType:'sales_edit',occurredAt:null,recordedAt:new Date().toISOString(),reason:'员工明确更新首选沟通语言'});next=changed.profile;}
-        const ownerChanged = (next.owner || null) !== (current.owner || null);
-        if(ownerChanged && (await pendingIdentity(c,l.id,true)).length)fail(409,"IDENTITY_REVIEW_REQUIRED");
-        if(ownerChanged&&(await identityControls(c)).ownerAssignmentManagerOnly&&!isCrmManager(e))fail(403,"OWNER_MANAGER_REQUIRED");
-        if (ownerChanged && (!e.permissions.includes("crm.assign") || e.grants && !permittedRecord(e,current,"crm.assign")))
-          fail(403, "Lead assignment permission required");
-        if (
-          ownerChanged &&
-          next.owner &&
-          !directory.some(
-            (person) =>
-              person.id === next.owner &&
-              person.active === true &&
-              eligibleOwner(person),
-          )
-        )
-          fail(400, "Owner must be an active Sales employee");
-        if(ownerChanged&&next.owner&&e.grants){const target=directory.find(person=>person.id===next.owner)!;const assigned={...current,owner:next.owner};if(!allowed(target,assigned,'read')||!permittedRecord(target,assigned,'crm.followup'))fail(400,'Owner cannot access and follow up this customer');}
-        if (ownerChanged) next.ownerChangedAt = new Date().toISOString();
         if (next.currentStage !== current.currentStage){
           await stageFact(c,l.id,e.id,current,{newStage:next.currentStage,expectedStage:req.body.expectedStage,expectedStageRevision:req.body.expectedStageRevision},req.body.stageReason);
           next.stageUpdatedAt = new Date().toISOString();
@@ -1068,21 +1087,11 @@ export async function mountPortal(app: Express) {
           l.id,
           next,
         ]);
-        if (ownerChanged)
-          await c.query(
-            "UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')",
-            [l.id, next.owner],
-          );
         await c.query(
           "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
           [e.id, "lead.update", { id: l.id, changes: req.body }],
         );
         auditLog(e.id, "lead.update", { leadId: l.id });
-        if (ownerChanged)
-          await event(c, "conversation.updated", l.id, {
-            source: "crm_assignment",
-            assignmentChanged: true,
-          });
         return next;
       });
       res.json(next?.receipt ? {success:true,...next} : { success: true, lead: next });
@@ -1283,9 +1292,9 @@ export async function mountPortal(app: Express) {
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
       res.json(
-        (await pool.query("SELECT * FROM notification_rules")).rows.map(
-          (row) => ({ ...row, config: withCalendarMode(row.config) }),
-        ),
+        (await pool.query("SELECT * FROM notification_rules")).rows
+          .filter(row => !row.config.deleted && !isRetiredNotificationEvent(row.config.event))
+          .map(row => ({ ...row, config: withCalendarMode(row.config) })),
       );
     }),
   );
@@ -1300,6 +1309,8 @@ export async function mountPortal(app: Express) {
       )
         fail(400, "Invalid policy");
       const config = withCalendarMode(req.body.config);
+      if (isRetiredNotificationEvent(config.event) || isRetiredNotificationEvent(req.params.id))
+        fail(400, "This notification event has been retired.");
       if(config.teams?.length)fail(400,"Retired team filters require explicit review");
       delete config.team;delete config.teams;
       config.recipient=config.event.includes("failed") || config.event==="daily.digest"?"managers":"owner";
@@ -1312,15 +1323,16 @@ export async function mountPortal(app: Express) {
         fail(400, (e as Error).message);
       }
       await tx(async (c) => {
-        await c.query(
-          "SELECT id FROM notification_rules WHERE id=:p1 FOR UPDATE",
-          [req.params.id],
-        );
+        const groupIds = notificationGroupIds(config);
+        const groupRows = await lockNotificationGroupChannels(c, groupIds);
+        if (groupRows.some(row => row.config.deleted) || (config.groupIds !== undefined && groupRows.length !== groupIds.length))
+          fail(409, "One or more Lark group channels are no longer available.");
         const old = (
-          await c.query("SELECT version,config FROM notification_rules WHERE id=:p1", [
+          await c.query("SELECT version,config FROM notification_rules WHERE id=:p1 FOR UPDATE", [
             req.params.id,
           ])
         ).rows[0];
+        if (old?.config.deleted) fail(409, "This policy has been deleted. Use a new configuration ID.");
         if((old?.config.requiresRoutingReview || config.requiresRoutingReview) && req.body.confirmRoutingReset!==true){config.requiresRoutingReview=true;if(req.body.enabled===true)fail(409,"Confirm routing review before enabling");}
         if(req.body.confirmRoutingReset===true)delete config.requiresRoutingReview;
         const version = (old?.version || 0) + 1;
@@ -1340,6 +1352,18 @@ export async function mountPortal(app: Express) {
         auditLog(e.id, "rule.save");
       });
       res.json({ success: true });
+    }),
+  );
+  app.delete(
+    "/api/crm/notification-rules/:id",
+    wrap(async (req, res) => {
+      const employee = await staff(req, "notifications.manage");
+      const id = req.params.id;
+      const version = req.body?.version;
+      if (typeof id !== "string" || !Number.isSafeInteger(version) || version < 1)
+        fail(400, "Invalid policy");
+      const deleted = await tx(c => deleteNotificationPolicy(c, id, version, employee.id));
+      res.json({ success: true, deleted });
     }),
   );
   app.post(
@@ -1381,14 +1405,14 @@ export async function mountPortal(app: Express) {
           : at;
       res.json({
         calendar: globalWorkCalendar(calendar),
-        sendAt: config.channels.map((channel: string) => ({
+        sendAt: config.channels.map(channel => ({
           channel,
           at: scheduleNotification(
-            channel==='lark' && config.event==='daily.digest' ? scheduleLarkV2(at,{...effective,timing:'digest',quiet:undefined}) : eventTime,
+            (channel==="lark" || channel===LARK_GROUP) && config.event==='daily.digest' ? scheduleLarkV2(at,{...effective,timing:'digest',quiet:undefined}) : eventTime,
             config.event === "daily.digest"
               ? { ...effective, timing: "immediate" }
               : effective,
-            channel as any,
+            channel === "inapp" ? "inapp" : "lark",
             {notificationPolicyVersion:2},
           ),
         })),
@@ -1400,13 +1424,15 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-audit",
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
-      res.json(
-        (
-          await pool.query(
-            "SELECT * FROM portal_audit WHERE action NOT LIKE 'access.%' ORDER BY id DESC LIMIT 200",
-          )
-        ).rows,
-      );
+      const [audit, systemGroups] = await Promise.all([
+        pool.query("SELECT * FROM portal_audit WHERE action NOT LIKE 'access.%' ORDER BY id DESC LIMIT 200"),
+        readSystemLarkGroupIds(pool),
+      ]);
+      res.json(audit.rows.map(row => ({
+        ...row,
+        systemGroupChannel: row.action.startsWith("channel.") &&
+          systemGroups.has(row.data?.channelId ?? row.data?.id),
+      })));
     }),
   );
   app.post(
@@ -1446,25 +1472,23 @@ export async function mountPortal(app: Express) {
       await staff(req, "notifications.manage");
       const channels = (
         await pool.query("SELECT * FROM notification_channels")
-      ).rows.map((row) => {
+      ).rows.filter(row => !row.config.deleted).map((row) => {
         const config = row.config;
+        const connection = channelConnection(row.id, config);
         return {
           id: row.id,
+          groupName: config.groupName,
+          systemManaged: isSystemLarkGroup(row.id, config),
           team: config.team,
           mode: config.mode,
-          webhookConfigured: channelConnection(row.id, config).webhookConfigured,
-          signingSecretConfigured:
-            !(config.signingEnabled ?? !!config.signingSecretRef) ||
-            !!process.env[config.signingSecretRef],
-          designatedTestGroup: process.env.LARK_TEST_GROUP === row.id,
+          webhookConfigured: connection.webhookConfigured,
+          signingSecretConfigured: connection.signingSecretConfigured,
+          status: connection.status,
           realReceiptVerified: false,
         };
       });
-      const missingReferences = (
-        await pool.query(
-          "SELECT r.id,r.enabled,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') AS channel FROM notification_rules r LEFT JOIN notification_channels c ON c.id=NULLIF(JSON_UNQUOTE(JSON_EXTRACT(r.config,'$.group')),'null') WHERE JSON_CONTAINS(JSON_EXTRACT(r.config,'$.channels'),JSON_QUOTE('lark')) AND c.id IS NULL",
-        )
-      ).rows;
+      const channelIds = new Set(channels.map(channel => channel.id));
+      const missingReferences = (await notificationGroupPolicyReferences(pool)).filter(ref => !channelIds.has(ref.channel));
       res.json({
         missingReferences,
         identity: {
@@ -1479,7 +1503,7 @@ export async function mountPortal(app: Express) {
         releaseReady: false,
         required: [
           "Real platform identity/directory/scope contract",
-          "Designated Lark group receipt with event/job IDs",
+          "Lark group receipt with event/job IDs",
         ],
       });
     }),
@@ -1488,14 +1512,17 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-jobs",
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
-      res.json(
-        (
-          await pool.query(
-            "SELECT j.*,EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) AS historicalHold FROM notification_jobs j WHERE (:p1 IS NULL OR j.id=:p1) ORDER BY due_at DESC LIMIT 200",
-            [typeof req.query.job==='string'?req.query.job:null],
-          )
-        ).rows,
-      );
+      const [jobs, systemGroups] = await Promise.all([
+        pool.query(
+          "SELECT j.*,EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='job' AND h.id=j.id) AS historicalHold FROM notification_jobs j WHERE (:p1 IS NULL OR j.id=:p1) ORDER BY due_at DESC LIMIT 200",
+          [typeof req.query.job === "string" ? req.query.job : null],
+        ),
+        readSystemLarkGroupIds(pool),
+      ]);
+      res.json(jobs.rows.map(job => ({
+        ...job,
+        systemGroupRecipient: job.channel === "lark" && systemGroups.has(job.recipient),
+      })));
     }),
   );
   const personalTestChannelId = "lark:personal";
@@ -1506,8 +1533,9 @@ export async function mountPortal(app: Express) {
   async function personalTestPlan(db: Pick<typeof pool, "query">, employeeId: string, lock = false) {
     // Use the same lock as binding and access changes before pinning the channel mode.
     if (lock) await db.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");
+    const channel = await personalLarkChannel(db, lock);
     const binding = (await larkBindings(db))[employeeId];
-    return planPersonalChannelTest(binding);
+    return { channel, ...planPersonalChannelTest(channel, binding) };
   }
   async function lockedChannelTestPlan(db: Pick<typeof pool, "query">, channelId: string, employeeId: string) {
     if (channelId === personalTestChannelId)
@@ -1522,42 +1550,70 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-channels",
     wrap(async (req, res) => {
       const employee = await staff(req, "notifications.manage");
-      const [personal, personalLatest] = await Promise.all([
+      const [references, personal, personalLatest] = await Promise.all([
+        notificationGroupPolicyReferences(pool),
         personalTestPlan(pool, employee.id),
         findLarkChannelTest(pool, testAuditId(personalTestChannelId, employee.id), null),
       ]);
-      res.setHeader("Cache-Control", "no-store");
       res.json({
         channels: await Promise.all(
-          (await pool.query("SELECT * FROM notification_channels")).rows.map(
+          (await pool.query("SELECT * FROM notification_channels")).rows.filter(row => !row.config.deleted).map(
             async (row) => {
               const { blocked, simulated, version } = planGroupChannelTest(row.id, row.config);
               const latest = await findLarkChannelTest(pool, row.id, null);
+              const linked = references.filter(ref => ref.channel === row.id);
               return {
-                ...row,
-                testDelivery: { blocked, simulated, version, latest: latest?.data.version === version ? latest.data : null },
-                connection: channelConnection(row.id, row.config),
-                rateLimit: await groupRateLimit(pool, row.id, row.config),
-                usage: (
-                  await pool.query(
-                    "SELECT COUNT(*) AS total,COALESCE(SUM(enabled),0) AS enabled FROM notification_rules WHERE config->>'$.group'=:p1 AND JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark'))",
-                    [row.id],
-                  )
-                ).rows[0],
+              ...row,
+              config: {
+                ...publicGroupChannelConfig(row.config),
+                ...(usesLegacyProductionGroupWebhook(row.config) ? { secretRef: row.config.secretRef } : {}),
+              },
+              systemManaged: isSystemLarkGroup(row.id, row.config),
+              connection: channelConnection(row.id, row.config),
+              testDelivery: {
+                blocked, simulated, version,
+                latest: latest?.data.version === version ? latest.data : null,
+              },
+              rateLimit: await groupRateLimit(pool, row.id, row.config),
+              usage: { total: linked.length, enabled: linked.filter(ref => ref.enabled).length },
               };
             },
           ),
         ),
         unconnected: ["email", "sms"],
+        groupWebhookUsesEnvironment: groupWebhookUsesEnvironment(),
         personalChannel: {
-          enabled: personal.enabled, appConfigured: personal.appConfigured,
+          ...personal.channel, systemManaged: true, appConfigured: personal.appConfigured,
           testDelivery: {
             blocked: personal.blocked, simulated: personal.simulated, version: personal.version,
             latest: personalLatest?.data.version === personal.version ? personalLatest.data : null,
           },
         },
-        groupWebhookUsesEnvironment: groupWebhookUsesEnvironment(),
       });
+    }),
+  );
+  app.post(
+    "/api/crm/notification-personal-channel",
+    wrap(async (req, res) => {
+      const employee = await staff(req, "notifications.manage");
+      if (!validMutationOrigin(req)) fail(403, "Permission denied");
+      const { mode, revision } = req.body;
+      if (!["simulation", "live"].includes(mode) || !Number.isSafeInteger(revision) || revision < 1)
+        fail(400, "Invalid channel config");
+      if (mode === "live" && (isolatedLarkRuntime() || !process.env.LARK_APP_ID || !process.env.LARK_APP_SECRET))
+        fail(409, "Live personal delivery is unavailable.");
+      const result = await tx(async c => {
+        const current = await personalLarkChannel(c, true);
+        if (current.mode === mode) return current;
+        if (current.revision !== revision) fail(409, "Channel settings changed. Refresh before saving.");
+        const next = { mode, revision: revision + 1 };
+        await c.query("UPDATE portal_settings SET value=:p2 WHERE id=:p1", [PERSONAL_CHANNEL_SETTING, next]);
+        await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)", [
+          employee.id, "channel.save", { id: PERSONAL_CHANNEL_SETTING, mode, version: next.revision },
+        ]);
+        return next;
+      });
+      res.json(result);
     }),
   );
   app.post(
@@ -1599,7 +1655,6 @@ export async function mountPortal(app: Express) {
       const employee = await staff(req, "notifications.manage");
       const attempt = await findLarkChannelTest(pool, testAuditId(String(req.params.id), employee.id), String(req.params.requestId));
       if (!attempt) fail(404, "Test result not found.");
-      res.setHeader("Cache-Control", "no-store");
       res.json(attempt.data);
     }),
   );
@@ -1624,13 +1679,27 @@ export async function mountPortal(app: Express) {
       res.json(receipt);
     }),
   );
+  app.delete(
+    "/api/crm/notification-channels/:id",
+    wrap(async (req, res) => {
+      const employee = await staff(req, "notifications.manage");
+      if (!validMutationOrigin(req)) fail(403, "Permission denied");
+      const channelId = String(req.params.id), version = req.body?.version;
+      if (!/^[A-Za-z0-9._-]{1,100}$/.test(channelId) || typeof version !== "string" || !/^[a-f0-9]{64}$/.test(version))
+        fail(400, "Invalid channel config");
+      await tx(c => deleteNotificationGroupChannel(c, channelId, version, employee.id));
+      res.json({ success: true });
+    }),
+  );
   app.post(
     "/api/crm/notification-channels/:id",
     wrap(async (req, res) => {
       const e = await staff(req, "notifications.manage");
       const {
         team,
+        webhook,
         secretRef,
+        webhookRevision,
         mode,
         signingSecretRef,
         signingEnabled,
@@ -1638,83 +1707,106 @@ export async function mountPortal(app: Express) {
         teamName,
         maxPerHour,
       } = req.body;
-      const previous = (
-        await pool.query(
-          "SELECT config FROM notification_channels WHERE id=:p1",
-          [req.params.id],
-        )
-      ).rows[0]?.config;
-      const environmentWebhook = groupWebhookUsesEnvironment();
-      if (environmentWebhook && (secretRef !== undefined || req.body.webhook !== undefined))
+      const channelId = String(req.params.id);
+      const changingWebhook = webhook !== undefined;
+      if (changingWebhook && groupWebhookUsesEnvironment())
         fail(409, "The group Webhook is managed in the server environment.");
-      const ref = environmentWebhook
-        ? previous && usesEnvironmentGroupWebhook(previous) ? previous.secretRef : undefined
-        : secretRef ?? previous?.secretRef;
-      const signing =
-        signingEnabled ??
-        previous?.signingEnabled ??
-        !!(signingSecretRef ?? previous?.signingSecretRef);
-      const signingRef = signingSecretRef ?? previous?.signingSecretRef;
-      if (
-        !["simulation", "live"].includes(mode) ||
-        (secretRef !== undefined &&
-          (typeof secretRef !== "string" ||
-            !/^[A-Z0-9_]{1,80}$/.test(secretRef))) ||
-        (signingSecretRef !== undefined &&
-          (typeof signingSecretRef !== "string" ||
-            !/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))) ||
-        (mode === "live" && (environmentWebhook
-          ? previous?.mode !== "live" && !resolveGroupWebhook(String(req.params.id), {secretRef: ref})
-          : typeof ref !== "string" || !/^[A-Z0-9_]{1,80}$/.test(ref))) ||
-        (signingEnabled !== undefined && typeof signingEnabled !== "boolean") ||
-        (mode === "live" &&
-          signing &&
-          (typeof signingRef !== "string" ||
-            !/^[A-Z0-9_]{1,80}$/.test(signingRef))) ||
-        (maxPerHour !== undefined &&
-          (!Number.isInteger(maxPerHour) ||
-            maxPerHour < 0 ||
-            maxPerHour > 10080)) ||
-        (groupName !== undefined &&
-          (typeof groupName !== "string" ||
-            !groupName.trim() ||
-            groupName.length > 100)) ||
-        (!previous && !groupName?.trim()) ||
-        (team !== undefined &&
-          (typeof team !== "string" || team.length > 100)) ||
-        (teamName !== undefined &&
-          (typeof teamName !== "string" || teamName.length > 100))
-      )
+      if (!/^[A-Za-z0-9._-]{1,100}$/.test(channelId) ||
+          (secretRef !== undefined && (changingWebhook || typeof secretRef !== "string" ||
+            !/^[A-Z0-9_]{1,80}$/.test(secretRef) || !usesLegacyProductionGroupWebhook({secretRef}))))
         fail(400, "Invalid channel config");
-      const limit =
-        maxPerHour ??
-        (await groupRateLimit(pool, String(req.params.id), previous))
-          .maxPerHour;
-      await pool.query(
-        "INSERT INTO notification_channels VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE config=:p2",
-        [
-          req.params.id,
-          {
-            ...previous,
-            team: team ?? previous?.team,
-            teamName: teamName ?? previous?.teamName,
-            groupName: groupName?.trim() || previous?.groupName,
-            mode,
-            maxPerHour: limit,
-            secretRef: ref,
-            signingSecretRef: signingRef,
-            signingEnabled: signing,
-          },
-        ],
-      );
-      await pool.query(
-        "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
-        [
-          e.id,
-          "channel.save",
-          { id: req.params.id, team, mode, maxPerHour: limit },
-        ],
-      );
+      if (webhook !== undefined && webhook !== null &&
+          (typeof webhook !== "string" || webhook.length > 512 || !validWebhook(webhook.trim())))
+        fail(400, "Enter a valid Lark group Webhook address");
+      await tx(async (c) => {
+        const previous = (
+          await c.query(
+            "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE",
+            [channelId],
+          )
+        ).rows[0]?.config;
+        if (previous?.deleted) fail(409, "Notification channel has been deleted.");
+        if (secretRef !== undefined && previous?.encryptedWebhook !== undefined)
+          fail(409, "Webhook configuration changed. Reopen the channel and try again.");
+        if (changingWebhook && (previous?.webhookRevision ?? null) !== (webhookRevision ?? null))
+          fail(409, "Webhook configuration changed. Reopen the channel and try again.");
+        const signing =
+          signingEnabled ??
+          previous?.signingEnabled ??
+          !!(signingSecretRef ?? previous?.signingSecretRef);
+        const signingRef = signingSecretRef ?? previous?.signingSecretRef;
+        const retainedRef = !changingWebhook && previous &&
+          (usesEnvironmentGroupWebhook(previous) || usesLegacyProductionGroupWebhook(previous))
+          ? previous.secretRef : undefined;
+        const savedRef = secretRef ?? retainedRef;
+        if (
+          !["simulation", "live"].includes(mode) ||
+          (mode === "live" && previous?.mode !== "live" &&
+            !(changingWebhook ? webhook : resolveGroupWebhook(channelId, { ...previous, secretRef: savedRef }))) ||
+          (signingSecretRef !== undefined &&
+            (typeof signingSecretRef !== "string" ||
+              !/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))) ||
+          (signingEnabled !== undefined && typeof signingEnabled !== "boolean") ||
+          (mode === "live" &&
+            signing &&
+            (typeof signingRef !== "string" ||
+              !/^[A-Z0-9_]{1,80}$/.test(signingRef))) ||
+          (maxPerHour !== undefined &&
+            (!Number.isInteger(maxPerHour) ||
+              maxPerHour < 0 ||
+              maxPerHour > 10080)) ||
+          (groupName !== undefined &&
+            (typeof groupName !== "string" ||
+              !groupName.trim() ||
+              groupName.length > 100)) ||
+          (!previous && !groupName?.trim()) ||
+          (team !== undefined &&
+            (typeof team !== "string" || team.length > 100)) ||
+          (teamName !== undefined &&
+            (typeof teamName !== "string" || teamName.length > 100))
+        )
+          fail(400, "Invalid channel config");
+        const savedGroupName = systemLarkGroupName(channelId, previous, groupName);
+        let encryptedWebhook = previous?.encryptedWebhook;
+        if (changingWebhook) {
+          encryptedWebhook = typeof webhook === "string" ? encryptGroupWebhook(channelId, webhook.trim()) : undefined;
+          if (typeof webhook === "string" && !encryptedWebhook)
+            fail(503, "Ask a system administrator to configure Webhook encryption.");
+        }
+        const limit =
+          maxPerHour ??
+          (await groupRateLimit(c, channelId, previous))
+            .maxPerHour;
+        await c.query(
+          "INSERT INTO notification_channels VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE config=:p2",
+          [
+            channelId,
+            {
+              ...previous,
+              team: team ?? previous?.team,
+              teamName: teamName ?? previous?.teamName,
+              groupName: savedGroupName,
+              mode,
+              maxPerHour: limit,
+              secretRef: savedRef,
+              encryptedWebhook,
+              webhookRevision: changingWebhook ? randomUUID() : previous?.webhookRevision,
+              signingSecretRef: signingRef,
+              signingEnabled: signing,
+            },
+          ],
+        );
+        await c.query(
+          "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)",
+          [
+            e.id,
+            "channel.save",
+            { id: channelId, team, mode, maxPerHour: limit, ...(changingWebhook ? {
+              webhookChange: webhook === null ? "cleared" : "stored",
+            } : {}) },
+          ],
+        );
+      });
       auditLog(e.id, "channel.save");
       res.json({ success: true });
     }),

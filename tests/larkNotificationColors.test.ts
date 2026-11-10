@@ -3,7 +3,7 @@ import {larkNotificationColor} from '../src/utils/larkNotificationColors';
 import {standardLarkCard,dailyDigestCard,larkCard} from '../server/portal/notificationDelivery';
 import {standardLarkKinds} from '../src/utils/larkNotificationPresentation';
 test('all event headers use semantic categories independently of language, grade and conversion',()=>{
- const expected:Record<string,string>={'commitment.due':'blue','lead.created':'blue','conversation.reactivated':'blue','handoff.requested':'blue','booking.requested':'blue','enrollment.requested':'blue','assessment.completed':'turquoise','task.overdue':'orange','ai.failed':'red','notification.failed':'red'};
+ const expected:Record<string,string>={'commitment.due':'blue','lead.created':'blue','lead.assigned':'blue','conversation.reactivated':'blue','handoff.requested':'blue','booking.requested':'blue','enrollment.requested':'blue','assessment.completed':'turquoise','task.overdue':'orange','ai.failed':'red','notification.failed':'red'};
  for(const language of ['zh','en','id'] as const)for(const kind of standardLarkKinds){const card=standardLarkCard({kind,language,name:'Maya',score:0,maxScore:100},'lead-a',undefined,new Date());assert.equal(card.card.header.template,expected[kind]);assert.ok(card.card.header.title.content);assert.equal(card.card.elements[1].actions[0].tag,'button');}
  for(const language of ['zh','en','id'] as const)assert.equal(dailyDigestCard({language,date:'2030-01-06',counts:[]},undefined,new Date()).card.header.template,'grey');
  assert.equal(larkNotificationColor('unknown').template,'blue');

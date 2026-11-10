@@ -7,6 +7,22 @@ export function environmentName(value = 'dev') {
   if (!environments.includes(value)) throw Error('Environment must be dev, test or prod');
   return value;
 }
+
+export function portalWorkerEnabled(env = process.env) {
+  const setting = env.PORTAL_WORKER_ENABLED;
+  if (setting !== undefined && setting !== 'true' && setting !== 'false') {
+    throw Error('PORTAL_WORKER_ENABLED must be true or false when set');
+  }
+  if (env.PORTAL_DEPLOYMENT === 'remote-dev') {
+    if (setting === 'true') throw Error('Remote development requires port 3000 and no notification worker');
+    return false;
+  }
+  if (setting !== undefined) return setting === 'true';
+  // Standalone synthetic fixtures still require explicit opt-in.
+  return (env.TRIAL_DATASET === 'local-crm' && env.PORTAL_LOCAL_CUTOVER === 'true') ||
+    env.PORTAL_DEPLOYMENT === 'company-trial' ||
+    (env.PORTAL_DEPLOYMENT === 'production' && env.PORTAL_ENV === 'prod');
+}
 /** Exact environment only. Never merge .env or another environment's secrets. */
 export function readEnvironment(target, directory = process.cwd()) {
   const name = environmentName(target);

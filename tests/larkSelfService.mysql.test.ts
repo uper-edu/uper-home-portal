@@ -5,10 +5,14 @@ import {setupNativeTest} from './helpers/mysql.mjs';
 import {disposeNativeTest} from './helpers/disposeNativeTest.mjs';
 if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark self service requires approved isolation',{skip:true},()=>{});}else{
  const fixture=await setupNativeTest('lark_self_service');
- const {pool}=await import('../server/portal/store.ts');const {platform}=await import('../server/portal/identity.ts');
+ const {pool}=await import('../server/portal/store.ts');
+ // This suite uses the live code path with a fully intercepted provider.
+ process.env.TRIAL_DATASET='local-crm';
+ const setMode=(mode:string)=>pool.query("INSERT INTO portal_settings(id,value) VALUES('lark_personal_channel',:p1) ON DUPLICATE KEY UPDATE value=:p1",[{mode,revision:1}]);
+ await setMode('live');const {platform}=await import('../server/portal/identity.ts');
  const original=platform.authenticate,native=globalThis.fetch;let tenant='tenant_synthetic',openId='ou_maya',sends=0,loseResponse=false,active=true,profileMode='sales';
  platform.authenticate=async(q:any)=>['maya','arif'].includes(q.headers['x-user'])&&active?{id:q.headers['x-user'],active:true,roles:profileMode==='manager'?['crm_leader']:['sales'],teams:[],permissions:profileMode==='cms'?[]:profileMode==='manager'?['crm.read','notifications.manage']:['crm.read'],scope:'own'}:null;
- Object.assign(process.env,{LARK_APP_ID:'cli_synthetic',LARK_APP_SECRET:'synthetic-only',LARK_TENANT_KEY:tenant,LARK_BINDING_CONFIRMATIONS_ENABLED:'true',PORT:'3000'});
+ Object.assign(process.env,{LARK_APP_ID:'cli_synthetic',LARK_APP_SECRET:'synthetic-only',LARK_TENANT_KEY:tenant,PORT:'3000'});
  globalThis.fetch=async(url,o)=>{
  if(String(url).startsWith('http://127.0.0.1:'))return native(url,o);
  const u=String(url);
@@ -91,9 +95,9 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark self service requires approved
  assert.equal((await req('preferences',{revision:0,language:'en',disabledTypes:[]},'maya','maya','https://foreign.invalid')).status,403);
  assert.equal((await req('preferences',{revision:0,language:'en',disabledTypes:[]},'anonymous')).status,401);
  const body={revision:0,language:'en',disabledTypes:['assessment.completed'],employeeId:'arif'};
- delete process.env.LARK_PERSONAL_DELIVERY_ENABLED;
+ await setMode('simulation');
  assert.equal((await req('preferences',body)).status,409);
- process.env.LARK_PERSONAL_DELIVERY_ENABLED='true';
+ await setMode('live');
  assert.equal((await req('preferences',{revision:0,language:'en',disabledTypes:['lead.created']})).status,409);
  for(const type of ['handoff.requested','booking.requested','enrollment.requested','commitment.due','task.overdue','ai.failed','notification.failed'])assert.equal((await req('preferences',{revision:0,language:'en',disabledTypes:[type]})).status,400,type);
  profileMode='cms';assert.deepEqual((await (await req('me')).json()).visibleTypes,[]);assert.equal((await req('preferences',body)).status,409);profileMode='sales';
@@ -114,7 +118,7 @@ if(!process.env.MYSQL_NATIVE_TEST_ENV){test('Lark self service requires approved
  all.maya={...savedBinding,appId:'different-app'};
  await pool.query("UPDATE access_state SET value=:p1 WHERE id='lark_bindings'",[all]);
  assert.equal((await req('preferences',{revision:1,language:'id',disabledTypes:['assessment.completed']})).status,409);
- all.maya=savedBinding;await pool.query("UPDATE access_state SET value=:p1 WHERE id='lark_bindings'",[all]);delete process.env.LARK_PERSONAL_DELIVERY_ENABLED;
+ all.maya=savedBinding;await pool.query("UPDATE access_state SET value=:p1 WHERE id='lark_bindings'",[all]);await setMode('simulation');
  });
  }finally{globalThis.fetch=native;platform.authenticate=original;await new Promise<void>((r,j)=>server.close(e=>e?j(e):r()));await pool.end();await disposeNativeTest(fixture);}
 }

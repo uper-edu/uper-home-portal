@@ -5,6 +5,8 @@ import {isCrmManager} from '../../src/utils/crmOutreach.ts';
 import crypto from "node:crypto";
 import { pool, tx, event } from "./store.ts";
 import { platform } from "./identity.ts";
+import { fact } from "./trustWorkflow.ts";
+import { assignmentNotificationPayload, LEAD_ASSIGNED_EVENT } from "../../src/utils/leadAssignmentNotification.ts";
 import {
   eligibleOwner,
   permittedRecord,
@@ -263,10 +265,14 @@ export function mountAccessHandovers(app: any) {
               profile,
             ]);
             if(releaseToPool)await c.query("UPDATE followup_tasks SET owner_id=:p2 WHERE lead_id=:p1 AND status IN ('open','overdue','migration_hold')",[l.id,null]);
-            await event(c, "conversation.updated", l.id, {
-              source: "crm_assignment",
-              assignmentChanged: true,
-            });
+            if (!releaseToPool) {
+              const factId = crypto.randomUUID();
+              await fact(c,l.id,"owner.changed",actor.id,{
+                before:l.profile.owner,after:profile.owner,afterName:target.displayName || target.id,
+                changedAt:profile.ownerChangedAt,requestId:factId,
+              },factId);
+              await event(c, LEAD_ASSIGNED_EVENT, l.id, assignmentNotificationPayload(profile.owner,profile.ownerChangedAt,factId));
+            }
           }
           for (const taskId of new Set(b.taskIds)) {
             const t = (

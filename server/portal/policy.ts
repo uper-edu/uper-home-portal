@@ -1,19 +1,25 @@
 import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
+import {allowsLarkGroup,allowsLarkPersonal,LARK_GROUP,LARK_PERSONAL,MAX_NOTIFICATION_GROUPS,policyDeliveryChannels} from '../../src/utils/notificationGroupTargets.ts';
+import {LEAD_ASSIGNED_EVENT} from '../../src/utils/leadAssignmentNotification.ts';
 import {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
 export {local,working,nextWork,sla} from '../../src/utils/workCalendar.ts';
 export type Channel = "inapp" | "lark" | "email" | "sms";
-export const CRM_BOT_CHANNEL = "CRM_Leads_Update";
+export const CRM_BOT_CHANNEL = "lark-group-default";
 export const TASK_NOTICE_EVENTS = ["task.created", "task.rescheduled", "task.appointment_due"] as const;
+export function isRetiredNotificationEvent(event: unknown) {
+  return TASK_NOTICE_EVENTS.some(retired => retired === event);
+}
 export interface Rule {
   calendarMode?: "inherit" | "custom";
   quiet?: { start:string; end:string };
   teams?: string[]; // historical snapshots only; never matched by the worker
   requiresRoutingReview?: boolean;
   event: string;
-  channels: Channel[];
+  channels: (Channel | typeof LARK_GROUP | typeof LARK_PERSONAL)[];
   recipient: "owner" | "managers" | "team" | "supervisor";
   team?: string;
-  group: string;
+  group: string; // Legacy single-group rules and snapshots
+  groupIds?: string[];
   sources: string[];
   tiers: string[];
   states: string[];
@@ -61,6 +67,7 @@ const events = [
   "task.appointment_due",
   "conversation.updated",
   "lead.created",
+  LEAD_ASSIGNED_EVENT,
   "conversation.reactivated",
   "handoff.requested",
   "booking.requested",
@@ -77,7 +84,7 @@ export function validate(r: Rule) {
     !events.includes(r.event) ||
     !Array.isArray(r.channels) ||
     !r.channels.length ||
-    r.channels.some((c) => !["inapp", "lark"].includes(c))
+    r.channels.some((c) => !["inapp", "lark", LARK_GROUP, LARK_PERSONAL].includes(c))
   )
     throw Error("Only inapp and lark are connected");
   if (
@@ -85,9 +92,24 @@ export function validate(r: Rule) {
     !["immediate", "delay", "digest"].includes(r.timing)
   )
     throw Error("Invalid policy");
+  if (r.groupIds !== undefined && (!Array.isArray(r.groupIds) ||
+      r.groupIds.length > MAX_NOTIFICATION_GROUPS ||
+      r.groupIds.some(id => typeof id !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(id)) ||
+      new Set(r.groupIds).size !== r.groupIds.length))
+    throw Error("Select up to 20 distinct Lark group channels.");
+  if (r.event === LEAD_ASSIGNED_EVENT && (r.recipient !== "owner" || r.group !== "" || r.groupIds?.length))
+    throw Error("Assignment notifications are only for the new owner");
+  if ((r.channels.includes(LARK_GROUP) && !allowsLarkGroup(r.event)) ||
+      (r.channels.includes(LARK_PERSONAL) && !allowsLarkPersonal(r.event)) ||
+      (r.channels.includes("lark") && (r.channels.includes(LARK_GROUP) || r.channels.includes(LARK_PERSONAL))))
+    throw Error("The selected Lark delivery options are not valid for this policy.");
   for(const values of [r.sources,r.tiers,r.states,r.teams || []])if(!Array.isArray(values)||values.length>30||values.some(v=>typeof v!=='string'||v.length>100))throw Error('Invalid filters');
   if(r.quiet && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.quiet.start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.quiet.end)||r.quiet.start===r.quiet.end))throw Error('Invalid quiet hours');
-  for(const value of [r.group])if(typeof value!=='string'||!value.trim()||value.length>100)throw Error('Invalid team/group');
+  if (allowsLarkGroup(r.event) && policyDeliveryChannels(r).includes(LARK_GROUP)) {
+    if (r.groupIds === undefined && (typeof r.group !== 'string' || !r.group.trim() || r.group.length > 100))
+      throw Error("Invalid team/group");
+    if (r.groupIds?.length === 0) throw Error("Select at least one Lark group channel.");
+  }
   new Intl.DateTimeFormat("en", { timeZone: r.timezone });
   for (const t of [r.start, r.end, r.digestTime])
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw Error("Invalid time");
@@ -127,15 +149,16 @@ export function schedule(date: Date, r: Rule, channel: Channel) {
   }
   throw Error('No permitted send time');
 }
-export const defaultRules = events.map(
+export const defaultRules = events.filter(event => !isRetiredNotificationEvent(event)).map(
   (event) =>
     ({
       ...defaults,
       event,
       channels:
-        ["conversation.updated"].includes(event) ? ["inapp"] : defaults.channels,
+        event === "conversation.updated" ? ["inapp"] : policyDeliveryChannels({event, channels: defaults.channels}),
       recipient: event.includes("failed") || event === "daily.digest" ? "managers" : "owner",
-      group: (event==="commitment.due" || (TASK_NOTICE_EVENTS as readonly string[]).includes(event)) ? CRM_BOT_CHANNEL : event.includes("failed") ? "ops" : "sales",
+      group: event === LEAD_ASSIGNED_EVENT ? "" : (event === "commitment.due" || event === "daily.digest") ? CRM_BOT_CHANNEL : event.includes("failed") ? "ops" : "sales",
+      dedupeMinutes: event === LEAD_ASSIGNED_EVENT ? 0 : defaults.dedupeMinutes,
       timing:
         event === "assessment.completed" || event === "daily.digest"
           ? "digest"

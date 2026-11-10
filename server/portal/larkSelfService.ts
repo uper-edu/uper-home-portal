@@ -6,7 +6,8 @@ import type {Express,Request} from 'express';
 import {pool,tx} from './store.ts';
 import {platform} from './identity.ts';
 import {validMutationOrigin} from './accessTransport.ts';
-import {LarkApp,larkBindings} from './larkApp.ts';
+import {larkApp,larkBindings} from './larkApp.ts';
+import {personalLarkChannel} from './larkChannelModes.ts';
 const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
 const hash=(s:string)=>crypto.createHash('sha256').update(s).digest('hex');
 const session=(q:Request)=>{const key='uper_crm_session_'+(process.env.PORT||'3000')+'=';const value=(q.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith(key))?.slice(key.length);if(!value)fail(401,'Login required');return hash(value!);};
@@ -18,7 +19,7 @@ export function larkSelfConfiguration(env:NodeJS.ProcessEnv=process.env){
  const uri=env.LARK_OAUTH_REDIRECT_URI;let redirect:URL|undefined;
  try{if(uri)redirect=new URL(uri);}catch{}
  const valid=!!redirect&&!redirect.username&&!redirect.password&&!redirect.search&&!redirect.hash&&redirect.pathname==='/api/crm/lark/callback'&&(redirect.protocol==='https:'||(redirect.protocol==='http:'&&['localhost','127.0.0.1'].includes(redirect.hostname)));
- return {ready:!!(valid&&env.LARK_APP_ID&&env.LARK_APP_SECRET&&env.LARK_TENANT_KEY&&env.LARK_BINDING_CONFIRMATIONS_ENABLED==='true'),redirect:valid?redirect:undefined};
+ return {ready:!!(valid&&env.LARK_APP_ID&&env.LARK_APP_SECRET&&env.LARK_TENANT_KEY),redirect:valid?redirect:undefined};
 }
 async function staff(q:Request,mutation=false){const e=await platform.authenticate(q);if(!e||e.active===false)fail(401,'Login required');if(mutation&&!validMutationOrigin(q))fail(403,'access_origin_rejected');return e;}
 async function summary(employeeId:string,c:any=pool){const binding=(await larkBindings(c))[employeeId];return {bound:!!binding?.openId&&binding.appId===process.env.LARK_APP_ID,revision:Number(binding?.revision||0),selfServiceReady:larkSelfConfiguration().ready,preferences:await personalNotificationPreferences(c,employeeId)};}
@@ -29,23 +30,24 @@ async function flow(q:Request,employeeId:string,c:any,flowId:string){
  return value;
 }
 export async function sendLarkBindingNotice(key:string){
- if(process.env.LARK_BINDING_CONFIRMATIONS_ENABLED!=='true')return;
+ if(!larkSelfConfiguration().ready)return;
  const notice=await tx(async(c:any)=>{await locked(c);const n=await read(c,key);if(n?.state!=='pending')return null;
  const binding=(await larkBindings(c))[n.employeeId];const user=(await c.query('SELECT * FROM crm_users WHERE id=:p1',[n.employeeId])).rows[0];
  if(!user?.active||binding?.openId!==n.openId||binding?.revision!==n.bindingRevision||binding?.appId!==process.env.LARK_APP_ID){await write(c,key,{...n,state:'cancelled'});return null;}
+ if((await personalLarkChannel(c)).mode!=='live'){await write(c,key,{...n,state:'simulated',completedAt:new Date().toISOString()});return null;}
  await write(c,key,{...n,state:'sending',startedAt:new Date().toISOString()});return n;});
  if(!notice)return;
  let state='unknown';
  try{
  const t=(en:string,id:string,zh:string)=>notice.lang==='zh'?zh:notice.lang==='id'?id:en;
- const client=new LarkApp({...process.env,LARK_PERSONAL_DELIVERY_ENABLED:'true'});
- const r=await client.send(notice.openId,{msg_type:'interactive',card:{config:{wide_screen_mode:true},header:{template:'green',title:{tag:'plain_text',content:t('Lark personal notifications connected','Notifikasi pribadi Lark terhubung','Lark个人通知已绑定')}},elements:[{tag:'div',text:{tag:'plain_text',content:t('Your CRM account has been linked to this Lark account. Personal business notifications can be delivered here when enabled. You can manage the connection from the CRM account menu.','Akun CRM Anda telah terhubung ke akun Lark ini. Notifikasi bisnis pribadi dapat dikirim di sini jika diaktifkan. Kelola koneksi melalui menu akun CRM.','你的CRM账号已绑定此Lark账号。个人业务通知开启后，可通过这里接收。你可以在CRM账号菜单中管理绑定。')}},{tag:'action',actions:[{tag:'button',type:'primary',text:{tag:'plain_text',content:t('Notification settings','Pengaturan notifikasi','通知设置')},url:notice.manageUrl}]}]}},notice.uuid);
+ const client=larkApp;
+ const r=await client.send(notice.openId,{msg_type:'interactive',card:{config:{wide_screen_mode:true},header:{template:'green',title:{tag:'plain_text',content:t('Lark personal notifications connected','Notifikasi pribadi Lark terhubung','Lark个人通知已绑定')}},elements:[{tag:'div',text:{tag:'plain_text',content:t('Your CRM account has been linked to this Lark account. Personal business notifications can be delivered here when enabled. You can manage the connection from the CRM account menu.','Akun CRM Anda telah terhubung ke akun Lark ini. Notifikasi bisnis pribadi dapat dikirim di sini jika diaktifkan. Kelola koneksi melalui menu akun CRM.','你的CRM账号已绑定此Lark账号。个人业务通知开启后，可通过这里接收。你可以在CRM账号菜单中管理绑定。')}},{tag:'action',actions:[{tag:'button',type:'primary',text:{tag:'plain_text',content:t('Notification settings','Pengaturan notifikasi','通知设置')},url:notice.manageUrl}]}]}},notice.uuid, 'live');
  const body=await r.json();state=r.ok&&body.code===0&&body.data?.message_id?'accepted':body.code===0?'unknown':'failed';
  }catch{}
  await tx(async(c:any)=>{await locked(c);const n=await read(c,key);if(n?.state==='sending')await write(c,key,{...n,state,completedAt:new Date().toISOString()});});
 }
 export async function processLarkBindingConfirmations(){
- if(process.env.LARK_BINDING_CONFIRMATIONS_ENABLED!=='true')return;
+ if(!larkSelfConfiguration().ready)return;
  const rows=(await pool.query("SELECT id FROM portal_settings WHERE id LIKE 'lark_notice:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.state'))='pending' ORDER BY id LIMIT 5")).rows;
  for(const row of rows)await sendLarkBindingNotice(row.id);
 }

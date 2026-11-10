@@ -27,8 +27,8 @@ export class LarkApp {
     if(!Array.isArray(users)||users.length!==1||!/^ou_[\w-]+$/.test(users[0].user_id))throw Error('lark_user_not_found');
     return {appId:this.appId,openId:users[0].user_id as string,...method==='email'?{email}:{mobile}};
   }
-  async send(openId:string,card:any,uuid:string){
-    if(this.env.LARK_PERSONAL_DELIVERY_ENABLED!=='true')throw Error('lark_personal_delivery_disabled');
+  async send(openId:string,card:any,uuid:string,mode?:'live'|'simulation'){
+    if(mode!=='live')throw Error('lark_personal_delivery_disabled');
     if(!/^ou_[\w-]+$/.test(openId))throw Error('lark_user_invalid');
     return this.request('https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=open_id',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await this.token()},body:JSON.stringify({receive_id:openId,msg_type:card.msg_type,content:JSON.stringify(card.card||card.content),uuid}),signal:AbortSignal.timeout(10000)});
   }

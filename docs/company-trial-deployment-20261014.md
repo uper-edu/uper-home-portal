@@ -30,8 +30,8 @@ Target: `https://home.prototype.uperedu.com`, including `/chat`, `/crm`, `/cms`,
 
 ## Notifications and no replay
 
-- Start with `PORTAL_WORKER_ENABLED=false`, `PORTAL_NOTIFICATION_MODE=simulation` and all test channels in simulation mode. A running company simulation worker refuses live channels rather than pretending they were simulated. Missing channels fail explicitly.
-- After a separately approved TEST receipt check: `PORTAL_WORKER_ENABLED=true`, `PORTAL_NOTIFICATION_MODE=configured`, `LARK_TEST_GROUP=CRM_Leads_Update`. Map group policies to this existing logical channel, display CRM Bot, use `secretRef=LARK_GROUP_CRM`, signing off. Only this group channel may send live. Personal business delivery requires `LARK_PERSONAL_DELIVERY_ENABLED=true`, an active employee with the relevant customer permission, and a binding to the configured Lark app. Cards always say `UPER · TEST` and link to the same-domain CRM.
+- Start with `PORTAL_WORKER_ENABLED=false` and both Lark channels in simulation mode. Set the group address in the private server environment using `LARK_GROUP_CRM`. Missing channels fail explicitly.
+- For a separately approved TEST receipt check, select live mode on the group channel and verify its Webhook and signing settings. Group policies use the selected CRM channel and deliver to the group configured by `LARK_GROUP_CRM`. Personal delivery requires its own live mode, an active employee with the relevant customer permission, and a binding to the configured Lark app. Cards say `UPER · TEST` and link to the same-domain CRM.
 - Owner → CRM Manager routing, policy snapshots, unknown-result handling, task cancellation and migration holds remain intact. Starting a worker is not permission to replay old failed/unknown/held jobs. Use the empty synthetic DB or individually reviewed NEW events only. API accepted is not actual group receipt.
 - Local acceptance uses only a stubbed Lark transport and synthetic credentials. It does not send a real group notification or call AI.
 
