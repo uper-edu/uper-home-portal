@@ -24,7 +24,7 @@
 | 站内按钮 | `target`，按需 `cta_id` | `target` 区分咨询、手册等目标。仅需比较同类按钮的位置或版本时增加 `cta_id`。 |
 | 界面语言 | `lang` | 控制界面展示。语言切换不改变既有 `p`。 |
 
-常设自然社媒入口共用一个「日常自然推广」Campaign，代码为 `social-bio`。按平台和投放位置生成各自的 `p`。专项活动有独立的 Campaign，可同时包含自然和付费推广。报表按「自然推广」跨活动汇总。无标记访问沿用 CRM 的系统 `organic` 兜底，`p` 留空，并与已验证的自然推广分开呈现。系统预置八条固定链接。Instagram、TikTok、YouTube 各有聚合页与直达咨询，分别使用 `bio-ig`／`chat-ig`、`bio-tt`／`chat-tt`、`bio-yt`／`chat-yt`。官网使用 `home-link` 和 `home-chat`。预置活动与预置链接不可修改或删除，可在 `social-bio` 追加自建链接。历史 `instagram-bio` 及其预置链接保留。裸 `/link` 与裸 `/chat` 均不自动识别为 Instagram。
+常设自然社媒入口共用一个「日常自然推广」Campaign，代码为 `social-bio`。按平台和投放位置生成各自的 `p`。专项活动有独立的 Campaign，可同时包含自然和付费推广。报表按「自然推广」跨活动汇总。无标记访问沿用 CRM 的系统 `organic` 兜底，`p` 留空，并与已验证的自然推广分开呈现。系统预置十条固定链接，含 Threads 的聚合页和直达咨询，沿用生产原推广 ID。Instagram、TikTok、YouTube 各有聚合页与直达咨询，分别使用 `bio-ig`／`chat-ig`、`bio-tt`／`chat-tt`、`bio-yt`／`chat-yt`。官网使用 `home-link` 和 `home-chat`。预置活动与预置链接不可修改或删除，可在 `social-bio` 追加自建链接。历史 `instagram-bio` 及其预置链接保留。裸 `/link` 与裸 `/chat` 均不自动识别为 Instagram。
 
 ## 3. 归因与传递
 

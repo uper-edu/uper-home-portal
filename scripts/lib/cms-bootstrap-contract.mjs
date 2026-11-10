@@ -69,8 +69,9 @@ export function verifyBootstrapRows(rows,schemaVersion=bootstrapSchemaVersion){
  if(typeof at!=='string'||!Number.isFinite(Date.parse(at)))throw Error('Missing initialization timestamp');
  // Keep the original export contract independent of today's system defaults.
  const legacy=JSON.parse(JSON.stringify(legacyCampaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
+ const withoutInstagram=legacy.filter(config=>config.id!=='instagram-bio');
  const accepted=schemaVersion>=18
-  ? [systemCampaignDefaults(at),legacy]
+  ? [systemCampaignDefaults(at),withoutInstagram,legacy]
   : [legacy.filter(config=>config.id!=='social-bio')];
  const sort=items=>[...items].sort((a,b)=>a.id.localeCompare(b.id));
  const actualCampaigns=fingerprint(sort(campaigns.map(({id,code,config})=>({id,code,config}))));

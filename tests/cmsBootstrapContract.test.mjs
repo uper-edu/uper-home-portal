@@ -107,3 +107,10 @@ test('original v18 through v20 packages preserve Instagram Bio and require its e
   assert.throws(()=>inspectInitializationSql(sqlPackage(rows,version),{schemaVersion:version}),/promotion index mismatch/);
  }
 });
+test('the previous eight-link package remains verifiable after adding Threads',()=>{
+ const rows=originalRows(20);
+ rows.trial_campaigns=rows.trial_campaigns.filter(row=>row.id!=='instagram-bio');
+ rows.campaign_promotion_index=rows.campaign_promotion_index.filter(row=>row.campaign_id==='social-bio');
+ const parsed=inspectInitializationSql(sqlPackage(rows,20));
+ assert.equal(parsed.rows.campaign_promotion_index.length,8);
+});

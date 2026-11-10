@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {createServer} from 'node:net';
 import {promotionInput,promotionIdPrefix,campaignPromotionPath,campaignPromotionShortUrl,campaignPromotionUrl,PROMOTION_EXPERIENCE} from '../src/utils/campaignPromotion.ts';
-import {allocatePromotionShortCode,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
+import {allocatePromotionShortCode,backfillPromotionShortLinks,presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
+import {systemCampaignDefaults} from '../cloud/mysql/system-campaign-defaults.mjs';
 test('promotion configuration validates actual experience, source encoding and canonical link',()=>{
  const v=promotionInput({source:' Instagram ',medium:'paid_social',language:'en',experience:PROMOTION_EXPERIENCE});
  assert.equal(v.source,'instagram');
@@ -33,8 +34,32 @@ test('short-code allocation retries a collision without overwriting another prom
  assert.deepEqual([...entries],[['222222','old-p'],['333333','new-p']]);
  await assert.rejects(allocatePromotionShortCode('new-p',async()=>{throw Error('Storage error');}),/Storage error/);
 });
+test('Threads presets reuse the two production IDs and accept already issued short codes',async()=>{
+ const records=systemCampaignDefaults('2026-11-10T00:00:00.000Z');
+ const threads=records.find(row=>row.id==='social-bio').promotionLinks.filter(link=>link.source==='threads');
+ assert.deepEqual(threads.map(link=>[link.id,link.landingPath]),[
+  ['threads-social-profile-bio-261110092327','/link'],
+  ['threads-social-profile-bio-261110093006','/chat'],
+ ]);
+ const index=threads.map(link=>({p:link.id,campaign_id:'social-bio'}));
+ const saved=index.map(({p},i)=>({p,short_code:i===0?'abc234':'def567'}));
+ const db={
+  query:async(sql:string)=>[sql.includes('campaign_promotion_index')?index:saved],
+  execute:async()=>assert.fail('Existing aliases and fresh presets need no short-code writes'),
+ };
+ for(const link of threads){
+  assert.equal(presetPromotionOwner(link.id),'social-bio');
+  assert.deepEqual(Object.fromEntries(new URL(campaignPromotionUrl(link,'https://example.test','social-bio')).searchParams),{
+   p:link.id,lang:'id',utm_source:'threads',utm_medium:'social',utm_campaign:'social-bio',utm_content:'profile-bio',
+  });
+ }
+ await backfillPromotionShortLinks(db);
+ saved.length=0;
+ await backfillPromotionShortLinks(db);
+});
 if(process.env.MYSQL_NATIVE_TEST_ENV){
- const {setupNativeTest}=await import('./helpers/mysql.mjs');const fixture=await setupNativeTest('campaign_promotion');
+ const {setupNativeTest}=await import('./helpers/mysql.mjs');
+ const fixture=await setupNativeTest('campaign_promotion',{initializeSystemDefaults:true});
  const {disposeNativeTest}=await import('./helpers/disposeNativeTest.mjs');
  const lease=createServer().listen(0,'127.0.0.1');await new Promise<void>(r=>lease.once('listening',r));const port=(lease.address() as any).port;await new Promise<void>(r=>lease.close(()=>r()));
  Object.assign(process.env,{PORT:String(port),PLATFORM_MODE:'local',APP_URL:`http://127.0.0.1:${port}`});
@@ -43,6 +68,51 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
  async function req(url:string,body?:any,method=body===undefined?'GET':'POST',cookie=staffCookie){const r=await fetch(process.env.APP_URL+url,{method,headers:{'Content-Type':'application/json',Origin:process.env.APP_URL!,cookie},...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]||cookie};}
  await test('independent MySQL multiple promotion entries and first-touch persistence',async t=>{
   t.after(async()=>{await new Promise<void>(r=>server.close(()=>r()));await pool.end();await disposeNativeTest(fixture);});
+  await t.test('fresh defaults and upgrades preserve both existing Threads short URLs',async()=>{
+   const {openTrialDatabase}=await import('../cloud/mysql/database.mjs');
+   const {migrate}=await import('../cloud/mysql/migrate.mjs');
+   const db=await openTrialDatabase(process.env);
+   const ids=['threads-social-profile-bio-261110092327','threads-social-profile-bio-261110093006'];
+   const aliases=['abc234','def567'];
+   try{
+    const readCampaign=async()=>(await db.query("SELECT config FROM trial_campaigns WHERE id='social-bio'"))[0][0].config;
+    const initial=await readCampaign();
+    assert.equal(initial.promotionLinks.length,10);
+    assert.equal(new Set(initial.promotionLinks.map(link=>link.id)).size,10);
+    assert.deepEqual(initial.promotionLinks.filter(link=>link.source==='threads').map(link=>link.id),ids);
+    const [initialIndex]=await db.query("SELECT p FROM campaign_promotion_index WHERE campaign_id='social-bio'");
+    assert.deepEqual(new Set(initialIndex.map(row=>row.p)),new Set(initial.promotionLinks.map(link=>link.id)));
+    const [initialAliases]=await db.query('SELECT p FROM campaign_promotion_short_links');
+    assert.equal(initialAliases.length,0);
+
+    // Recreate an upgraded database where these links already existed as custom entries.
+    const existing=structuredClone(initial);
+    const threads=ids.map((id,i)=>{
+     const link=existing.promotionLinks.find(item=>item.id===id);
+     link.createdAt=['2026-11-10T09:23:27.560Z','2026-11-10T09:30:06.995Z'][i];
+     return link;
+    });
+    await db.execute("UPDATE trial_campaigns SET config=? WHERE id='social-bio'",[JSON.stringify(existing)]);
+    for(const [i,p] of ids.entries()){
+     await db.execute('INSERT INTO campaign_promotion_short_links(short_code,p) VALUES(?,?)',[aliases[i],p]);
+    }
+    for(let pass=0;pass<2;pass++){
+     await migrate(db,fixture.name);
+     assert.deepEqual(await readCampaign(),existing);
+     const [index]=await db.query("SELECT p FROM campaign_promotion_index WHERE campaign_id='social-bio'");
+     assert.equal(index.length,10);
+     const [saved]=await db.query('SELECT p,short_code FROM campaign_promotion_short_links ORDER BY p');
+     assert.deepEqual(saved,ids.map((p,i)=>({p,short_code:aliases[i]})));
+    }
+    for(const [i,link] of threads.entries()){
+     for(const slug of [aliases[i],link.id]){
+      const redirect=await fetch(process.env.APP_URL+'/s/'+slug,{redirect:'manual'});
+      assert.equal(redirect.status,302);
+      assert.equal(redirect.headers.get('location'),campaignPromotionPath(link,'social-bio'));
+     }
+    }
+   }finally{await db.end();}
+  });
   staffCookie=(await req('/api/crm/auth/login',{loginId:'Robert',password:'Robert'})).cookie;
   const body={name:'TEST Multi-channel campaign',savePhase:'basics',requestId:randomUUID()};
   const created=await req('/api/crm/campaigns',body);assert.equal(created.status,200);const c=created.data.campaign;

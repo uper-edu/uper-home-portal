@@ -14,6 +14,8 @@ presetLinks.set('instagram-bio', new Set(['id', 'en', 'zh'].map(language => 'p_i
 const presetOwners = new Map([...presetLinks].flatMap(([campaignId, links]) =>
   [...links].map(p => [p, campaignId]),
 ));
+// These Threads entries were distributed as custom links before becoming presets.
+const threadsPresets = new Set(evergreenLinks.filter(link => link.source === 'threads').map(link => link.id));
 
 export function presetPromotionOwner(p) {
   return presetOwners.get(p);
@@ -36,9 +38,11 @@ export async function allocatePromotionShortCode(p, insert, pick = randomInt) {
 export async function backfillPromotionShortLinks(connection) {
   const [index] = await connection.query('SELECT p,campaign_id FROM campaign_promotion_index FOR UPDATE');
   const pending = new Set(index.filter(row => !presetLinks.get(row.campaign_id)?.has(row.p)).map(row => row.p));
+  const existingThreadsAliases = new Set(index.filter(row =>
+    row.campaign_id === 'social-bio' && threadsPresets.has(row.p)).map(row => row.p));
   const [saved] = await connection.query('SELECT p,short_code FROM campaign_promotion_short_links FOR UPDATE');
   for (const {p, short_code} of saved) {
-    if (!promotionShortCodePattern.test(short_code) || !pending.delete(p)) {
+    if (!promotionShortCodePattern.test(short_code) || !(pending.delete(p) || existingThreadsAliases.delete(p))) {
       throw Error('Invalid promotion short-link mapping for ' + p);
     }
   }
