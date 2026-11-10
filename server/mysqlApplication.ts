@@ -8,7 +8,6 @@ import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
-import {ensureInstagramBioCampaign} from './portal/campaignPresets.ts';
 import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
 import {frontendStaticOptions} from './staticCache.ts';
@@ -100,7 +99,7 @@ app.get('/api/promotion-links/:p',wrap(async(q:any,r:any)=>{
  r.json({status:'verified',promotion:publicPromotion(resolved)});
 }));
 app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
-await mountPortal(app);await ensureOrganicCampaign();await tx(ensureInstagramBioCampaign);mountChat(app);
+await mountPortal(app);await ensureOrganicCampaign();mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
 app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>{

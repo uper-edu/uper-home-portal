@@ -1,4 +1,4 @@
-import defaults from '../../cloud/mysql/system-defaults.json' with {type:'json'};
+import legacyCampaigns from './cms-bootstrap-legacy-campaigns.json' with {type:'json'};
 import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
 import {systemCampaignDefaults} from '../../cloud/mysql/system-campaign-defaults.mjs';
 import {promotionIndexEntries} from '../../cloud/mysql/promotion-index.mjs';
@@ -67,9 +67,14 @@ export function verifyBootstrapRows(rows,schemaVersion=bootstrapSchemaVersion){
  const campaigns=(rows.trial_campaigns??[]).map(row=>({...row,config:json(row.config)}));
  const at=campaigns.find(row=>row.id==='organic')?.config.createdAt;
  if(typeof at!=='string'||!Number.isFinite(Date.parse(at)))throw Error('Missing initialization timestamp');
- const expected=schemaVersion>=18?systemCampaignDefaults(at):JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
+ // Keep the original export contract independent of today's system defaults.
+ const legacy=JSON.parse(JSON.stringify(legacyCampaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
+ const accepted=schemaVersion>=18
+  ? [systemCampaignDefaults(at),legacy]
+  : [legacy.filter(config=>config.id!=='social-bio')];
  const sort=items=>[...items].sort((a,b)=>a.id.localeCompare(b.id));
- if(fingerprint(sort(campaigns.map(({id,code,config})=>({id,code,config}))))!==fingerprint(sort(expected.map(config=>({id:config.id,code:config.code,config})))))throw Error('System campaign bootstrap differs from standard presets');
+ const actualCampaigns=fingerprint(sort(campaigns.map(({id,code,config})=>({id,code,config}))));
+ if(!accepted.some(expected=>actualCampaigns===fingerprint(sort(expected.map(config=>({id:config.id,code:config.code,config}))))))throw Error('System campaign bootstrap differs from standard presets');
  if(schemaVersion>=18){
   const actual=rows.campaign_promotion_index??[],entries=promotionIndexEntries(campaigns);
   if(actual.length!==entries.size||new Set(actual.map(row=>row.p)).size!==entries.size||actual.some(row=>entries.get(row.p)!==row.campaign_id))throw Error('Initialization promotion index mismatch');

@@ -158,12 +158,6 @@
       "server/portal/campaignPromotion.ts"
     ]
   },
-  "INSERT INTO campaign_promotion_index(p,campaign_id) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE p=p": {
-    "sql": "INSERT INTO campaign_promotion_index(p,campaign_id) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE p=p",
-    "sources": [
-      "server/portal/campaignPresets.ts"
-    ]
-  },
   "INSERT INTO campaign_promotion_short_links(short_code,p) VALUES(:p1,:p2)": {
     "sql": "INSERT INTO campaign_promotion_short_links(short_code,p) VALUES(:p1,:p2)",
     "sources": [
@@ -774,7 +768,6 @@
   "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id": {
     "sql": "INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
-      "server/portal/campaignPresets.ts",
       "server/portal/mysqlCampaignStorage.ts"
     ]
   },
@@ -1323,8 +1316,7 @@
   "SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1": {
     "sql": "SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1",
     "sources": [
-      "server/portal/attribution.ts",
-      "server/portal/campaignPresets.ts"
+      "server/portal/attribution.ts"
     ]
   },
   "SELECT campaign_id FROM campaign_source_reviews WHERE id=:p1 AND status='linked'": {
@@ -1800,12 +1792,6 @@
     "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1",
     "sources": [
       "server/portal/attribution.ts"
-    ]
-  },
-  "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 AND code=:p1": {
-    "sql": "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 AND code=:p1",
-    "sources": [
-      "server/portal/campaignPresets.ts"
     ]
   },
   "SELECT id,code,config FROM trial_campaigns WHERE id=:p1 FOR UPDATE": {
@@ -2379,12 +2365,6 @@
     "sql": "SELECT raw_code FROM campaign_source_reviews WHERE status='linked' AND (LOWER(raw_code)=:p1 OR LOWER(raw_code) LIKE :p2)",
     "sources": [
       "server/portal/campaignCodeAllocation.ts"
-    ]
-  },
-  "SELECT raw_code,campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)=:p1 AND status='linked'": {
-    "sql": "SELECT raw_code,campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)=:p1 AND status='linked'",
-    "sources": [
-      "server/portal/campaignPresets.ts"
     ]
   },
   "SELECT RELEASE_LOCK(:p1)": {

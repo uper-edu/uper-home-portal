@@ -52,12 +52,12 @@
       "updatedAt": "SYSTEM_INITIALIZED_AT"
     },
     {
-      "id": "instagram-bio",
-      "code": "instagram-bio",
-      "presetKey": "instagram_bio_v1",
-      "name": "Instagram Bio",
-      "nameEn": "Instagram Bio",
-      "nameId": "Instagram Bio",
+      "id": "social-bio",
+      "code": "social-bio",
+      "presetKey": "social_bio_v1",
+      "name": "日常自然推广",
+      "nameEn": "Evergreen unpaid promotion",
+      "nameId": "Promosi rutin tanpa biaya",
       "type": "other",
       "status": "active",
       "organizer": "",
@@ -73,46 +73,14 @@
       "keyTopics": [],
       "speakers": [],
       "boundUtm": {
-        "utm_source": "instagram",
-        "utm_medium": "social",
-        "utm_campaign": "instagram-bio",
+        "utm_source": "",
+        "utm_medium": "",
+        "utm_campaign": "social-bio",
         "defaultHook": "hsk_assessment",
         "defaultContext": "website",
         "defaultLang": "id"
       },
       "promotionModel": "multiple",
-      "promotionLinks": [
-        {
-          "id": "p_instagram_bio_id",
-          "name": "Instagram Bio · ID",
-          "source": "instagram",
-          "medium": "social",
-          "language": "id",
-          "experience": "questionnaire_assessment_consultation",
-          "landingPath": "/link",
-          "createdAt": "SYSTEM_INITIALIZED_AT"
-        },
-        {
-          "id": "p_instagram_bio_en",
-          "name": "Instagram Bio · EN",
-          "source": "instagram",
-          "medium": "social",
-          "language": "en",
-          "experience": "questionnaire_assessment_consultation",
-          "landingPath": "/link",
-          "createdAt": "SYSTEM_INITIALIZED_AT"
-        },
-        {
-          "id": "p_instagram_bio_zh",
-          "name": "Instagram Bio · ZH",
-          "source": "instagram",
-          "medium": "social",
-          "language": "zh",
-          "experience": "questionnaire_assessment_consultation",
-          "landingPath": "/link",
-          "createdAt": "SYSTEM_INITIALIZED_AT"
-        }
-      ],
       "aiAssets": {
         "posterHeading": "",
         "posterSubheading": "",
@@ -134,7 +102,8 @@
         "roi": null
       },
       "createdAt": "SYSTEM_INITIALIZED_AT",
-      "updatedAt": "SYSTEM_INITIALIZED_AT"
+      "updatedAt": "SYSTEM_INITIALIZED_AT",
+      "systemManaged": true
     }
   ],
   "finance": {

@@ -9,6 +9,8 @@ const presetLinks = new Map(defaults.campaigns.map(campaign => [
   campaign.id, new Set((campaign.promotionLinks ?? []).map(link => link.id)),
 ]));
 presetLinks.set('social-bio', new Set(evergreenLinks.map(link => link.id)));
+// Previously issued Instagram Bio URLs still resolve if the historical campaign exists.
+presetLinks.set('instagram-bio', new Set(['id', 'en', 'zh'].map(language => 'p_instagram_bio_' + language)));
 const presetOwners = new Map([...presetLinks].flatMap(([campaignId, links]) =>
   [...links].map(p => [p, campaignId]),
 ));
