@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import sharp from 'sharp';
-import {readEnvironment} from '../server/environment.mjs';
+import {portalWorkerEnabled,readEnvironment} from '../server/environment.mjs';
 import {approvedRemoteDevelopment} from '../cloud/mysql/transport.mjs';
 import {openTrialDatabase} from '../cloud/mysql/database.mjs';
 import {cmsMediaUrl,mediaDigest} from '../cloud/mysql/cms-media-storage.mjs';
@@ -24,7 +24,7 @@ export async function finalizeCmsAcceptance(report,{logout,persist}){
 
 export async function acceptCms({credentials,image,output}){
  const {values}=readEnvironment('dev');
- if(!approvedRemoteDevelopment(values)||values.PORT!=='3000'||values.PORTAL_WORKER_ENABLED==='true')throw Error('Approved dev3000 without a notification worker required');
+ if(!approvedRemoteDevelopment(values)||values.PORT!=='3000'||portalWorkerEnabled(values))throw Error('Approved dev3000 without a notification worker required');
  const account=JSON.parse(await fs.readFile(credentials,'utf8'));
  if(!account.loginId.startsWith('cms-cos-qa-'))throw Error('Dedicated authorized acceptance account required');
  const report={target:'http://localhost:3000',scenarios:[]};
