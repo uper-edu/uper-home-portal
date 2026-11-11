@@ -35,28 +35,28 @@ function normalizeConfig(parsed: any): CrmPolicyConfig {
       nextDayGraceTime: parsed.businessHours?.nextDayGraceTime || DEFAULT_CRM_POLICY_CONFIG.businessHours.nextDayGraceTime
     },
     firstResponseSla: {
-      hot: resolveDuration(parsed.firstResponseSla?.hot ?? parsed.firstResponseSla?.hotMinutes, 3, 'hours'),
-      warm: resolveDuration(parsed.firstResponseSla?.warm ?? parsed.firstResponseSla?.warmHours, 24, 'hours'),
-      cold: resolveDuration(parsed.firstResponseSla?.cold ?? parsed.firstResponseSla?.coldHours, 48, 'hours')
+      hot: resolveDuration(parsed.firstResponseSla?.hot ?? parsed.firstResponseSla?.hotMinutes, DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.hot.value, DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.hot.unit),
+      warm: resolveDuration(parsed.firstResponseSla?.warm ?? parsed.firstResponseSla?.warmHours, DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.warm.value, DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.warm.unit),
+      cold: resolveDuration(parsed.firstResponseSla?.cold ?? parsed.firstResponseSla?.coldHours, DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.cold.value, DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.cold.unit)
     },
     noResponseCadence: {
-      retryInterval: resolveDuration(parsed.noResponseCadence?.retryInterval ?? parsed.noResponseCadence?.retryIntervalHours, 4, 'hours'),
+      retryInterval: resolveDuration(parsed.noResponseCadence?.retryInterval ?? parsed.noResponseCadence?.retryIntervalHours, DEFAULT_CRM_POLICY_CONFIG.noResponseCadence.retryInterval.value, DEFAULT_CRM_POLICY_CONFIG.noResponseCadence.retryInterval.unit),
       maxRetriesBeforeNurture: typeof parsed.noResponseCadence?.maxRetriesBeforeNurture === 'number'
         ? parsed.noResponseCadence.maxRetriesBeforeNurture
-        : 3
+        : DEFAULT_CRM_POLICY_CONFIG.noResponseCadence.maxRetriesBeforeNurture
     },
     inactivityWatchdog: {
-      hotInactivity: resolveDuration(parsed.inactivityWatchdog?.hotInactivity ?? parsed.inactivityWatchdog?.hotInactivityHours, 24, 'hours'),
-      warmInactivity: resolveDuration(parsed.inactivityWatchdog?.warmInactivity ?? parsed.inactivityWatchdog?.warmInactivityHours, 48, 'hours'),
-      coldInactivity: resolveDuration(parsed.inactivityWatchdog?.coldInactivity ?? parsed.inactivityWatchdog?.coldInactivityDays, 7, 'days')
+      hotInactivity: resolveDuration(parsed.inactivityWatchdog?.hotInactivity ?? parsed.inactivityWatchdog?.hotInactivityHours, DEFAULT_CRM_POLICY_CONFIG.inactivityWatchdog.hotInactivity.value, DEFAULT_CRM_POLICY_CONFIG.inactivityWatchdog.hotInactivity.unit),
+      warmInactivity: resolveDuration(parsed.inactivityWatchdog?.warmInactivity ?? parsed.inactivityWatchdog?.warmInactivityHours, DEFAULT_CRM_POLICY_CONFIG.inactivityWatchdog.warmInactivity.value, DEFAULT_CRM_POLICY_CONFIG.inactivityWatchdog.warmInactivity.unit),
+      coldInactivity: resolveDuration(parsed.inactivityWatchdog?.coldInactivity ?? parsed.inactivityWatchdog?.coldInactivityDays, DEFAULT_CRM_POLICY_CONFIG.inactivityWatchdog.coldInactivity.value, DEFAULT_CRM_POLICY_CONFIG.inactivityWatchdog.coldInactivity.unit)
     },
     milestones: {
-      trialReminderBefore: resolveDuration(parsed.milestones?.trialReminderBefore ?? parsed.milestones?.trialReminderHoursBefore, 4, 'hours'),
-      trialFollowUpAfter: resolveDuration(parsed.milestones?.trialFollowUpAfter ?? parsed.milestones?.trialFollowUpHoursAfter, 4, 'hours'),
-      assessmentFollowUpAfter: resolveDuration(parsed.milestones?.assessmentFollowUpAfter ?? parsed.milestones?.assessmentFollowUpHoursAfter, 2, 'hours')
+      trialReminderBefore: resolveDuration(parsed.milestones?.trialReminderBefore ?? parsed.milestones?.trialReminderHoursBefore, DEFAULT_CRM_POLICY_CONFIG.milestones.trialReminderBefore.value, DEFAULT_CRM_POLICY_CONFIG.milestones.trialReminderBefore.unit),
+      trialFollowUpAfter: resolveDuration(parsed.milestones?.trialFollowUpAfter ?? parsed.milestones?.trialFollowUpHoursAfter, DEFAULT_CRM_POLICY_CONFIG.milestones.trialFollowUpAfter.value, DEFAULT_CRM_POLICY_CONFIG.milestones.trialFollowUpAfter.unit),
+      assessmentFollowUpAfter: resolveDuration(parsed.milestones?.assessmentFollowUpAfter ?? parsed.milestones?.assessmentFollowUpHoursAfter, DEFAULT_CRM_POLICY_CONFIG.milestones.assessmentFollowUpAfter.value, DEFAULT_CRM_POLICY_CONFIG.milestones.assessmentFollowUpAfter.unit)
     },
     reactivation: {
-      reactivatedResponse: resolveDuration(parsed.reactivation?.reactivatedResponse ?? parsed.reactivation?.reactivatedResponseMinutes, 30, 'minutes')
+      reactivatedResponse: resolveDuration(parsed.reactivation?.reactivatedResponse ?? parsed.reactivation?.reactivatedResponseMinutes, DEFAULT_CRM_POLICY_CONFIG.reactivation.reactivatedResponse.value, DEFAULT_CRM_POLICY_CONFIG.reactivation.reactivatedResponse.unit)
     }
   };
 }

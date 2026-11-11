@@ -1,3 +1,4 @@
+import {ai as aiDefaults} from '../../src/data/system-defaults/index.ts';
 import {randomUUID} from 'node:crypto';
 import {auditLog} from './audit.ts';
 const tx=async(work:any)=>(await import('./store.ts')).tx(work);
@@ -5,7 +6,7 @@ import {validMutationOrigin} from './accessTransport.ts';
 import {modelParameters} from './modelParameters.ts';
 export type AiSelection={primary:string;fallback:string};
 export const aiModels=['gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','deepseek-chat'];
-const defaults=():AiSelection=>({primary:process.env.OPENAI_MODEL||'gpt-4o',fallback:'deepseek-chat'});
+const defaults=():AiSelection=>({...aiDefaults,primary:process.env.OPENAI_MODEL||aiDefaults.primary});
 export function validateSelection(v:any):AiSelection {
  if(!v||!aiModels.includes(v.primary)||!aiModels.includes(v.fallback)||v.primary===v.fallback)throw Object.assign(Error('invalid_selection'),{status:400});
  return {primary:v.primary,fallback:v.fallback};

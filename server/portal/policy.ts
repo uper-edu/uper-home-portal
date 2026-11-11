@@ -1,3 +1,4 @@
+import {notifications as notificationDefaults, sales} from '../../src/data/system-defaults/index.ts';
 import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
 import {allowsLarkGroup,allowsLarkPersonal,LARK_GROUP,LARK_PERSONAL,MAX_NOTIFICATION_GROUPS,policyDeliveryChannels} from '../../src/utils/notificationGroupTargets.ts';
 import {LEAD_ASSIGNED_EVENT} from '../../src/utils/leadAssignmentNotification.ts';
@@ -38,28 +39,14 @@ export interface Rule {
   language: "zh" | "en" | "id";
 }
 export const defaults: Rule = {
-  calendarMode: "inherit",
-  event: "lead.created",
-  channels: ["inapp", "lark"],
-  recipient: "owner",
-  group: "sales",
-  sources: [],
-  tiers: [],
-  states: [],
-  timing: "immediate",
-  delayMinutes: 0,
-  digestTime: "18:00",
-  businessOnly: true,
-  timezone: "Asia/Jakarta",
-  days: [1, 2, 3, 4, 5, 6],
-  start: "09:00",
-  end: "20:00",
-  dedupeMinutes: 15,
+  ...structuredClone(notificationDefaults.ruleDefaults),
+  timezone: sales.businessHours.timezone,
+  start: sales.businessHours.startTime,
+  end: sales.businessHours.endTime,
+  days: [...sales.businessHours.workDays],
   maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
-  retries: [1, 5, 15],
-  template: "{{event}} · {{name}} · {{owner}} · {{due}}",
   language: LARK_DEFAULT_LANGUAGE,
-};
+} as Rule;
 const events = [
   "commitment.due",
   "task.created",
@@ -149,21 +136,8 @@ export function schedule(date: Date, r: Rule, channel: Channel) {
   }
   throw Error('No permitted send time');
 }
-export const defaultRules = events.filter(event => !isRetiredNotificationEvent(event)).map(
-  (event) =>
-    ({
-      ...defaults,
-      event,
-      channels:
-        event === "conversation.updated" ? ["inapp"] : policyDeliveryChannels({event, channels: defaults.channels}),
-      recipient: event.includes("failed") || event === "daily.digest" ? "managers" : "owner",
-      group: event === LEAD_ASSIGNED_EVENT ? "" : (event === "commitment.due" || event === "daily.digest") ? CRM_BOT_CHANNEL : event.includes("failed") ? "ops" : "sales",
-      dedupeMinutes: event === LEAD_ASSIGNED_EVENT ? 0 : defaults.dedupeMinutes,
-      timing:
-        event === "assessment.completed" || event === "daily.digest"
-          ? "digest"
-          : "immediate",
-    }) as Rule,
+export const defaultRules: Rule[] = notificationDefaults.rules.map(
+  override => ({...structuredClone(defaults), ...structuredClone(override)}) as Rule,
 );
 
 export function withCalendarMode(r:Rule):Rule {

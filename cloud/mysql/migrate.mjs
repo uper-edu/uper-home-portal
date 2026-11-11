@@ -3,6 +3,7 @@ import {verifyCmsMediaSchema} from './cms-media-schema.mjs';
 import {promotionIndexEntries, syncPromotionIndex} from './promotion-index.mjs';
 import {backfillPromotionShortLinks} from './promotion-short-links.mjs';
 import {initializeSystemDefaults as seedSystemDefaults} from './system-defaults.mjs';
+import systemDefaults from '../../src/data/system-defaults/index.ts';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { openTrialDatabase, withLock } from './database.mjs';
@@ -35,6 +36,13 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(1,'applying')");
     const statements = (await readFile(new URL('./schema.sql', import.meta.url), 'utf8')).split(';').map(s => s.trim()).filter(Boolean);
     for (const statement of statements) await connection.query(statement.replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
+    // Only new installations with defaults enabled supply this mode. Schema-only imports stay empty.
+    if (initializeSystemDefaults) {
+      await connection.execute(
+        'INSERT INTO portal_settings(id,value) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',
+        ['lark_personal_channel', JSON.stringify(systemDefaults.larkPersonalChannel)],
+      );
+    }
     await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=1");
     return finish();
   });

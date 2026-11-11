@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import defaults from '../cloud/mysql/system-defaults.json' with {type:'json'};
+import defaults from '../src/data/system-defaults/index.ts';
 import legacyCampaigns from '../scripts/lib/cms-bootstrap-legacy-campaigns.json' with {type:'json'};
 import evergreenLinks from '../src/data/evergreenPromotionLinks.json' with {type:'json'};
 import {systemCampaignDefaults} from '../cloud/mysql/system-campaign-defaults.mjs';

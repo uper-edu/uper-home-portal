@@ -1,5 +1,5 @@
 import evergreenLinks from '../../src/data/evergreenPromotionLinks.json' with {type:'json'};
-import defaults from './system-defaults.json' with {type:'json'};
+import defaults from '../../src/data/system-defaults/index.ts';
 
 export function systemCampaignDefaults(at){
  const records=JSON.parse(JSON.stringify(defaults.campaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));

@@ -306,6 +306,32 @@ async function initializeDailySummaryPolicy() {
   });
 }
 
+/** Initialize missing system records in the existing database/account order. */
+export async function initializePortalDefaults() {
+  await initialize();
+  await tx(c => migrateLarkChannelModes(c));
+  await initializeLocalAccounts();
+  const systemGroup = findSystemLarkGroup(
+    (await pool.query("SELECT id,config FROM notification_channels ORDER BY id")).rows, [],
+  );
+  for (const r of defaultRules)
+    await pool.query(
+      "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
+      [r.event, r.group === CRM_BOT_CHANNEL && systemGroup ? {...r, group: systemGroup.id} : r],
+    );
+  await initializeTeamlessAccess();
+  await initializeDailySummaryPolicy();
+  await pool.query(
+    "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id",
+    [{
+      ...defaults,
+      hotHours: DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.hot.value,
+      warmHours: DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.warm.value,
+      coldHours: DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.cold.value,
+    }],
+  );
+}
+
 export async function mountPortal(app: Express) {
   if (!databaseConfigured()) {
     app.use(
@@ -321,10 +347,8 @@ export async function mountPortal(app: Express) {
     );
     return;
   }
-  await initialize();
-  await tx(c => migrateLarkChannelModes(c));
+  await initializePortalDefaults();
   mountCourseRoutes(app,{wrap,staff});
-  await initializeLocalAccounts();
   app.use(accessRestoreGate);
   mountAccessOperations(app);
   mountLocalAuth(app, (req) => platform.authenticate(req));
@@ -334,20 +358,6 @@ export async function mountPortal(app: Express) {
   mountLarkSelfService(app);
   mountAiServiceConfig(app);
   mountGoalReviewRoute(app,{wrap,leadAccess});
-  const systemGroup = findSystemLarkGroup(
-    (await pool.query("SELECT id,config FROM notification_channels ORDER BY id")).rows, [],
-  );
-  for (const r of defaultRules)
-    await pool.query(
-      "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
-      [r.event, r.group === CRM_BOT_CHANNEL && systemGroup ? {...r, group: systemGroup.id} : r],
-    );
-  await initializeTeamlessAccess();
-  await initializeDailySummaryPolicy();
-  await pool.query(
-    "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id",
-    [{ ...defaults, hotHours: 3, warmHours: 24, coldHours: 48 }],
-  );
   app.use("/api", (req, res, next) => {
     if (
       process.env.PLATFORM_MODE === "local" &&

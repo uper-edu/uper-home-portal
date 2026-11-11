@@ -1,3 +1,4 @@
 /** Defaults for new configuration only. Explicit saved policy/channel values win. */
-export const LARK_DEFAULT_LANGUAGE='en' as const;
-export const LARK_DEFAULT_MAX_PER_HOUR=100;
+import {notifications} from '../data/system-defaults/index.ts';
+export const LARK_DEFAULT_LANGUAGE = notifications.language as 'en' | 'id' | 'zh';
+export const LARK_DEFAULT_MAX_PER_HOUR = notifications.maxPerHour;
