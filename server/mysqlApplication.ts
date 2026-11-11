@@ -141,7 +141,7 @@ if(workerEnabled&&!activeLocal&&!company&&!production){
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
  if(channels.some(c=>!c.config.deleted&&c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
 }
-const timer=workerEnabled?startWorker():null;
+const timer=workerEnabled?startWorker({paymentAnalytics:true}):null;
 const server=app.listen(port,deployment?.host || '127.0.0.1',()=>log.info('app.ready',{mysqlReady:true,port,workerEnabled:!!timer}));
 let closing=false;
 async function shutdown(){if(closing)return;closing=true;log.info('app.shutdown',{draining:true});if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{if(releaseCompanyLease)await releaseCompanyLease();await pool.end();log.info('app.shutdown',{draining:false});setImmediate(()=>process.exit(0));});}

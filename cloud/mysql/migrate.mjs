@@ -25,6 +25,7 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
       await addPromotionShortLinks(connection);
       await addPaymentAnalytics(connection);
       const result=await addPaymentAnalyticsDispatch(connection);
+      await addPaymentAnalyticsOccurrence(connection);
       if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
       return result;
     };
@@ -308,4 +309,14 @@ async function addPaymentAnalyticsDispatch(connection) {
     await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=20");
   }
   return {version:paymentAnalyticsSchemaVersion,state:'ready',alreadyApplied:state==='ready'};
+}
+
+async function addPaymentAnalyticsOccurrence(connection) {
+  const [columns] = await connection.query('SHOW FULL COLUMNS FROM crm_payment_analytics');
+  const occurred = columns.find(column => column.Field === 'occurred_at');
+  if (!occurred) {
+    await connection.query('ALTER TABLE crm_payment_analytics ADD COLUMN occurred_at DATETIME(6) NULL');
+  } else if (occurred.Type.toLowerCase() !== 'datetime(6)' || occurred.Null !== 'YES' || occurred.Default !== null) {
+    throw Error('Payment analytics occurrence column does not match the expected schema');
+  }
 }

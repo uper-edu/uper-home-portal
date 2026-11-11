@@ -274,8 +274,8 @@
       "server/portal/trustWorkflow.ts"
     ]
   },
-  "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)": {
-    "sql": "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)",
+  "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id,occurred_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9)": {
+    "sql": "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id,occurred_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9)",
     "sources": [
       "server/portal/paymentAnalytics.ts"
     ]
@@ -702,6 +702,12 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
     "sources": [
       "server/portal/larkSelfService.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES(:p1,JSON_OBJECT('startedAt',DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f'))) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,JSON_OBJECT('startedAt',DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f'))) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/paymentAnalyticsDispatch.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)": {
@@ -2391,8 +2397,8 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
-  "SELECT q.id,q.environment,q.project_id,q.source_entry_id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED": {
-    "sql": "SELECT q.id,q.environment,q.project_id,q.source_entry_id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED",
+  "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED": {
+    "sql": "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED",
     "sources": [
       "server/portal/paymentAnalyticsDispatch.ts"
     ]
@@ -2572,7 +2578,8 @@
     "sql": "SELECT value FROM portal_settings WHERE id=:p1",
     "sources": [
       "server/portal/larkChannelModes.ts",
-      "server/portal/larkSelfService.ts"
+      "server/portal/larkSelfService.ts",
+      "server/portal/paymentAnalyticsDispatch.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE": {

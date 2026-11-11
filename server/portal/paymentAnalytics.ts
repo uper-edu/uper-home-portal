@@ -31,6 +31,7 @@ export async function queuePaymentAnalytics(
         Date.parse(entry.receivedAt) >= Date.parse(project.termination.effectiveAt))) return;
     const courseId = project.priceSnapshot?.courseId;
     await insert(db, purchaseId, environment, project.id, entry.id, 'purchase', 0, project.expected,
+      entry.receivedAt,
       typeof courseId === 'string' && /^[A-Za-z0-9_-]{1,191}$/.test(courseId) ? courseId : 'legacy-course');
     return;
   }
@@ -44,13 +45,15 @@ export async function queuePaymentAnalytics(
     [environment, project.id],
   )).rows[0];
   await insert(db, eventId(environment, project.id, 'refund', entry.id), environment,
-    project.id, entry.id, 'refund', Number(sequence.last_sequence)+1, entry.verifiedAmount, purchase.course_id);
+    project.id, entry.id, 'refund', Number(sequence.last_sequence)+1, entry.verifiedAmount,
+    entry.receivedAt, purchase.course_id);
 }
 
 async function insert(db:any,id:string,environment:string,projectId:string,entryId:string,
-    kind:'purchase'|'refund',sequence:number,amount:number,courseId:string) {
+    kind:'purchase'|'refund',sequence:number,amount:number,receivedAt:string|undefined,courseId:string) {
+  const occurredAt = receivedAt ? new Date(receivedAt) : null;
   await db.query(
-    'INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)',
-    [id,environment,projectId,entryId,kind,sequence,amount,courseId],
+    'INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id,occurred_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9)',
+    [id,environment,projectId,entryId,kind,sequence,amount,courseId,occurredAt && Number.isFinite(+occurredAt) ? occurredAt : null],
   );
 }
