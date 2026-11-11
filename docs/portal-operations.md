@@ -8,15 +8,15 @@ Local3000 uses its existing MySQL database. Do not start another process, replac
 
 | Configuration | Where to maintain it | When it takes effect |
 | --- | --- | --- |
-| Deployment presets for the system Lark group, reserved campaigns and Finance role | [System defaults](../cloud/mysql/system-defaults.json), read by the [initializer](../cloud/mysql/system-defaults.mjs) | Initialization inserts missing records. Existing records retain their saved values. |
+| Deployment presets for the system Lark group, reserved campaigns and Finance role | [System defaults registry](../src/data/system-defaults/index.ts), read by the [initializer](../cloud/mysql/system-defaults.mjs) | Initialization inserts missing records. Existing records retain their saved values. |
 | Standard HSK course presets | [Course catalog](../src/data/crmCoursePrices.json) | Initialization adds missing courses. Manage saved courses in CRM. |
-| SLA, work hours and automatic assignment | [CRM policy defaults](../src/types/crmPolicyConfig.ts) and CRM policy settings | Code supplies defaults where applicable. CRM saves environment-specific settings in MySQL. |
-| Notification rules and delivery limits | [Rule defaults](../server/portal/policy.ts), [Lark defaults](../src/utils/larkNotificationDefaults.ts) and CRM notification settings | CRM uses saved rules and channels for delivery. |
+| SLA, work hours and automatic assignment | [Sales defaults](../src/data/system-defaults/sales.ts) and CRM policy settings | Code supplies defaults where applicable. CRM saves environment-specific settings in MySQL. |
+| Notification rules and delivery limits | [Notification defaults](../src/data/system-defaults/notifications.ts) and CRM notification settings | CRM uses saved rules and channels for delivery. |
 | Lark group Webhook in local CRM and company test | Private environment file, `LARK_GROUP_CRM` | CRM shows the configuration status. Reload the service after changing the address. |
 | Group Webhook, signing secrets and other credentials | [Server environment configuration](environment-configuration.md) | The service reads these at startup. |
 | Initial CMS content and images | [CMS initialization bundle v2](../cloud/mysql/seeds/cms/v2/README.md) and [COS/bootstrap operations](operations/cms-cos-bootstrap.md). Edit imported content in CMS. | Explicitly publish and verify COS resources, then import URL metadata into an approved empty CMS; existing databases require a reviewed incremental migration. |
 
-The built-in Lark group channel starts in simulation mode with the shared hourly limit and signing disabled. An existing CRM Bot channel keeps its ID and delivery settings when renamed to Lark 群通知. The group name is fixed. The group and personal system channels can be configured but cannot be deleted. For local CRM and company test, set `LARK_GROUP_CRM` in the environment's private server file and reload the service after replacing or removing the address. The CRM channel stores the variable name and displays connection status. Match signing to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
+New installations initialize both Lark channels in live mode. The group channel uses the shared hourly limit with signing disabled. Existing installations retain saved delivery modes and use the legacy migration rules on first upgrade. An existing CRM Bot channel keeps its ID and delivery settings when renamed to Lark 群通知. The group name is fixed. The group and personal system channels can be configured but cannot be deleted. For local CRM and company test, set `LARK_GROUP_CRM` in the environment's private server file and reload the service after replacing or removing the address. The CRM channel stores the variable name and displays connection status. Match signing to the Lark bot in CRM. Actual delivery also depends on the notification rules and worker configuration.
 
 ## Permissions and notifications
 

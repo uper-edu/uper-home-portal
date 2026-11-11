@@ -1,3 +1,4 @@
+import {access as accessDefaults} from '../../src/data/system-defaults/index.ts';
 import {validStaffPassword} from '../../src/utils/staffPassword.ts';
 import {auditLog} from './audit.ts';
 import { projectEmployee } from "../../src/utils/accessControl.ts";
@@ -10,17 +11,7 @@ import { pool, tx } from "./store.ts";
 import type { Employee } from "./identity.ts";
 const scrypt = promisify(crypto.scrypt);
 const cookie = () => `uper_crm_session_${process.env.PORT || "3000"}`;
-export const accountSeeds = [
-  ["Suki", ["crm_leader", "finance"]],
-  ["Robert", ["crm_leader", "cms_admin", "finance"]],
-  ["Fadhil", ["sales"]],
-  ["Zainul", ["sales"]],
-  ["Wigar", ["sales"]],
-  ["Tester", ["crm_leader", "sales"]],
-  ["Fenny", ["cms_admin"]],
-  ["Ethan", ["crm_leader", "cms_admin"]],
-  ["Monite", ["crm_leader", "cms_admin"]],
-] as const;
+export const accountSeeds = accessDefaults.accounts as [string, string[]][];
 export async function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString("hex");
   const key = (await scrypt(password, salt, 64)) as Buffer;

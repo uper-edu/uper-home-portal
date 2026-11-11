@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { legacyLarkChannelModes, migrateLarkChannelModes } from "../server/portal/larkChannelModes.ts";
+import { legacyLarkChannelModes, migrateLarkChannelModes, personalLarkChannel } from "../server/portal/larkChannelModes.ts";
+import defaults from "../src/data/system-defaults/index.ts";
 
 test("existing simulation settings never become live when migrating channel modes", () => {
   const flags = { PORTAL_NOTIFICATION_MODE: "configured", LARK_PERSONAL_DELIVERY_ENABLED: "true" };
@@ -37,3 +38,31 @@ test("migration downgrades only affected live groups, keeps credentials and cann
   assert.deepEqual(value, {mode: "live", revision: 2});
   assert.equal(audits, 1);
 });
+
+test("fresh personal defaults survive startup and repeated migration with retired flags absent or disabled", async () => {
+  const value = structuredClone(defaults.larkPersonalChannel);
+  let writes = 0;
+  const db = {query: async (sql: string) => {
+    if (sql.startsWith("INSERT INTO portal_settings")) return {rows: []};
+    if (sql.startsWith("SELECT value")) return {rows: [{value}]};
+    writes++;
+    assert.fail("Initialized channel configuration must be preserved");
+  }};
+  await migrateLarkChannelModes(db, {});
+  await migrateLarkChannelModes(db, {PORTAL_NOTIFICATION_MODE:"simulation", LARK_PERSONAL_DELIVERY_ENABLED:"false"});
+  assert.deepEqual(await personalLarkChannel(db), {mode:"live", revision:1});
+  assert.equal(writes, 0);
+});
+
+for (const mode of ["simulation", "live"] as const) {
+  test("existing personal " + mode + " mode is preserved on restart", async () => {
+    const value = {mode, revision:4};
+    const db = {query: async (sql: string) => {
+      if (sql.startsWith("INSERT INTO portal_settings")) return {rows: []};
+      if (sql.startsWith("SELECT value")) return {rows: [{value}]};
+      assert.fail("Existing settings must not be rewritten");
+    }};
+    await migrateLarkChannelModes(db, {PORTAL_NOTIFICATION_MODE:"configured", LARK_PERSONAL_DELIVERY_ENABLED:"true"});
+    assert.deepEqual(await personalLarkChannel(db), value);
+  });
+}

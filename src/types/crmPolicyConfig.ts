@@ -1,3 +1,4 @@
+import {sales} from '../data/system-defaults/index.ts';
 export type TimeUnit = 'minutes' | 'hours' | 'days';
 
 export interface TimeDuration {
@@ -85,39 +86,6 @@ export interface CrmPolicyConfig {
 }
 
 export const DEFAULT_CRM_POLICY_CONFIG: CrmPolicyConfig = {
-  autoAssignment: {enabled:false,strategy:'round_robin',salesIds:[]},
-  identityReviewManagerOnly: true,
-  ownerAssignmentManagerOnly: false,
-  sourceAttributionManagerOnly: true,
-  version: '2.0',
+  ...structuredClone(sales) as Omit<CrmPolicyConfig, 'updatedAt'>,
   updatedAt: new Date().toISOString(),
-  businessHours: {
-    timezone: 'Asia/Jakarta',
-    startTime: '09:00',
-    endTime: '20:00',
-    workDays: [1, 2, 3, 4, 5, 6], // Monday through Saturday
-    nextDayGraceTime: '10:00'
-  },
-  firstResponseSla: {
-    hot: { value: 3, unit: 'hours' },
-    warm: { value: 24, unit: 'hours' },
-    cold: { value: 48, unit: 'hours' }
-  },
-  noResponseCadence: {
-    retryInterval: { value: 4, unit: 'hours' },
-    maxRetriesBeforeNurture: 3
-  },
-  inactivityWatchdog: {
-    hotInactivity: { value: 24, unit: 'hours' },
-    warmInactivity: { value: 48, unit: 'hours' },
-    coldInactivity: { value: 7, unit: 'days' }
-  },
-  milestones: {
-    trialReminderBefore: { value: 4, unit: 'hours' },
-    trialFollowUpAfter: { value: 4, unit: 'hours' },
-    assessmentFollowUpAfter: { value: 2, unit: 'hours' }
-  },
-  reactivation: {
-    reactivatedResponse: { value: 30, unit: 'minutes' }
-  }
 };

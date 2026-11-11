@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import evergreenLinks from '../../src/data/evergreenPromotionLinks.json' with {type:'json'};
-import defaults from './system-defaults.json' with {type:'json'};
+import defaults from '../../src/data/system-defaults/index.ts';
 
 const alphabet = '23456789abcdefghjkmnpqrstuvwxyz';
 export const promotionShortCodePattern = /^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/;

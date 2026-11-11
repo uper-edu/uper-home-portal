@@ -1,3 +1,4 @@
+import {notifications as notificationDefaults} from '../data/system-defaults/index.ts';
 import {LEAD_ASSIGNED_EVENT} from './leadAssignmentNotification.ts';
 
 export const personalNotificationTypes = [
@@ -14,13 +15,13 @@ export const personalNotificationTypes = [
  ['ai.failed','AI回复失败','AI reply failed','Balasan AI gagal'],
  ['notification.failed','通知发送异常','Notification delivery issue','Gangguan pengiriman notifikasi'],
 ] as const;
-export const requiredPersonalTypes=['handoff.requested','booking.requested','enrollment.requested','commitment.due','task.overdue'] as const;
-export const operationsPersonalTypes=['ai.failed','notification.failed'] as const;
+export const requiredPersonalTypes = notificationDefaults.requiredPersonalTypes;
+export const operationsPersonalTypes = notificationDefaults.operationsPersonalTypes;
 export function personalNotificationCategory(type:string):'required'|'optional'|'operations'{return (requiredPersonalTypes as readonly string[]).includes(type)?'required':(operationsPersonalTypes as readonly string[]).includes(type)?'operations':'optional';}
 export function personalNotificationRequired(type:string){return personalNotificationCategory(type)!=='optional';}
 export type PersonalNotificationLanguage='rule'|'en'|'id'|'zh';
 export type PersonalNotificationPreferences={revision:number;language:PersonalNotificationLanguage;disabledTypes:string[]};
-export const defaultPersonalPreferences=():PersonalNotificationPreferences=>({revision:0,language:'rule',disabledTypes:[]});
+export const defaultPersonalPreferences=():PersonalNotificationPreferences=>structuredClone(notificationDefaults.personalPreferences) as PersonalNotificationPreferences;
 export function normalizePersonalPreferences(value:any):PersonalNotificationPreferences {
  return {revision:Number.isInteger(value?.revision)&&value.revision>=0?value.revision:0,language:['rule','en','id','zh'].includes(value?.language)?value.language:'rule',disabledTypes:personalNotificationTypes.map(t=>t[0]).filter(key=>!personalNotificationRequired(key)&&Array.isArray(value?.disabledTypes)&&value.disabledTypes.includes(key))};
 }
