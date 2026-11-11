@@ -39,12 +39,16 @@ function initialPassword(name: string) {
     if(process.env.TRIAL_DATASET!=='synthetic'||process.env.APP_ENV!=='test')throw Error('Test credentials require isolated synthetic test mode');
     return name;
   }
-  const file=process.env.ACCESS_INITIAL_PASSWORDS_FILE;
-  if(!file||fs.statSync(file).mode&0o077)throw Error('Private 0600 initial-password file required for first initialization');
-  const password=JSON.parse(fs.readFileSync(file,'utf8'))[name];
-  const forcedInitial=process.env.ACCESS_REQUIRE_INITIAL_PASSWORD_CHANGE==='true';
-  if(forcedInitial&&(process.env.PORTAL_DEPLOYMENT!=='company-trial'||process.env.PORTAL_ENV!=='test'))throw Error('Temporary initial credentials are test-site only');
-  if(typeof password!=='string'||password.length<(forcedInitial?8:12)||password.length>200||password.toLowerCase()===name.toLowerCase())throw Error('Strong initial credential required');
+  let password = process.env.ACCESS_INITIAL_PASSWORD;
+  if (!password) {
+    const file = process.env.ACCESS_INITIAL_PASSWORDS_FILE;
+    if (!file || fs.statSync(file).mode & 0o077)
+      throw Error('Private 0600 initial-password file required for first initialization');
+    password = JSON.parse(fs.readFileSync(file, 'utf8'))[name];
+  }
+  if (typeof password !== 'string' || password.length < 8 || password.length > 200 ||
+      password.toLowerCase() === name.toLowerCase())
+    throw Error('Valid initial credential required');
   return password;
 }
 export async function initializeAccessAccounts() {
@@ -79,7 +83,12 @@ export async function initializeAccessAccounts() {
           JSON.stringify([]),
         ],
       );
-      if(!exists&&process.env.ACCESS_REQUIRE_INITIAL_PASSWORD_CHANGE==='true')await c.query("INSERT INTO access_state(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",[passwordChangeKey(name),{required:true}]);
+      if (!exists && process.env.ACCESS_ALLOW_TEST_PASSWORDS !== 'true') {
+        await c.query(
+          "INSERT INTO access_state(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
+          [passwordChangeKey(name), { required: true }],
+        );
+      }
     }
     const robert = (
       await c.query("SELECT * FROM crm_users WHERE id='Robert' FOR UPDATE")

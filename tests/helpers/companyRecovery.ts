@@ -8,14 +8,13 @@ import {openTrialDatabase} from '../../cloud/mysql/database.mjs';
 import {backup,restore} from '../../cloud/mysql/backup.mjs';
 
 /** Called only from the self-contained TLS MySQL fixture, never a configured business database. */
-export async function exerciseCompanyRecovery({t,env,dir,db,client,restart,stopApp,createRestoreTarget}:any){
+export async function exerciseCompanyRecovery({t,env,dir,db,client,passwords,restart,stopApp,createRestoreTarget}:any){
  let completed=0;const stage=async(name:string,fn:()=>Promise<void>)=>t.test(name,async()=>{await fn();completed++;});
  const compiled=path.resolve('.local-backups/company-trial-20261014/package/runtime/cloud/mysql/access-recovery.mjs');
  const recovery=await import(pathToFileURL(compiled).href);
  const maintenance={...env,ACCESS_RECOVERY_MAINTENANCE:'true',PORTAL_WORKER_ENABLED:'false',MYSQL_BIN_DIRECTORY:process.env.MYSQL_BIN_DIRECTORY};
  const op=(b:any)=>({...b,operationId:crypto.randomUUID()});
  const login=async(id:string,password:string)=>{const c=client();const r=await c.call('/api/crm/auth/login',{loginId:id,password});assert.equal(r.status,200,JSON.stringify(r.data));return c;};
- const passwords=JSON.parse(await fs.readFile(env.ACCESS_INITIAL_PASSWORDS_FILE,'utf8'));
  let admin=await login('Robert',passwords.Robert);
  const ethanBefore=(await db.execute("SELECT roles,password_hash FROM crm_users WHERE id='Ethan'"))[0][0];
  const ethan=(await admin.call('/api/admin/access')).data.users.find((u:any)=>u.id==='Ethan');
