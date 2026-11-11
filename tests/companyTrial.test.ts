@@ -131,7 +131,20 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  for(const route of ['/','/chat','/crm','/cms','/system'])for(const lang of ['en','id','zh']){const r=await anon.call(route+'?lang='+lang);assert.equal(r.status,200,route);assert.match(r.headers['x-robots-tag'],/noindex/);assert.match(r.data,/name="robots" content="noindex/);assert.doesNotMatch(r.data,/rel="canonical"|application\/ld\+json/);}
  assert.equal((await anon.call('/robots.txt')).data,'User-agent: *\nDisallow: /\n');assert.equal((await anon.call('/sitemap.xml')).status,404);
  const bad=await anon.call('/api/crm/auth/login',{loginId:'Robert',password:passwords.Robert},{headers:{Origin:'https://evil.invalid'}});assert.equal(bad.status,403);
- for(const [c,id]of [[manager,'Robert'],[sales,'Fadhil'],[other,'Wigar'],[cms,'Fenny']] as const){const r=await c.call('/api/crm/auth/login',{loginId:id,password:passwords[id]});assert.equal(r.status,200,JSON.stringify(r.data));assert.match(r.headers['set-cookie'][0],/Secure/);assert.match(r.headers['set-cookie'][0],/HttpOnly/);assert.match(r.headers['set-cookie'][0],/SameSite=Strict/);}
+ for (const [c,id] of [[manager,'Robert'],[sales,'Fadhil'],[other,'Wigar'],[cms,'Fenny']] as const) {
+  const r = await c.call('/api/crm/auth/login',{loginId:id,password:passwords[id]});
+  assert.equal(r.status,200,JSON.stringify(r.data));
+  assert.match(r.headers['set-cookie'][0],/Secure/);
+  assert.match(r.headers['set-cookie'][0],/HttpOnly/);
+  assert.match(r.headers['set-cookie'][0],/SameSite=Strict/);
+  assert.equal(r.data.employee.passwordChangeRequired,true);
+  const blocked = await c.call('/api/crm/leads');
+  assert.equal(blocked.status,403);
+  assert.equal(blocked.data.error,'password_change_required');
+  const newPassword = 'TEST-changed-'+crypto.randomBytes(12).toString('hex');
+  assert.equal((await c.call('/api/crm/auth/password',{currentPassword:passwords[id],newPassword})).status,200);
+  passwords[id]=newPassword;
+ }
  assert.equal((await anon.call('/api/admin/access')).status,401);
  assert.equal((await manager.call('/api/admin/access')).status,200);
  assert.equal((await sales.call('/api/admin/access')).status,403);
@@ -181,7 +194,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  const [untouched]=await db.execute('SELECT due_at,status FROM followup_tasks WHERE id=?',[untouchedTask]);assert.equal(untouched[0].due_at,originalDeadline[0].due_at);assert.equal(untouched[0].status,'open');
  const backupFile=path.join(dir,'test-backup.sql');const {backup}=await import('../cloud/mysql/backup.mjs');assert.ok((await backup({...env,MYSQL_BIN_DIRECTORY:binary},backupFile)).bytes>0);
  const {exerciseCompanyRecovery}=await import('./helpers/companyRecovery.ts');
- const recoveryEvidence=await exerciseCompanyRecovery({t,env,dir,db,client,stopApp:()=>stop(app),restart:async(nextEnv:any)=>{await stop(app);app=spawn(process.execPath,[path.resolve('.local-backups/company-trial-20261014/package/runtime/server.mjs')],{cwd:dir,env:nextEnv,stdio:['ignore',appLog.fd,appLog.fd]});let ready=false;for(let i=0;i<100;i++){if(app.exitCode!==null)throw Error('Company restart failed: '+await fs.readFile(path.join(dir,'app.log'),'utf8'));try{await new Promise<void>((r,j)=>{const c=net.connect(appPort,'127.0.0.1',()=>{c.destroy();r();});c.on('error',j);});ready=true;break;}catch{await new Promise(r=>setTimeout(r,100));}}assert.ok(ready);},createRestoreTarget:async()=>{const c=await mysql.createConnection({user:'root',socketPath:socket});try{await c.query('CREATE DATABASE '+name+'_restore CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin');await c.query("GRANT ALL ON "+name+"_restore.* TO 'trial'@'localhost'");}finally{await c.end();}return env.MYSQL_TRIAL_URL.replace('/'+name,'/'+name+'_restore');}});
+ const recoveryEvidence=await exerciseCompanyRecovery({t,env,dir,db,client,passwords,stopApp:()=>stop(app),restart:async(nextEnv:any)=>{await stop(app);app=spawn(process.execPath,[path.resolve('.local-backups/company-trial-20261014/package/runtime/server.mjs')],{cwd:dir,env:nextEnv,stdio:['ignore',appLog.fd,appLog.fd]});let ready=false;for(let i=0;i<100;i++){if(app.exitCode!==null)throw Error('Company restart failed: '+await fs.readFile(path.join(dir,'app.log'),'utf8'));try{await new Promise<void>((r,j)=>{const c=net.connect(appPort,'127.0.0.1',()=>{c.destroy();r();});c.on('error',j);});ready=true;break;}catch{await new Promise(r=>setTimeout(r,100));}}assert.ok(ready);},createRestoreTarget:async()=>{const c=await mysql.createConnection({user:'root',socketPath:socket});try{await c.query('CREATE DATABASE '+name+'_restore CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin');await c.query("GRANT ALL ON "+name+"_restore.* TO 'trial'@'localhost'");}finally{await c.end();}return env.MYSQL_TRIAL_URL.replace('/'+name,'/'+name+'_restore');}});
  await fs.mkdir('.local-backups/company-recovery-20261014',{recursive:true});await fs.writeFile('.local-backups/company-recovery-20261014/integration-acceptance.json',JSON.stringify(recoveryEvidence,null,2),{mode:0o600});
  assert.equal((await state(held)).state,'pending');
  const evidence={target:companyOrigin,packagedApp:true,mysqlTLSVerified:true,wrongCAAndHostnameRejected:true,httpsCanonicalProxy:true,trilingualNoindexPages:15,secureCookies:true,permissions:true,leadClaimAndFollowupIdempotency:true,contactRecordDoesNotAutoCompleteTasks:true,onlySelectedTaskNotificationCancelled:true,unrelatedTaskDeadlinePreserved:true,simulationNoExternalCalls:true,larkAcceptedAndUnknownStubVerified:true,rateLimitAndBusinessFailure:true,verifiedTlsBackup:true,historicalHoldNotReplayed:true,realLarkCalls:0,realAiCalls:0};

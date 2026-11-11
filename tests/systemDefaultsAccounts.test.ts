@@ -15,10 +15,11 @@ const {nativePool} = await import('../cloud/mysql/runtime.mjs');
 test.after(async () => {await nativePool.end();});
 
 function fixture() {
-  const state = {policy:null as any,restore:false,roles:new Map<string,any>(),users:new Map<string,any>(),audits:0};
+  const state = {policy:null as any,restore:false,roles:new Map<string,any>(),users:new Map<string,any>(),audits:0,passwordChanges:new Map<string,unknown>()};
   const db = {query:async (sql:string,v:any[] = []) => {
     if (sql === "SELECT value FROM access_state WHERE id='restore_review'") return {rows:state.restore?[{value:{required:true}}]:[]};
-    if (sql.startsWith('INSERT INTO access_state')) {state.policy ??= JSON.parse(v[0]);}
+    if (sql.startsWith('INSERT INTO access_state') && v.length===2) state.passwordChanges.set(v[0],v[1]);
+    else if (sql.startsWith('INSERT INTO access_state')) {state.policy ??= JSON.parse(v[0]);}
     else if (sql === "SELECT value FROM access_state WHERE id='policy' FOR UPDATE") return {rows:[{value:state.policy}]};
     else if (sql.startsWith('INSERT INTO access_roles')) {
       if (!state.roles.has(v[0])) state.roles.set(v[0],JSON.parse(v[1]));
@@ -61,4 +62,35 @@ test('restore-review protection prevents all account initialization writes', asy
   const saved = structuredClone(f.state);
   await f.run();
   assert.deepEqual(f.state,saved);
+});
+
+test('new accounts in dev, test and prod use the configured password and must change it', async () => {
+  const {scryptSync} = await import('node:crypto');
+  const {passwordChangeKey} = await import('../server/portal/localAuth.ts');
+  const password = 'Seed12345';
+  const names = ['ACCESS_INITIAL_PASSWORD', 'ACCESS_ALLOW_TEST_PASSWORDS', 'PORTAL_ENV'];
+  const saved = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  try {
+    process.env.ACCESS_INITIAL_PASSWORD = password;
+    process.env.ACCESS_ALLOW_TEST_PASSWORDS = 'false';
+    for (const environment of ['dev', 'test', 'prod']) {
+      process.env.PORTAL_ENV = environment;
+      const f = fixture();
+      await f.run();
+      assert.equal(f.state.users.size, 9);
+      for (const [id, user] of f.state.users) {
+        const [salt, hash] = user.password_hash.split(':');
+        assert.equal(scryptSync(password, salt, 64).toString('hex'), hash);
+        assert.deepEqual(f.state.passwordChanges.get(passwordChangeKey(id)), {required: true});
+      }
+      const before = structuredClone(f.state);
+      await f.run();
+      assert.deepEqual(f.state, before);
+    }
+  } finally {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
 });
