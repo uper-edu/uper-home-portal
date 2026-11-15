@@ -1341,7 +1341,7 @@ function CrmWorkspace({
 
           </div>
         </div>}
-        {crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : crmModule === "enrollment-aftercare" && canEnrollmentSupport ? <CrmEnrollmentSupport lang={lang} isLight={isLight}/> : crmModule === "payments" ? (<><CrmFinanceWorkspace onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/><CrmEnrollmentFinance lang={lang} isLight={isLight}/></>) : crmModule === "campaigns" ? (
+        {crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : crmModule === "enrollment-aftercare" && canEnrollmentSupport ? <CrmEnrollmentSupport lang={lang} isLight={isLight}/> : crmModule === "payments" ? (<><CrmFinanceWorkspace onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/><CrmEnrollmentFinance lang={lang} isLight={isLight}/></>) : crmModule === "campaigns" ? (
           <CrmCampaignHub
             canManageCampaigns={canManageCampaigns}
             reviewCounts={{available: Boolean(promotionQueue.data?.counts), counts: promotionQueue.data?.counts ?? {}}}

@@ -90,7 +90,9 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
     CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
-    o.price,o.received,d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice
+    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,
+    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,
+    d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice
   FROM enrollment_customer_records r
   LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id
   LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id
@@ -99,11 +101,13 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
   LEFT JOIN enrollment_class_openings g ON g.class_id=b.id
   LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id
   LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts
-    WHERE channel='email' AND subject_id=r.record_id ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE`;
+    WHERE channel='email' AND subject_id=r.record_id AND kind NOT IN ('otp_apply','otp_mine')
+    ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE`;
 
 function displayRecord(row: any) {
   return {
     id:row.record_id,kind:row.kind,opportunityId:row.opportunity_id,state:enrollmentOrderStatus(row.state,row.class_state),createdAt:row.created_at,
+    learnerName:row.learner_name,paymentDueAt:row.payment_due_at,
     class:row.class_data ? {level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
@@ -164,7 +168,14 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact }:{
     if (!customer || !readProfile(actor,customer.profile)) invalid('enrollment_opportunity_not_found',404);
     const progress=(await c.query(`SELECT id,actor,sales_stage AS stage,note,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt
       FROM enrollment_opportunity_progress WHERE opportunity_id=:p1 ORDER BY created_at DESC,id DESC`,[row.id])).rows;
-    return {...projectOpportunity(row,await byOpportunity(c,row.id),customer.profile),progress,canProgress:canProgress(actor,customer.profile)};
+    const emails=(await c.query(`SELECT n.event_key AS id,n.subject_id AS orderId,n.kind,n.state,
+      n.payload->>'$.subject' AS subject,n.payload->>'$.language' AS language,
+      DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt
+      FROM enrollment_customer_records r JOIN enrollment_notification_receipts n ON n.subject_id=r.record_id
+      WHERE r.kind='order' AND r.opportunity_id=:p1 AND n.channel='email'
+        AND n.kind NOT IN ('otp_apply','otp_mine')
+      ORDER BY n.recorded_at DESC,n.event_key DESC`,[row.id])).rows;
+    return {...projectOpportunity(row,await byOpportunity(c,row.id),customer.profile),progress,emails,canProgress:canProgress(actor,customer.profile)};
   }));
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);

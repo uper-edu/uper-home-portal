@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
+import { formatCrmEventTime, formatCrmSummaryTime } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import { progressLabel, salesProgressStages } from '../../utils/crmSalesProgress';
 import { interestOption } from '../EnrollmentInterests';
@@ -9,6 +10,7 @@ import { enrollmentPost, enrollmentStatuses } from '../EnrollmentApplication';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminFormActions } from '../AdminFormLayout';
+import { CrmDisclosure } from './CrmDisclosure';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
 
 type Copy = readonly [string,string,string];
@@ -16,13 +18,15 @@ type CourseRecord = {
   id:string; kind:'order'|'waitlist'|'demand'; opportunityId:string|null; state:string; createdAt:string;
   class:{level:string;firstLesson:string;schedule:string;opened:boolean}|null;
   criteria:{level:string;period:string;format:string;notes:string}|null;
-  price:number|null;received:number|null;
+  price:number|null;received:number|null;learnerName?:string|null;paymentDueAt?:string|null;
   attribution?:{entry:string;source?:string;campaign?:string;verified:boolean}|null;
   latestNotice?:string;
 };
+type EnrollmentEmail = {id:string;orderId:string;kind:string;state:string;subject:string|null;language:string|null;recordedAt:string};
 type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
   state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
+  emails?:EnrollmentEmail[];
   progress?:{id:string;actor:string;stage:string;note:string;createdAt:string}[];canProgress?:boolean;
 };
 const base = '/api/crm/opportunities';
@@ -54,10 +58,21 @@ const next:Record<Opportunity['state'],Copy> = {
   interest:['跟进选课需求','Follow up on course preferences','Tindak lanjuti preferensi kursus'],
   closed:['已结束','Closed','Ditutup'],
 };
-function nextAction(row:Opportunity,lang:CrmLanguage) {
+const enrollmentStatus:Record<Opportunity['state'],string> = {
+  enrolled:'paid',aftercare:'paid_cancelled',applying:'awaiting_payment',waiting:'waiting',interest:'active',closed:'closed',
+};
+const requiresPaymentReview=(record:CourseRecord)=>record.state==='proof_review'||record.state==='partial';
+function currentStatus(row:Opportunity) {
+  if(row.state==='applying') return row.records.find(requiresPaymentReview)?.state??'awaiting_payment';
+  if(row.state==='closed') return row.records.at(-1)?.state??'closed';
+  return enrollmentStatus[row.state];
+}
+function nextAction(row:Opportunity,lang:CrmLanguage,canFinance:boolean) {
   if (row.identityPending) return t(lang,['核实身份','Review identity','Verifikasi identitas']);
   if (row.state==='aftercare') return t(lang,next.aftercare);
-  if (row.records.some(record=>record.state==='proof_review'||record.state==='partial')) return t(lang,['核对到账','Verify payment','Verifikasi pembayaran']);
+  if (row.records.some(requiresPaymentReview)) return t(lang,canFinance
+    ? ['核对到账','Verify payment','Verifikasi pembayaran']
+    : ['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
   if (row.records.some(record=>record.state==='awaiting_payment')) return t(lang,states.awaiting_payment);
   return t(lang,next[row.state]);
 }
@@ -74,20 +89,57 @@ function read<T>(path:string,signal:AbortSignal):Promise<T> {
 function crmHref(values:Record<string,string>) {
   return '/crm?'+new URLSearchParams(values).toString();
 }
-function CourseRecords({ records, link, lang }: {records:CourseRecord[];link:boolean;lang:CrmLanguage}) {
+const emailKind:Record<string,Copy> = {
+  seat_reserved:['已获席','Seat reserved','Kursi dipesan'],
+  proof_received:['凭证回执','Proof receipt','Tanda terima bukti'],
+  payment_confirmed:['报名成功','Enrollment confirmed','Pendaftaran berhasil'],
+  payment_and_opening:['报名与开班确认','Enrollment and class confirmation','Konfirmasi pendaftaran dan kelas'],
+  class_confirmed:['开班确认','Class confirmation','Konfirmasi kelas'],
+  class_cancelled:['不开班通知','Class cancellation','Pembatalan kelas'],
+  transfer_invitation:['转班邀请','Transfer invitation','Undangan pindah kelas'],
+  refund_accepted:['退款受理','Refund accepted','Pengembalian diterima'],
+  refund_recorded:['退款进度','Refund progress','Kemajuan pengembalian'],
+};
+const emailDelivery:Record<string,Copy> = {
+  simulated:['模拟记录','Simulated record','Catatan simulasi'],
+  delivered:['已送达','Delivered','Terkirim'],
+  failed:['投递失败','Delivery failed','Pengiriman gagal'],
+};
+const emailLocale:Record<string,Copy> = {
+  zh:['中文','Chinese','Mandarin'],en:['英文','English','Inggris'],id:['印尼文','Indonesian','Indonesia'],
+};
+function OrderEmailHistory({rows,lang,open}:{rows:EnrollmentEmail[];lang:CrmLanguage;open:boolean}) {
+  return <CrmDisclosure heading={t(lang,['邮件记录','Email history','Riwayat email'])} open={open}>
+    {rows.length===0?<p className="crm-work-muted">{t(lang,['暂无邮件记录。','No email history.','Belum ada riwayat email.'])}</p>:
+      <ol className="crm-enrollment-email-history">{rows.map(mail=><li key={mail.id}>
+        <strong>{mail.subject||'—'}</strong>
+        <div className="crm-work-muted">
+          {emailKind[mail.kind]?t(lang,emailKind[mail.kind]):mail.kind} · {mail.language&&emailLocale[mail.language]?t(lang,emailLocale[mail.language]):'—'} · {emailDelivery[mail.state]?t(lang,emailDelivery[mail.state]):t(lang,['状态待核对','Status unconfirmed','Status belum dikonfirmasi'])} · <time dateTime={mail.recordedAt}>{formatCrmEventTime(mail.recordedAt)}</time>
+        </div>
+      </li>)}</ol>}
+  </CrmDisclosure>;
+}
+function sourceLabel(attribution:CourseRecord['attribution'],lang:CrmLanguage) {
+  if(!attribution) return '—';
+  const entry=attribution.entry==='linkhub'?'UPER Links':attribution.entry==='website'
+    ?t(lang,['官网','Website','Situs web']):t(lang,['直接访问','Direct','Langsung']);
+  return [entry,attribution.verified?attribution.source:null,attribution.campaign].filter(Boolean).join(' · ');
+}
+function CourseRecords({ records, link, lang, emails, targetRecord }: {
+  records:CourseRecord[];link:boolean;lang:CrmLanguage;emails?:EnrollmentEmail[];targetRecord?:string|null;
+}) {
   if(!records.length) return <p className="crm-work-muted">{t(lang,['暂无课程记录。','No course records.','Belum ada catatan kursus.'])}</p>;
   return <ol className="crm-course-records">
-    {records.map(row=><li key={row.kind+row.id}>
+    {records.map(row=><li key={row.kind+row.id} id={link?undefined:'enrollment-record-'+row.id}>
       <strong>{t(lang,kinds[row.kind])}{row.class?' · '+row.class.level:''}</strong> <span>{states[row.state]?t(lang,states[row.state]):row.state}</span>
       <div className="crm-work-muted"><time dateTime={row.createdAt}>{new Date(row.createdAt).toLocaleDateString(crmLocale(lang))}</time> · {row.id}</div>
       {row.class&&<p>{row.class.firstLesson.replace('T',' ')} WIB · {row.class.schedule}{row.class.opened?' · '+t(lang,['已确认开班','Class confirmed','Kelas dikonfirmasi']):''}</p>}
       {row.criteria&&<p>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(lang,value)).join(' · ')}{row.criteria.notes?' — '+row.criteria.notes:''}</p>}
       {row.price!==null&&row.received!==null&&<p>{t(lang,['核实实收／应收','Verified receipts / amount due','Dana terverifikasi / tagihan'])} {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}</p>}
-      {row.attribution&&<p>{t(lang,['报名来源','Enrollment source','Sumber pendaftaran'])} · {row.attribution.entry==='linkhub'?'UPER Links':
-        row.attribution.entry==='website'?t(lang,['官网','Website','Situs web']):t(lang,['直接访问','Direct','Langsung'])}
-        {row.attribution.verified&&row.attribution.source?' · '+row.attribution.source:''}{row.attribution.campaign?' · '+row.attribution.campaign:''}</p>}
-      {row.latestNotice&&<p>{t(lang,['最近一封模拟邮件','Latest simulated email','Email simulasi terakhir'])} · {row.latestNotice}</p>}
-      {link&&row.opportunityId&&<a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:row.opportunityId})}>{t(lang,['查看商机','View opportunity','Lihat peluang'])}</a>}
+      {row.attribution&&<p>{t(lang,['报名来源','Enrollment source','Sumber pendaftaran'])} · {sourceLabel(row.attribution,lang)}</p>}
+      {link&&row.latestNotice&&<p>{t(lang,['最近一封邮件记录','Latest email record','Catatan email terakhir'])} · {row.latestNotice}</p>}
+      {link&&row.opportunityId&&<a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:row.opportunityId,enrollmentRecord:row.id})}>{t(lang,['查看商机','View opportunity','Lihat peluang'])}</a>}
+      {emails&&row.kind==='order'&&<OrderEmailHistory lang={lang} rows={emails.filter(mail=>mail.orderId===row.id)} open={targetRecord===row.id}/>}
     </li>)}
   </ol>;
 }
@@ -108,16 +160,22 @@ export function CrmCustomerCourseRecords({id,lang}:{id:string;lang:CrmLanguage})
   </section>;
 }
 
-export function CrmEnrollmentOpportunities({lang,isLight,employees,canReviewIdentity,canFinance}: {
-  lang:CrmLanguage;isLight:boolean;employees:{id:string;displayName?:string}[];canReviewIdentity:boolean;canFinance:boolean;
+const filterDefaults={opportunityStatus:'active',opportunityQuery:'',opportunityOwner:'mine',opportunityLevel:'',opportunityStage:'',opportunityState:''};
+type Filters=typeof filterDefaults;
+
+export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canReviewIdentity,canFinance}: {
+  lang:CrmLanguage;isLight:boolean;employees:{id:string;displayName?:string}[];actorId:string;canReviewIdentity:boolean;canFinance:boolean;
 }) {
   const params=new URLSearchParams(window.location.search);
   const id=params.get('opportunity');
   const [list,setList]=useState<Opportunity[]>();
   const [detail,setDetail]=useState<Opportunity>();
   const [error,setError]=useState('');
-  const [filter,setFilter]=useState(params.get('opportunityStatus')||'active');
-  const [search,setSearch]=useState(params.get('opportunityQuery')||'');
+  const targetRecord=params.get('enrollmentRecord');
+  const [filters,setFilters]=useState<Filters>(()=>Object.fromEntries(
+    Object.entries(filterDefaults).map(([key,fallback])=>[key,params.get(key)??fallback]),
+  ) as Filters);
+  const changeFilter=(key:keyof Filters,value:string)=>setFilters(current=>({...current,[key]:value}));
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState({stage:'',note:'',requestId:''});
   const [confirmDiscard,setConfirmDiscard]=useState(false);
@@ -135,18 +193,36 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,canReviewIden
     if(id) return;
     const url=new URL(window.location.href);
     if(url.searchParams.get('tab')!=='opportunities') return;
-    if(filter==='active') url.searchParams.delete('opportunityStatus');else url.searchParams.set('opportunityStatus',filter);
-    if(search) url.searchParams.set('opportunityQuery',search);else url.searchParams.delete('opportunityQuery');
+    for(const key of Object.keys(filterDefaults) as (keyof Filters)[]) {
+      if(filters[key]===filterDefaults[key]) url.searchParams.delete(key);
+      else url.searchParams.set(key,filters[key]);
+    }
     window.history.replaceState(null,'',url);
-  },[filter,search,id]);
-  const back=crmHref({tab:'opportunities',opportunityStatus:filter,opportunityQuery:search});
+  },[filters,id]);
+  useEffect(()=>{
+    if(detail&&targetRecord) document.getElementById('enrollment-record-'+targetRecord)?.scrollIntoView({block:'nearest'});
+  },[detail,targetRecord]);
+  const listRoute={tab:'opportunities',...filters};
+  const back=crmHref(listRoute);
   const employeeName=(id:string|null)=>employees.find(employee=>employee.id===id)?.displayName||id;
   const owner=(row:Opportunity)=>employeeName(row.owner)||t(lang,['未分配','Unassigned','Belum ditugaskan']);
   const customerLink=(row:Opportunity)=>crmHref({tab:'leads',lead:row.customerId});
+  const paymentLink=(record:CourseRecord)=>crmHref({tab:'payments',enrollmentOrder:record.id});
   const label=t(lang,['商机','Opportunities','Peluang']);
+  const allLabel=t(lang,['全部','All','Semua']);
+  const ownerOptions=[...new Set(list?.flatMap(row=>row.owner&&row.owner!==actorId?[row.owner]:[])??[])];
+  const levels=[...new Set(list?.map(row=>row.level)??[])].sort();
+  const businessStates=[...new Set(list?.map(currentStatus)??[])];
+  const query=filters.opportunityQuery.trim().toLowerCase();
   const visible=list?.filter(row=>{
     const ended=['progress:enrolled','progress:closed'].includes(row.salesStage);
-    return (filter==='all'||(filter==='closed'?ended:!ended)) && [row.level,row.customerName,row.businessNumber].some(value=>value?.toLowerCase().includes(search.trim().toLowerCase()));
+    return (filters.opportunityStatus==='all'||(filters.opportunityStatus==='closed'?ended:!ended)) &&
+      (filters.opportunityOwner==='all'||(filters.opportunityOwner==='mine'?row.owner===actorId:
+        filters.opportunityOwner==='unassigned'?!row.owner:row.owner===filters.opportunityOwner)) &&
+      (!filters.opportunityLevel||filters.opportunityLevel===row.level) &&
+      (!filters.opportunityStage||filters.opportunityStage===row.salesStage) &&
+      (!filters.opportunityState||filters.opportunityState===currentStatus(row)) &&
+      [row.level,row.customerName,row.businessNumber,...row.records.map(record=>record.learnerName)].some(value=>value?.toLowerCase().includes(query));
   });
   return <section className="crm-opportunity-workspace" aria-busy={!error&&(id?!detail:!list)}>
     {id&&<a className="crm-work-link" href={back}>{t(lang,['返回商机列表','Back to opportunities','Kembali ke daftar peluang'])}</a>}
@@ -156,7 +232,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,canReviewIden
         <div><dt>{t(lang,['客户','Customer','Pelanggan'])}</dt><dd><a className="crm-work-link" href={customerLink(detail)}>{detail.customerName} · {detail.businessNumber}</a></dd></div>
         <div><dt>{t(lang,['负责人','Owner','Penanggung jawab'])}</dt><dd>{owner(detail)}</dd></div>
         <div><dt>{t(lang,['销售阶段','Sales stage','Tahap penjualan'])}</dt><dd>{stage(detail,lang)}</dd></div>
-        <div><dt>{t(lang,['下一步','Next step','Langkah berikutnya'])}</dt><dd>{nextAction(detail,lang)}</dd></div>
+        <div><dt>{t(lang,['下一步','Next step','Langkah berikutnya'])}</dt><dd>{nextAction(detail,lang,canFinance)}</dd></div>
       </dl>
       {detail.identityPending&&canReviewIdentity&&<a className="crm-work-link" href={crmHref({tab:'leads',lead:detail.customerId,identityLead:detail.customerId})}>{t(lang,['核实身份','Review identity','Verifikasi identitas'])}</a>}
       {canFinance&&detail.records.filter(row=>row.state==='proof_review'||row.state==='partial').map(row=><a key={row.id} className="crm-work-link"
@@ -207,24 +283,47 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,canReviewIden
           <p>{entry.note}</p>
         </li>)}</ol>
       </section>}
-      <CourseRecords records={detail.records} link={false} lang={lang}/></>:null
+      <CourseRecords records={detail.records} link={false} lang={lang} emails={detail.emails} targetRecord={targetRecord}/></>:null
     : <>
       <div className="crm-opportunity-filters">
-        <input type="search" aria-label={t(lang,['搜索商机','Search opportunities','Cari peluang'])} placeholder={t(lang,['姓名、客户编号或级别','Name, customer number, or level','Nama, nomor pelanggan, atau level'])} value={search} onChange={event=>setSearch(event.currentTarget.value)}/>
-        <CrmSingleSelect label={t(lang,['商机范围','Opportunity scope','Cakupan peluang'])} value={filter} lang={lang} isLight={isLight} onChange={setFilter} options={[
-          {value:'active',label:t(lang,['进行中','In progress','Berlangsung'])},{value:'closed',label:t(lang,['已结束','Ended','Berakhir'])},{value:'all',label:t(lang,['全部','All','Semua'])},
+        <input type="search" aria-label={t(lang,['搜索商机','Search opportunities','Cari peluang'])} placeholder={t(lang,['姓名、客户编号或级别','Name, customer number, or level','Nama, nomor pelanggan, atau level'])} value={filters.opportunityQuery} onChange={event=>changeFilter('opportunityQuery',event.currentTarget.value)}/>
+        <CrmSingleSelect label={t(lang,['商机范围','Opportunity scope','Cakupan peluang'])} value={filters.opportunityStatus} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStatus',value)} options={[
+          {value:'active',label:t(lang,['进行中','In progress','Berlangsung'])},{value:'closed',label:t(lang,['已结束','Ended','Berakhir'])},{value:'all',label:allLabel},
         ]}/>
+        <CrmSingleSelect label={t(lang,['负责人','Owner','Penanggung jawab'])} value={filters.opportunityOwner} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityOwner',value)} options={[
+          {value:'mine',label:t(lang,['我的商机','My opportunities','Peluang saya'])},{value:'all',label:t(lang,['权限内商机','Accessible opportunities','Peluang yang dapat diakses'])},
+          {value:'unassigned',label:t(lang,['未分配','Unassigned','Belum ditugaskan'])},...ownerOptions.map(value=>({value,label:employeeName(value)||value})),
+        ]}/>
+        <CrmSingleSelect label={t(lang,['级别','Level','Level'])} value={filters.opportunityLevel} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityLevel',value)}
+          options={[{value:'',label:allLabel},...levels.map(value=>({value,label:value}))]}/>
+        <CrmSingleSelect label={t(lang,['销售阶段','Sales stage','Tahap penjualan'])} value={filters.opportunityStage} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStage',value)}
+          options={[{value:'',label:allLabel},...salesProgressStages.map(([value])=>({value,label:progressLabel(value,lang)}))]}/>
+        <CrmSingleSelect label={t(lang,['业务状态','Enrollment status','Status pendaftaran'])} value={filters.opportunityState} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityState',value)}
+          options={[{value:'',label:allLabel},...businessStates.map(value=>({value,label:states[value]?t(lang,states[value]):value}))]}/>
       </div>
       {visible?.length===0?<p className="crm-work-muted">{t(lang,['当前没有符合条件的商机。','No opportunities match.','Tidak ada peluang yang sesuai.'])}</p>:visible&&
         <div className="crm-opportunity-table"><table>
           <thead><tr>{([
-            ['商机','Opportunity','Peluang'],['客户','Customer','Pelanggan'],['负责人','Owner','Penanggung jawab'],['销售阶段','Sales stage','Tahap penjualan'],['下一步','Next step','Langkah berikutnya'],
+            ['商机','Opportunity','Peluang'],['学员','Learner','Siswa'],['负责人','Owner','Penanggung jawab'],
+            ['销售阶段','Sales stage','Tahap penjualan'],['业务状态','Enrollment status','Status pendaftaran'],
+            ['下一步','Next step','Langkah berikutnya'],['本次来源','Opportunity source','Sumber peluang'],
           ] as const).map(copy=><th scope="col" key={copy[0]}>{t(lang,copy)}</th>)}</tr></thead>
-          <tbody>{visible.map(row=><tr key={row.id}>
-            <td><a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:row.id,opportunityStatus:filter,opportunityQuery:search})}>{row.level}</a></td>
-            <td><a className="crm-work-link" href={customerLink(row)}>{row.customerName}</a></td>
-            <td>{owner(row)}</td><td>{stage(row,lang)}</td><td>{nextAction(row,lang)}</td>
-          </tr>)}</tbody>
+          <tbody>{visible.map(row=>{
+            const status=currentStatus(row);
+            const review=row.records.find(requiresPaymentReview);
+            const due=row.records.find(record=>record.state==='awaiting_payment'&&record.paymentDueAt)?.paymentDueAt;
+            const action=nextAction(row,lang,canFinance);
+            const attribution=[...row.records].reverse().find(record=>record.attribution)?.attribution;
+            return <tr key={row.id}>
+              <td><a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id})}>{row.level}</a></td>
+              <td><a className="crm-work-link" href={customerLink(row)}>{[...row.records].reverse().find(record=>record.learnerName)?.learnerName||row.customerName}</a></td>
+              <td>{owner(row)}</td><td>{stage(row,lang)}</td><td>{states[status]?t(lang,states[status]):status}</td>
+              <td>{canFinance&&review&&!row.identityPending&&row.state==='applying'?<a className="crm-work-link" href={paymentLink(review)}>{action}</a>:action}
+                {due&&status==='awaiting_payment'&&<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div>}
+              </td>
+              <td>{sourceLabel(attribution,lang)}</td>
+            </tr>;
+          })}</tbody>
         </table></div>}
     </>}
   </section>;

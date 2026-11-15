@@ -29,3 +29,6 @@
 }
 .crm-enrollment-notice-target dl { width: 100%; }
 .crm-enrollment-notice-target dl > div { padding: 12px; border: 1px solid var(--admin-border); border-radius: 10px; }
+.crm-enrollment-email-history { margin: 0; padding: 0; list-style: none; }
+.crm-course-records .crm-enrollment-email-history li { border: 0; border-radius: 0; padding: 8px 0; }
+.crm-course-records .crm-enrollment-email-history li + li { border-top: 1px solid var(--admin-border); }
