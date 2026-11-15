@@ -4,7 +4,7 @@ import { formatCurrency } from '../utils/currency';
 import { enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import type { EnrollmentOrder } from './EnrollmentPayment';
-import { enrollmentSupportPath } from './EnrollmentSupport';
+import { EnrollmentJoiningNote, enrollmentSupportPath } from './EnrollmentSupport';
 import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
 
 type Copy = readonly [string, string, string];
@@ -57,6 +57,8 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
         {cancelled ? <p>{t(['原班已确认不开班。','The original class will not open.','Kelas asal tidak dibuka.'])}</p>
           : opened && <p>{t(['已确认开班','Class opening confirmed','Pembukaan kelas dikonfirmasi'])}</p>}
         {!paid && schedule && <p>{schedule}</p>}
+        {!paid && !cancelled && <EnrollmentJoiningNote firstLesson={classInfo?.firstLesson??course?.firstLesson}
+          now={openingClock} language={language}/>}
       </article>
       <p className="enrollment-result-state" data-paid={paid} role="status">
         {paid ? <CircleCheck size={19} aria-hidden="true"/> : <Clock3 size={19} aria-hidden="true"/>}

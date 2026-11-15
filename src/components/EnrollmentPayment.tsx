@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
 import { enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
+import { EnrollmentJoiningNote } from './EnrollmentSupport';
 
 export type EnrollmentOrder = {
   id: string;
@@ -37,14 +38,15 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   const [copied, setCopied] = useState('');
   const [copyFailed, setCopyFailed] = useState(false);
   const proofInput = useRef<HTMLInputElement>(null);
+  const hasBalance = !existingTransferOnly && !!order.bank && ['awaiting_payment','partial'].includes(order.status);
   useEffect(() => {
     if (!file && proofInput.current) proofInput.current.value = '';
   }, [file]);
   useEffect(() => {
-    if (order.status !== 'awaiting_payment') return;
+    if (!hasBalance) return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [order.status]);
+  }, [hasBalance]);
   useEffect(() => {
     if (!copied && !copyFailed) return;
     const id = window.setTimeout(() => { setCopied(''); setCopyFailed(false); }, 2000);
@@ -102,6 +104,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       <h2>{title || status}</h2>
       {cohort?.schedule&&<p>{cohort.schedule}</p>}
       {openingNotice&&<p>{openingNotice}</p>}
+      {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={now} language={language}/>}
       {course && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
     </div>

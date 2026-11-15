@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { interestText, type InterestLanguage } from './EnrollmentInterests';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
+import { enrollmentInstant } from '../utils/enrollmentCatalog';
 
 type Copy = readonly [string,string,string];
 const topics = {
@@ -49,6 +50,18 @@ const topics = {
 
 export function enrollmentSupportPath(topic: keyof typeof topics, language: InterestLanguage) {
   return '/enrollment/help/'+topic+'?lang='+language;
+}
+
+export function EnrollmentJoiningNote({firstLesson,now,language}:{
+  firstLesson?:string;now:number;language:InterestLanguage;
+}) {
+  const lessonTime=enrollmentInstant(firstLesson);
+  if(!lessonTime||now<lessonTime.valueOf())return null;
+  return <p>{interestText(language,[
+    '已到原定首课时间。','The scheduled first lesson time has arrived.','Waktu sesi pertama yang dijadwalkan sudah tiba.',
+  ])}{' '}<Link className="enrollment-quiet" to={enrollmentSupportPath('advisor',language)}>{interestText(language,[
+    '联系销售确认上课安排','Contact our team to confirm how to join','Hubungi tim kami untuk memastikan cara bergabung',
+  ])}</Link></p>;
 }
 
 export function EnrollmentSupport({topic,language,level,period,catalogPath}:{
