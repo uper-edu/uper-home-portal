@@ -389,8 +389,8 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6),:p7)": {
-    "sql": "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6),:p7)",
+  "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)": {
+    "sql": "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -431,8 +431,8 @@
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "INSERT INTO enrollment_transfer_invitations\n        (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)\n        SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(UTC_TIMESTAMP(6)+INTERVAL 48 HOUR,e.enrollment_closes_at),UTC_TIMESTAMP(6)\n        FROM enrollment_classes e WHERE e.id=:p5": {
-    "sql": "INSERT INTO enrollment_transfer_invitations\n        (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)\n        SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(UTC_TIMESTAMP(6)+INTERVAL 48 HOUR,e.enrollment_closes_at),UTC_TIMESTAMP(6)\n        FROM enrollment_classes e WHERE e.id=:p5",
+  "INSERT INTO enrollment_transfer_invitations\n        (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)\n        SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)),e.enrollment_closes_at),UTC_TIMESTAMP(6)\n        FROM enrollment_classes e WHERE e.id=:p5 AND e.enrollment_closes_at>UTC_TIMESTAMP(6)": {
+    "sql": "INSERT INTO enrollment_transfer_invitations\n        (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)\n        SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)),e.enrollment_closes_at),UTC_TIMESTAMP(6)\n        FROM enrollment_classes e WHERE e.id=:p5 AND e.enrollment_closes_at>UTC_TIMESTAMP(6)",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -745,6 +745,12 @@
       "server/portal/enrollmentResolution.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.rules.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.rules.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)",
     "sources": [
@@ -891,6 +897,12 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id": {
@@ -2997,6 +3009,7 @@
       "server/portal/assignmentBackfill.ts",
       "server/portal/courseCatalog.ts",
       "server/portal/enrollmentCatalog.ts",
+      "server/portal/enrollmentRules.ts",
       "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
     ]
@@ -3212,6 +3225,18 @@
     "sources": [
       "server/portal/autoAssignment.ts",
       "server/portal/crmAccessControls.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_rules'": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_rules'",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_rules' FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_rules' FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='sla'": {
@@ -4028,6 +4053,12 @@
     "sql": "UPDATE portal_settings SET value=:p1 WHERE id='crm_assignment_cursor'",
     "sources": [
       "server/portal/autoAssignment.ts"
+    ]
+  },
+  "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_rules'": {
+    "sql": "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_rules'",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
     ]
   },
   "UPDATE portal_settings SET value=:p1 WHERE id='sla'": {

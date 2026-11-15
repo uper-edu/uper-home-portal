@@ -11,6 +11,7 @@ import { allowsEnrollment, mountEnrollmentInterests, reconcileWaitlist, takenSea
 import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
+import { mountEnrollmentRules, readEnrollmentRules } from './enrollmentRules.ts';
 import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
 import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
@@ -97,6 +98,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   staff: (q: Request, permission: string) => Promise<Employee>;
 }) {
   const local = enrollmentSimulation();
+  mountEnrollmentRules(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
   app.get(base + '/availability', (_q, r) => r.set('Cache-Control', 'no-store').json({ accepting: !!local }));
@@ -225,9 +227,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   }) {
     const id=randomUUID();
     const {email,name,phone,requestId,fingerprint,price,priority,source,actor}=input;
+    const {paymentHours}=await readEnrollmentRules(c);
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
-      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6),:p7)`,
-    [id,cohort.id,email,requestId,fingerprint,price,{name,phone,priority,bank}]);
+      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,
+    [id,cohort.id,email,requestId,fingerprint,price,{name,phone,priority,bank},paymentHours]);
     await recordEnrollmentCustomer(c,{kind:'order',id,email,phone,name,level:cohort.data.level,emailVerified:!actor});
     if(actor){
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.insert',:p2)",

@@ -5,6 +5,7 @@ import { AdminFormActions } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
 import { CrmSingleSelect } from './CrmSingleSelect';
+import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import type { PublicEnrollmentClass } from '../../utils/enrollmentCatalog';
@@ -32,13 +33,12 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
   const [error,setError]=useState('');
   const load=async()=>{
     const response=await fetch(staff,{cache:'no-store'});
-    if(!response.ok) return;
+    if(!response.ok) throw Error('Enrollment support unavailable');
     setOrders((await response.json()).orders);
     const catalog=await fetch('/api/enrollment/classes',{cache:'no-store'});
     if(catalog.ok) setClasses((await catalog.json()).classes);
   };
   useEffect(()=>{void load().catch(()=>setError(t('售后记录暂时无法读取。','Aftercare records could not be read.','Catatan layanan belum dapat dimuat.')));},[]);
-  if(!orders) return null;
   const start=(order:ServiceOrder,mode:SupportAction)=>{
     setEditor({order,mode,requestId:crypto.randomUUID()});setTargetId('');setDirty(false);setError('');setNotice('');
   };
@@ -47,10 +47,12 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
   const refundTitle=t('受理退款','Accept refund request','Terima permintaan pengembalian');
   const inviteTitle=t('安排转班邀请','Arrange transfer invitation','Atur undangan pindah kelas');
   return <section className="crm-course-catalog">
-    <h2>{t('报名售后','Enrollment support','Layanan pendaftaran')}</h2>
+    <header className="admin-page-toolbar"><h1>{t('报名售后','Enrollment support','Layanan pendaftaran')}</h1></header>
+    {!orders&&!error&&<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
+    {orders?.length===0&&<p>{t('暂无需要处理的报名记录。','No enrollment records need attention.','Tidak ada pendaftaran yang perlu ditangani.')}</p>}
     {notice&&<p role="status">{notice}</p>}
     {!editor&&error&&<p role="alert">{error}</p>}
-    {orders.map(row=><article className="crm-course-catalog" key={row.id}>
+    {orders?.map(row=><article className="crm-course-catalog" key={row.id}>
       <h3>{row.name} · {row.level}</h3><p>{row.id} · {formatCurrency(row.received,lang)}</p>
       {row.canInvite&&row.priorityRequested&&<p>{t('学员已开启优先安排','Learner enabled priority arrangements','Siswa mengaktifkan pengaturan prioritas')}</p>}
       {row.ended&&<p>{enrollmentCopy(lang,['报名已结束','Enrollment ended','Pendaftaran telah berakhir'])}</p>}
@@ -65,26 +67,30 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
         const form=new FormData(event.currentTarget);
         setBusy(true);setError('');
         try{
-          await enrollmentPost(staff+'/'+editor.order.id+'/'+(editor.mode==='invite'?'invitations':editor.mode),{
+          const result=await enrollmentPost(staff+'/'+editor.order.id+'/'+(editor.mode==='invite'?'invitations':editor.mode),{
             classId:editor.order.classId,requestId:editor.requestId,
             ...(editor.mode==='invite'?{targetClassId:targetId}:editor.mode==='end'?{reason:form.get('reason')}:
               {reason:form.get('reason'),delivered:Number(form.get('delivered')||0),special:form.get('special')==='on'}),
           });
           setEditor(undefined);setDirty(false);
+          const deadline=formatCrmEventTime(result.replyBy);
           setNotice(editor.mode==='refund'?t('已受理退款，相关席位已释放。','Refund accepted and the seat released.','Pengembalian diterima dan kursi dilepas.'):
             editor.mode==='end'?t('报名已结束，席位已释放。','Enrollment ended and its seat was released.','Pendaftaran berakhir dan kursi dilepas.'):
-              t('转班邀请已登记。','Transfer invitation recorded.','Undangan pindah kelas dicatat.'));
+              deadline?t(`转班邀请已登记，答复截止为 ${deadline}。`,`Transfer invitation recorded. Reply by ${deadline}.`,`Undangan pindah kelas dicatat. Jawab sebelum ${deadline}.`):
+                t('转班邀请已登记。','Transfer invitation recorded.','Undangan pindah kelas dicatat.'));
           await load();
         }catch{setError(t('未能确认操作，请刷新核对订单。','The action could not be confirmed. Refresh to review the order.','Tindakan belum terkonfirmasi. Muat ulang pesanan.'));}
         finally{setBusy(false);}
       }}><div className="crm-editor-scroll">
         <p>{editor.order.name} · {editor.order.id}</p>
         {error&&<p role="alert">{error}</p>}
-        {editor.mode==='invite'?<AdminField required>{t('目标班次','Target class','Kelas tujuan')}
+        {editor.mode==='invite'?<><AdminField required>{t('目标班次','Target class','Kelas tujuan')}
           <CrmSingleSelect lang={lang} isLight={isLight} required label={t('目标班次','Target class','Kelas tujuan')} value={targetId}
             options={classes.filter(row=>row.id!==editor.order.classId&&row.level===editor.order.level&&row.format===editor.order.format&&row.availability!=='full')
               .map(row=>({value:row.id,label:row.level+' · '+row.firstLesson.replace('T',' ')+' WIB'}))}
-            onChange={value=>{setTargetId(value);setDirty(true);}}/></AdminField>:editor.mode==='end'?<>
+            onChange={value=>{setTargetId(value);setDirty(true);}}/></AdminField>
+          <p>{t('答复期限按报名规则计算，最晚到目标班次的报名截止时间。','The reply deadline follows the enrollment rules and ends no later than the target class’s enrollment cutoff.','Batas jawaban mengikuti aturan pendaftaran dan paling lambat saat pendaftaran kelas tujuan ditutup.')}</p>
+        </>:editor.mode==='end'?<>
           <p>{t('仅在学员明确放弃时操作。确认后关闭付款入口并释放席位，已有实收和凭证会保留。','Use only after the learner has clearly withdrawn. This closes payment and releases the seat while retaining receipts and proof.','Gunakan hanya setelah siswa menyatakan mundur. Pembayaran ditutup dan kursi dilepas. Dana tercatat dan bukti tetap disimpan.')}</p>
           <AdminField required>{t('结束报名原因','Reason for ending enrollment','Alasan mengakhiri pendaftaran')}<textarea name="reason" required maxLength={1000}/></AdminField>
         </>:<>

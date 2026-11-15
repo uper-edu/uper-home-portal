@@ -173,7 +173,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
       <h2>{title}</h2>
-      {target&&<a className="crm-work-link" href="/crm?tab=policy&policyTopic=courses">{t(['View all classes','Lihat semua kelas','查看全部班次'])}</a>}
+      {target&&<a className="crm-work-link" href="/crm?tab=policy&policyTopic=enrollment-classes">{t(['View all classes','Lihat semua kelas','查看全部班次'])}</a>}
       <div className="crm-ops-actions">
         <button type="button" className="crm-work-button" onClick={() => void load().catch(loadFailure)}>{t(['Refresh', 'Segarkan', '刷新'])}</button>
         <button type="button" className="crm-work-button" data-primary disabled={!catalog} onClick={() => edit()}>{t(['Create class', 'Buat kelas', '创建班次'])}</button>
@@ -242,9 +242,9 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
       }}>
         <div className="crm-editor-scroll">
           <p>{insertion.row.level} · {insertion.row.schedule}</p>
-          <p>{t(['Confirm tuition with the learner before reserving a seat. The payment deadline is 24 hours after saving.',
-            'Konfirmasikan biaya dengan siswa sebelum memesan kursi. Batas pembayaran 24 jam setelah disimpan.',
-            '分配席位前请先与学员确认应付金额。保存后，学员有 24 小时付款并提交凭证。'])}</p>
+          <p>{t(['Confirm tuition with the learner before reserving a seat. The payment deadline uses the enrollment rules in effect when you save.',
+            'Konfirmasikan biaya dengan siswa sebelum memesan kursi. Batas pembayaran mengikuti aturan pendaftaran saat Anda menyimpan.',
+            '分配席位前请先与学员确认应付金额。付款和提交凭证的截止时间按保存时生效的报名规则计算。'])}</p>
           {error&&<p role="alert">{error}</p>}
           {pending&&<CrmSaveFeedback state="unknown" lang={lang}/>}
           <AdminField required>{t(['Learner name','Nama siswa','学员姓名'])}<input name="name" required maxLength={120} disabled={busy||!!pending}/></AdminField>

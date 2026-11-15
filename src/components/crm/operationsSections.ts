@@ -2,9 +2,12 @@ export const operationGroups = [
  ['Management and working time','Pengelolaan dan jam kerja','管理与工作时间'],
  ['Sales follow-up rules','Aturan tindak lanjut penjualan','销售跟进规则'],
  ['Notifications and audit','Notifikasi dan audit','通知与审计'],
+ ['Courses and classes','Kursus dan kelas','课程与班次'],
 ] as const;
 export const operationSections = [
- {id:'courses',group:0,title:['Courses & pricing','Kursus & harga','课程与报价'],purpose:['Manage published prices and enrollment statistics.','Kelola harga dan statistik pendaftaran.','维护课程报价与报名付款统计。'],steps:[['Course','Price','Enrollment'],['Kursus','Harga','Pendaftaran'],['课程','报价','报名']]},
+ {id:'courses',group:3,title:['Courses & pricing','Kursus & harga','课程与报价'],purpose:['Manage published prices and enrollment statistics.','Kelola harga dan statistik pendaftaran.','维护课程报价与报名付款统计。'],steps:[['Course','Price','Enrollment'],['Kursus','Harga','Pendaftaran'],['课程','报价','报名']]},
+ {id:'enrollment-classes',group:3,title:['Enrollment classes','Kelas pendaftaran','报名班次'],purpose:['Publish and manage enrollment classes.','Terbitkan dan kelola kelas.','维护和发布报名班次。'],steps:[[],[],[]]},
+ {id:'enrollment-rules',group:3,title:['Enrollment rules','Aturan pendaftaran','报名规则'],purpose:['Set payment and transfer deadlines.','Atur tenggat pembayaran dan pindah kelas.','设置付款和转班答复期限。'],steps:[[],[],[]]},
  {id:'assignment',group:1,title:['Automatic assignment','Penugasan otomatis','自动分案'],purpose:['Assign new verified, unassigned customers to selected salespeople.','Tugaskan pelanggan baru terverifikasi tanpa penanggung jawab ke sales terpilih.','将身份已核实且未分配的新客户分配给选定销售。'],steps:[['New verified customer','Round robin','Assignment history'],['Pelanggan baru terverifikasi','Giliran','Riwayat penugasan'],['新客户身份已核实','轮询分配','保留归属历史']]},
  {id:'permissions',group:0,title:['Review and ownership','Verifikasi dan kepemilikan','核实与归属权限'],purpose:['Control who may verify and assign; existing record access still applies.','Atur siapa yang boleh memverifikasi dan menugaskan; izin catatan tetap berlaku.','控制谁可以核实和分配；仍受现有记录访问权限约束。'],steps:[['Existing access','Permitted action','Audit'],['Izin yang ada','Tindakan diizinkan','Audit'],['现有访问权限','允许的操作','保留审计']]},
  {id:'schedule',group:0,title:['Time zone and work calendar','Zona waktu dan kalender kerja','时区与工作日历'],purpose:['Define working periods used by response-deadline calculations.','Tentukan jam kerja untuk perhitungan tenggat respons.','定义响应期限计算采用的运营时区和工作时段。'],steps:[['Inquiry arrives','Work calendar','Response deadline'],['Pertanyaan masuk','Kalender kerja','Tenggat respons'],['咨询进入','核对工作日历','计算响应截止']]},
@@ -20,6 +23,9 @@ export const operationSections = [
  {"id": "integration-readiness", "group": 2, "title": ["Integration checks", "Pemeriksaan integrasi", "接入检查"], "purpose": ["Check connectivity and configuration; tests use existing safeguards.", "Periksa koneksi dan konfigurasi; pengujian mengikuti pengamanan yang ada.", "检查连接和配置，测试仍遵循现有保护机制。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
 ] as const;
 export type OperationSection = typeof operationSections[number]['id'];
+export function isCourseTopic(section:string|null):section is 'courses'|'enrollment-classes'|'enrollment-rules' {
+ return operationSections.some(topic=>topic.group===3&&topic.id===section);
+}
 export function operationSectionForField(field:string):OperationSection {
  const prefix=field.split('.')[0];return ({autoAssignment:'assignment',businessHours:'schedule',firstResponseSla:'first_response',noResponseCadence:'retry',inactivityWatchdog:'watchdog',milestones:'milestone',reactivation:'reactivation'} as Record<string,OperationSection>)[prefix]||'permissions';
 }
