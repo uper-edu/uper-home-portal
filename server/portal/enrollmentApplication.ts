@@ -21,8 +21,9 @@ import { mountEnrollmentCrm, recordEnrollmentCustomer } from './enrollmentCrm.ts
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { proofTransferDetails } from './enrollmentProofTotals.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
-import { classOpeningNotices, orderNotice, proofNotices, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
+import { orderNotice, proofNotices, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
+import { applyEnrollmentPaymentCredits, lockEnrollmentFunds, updateEnrollmentPayment } from './enrollmentPaymentCredits.ts';
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
 import { renderEnrollmentEmail } from './enrollmentEmail.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
@@ -44,6 +45,7 @@ function contact(value: unknown) {
 
 // Reads after a class lock must see the previous holder's committed seats and receipts.
 const enrollTx = (work: (c: Client) => Promise<any>) => tx(work, { isolation: 'READ COMMITTED' });
+const moneyTx = (work:(c:Client)=>Promise<any>)=>enrollTx(async c=>{await lockEnrollmentFunds(c);return work(c);});
 
 async function session(c: Client, q: Request): Promise<string> {
   const token = q.headers.cookie?.match(/(?:^|;\s*)uper_enrollment_session=([a-f0-9]{64})(?:;|$)/)?.[1];
@@ -80,7 +82,8 @@ function view(row: any, classState: string) {
   const status = enrollmentOrderStatus(row.state,classState);
   return { id: row.id, classId: row.class_id, status: status === 'recovered' ? 'expired' : status,
     restored: status === 'recovered', learnerName: row.data?.name, price: row.price,
-    received: Number(row.received), deadline: row.payment_due_at.replace(' ', 'T') + 'Z' };
+    received: Number(row.received), deadline: row.payment_due_at.replace(' ', 'T') + 'Z',
+    ...(row.data?.creditIn?{creditIn:Number(row.data.creditIn)}:{}),...(row.data?.creditOut?{creditOut:Number(row.data.creditOut)}:{}) };
 }
 
 function proofContent(raw: unknown, mime: unknown) {
@@ -130,13 +133,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
   startEnrollmentWeeklySimulation(enrollTx);
   startEnrollmentVacancySimulation(enrollTx,lockClass);
-  startEnrollmentPriorityTransferSimulation({transact:enrollTx,lockOrder,lockClass});
-  mountEnrollmentResolution(app,{wrap,post,transact:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
+  startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass});
+  mountEnrollmentResolution(app,{wrap,post,transact:moneyTx,read:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
     const actor=await staff(q,'crm.operations.manage');
     const id=String(q.params.id);
-    const result=await enrollTx(c=>operation(c,actor.id,q.body,
+    const result=await moneyTx(c=>operation(c,actor.id,q.body,
       {leadId:'class:'+id,kind:'enrollment.class.cancel',authorize:()=>staff(q,'crm.operations.manage')},async()=>{
         const cohort=await lockClass(c,id);
         if(cohort.state==='cancelled') return {classId:id,state:'cancelled'};
@@ -171,7 +174,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
           id:row.id,level:row.data.level,format:row.data.format,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
         })):[];
       const status=await enrollmentAftercareStatus(c,order.id);
-      const lateProofSubmitted=order.state==='expired'&&verified===0&&
+      const lateProofSubmitted=order.state==='expired'&&verified===0&&!order.data?.creditOut&&
         (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[order.id])).rows.length>0;
       return { originalClassState:cohort.state, currentClass:{
         level:cohort.data.level,format:cohort.data.format,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
@@ -252,10 +255,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     }else{
       await recordEnrollmentAttribution(c,'order',id,source);
     }
-    await orderNotice(c,'seat_reserved',id,undefined,{price});
     await convertLearnerWaitlist(c,cohort.id,email,name,id);
     await reconcileWaitlist(c,cohort,seats+1);
-    return view((await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0],cohort.state);
+    if(!actor)await applyEnrollmentPaymentCredits(c,{order:(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0],cohort},lockOrder);
+    const reserved=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
+    if(Number(reserved.received)<price)await orderNotice(c,'seat_reserved',id,undefined,{price:price-Number(reserved.received)});
+    return view(reserved,cohort.state);
   }
 
   post(base + '/applications', async (q, r) => {
@@ -266,7 +271,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         typeof name !== 'string' || name.trim().length < 1 || name.length > 120 ||
         !phone ||
         typeof priority !== 'boolean') invalid('enrollment_invalid_application');
-    const result = await enrollTx(async (c: Client) => {
+    const result = await moneyTx(async (c: Client) => {
       const email = await session(c, q);
       const fingerprint = sha(JSON.stringify([classId, name.trim(), phone.trim(), priority]));
       const cohort = await lockClass(c, classId);
@@ -297,7 +302,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     if(!/^[a-zA-Z0-9-]{1,64}$/.test(classId)||typeof name!=='string'||!name.trim()||name.length>120||!phone||
         typeof requestId!=='string'||!uuid.test(requestId)||!Number.isSafeInteger(price)||price<1||price>1_000_000_000||confirmed!==true)
       invalid('enrollment_invalid_insertion');
-    const result=await enrollTx(c=>operation(c,actor.id,q.body,{leadId:'class:'+classId,kind:'enrollment.order.insert',
+    const result=await moneyTx(c=>operation(c,actor.id,q.body,{leadId:'class:'+classId,kind:'enrollment.order.insert',
       authorize:()=>staff(q,'crm.operations.manage')},async()=>{
       const cohort=await lockClass(c,classId);
       const active=(await c.query("SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE",[cohort.course_id])).rows[0]?.value.active;
@@ -416,22 +421,35 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,
         (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id
       FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
-        OR (o.state='ended' AND o.received>0) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))
+        OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))
       ORDER BY o.created_at DESC LIMIT 150`,[typeof q.query.order==='string'?q.query.order:''])).rows;
       const receiptsByOrder=new Map<string,any[]>();
+      const creditsByOrder=new Map<string,any[]>();
       if(rows.length){
+        const orderIds=JSON.stringify(rows.map(row=>row.id));
         const receipts=(await c.query(`SELECT order_id, reference, amount, receiving_account AS account,
           DATE_FORMAT(settled_at,'%Y-%m-%dT%H:%i:%sZ') AS settledAt
           FROM enrollment_receipts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(order_id))
-          ORDER BY settled_at DESC,reference`,[JSON.stringify(rows.map(row=>row.id))])).rows;
+          ORDER BY settled_at DESC,reference`,[orderIds])).rows;
         for(const {order_id,amount,...receipt} of receipts){
           const history=receiptsByOrder.get(order_id)??[];
           history.push({...receipt,amount:Number(amount)});
           receiptsByOrder.set(order_id,history);
         }
+        const credits=(await c.query(`SELECT id,source_order_id,target_order_id,receipt_reference AS reference,amount,
+          DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS appliedAt FROM enrollment_payment_credits
+          WHERE JSON_CONTAINS(:p1,JSON_QUOTE(source_order_id)) OR JSON_CONTAINS(:p1,JSON_QUOTE(target_order_id))
+          ORDER BY created_at DESC,id`,[orderIds])).rows;
+        for(const {source_order_id:source,target_order_id:target,amount,...credit} of credits){
+          for(const [id,other,direction] of [[source,target,'out'],[target,source,'in']]){
+            const history=creditsByOrder.get(id)??[];
+            history.push({...credit,orderId:other,direction,amount:Number(amount)});
+            creditsByOrder.set(id,history);
+          }
+        }
       }
       return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
-        proofId:row.proof_id,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[]}));
+        proofId:row.proof_id,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[]}));
     });
     r.set('Cache-Control', 'no-store').json({ orders });
   }));
@@ -452,7 +470,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         !time || !Number.isFinite(time.getTime()) || time.getTime() > Date.now() ||
         typeof requestId !== 'string' || !uuid.test(requestId)) invalid('enrollment_invalid_receipt');
     const id = String(q.params.id);
-    const result = await enrollTx((c: Client) => operation(c, actor.id, q.body,
+    const result = await moneyTx((c: Client) => operation(c, actor.id, q.body,
       { leadId: 'enrollment:' + id, kind: 'enrollment.receipt', authorize: () => financeActor(q) }, async () => {
       if(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>160)
         invalid('enrollment_receiving_account_required');
@@ -468,7 +486,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       }
       const received = Number(order.received) + amount;
       const due = new Date(order.payment_due_at.replace(' ', 'T') + 'Z');
-      const timely = (await c.query('SELECT COALESCE(SUM(amount),0) AS sum FROM enrollment_receipts WHERE order_id=:p1 AND settled_at<=:p2', [id,due])).rows[0].sum;
+      const timely = (await c.query(`SELECT COALESCE(SUM(r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a
+        WHERE a.receipt_reference=r.reference)),0) AS sum FROM enrollment_receipts r WHERE r.order_id=:p1 AND r.settled_at<=:p2`, [id,due])).rows[0].sum;
       let state=order.state;
       if(order.state==='expired'&&Number(timely)>=order.price){
         if(cohort.state==='published') state='recovered';
@@ -476,17 +495,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       } else if(!['ended','expired','recovered'].includes(order.state)){
         state=received>=order.price?'paid':'partial';
       }
-      await c.query('UPDATE enrollment_orders SET received=:p1,state=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3', [received,state,id]);
-      const paid = cohort.state==='cancelled' ? 0 : Number((await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')", [cohort.id])).rows[0].count);
-      const openedBefore = (await c.query('SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1', [cohort.id])).rows[0];
-      const newlyPaid=cohort.state==='published'&&['paid','recovered'].includes(state)&&!['paid','recovered'].includes(order.state);
-      if (cohort.state === 'published' && paid >= cohort.data.minimumPaid) {
-        await c.query('INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id', [cohort.id]);
-      }
-      const opened = (await c.query('SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1', [cohort.id])).rows[0];
-      if (newlyPaid) await orderNotice(c,opened?'payment_and_opening':'payment_confirmed',id,undefined,{received});
-      if (opened&&!openedBefore) await classOpeningNotices(c,cohort,newlyPaid?id:undefined);
-      return { order: view({...order,state,received},cohort.state), paidCount: paid, opened: !!opened };
+      const summary=await updateEnrollmentPayment(c,{order,cohort},received,state);
+      await applyEnrollmentPaymentCredits(c,{order:{...order,state,received},cohort},lockOrder);
+      const latest=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
+      return {order:view(latest,cohort.state),...summary};
     }));
     r.json(result);
   });

@@ -13,6 +13,8 @@ export type EnrollmentOrder = {
   learnerName?: string;
   price: number;
   received: number;
+  creditIn?: number;
+  creditOut?: number;
   deadline: string;
   bank?: EnrollmentBank;
 };
@@ -108,6 +110,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={now} language={language}/>}
       {course && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
+      {!!order.creditIn&&<p>{t('旧订单已冲抵','Credit applied from an earlier order','Dana pesanan sebelumnya yang digunakan')} · {formatCurrency(order.creditIn,language)}</p>}
     </div>
     {order.status === 'awaiting_payment' && Number.isFinite(deadline.valueOf()) && <div className="enrollment-payment-deadline">
       <span><Clock3 size={16} aria-hidden="true"/>{minutes ? timeLeft : t('付款时间已到', 'Payment deadline reached', 'Batas pembayaran tercapai')}</span>

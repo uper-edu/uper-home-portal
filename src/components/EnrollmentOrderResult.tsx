@@ -71,7 +71,8 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
           <h2>{t(['收款进度','Payment progress','Status pembayaran'])}</h2>
           <dl className="enrollment-result-amounts">
             <div><dt>{t(['应付','Amount due','Jumlah tagihan'])}</dt><dd>{formatCurrency(order.price,language)}</dd></div>
-            <div><dt>{t(['已核实到账','Verified receipts','Dana terverifikasi'])}</dt><dd>{formatCurrency(order.received,language)}</dd></div>
+            {(!order.creditIn||order.received>order.creditIn)&&<div><dt>{t(['本单已核实到账','Verified receipts on this order','Dana terverifikasi untuk pesanan ini'])}</dt><dd>{formatCurrency(order.received-(order.creditIn??0),language)}</dd></div>}
+            {!!order.creditIn&&<div><dt>{t(['旧订单已冲抵','Credit applied from an earlier order','Dana dari pesanan sebelumnya'])}</dt><dd>{formatCurrency(order.creditIn,language)}</dd></div>}
             {partial&&<div><dt>{t(['还需补款','Balance due','Sisa tagihan'])}</dt><dd>{formatCurrency(Math.max(0,order.price-order.received),language)}</dd></div>}
           </dl>
           {partial&&<p>{t(['你的报名和席位继续保留。销售运营会和你确认补款安排。','Your enrollment and seat stay reserved. Sales operations will confirm how to pay the balance.','Pendaftaran dan kursi tetap disimpan. Tim penjualan akan mengonfirmasi cara melunasi sisa tagihan.'])}</p>}

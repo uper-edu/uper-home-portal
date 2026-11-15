@@ -8,6 +8,7 @@ import { classOpeningNotices, orderNotice } from './enrollmentNotices.ts';
 import { createEnrollmentTransferInvitation } from './enrollmentTransferOffers.ts';
 import { readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
 import { workingDayDeadline } from '../../src/utils/workCalendar.ts';
+import { enrollmentRefundReceiptFunds } from './enrollmentPaymentCredits.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
@@ -15,7 +16,7 @@ type Actor=(q:Request)=>Promise<{id:string}>;
 type RefundInstallment={reference:string;receiptReference:string;amount:number;returned:number};
 type Context={
   wrap:(fn:Handler)=>(q:Request,r:Response)=>void; post:(path:string,fn:Handler)=>void;
-  transact:(work:(c:Client)=>Promise<any>)=>Promise<any>; session:(c:Client,q:Request)=>Promise<string>;
+  transact:(work:(c:Client)=>Promise<any>)=>Promise<any>; read:(work:(c:Client)=>Promise<any>)=>Promise<any>; session:(c:Client,q:Request)=>Promise<string>;
   lockOrder:(c:Client,id:string,email?:string)=>Promise<{order:any;cohort:any}>;
   lockClass:(c:Client,id:string)=>Promise<any>; expireSeats:(c:Client,id:string)=>Promise<void>;
   financeActor:Actor; supportActor:Actor;
@@ -60,7 +61,7 @@ function sameClass(actual:string, expected:unknown) {
 }
 
 export function mountEnrollmentResolution(app:Express,ctx:Context) {
-  const {wrap,post,transact,session,lockOrder,lockClass,expireSeats,financeActor,supportActor}=ctx;
+  const {wrap,post,transact,read,session,lockOrder,lockClass,expireSeats,financeActor,supportActor}=ctx;
   const learner='/api/enrollment/orders/:id';
   const staff='/api/crm/enrollment/aftercare';
   async function target(c:Client,source:any,order:any,to:string,invitationId?:string) {
@@ -86,7 +87,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
 
   app.get(staff,wrap(async (q,r)=>{
     await supportActor(q);
-    const orders=await transact(async c=>(await c.query(`SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,
+    const orders=await read(async c=>(await c.query(`SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,
       EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened
       FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
       WHERE o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')
@@ -100,11 +101,10 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
   app.get('/api/crm/enrollment/finance/:id/refund-details',wrap(async(q,r)=>{
     await financeActor(q);
     const id=String(q.params.id);
-    const data=await transact(async c=>{
+    const data=await read(async c=>{
       const ledger=await refundLedger(c,id);
       if(!ledger) invalid('enrollment_refund_unavailable',404);
-      const receipts=(await c.query(`SELECT reference,amount,receiving_account AS account FROM enrollment_receipts
-        WHERE order_id=:p1 ORDER BY settled_at,reference`,[id])).rows.map(row=>({
+      const receipts=(await enrollmentRefundReceiptFunds(c,id)).filter(row=>Number(row.amount)>0).map(row=>({
           reference:row.reference,
           account:row.account,
           remaining:Number(row.amount)-effectiveRefundForReceipt(ledger.installments,row.reference),
@@ -261,7 +261,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       const {order}=await lockOrder(c,id);
       const ledger=await refundLedger(c,id);
       if(!ledger || order.state!=='refunding') invalid('enrollment_refund_unavailable',409);
-      const initial=(await c.query('SELECT amount FROM enrollment_receipts WHERE reference=:p1 AND order_id=:p2',[original,id])).rows[0];
+      const initial=(await enrollmentRefundReceiptFunds(c,id)).find(row=>row.reference===original&&Number(row.amount)>0);
       if(!initial) invalid('enrollment_refund_wrong_receipt',409);
       const {expected,refunded}=ledger.progress;
       if(ledger.installments.some(row=>row.reference===returned)) invalid('enrollment_duplicate_refund',409);

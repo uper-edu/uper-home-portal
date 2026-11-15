@@ -32,7 +32,8 @@ export async function enrollmentWeekTotals(c:Client,week:NonNullable<ReturnType<
   const totals=(await c.query(`SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (
       SELECT o.payment_due_at AS due,
         EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,
-        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0) AS verified,
+        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0)
+          +COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0) AS verified,
         EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'
           AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled
       FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS

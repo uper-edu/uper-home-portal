@@ -67,7 +67,8 @@ export async function pendingEnrollmentProofTotals(c:Client,cutoff:string,classI
       COALESCE(r.amount,0) AS matched
     FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1
     JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s
-      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount<o.price
+      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount+
+      COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0)<o.price
     LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1
       AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)
     WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS

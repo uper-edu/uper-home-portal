@@ -11,7 +11,8 @@ import { CrmDisclosure } from './CrmDisclosure';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
 
 type Receipt = {reference:string;amount:number;account:string|null;settledAt:string};
-type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string; firstReviewDueAt?:string; receipts:Receipt[] };
+type PaymentCredit = {id:string;orderId:string;direction:'in'|'out';reference:string;amount:number;appliedAt:string};
+type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string; firstReviewDueAt?:string; receipts:Receipt[]; credits:PaymentCredit[] };
 const endpoint = '/api/crm/enrollment/finance';
 
 export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;isLight?:boolean }) {
@@ -62,6 +63,18 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
           <strong>{formatCurrency(receipt.amount,lang)}</strong> · <time dateTime={receipt.settledAt}>{formatCrmEventTime(receipt.settledAt)}</time>
           <p>{t('实际收款账户','Actual receiving account','Rekening penerima aktual')} · {receipt.account??t('未记录','Not recorded','Belum dicatat')}</p>
           <p>{t('银行流水号','Bank reference','Nomor referensi bank')} · {receipt.reference}</p>
+        </li>)}</ul>
+      </CrmDisclosure>}
+      {!!row.credits?.length&&<CrmDisclosure heading={t('订单冲抵记录','Order payment credit history','Riwayat penggunaan dana antar pesanan')}>
+        <ul className="crm-course-records">{row.credits.map(credit=><li key={credit.id}>
+          <strong>{credit.direction==='in'
+            ?t('旧单款项冲抵本单','Applied from an earlier order','Dana dari pesanan sebelumnya')
+            :t('本单款项冲抵新单','Applied to a new order','Dana digunakan untuk pesanan baru')}</strong>
+          {' · '}{formatCurrency(credit.amount,lang)}{' · '}<time dateTime={credit.appliedAt}>{formatCrmEventTime(credit.appliedAt)}</time>
+          <p>{t('银行流水号','Bank reference','Nomor referensi bank')} · {credit.reference}</p>
+          <a className="crm-work-link" href={'/crm?tab=payments&enrollmentOrder='+encodeURIComponent(credit.orderId)}>
+            {t('查看关联订单','View related order','Lihat pesanan terkait')}
+          </a>
         </li>)}</ul>
       </CrmDisclosure>}
       {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={()=>void load().catch(failed)}/> :

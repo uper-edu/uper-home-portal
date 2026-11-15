@@ -267,26 +267,27 @@ export function EnrollmentOrderAftercare({
       {classCard(course,undefined,true)}
       <p className="enrollment-result-state" role="status">{t(lateProofSubmitted
         ? ['订单已终止 · 转账凭证待核实','Order expired · Proof under review','Pesanan kedaluwarsa · Bukti sedang diperiksa']
-        : order.received>0 ? ['订单已终止 · 已核实到账','Order expired · Payment verified','Pesanan kedaluwarsa · Pembayaran terverifikasi']
+        : order.received>0||order.creditOut ? ['订单已终止 · 已核实到账','Order expired · Payment verified','Pesanan kedaluwarsa · Pembayaran terverifikasi']
         : ['订单已终止 · 未按时提交付款凭证','Order expired · No proof submitted in time','Pesanan kedaluwarsa · Bukti tidak dikirim tepat waktu'])}</p>
       <article className="enrollment-record">
-        <h2>{t(order.received>0?['收款状态','Payment status','Status pembayaran']:lateProofSubmitted?['下一步','What happens next','Langkah berikutnya']:['已经转账？','Already transferred?','Sudah transfer?'])}</h2>
-        {order.received>0 ? <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>
+        <h2>{t(order.received>0||order.creditOut?['收款状态','Payment status','Status pembayaran']:lateProofSubmitted?['下一步','What happens next','Langkah berikutnya']:['已经转账？','Already transferred?','Sudah transfer?'])}</h2>
+        {order.received>0||order.creditOut ? <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received+(order.creditOut??0))}</p>
           : lateProofSubmitted ? <p>{t([
             '财务会核对这笔转账。若足额转账的时间在原付款截止时刻或之前，且原班仍可接收，系统会恢复原班报名。',
             'Finance will review the transfer. If you transferred the full amount by the original payment deadline and the class can still admit you, your enrollment will be restored.',
             'Tim keuangan akan memeriksa transfer ini. Jika Anda sudah mentransfer jumlah penuh paling lambat pada tenggat pembayaran awal dan kelas masih dapat menerima Anda, pendaftaran Anda akan dipulihkan.',
           ])}</p>
           : <p>{t(['可提交已发生的转账凭证，财务会核对实际到账。','If you already transferred funds, submit the proof for Finance to review.','Jika sudah transfer, kirim buktinya untuk diperiksa tim keuangan.'])}</p>}
+        {!!order.creditOut&&<p>{t(['已冲抵新订单','Applied to a new order','Digunakan untuk pesanan baru'])} · {currency(order.creditOut)}</p>}
         <p>{t(['原付款入口已关闭，原席位已释放。','The original payment link is closed and the seat was released.','Pembayaran untuk pesanan awal ditutup dan kursinya sudah dilepas.'])}</p>
       </article>
       <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
       {foot(order.received>0 && allowRefundContact ? link(support,refundContactPath,true)
-        : lateProofSubmitted ? link(backMine,minePath,true)
+        : lateProofSubmitted||order.creditOut ? link(backMine,minePath,true)
         : proofPath ? link(t(['提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan']),proofPath,true)
         : link(backMine,minePath,true), <>
-        {(lateProofSubmitted||order.received>0&&allowRefundContact)&&proofPath&&link(t(['补交凭证','Submit another proof','Kirim bukti tambahan']),proofPath)}
-        {!lateProofSubmitted&&order.received===0&&link(t(['重新查看可报名班次','Browse open classes','Lihat kelas yang masih dibuka']),browsePath)}
+        {(lateProofSubmitted||order.creditOut||order.received>0&&allowRefundContact)&&proofPath&&link(t(['补交凭证','Submit another proof','Kirim bukti tambahan']),proofPath)}
+        {!lateProofSubmitted&&!order.creditOut&&order.received===0&&link(t(['重新查看可报名班次','Browse open classes','Lihat kelas yang masih dibuka']),browsePath)}
       </>)}
     </>;
   } else if (transferred) {

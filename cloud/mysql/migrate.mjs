@@ -111,6 +111,7 @@ async function applyEnrollmentOrdersMigration(connection) {
     else if(activity.Type.toLowerCase()!=='datetime(6)'||activity.Null!=='YES'||activity.Default!==null)
       throw Error('Enrollment activity time does not match the expected schema: '+table);
   }
+  await connection.query(await readFile(new URL('./schema-enrollment-20261115014556.sql',import.meta.url),'utf8'));
 }
 
 async function applyContentMigration(connection){

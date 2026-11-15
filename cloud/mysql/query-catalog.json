@@ -337,7 +337,7 @@
   "INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id": {
     "sql": "INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id",
     "sources": [
-      "server/portal/enrollmentApplication.ts",
+      "server/portal/enrollmentPaymentCredits.ts",
       "server/portal/enrollmentResolution.ts"
     ]
   },
@@ -405,6 +405,12 @@
     "sql": "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)",
     "sources": [
       "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_payment_credits(id,receipt_reference,source_order_id,target_order_id,amount,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_payment_credits(id,receipt_reference,source_order_id,target_order_id,amount,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
     ]
   },
   "INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)\n        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))": {
@@ -1603,12 +1609,6 @@
       "server/portal/promotionReviews.ts"
     ]
   },
-  "SELECT amount FROM enrollment_receipts WHERE reference=:p1 AND order_id=:p2": {
-    "sql": "SELECT amount FROM enrollment_receipts WHERE reference=:p1 AND order_id=:p2",
-    "sources": [
-      "server/portal/enrollmentResolution.ts"
-    ]
-  },
   "SELECT attachment FROM site_submissions WHERE id=? AND kind='application'": {
     "sql": "SELECT attachment FROM site_submissions WHERE id=? AND kind='application'",
     "sources": [
@@ -1682,16 +1682,16 @@
       "server/portal/paymentAnalytics.ts"
     ]
   },
-  "SELECT COALESCE(SUM(amount),0) AS sum FROM enrollment_receipts WHERE order_id=:p1 AND settled_at<=:p2": {
-    "sql": "SELECT COALESCE(SUM(amount),0) AS sum FROM enrollment_receipts WHERE order_id=:p1 AND settled_at<=:p2",
-    "sources": [
-      "server/portal/enrollmentApplication.ts"
-    ]
-  },
-  "SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (\n      SELECT o.payment_due_at AS due,\n        EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,\n        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0) AS verified,\n        EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'\n          AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled\n      FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS\n        (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n        AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n          AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ) AS as_of_cutoff": {
-    "sql": "SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (\n      SELECT o.payment_due_at AS due,\n        EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,\n        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0) AS verified,\n        EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'\n          AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled\n      FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS\n        (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n        AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n          AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ) AS as_of_cutoff",
+  "SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (\n      SELECT o.payment_due_at AS due,\n        EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,\n        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0)\n          +COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0) AS verified,\n        EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'\n          AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled\n      FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS\n        (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n        AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n          AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ) AS as_of_cutoff": {
+    "sql": "SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (\n      SELECT o.payment_due_at AS due,\n        EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,\n        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0)\n          +COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0) AS verified,\n        EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'\n          AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled\n      FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS\n        (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n        AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n          AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ) AS as_of_cutoff",
     "sources": [
       "server/portal/enrollmentWeekly.ts"
+    ]
+  },
+  "SELECT COALESCE(SUM(r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n        WHERE a.receipt_reference=r.reference)),0) AS sum FROM enrollment_receipts r WHERE r.order_id=:p1 AND r.settled_at<=:p2": {
+    "sql": "SELECT COALESCE(SUM(r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n        WHERE a.receipt_reference=r.reference)),0) AS sum FROM enrollment_receipts r WHERE r.order_id=:p1 AND r.settled_at<=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
     ]
   },
   "SELECT code,config FROM trial_campaigns WHERE id=:p1 FOR UPDATE": {
@@ -1758,7 +1758,7 @@
   "SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')": {
     "sql": "SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",
     "sources": [
-      "server/portal/enrollmentApplication.ts",
+      "server/portal/enrollmentPaymentCredits.ts",
       "server/portal/enrollmentResolution.ts"
     ]
   },
@@ -2009,6 +2009,7 @@
     "sql": "SELECT GET_LOCK(:p1,5)",
     "sources": [
       "server/portal/enrollmentEmailAccess.ts",
+      "server/portal/enrollmentPaymentCredits.ts",
       "server/portal/identityConsolidation.ts"
     ]
   },
@@ -2663,6 +2664,12 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT id,source_order_id,target_order_id,receipt_reference AS reference,amount,\n          DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS appliedAt FROM enrollment_payment_credits\n          WHERE JSON_CONTAINS(:p1,JSON_QUOTE(source_order_id)) OR JSON_CONTAINS(:p1,JSON_QUOTE(target_order_id))\n          ORDER BY created_at DESC,id": {
+    "sql": "SELECT id,source_order_id,target_order_id,receipt_reference AS reference,amount,\n          DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS appliedAt FROM enrollment_payment_credits\n          WHERE JSON_CONTAINS(:p1,JSON_QUOTE(source_order_id)) OR JSON_CONTAINS(:p1,JSON_QUOTE(target_order_id))\n          ORDER BY created_at DESC,id",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50": {
     "sql": "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50",
     "sources": [
@@ -2924,8 +2931,8 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "SELECT o.*,e.state AS class_state,\n        EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,\n        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n        (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id\n      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')\n        OR (o.state='ended' AND o.received>0) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))\n      ORDER BY o.created_at DESC LIMIT 150": {
-    "sql": "SELECT o.*,e.state AS class_state,\n        EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,\n        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n        (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id\n      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')\n        OR (o.state='ended' AND o.received>0) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))\n      ORDER BY o.created_at DESC LIMIT 150",
+  "SELECT o.*,e.state AS class_state,\n        EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,\n        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n        (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id\n      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')\n        OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))\n      ORDER BY o.created_at DESC LIMIT 150": {
+    "sql": "SELECT o.*,e.state AS class_state,\n        EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,\n        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n        (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id\n      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')\n        OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))\n      ORDER BY o.created_at DESC LIMIT 150",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -2936,8 +2943,8 @@
       "server/portal/enrollmentNotices.ts"
     ]
   },
-  "SELECT o.id AS orderId,p.digest,p.transfer_details AS details,verified.amount AS verified,\n      COALESCE(r.amount,0) AS matched\n    FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1\n    JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s\n      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount<o.price\n    LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1\n      AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)\n    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS\n      (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n      AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n        AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ORDER BY p.created_at,p.id": {
-    "sql": "SELECT o.id AS orderId,p.digest,p.transfer_details AS details,verified.amount AS verified,\n      COALESCE(r.amount,0) AS matched\n    FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1\n    JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s\n      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount<o.price\n    LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1\n      AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)\n    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS\n      (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n      AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n        AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ORDER BY p.created_at,p.id",
+  "SELECT o.id AS orderId,p.digest,p.transfer_details AS details,verified.amount AS verified,\n      COALESCE(r.amount,0) AS matched\n    FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1\n    JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s\n      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount+\n      COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0)<o.price\n    LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1\n      AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)\n    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS\n      (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n      AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n        AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ORDER BY p.created_at,p.id": {
+    "sql": "SELECT o.id AS orderId,p.digest,p.transfer_details AS details,verified.amount AS verified,\n      COALESCE(r.amount,0) AS matched\n    FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1\n    JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s\n      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount+\n      COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0)<o.price\n    LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1\n      AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)\n    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS\n      (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n      AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n        AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ORDER BY p.created_at,p.id",
     "sources": [
       "server/portal/enrollmentProofTotals.ts"
     ]
@@ -2960,6 +2967,12 @@
       "server/portal/enrollmentResolution.ts"
     ]
   },
+  "SELECT o.id,o.created_at,o.data,o.state,o.price,o.received,b.state AS class_state\n    FROM enrollment_customer_records root\n    JOIN portal_leads original ON original.id=root.lead_id\n    JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    JOIN portal_leads member ON COALESCE(NULLIF(member.profile->>'$.identityMergedInto','null'),member.id)=canonical.id\n    JOIN enrollment_customer_records related ON related.lead_id=member.id AND related.kind='order'\n    JOIN enrollment_orders o ON o.id=related.record_id JOIN enrollment_classes b ON b.id=o.class_id\n    WHERE root.kind='order' AND root.record_id=:p1 AND o.email=:p2 AND b.data->>'$.level'=:p3\n      AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(member.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(original.profile->>'$.identityLifecycle','')<>'pending'\n      AND (o.state='expired' OR (b.state='published' AND o.state IN ('awaiting_payment','proof_review','partial')\n        AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6))))\n    ORDER BY o.created_at,o.id": {
+    "sql": "SELECT o.id,o.created_at,o.data,o.state,o.price,o.received,b.state AS class_state\n    FROM enrollment_customer_records root\n    JOIN portal_leads original ON original.id=root.lead_id\n    JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    JOIN portal_leads member ON COALESCE(NULLIF(member.profile->>'$.identityMergedInto','null'),member.id)=canonical.id\n    JOIN enrollment_customer_records related ON related.lead_id=member.id AND related.kind='order'\n    JOIN enrollment_orders o ON o.id=related.record_id JOIN enrollment_classes b ON b.id=o.class_id\n    WHERE root.kind='order' AND root.record_id=:p1 AND o.email=:p2 AND b.data->>'$.level'=:p3\n      AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(member.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(original.profile->>'$.identityLifecycle','')<>'pending'\n      AND (o.state='expired' OR (b.state='published' AND o.state IN ('awaiting_payment','proof_review','partial')\n        AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6))))\n    ORDER BY o.created_at,o.id",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
   "SELECT o.id,o.state,o.price,o.received,b.state AS class_state,b.data AS class_data,\n        DATE_FORMAT(p.first_proof,'%Y-%m-%dT%H:%i:%sZ') AS proofAt\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        JOIN (SELECT order_id,MIN(created_at) AS first_proof FROM enrollment_proofs WHERE order_id=:p1 GROUP BY order_id) p\n        ON p.order_id=o.id WHERE o.id=:p1": {
     "sql": "SELECT o.id,o.state,o.price,o.received,b.state AS class_state,b.data AS class_data,\n        DATE_FORMAT(p.first_proof,'%Y-%m-%dT%H:%i:%sZ') AS proofAt\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        JOIN (SELECT order_id,MIN(created_at) AS first_proof FROM enrollment_proofs WHERE order_id=:p1 GROUP BY order_id) p\n        ON p.order_id=o.id WHERE o.id=:p1",
     "sources": [
@@ -2969,7 +2982,7 @@
   "SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1": {
     "sql": "SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1",
     "sources": [
-      "server/portal/enrollmentApplication.ts"
+      "server/portal/enrollmentPaymentCredits.ts"
     ]
   },
   "SELECT order_id FROM enrollment_proofs WHERE id=:p1": {
@@ -3092,6 +3105,18 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "SELECT r.reference,r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n      WHERE a.receipt_reference=r.reference) AS available FROM enrollment_receipts r WHERE r.order_id=:p1\n      ORDER BY r.settled_at,r.reference": {
+    "sql": "SELECT r.reference,r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n      WHERE a.receipt_reference=r.reference) AS available FROM enrollment_receipts r WHERE r.order_id=:p1\n      ORDER BY r.settled_at,r.reference",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "SELECT r.reference,r.receiving_account AS account,\n      r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a WHERE a.receipt_reference=r.reference) AS amount\n    FROM enrollment_receipts r WHERE r.order_id=:p1\n    UNION ALL SELECT r.reference,r.receiving_account AS account,SUM(a.amount) AS amount\n      FROM enrollment_payment_credits a JOIN enrollment_receipts r ON r.reference=a.receipt_reference\n      WHERE a.target_order_id=:p1 GROUP BY r.reference,r.receiving_account ORDER BY reference": {
+    "sql": "SELECT r.reference,r.receiving_account AS account,\n      r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a WHERE a.receipt_reference=r.reference) AS amount\n    FROM enrollment_receipts r WHERE r.order_id=:p1\n    UNION ALL SELECT r.reference,r.receiving_account AS account,SUM(a.amount) AS amount\n      FROM enrollment_payment_credits a JOIN enrollment_receipts r ON r.reference=a.receipt_reference\n      WHERE a.target_order_id=:p1 GROUP BY r.reference,r.receiving_account ORDER BY reference",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
   "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200": {
     "sql": "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200",
     "sources": [
@@ -3112,12 +3137,6 @@
   },
   "SELECT reference FROM enrollment_refund_returns WHERE reference=:p1": {
     "sql": "SELECT reference FROM enrollment_refund_returns WHERE reference=:p1",
-    "sources": [
-      "server/portal/enrollmentResolution.ts"
-    ]
-  },
-  "SELECT reference,amount,receiving_account AS account FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference": {
-    "sql": "SELECT reference,amount,receiving_account AS account FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -3742,10 +3761,16 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "UPDATE enrollment_orders SET received=:p1,state=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3": {
-    "sql": "UPDATE enrollment_orders SET received=:p1,state=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3",
+  "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=UTC_TIMESTAMP(6) WHERE id=:p4": {
+    "sql": "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=UTC_TIMESTAMP(6) WHERE id=:p4",
     "sources": [
-      "server/portal/enrollmentApplication.ts"
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET received=received-:p1,data=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3": {
+    "sql": "UPDATE enrollment_orders SET received=received-:p1,data=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
     ]
   },
   "UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2": {
