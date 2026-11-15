@@ -25,7 +25,7 @@ export type EnrollmentAftercare = {
 };
 
 export function EnrollmentOrderAftercare({
-  order, details, catalog, search, language, minePath, proofPath, busy, onTransfer, onEnablePriority, onRefresh,
+  order, details, catalog, search, language, minePath, proofPath, busy, onTransfer, onEnablePriority, onRefresh, onCancel,
 }: {
   order: EnrollmentOrder;
   details?: EnrollmentAftercare;
@@ -38,6 +38,7 @@ export function EnrollmentOrderAftercare({
   onTransfer: (classId: string, choice: 'accept' | 'decline', invitationId?: string) => void;
   onEnablePriority: () => void;
   onRefresh: () => void;
+  onCancel?: () => void;
 }) {
   const [copyState,setCopyState] = useState<'copied'|'failed'>();
   const t = (copy: Copy) => interestText(language, copy);
@@ -48,7 +49,8 @@ export function EnrollmentOrderAftercare({
   const course = catalog.find(row=>row.id===order.classId) ?? details?.currentClass;
   const closed = details?.originalClassState==='cancelled';
   const expired = order.status==='expired' && !order.restored;
-  const lateProofSubmitted = expired && details?.lateProofSubmitted;
+  const learnerCancelled=order.closureReason==='learner_cancelled';
+  const lateProofSubmitted = (expired||learnerCancelled) && details?.lateProofSubmitted;
   const progress = details?.refundProgress;
   const transfers = details?.transfers ?? [];
   const invitations = details?.invitations ?? [];
@@ -100,7 +102,8 @@ export function EnrollmentOrderAftercare({
     {isOriginal&&closed&&<p>{originalClosed}</p>}
   </article>;
   const foot = (primary: React.ReactNode, secondary?: React.ReactNode) => <div className="enrollment-journey-actions">
-    {secondary&&<div className="enrollment-aftercare-secondary">{secondary}</div>}
+    {(secondary||onCancel)&&<div className="enrollment-aftercare-secondary">{secondary}
+      {onCancel&&<button type="button" className="enrollment-quiet" disabled={busy} onClick={onCancel}>{t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}</button>}</div>}
     {primary}
   </div>;
   const link = (label: string,to: string,primary = false) => <Link className={primary?'enrollment-primary':'enrollment-quiet'} to={to}>{label}</Link>;
@@ -255,12 +258,16 @@ export function EnrollmentOrderAftercare({
   } else if (order.status==='ended') {
     body = <>
       {classCard(course)}
-      <p className="enrollment-result-state" role="status">{t(['报名已结束','Enrollment ended','Pendaftaran telah berakhir'])}</p>
+      <p className="enrollment-result-state" role="status">{t(learnerCancelled?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:['报名已结束','Enrollment ended','Pendaftaran telah berakhir'])}</p>
       <article className="enrollment-record">
         <p>{t(['席位已释放，付款入口已关闭。','Your seat has been released and the payment link is closed.','Kursi telah dilepas dan tautan pembayaran ditutup.'])}</p>
         <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>
       </article>
-      {foot(link(backMine,minePath,true),allowRefundContact&&link(support,refundContactPath))}
+      {learnerCancelled&&lateProofSubmitted&&<p role="status">{t(['转账凭证待核实','Transfer proof awaiting verification','Bukti transfer menunggu verifikasi'])}</p>}
+      {foot(link(backMine,minePath,true),<>
+        {allowRefundContact&&link(support,refundContactPath)}
+        {learnerCancelled&&proofPath&&link(t(['补交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan']),proofPath)}
+      </>)}
     </>;
   } else if (expired) {
     body = <>
@@ -268,7 +275,7 @@ export function EnrollmentOrderAftercare({
       <p className="enrollment-result-state" role="status">{t(lateProofSubmitted
         ? ['订单已终止 · 转账凭证待核实','Order expired · Proof under review','Pesanan kedaluwarsa · Bukti sedang diperiksa']
         : order.received>0||order.creditOut ? ['订单已终止 · 已核实到账','Order expired · Payment verified','Pesanan kedaluwarsa · Pembayaran terverifikasi']
-        : ['订单已终止 · 未按时提交付款凭证','Order expired · No proof submitted in time','Pesanan kedaluwarsa · Bukti tidak dikirim tepat waktu'])}</p>
+        : ['订单已终止 · 付款超时','Order expired · No proof submitted in time','Pesanan kedaluwarsa · Bukti tidak dikirim tepat waktu'])}</p>
       <article className="enrollment-record">
         <h2>{t(order.received>0||order.creditOut?['收款状态','Payment status','Status pembayaran']:lateProofSubmitted?['下一步','What happens next','Langkah berikutnya']:['已经转账？','Already transferred?','Sudah transfer?'])}</h2>
         {order.received>0||order.creditOut ? <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received+(order.creditOut??0))}</p>

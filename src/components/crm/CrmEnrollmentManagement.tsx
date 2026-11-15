@@ -1,3 +1,4 @@
+import type { EnrollmentClosureReason } from '../../utils/enrollmentOrderStatus';
 import { useEffect, useState } from 'react';
 import { enrollmentCopy } from '../EnrollmentApplication';
 import { formatCrmEventTime } from '../../utils/crmOperatingTime';
@@ -21,7 +22,12 @@ const groups:Record<EnrollmentRosterState,Copy>={
   paid:['足额到账','Fully paid','Lunas'],
   held:['转班留位','Transfer hold','Kursi pindah kelas'],
   waiting:['候补中','On waitlist','Dalam daftar tunggu'],
-  history:['已结束记录','Past records','Catatan berakhir'],
+  history:['已关闭','Closed','Ditutup'],
+};
+const closeReasons:Record<EnrollmentClosureReason,Copy>={
+  learner_cancelled:['学员主动取消','Canceled by learner','Dibatalkan oleh siswa'],
+  payment_timeout:['付款超时','Payment deadline passed','Tenggat pembayaran terlewati'],
+  staff_ended:['员工手工结束','Closed by staff','Ditutup oleh staf'],
 };
 const actual:Record<string,Copy>={
   recovered:['已恢复报名','Enrollment restored','Pendaftaran dipulihkan'],
@@ -55,6 +61,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
   const [filter,setFilter]=useState<EnrollmentRosterState|''>('');
+  const [closure,setClosure]=useState('');
   const [classFilter,setClassFilter]=useState(()=>params.get('classStatus')??'');
   const classFilterQuery=classFilter?'&classStatus='+encodeURIComponent(classFilter):'';
   const changeClassFilter=(status:string)=>{
@@ -65,7 +72,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     window.history.replaceState(window.history.state,'',url);
   };
   useEffect(()=>{
-    setLoaded(undefined);setFilter('');
+    setLoaded(undefined);setFilter('');setClosure('');
   },[id,aftercare,employee.id,allowed]);
   useEffect(()=>{
     if(aftercare||!allowed)return;
@@ -83,7 +90,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   },[aftercare,allowed,id,authorizationKey,requestVersion]);
   const cohort=result&&'cohort' in result&&result.cohort.id===id?result.cohort:null;
   const classes=result&&'classes' in result?result.classes:undefined;
-  const rows=result&&'rows' in result&&cohort?result.rows.filter(row=>!filter||row.status===filter):undefined;
+  const rows=result&&'rows' in result&&cohort?result.rows.filter(row=>(!filter||row.status===filter)&&(filter!=='history'||!closure||row.closureReason===closure)):undefined;
   const title=t(['报名管理','Enrollment management','Pengelolaan pendaftaran']);
   const classTitle=(row:EnrollmentClassSummary)=>row.level+' · '+t(row.format==='standard'
     ?['标准班','Standard class','Kelas standar']:['小班','Small group','Kelompok kecil'])+' · '+formatCrmEventTime(row.firstLessonAt);
@@ -145,6 +152,8 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
               {t(groups[state])} <strong>{cohort.counts[state]}</strong>
             </button>)}
           </div>
+          {filter==='history'&&<div className="crm-opportunity-filters"><CrmSingleSelect lang={lang} isLight={isLight} label={t(['关闭原因','Closure reason','Alasan penutupan'])} value={closure} onChange={setClosure}
+            options={[{value:'',label:t(['全部原因','All reasons','Semua alasan'])},...Object.entries(closeReasons).map(([value,copy])=>({value,label:t(copy)}))]}/></div>}
           <h2>{t(['学员名单','Learner roster','Daftar siswa'])}</h2>
           <p className="crm-work-muted">{t(['上方数字是全班总数。下方只显示当前账号有权查看的记录。','Totals cover the whole class. The roster shows records you have access to.','Angka di atas mencakup seluruh kelas. Daftar hanya menampilkan catatan yang dapat Anda akses.'])}</p>
           {rows?.length?<div className="crm-opportunity-table"><table>
@@ -156,7 +165,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
               <td><strong>{row.name||t(['未记录姓名','Name not recorded','Nama belum dicatat'])}</strong>
                 {row.customerId&&<div className="crm-work-muted">{owner(row)}</div>}
                 {row.email&&<div>{row.email}</div>}{row.phone&&<div>{row.phone}</div>}</td>
-              <td>{t(actual[row.actualStatus]??groups[row.status])}</td>
+              <td>{t(row.closureReason?closeReasons[row.closureReason]:actual[row.actualStatus]??groups[row.status])}</td>
               <td>{row.price===undefined?'—':formatCurrency(row.price,lang)+' / '+formatCurrency(row.received??0,lang)}</td>
               <td>{row.dueAt&&['awaiting_payment','held'].includes(row.status)?formatCrmEventTime(row.dueAt):'—'}</td>
               <td><div className="crm-enrollment-row-actions">

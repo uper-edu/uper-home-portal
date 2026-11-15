@@ -1,3 +1,4 @@
+import { allowsEnrollmentProof } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -18,7 +19,7 @@ export const enrollmentStatuses: Record<string, Copy> = {
   partial: ['部分到账', 'Partially paid', 'Pembayaran sebagian'],
   paid: ['报名成功', 'Enrollment confirmed', 'Pendaftaran berhasil'],
   paid_cancelled: ['已到账 · 原班不开班', 'Paid · Original class cancelled', 'Sudah dibayar · Kelas asal dibatalkan'],
-  expired: ['订单已终止', 'Order expired', 'Pesanan kedaluwarsa'],
+  expired: ['订单已终止 · 付款超时', 'Order expired · Payment deadline passed', 'Pesanan kedaluwarsa · Tenggat pembayaran terlewati'],
   ended: ['报名已结束', 'Enrollment ended', 'Pendaftaran telah berakhir'],
   refunding: ['退款处理中','Refund in progress','Pengembalian diproses'],
   refunded: ['退款已完成','Refund complete','Pengembalian selesai'],
@@ -81,6 +82,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const [error,setError] = useState('');
   const [requestId] = useState(() => crypto.randomUUID());
   const [file,setFile] = useState<File>();
+  const cancelDialog=useRef<HTMLDialogElement>(null);
   const base = '/api/enrollment';
   async function getOrder(id:string) {
     const response = await fetch(base+'/orders/'+encodeURIComponent(id),{cache:'no-store'});
@@ -255,6 +257,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     enrollment_seat_available:['现在有空位，可以申请这个班。','A seat is available. You can apply now.','Ada kursi tersedia. Anda dapat mendaftar.'],
     enrollment_demand_conflict:['这条需求已更新或撤回，请刷新后查看。','This request has changed or been withdrawn. Refresh to review.','Permintaan berubah atau ditarik. Muat ulang.'],
     enrollment_code_wait:['请稍后再申请验证码。','Wait before requesting another code.','Tunggu sebelum meminta kode baru.'],
+    enrollment_cancel_not_available:['当前报名无法自行取消。请刷新核对是否已提交凭证、已到账或已超时。','This enrollment can no longer be canceled here. Refresh to check whether a proof was submitted, payment was verified, or the deadline passed.','Pendaftaran ini tidak lagi bisa dibatalkan di sini. Muat ulang untuk memeriksa bukti, pembayaran, atau tenggat.'],
     enrollment_invalid_code:['验证码无效或已过期。','The code is invalid or expired.','Kode tidak berlaku atau kedaluwarsa.'],
     enrollment_verification_required:['请验证邮箱后查看报名。','Verify your email to view the order.','Verifikasi email untuk melihat pesanan.'],
     enrollment_order_not_found:['找不到这条报名。','This enrollment could not be found.','Pendaftaran ini tidak ditemukan.'],
@@ -294,7 +297,14 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     next.set('order', id);
     return '/enrollment/payment?' + next.toString();
   };
-  const canUpload = order && !['paid','paid_cancelled','ended','refunding','refunded'].includes(order.status) && !order.restored;
+  const canUpload = order && order.status!=='paid_cancelled' && allowsEnrollmentProof(order.status,order.closureReason) && !order.restored;
+  const cancelable=order?.status==='awaiting_payment'&&order.received===0;
+  const openCancellation=()=>{if(cancelable){setError('');cancelDialog.current?.showModal();}};
+  const cancelEnrollment=()=>order&&void run(async()=>{
+    await enrollmentPost(base+'/orders/'+encodeURIComponent(order.id)+'/cancel',{});
+    cancelDialog.current?.close();
+    await getOrder(order.id);
+  });
   const status = order && t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status]);
   const emailLabel=t(['电子邮箱','Email address','Alamat email']);
   const sendLabel=t(challenge?['重发验证码','Resend code','Kirim ulang kode']:['发送验证码','Send code','Kirim kode']);
@@ -475,7 +485,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   }
   const orderCards = (orders ?? []).filter(()=>tab==='all'||tab==='orders').map(row => {
     const course = mineClasses?.find(item=>item.id===row.classId);
-    const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(enrollmentStatuses[row.status]);
+    const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(row.closureReason==='learner_cancelled'?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
     const payable = row.status==='awaiting_payment'&&!row.classCancelled;
     const action = t(payable ? ['查看转账与凭证','View transfer & proof','Lihat transfer dan bukti']
@@ -613,9 +623,9 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const records = sortEnrollmentRecords([...orderCards,...waitlistCards,...demandCards]);
   const activeRecords = records.filter(record=>record.active);
   const pastRecords = records.filter(record=>!record.active);
-  const editingProof = paymentClasses && params.get('proof')==='upload' && order?.status!=='ended';
+  const editingProof = paymentClasses && params.get('proof')==='upload' && !!canUpload;
   const existingTransferOnly = !!(editingProof && order && !order.bank &&
-    (order.status==='expired' || aftercare?.originalClassState==='cancelled'));
+    (order.status==='expired' || order.closureReason==='learner_cancelled' || aftercare?.originalClassState==='cancelled'));
   const originalOrderParams = new URLSearchParams(mineParams);
   if (order) originalOrderParams.set('order',order.id);
   const refundMode = aftercare?.refund.mode;
@@ -639,10 +649,19 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   if (!open) return <button className="enrollment-action" type="button" onClick={()=>setOpen(true)}>{hasNoSeat?joinText:applyText}</button>;
   return <section className={showAftercare || showOrderResult ? "enrollment-application enrollment-order-result-shell" : mineClasses && !order ? "enrollment-application enrollment-mine-content" : order && paymentClasses ? "enrollment-application enrollment-payment-content" : "enrollment-card enrollment-application"}>
     {error && !(paymentClasses && order && ['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)) && <p role="alert">{t(message)}</p>}
+    <dialog className="enrollment-cancel-dialog" ref={cancelDialog} aria-labelledby="enrollment-cancel-title" onCancel={event=>{if(busy)event.preventDefault();}}>
+      <h2 id="enrollment-cancel-title">{t(['取消这笔报名？','Cancel this enrollment?','Batalkan pendaftaran ini?'])}</h2>
+      <p>{t(['取消后，付款入口会关闭，席位会释放。如果你已经转账，请先提交凭证。','Canceling closes the payment link and releases your seat. If you already transferred the money, submit the proof first.','Pembatalan menutup pembayaran dan melepas kursi. Jika sudah transfer, kirim bukti terlebih dahulu.'])}</p>
+      {error&&<p role="alert">{t(message)}</p>}
+      <div className="enrollment-cancel-actions">
+        <button type="button" className="enrollment-quiet" autoFocus disabled={busy} onClick={()=>cancelDialog.current?.close()}>{t(['保留报名','Keep enrollment','Pertahankan pendaftaran'])}</button>
+        <button type="button" className="enrollment-primary" disabled={busy} onClick={cancelEnrollment}>{t(['确认取消','Confirm cancellation','Konfirmasi pembatalan'])}</button>
+      </div>
+    </dialog>
     {checkingRecords || loadingPayment ? <p role="status">{t(['正在读取报名…','Loading enrollment…','Memuat pendaftaran…'])}</p> : order ? <>
       {showAftercare ? <EnrollmentOrderAftercare order={order} details={aftercare} catalog={orderResultClasses} search={params}
         language={language} minePath={listPath} busy={busy} proofPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
-        onTransfer={transfer} onEnablePriority={enablePriority} onRefresh={()=>void run(()=>getOrder(order.id))}/> : showOrderResult ? <EnrollmentOrderResult order={order} course={resultCourse} classInfo={aftercare?.currentClass}
+        onCancel={cancelable?openCancellation:undefined} onTransfer={transfer} onEnablePriority={enablePriority} onRefresh={()=>void run(()=>getOrder(order.id))}/> : showOrderResult ? <EnrollmentOrderResult order={order} course={resultCourse} classInfo={aftercare?.currentClass}
         classState={aftercare?.originalClassState} language={language} backPath={listPath} busy={busy}
         refundPath={canConsultRefund ? '/enrollment/mine?'+refundParams.toString() : undefined}
         balancePath={order.status==='partial' ? '/enrollment/payment?'+proofParams.toString() : undefined}
@@ -657,7 +676,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
           </div>
         </>}
         <EnrollmentPayment order={order} course={resultCourse} classInfo={aftercare?.currentClass} language={language}
-          status={status ?? ''} canUpload={!!canUpload} file={file} busy={busy} setFile={setFile}
+          status={status ?? ''} onCancel={cancelable?openCancellation:undefined} canUpload={!!canUpload} file={file} busy={busy} setFile={setFile}
           upload={transfer=>void upload(transfer)} existingTransferOnly={existingTransferOnly}
           proofUploadFailed={['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)}/>
       </div> : <>
@@ -669,6 +688,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       <p>{t(['报名编号','Order number','Nomor pendaftaran'])} {order.id}</p>
       <p>{t(['应付','Amount due','Tagihan'])} {formatCurrency(order.price,language)} · {t(['实际到账','Verified receipts','Dana terverifikasi'])} {formatCurrency(order.received,language)}</p>
       {order.status==='awaiting_payment' && <p>{t(['付款截止','Payment deadline','Batas pembayaran'])} {new Intl.DateTimeFormat(language==='zh'?'zh-CN':language,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(order.deadline))} WIB</p>}
+      {cancelable&&<button type="button" className="enrollment-quiet" onClick={openCancellation}>{t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}</button>}
       {canUpload && <Link className="enrollment-action" to={paymentPath(order.id)}>
         {t(['转账与凭证','Transfer & proof','Transfer dan bukti'])}
       </Link>}

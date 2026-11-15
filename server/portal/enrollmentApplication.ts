@@ -9,7 +9,7 @@ import type { Employee } from './identity.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
-import { enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
+import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
 import { mountEnrollmentRules, readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
 import { workingDayDeadline } from '../../src/utils/workCalendar.ts';
@@ -82,7 +82,7 @@ function view(row: any, classState: string) {
   const status = enrollmentOrderStatus(row.state,classState);
   return { id: row.id, classId: row.class_id, status: status === 'recovered' ? 'expired' : status,
     restored: status === 'recovered', learnerName: row.data?.name, price: row.price,
-    received: Number(row.received), deadline: row.payment_due_at.replace(' ', 'T') + 'Z',
+    received: Number(row.received), closureReason:enrollmentClosureReason(row.state,row.data?.closureReason), deadline: row.payment_due_at.replace(' ', 'T') + 'Z',
     ...(row.data?.creditIn?{creditIn:Number(row.data.creditIn)}:{}),...(row.data?.creditOut?{creditOut:Number(row.data.creditOut)}:{}) };
 }
 
@@ -127,7 +127,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   };
   const supportActor = async (q:Request) => {
     const actor=await staff(q,'crm.followup');
-    if(!permittedRecord(actor,{},'crm.read')||!permittedRecord(actor,{},'crm.followup')) invalid('enrollment_support_forbidden',403);
+    if(!actor.permissions.includes('crm.read')) invalid('enrollment_support_forbidden',403);
     return actor;
   };
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
@@ -174,7 +174,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
           id:row.id,level:row.data.level,format:row.data.format,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
         })):[];
       const status=await enrollmentAftercareStatus(c,order.id);
-      const lateProofSubmitted=order.state==='expired'&&verified===0&&!order.data?.creditOut&&
+      const lateProofSubmitted=(order.state==='expired'||enrollmentClosureReason(order.state,order.data?.closureReason)==='learner_cancelled')&&verified===0&&!order.data?.creditOut&&
         (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[order.id])).rows.length>0;
       return { originalClassState:cohort.state, currentClass:{
         level:cohort.data.level,format:cohort.data.format,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
@@ -358,7 +358,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   post(base + '/orders/:id/proofs/start', async (q, r) => {
     const uploadId = await enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
-      if (['paid','recovered','ended','refunding','refunded'].includes(order.state)) invalid('enrollment_proof_not_available', 409);
+      if (!allowsEnrollmentProof(order.state,order.data?.closureReason)) invalid('enrollment_proof_not_available', 409);
       if (Number(order.upload_active)) return order.upload_id;
       const id = randomUUID();
       await c.query('UPDATE enrollment_orders SET upload_id=:p1,upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id=:p2', [id,order.id]);
@@ -375,7 +375,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
       const prior = (await c.query('SELECT order_id FROM enrollment_proofs WHERE id=:p1', [uploadId])).rows[0];
       if (prior?.order_id === order.id) return view(order,cohort.state);
-      if (order.upload_id !== uploadId || !Number(order.upload_active) || ['paid','recovered','ended','refunding','refunded'].includes(order.state)) {
+      if (order.upload_id !== uploadId || !Number(order.upload_active) || !allowsEnrollmentProof(order.state,order.data?.closureReason)) {
         invalid('enrollment_upload_expired', 409);
       }
       let digest, transferDetails;

@@ -2,6 +2,7 @@ import type { Express, Request, Response } from 'express';
 import { allowed, type Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import { enrollmentManagementScopes, enrollmentRosterStates, type EnrollmentClassSummary, type EnrollmentRosterEntry, type EnrollmentRosterState } from '../../src/utils/crmEnrollmentManagement.ts';
+import { enrollmentClosureReason } from '../../src/utils/enrollmentOrderStatus.ts';
 import { invalid } from './trustWorkflow.ts';
 import { tx } from './store.ts';
 
@@ -14,13 +15,13 @@ const orderState=`CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.pa
   AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END`;
 const inviteDeadline=`LEAST(i.expires_at,DATE(b.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)`;
 const orders=`SELECT o.class_id,o.id,o.id AS record_id,'order' AS kind,${orderState} AS state,
-    o.data->>'$.name' AS name,o.email,o.data->>'$.phone' AS phone,o.price,o.received,o.payment_due_at AS due_at
+    o.data->>'$.name' AS name,o.email,o.data->>'$.phone' AS phone,o.price,o.received,o.payment_due_at AS due_at,o.data->>'$.closureReason' AS recorded_closure
   FROM enrollment_orders o WHERE (:p1 IS NULL OR o.class_id=:p1)`;
 const waitlist=`SELECT w.class_id,w.id,w.id AS record_id,'waitlist' AS kind,w.state,w.learner_name AS name,
-    w.email,w.phone,NULL AS price,NULL AS received,NULL AS due_at
+    w.email,w.phone,NULL AS price,NULL AS received,NULL AS due_at,NULL AS recorded_closure
   FROM enrollment_waitlist w WHERE (:p1 IS NULL OR w.class_id=:p1)`;
 const invitations=`SELECT i.target_class_id AS class_id,i.id,o.id AS record_id,'order' AS kind,
-    'held' AS state,o.data->>'$.name' AS name,o.email,o.data->>'$.phone' AS phone,NULL AS price,NULL AS received,${inviteDeadline} AS due_at
+    'held' AS state,o.data->>'$.name' AS name,o.email,o.data->>'$.phone' AS phone,NULL AS price,NULL AS received,${inviteDeadline} AS due_at,NULL AS recorded_closure
   FROM enrollment_transfer_invitations i JOIN enrollment_classes b ON b.id=i.target_class_id
   JOIN enrollment_orders o ON o.id=i.order_id
   WHERE i.state='offered' AND ${inviteDeadline}>UTC_TIMESTAMP(6) AND (:p1 IS NULL OR i.target_class_id=:p1)`;
@@ -89,6 +90,7 @@ async function roster(c:Client,actor:Employee,scope:Scope,id:string){
       customerId:customerVisible?row.customer_id:null,opportunityId:customerVisible?row.opportunity_id:null,
       owner:customerVisible?row.profile.owner??null:null,
       ...(contact?{email:row.email??undefined,phone:row.phone??undefined}:{}),
+      closureReason:row.kind==='order'?enrollmentClosureReason(row.state,row.recorded_closure):undefined,
       dueAt:row.due_at??null,
       ...(row.price!==null&&(customerVisible||canVerify)?{price:Number(row.price),received:Number(row.received)}:{}),canVerify,
     }];

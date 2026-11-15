@@ -1,3 +1,4 @@
+import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
 import { enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
@@ -11,6 +12,7 @@ export type EnrollmentOrder = {
   status: string;
   restored: boolean;
   learnerName?: string;
+  closureReason?: EnrollmentClosureReason;
   price: number;
   received: number;
   creditIn?: number;
@@ -21,7 +23,7 @@ export type EnrollmentOrder = {
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false }: {
+export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false, onCancel }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
   classInfo?:{firstLesson:string;schedule:string;level?:string;format?:string;decisionAt?:string;opened?:boolean};
@@ -33,6 +35,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   setFile: (file?: File) => void;
   upload: (transfer:{reportedAmount?:number;bankReference?:string}) => void;
   existingTransferOnly?: boolean;
+  onCancel?: ()=>void;
   proofUploadFailed?: boolean;
 }) {
   const t = (zh: string, en: string, id: string) => language === 'zh' ? zh : language === 'en' ? en : id;
@@ -168,6 +171,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         </div>
       </section>
       <div className="enrollment-proof-actions enrollment-payment-actions">
+        {onCancel&&<button className="enrollment-quiet" type="button" disabled={busy} onClick={onCancel}>{t('取消报名','Cancel enrollment','Batalkan pendaftaran')}</button>}
         {!existingTransferOnly && <p>{t('财务核实足额到账后，报名才算成功。', 'Enrollment is confirmed after Finance verifies full payment.', 'Pendaftaran berhasil setelah pembayaran penuh diverifikasi.')}</p>}
         <button className="enrollment-primary" type="submit" disabled={busy || !file}>{existingTransferOnly
           ? t('提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan')

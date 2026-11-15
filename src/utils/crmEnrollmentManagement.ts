@@ -1,3 +1,4 @@
+import type { EnrollmentClosureReason } from './enrollmentOrderStatus';
 import { permittedRecord, type AccessEmployee } from './accessControl';
 
 export const enrollmentManagementScopes = (actor:AccessEmployee) => ({
@@ -20,6 +21,6 @@ export type EnrollmentClassSummary={
 export type EnrollmentRosterEntry={
   id:string; status:EnrollmentRosterState; actualStatus:string; name:string;
   customerId:string|null; opportunityId:string|null; owner:string|null; email?:string; phone?:string;
-  dueAt:string|null; price?:number; received?:number; canVerify:boolean;
+  closureReason?:EnrollmentClosureReason; dueAt:string|null; price?:number; received?:number; canVerify:boolean;
 };
 export const enrollmentClassManagementPath=(id:string)=>'/crm?tab=enrollment-management&classId='+encodeURIComponent(id);

@@ -220,7 +220,7 @@ function CrmWorkspace({
   const canAssign = employee.permissions.includes("crm.assign");
   const canFinance = canVerifyPayments(employee);
   const canEnrollmentManagement=canViewEnrollmentManagement(employee);
-  const canEnrollmentSupport=permittedRecord(employee,{},"crm.read")&&permittedRecord(employee,{},"crm.followup");
+  const canEnrollmentSupport=employee.permissions.includes("crm.read")&&employee.permissions.includes("crm.followup");
   const [rulesDirty,setRulesDirty]=useState(false);
   const canManageCampaigns = employee.active !== false && employee.permissions.includes("campaigns.manage");
   const paymentQueue = useCrmQueueSummary("payments", canFinance ? employee.id : undefined);

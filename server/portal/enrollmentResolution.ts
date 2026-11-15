@@ -1,4 +1,9 @@
 import type { Express, Request, Response } from 'express';
+import type { Employee } from './identity.ts';
+import { permittedRecord } from '../../src/utils/accessControl.ts';
+import { isCrmManager } from '../../src/utils/crmOutreach.ts';
+import { enrollmentClosureReason } from '../../src/utils/enrollmentOrderStatus.ts';
+import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { invalid, operation } from './trustWorkflow.ts';
 import { allowsEnrollment, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
@@ -19,7 +24,7 @@ type Context={
   transact:(work:(c:Client)=>Promise<any>)=>Promise<any>; read:(work:(c:Client)=>Promise<any>)=>Promise<any>; session:(c:Client,q:Request)=>Promise<string>;
   lockOrder:(c:Client,id:string,email?:string)=>Promise<{order:any;cohort:any}>;
   lockClass:(c:Client,id:string)=>Promise<any>; expireSeats:(c:Client,id:string)=>Promise<void>;
-  financeActor:Actor; supportActor:Actor;
+  financeActor:Actor; supportActor:(q:Request)=>Promise<Employee>;
 };
 
 async function refundLedger(c:Client,id:string) {
@@ -55,6 +60,7 @@ export async function enrollmentAftercareStatus(c:Client,id:string) {
 
 const classId = (value:unknown) => typeof value==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(value);
 const reference = (value:unknown) => typeof value==='string' && value.trim() && value.length<=120 ? value.trim().toUpperCase() : null;
+const mayDecideRefund=(actor:Employee)=>Boolean(isCrmManager(actor)&&permittedRecord(actor,{},'crm.read')&&permittedRecord(actor,{},'crm.followup'));
 const endable = ['awaiting_payment','proof_review','partial','paid','recovered'];
 function sameClass(actual:string, expected:unknown) {
   if(actual!==expected) invalid('enrollment_aftercare_conflict',409);
@@ -85,17 +91,63 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     }
   }
 
+  async function manager(q:Request) {
+    const actor=await supportActor(q);
+    if(!mayDecideRefund(actor))invalid('enrollment_support_forbidden',403);
+    return actor;
+  }
+  async function authorizeInvitation(c:Client,actor:Employee,id:string,protect=false) {
+    if(mayDecideRefund(actor))return;
+    if(protect)await lockIdentityRegistry(c);
+    const customer=(await c.query(`SELECT canonical.profile FROM enrollment_customer_records r
+      JOIN portal_leads l ON l.id=r.lead_id
+      JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id)
+      WHERE r.kind='order' AND r.record_id=:p1`+(protect?' FOR SHARE':''),[id])).rows[0]?.profile;
+    if(!customer||customer.owner!==actor.id||customer.identityLifecycle==='pending'||
+      !permittedRecord(actor,customer,'crm.read')||!permittedRecord(actor,customer,'crm.followup'))
+      invalid('enrollment_support_forbidden',403);
+  }
+
+  post(learner+'/cancel',async(q,r)=>{
+    const id=String(q.params.id);
+    const result=await transact(async c=>{
+      const {order,cohort}=await lockOrder(c,id,await session(c,q));
+      if(enrollmentClosureReason(order.state,order.data?.closureReason)==='learner_cancelled')
+        return {orderId:id,state:'ended',closureReason:'learner_cancelled'};
+      if(order.state!=='awaiting_payment'||Number(order.received)!==0||Number(order.upload_active)||
+        (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[id])).rows.length)
+        invalid('enrollment_cancel_not_available',409);
+      await c.query(`UPDATE enrollment_orders SET state='ended',data=JSON_SET(data,'$.closureReason','learner_cancelled'),
+        activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1`,[id]);
+      await releaseInvites(c,id);
+      await reconcileWaitlist(c,cohort,await takenSeats(c,cohort.id));
+      await c.query("INSERT INTO portal_audit(actor,action,data) VALUES('learner','enrollment.order.cancel',:p1)",
+        [{orderId:id,classId:cohort.id,closureReason:'learner_cancelled'}]);
+      return {orderId:id,state:'ended',closureReason:'learner_cancelled'};
+    });
+    r.json(result);
+  });
+
   app.get(staff,wrap(async (q,r)=>{
-    await supportActor(q);
+    const actor=await supportActor(q);
+    const all=mayDecideRefund(actor);
     const orders=await read(async c=>(await c.query(`SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,
-      EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened
+      EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened,canonical.profile
       FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
-      WHERE o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')
-        OR (o.received>0 AND o.state IN ('expired','ended')) ORDER BY o.created_at DESC LIMIT 100`)).rows.map(o=>({
-        id:o.id,classId:o.class_id,name:o.data.name,received:Number(o.received),opened:Number(o.opened)===1,
-        level:o.class_data.level,format:o.class_data.format,canInvite:canSelectTransfer(o,{state:o.class_state}),
-        priorityRequested:o.data.priority===true,canEnd:endable.includes(o.state),canRefund:Number(o.received)>0,ended:o.state==='ended',
-      })));
+      LEFT JOIN enrollment_customer_records link ON link.kind='order' AND link.record_id=o.id
+      LEFT JOIN portal_leads existing ON existing.id=link.lead_id
+      LEFT JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(existing.profile->>'$.identityMergedInto','null'),existing.id)
+      WHERE (:p1=1 AND (o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')
+        OR (o.received>0 AND o.state IN ('expired','ended'))))
+        OR (canonical.profile->>'$.owner'=:p2 AND e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price)
+      ORDER BY o.created_at DESC LIMIT 100`,[Number(all),actor.id])).rows.flatMap(o=>{
+      const canInvite=canSelectTransfer(o,{state:o.class_state});
+      if(!all&&(!canInvite||o.profile?.identityLifecycle==='pending'||!permittedRecord(actor,o.profile,'crm.read')||
+        !permittedRecord(actor,o.profile,'crm.followup')))return [];
+      return [{id:o.id,classId:o.class_id,name:o.data.name,received:Number(o.received),opened:Number(o.opened)===1,
+        level:o.class_data.level,format:o.class_data.format,canInvite,
+        priorityRequested:o.data.priority===true,canEnd:all&&endable.includes(o.state),canRefund:all&&Number(o.received)>0,ended:o.state==='ended'}];
+    }));
     r.set('Cache-Control','no-store').json({orders});
   }));
   app.get('/api/crm/enrollment/finance/:id/refund-details',wrap(async(q,r)=>{
@@ -136,19 +188,22 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     const id=String(q.params.id);
     const to=q.body?.targetClassId;
     if(!classId(to)) invalid('enrollment_invalid_transfer');
-    const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.transfer.invite',authorize:()=>supportActor(q)},async()=>{
+    const result=await transact(async c=>{
       const {order,cohort}=await lockOrder(c,id);
-      sameClass(cohort.id,q.body.classId);
-      const existing=(await c.query(`SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
-        WHERE i.order_id=:p1 AND i.state='offered'
-          AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
-        FOR UPDATE OF i`,[id])).rows[0];
-      if(existing) invalid('enrollment_active_invitation',409);
-      const next=await target(c,cohort,order,to);
-      const invitation=await createEnrollmentTransferInvitation(c,id,cohort.id,next,actor.id);
-      if(!invitation) invalid('enrollment_transfer_unavailable',409);
-      return invitation;
-    }));
+      return operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.transfer.invite',authorize:async()=>authorizeInvitation(c,await supportActor(q),id)},async()=>{
+        sameClass(cohort.id,q.body.classId);
+        const existing=(await c.query(`SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
+          WHERE i.order_id=:p1 AND i.state='offered'
+            AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+          FOR UPDATE OF i`,[id])).rows[0];
+        if(existing) invalid('enrollment_active_invitation',409);
+        const next=await target(c,cohort,order,to);
+        await authorizeInvitation(c,actor,id,true);
+        const invitation=await createEnrollmentTransferInvitation(c,id,cohort.id,next,actor.id);
+        if(!invitation) invalid('enrollment_transfer_unavailable',409);
+        return invitation;
+      });
+    });
     r.json(result);
   });
 
@@ -201,11 +256,11 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
   });
 
   post(staff+'/:id/end',async(q,r)=>{
-    const actor=await supportActor(q);
+    const actor=await manager(q);
     const id=String(q.params.id);
     const reason=q.body?.reason;
     if(typeof reason!=='string'||!reason.trim()||reason.length>1000) invalid('enrollment_end_reason_required');
-    const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.order.end',authorize:()=>supportActor(q)},async()=>{
+    const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.order.end',authorize:()=>manager(q)},async()=>{
       const {order,cohort}=await lockOrder(c,id);
       sameClass(cohort.id,q.body.classId);
       if(!endable.includes(order.state)) invalid('enrollment_end_unavailable',409);
@@ -220,14 +275,14 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
   });
 
   post(staff+'/:id/refund',async(q,r)=>{
-    const actor=await supportActor(q);
+    const actor=await manager(q);
     const id=String(q.params.id);
     const {reason,delivered,special,requestedAt}=q.body || {};
     if(typeof reason!=='string'||!reason.trim()||reason.length>1000||!Number.isSafeInteger(delivered)||delivered<0||typeof special!=='boolean') invalid('enrollment_invalid_refund');
     const clock=new Date();
     const requested=requestedAt===undefined?clock:typeof requestedAt==='string'&&/(Z|[+-]\d{2}:\d{2})$/.test(requestedAt)?new Date(requestedAt):null;
     if(!requested||!Number.isFinite(requested.getTime())||requested>clock)invalid('enrollment_invalid_refund_request_time');
-    const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.refund.intake',authorize:()=>supportActor(q)},async()=>{
+    const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.refund.intake',authorize:()=>manager(q)},async()=>{
       const {order,cohort}=await lockOrder(c,id);
       sameClass(cohort.id,q.body.classId);
       const opened=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[cohort.id])).rows[0];

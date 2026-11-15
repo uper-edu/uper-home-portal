@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../src/utils/enrollmentAftercare';
-import { enrollmentLearnerNameKey, enrollmentOrderStatus } from '../src/utils/enrollmentOrderStatus';
+import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentLearnerNameKey, enrollmentOrderStatus } from '../src/utils/enrollmentOrderStatus';
 
 test('a transfer requires a cancelled source class and verified full payment',()=>{
   assert.equal(canSelectTransfer({state:'paid',received:575000,price:575000},{state:'cancelled'}),true);
@@ -28,4 +28,15 @@ test('paid in a cancelled class retains payment without confirming admission',()
 test('learner name identity normalizes spelling presentation without collapsing siblings',()=>{
   assert.equal(enrollmentLearnerNameKey(' Maya　 Putri '),enrollmentLearnerNameKey('ＭＡＹＡ Putri'));
   assert.notEqual(enrollmentLearnerNameKey('Maya Putri'),enrollmentLearnerNameKey('Nina Putri'));
+});
+
+test('learner cancellation and timeout stay closed with distinct reasons and permit supplemental proof',()=>{
+  assert.equal(enrollmentClosureReason('ended','learner_cancelled'),'learner_cancelled');
+  assert.equal(enrollmentClosureReason('expired'),'payment_timeout');
+  assert.equal(enrollmentClosureReason('ended'),'staff_ended');
+  assert.equal(enrollmentClosureReason('recovered'),undefined);
+  assert.equal(allowsEnrollmentProof('ended','learner_cancelled'),true);
+  assert.equal(allowsEnrollmentProof('expired'),true);
+  assert.equal(allowsEnrollmentProof('ended'),false);
+  assert.equal(allowsEnrollmentProof('refunding','learner_cancelled'),false);
 });

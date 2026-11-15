@@ -633,3 +633,9 @@
 
 .enrollment-appointment-card .enrollment-class-bottom { margin-top: 12px; }
 .enrollment-price-unit { font-size: 12px; font-weight: 600; color: var(--enrollment-muted); }
+
+.enrollment-cancel-dialog { max-width:min(100% - 32px,420px); padding:24px; border:1px solid #dce5e4; border-radius:16px; color:#172631; }
+.enrollment-cancel-dialog::backdrop { background:rgb(15 30 40 / 45%); }
+.enrollment-cancel-dialog h2 { margin:0 0 12px; }
+.enrollment-cancel-dialog p { margin:0 0 16px; }
+.enrollment-cancel-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px; }
