@@ -1,3 +1,4 @@
+import { enrollmentRuleDefaults } from '../../src/utils/enrollmentRules.ts';
 import { formatCurrency } from '../../src/utils/currency.ts';
 
 type Copy = readonly [string,string,string];
@@ -17,7 +18,7 @@ export const enrollmentEmailSubjects = {
   demand_match:['有班次符合你登记的选课需求','A class matches your preferences','Ada kelas yang sesuai dengan pilihanmu'],
 } as const;
 export type EnrollmentEmailKind = keyof typeof enrollmentEmailSubjects;
-type Facts = {language:unknown; salutation?:string; class?:string; firstLesson?:string; schedule?:string; code?:string;
+type Facts = {language:unknown; salutation?:string; class?:string; firstLesson?:string; schedule?:string; code?:string; codeMinutes?:number;
   deadline?:string; url?:string; orderId?:string; price?:number; received?:number; expected?:number; refunded?:number;
   installment?:number; targetClass?:string; targetFirstLesson?:string; replyBy?:string; orderState?:string};
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -72,8 +73,9 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
     [tr(['销售客服','Contact support','Hubungi layanan pelanggan']),official+'/contact?lang='+language],
   ];
   const url=facts.url?.startsWith('/')&&!facts.url.startsWith('//')?enrollmentPreviewOrigin+facts.url:undefined;
+  const codeMinutes=facts.codeMinutes??enrollmentRuleDefaults.emailCodeMinutes;
   const paragraphs=[
-    ...(otp?[tr(['验证码 10 分钟内有效，请勿转发。若非本人操作，可忽略。','The code expires in 10 minutes. Keep it private. If you did not request it, ignore this email.','Kode berlaku 10 menit. Jangan bagikan. Abaikan email jika kamu tidak memintanya.'])]:[]),
+    ...(otp?[tr([`验证码 ${codeMinutes} 分钟内有效，请勿转发。若非本人操作，可忽略。`,`The code expires in ${codeMinutes} ${codeMinutes===1?'minute':'minutes'}. Keep it private. If you did not request it, ignore this email.`,`Kode berlaku ${codeMinutes} menit. Jangan bagikan. Abaikan email jika kamu tidak memintanya.`])]:[]),
     ...body[kind], ...(!otp&&facts.orderId?[tr(['报名编号','Enrollment reference','Nomor pendaftaran'])+' · '+facts.orderId]:[]),
   ].filter(Boolean);
   const code=otp?facts.code:undefined;

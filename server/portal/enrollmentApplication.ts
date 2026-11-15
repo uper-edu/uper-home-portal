@@ -185,10 +185,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const row = (await c.query(`SELECT resend_at>UTC_TIMESTAMP(6) AS blocked,locked_until>UTC_TIMESTAMP(6) AS locked
         FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE`, [email])).rows[0];
       if (Number(row.blocked) || Number(row.locked)) invalid('enrollment_code_wait', 429);
+      const {emailCodeMinutes,emailResendSeconds}=await readEnrollmentRules(c);
       await c.query(`UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,
-        expires_at=UTC_TIMESTAMP(6)+INTERVAL 10 MINUTE,resend_at=UTC_TIMESTAMP(6)+INTERVAL 60 SECOND WHERE email=:p3`,
-      [id, otpHash(id, code), email]);
-      await local.deliver(id,email,code,renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{language:q.body.language,code}));
+        expires_at=TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),resend_at=TIMESTAMPADD(SECOND,:p5,UTC_TIMESTAMP(6)) WHERE email=:p3`,
+      [id, otpHash(id, code), email,emailCodeMinutes,emailResendSeconds]);
+      await local.deliver(id,email,code,renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{
+        language:q.body.language,code,codeMinutes:emailCodeMinutes,
+      }));
     });
     r.json({ challengeId: id });
   });
@@ -198,21 +201,24 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const { challengeId, code } = q.body;
     if (!uuid.test(challengeId) || typeof code !== 'string' || !/^\d{6}$/.test(code)) invalid('enrollment_invalid_code');
     const token = randomBytes(32).toString('hex');
-    const verified = await enrollTx(async (c: Client) => {
-      const row = (await c.query(`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active,locked_until>UTC_TIMESTAMP(6) AS locked
+    const sessionHours = await enrollTx(async (c: Client) => {
+      const row = (await c.query(`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active
         FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE`, [email])).rows[0];
-      if (!row || row.challenge_id !== challengeId || !Number(row.active) || Number(row.used) || Number(row.locked)) return false;
+      if (!row || row.challenge_id !== challengeId || !Number(row.active) || Number(row.used) || row.locked_until) return null;
+      const rules=await readEnrollmentRules(c);
       if (!timingSafeEqual(Buffer.from(otpHash(challengeId, code), 'hex'), Buffer.from(row.digest, 'hex'))) {
         await c.query(`UPDATE enrollment_email_challenges SET attempts=:p1,
-          locked_until=IF(:p1>=5,UTC_TIMESTAMP(6)+INTERVAL 10 MINUTE,NULL) WHERE email=:p2`, [Number(row.attempts) + 1, email]);
-        return false;
+          locked_until=IF(:p1>=:p3,TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),NULL) WHERE email=:p2`,
+        [Number(row.attempts)+1,email,rules.emailAttemptLimit,rules.emailLockMinutes]);
+        return null;
       }
       await c.query('UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1', [email]);
-      await c.query('INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR)', [sha(token), email]);
-      return true;
+      await c.query('INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))',
+        [sha(token),email,rules.emailSessionHours]);
+      return rules.emailSessionHours;
     });
-    if (!verified) invalid('enrollment_invalid_code', 401);
-    r.cookie(sessionCookie, token, { httpOnly: true, secure: q.secure, sameSite: 'strict', path: base, maxAge: 86_400_000 });
+    if (sessionHours===null) invalid('enrollment_invalid_code', 401);
+    r.cookie(sessionCookie, token, { httpOnly: true, secure: q.secure, sameSite: 'strict', path: base, maxAge: sessionHours*3_600_000 });
     r.json({ verified: true });
   });
 

@@ -353,8 +353,8 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR)": {
-    "sql": "INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR)",
+  "INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))": {
+    "sql": "INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -1518,8 +1518,8 @@
       "cloud/mysql/site.mjs"
     ]
   },
-  "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active,locked_until>UTC_TIMESTAMP(6) AS locked\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE": {
-    "sql": "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active,locked_until>UTC_TIMESTAMP(6) AS locked\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE",
+  "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE": {
+    "sql": "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -3516,14 +3516,14 @@
       "server/portal/enrollmentInterests.ts"
     ]
   },
-  "UPDATE enrollment_email_challenges SET attempts=:p1,\n          locked_until=IF(:p1>=5,UTC_TIMESTAMP(6)+INTERVAL 10 MINUTE,NULL) WHERE email=:p2": {
-    "sql": "UPDATE enrollment_email_challenges SET attempts=:p1,\n          locked_until=IF(:p1>=5,UTC_TIMESTAMP(6)+INTERVAL 10 MINUTE,NULL) WHERE email=:p2",
+  "UPDATE enrollment_email_challenges SET attempts=:p1,\n          locked_until=IF(:p1>=:p3,TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),NULL) WHERE email=:p2": {
+    "sql": "UPDATE enrollment_email_challenges SET attempts=:p1,\n          locked_until=IF(:p1>=:p3,TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),NULL) WHERE email=:p2",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,\n        expires_at=UTC_TIMESTAMP(6)+INTERVAL 10 MINUTE,resend_at=UTC_TIMESTAMP(6)+INTERVAL 60 SECOND WHERE email=:p3": {
-    "sql": "UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,\n        expires_at=UTC_TIMESTAMP(6)+INTERVAL 10 MINUTE,resend_at=UTC_TIMESTAMP(6)+INTERVAL 60 SECOND WHERE email=:p3",
+  "UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,\n        expires_at=TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),resend_at=TIMESTAMPADD(SECOND,:p5,UTC_TIMESTAMP(6)) WHERE email=:p3": {
+    "sql": "UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,\n        expires_at=TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),resend_at=TIMESTAMPADD(SECOND,:p5,UTC_TIMESTAMP(6)) WHERE email=:p3",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]

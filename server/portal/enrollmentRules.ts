@@ -1,16 +1,17 @@
 import type { Express, Request, Response } from 'express';
 import { validMutationOrigin } from './accessTransport.ts';
+import { enrollmentEmailRuleFields, enrollmentEmailRuleLimits, enrollmentRuleDefaults, enrollmentRuleFields, type EnrollmentRules } from '../../src/utils/enrollmentRules.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 
 type Client = { query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}> };
 type Handler = (q:Request,r:Response)=>Promise<unknown>;
-const defaults = { paymentHours:24, replyHours:48, revision:0 };
+const defaults = {...enrollmentRuleDefaults,revision:0};
+const effectiveRules=(stored:Partial<EnrollmentRules>|undefined):EnrollmentRules=>({...defaults,...stored});
 const path = '/api/crm/enrollment/rules';
 const scope = {leadId:'enrollment-rules',kind:'enrollment.rules.save'};
 
 export async function readEnrollmentRules(c:Client) {
-  const stored=(await c.query("SELECT value FROM portal_settings WHERE id='enrollment_rules'")).rows[0]?.value as typeof defaults|undefined;
-  return stored??defaults;
+  return effectiveRules((await c.query("SELECT value FROM portal_settings WHERE id='enrollment_rules'")).rows[0]?.value);
 }
 
 export function mountEnrollmentRules(app:Express,{wrap,transact,authorize}:{
@@ -25,16 +26,23 @@ export function mountEnrollmentRules(app:Express,{wrap,transact,authorize}:{
   app.post(path,wrap(async(q,r)=>{
     const actor=await authorize(q);
     if(!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);
-    const {paymentHours,replyHours,revision}=q.body??{};
+    const body=q.body??{};
+    const {paymentHours,replyHours,revision}=body;
     const maximumHours=Math.floor((Date.UTC(9999,11,31,23,59,59)-Date.now())/3_600_000);
-    if(![paymentHours,replyHours].every(value=>Number.isSafeInteger(value)&&value>=1&&value<=maximumHours)||
+    const valid=(value:unknown,max:number)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=1&&value<=max;
+    if(![paymentHours,replyHours].every(value=>valid(value,maximumHours))||
+        enrollmentEmailRuleFields.some(key=>Object.hasOwn(body,key)&&!valid(body[key],enrollmentEmailRuleLimits[key]))||
         !Number.isSafeInteger(revision)||revision<0) invalid('enrollment_rules_invalid');
     const result=await transact(c=>operation(c,actor.id,q.body,{...scope,authorize:()=>authorize(q)},async()=>{
       await c.query("INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id",[defaults]);
-      const current=(await c.query("SELECT value FROM portal_settings WHERE id='enrollment_rules' FOR UPDATE")).rows[0].value;
-      if(current.paymentHours===paymentHours&&current.replyHours===replyHours) return {rules:current};
+      const current=effectiveRules((await c.query("SELECT value FROM portal_settings WHERE id='enrollment_rules' FOR UPDATE")).rows[0].value);
+      const rules={...current,paymentHours,replyHours};
+      for(const key of enrollmentEmailRuleFields) {
+        if(Object.hasOwn(body,key)) rules[key]=body[key];
+      }
+      if(enrollmentRuleFields.every(key=>current[key]===rules[key])) return {rules:current};
       if(current.revision!==revision) invalid('enrollment_rules_conflict',409);
-      const rules={paymentHours,replyHours,revision:revision+1};
+      rules.revision=revision+1;
       await c.query("UPDATE portal_settings SET value=:p1 WHERE id='enrollment_rules'",[rules]);
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.rules.save',:p2)",[actor.id,{before:current,after:rules}]);
       return {rules};

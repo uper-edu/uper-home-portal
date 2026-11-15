@@ -237,7 +237,12 @@
   font-size: 13px;
   line-height: 1.6;
 }
-.crm-enrollment-rules-body > .crm-form-grid { max-width: 720px; }
+.crm-enrollment-rules-body > .crm-form-grid,
+.crm-enrollment-rules-body > .admin-form-section { max-width: 720px; }
+.crm-enrollment-rules-body > .admin-form-section {
+  border-top: 1px solid var(--af-border);
+  padding-top: var(--admin-form-group-gap);
+}
 .crm-enrollment-rules .admin-field input {
   width: 8rem;
   padding: 8px 12px;
