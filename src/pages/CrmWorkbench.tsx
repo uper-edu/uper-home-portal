@@ -1261,7 +1261,7 @@ function CrmWorkspace({
           </div>}
 
         </div>
-        {opportunityOpen&&<CrmOpenEnrollmentOpportunity key={selectedLead.id} customer={selectedLead} lang={lang} isLight={isLight}
+        {opportunityOpen&&<CrmOpenEnrollmentOpportunity key={'opportunity:'+selectedLead.id} customer={selectedLead} lang={lang} isLight={isLight}
           onBusy={setIsSubmittingLog} onDirty={setOpportunityDirty} onClose={()=>discardDraft()}
           onSaved={()=>{void fetchLeads(true);setDetailRefreshVersion(v=>v+1);}}/>}
         {paymentOpen&&<CrmPayments key={"payments:"+selectedLead.id} actorId={employee.id} lead={selectedLead} lang={lang} isLight={isLight} onDirty={setPaymentDirty} onSaved={paymentQueue.refresh} onBusy={setIsSubmittingLog} onClose={()=>{const close=()=>{setPaymentOpen(false);setPaymentDirty(false);};if(discardDraft(close))close();}}/>}
