@@ -383,12 +383,6 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "INSERT INTO enrollment_opportunity_progress(id,opportunity_id,actor,sales_stage,note,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))": {
-    "sql": "INSERT INTO enrollment_opportunity_progress(id,opportunity_id,actor,sales_stage,note,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))",
-    "sources": [
-      "server/portal/enrollmentCrm.ts"
-    ]
-  },
   "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)": {
     "sql": "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)",
     "sources": [
@@ -1932,6 +1926,12 @@
       "server/portal/buyingEvidence.ts"
     ]
   },
+  "SELECT f.id AS factId,f.actor,f.data->>'$.result.logId' AS id,\n      f.data->>'$.result.opportunity.stage' AS stage,f.data->>'$.summary' AS note,\n      DATE_FORMAT(f.created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n      FROM crm_facts f JOIN portal_leads l ON l.id=f.lead_id\n      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND f.kind='followup.recorded'\n        AND f.data->>'$.result.opportunity.id'=:p2": {
+    "sql": "SELECT f.id AS factId,f.actor,f.data->>'$.result.logId' AS id,\n      f.data->>'$.result.opportunity.stage' AS stage,f.data->>'$.summary' AS note,\n      DATE_FORMAT(f.created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n      FROM crm_facts f JOIN portal_leads l ON l.id=f.lead_id\n      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND f.kind='followup.recorded'\n        AND f.data->>'$.result.opportunity.id'=:p2",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE": {
     "sql": "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE",
     "sources": [
@@ -2815,6 +2815,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY o.created_at DESC,o.id": {
+    "sql": "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY o.created_at DESC,o.id",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      ORDER BY o.created_at DESC,o.id": {
     "sql": "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      ORDER BY o.created_at DESC,o.id",
     "sources": [
@@ -3552,8 +3558,8 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "UPDATE enrollment_opportunities SET sales_stage=:p1,revision=revision+1 WHERE id=:p2": {
-    "sql": "UPDATE enrollment_opportunities SET sales_stage=:p1,revision=revision+1 WHERE id=:p2",
+  "UPDATE enrollment_opportunities SET sales_stage=COALESCE(:p1,sales_stage),revision=revision+1 WHERE id=:p2": {
+    "sql": "UPDATE enrollment_opportunities SET sales_stage=COALESCE(:p1,sales_stage),revision=revision+1 WHERE id=:p2",
     "sources": [
       "server/portal/enrollmentCrm.ts"
     ]

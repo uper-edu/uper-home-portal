@@ -18,19 +18,44 @@ import {hasSimpleWorkflowDraft} from '../../utils/crmSimpleFollowup';
 import {wantsNewAgreement as newAgreement,incompleteAgreement,prepareProgressDraft,contactDraftIncomplete,progressContactTime} from '../../utils/crmProgressDraft';
 import {useState,useEffect,useRef,useId} from 'react';
 import {CrmSingleSelect} from './CrmSingleSelect';
+import {CrmOpportunityProgressFields,type ProgressOpportunity} from './CrmOpportunityProgressFields';
 import {crmValue} from '../../utils/crmLanguage';
-export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,onCancel,onDirty,onBusy,onDraft,initialDraft,administrative,canUpdateStage=false}:any){
+export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,onCancel,onDirty,onBusy,onDraft,initialDraft,administrative,canUpdateStage=false,fixedOpportunity}:any){
  const ui=useCrmUiText(lang);
  const analyticsOpened=useRef(Date.now());
  useEffect(()=>{trackEvent('crm_progress_open');},[]);
 
  const inputId=useId(),summaryInput=useRef<HTMLTextAreaElement>(null);
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
- const [draft,setDraft]=useState<any>(()=>initialProgressRecord(lead,initialDraft?.simple));
+ const [draft,setDraft]=useState<any>(()=>initialProgressRecord(lead,fixedOpportunity?
+  {...initialDraft?.simple,linkOpportunity:true,opportunitySelection:fixedOpportunity}:initialDraft?.simple));
 
  const [extras,setExtras]=useState<Record<string,boolean>>(()=>({contact:initialDraft?.simple?.recordKind==='contact',agreement:!!initialDraft?.simple?.agreementIntent,stage:!!initialDraft?.simple?.stageUpdate?.enabled,arrangement:!!initialDraft?.simple?.contactState,...initialDraft?.sections}));
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[unknown,setUnknown]=useState(false),[conflict,setConflict]=useState(false),[latest,setLatest]=useState<any>(null);const pending=useRef<any>(null),gate=useRef(false);const patch=(p:any)=>setDraft((v:any)=>{const next={...v,...p};return ['channel','connectStatus','contactDirection','occurrenceMode','contactLocal'].some(k=>Object.hasOwn(p,k))?{...next,recordKind:hasContactDetails(next)?'contact':'internal'}:next;});
- useEffect(()=>{onDirty?.(hasSimpleWorkflowDraft({...draft,recordKind:'internal',internalLocal:undefined,stageUpdate:draft.stageUpdate?.enabled?draft.stageUpdate:undefined},unknown));onDraft?.({simple:draft,sections:extras});},[draft,unknown,extras]);
+ const linked=!!draft.linkOpportunity;
+ const [options,setOptions]=useState<ProgressOpportunity[]>();
+ const [optionsError,setOptionsError]=useState(false),[optionsVersion,setOptionsVersion]=useState(0);
+ useEffect(()=>{
+  if(!linked)return;
+  const controller=new AbortController();
+  setOptions(undefined);setOptionsError(false);
+  void fetch(`/api/crm/leads/${encodeURIComponent(lead.id)}/enrollment-opportunities`,{signal:controller.signal,cache:'no-store'})
+    .then(async response=>{
+      if(!response.ok)throw Error();
+      const data=await response.json();
+      if(!controller.signal.aborted)setOptions(data.opportunities);
+    }).catch(()=>{if(!controller.signal.aborted)setOptionsError(true);});
+  return ()=>controller.abort();
+ },[linked,lead.id,optionsVersion]);
+ const selected=options?.find(op=>op.id===draft.opportunitySelection?.id);
+ const linkedReady=!linked||!!selected&&selected.revision===draft.opportunitySelection?.revision;
+ const legacyStageEnabled=canUpdateStage&&!linked;
+ useEffect(()=>{
+  onDirty?.(hasSimpleWorkflowDraft({...draft,linkOpportunity:linked&&!fixedOpportunity,
+    opportunitySelection:undefined,recordKind:'internal',internalLocal:undefined,
+    stageUpdate:draft.stageUpdate?.enabled?draft.stageUpdate:undefined},unknown));
+  onDraft?.({simple:draft,sections:extras});
+ },[draft,unknown,extras]);
  useEffect(()=>{const node=summaryInput.current;if(node){node.style.height='auto';node.style.height=Math.min(440,Math.max(136,node.scrollHeight))+'px';}},[draft.summary]);
  const wantsNewAgreement=newAgreement(draft);
  const [reviewedLead,setReviewedLead]=useState<any>(null);
@@ -38,12 +63,14 @@ export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,o
  const timeError=(()=>{if(draft.recordKind!=='contact')return '';if(draft.occurrenceMode!=='specified'||!draft.contactLocal)return '';try{return Date.parse(progressContactTime(draft.contactLocal,timezone))>Date.now()?'实际发生时间不能晚于现在':'';}catch(e){return (e as Error).message;}})();
  const arrangementChoices=progressArrangementChoices(draft.reviewedContactArrangementState??lead.contactArrangement?.state);
  const body=()=>prepareProgressDraft(draft,timezone);
- const save=async(query=false)=>{trackEvent('crm_save_result',{operation:'progress',status:'attempt'});if(draft.savedProgress){await saveStage();return;}if(!query){const missing=(['contact','agreement','stage'] as ProgressSection[]).find(key=>sections.incomplete[key]);if(missing){setExtras(v=>({...v,[missing]:true}));setError(t('Complete the highlighted section before saving.','Lengkapi bagian yang ditandai sebelum menyimpan.','请补全标记的内容后保存。'));requestAnimationFrame(()=>{const panel=document.getElementById(inputId+'-'+missing);const field=panel&&firstMissingAdminField(panel);(field||panel?.querySelector<HTMLElement>('button[aria-haspopup],input,textarea'))?.focus();});return;}}if(gate.current)return;gate.current=true;setBusy(true);onBusy?.(true);setError('');let analyticsOutcomeTracked=false;try{if(!query)pending.current=pending.current||body();const r=await fetch(`/api/crm/leads/${lead.id}/${query?'operations/'+pending.current.requestId:'logs'}`,query?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pending.current),signal:AbortSignal.timeout(20000)});const d=await r.json();if(!r.ok){analyticsOutcomeTracked=true;trackEvent('crm_save_result',{operation:'progress',status:r.status===404&&query?'not_found':r.status===409?'conflict':r.status<500?'failed':'unknown'});if(query&&r.status===404){pending.current=null;setUnknown(false);setError(t('No saved record found. Draft retained; you may explicitly retry.','Catatan tersimpan tidak ditemukan. Draf tetap; Anda dapat mencoba lagi.','未查到已保存记录，草稿保留，可明确重试。'));return;}if(r.status<500&&!query){pending.current=null;setUnknown(false);setConflict(r.status===409);setError(d.error?.startsWith('实际发生时间不正确')?d.error:d.error==='Contact time must be valid and not in the future'?t('Enter the actual contact time in the operating timezone; future times are not allowed.','Isi waktu kontak sebenarnya dalam zona operasi; waktu mendatang tidak diizinkan.','请按运营时区填写有效的实际发生时间，不能填写未来时间。'):d.error==='Customer-initiated contact requires a real reply'?t('Customer-initiated contact needs an actual customer reply.','Kontak dari pelanggan memerlukan balasan nyata.','客户主动联系需要实际客户回应。'):r.status===409?t('Customer information changed. Your draft is retained; refresh and review before saving.','Informasi pelanggan berubah. Draf tetap; muat ulang dan periksa sebelum menyimpan.','客户信息已变化，草稿保留；请刷新并核对后再保存。'):t('Please check the progress text and selected contact or agreement details. Your draft is retained.','Periksa teks perkembangan dan rincian kontak atau kesepakatan yang dipilih. Draf tetap disimpan.','请核对进展内容及已选择的联系信息或约定，草稿已保留。'));return;}throw Error(d.error||'Save failed');}if(query){if(!d.saved)throw Error('Not confirmed');const fresh=await fetch(`/api/crm/leads/${lead.id}`);if(!fresh.ok)throw Error('Refresh required');const value=await fresh.json();d.lead=value.lead||value;}await finishProgress(d);}catch(e){if(!analyticsOutcomeTracked)trackEvent('crm_save_result',{operation:'progress',status:pending.current?'unknown':'failed'});setUnknown(!!pending.current);setError(t('Save not confirmed. Your draft is retained. Query the result before retrying.','Penyimpanan belum terkonfirmasi. Draf tetap disimpan. Periksa hasil sebelum mencoba lagi.','保存未确认，草稿已保留；请先查询结果再重试。'));}finally{gate.current=false;setBusy(false);onBusy?.(false);}};
+ const save=async(query=false)=>{trackEvent('crm_save_result',{operation:'progress',status:'attempt'});if(draft.savedProgress){await saveStage();return;}if(!query){
+  if(!linkedReady){setError(t('Select and review an opportunity before saving.','Pilih dan periksa peluang sebelum menyimpan.','请先选择并核对要推进的商机。'));return;}
+  const missing=(['contact','agreement','stage'] as ProgressSection[]).find(key=>sections.incomplete[key]);if(missing){setExtras(v=>({...v,[missing]:true}));setError(t('Complete the highlighted section before saving.','Lengkapi bagian yang ditandai sebelum menyimpan.','请补全标记的内容后保存。'));requestAnimationFrame(()=>{const panel=document.getElementById(inputId+'-'+missing);const field=panel&&firstMissingAdminField(panel);(field||panel?.querySelector<HTMLElement>('button[aria-haspopup],input,textarea'))?.focus();});return;}}if(gate.current)return;gate.current=true;setBusy(true);onBusy?.(true);setError('');let analyticsOutcomeTracked=false;try{if(!query)pending.current=pending.current||body();const r=await fetch(`/api/crm/leads/${lead.id}/${query?'operations/'+pending.current.requestId:'logs'}`,query?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pending.current),signal:AbortSignal.timeout(20000)});const d=await r.json();if(!r.ok){analyticsOutcomeTracked=true;trackEvent('crm_save_result',{operation:'progress',status:r.status===404&&query?'not_found':r.status===409?'conflict':r.status<500?'failed':'unknown'});if(query&&r.status===404){pending.current=null;setUnknown(false);setError(t('No saved record found. Draft retained; you may explicitly retry.','Catatan tersimpan tidak ditemukan. Draf tetap; Anda dapat mencoba lagi.','未查到已保存记录，草稿保留，可明确重试。'));return;}if(r.status<500&&!query){pending.current=null;setUnknown(false);setConflict(r.status===409);if(r.status===409&&linked)setOptionsVersion(version=>version+1);setError(d.error?.startsWith('实际发生时间不正确')?d.error:d.error==='Contact time must be valid and not in the future'?t('Enter the actual contact time in the operating timezone; future times are not allowed.','Isi waktu kontak sebenarnya dalam zona operasi; waktu mendatang tidak diizinkan.','请按运营时区填写有效的实际发生时间，不能填写未来时间。'):d.error==='Customer-initiated contact requires a real reply'?t('Customer-initiated contact needs an actual customer reply.','Kontak dari pelanggan memerlukan balasan nyata.','客户主动联系需要实际客户回应。'):r.status===409?t('Customer information changed. Your draft is retained; refresh and review before saving.','Informasi pelanggan berubah. Draf tetap; muat ulang dan periksa sebelum menyimpan.','客户信息已变化，草稿保留；请刷新并核对后再保存。'):t('Please check the progress text and selected contact or agreement details. Your draft is retained.','Periksa teks perkembangan dan rincian kontak atau kesepakatan yang dipilih. Draf tetap disimpan.','请核对进展内容及已选择的联系信息或约定，草稿已保留。'));return;}throw Error(d.error||'Save failed');}if(query){if(!d.saved)throw Error('Not confirmed');const fresh=await fetch(`/api/crm/leads/${lead.id}`);if(!fresh.ok)throw Error('Refresh required');const value=await fresh.json();d.lead=value.lead||value;}await finishProgress(d);}catch(e){if(!analyticsOutcomeTracked)trackEvent('crm_save_result',{operation:'progress',status:pending.current?'unknown':'failed'});setUnknown(!!pending.current);setError(t('Save not confirmed. Your draft is retained. Query the result before retrying.','Penyimpanan belum terkonfirmasi. Draf tetap disimpan. Periksa hasil sebelum mencoba lagi.','保存未确认，草稿已保留；请先查询结果再重试。'));}finally{gate.current=false;setBusy(false);onBusy?.(false);}};
  const stagePending=useRef<any>(initialDraft?.simple?.stagePending||null);
  const stageValue=draft.stageUpdate||{enabled:false},stageBase=draft.stageBase||{stage:draft.expectedStage,revision:draft.expectedStageRevision||0};
- const stageValidation=canUpdateStage&&stageValue.enabled?progressStageError(stageValue,stageBase.stage,viewerTimeZone()):'';
+ const stageValidation=legacyStageEnabled&&stageValue.enabled?progressStageError(stageValue,stageBase.stage,viewerTimeZone()):'';
  const stageUncertain=['unknown','not_found'].includes(draft.stageState);
- const sections=progressSectionState(draft,lead,lang,timezone,canUpdateStage);
+ const sections=progressSectionState(draft,lead,lang,timezone,legacyStageEnabled);
  const sectionProps=(key:ProgressSection,title:string)=>({id:inputId+'-'+key,title,summary:sections.summary[key],changed:sections.changed[key],incomplete:sections.incomplete[key],open:!!extras[key],onToggle:()=>setExtras(v=>({...v,[key]:!v[key]})),onClear:()=>{setDraft((v:any)=>clearProgressSection(v,key));setError('');},disabled:busy||unknown||!!draft.savedProgress,clearDisabled:!!draft.savedProgress,lang});
  const finish=(data:any)=>{onDirty?.(false);onDraft?.(null);onSaved(data,false);};
  const saveStage=async(receipt:any=draft.savedProgress,query=false,nested=false)=>{
@@ -65,10 +92,11 @@ export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,o
  const finishProgress=async(data:any)=>{
   const savedLog=data.lead?.followUpLogs?.find((v:any)=>v.id===data.logId);
   if(data.lead?.id!==lead.id||!data.logId||!savedLog)throw Error('Progress response mismatch');
+  if(pending.current?.opportunityLink&&data.opportunity?.id!==pending.current.opportunityLink.id)throw Error('Opportunity response mismatch');
   const analyticsReceipt=progressAnalyticsReceipt(data,lead.id);if(analyticsReceipt)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,duration_ms:Date.now()-analyticsOpened.current}});
   data={...data,agreementChange:savedLog.commitmentChange?.status||(savedLog.commitment?'created':undefined)};
   setUnknown(false);pending.current=null;
-  if(canUpdateStage&&stageValue.enabled){patch({savedProgress:data,stageState:'pending'});await saveStage(data,false,true);}else finish(data);
+  if(legacyStageEnabled&&stageValue.enabled){patch({savedProgress:data,stageState:'pending'});await saveStage(data,false,true);}else finish(data);
  };
  const select=(label:string,key:string,options:any[],help?:React.ReactNode)=> {const required=['channel','connectStatus','contactDirection','occurrenceMode'].includes(key)?sections.changed.contact:/\(required\)|（必填）/.test(label);return <div className="crm-simple-select-field"><p><AdminFieldLabel required={required}>{label}</AdminFieldLabel></p><div className="crm-progress-field-group"><CrmSingleSelect required={required} label={label} value={draft[key]||''} options={options} lang={lang} isLight={isLight} disabled={busy||unknown} onChange={v=>patch({[key]:v,...(key==='occurrenceMode'?{contactTimeConfirmed:true}:{}),...(['recordKind','connectStatus'].includes(key)&&v!=='Connected'?{answeredRequests:[]}: {}),...(key==='agreementIntent'?{commitmentChange:undefined,alsoNewAgreement:false,commitmentAction:'',commitmentDate:'',commitmentLocal:'',agreementTiming:''}:{}),...(key==='agreementTiming'?{commitmentDate:'',commitmentLocal:''}:{})})}/>{help&&<p role="note" className="crm-simple-help">{help}</p>}</div></div>};
  return <AdminForm lang={lang} className="crm-simple-form crm-progress-refined" data-theme={isLight?"light":"dark"} onSubmit={e=>{e.preventDefault();if(!draft.savedProgress)void save();}}>
@@ -76,6 +104,13 @@ export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,o
 
  <div className="crm-progress-body">
  <CrmProgressWritingGuide lang={lang} inputId={inputId} label={t('Progress record *','Catatan perkembangan *','进展记录 *')}>{ <textarea disabled={busy||unknown||!!draft.savedProgress} ref={summaryInput} id={inputId} rows={4} required aria-label={t('Progress record','Catatan perkembangan','进展记录')} value={draft.summary} placeholder={t('What did the customer say, what did you do, and what was the result?','Apa kata pelanggan, apa yang Anda lakukan, dan apa hasilnya?','发生了什么？客户表达了什么？你做了什么？结果如何？')} onChange={e=>patch({summary:e.target.value})}/>}</CrmProgressWritingGuide>
+ {!draft.savedProgress&&<CrmOpportunityProgressFields lang={lang} isLight={isLight} anchorId={inputId+'-opportunity'}
+   linked={linked} disabled={busy||unknown} fixed={fixedOpportunity} options={options} loadError={optionsError}
+   selection={draft.opportunitySelection} stage={draft.opportunityStage||''}
+   onLink={linkOpportunity=>patch({linkOpportunity,opportunitySelection:undefined,opportunityStage:''})}
+   onSelect={opportunitySelection=>patch({opportunitySelection,opportunityStage:''})}
+   onStage={opportunityStage=>patch({opportunityStage})}
+   onReload={()=>setOptionsVersion(version=>version+1)}/>}
 
  <div className="crm-progress-sections">
  <CrmProgressSection {...sectionProps('contact',t('Actual contact','Kontak nyata','实际联系'))}>
@@ -105,7 +140,7 @@ export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,o
 
  </div></section>}
  </CrmProgressSection>
- {canUpdateStage&&<CrmProgressSection {...sectionProps('stage',t('Sales stage','Tahap penjualan','销售阶段'))} disabled={busy||unknown||stageUncertain||!!draft.stagePending}><CrmProgressStageFields value={stageValue} currentStage={stageBase.stage} lang={lang} isLight={isLight} timezone={viewerTimeZone()} disabled={busy||unknown||stageUncertain||!!draft.stagePending} locked={!!draft.savedProgress} onChange={(value:any)=>patch({stageUpdate:value,stageError:''})}/></CrmProgressSection>}
+ {legacyStageEnabled&&<CrmProgressSection {...sectionProps('stage',t('Sales stage','Tahap penjualan','销售阶段'))} disabled={busy||unknown||stageUncertain||!!draft.stagePending}><CrmProgressStageFields value={stageValue} currentStage={stageBase.stage} lang={lang} isLight={isLight} timezone={viewerTimeZone()} disabled={busy||unknown||stageUncertain||!!draft.stagePending} locked={!!draft.savedProgress} onChange={(value:any)=>patch({stageUpdate:value,stageError:''})}/></CrmProgressSection>}
  <CrmProgressSection {...sectionProps('arrangement',t('Contact arrangement','Pengaturan kontak','联系安排'))}>
  <div className="crm-progress-field-group">{select(t('Permission to initiate contact','Izin menghubungi secara proaktif','主动联系安排'),'contactState',[{value:'',label:t('Keep current arrangement','Pertahankan pengaturan saat ini','保持现有安排')},{value:'stopped',label:t('Stop proactive contact','Hentikan kontak proaktif','停止主动联系')},{value:'active',label:t('Restore proactive contact','Pulihkan kontak proaktif','恢复主动联系')}].filter(option=>arrangementChoices.includes(option.value)))}
  {draft.contactState&&<p className="crm-simple-help">{t('Use the progress notes above to explain the reason for this change.','Jelaskan alasan perubahan dalam catatan perkembangan di atas.','请在上方进展记录中说明本次调整依据。')}</p>}</div>

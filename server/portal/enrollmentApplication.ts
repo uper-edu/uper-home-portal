@@ -17,6 +17,7 @@ import { markPriorityTransfersOnCancellation, startEnrollmentPriorityTransferSim
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
 import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
 import { mountEnrollmentCrm, recordEnrollmentCustomer } from './enrollmentCrm.ts';
+import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { classOpeningNotices, orderNotice, proofNotices, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
@@ -98,7 +99,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   app.get(base + '/availability', (_q, r) => r.set('Cache-Control', 'no-store').json({ accepting: !!local }));
   if (!local) return;
   const bank=local.bank;
-  mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx});
+  mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow});
 
   const post = (path: string, handler: Route) => app.post(path, wrap(async (q, r) => {
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);

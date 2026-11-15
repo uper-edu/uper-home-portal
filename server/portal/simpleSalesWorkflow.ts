@@ -1,4 +1,5 @@
-import {assertIdentitySalesAllowed} from './identityConsolidation.ts';
+import {assertIdentitySalesAllowed,lockIdentityRegistry} from './identityConsolidation.ts';
+import {linkEnrollmentOpportunity} from './enrollmentCrm.ts';
 import {auditLog} from './audit.ts';
 import {profileFieldResults} from '../../src/utils/crmProfileSaveResult.ts';
 import {observedStageFacts} from '../../src/utils/crmSalesFacts.ts';
@@ -12,6 +13,7 @@ import {stageFact,fact} from './trustWorkflow.ts';
 const bad=(s:string,status=400):never=>{throw Object.assign(Error(s),{status});};
 /** Called inside the existing transaction; authorization is rechecked under the lead lock. */
 export async function saveSimpleSalesWorkflow(c:any,leadId:string,actor:string,b:any,canWrite:(p:any)=>boolean,clock=new Date()){
+ if(b.opportunityLink!==undefined)await lockIdentityRegistry(c);
  const p=(await c.query('SELECT profile FROM portal_leads WHERE id=:p1 FOR UPDATE',[leadId])).rows[0]?.profile;
  if(!p||!canWrite(p))bad('Lead not found',404);
  await assertIdentitySalesAllowed(c,leadId);
@@ -46,9 +48,11 @@ export async function saveSimpleSalesWorkflow(c:any,leadId:string,actor:string,b
  if(b.answeredRequests!==undefined&&(!Array.isArray(b.answeredRequests)||b.answeredRequests.some((id:any)=>typeof id!=='string')||new Set(b.answeredRequests).size!==b.answeredRequests.length))bad('Invalid request');
  if((b.answeredRequests||[]).length)bad('请刷新页面：提示不再需要逐项销单，请记录实际回应原文');
  const handled:string[]=[];
+ const opportunity=b.opportunityLink===undefined?undefined:await linkEnrollmentOpportunity(c,leadId,b.opportunityLink);
  await stageFact(c,leadId,actor,p,b,b.summary);
  let cancelledNotifications=0,firstDueAt:string|undefined;const completed:string[]=[];if(outcome){const rows=(await c.query("SELECT * FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation' AND status IN ('open','overdue') FOR UPDATE",[leadId])).rows;for(const task of rows){firstDueAt=task.original_due_at||task.due_at;if(typeof firstDueAt==='string'&&!/(Z|[+-]\d\d:\d\d)$/.test(firstDueAt))firstDueAt=firstDueAt.replace(' ','T')+'Z';await c.query("UPDATE followup_tasks SET status='completed',revision=revision+1,details=JSON_SET(details,'$.firstOutcome',:p2) WHERE id=:p1",[task.id,outcome]);cancelledNotifications+=(await c.query("UPDATE notification_jobs SET state='cancelled',result='First follow-up processed',completed_at=UTC_TIMESTAMP(6) WHERE state='pending' AND JSON_UNQUOTE(JSON_EXTRACT(snapshot,'$.payload.taskId'))=:p1",[task.id])).rowCount;completed.push(task.id);}}
  const result:any={logId:randomUUID(),completedTaskIds:completed,cancelledTaskIds:[],handledRequestIds:handled,createdTaskId:null,cancelledNotifications,firstOutcome:outcome,recordOnly:!outcome,contactRecorded:b.recordKind==='contact',contactPlanChange:b.contactState?(b.contactState==='stopped'?'stopped':'restored'):null};
+ if(opportunity)result.opportunity=opportunity;
  const actorRow=(await c.query('SELECT display_name FROM crm_users WHERE id=:p1',[actor])).rows[0];
  const log={...b,...(commitmentChange?{commitmentChange}:{}),...(b.contactState?{contactReason}:{}),...occurrence,id:result.logId,actor,staffName:actorRow?.display_name||actor,at,timestamp:at,recordKind:b.recordKind==='internal'?'closure':'contact',input:JSON.stringify(b),result};
  let next:any={...p,...appendBuyingSignals(p,observedBuyingSignals(b)),commitments,simpleRevision:(p.simpleRevision||0)+1,followUpLogs:[...(p.followUpLogs||[]),log],...(b.recordKind==='contact'?{touchCount:(p.touchCount||0)+1,lastContactedAt:at,connectStatus:b.connectStatus}:{}),...(completed.length?{firstFollowup:{outcome,at,actor,logId:result.logId,dueAt:firstDueAt}}:{}),...(b.newStage?{currentStage:b.newStage,stageUpdatedAt:at,stageRevision:(p.stageRevision||0)+1}:{}),...(b.contactState?{contactArrangement:{state:b.contactState,reason:contactReason,at,actor,version:(p.contactArrangement?.version||0)+1}}:{})};

@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
-import { formatCrmEventTime, formatCrmSummaryTime } from '../../utils/crmOperatingTime';
+import { formatCrmEventTime, formatCrmSummaryTime, viewerTimeZone } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import { progressLabel, salesProgressStages } from '../../utils/crmSalesProgress';
 import { interestOption } from '../EnrollmentInterests';
-import { enrollmentPost, enrollmentStatuses } from '../EnrollmentApplication';
+import { enrollmentStatuses } from '../EnrollmentApplication';
 import { CrmOperationLayer } from './CrmOperationLayer';
-import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions } from '../AdminFormLayout';
+import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
 import { CrmDisclosure } from './CrmDisclosure';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
 
@@ -27,7 +26,7 @@ type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
   state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
   emails?:EnrollmentEmail[];
-  progress?:{id:string;actor:string;stage:string;note:string;createdAt:string}[];canProgress?:boolean;
+  progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string}[];canProgress?:boolean;
 };
 const base = '/api/crm/opportunities';
 const t = (lang:CrmLanguage,copy:Copy) => copy[lang==='zh'?0:lang==='id'?2:1];
@@ -176,8 +175,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     Object.entries(filterDefaults).map(([key,fallback])=>[key,params.get(key)??fallback]),
   ) as Filters);
   const changeFilter=(key:keyof Filters,value:string)=>setFilters(current=>({...current,[key]:value}));
-  const [editing,setEditing]=useState(false);
-  const [draft,setDraft]=useState({stage:'',note:'',requestId:''});
+  const [progressLead,setProgressLead]=useState<any>(null);
+  const [progressDirty,setProgressDirty]=useState(false);
   const [confirmDiscard,setConfirmDiscard]=useState(false);
   const [busy,setBusy]=useState(false);
   const [saveError,setSaveError]=useState(false);
@@ -237,50 +236,35 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
       {detail.identityPending&&canReviewIdentity&&<a className="crm-work-link" href={crmHref({tab:'leads',lead:detail.customerId,identityLead:detail.customerId})}>{t(lang,['核实身份','Review identity','Verifikasi identitas'])}</a>}
       {canFinance&&detail.records.filter(row=>row.state==='proof_review'||row.state==='partial').map(row=><a key={row.id} className="crm-work-link"
         href={crmHref({tab:'payments',enrollmentOrder:row.id})}>{t(lang,['前往收款核验','Go to payment verification','Buka verifikasi pembayaran'])}</a>)}
-      {detail.canProgress&&detail.state!=='enrolled'&&<button type="button" className="crm-work-button justify-self-start" onClick={()=>{
-        setDraft({stage:detail.salesStage,note:'',requestId:crypto.randomUUID()});
-        setSaveError(false);setNotice(false);setEditing(true);
+      {detail.canProgress&&<button type="button" className="crm-work-button justify-self-start" disabled={busy} onClick={async()=>{
+        setBusy(true);setSaveError(false);setNotice(false);
+        try{
+          const lead=await read<any>('/api/crm/leads/'+detail.customerId,new AbortController().signal);
+          setProgressLead(lead.lead??lead);setProgressDirty(false);
+        }catch{setSaveError(true);}finally{setBusy(false);}
       }}>{t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}</button>}
       {notice&&<span className="crm-opportunity-feedback" role="status">{t(lang,['商机进展已保存','Opportunity progress saved','Kemajuan peluang tersimpan'])}</span>}
-      {editing&&<CrmOperationLayer compose customerContext={false} lang={lang} isLight={isLight} busy={busy}
-        title={<>{t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}<AdminRequiredNote inline lang={lang}/></>}
-        onClose={()=>{if(!busy){if(draft.note.trim()||draft.stage!==detail.salesStage)setConfirmDiscard(true);else setEditing(false);}}}>
-        <AdminForm lang={lang} className="crm-editor-compose" onSubmit={async event=>{
-          event.preventDefault();
-          if(busy||!draft.note.trim())return;
-          setBusy(true);setSaveError(false);
-          try{
-            await enrollmentPost(base+'/'+detail.id+'/progress',{...draft,revision:detail.revision});
-            setDetail(await read<Opportunity>(base+'/'+detail.id,new AbortController().signal));
-            setEditing(false);setNotice(true);
-          }catch{setSaveError(true);}finally{setBusy(false);}
-        }}>
-          <div className="crm-editor-scroll">
-            <p>{detail.customerName} · {detail.level}</p>
-            <AdminField required>{t(lang,['销售阶段','Sales stage','Tahap penjualan'])}
-              <CrmSingleSelect required label={t(lang,['销售阶段','Sales stage','Tahap penjualan'])}
-                value={draft.stage} isLight={isLight} lang={lang}
-                options={salesProgressStages.filter(row=>row[0]!=='progress:enrolled').map(row=>({value:row[0],label:progressLabel(row[0],lang)}))}
-                onChange={stage=>setDraft(current=>({...current,stage}))}/>
-            </AdminField>
-            <AdminField required>{t(lang,['进展与依据','Progress and evidence','Kemajuan dan bukti'])}
-              <textarea required maxLength={2000} value={draft.note} onChange={event=>setDraft(current=>({...current,note:event.target.value}))}/>
-            </AdminField>
-            {saveError&&<p role="alert">{t(lang,['未能确认保存结果，请核对原商机后重试。','Review the original opportunity before retrying.','Periksa peluang awal sebelum mencoba lagi.'])}</p>}
-          </div>
-          <AdminFormActions className="crm-editor-actions">
-            <button type="button" className="crm-work-button" disabled={busy} onClick={()=>draft.note.trim()||draft.stage!==detail.salesStage?setConfirmDiscard(true):setEditing(false)}>{t(lang,['取消','Cancel','Batal'])}</button>
-            <button type="submit" className="crm-work-button" data-primary disabled={busy||!draft.note.trim()}>{t(lang,['保存','Save','Simpan'])}</button>
-          </AdminFormActions>
-        </AdminForm>
+      {saveError&&<p role="alert">{t(lang,['暂时无法读取最新记录，请刷新后查看。','The latest record could not be loaded. Refresh to view it.','Catatan terbaru belum dapat dimuat. Muat ulang untuk melihatnya.'])}</p>}
+      {progressLead&&<CrmOperationLayer progress customerContext={false} lang={lang} isLight={isLight} busy={busy}
+        context={detail.customerName} title={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}
+        onClose={()=>{if(!busy){if(progressDirty)setConfirmDiscard(true);else setProgressLead(null);}}}>
+        <CrmSimpleWorkflow lead={progressLead} fixedOpportunity={detail} lang={lang} isLight={isLight} timezone={viewerTimeZone()}
+          onDirty={setProgressDirty} onBusy={setBusy} onCancel={()=>progressDirty?setConfirmDiscard(true):setProgressLead(null)}
+          onSaved={async()=>{
+            setProgressLead(null);setNotice(true);
+            try{setDetail(await read<Opportunity>(base+'/'+detail.id,new AbortController().signal));}catch{setSaveError(true);}
+          }}/>
       </CrmOperationLayer>}
       {confirmDiscard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setConfirmDiscard(false)}
-        onDiscard={()=>{setEditing(false);setConfirmDiscard(false);}}/>}
+        onDiscard={()=>{setProgressLead(null);setConfirmDiscard(false);}}/>}
       {!!detail.progress?.length&&<section>
         <h2>{t(lang,['商机进展','Opportunity progress','Kemajuan peluang'])}</h2>
         <ol className="crm-course-records">{detail.progress.map(entry=><li key={entry.id}>
-          <strong>{progressLabel(entry.stage,lang)}</strong> · {employeeName(entry.actor)} · <time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleDateString(crmLocale(lang))}</time>
+          <strong>{progressLabel(entry.stage,lang)}</strong> · {employeeName(entry.actor)} · <time dateTime={entry.createdAt}>{formatCrmEventTime(entry.createdAt)}</time>
           <p>{entry.note}</p>
+          {entry.factId&&<a className="crm-work-link" href={crmHref({tab:'leads',lead:detail.customerId,target:'fact',targetId:entry.factId})}>
+            {t(lang,['查看客户原始记录','View original customer record','Lihat catatan asli pelanggan'])}
+          </a>}
         </li>)}</ol>
       </section>}
       <CourseRecords records={detail.records} link={false} lang={lang} emails={detail.emails} targetRecord={targetRecord}/></>:null

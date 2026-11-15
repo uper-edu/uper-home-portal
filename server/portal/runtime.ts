@@ -1908,10 +1908,12 @@ export async function mountPortal(app: Express) {
     ],
     wrap(async (req, res) => {
       const { l, e } = await leadAccess(req, "crm.write");
+      const linkOpportunity=req.body?.opportunityLink!==undefined;
+      if(linkOpportunity&&(!validMutationOrigin(req)||!e.permissions.includes('crm.followup')))fail(403,'Permission denied');
       try {
         const result = await tx((c) =>
           saveSalesWorkflow(c, l.id, e.id, req.body, (current) =>
-            requestAllowed(e,current,req),
+            requestAllowed(e,current,req)&&(!linkOpportunity||permittedRecord(e,current,'crm.followup')),
           ),
         );
         result.lead=(await projectIdentityProfiles(pool,[result.lead]))[0]||result.lead;

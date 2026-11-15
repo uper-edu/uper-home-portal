@@ -6,6 +6,17 @@ import {CrmSimpleWorkflow} from '../src/components/crm/CrmSimpleWorkflow';
 import {CrmSimpleHistory} from '../src/components/crm/CrmSimpleHistory';
 import {guideSections} from '../src/components/crm/CrmGuideContent';
 const base:any={recordKind:'internal',summary:'TEST original 原文 catatan',channel:'WhatsApp',connectStatus:'Connected',expectedStage:'New',answeredRequests:['request']};
+test('only explicitly linked opportunities are included in a customer progress submission',()=>{
+ const opportunitySelection={id:'opportunity',revision:2,level:'HSK 2',salesStage:'progress:discovery'};
+ const draft={...base,opportunitySelection,opportunityStage:'progress:proposal'};
+ const detached=prepareProgressDraft(draft,'Asia/Jakarta');
+ assert.equal(detached.opportunityLink,undefined);
+ assert.ok(!Object.hasOwn(detached,'opportunitySelection'));
+ const linked=prepareProgressDraft({...draft,linkOpportunity:true},'Asia/Jakarta');
+ assert.deepEqual(linked.opportunityLink,{id:'opportunity',revision:2,stage:'progress:proposal'});
+ const unchanged=prepareProgressDraft({...draft,linkOpportunity:true,opportunityStage:''},'Asia/Jakarta');
+ assert.deepEqual(unchanged.opportunityLink,{id:'opportunity',revision:2});
+});
 test('hidden agreement drafts do not submit stale changes; internal facts never claim replies',()=>{
  const b=prepareProgressDraft({...base,agreementIntent:'',commitmentChange:{id:'old',status:'fulfilled'},commitmentAction:'HIDDEN',commitmentLocal:'2099-01-02T10:00',newStage:''},'Asia/Jakarta');
  assert.equal(b.commitment,undefined);assert.equal(b.commitmentChange,undefined);assert.equal(b.answeredRequests,undefined);assert.equal(b.connectStatus,undefined);assert.equal(b.newStage,undefined);assert.equal(b.commitmentLocal,undefined);

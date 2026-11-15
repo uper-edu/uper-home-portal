@@ -129,10 +129,33 @@ function projectOpportunity(row: any, records: ReturnType<typeof displayRecord>[
     createdAt:row.created_at,state,salesStage,revision:Number(row.revision),records};
 }
 
-export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact }:{
+const recordsForOpportunity=async(c:Client,id:string)=>(await c.query(courseRecords+' WHERE r.opportunity_id=:p1 ORDER BY r.created_at,r.record_id',[id])).rows.map(displayRecord);
+const isOpenOpportunity=(row:ReturnType<typeof projectOpportunity>)=>
+  !['enrolled','closed'].includes(row.state)&&row.salesStage!=='progress:closed';
+const canProgress=(actor:Employee,profile:any)=>profile.identityLifecycle!=='pending'&&permittedRecord(actor,profile,'crm.followup');
+
+export async function linkEnrollmentOpportunity(c:Client,leadId:string,link:any) {
+  if(!link || typeof link.id!=='string' || !link.id || link.id.length>36 ||
+    !Number.isSafeInteger(link.revision) || link.revision<0 ||
+    (link.stage!==undefined && (!isSalesProgressStage(link.stage)||link.stage==='progress:enrolled'))) {
+    invalid('enrollment_invalid_opportunity_progress');
+  }
+  const row=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1 FOR UPDATE',[link.id])).rows[0];
+  const customer=row && await canonicalIdentity(c,row.lead_id);
+  if(!customer || customer.id!==leadId) invalid('enrollment_opportunity_not_found',404);
+  const current=projectOpportunity(row,await recordsForOpportunity(c,row.id),customer.profile);
+  if(link.revision!==current.revision || !isOpenOpportunity(current) || (current.state==='aftercare'&&link.stage!==undefined)) {
+    invalid('enrollment_opportunity_progress_conflict',409);
+  }
+  await c.query('UPDATE enrollment_opportunities SET sales_stage=COALESCE(:p1,sales_stage),revision=revision+1 WHERE id=:p2',[link.stage??null,row.id]);
+  return {id:row.id,revision:current.revision+1,stage:link.stage??current.salesStage};
+}
+
+export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProgress }:{
   wrap:(fn:(q:Request,r:Response)=>Promise<unknown>)=>(q:Request,r:Response)=>void;
   staff:(q:Request,permission:string)=>Promise<Employee>;
   transact:(fn:(c:Client)=>Promise<any>)=>Promise<any>;
+  saveProgress:(c:Client,leadId:string,actor:string,body:any,canWrite:(profile:any)=>boolean)=>Promise<any>;
 }) {
   const read = (fn:(c:Client,q:Request,actor:Employee)=>Promise<unknown>) => wrap(async(q,r)=>{
     const actor=await staff(q,'crm.read');
@@ -140,8 +163,6 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact }:{
     r.set('Cache-Control','no-store').json(data);
   });
   const readProfile=(actor:Employee,profile:any)=>profile && allowed(actor,profile);
-  const byOpportunity=async(c:Client,id:string)=>(await c.query(courseRecords+' WHERE r.opportunity_id=:p1 ORDER BY r.created_at,r.record_id',[id])).rows.map(displayRecord);
-  const canProgress=(actor:Employee,profile:any)=>profile.identityLifecycle!=='pending'&&permittedRecord(actor,profile,'crm.followup');
 
   app.get('/api/crm/opportunities',read(async(c,q,actor)=>{
     const rows=(await c.query(`SELECT o.*, customer.profile
@@ -166,8 +187,14 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact }:{
     const row=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1',[q.params.id])).rows[0];
     const customer=row && await canonicalIdentity(c,row.lead_id);
     if (!customer || !readProfile(actor,customer.profile)) invalid('enrollment_opportunity_not_found',404);
-    const progress=(await c.query(`SELECT id,actor,sales_stage AS stage,note,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt
+    const legacyProgress=(await c.query(`SELECT id,actor,sales_stage AS stage,note,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt
       FROM enrollment_opportunity_progress WHERE opportunity_id=:p1 ORDER BY created_at DESC,id DESC`,[row.id])).rows;
+    const linkedProgress=(await c.query(`SELECT f.id AS factId,f.actor,f.data->>'$.result.logId' AS id,
+      f.data->>'$.result.opportunity.stage' AS stage,f.data->>'$.summary' AS note,
+      DATE_FORMAT(f.created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt
+      FROM crm_facts f JOIN portal_leads l ON l.id=f.lead_id
+      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND f.kind='followup.recorded'
+        AND f.data->>'$.result.opportunity.id'=:p2`,[customer.id,row.id])).rows;
     const emails=(await c.query(`SELECT n.event_key AS id,n.subject_id AS orderId,n.kind,n.state,
       n.payload->>'$.subject' AS subject,n.payload->>'$.language' AS language,
       DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt
@@ -175,32 +202,47 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact }:{
       WHERE r.kind='order' AND r.opportunity_id=:p1 AND n.channel='email'
         AND n.kind NOT IN ('otp_apply','otp_mine')
       ORDER BY n.recorded_at DESC,n.event_key DESC`,[row.id])).rows;
-    return {...projectOpportunity(row,await byOpportunity(c,row.id),customer.profile),progress,emails,canProgress:canProgress(actor,customer.profile)};
+    const current=projectOpportunity(row,await recordsForOpportunity(c,row.id),customer.profile);
+    const progress=[...linkedProgress,...legacyProgress].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));
+    return {...current,progress,emails,canProgress:isOpenOpportunity(current)&&canProgress(actor,customer.profile)};
   }));
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);
     const actor=await staff(q,'crm.followup');
     const id=String(q.params.id);
     const {stage,note,revision}=q.body ?? {};
-    if (!isSalesProgressStage(stage)||stage==='progress:enrolled'||typeof note!=='string'||!note.trim()||
+    if (typeof note!=='string'||!note.trim()||
       note.length>2000||!Number.isSafeInteger(revision)||revision<0) invalid('enrollment_invalid_opportunity_progress');
     const result=await transact(async c=>{
       await lockIdentityRegistry(c);
-      const row=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1 FOR UPDATE',[id])).rows[0];
+      const row=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1',[id])).rows[0];
       const customer=row && await canonicalIdentity(c,row.lead_id);
       if (!customer||!readProfile(actor,customer.profile)) invalid('enrollment_opportunity_not_found',404);
-      if (!canProgress(actor,customer.profile)) invalid('enrollment_opportunity_progress_forbidden',403);
+      if(!canProgress(actor,customer.profile)) invalid('enrollment_opportunity_progress_forbidden',403);
       return operation(c,actor.id,q.body,{leadId:customer.id,kind:'enrollment.opportunity.progress:'+id},async()=>{
-        if (revision!==Number(row.revision)) invalid('enrollment_opportunity_progress_conflict',409);
-        const current=projectOpportunity(row,await byOpportunity(c,id),customer.profile);
-        if (current.state==='enrolled') invalid('enrollment_opportunity_is_enrolled',409);
-        await c.query('UPDATE enrollment_opportunities SET sales_stage=:p1,revision=revision+1 WHERE id=:p2',[stage,id]);
-        await c.query(`INSERT INTO enrollment_opportunity_progress(id,opportunity_id,actor,sales_stage,note,created_at)
-          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[randomUUID(),id,actor.id,stage,note.trim()]);
-        return {revision:revision+1};
+        const saved=await saveProgress(c,customer.id,actor.id,{
+          workflowVersion:3,requestId:q.body.requestId,summary:note,recordKind:'internal',
+          opportunityLink:{id,revision,stage},
+        },profile=>readProfile(actor,profile)&&canProgress(actor,profile));
+        return {revision:saved.opportunity.revision,logId:saved.logId};
       });
     });
     r.set('Cache-Control','no-store').json(result);
+  }));
+  app.get('/api/crm/leads/:id/enrollment-opportunities',read(async(c,q,actor)=>{
+    const customer=await canonicalIdentity(c,String(q.params.id));
+    if(!customer || !readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
+    if(!canProgress(actor,customer.profile)) return {opportunities:[]};
+    const rows=(await c.query(`SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id
+      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY o.created_at DESC,o.id`,[customer.id])).rows;
+    const options=[];
+    for(const row of rows){
+      const current=projectOpportunity(row,await recordsForOpportunity(c,row.id),customer.profile);
+      if(isOpenOpportunity(current)) options.push({
+        id:current.id,level:current.level,state:current.state,salesStage:current.salesStage,revision:current.revision,
+      });
+    }
+    return {opportunities:options};
   }));
   app.get('/api/crm/leads/:id/enrollment-records',read(async(c,q,actor)=>{
     const customer=await canonicalIdentity(c,String(q.params.id));
