@@ -226,7 +226,8 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
               <Link 
                 key={link.nameKey} 
                 to={link.path==='/enrollment' ? promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2), promotionQuery, 'website') : link.path!}
-                className={`transition-colors py-2 ${location.pathname === link.path ? (isApple ? 'text-slate-900 font-bold' : 'text-primary-600 font-semibold') : (isApple ? 'hover:text-slate-900 text-slate-600' : 'hover:text-primary-600')}`}
+                aria-current={location.pathname === link.path ? 'page' : undefined}
+                className={`transition-colors py-2 ${(location.pathname === link.path || (link.path === '/enrollment' && location.pathname.startsWith('/enrollment/'))) ? (isApple ? 'text-slate-900 font-bold' : 'text-primary-600 font-semibold') : (isApple ? 'hover:text-slate-900 text-slate-600' : 'hover:text-primary-600')}`}
               >
                 {t(link.nameKey)}
               </Link>
@@ -868,6 +869,7 @@ export default function Layout() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   // Scroll to top on route change, but restore scroll on back navigation
   const { pathname } = location;
+  const enrollmentScreen = /^\/enrollment(?:\/(?!mine(?:\/|$)|interest(?:\/|$))[^/]+)?\/?$/.test(pathname);
   const navType = useNavigationType();
   const scrollPath = useRef<string | null>(null);
 
@@ -922,7 +924,7 @@ export default function Layout() {
   }, [pathname]);
 
   return (
-    <div className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
+    <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
 
       <Navbar onOpenAppearance={() => setAppearanceOpen(true)} />
       <main className="flex-grow">
@@ -941,11 +943,13 @@ export default function Layout() {
           </Suspense>
         </motion.div>
       </main>
-      <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
+      {!enrollmentScreen && <>
+        <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
+        <VisitorBoundary><AIChatbot /></VisitorBoundary>
+        <BackToTop />
+        <MobileBottomBar />
+      </>}
       <AppearanceModal isOpen={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
-      <VisitorBoundary><AIChatbot /></VisitorBoundary>
-      <BackToTop />
-      <MobileBottomBar />
     </div>
   );
 }

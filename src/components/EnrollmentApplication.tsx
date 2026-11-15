@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
+import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
 import { EnrollmentDemandForm, interestOption, waitlistStates, type DemandItem, type Interests } from './EnrollmentInterests';
 
 type Language = 'zh' | 'en' | 'id';
@@ -24,8 +26,6 @@ export async function enrollmentPost(path: string, body: unknown) {
   if (!response.ok) throw Error(data.error);
   return data;
 }
-type Order = { id: string; classId: string; status: string; restored: boolean; learnerName?: string; price: number; received: number; deadline: string;
-  bank?: { name: string; accountName: string; accountNumber: string } };
 type Aftercare = {
   originalClassState:string; transfers:{id:string;firstLesson:string;schedule:string}[];
   currentClass:{firstLesson:string;schedule:string};
@@ -36,15 +36,17 @@ type Aftercare = {
 };
 type OrderSummary = Order & { level: string; firstLesson: string };
 
-export function EnrollmentApplication({ classId, language, full = false, demandOnly = false }: {
-  classId?: string; language: Language; full?: boolean; demandOnly?: boolean;
+export function EnrollmentApplication({ classId, language, full = false, demandOnly = false, paymentClasses }: {
+  classId?: string; language: Language; full?: boolean; demandOnly?: boolean; paymentClasses?: PublicEnrollmentClass[];
 }) {
   const t = (text: Copy) => enrollmentCopy(language,text);
   const [params,setParams] = useSearchParams();
+  const navigate = useNavigate();
   const orderId = params.get('order');
   const [order,setOrder] = useState<Order>();
+  const [loadingPayment,setLoadingPayment] = useState(!!paymentClasses && !!orderId);
   const [aftercare,setAftercare] = useState<Aftercare>();
-  const [open,setOpen] = useState(!!orderId || !classId);
+  const [open,setOpen] = useState(!!orderId || !classId || params.get('apply') === '1');
   const [orders,setOrders] = useState<OrderSummary[]>();
   const [interests,setInterests] = useState<Interests>();
   const [tab,setTab] = useState(() => ['orders','waitlist','demands'].find(value=>value===params.get('tab')) || 'all');
@@ -78,15 +80,19 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     if (!response.ok) throw Error('enrollment_failed');
     setOrders((await response.json()).orders);
     setVerified(true);
-    if (!classId && !demandOnly) {
+    if (!classId && !demandOnly && !paymentClasses) {
       const response=await fetch(base+'/interests',{cache:'no-store'});
       if (!response.ok) throw Error('enrollment_failed');
       setInterests(await response.json());
     }
   }
   useEffect(() => setHasNoSeat(full),[full]);
-  useEffect(() => { if (orderId) void getOrder(orderId).catch(reason=>setError(reason.message)); },[orderId]);
-  useEffect(() => { if (open) void getOrders().catch(reason=>setError(reason.message)); },[open,classId]);
+  useEffect(() => {
+    if (orderId) void getOrder(orderId).catch(reason=>setError(reason.message)).finally(()=>setLoadingPayment(false));
+  },[orderId]);
+  useEffect(() => {
+    if (open && !paymentClasses) void getOrders().catch(reason=>setError(reason.message));
+  },[open,classId]);
   async function run(action: () => Promise<void>) {
     if (busy) return;
     setBusy(true);
@@ -120,8 +126,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       const result=await enrollmentPost(base+'/applications',{ classId,name,phone,priority,requestId,source:sourceQuery() });
       const next=new URLSearchParams(params);
       next.set('order',result.id);
-      setParams(next,{replace:true,preventScrollReset:true});
-      await getOrder(result.id);
+      next.delete('apply');
+      navigate('/enrollment/payment?' + next.toString(), { replace:true });
     });
   }
   function upload() {
@@ -181,6 +187,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     enrollment_code_wait:['请稍后再申请验证码。','Wait before requesting another code.','Tunggu sebelum meminta kode baru.'],
     enrollment_invalid_code:['验证码无效或已过期。','The code is invalid or expired.','Kode tidak berlaku atau kedaluwarsa.'],
     enrollment_verification_required:['请验证邮箱后查看报名。','Verify your email to view the order.','Verifikasi email untuk melihat pesanan.'],
+    enrollment_order_not_found:['找不到这条报名。','This enrollment could not be found.','Pendaftaran ini tidak ditemukan.'],
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
   };
   const message=errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.'];
@@ -191,30 +198,38 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       await getOrder(order.id);
     });
   }
+  const paymentPath = (id: string) => {
+    const next = new URLSearchParams(params);
+    next.delete('apply');
+    next.set('order', id);
+    return '/enrollment/payment?' + next.toString();
+  };
+  const canUpload = order && !['paid','paid_cancelled','refunding','refunded'].includes(order.status) && !order.restored;
+  const status = order && t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status]);
   if (!open) return <button className="enrollment-action" type="button" onClick={()=>setOpen(true)}>{hasNoSeat?joinText:applyText}</button>;
-  return <section className="enrollment-card enrollment-application">
+  return <section className={order && paymentClasses ? "enrollment-application enrollment-payment-content" : "enrollment-card enrollment-application"}>
     {error && <p role="alert">{t(message)}</p>}
-    {order ? <>
+    {loadingPayment ? <p role="status">{t(['正在读取报名…','Loading enrollment…','Memuat pendaftaran…'])}</p> : order ? <>
+      {paymentClasses ? <EnrollmentPayment order={order} course={paymentClasses.find(row => row.id === order.classId)}
+        schedule={aftercare?.currentClass.schedule} language={language} status={status ?? ''} canUpload={!!canUpload}
+        file={file} busy={busy} setFile={setFile} upload={() => void upload()}/> : <>
       {!classId && <button type="button" onClick={()=>{selectOrder(); void run(getOrders);}}>
         {t(['返回报名列表','Back to enrollments','Kembali ke daftar pendaftaran'])}
       </button>}
-      <h2>{t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status])}</h2>
+      <h2>{status}</h2>
       {order.learnerName&&<p>{t(['学员姓名','Learner name','Nama siswa'])} · {order.learnerName}</p>}
       <p>{t(['报名编号','Order number','Nomor pendaftaran'])} {order.id}</p>
       <p>{t(['应付','Amount due','Tagihan'])} {formatCurrency(order.price,language)} · {t(['实际到账','Verified receipts','Dana terverifikasi'])} {formatCurrency(order.received,language)}</p>
       {order.status==='awaiting_payment' && <p>{t(['付款截止','Payment deadline','Batas pembayaran'])} {new Intl.DateTimeFormat(language==='zh'?'zh-CN':language,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(order.deadline))} WIB</p>}
-      {order.bank && <p>{order.bank.name} · {order.bank.accountName} · {order.bank.accountNumber}<br/>{t(['模拟账号，请勿转账。','Test account. Do not transfer funds.','Rekening uji. Jangan transfer dana.'])}</p>}
+      {canUpload && <Link className="enrollment-action" to={paymentPath(order.id)}>
+        {t(['转账与凭证','Transfer & proof','Transfer dan bukti'])}
+      </Link>}
+      </>}
       {aftercare?.originalClassState==='cancelled' && <p>{t(['原班已确认不开班。','The original class will not open.','Kelas asal tidak dibuka.'])}</p>}
       {!!aftercare?.transferHistory.length && aftercare.originalClassState!=='cancelled' && <>
         <p>{t(['已确认转班，原实收已用于目标班。','Transfer confirmed. Your payment was applied to the new class.','Pindah kelas dikonfirmasi. Pembayaran digunakan untuk kelas baru.'])}</p>
         <p>{aftercare.currentClass.firstLesson.replace('T',' ')} WIB · {aftercare.currentClass.schedule}</p>
       </>}
-      {!['paid','paid_cancelled','refunding','refunded'].includes(order.status) && !order.restored && <form onSubmit={event=>{event.preventDefault();void upload();}}>
-        <label>{t(['转账凭证','Transfer proof','Bukti transfer'])}<input type="file" accept="image/png,image/jpeg,application/pdf" required onChange={event=>setFile(event.target.files?.[0])}/></label>
-        <div className="enrollment-proof-actions">
-          <button className="enrollment-action" type="submit" disabled={busy||!file}>{t(['提交凭证','Submit proof','Kirim bukti'])}</button>
-        </div>
-      </form>}
       {aftercare?.invitations.filter(item=>['offered','expired'].includes(item.state)).map(item=><article key={item.id} className="enrollment-card">
         {item.state==='offered' ? <>
           <h3>{t(['转班邀请','Transfer invitation','Undangan pindah kelas'])}</h3>
@@ -235,14 +250,14 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         'This class is confirmed. Contact support if exceptional circumstances require you to withdraw.',
         'Kelas sudah dikonfirmasi. Hubungi layanan pelanggan jika harus mengundurkan diri karena keadaan khusus.',
       ])} <Link to={'/contact?lang='+language}>{t(['联系销售客服','Contact support','Hubungi layanan pelanggan'])}</Link></p>}
-      <button type="button" onClick={()=>void run(()=>getOrder(order.id))}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>
+      {(!paymentClasses || !order.bank) && <button type="button" onClick={()=>void run(()=>getOrder(order.id))}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>}
     </> : !verified ? <form onSubmit={event=>{event.preventDefault();void (challenge?verify():sendCode());}}>
       <h2>{t(['验证邮箱','Verify your email','Verifikasi email'])}</h2>
       <label>{t(['电子邮箱','Email','Email'])}<input type="email" autoComplete="email" required value={email} readOnly={!!challenge} onChange={event=>setEmail(event.target.value)}/></label>
       {challenge && <label>{t(['六位验证码','Six-digit code','Kode enam digit'])}<input autoComplete="one-time-code" required pattern="[0-9]{6}" inputMode="numeric" value={code} onChange={event=>setCode(event.target.value)}/></label>}
       <button className="enrollment-action" type="submit" disabled={busy}>{t(challenge?['验证','Verify','Verifikasi']:['发送验证码','Send code','Kirim kode'])}</button>
       {challenge && <button type="button" disabled={busy} onClick={()=>void sendCode()}>{t(['重发验证码','Resend code','Kirim ulang'])}</button>}
-    </form> : demandOnly ? savedDemand ? <><p role="status">{t(['选课需求已保存。','Course preferences saved.','Preferensi kursus disimpan.'])}</p>
+    </form> : paymentClasses ? null : demandOnly ? savedDemand ? <><p role="status">{t(['选课需求已保存。','Course preferences saved.','Preferensi kursus disimpan.'])}</p>
       <Link to={mineLink+'&tab=demands'}>{t(['查看我的需求','See my preferences','Lihat preferensi saya'])}</Link></>
       : <EnrollmentDemandForm language={language} busy={busy} onSave={savePreferences}/>
     : !classId ? <div className="enrollment-order-list">
@@ -271,7 +286,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         <p>{t(waitlistStates[row.state])}{row.state==='waiting' && ' · '+t(row.available
           ? ['有空位可申请','Seats available','Kursi tersedia']:['暂无空位','No seats available','Belum ada kursi'])}</p>
         {row.state==='waiting'&&<>
-          {row.available&&<Link className="enrollment-action" to={'/enrollment/'+row.classId+publicQuery}>{applyText}</Link>}
+          {row.available&&<Link className="enrollment-action" to={'/enrollment/'+row.classId+publicQuery+'&apply=1'}>{applyText}</Link>}
           <button type="button" disabled={busy} onClick={()=>remove('waitlist',row.id)}>{t(['取消候补','Cancel waitlist entry','Batalkan daftar tunggu'])}</button>
         </>}
         {row.state==='converted'&&row.orderId&&<button type="button" onClick={()=>selectOrder(row.orderId)}>{t(['查看对应报名','View related application','Lihat pendaftaran terkait'])}</button>}
