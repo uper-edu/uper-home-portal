@@ -4,7 +4,7 @@ import {AdminFormActions,AdminFormSection} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
 import {adminText} from '../AdminHeader';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import {enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
+import {enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRefundDayLimit,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
 
 type Feedback='saved'|'load-error'|'save-error'|'conflict';
@@ -124,6 +124,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
         <ul>
           <li>{t('Payment deadline (hours)','Batas pembayaran (jam)','付款期限（小时）')} · {saved.paymentHours}</li>
           <li>{t('Transfer reply deadline (hours)','Batas jawaban pindah kelas (jam)','转班邀请答复期限（小时）')} · {saved.replyHours}</li>
+          <li>{t('Send refunds within (working days)','Kirim pengembalian dalam (hari kerja)','退款发出期限（工作日）')} · {saved.refundBusinessDays}</li>
           {enrollmentEmailRuleFields.map(key=><li key={key}>{t(...emailRuleLabels[key])} · {saved[key]}</li>)}
         </ul>
       </div>}
@@ -137,6 +138,13 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
           <small id={fieldHelp+'-reply'}>{t('From the time the invitation is issued. Default 48 hours, up to the target class’s enrollment cutoff.',
             'Sejak undangan dibuat. Standar 48 jam, paling lambat saat pendaftaran kelas tujuan ditutup.',
             '从发出邀请起算，默认 48 小时，最晚到目标班次的报名截止时间。')}</small>
+        </AdminField>
+        <AdminField required>{t('Send refunds within (working days)','Kirim pengembalian dalam (hari kerja)','退款发出期限（工作日）')}
+          <input name="refundBusinessDays" aria-describedby={fieldHelp+'-refund'} type="number" min="1" max={enrollmentRefundDayLimit} step="1"
+            value={draft.refundBusinessDays} disabled={controlsDisabled} onChange={e=>setDraft({...draft,refundBusinessDays:e.target.value})}/>
+          <small id={fieldHelp+'-refund'}>{t('Counted from the next working day after the formal request. Default 3 working days.',
+            'Dihitung mulai hari kerja berikutnya setelah permintaan resmi. Standar 3 hari kerja.',
+            '从收到正式申请后的下一个工作日起算，默认 3 个工作日。')}</small>
         </AdminField>
       </div>}
       {saved&&<AdminFormSection variant="subgroup" title={t('Email verification','Verifikasi email','邮箱验证')}

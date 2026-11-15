@@ -94,6 +94,14 @@ async function applyEnrollmentOrdersMigration(connection) {
   }else if(receivingAccount.Type.toLowerCase()!=='varchar(160)'||receivingAccount.Null!=='YES'||receivingAccount.Default!==null){
     throw Error('Enrollment receipt receiving account does not match the expected schema');
   }
+  const [refundColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_refund_cases');
+  const refundTiming=refundColumns.find(column=>column.Field==='timing');
+  if(!refundTiming){
+    const sql=await readFile(new URL('./schema-enrollment-20261114235404.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(refundTiming.Type.toLowerCase()!=='json'||refundTiming.Null!=='YES'||refundTiming.Default!==null){
+    throw Error('Enrollment refund timing does not match the expected schema');
+  }
 }
 
 async function applyContentMigration(connection){

@@ -6,6 +6,9 @@ import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enr
 import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners.ts';
 import { classOpeningNotices, orderNotice } from './enrollmentNotices.ts';
 import { createEnrollmentTransferInvitation } from './enrollmentTransferOffers.ts';
+import { readEnrollmentRules } from './enrollmentRules.ts';
+import { enrollmentRefundDeadline } from '../../src/utils/enrollmentRefundTiming.ts';
+import { DEFAULT_CRM_POLICY_CONFIG } from '../../src/types/crmPolicyConfig.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
@@ -20,7 +23,8 @@ type Context={
 };
 
 async function refundLedger(c:Client,id:string) {
-  const entry=(await c.query('SELECT expected,created_at FROM enrollment_refund_cases WHERE order_id=:p1',[id])).rows[0];
+  const entry=(await c.query(`SELECT expected,timing,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt
+    FROM enrollment_refund_cases WHERE order_id=:p1`,[id])).rows[0];
   if(!entry) return null;
   const installments:RefundInstallment[]=(await c.query(`SELECT p.reference,p.receipt_reference,p.amount,
     (SELECT COALESCE(SUM(b.amount),0) FROM enrollment_refund_returns b WHERE b.refund_reference=p.reference) AS returned
@@ -29,7 +33,8 @@ async function refundLedger(c:Client,id:string) {
     }));
   const sent=installments.reduce((sum,row)=>sum+row.amount,0);
   const returned=installments.reduce((sum,row)=>sum+row.returned,0);
-  return {installments,progress:{expected:Number(entry.expected),refunded:sent-returned,returned,requestedAt:entry.created_at}};
+  return {installments,progress:{expected:Number(entry.expected),refunded:sent-returned,returned,
+    requestedAt:entry.timing?.requestedAt??entry.createdAt,sendBy:entry.timing?.sendBy,timezone:entry.timing?.timezone}};
 }
 
 export async function enrollmentAftercareStatus(c:Client,id:string) {
@@ -97,9 +102,10 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     const data=await transact(async c=>{
       const ledger=await refundLedger(c,id);
       if(!ledger) invalid('enrollment_refund_unavailable',404);
-      const receipts=(await c.query(`SELECT reference,amount FROM enrollment_receipts
+      const receipts=(await c.query(`SELECT reference,amount,receiving_account AS account FROM enrollment_receipts
         WHERE order_id=:p1 ORDER BY settled_at,reference`,[id])).rows.map(row=>({
           reference:row.reference,
+          account:row.account,
           remaining:Number(row.amount)-effectiveRefundForReceipt(ledger.installments,row.reference),
         }));
       return {...ledger,receipts};
@@ -209,8 +215,11 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
   post(staff+'/:id/refund',async(q,r)=>{
     const actor=await supportActor(q);
     const id=String(q.params.id);
-    const {reason,delivered,special}=q.body || {};
+    const {reason,delivered,special,requestedAt}=q.body || {};
     if(typeof reason!=='string'||!reason.trim()||reason.length>1000||!Number.isSafeInteger(delivered)||delivered<0||typeof special!=='boolean') invalid('enrollment_invalid_refund');
+    const clock=new Date();
+    const requested=requestedAt===undefined?clock:typeof requestedAt==='string'&&/(Z|[+-]\d{2}:\d{2})$/.test(requestedAt)?new Date(requestedAt):null;
+    if(!requested||!Number.isFinite(requested.getTime())||requested>clock)invalid('enrollment_invalid_refund_request_time');
     const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.refund.intake',authorize:()=>supportActor(q)},async()=>{
       const {order,cohort}=await lockOrder(c,id);
       sameClass(cohort.id,q.body.classId);
@@ -219,13 +228,18 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       if (Number(order.received)<=0||['refunded','refunding'].includes(order.state)||delivered>cohort.data.sessions||(!opened&&delivered>0))
         invalid('enrollment_refund_unavailable',409);
       const expected=enrollmentRefundEstimate({price:order.price,received:Number(order.received),refunded:0,transferred:0,sessions:cohort.data.sessions,delivered});
-      await c.query(`INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,created_at)
-        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))`,[id,cohort.id,actor.id,reason.trim(),delivered,expected]);
+      const rules=await readEnrollmentRules(c);
+      const policy=(await c.query("SELECT value FROM portal_settings WHERE id='crm_policy'")).rows[0]?.value;
+      const calendar={...DEFAULT_CRM_POLICY_CONFIG.businessHours,...policy?.businessHours};
+      const sendBy=enrollmentRefundDeadline(requested,rules.refundBusinessDays,calendar);
+      const timing={requestedAt:requested.toISOString(),sendBy,timezone:calendar.timezone};
+      await c.query(`INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,timing,created_at)
+        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))`,[id,cohort.id,actor.id,reason.trim(),delivered,expected,timing]);
       await c.query('UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2',[expected>0?'refunding':'refunded',id]);
       await releaseInvites(c,id);
       await reconcileWaitlist(c,cohort,await takenSeats(c,cohort.id));
-      await orderNotice(c,'refund_accepted',id,undefined,{expected});
-      return {orderId:id,expected};
+      await orderNotice(c,'refund_accepted',id,undefined,{expected,sendBy:expected>0?sendBy:undefined});
+      return {orderId:id,expected,sendBy};
     }));
     r.json(result);
   });

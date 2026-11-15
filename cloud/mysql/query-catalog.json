@@ -407,8 +407,8 @@
       "server/portal/enrollmentAttribution.ts"
     ]
   },
-  "INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))": {
-    "sql": "INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))",
+  "INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,timing,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,timing,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -1914,8 +1914,8 @@
       "server/portal/enrollmentNotices.ts"
     ]
   },
-  "SELECT expected,created_at FROM enrollment_refund_cases WHERE order_id=:p1": {
-    "sql": "SELECT expected,created_at FROM enrollment_refund_cases WHERE order_id=:p1",
+  "SELECT expected,timing,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n    FROM enrollment_refund_cases WHERE order_id=:p1": {
+    "sql": "SELECT expected,timing,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n    FROM enrollment_refund_cases WHERE order_id=:p1",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -3025,8 +3025,8 @@
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "SELECT reference,amount FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference": {
-    "sql": "SELECT reference,amount FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference",
+  "SELECT reference,amount,receiving_account AS account FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference": {
+    "sql": "SELECT reference,amount,receiving_account AS account FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -3283,6 +3283,7 @@
   "SELECT value FROM portal_settings WHERE id='crm_policy'": {
     "sql": "SELECT value FROM portal_settings WHERE id='crm_policy'",
     "sources": [
+      "server/portal/enrollmentResolution.ts",
       "server/portal/runtime.ts"
     ]
   },

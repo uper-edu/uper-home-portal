@@ -20,7 +20,7 @@ export type EnrollmentAftercare = {
   transferHistory: { source_class_id: string; target_class_id: string; created_at: string }[];
   lateProofSubmitted?: boolean;
   priorityRequested?: boolean;
-  refundProgress?: { expected: number; refunded: number; returned?: number } | null;
+  refundProgress?: { expected: number; refunded: number; returned?: number; sendBy?:string } | null;
   refund: { mode: string; maximum?: number };
 };
 
@@ -127,6 +127,9 @@ export function EnrollmentOrderAftercare({
           <div><dt>{t(['申请金额','Approved amount','Jumlah yang disetujui'])}</dt><dd>{currency(progress.expected)}</dd></div>
           <div><dt>{t(['累计已退','Total refunded','Total yang dikembalikan'])}</dt><dd>{currency(progress.refunded)}</dd></div>
           {!complete&&returned>0&&<div><dt>{t(['剩余应退','Remaining refund','Sisa pengembalian'])}</dt><dd>{currency(progress.expected-progress.refunded)}</dd></div>}
+          {!complete&&returned===0&&progress.sendBy&&<div><dt>{t(['预计发出时间','Expected send-by date','Perkiraan batas pengiriman'])}</dt>
+            <dd><time dateTime={progress.sendBy}>{dateFormat.format(new Date(progress.sendBy))} · {timeFormat.format(new Date(progress.sendBy))} WIB</time></dd>
+          </div>}
           <div><dt>{t(['退回方式','Refund method','Metode pengembalian'])}</dt><dd>{t(['原付款渠道','Original payment method','Metode pembayaran awal'])}</dd></div>
         </dl>}
         {complete&&progress&&progress.refunded>0&&<p>{t(['实际到账时间以原付款渠道为准。','Arrival times depend on the original payment method.','Waktu dana diterima bergantung pada metode pembayaran awal.'])}</p>}

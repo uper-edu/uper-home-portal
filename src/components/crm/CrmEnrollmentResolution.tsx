@@ -5,7 +5,7 @@ import { AdminFormActions } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
 import { CrmSingleSelect } from './CrmSingleSelect';
-import {formatCrmEventTime} from '../../utils/crmOperatingTime';
+import {formatCrmEventTime,formatCrmOperatingTime,validateLocalInstant,viewerTimeZone} from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import type { PublicEnrollmentClass } from '../../utils/enrollmentCatalog';
@@ -13,8 +13,8 @@ import type { PublicEnrollmentClass } from '../../utils/enrollmentCatalog';
 type ServiceOrder={id:string;classId:string;name:string;level:string;format:PublicEnrollmentClass['format'];opened:boolean;canInvite:boolean;canEnd:boolean;canRefund:boolean;ended:boolean;received:number;priorityRequested:boolean};
 type SupportAction='refund'|'invite'|'end';
 type RefundDetails={
-  progress:{expected:number;refunded:number};
-  receipts:{reference:string;remaining:number}[];
+  progress:{expected:number;refunded:number;requestedAt?:string;sendBy?:string;timezone?:string};
+  receipts:{reference:string;remaining:number;account?:string|null}[];
   installments:{reference:string;receiptReference:string;amount:number;returned:number}[];
 };
 const staff='/api/crm/enrollment/aftercare';
@@ -67,10 +67,21 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
         const form=new FormData(event.currentTarget);
         setBusy(true);setError('');
         try{
+          let requestedAt:string|undefined;
+          if(editor.mode==='refund'){
+            const local=String(form.get('requestedAt')??'');
+            const instant=new Date(local);
+            try{validateLocalInstant(local,instant,viewerTimeZone());if(instant>new Date())throw Error();}
+            catch{
+              setError(t('请核对收到退款申请的时间。','Check when the refund request was received.','Periksa waktu pengajuan pengembalian diterima.'));
+              return;
+            }
+            requestedAt=instant.toISOString();
+          }
           const result=await enrollmentPost(staff+'/'+editor.order.id+'/'+(editor.mode==='invite'?'invitations':editor.mode),{
             classId:editor.order.classId,requestId:editor.requestId,
             ...(editor.mode==='invite'?{targetClassId:targetId}:editor.mode==='end'?{reason:form.get('reason')}:
-              {reason:form.get('reason'),delivered:Number(form.get('delivered')||0),special:form.get('special')==='on'}),
+              {reason:form.get('reason'),delivered:Number(form.get('delivered')||0),special:form.get('special')==='on',requestedAt}),
           });
           setEditor(undefined);setDirty(false);
           const deadline=formatCrmEventTime(result.replyBy);
@@ -96,9 +107,12 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
         </>:<>
           <p>{t('正式受理后会结束报名及转班等待，并释放席位。','Accepting this request ends the enrollment and releases any held seat.','Menerima permintaan mengakhiri pendaftaran dan melepaskan kursi.')}</p>
           <AdminField required>{t('学员申请及受理原因','Request and acceptance reason','Alasan permintaan dan penerimaan')}<textarea name="reason" required maxLength={1000}/></AdminField>
+          <AdminField required>{t('收到正式申请的时间','Formal request received at','Waktu permintaan resmi diterima')}
+            <input name="requestedAt" type="datetime-local" required defaultValue={formatCrmEventTime(new Date().toISOString()).slice(0,16).replace(' ','T')}/>
+          </AdminField>
           {editor.order.opened&&<>
             <label className="admin-field admin-field--choice"><input type="checkbox" name="special" required/>{t('确认已核实特殊退款原因','Confirm the verified exception','Konfirmasi pengecualian terverifikasi')}</label>
-            <AdminField required>{t('已实际交付课次','Sessions already delivered','Pertemuan yang telah diberikan')}<input name="delivered" type="number" min="0" step="1" required/></AdminField>
+            <AdminField required>{t('申请前已实际交付课次','Sessions delivered before the request','Pertemuan yang telah diberikan sebelum pengajuan')}<input name="delivered" type="number" min="0" step="1" required/></AdminField>
           </>}
         </>}
       </div><AdminFormActions className="crm-editor-actions"><button type="button" className="crm-work-button" onClick={close}>{t('取消','Cancel','Batal')}</button>
@@ -124,10 +138,14 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate}:{id:string;lang:C
   };
   useEffect(()=>{void load().catch(()=>setError(t('未能加载退款明细。','Refund details could not be loaded.','Rincian belum dapat dimuat.')));},[id]);
   if(!details) return error?<p role="alert">{error}</p>:null;
-  const {expected,refunded}=details.progress;
+  const {expected,refunded,requestedAt,sendBy,timezone}=details.progress;
+  const original=details.receipts.find(row=>row.reference===source);
   const payment=details.installments.find(entry=>entry.reference===returnEntry?.reference);
   return <section className="crm-course-catalog">
     <p>{t('累计已原路退款','Total refunded to original payment','Total dikembalikan ke pembayaran asal')} {formatCurrency(refunded,lang)} / {formatCurrency(expected,lang)}</p>
+    {requestedAt&&<p>{sendBy?t('收到正式申请','Formal request received','Permintaan resmi diterima'):
+      t('退款登记时间','Refund recorded at','Waktu pengembalian dicatat')} · <time dateTime={requestedAt}>{formatCrmEventTime(requestedAt)}</time></p>}
+    {sendBy&&timezone&&<p>{t('原定发出期限','Original send-by deadline','Tenggat awal pengiriman')} · <time dateTime={sendBy}>{formatCrmOperatingTime(sendBy,timezone)} · {timezone}</time></p>}
     {!!details.installments.length&&<ul aria-label={t('已登记退款流水','Recorded refunds','Riwayat pengembalian tercatat')}>
       {details.installments.map(entry=><li key={entry.reference}>
         {formatCurrency(entry.amount,lang)} · {entry.reference} · {t('原收款','Original receipt','Penerimaan asal')} {entry.receiptReference}
@@ -188,6 +206,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate}:{id:string;lang:C
           lang={lang} isLight={isLight} required options={details.receipts.filter(row=>row.remaining>0)
             .map(row=>({value:row.reference,label:row.reference+' · '+formatCurrency(row.remaining,lang)}))} onChange={setSource}/>
       </AdminField>
+      {original&&<p>{t('原公司收款账户','Original company receiving account','Rekening penerima perusahaan asal')} · {original.account??t('未记录，请核对原交易','Not recorded. Check the original transaction.','Belum dicatat. Periksa transaksi asal.')}</p>}
       <AdminField required>{t('退款流水号','Refund bank reference','Referensi bank pengembalian')}<input name="reference" required maxLength={120}/></AdminField>
       <AdminField required>{t('本次退款金额（Rp）','Refund amount (Rp)','Jumlah pengembalian (Rp)')}<input name="amount" type="number" min="1" max={Math.min(expected-refunded,details.receipts.find(row=>row.reference===source)?.remaining??expected-refunded)} required/></AdminField>
       <button type="submit" className="crm-work-button" data-primary disabled={busy||!source}>{t('登记分笔退款','Record refund installment','Catat tahap pengembalian')}</button>

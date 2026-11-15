@@ -4,6 +4,14 @@ import { enrollmentWeekOf, latestDueEnrollmentWeek } from '../server/portal/enro
 import { enrollmentEmailSubjects, renderEnrollmentEmail, type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
 import { enrollmentCard } from '../server/portal/enrollmentCards';
 import { proofTransferDetails,summarizeEnrollmentProofs } from '../server/portal/enrollmentProofTotals';
+import { enrollmentRefundDeadline } from '../src/utils/enrollmentRefundTiming';
+
+test('refund deadline counts configured working dates across a weekend',()=>{
+  const calendar={timezone:'Asia/Jakarta',workDays:[1,2,3,4,5],endTime:'17:00'};
+  assert.equal(enrollmentRefundDeadline(new Date('2026-11-13T08:00:00Z'),3,calendar),'2026-11-18T10:00:00.000Z');
+  assert.equal(enrollmentRefundDeadline(new Date('2026-11-15T18:00:00Z'),1,calendar),'2026-11-17T10:00:00.000Z');
+  assert.throws(()=>enrollmentRefundDeadline(new Date(),3,{...calendar,workDays:[]}));
+});
 
 test('pending transfer totals deduplicate proof and reference while keeping unknown and verified amounts separate',()=>{
   const proof=(orderId:string,digest:string,details:any,verified=0,matched=0)=>({orderId,digest,details,verified,matched});

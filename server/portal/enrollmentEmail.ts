@@ -20,7 +20,7 @@ export const enrollmentEmailSubjects = {
 export type EnrollmentEmailKind = keyof typeof enrollmentEmailSubjects;
 type Facts = {language:unknown; salutation?:string; class?:string; firstLesson?:string; schedule?:string; code?:string; codeMinutes?:number;
   deadline?:string; url?:string; orderId?:string; price?:number; received?:number; expected?:number; refunded?:number;
-  installment?:number; targetClass?:string; targetFirstLesson?:string; replyBy?:string; orderState?:string};
+  installment?:number; targetClass?:string; targetFirstLesson?:string; replyBy?:string; sendBy?:string; orderState?:string};
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const official='https://uperedu.com';
 export const enrollmentPreviewOrigin='http://localhost:3000';
@@ -59,7 +59,8 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
     class_cancelled:[tr(['原班无法按原计划开课。','The original class will not start as scheduled.','Kelas asal tidak dimulai sesuai jadwal.']),cancellation],
     transfer_invitation:[tr(['接受后，原实收用于新班。请先核对课表，再选择接受或拒绝。','If you accept, your existing payment will go toward the new class. Review the timetable before replying.','Jika diterima, pembayaranmu digunakan untuk kelas baru. Periksa jadwal sebelum menjawab.']),
       [facts.targetClass,when(facts.targetFirstLesson),asWib(facts.replyBy)].filter(Boolean).join(' · ')],
-    refund_accepted:[tr(['报名已结束，请查看原路退款的办理进度。','Your enrollment has ended. Track the refund to your original payment method.','Pendaftaran telah berakhir. Lihat status refund melalui metode pembayaran awal.'])],
+    refund_accepted:[tr(['报名已结束，请查看原路退款的办理进度。','Your enrollment has ended. Track the refund to your original payment method.','Pendaftaran telah berakhir. Lihat status refund melalui metode pembayaran awal.']),
+      facts.sendBy?tr(['预计发出时间','Expected send-by date','Perkiraan batas pengiriman'])+' · '+asWib(facts.sendBy):''],
     refund_recorded:[tr(['本次已发出','Refund sent in this installment','Dana dikirim pada tahap ini'])+' · '+amount(facts.installment),
       tr(['累计已发出','Total sent','Total dikirim'])+' · '+amount(facts.refunded),
       tr(['实际到账以银行处理为准。','Your bank determines when the funds appear.','Waktu dana masuk mengikuti proses bank.'])],

@@ -15,6 +15,7 @@ const occurrenceDdl='ALTER TABLE crm_payment_analytics ADD COLUMN occurred_at DA
 const learnerNameDdl='ALTER TABLE enrollment_waitlist ADD COLUMN learner_name VARCHAR(120) NULL';
 const transferDetailsDdl='ALTER TABLE enrollment_proofs ADD COLUMN transfer_details JSON DEFAULT NULL';
 const receivingAccountDdl='ALTER TABLE enrollment_receipts ADD COLUMN receiving_account VARCHAR(160) DEFAULT NULL';
+const refundTimingDdl='ALTER TABLE enrollment_refund_cases ADD COLUMN timing JSON DEFAULT NULL';
 const cosColumns=()=>Object.entries({content:['mediumblob','YES'],storage_type:['varchar(16)','NO'],cos_url:['varchar(1024)','YES'],object_key:['varchar(255)','YES'],byte_size:['bigint unsigned','YES']}).map(([Field,[Type,Null]])=>({Field,Type,Null}));
 const queueColumns=(version=19)=>Object.entries({
  id:'char(64)',environment:"enum('dev','test','prod')",project_id:'varchar(191)',
@@ -37,7 +38,7 @@ function fixture(ready){
  const campaigns=ready.length?[{id:'existing',code:'existing',config:{id:'existing',code:'existing',promotionLinks:[{id:'existing_promotion'}]}}]:[];
  const index=ready.includes(17)?[{p:'existing_promotion',campaign_id:'existing'}]:[];
  const shortLinks=ready.includes(18)?[{p:'existing_promotion',short_code:'abc234'}]:[];
- let transferDetailsColumn,receivingAccountColumn;
+ let transferDetailsColumn,receivingAccountColumn,refundTimingColumn;
  const connection={
   async query(sql,args){
    queries.push(sql);
@@ -59,6 +60,7 @@ function fixture(ready){
    if(sql==='SHOW FULL COLUMNS FROM enrollment_waitlist')return [waitlistNameColumn?[waitlistNameColumn]:[]];
    if(sql==='SHOW FULL COLUMNS FROM enrollment_proofs')return [transferDetailsColumn?[transferDetailsColumn]:[]];
    if(sql==='SHOW FULL COLUMNS FROM enrollment_receipts')return [receivingAccountColumn?[receivingAccountColumn]:[]];
+   if(sql==='SHOW FULL COLUMNS FROM enrollment_refund_cases')return [refundTimingColumn?[refundTimingColumn]:[]];
    if(sql===transferDetailsDdl){
     if(!tables.has('enrollment_proofs')||transferDetailsColumn)throw Error('Unexpected proof transfer DDL');
     transferDetailsColumn={Field:'transfer_details',Type:'json',Null:'YES',Default:null};return [{}];
@@ -66,6 +68,10 @@ function fixture(ready){
    if(sql===receivingAccountDdl){
     if(!tables.has('enrollment_receipts')||receivingAccountColumn)throw Error('Unexpected receipt account DDL');
     receivingAccountColumn={Field:'receiving_account',Type:'varchar(160)',Null:'YES',Default:null};return [{}];
+   }
+   if(sql===refundTimingDdl){
+    if(!tables.has('enrollment_refund_cases')||refundTimingColumn)throw Error('Unexpected refund timing DDL');
+    refundTimingColumn={Field:'timing',Type:'json',Null:'YES',Default:null};return [{}];
    }
    if(sql===learnerNameDdl){
     if(!tables.has('enrollment_waitlist')||waitlistNameColumn)throw Error('Unexpected waitlist learner DDL');
@@ -137,6 +143,7 @@ test('COS-MERGE-03: empty schema executes all 20 real migration stages in order'
  assert.equal(f.queries.filter(sql=>sql===learnerNameDdl).length,1);
  assert.equal(f.queries.filter(sql=>sql===transferDetailsDdl).length,1);
  assert.equal(f.queries.filter(sql=>sql===receivingAccountDdl).length,1);
+ assert.equal(f.queries.filter(sql=>sql===refundTimingDdl).length,1);
 });
 test('COS-MERGE-04: a ready marker cannot hide missing COS columns, even when v18 is ready',async()=>{
  const f=fixture(range(18));f.setColumns(cosColumns().filter(row=>row.Field!=='cos_url'));

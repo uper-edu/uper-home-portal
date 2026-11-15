@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from 'express';
 import { validMutationOrigin } from './accessTransport.ts';
-import { enrollmentEmailRuleFields, enrollmentEmailRuleLimits, enrollmentRuleDefaults, enrollmentRuleFields, type EnrollmentRules } from '../../src/utils/enrollmentRules.ts';
+import { enrollmentEmailRuleFields, enrollmentEmailRuleLimits, enrollmentRefundDayLimit, enrollmentRuleDefaults, enrollmentRuleFields, type EnrollmentRules } from '../../src/utils/enrollmentRules.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 
 type Client = { query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}> };
@@ -31,12 +31,14 @@ export function mountEnrollmentRules(app:Express,{wrap,transact,authorize}:{
     const maximumHours=Math.floor((Date.UTC(9999,11,31,23,59,59)-Date.now())/3_600_000);
     const valid=(value:unknown,max:number)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=1&&value<=max;
     if(![paymentHours,replyHours].every(value=>valid(value,maximumHours))||
+        (Object.hasOwn(body,'refundBusinessDays')&&!valid(body.refundBusinessDays,enrollmentRefundDayLimit))||
         enrollmentEmailRuleFields.some(key=>Object.hasOwn(body,key)&&!valid(body[key],enrollmentEmailRuleLimits[key]))||
         !Number.isSafeInteger(revision)||revision<0) invalid('enrollment_rules_invalid');
     const result=await transact(c=>operation(c,actor.id,q.body,{...scope,authorize:()=>authorize(q)},async()=>{
       await c.query("INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id",[defaults]);
       const current=effectiveRules((await c.query("SELECT value FROM portal_settings WHERE id='enrollment_rules' FOR UPDATE")).rows[0].value);
       const rules={...current,paymentHours,replyHours};
+      if(Object.hasOwn(body,'refundBusinessDays'))rules.refundBusinessDays=body.refundBusinessDays;
       for(const key of enrollmentEmailRuleFields) {
         if(Object.hasOwn(body,key)) rules[key]=body[key];
       }
