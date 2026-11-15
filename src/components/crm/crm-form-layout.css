@@ -198,3 +198,60 @@
 .crm-stage-editor .crm-stage-source-picker{padding-top:8px}
 .crm-stage-editor .crm-stage-source-picker>summary{min-height:40px;align-content:center}
 @media(max-width:600px){.crm-stage-drawer .crm-stage-options span{grid-template-columns:1fr}}
+
+.crm-enrollment-rules {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--af-surface);
+  color: var(--af-text);
+  border: 1px solid var(--af-border);
+  border-radius: 14px;
+}
+.crm-enrollment-rules > .admin-edit-header {
+  padding: 8px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--af-border);
+  border-radius: 13px 13px 0 0;
+  box-shadow: none;
+  color: var(--af-text);
+  background: var(--af-surface);
+}
+.crm-enrollment-rules .admin-edit-title h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.crm-enrollment-rules .admin-edit-actions .crm-work-button[data-primary=true] {
+  background: var(--admin-action-fill);
+  border-color: var(--admin-action-fill);
+  color: var(--admin-on-action);
+}
+.crm-enrollment-rules .admin-edit-actions { justify-content: flex-end; }
+.crm-enrollment-rules-body {
+  padding: var(--admin-form-panel-top) 16px var(--admin-form-panel-bottom);
+}
+.crm-enrollment-rules-body > p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.crm-enrollment-rules-body > .crm-form-grid { max-width: 720px; }
+.crm-enrollment-rules .admin-field input {
+  width: 8rem;
+  padding: 8px 12px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid color-mix(in srgb, var(--admin-muted) 75%, var(--af-surface));
+  color: var(--af-text);
+  background: var(--af-surface);
+}
+.crm-enrollment-rules .admin-field input[aria-invalid=true] { border-color: var(--admin-danger-border); }
+.crm-enrollment-rules :is(button,input):focus-visible {
+  outline: 2px solid var(--admin-focus);
+  outline-offset: 2px;
+}
+.crm-enrollment-rules > .admin-required-error {
+  order: 1;
+  margin: 0 16px var(--admin-form-panel-bottom);
+}

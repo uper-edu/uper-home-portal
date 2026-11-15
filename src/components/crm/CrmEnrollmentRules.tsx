@@ -1,5 +1,6 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
+import {AdminFormActions} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
 import {adminText} from '../AdminHeader';
 import type {CrmLanguage} from '../../utils/crmLanguage';
@@ -10,8 +11,9 @@ const endpoint='/api/crm/enrollment/rules';
 const fields=['paymentHours','replyHours'] as const;
 const asDraft=(rules:EnrollmentRules)=>({paymentHours:String(rules.paymentHours),replyHours:String(rules.replyHours)});
 
-export function CrmEnrollmentRules({lang,active,onDraftChange}:{lang:CrmLanguage;active:boolean;onDraftChange:(dirty:boolean)=>void}) {
+export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:CrmLanguage;isLight:boolean;active:boolean;onDraftChange:(dirty:boolean)=>void}) {
   const t=(en:string,id:string,zh:string)=>adminText(lang,en,id,zh);
+  const fieldHelp=useId();
   const [saved,setSaved]=useState<EnrollmentRules>();
   const [draft,setDraft]=useState({paymentHours:'',replyHours:''});
   const [showSaved,setShowSaved]=useState(false);
@@ -88,36 +90,47 @@ export function CrmEnrollmentRules({lang,active,onDraftChange}:{lang:CrmLanguage
     }
   }
 
-  return <AdminForm lang={lang} className="crm-form-layout crm-course-catalog" onSubmit={(event:React.FormEvent)=>{event.preventDefault();void save();}}>
-    <header className="admin-edit-header">
-      <div className="admin-edit-title"><h2>{t('Enrollment rules','Aturan pendaftaran','报名规则')}</h2>{saved&&<AdminRequiredNote inline lang={lang}/>}</div>
-      {saved&&<div className="crm-ops-actions"><button type="submit" disabled={!dirty||busy||!!pending||feedback==='conflict'}>{t('Save','Simpan','保存')}</button></div>}
+  const controlsDisabled=busy||!!pending;
+  return <AdminForm lang={lang} className="crm-enrollment-rules" data-theme={isLight?'light':'dark'}
+    onSubmit={(event:React.FormEvent)=>{event.preventDefault();void save();}}>
+    <header className="admin-edit-header" data-theme={isLight?'light':'dark'}>
+      <div className="admin-edit-title">
+        <h2>{t('Enrollment rules','Aturan pendaftaran','报名规则')}{saved&&<AdminRequiredNote inline lang={lang}/>}</h2>
+      </div>
+      {saved&&<AdminFormActions className="admin-edit-actions">
+        <button type="submit" className="crm-work-button" data-primary disabled={!dirty||controlsDisabled||feedback==='conflict'}>
+          {t('Save','Simpan','保存')}
+        </button>
+      </AdminFormActions>}
     </header>
-    <p className="crm-ops-note">{t('These rules apply across all courses and classes. Saved deadlines stay as recorded.',
-      'Aturan ini berlaku untuk semua kursus dan kelas. Tenggat yang sudah tercatat tetap berlaku。',
-      '所有课程与班次共用这两项规则。已生成的截止时间按原记录执行。')}</p>
-    {!saved&&feedback!=='load-error'&&<p role="status">{t('Loading…','Memuat…','正在加载…')}</p>}
-    {feedback==='load-error'&&<p role="alert">{t('Could not load enrollment rules.','Aturan pendaftaran gagal dimuat.','无法读取报名规则。')} <button type="button" className="crm-work-link" onClick={()=>void load()}>{t('Retry','Coba lagi','重试')}</button></p>}
-    {saved&&showSaved&&<p role="status">{t(
-      `Saved rules · Payment ${saved.paymentHours} h · Transfer reply ${saved.replyHours} h`,
-      `Aturan tersimpan · Pembayaran ${saved.paymentHours} jam · Jawaban pindah kelas ${saved.replyHours} jam`,
-      `已保存规则 · 付款 ${saved.paymentHours} 小时 · 转班答复 ${saved.replyHours} 小时`)}</p>}
-    {saved&&<>
-      <AdminField required>{t('Payment deadline (hours)','Batas pembayaran (jam)','付款期限（小时）')}
-        <input name="paymentHours" type="number" min="1" step="1" value={draft.paymentHours} disabled={busy||!!pending} onChange={e=>setDraft({...draft,paymentHours:e.target.value})}/>
-        <small>{t('From the time a seat is reserved. Default 24 hours.','Sejak kursi diberikan. Standar 24 jam.','从获得席位起算，默认 24 小时。')}</small>
-      </AdminField>
-      <AdminField required>{t('Transfer reply deadline (hours)','Batas jawaban pindah kelas (jam)','转班邀请答复期限（小时）')}
-        <input name="replyHours" type="number" min="1" step="1" value={draft.replyHours} disabled={busy||!!pending} onChange={e=>setDraft({...draft,replyHours:e.target.value})}/>
-        <small>{t('From the time an invitation is issued. Default 48 hours, up to the target class’s enrollment deadline.',
-          'Sejak undangan dibuat. Standar 48 jam, paling lambat sampai pendaftaran kelas tujuan ditutup.',
-          '从发出邀请起算，默认 48 小时，最晚到目标班次的报名截止时间。')}</small>
-      </AdminField>
-    </>}
-    {feedback==='conflict'&&<CrmSaveFeedback state="error" lang={lang}>{t('Another employee updated these rules. Review the saved time limits before applying your draft.','Aturan diperbarui oleh staf lain. Periksa tenggat tersimpan sebelum menyimpan draf.','其他员工已更新报名规则。请核对已保存的期限，再决定是否保存当前草稿。')} <button type="button" className="crm-work-link" onClick={()=>void load(true)}>{t('Review saved rules','Periksa aturan tersimpan','核对已保存规则')}</button></CrmSaveFeedback>}
-    {saved&&dirty&&!busy&&!pending&&feedback!== 'conflict'&&<CrmSaveFeedback state={feedback==='save-error'?'error':'dirty'} lang={lang}/>}
-    {busy&&<CrmSaveFeedback state="saving" lang={lang}/>}
-    {pending&&!busy&&<CrmSaveFeedback state="unknown" lang={lang}>{t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
-    {feedback==='saved'&&!dirty&&<CrmSaveFeedback state="saved" lang={lang}/>}
+    <div className="crm-enrollment-rules-body" data-admin-stack>
+      <p className="crm-work-muted">{t(
+        'Applies to all classes. Changes affect new orders and invitations only.',
+        'Berlaku untuk semua kelas. Perubahan hanya memengaruhi pesanan dan undangan baru.',
+        '适用于所有班次。修改仅影响新生成的订单和转班邀请。')}</p>
+      {!saved&&feedback!=='load-error'&&<p role="status">{t('Loading…','Memuat…','正在加载…')}</p>}
+      {feedback==='load-error'&&<p role="alert">{t('Could not load enrollment rules.','Aturan pendaftaran gagal dimuat.','无法读取报名规则。')} <button type="button" className="crm-work-link" onClick={()=>void load()}>{t('Retry','Coba lagi','重试')}</button></p>}
+      {saved&&showSaved&&<p role="status">{t(
+        `Saved rules · Payment ${saved.paymentHours} h · Transfer reply ${saved.replyHours} h`,
+        `Aturan tersimpan · Pembayaran ${saved.paymentHours} jam · Jawaban pindah kelas ${saved.replyHours} jam`,
+        `已保存规则 · 付款 ${saved.paymentHours} 小时 · 转班答复 ${saved.replyHours} 小时`)}</p>}
+      {saved&&<div className="crm-form-grid" data-admin-grid>
+        <AdminField required>{t('Payment deadline (hours)','Batas pembayaran (jam)','付款期限（小时）')}
+          <input name="paymentHours" aria-describedby={fieldHelp+'-payment'} type="number" min="1" step="1" value={draft.paymentHours} disabled={controlsDisabled} onChange={e=>setDraft({...draft,paymentHours:e.target.value})}/>
+          <small id={fieldHelp+'-payment'}>{t('From the time a seat is reserved. Default 24 hours.','Sejak kursi diberikan. Standar 24 jam.','从获得席位起算，默认 24 小时。')}</small>
+        </AdminField>
+        <AdminField required>{t('Transfer reply deadline (hours)','Batas jawaban pindah kelas (jam)','转班邀请答复期限（小时）')}
+          <input name="replyHours" aria-describedby={fieldHelp+'-reply'} type="number" min="1" step="1" value={draft.replyHours} disabled={controlsDisabled} onChange={e=>setDraft({...draft,replyHours:e.target.value})}/>
+          <small id={fieldHelp+'-reply'}>{t('From the time the invitation is issued. Default 48 hours, up to the target class’s enrollment cutoff.',
+            'Sejak undangan dibuat. Standar 48 jam, paling lambat saat pendaftaran kelas tujuan ditutup.',
+            '从发出邀请起算，默认 48 小时，最晚到目标班次的报名截止时间。')}</small>
+        </AdminField>
+      </div>}
+      {feedback==='conflict'&&<CrmSaveFeedback state="error" lang={lang}>{t('Another employee updated these rules. Review the saved time limits before applying your draft.','Aturan diperbarui oleh staf lain. Periksa tenggat tersimpan sebelum menyimpan draf.','其他员工已更新报名规则。请核对已保存的期限，再决定是否保存当前草稿。')} <button type="button" className="crm-work-link" onClick={()=>void load(true)}>{t('Review saved rules','Periksa aturan tersimpan','核对已保存规则')}</button></CrmSaveFeedback>}
+      {saved&&dirty&&!busy&&!pending&&feedback!== 'conflict'&&<CrmSaveFeedback state={feedback==='save-error'?'error':'dirty'} lang={lang}/>}
+      {busy&&<CrmSaveFeedback state="saving" lang={lang}/>}
+      {pending&&!busy&&<CrmSaveFeedback state="unknown" lang={lang}>{t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
+      {feedback==='saved'&&!dirty&&<CrmSaveFeedback state="saved" lang={lang}/>}
+    </div>
   </AdminForm>;
 }

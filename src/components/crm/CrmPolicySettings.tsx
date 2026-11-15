@@ -75,6 +75,7 @@ export interface CrmPolicySettingsProps {
   onNavigateNotifications?: () => void;
   initialTopic?: OperationSection;
   onTopicChange?: (topic:OperationSection)=>void;
+  enrollmentRulesDirty:boolean;
   onEnrollmentRulesDraftChange: (dirty:boolean)=>void;
   notificationContent?: React.ReactNode | ((topic:string,active:boolean)=>React.ReactNode);
   onActionControlsChange?: (controls: PolicyActionControls | null) => void;
@@ -230,6 +231,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   onNavigateNotifications,
   notificationContent,
   initialTopic = operationSections[0].id,
+  enrollmentRulesDirty,
   onEnrollmentRulesDraftChange,
   onTopicChange,
 }) => {
@@ -274,7 +276,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [simPresetTime, setSimPresetTime] = useState<
     "now" | "fri_night" | "sat_night" | "sun_afternoon" | "mon_morning"
   >("fri_night");
-  const sectionDirty=(section:OperationSection)=>isPolicyTopic(section)&&topicDirty(formData,savedPolicy,section);
+  const sectionDirty=(section:OperationSection)=>section==='enrollment-rules'?enrollmentRulesDirty:isPolicyTopic(section)&&topicDirty(formData,savedPolicy,section);
   const activeModifiedCount=isPolicyTopic(activeCategory)?topicChangeFields(formData,savedPolicy,activeCategory).length:0;
   const durationLabel = (d: TimeDuration) => `${d.value} ${crmValue(d.unit,lang)}`;
   const displayPolicyValue=(value:any):string=>typeof value==='boolean'?(value?['Yes','Ya','是']:['No','Tidak','否'])[languageIndex]:Array.isArray(value)?value.map(day=>({en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],id:['Min','Sen','Sel','Rab','Kam','Jum','Sab'],zh:['周日','周一','周二','周三','周四','周五','周六']})[lang][day]??String(day)).join(' · '):value&&typeof value==='object'&&'value'in value?durationLabel(value):String(value??'—');
@@ -2022,6 +2024,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           </div>
         )}
     </div>
-    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm>}<div hidden={activeCategory!=='enrollment-rules'}><CrmEnrollmentRules lang={lang} active={activeCategory==='enrollment-rules'} onDraftChange={onEnrollmentRulesDraftChange}/></div><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&activeCategory!=='notification-channels'&&ruleExplanation}</div></AdminTopicFrame>{backfillConfiguration&&<CrmAssignmentBackfill configuration={backfillConfiguration} lang={lang} isLight={isLight} onClose={()=>setBackfillConfiguration(null)}/>}</div>
+    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm>}<div hidden={activeCategory!=='enrollment-rules'}><CrmEnrollmentRules lang={lang} isLight={isLight} active={activeCategory==='enrollment-rules'} onDraftChange={onEnrollmentRulesDraftChange}/></div><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&activeCategory!=='notification-channels'&&ruleExplanation}</div></AdminTopicFrame>{backfillConfiguration&&<CrmAssignmentBackfill configuration={backfillConfiguration} lang={lang} isLight={isLight} onClose={()=>setBackfillConfiguration(null)}/>}</div>
   );
 };

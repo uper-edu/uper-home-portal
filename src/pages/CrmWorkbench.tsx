@@ -1363,6 +1363,7 @@ function CrmWorkspace({
           <>
             {employee.permissions.includes("crm.operations.manage") && <CrmPolicySettings
               initialTopic={crmOperationsInitialTopic(employee.permissions.includes("notifications.read"))}
+              enrollmentRulesDirty={rulesDirty}
               onEnrollmentRulesDraftChange={setRulesDirty}
               onTopicChange={topic=>{
                 const url=new URL(window.location.href);
