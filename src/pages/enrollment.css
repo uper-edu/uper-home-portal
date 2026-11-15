@@ -25,3 +25,5 @@
 .enrollment-action:disabled{opacity:.6}
 .enrollment-page-intro{display:flex;justify-content:space-between;gap:1rem}
 .enrollment-order-list{display:grid;gap:.65rem}
+.enrollment-tab-count{margin-inline-start:.4rem;font-size:.8em;border-radius:1em;background:#dfeee8;color:#133d32;padding:.05rem .4rem}
+.enrollment-application textarea{width:100%;min-height:5rem;padding:.6rem;border:1px solid color-mix(in srgb,currentColor 24%,transparent);border-radius:.55rem}

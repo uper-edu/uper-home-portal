@@ -31,6 +31,10 @@ const copy = {
   back: ['Back to classes', 'Kembali ke daftar kelas', '返回课程报名'],
   unavailable: ['This class is unavailable.', 'Kelas ini tidak tersedia.', '此班次暂不可查看。'],
   mine: ['My enrollments', 'Pendaftaran saya', '我的报名'],
+  interest: ['Tell us what you want to study', 'Sampaikan kursus yang Anda inginkan', '告诉我们你想上的课'],
+  full: ['Full', 'Penuh', '满班'],
+  limited: ['Few seats left', 'Kursi terbatas', '空位紧张'],
+  available: ['Seats available', 'Kursi tersedia', '有空位'],
   outcomes: ['Learning outcomes', 'Hasil belajar', '学习成果'],
   material: ['Course and materials', 'Kursus dan materi', '课程内容与教材'],
   resources: ['Practice and resources', 'Latihan dan sumber daya', '练习与资源'],
@@ -45,6 +49,7 @@ export default function Enrollment() {
   const [params, setParams] = useSearchParams();
   const { classId } = useParams();
   const mine = useLocation().pathname.replace(/\/$/, '') === '/enrollment/mine';
+  const interest = useLocation().pathname.replace(/\/$/, '') === '/enrollment/interest';
   const [classes, setClasses] = useState<PublicEnrollmentClass[]>();
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -83,6 +88,7 @@ export default function Enrollment() {
   const mineParams = new URLSearchParams(params);
   mineParams.delete('order');
   const minePath = '/enrollment/mine?' + mineParams.toString();
+  const interestPath = '/enrollment/interest?' + mineParams.toString();
   const selected = classes?.find(row => row.id === classId);
   const rows = classes?.filter(row => row.level.startsWith('HSK ' + level) &&
     (!period || row.period === period) && (!format || row.format === format));
@@ -92,7 +98,7 @@ export default function Enrollment() {
       .format(new Date(row.firstLesson + ':00+07:00'));
     return <article className="enrollment-card" key={row.id}>
       <h2>{row.level} · {t(row.format)} · {day}</h2>
-      <p>{t(row.opened ? 'opened' : 'estimated')} · {row.schedule}</p>
+      <p>{t(row.opened ? 'opened' : 'estimated')}{row.availability && ' · '+t(row.availability)} · {row.schedule}</p>
       <p>{language === 'zh' ? row.sessions + ' 课次 · 每课次 ' + row.minutes + ' 分钟'
         : language === 'id' ? row.sessions + ' pertemuan · ' + row.minutes + ' menit tiap pertemuan'
         : row.sessions + ' sessions · ' + row.minutes + ' minutes each'}</p>
@@ -107,11 +113,11 @@ export default function Enrollment() {
       </div>
     </article>;
   };
-  if (mine) return <section className="enrollment-page">
+  if (mine || interest) return <section className="enrollment-page">
     <Link to={'/enrollment?' + mineParams.toString()}>{t('back')}</Link>
-    <h1>{t('mine')}</h1>
+    <h1>{t(interest?'interest':'mine')}</h1>
     {accepting === undefined ? <p role="status">{t('loading')}</p> :
-      accepting ? <EnrollmentApplication language={language}/> : <p>{t('unavailable')}</p>}
+      accepting ? <EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/> : <p>{t('unavailable')}</p>}
   </section>;
   return <section className="enrollment-page">
     {classId && <Link to={listPath}>{t('back')}</Link>}
@@ -135,12 +141,13 @@ export default function Enrollment() {
           <details key={key} open={key === 'outcomes'}><summary>{t(key)}</summary>
             <p>{key === 'outcomes' ? selected.learningOutcomes : selected[key]}</p>
           </details>)}
-        {accepting && <EnrollmentApplication key={selected.id} classId={selected.id} language={language}/>}
+        {accepting && <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full={selected.availability==='full'}/>}
         </> : <p>{t('unavailable')}</p>
       : rows?.length ? rows.map(row => classCard(row, true)) : <p>{t('empty')} <button type="button" onClick={() => {
           const next = new URLSearchParams(params);
           next.delete('period'); next.delete('format');
           setParams(next, { replace: true, preventScrollReset: true });
         }}>{t('reset')}</button></p>}
+    {!classId && accepting && <Link to={interestPath}>{t('interest')}</Link>}
   </section>;
 }

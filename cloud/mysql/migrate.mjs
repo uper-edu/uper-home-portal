@@ -62,9 +62,11 @@ async function applyEnrollmentCatalogMigration(connection) {
 }
 
 async function applyEnrollmentOrdersMigration(connection) {
-  const source = await readFile(new URL('./schema-enrollment-20261114174435.sql', import.meta.url), 'utf8');
-  for (const statement of source.split(';').map(sql => sql.trim()).filter(Boolean)) {
-    await connection.query(statement);
+  for (const file of ['schema-enrollment-20261114174435.sql','schema-enrollment-20261114175859.sql']) {
+    const source = await readFile(new URL(file, import.meta.url), 'utf8');
+    for (const statement of source.split(';').map(sql => sql.trim()).filter(Boolean)) {
+      await connection.query(statement);
+    }
   }
 }
 

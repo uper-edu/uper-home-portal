@@ -6,6 +6,8 @@ import { validMutationOrigin } from './accessTransport.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { permittedRecord, type AccessEmployee } from '../../src/utils/accessControl.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
+import { allowsEnrollment, mountEnrollmentInterests, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
+import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -34,7 +36,9 @@ async function session(c: Client, q: Request): Promise<string> {
 
 async function lockClass(c: Client, classId: string) {
   const row = (await c.query(
-    "SELECT id,course_id,state,data,enrollment_closes_at>UTC_TIMESTAMP(6) AS accepting FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+    `SELECT id,course_id,state,data,enrollment_closes_at>UTC_TIMESTAMP(6) AS accepting,
+      COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active
+      FROM enrollment_classes WHERE id=:p1 FOR UPDATE`,
     [classId])).rows[0];
   if (!row) invalid('enrollment_class_unavailable', 404);
   return row;
@@ -89,6 +93,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     r.set('Cache-Control', 'no-store');
     return handler(q, r);
   }));
+  mountEnrollmentInterests(app,{wrap,post,transact:enrollTx,session,lockClass,expireSeats});
   const financeActor = async (q: Request) => {
     const actor = await staff(q, 'crm.payments.verify');
     // Orders have no CRM owner until the customer and opportunity integration is added.
@@ -141,11 +146,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   });
 
   post(base + '/applications', async (q, r) => {
-    const { classId, requestId, name, phone, priority } = q.body;
+    const { classId, requestId, name, priority } = q.body;
+    const phone = enrollmentPhone(q.body.phone);
     if (typeof classId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(classId) ||
         typeof requestId !== 'string' || !uuid.test(requestId) ||
         typeof name !== 'string' || name.trim().length < 1 || name.length > 120 ||
-        typeof phone !== 'string' || !/^\+?[0-9 ()-]{7,26}$/.test(phone) || phone.replace(/\D/g,'').length < 7 ||
+        !phone ||
         typeof priority !== 'boolean') invalid('enrollment_invalid_application');
     const result = await enrollTx(async (c: Client) => {
       const email = await session(c, q);
@@ -158,15 +164,17 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         return view(existing);
       }
       const active = (await c.query("SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE", [cohort.course_id])).rows[0]?.value.active;
-      if (cohort.state !== 'published' || !Number(cohort.accepting) || active !== true) invalid('enrollment_class_unavailable', 409);
+      if (!allowsEnrollment(cohort) || active !== true) invalid('enrollment_class_unavailable', 409);
       const existingSeat = (await c.query("SELECT * FROM enrollment_orders WHERE class_id=:p1 AND email=:p2 AND state<>'expired' LIMIT 1", [classId,email])).rows[0];
       if (existingSeat) return view(existingSeat);
-      const seats = (await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state<>'expired'", [classId])).rows[0].count;
+      const seats = await takenSeats(c,classId);
       if (Number(seats) >= cohort.data.capacity) invalid('enrollment_class_full', 409);
       const id = randomUUID();
       await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
         VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6),:p7)`,
       [id,classId,email,requestId,fingerprint,cohort.data.price,{name:name.trim(),phone:phone.trim(),priority,bank:local.bank}]);
+      await c.query("UPDATE enrollment_waitlist SET state='converted',order_id=:p1 WHERE class_id=:p2 AND email=:p3 AND state='waiting'",[id,classId,email]);
+      await reconcileWaitlist(c,cohort,seats+1);
       return view((await c.query('SELECT * FROM enrollment_orders WHERE id=:p1', [id])).rows[0]);
     });
     r.json(result);

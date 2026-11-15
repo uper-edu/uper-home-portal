@@ -64,13 +64,20 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
   }));
   app.get('/api/enrollment/classes', wrap(async (_q, r) => {
     const classes = await tx(async c => (await c.query(`
-      SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened FROM enrollment_classes e
+      SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
+        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state<>'expired'
+          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) AS seats
+      FROM enrollment_classes e
       JOIN crm_courses c ON c.id=e.course_id
       LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
       WHERE e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6)
         AND JSON_EXTRACT(c.value,'$.active')=true
       ORDER BY e.first_lesson_at,e.id
-    `)).rows.map((row: Parameters<typeof record>[0] & { opened: number }) => ({ ...publicEnrollmentClass(record(row)), opened: Number(row.opened) === 1 })));
+    `)).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number }) => {
+      const available = row.data.capacity - Number(row.seats);
+      const availability = available <= 0 ? 'full' : available <= 3 ? 'limited' : 'available';
+      return { ...publicEnrollmentClass(record(row)), opened: Number(row.opened) === 1, availability };
+    }));
     r.set('Cache-Control', 'no-store').json({ classes });
   }));
 }

@@ -37,3 +37,4 @@ v<YYYYMMDDHHMMSS>_<简短用途>.sql
 - `cloud/mysql/schema-enrollment-20261114174435.sql`（2026-11-14 17:44）由启动迁移创建报名邮箱验证、订单、凭证、实收和开班记录表。重复执行保留业务记录。
 - 仓库 CMS 正式种子与图片在 `cloud/mysql/seeds/cms/v2/`，是内容数据源，不是增量脚本。
 - 完整空库初始化见 [docs/operations/cms-cos-bootstrap.md](../docs/operations/cms-cos-bootstrap.md)；不要把初始化包当增量导入已有业务库。
+- `cloud/mysql/schema-enrollment-20261114175859.sql`（2026-11-14 17:58）由启动迁移创建候补、选课需求、余位轮次和通知事件表。重复执行保留记录。
