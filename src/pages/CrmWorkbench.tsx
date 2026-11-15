@@ -3,6 +3,7 @@ import '../components/crm/crm-payments.css';
 import '../components/crm/crm-finance-workspace.css';
 import {CrmQueueCount, useCrmQueueSummary} from '../components/crm/CrmQueueCount';
 import {CrmFinanceWorkspace} from '../components/crm/CrmFinanceWorkspace';
+import {CrmEnrollmentFinance} from '../components/crm/CrmEnrollmentFinance';
 import {canVerifyPayments} from '../utils/crmPaymentWorklist';
 import {defaultCrmModule} from '../utils/crmLanding';
 import '../components/crm/crm-courses.css';
@@ -1320,7 +1321,7 @@ function CrmWorkspace({
 
           </div>
         </div>}
-        {crmModule === "payments" ? (<CrmFinanceWorkspace onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/>) : crmModule === "campaigns" ? (
+        {crmModule === "payments" ? (<><CrmFinanceWorkspace onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/><CrmEnrollmentFinance lang={lang}/></>) : crmModule === "campaigns" ? (
           <CrmCampaignHub
             canManageCampaigns={canManageCampaigns}
             reviewCounts={{available: Boolean(promotionQueue.data?.counts), counts: promotionQueue.data?.counts ?? {}}}

@@ -1,0 +1,25 @@
+.enrollment-page{max-width:58rem;margin:0 auto;padding:7rem 1rem 4rem;display:grid;gap:1rem;color:inherit}
+.enrollment-page h1{font-size:clamp(1.85rem,4vw,2.75rem);font-weight:700;line-height:1.15}
+.enrollment-page h2{font-size:1.19rem;font-weight:650}
+.enrollment-page a{text-decoration:underline;text-underline-offset:.18em}
+.enrollment-levels,.enrollment-filters{display:flex;gap:.5rem;flex-wrap:wrap}
+.enrollment-levels button,.enrollment-filters select{padding:.65rem .85rem;border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:.65rem}
+.enrollment-levels button[aria-pressed=true]{background:color-mix(in srgb,#16a598 18%,transparent);border-color:#168278}
+.enrollment-filters label{display:grid;gap:.25rem}
+.enrollment-card,.enrollment-page details{padding:1rem;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:1rem;display:grid;gap:.45rem}
+.enrollment-card-footer{display:flex;align-items:end;justify-content:space-between;gap:.75rem;margin-top:.5rem;flex-wrap:wrap}
+.enrollment-card-footer>div{display:grid;gap:.2rem}
+.enrollment-card-footer strong{font-size:1.35rem}
+.enrollment-page summary{cursor:pointer;font-weight:600}
+.enrollment-page details p{margin-top:.6rem;white-space:pre-wrap}
+.public-select{display:grid;gap:.25rem;min-width:10rem}
+.enrollment-page .public-select details{position:relative;padding:0;border-radius:.65rem}
+.public-select summary{padding:.65rem .85rem}
+.public-select details>div{position:absolute;top:calc(100% + .25rem);inset-inline:0;z-index:5;padding:.25rem;border:1px solid #dbe7e4;border-radius:.7rem;background:#fff;color:#152637;box-shadow:0 .35rem 1.2rem #112a2424}
+.public-select button{width:100%;display:flex;justify-content:space-between;gap:.5rem;padding:.5rem .75rem;text-align:start;border-radius:.45rem}
+.public-select button[aria-pressed=true]{background:#e4f4ef;color:#124138}
+.enrollment-application form{display:grid;gap:.75rem}
+.enrollment-application label:has(input:not([type=checkbox])){display:grid;gap:.3rem}
+.enrollment-application input:not([type=checkbox]){padding:.55rem .65rem;border:1px solid color-mix(in srgb,currentColor 24%,transparent);border-radius:.55rem;width:100%}
+.enrollment-action{justify-self:start;border-radius:.65rem;background:#12685b;color:#fff;padding:.65rem 1rem;font-weight:650;min-height:44px}
+.enrollment-action:disabled{opacity:.6}

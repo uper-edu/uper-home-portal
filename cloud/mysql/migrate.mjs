@@ -28,6 +28,7 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
       const result=await addPaymentAnalyticsDispatch(connection);
       await addPaymentAnalyticsOccurrence(connection);
       await applyEnrollmentCatalogMigration(connection);
+      await applyEnrollmentOrdersMigration(connection);
       if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
       return result;
     };
@@ -57,6 +58,13 @@ async function applyEnrollmentCatalogMigration(connection) {
   const required = ['id', 'course_id', 'revision', 'state', 'first_lesson_at', 'enrollment_closes_at', 'data', 'updated_at'];
   if (!required.every(name => columns.some(column => column.Field === name))) {
     throw Error('Incomplete enrollment class schema');
+  }
+}
+
+async function applyEnrollmentOrdersMigration(connection) {
+  const source = await readFile(new URL('./schema-enrollment-20261114174435.sql', import.meta.url), 'utf8');
+  for (const statement of source.split(';').map(sql => sql.trim()).filter(Boolean)) {
+    await connection.query(statement);
   }
 }
 

@@ -37,6 +37,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
 }
 
 const LinkHub = lazyWithRetry(() => import('./pages/LinkHub'));
+const Enrollment = lazyWithRetry(() => import('./pages/Enrollment'));
 const About = lazyWithRetry(() => import('./pages/About'));
 const FAQ = lazyWithRetry(() => import('./pages/FAQ'));
 const Partners = lazyWithRetry(() => import('./pages/Partners'));
@@ -101,6 +102,8 @@ export default function App() {
                   <Route path="partners" element={<Partners />} />
                   <Route path="tours" element={<StudyTours />} />
                   <Route path="hsk" element={<HSK />} />
+                  <Route path="enrollment" element={<Enrollment />} />
+                  <Route path="enrollment/:classId" element={<Enrollment />} />
                   <Route path="csca" element={<CSCA />} />
                   <Route path="consultancy" element={<StudyAbroad />} />
                   <Route path="contact" element={<Contact />} />

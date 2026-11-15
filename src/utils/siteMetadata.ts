@@ -85,6 +85,10 @@ export const publicPages: Record<string, { title: Words; description: Words }> =
         "了解UPER中文课程、HSK备考与学习支持。",
       ],
     },
+    "/enrollment": {
+      title: ["Course Enrollment", "Pendaftaran Kelas", "课程报名"],
+      description: ["Browse UPER classes, schedules and tuition.", "Lihat kelas, jadwal, dan biaya UPER.", "查看 UPER 班次、上课时间和学费。"],
+    },
     "/csca": {
       title: ["CSCA Preparation", "Persiapan CSCA", "CSCA备考"],
       description: [
@@ -295,7 +299,7 @@ export function resolveMetadata(
       : normalizedPath,
     workspace = path.split("/")[1].toLowerCase(),
     privatePage = isPrivatePath(path),
-    page = publicPages[path],
+    page = publicPages[path] || (/^\/enrollment\/[a-zA-Z0-9-]{1,64}$/.test(path) ? publicPages["/enrollment"] : undefined),
     dynamic = /^\/(news|campaign)\/[^/]+$/.test(path),
     known =
       !!page ||
