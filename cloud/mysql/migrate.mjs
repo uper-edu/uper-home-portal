@@ -86,6 +86,14 @@ async function applyEnrollmentOrdersMigration(connection) {
   }else if(transferDetails.Type.toLowerCase()!=='json'||transferDetails.Null!=='YES'||transferDetails.Default!==null){
     throw Error('Enrollment proof transfer details do not match the expected schema');
   }
+  const [receiptColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_receipts');
+  const receivingAccount=receiptColumns.find(column=>column.Field==='receiving_account');
+  if(!receivingAccount){
+    const sql=await readFile(new URL('./schema-enrollment-20261114235011.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(receivingAccount.Type.toLowerCase()!=='varchar(160)'||receivingAccount.Null!=='YES'||receivingAccount.Default!==null){
+    throw Error('Enrollment receipt receiving account does not match the expected schema');
+  }
 }
 
 async function applyContentMigration(connection){

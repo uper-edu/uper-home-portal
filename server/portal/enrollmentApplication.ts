@@ -371,12 +371,28 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
 
   app.get(finance, wrap(async (q, r) => {
     await financeActor(q);
-    const orders = await enrollTx(async (c: Client) => (await c.query(`SELECT o.*,e.state AS class_state,
+    const orders = await enrollTx(async (c: Client) => {
+      const rows=(await c.query(`SELECT o.*,e.state AS class_state,
         EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,
         (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id
       FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
         OR (o.state='ended' AND o.received>0) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))
-      ORDER BY o.created_at DESC LIMIT 150`,[typeof q.query.order==='string'?q.query.order:''])).rows.map(row => ({ ...view(row,row.class_state), name: row.data.name, opened: Number(row.opened) === 1, proofId: row.proof_id })));
+      ORDER BY o.created_at DESC LIMIT 150`,[typeof q.query.order==='string'?q.query.order:''])).rows;
+      const receiptsByOrder=new Map<string,any[]>();
+      if(rows.length){
+        const receipts=(await c.query(`SELECT order_id, reference, amount, receiving_account AS account,
+          DATE_FORMAT(settled_at,'%Y-%m-%dT%H:%i:%sZ') AS settledAt
+          FROM enrollment_receipts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(order_id))
+          ORDER BY settled_at DESC,reference`,[JSON.stringify(rows.map(row=>row.id))])).rows;
+        for(const {order_id,amount,...receipt} of receipts){
+          const history=receiptsByOrder.get(order_id)??[];
+          history.push({...receipt,amount:Number(amount)});
+          receiptsByOrder.set(order_id,history);
+        }
+      }
+      return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
+        proofId:row.proof_id,receipts:receiptsByOrder.get(row.id)??[]}));
+    });
     r.set('Cache-Control', 'no-store').json({ orders });
   }));
   app.get(finance + '/proofs/:id', wrap(async (q, r) => {
@@ -389,7 +405,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
 
   post(finance + '/:id/receipts', async (q, r) => {
     const actor = await financeActor(q);
-    const { amount, reference, transferredAt, requestId } = q.body;
+    const { amount, reference, receivingAccount, transferredAt, requestId } = q.body;
     const time = typeof transferredAt === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(transferredAt) ? new Date(transferredAt) : null;
     if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1_000_000_000 ||
         typeof reference !== 'string' || !reference.trim() || reference.length > 120 ||
@@ -398,12 +414,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const id = String(q.params.id);
     const result = await enrollTx((c: Client) => operation(c, actor.id, q.body,
       { leadId: 'enrollment:' + id, kind: 'enrollment.receipt', authorize: () => financeActor(q) }, async () => {
+      if(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>160)
+        invalid('enrollment_receiving_account_required');
       const { order, cohort } = await lockOrder(c, id);
       if(['refunding','refunded'].includes(order.state)) invalid('enrollment_refund_in_progress',409);
       const ref = reference.trim().toUpperCase();
       try {
-        await c.query(`INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,created_at)
-          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`, [ref,id,amount,actor.id,time]);
+        await c.query(`INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,receiving_account,created_at)
+          VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))`, [ref,id,amount,actor.id,time,receivingAccount.trim()]);
       } catch (error: any) {
         if (error.code === 'ER_DUP_ENTRY') invalid('enrollment_duplicate_receipt', 409);
         throw error;

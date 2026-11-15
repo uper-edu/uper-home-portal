@@ -4,8 +4,13 @@ import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { CrmEnrollmentRefund } from './CrmEnrollmentResolution';
 import { enrollmentOpportunityReturnPath } from '../../utils/crmEnrollmentOpportunityRoute';
+import { formatCrmEventTime,validateLocalInstant,viewerTimeZone } from '../../utils/crmOperatingTime';
+import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
+import { AdminFormActions } from '../AdminFormLayout';
+import { CrmDisclosure } from './CrmDisclosure';
 
-type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string };
+type Receipt = {reference:string;amount:number;account:string|null;settledAt:string};
+type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string; receipts:Receipt[] };
 const endpoint = '/api/crm/enrollment/finance';
 
 export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;isLight?:boolean }) {
@@ -46,37 +51,60 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
     {saved&&<span className="crm-opportunity-feedback" role="status">{t('实收已登记','Verified receipt recorded','Dana terverifikasi telah dicatat')}</span>}
     {orders?.length === 0 && <p>{t('暂无报名订单待核实。','No enrollment payments to verify.','Tidak ada pembayaran untuk diverifikasi.')}</p>}
     {orders?.map(row => <article key={row.id} className="crm-course-catalog">
-      <h3>{row.name} · {enrollmentCopy(lang,enrollmentStatuses[row.status])}</h3>
+      <h3 data-admin-form-title>{row.name} · {enrollmentCopy(lang,enrollmentStatuses[row.status])}{selected===row.id&&<AdminRequiredNote lang={lang} inline/>}</h3>
       <p>{row.id} · {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}
         {row.opened && ' · '+t('已确认开班','Class confirmed','Kelas dikonfirmasi')}</p>
       {row.proofId && <a href={endpoint+'/proofs/'+encodeURIComponent(row.proofId)}>{t('下载凭证','Download proof','Unduh bukti')}</a>}
+      {!!row.receipts?.length&&<CrmDisclosure heading={t('已核实收款流水','Verified receipt history','Riwayat penerimaan terverifikasi')}>
+        <ul className="crm-course-records">{row.receipts.map(receipt=><li key={receipt.reference}>
+          <strong>{formatCurrency(receipt.amount,lang)}</strong> · <time dateTime={receipt.settledAt}>{formatCrmEventTime(receipt.settledAt)}</time>
+          <p>{t('实际收款账户','Actual receiving account','Rekening penerima aktual')} · {receipt.account??t('未记录','Not recorded','Belum dicatat')}</p>
+          <p>{t('银行流水号','Bank reference','Nomor referensi bank')} · {receipt.reference}</p>
+        </li>)}</ul>
+      </CrmDisclosure>}
       {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={()=>void load().catch(failed)}/> :
       selected !== row.id ? <button type="button" className="crm-work-button" onClick={() => {
         setSelected(row.id);setRequestId(crypto.randomUUID());setError('');setSaved(false);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button>
-      : <form className="crm-form-layout" onSubmit={async event => {
+      : <AdminForm lang={lang} className="crm-form-layout" onSubmit={async (event:React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (busy) return;
         const form = new FormData(event.currentTarget);
+        const localTime=String(form.get('time'));
+        const instant=new Date(localTime);
+        try{
+          validateLocalInstant(localTime,instant,viewerTimeZone());
+        }catch{
+          setError(t('请核对实际到账日期和时间。','Check the actual receipt date and time.','Periksa tanggal dan waktu dana diterima.'));
+          return;
+        }
         setError('');setBusy(true);
         try {
-          const transferredAt = new Date(String(form.get('time'))).toISOString();
-          await enrollmentPost(endpoint+'/'+row.id+'/receipts',{ amount:Number(form.get('amount')),reference:form.get('reference'),transferredAt,requestId });
+          await enrollmentPost(endpoint+'/'+row.id+'/receipts',{amount:Number(form.get('amount')),reference:form.get('reference'),
+            receivingAccount:form.get('receivingAccount'),transferredAt:instant.toISOString(),requestId});
           setSaved(true);
           setSelected(undefined);
           await load().catch(failed);
         } catch (cause) {
           setError((cause as Error).message==='enrollment_duplicate_receipt'
             ? t('这笔流水已登记。','This bank reference has already been recorded.','Referensi bank sudah dicatat.')
+            : (cause as Error).message==='enrollment_receiving_account_required'
+            ? t('请填写实际收款账户。','Enter the actual receiving account.','Isi rekening penerima aktual.')
             : t('未能确认结果，请核对后保留原单重试。','Review the result and retry with the original details.','Periksa hasil lalu coba lagi dengan data yang sama.'));
         } finally {setBusy(false);}
       }}>
-        <label>{t('银行流水号','Bank reference','Nomor referensi bank')}<input name="reference" maxLength={120} required/></label>
-        <label>{t('实收金额（Rp）','Verified amount (Rp)','Nominal terverifikasi (Rp)')}<input name="amount" type="number" min="1" step="1" required/></label>
-        <label>{t('实际到账时间','Actual receipt time','Waktu dana diterima')}<input name="time" type="datetime-local" required/></label>
-        <button type="button" className="crm-work-button" disabled={busy} onClick={()=>setSelected(undefined)}>{t('取消','Cancel','Batal')}</button>
-        <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t('保存到账','Save receipt','Simpan penerimaan')}</button>
-      </form>}
+        <AdminField>{t('银行流水号','Bank reference','Nomor referensi bank')}<input name="reference" maxLength={120} required/></AdminField>
+        <AdminField>{t('实际收款账户','Actual receiving account','Rekening penerima aktual')}
+          <input name="receivingAccount" maxLength={160} required autoComplete="off"/>
+          <p>{t('按收款系统中的实际入账账户填写。','Enter the account credited in the payment system.','Isi rekening yang menerima dana di sistem pembayaran.')}</p>
+        </AdminField>
+        <AdminField>{t('实收金额（Rp）','Verified amount (Rp)','Nominal terverifikasi (Rp)')}<input name="amount" type="number" min="1" step="1" required/></AdminField>
+        <AdminField>{t('实际到账时间','Actual receipt time','Waktu dana diterima')}<input name="time" type="datetime-local" required/></AdminField>
+        <AdminFormActions>
+          <button type="button" className="crm-work-button" disabled={busy} onClick={()=>setSelected(undefined)}>{t('取消','Cancel','Batal')}</button>
+          <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t('保存到账','Save receipt','Simpan penerimaan')}</button>
+        </AdminFormActions>
+      </AdminForm>}
     </article>)}
   </section>;
 }

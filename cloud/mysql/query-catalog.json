@@ -395,8 +395,8 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))": {
-    "sql": "INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))",
+  "INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,receiving_account,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,receiving_account,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -2889,6 +2889,12 @@
   },
   "SELECT order_id FROM enrollment_proofs WHERE id=:p1": {
     "sql": "SELECT order_id FROM enrollment_proofs WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT order_id, reference, amount, receiving_account AS account,\n          DATE_FORMAT(settled_at,'%Y-%m-%dT%H:%i:%sZ') AS settledAt\n          FROM enrollment_receipts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(order_id))\n          ORDER BY settled_at DESC,reference": {
+    "sql": "SELECT order_id, reference, amount, receiving_account AS account,\n          DATE_FORMAT(settled_at,'%Y-%m-%dT%H:%i:%sZ') AS settledAt\n          FROM enrollment_receipts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(order_id))\n          ORDER BY settled_at DESC,reference",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
