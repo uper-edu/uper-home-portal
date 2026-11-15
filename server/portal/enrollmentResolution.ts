@@ -9,6 +9,7 @@ import { classOpeningNotices, orderNotice } from './enrollmentNotices.ts';
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
 type Actor=(q:Request)=>Promise<{id:string}>;
+type RefundInstallment={reference:string;receiptReference:string;amount:number;returned:number};
 type Context={
   wrap:(fn:Handler)=>(q:Request,r:Response)=>void; post:(path:string,fn:Handler)=>void;
   transact:(work:(c:Client)=>Promise<any>)=>Promise<any>; session:(c:Client,q:Request)=>Promise<string>;
@@ -16,6 +17,19 @@ type Context={
   lockClass:(c:Client,id:string)=>Promise<any>; expireSeats:(c:Client,id:string)=>Promise<void>;
   financeActor:Actor; supportActor:Actor;
 };
+
+async function refundLedger(c:Client,id:string) {
+  const entry=(await c.query('SELECT expected,created_at FROM enrollment_refund_cases WHERE order_id=:p1',[id])).rows[0];
+  if(!entry) return null;
+  const installments:RefundInstallment[]=(await c.query(`SELECT p.reference,p.receipt_reference,p.amount,
+    (SELECT COALESCE(SUM(b.amount),0) FROM enrollment_refund_returns b WHERE b.refund_reference=p.reference) AS returned
+    FROM enrollment_refund_payments p WHERE p.order_id=:p1 ORDER BY p.created_at,p.reference`,[id])).rows.map(row=>({
+      reference:String(row.reference),receiptReference:String(row.receipt_reference),amount:Number(row.amount),returned:Number(row.returned),
+    }));
+  const sent=installments.reduce((sum,row)=>sum+row.amount,0);
+  const returned=installments.reduce((sum,row)=>sum+row.returned,0);
+  return {installments,progress:{expected:Number(entry.expected),refunded:sent-returned,returned,requestedAt:entry.created_at}};
+}
 
 export async function enrollmentAftercareStatus(c:Client,id:string) {
   const invitations=(await c.query(`SELECT i.id,i.target_class_id,
@@ -26,11 +40,9 @@ export async function enrollmentAftercareStatus(c:Client,id:string) {
       id:row.id,targetClassId:row.target_class_id,expiresAt:row.expires_at_iso,
       state:row.state,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
     }));
-  const refund=(await c.query(`SELECT f.expected,f.created_at,
-    (SELECT COALESCE(SUM(p.amount),0) FROM enrollment_refund_payments p WHERE p.order_id=f.order_id) AS refunded
-    FROM enrollment_refund_cases f WHERE f.order_id=:p1`,[id])).rows[0];
+  const refund=await refundLedger(c,id);
   const transfers=(await c.query('SELECT source_class_id,target_class_id,created_at FROM enrollment_transfers WHERE order_id=:p1 ORDER BY created_at DESC',[id])).rows;
-  return { invitations, transferHistory:transfers, refundProgress:refund?{expected:Number(refund.expected),refunded:Number(refund.refunded),requestedAt:refund.created_at}:null };
+  return { invitations, transferHistory:transfers, refundProgress:refund?.progress??null };
 }
 
 const classId = (value:unknown) => typeof value==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(value);
@@ -72,6 +84,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       WHERE o.received>0 AND o.state NOT IN ('refunding','refunded') ORDER BY o.created_at DESC LIMIT 100`)).rows.map(o=>({
         id:o.id,classId:o.class_id,name:o.data.name,received:Number(o.received),opened:Number(o.opened)===1,
         level:o.class_data.level,format:o.class_data.format,canInvite:canSelectTransfer(o,{state:o.class_state}),
+        priorityRequested:o.data.priority===true,
       })));
     r.set('Cache-Control','no-store').json({orders});
   }));
@@ -79,20 +92,34 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     await financeActor(q);
     const id=String(q.params.id);
     const data=await transact(async c=>{
-      const {refundProgress}=await enrollmentAftercareStatus(c,id);
-      if(!refundProgress) invalid('enrollment_refund_unavailable',404);
-      const receipts=(await c.query(`SELECT r.reference,r.amount-
-        (SELECT COALESCE(SUM(p.amount),0) FROM enrollment_refund_payments p WHERE p.receipt_reference=r.reference) AS remaining
-        FROM enrollment_receipts r WHERE r.order_id=:p1 ORDER BY r.settled_at,r.reference`,[id])).rows
-        .map(row=>({reference:row.reference,remaining:Number(row.remaining)}));
-      const installments=(await c.query(`SELECT reference,receipt_reference,amount FROM enrollment_refund_payments
-        WHERE order_id=:p1 ORDER BY created_at,reference`,[id])).rows.map(row=>({
-          reference:row.reference,receiptReference:row.receipt_reference,amount:Number(row.amount),
+      const ledger=await refundLedger(c,id);
+      if(!ledger) invalid('enrollment_refund_unavailable',404);
+      const receipts=(await c.query(`SELECT reference,amount FROM enrollment_receipts
+        WHERE order_id=:p1 ORDER BY settled_at,reference`,[id])).rows.map(row=>({
+          reference:row.reference,
+          remaining:Number(row.amount)-effectiveRefundForReceipt(ledger.installments,row.reference),
         }));
-      return { progress:refundProgress,receipts,installments };
+      return {...ledger,receipts};
     });
     r.set('Cache-Control','no-store').json(data);
   }));
+
+  post(learner+'/priority',async(q,r)=>{
+    const id=String(q.params.id);
+    const result=await transact(async c=>{
+      const email=await session(c,q);
+      const {order,cohort}=await lockOrder(c,id,email);
+      sameClass(cohort.id,q.body?.classId);
+      if(!canSelectTransfer(order,cohort)) invalid('enrollment_priority_unavailable',409);
+      if(order.data.priority!==true){
+        await c.query("UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)) WHERE id=:p1",[id]);
+        await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.priority.enable',:p2)",
+          ['learner:'+createHash('sha256').update(email).digest('hex'),{orderId:id,classId:cohort.id}]);
+      }
+      return {priorityRequested:true};
+    });
+    r.json(result);
+  });
 
   post(staff+'/:id/invitations',async(q,r)=>{
     const actor=await supportActor(q);
@@ -196,24 +223,54 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     if(!original||!returned||original===returned||!Number.isSafeInteger(amount)||amount<1||amount>1_000_000_000) invalid('enrollment_invalid_refund');
     const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.refund.payment',authorize:()=>financeActor(q)},async()=>{
       const {order}=await lockOrder(c,id);
-      const entry=(await c.query('SELECT expected FROM enrollment_refund_cases WHERE order_id=:p1 FOR UPDATE',[id])).rows[0];
-      if(!entry || order.state!=='refunding') invalid('enrollment_refund_unavailable',409);
+      const ledger=await refundLedger(c,id);
+      if(!ledger || order.state!=='refunding') invalid('enrollment_refund_unavailable',409);
       const initial=(await c.query('SELECT amount FROM enrollment_receipts WHERE reference=:p1 AND order_id=:p2',[original,id])).rows[0];
       if(!initial) invalid('enrollment_refund_wrong_receipt',409);
-      const total=(await c.query(`SELECT COALESCE(SUM(amount),0) AS refunded,
-        COALESCE(SUM(CASE WHEN receipt_reference=:p2 THEN amount ELSE 0 END),0) AS source_refunded
-        FROM enrollment_refund_payments WHERE order_id=:p1`,[id,original])).rows[0];
-      const cumulative=Number(total.refunded)+amount;
-      if(cumulative>Number(entry.expected)||Number(total.source_refunded)+amount>Number(initial.amount))
+      const {expected,refunded}=ledger.progress;
+      if(ledger.installments.some(row=>row.reference===returned)) invalid('enrollment_duplicate_refund',409);
+      const cumulative=refunded+amount;
+      if(cumulative>expected||effectiveRefundForReceipt(ledger.installments,original)+amount>Number(initial.amount))
         invalid('enrollment_refund_amount_exceeds',409);
       try{
         await c.query(`INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)
           VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[returned,original,id,amount,actor.id]);
       }catch(error:any){if(error.code==='ER_DUP_ENTRY') invalid('enrollment_duplicate_refund',409);throw error;}
-      if(cumulative===Number(entry.expected)) await c.query("UPDATE enrollment_orders SET state='refunded' WHERE id=:p1",[id]);
-      await orderNotice(c,'refund_recorded',id,String(cumulative),{installment:amount,refunded:cumulative,expected:Number(entry.expected)});
-      return {orderId:id,refunded:cumulative,expected:Number(entry.expected)};
+      if(cumulative===expected) await c.query("UPDATE enrollment_orders SET state='refunded' WHERE id=:p1",[id]);
+      await orderNotice(c,'refund_recorded',id,'payment-'+createHash('sha256').update(returned).digest('hex'),{installment:amount,refunded:cumulative,expected});
+      return {orderId:id,refunded:cumulative,expected};
     }));
     r.json(result);
   });
+
+  post('/api/crm/enrollment/finance/:id/refund-returns',async(q,r)=>{
+    const actor=await financeActor(q);
+    const id=String(q.params.id);
+    const refundReference=reference(q.body?.refundReference);
+    const bankReturn=reference(q.body?.reference);
+    const amount=q.body?.amount;
+    if(!refundReference||!bankReturn||refundReference===bankReturn||!Number.isSafeInteger(amount)||amount<1||amount>1_000_000_000)
+      invalid('enrollment_invalid_refund_return');
+    const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.refund.return',authorize:()=>financeActor(q)},async()=>{
+      const {order}=await lockOrder(c,id);
+      const ledger=await refundLedger(c,id);
+      if(!ledger||!['refunding','refunded'].includes(order.state)) invalid('enrollment_refund_unavailable',409);
+      if((await c.query('SELECT reference FROM enrollment_refund_returns WHERE reference=:p1',[bankReturn])).rows[0])
+        invalid('enrollment_duplicate_refund_return',409);
+      const payment=ledger.installments.find(row=>row.reference===refundReference);
+      if(!payment) invalid('enrollment_refund_wrong_payment',409);
+      if(amount>payment.amount-payment.returned) invalid('enrollment_refund_return_amount_exceeds',409);
+      try{
+        await c.query(`INSERT INTO enrollment_refund_returns(reference,refund_reference,amount,actor,created_at)
+          VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6))`,[bankReturn,refundReference,amount,actor.id]);
+      }catch(error:any){if(error.code==='ER_DUP_ENTRY') invalid('enrollment_duplicate_refund_return',409);throw error;}
+      if(order.state==='refunded') await c.query("UPDATE enrollment_orders SET state='refunding' WHERE id=:p1",[id]);
+      return {orderId:id,refunded:ledger.progress.refunded-amount,expected:ledger.progress.expected};
+    }));
+    r.json(result);
+  });
+}
+
+function effectiveRefundForReceipt(installments:RefundInstallment[],reference:string) {
+  return installments.reduce((sum,row)=>row.receiptReference===reference?sum+row.amount-row.returned:sum,0);
 }

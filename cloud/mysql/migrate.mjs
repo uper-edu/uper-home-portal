@@ -64,7 +64,7 @@ async function applyEnrollmentCatalogMigration(connection) {
 }
 
 async function applyEnrollmentOrdersMigration(connection) {
-  for (const file of ['schema-enrollment-20261114174435.sql','schema-enrollment-20261114175859.sql','schema-enrollment-20261114181313.sql','schema-enrollment-20261114182623.sql','schema-enrollment-20261114183459.sql']) {
+  for (const file of ['schema-enrollment-20261114174435.sql','schema-enrollment-20261114175859.sql','schema-enrollment-20261114181313.sql','schema-enrollment-20261114182623.sql','schema-enrollment-20261114183459.sql','schema-enrollment-20261114213702.sql']) {
     const source = await readFile(new URL(file, import.meta.url), 'utf8');
     for (const statement of source.split(';').map(sql => sql.trim()).filter(Boolean)) {
       await connection.query(statement);

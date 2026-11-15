@@ -261,6 +261,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     enrollment_invalid_application:['请检查学员姓名和带区号的电话号码。','Check the learner name and phone number with country code.','Periksa nama siswa dan nomor telepon beserta kode negara.'],
     enrollment_class_unavailable:['此班次已停止接受报名。','This class is no longer accepting applications.','Pendaftaran kelas ini sudah ditutup.'],
     enrollment_transfer_unavailable:['该班次目前无法转入，请返回可转班次刷新查看。','This class is no longer available for transfer. Go back and check the list again.','Kelas ini tidak lagi tersedia. Kembali dan periksa daftar kelas.'],
+    enrollment_priority_unavailable:['当前报名无法开启优先安排，请刷新核对状态。','Priority arrangements are unavailable for this enrollment. Refresh to check its status.','Pengaturan prioritas tidak tersedia untuk pendaftaran ini. Muat ulang untuk memeriksa status.'],
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
   };
   const message=errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.'];
@@ -276,6 +277,13 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         setParams(next,{replace:true,preventScrollReset:true});
       }
       window.scrollTo(0,0);
+    });
+  }
+  function enablePriority() {
+    if(!order) return;
+    void run(async()=>{
+      await enrollmentPost(base+'/orders/'+encodeURIComponent(order.id)+'/priority',{classId:order.classId});
+      await getOrder(order.id);
     });
   }
   const paymentPath = (id: string) => {
@@ -620,7 +628,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     {checkingRecords || loadingPayment ? <p role="status">{t(['正在读取报名…','Loading enrollment…','Memuat pendaftaran…'])}</p> : order ? <>
       {showAftercare ? <EnrollmentOrderAftercare order={order} details={aftercare} catalog={orderResultClasses} search={params}
         language={language} minePath={listPath} busy={busy} proofPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
-        onTransfer={transfer} onRefresh={()=>void run(()=>getOrder(order.id))}/> : showOrderResult ? <EnrollmentOrderResult order={order} course={resultCourse} classInfo={aftercare?.currentClass}
+        onTransfer={transfer} onEnablePriority={enablePriority} onRefresh={()=>void run(()=>getOrder(order.id))}/> : showOrderResult ? <EnrollmentOrderResult order={order} course={resultCourse} classInfo={aftercare?.currentClass}
         classState={aftercare?.originalClassState} language={language} backPath={listPath} busy={busy}
         refundPath={canConsultRefund ? '/enrollment/mine?'+refundParams.toString() : undefined}
         balancePath={order.status==='partial' ? '/enrollment/payment?'+proofParams.toString() : undefined}

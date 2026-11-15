@@ -9,11 +9,11 @@ import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import type { PublicEnrollmentClass } from '../../utils/enrollmentCatalog';
 
-type ServiceOrder={id:string;classId:string;name:string;level:string;format:PublicEnrollmentClass['format'];opened:boolean;canInvite:boolean;received:number};
+type ServiceOrder={id:string;classId:string;name:string;level:string;format:PublicEnrollmentClass['format'];opened:boolean;canInvite:boolean;received:number;priorityRequested:boolean};
 type RefundDetails={
   progress:{expected:number;refunded:number};
   receipts:{reference:string;remaining:number}[];
-  installments:{reference:string;receiptReference:string;amount:number}[];
+  installments:{reference:string;receiptReference:string;amount:number;returned:number}[];
 };
 const staff='/api/crm/enrollment/aftercare';
 const finance='/api/crm/enrollment/finance';
@@ -48,6 +48,7 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
     {!editor&&error&&<p role="alert">{error}</p>}
     {orders.map(row=><article className="crm-course-catalog" key={row.id}>
       <h3>{row.name} · {row.level}</h3><p>{row.id} · {formatCurrency(row.received,lang)}</p>
+      {row.canInvite&&row.priorityRequested&&<p>{t('学员已开启优先安排','Learner enabled priority arrangements','Siswa mengaktifkan pengaturan prioritas')}</p>}
       {row.canInvite&&<button type="button" className="crm-work-button" onClick={()=>start(row,'invite')}>{t('安排转班邀请','Arrange transfer invitation','Atur undangan pindah kelas')}</button>}
       <button type="button" className="crm-work-button" onClick={()=>start(row,'refund')}>{t('受理退款','Accept refund request','Terima permintaan pengembalian')}</button>
     </article>)}
@@ -99,6 +100,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate}:{id:string;lang:C
   const [error,setError]=useState('');
   const [busy,setBusy]=useState(false);
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
+  const [returnEntry,setReturnEntry]=useState<{reference:string;requestId:string}>();
   const base=finance+'/'+id;
   const load=async()=>{
     const response=await fetch(base+'/refund-details',{cache:'no-store'});
@@ -107,13 +109,51 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate}:{id:string;lang:C
   useEffect(()=>{void load().catch(()=>setError(t('未能加载退款明细。','Refund details could not be loaded.','Rincian belum dapat dimuat.')));},[id]);
   if(!details) return error?<p role="alert">{error}</p>:null;
   const {expected,refunded}=details.progress;
+  const payment=details.installments.find(entry=>entry.reference===returnEntry?.reference);
   return <section className="crm-course-catalog">
     <p>{t('累计已原路退款','Total refunded to original payment','Total dikembalikan ke pembayaran asal')} {formatCurrency(refunded,lang)} / {formatCurrency(expected,lang)}</p>
     {!!details.installments.length&&<ul aria-label={t('已登记退款流水','Recorded refunds','Riwayat pengembalian tercatat')}>
-      {details.installments.map(entry=><li key={entry.reference}>{formatCurrency(entry.amount,lang)} · {entry.reference} · {t('原收款','Original receipt','Penerimaan asal')} {entry.receiptReference}</li>)}
+      {details.installments.map(entry=><li key={entry.reference}>
+        {formatCurrency(entry.amount,lang)} · {entry.reference} · {t('原收款','Original receipt','Penerimaan asal')} {entry.receiptReference}
+        {entry.returned>0&&<> · {t('银行已退回','Returned by bank','Dikembalikan oleh bank')} {formatCurrency(entry.returned,lang)}</>}
+        {!returnEntry&&entry.amount>entry.returned&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>{
+          setError('');setReturnEntry({reference:entry.reference,requestId:crypto.randomUUID()});
+        }}>{t('登记银行退回','Record bank return','Catat pengembalian oleh bank')}</button>}
+      </li>)}
     </ul>}
     {error&&<p role="alert">{error}</p>}
-    {refunded<expected&&<AdminForm lang={lang} className="crm-form-layout" onSubmit={async event=>{
+    {returnEntry&&payment&&<AdminForm lang={lang} className="crm-form-layout" onSubmit={async event=>{
+      event.preventDefault();
+      if(busy) return;
+      const input=new FormData(event.currentTarget);
+      setBusy(true);setError('');
+      try{
+        await enrollmentPost(base+'/refund-returns',{
+          refundReference:payment.reference,reference:input.get('reference'),amount:Number(input.get('amount')),requestId:returnEntry.requestId,
+        });
+        setReturnEntry(undefined);
+        await load();onUpdate();
+      }catch(cause){
+        const reason=(cause as Error).message;
+        setError(reason==='enrollment_duplicate_refund_return'
+          ? t('这笔银行退回已登记。','This bank return has already been recorded.','Pengembalian oleh bank ini sudah dicatat.')
+          : reason==='enrollment_refund_return_amount_exceeds'
+            ? t('退回金额超过这笔退款流水尚可登记的金额。','This return exceeds the remaining amount of the refund payment.','Jumlah melebihi sisa pembayaran pengembalian.')
+            : t('未能确认银行退回，请核对原流水后再操作。','The bank return could not be confirmed. Check the original payment before continuing.','Pengembalian oleh bank belum terkonfirmasi. Periksa pembayaran asal sebelum melanjutkan.'));
+      }finally{setBusy(false);}
+    }}>
+      <p>{t('退款流水','Refund payment','Pembayaran pengembalian')} · {payment.reference} · {formatCurrency(payment.amount-payment.returned,lang)}</p>
+      <AdminRequiredNote lang={lang}/>
+      <AdminField required>{t('银行退回参考号','Bank return reference','Referensi pengembalian oleh bank')}<input name="reference" required maxLength={120}/></AdminField>
+      <AdminField required>{t('银行退回金额（Rp）','Bank return amount (Rp)','Jumlah dikembalikan oleh bank (Rp)')}
+        <input name="amount" type="number" min="1" max={payment.amount-payment.returned} step="1" required/>
+      </AdminField>
+      <AdminFormActions>
+        <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{setReturnEntry(undefined);setError('');}}>{t('取消','Cancel','Batal')}</button>
+        <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t('确认登记退回','Confirm bank return','Konfirmasi pengembalian oleh bank')}</button>
+      </AdminFormActions>
+    </AdminForm>}
+    {refunded<expected&&<div hidden={!!returnEntry}><AdminForm lang={lang} className="crm-form-layout" onSubmit={async event=>{
       event.preventDefault();if(!source||busy)return;
       const form=event.currentTarget as HTMLFormElement;
       const input=new FormData(form);
@@ -133,8 +173,8 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate}:{id:string;lang:C
             .map(row=>({value:row.reference,label:row.reference+' · '+formatCurrency(row.remaining,lang)}))} onChange={setSource}/>
       </AdminField>
       <AdminField required>{t('退款流水号','Refund bank reference','Referensi bank pengembalian')}<input name="reference" required maxLength={120}/></AdminField>
-      <AdminField required>{t('本次退款金额（Rp）','Refund amount (Rp)','Jumlah pengembalian (Rp)')}<input name="amount" type="number" min="1" max={expected-refunded} required/></AdminField>
+      <AdminField required>{t('本次退款金额（Rp）','Refund amount (Rp)','Jumlah pengembalian (Rp)')}<input name="amount" type="number" min="1" max={Math.min(expected-refunded,details.receipts.find(row=>row.reference===source)?.remaining??expected-refunded)} required/></AdminField>
       <button type="submit" className="crm-work-button" data-primary disabled={busy||!source}>{t('登记分笔退款','Record refund installment','Catat tahap pengembalian')}</button>
-    </AdminForm>}
+    </AdminForm></div>}
   </section>;
 }

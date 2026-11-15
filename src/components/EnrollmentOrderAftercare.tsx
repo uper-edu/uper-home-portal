@@ -20,12 +20,12 @@ export type EnrollmentAftercare = {
   transferHistory: { source_class_id: string; target_class_id: string; created_at: string }[];
   lateProofSubmitted?: boolean;
   priorityRequested?: boolean;
-  refundProgress?: { expected: number; refunded: number } | null;
+  refundProgress?: { expected: number; refunded: number; returned?: number } | null;
   refund: { mode: string; maximum?: number };
 };
 
 export function EnrollmentOrderAftercare({
-  order, details, catalog, search, language, minePath, proofPath, busy, onTransfer, onRefresh,
+  order, details, catalog, search, language, minePath, proofPath, busy, onTransfer, onEnablePriority, onRefresh,
 }: {
   order: EnrollmentOrder;
   details?: EnrollmentAftercare;
@@ -36,6 +36,7 @@ export function EnrollmentOrderAftercare({
   proofPath?: string;
   busy: boolean;
   onTransfer: (classId: string, choice: 'accept' | 'decline', invitationId?: string) => void;
+  onEnablePriority: () => void;
   onRefresh: () => void;
 }) {
   const [copyState,setCopyState] = useState<'copied'|'failed'>();
@@ -110,12 +111,14 @@ export function EnrollmentOrderAftercare({
 
   if (refundState) {
     const complete = order.status==='refunded';
+    const returned = progress?.returned ?? 0;
     heading = t(['退款详情','Refund details','Detail pengembalian dana']);
     body = <>
       <p className="enrollment-result-state" role="status" data-paid={complete}>{t(complete && progress && progress.refunded>0
         ? ['退款已发出','Refund issued','Pengembalian dana telah dikirim']
         : complete ? ['退款已完成','Refund complete','Pengembalian dana selesai']
-          : ['退款处理中','Refund in progress','Pengembalian dana sedang diproses'])}</p>
+          : returned>0 ? ['银行已退回，财务处理中','Returned by the bank · Finance is handling it','Dikembalikan oleh bank · Sedang ditangani tim keuangan']
+            : ['退款处理中','Refund in progress','Pengembalian dana sedang diproses'])}</p>
       {classCard(course,t(['原报名','Original enrollment','Pendaftaran asal']),true)}
       <article className="enrollment-record">
         <h2>{t(['退款进度','Refund progress','Progres pengembalian dana'])}</h2>
@@ -123,6 +126,7 @@ export function EnrollmentOrderAftercare({
         {progress && <dl className="enrollment-result-amounts">
           <div><dt>{t(['申请金额','Approved amount','Jumlah yang disetujui'])}</dt><dd>{currency(progress.expected)}</dd></div>
           <div><dt>{t(['累计已退','Total refunded','Total yang dikembalikan'])}</dt><dd>{currency(progress.refunded)}</dd></div>
+          {!complete&&returned>0&&<div><dt>{t(['剩余应退','Remaining refund','Sisa pengembalian'])}</dt><dd>{currency(progress.expected-progress.refunded)}</dd></div>}
           <div><dt>{t(['退回方式','Refund method','Metode pengembalian'])}</dt><dd>{t(['原付款渠道','Original payment method','Metode pembayaran awal'])}</dd></div>
         </dl>}
         {complete&&progress&&progress.refunded>0&&<p>{t(['实际到账时间以原付款渠道为准。','Arrival times depend on the original payment method.','Waktu dana diterima bergantung pada metode pembayaran awal.'])}</p>}
@@ -332,7 +336,12 @@ export function EnrollmentOrderAftercare({
           <div><dt>{t(['继续等待','Keep waiting','Lanjut menunggu'])}</dt>
             <dd>{t(activeInvitation ? ['可先查看本次邀请，再决定是否接受。','Review the invitation before deciding whether to accept.','Tinjau undangan sebelum memutuskan untuk menerima.']
               : details?.priorityRequested ? ['已开启优先安排。有合适的安排时，我们会与你确认。','Priority arrangements are on. We’ll check with you when we find a suitable option.','Pengaturan prioritas aktif. Kami akan menghubungi Anda jika ada pilihan yang sesuai.']
-              : ['可继续等待，也可联系销售或客服了解后续安排。','You can keep waiting or ask sales or support about next steps.','Anda dapat menunggu atau menanyakan langkah berikutnya kepada tim penjualan atau layanan pelanggan.'])}</dd></div>
+              : ['开启优先安排后，销售客服可为你安排合适班次，再请你确认。','Enable priority arrangements so our team can offer a suitable class for you to confirm.','Aktifkan pengaturan prioritas agar tim kami dapat menawarkan kelas yang cocok untuk Anda konfirmasi.'])}</dd>
+            {!details?.priorityRequested&&!activeInvitation&&<dd>
+              <button className="enrollment-record-link" type="button" disabled={busy} onClick={onEnablePriority}>
+                {t(['开启优先安排','Enable priority arrangements','Aktifkan pengaturan prioritas'])}
+              </button>
+            </dd>}</div>
           {allowRefundContact&&<div><dt>{requestRefund}</dt>
             <dd>{t(['联系销售或客服。正式受理并登记后结束报名及留位。','Contact sales or support. They will close the enrollment and release any seat held once they formally record the request.','Hubungi tim penjualan atau layanan pelanggan. Pendaftaran berakhir dan kursi dilepas setelah permintaan dicatat.'])}</dd></div>}
         </dl>
