@@ -151,6 +151,17 @@ test("SPA pageviews are explicit, deduplicated by safe location, and preserve pr
   f.navigate("http://localhost:3000/chat?c=instagram-bio&lead=OTHER");
   assert(!f.client.page());
 });
+test("enrollment click and landing-page visit stay distinct and exclude order identifiers", () => {
+  const f=fixture();
+  assert(f.client.track("link_click",{target:"enrollment",entry_point:"linkhub",order:"PRIVATE-ORDER"}));
+  f.navigate("http://localhost:3000/enrollment?lang=id&entry_point=linkhub&order=PRIVATE-ORDER");
+  assert(f.client.page());
+  const events=f.events.filter(([kind])=>kind==="event");
+  assert.deepEqual(events.map(event=>event[1]),["link_click","page_view"]);
+  assert.equal(events[0][2].target,"enrollment");
+  assert.equal(events[1][2].page_path,"/enrollment");
+  assert.ok(!JSON.stringify(f.events).includes("PRIVATE-ORDER"));
+});
 test("confirmed conversions deduplicate queries/retries across a page reload and never transmit receipt keys", () => {
   const f = fixture();
   assert(!f.client.confirmed("questionnaire_complete", "PRIVATE-OP", false));

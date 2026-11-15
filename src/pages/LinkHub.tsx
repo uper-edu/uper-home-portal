@@ -30,8 +30,8 @@ const words = {
     socials: "Social media",
     links: "UPER links",
     tagline: "HSK | CSCA | Study Abroad",
-    enrollment: "View Courses & Enroll",
-    enrollmentNote: "HSK 1–4 · Class schedules and tuition",
+    enrollment: "Browse Courses & Enroll",
+    enrollmentNote: "HSK 1–4 · Schedules, class types & fees",
     consult: "FREE Online Consultation",
     consultNote: "AI 24/7 · Human support during business hours",
     community: "Join UPER Community",
@@ -56,7 +56,7 @@ const words = {
     socials: "Media sosial",
     links: "Tautan UPER",
     tagline: "HSK | CSCA | Studi di Luar Negeri",
-    enrollment: "Lihat Kursus & Daftar",
+    enrollment: "Lihat & Daftar Kelas",
     enrollmentNote: "HSK 1–4 · Jadwal kelas dan biaya",
     consult: "Konsultasi Online GRATIS",
     consultNote: "AI 24/7 · Layanan manusia pada jam kerja",
@@ -308,7 +308,7 @@ export default function LinkHub() {
         </header>
         <section className="linkhub-links" aria-label={t.links}>
           <div className="linkhub-card">
-            <a className="linkhub-card-main" href={enrollmentUrl}>
+            <a className="linkhub-card-main" href={enrollmentUrl} onClick={()=>trackEvent('link_click',{target:'enrollment',entry_point:'linkhub'})}>
               <span>{t.enrollment}</span>
               <small>{t.enrollmentNote}</small>
             </a>

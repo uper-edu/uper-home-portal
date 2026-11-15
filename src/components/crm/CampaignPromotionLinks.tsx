@@ -42,6 +42,7 @@ const landingExperience: Record<(typeof promotionLandingPaths)[number], string> 
   "/link": "Opens Link Hub. Visitors can choose online consultation, the handbook, or the community.",
   "/": "Opens the UPER homepage. Visitors can browse the site or choose an online consultation.",
   "/hsk": "Opens the HSK page for course and exam information.",
+  "/enrollment": "Opens course enrollment for class schedules, fees, and applications.",
   "/csca": "Opens the CSCA page for assessment and preparation information.",
   "/consultancy": "Opens the study abroad advisory page.",
   "/tours": "Opens the study tours page for programme information.",

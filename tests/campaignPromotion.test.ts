@@ -23,6 +23,11 @@ test('a short promotion link uses the existing ID and expands to the same tracke
  assert.equal(campaignPromotionUrl(link,origin,'social-bio'),origin+campaignPromotionPath(link,'social-bio'));
  assert.match(campaignPromotionPath({...link,landingPath:'//other.example' as any},'social-bio'),/^\/chat\?/);
 });
+test('course enrollment is a supported landing page with the original promotion identity and language',()=>{
+ const v=promotionInput({source:'threads',medium:'social',language:'id',landingPath:'/enrollment',experience:PROMOTION_EXPERIENCE});
+ const link={id:'enrollment-threads',...v,createdAt:''};
+ assert.equal(campaignPromotionPath(link,'hsk-courses'),'/enrollment?p=enrollment-threads&lang=id&utm_source=threads&utm_medium=social&utm_campaign=hsk-courses');
+});
 test('short-code allocation retries a collision without overwriting another promotion',async()=>{
  const entries=new Map([['222222','old-p']]);
  let draws=0;

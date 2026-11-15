@@ -46,7 +46,8 @@ export async function addCampaignPromotion(campaignId:string,input:any,actor:str
 
 export async function hasPromotionCustomerAttribution(db:any, linkId:string) {
  const linked=(await db.query("SELECT id FROM portal_leads WHERE profile->>'$.promotionLinkId'=:p1 OR profile->>'$.promotionReview.linkId'=:p1 OR JSON_CONTAINS(JSON_EXTRACT(profile,'$.identitySources[*].promotionLinkId'),JSON_QUOTE(:p1)) LIMIT 1",[linkId])).rows.length>0;
- return linked || (await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND (data->>'$.before.linkId'=:p1 OR data->>'$.after.linkId'=:p1) LIMIT 1",[linkId])).rows.length>0;
+ return linked || (await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND (data->>'$.before.linkId'=:p1 OR data->>'$.after.linkId'=:p1) LIMIT 1",[linkId])).rows.length>0
+  || (await db.query("SELECT record_id FROM enrollment_record_attribution WHERE attribution->>'$.promotionId'=:p1 AND JSON_EXTRACT(attribution,'$.verified')=true LIMIT 1",[linkId])).rows.length>0;
 }
 
 export async function removePromotionIndexes(db:any, campaignId:string, linkId:string) {

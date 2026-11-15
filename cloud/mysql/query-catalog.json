@@ -3092,6 +3092,12 @@
       "server/portal/campaignCodeAllocation.ts"
     ]
   },
+  "SELECT record_id FROM enrollment_record_attribution WHERE attribution->>'$.promotionId'=:p1 AND JSON_EXTRACT(attribution,'$.verified')=true LIMIT 1": {
+    "sql": "SELECT record_id FROM enrollment_record_attribution WHERE attribution->>'$.promotionId'=:p1 AND JSON_EXTRACT(attribution,'$.verified')=true LIMIT 1",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
   "SELECT reference FROM enrollment_refund_returns WHERE reference=:p1": {
     "sql": "SELECT reference FROM enrollment_refund_returns WHERE reference=:p1",
     "sources": [
