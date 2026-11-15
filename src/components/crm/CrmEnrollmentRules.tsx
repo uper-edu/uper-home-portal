@@ -4,7 +4,7 @@ import {AdminFormActions,AdminFormSection} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
 import {adminText} from '../AdminHeader';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import {enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRefundDayLimit,enrollmentRuleDefaults,enrollmentRuleFields,
+import {enrollmentBusinessDayLimit,enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
 
 type Feedback='saved'|'load-error'|'save-error'|'conflict';
@@ -124,6 +124,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
         <ul>
           <li>{t('Payment deadline (hours)','Batas pembayaran (jam)','付款期限（小时）')} · {saved.paymentHours}</li>
           <li>{t('Transfer reply deadline (hours)','Batas jawaban pindah kelas (jam)','转班邀请答复期限（小时）')} · {saved.replyHours}</li>
+          <li>{t('First payment review (working days)','Pemeriksaan pembayaran pertama (hari kerja)','财务首轮核验期限（工作日）')} · {saved.firstReviewBusinessDays}</li>
           <li>{t('Send refunds within (working days)','Kirim pengembalian dalam (hari kerja)','退款发出期限（工作日）')} · {saved.refundBusinessDays}</li>
           {enrollmentEmailRuleFields.map(key=><li key={key}>{t(...emailRuleLabels[key])} · {saved[key]}</li>)}
         </ul>
@@ -139,8 +140,15 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
             'Sejak undangan dibuat. Standar 48 jam, paling lambat saat pendaftaran kelas tujuan ditutup.',
             '从发出邀请起算，默认 48 小时，最晚到目标班次的报名截止时间。')}</small>
         </AdminField>
+        <AdminField required>{t('First payment review (working days)','Pemeriksaan pembayaran pertama (hari kerja)','财务首轮核验期限（工作日）')}
+          <input name="firstReviewBusinessDays" aria-describedby={fieldHelp+'-review'} type="number" min="1" max={enrollmentBusinessDayLimit} step="1"
+            value={draft.firstReviewBusinessDays} disabled={controlsDisabled} onChange={e=>setDraft({...draft,firstReviewBusinessDays:e.target.value})}/>
+          <small id={fieldHelp+'-review'}>{t('Default: end of the next working day after the first proof is received. Sales follows up when due.',
+            'Standar: akhir hari kerja berikutnya setelah bukti pertama diterima. Tim penjualan menindaklanjuti saat jatuh tempo.',
+            '收到首份凭证后，默认在下一个工作日结束前核验。到期由销售跟进。')}</small>
+        </AdminField>
         <AdminField required>{t('Send refunds within (working days)','Kirim pengembalian dalam (hari kerja)','退款发出期限（工作日）')}
-          <input name="refundBusinessDays" aria-describedby={fieldHelp+'-refund'} type="number" min="1" max={enrollmentRefundDayLimit} step="1"
+          <input name="refundBusinessDays" aria-describedby={fieldHelp+'-refund'} type="number" min="1" max={enrollmentBusinessDayLimit} step="1"
             value={draft.refundBusinessDays} disabled={controlsDisabled} onChange={e=>setDraft({...draft,refundBusinessDays:e.target.value})}/>
           <small id={fieldHelp+'-refund'}>{t('Counted from the next working day after the formal request. Default 3 working days.',
             'Dihitung mulai hari kerja berikutnya setelah permintaan resmi. Standar 3 hari kerja.',

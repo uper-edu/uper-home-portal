@@ -16,13 +16,14 @@ import { CrmDisclosure } from './CrmDisclosure';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { opportunityFilterDefaults as filterDefaults,opportunityListPath,type OpportunityFilters as Filters } from '../../utils/crmEnrollmentOpportunityRoute';
 import { contactEmailText, validContactEmail } from '../../utils/contactEmail';
+import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
 
 type Copy = readonly [string,string,string];
 type CourseRecord = {
   id:string; kind:'order'|'waitlist'|'demand'; opportunityId:string|null; state:string; createdAt:string;
   class:{level:string;firstLesson:string;schedule:string;opened:boolean}|null;
   criteria:{level:string;period:string;format:string;notes:string}|null;
-  price:number|null;received:number|null;learnerName?:string|null;paymentDueAt?:string|null;
+  price:number|null;received:number|null;learnerName?:string|null;paymentDueAt?:string|null;firstReviewDueAt?:string|null;
   attribution?:{entry:string;source?:string;campaign?:string;verified:boolean}|null;
   latestNotice?:string;
   enrollmentEmail?:string;
@@ -138,6 +139,7 @@ function CourseRecords({ records, link, lang, emails, targetRecord, onChangeEmai
       {row.class&&<p>{row.class.firstLesson.replace('T',' ')} WIB · {row.class.schedule}{row.class.opened?' · '+t(lang,['已确认开班','Class confirmed','Kelas dikonfirmasi']):''}</p>}
       {row.criteria&&<p>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(lang,value)).join(' · ')}{row.criteria.notes?' — '+row.criteria.notes:''}</p>}
       {row.price!==null&&row.received!==null&&<p>{t(lang,['核实实收／应收','Verified receipts / amount due','Dana terverifikasi / tagihan'])} {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}</p>}
+      {row.firstReviewDueAt&&<CrmEnrollmentReviewDeadline dueAt={row.firstReviewDueAt} lang={lang}/>}
       {row.attribution&&<p>{t(lang,['报名来源','Enrollment source','Sumber pendaftaran'])} · {sourceLabel(row.attribution,lang)}</p>}
       {link&&row.latestNotice&&<p>{t(lang,['最近一封邮件记录','Latest email record','Catatan email terakhir'])} · {row.latestNotice}</p>}
       {link&&row.opportunityId&&<a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:row.opportunityId,enrollmentRecord:row.id})}>{t(lang,['查看商机','View opportunity','Lihat peluang'])}</a>}
@@ -351,7 +353,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     if(ended(row))return t(lang,next[row.state==='enrolled'?'enrolled':'closed']);
     if(row.identityPending)return t(lang,['待核实身份','Identity review pending','Identitas menunggu verifikasi']);
     const review=row.records.find(requiresPaymentReview);
-    if(review&&row.state==='applying'&&canFinance)return <a className="crm-work-link" href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>;
+    const reviewDue=row.records.flatMap(record=>record.firstReviewDueAt?[record.firstReviewDueAt]:[]).sort()[0];
+    const reviewDeadline=reviewDue&&<CrmEnrollmentReviewDeadline dueAt={reviewDue} lang={lang} compact/>;
+    if(review&&row.state==='applying'&&canFinance)return <>
+      <a className="crm-work-link" href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>
+      {reviewDeadline}</>;
     const due=row.records.find(record=>record.state==='awaiting_payment')?.paymentDueAt;
     const followup=row.followup;
     if(followup){
@@ -362,16 +368,17 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{action}</button>:
           <a className="crm-work-link" title={name} href={crmHref({tab:'leads',lead:row.customerId,target:'task',targetId:followup.id})}>{action}</a>}
         {followup.at||followup.date?<div className="crm-work-muted"><time dateTime={followup.at||followup.date}>{followup.at?formatCrmSummaryTime(followup.at):followup.date}</time></div>:null}
+        {reviewDeadline}
       </>;
     }
     if(review&&row.state==='applying'){
       const status=t(lang,['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
-      return id===row.id?status:<a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}
-        onClick={()=>rememberListPosition(row.id)}>{status}</a>;
+      return <>{id===row.id?status:<a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}
+        onClick={()=>rememberListPosition(row.id)}>{status}</a>}{reviewDeadline}</>;
     }
     if(due)return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div></>;
     if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</button>;
-    return t(lang,next[row.state]);
+    return <>{t(lang,next[row.state])}{reviewDeadline}</>;
   };
   const label=t(lang,['商机','Opportunities','Peluang']);
   const allLabel=t(lang,['全部','All','Semua']);

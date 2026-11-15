@@ -11,7 +11,8 @@ import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitl
 import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
-import { mountEnrollmentRules, readEnrollmentRules } from './enrollmentRules.ts';
+import { mountEnrollmentRules, readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
+import { workingDayDeadline } from '../../src/utils/workCalendar.ts';
 import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners.ts';
 import { markPriorityTransfersOnCancellation, startEnrollmentPriorityTransferSimulation } from './enrollmentTransferOffers.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
@@ -383,6 +384,17 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       await c.query(`INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)
         VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,digest,encoded,transferDetails]);
       const state = order.state === 'awaiting_payment' ? 'proof_review' : order.state;
+      if (!order.data.firstReviewDueAt) {
+        const first=(await c.query(`SELECT id,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS availableAt
+          FROM enrollment_proofs WHERE order_id=:p1 ORDER BY created_at,id LIMIT 1`,[order.id])).rows[0];
+        if(first.id===uploadId){
+          const {firstReviewBusinessDays}=await readEnrollmentRules(c);
+          const calendar=await readEnrollmentWorkCalendar(c);
+          const dueAt=workingDayDeadline(new Date(first.availableAt),firstReviewBusinessDays,calendar);
+          await c.query("UPDATE enrollment_orders SET data=JSON_SET(data,'$.firstReviewDueAt',:p2,'$.firstProofAvailableAt',:p3) WHERE id=:p1",
+            [order.id,dueAt,first.availableAt]);
+        }
+      }
       await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
       await proofNotices(c,order.id,cohort.id,digest,cohort.data.level);
       return view({...order,state},cohort.state);
@@ -396,6 +408,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const orders = await enrollTx(async (c: Client) => {
       const rows=(await c.query(`SELECT o.*,e.state AS class_state,
         EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,
+        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
+          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id
+            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
+        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,
         (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id
       FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
         OR (o.state='ended' AND o.received>0) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))
@@ -413,7 +429,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         }
       }
       return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
-        proofId:row.proof_id,receipts:receiptsByOrder.get(row.id)??[]}));
+        proofId:row.proof_id,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[]}));
     });
     r.set('Cache-Control', 'no-store').json({ orders });
   }));

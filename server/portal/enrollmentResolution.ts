@@ -6,9 +6,8 @@ import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enr
 import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners.ts';
 import { classOpeningNotices, orderNotice } from './enrollmentNotices.ts';
 import { createEnrollmentTransferInvitation } from './enrollmentTransferOffers.ts';
-import { readEnrollmentRules } from './enrollmentRules.ts';
-import { enrollmentRefundDeadline } from '../../src/utils/enrollmentRefundTiming.ts';
-import { DEFAULT_CRM_POLICY_CONFIG } from '../../src/types/crmPolicyConfig.ts';
+import { readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
+import { workingDayDeadline } from '../../src/utils/workCalendar.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
@@ -237,9 +236,8 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         invalid('enrollment_refund_unavailable',409);
       const expected=enrollmentRefundEstimate({price:order.price,received:Number(order.received),refunded:0,transferred:0,sessions:cohort.data.sessions,delivered});
       const rules=await readEnrollmentRules(c);
-      const policy=(await c.query("SELECT value FROM portal_settings WHERE id='crm_policy'")).rows[0]?.value;
-      const calendar={...DEFAULT_CRM_POLICY_CONFIG.businessHours,...policy?.businessHours};
-      const sendBy=enrollmentRefundDeadline(requested,rules.refundBusinessDays,calendar);
+      const calendar=await readEnrollmentWorkCalendar(c);
+      const sendBy=workingDayDeadline(requested,rules.refundBusinessDays,calendar);
       const timing={requestedAt:requested.toISOString(),sendBy,timezone:calendar.timezone};
       await c.query(`INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,timing,created_at)
         VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))`,[id,cohort.id,actor.id,reason.trim(),delivered,expected,timing]);

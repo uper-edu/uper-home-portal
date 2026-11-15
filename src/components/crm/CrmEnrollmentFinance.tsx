@@ -8,9 +8,10 @@ import { formatCrmEventTime,validateLocalInstant,viewerTimeZone } from '../../ut
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
 import { AdminFormActions } from '../AdminFormLayout';
 import { CrmDisclosure } from './CrmDisclosure';
+import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
 
 type Receipt = {reference:string;amount:number;account:string|null;settledAt:string};
-type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string; receipts:Receipt[] };
+type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string; firstReviewDueAt?:string; receipts:Receipt[] };
 const endpoint = '/api/crm/enrollment/finance';
 
 export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;isLight?:boolean }) {
@@ -54,6 +55,7 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
       <h3 data-admin-form-title>{row.name} · {enrollmentCopy(lang,enrollmentStatuses[row.status])}{selected===row.id&&<AdminRequiredNote lang={lang} inline/>}</h3>
       <p>{row.id} · {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}
         {row.opened && ' · '+t('已确认开班','Class confirmed','Kelas dikonfirmasi')}</p>
+      {row.firstReviewDueAt&&<CrmEnrollmentReviewDeadline dueAt={row.firstReviewDueAt} lang={lang}/>}
       {row.proofId && <a href={endpoint+'/proofs/'+encodeURIComponent(row.proofId)}>{t('下载凭证','Download proof','Unduh bukti')}</a>}
       {!!row.receipts?.length&&<CrmDisclosure heading={t('已核实收款流水','Verified receipt history','Riwayat penerimaan terverifikasi')}>
         <ul className="crm-course-records">{row.receipts.map(receipt=><li key={receipt.reference}>

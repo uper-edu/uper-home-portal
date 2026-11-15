@@ -97,6 +97,10 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
     o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,
+    CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
+      SELECT 1 FROM enrollment_receipts v WHERE v.order_id=o.id
+        AND v.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
+    ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,
     DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,
     d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice
   FROM enrollment_customer_records r
@@ -113,7 +117,7 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
 function displayRecord(row: any) {
   return {
     id:row.record_id,kind:row.kind,opportunityId:row.opportunity_id,state:enrollmentOrderStatus(row.state,row.class_state),createdAt:row.created_at,
-    learnerName:row.learner_name,paymentDueAt:row.payment_due_at,
+    learnerName:row.learner_name,paymentDueAt:row.payment_due_at,firstReviewDueAt:row.first_review_due_at,
     class:row.class_data ? {level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,

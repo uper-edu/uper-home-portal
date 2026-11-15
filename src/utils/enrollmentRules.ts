@@ -1,6 +1,7 @@
 export const enrollmentRuleDefaults = {
   paymentHours:24,
   replyHours:48,
+  firstReviewBusinessDays:1,
   refundBusinessDays:3,
   emailCodeMinutes:10,
   emailResendSeconds:60,
@@ -12,7 +13,7 @@ export const enrollmentRuleDefaults = {
 export type EnrollmentRuleField = keyof typeof enrollmentRuleDefaults;
 export type EnrollmentRules = typeof enrollmentRuleDefaults & {revision:number};
 export const enrollmentRuleFields = Object.keys(enrollmentRuleDefaults) as EnrollmentRuleField[];
-export const enrollmentRefundDayLimit=30;
+export const enrollmentBusinessDayLimit=30;
 
 export const enrollmentEmailRuleLimits = {
   emailCodeMinutes:60,
