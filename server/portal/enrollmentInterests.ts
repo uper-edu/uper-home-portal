@@ -106,14 +106,19 @@ export function startEnrollmentVacancySimulation(transact:Context['transact'],lo
     if (busy) return;
     busy=true;
     try {
-      const candidates=await transact(async c=>(await c.query(`SELECT v.class_id FROM enrollment_vacancy_cycles v
-        JOIN enrollment_classes e ON e.id=v.class_id
-        WHERE v.is_full=TRUE AND EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=v.class_id AND w.state='waiting')
-        ORDER BY v.class_id`)).rows);
+      const candidates=await transact(async c=>(await c.query(`SELECT e.id AS class_id FROM enrollment_classes e
+        LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id
+        WHERE (e.state='published' AND EXISTS (
+          SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id AND o.state='awaiting_payment' AND o.received=0
+            AND o.payment_due_at<UTC_TIMESTAMP(6) AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6))
+        )) OR ((v.is_full=TRUE OR e.state='cancelled'
+          OR LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6))
+          AND EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id AND w.state='waiting'))
+        ORDER BY e.id`)).rows);
       for (const {class_id:id} of candidates) {
         await transact(async c=>{
           const cohort=await lockClass(c,id);
-          await expireSeats(c,id);
+          if(cohort.state==='published') await expireSeats(c,id);
           await reconcileWaitlist(c,cohort,await takenSeats(c,id));
         });
       }
