@@ -103,6 +103,7 @@ export default function App() {
                   <Route path="tours" element={<StudyTours />} />
                   <Route path="hsk" element={<HSK />} />
                   <Route path="enrollment" element={<Enrollment />} />
+                  <Route path="enrollment/mine" element={<Enrollment />} />
                   <Route path="enrollment/:classId" element={<Enrollment />} />
                   <Route path="csca" element={<CSCA />} />
                   <Route path="consultancy" element={<StudyAbroad />} />

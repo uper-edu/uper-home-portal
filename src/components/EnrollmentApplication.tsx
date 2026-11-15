@@ -22,13 +22,15 @@ export async function enrollmentPost(path: string, body: unknown) {
 }
 type Order = { id: string; status: string; restored: boolean; price: number; received: number; deadline: string;
   bank?: { name: string; accountName: string; accountNumber: string } };
+type OrderSummary = Order & { level: string; firstLesson: string };
 
-export function EnrollmentApplication({ classId, language }: { classId: string; language: Language }) {
+export function EnrollmentApplication({ classId, language }: { classId?: string; language: Language }) {
   const t = (text: Copy) => enrollmentCopy(language,text);
   const [params,setParams] = useSearchParams();
   const orderId = params.get('order');
   const [order,setOrder] = useState<Order>();
-  const [open,setOpen] = useState(!!orderId);
+  const [open,setOpen] = useState(!!orderId || !classId);
+  const [orders,setOrders] = useState<OrderSummary[]>();
   const [email,setEmail] = useState('');
   const [name,setName] = useState('');
   const [phone,setPhone] = useState('');
@@ -46,7 +48,15 @@ export function EnrollmentApplication({ classId, language }: { classId: string; 
     if (!response.ok) throw Error(response.status===401?'enrollment_verification_required':'enrollment_order_not_found');
     setOrder(await response.json());
   }
+  async function getOrders() {
+    const response = await fetch(base+'/orders',{cache:'no-store'});
+    if (response.status === 401) return;
+    if (!response.ok) throw Error('enrollment_failed');
+    setOrders((await response.json()).orders);
+    setVerified(true);
+  }
   useEffect(() => { if (orderId) void getOrder(orderId).catch(reason=>setError(reason.message)); },[orderId]);
+  useEffect(() => { if (!classId) void getOrders().catch(reason=>setError(reason.message)); },[classId]);
   async function run(action: () => Promise<void>) {
     if (busy) return;
     setBusy(true);
@@ -62,6 +72,7 @@ export function EnrollmentApplication({ classId, language }: { classId: string; 
       await enrollmentPost(base+'/email/verify',{email,challengeId:challenge,code});
       setVerified(true);
       if (orderId) await getOrder(orderId);
+      else if (!classId) await getOrders();
     });
   }
   function apply() {
@@ -89,6 +100,16 @@ export function EnrollmentApplication({ classId, language }: { classId: string; 
       await getOrder(order.id);
     });
   }
+  function selectOrder(id?:string) {
+    const next = new URLSearchParams(params);
+    if (id) next.set('order', id);
+    else {
+      next.delete('order');
+      setOrder(undefined);
+    }
+    setError('');
+    setParams(next, { replace:true, preventScrollReset:true });
+  }
   const errors: Record<string, Copy> = {
     enrollment_class_full:['最后一个席位已被占用。','The last seat has been taken.','Kursi terakhir sudah diambil.'],
     enrollment_code_wait:['请稍后再申请验证码。','Wait before requesting another code.','Tunggu sebelum meminta kode baru.'],
@@ -101,6 +122,9 @@ export function EnrollmentApplication({ classId, language }: { classId: string; 
   return <section className="enrollment-card enrollment-application">
     {error && <p role="alert">{t(message)}</p>}
     {order ? <>
+      {!classId && <button type="button" onClick={()=>{selectOrder(); void run(getOrders);}}>
+        {t(['返回报名列表','Back to enrollments','Kembali ke daftar pendaftaran'])}
+      </button>}
       <h2>{t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status])}</h2>
       <p>{t(['报名编号','Order number','Nomor pendaftaran'])} {order.id}</p>
       <p>{t(['应付','Amount due','Tagihan'])} {formatCurrency(order.price,language)} · {t(['实际到账','Verified receipts','Dana terverifikasi'])} {formatCurrency(order.received,language)}</p>
@@ -117,7 +141,15 @@ export function EnrollmentApplication({ classId, language }: { classId: string; 
       {challenge && <label>{t(['六位验证码','Six-digit code','Kode enam digit'])}<input autoComplete="one-time-code" required pattern="[0-9]{6}" inputMode="numeric" value={code} onChange={event=>setCode(event.target.value)}/></label>}
       <button className="enrollment-action" type="submit" disabled={busy}>{t(challenge?['验证','Verify','Verifikasi']:['发送验证码','Send code','Kirim kode'])}</button>
       {challenge && <button type="button" disabled={busy} onClick={()=>void sendCode()}>{t(['重发验证码','Resend code','Kirim ulang'])}</button>}
-    </form> : <form onSubmit={event=>{event.preventDefault();void apply();}}>
+    </form> : !classId ? <div className="enrollment-order-list">
+      {!orders && <p role="status">{t(['正在读取报名…','Loading enrollments…','Memuat pendaftaran…'])}</p>}
+      {orders?.length === 0 && <p>{t(['这个邮箱暂无报名。','No enrollments for this email.','Belum ada pendaftaran untuk email ini.'])}</p>}
+      {orders?.map(row => <article className="enrollment-card" key={row.id}>
+        <p>{row.level} · {row.firstLesson.slice(0,10)} · {t(enrollmentStatuses[row.status])}</p>
+        <p>{row.id}</p>
+        <button type="button" className="enrollment-action" onClick={()=>selectOrder(row.id)}>{t(['查看报名','View enrollment','Lihat pendaftaran'])}</button>
+      </article>)}
+    </div> : <form onSubmit={event=>{event.preventDefault();void apply();}}>
       <h2>{t(['申请这个班','Apply for this class','Daftar kelas ini'])}</h2>
       <label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>
       <label>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}<input type="tel" required value={phone} onChange={event=>setPhone(event.target.value)}/></label>

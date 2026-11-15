@@ -172,6 +172,20 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     r.json(result);
   });
 
+  app.get(base + '/orders', wrap(async (q, r) => {
+    const orders = await enrollTx(async (c: Client) => {
+      const email = await session(c, q);
+      const { rows } = await c.query(`SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,
+        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
+          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,
+        e.data AS class_data
+        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
+        WHERE o.email=:p1 ORDER BY o.created_at DESC,o.id DESC LIMIT 100`, [email]);
+      return rows.map(row => ({ ...view(row), level: row.class_data.level, firstLesson: row.class_data.firstLesson }));
+    });
+    r.set('Cache-Control', 'no-store').json({ orders });
+  }));
+
   app.get(base + '/orders/:id', wrap(async (q, r) => {
     const result = await enrollTx(async (c: Client) => {
       const { order } = await lockOrder(c, String(q.params.id), await session(c, q));

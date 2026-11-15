@@ -2463,6 +2463,12 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
+  "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        e.data AS class_data\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        WHERE o.email=:p1 ORDER BY o.created_at DESC,o.id DESC LIMIT 100": {
+    "sql": "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        e.data AS class_data\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        WHERE o.email=:p1 ORDER BY o.created_at DESC,o.id DESC LIMIT 100",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1": {
     "sql": "SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1",
     "sources": [

@@ -216,6 +216,7 @@ export function workspaceMetadata(
   };
 }
 export function isPrivatePath(pathname: string) {
+  if (/^\/enrollment\/mine(?:\/|$)/i.test(pathname)) return true;
   return /^\/(?:crm|cms|system|studio|chat|consult|style-guide|api)(?:\/|$)/i.test(
     pathname,
   );

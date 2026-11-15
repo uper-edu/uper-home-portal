@@ -23,3 +23,5 @@
 .enrollment-application input:not([type=checkbox]){padding:.55rem .65rem;border:1px solid color-mix(in srgb,currentColor 24%,transparent);border-radius:.55rem;width:100%}
 .enrollment-action{justify-self:start;border-radius:.65rem;background:#12685b;color:#fff;padding:.65rem 1rem;font-weight:650;min-height:44px}
 .enrollment-action:disabled{opacity:.6}
+.enrollment-page-intro{display:flex;justify-content:space-between;gap:1rem}
+.enrollment-order-list{display:grid;gap:.65rem}

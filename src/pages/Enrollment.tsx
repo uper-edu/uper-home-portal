@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { normalizeSiteLanguage } from '../utils/siteMetadata';
 import { formatCurrency } from '../utils/currency';
@@ -30,6 +30,7 @@ const copy = {
   details: ['Class details', 'Detail kelas', '班次详情'],
   back: ['Back to classes', 'Kembali ke daftar kelas', '返回课程报名'],
   unavailable: ['This class is unavailable.', 'Kelas ini tidak tersedia.', '此班次暂不可查看。'],
+  mine: ['My enrollments', 'Pendaftaran saya', '我的报名'],
   outcomes: ['Learning outcomes', 'Hasil belajar', '学习成果'],
   material: ['Course and materials', 'Kursus dan materi', '课程内容与教材'],
   resources: ['Practice and resources', 'Latihan dan sumber daya', '练习与资源'],
@@ -43,10 +44,11 @@ export default function Enrollment() {
   const t = (key: keyof typeof copy) => copy[key][language === 'zh' ? 2 : language === 'id' ? 1 : 0];
   const [params, setParams] = useSearchParams();
   const { classId } = useParams();
+  const mine = useLocation().pathname.replace(/\/$/, '') === '/enrollment/mine';
   const [classes, setClasses] = useState<PublicEnrollmentClass[]>();
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
-  const [accepting, setAccepting] = useState(false);
+  const [accepting, setAccepting] = useState<boolean>();
   const level = params.get('level') || '1';
   const period = params.get('period') || '';
   const format = params.get('format') || '';
@@ -62,14 +64,13 @@ export default function Enrollment() {
     return () => abort.abort();
   }, [reload]);
   useEffect(() => {
-    if (!classId) return;
     const abort = new AbortController();
     fetch('/api/enrollment/availability', { signal: abort.signal, cache: 'no-store' })
       .then(response => response.ok ? response.json() : {})
       .then((data: { accepting?: boolean }) => { if (!abort.signal.aborted) setAccepting(data.accepting === true); })
-      .catch(() => {});
+      .catch(() => { if (!abort.signal.aborted) setAccepting(false); });
     return () => abort.abort();
-  }, [classId]);
+  }, []);
 
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -79,6 +80,9 @@ export default function Enrollment() {
   }
   const detailsPath = (id: string) => '/enrollment/' + encodeURIComponent(id) + '?' + params.toString();
   const listPath = '/enrollment?' + params.toString();
+  const mineParams = new URLSearchParams(params);
+  mineParams.delete('order');
+  const minePath = '/enrollment/mine?' + mineParams.toString();
   const selected = classes?.find(row => row.id === classId);
   const rows = classes?.filter(row => row.level.startsWith('HSK ' + level) &&
     (!period || row.period === period) && (!format || row.format === format));
@@ -103,11 +107,17 @@ export default function Enrollment() {
       </div>
     </article>;
   };
+  if (mine) return <section className="enrollment-page">
+    <Link to={'/enrollment?' + mineParams.toString()}>{t('back')}</Link>
+    <h1>{t('mine')}</h1>
+    {accepting === undefined ? <p role="status">{t('loading')}</p> :
+      accepting ? <EnrollmentApplication language={language}/> : <p>{t('unavailable')}</p>}
+  </section>;
   return <section className="enrollment-page">
     {classId && <Link to={listPath}>{t('back')}</Link>}
     <h1>{classId ? t('details') : t('title')}</h1>
     {!classId && <>
-      <p>{t('online')}</p>
+      <div className="enrollment-page-intro"><p>{t('online')}</p>{accepting && <Link to={minePath}>{t('mine')}</Link>}</div>
       <div className="enrollment-levels" role="group" aria-label={t('level')}>
         {['1', '2', '3', '4'].map(value => <button key={value} type="button" aria-pressed={level === value} onClick={() => filter('level', value)}>HSK {value}</button>)}
       </div>
