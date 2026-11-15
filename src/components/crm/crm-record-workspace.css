@@ -1,3 +1,9 @@
+.crm-record-identity{flex:1 1 220px;min-width:0}
+.crm-record-identity .crm-record-title{margin:0;color:var(--admin-text);font-size:22px;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
+.crm-record-title-status{margin-top:6px}
+.crm-record-title-meta{margin-top:6px;color:var(--admin-muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.crm-record-title-status+.crm-record-title-meta{margin-top:4px}
+@media(max-width:649px){.crm-record-identity{flex-basis:auto}.crm-record-identity .crm-record-title{font-size:20px}}
 .crm-record-navigation{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;min-width:0}
 .crm-record-navigation :is(a,button){display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px}
 .crm-record-nav-tools,.crm-record-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
@@ -53,7 +59,6 @@
 :is([data-record-scroll=independent],[data-scroll=independent])>.crm-record-sidebar .crm-record-sidebar-rows{overflow-y:auto;scrollbar-gutter:stable;flex:1}
 .crm-detail-root[data-record-detail=true][data-record-scroll=independent] .crm-detail-panel{height:var(--admin-record-pane-height);max-height:var(--admin-record-pane-height)}
 [data-record-detail=true] .crm-detail-header{align-items:center;flex-wrap:wrap}
-[data-record-detail=true] .crm-detail-current-state{margin-inline-start:0}
 [data-record-detail=true] .crm-record-row .crm-current-sales-state{margin-top:4px}
 @media(max-width:760px){.crm-record-actions{margin-inline-start:0;justify-content:flex-start}}
 [data-record-detail=true] .crm-record-actions>.crm-work-button{font-size:13px;min-height:40px;padding:0 12px;gap:6px;white-space:nowrap}

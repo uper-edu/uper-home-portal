@@ -49,8 +49,8 @@ import {CrmPolling,crmJson,CrmRefreshError,stableCrmOrder} from "../utils/crmPol
 import { CrmPageIdentity } from "../components/crm/CrmPageIdentity";
 import { CrmPageAction } from "../components/crm/CrmPageAction";
 import {leadDetailTab,leadDetailUrl} from "../utils/crmDetailNavigation";
-import {CrmDetailActions,CrmRecordNavigation} from "../components/crm/CrmRecordWorkspace";
-import {CrmDetailHeader,CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
+import {CrmDetailActions,CrmRecordNavigation,CrmRecordTitle} from "../components/crm/CrmRecordWorkspace";
+import {CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
 import {CrmFollowupContext} from "../components/crm/CrmFollowupContext";
 import { CrmDisclosure } from "../components/crm/CrmDisclosure";
 import {CrmTrustPanel,CrmStageEditor} from "../components/crm/CrmTrustPanel";
@@ -452,7 +452,7 @@ function CrmWorkspace({
       if (content) content.scrollTop = 0;
       const panel = document.getElementById("crm-customer-panel");
       panel?.scrollIntoView({ block: "start", behavior: "instant" });
-      panel?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+      panel?.querySelector<HTMLElement>(".crm-record-title")?.focus({ preventScroll: true });
       return;
     }
     const pending = tabViewport.current;
@@ -1165,9 +1165,11 @@ function CrmWorkspace({
         className="crm-customer-panel crm-detail-panel"
         aria-label={t("Customer workspace", "客户处理面板")}
       >
-        <CrmDetailHeader title={selectedLead.fullName} status={<CrmCurrentSalesState lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
+        <header className="crm-detail-header">
+          <CrmRecordTitle title={selectedLead.fullName} status={<CrmCurrentSalesState lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
               {employees.find(e=>e.id===selectedLead.owner)?.displayName||selectedLead.owner||t("Unassigned","未分配")}{' · '}{leadDisplayNumber(selectedLead)}
-            </span>} actions={<CrmDetailActions label={t("Customer actions","客户操作")}
+            </span>}/>
+          <CrmDetailActions label={t("Customer actions","客户操作")}
           secondary={<>
             <CrmCustomer360Button lang={lang} onClick={()=>openCustomerHistory({})}/>
             {canAssignSelectedOwner&&<button type="button" className="crm-work-button crm-owner-trigger" aria-label={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} disabled={isSubmittingLog||profileSave==='saving'} onClick={openOwnerEditor}><UserCheck size={15} aria-hidden="true"/>{selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')}</button>}
@@ -1181,7 +1183,8 @@ function CrmWorkspace({
           </>}
           primary={selectedLead.identityReview?.pending
             ? selectedLead.identityReview.canReview&&<CrmIdentityAction lang={lang} onClick={()=>openIdentityReview(selectedLead.id)}/>
-            : claimPrimary?customerClaim:customerProgress}/>}/>
+            : claimPrimary?customerClaim:customerProgress}/>
+        </header>
 
         {!ownerOpen&&!paymentOpen&&(hasDraft||isSubmittingLog)&&<CrmSaveFeedback lang={lang} state={isSubmittingLog?"saving":"dirty"}/>}
         <div className="crm-panel-next"><CrmNextTaskSummary hideFirstContact hideContactNotice lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>

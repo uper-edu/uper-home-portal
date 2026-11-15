@@ -26,6 +26,16 @@ export function CrmRecordSidebarToggle({controls, expanded, label, onClick}: {
   </button>;
 }
 
+export function CrmRecordTitle({title, status, meta}: {
+  title: ReactNode; status?: ReactNode; meta?: ReactNode;
+}) {
+  return <div className="crm-record-identity">
+    <h1 className="crm-record-title" tabIndex={-1}>{title}</h1>
+    {status&&<div className="crm-record-title-status">{status}</div>}
+    {meta&&<div className="crm-record-title-meta">{meta}</div>}
+  </div>;
+}
+
 export function CrmDetailActions({label, secondary, primary}: {
   label: string; secondary?: ReactNode; primary?: ReactNode;
 }) {
