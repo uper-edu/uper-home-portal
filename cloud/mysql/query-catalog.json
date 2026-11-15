@@ -3148,6 +3148,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT t.id,t.kind,t.status,t.owner_id,t.details,\n    DATE_FORMAT(t.due_at,'%Y-%m-%dT%H:%i:%sZ') AS dueAt,customer.id AS customerId\n    FROM followup_tasks t JOIN portal_leads original ON original.id=t.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE t.status IN ('open','overdue') AND JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))\n      AND (t.details->>'$.opportunityId' IS NOT NULL OR t.details->>'$.enrollmentOrderId' IS NOT NULL)": {
+    "sql": "SELECT t.id,t.kind,t.status,t.owner_id,t.details,\n    DATE_FORMAT(t.due_at,'%Y-%m-%dT%H:%i:%sZ') AS dueAt,customer.id AS customerId\n    FROM followup_tasks t JOIN portal_leads original ON original.id=t.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE t.status IN ('open','overdue') AND JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))\n      AND (t.details->>'$.opportunityId' IS NOT NULL OR t.details->>'$.enrollmentOrderId' IS NOT NULL)",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT target_class_id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND id<>:p2": {
     "sql": "SELECT target_class_id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND id<>:p2",
     "sources": [

@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { allowed, type Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import { isSalesProgressStage } from '../../src/utils/crmSalesProgress.ts';
+import { contactPaused } from '../../src/utils/crmContact.ts';
+import { priorityAgreements } from '../../src/utils/crmAgreementPresentation.ts';
+import { pendingFollowUps } from '../../src/utils/crmFollowUp.ts';
 import { enrollmentLearnerNameKey, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { assignNewLead } from './autoAssignment.ts';
@@ -135,6 +138,39 @@ const isOpenOpportunity=(row:ReturnType<typeof projectOpportunity>)=>
 const canProgress=(actor:Employee,profile:any)=>profile.identityLifecycle!=='pending'&&permittedRecord(actor,profile,'crm.followup');
 type OpportunityProfile={id:string;enrollmentOpportunitySummary?:{count:number;only?:{id:string;level:string;stage:string}}};
 
+function opportunityAgreement(profile:any,id:string) {
+  const sources=new Set((profile.followUpLogs??[]).filter((log:any)=>log.result?.opportunity?.id===id)
+    .flatMap((log:any)=>[log.id,log.requestId]).filter(Boolean));
+  const commitments=(profile.commitments??[]).filter((agreement:any)=>sources.has(agreement.sourceId));
+  const selected=priorityAgreements({commitments},'Asia/Jakarta')[0];
+  if(!selected)return null;
+  const {id:agreementId,action,at,date}=selected.agreement;
+  return {kind:'agreement' as const,id:agreementId,action,...(selected.status==='invalid'?{}:{at,date})};
+}
+
+async function opportunityTasks(c:Client,profiles:any[]) {
+  if(!profiles.length)return [];
+  const ids=[...new Set(profiles.map(profile=>profile.id))];
+  return (await c.query(`SELECT t.id,t.kind,t.status,t.owner_id,t.details,
+    DATE_FORMAT(t.due_at,'%Y-%m-%dT%H:%i:%sZ') AS dueAt,customer.id AS customerId
+    FROM followup_tasks t JOIN portal_leads original ON original.id=t.lead_id
+    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)
+    WHERE t.status IN ('open','overdue') AND JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))
+      AND (t.details->>'$.opportunityId' IS NOT NULL OR t.details->>'$.enrollmentOrderId' IS NOT NULL)`,[JSON.stringify(ids)])).rows;
+}
+
+function attachOpportunityActions(actor:Employee,profile:any,row:ReturnType<typeof projectOpportunity>,tasks:any[]) {
+  const eligible=isOpenOpportunity(row)&&canProgress(actor,profile);
+  const orderIds=new Set(row.records.filter(record=>record.kind==='order').map(record=>record.id));
+  const attached=eligible?pendingFollowUps(tasks.filter(task=>task.customerId===row.customerId&&
+    (!task.owner_id||task.owner_id===actor.id||actor.grants?.['crm.followup']?.includes('all'))&&
+    (task.details.opportunityId?task.details.opportunityId===row.id:orderIds.has(task.details.enrollmentOrderId)))):[];
+  const task=attached[0];
+  const followup=task?{kind:'task' as const,id:task.id,type:task.kind,action:(task as any).details.action,at:task.dueAt}:
+    eligible?opportunityAgreement(profile,row.id):null;
+  return {...row,followup,canProgress:eligible,canInitiateFollowup:eligible&&!contactPaused(profile)};
+}
+
 async function opportunityRecordsById(c:Client,rows:{id:string}[]) {
   const records=new Map<string,ReturnType<typeof displayRecord>[]>();
   for(let start=0;start<rows.length;start+=100){
@@ -215,7 +251,9 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       WHERE (:p1 IS NULL OR customer.id=:p1)
       ORDER BY o.created_at DESC,o.id`,[customer?.id??null])).rows.filter(row=>readProfile(actor,row.profile));
     const recordsById=await opportunityRecordsById(c,rows);
-    const opportunities=rows.map(row=>projectOpportunity(row,recordsById.get(row.id)??[],row.profile));
+    const tasks=await opportunityTasks(c,rows.filter(row=>canProgress(actor,row.profile)).map(row=>row.profile));
+    const opportunities=rows.map(row=>attachOpportunityActions(actor,row.profile,
+      projectOpportunity(row,recordsById.get(row.id)??[],row.profile),tasks));
     return {opportunities,customer:customer?{id:customer.id,name:customer.profile.fullName}:undefined};
   }));
   app.get('/api/crm/opportunities/:id',read(async(c,q,actor)=>{
@@ -239,7 +277,8 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       ORDER BY n.recorded_at DESC,n.event_key DESC`,[row.id])).rows;
     const current=projectOpportunity(row,await recordsForOpportunity(c,row.id),customer.profile);
     const progress=[...linkedProgress,...legacyProgress].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));
-    return {...current,progress,emails,canProgress:isOpenOpportunity(current)&&canProgress(actor,customer.profile)};
+    const tasks=await opportunityTasks(c,canProgress(actor,customer.profile)?[customer.profile]:[]);
+    return {...attachOpportunityActions(actor,customer.profile,current,tasks),progress,emails};
   }));
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);

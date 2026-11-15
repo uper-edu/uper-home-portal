@@ -8,6 +8,7 @@ import { progressLabel, salesProgressStages } from '../../utils/crmSalesProgress
 import { interestOption } from '../EnrollmentInterests';
 import { enrollmentStatuses } from '../EnrollmentApplication';
 import { CrmOperationLayer } from './CrmOperationLayer';
+import { describeFollowUpTask } from '../../utils/crmFollowUp';
 import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
 import { CrmDisclosure } from './CrmDisclosure';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
@@ -22,11 +23,12 @@ type CourseRecord = {
   latestNotice?:string;
 };
 type EnrollmentEmail = {id:string;orderId:string;kind:string;state:string;subject:string|null;language:string|null;recordedAt:string};
+type OpportunityFollowup = {kind:'agreement'|'task';id:string;type?:string;action?:string;at?:string;date?:string};
 type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
   state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
   emails?:EnrollmentEmail[];
-  progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string}[];canProgress?:boolean;
+  progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string}[];canProgress?:boolean;canInitiateFollowup?:boolean;followup?:OpportunityFollowup|null;
 };
 type OpportunityList = {opportunities:Opportunity[];customer?:{id:string;name:string}};
 const base = '/api/crm/opportunities';
@@ -67,14 +69,8 @@ function currentStatus(row:Opportunity) {
   if(row.state==='closed') return row.records.at(-1)?.state??'closed';
   return enrollmentStatus[row.state];
 }
-function nextAction(row:Opportunity,lang:CrmLanguage,canFinance:boolean) {
-  if (row.identityPending) return t(lang,['核实身份','Review identity','Verifikasi identitas']);
-  if (row.state==='aftercare') return t(lang,next.aftercare);
-  if (row.records.some(requiresPaymentReview)) return t(lang,canFinance
-    ? ['核对到账','Verify payment','Verifikasi pembayaran']
-    : ['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
-  if (row.records.some(record=>record.state==='awaiting_payment')) return t(lang,states.awaiting_payment);
-  return t(lang,next[row.state]);
+function ended(row:Opportunity) {
+  return ['enrolled','closed'].includes(row.state)||row.salesStage==='progress:closed';
 }
 function stage(row:Opportunity,lang:CrmLanguage) {
   if (row.identityPending) return t(lang,['身份待核实','Identity review pending','Identitas menunggu verifikasi']);
@@ -178,7 +174,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     Object.entries(filterDefaults).map(([key,fallback])=>[key,params.get(key)??fallback]),
   ) as Filters);
   const changeFilter=(key:keyof Filters,value:string)=>setFilters(current=>({...current,[key]:value}));
-  const [progressLead,setProgressLead]=useState<any>(null);
+  const [progress,setProgress]=useState<{lead:any;opportunity:Opportunity;agreementId?:string}|null>(null);
   const [progressDirty,setProgressDirty]=useState(false);
   const [confirmDiscard,setConfirmDiscard]=useState(false);
   const [busy,setBusy]=useState(false);
@@ -210,6 +206,45 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const owner=(row:Opportunity)=>employeeName(row.owner)||t(lang,['未分配','Unassigned','Belum ditugaskan']);
   const customerLink=(row:Opportunity)=>crmHref({tab:'leads',lead:row.customerId});
   const paymentLink=(record:CourseRecord)=>crmHref({tab:'payments',enrollmentOrder:record.id});
+  const openProgress=async(row:Opportunity,agreementId?:string)=>{
+    if(busy)return;
+    setBusy(true);setSaveError(false);setNotice(false);
+    try{
+      const lead=await read<any>('/api/crm/leads/'+row.customerId,new AbortController().signal);
+      setProgress({lead:lead.lead??lead,opportunity:row,agreementId});
+      setProgressDirty(false);
+    }catch{setSaveError(true);}finally{setBusy(false);}
+  };
+  const closeProgress=()=>{
+    if(busy)return;
+    if(progressDirty)setConfirmDiscard(true);
+    else setProgress(null);
+  };
+  const nextAction=(row:Opportunity)=>{
+    if(ended(row))return t(lang,next[row.state==='enrolled'?'enrolled':'closed']);
+    if(row.identityPending)return t(lang,['待核实身份','Identity review pending','Identitas menunggu verifikasi']);
+    const review=row.records.find(requiresPaymentReview);
+    if(review&&row.state==='applying'&&canFinance)return <a className="crm-work-link" href={paymentLink(review)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>;
+    const due=row.records.find(record=>record.state==='awaiting_payment')?.paymentDueAt;
+    const followup=row.followup;
+    if(followup){
+      const name=followup.action||describeFollowUpTask({id:followup.id,kind:followup.type||'',dueAt:followup.at||''} as any,lang,viewerTimeZone()).action;
+      const action=due?t(lang,['跟进付款','Follow up on payment','Tindak lanjuti pembayaran']):name;
+      return <>
+        {followup.kind==='agreement'?
+          <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{action}</button>:
+          <a className="crm-work-link" title={name} href={crmHref({tab:'leads',lead:row.customerId,target:'task',targetId:followup.id})}>{action}</a>}
+        {followup.at||followup.date?<div className="crm-work-muted"><time dateTime={followup.at||followup.date}>{followup.at?formatCrmSummaryTime(followup.at):followup.date}</time></div>:null}
+      </>;
+    }
+    if(review&&row.state==='applying'){
+      const status=t(lang,['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
+      return id===row.id?status:<a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}>{status}</a>;
+    }
+    if(due)return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div></>;
+    if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</button>;
+    return t(lang,next[row.state]);
+  };
   const label=t(lang,['商机','Opportunities','Peluang']);
   const allLabel=t(lang,['全部','All','Semua']);
   const ownerOptions=[...new Set(list?.flatMap(row=>row.owner&&row.owner!==actorId?[row.owner]:[])??[])];
@@ -217,8 +252,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const businessStates=[...new Set(list?.map(currentStatus)??[])];
   const query=filters.opportunityQuery.trim().toLowerCase();
   const visible=list?.filter(row=>{
-    const ended=['enrolled','closed'].includes(row.state)||row.salesStage==='progress:closed';
-    return (filters.opportunityStatus==='all'||(filters.opportunityStatus==='closed'?ended:!ended)) &&
+    return (filters.opportunityStatus==='all'||(filters.opportunityStatus==='closed'?ended(row):!ended(row))) &&
       (filters.opportunityOwner==='all'||(filters.opportunityOwner==='mine'?row.owner===actorId:
         filters.opportunityOwner==='unassigned'?!row.owner:row.owner===filters.opportunityOwner)) &&
       (!filters.opportunityLevel||filters.opportunityLevel===row.level) &&
@@ -234,32 +268,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         <div><dt>{t(lang,['客户','Customer','Pelanggan'])}</dt><dd><a className="crm-work-link" href={customerLink(detail)}>{detail.customerName} · {detail.businessNumber}</a></dd></div>
         <div><dt>{t(lang,['负责人','Owner','Penanggung jawab'])}</dt><dd>{owner(detail)}</dd></div>
         <div><dt>{t(lang,['销售阶段','Sales stage','Tahap penjualan'])}</dt><dd>{stage(detail,lang)}</dd></div>
-        <div><dt>{t(lang,['下一步','Next step','Langkah berikutnya'])}</dt><dd>{nextAction(detail,lang,canFinance)}</dd></div>
+        <div><dt>{t(lang,['下一步','Next step','Langkah berikutnya'])}</dt><dd>{nextAction(detail)}</dd></div>
       </dl>
       {detail.identityPending&&canReviewIdentity&&<a className="crm-work-link" href={crmHref({tab:'leads',lead:detail.customerId,identityLead:detail.customerId})}>{t(lang,['核实身份','Review identity','Verifikasi identitas'])}</a>}
-      {canFinance&&detail.records.filter(row=>row.state==='proof_review'||row.state==='partial').map(row=><a key={row.id} className="crm-work-link"
-        href={crmHref({tab:'payments',enrollmentOrder:row.id})}>{t(lang,['前往收款核验','Go to payment verification','Buka verifikasi pembayaran'])}</a>)}
-      {detail.canProgress&&<button type="button" className="crm-work-button justify-self-start" disabled={busy} onClick={async()=>{
-        setBusy(true);setSaveError(false);setNotice(false);
-        try{
-          const lead=await read<any>('/api/crm/leads/'+detail.customerId,new AbortController().signal);
-          setProgressLead(lead.lead??lead);setProgressDirty(false);
-        }catch{setSaveError(true);}finally{setBusy(false);}
-      }}>{t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}</button>}
-      {notice&&<span className="crm-opportunity-feedback" role="status">{t(lang,['商机进展已保存','Opportunity progress saved','Kemajuan peluang tersimpan'])}</span>}
-      {saveError&&<p role="alert">{t(lang,['暂时无法读取最新记录，请刷新后查看。','The latest record could not be loaded. Refresh to view it.','Catatan terbaru belum dapat dimuat. Muat ulang untuk melihatnya.'])}</p>}
-      {progressLead&&<CrmOperationLayer progress customerContext={false} lang={lang} isLight={isLight} busy={busy}
-        context={detail.customerName} title={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}
-        onClose={()=>{if(!busy){if(progressDirty)setConfirmDiscard(true);else setProgressLead(null);}}}>
-        <CrmSimpleWorkflow lead={progressLead} fixedOpportunity={detail} lang={lang} isLight={isLight} timezone={viewerTimeZone()}
-          onDirty={setProgressDirty} onBusy={setBusy} onCancel={()=>progressDirty?setConfirmDiscard(true):setProgressLead(null)}
-          onSaved={async()=>{
-            setProgressLead(null);setNotice(true);
-            try{setDetail(await read<Opportunity>(base+'/'+detail.id,new AbortController().signal));}catch{setSaveError(true);}
-          }}/>
-      </CrmOperationLayer>}
-      {confirmDiscard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setConfirmDiscard(false)}
-        onDiscard={()=>{setProgressLead(null);setConfirmDiscard(false);}}/>}
+      {detail.canProgress&&<button type="button" className="crm-work-button justify-self-start" disabled={busy}
+        onClick={()=>void openProgress(detail)}>{t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}</button>}
       {!!detail.progress?.length&&<section>
         <h2>{t(lang,['商机进展','Opportunity progress','Kemajuan peluang'])}</h2>
         <ol className="crm-course-records">{detail.progress.map(entry=><li key={entry.id}>
@@ -302,21 +315,34 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           ] as const).map(copy=><th scope="col" key={copy[0]}>{t(lang,copy)}</th>)}</tr></thead>
           <tbody>{visible.map(row=>{
             const status=currentStatus(row);
-            const review=row.records.find(requiresPaymentReview);
-            const due=row.records.find(record=>record.state==='awaiting_payment'&&record.paymentDueAt)?.paymentDueAt;
-            const action=nextAction(row,lang,canFinance);
             const attribution=[...row.records].reverse().find(record=>record.attribution)?.attribution;
             return <tr key={row.id}>
               <td><a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id})}>{row.level}</a></td>
               <td><a className="crm-work-link" href={customerLink(row)}>{[...row.records].reverse().find(record=>record.learnerName)?.learnerName||row.customerName}</a></td>
               <td>{owner(row)}</td><td>{stage(row,lang)}</td><td>{states[status]?t(lang,states[status]):status}</td>
-              <td>{canFinance&&review&&!row.identityPending&&row.state==='applying'?<a className="crm-work-link" href={paymentLink(review)}>{action}</a>:action}
-                {due&&status==='awaiting_payment'&&<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div>}
-              </td>
+              <td>{nextAction(row)}</td>
               <td>{sourceLabel(attribution,lang)}</td>
             </tr>;
           })}</tbody>
         </table></div>}
     </>}
+    {notice&&<span className="crm-opportunity-feedback" role="status">{t(lang,['商机进展已保存','Opportunity progress saved','Kemajuan peluang tersimpan'])}</span>}
+    {saveError&&<p role="alert">{t(lang,['暂时无法读取最新记录，请刷新后查看。','The latest record could not be loaded. Refresh to view it.','Catatan terbaru belum dapat dimuat. Muat ulang untuk melihatnya.'])}</p>}
+    {progress&&<CrmOperationLayer progress customerContext={false} lang={lang} isLight={isLight} busy={busy}
+      context={progress.opportunity.customerName} title={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])} onClose={closeProgress}>
+      <CrmSimpleWorkflow lead={progress.lead} fixedOpportunity={progress.opportunity} lang={lang} isLight={isLight} timezone={viewerTimeZone()}
+        initialDraft={progress.agreementId?{simple:{agreementIntent:'update',commitmentChange:{id:progress.agreementId,status:''}}}:undefined}
+        onDirty={setProgressDirty} onBusy={setBusy} onCancel={closeProgress}
+        onSaved={async()=>{
+          setProgress(null);setNotice(true);
+          try{
+            const signal=new AbortController().signal;
+            if(id)setDetail(await read<Opportunity>(base+'/'+id,signal));
+            else setResult(await read<OpportunityList>(base+(customerId?'?'+new URLSearchParams({customerId}):''),signal));
+          }catch{setSaveError(true);}
+        }}/>
+    </CrmOperationLayer>}
+    {confirmDiscard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setConfirmDiscard(false)}
+      onDiscard={()=>{setProgress(null);setConfirmDiscard(false);}}/>}
   </section>;
 }
