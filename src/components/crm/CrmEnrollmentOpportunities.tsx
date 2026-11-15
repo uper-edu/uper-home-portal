@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
@@ -12,6 +12,7 @@ import { describeFollowUpTask } from '../../utils/crmFollowUp';
 import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
 import { CrmDisclosure } from './CrmDisclosure';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
+import { opportunityFilterDefaults as filterDefaults,opportunityListPath,type OpportunityFilters as Filters } from '../../utils/crmEnrollmentOpportunityRoute';
 
 type Copy = readonly [string,string,string];
 type CourseRecord = {
@@ -156,9 +157,6 @@ export function CrmCustomerCourseRecords({id,lang}:{id:string;lang:CrmLanguage})
   </section>;
 }
 
-const filterDefaults={opportunityStatus:'active',opportunityQuery:'',opportunityOwner:'mine',opportunityLevel:'',opportunityStage:'',opportunityState:''};
-type Filters=typeof filterDefaults;
-
 export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canReviewIdentity,canFinance}: {
   lang:CrmLanguage;isLight:boolean;employees:{id:string;displayName?:string}[];actorId:string;canReviewIdentity:boolean;canFinance:boolean;
 }) {
@@ -170,6 +168,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const [detail,setDetail]=useState<Opportunity>();
   const [error,setError]=useState('');
   const targetRecord=params.get('enrollmentRecord');
+  const resumeList=params.get('resumeOpportunityList')==='1';
   const [filters,setFilters]=useState<Filters>(()=>Object.fromEntries(
     Object.entries(filterDefaults).map(([key,fallback])=>[key,params.get(key)??fallback]),
   ) as Filters);
@@ -180,6 +179,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const [busy,setBusy]=useState(false);
   const [saveError,setSaveError]=useState(false);
   const [notice,setNotice]=useState(false);
+  const tableScroll=useRef<HTMLDivElement>(null);
+  const searchField=useRef<HTMLInputElement>(null);
   useEffect(()=>{
     const controller=new AbortController();
     const failure=(cause:Error)=>{if(cause.name!=='AbortError')setError(cause.message);};
@@ -201,11 +202,39 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     if(detail&&targetRecord) document.getElementById('enrollment-record-'+targetRecord)?.scrollIntoView({block:'nearest'});
   },[detail,targetRecord]);
   const listRoute={tab:'opportunities',...filters,...(customerId?{customerId}: {})};
-  const back=crmHref(listRoute);
+  const listPath=opportunityListPath(filters,customerId);
+  const back=listPath+'&resumeOpportunityList=1';
+  const positionKey='uper_crm_opportunity_position:'+actorId+':'+listPath;
+  const rememberListPosition=(opportunityId:string)=>{
+    if(id)return;
+    try{
+      sessionStorage.setItem(positionKey,JSON.stringify({opportunityId,top:window.scrollY,left:tableScroll.current?.scrollLeft??0}));
+    }catch{/* Navigation still works when storage is unavailable. */}
+  };
+  useEffect(()=>{
+    if(id||!resumeList||!list)return;
+    try{
+      const value=sessionStorage.getItem(positionKey);
+      if(!value)return;
+      const position=JSON.parse(value);
+      const frame=requestAnimationFrame(()=>{
+        sessionStorage.removeItem(positionKey);
+        const row=[...tableScroll.current?.querySelectorAll<HTMLTableRowElement>('[data-opportunity-id]')??[]]
+          .find(item=>item.dataset.opportunityId===position.opportunityId);
+        (row?.querySelector<HTMLAnchorElement>('a')??searchField.current)?.focus({preventScroll:true});
+        if(tableScroll.current)tableScroll.current.scrollLeft=position.left;
+        window.scrollTo({top:position.top,behavior:'instant'});
+        const url=new URL(window.location.href);
+        url.searchParams.delete('resumeOpportunityList');
+        window.history.replaceState(window.history.state,'',url);
+      });
+      return ()=>cancelAnimationFrame(frame);
+    }catch{/* An invalid or missing checkpoint does not affect list access. */}
+  },[id,list,positionKey,resumeList]);
   const employeeName=(id:string|null)=>employees.find(employee=>employee.id===id)?.displayName||id;
   const owner=(row:Opportunity)=>employeeName(row.owner)||t(lang,['未分配','Unassigned','Belum ditugaskan']);
   const customerLink=(row:Opportunity)=>crmHref({tab:'leads',lead:row.customerId});
-  const paymentLink=(record:CourseRecord)=>crmHref({tab:'payments',enrollmentOrder:record.id});
+  const paymentLink=(record:CourseRecord)=>crmHref({tab:'payments',enrollmentOrder:record.id,opportunityReturn:listPath});
   const openProgress=async(row:Opportunity,agreementId?:string)=>{
     if(busy)return;
     setBusy(true);setSaveError(false);setNotice(false);
@@ -224,7 +253,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     if(ended(row))return t(lang,next[row.state==='enrolled'?'enrolled':'closed']);
     if(row.identityPending)return t(lang,['待核实身份','Identity review pending','Identitas menunggu verifikasi']);
     const review=row.records.find(requiresPaymentReview);
-    if(review&&row.state==='applying'&&canFinance)return <a className="crm-work-link" href={paymentLink(review)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>;
+    if(review&&row.state==='applying'&&canFinance)return <a className="crm-work-link" href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>;
     const due=row.records.find(record=>record.state==='awaiting_payment')?.paymentDueAt;
     const followup=row.followup;
     if(followup){
@@ -239,7 +268,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     }
     if(review&&row.state==='applying'){
       const status=t(lang,['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
-      return id===row.id?status:<a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}>{status}</a>;
+      return id===row.id?status:<a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}
+        onClick={()=>rememberListPosition(row.id)}>{status}</a>;
     }
     if(due)return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div></>;
     if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</button>;
@@ -291,7 +321,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         <a className="crm-work-link" href={crmHref({tab:'opportunities',...filters})}>{t(lang,['清除客户筛选','Clear customer filter','Hapus filter pelanggan'])}</a>
       </div>}
       <div className="crm-opportunity-filters">
-        <input type="search" aria-label={t(lang,['搜索商机','Search opportunities','Cari peluang'])} placeholder={t(lang,['姓名、客户编号或级别','Name, customer number, or level','Nama, nomor pelanggan, atau level'])} value={filters.opportunityQuery} onChange={event=>changeFilter('opportunityQuery',event.currentTarget.value)}/>
+        <input ref={searchField} type="search" aria-label={t(lang,['搜索商机','Search opportunities','Cari peluang'])} placeholder={t(lang,['姓名、客户编号或级别','Name, customer number, or level','Nama, nomor pelanggan, atau level'])} value={filters.opportunityQuery} onChange={event=>changeFilter('opportunityQuery',event.currentTarget.value)}/>
         <CrmSingleSelect label={t(lang,['商机范围','Opportunity scope','Cakupan peluang'])} value={filters.opportunityStatus} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStatus',value)} options={[
           {value:'active',label:t(lang,['进行中','In progress','Berlangsung'])},{value:'closed',label:t(lang,['已结束','Ended','Berakhir'])},{value:'all',label:allLabel},
         ]}/>
@@ -307,7 +337,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           options={[{value:'',label:allLabel},...businessStates.map(value=>({value,label:states[value]?t(lang,states[value]):value}))]}/>
       </div>
       {visible?.length===0?<p className="crm-work-muted">{t(lang,['当前没有符合条件的商机。','No opportunities match.','Tidak ada peluang yang sesuai.'])}</p>:visible&&
-        <div className="crm-opportunity-table"><table>
+        <div ref={tableScroll} className="crm-opportunity-table"><table>
           <thead><tr>{([
             ['商机','Opportunity','Peluang'],['学员','Learner','Siswa'],['负责人','Owner','Penanggung jawab'],
             ['销售阶段','Sales stage','Tahap penjualan'],['业务状态','Enrollment status','Status pendaftaran'],
@@ -316,8 +346,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           <tbody>{visible.map(row=>{
             const status=currentStatus(row);
             const attribution=[...row.records].reverse().find(record=>record.attribution)?.attribution;
-            return <tr key={row.id}>
-              <td><a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id})}>{row.level}</a></td>
+            return <tr key={row.id} data-opportunity-id={row.id}>
+              <td><a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id})} onClick={()=>rememberListPosition(row.id)}>{row.level}</a></td>
               <td><a className="crm-work-link" href={customerLink(row)}>{[...row.records].reverse().find(record=>record.learnerName)?.learnerName||row.customerName}</a></td>
               <td>{owner(row)}</td><td>{stage(row,lang)}</td><td>{states[status]?t(lang,states[status]):status}</td>
               <td>{nextAction(row)}</td>

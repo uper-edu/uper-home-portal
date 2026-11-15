@@ -2,6 +2,14 @@ import test from 'node:test';import assert from 'node:assert/strict';import Reac
 import {builtInRoles,projectEmployee,permittedRecord} from '../src/utils/accessControl';
 import {paymentListFilters,paymentWorklist,canVerifyPayments,paymentVerificationForm,paymentReceiptForm,assertPaymentReceipt} from '../src/utils/crmPaymentWorklist';
 import {CrmFinanceWorkspace} from '../src/components/crm/CrmFinanceWorkspace';
+import {enrollmentOpportunityReturnPath,opportunityFilterDefaults,opportunityListPath} from '../src/utils/crmEnrollmentOpportunityRoute';
+test('finance return keeps only the filters of the local opportunity list',()=>{
+ const route=opportunityListPath({...opportunityFilterDefaults,opportunityQuery:'HSK 2 & weekend',opportunityState:'proof_review'},'customer');
+ assert.equal(enrollmentOpportunityReturnPath(route+'&opportunity=other&ignored=yes'),route+'&resumeOpportunityList=1');
+ assert.equal(enrollmentOpportunityReturnPath('//example.test/crm?tab=opportunities'),null);
+ assert.equal(enrollmentOpportunityReturnPath('/crm?tab=payments'),null);
+ assert.equal(enrollmentOpportunityReturnPath('/crm/edit?tab=opportunities'),null);
+});
 const roles=Object.entries(builtInRoles).map(([id,config])=>({id,config,enabled:true}));
 const employee=(role:string,active=true)=>projectEmployee({id:role,roles:[role],teams:[],display_name:role,active},roles);
 const profiles=[{id:'maya',fullName:'Maya Putri',owner:'sales',email:'private@example.invalid'},{id:'arif',fullName:'Arif Hidayat',owner:'other'}];

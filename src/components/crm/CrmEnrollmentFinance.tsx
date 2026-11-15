@@ -3,6 +3,7 @@ import { enrollmentCopy, enrollmentPost, enrollmentStatuses } from '../Enrollmen
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { CrmEnrollmentRefund } from './CrmEnrollmentResolution';
+import { enrollmentOpportunityReturnPath } from '../../utils/crmEnrollmentOpportunityRoute';
 
 type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string };
 const endpoint = '/api/crm/enrollment/finance';
@@ -15,7 +16,10 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
   const [requestId, setRequestId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const target = new URLSearchParams(window.location.search).get('enrollmentOrder');
+  const [saved, setSaved] = useState(false);
+  const params = new URLSearchParams(window.location.search);
+  const target = params.get('enrollmentOrder');
+  const returnTo = target ? enrollmentOpportunityReturnPath(params.get('opportunityReturn')) : null;
   async function load() {
     const response = await fetch(target ? endpoint+'?order='+encodeURIComponent(target) : endpoint, {cache:'no-store'});
     if ([403,404].includes(response.status)) { setHidden(true); return; }
@@ -24,15 +28,22 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
   }
   const failed = () => setError(t('暂时无法读取报名核款。','Enrollment receipts could not be loaded.','Data pembayaran belum dapat dimuat.'));
   useEffect(() => { void load().catch(failed); }, []);
+  useEffect(() => {
+    if(!saved)return;
+    const timer=window.setTimeout(()=>setSaved(false),6000);
+    return ()=>window.clearTimeout(timer);
+  },[saved]);
   if (hidden) return null;
 
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
       <h2>{t('课程报名核款','Enrollment payment verification','Verifikasi pembayaran pendaftaran')}</h2>
-      {target&&<a className="crm-work-link" href="/crm?tab=payments">{t('查看全部报名核款','View all enrollment payments','Lihat semua pembayaran')}</a>}
+      {returnTo&&!selected?<a className="crm-work-link" href={returnTo}>{t('返回商机列表','Back to opportunities','Kembali ke daftar peluang')}</a>:
+        target&&!returnTo&&<a className="crm-work-link" href="/crm?tab=payments">{t('查看全部报名核款','View all enrollment payments','Lihat semua pembayaran')}</a>}
       <button type="button" className="crm-work-button" onClick={() => void load().catch(failed)}>{t('刷新','Refresh','Segarkan')}</button>
     </header>
     {error && <p role="alert">{error}</p>}
+    {saved&&<span className="crm-opportunity-feedback" role="status">{t('实收已登记','Verified receipt recorded','Dana terverifikasi telah dicatat')}</span>}
     {orders?.length === 0 && <p>{t('暂无报名订单待核实。','No enrollment payments to verify.','Tidak ada pembayaran untuk diverifikasi.')}</p>}
     {orders?.map(row => <article key={row.id} className="crm-course-catalog">
       <h3>{row.name} · {enrollmentCopy(lang,enrollmentStatuses[row.status])}</h3>
@@ -41,18 +52,19 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
       {row.proofId && <a href={endpoint+'/proofs/'+encodeURIComponent(row.proofId)}>{t('下载凭证','Download proof','Unduh bukti')}</a>}
       {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={()=>void load().catch(failed)}/> :
       selected !== row.id ? <button type="button" className="crm-work-button" onClick={() => {
-        setSelected(row.id);setRequestId(crypto.randomUUID());setError('');
+        setSelected(row.id);setRequestId(crypto.randomUUID());setError('');setSaved(false);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button>
       : <form className="crm-form-layout" onSubmit={async event => {
         event.preventDefault();
         if (busy) return;
         const form = new FormData(event.currentTarget);
-        const transferredAt = new Date(String(form.get('time'))).toISOString();
         setError('');setBusy(true);
         try {
+          const transferredAt = new Date(String(form.get('time'))).toISOString();
           await enrollmentPost(endpoint+'/'+row.id+'/receipts',{ amount:Number(form.get('amount')),reference:form.get('reference'),transferredAt,requestId });
+          setSaved(true);
           setSelected(undefined);
-          await load();
+          await load().catch(failed);
         } catch (cause) {
           setError((cause as Error).message==='enrollment_duplicate_receipt'
             ? t('这笔流水已登记。','This bank reference has already been recorded.','Referensi bank sudah dicatat.')
