@@ -1,0 +1,16 @@
+.crm-opportunity-workspace { display: grid; gap: 16px; }
+.crm-opportunity-workspace > a { justify-self: start; }
+.crm-opportunity-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.crm-opportunity-filters input { min-height: 40px; border: 1px solid var(--admin-border); border-radius: 10px; padding: 0 12px; background: transparent; }
+.crm-opportunity-table { overflow: auto; }
+.crm-opportunity-table table { width: 100%; border-collapse: collapse; text-align: start; }
+.crm-opportunity-table th,
+.crm-opportunity-table td { text-align: start; padding: 12px; border-bottom: 1px solid var(--admin-border); }
+.crm-opportunity-summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,160px),1fr)); gap: 12px; margin: 0; }
+.crm-opportunity-summary dt { font-weight: 600; }
+.crm-opportunity-summary dd { margin: 4px 0 0; }
+.crm-opportunity-records { padding: 12px; border-bottom: 1px solid var(--admin-border); }
+.crm-course-records { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.crm-course-records li { padding: 12px; border: 1px solid var(--admin-border); border-radius: 10px; overflow-wrap: anywhere; }
+.crm-course-records li p { margin: 4px 0; }
+.crm-opportunity-feedback { position: fixed; inset: auto 20px 20px auto; z-index: 20; padding: 10px 14px; border-radius: 10px; background: var(--admin-surface); color: var(--admin-text); border: 1px solid var(--admin-border); }

@@ -135,7 +135,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     });
   }
   const join = () => run(async () => {
-    await enrollmentPost(base+'/waitlist',{classId,phone});
+    await enrollmentPost(base+'/waitlist',{classId,phone,name});
     setJoined(true);
   });
   function savePreferences(data: Parameters<React.ComponentProps<typeof EnrollmentDemandForm>['onSave']>[0]) {
@@ -285,6 +285,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       <Link to={mineLink+'&tab=waitlist'}>{t(['查看我的候补','View my waitlist','Lihat daftar tunggu saya'])}</Link></>
     : hasNoSeat ? <form onSubmit={event=>{event.preventDefault();void join();}}>
       <h2>{joinText}</h2>
+      <label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>
       <label>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}<input type="tel" required value={phone} onChange={event=>setPhone(event.target.value)}/></label>
       <p>{t(['有空位时可以自行申请。','Apply when a seat becomes available.','Daftar saat kursi tersedia.'])}</p>
       <button className="enrollment-action" type="submit" disabled={busy}>{t(['确认加入候补','Confirm waitlist entry','Konfirmasi daftar tunggu'])}</button>

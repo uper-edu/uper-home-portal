@@ -4,12 +4,14 @@ import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
-import { permittedRecord, type AccessEmployee } from '../../src/utils/accessControl.ts';
+import { permittedRecord } from '../../src/utils/accessControl.ts';
+import type { Employee } from './identity.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import { allowsEnrollment, mountEnrollmentInterests, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
 import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
+import { mountEnrollmentCrm, recordEnrollmentCustomer } from './enrollmentCrm.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -83,13 +85,14 @@ function proofContent(raw: unknown, mime: unknown) {
 
 export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   wrap: (fn: Route) => (q: Request, r: Response) => void;
-  staff: (q: Request, permission: string) => Promise<AccessEmployee>;
+  staff: (q: Request, permission: string) => Promise<Employee>;
 }) {
   const local = enrollmentSimulation();
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
   app.get(base + '/availability', (_q, r) => r.set('Cache-Control', 'no-store').json({ accepting: !!local }));
   if (!local) return;
+  mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx});
 
   const post = (path: string, handler: Route) => app.post(path, wrap(async (q, r) => {
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);
@@ -227,6 +230,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
         VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6),:p7)`,
       [id,classId,email,requestId,fingerprint,cohort.data.price,{name:name.trim(),phone:phone.trim(),priority,bank:local.bank}]);
+      await recordEnrollmentCustomer(c,{kind:'order',id,email,phone,name:name.trim(),level:cohort.data.level});
       await c.query("UPDATE enrollment_waitlist SET state='converted',order_id=:p1 WHERE class_id=:p2 AND email=:p3 AND state='waiting'",[id,classId,email]);
       await reconcileWaitlist(c,cohort,seats+1);
       return view((await c.query('SELECT * FROM enrollment_orders WHERE id=:p1', [id])).rows[0]);

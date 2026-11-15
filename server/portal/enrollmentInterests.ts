@@ -2,6 +2,7 @@ import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { demandMatches, enrollmentPhone, parseDemand } from '../../src/utils/enrollmentInterests.ts';
 import { invalid } from './trustWorkflow.ts';
+import { recordEnrollmentCustomer } from './enrollmentCrm.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> };
 type Handler = (q: Request, r: Response) => Promise<unknown>;
@@ -67,6 +68,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
 
   post(base+'/waitlist',async (q,r)=>{
     const phone=enrollmentPhone(q.body?.phone);
+    const name=learnerName(q.body?.name);
     const id=q.body?.classId;
     if (!phone || typeof id!=='string' || !/^[a-zA-Z0-9-]{1,64}$/.test(id)) invalid('enrollment_invalid_waitlist');
     const result=await transact(async c=>{
@@ -84,6 +86,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       const waiting=randomUUID();
       await c.query("INSERT INTO enrollment_waitlist(id,class_id,email,phone,state,created_at) VALUES(:p1,:p2,:p3,:p4,'waiting',UTC_TIMESTAMP(6))",
         [waiting,id,email,phone]);
+      await recordEnrollmentCustomer(c,{kind:'waitlist',id:waiting,email,phone,name,level:cohort.data.level});
       return { id:waiting };
     });
     send(r,result);
@@ -143,16 +146,19 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
   post(base+'/demands',async(q,r)=>{
     const {id,revision}=q.body || {};
     const criteria=parseDemand(q.body?.criteria ?? {});
+    const name=learnerName(q.body?.name);
     if (!criteria || typeof id!=='string' || !/^[a-f0-9-]{36}$/.test(id) || !Number.isInteger(revision) || revision<0) {
       invalid('enrollment_invalid_demand');
     }
     const saved=await transact(async c=>{
       const email=await session(c,q);
+      const level=['unsure','other'].includes(criteria.level)?undefined:criteria.level;
       const existing=(await c.query('SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[id])).rows[0];
       if (!existing) {
         if (revision!==0) invalid('enrollment_interest_not_found',404);
         await c.query("INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))",
           [id,email,criteria]);
+        await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,name,level});
         return 1;
       }
       if(existing.email!==email) invalid('enrollment_interest_not_found',404);
@@ -163,6 +169,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
         invalid('enrollment_demand_conflict',409);
       }
       await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',[criteria,id]);
+      await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,level});
       return revision+1;
     });
     send(r,{id,revision:saved});
@@ -178,4 +185,10 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
     });
     send(r,{ok:true});
   });
+}
+
+function learnerName(value:unknown):string|undefined {
+  if (value===undefined) return;
+  if (typeof value!=='string'||!value.trim()||value.trim().length>120) invalid('enrollment_invalid_application');
+  return value.trim();
 }

@@ -34,11 +34,12 @@ export const waitlistStates:Record<string,Copy>={
 
 export function EnrollmentDemandForm({ language, initial, onSave, busy }: {
   language:InterestLanguage; initial?:DemandItem;
-  onSave:(record:{id:string;revision:number;criteria:DemandCriteria})=>void;
+  onSave:(record:{id:string;revision:number;criteria:DemandCriteria;name?:string})=>void;
   busy:boolean;
 }) {
   const t=(text:Copy)=>interestText(language,text);
   const [id]=useState(initial?.id||crypto.randomUUID());
+  const [name,setName]=useState('');
   const [criteria,setCriteria]=useState<DemandCriteria>(initial?.criteria ?? {level:'unsure',period:'any',format:'any',notes:'',phone:''});
   const notesRequired=[criteria.level,criteria.period,criteria.format].includes('other');
   const [invalid,setInvalid]=useState(false);
@@ -51,7 +52,7 @@ export function EnrollmentDemandForm({ language, initial, onSave, busy }: {
     event.preventDefault();
     const value=parseDemand({...criteria});
     if (!value) {setInvalid(true);return;}
-    setInvalid(false);onSave({id,revision:initial?.revision??0,criteria:value});
+    setInvalid(false);onSave({id,revision:initial?.revision??0,criteria:value,name:initial?undefined:name.trim()});
   }}>
     <h2>{t(initial?['修改选课需求','Edit course preferences','Ubah preferensi kursus']:['告诉我们你想上的课','Tell us what you want to study','Sampaikan kursus yang Anda inginkan'])}</h2>
     {fields.map(([key,label,options])=><PublicSingleSelect key={key} label={t(label)} value={criteria[key]}
@@ -59,6 +60,7 @@ export function EnrollmentDemandForm({ language, initial, onSave, busy }: {
       onChange={value=>setCriteria(current=>({...current,[key]:value}))}/>)}
     <label>{t(notesRequired?['补充说明（必填）','Additional details (required)','Rincian tambahan (wajib)']:['补充说明（选填）','Additional details (optional)','Rincian tambahan (opsional)'])}
       <textarea required={notesRequired} maxLength={1000} value={criteria.notes} onChange={event=>setCriteria({...criteria,notes:event.target.value})}/></label>
+    {!initial&&<label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>}
     <label>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}
       <input type="tel" required maxLength={26} value={criteria.phone} onChange={event=>setCriteria({...criteria,phone:event.target.value})}/></label>
     {invalid && <p role="alert">{t(['请检查联系方式和补充说明。','Check your phone number and additional details.','Periksa nomor telepon dan rincian tambahan.'])}</p>}
