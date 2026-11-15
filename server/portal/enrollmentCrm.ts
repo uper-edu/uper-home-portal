@@ -15,6 +15,8 @@ import { canonicalIdentity, lockIdentityRegistry } from './identityConsolidation
 import { discoverIdentity, identityControls, pendingIdentity } from './identityReview.ts';
 import { invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
+import { opportunitySourceKind, type OpportunitySourceRef } from '../../src/utils/crmOpportunitySources.ts';
+import { salesProgressContext } from './salesProgress.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
@@ -250,8 +252,23 @@ export async function linkEnrollmentOpportunity(c:Client,leadId:string,link:any)
   if(link.revision!==current.revision || !isOpenOpportunity(current) || (current.state==='aftercare'&&link.stage!==undefined)) {
     invalid('enrollment_opportunity_progress_conflict',409);
   }
+  const sourceRefs:OpportunitySourceRef[]=[];
+  if(link.sourceRefs!==undefined){
+    if(!Array.isArray(link.sourceRefs)||link.sourceRefs.length>5) invalid('enrollment_invalid_opportunity_progress');
+    for(const ref of link.sourceRefs){
+      if(!ref||!['fact','customer_message','sales_record'].includes(ref.type)||typeof ref.id!=='string'||!ref.id||ref.id.length>191||
+        Object.keys(ref).length!==2||
+        sourceRefs.some(saved=>saved.type===ref.type&&saved.id===ref.id)) invalid('enrollment_invalid_opportunity_progress');
+      sourceRefs.push({type:ref.type,id:ref.id});
+    }
+    if(sourceRefs.length){
+      const {sources}=await salesProgressContext(c,customer.id,customer.profile);
+      if(sourceRefs.some(ref=>!sources.some(source=>source.type===ref.type&&source.id===ref.id&&opportunitySourceKind(source))))
+        invalid('enrollment_opportunity_source_not_found',404);
+    }
+  }
   await c.query('UPDATE enrollment_opportunities SET sales_stage=COALESCE(:p1,sales_stage),revision=revision+1 WHERE id=:p2',[link.stage??null,row.id]);
-  return {id:row.id,revision:current.revision+1,stage:link.stage??current.salesStage};
+  return {id:row.id,revision:current.revision+1,stage:link.stage??current.salesStage,...(sourceRefs.length?{sourceRefs}:{})};
 }
 
 export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProgress }:{
@@ -291,6 +308,7 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       FROM enrollment_opportunity_progress WHERE opportunity_id=:p1 ORDER BY created_at DESC,id DESC`,[row.id])).rows;
     const linkedProgress=(await c.query(`SELECT f.id AS factId,f.actor,f.data->>'$.result.logId' AS id,
       f.data->>'$.result.opportunity.stage' AS stage,f.data->>'$.summary' AS note,
+      f.data->'$.result.opportunity.sourceRefs' AS sourceRefs,
       DATE_FORMAT(f.created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt
       FROM crm_facts f JOIN portal_leads l ON l.id=f.lead_id
       WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND f.kind='followup.recorded'
@@ -303,7 +321,14 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
         AND n.kind NOT IN ('otp_apply','otp_mine')
       ORDER BY n.recorded_at DESC,n.event_key DESC`,[row.id])).rows;
     const current=projectOpportunity(row,await recordsForOpportunity(c,row.id),customer.profile);
-    const progress=[...linkedProgress,...legacyProgress].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));
+    const sources=linkedProgress.some(entry=>Array.isArray(entry.sourceRefs)&&entry.sourceRefs.length)
+      ?(await salesProgressContext(c,customer.id,customer.profile)).sources:[];
+    const progress=[...linkedProgress,...legacyProgress].map(({sourceRefs,...entry})=>({
+      ...entry,sources:Array.isArray(sourceRefs)?sourceRefs.flatMap(ref=>{
+        const source=sources.find(item=>item.type===ref.type&&item.id===ref.id);
+        return source&&opportunitySourceKind(source)?[source]:[];
+      }):[],
+    })).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));
     const tasks=await opportunityTasks(c,canProgress(actor,customer.profile)?[customer.profile]:[]);
     return {...attachOpportunityActions(actor,customer.profile,current,tasks),progress,emails};
   }));
@@ -323,7 +348,7 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       return operation(c,actor.id,q.body,{leadId:customer.id,kind:'enrollment.opportunity.progress:'+id},async()=>{
         const saved=await saveProgress(c,customer.id,actor.id,{
           workflowVersion:3,requestId:q.body.requestId,summary:note,recordKind:'internal',
-          opportunityLink:{id,revision,stage},
+          opportunityLink:{id,revision,stage,sourceRefs:q.body.sourceRefs},
         },profile=>readProfile(actor,profile)&&canProgress(actor,profile));
         return {revision:saved.opportunity.revision,logId:saved.logId};
       });

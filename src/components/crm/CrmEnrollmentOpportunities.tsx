@@ -17,6 +17,8 @@ import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { opportunityFilterDefaults as filterDefaults,opportunityListPath,type OpportunityFilters as Filters } from '../../utils/crmEnrollmentOpportunityRoute';
 import { contactEmailText, validContactEmail } from '../../utils/contactEmail';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
+import { CrmOpportunitySourceLink } from './CrmOpportunitySources';
+import type { OpportunitySource } from '../../utils/crmOpportunitySources';
 
 type Copy = readonly [string,string,string];
 type CourseRecord = {
@@ -34,7 +36,7 @@ type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
   state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
   emails?:EnrollmentEmail[];
-  progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string}[];canProgress?:boolean;canInitiateFollowup?:boolean;followup?:OpportunityFollowup|null;
+  progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string;sources?:OpportunitySource[]}[];canProgress?:boolean;canInitiateFollowup?:boolean;followup?:OpportunityFollowup|null;
 };
 type OpportunityList = {opportunities:Opportunity[];customer?:{id:string;name:string}};
 const base = '/api/crm/opportunities';
@@ -416,6 +418,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           {entry.factId&&<a className="crm-work-link" href={crmHref({tab:'leads',lead:detail.customerId,target:'fact',targetId:entry.factId})}>
             {t(lang,['查看客户原始记录','View original customer record','Lihat catatan asli pelanggan'])}
           </a>}
+          {entry.sources?.map(source=><CrmOpportunitySourceLink key={`${source.type}:${source.id}`} source={source} leadId={detail.customerId} lang={lang}/>)}
         </li>)}</ol>
       </section>}
       <CourseRecords records={detail.records} link={false} lang={lang} emails={detail.emails} targetRecord={targetRecord}/></>:null

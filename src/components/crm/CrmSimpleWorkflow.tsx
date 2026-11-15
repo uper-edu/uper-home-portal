@@ -19,6 +19,7 @@ import {wantsNewAgreement as newAgreement,incompleteAgreement,prepareProgressDra
 import {useState,useEffect,useRef,useId} from 'react';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {CrmOpportunityProgressFields,type ProgressOpportunity} from './CrmOpportunityProgressFields';
+import {CrmOpportunitySourcePicker} from './CrmOpportunitySources';
 import {crmValue} from '../../utils/crmLanguage';
 export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,onCancel,onDirty,onBusy,onDraft,initialDraft,administrative,canUpdateStage=false,fixedOpportunity}:any){
  const ui=useCrmUiText(lang);
@@ -107,10 +108,14 @@ export function CrmSimpleWorkflow({lead,employee,lang,isLight,timezone,onSaved,o
  {!draft.savedProgress&&<CrmOpportunityProgressFields lang={lang} isLight={isLight} anchorId={inputId+'-opportunity'}
    linked={linked} disabled={busy||unknown} fixed={fixedOpportunity} options={options} loadError={optionsError}
    selection={draft.opportunitySelection} stage={draft.opportunityStage||''}
-   onLink={linkOpportunity=>patch({linkOpportunity,opportunitySelection:undefined,opportunityStage:''})}
-   onSelect={opportunitySelection=>patch({opportunitySelection,opportunityStage:''})}
+   onLink={linkOpportunity=>patch({linkOpportunity,opportunitySelection:undefined,opportunityStage:'',opportunitySources:[]})}
+   onSelect={opportunitySelection=>patch({opportunitySelection,opportunityStage:'',
+     ...(opportunitySelection?.id===draft.opportunitySelection?.id?{}:{opportunitySources:[]})})}
    onStage={opportunityStage=>patch({opportunityStage})}
    onReload={()=>setOptionsVersion(version=>version+1)}/>}
+ {linked&&linkedReady&&!draft.savedProgress&&<CrmOpportunitySourcePicker key={selected?.id} leadId={lead.id} lang={lang}
+   disabled={busy||unknown} selected={draft.opportunitySources??[]}
+   onChange={opportunitySources=>patch({opportunitySources})}/>}
 
  <div className="crm-progress-sections">
  <CrmProgressSection {...sectionProps('contact',t('Actual contact','Kontak nyata','实际联系'))}>
