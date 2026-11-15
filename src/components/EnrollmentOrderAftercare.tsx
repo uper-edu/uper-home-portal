@@ -272,7 +272,11 @@ export function EnrollmentOrderAftercare({
       <article className="enrollment-record">
         <h2>{t(order.received>0?['收款状态','Payment status','Status pembayaran']:lateProofSubmitted?['下一步','What happens next','Langkah berikutnya']:['已经转账？','Already transferred?','Sudah transfer?'])}</h2>
         {order.received>0 ? <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>
-          : lateProofSubmitted ? <p>{t(['财务会核对这笔转账。若核实在原截止前已足额转账，且原班可接收，系统会恢复原班报名。','Finance will review the transfer. Enrollment can be restored if full payment was made before the original deadline and the class can still admit you.','Tim keuangan akan memeriksa transfer. Pendaftaran dapat dipulihkan jika pembayaran lunas sebelum batas awal dan kelas masih dapat menerima Anda.'])}</p>
+          : lateProofSubmitted ? <p>{t([
+            '财务会核对这笔转账。若足额转账的时间在原付款截止时刻或之前，且原班仍可接收，系统会恢复原班报名。',
+            'Finance will review the transfer. If you transferred the full amount by the original payment deadline and the class can still admit you, your enrollment will be restored.',
+            'Tim keuangan akan memeriksa transfer ini. Jika Anda sudah mentransfer jumlah penuh paling lambat pada tenggat pembayaran awal dan kelas masih dapat menerima Anda, pendaftaran Anda akan dipulihkan.',
+          ])}</p>
           : <p>{t(['可提交已发生的转账凭证，财务会核对实际到账。','If you already transferred funds, submit the proof for Finance to review.','Jika sudah transfer, kirim buktinya untuk diperiksa tim keuangan.'])}</p>}
         <p>{t(['原付款入口已关闭，原席位已释放。','The original payment link is closed and the seat was released.','Pembayaran untuk pesanan awal ditutup dan kursinya sudah dilepas.'])}</p>
       </article>
