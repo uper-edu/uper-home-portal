@@ -4,7 +4,7 @@ import { AdminFormActions } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect } from './CrmSingleSelect';
-import { enrollmentFormats, enrollmentLevels, enrollmentPeriods } from '../../utils/enrollmentCatalog';
+import { enrollmentFormats, enrollmentLevels, enrollmentPeriods,enrollmentScheduleDefaults } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
@@ -76,7 +76,19 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
     }
   }
   function change(name: keyof EnrollmentClassConfig, value: string | number | null) {
-    setDraft(current => current && ({ ...current, config: { ...current.config, [name]: value } }));
+    setDraft(current=>{
+      if(!current)return current;
+      const config={...current.config,[name]:value};
+      if(name==='firstLesson'&&current.revision===0&&typeof value==='string'){
+        const defaults=enrollmentScheduleDefaults(value);
+        const previous=enrollmentScheduleDefaults(current.config.firstLesson);
+        if(defaults){
+          if(!config.decisionAt||config.decisionAt===previous?.decisionAt)config.decisionAt=defaults.decisionAt;
+          if(!config.enrollmentCloses||config.enrollmentCloses===previous?.enrollmentCloses)config.enrollmentCloses=defaults.enrollmentCloses;
+        }
+      }
+      return {...current,config};
+    });
     setDirty(true);
   }
   function close() {

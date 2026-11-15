@@ -4,7 +4,8 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next';
 import { normalizeSiteLanguage } from '../utils/siteMetadata';
 import { formatCurrency } from '../utils/currency';
-import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import { PublicSingleSelect } from '../components/PublicSingleSelect';
 import { EnrollmentSupport } from '../components/EnrollmentSupport';
 import { oneToOneRate } from '../data/enrollmentOneToOne';
@@ -83,6 +84,7 @@ export default function Enrollment() {
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const [accepting, setAccepting] = useState<boolean>();
+  const openingClock=useEnrollmentOpeningClock();
   const level = params.get('level') || '1';
   const period = params.get('period') || '';
   const format = params.get('format') || '';
@@ -156,7 +158,7 @@ export default function Enrollment() {
       `${groupSize} learners · ${row.sessions} sessions · ${row.minutes} min each`,
       `${groupSize} siswa · ${row.sessions} sesi · ${row.minutes} menit per sesi`,
     ]);
-    const decision = row.decisionAt ? formatDay(row.decisionAt) : '';
+    const openingNotice=row.opened?'':enrollmentOpeningNotice(row.decisionAt,language,openingClock);
     const title = row.level + ' · ' + t(row.format) + ' · ' + dateLabel(row);
     return <article className="enrollment-class-card" key={row.id}>
       <h2>{inCatalog ? <Link to={detailsPath(row.id)}>{title}<ChevronRight size={15} aria-hidden="true"/></Link> : title}</h2>
@@ -166,11 +168,7 @@ export default function Enrollment() {
         <span className="enrollment-status" data-state={row.availability === 'full' ? 'full' : row.opened ? 'confirmed' : 'pending'}>
           {t(row.opened ? 'opened' : 'recruiting')}{row.availability && ' · ' + t(row.availability)}
         </span>
-        {!row.opened && decision && <small>{enrollmentCopy(language, [
-          '预计 ' + decision + ' 通知开班结果',
-          'Opening update expected ' + decision,
-          'Kabar pembukaan diperkirakan ' + decision,
-        ])}</small>}
+        {openingNotice&&<small>{openingNotice}</small>}
       </div>
       <div className="enrollment-class-bottom">
         <div className="enrollment-prices">

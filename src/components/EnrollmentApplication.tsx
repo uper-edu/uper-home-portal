@@ -656,7 +656,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
             <h1>{t(['提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan'])}</h1>
           </div>
         </>}
-        <EnrollmentPayment order={order} course={resultCourse} schedule={aftercare?.currentClass.schedule} language={language}
+        <EnrollmentPayment order={order} course={resultCourse} classInfo={aftercare?.currentClass} language={language}
           status={status ?? ''} canUpload={!!canUpload} file={file} busy={busy} setFile={setFile}
           upload={transfer=>void upload(transfer)} existingTransferOnly={existingTransferOnly}
           proofUploadFailed={['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)}/>

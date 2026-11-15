@@ -9,7 +9,7 @@ import { enrollmentSupportPath } from './EnrollmentSupport';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 
 type Copy = readonly [string, string, string];
-type Course = { level?: string; format?: string; opened?: boolean; firstLesson: string; schedule: string };
+type Course = { level?: string; format?: string; opened?: boolean; firstLesson: string; schedule: string; decisionAt?:string };
 type TransferTarget = Course & { id: string };
 type Invitation = Course & { id: string; targetClassId: string; state: string; expiresAt: string };
 export type EnrollmentAftercare = {

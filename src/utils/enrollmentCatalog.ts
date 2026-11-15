@@ -48,6 +48,25 @@ export function enrollmentInstant(value: unknown): Date | null {
   return jakarta === value ? date : null;
 }
 
+export function enrollmentScheduleDefaults(firstLesson:string) {
+  if(!enrollmentInstant(firstLesson))return null;
+  const date=firstLesson.slice(0,10);
+  const decisionDay=new Date(Date.parse(date+'T00:00:00Z')-2*86_400_000).toISOString().slice(0,10);
+  return {enrollmentCloses:date+'T00:00',decisionAt:decisionDay+'T17:00'};
+}
+
+export function enrollmentOpeningNotice(
+  decisionAt:string|undefined,language:'zh'|'en'|'id',now=Date.now(),
+) {
+  const decision=enrollmentInstant(decisionAt);
+  if(!decision)return '';
+  if(now>=decision.valueOf())return {zh:'开班结果待确认',en:'Class opening still to be confirmed',id:'Pembukaan kelas masih menunggu konfirmasi'}[language];
+  const date=new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[language],{
+    month:'long',day:'numeric',timeZone:'Asia/Jakarta',
+  }).format(decision);
+  return {zh:`预计 ${date} 通知开班结果`,en:`Opening update expected ${date}`,id:`Kabar pembukaan diperkirakan ${date}`}[language];
+}
+
 export function publicEnrollmentClass(record: EnrollmentClassAdmin): PublicEnrollmentClass {
   const { id, level, format, period, firstLesson, decisionAt, schedule, sessions, minutes, price,
     standardPrice, learningOutcomes, material, resources, teacher } = record;

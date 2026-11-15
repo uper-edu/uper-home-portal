@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
-import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
 
 export type EnrollmentOrder = {
@@ -17,10 +17,10 @@ export type EnrollmentOrder = {
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, schedule, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false }: {
+export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
-  schedule?: string;
+  classInfo?:{firstLesson:string;schedule:string;level?:string;format?:string;decisionAt?:string;opened?:boolean};
   language: Language;
   status: string;
   canUpload: boolean;
@@ -61,12 +61,14 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
     (hours ? hours + ' hr ' : '') + shortMinutes + ' min left',
     'Sisa ' + (hours ? hours + ' jam ' : '') + shortMinutes + ' mnt',
   );
-  const start = course && dayFormat.format(new Date(course.firstLesson + ':00+07:00'));
-  const title = course && [
-    course.level,
-    course.format === 'standard' ? t('标准班', 'Standard class', 'Kelas standar') : t('小班', 'Small group', 'Kelas kecil'),
-    course.opened ? t(start + '开课', 'Starts ' + start, 'Mulai ' + start) : t('预计 ' + start + '开课', 'Expected ' + start, 'Perkiraan ' + start),
+  const cohort=classInfo??course;
+  const start = cohort && dayFormat.format(new Date(cohort.firstLesson + ':00+07:00'));
+  const title = cohort && [
+    cohort.level,
+    cohort.format === 'standard' ? t('标准班', 'Standard class', 'Kelas standar') : t('小班', 'Small group', 'Kelas kecil'),
+    existingTransferOnly?start:cohort.opened ? t(start + '开课', 'Starts ' + start, 'Mulai ' + start) : t('预计 ' + start + '开课', 'Expected ' + start, 'Perkiraan ' + start),
   ].join(' · ');
+  const openingNotice=cohort?.opened||existingTransferOnly?'':enrollmentOpeningNotice(cohort?.decisionAt,language,now);
   const bank = order.bank;
   const bankRows = bank ? [
     [t('银行', 'Bank', 'Bank'), bank.name],
@@ -98,7 +100,8 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
   return <>
     <div className="enrollment-payment-summary">
       <h2>{title || status}</h2>
-      {(course?.schedule || schedule) && <p>{course?.schedule || schedule}</p>}
+      {cohort?.schedule&&<p>{cohort.schedule}</p>}
+      {openingNotice&&<p>{openingNotice}</p>}
       {course && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
     </div>

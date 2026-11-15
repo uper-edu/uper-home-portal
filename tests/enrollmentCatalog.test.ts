@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { enrollmentInstant, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import { enrollmentInstant, enrollmentOpeningNotice, enrollmentScheduleDefaults, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
@@ -38,4 +38,15 @@ test('staff insertion starts on the first class day in WIB after self-service cl
   assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses},Date.parse('2026-12-18T16:59:59Z')),false);
   assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses},Date.parse('2026-12-18T17:00:00Z')),true);
   assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses:'2026-12-19T09:00'},Date.parse('2026-12-19T01:59:59Z')),false);
+});
+
+test('class opening notice changes at the expected WIB time without inferring a class outcome',()=>{
+  const decisionAt='2026-12-17T17:00';
+  assert.deepEqual(enrollmentScheduleDefaults('2027-01-01T15:00'),{enrollmentCloses:'2027-01-01T00:00',decisionAt:'2026-12-30T17:00'});
+  const exact=Date.parse('2026-12-17T10:00:00Z');
+  assert.match(enrollmentOpeningNotice(decisionAt,'zh',exact-1),/预计.*通知开班结果/);
+  assert.equal(enrollmentOpeningNotice(decisionAt,'zh',exact),'开班结果待确认');
+  assert.equal(enrollmentOpeningNotice(decisionAt,'en',exact+1),'Class opening still to be confirmed');
+  assert.equal(enrollmentOpeningNotice(decisionAt,'id',exact+1),'Pembukaan kelas masih menunggu konfirmasi');
+  assert.equal(enrollmentOpeningNotice(undefined,'zh',exact),'');
 });
