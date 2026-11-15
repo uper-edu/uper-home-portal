@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { enrollmentInstant, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import { enrollmentInstant, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
@@ -31,4 +31,11 @@ test('only public class fields are returned to visitors', () => {
   for (const key of ['capacity', 'minimumPaid', 'courseId', 'revision', 'state', 'enrollmentCloses']) {
     assert.equal(Object.hasOwn(view, key), false);
   }
+});
+
+test('staff insertion starts on the first class day in WIB after self-service closes', () => {
+  const enrollmentCloses = '2026-12-18T10:00';
+  assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses},Date.parse('2026-12-18T16:59:59Z')),false);
+  assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses},Date.parse('2026-12-18T17:00:00Z')),true);
+  assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses:'2026-12-19T09:00'},Date.parse('2026-12-19T01:59:59Z')),false);
 });

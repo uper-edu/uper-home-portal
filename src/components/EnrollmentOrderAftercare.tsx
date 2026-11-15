@@ -249,6 +249,16 @@ export function EnrollmentOrderAftercare({
       {foot(<button type="button" className="enrollment-primary" disabled={busy} onClick={()=>onTransfer(target.id,'accept')}>
         {t(['确认转班','Confirm transfer','Konfirmasi pindah kelas'])}</button>)}
     </>;
+  } else if (order.status==='ended') {
+    body = <>
+      {classCard(course)}
+      <p className="enrollment-result-state" role="status">{t(['报名已结束','Enrollment ended','Pendaftaran telah berakhir'])}</p>
+      <article className="enrollment-record">
+        <p>{t(['席位已释放，付款入口已关闭。','Your seat has been released and the payment link is closed.','Kursi telah dilepas dan tautan pembayaran ditutup.'])}</p>
+        <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>
+      </article>
+      {foot(link(backMine,minePath,true),allowRefundContact&&link(support,refundContactPath))}
+    </>;
   } else if (expired) {
     body = <>
       {classCard(course,undefined,true)}

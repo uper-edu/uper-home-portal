@@ -28,6 +28,13 @@ export interface EnrollmentClassAdmin extends EnrollmentClassConfig {
   revision: number;
   state: 'draft' | 'published' | 'cancelled';
   opened?: boolean;
+  canInsert?: boolean;
+}
+
+export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig,'firstLesson'|'enrollmentCloses'>, now = Date.now()) {
+  const startsOn = new Date(cohort.firstLesson.slice(0,10)+'T00:00:00+07:00').valueOf();
+  const closesAt = enrollmentInstant(cohort.enrollmentCloses);
+  return closesAt !== null && now >= closesAt.valueOf() && now >= startsOn;
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,

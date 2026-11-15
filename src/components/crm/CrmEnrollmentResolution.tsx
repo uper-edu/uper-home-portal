@@ -9,7 +9,8 @@ import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import type { PublicEnrollmentClass } from '../../utils/enrollmentCatalog';
 
-type ServiceOrder={id:string;classId:string;name:string;level:string;format:PublicEnrollmentClass['format'];opened:boolean;canInvite:boolean;received:number;priorityRequested:boolean};
+type ServiceOrder={id:string;classId:string;name:string;level:string;format:PublicEnrollmentClass['format'];opened:boolean;canInvite:boolean;canEnd:boolean;canRefund:boolean;ended:boolean;received:number;priorityRequested:boolean};
+type SupportAction='refund'|'invite'|'end';
 type RefundDetails={
   progress:{expected:number;refunded:number};
   receipts:{reference:string;remaining:number}[];
@@ -22,7 +23,7 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
   const [orders,setOrders]=useState<ServiceOrder[]>();
   const [classes,setClasses]=useState<PublicEnrollmentClass[]>([]);
-  const [editor,setEditor]=useState<{order:ServiceOrder;mode:'refund'|'invite';requestId:string}>();
+  const [editor,setEditor]=useState<{order:ServiceOrder;mode:SupportAction;requestId:string}>();
   const [targetId,setTargetId]=useState('');
   const [busy,setBusy]=useState(false);
   const [dirty,setDirty]=useState(false);
@@ -38,10 +39,13 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
   };
   useEffect(()=>{void load().catch(()=>setError(t('售后记录暂时无法读取。','Aftercare records could not be read.','Catatan layanan belum dapat dimuat.')));},[]);
   if(!orders) return null;
-  const start=(order:ServiceOrder,mode:'refund'|'invite')=>{
+  const start=(order:ServiceOrder,mode:SupportAction)=>{
     setEditor({order,mode,requestId:crypto.randomUUID()});setTargetId('');setDirty(false);setError('');setNotice('');
   };
   const close=()=>{if(!busy){if(dirty)setDiscard(true);else setEditor(undefined);}};
+  const endTitle=t('结束报名','End enrollment','Akhiri pendaftaran');
+  const refundTitle=t('受理退款','Accept refund request','Terima permintaan pengembalian');
+  const inviteTitle=t('安排转班邀请','Arrange transfer invitation','Atur undangan pindah kelas');
   return <section className="crm-course-catalog">
     <h2>{t('报名售后','Enrollment support','Layanan pendaftaran')}</h2>
     {notice&&<p role="status">{notice}</p>}
@@ -49,24 +53,27 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
     {orders.map(row=><article className="crm-course-catalog" key={row.id}>
       <h3>{row.name} · {row.level}</h3><p>{row.id} · {formatCurrency(row.received,lang)}</p>
       {row.canInvite&&row.priorityRequested&&<p>{t('学员已开启优先安排','Learner enabled priority arrangements','Siswa mengaktifkan pengaturan prioritas')}</p>}
-      {row.canInvite&&<button type="button" className="crm-work-button" onClick={()=>start(row,'invite')}>{t('安排转班邀请','Arrange transfer invitation','Atur undangan pindah kelas')}</button>}
-      <button type="button" className="crm-work-button" onClick={()=>start(row,'refund')}>{t('受理退款','Accept refund request','Terima permintaan pengembalian')}</button>
+      {row.ended&&<p>{enrollmentCopy(lang,['报名已结束','Enrollment ended','Pendaftaran telah berakhir'])}</p>}
+      {row.canInvite&&<button type="button" className="crm-work-button" onClick={()=>start(row,'invite')}>{inviteTitle}</button>}
+      {row.canEnd&&<button type="button" className="crm-work-button" onClick={()=>start(row,'end')}>{endTitle}</button>}
+      {row.canRefund&&<button type="button" className="crm-work-button" onClick={()=>start(row,'refund')}>{refundTitle}</button>}
     </article>)}
-    {editor&&<CrmOperationLayer compose customerContext={false} title={<>{editor.mode==='refund'?t('受理退款','Accept refund request','Terima permintaan pengembalian'):
-      t('安排转班邀请','Arrange transfer invitation','Atur undangan pindah kelas')}<AdminRequiredNote inline lang={lang}/></>}
+    {editor&&<CrmOperationLayer compose customerContext={false} title={<>{editor.mode==='invite'?inviteTitle:editor.mode==='end'?endTitle:refundTitle}<AdminRequiredNote inline lang={lang}/></>}
       lang={lang} isLight={isLight} busy={busy} onClose={close}>
       <AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onChange={()=>setDirty(true)} onSubmit={async event=>{
         event.preventDefault();if(busy)return;
         const form=new FormData(event.currentTarget);
         setBusy(true);setError('');
         try{
-          await enrollmentPost(staff+'/'+editor.order.id+(editor.mode==='refund'?'/refund':'/invitations'),{
+          await enrollmentPost(staff+'/'+editor.order.id+'/'+(editor.mode==='invite'?'invitations':editor.mode),{
             classId:editor.order.classId,requestId:editor.requestId,
-            ...(editor.mode==='refund'?{reason:form.get('reason'),delivered:Number(form.get('delivered')||0),special:form.get('special')==='on'}:{targetClassId:targetId}),
+            ...(editor.mode==='invite'?{targetClassId:targetId}:editor.mode==='end'?{reason:form.get('reason')}:
+              {reason:form.get('reason'),delivered:Number(form.get('delivered')||0),special:form.get('special')==='on'}),
           });
           setEditor(undefined);setDirty(false);
           setNotice(editor.mode==='refund'?t('已受理退款，相关席位已释放。','Refund accepted and the seat released.','Pengembalian diterima dan kursi dilepas.'):
-            t('转班邀请已登记。','Transfer invitation recorded.','Undangan pindah kelas dicatat.'));
+            editor.mode==='end'?t('报名已结束，席位已释放。','Enrollment ended and its seat was released.','Pendaftaran berakhir dan kursi dilepas.'):
+              t('转班邀请已登记。','Transfer invitation recorded.','Undangan pindah kelas dicatat.'));
           await load();
         }catch{setError(t('未能确认操作，请刷新核对订单。','The action could not be confirmed. Refresh to review the order.','Tindakan belum terkonfirmasi. Muat ulang pesanan.'));}
         finally{setBusy(false);}
@@ -77,7 +84,10 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
           <CrmSingleSelect lang={lang} isLight={isLight} required label={t('目标班次','Target class','Kelas tujuan')} value={targetId}
             options={classes.filter(row=>row.id!==editor.order.classId&&row.level===editor.order.level&&row.format===editor.order.format&&row.availability!=='full')
               .map(row=>({value:row.id,label:row.level+' · '+row.firstLesson.replace('T',' ')+' WIB'}))}
-            onChange={value=>{setTargetId(value);setDirty(true);}}/></AdminField>:<>
+            onChange={value=>{setTargetId(value);setDirty(true);}}/></AdminField>:editor.mode==='end'?<>
+          <p>{t('仅在学员明确放弃时操作。确认后关闭付款入口并释放席位，已有实收和凭证会保留。','Use only after the learner has clearly withdrawn. This closes payment and releases the seat while retaining receipts and proof.','Gunakan hanya setelah siswa menyatakan mundur. Pembayaran ditutup dan kursi dilepas. Dana tercatat dan bukti tetap disimpan.')}</p>
+          <AdminField required>{t('结束报名原因','Reason for ending enrollment','Alasan mengakhiri pendaftaran')}<textarea name="reason" required maxLength={1000}/></AdminField>
+        </>:<>
           <p>{t('正式受理后会结束报名及转班等待，并释放席位。','Accepting this request ends the enrollment and releases any held seat.','Menerima permintaan mengakhiri pendaftaran dan melepaskan kursi.')}</p>
           <AdminField required>{t('学员申请及受理原因','Request and acceptance reason','Alasan permintaan dan penerimaan')}<textarea name="reason" required maxLength={1000}/></AdminField>
           {editor.order.opened&&<>

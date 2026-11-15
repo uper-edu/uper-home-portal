@@ -36,6 +36,8 @@ export async function enrollmentWeekTotals(c:Client,week:NonNullable<ReturnType<
           AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled
       FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS
         (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)
+        AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'
+          AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)
     ) AS as_of_cutoff`,[week.until])).rows[0];
   const pending=Number(totals.pending);
   return {enrolled:Number(movements.enrolled),opened:Number(movements.opened),received:Number(movements.received),

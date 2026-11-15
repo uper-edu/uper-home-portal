@@ -11,7 +11,7 @@ function matches(stored: unknown, name: string | undefined) {
 // Callers hold the class lock. Email verifies access; the submitted name distinguishes learners using it.
 export async function activeLearnerOrder(c:Client,classId:string,email:string,name?:string) {
   const {rows}=await c.query(`SELECT * FROM enrollment_orders WHERE class_id=:p1 AND email=:p2
-    AND state NOT IN ('expired','refunding','refunded') ORDER BY created_at,id`,[classId,email]);
+    AND state NOT IN ('expired','ended','refunding','refunded') ORDER BY created_at,id`,[classId,email]);
   return name===undefined ? rows[0] : rows.find(row=>matches(row.data?.name,name));
 }
 

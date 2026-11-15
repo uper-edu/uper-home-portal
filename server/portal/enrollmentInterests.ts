@@ -20,7 +20,7 @@ type Context = {
 };
 
 export async function takenSeats(c: Client, id: string) {
-  return Number((await c.query(`SELECT (SELECT COUNT(*) FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','refunding','refunded'))
+  return Number((await c.query(`SELECT (SELECT COUNT(*) FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded'))
     + (SELECT COUNT(*) FROM enrollment_transfer_invitations WHERE target_class_id=:p1 AND state='offered' AND expires_at>UTC_TIMESTAMP(6)) AS count`, [id])).rows[0].count);
 }
 
@@ -57,7 +57,7 @@ export async function reconcileWaitlist(c: Client, cohort: Cohort, seats: number
 async function offers(c: Client) {
   return (await c.query(`SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
     WHERE e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true
-    AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','refunding','refunded')
+    AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
       AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
           WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))
       < CAST(e.data->>'$.capacity' AS UNSIGNED)

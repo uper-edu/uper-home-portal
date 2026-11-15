@@ -40,6 +40,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   const t = ([en, id, zh]: Copy) => lang === 'zh' ? zh : lang === 'id' ? id : en;
   const [catalog, setCatalog] = useState<Catalog>();
   const [draft, setDraft] = useState<Draft>();
+  const [insertion, setInsertion] = useState<{row:EnrollmentClassAdmin;requestId:string}>();
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
   const [closing, setClosing] = useState<{id:string;requestId:string}>();
@@ -68,7 +69,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
     setError('');
     setDirty(false);
     if (row) {
-      const { id, revision, state, opened, ...config } = row;
+      const { id, revision, state, opened, canInsert, ...config } = row;
       setDraft({ id, revision, state, config });
     } else {
       setDraft({ id: crypto.randomUUID(), revision: 0, state: 'draft', config: { ...initial } });
@@ -122,6 +123,48 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
       if (result.ok && (await result.json()).classId === draft?.id) await complete();
     } finally { setBusy(false); }
   }
+  async function completeInsertion() {
+    setPending(undefined);
+    setDirty(false);
+    setInsertion(undefined);
+    setSaved(true);
+    await load().catch(loadFailure);
+  }
+  async function saveInsertion(form:FormData) {
+    if(!insertion||busy||pending) return;
+    setBusy(true);setError('');
+    try{
+      const response=await fetch(endpoint+'/'+encodeURIComponent(insertion.row.id)+'/insertions',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({requestId:insertion.requestId,name:form.get('name'),email:form.get('email'),
+          phone:form.get('phone'),price:Number(form.get('price')),confirmed:form.get('confirmed')==='on'}),
+      });
+      if(response.status>=500) throw Error();
+      const result=await response.json();
+      if(!response.ok){
+        setError(result.error==='enrollment_class_full'
+          ? t(['This class is full.','Kelas ini penuh.','本班已满。'])
+          : result.error==='enrollment_already_has_seat'
+            ? t(['This learner already has a seat.','Siswa ini sudah mendapat kursi.','该学员已在本班占有席位。'])
+            : t(['Check learner details, tuition and class availability.','Periksa data siswa, biaya, dan ketersediaan kelas.','请核对学员信息、学费和班次状态。']));
+        return;
+      }
+      if(result.classId!==insertion.row.id||!result.id) throw Error();
+      await completeInsertion();
+    }catch{setPending(insertion.requestId);}
+    finally{setBusy(false);}
+  }
+  async function checkInsertion() {
+    if(!insertion||!pending||busy) return;
+    setBusy(true);
+    try{
+      const response=await fetch(endpoint+'/results/'+encodeURIComponent(pending),{cache:'no-store'});
+      if(response.ok){
+        const result=await response.json();
+        if(result.operationKind==='enrollment.order.insert'&&result.classId===insertion.row.id&&result.id) await completeInsertion();
+      }
+    }finally{setBusy(false);}
+  }
   const published = t(['Published', 'Diterbitkan', '已发布']);
   const unpublished = t(['Draft', 'Draf', '草稿']);
   const title = t(['Enrollment classes', 'Kelas pendaftaran', '报名班次']);
@@ -137,7 +180,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
       </div>
     </header>
     {!catalog && !error && <p role="status">{t(['Loading…', 'Memuat…', '正在加载…'])}</p>}
-    {!!error && !draft && <p role="alert">{error}</p>}
+    {!!error && !draft && !insertion && <p role="alert">{error}</p>}
     {saved && <CrmSaveFeedback state="saved" lang={lang}/>}
     {visibleClasses?.length === 0 && <p>{target?t(['Class not found.','Kelas tidak ditemukan.','班次不存在。']):t(['No enrollment classes yet.', 'Belum ada kelas.', '暂无报名班次。'])}</p>}
     {!!visibleClasses?.length && <div className="crm-course-table"><table>
@@ -147,6 +190,9 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
         <td>{formatCurrency(row.price, lang)}</td><td>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</td>
         <td>{row.state!=='cancelled' && <button type="button" className="crm-work-button" onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</button>}
+          {row.canInsert&&<button type="button" className="crm-work-button" onClick={()=>{
+            setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
+          }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</button>}
           {row.state==='published'&&!row.opened&&<button type="button" className="crm-work-button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
             {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</button>}</td>
       </tr>)}</tbody>
@@ -186,8 +232,42 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
         </AdminFormActions>
       </AdminForm>
     </CrmOperationLayer>}
+    {insertion&&<CrmOperationLayer compose title={<>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}<AdminRequiredNote inline lang={lang}/></>}
+      lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={()=>{
+        if(busy||pending)return;
+        if(dirty)setDiscard(true);else setInsertion(undefined);
+      }}>
+      <AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onChange={()=>setDirty(true)} onSubmit={event=>{
+        event.preventDefault();void saveInsertion(new FormData(event.currentTarget));
+      }}>
+        <div className="crm-editor-scroll">
+          <p>{insertion.row.level} · {insertion.row.schedule}</p>
+          <p>{t(['Confirm tuition with the learner before reserving a seat. The payment deadline is 24 hours after saving.',
+            'Konfirmasikan biaya dengan siswa sebelum memesan kursi. Batas pembayaran 24 jam setelah disimpan.',
+            '分配席位前请先与学员确认应付金额。保存后，学员有 24 小时付款并提交凭证。'])}</p>
+          {error&&<p role="alert">{error}</p>}
+          {pending&&<CrmSaveFeedback state="unknown" lang={lang}/>}
+          <AdminField required>{t(['Learner name','Nama siswa','学员姓名'])}<input name="name" required maxLength={120} disabled={busy||!!pending}/></AdminField>
+          <AdminField required>{t(['Email','Email','电子邮箱'])}<input name="email" type="email" required maxLength={254} disabled={busy||!!pending}/></AdminField>
+          <AdminField required>{t(['Phone with country code','Nomor telepon dengan kode negara','手机号（含国家区号）'])}
+            <input name="phone" type="tel" required disabled={busy||!!pending}/></AdminField>
+          <AdminField required>{t(['Agreed tuition (Rp)','Biaya yang disepakati (Rp)','已确认应付金额（Rp）'])}
+            <input name="price" type="number" min="1" max="1000000000" step="1" required defaultValue={insertion.row.price} disabled={busy||!!pending}/></AdminField>
+          <label className="admin-field admin-field--choice"><input type="checkbox" name="confirmed" required disabled={busy||!!pending}/>
+            <span>{t(['The learner agreed to join at this amount','Siswa menyetujui pendaftaran dengan biaya ini','学员已确认加入并同意应付金额'])} *</span></label>
+        </div>
+        <AdminFormActions className="crm-editor-actions">
+          {pending?<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkInsertion().catch(()=>{})}>
+            {t(['Check save result','Periksa hasil simpan','查询保存结果'])}</button>:<>
+            <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{if(dirty)setDiscard(true);else setInsertion(undefined);}}>
+              {t(['Cancel','Batal','取消'])}</button>
+            <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t(['Confirm and reserve seat','Konfirmasi dan pesan kursi','确认并分配席位'])}</button>
+          </>}
+        </AdminFormActions>
+      </AdminForm>
+    </CrmOperationLayer>}
     {discard && <CrmDiscardDialog lang={lang} isLight={isLight} onKeep={() => setDiscard(false)} onDiscard={() => {
-      setDiscard(false); setDirty(false); setDraft(undefined); setError('');
+      setDiscard(false); setDirty(false); setDraft(undefined); setInsertion(undefined); setError('');
     }}/>}
     {closing&&<CrmDiscardDialog lang={lang} isLight={isLight}
       title={t(['Confirm the class will not open?','Konfirmasi kelas tidak dibuka?','确认这个班不开班？'])}

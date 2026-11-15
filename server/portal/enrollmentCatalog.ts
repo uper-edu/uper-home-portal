@@ -2,7 +2,8 @@ import type { Express, Request, Response } from 'express';
 import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
-import { enrollmentInstant, publicEnrollmentClass, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentInstant, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
 
 const path = '/api/crm/enrollment/classes';
@@ -25,7 +26,9 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       const courses = (await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows.map((row: any) => ({
         id: row.id, name: row.value.name, active: row.value.active === true,
       }));
-      return { classes, courses };
+      const active = new Set(courses.filter(course=>course.active).map(course=>course.id));
+      const canOperate = !!enrollmentSimulation();
+      return { classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses };
     });
     r.set('Cache-Control', 'no-store').json({ ...data, actorId: actor.id });
   }));
@@ -62,13 +65,13 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     const actor = await staff(q, 'crm.operations.manage');
     const result = await tx(async c => (await c.query('SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2',
       [actor.id, q.params.requestId])).rows[0]?.result);
-    if (result?.operationKind !== kind) invalid('enrollment_result_missing', 404);
+    if (result?.operationKind !== kind && result?.operationKind !== 'enrollment.order.insert') invalid('enrollment_result_missing', 404);
     r.set('Cache-Control', 'no-store').json(result);
   }));
   app.get('/api/enrollment/classes', wrap(async (_q, r) => {
     const classes = await tx(async c => (await c.query(`
       SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
-        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','refunding','refunded')
+        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
           AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
           WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats
       FROM enrollment_classes e

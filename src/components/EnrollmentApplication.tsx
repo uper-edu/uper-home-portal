@@ -18,6 +18,7 @@ export const enrollmentStatuses: Record<string, Copy> = {
   paid: ['报名成功', 'Enrollment confirmed', 'Pendaftaran berhasil'],
   paid_cancelled: ['已到账 · 原班不开班', 'Paid · Original class cancelled', 'Sudah dibayar · Kelas asal dibatalkan'],
   expired: ['订单已终止', 'Order expired', 'Pesanan kedaluwarsa'],
+  ended: ['报名已结束', 'Enrollment ended', 'Pendaftaran telah berakhir'],
   refunding: ['退款处理中','Refund in progress','Pengembalian diproses'],
   refunded: ['退款已完成','Refund complete','Pengembalian selesai'],
 };
@@ -292,7 +293,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     next.set('order', id);
     return '/enrollment/payment?' + next.toString();
   };
-  const canUpload = order && !['paid','paid_cancelled','refunding','refunded'].includes(order.status) && !order.restored;
+  const canUpload = order && !['paid','paid_cancelled','ended','refunding','refunded'].includes(order.status) && !order.restored;
   const status = order && t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status]);
   const emailLabel=t(['电子邮箱','Email address','Alamat email']);
   const sendLabel=t(challenge?['重发验证码','Resend code','Kirim ulang kode']:['发送验证码','Send code','Kirim kode']);
@@ -462,7 +463,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     const time = new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Asia/Jakarta'}).format(date);
     return t([dayFormat.format(date)+' '+time+' WIB 截止','Due '+dayFormat.format(date)+' at '+time+' WIB','Batas '+dayFormat.format(date)+' pukul '+time+' WIB']);
   }
-  const orderIsActive = (row: OrderSummary) => row.restored || !['expired','refunded'].includes(row.status);
+  const orderIsActive = (row: OrderSummary) => row.restored || !['expired','ended','refunded'].includes(row.status);
   const orderCards = (orders ?? []).filter(()=>tab==='all'||tab==='orders').map(row => {
     const course = mineClasses?.find(item=>item.id===row.classId);
     const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(enrollmentStatuses[row.status]);
@@ -599,7 +600,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const records = [...orderCards,...waitlistCards,...demandCards];
   const activeRecords = records.filter(record=>record.active);
   const pastRecords = records.filter(record=>!record.active);
-  const editingProof = paymentClasses && params.get('proof')==='upload';
+  const editingProof = paymentClasses && params.get('proof')==='upload' && order?.status!=='ended';
   const existingTransferOnly = !!(editingProof && order && !order.bank &&
     (order.status==='expired' || aftercare?.originalClassState==='cancelled'));
   const originalOrderParams = new URLSearchParams(mineParams);
@@ -609,7 +610,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const aftercareView = params.get('view');
   const transferred = order && order.status==='paid' && aftercare?.transferHistory.some(row=>row.target_class_id===order.classId);
   const showAftercare = order && !editingProof && (
-    ['paid_cancelled','refunding','refunded'].includes(order.status) || (order.status==='expired' && !order.restored)
+    ['paid_cancelled','ended','refunding','refunded'].includes(order.status) || (order.status==='expired' && !order.restored)
     || ((aftercareView==='refund'||aftercareView==='refund-contact') && canConsultRefund)
     || aftercare?.originalClassState==='cancelled' || transferred
   );

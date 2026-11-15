@@ -39,6 +39,7 @@ const states:Record<string,Copy> = {
   paid_cancelled:enrollmentStatuses.paid_cancelled,
   recovered:['已恢复报名','Enrollment restored','Pendaftaran dipulihkan'],
   expired:['订单已终止','Order expired','Pesanan kedaluwarsa'],
+  ended:enrollmentStatuses.ended,
   refunding:['退款处理中','Refund in progress','Pengembalian diproses'],
   refunded:['退款已完成','Refund complete','Pengembalian selesai'],
   waiting:['候补中','On waitlist','Dalam daftar tunggu'],

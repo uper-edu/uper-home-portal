@@ -47,6 +47,7 @@ export async function enrollmentAftercareStatus(c:Client,id:string) {
 
 const classId = (value:unknown) => typeof value==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(value);
 const reference = (value:unknown) => typeof value==='string' && value.trim() && value.length<=120 ? value.trim().toUpperCase() : null;
+const endable = ['awaiting_payment','proof_review','partial','paid','recovered'];
 function sameClass(actual:string, expected:unknown) {
   if(actual!==expected) invalid('enrollment_aftercare_conflict',409);
 }
@@ -81,10 +82,11 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     const orders=await transact(async c=>(await c.query(`SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,
       EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened
       FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
-      WHERE o.received>0 AND o.state NOT IN ('refunding','refunded') ORDER BY o.created_at DESC LIMIT 100`)).rows.map(o=>({
+      WHERE o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')
+        OR (o.received>0 AND o.state IN ('expired','ended')) ORDER BY o.created_at DESC LIMIT 100`)).rows.map(o=>({
         id:o.id,classId:o.class_id,name:o.data.name,received:Number(o.received),opened:Number(o.opened)===1,
         level:o.class_data.level,format:o.class_data.format,canInvite:canSelectTransfer(o,{state:o.class_state}),
-        priorityRequested:o.data.priority===true,
+        priorityRequested:o.data.priority===true,canEnd:endable.includes(o.state),canRefund:Number(o.received)>0,ended:o.state==='ended',
       })));
     r.set('Cache-Control','no-store').json({orders});
   }));
@@ -187,6 +189,25 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         return {classId:next.id,decision};
       });
     });
+    r.json(result);
+  });
+
+  post(staff+'/:id/end',async(q,r)=>{
+    const actor=await supportActor(q);
+    const id=String(q.params.id);
+    const reason=q.body?.reason;
+    if(typeof reason!=='string'||!reason.trim()||reason.length>1000) invalid('enrollment_end_reason_required');
+    const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.order.end',authorize:()=>supportActor(q)},async()=>{
+      const {order,cohort}=await lockOrder(c,id);
+      sameClass(cohort.id,q.body.classId);
+      if(!endable.includes(order.state)) invalid('enrollment_end_unavailable',409);
+      await c.query("UPDATE enrollment_orders SET state='ended',upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",[id]);
+      await releaseInvites(c,id);
+      await reconcileWaitlist(c,cohort,await takenSeats(c,cohort.id));
+      await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.end',:p2)",
+        [actor.id,{orderId:id,classId:cohort.id,previousState:order.state,reason:reason.trim()}]);
+      return {orderId:id,state:'ended'};
+    }));
     r.json(result);
   });
 

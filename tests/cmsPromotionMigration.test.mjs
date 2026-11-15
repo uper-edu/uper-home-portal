@@ -7,7 +7,7 @@ const enrollmentTables=[
  'enrollment_classes','enrollment_class_openings','enrollment_customer_records','enrollment_demands',
  'enrollment_email_challenges','enrollment_email_sessions','enrollment_interest_events','enrollment_notification_receipts',
  'enrollment_opportunities','enrollment_opportunity_progress','enrollment_orders','enrollment_proofs',
- 'enrollment_receipts','enrollment_record_attribution','enrollment_refund_cases','enrollment_refund_payments',
+ 'enrollment_receipts','enrollment_record_attribution','enrollment_refund_cases','enrollment_refund_payments','enrollment_refund_returns',
  'enrollment_transfer_invitations','enrollment_transfers','enrollment_vacancy_cycles','enrollment_waitlist',
 ];
 const enrollmentClassFields=['id','course_id','revision','state','first_lesson_at','enrollment_closes_at','data','updated_at'];

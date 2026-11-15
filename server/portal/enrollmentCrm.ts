@@ -12,12 +12,12 @@ import { invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
-type Submission = { kind: RecordKind; id: string; email: string; phone: string; name?: string; level?: string };
+type Submission = { kind: RecordKind; id: string; email: string; phone: string; name?: string; level?: string; emailVerified?: boolean };
 
-async function identityForSubmission(c: Client, { email, phone, name }: Submission) {
+async function identityForSubmission(c: Client, { email, phone, name, emailVerified = true }: Submission) {
   const normalized = normalizeContactPhone(phone);
-  const anchors = (await c.query(`SELECT id,profile FROM portal_leads
-    WHERE LOWER(profile->>'$.email')=:p1 AND profile->>'$.enrollmentEmailVerified'='true'`, [email])).rows;
+  const anchors = emailVerified ? (await c.query(`SELECT id,profile FROM portal_leads
+    WHERE LOWER(profile->>'$.email')=:p1 AND profile->>'$.enrollmentEmailVerified'='true'`, [email])).rows : [];
   const compatible = anchors.filter(row => normalizeContactPhone(row.profile.whatsapp) === normalized &&
     (!name || enrollmentLearnerNameKey(name) === enrollmentLearnerNameKey(row.profile.fullName)));
   // An identical registration already held for review may add facts to that same submission.
@@ -43,7 +43,7 @@ async function identityForSubmission(c: Client, { email, phone, name }: Submissi
   const submittedAt = new Date().toISOString();
   const profile = {
     id, fullName:name || email, name:name || email, email, whatsapp:phone, team:'sales', owner:null,
-    entryPoint:'enrollment', enrollmentEmailVerified:true, submittedAt, identityLifecycle:'independent',
+    entryPoint:'enrollment', enrollmentEmailVerified:emailVerified, submittedAt, identityLifecycle:'independent',
   };
   const inserted = (await c.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)', [id,profile])).rows[0];
   const visitorId = randomUUID();
@@ -52,7 +52,7 @@ async function identityForSubmission(c: Client, { email, phone, name }: Submissi
   const saved = {...profile,businessNumber:inserted.business_number,
     ...(matched ? {identityLifecycle:'pending'} : {currentStage:'progress:unreached',tier:'Unqualified',stageUpdatedAt:submittedAt})};
   await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1', [id,saved]);
-  if (!matched) await assignNewLead(c,id,'registration');
+  if (!matched && emailVerified) await assignNewLead(c,id,'registration');
   return {id,profile:saved};
 }
 
