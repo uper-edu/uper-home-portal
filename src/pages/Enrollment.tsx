@@ -107,6 +107,7 @@ export default function Enrollment() {
   const catalogParams = new URLSearchParams(params);
   catalogParams.delete('apply');
   catalogParams.delete('order');
+  catalogParams.delete('proof');
   const listPath = '/enrollment?' + catalogParams.toString();
   const minePath = '/enrollment/mine?' + catalogParams.toString();
   const interestPath = '/enrollment/interest?' + catalogParams.toString();
@@ -178,12 +179,20 @@ export default function Enrollment() {
       : accepting ? <EnrollmentApplication key={pathname} language={language} mineClasses={classes ?? []} record={record}/>
       : <p>{t('unavailable')}</p>}
   </section>;
-  if (interest) return <section className="enrollment-page">
-    <Link to={listPath}>{t('back')}</Link>
-    <h1>{t(interest?'interest':'mine')}</h1>
+  if (interest) return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
+    <Link className="enrollment-back" to={listPath}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
+    <h1>{t('interest')}</h1>
     {accepting === undefined ? <p role="status">{t('loading')}</p> :
       accepting ? <EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/> : <p>{t('unavailable')}</p>}
   </section>;
+
+  if (application && selected?.availability === 'full' && !params.has('order') && accepting) {
+    return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
+      <Link className="enrollment-back" to={listPath}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
+      <h1>{t('join')}</h1>
+      <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full waitlistClass={selected}/>
+    </section>;
+  }
 
   if (application && selected && selected.availability !== 'full' && !params.has('order') && accepting) {
     return <section className="enrollment-screen enrollment-apply-screen">

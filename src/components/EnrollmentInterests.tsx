@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { PublicSingleSelect } from './PublicSingleSelect';
 import { demandFormats, demandLevels, demandPeriods, parseDemand, type DemandCriteria } from '../utils/enrollmentInterests';
 
@@ -32,10 +32,10 @@ export const waitlistStates:Record<string,Copy>={
   closed:['候补已结束','Waitlist closed','Daftar tunggu ditutup'],
 };
 
-export function EnrollmentDemandForm({ language, initial, onSave, busy }: {
+export function EnrollmentDemandForm({ language, initial, onSave, busy, verification, awaitingCode }: {
   language:InterestLanguage; initial?:DemandItem;
   onSave:(record:{id:string;revision:number;criteria:DemandCriteria;name?:string})=>void;
-  busy:boolean;
+  busy:boolean; verification?:{email:ReactNode; code:ReactNode}; awaitingCode?:boolean;
 }) {
   const t=(text:Copy)=>interestText(language,text);
   const [id]=useState(initial?.id||crypto.randomUUID());
@@ -48,22 +48,35 @@ export function EnrollmentDemandForm({ language, initial, onSave, busy }: {
     ['period',['时段','Preferred time','Waktu pilihan'],demandPeriods],
     ['format',['班型','Class type','Jenis kelas'],demandFormats],
   ] as const;
-  return <form onSubmit={event=>{
+  return <form className={verification ? "enrollment-journey-form enrollment-demand-form" : undefined} onSubmit={event=>{
     event.preventDefault();
     const value=parseDemand({...criteria});
     if (!value) {setInvalid(true);return;}
     setInvalid(false);onSave({id,revision:initial?.revision??0,criteria:value,name:initial?undefined:name.trim()});
   }}>
-    <h2>{t(initial?['修改选课需求','Edit course preferences','Ubah preferensi kursus']:['告诉我们你想上的课','Tell us what you want to study','Sampaikan kursus yang Anda inginkan'])}</h2>
+    {!verification&&<h2>{t(initial?['修改选课需求','Edit course preferences','Ubah preferensi kursus']:['告诉我们你想上的课','Tell us what you want to study','Sampaikan kursus yang Anda inginkan'])}</h2>}
+    <div className={verification ? 'enrollment-demand-filters' : undefined}>
     {fields.map(([key,label,options])=><PublicSingleSelect key={key} label={t(label)} value={criteria[key]}
       options={options.map(value=>({value,label:interestOption(language,value)}))}
       onChange={value=>setCriteria(current=>({...current,[key]:value}))}/>)}
-    <label>{t(notesRequired?['补充说明（必填）','Additional details (required)','Rincian tambahan (wajib)']:['补充说明（选填）','Additional details (optional)','Rincian tambahan (opsional)'])}
+    </div>
+    {verification&&<p className="enrollment-journey-note">{t([
+      '「不限」表示该项都可以。「其他」表示现有选项不合适，请补充具体需求。',
+      'Choose “Any” if you have no preference. If none of the options fit, choose “Other” and add details.',
+      'Pilih “Bebas” jika tidak ada preferensi. Jika tidak ada pilihan yang cocok, pilih “Lainnya” dan tambahkan rincian.',
+    ])}</p>}
+    <label className={verification?'enrollment-field':undefined}>{t(notesRequired?['补充说明（必填）','Additional details (required)','Rincian tambahan (wajib)']:['补充说明（选填）','Additional details (optional)','Rincian tambahan (opsional)'])}
       <textarea required={notesRequired} maxLength={1000} value={criteria.notes} onChange={event=>setCriteria({...criteria,notes:event.target.value})}/></label>
-    {!initial&&<label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>}
-    <label>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}
-      <input type="tel" required maxLength={26} value={criteria.phone} onChange={event=>setCriteria({...criteria,phone:event.target.value})}/></label>
+    {!initial&&<label className={verification?'enrollment-field':undefined}>{t(['学员姓名','Learner name','Nama siswa'])}
+      <input required autoComplete="name" maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>}
+    {verification?.email}
+    <label className={verification?'enrollment-field':undefined}>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}
+      <input type="tel" autoComplete="tel" required maxLength={26} value={criteria.phone} onChange={event=>setCriteria({...criteria,phone:event.target.value})}/></label>
+    {verification?.code}
     {invalid && <p role="alert">{t(['请检查联系方式和补充说明。','Check your phone number and additional details.','Periksa nomor telepon dan rincian tambahan.'])}</p>}
-    <button className="enrollment-action" type="submit" disabled={busy}>{t(['保存需求','Save preferences','Simpan preferensi'])}</button>
+    {verification ? <div className="enrollment-journey-actions">
+      <p>{t(['有合适班次时，我们会通过可用渠道通知你。','We’ll let you know when we find a suitable class.','Kami akan memberi kabar jika ada kelas yang sesuai.'])}</p>
+      <button className="enrollment-primary" type="submit" disabled={busy||awaitingCode}>{t(['验证并保存需求','Verify and save preferences','Verifikasi dan simpan preferensi'])}</button>
+    </div> : <button className="enrollment-action" type="submit" disabled={busy}>{t(['保存需求','Save preferences','Simpan preferensi'])}</button>}
   </form>;
 }
