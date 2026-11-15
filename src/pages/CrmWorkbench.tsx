@@ -18,6 +18,7 @@ import {CrmCurrentSalesState} from '../components/crm/CrmCurrentSalesState';
 import {CrmCustomer360Button} from '../components/crm/CrmCustomer360Button';
 import {crmUiText} from '../utils/crmUiText';
 import {CrmHistoryAccess} from '../components/crm/CrmHistoryAccess';
+import {CrmEnrollmentNoticeTarget} from '../components/crm/CrmEnrollmentNoticeTarget';
 import {CrmEnrollmentOpportunities} from '../components/crm/CrmEnrollmentOpportunities';
 import '../components/crm/crm-opportunities.css';
 import {CrmCustomerHistoryWindow} from '../components/crm/CrmCustomerHistoryWindow';
@@ -181,9 +182,10 @@ import { CrmCampaignHub } from "../components/crm/CrmCampaignHub";
 // Unified Global Stage Master Dictionary
 export const STAGE_OPTIONS=salesProgressStages.map(([value,labelZh,labelEn])=>({value,labelZh,labelEn}));
 export default function CrmWorkbench() {
+  const enrollmentNotice=new URLSearchParams(window.location.search).get('tab')==='enrollment';
   return (
     <CrmAccess>
-      {(employee, lang, setLang) => employee.permissions.includes("crm.read") ? (
+      {(employee, lang, setLang) => enrollmentNotice ? <CrmEnrollmentNoticeTarget lang={lang}/> : employee.permissions.includes("crm.read") ? (
         <CrmUiProvider lang={lang}><CrmWorkspace
           key={employee.id}
           employee={employee}
@@ -1346,7 +1348,8 @@ function CrmWorkspace({
         ) : crmModule === "policy" && canManage ? (
           <>
             {employee.permissions.includes("crm.operations.manage") && <CrmPolicySettings
-              initialTopic={employee.permissions.includes("notifications.read") && new URLSearchParams(window.location.search).get("policyTopic") === "notification-jobs" ? "notification-jobs" : undefined}
+              initialTopic={new URLSearchParams(window.location.search).get("policyTopic")==="courses" ? "courses" :
+                employee.permissions.includes("notifications.read") && new URLSearchParams(window.location.search).get("policyTopic") === "notification-jobs" ? "notification-jobs" : undefined}
               isLight={isLight}
               lang={lang}
               policyConfig={policyConfig}

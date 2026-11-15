@@ -12,6 +12,11 @@ import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
 import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
 import { mountEnrollmentCrm, recordEnrollmentCustomer } from './enrollmentCrm.ts';
+import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
+import { classOpeningNotices, orderNotice, proofNotices, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
+
+import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
+import { renderEnrollmentEmail } from './enrollmentEmail.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -114,6 +119,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     if(!permittedRecord(actor,{},'crm.read')||!permittedRecord(actor,{},'crm.followup')) invalid('enrollment_support_forbidden',403);
     return actor;
   };
+  mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
+  startEnrollmentWeeklySimulation(enrollTx);
   mountEnrollmentResolution(app,{wrap,post,transact:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
@@ -128,6 +135,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         await c.query("UPDATE enrollment_classes SET state='cancelled',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
         await reconcileWaitlist(c,{...cohort,state:'cancelled'},await takenSeats(c,id));
         await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)",[actor.id,{classId:id}]);
+        const orders=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','refunding','refunded')",[id])).rows;
+        for(const row of orders) await orderNotice(c,'class_cancelled',row.id,id);
         return {classId:id,state:'cancelled'};
       }));
     r.json(result);
@@ -174,7 +183,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       await c.query(`UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,
         expires_at=UTC_TIMESTAMP(6)+INTERVAL 10 MINUTE,resend_at=UTC_TIMESTAMP(6)+INTERVAL 60 SECOND WHERE email=:p3`,
       [id, otpHash(id, code), email]);
-      await local.deliver(id, email, code);
+      await local.deliver(id,email,code,renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{language:q.body.language,code}));
     });
     r.json({ challengeId: id });
   });
@@ -231,6 +240,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6),:p7)`,
       [id,classId,email,requestId,fingerprint,cohort.data.price,{name:name.trim(),phone:phone.trim(),priority,bank:local.bank}]);
       await recordEnrollmentCustomer(c,{kind:'order',id,email,phone,name:name.trim(),level:cohort.data.level});
+      await recordEnrollmentAttribution(c,'order',id,q.body.source);
+      await orderNotice(c,'seat_reserved',id,undefined,{price:cohort.data.price});
       await c.query("UPDATE enrollment_waitlist SET state='converted',order_id=:p1 WHERE class_id=:p2 AND email=:p3 AND state='waiting'",[id,classId,email]);
       await reconcileWaitlist(c,cohort,seats+1);
       return view((await c.query('SELECT * FROM enrollment_orders WHERE id=:p1', [id])).rows[0]);
@@ -262,7 +273,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
 
   post(base + '/orders/:id/proofs/start', async (q, r) => {
     const uploadId = await enrollTx(async (c: Client) => {
-      const { order } = await lockOrder(c, String(q.params.id), await session(c, q));
+      const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
       if (['paid','recovered','refunding','refunded'].includes(order.state)) invalid('enrollment_proof_not_available', 409);
       if (Number(order.upload_active)) return order.upload_id;
       const id = randomUUID();
@@ -277,7 +288,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     if (typeof uploadId !== 'string' || !uuid.test(uploadId)) invalid('enrollment_invalid_proof');
     // End the current attempt on a rejected upload, so a later attempt uses a fresh server clock.
     const result = await enrollTx(async (c: Client) => {
-      const { order } = await lockOrder(c, String(q.params.id), await session(c, q));
+      const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
       const prior = (await c.query('SELECT order_id FROM enrollment_proofs WHERE id=:p1', [uploadId])).rows[0];
       if (prior?.order_id === order.id) return view(order);
       if (order.upload_id !== uploadId || !Number(order.upload_active) || ['paid','recovered','refunding','refunded'].includes(order.state)) {
@@ -294,6 +305,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,digest,encoded]);
       const state = order.state === 'awaiting_payment' ? 'proof_review' : order.state;
       await c.query('UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
+      await proofNotices(c,order.id,cohort.id,digest,cohort.data.level);
       return view({...order,state});
     });
     if (!result) invalid('enrollment_invalid_proof');
@@ -305,9 +317,9 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const orders = await enrollTx(async (c: Client) => (await c.query(`SELECT o.*,
         EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,
         (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id
-      FROM enrollment_orders o WHERE o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
-        OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id)
-      ORDER BY o.created_at DESC LIMIT 150`)).rows.map(row => ({ ...view(row), name: row.data.name, opened: Number(row.opened) === 1, proofId: row.proof_id })));
+      FROM enrollment_orders o WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
+        OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))
+      ORDER BY o.created_at DESC LIMIT 150`,[typeof q.query.order==='string'?q.query.order:''])).rows.map(row => ({ ...view(row), name: row.data.name, opened: Number(row.opened) === 1, proofId: row.proof_id })));
     r.set('Cache-Control', 'no-store').json({ orders });
   }));
   app.get(finance + '/proofs/:id', wrap(async (q, r) => {
@@ -348,10 +360,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         : received >= order.price ? 'paid' : 'partial';
       await c.query('UPDATE enrollment_orders SET received=:p1,state=:p2 WHERE id=:p3', [received,state,id]);
       const paid = Number((await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')", [cohort.id])).rows[0].count);
+      const openedBefore = (await c.query('SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1', [cohort.id])).rows[0];
+      const newlyPaid=cohort.state==='published'&&['paid','recovered'].includes(state)&&!['paid','recovered'].includes(order.state);
       if (cohort.state === 'published' && paid >= cohort.data.minimumPaid) {
         await c.query('INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id', [cohort.id]);
       }
       const opened = (await c.query('SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1', [cohort.id])).rows[0];
+      if (newlyPaid) await orderNotice(c,opened?'payment_and_opening':'payment_confirmed',id,undefined,{received});
+      if (opened&&!openedBefore) await classOpeningNotices(c,cohort,newlyPaid?id:undefined);
       return { order: view({...order,state,received}), paidCount: paid, opened: !!opened };
     }));
     r.json(result);

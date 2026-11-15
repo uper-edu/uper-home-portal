@@ -154,6 +154,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
         { nameKey: 'nav.studyTours', path: '/tours' },
       ]
     },
+    { nameKey: 'nav.enrollment', path: '/enrollment' },
     { nameKey: 'nav.partners', path: '/partners' },
     { nameKey: 'nav.news', path: '/news' },
     { nameKey: 'nav.careers', path: '/careers' },
@@ -224,7 +225,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
             ) : (
               <Link 
                 key={link.nameKey} 
-                to={link.path!} 
+                to={link.path==='/enrollment' ? promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2), promotionQuery, 'website') : link.path!}
                 className={`transition-colors py-2 ${location.pathname === link.path ? (isApple ? 'text-slate-900 font-bold' : 'text-primary-600 font-semibold') : (isApple ? 'hover:text-slate-900 text-slate-600' : 'hover:text-primary-600')}`}
               >
                 {t(link.nameKey)}
@@ -387,7 +388,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
               ) : (
                 <Link 
                   key={link.nameKey} 
-                  to={link.path!} 
+                  to={link.path==='/enrollment' ? promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2), promotionQuery, 'website') : link.path!}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`p-3 rounded-lg font-medium ${location.pathname === link.path ? (isApple ? 'bg-slate-100 text-slate-900 font-bold' : 'bg-primary-50 text-primary-600') : (isApple ? 'hover:bg-slate-50 text-slate-750' : 'hover:bg-white/50 text-slate-700')}`}
                 >

@@ -90,13 +90,16 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
     CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
-    o.price,o.received,d.criteria,b.data AS class_data,g.opened_at
+    o.price,o.received,d.criteria,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice
   FROM enrollment_customer_records r
   LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id
   LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id
   LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id
   LEFT JOIN enrollment_classes b ON b.id=COALESCE(o.class_id,w.class_id)
-  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id`;
+  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id
+  LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id
+  LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts
+    WHERE channel='email' AND subject_id=r.record_id ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE`;
 
 function displayRecord(row: any) {
   return {
@@ -104,13 +107,15 @@ function displayRecord(row: any) {
     class:row.class_data ? {level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
+    attribution:row.attribution?{entry:row.attribution.entry,source:row.attribution.source,campaign:row.attribution.campaign,verified:row.attribution.verified}:null,
+    latestNotice:row.latest_notice,
   };
 }
 
 function projectOpportunity(row: any, records: ReturnType<typeof displayRecord>[], profile: any) {
   const states = records.map(record => record.state);
   const state = states.some(state=>['paid','recovered'].includes(state)) ? 'enrolled'
-    : states.some(state=>['awaiting_payment','partial','proof_pending'].includes(state)) ? 'applying'
+    : states.some(state=>['awaiting_payment','partial','proof_review'].includes(state)) ? 'applying'
     : states.includes('waiting') ? 'waiting' : states.some(state=>['active','expired'].includes(state)) ? 'interest' : 'closed';
   const salesStage=state==='enrolled'?'progress:enrolled':row.sales_stage ??
     (state==='applying'?'progress:registration':state==='closed'?'progress:closed':'progress:unreached');

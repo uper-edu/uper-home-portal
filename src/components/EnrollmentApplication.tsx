@@ -99,7 +99,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     finally { setBusy(false); }
   }
   function sendCode() {
-    return run(async () => { const data=await enrollmentPost(base+'/email/request',{email});setChallenge(data.challengeId);setCode(''); });
+    return run(async () => { const data=await enrollmentPost(base+'/email/request',{email,language,purpose:!classId&&!demandOnly?'mine':'apply'});setChallenge(data.challengeId);setCode(''); });
   }
   function verify() {
     return run(async () => {
@@ -109,9 +109,14 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       else if (!classId) await getOrders();
     });
   }
+  function sourceQuery() {
+    const source=new URLSearchParams(params);
+    source.set('lang',language);
+    return source.toString();
+  }
   function apply() {
     return run(async () => {
-      const result=await enrollmentPost(base+'/applications',{ classId,name,phone,priority,requestId });
+      const result=await enrollmentPost(base+'/applications',{ classId,name,phone,priority,requestId,source:sourceQuery() });
       const next=new URLSearchParams(params);
       next.set('order',result.id);
       setParams(next,{replace:true,preventScrollReset:true});
@@ -135,12 +140,12 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     });
   }
   const join = () => run(async () => {
-    await enrollmentPost(base+'/waitlist',{classId,phone,name});
+    await enrollmentPost(base+'/waitlist',{classId,phone,name,source:sourceQuery()});
     setJoined(true);
   });
   function savePreferences(data: Parameters<React.ComponentProps<typeof EnrollmentDemandForm>['onSave']>[0]) {
     void run(async () => {
-      await enrollmentPost(base+'/demands',data);
+      await enrollmentPost(base+'/demands',{...data,source:sourceQuery()});
       if (demandOnly) setSavedDemand(true);
       else {setEditDemand(undefined);await getOrders();}
     });

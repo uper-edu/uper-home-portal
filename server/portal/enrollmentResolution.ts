@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { invalid, operation } from './trustWorkflow.ts';
 import { allowsEnrollment, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
+import { classOpeningNotices, orderNotice } from './enrollmentNotices.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
@@ -110,6 +111,8 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(UTC_TIMESTAMP(6)+INTERVAL 48 HOUR,e.enrollment_closes_at),UTC_TIMESTAMP(6)
         FROM enrollment_classes e WHERE e.id=:p5`,[invitation,id,cohort.id,actor.id,next.id]);
       await reconcileWaitlist(c,next,await takenSeats(c,next.id));
+      const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS replyBy FROM enrollment_transfer_invitations WHERE id=:p1",[invitation])).rows[0];
+      await orderNotice(c,'transfer_invitation',id,invitation,{targetClass:next.data.level,targetFirstLesson:next.data.firstLesson,replyBy:expiry.replyBy});
       return {invitationId:invitation};
     }));
     r.json(result);
@@ -149,7 +152,9 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
           VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[randomUUID(),id,cohort.id,next.id,invitationId??null]);
         const paid=(await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",[next.id])).rows[0].count;
         if(Number(paid)>=next.data.minimumPaid){
+          const opened=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[next.id])).rows[0];
           await c.query('INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id',[next.id]);
+          if(!opened) await classOpeningNotices(c,next);
         }
         await reconcileWaitlist(c,next,await takenSeats(c,next.id));
         return {classId:next.id,decision};
@@ -176,6 +181,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       await c.query('UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2',[expected>0?'refunding':'refunded',id]);
       await releaseInvites(c,id);
       await reconcileWaitlist(c,cohort,await takenSeats(c,cohort.id));
+      await orderNotice(c,'refund_accepted',id,undefined,{expected});
       return {orderId:id,expected};
     }));
     r.json(result);
@@ -205,6 +211,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
           VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[returned,original,id,amount,actor.id]);
       }catch(error:any){if(error.code==='ER_DUP_ENTRY') invalid('enrollment_duplicate_refund',409);throw error;}
       if(cumulative===Number(entry.expected)) await c.query("UPDATE enrollment_orders SET state='refunded' WHERE id=:p1",[id]);
+      await orderNotice(c,'refund_recorded',id,String(cumulative),{installment:amount,refunded:cumulative,expected:Number(entry.expected)});
       return {orderId:id,refunded:cumulative,expected:Number(entry.expected)};
     }));
     r.json(result);

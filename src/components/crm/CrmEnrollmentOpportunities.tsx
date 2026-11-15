@@ -17,6 +17,8 @@ type CourseRecord = {
   class:{level:string;firstLesson:string;schedule:string;opened:boolean}|null;
   criteria:{level:string;period:string;format:string;notes:string}|null;
   price:number|null;received:number|null;
+  attribution?:{entry:string;source?:string;campaign?:string;verified:boolean}|null;
+  latestNotice?:string;
 };
 type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
@@ -32,7 +34,7 @@ const kinds:Record<CourseRecord['kind'],Copy> = {
 };
 const states:Record<string,Copy> = {
   awaiting_payment:['待付款','Awaiting payment','Menunggu pembayaran'],
-  proof_pending:['凭证待核实','Proof awaiting review','Bukti menunggu pemeriksaan'],
+  proof_review:['凭证待核实','Proof awaiting review','Bukti menunggu pemeriksaan'],
   partial:['部分到账','Partially paid','Dibayar sebagian'],paid:['报名成功','Enrollment confirmed','Pendaftaran berhasil'],
   recovered:['已恢复报名','Enrollment restored','Pendaftaran dipulihkan'],
   expired:['订单已终止','Order expired','Pesanan kedaluwarsa'],
@@ -51,7 +53,7 @@ const next:Record<Opportunity['state'],Copy> = {
 };
 function nextAction(row:Opportunity,lang:CrmLanguage) {
   if (row.identityPending) return t(lang,['核实身份','Review identity','Verifikasi identitas']);
-  if (row.records.some(record=>record.state==='proof_pending'||record.state==='partial')) return t(lang,['核对到账','Verify payment','Verifikasi pembayaran']);
+  if (row.records.some(record=>record.state==='proof_review'||record.state==='partial')) return t(lang,['核对到账','Verify payment','Verifikasi pembayaran']);
   if (row.records.some(record=>record.state==='awaiting_payment')) return t(lang,states.awaiting_payment);
   return t(lang,next[row.state]);
 }
@@ -77,6 +79,10 @@ function CourseRecords({ records, link, lang }: {records:CourseRecord[];link:boo
       {row.class&&<p>{row.class.firstLesson.replace('T',' ')} WIB · {row.class.schedule}{row.class.opened?' · '+t(lang,['已确认开班','Class confirmed','Kelas dikonfirmasi']):''}</p>}
       {row.criteria&&<p>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(lang,value)).join(' · ')}{row.criteria.notes?' — '+row.criteria.notes:''}</p>}
       {row.price!==null&&row.received!==null&&<p>{t(lang,['核实实收／应收','Verified receipts / amount due','Dana terverifikasi / tagihan'])} {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}</p>}
+      {row.attribution&&<p>{t(lang,['报名来源','Enrollment source','Sumber pendaftaran'])} · {row.attribution.entry==='linkhub'?'UPER Links':
+        row.attribution.entry==='website'?t(lang,['官网','Website','Situs web']):t(lang,['直接访问','Direct','Langsung'])}
+        {row.attribution.verified&&row.attribution.source?' · '+row.attribution.source:''}{row.attribution.campaign?' · '+row.attribution.campaign:''}</p>}
+      {row.latestNotice&&<p>{t(lang,['最近一封模拟邮件','Latest simulated email','Email simulasi terakhir'])} · {row.latestNotice}</p>}
       {link&&row.opportunityId&&<a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:row.opportunityId})}>{t(lang,['查看商机','View opportunity','Lihat peluang'])}</a>}
     </li>)}
   </ol>;
@@ -149,7 +155,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,canReviewIden
         <div><dt>{t(lang,['下一步','Next step','Langkah berikutnya'])}</dt><dd>{nextAction(detail,lang)}</dd></div>
       </dl>
       {detail.identityPending&&canReviewIdentity&&<a className="crm-work-link" href={crmHref({tab:'leads',lead:detail.customerId,identityLead:detail.customerId})}>{t(lang,['核实身份','Review identity','Verifikasi identitas'])}</a>}
-      {!detail.identityPending&&canFinance&&detail.records.some(row=>row.state==='proof_pending'||row.state==='partial')&&<a className="crm-work-link" href={crmHref({tab:'payments'})}>{t(lang,['前往收款核验','Go to payment verification','Buka verifikasi pembayaran'])}</a>}
+      {canFinance&&detail.records.filter(row=>row.state==='proof_review'||row.state==='partial').map(row=><a key={row.id} className="crm-work-link"
+        href={crmHref({tab:'payments',enrollmentOrder:row.id})}>{t(lang,['前往收款核验','Go to payment verification','Buka verifikasi pembayaran'])}</a>)}
       {detail.canProgress&&detail.state!=='enrolled'&&<button type="button" className="crm-work-button justify-self-start" onClick={()=>{
         setDraft({stage:detail.salesStage,note:'',requestId:crypto.randomUUID()});
         setSaveError(false);setNotice(false);setEditing(true);

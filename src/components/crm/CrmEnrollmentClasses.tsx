@@ -125,9 +125,12 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   const published = t(['Published', 'Diterbitkan', '已发布']);
   const unpublished = t(['Draft', 'Draf', '草稿']);
   const title = t(['Enrollment classes', 'Kelas pendaftaran', '报名班次']);
+  const target = new URLSearchParams(window.location.search).get('enrollmentClass');
+  const visibleClasses = catalog?.classes.filter(row=>!target||row.id===target);
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
       <h2>{title}</h2>
+      {target&&<a className="crm-work-link" href="/crm?tab=policy&policyTopic=courses">{t(['View all classes','Lihat semua kelas','查看全部班次'])}</a>}
       <div className="crm-ops-actions">
         <button type="button" className="crm-work-button" onClick={() => void load().catch(loadFailure)}>{t(['Refresh', 'Segarkan', '刷新'])}</button>
         <button type="button" className="crm-work-button" data-primary disabled={!catalog} onClick={() => edit()}>{t(['Create class', 'Buat kelas', '创建班次'])}</button>
@@ -136,10 +139,10 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
     {!catalog && !error && <p role="status">{t(['Loading…', 'Memuat…', '正在加载…'])}</p>}
     {!!error && !draft && <p role="alert">{error}</p>}
     {saved && <CrmSaveFeedback state="saved" lang={lang}/>}
-    {catalog?.classes.length === 0 && <p>{t(['No enrollment classes yet.', 'Belum ada kelas.', '暂无报名班次。'])}</p>}
-    {!!catalog?.classes.length && <div className="crm-course-table"><table>
+    {visibleClasses?.length === 0 && <p>{target?t(['Class not found.','Kelas tidak ditemukan.','班次不存在。']):t(['No enrollment classes yet.', 'Belum ada kelas.', '暂无报名班次。'])}</p>}
+    {!!visibleClasses?.length && <div className="crm-course-table"><table>
       <thead><tr><th>{t(['Level', 'Level', '级别'])}</th><th>{t(['Schedule', 'Jadwal', '课表'])}</th><th>{t(['Tuition', 'Biaya', '学费'])}</th><th>{t(['Status', 'Status', '状态'])}</th><th>{t(['Actions', 'Tindakan', '操作'])}</th></tr></thead>
-      <tbody>{catalog.classes.map(row => <tr key={row.id}>
+      <tbody>{visibleClasses.map(row => <tr key={row.id}>
         <td>{row.level}</td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
         <td>{formatCurrency(row.price, lang)}</td><td>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</td>

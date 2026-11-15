@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { demandMatches, enrollmentPhone, parseDemand } from '../../src/utils/enrollmentInterests.ts';
 import { invalid } from './trustWorkflow.ts';
 import { recordEnrollmentCustomer } from './enrollmentCrm.ts';
+import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
+import { interestNotice } from './enrollmentNotices.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> };
 type Handler = (q: Request, r: Response) => Promise<unknown>;
@@ -42,11 +44,13 @@ export async function reconcileWaitlist(c: Client, cohort: Cohort, seats: number
   const cycle = Number(previous.cycle) + (full ? 0 : 1);
   await c.query('UPDATE enrollment_vacancy_cycles SET is_full=:p1,cycle=:p2 WHERE class_id=:p3',[full,cycle,cohort.id]);
   if (full) return;
-  // Durable event for the notice stage. No mail transport is invoked here.
+  // One event and one simulated receipt per active candidate and vacancy cycle.
   await c.query(`INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)
     SELECT 'vacancy',w.id,w.class_id,:p2,UTC_TIMESTAMP(6) FROM enrollment_waitlist w
     WHERE w.class_id=:p1 AND w.state='waiting'
     ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at`, [cohort.id,cycle]);
+  const waiting=(await c.query("SELECT id,email FROM enrollment_waitlist WHERE class_id=:p1 AND state='waiting'",[cohort.id])).rows;
+  for (const row of waiting) await interestNotice(c,'waitlist_vacancy',row.id,row.email,cohort,cycle);
 }
 
 async function offers(c: Client) {
@@ -87,6 +91,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       await c.query("INSERT INTO enrollment_waitlist(id,class_id,email,phone,state,created_at) VALUES(:p1,:p2,:p3,:p4,'waiting',UTC_TIMESTAMP(6))",
         [waiting,id,email,phone]);
       await recordEnrollmentCustomer(c,{kind:'waitlist',id:waiting,email,phone,name,level:cohort.data.level});
+      await recordEnrollmentAttribution(c,'waitlist',waiting,q.body.source);
       return { id:waiting };
     });
     send(r,result);
@@ -123,9 +128,12 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       for(const demand of demands){
         const matched=demand.state==='active'?candidates.filter(cohort=>demandMatches(demand.criteria,cohort.data)):[];
         for(const match of matched) {
+          const current=(await c.query("SELECT id FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p2 FOR SHARE",[demand.id,demand.revision])).rows[0];
+          if(!current) continue;
           await c.query(`INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)
             SELECT 'match',id,:p2,0,UTC_TIMESTAMP(6) FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p3
             ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at`,[demand.id,match.id,demand.revision]);
+          await interestNotice(c,'demand_match',demand.id,email,match,0);
         }
         enriched.push({...demand,matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
       }
@@ -159,6 +167,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
         await c.query("INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))",
           [id,email,criteria]);
         await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,name,level});
+        await recordEnrollmentAttribution(c,'demand',id,q.body.source);
         return 1;
       }
       if(existing.email!==email) invalid('enrollment_interest_not_found',404);

@@ -30,6 +30,8 @@ const words = {
     socials: "Social media",
     links: "UPER links",
     tagline: "HSK | CSCA | Study Abroad",
+    enrollment: "View Courses & Enroll",
+    enrollmentNote: "HSK 1–4 · Class schedules and tuition",
     consult: "FREE Online Consultation",
     consultNote: "AI 24/7 · Human support during business hours",
     community: "Join UPER Community",
@@ -54,6 +56,8 @@ const words = {
     socials: "Media sosial",
     links: "Tautan UPER",
     tagline: "HSK | CSCA | Studi di Luar Negeri",
+    enrollment: "Lihat Kursus & Daftar",
+    enrollmentNote: "HSK 1–4 · Jadwal kelas dan biaya",
     consult: "Konsultasi Online GRATIS",
     consultNote: "AI 24/7 · Layanan manusia pada jam kerja",
     community: "Gabung Komunitas UPER",
@@ -78,6 +82,8 @@ const words = {
     socials: "社交媒体",
     links: "UPER链接",
     tagline: "HSK | CSCA | 留学",
+    enrollment: "查看课程与报名",
+    enrollmentNote: "HSK 1–4 · 班次时间与学费",
     consult: "免费在线咨询",
     consultNote: "7×24 AI · 工作时间人工",
     community: "加入UPER社群",
@@ -176,6 +182,7 @@ export default function LinkHub() {
     return () => { active = false; };
   }, [params, i18n]);
   const t = words[lang];
+  const enrollmentUrl = promotionJourneyUrl(`/enrollment?lang=${lang}`, params, 'linkhub');
   const consultUrl = linkHubConsultUrl(params, lang);
   const selectLanguage = (value: string) => {
     const next = new URLSearchParams(params);
@@ -300,6 +307,15 @@ export default function LinkHub() {
           </nav>
         </header>
         <section className="linkhub-links" aria-label={t.links}>
+          <div className="linkhub-card">
+            <a className="linkhub-card-main" href={enrollmentUrl}>
+              <span>{t.enrollment}</span>
+              <small>{t.enrollmentNote}</small>
+            </a>
+            <button className="linkhub-card-share" type="button" aria-label={`${t.share}: ${t.enrollment}`} onClick={() => shareItem(t.enrollment, enrollmentUrl)}>
+              <MoreVertical size={19} />
+            </button>
+          </div>
           <div className="linkhub-card">
             <a className="linkhub-card-main" href={consultUrl} onClick={()=>trackEvent('link_click',{target:'consultation',entry_point:'linkhub'})}>
               <span>{t.consult}</span>

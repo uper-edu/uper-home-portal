@@ -14,3 +14,18 @@
 .crm-course-records li { padding: 12px; border: 1px solid var(--admin-border); border-radius: 10px; overflow-wrap: anywhere; }
 .crm-course-records li p { margin: 4px 0; }
 .crm-opportunity-feedback { position: fixed; inset: auto 20px 20px auto; z-index: 20; padding: 10px 14px; border-radius: 10px; background: var(--admin-surface); color: var(--admin-text); border: 1px solid var(--admin-border); }
+.crm-enrollment-notice-target {
+  min-height: 100dvh;
+  max-width: 960px;
+  margin-inline: auto;
+  padding: clamp(16px,4vw,48px);
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  overflow-wrap: anywhere;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 16px;
+}
+.crm-enrollment-notice-target dl { width: 100%; }
+.crm-enrollment-notice-target dl > div { padding: 12px; border: 1px solid var(--admin-border); border-radius: 10px; }

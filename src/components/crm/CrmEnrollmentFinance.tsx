@@ -15,8 +15,9 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
   const [requestId, setRequestId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const target = new URLSearchParams(window.location.search).get('enrollmentOrder');
   async function load() {
-    const response = await fetch(endpoint, {cache:'no-store'});
+    const response = await fetch(target ? endpoint+'?order='+encodeURIComponent(target) : endpoint, {cache:'no-store'});
     if ([403,404].includes(response.status)) { setHidden(true); return; }
     if (!response.ok) throw Error();
     setOrders((await response.json()).orders);
@@ -28,6 +29,7 @@ export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
       <h2>{t('课程报名核款','Enrollment payment verification','Verifikasi pembayaran pendaftaran')}</h2>
+      {target&&<a className="crm-work-link" href="/crm?tab=payments">{t('查看全部报名核款','View all enrollment payments','Lihat semua pembayaran')}</a>}
       <button type="button" className="crm-work-button" onClick={() => void load().catch(failed)}>{t('刷新','Refresh','Segarkan')}</button>
     </header>
     {error && <p role="alert">{error}</p>}
