@@ -4,6 +4,7 @@ export const operationGroups = [
  ['Notifications and audit','Notifikasi dan audit','通知与审计'],
  ['Courses and classes','Kursus dan kelas','课程与班次'],
 ] as const;
+export const operationGroupOrder = [3, 0, 1, 2] as const;
 export const operationSections = [
  {id:'courses',group:3,title:['Courses & pricing','Kursus & harga','课程与报价'],purpose:['Manage published prices and enrollment statistics.','Kelola harga dan statistik pendaftaran.','维护课程报价与报名付款统计。'],steps:[['Course','Price','Enrollment'],['Kursus','Harga','Pendaftaran'],['课程','报价','报名']]},
  {id:'enrollment-classes',group:3,title:['Enrollment classes','Kelas pendaftaran','报名班次'],purpose:['Publish and manage enrollment classes.','Terbitkan dan kelola kelas.','维护和发布报名班次。'],steps:[[],[],[]]},
