@@ -721,6 +721,12 @@
       "server/portal/courseCatalog.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.bank.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.bank.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)",
     "sources": [
@@ -909,6 +915,12 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('enrollment_bank',:p1) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('enrollment_bank',:p1) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id": {
@@ -3123,6 +3135,7 @@
     "sources": [
       "server/portal/assignmentBackfill.ts",
       "server/portal/courseCatalog.ts",
+      "server/portal/enrollmentBank.ts",
       "server/portal/enrollmentCatalog.ts",
       "server/portal/enrollmentCrm.ts",
       "server/portal/enrollmentRules.ts",
@@ -3348,6 +3361,18 @@
     "sources": [
       "server/portal/autoAssignment.ts",
       "server/portal/crmAccessControls.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_bank'": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_bank'",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_bank' FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_bank' FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='enrollment_rules'": {
@@ -4218,6 +4243,12 @@
     "sql": "UPDATE portal_settings SET value=:p1 WHERE id='crm_assignment_cursor'",
     "sources": [
       "server/portal/autoAssignment.ts"
+    ]
+  },
+  "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_bank'": {
+    "sql": "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_bank'",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
     ]
   },
   "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_rules'": {

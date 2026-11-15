@@ -3,6 +3,7 @@ import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
 import { enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
 import { EnrollmentJoiningNote } from './EnrollmentSupport';
+import type { EnrollmentBank } from '../utils/enrollmentBank';
 
 export type EnrollmentOrder = {
   id: string;
@@ -13,7 +14,7 @@ export type EnrollmentOrder = {
   price: number;
   received: number;
   deadline: string;
-  bank?: { name: string; accountName: string; accountNumber: string };
+  bank?: EnrollmentBank;
 };
 
 type Language = 'zh' | 'en' | 'id';

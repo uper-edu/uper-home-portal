@@ -2,6 +2,7 @@ import {useEffect,useId,useRef,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormActions,AdminFormSection} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
+import {CrmEnrollmentBank} from './CrmEnrollmentBank';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentBusinessDayLimit,enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
@@ -28,9 +29,10 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
   const [feedback,setFeedback]=useState<Feedback>();
   const [busy,setBusy]=useState(false);
   const [pending,setPending]=useState<string>();
+  const [bankDirty,setBankDirty]=useState(false);
   const inFlight=useRef(false);
   const dirty=!!saved&&enrollmentRuleFields.some(field=>draft[field]!==String(saved[field]));
-  useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[dirty,busy,pending,onDraftChange]);
+  useEffect(()=>{onDraftChange(dirty||bankDirty||busy||!!pending);},[dirty,bankDirty,busy,pending,onDraftChange]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
 
   async function load(keepDraft=false,signal?:AbortSignal) {
@@ -164,6 +166,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
           <small id={fieldHelp+'-'+key}>{t(`Default ${enrollmentRuleDefaults[key]} · range 1–${enrollmentEmailRuleLimits[key]}`,`Standar ${enrollmentRuleDefaults[key]} · rentang 1–${enrollmentEmailRuleLimits[key]}`,`默认 ${enrollmentRuleDefaults[key]}，可设为 1–${enrollmentEmailRuleLimits[key]}`)}</small>
         </AdminField>)}
       </AdminFormSection>}
+      {saved&&<CrmEnrollmentBank lang={lang} isLight={isLight} active={active} onDraftChange={setBankDirty}/>}
       {feedback==='conflict'&&<CrmSaveFeedback state="error" lang={lang}>{t('Another employee updated these rules. Review the saved time limits before applying your draft.','Aturan diperbarui oleh staf lain. Periksa tenggat tersimpan sebelum menyimpan draf.','其他员工已更新报名规则。请核对已保存的期限，再决定是否保存当前草稿。')} <button type="button" className="crm-work-link" onClick={()=>void load(true)}>{t('Review saved rules','Periksa aturan tersimpan','核对已保存规则')}</button></CrmSaveFeedback>}
       {saved&&dirty&&!busy&&!pending&&feedback!== 'conflict'&&<CrmSaveFeedback state={feedback==='save-error'?'error':'dirty'} lang={lang}/>}
       {busy&&<CrmSaveFeedback state="saving" lang={lang}/>}

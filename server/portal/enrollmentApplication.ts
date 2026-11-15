@@ -26,6 +26,7 @@ import { classOpeningNotices, orderNotice, proofNotices, startEnrollmentWeeklySi
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
 import { renderEnrollmentEmail } from './enrollmentEmail.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
+import { mountEnrollmentBank,readEnrollmentBank } from './enrollmentBank.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -103,7 +104,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   const finance = '/api/crm/enrollment/finance';
   app.get(base + '/availability', (_q, r) => r.set('Cache-Control', 'no-store').json({ accepting: !!local }));
   if (!local) return;
-  const bank=local.bank;
+  mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow});
 
   const post = (path: string, handler: Route) => app.post(path, wrap(async (q, r) => {
@@ -240,6 +241,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const id=randomUUID();
     const {email,name,phone,requestId,fingerprint,price,priority,source,actor}=input;
     const {paymentHours}=await readEnrollmentRules(c);
+    const {bank}=await readEnrollmentBank(c);
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
       VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,
     [id,cohort.id,email,requestId,fingerprint,price,{name,phone,priority,bank},paymentHours]);

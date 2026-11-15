@@ -9,7 +9,6 @@ export function enrollmentSimulation(env = process.env) {
       env.PORTAL_WORKER_ENABLED !== 'false' || env.PORTAL_GA_API_SECRET ||
       !directory || !isAbsolute(directory)) return null;
   return {
-    bank: { name: 'TEST BANK', accountName: 'UPER TEST ONLY', accountNumber: 'TEST-0000000000' },
     async deliver(challengeId: string, email: string, code: string, message: {subject:string;html:string;text:string;language:string}) {
       await mkdir(directory, { mode: 0o700, recursive: true });
       await writeFile(resolve(directory, challengeId + '.json'), JSON.stringify({ email, code, ...message }),
