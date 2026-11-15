@@ -607,3 +607,23 @@
   .enrollment-detail-actions .enrollment-quiet,
   .enrollment-interest-actions .enrollment-quiet { font-size: 11px; }
 }
+
+.enrollment-aftercare-options { display: grid; gap: 7px; }
+.enrollment-aftercare-options > div + div { border-top: 1px solid var(--enrollment-border); padding-top: 7px; }
+.enrollment-aftercare-options dt { font-weight: 650; }
+.enrollment-aftercare-options dd { color: var(--enrollment-muted); font-size: 13px; }
+.enrollment-invite-notice { display: flex; align-items: center; gap: 7px; }
+.enrollment-invite-notice svg { flex: none; }
+.enrollment-refund-contact p { line-height: 1.65; }
+.enrollment-refund-reference {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  border-top: 1px solid var(--enrollment-border);
+  color: var(--enrollment-muted);
+  font-size: 13px;
+}
+.enrollment-refund-reference strong { color: var(--enrollment-ink); text-align: right; }
+.enrollment-whatsapp-action { gap: 7px; }

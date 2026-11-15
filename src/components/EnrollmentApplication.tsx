@@ -553,10 +553,12 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   if (order) originalOrderParams.set('order',order.id);
   const refundMode = aftercare?.refund.mode;
   const canConsultRefund = refundMode==='contact_support' || refundMode==='special_review';
+  const aftercareView = params.get('view');
+  const transferred = order && order.status==='paid' && aftercare?.transferHistory.some(row=>row.target_class_id===order.classId);
   const showAftercare = order && !editingProof && (
     ['paid_cancelled','refunding','refunded'].includes(order.status) || (order.status==='expired' && !order.restored)
-    || (params.get('view')==='refund' && canConsultRefund)
-    || (aftercare?.originalClassState==='cancelled' && order.status!=='proof_review')
+    || ((aftercareView==='refund'||aftercareView==='refund-contact') && canConsultRefund)
+    || aftercare?.originalClassState==='cancelled' || transferred
   );
   const showOrderResult = order && (order.status==='paid' || (order.status==='proof_review' && !editingProof));
   const orderResultClasses = paymentClasses ?? mineClasses ?? [];
@@ -601,10 +603,6 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       {canUpload && <Link className="enrollment-action" to={paymentPath(order.id)}>
         {t(['转账与凭证','Transfer & proof','Transfer dan bukti'])}
       </Link>}
-      </>}
-      {!showAftercare && !!aftercare?.transferHistory.length && aftercare.originalClassState!=='cancelled' && <>
-        <p>{t(['已确认转班，原实收已用于目标班。','Transfer confirmed. Your payment was applied to the new class.','Pindah kelas dikonfirmasi. Pembayaran digunakan untuk kelas baru.'])}</p>
-        <p>{aftercare.currentClass.firstLesson.replace('T',' ')} WIB · {aftercare.currentClass.schedule}</p>
       </>}
       {!showAftercare && !showOrderResult && canConsultRefund && <Link className="enrollment-quiet" to={'/enrollment/mine?'+refundParams.toString()}>
         {t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}
