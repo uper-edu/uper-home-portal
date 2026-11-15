@@ -18,7 +18,7 @@ export const customerFields = [
   ["goal", "Learning goal", "学习目标"],
   ["assessment", "Assessment", "测评结果"],
   ["group", "Customer group", "客户分组"],
-  ["stage", "Sales stage", "销售阶段"],
+  ["opportunities", "Active opportunities", "进行中商机数"],
   ["signal", "Customer requests and interests", "客户诉求与意向"],
   ["contact", "Contact result", "联系结果"],
   ["touches", "Contact count", "联系次数"],
@@ -26,24 +26,20 @@ export const customerFields = [
   ["followup", "Follow-up", "跟进安排"],
   ["source", "First source", "首次来源"],
   ["campaign", "Campaign", "营销活动"],
-  ["outcome", "Outcome", "业务结果"],
 ] as const;
 export type CustomerField = (typeof customerFields)[number][0];
 export const defaultCustomerFields: CustomerField[] = [
   "number",
   "name",
   "owner",
-  "goal",
-  "assessment",
-  "group",
-  "stage",
-  "followup",
+  "source",
+  "lastContact",
 ];
 export function validCustomerFields(value: unknown): CustomerField[] {
   if (!Array.isArray(value)) return [...defaultCustomerFields];
   const selected = customerFields
     .map((f) => f[0])
-    .filter((f) => value.includes(f));
+    .filter((f) => value.includes(f)||(f==='opportunities'&&value.includes('stage')));
   // The record remains identifiable even after old/invalid saved preferences.
   return selected.length
     ? [...new Set<CustomerField>(["number", "name", ...selected])]

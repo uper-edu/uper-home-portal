@@ -2,6 +2,8 @@ import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
+import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
+import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
@@ -907,6 +909,7 @@ export async function mountPortal(app: Express) {
         now,
         config,
       );
+      if(enrollmentSimulation())await attachEnrollmentOpportunitySummaries(pool,result.leads);
       res.json({
         ...result,
         notificationScope,

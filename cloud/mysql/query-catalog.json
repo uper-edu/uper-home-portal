@@ -2821,8 +2821,14 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      ORDER BY o.created_at DESC,o.id": {
-    "sql": "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      ORDER BY o.created_at DESC,o.id",
+  "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id": {
+    "sql": "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT o.*,customer.id AS customer_id\n    FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))": {
+    "sql": "SELECT o.*,customer.id AS customer_id\n    FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))",
     "sources": [
       "server/portal/enrollmentCrm.ts"
     ]

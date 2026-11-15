@@ -28,6 +28,7 @@ type Opportunity = {
   emails?:EnrollmentEmail[];
   progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string}[];canProgress?:boolean;
 };
+type OpportunityList = {opportunities:Opportunity[];customer?:{id:string;name:string}};
 const base = '/api/crm/opportunities';
 const t = (lang:CrmLanguage,copy:Copy) => copy[lang==='zh'?0:lang==='id'?2:1];
 const kinds:Record<CourseRecord['kind'],Copy> = {
@@ -167,7 +168,9 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
 }) {
   const params=new URLSearchParams(window.location.search);
   const id=params.get('opportunity');
-  const [list,setList]=useState<Opportunity[]>();
+  const customerId=params.get('customerId');
+  const [result,setResult]=useState<OpportunityList>();
+  const list=result?.opportunities;
   const [detail,setDetail]=useState<Opportunity>();
   const [error,setError]=useState('');
   const targetRecord=params.get('enrollmentRecord');
@@ -185,9 +188,9 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     const controller=new AbortController();
     const failure=(cause:Error)=>{if(cause.name!=='AbortError')setError(cause.message);};
     if(id) void read<Opportunity>(base+'/'+encodeURIComponent(id),controller.signal).then(setDetail,failure);
-    else void read<{opportunities:Opportunity[]}>(base,controller.signal).then(data=>setList(data.opportunities),failure);
+    else void read<OpportunityList>(base+(customerId?'?'+new URLSearchParams({customerId}):''),controller.signal).then(setResult,failure);
     return ()=>controller.abort();
-  },[id]);
+  },[id,customerId]);
   useEffect(()=>{
     if(id) return;
     const url=new URL(window.location.href);
@@ -201,7 +204,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   useEffect(()=>{
     if(detail&&targetRecord) document.getElementById('enrollment-record-'+targetRecord)?.scrollIntoView({block:'nearest'});
   },[detail,targetRecord]);
-  const listRoute={tab:'opportunities',...filters};
+  const listRoute={tab:'opportunities',...filters,...(customerId?{customerId}: {})};
   const back=crmHref(listRoute);
   const employeeName=(id:string|null)=>employees.find(employee=>employee.id===id)?.displayName||id;
   const owner=(row:Opportunity)=>employeeName(row.owner)||t(lang,['未分配','Unassigned','Belum ditugaskan']);
@@ -214,7 +217,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const businessStates=[...new Set(list?.map(currentStatus)??[])];
   const query=filters.opportunityQuery.trim().toLowerCase();
   const visible=list?.filter(row=>{
-    const ended=['progress:enrolled','progress:closed'].includes(row.salesStage);
+    const ended=['enrolled','closed'].includes(row.state)||row.salesStage==='progress:closed';
     return (filters.opportunityStatus==='all'||(filters.opportunityStatus==='closed'?ended:!ended)) &&
       (filters.opportunityOwner==='all'||(filters.opportunityOwner==='mine'?row.owner===actorId:
         filters.opportunityOwner==='unassigned'?!row.owner:row.owner===filters.opportunityOwner)) &&
@@ -269,6 +272,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
       </section>}
       <CourseRecords records={detail.records} link={false} lang={lang} emails={detail.emails} targetRecord={targetRecord}/></>:null
     : <>
+      {result?.customer&&<div className="crm-opportunity-filters">
+        <span className="crm-work-muted">{t(lang,['客户','Customer','Pelanggan'])} · <a className="crm-work-link"
+          href={crmHref({tab:'leads',lead:result.customer.id})}>{result.customer.name}</a></span>
+        <a className="crm-work-link" href={crmHref({tab:'opportunities',...filters})}>{t(lang,['清除客户筛选','Clear customer filter','Hapus filter pelanggan'])}</a>
+      </div>}
       <div className="crm-opportunity-filters">
         <input type="search" aria-label={t(lang,['搜索商机','Search opportunities','Cari peluang'])} placeholder={t(lang,['姓名、客户编号或级别','Name, customer number, or level','Nama, nomor pelanggan, atau level'])} value={filters.opportunityQuery} onChange={event=>changeFilter('opportunityQuery',event.currentTarget.value)}/>
         <CrmSingleSelect label={t(lang,['商机范围','Opportunity scope','Cakupan peluang'])} value={filters.opportunityStatus} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStatus',value)} options={[

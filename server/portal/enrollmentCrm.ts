@@ -133,6 +133,46 @@ const recordsForOpportunity=async(c:Client,id:string)=>(await c.query(courseReco
 const isOpenOpportunity=(row:ReturnType<typeof projectOpportunity>)=>
   !['enrolled','closed'].includes(row.state)&&row.salesStage!=='progress:closed';
 const canProgress=(actor:Employee,profile:any)=>profile.identityLifecycle!=='pending'&&permittedRecord(actor,profile,'crm.followup');
+type OpportunityProfile={id:string;enrollmentOpportunitySummary?:{count:number;only?:{id:string;level:string;stage:string}}};
+
+async function opportunityRecordsById(c:Client,rows:{id:string}[]) {
+  const records=new Map<string,ReturnType<typeof displayRecord>[]>();
+  for(let start=0;start<rows.length;start+=100){
+    const ids=rows.slice(start,start+100).map(row=>row.id);
+    const predicates=ids.map((_,index)=>':p'+(index+1)).join(',');
+    const data=(await c.query(courseRecords+` WHERE r.opportunity_id IN (${predicates}) ORDER BY r.created_at,r.record_id`,ids)).rows;
+    for(const row of data){
+      const group=records.get(row.opportunity_id)??[];
+      group.push(displayRecord(row));
+      records.set(row.opportunity_id,group);
+    }
+  }
+  return records;
+}
+
+/** Only called with profiles from the employee's authorized customer list. */
+export async function attachEnrollmentOpportunitySummaries(c:Client,profiles:OpportunityProfile[]) {
+  if(!profiles.length)return;
+  const rows=(await c.query(`SELECT o.*,customer.id AS customer_id
+    FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id
+    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)
+    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))`,[JSON.stringify(profiles.map(profile=>profile.id))])).rows;
+  const records=await opportunityRecordsById(c,rows);
+  const summaries=new Map(profiles.map(profile=>{
+    const summary:NonNullable<OpportunityProfile['enrollmentOpportunitySummary']>={count:0};
+    profile.enrollmentOpportunitySummary=summary;
+    return [profile.id,summary];
+  }));
+  for(const row of rows){
+    const summary=summaries.get(row.customer_id);
+    if(!summary)continue;
+    const opportunity=projectOpportunity(row,records.get(row.id)??[],{id:row.customer_id});
+    if(!isOpenOpportunity(opportunity))continue;
+    summary.count++;
+    if(summary.count===1) summary.only={id:opportunity.id,level:opportunity.level,stage:opportunity.salesStage};
+    else delete summary.only;
+  }
+}
 
 export async function linkEnrollmentOpportunity(c:Client,leadId:string,link:any) {
   if(!link || typeof link.id!=='string' || !link.id || link.id.length>36 ||
@@ -165,23 +205,18 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
   const readProfile=(actor:Employee,profile:any)=>profile && allowed(actor,profile);
 
   app.get('/api/crm/opportunities',read(async(c,q,actor)=>{
+    const customerId=q.query.customerId;
+    if(customerId!==undefined&&(typeof customerId!=='string'||!customerId||customerId.length>191)) invalid('enrollment_customer_not_found',404);
+    const customer=typeof customerId==='string'?await canonicalIdentity(c,customerId):undefined;
+    if(customerId!==undefined&&(!customer||!readProfile(actor,customer.profile))) invalid('enrollment_customer_not_found',404);
     const rows=(await c.query(`SELECT o.*, customer.profile
       FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id
       JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)
-      ORDER BY o.created_at DESC,o.id`)).rows.filter(row=>readProfile(actor,row.profile));
-    const recordsById=new Map<string, ReturnType<typeof displayRecord>[]>();
-    for (let start=0;start<rows.length;start+=100) {
-      const ids=rows.slice(start,start+100).map(row=>row.id);
-      const predicates=ids.map((_,index)=>':p'+(index+1)).join(',');
-      const data=(await c.query(courseRecords+` WHERE r.opportunity_id IN (${predicates}) ORDER BY r.created_at,r.record_id`,ids)).rows;
-      for (const row of data) {
-        const records=recordsById.get(row.opportunity_id)??[];
-        records.push(displayRecord(row));
-        recordsById.set(row.opportunity_id,records);
-      }
-    }
+      WHERE (:p1 IS NULL OR customer.id=:p1)
+      ORDER BY o.created_at DESC,o.id`,[customer?.id??null])).rows.filter(row=>readProfile(actor,row.profile));
+    const recordsById=await opportunityRecordsById(c,rows);
     const opportunities=rows.map(row=>projectOpportunity(row,recordsById.get(row.id)??[],row.profile));
-    return {opportunities};
+    return {opportunities,customer:customer?{id:customer.id,name:customer.profile.fullName}:undefined};
   }));
   app.get('/api/crm/opportunities/:id',read(async(c,q,actor)=>{
     const row=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1',[q.params.id])).rows[0];
