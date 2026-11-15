@@ -7,7 +7,7 @@ import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
-import { allowsEnrollment, mountEnrollmentInterests, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
+import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
@@ -55,13 +55,6 @@ async function lockClass(c: Client, classId: string) {
     [classId])).rows[0];
   if (!row) invalid('enrollment_class_unavailable', 404);
   return row;
-}
-
-// The class lock serializes releases with all other seat and opening changes.
-async function expireSeats(c: Client, classId: string) {
-  await c.query(`UPDATE enrollment_orders SET state='expired',upload_id=NULL,upload_expires_at=NULL
-    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)
-      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))`, [classId]);
 }
 
 async function lockOrder(c: Client, id: string, email?: string) {
@@ -128,6 +121,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   };
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
   startEnrollmentWeeklySimulation(enrollTx);
+  startEnrollmentVacancySimulation(enrollTx,lockClass);
   mountEnrollmentResolution(app,{wrap,post,transact:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {

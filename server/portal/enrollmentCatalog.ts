@@ -4,6 +4,7 @@ import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { enrollmentInstant, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
+import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
 
 const path = '/api/crm/enrollment/classes';
@@ -57,6 +58,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       }
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)",
         [actor.id, { classId: body.id, state: body.state, revision }]);
+      if (body.state === 'published' && enrollmentSimulation()) await matchPublishedEnrollmentClass(c,body.id);
       return { classId: body.id, revision };
     }));
     r.json(result);

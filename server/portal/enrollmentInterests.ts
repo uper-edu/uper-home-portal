@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { demandMatches, enrollmentPhone, parseDemand } from '../../src/utils/enrollmentInterests.ts';
+import { enrollmentLearnerNameKey } from '../../src/utils/enrollmentOrderStatus.ts';
 import { invalid } from './trustWorkflow.ts';
 import { recordEnrollmentCustomer } from './enrollmentCrm.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
@@ -10,6 +11,8 @@ import { interestNotice } from './enrollmentNotices.ts';
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> };
 type Handler = (q: Request, r: Response) => Promise<unknown>;
 type Cohort = { id: string; state: string; accepting: string | number; course_active: string | number; data: any };
+type Demand = { id: string; email: string; revision: number; criteria: Parameters<typeof demandMatches>[0] };
+type Offer = Pick<Cohort,'id'|'data'>;
 type Context = {
   wrap: (fn: Handler) => (q: Request, r: Response) => void;
   post: (path: string, fn: Handler) => void;
@@ -26,6 +29,13 @@ export async function takenSeats(c: Client, id: string) {
 
 export function allowsEnrollment(cohort: Cohort) {
   return cohort.state === 'published' && Number(cohort.accepting) === 1 && Number(cohort.course_active) === 1;
+}
+
+// The caller holds the class lock so an upload and an expiry cannot release the same seat.
+export async function expireSeats(c: Client, classId: string) {
+  await c.query(`UPDATE enrollment_orders SET state='expired',upload_id=NULL,upload_expires_at=NULL
+    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)
+      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))`, [classId]);
 }
 
 export async function reconcileWaitlist(c: Client, cohort: Cohort, seats: number) {
@@ -45,13 +55,74 @@ export async function reconcileWaitlist(c: Client, cohort: Cohort, seats: number
   const cycle = Number(previous.cycle) + (full ? 0 : 1);
   await c.query('UPDATE enrollment_vacancy_cycles SET is_full=:p1,cycle=:p2 WHERE class_id=:p3',[full,cycle,cohort.id]);
   if (full) return;
-  // One event and one simulated receipt per active candidate and vacancy cycle.
+  const waiting=(await c.query(`SELECT w.id,w.email,COALESCE(w.learner_name,NULLIF(l.profile->>'$.fullName',w.email)) AS learner_name
+    FROM enrollment_waitlist w LEFT JOIN enrollment_customer_records a ON a.kind='waitlist' AND a.record_id=w.id
+    LEFT JOIN portal_leads l ON l.id=a.lead_id
+    WHERE w.class_id=:p1 AND w.state='waiting' ORDER BY w.created_at,w.id`,[cohort.id])).rows;
+  const notified=new Set<string>();
+  for (const row of waiting) {
+    // Learners sharing an email keep separate seats. A duplicate row for the same learner is not a second notice.
+    const learner=JSON.stringify([row.email,enrollmentLearnerNameKey(row.learner_name??'')]);
+    if (notified.has(learner)) continue;
+    notified.add(learner);
+    await c.query(`INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)
+      VALUES('vacancy',:p1,:p2,:p3,UTC_TIMESTAMP(6))
+      ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at`,[row.id,cohort.id,cycle]);
+    await interestNotice(c,'waitlist_vacancy',row.id,row.email,cohort,cycle);
+  }
+}
+
+async function recordDemandMatch(c: Client, demand: Demand, offer: Offer) {
+  const current=(await c.query("SELECT id FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p2 FOR SHARE",[demand.id,demand.revision])).rows[0];
+  if (!current) return;
   await c.query(`INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)
-    SELECT 'vacancy',w.id,w.class_id,:p2,UTC_TIMESTAMP(6) FROM enrollment_waitlist w
-    WHERE w.class_id=:p1 AND w.state='waiting'
-    ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at`, [cohort.id,cycle]);
-  const waiting=(await c.query("SELECT id,email FROM enrollment_waitlist WHERE class_id=:p1 AND state='waiting'",[cohort.id])).rows;
-  for (const row of waiting) await interestNotice(c,'waitlist_vacancy',row.id,row.email,cohort,cycle);
+    VALUES('match',:p1,:p2,0,UTC_TIMESTAMP(6))
+    ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at`,[demand.id,offer.id]);
+  await interestNotice(c,'demand_match',demand.id,demand.email,offer,0);
+}
+
+// Run inside the publication transaction, with the class already locked by the save.
+export async function matchPublishedEnrollmentClass(c: Client, classId: string) {
+  const offer=(await c.query(`SELECT id,data FROM enrollment_classes
+    WHERE id=:p1 AND state='published' AND enrollment_closes_at>UTC_TIMESTAMP(6)`,[classId])).rows[0];
+  if (!offer) return;
+  await expireSeats(c,classId);
+  if (await takenSeats(c,classId)>=offer.data.capacity) return;
+  const demands=(await c.query(`SELECT d.id,d.email,d.criteria,d.revision FROM enrollment_demands d
+    WHERE d.state='active' AND NOT EXISTS (
+      SELECT 1 FROM enrollment_interest_events e
+      WHERE e.kind='match' AND e.interest_id=d.id AND e.class_id=:p1 AND e.cycle=0)
+    ORDER BY d.id`,[classId])).rows as Demand[];
+  for (const demand of demands) {
+    if (demandMatches(demand.criteria,offer.data)) await recordDemandMatch(c,demand,offer);
+  }
+}
+
+export function startEnrollmentVacancySimulation(transact:Context['transact'],lockClass:Context['lockClass']) {
+  let busy=false;
+  const tick=async()=>{
+    if (busy) return;
+    busy=true;
+    try {
+      const candidates=await transact(async c=>(await c.query(`SELECT v.class_id FROM enrollment_vacancy_cycles v
+        JOIN enrollment_classes e ON e.id=v.class_id
+        WHERE v.is_full=TRUE AND EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=v.class_id AND w.state='waiting')
+        ORDER BY v.class_id`)).rows);
+      for (const {class_id:id} of candidates) {
+        await transact(async c=>{
+          const cohort=await lockClass(c,id);
+          await expireSeats(c,id);
+          await reconcileWaitlist(c,cohort,await takenSeats(c,id));
+        });
+      }
+    } catch {
+      console.error('Enrollment vacancy simulation could not reconcile waitlists');
+    } finally {
+      busy=false;
+    }
+  };
+  const timer=setInterval(()=>void tick(),10_000);
+  timer.unref();
 }
 
 async function offers(c: Client) {
@@ -123,20 +194,14 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       }
       const entries=availability.size ? (await c.query('SELECT id,state,order_id FROM enrollment_waitlist WHERE email=:p1',[email])).rows : [];
       const latestWaitlist=new Map(entries.map(entry=>[entry.id,entry]));
-      const {rows:demands}=await c.query('SELECT id,criteria,state,revision FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC',[email]);
+      const {rows:demands}=await c.query('SELECT id,email,criteria,state,revision FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC',[email]);
       const candidates=demands.some(d=>d.state==='active') ? await offers(c) : [];
       const enriched=[];
       for(const demand of demands){
         const matched=demand.state==='active'?candidates.filter(cohort=>demandMatches(demand.criteria,cohort.data)):[];
-        for(const match of matched) {
-          const current=(await c.query("SELECT id FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p2 FOR SHARE",[demand.id,demand.revision])).rows[0];
-          if(!current) continue;
-          await c.query(`INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)
-            SELECT 'match',id,:p2,0,UTC_TIMESTAMP(6) FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p3
-            ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at`,[demand.id,match.id,demand.revision]);
-          await interestNotice(c,'demand_match',demand.id,email,match,0);
-        }
-        enriched.push({...demand,matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
+        for (const match of matched) await recordDemandMatch(c,demand,match);
+        enriched.push({id:demand.id,criteria:demand.criteria,state:demand.state,revision:demand.revision,
+          matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
       }
       return {
         waitlist:waiting.map(w=>{
