@@ -1,3 +1,5 @@
+import {pendingEnrollmentProofTotals} from './enrollmentProofTotals.ts';
+
 type Client = {query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 const DAY=86_400_000;
 const WIB=7*3_600_000;
@@ -27,9 +29,8 @@ export async function enrollmentWeekTotals(c:Client,week:NonNullable<ReturnType<
     (SELECT COALESCE(SUM(amount),0) FROM enrollment_refund_payments WHERE created_at>=:p1 AND created_at<:p2) AS refunded`,
   [week.from,week.until])).rows[0];
   // Reconstruct at the exclusive WIB cutoff. Receipts or refunds recorded later do not alter the prior week.
-  const totals=(await c.query(`SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting,
-    COALESCE(SUM(has_proof=1 AND verified<price),0) AS pending FROM (
-      SELECT o.price,o.payment_due_at AS due,
+  const totals=(await c.query(`SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (
+      SELECT o.payment_due_at AS due,
         EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,
         COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0) AS verified,
         EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'
@@ -39,7 +40,7 @@ export async function enrollmentWeekTotals(c:Client,week:NonNullable<ReturnType<
         AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'
           AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)
     ) AS as_of_cutoff`,[week.until])).rows[0];
-  const pending=Number(totals.pending);
+  const {pending,pendingAmount,pendingUnknownCount}=await pendingEnrollmentProofTotals(c,week.until);
   return {enrolled:Number(movements.enrolled),opened:Number(movements.opened),received:Number(movements.received),
-    refunded:Number(movements.refunded),waiting:Number(totals.waiting),pending,pendingAmount:pending===0?0:null};
+    refunded:Number(movements.refunded),waiting:Number(totals.waiting),pending,pendingAmount,pendingUnknownCount};
 }

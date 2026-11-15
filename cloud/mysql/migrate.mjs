@@ -78,6 +78,14 @@ async function applyEnrollmentOrdersMigration(connection) {
   }else if(learnerName.Type.toLowerCase()!=='varchar(120)'||learnerName.Null!=='YES'||learnerName.Default!==null){
     throw Error('Enrollment waitlist learner name does not match the expected schema');
   }
+  const [proofColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_proofs');
+  const transferDetails=proofColumns.find(column=>column.Field==='transfer_details');
+  if(!transferDetails){
+    const sql=await readFile(new URL('./schema-enrollment-20261114234419.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(transferDetails.Type.toLowerCase()!=='json'||transferDetails.Null!=='YES'||transferDetails.Default!==null){
+    throw Error('Enrollment proof transfer details do not match the expected schema');
+  }
 }
 
 async function applyContentMigration(connection){

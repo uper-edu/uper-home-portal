@@ -5,7 +5,7 @@ import { useAdminTheme } from '../../utils/adminPreferences';
 import { formatCurrency } from '../../utils/currency';
 import { enrollmentCopy, enrollmentStatuses } from '../EnrollmentApplication';
 
-type Summary={received:number;waiting:number;pending:number;pendingAmount:number|null};
+type Summary={received:number;waiting:number;pending:number;pendingAmount:number|null;pendingUnknownCount?:number};
 type Target =
   | ({type:'report';weekStart:string;endDate:string;enrolled:number;opened:number;refunded:number}&Summary)
   | ({type:'class';id:string;level:string;firstLesson:string;schedule:string;paid:number;minimumPaid:number;capacity:number}&Summary)
@@ -53,8 +53,9 @@ export function CrmEnrollmentNoticeTarget({lang}:{lang:CrmLanguage}) {
   if(data) pairs.push([t('核实实收','Verified receipts','Dana masuk yang terverifikasi'),money(data.received)]);
   if(data&&data.type!=='payment') pairs.push(
     [t('待付款人数','Awaiting payment','Menunggu pembayaran'),data.waiting],
-    [t('待核实笔数','Pending verification','Menunggu verifikasi'),data.pending],
-    [t('待核实金额','Amount pending verification','Jumlah menunggu verifikasi'),money(data.pendingAmount)]);
+    [data.type==='class'?t('待核实人数','Learners pending verification','Siswa menunggu verifikasi'):t('待核实笔数','Transfers pending verification','Transfer menunggu verifikasi'),data.pending],
+    [t('待核实金额','Amount pending verification','Jumlah menunggu verifikasi'),money(data.pendingAmount)+
+      (data.pendingAmount!==null&&data.pendingUnknownCount?t(` · 另有 ${data.pendingUnknownCount} 笔金额未知`,` · ${data.pendingUnknownCount} more of unknown amount`,` · ${data.pendingUnknownCount} transfer lain belum diketahui jumlahnya`):'')]);
   return <main data-admin-workspace="crm" data-theme={isLight?'light':'dark'} className="crm-enrollment-notice-target">
     <a className="crm-work-link" href="/crm">{t('返回 CRM','Back to CRM','Kembali ke CRM')}</a>
     <CrmPageIdentity title={title}/>

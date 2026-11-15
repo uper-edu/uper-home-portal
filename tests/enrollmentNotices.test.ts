@@ -3,6 +3,26 @@ import test from 'node:test';
 import { enrollmentWeekOf, latestDueEnrollmentWeek } from '../server/portal/enrollmentWeekly';
 import { enrollmentEmailSubjects, renderEnrollmentEmail, type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
 import { enrollmentCard } from '../server/portal/enrollmentCards';
+import { proofTransferDetails,summarizeEnrollmentProofs } from '../server/portal/enrollmentProofTotals';
+
+test('pending transfer totals deduplicate proof and reference while keeping unknown and verified amounts separate',()=>{
+  const proof=(orderId:string,digest:string,details:any,verified=0,matched=0)=>({orderId,digest,details,verified,matched});
+  const results=summarizeEnrollmentProofs([
+    proof('a','image',{amount:250000,reference:'REF-1'},100000,100000),
+    proof('a','image',null,100000),
+    proof('a','another-image',{reference:'REF-1'},100000,100000),
+    proof('a','second-transfer',{amount:100000,reference:'REF-2'},100000),
+    proof('b','legacy',null),
+    proof('c','unmatched',{amount:300000},50000),
+    proof('d','matched',{reference:'REF-3'},50000,50000),
+    proof('e','shared',{amount:50000,reference:'REUSED'}),
+    proof('f','shared',{amount:50000,reference:'REUSED'}),
+  ]);
+  assert.deepEqual(results,{pending:6,pendingParticipants:5,pendingUnknownCount:4,pendingAmount:250000});
+  assert.deepEqual(proofTransferDetails(undefined,undefined),null);
+  assert.deepEqual(proofTransferDetails(575000,' bank-01 '),{amount:575000,reference:'BANK-01'});
+  assert.throws(()=>proofTransferDetails('575000',undefined),/amount/);
+});
 
 test('Saturday 08:00 WIB switches to the prior Monday-to-Monday period',()=>{
   assert.equal(latestDueEnrollmentWeek(new Date('2026-11-14T00:59:59.999Z')),'2026-10-26');

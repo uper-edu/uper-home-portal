@@ -18,6 +18,7 @@ import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enr
 import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
 import { mountEnrollmentCrm, recordEnrollmentCustomer } from './enrollmentCrm.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
+import { proofTransferDetails } from './enrollmentProofTotals.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { classOpeningNotices, orderNotice, proofNotices, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
@@ -337,7 +338,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   });
 
   post(base + '/orders/:id/proofs/finish', async (q, r) => {
-    const { uploadId, mime, encoded } = q.body;
+    const { uploadId, mime, encoded, reportedAmount, bankReference } = q.body;
     if (typeof uploadId !== 'string' || !uuid.test(uploadId)) invalid('enrollment_invalid_proof');
     // End the current attempt on a rejected upload, so a later attempt uses a fresh server clock.
     const result = await enrollTx(async (c: Client) => {
@@ -347,15 +348,18 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       if (order.upload_id !== uploadId || !Number(order.upload_active) || ['paid','recovered','ended','refunding','refunded'].includes(order.state)) {
         invalid('enrollment_upload_expired', 409);
       }
-      let digest;
-      try { digest = proofContent(encoded, mime); }
+      let digest, transferDetails;
+      try {
+        digest = proofContent(encoded, mime);
+        transferDetails = proofTransferDetails(reportedAmount,bankReference);
+      }
       catch {
         await c.query('UPDATE enrollment_orders SET upload_id=NULL,upload_expires_at=NULL WHERE id=:p1', [order.id]);
         await expireSeats(c, order.class_id);
         return null;
       }
-      await c.query(`INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,created_at)
-        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,digest,encoded]);
+      await c.query(`INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)
+        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,digest,encoded,transferDetails]);
       const state = order.state === 'awaiting_payment' ? 'proof_review' : order.state;
       await c.query('UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
       await proofNotices(c,order.id,cohort.id,digest,cohort.data.level);

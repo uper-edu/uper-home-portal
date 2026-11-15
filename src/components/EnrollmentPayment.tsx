@@ -27,7 +27,7 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
   file?: File;
   busy: boolean;
   setFile: (file?: File) => void;
-  upload: () => void;
+  upload: (transfer:{reportedAmount?:number;bankReference?:string}) => void;
   existingTransferOnly?: boolean;
   proofUploadFailed?: boolean;
 }) {
@@ -132,7 +132,13 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
     {proofUploadFailed && <p className="enrollment-result-state" role="alert">{t(
       '付款凭证上传失败，请重试。','The payment proof could not be uploaded. Try again.','Bukti pembayaran gagal diunggah. Coba lagi.',
     )}</p>}
-    {canUpload && <form className="enrollment-payment-form" onSubmit={event => { event.preventDefault(); upload(); }}>
+    {canUpload && <form className="enrollment-payment-form" onSubmit={event => {
+      event.preventDefault();
+      const fields=new FormData(event.currentTarget);
+      const amount=String(fields.get('reportedAmount')??'').trim();
+      const bankReference=String(fields.get('bankReference')??'').trim()||undefined;
+      upload({reportedAmount:amount?Number(amount):undefined,bankReference});
+    }}>
       <section className="enrollment-upload-section">
         <h2>{t('转账凭证', 'Transfer proof', 'Bukti transfer')}</h2>
         <label className="enrollment-file">
@@ -141,6 +147,15 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
           <span>{file?.name || t('银行回执或截图', 'Bank receipt or screenshot', 'Bukti bank atau tangkapan layar')}</span>
           <strong><Upload size={15} aria-hidden="true"/>{chooseProof}</strong>
         </label>
+        <div className="enrollment-proof-transfer">
+          <label>{t('转账金额（Rp，选填）','Transfer amount (Rp, optional)','Nominal transfer (Rp, opsional)')}
+            <input name="reportedAmount" type="number" inputMode="numeric" min="1" max="1000000000" step="1" disabled={busy}/>
+          </label>
+          <label>{t('银行流水号（选填）','Bank reference (optional)','Referensi bank (opsional)')}
+            <input name="bankReference" maxLength={120} autoComplete="off" disabled={busy}/>
+          </label>
+          <p>{t('请按银行回执填写。财务会核对实际到账。','Use the details on your bank receipt. Finance will verify the amount received.','Isi sesuai bukti bank. Tim keuangan akan memverifikasi dana yang diterima.')}</p>
+        </div>
       </section>
       <div className="enrollment-proof-actions enrollment-payment-actions">
         {!existingTransferOnly && <p>{t('财务核实足额到账后，报名才算成功。', 'Enrollment is confirmed after Finance verifies full payment.', 'Pendaftaran berhasil setelah pembayaran penuh diverifikasi.')}</p>}

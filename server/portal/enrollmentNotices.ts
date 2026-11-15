@@ -1,9 +1,11 @@
 import { renderEnrollmentEmail, type EnrollmentEmailKind } from './enrollmentEmail.ts';
 import { cardMoney, enrollmentCard } from './enrollmentCards.ts';
 import { enrollmentWeekOf, enrollmentWeekTotals, latestDueEnrollmentWeek } from './enrollmentWeekly.ts';
+import { pendingEnrollmentProofTotals } from './enrollmentProofTotals.ts';
 
 type Client = { query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}> };
 type Notice = Exclude<EnrollmentEmailKind,'otp_apply'|'otp_mine'>;
+const pendingMoney=(amount:number|null,unknown:number)=>cardMoney(amount)+(amount!==null&&unknown?'（另有 '+unknown+' 笔金额未知）':'');
 
 async function record(c:Client,key:string,channel:'email'|'lark',kind:string,subjectId:string,payload:object) {
   // The local app records the exact result of simulated delivery. There is no network transport.
@@ -51,18 +53,19 @@ export async function classOpeningNotices(c:Client,cohort:any,combinedOrderId?:s
     SUM(state IN ('paid','recovered')) AS paid,
     COALESCE(SUM(received),0) AS received,
     SUM(received=0 AND state='awaiting_payment' AND payment_due_at>=UTC_TIMESTAMP(6)) AS waiting,
-    SUM(state IN ('proof_review','partial') AND EXISTS (SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id)) AS pending
+    DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f') AS cutoff
     FROM enrollment_orders o WHERE class_id=:p1 AND state NOT IN ('refunding','refunded')`,[cohort.id]);
   const [totals]=rows;
+  const {pendingParticipants,pendingAmount,pendingUnknownCount}=await pendingEnrollmentProofTotals(c,totals.cutoff,cohort.id);
   await record(c,'lark:class:'+cohort.id,'lark','class_confirmed',cohort.id,{
     title:'已确认开班',level:cohort.data.level, firstLesson:cohort.data.firstLesson,timezone:'Asia/Jakarta',
     paid:Number(totals.paid), minimumPaid:cohort.data.minimumPaid, capacity:cohort.data.capacity,
-    verifiedReceipts:Number(totals.received), waiting:Number(totals.waiting), pending:Number(totals.pending), pendingAmount:null,
+    verifiedReceipts:Number(totals.received), waiting:Number(totals.waiting), pending:pendingParticipants,pendingAmount,pendingUnknownCount,
     ...enrollmentCard('class',cohort.id,'已确认开班',{
       班次:cohort.data.level,首课时间:cohort.data.firstLesson.replace('T',' ')+' WIB',
       足额到账:Number(totals.paid)+' / '+cohort.data.minimumPaid,招生上限:cohort.data.capacity,
-      核实实收:cardMoney(Number(totals.received)),待核实笔数:Number(totals.pending),
-      待核实金额:cardMoney(Number(totals.pending)?null:0),待付款人数:Number(totals.waiting),
+      核实实收:cardMoney(Number(totals.received)),待核实人数:pendingParticipants,
+      待核实金额:pendingMoney(pendingAmount,pendingUnknownCount),待付款人数:Number(totals.waiting),
     }),
   });
   const paid=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",[cohort.id])).rows;
@@ -84,7 +87,7 @@ export async function recordDueEnrollmentWeekly(c:Client,now=new Date()) {
       统计周:weekStart+' 至 '+week.endDate+'（WIB，结束日期不含）',
       新增足额到账报名:totals.enrolled,确认开班:totals.opened,核实实收:cardMoney(totals.received),
       已发出退款:cardMoney(totals.refunded),期末待付款人数:totals.waiting,期末待核实笔数:totals.pending,
-      期末待核实金额:cardMoney(totals.pendingAmount),
+      期末待核实金额:pendingMoney(totals.pendingAmount,totals.pendingUnknownCount),
     }),
   });
 }

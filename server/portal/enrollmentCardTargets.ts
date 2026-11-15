@@ -23,16 +23,16 @@ export function mountEnrollmentCardTargets(app:Express,wrap:Wrap,staff:Staff,fin
         const receipt=(await c.query(`SELECT payload FROM enrollment_notification_receipts
           WHERE channel='lark' AND kind='weekly_report' AND event_key=:p1`,['lark:weekly:'+id])).rows[0];
         if(!receipt) invalid('enrollment_notice_target_not_found',404);
-        const {weekStart,endDate,enrolled,opened,received,refunded,waiting,pending,pendingAmount}=receipt.payload;
-        return {type,weekStart,endDate,enrolled,opened,received,refunded,waiting,pending,pendingAmount};
+        const {weekStart,endDate,enrolled,opened,received,refunded,waiting,pending,pendingAmount,pendingUnknownCount}=receipt.payload;
+        return {type,weekStart,endDate,enrolled,opened,received,refunded,waiting,pending,pendingAmount,pendingUnknownCount};
       }
       if(type==='class'){
         const cohort=(await c.query(`SELECT b.data,p.payload FROM enrollment_classes b
           JOIN enrollment_notification_receipts p ON p.event_key=CONCAT('lark:class:',b.id) WHERE b.id=:p1`,[id])).rows[0];
         if(!cohort) invalid('enrollment_notice_target_not_found',404);
-        const {paid,minimumPaid,capacity,verifiedReceipts,waiting,pending,pendingAmount}=cohort.payload;
+        const {paid,minimumPaid,capacity,verifiedReceipts,waiting,pending,pendingAmount,pendingUnknownCount}=cohort.payload;
         return {type,id,level:cohort.data.level,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
-          paid,minimumPaid,capacity,received:verifiedReceipts,waiting,pending,pendingAmount};
+          paid,minimumPaid,capacity,received:verifiedReceipts,waiting,pending,pendingAmount,pendingUnknownCount};
       }
       const order=(await c.query(`SELECT o.id,o.state,o.price,o.received,b.state AS class_state,b.data AS class_data,
         DATE_FORMAT(p.first_proof,'%Y-%m-%dT%H:%i:%sZ') AS proofAt

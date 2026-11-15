@@ -189,7 +189,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     setCode('');
     setError('');
   }
-  function upload() {
+  function upload(transfer:{reportedAmount?:number;bankReference?:string}) {
     if (!order || !file) return;
     return run(async () => {
       const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs';
@@ -200,7 +200,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
         reader.readAsDataURL(file);
       });
-      await enrollmentPost(path+'/finish',{uploadId:started.uploadId,mime:file.type,encoded});
+      await enrollmentPost(path+'/finish',{uploadId:started.uploadId,mime:file.type,encoded,...transfer});
       setFile(undefined);
       await getOrder(order.id);
       if (params.has('proof')) {
@@ -645,7 +645,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         </>}
         <EnrollmentPayment order={order} course={resultCourse} schedule={aftercare?.currentClass.schedule} language={language}
           status={status ?? ''} canUpload={!!canUpload} file={file} busy={busy} setFile={setFile}
-          upload={() => void upload()} existingTransferOnly={existingTransferOnly}
+          upload={transfer=>void upload(transfer)} existingTransferOnly={existingTransferOnly}
           proofUploadFailed={['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)}/>
       </div> : <>
       {!classId && <button type="button" onClick={()=>{selectOrder(); void run(getOrders);}}>

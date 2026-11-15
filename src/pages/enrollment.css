@@ -245,6 +245,9 @@
   color: var(--enrollment-ink);
 }
 .enrollment-payment-summary h2, .enrollment-payment-section h2, .enrollment-upload-section h2 { font-size: 15px; font-weight: 715; }
+.enrollment-proof-transfer { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:8px 12px; margin-top:12px; }
+.enrollment-proof-transfer label { display:grid; gap:5px; font-size:13px; }
+.enrollment-proof-transfer p { grid-column:1/-1; font-size:13px; margin:0; }
 .enrollment-payment-summary p, .enrollment-payment-section > p { margin-top: 3px; font-size: 13px; color: var(--enrollment-muted); }
 .enrollment-payment-deadline {
   display: flex;
