@@ -4,7 +4,7 @@ import {paymentListFilters,paymentWorklist,canVerifyPayments,paymentVerification
 import {CrmFinanceWorkspace} from '../src/components/crm/CrmFinanceWorkspace';
 import {enrollmentOpportunityReturnPath,opportunityFilterDefaults,opportunityListPath} from '../src/utils/crmEnrollmentOpportunityRoute';
 test('finance return keeps only the filters of the local opportunity list',()=>{
- const route=opportunityListPath({...opportunityFilterDefaults,opportunityQuery:'HSK 2 & weekend',opportunityState:'proof_review'},'customer');
+ const route=opportunityListPath({...opportunityFilterDefaults,opportunityQuery:'HSK 2 & weekend',opportunityState:'proof_review',opportunityFollowup:'with'},'customer');
  assert.equal(enrollmentOpportunityReturnPath(route+'&opportunity=other&ignored=yes'),route+'&resumeOpportunityList=1');
  assert.equal(enrollmentOpportunityReturnPath('//example.test/crm?tab=opportunities'),null);
  assert.equal(enrollmentOpportunityReturnPath('/crm?tab=payments'),null);

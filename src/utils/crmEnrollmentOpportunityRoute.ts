@@ -1,5 +1,5 @@
 export const opportunityFilterDefaults={
-  opportunityStatus:'active',opportunityQuery:'',opportunityOwner:'mine',opportunityLevel:'',opportunityStage:'',opportunityState:'',
+  opportunityStatus:'active',opportunityQuery:'',opportunityOwner:'mine',opportunityLevel:'',opportunityStage:'',opportunityState:'',opportunityFollowup:'',
 };
 export type OpportunityFilters=typeof opportunityFilterDefaults;
 

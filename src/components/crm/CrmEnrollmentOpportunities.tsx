@@ -397,8 +397,9 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
       (!filters.opportunityLevel||filters.opportunityLevel===row.level) &&
       (!filters.opportunityStage||filters.opportunityStage===row.salesStage) &&
       (!filters.opportunityState||filters.opportunityState===currentStatus(row)) &&
+      (filters.opportunityFollowup==='with'?Boolean(row.followup):filters.opportunityFollowup==='without'?!row.followup:true) &&
       [row.level,row.customerName,row.businessNumber,...row.records.map(record=>record.learnerName)].some(value=>value?.toLowerCase().includes(query));
-  });
+  }).sort((a,b)=>Number(Boolean(b.followup))-Number(Boolean(a.followup)));
   return <section className="crm-opportunity-workspace" aria-busy={!error&&(id?!detail:!list)}>
     {id&&<a className="crm-work-link" href={back}>{t(lang,['返回商机列表','Back to opportunities','Kembali ke daftar peluang'])}</a>}
     <div className="admin-page-toolbar"><CrmPageIdentity title={detail?detail.customerName+' · '+detail.level:label}/></div>
@@ -445,6 +446,9 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           options={[{value:'',label:allLabel},...salesProgressStages.map(([value])=>({value,label:progressLabel(value,lang)}))]}/>
         <CrmSingleSelect label={t(lang,['业务状态','Enrollment status','Status pendaftaran'])} value={filters.opportunityState} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityState',value)}
           options={[{value:'',label:allLabel},...businessStates.map(value=>({value,label:states[value]?t(lang,states[value]):value}))]}/>
+        <CrmSingleSelect label={t(lang,['待办','Follow-up','Tindak lanjut'])} value={filters.opportunityFollowup} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityFollowup',value)}
+          options={[{value:'',label:allLabel},{value:'with',label:t(lang,['已有待办','Has follow-up','Ada tindak lanjut'])},
+            {value:'without',label:t(lang,['暂无待办','No follow-up','Belum ada tindak lanjut'])}]}/>
       </div>
       {visible?.length===0?<p className="crm-work-muted">{t(lang,['当前没有符合条件的商机。','No opportunities match.','Tidak ada peluang yang sesuai.'])}</p>:visible&&
         <div ref={tableScroll} className="crm-opportunity-table"><table>
