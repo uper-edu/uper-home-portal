@@ -5,6 +5,7 @@ import { formatCurrency } from '../utils/currency';
 import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
 import type { EnrollmentOrder } from './EnrollmentPayment';
+import { enrollmentSupportPath } from './EnrollmentSupport';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 
 type Copy = readonly [string, string, string];
@@ -127,7 +128,7 @@ export function EnrollmentOrderAftercare({
         {complete&&progress&&progress.refunded>0&&<p>{t(['实际到账时间以原付款渠道为准。','Arrival times depend on the original payment method.','Waktu dana diterima bergantung pada metode pembayaran awal.'])}</p>}
       </article>
       <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
-      {foot(link(backMine,minePath,true),link(support,contact))}
+      {foot(link(backMine,minePath,true),link(support,enrollmentSupportPath('refund',language)))}
     </>;
   } else if (view==='refund' && allowRefundContact) {
     heading = requestRefund;
@@ -259,12 +260,12 @@ export function EnrollmentOrderAftercare({
         <p>{t(['原付款入口已关闭，原席位已释放。','The original payment link is closed and the seat was released.','Pembayaran untuk pesanan awal ditutup dan kursinya sudah dilepas.'])}</p>
       </article>
       <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
-      {foot(lateProofSubmitted ? link(backMine,minePath,true)
+      {foot(order.received>0 && allowRefundContact ? link(support,refundContactPath,true)
+        : lateProofSubmitted ? link(backMine,minePath,true)
         : proofPath ? link(t(['提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan']),proofPath,true)
         : link(backMine,minePath,true), <>
-        {allowRefundContact&&link(requestRefund,refundPath)}
-        {lateProofSubmitted&&proofPath&&link(t(['补交凭证','Submit another proof','Kirim bukti tambahan']),proofPath)}
-        {!lateProofSubmitted&&link(t(['重新查看可报名班次','Browse open classes','Lihat kelas yang masih dibuka']),browsePath)}
+        {(lateProofSubmitted||order.received>0&&allowRefundContact)&&proofPath&&link(t(['补交凭证','Submit another proof','Kirim bukti tambahan']),proofPath)}
+        {!lateProofSubmitted&&order.received===0&&link(t(['重新查看可报名班次','Browse open classes','Lihat kelas yang masih dibuka']),browsePath)}
       </>)}
     </>;
   } else if (transferred) {

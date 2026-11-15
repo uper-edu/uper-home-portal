@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
 import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { EnrollmentOrderAftercare, type EnrollmentAftercare } from './EnrollmentOrderAftercare';
+import { enrollmentSupportPath } from './EnrollmentSupport';
 import { EnrollmentOrderResult } from './EnrollmentOrderResult';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
 import { EnrollmentDemandForm, interestOption, waitlistStates, type DemandItem, type Interests } from './EnrollmentInterests';
@@ -30,7 +31,7 @@ export async function enrollmentPost(path: string, body: unknown) {
   return data;
 }
 type OrderSummary = Order & { level: string; firstLesson: string };
-type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string };
+type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string };
 type InterestRecord = { kind: 'waitlist' | 'demands'; id: string };
 
 export function EnrollmentApplication({ classId, language, full = false, demandOnly = false, paymentClasses, applicationClass, waitlistClass, mineClasses, record }: {
@@ -57,6 +58,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   }
   const [editDemand,setEditDemand] = useState<DemandItem>();
   const [joined,setJoined] = useState(false);
+  const [stillWaiting,setStillWaiting] = useState(false);
   const [savedDemand,setSavedDemand] = useState(false);
   const [hasNoSeat,setHasNoSeat] = useState(full);
   const [email,setEmail] = useState('');
@@ -123,7 +125,17 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     setError('');
     try { await action(); } catch (cause) {
       const message=(cause as Error).message || 'enrollment_failed';
-      if (message==='enrollment_class_full') setHasNoSeat(true);
+      if (message==='enrollment_class_full') {
+        if (applicationClass?.fromWaitlist) {
+          const response = await fetch(base+'/interests',{cache:'no-store'}).catch(()=>null);
+          if (response?.ok) {
+            const rows: Interests | undefined = await response.json().catch(()=>undefined);
+            setStillWaiting(!!rows?.waitlist.some(row=>row.id===applicationClass.fromWaitlist && row.classId===classId && row.state==='waiting'));
+          }
+        }
+        setHasNoSeat(true);
+        window.scrollTo(0,0);
+      }
       if (message==='enrollment_seat_available') setHasNoSeat(false);
       if (message==='enrollment_verification_required' && (applicationClass||demandOnly||waitlistClass)) {
         setVerifiedEmail('');
@@ -297,13 +309,36 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     <input ref={enteredEmailField} type="email" required autoComplete="email" value={email} onChange={event=>editEmail(event.target.value)}
       placeholder={t(['输入你的电子邮箱','Enter your email address','Masukkan alamat email'])}/>
   </label>;
+  if (applicationClass && error==='enrollment_class_full') {
+    const next = new URLSearchParams(params);
+    next.set('apply','1');
+    next.set('join','1');
+    next.delete('waitlist');
+    return <div className="enrollment-last-seat">
+      <Link className="enrollment-back" to={applicationClass.listPath}><ArrowLeft size={15} aria-hidden="true"/>
+        {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}</Link>
+      <h1>{t(['本班已满','This class is full','Kelas ini penuh'])}</h1>
+      <div className="enrollment-result-body">
+        <article className="enrollment-record"><h2>{applicationClass.title}</h2><p>{applicationClass.schedule}</p></article>
+        <p className="enrollment-result-state" role="alert">{t(['你提交申请时，最后一个席位已被其他学员取得。','The last seat was taken while you were applying.','Kursi terakhir diambil saat Anda mengajukan pendaftaran.'])}</p>
+        {stillWaiting&&<p className="enrollment-journey-note">{t(['你的候补仍有效，无需重新加入。','Your waitlist entry is still active. You don’t need to join again.','Posisi daftar tunggu Anda masih aktif. Anda tidak perlu mendaftar ulang.'])}</p>}
+      </div>
+      <div className="enrollment-journey-actions">
+        <Link className="enrollment-quiet" to={applicationClass.listPath}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</Link>
+        {stillWaiting ? <Link className="enrollment-primary" to={applicationClass.detailsPath}>{t(['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu'])}</Link>
+          : <Link className="enrollment-primary" to={'/enrollment/'+encodeURIComponent(classId ?? '')+'?'+next.toString()}>{joinText}</Link>}
+      </div>
+    </div>;
+  }
   if (applicationClass && !hasNoSeat) return <div>
     {verificationStep
       ? <button type="button" className="enrollment-back" onClick={()=>{setVerificationStep(false);setError('');}} disabled={busy}>
         <ArrowLeft size={15} aria-hidden="true"/>{t(['返回申请表','Back to application','Kembali ke formulir'])}
       </button>
       : <Link className="enrollment-back" to={applicationClass.detailsPath}>
-        <ArrowLeft size={15} aria-hidden="true"/>{t(['返回班次详情','Back to class details','Kembali ke detail kelas'])}
+        <ArrowLeft size={15} aria-hidden="true"/>{t(applicationClass.fromWaitlist
+          ? ['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu']
+          : ['返回班次详情','Back to class details','Kembali ke detail kelas'])}
       </Link>}
     <h1 ref={applicationHeading} tabIndex={-1}>{verificationStep ? t(['验证邮箱','Verify your email','Verifikasi email']) : applyText}</h1>
     {error && <p className="enrollment-form-error" role="alert">{t(message)}</p>}
@@ -343,9 +378,9 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         <input type="checkbox" checked={priority} onChange={event=>setPriority(event.target.checked)}/>
         <span><strong>{t(['优先安排 · 可取消','Priority arrangements · Optional','Pengaturan prioritas · Opsional'])}</strong>
           <span>{t([
-            '原班不开课且你已付清学费时，我们会优先寻找最近开课的同级别、同班型班次。有合适席位时先为你保留，再请你确认。若原班顺延，也会先征求你的意见。',
-            'If your original class will not open and you have paid in full, we’ll look for the next class at the same level and in the same format. We’ll hold an available seat and ask you to confirm. We’ll also ask before moving you to a later start date.',
-            'Jika kelas awal tidak dibuka dan biaya sudah lunas, kami akan mencari kelas berikutnya dengan level dan jenis yang sama. Jika ada kursi, kami akan menahannya sambil menunggu konfirmasi Anda. Kami juga akan meminta persetujuan jika jadwal kelas awal mundur.',
+            '原班不开课且你已付清学费时，我们会优先寻找最近开课的同级别、同班型班次。有合适席位时先为你保留，再请你确认。',
+            'If your original class will not open and you have paid in full, we’ll look for the next class at the same level and in the same format. We’ll hold an available seat and ask you to confirm.',
+            'Jika kelas awal tidak dibuka dan biaya sudah lunas, kami akan mencari kelas berikutnya dengan level dan jenis yang sama. Jika ada kursi, kami akan menahannya sambil menunggu konfirmasi Anda.',
           ])}</span>
         </span>
       </label>
@@ -424,7 +459,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     const course = mineClasses?.find(item=>item.id===row.classId);
     const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
-    const payable = row.status==='awaiting_payment'||row.status==='partial';
+    const payable = row.status==='awaiting_payment';
     const action = t(payable ? ['查看转账与凭证','View transfer & proof','Lihat transfer dan bukti']
       : row.status==='expired'&&!row.restored ? ['查看原订单','View original order','Lihat pesanan asal']
       : ['查看报名','View enrollment','Lihat pendaftaran']);
@@ -454,6 +489,12 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   catalogParams.delete('tab');
   catalogParams.delete('apply');
   const catalogPath = '/enrollment?' + catalogParams.toString();
+  function classFromRecord(classId: string, key: 'waitlist' | 'fromDemand', recordId: string) {
+    const query = new URLSearchParams(catalogParams);
+    query.set(key,recordId);
+    if (key==='waitlist') query.set('apply','1');
+    return '/enrollment/'+encodeURIComponent(classId)+'?'+query.toString();
+  }
   const waitlistDetail = record?.kind === 'waitlist' ? interests?.waitlist.find(row=>row.id===record.id) : undefined;
   const demandDetail = record?.kind === 'demands' ? interests?.demands.find(row=>row.id===record.id) : undefined;
   const demandTitle = (row: DemandItem) => [row.criteria.level,row.criteria.period,row.criteria.format]
@@ -482,7 +523,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       {row.state==='withdrawn' && <p role="status" className="enrollment-journey-note">{t(['你已取消候补，之后不会收到本次候补的空位通知。','You cancelled this waitlist entry. You won’t receive availability updates for it.','Anda membatalkan daftar tunggu ini dan tidak akan menerima kabar ketersediaan untuknya.'])}</p>}
       <div className="enrollment-interest-actions">
         {waiting && <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>remove('waitlist',row.id)}>{t(['取消候补','Cancel waitlist entry','Batalkan daftar tunggu'])}</button>}
-        {available ? <Link className="enrollment-primary" to={'/enrollment/'+encodeURIComponent(row.classId)+'?'+catalogParams.toString()+'&apply=1'}>{applyText}</Link>
+        {available ? <Link className="enrollment-primary" to={classFromRecord(row.classId,'waitlist',row.id)}>{applyText}</Link>
           : row.state==='converted'&&row.orderId ? <Link className="enrollment-primary" to={'/enrollment/mine?'+related.toString()}>{t(['查看对应报名','View related application','Lihat pendaftaran terkait'])}</Link>
           : <Link className="enrollment-primary" to={catalogPath}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</Link>}
       </div>
@@ -501,13 +542,17 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         {row.matches.map(match=><article className="enrollment-record" key={match.id}>
           <small>{t(['匹配班次','Matching class','Kelas yang cocok'])}</small>
           <h2>{classTitle(match.level,match.firstLesson,match.id)}</h2>
-          <Link className="enrollment-record-link" to={'/enrollment/'+encodeURIComponent(match.id)+'?'+catalogParams.toString()}>
+          {mineClasses?.find(item=>item.id===match.id)?.schedule && <p>{mineClasses.find(item=>item.id===match.id)?.schedule}</p>}
+          {row.matches.length>1&&<Link className="enrollment-record-link" to={classFromRecord(match.id,'fromDemand',row.id)}>
             {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}<ChevronRight size={15} aria-hidden="true"/>
-          </Link>
+          </Link>}
         </article>)}
+        {!!row.matches.length&&<p className="enrollment-journey-note">{t(['申请时以实际空位为准。','Availability is checked when you apply.','Ketersediaan diperiksa saat Anda mendaftar.'])}</p>}
         {active&&<div className="enrollment-interest-actions">
+          <button type="button" className={row.matches.length===1?'enrollment-quiet':'enrollment-primary enrollment-demand-edit'} disabled={busy||editDemand?.id===row.id} onClick={()=>setEditDemand(row)}>{t(['修改需求','Edit preferences','Ubah preferensi'])}</button>
           <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>remove('demands',row.id)}>{t(['撤回需求','Withdraw request','Tarik permintaan'])}</button>
-          <button type="button" className="enrollment-primary" disabled={busy||editDemand?.id===row.id} onClick={()=>setEditDemand(row)}>{t(['修改需求','Edit preferences','Ubah preferensi'])}</button>
+          {row.matches.length===1&&<Link className="enrollment-primary" to={classFromRecord(row.matches[0].id,'fromDemand',row.id)}>
+            {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}</Link>}
         </div>}
         {editDemand?.id===row.id&&<div className="enrollment-record">
           <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences}/>
@@ -560,7 +605,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     || ((aftercareView==='refund'||aftercareView==='refund-contact') && canConsultRefund)
     || aftercare?.originalClassState==='cancelled' || transferred
   );
-  const showOrderResult = order && (order.status==='paid' || (order.status==='proof_review' && !editingProof));
+  const showOrderResult = order && (order.status==='paid' || (['proof_review','partial'].includes(order.status) && !editingProof));
   const orderResultClasses = paymentClasses ?? mineClasses ?? [];
   const resultCourse = order && orderResultClasses.find(row=>row.id===order.classId);
   const refundParams = new URLSearchParams(mineParams);
@@ -571,13 +616,14 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   proofParams.set('proof','upload');
   if (!open) return <button className="enrollment-action" type="button" onClick={()=>setOpen(true)}>{hasNoSeat?joinText:applyText}</button>;
   return <section className={showAftercare || showOrderResult ? "enrollment-application enrollment-order-result-shell" : mineClasses && !order ? "enrollment-application enrollment-mine-content" : order && paymentClasses ? "enrollment-application enrollment-payment-content" : "enrollment-card enrollment-application"}>
-    {error && <p role="alert">{t(message)}</p>}
+    {error && !(paymentClasses && order && ['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)) && <p role="alert">{t(message)}</p>}
     {checkingRecords || loadingPayment ? <p role="status">{t(['正在读取报名…','Loading enrollment…','Memuat pendaftaran…'])}</p> : order ? <>
       {showAftercare ? <EnrollmentOrderAftercare order={order} details={aftercare} catalog={orderResultClasses} search={params}
         language={language} minePath={listPath} busy={busy} proofPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
         onTransfer={transfer} onRefresh={()=>void run(()=>getOrder(order.id))}/> : showOrderResult ? <EnrollmentOrderResult order={order} course={resultCourse} classInfo={aftercare?.currentClass}
         classState={aftercare?.originalClassState} language={language} backPath={listPath} busy={busy}
         refundPath={canConsultRefund ? '/enrollment/mine?'+refundParams.toString() : undefined}
+        balancePath={order.status==='partial' ? '/enrollment/payment?'+proofParams.toString() : undefined}
         uploadPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
         onRefresh={()=>void run(()=>getOrder(order.id))}/> : paymentClasses ? <div className={existingTransferOnly ? 'enrollment-order-result enrollment-order-result-shell' : 'contents'}>
         {existingTransferOnly && <>
@@ -590,7 +636,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         </>}
         <EnrollmentPayment order={order} course={resultCourse} schedule={aftercare?.currentClass.schedule} language={language}
           status={status ?? ''} canUpload={!!canUpload} file={file} busy={busy} setFile={setFile}
-          upload={() => void upload()} existingTransferOnly={existingTransferOnly}/>
+          upload={() => void upload()} existingTransferOnly={existingTransferOnly}
+          proofUploadFailed={['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)}/>
       </div> : <>
       {!classId && <button type="button" onClick={()=>{selectOrder(); void run(getOrders);}}>
         {t(['返回报名列表','Back to enrollments','Kembali ke daftar pendaftaran'])}
@@ -608,9 +655,21 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         {t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}
       </Link>}
       {!showAftercare && !showOrderResult && (!paymentClasses || !order.bank) && <button type="button" onClick={()=>void run(()=>getOrder(order.id))}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>}
-    </> : !verified ? <form className={mineClasses ? 'enrollment-mine-login' : undefined} onSubmit={event=>{event.preventDefault();void (challenge?verify():sendCode());}}>
+    </> : !verified && mineClasses ? <form className="enrollment-journey-form enrollment-lookup"
+      onSubmit={event=>{event.preventDefault();if (!awaitingCode) void verify();}}>
+      <p className="enrollment-journey-note">{t([
+        '输入报名、候补或登记选课需求时使用的邮箱，获取验证码。',
+        'Enter the email you used to enroll, join a waitlist, or save course preferences.',
+        'Masukkan email yang digunakan untuk mendaftar, masuk daftar tunggu, atau menyimpan preferensi kursus.',
+      ])}</p>
+      {emailField}{codeField}
+      <div className="enrollment-journey-actions">
+        <Link className="enrollment-quiet" to={enrollmentSupportPath('account',language)}>{t(['无法使用原邮箱？联系销售或客服','Can’t use your original email? Contact support','Tidak bisa memakai email awal? Hubungi layanan pelanggan'])}</Link>
+        <button type="submit" className="enrollment-primary" disabled={busy||awaitingCode}>
+          {t(['验证并查看','Verify and view','Verifikasi dan lihat'])}</button>
+      </div>
+    </form> : !verified ? <form onSubmit={event=>{event.preventDefault();void (challenge?verify():sendCode());}}>
       <h2>{t(['验证邮箱','Verify your email','Verifikasi email'])}</h2>
-      {mineClasses&&<p>{t(['验证后即可查看该邮箱下的报名、候补和选课需求。','Verify your email to view its enrollments, waitlist entries, and course preferences.','Verifikasi email untuk melihat pendaftaran, daftar tunggu, dan preferensi kursus.'])}</p>}
       <label>{t(['电子邮箱','Email','Email'])}<input type="email" autoComplete="email" required value={email} readOnly={!!challenge} onChange={event=>setEmail(event.target.value)}/></label>
       {challenge && <label>{t(['六位验证码','Six-digit code','Kode enam digit'])}<input autoComplete="one-time-code" required pattern="[0-9]{6}" inputMode="numeric" value={code} onChange={event=>setCode(event.target.value)}/></label>}
       <button className="enrollment-action" type="submit" disabled={busy}>{t(challenge?['验证','Verify','Verifikasi']:['发送验证码','Send code','Kirim kode'])}</button>

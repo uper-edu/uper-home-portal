@@ -1,0 +1,66 @@
+import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { interestText, type InterestLanguage } from './EnrollmentInterests';
+import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
+
+type Copy = readonly [string,string,string];
+const topics = {
+  account: {
+    title: ['找回报名邮箱','Recover your enrollment email','Temukan email pendaftaran'],
+    instructions: [
+      '请联系工作人员核对报名身份。核对后，工作人员会告诉你如何继续验证。',
+      'Ask support to verify your enrollment identity. They will explain how to continue once they have checked it.',
+      'Hubungi petugas untuk memeriksa identitas pendaftaran. Setelah pemeriksaan, petugas akan menjelaskan cara melanjutkan verifikasi.',
+    ],
+  },
+  payment: {
+    title: ['联系销售运营核对转账','Contact sales operations about a transfer','Hubungi tim penjualan untuk memeriksa transfer'],
+    instructions: [
+      '请提供报名编号和转账时间。销售运营会协助财务在收款系统中查找这笔转账。',
+      'Have your order number and transfer time ready. Sales operations can help Finance find the transfer in the payment system.',
+      'Siapkan nomor pendaftaran dan waktu transfer. Tim penjualan dapat membantu tim keuangan mencari transfer di sistem penerimaan dana.',
+    ],
+  },
+  refund: {
+    title: ['查询已提交的退款','Ask about a refund already requested','Tanyakan pengembalian dana yang sudah diajukan'],
+    instructions: [
+      '请提供报名编号。客服会查询已登记的退款并跟进原申请。',
+      'Share your order number. Support can look up the recorded refund and follow up on your existing request.',
+      'Berikan nomor pendaftaran. Tim layanan pelanggan dapat memeriksa pengembalian dana tercatat dan menindaklanjuti pengajuan Anda.',
+    ],
+  },
+  advisor: {
+    title: ['联系课程顾问','Contact a course advisor','Hubungi konsultan kursus'],
+    instructions: [
+      '如已报名，请提供报名编号。也请说明你想咨询的班次或上课安排。',
+      'If you have enrolled, have your order number ready. Tell us which class or schedule you would like to ask about.',
+      'Jika sudah mendaftar, siapkan nomor pendaftaran. Sampaikan kelas atau jadwal yang ingin Anda tanyakan.',
+    ],
+  },
+} satisfies Record<string,{title:Copy;instructions:Copy}>;
+
+export function enrollmentSupportPath(topic: keyof typeof topics, language: InterestLanguage) {
+  return '/enrollment/help/'+topic+'?lang='+language;
+}
+
+export function EnrollmentSupport({ topic, language }: {topic: string; language: InterestLanguage}) {
+  const t = (value: Copy) => interestText(language,value);
+  const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
+  return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
+    <Link className="enrollment-back" to={'/enrollment/mine?lang='+language}><ArrowLeft size={15} aria-hidden="true"/>
+      {t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya'])}</Link>
+    {info ? <>
+      <h1>{t(info.title)}</h1>
+      <article className="enrollment-record">
+        <h2>{t(['联系说明','How to get help','Cara mendapatkan bantuan'])}</h2>
+        <p>{t(info.instructions)}</p>
+      </article>
+      <div className="enrollment-journey-actions">
+        <a className="enrollment-primary enrollment-whatsapp-action" href={socialProfiles.whatsapp.url} target="_blank" rel="noopener noreferrer">
+          <SocialProfileIcon platform="whatsapp" className="size-4"/>
+          {t(['通过 WhatsApp 联系','Contact on WhatsApp','Hubungi via WhatsApp'])}
+        </a>
+      </div>
+    </> : <h1>{t(['此帮助页面不可用。','This help page is unavailable.','Halaman bantuan ini tidak tersedia.'])}</h1>}
+  </section>;
+}

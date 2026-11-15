@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, Minus, Plus } from 'lucide-react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,7 @@ import { normalizeSiteLanguage } from '../utils/siteMetadata';
 import { formatCurrency } from '../utils/currency';
 import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { PublicSingleSelect } from '../components/PublicSingleSelect';
+import { EnrollmentSupport } from '../components/EnrollmentSupport';
 import { EnrollmentApplication, enrollmentCopy } from '../components/EnrollmentApplication';
 import './enrollment.css';
 
@@ -33,7 +34,10 @@ const copy = {
   standardPrice: ['Standard price', 'Harga standar', '标准价'],
   courseIntro: ['About this course', 'Tentang kursus ini', '课程介绍'],
   rules: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '查看开班与退款说明'],
-  close: ['Close', 'Tutup', '关闭'],
+  rulesTitle: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '开班与退款说明'],
+  backDetail: ['Back to class details', 'Kembali ke detail kelas', '返回班次详情'],
+  backMatch: ['Back to matching results', 'Kembali ke hasil pencocokan', '返回匹配结果'],
+  noMatchBody: ['Try changing the time or class type, or tell us what you want to study.', 'Coba ubah waktu atau jenis kelas, atau beri tahu kami kelas yang Anda inginkan.', '可以调整时段或班型，也可以告诉我们你的上课偏好。'],
   payment: ['Transfer & proof', 'Transfer dan bukti', '转账与凭证'],
   backMine: ['Back to my enrollments', 'Kembali ke pendaftaran saya', '返回我的报名'],
   noMatch: ['Need a different class?', 'Butuh kelas lain?', '没找到合适的班？'],
@@ -60,17 +64,17 @@ export default function Enrollment() {
   const locale = language === 'zh' ? 'zh-CN' : language === 'id' ? 'id-ID' : 'en-GB';
   const t = (key: keyof typeof copy) => copy[key][language === 'zh' ? 2 : language === 'id' ? 1 : 0];
   const [params, setParams] = useSearchParams();
-  const { classId, recordKind, recordId } = useParams();
+  const { classId, recordKind, recordId, topic } = useParams();
   const pathname = useLocation().pathname.replace(/\/$/, '');
   const record = recordId && (recordKind === 'waitlist' || recordKind === 'demands') ? { kind:recordKind, id:recordId } as const : undefined;
   const mine = pathname === '/enrollment/mine' || !!recordId;
   const interest = pathname === '/enrollment/interest';
   const payment = pathname === '/enrollment/payment';
   const application = params.get('apply') === '1' || params.has('order');
-  const rules = useRef<HTMLDialogElement>(null);
+  const rulesPage = !!classId && params.get('view')==='rules';
   useEffect(() => {
-    if (classId && application) window.scrollTo(0, 0);
-  }, [classId, application]);
+    if (classId && (application || rulesPage)) window.scrollTo(0, 0);
+  }, [classId, application, rulesPage]);
   const [classes, setClasses] = useState<PublicEnrollmentClass[]>();
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -110,7 +114,13 @@ export default function Enrollment() {
   catalogParams.delete('proof');
   catalogParams.delete('view');
   catalogParams.delete('target');
-  const listPath = '/enrollment?' + catalogParams.toString();
+  const waitlistId = params.get('waitlist');
+  const matchId = params.get('fromDemand');
+  const publicParams = new URLSearchParams(catalogParams);
+  for (const key of ['waitlist','fromDemand','join']) publicParams.delete(key);
+  const listPath = '/enrollment?' + publicParams.toString();
+  const waitlistPath = waitlistId ? '/enrollment/mine/waitlist/'+encodeURIComponent(waitlistId)+'?'+publicParams.toString() : undefined;
+  const matchPath = matchId ? '/enrollment/mine/demands/'+encodeURIComponent(matchId)+'?'+publicParams.toString() : undefined;
   const minePath = '/enrollment/mine?' + catalogParams.toString();
   const interestPath = '/enrollment/interest?' + catalogParams.toString();
   const detailsPath = (id: string, apply = false) => {
@@ -166,6 +176,27 @@ export default function Enrollment() {
     </article>;
   };
 
+  if (topic) return <EnrollmentSupport topic={topic} language={language}/>;
+
+  if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
+    <Link className="enrollment-back" to={detailsPath(classId!)}><ArrowLeft size={15} aria-hidden="true"/>{t('backDetail')}</Link>
+    <h1>{t('rulesTitle')}</h1>
+    <div className="enrollment-result-body">
+      <article className="enrollment-record"><h2>{enrollmentCopy(language,['原班无法如期开课','If the original class won’t open','Jika kelas asal tidak dibuka'])}</h2>
+        <p>{enrollmentCopy(language,[
+          '已核实足额到账的学员可以转班、等待合适班次，或联系销售或客服申请原路退款。',
+          'After full payment is verified, you can transfer, wait for another class, or contact sales or support to request a refund to the original payment method.',
+          'Setelah pembayaran lunas diverifikasi, Anda bisa pindah kelas, menunggu kelas lain, atau menghubungi tim penjualan atau layanan pelanggan untuk meminta pengembalian ke metode pembayaran awal.',
+        ])}</p></article>
+      <article className="enrollment-record"><h2>{enrollmentCopy(language,['学员自行退出','If you decide to withdraw','Jika Anda mengundurkan diri'])}</h2>
+        <p>{enrollmentCopy(language,[
+          '由销售或客服按报名前公示的政策核对适用条件和金额。已确认开班时，退款须按特殊情况审核。',
+          'Sales or support checks eligibility and amounts against the policy shown before enrollment. Once a class is confirmed, refunds require special review.',
+          'Tim penjualan atau layanan pelanggan memeriksa syarat dan jumlah sesuai kebijakan sebelum pendaftaran. Setelah kelas dikonfirmasi, pengembalian dana memerlukan peninjauan khusus.',
+        ])}</p></article>
+    </div>
+  </section>;
+
   if (payment) return <section className="enrollment-screen enrollment-payment">
     <Link className="enrollment-back" to={minePath}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link>
     <h1>{t('payment')}</h1>
@@ -188,7 +219,7 @@ export default function Enrollment() {
       accepting ? <EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/> : <p>{t('unavailable')}</p>}
   </section>;
 
-  if (application && selected?.availability === 'full' && !params.has('order') && accepting) {
+  if (application && selected && (selected.availability === 'full' || params.get('join')==='1') && !params.has('order') && accepting) {
     return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
       <Link className="enrollment-back" to={listPath}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
       <h1>{t('join')}</h1>
@@ -202,13 +233,15 @@ export default function Enrollment() {
         title: selected.level + ' · ' + t(selected.format) + ' · ' + dateLabel(selected),
         schedule: selected.schedule,
         price: selected.price,
-        detailsPath: detailsPath(selected.id),
+        detailsPath: waitlistPath ?? detailsPath(selected.id),
+        fromWaitlist: waitlistId ?? undefined,
+        listPath,
       }}/>
     </section>;
   }
 
   if (classId) return <section className="enrollment-screen enrollment-detail">
-    <Link className="enrollment-back" to={application ? detailsPath(classId) : listPath}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'details' : 'back')}</Link>
+    <Link className="enrollment-back" to={application ? detailsPath(classId) : matchPath ?? listPath}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'backDetail' : matchPath ? 'backMatch' : 'back')}</Link>
     <h1>{t(application && selected ? selected.availability === 'full' ? 'join' : 'apply' : 'details')}</h1>
     {failed ? <p role="alert">{t('error')} <button type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
       : !classes ? <p role="status">{t('loading')}</p>
@@ -220,7 +253,7 @@ export default function Enrollment() {
         <aside className="enrollment-detail-aside">
           {classCard(selected, false)}
           <div className="enrollment-detail-actions">
-            <button type="button" className="enrollment-quiet" onClick={() => rules.current?.showModal()}>{t('rules')}</button>
+            <Link className="enrollment-quiet" to={detailsPath(selected.id)+'&view=rules'}>{t('rules')}</Link>
             {accepting && <Link className="enrollment-primary" to={detailsPath(selected.id, true)}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>}
           </div>
         </aside>
@@ -237,15 +270,7 @@ export default function Enrollment() {
             </details>;
           })}
         </section>
-        <dialog className="enrollment-rules-dialog" ref={rules} aria-labelledby="enrollment-rules-title">
-          <h2 id="enrollment-rules-title">{t('rules')}</h2>
-          <p>{enrollmentCopy(language, [
-            'UPER 会通知开班结果。若原班确认不开班且已核实足额到账，可在「我的报名」查看后续安排，也可主动申请退款。若已确认开班，特殊情况请联系销售客服。',
-            'UPER will share the opening decision. If your original class will not open and your full payment has been verified, check My enrollments for next steps or request a refund there. If the class is confirmed, contact support about exceptional circumstances.',
-            'UPER akan mengabari keputusan pembukaan kelas. Jika kelas asal tidak dibuka dan pembayaran penuh sudah diverifikasi, lihat langkah berikutnya di Pendaftaran saya atau ajukan pengembalian dana. Jika kelas sudah dikonfirmasi, hubungi layanan pelanggan untuk keadaan khusus.',
-          ])}</p>
-          <form method="dialog"><button className="enrollment-primary">{t('close')}</button></form>
-        </dialog>
+
       </div>}
   </section>;
 
@@ -269,7 +294,7 @@ export default function Enrollment() {
     {failed ? <p role="alert">{t('error')} <button className="enrollment-quiet" type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
       : !classes ? <p role="status">{t('loading')}</p>
       : rows?.length ? <div className="enrollment-class-grid">{rows.map(row => classCard(row, true))}</div>
-      : <div className="enrollment-class-card enrollment-empty"><CalendarDays size={20} aria-hidden="true"/><p>{t('empty')}</p><button className="enrollment-quiet" type="button" onClick={() => {
+      : <div className="enrollment-class-card enrollment-empty"><CalendarDays size={20} aria-hidden="true"/><div><p><strong>{t('empty')}</strong></p><p>{t('noMatchBody')}</p></div><button className="enrollment-quiet" type="button" onClick={() => {
         const next = new URLSearchParams(params);
         next.delete('period'); next.delete('format');
         setParams(next, { replace: true, preventScrollReset: true });

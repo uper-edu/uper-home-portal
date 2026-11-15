@@ -106,6 +106,7 @@ export default function App() {
                   <Route path="enrollment/mine" element={<Enrollment />} />
                   <Route path="enrollment/mine/:recordKind/:recordId" element={<Enrollment />} />
                   <Route path="enrollment/payment" element={<Enrollment />} />
+                  <Route path="enrollment/help/:topic" element={<Enrollment />} />
                   <Route path="enrollment/interest" element={<Enrollment />} />
                   <Route path="enrollment/:classId" element={<Enrollment />} />
                   <Route path="csca" element={<CSCA />} />

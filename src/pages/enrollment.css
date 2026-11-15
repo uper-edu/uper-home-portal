@@ -236,18 +236,6 @@
 .enrollment-course details p { margin: -2px 0 12px; color: var(--enrollment-muted); white-space: pre-wrap; }
 .enrollment-detail-actions { display: grid; gap: 8px; margin-top: 14px; }
 .enrollment-detail-actions .enrollment-quiet { justify-content: center; font-size: 13px; min-height: 24px; }
-.enrollment-rules-dialog {
-  width: min(440px, calc(100% - 32px));
-  margin: auto;
-  padding: 22px;
-  border-radius: 14px;
-  border: 1px solid var(--enrollment-border);
-  color: var(--enrollment-ink);
-}
-.enrollment-rules-dialog::backdrop { background: #122b3773; }
-.enrollment-rules-dialog h2 { font-weight: 720; font-size: 18px; }
-.enrollment-rules-dialog p { margin-block: 10px 18px; color: var(--enrollment-muted); }
-.enrollment-rules-dialog form { text-align: right; }
 .enrollment-payment, .enrollment-apply-layout { max-width: 664px; }
 .enrollment-payment-content { display: grid; gap: 10px; }
 .enrollment-payment-summary, .enrollment-payment-section {
@@ -627,3 +615,15 @@
 }
 .enrollment-refund-reference strong { color: var(--enrollment-ink); text-align: right; }
 .enrollment-whatsapp-action { gap: 7px; }
+
+.enrollment-support .enrollment-journey-actions { margin-top: 16px; }
+.enrollment-lookup { max-width: 616px; }
+.enrollment-mine:has(.enrollment-lookup) { max-width: 664px; }
+.enrollment-interest-actions .enrollment-demand-edit { order: 1; }
+.enrollment-last-seat .enrollment-journey-actions .enrollment-quiet { justify-content: center; }
+@media (max-width: 767px) {
+  .enrollment-support:has(.enrollment-journey-actions), .enrollment-mine:has(.enrollment-lookup) {
+    padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+  }
+  .enrollment-lookup .enrollment-quiet { justify-content: center; }
+}
