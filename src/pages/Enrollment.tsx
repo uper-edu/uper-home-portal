@@ -10,6 +10,7 @@ import { PublicSingleSelect } from '../components/PublicSingleSelect';
 import { EnrollmentSupport } from '../components/EnrollmentSupport';
 import { oneToOneRate } from '../data/enrollmentOneToOne';
 import { EnrollmentApplication, enrollmentCopy } from '../components/EnrollmentApplication';
+import { EnrollmentAssistance } from '../components/EnrollmentAssistance';
 import './enrollment.css';
 
 const copy = {
@@ -182,6 +183,7 @@ export default function Enrollment() {
     </article>;
   };
 
+  if (pathname==='/enrollment/assist') return <EnrollmentAssistance language={language}/>;
   if (topic) return <EnrollmentSupport topic={topic} language={language}
     level={params.has('level')&&oneToOneRate(level)?level:undefined} period={period} catalogPath={listPath}/>;
 

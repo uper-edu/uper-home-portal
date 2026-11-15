@@ -334,6 +334,12 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,\n          actor,email,data,expires_at,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,\n          actor,email,data,expires_at,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id": {
     "sql": "INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id",
     "sources": [
@@ -345,6 +351,12 @@
     "sql": "INSERT INTO enrollment_classes (course_id,revision,state,first_lesson_at,enrollment_closes_at,data,id,updated_at) VALUES (:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)\n        VALUES('order',:p1,:p2,:p3,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)\n        VALUES('order',:p1,:p2,:p3,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
     ]
   },
   "INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)\n    VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE opportunity_id=:p4": {
@@ -1560,6 +1572,12 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
+  "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active FROM enrollment_assisted_applications WHERE token_digest=:p1": {
+    "sql": "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active FROM enrollment_assisted_applications WHERE token_digest=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT *,payment_due_at>=UTC_TIMESTAMP(6) AS before_due,\n    upload_expires_at>=UTC_TIMESTAMP(6) AS upload_active FROM enrollment_orders WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT *,payment_due_at>=UTC_TIMESTAMP(6) AS before_due,\n    upload_expires_at>=UTC_TIMESTAMP(6) AS upload_active FROM enrollment_orders WHERE id=:p1 FOR UPDATE",
     "sources": [
@@ -1870,6 +1888,12 @@
     "sql": "SELECT data,created_at FROM portal_audit WHERE action IN ('channel.test.start','channel.test.result','channel.test.received') AND data->>'$.channelId'=:p1 AND (:p2 IS NULL OR data->>'$.requestId'=:p2) ORDER BY id DESC LIMIT 1",
     "sources": [
       "server/portal/larkGroupChannelTest.ts"
+    ]
+  },
+  "SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1": {
+    "sql": "SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
     ]
   },
   "SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS replyBy FROM enrollment_transfer_invitations WHERE id=:p1": {
@@ -2316,6 +2340,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT id,class_id AS classId,order_id AS orderId,actor,\n      DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,\n      DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications\n      WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1": {
+    "sql": "SELECT id,class_id AS classId,order_id AS orderId,actor,\n      DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,\n      DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications\n      WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT id,class_id,email FROM enrollment_orders WHERE id=:p1": {
     "sql": "SELECT id,class_id,email FROM enrollment_orders WHERE id=:p1",
     "sources": [
@@ -2407,8 +2437,8 @@
       "server/portal/notificationGroupChannels.ts"
     ]
   },
-  "SELECT id,course_id,state,data,\n      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,\n      COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active\n      FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
-    "sql": "SELECT id,course_id,state,data,\n      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,\n      COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active\n      FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+  "SELECT id,course_id,state,data,revision,\n      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,\n      COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active\n      FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT id,course_id,state,data,revision,\n      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,\n      COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active\n      FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -2619,6 +2649,12 @@
     "sql": "SELECT id,profile FROM portal_leads WHERE JSON_LENGTH(profile->'$.commitments')>0",
     "sources": [
       "server/portal/worker.ts"
+    ]
+  },
+  "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "SELECT id,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NOT NULL": {
@@ -3676,6 +3712,18 @@
     "sql": "UPDATE crm_users SET roles=:p1,access_revision=access_revision+1 WHERE id='Robert'",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)\n          WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)": {
+    "sql": "UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)\n          WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_assisted_applications SET order_id=:p2,confirmed_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_assisted_applications SET order_id=:p2,confirmed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
     ]
   },
   "UPDATE enrollment_classes SET course_id=:p1,revision=:p2,state=:p3,first_lesson_at=:p4,enrollment_closes_at=:p5,data=:p6,updated_at=UTC_TIMESTAMP(6) WHERE id=:p7": {

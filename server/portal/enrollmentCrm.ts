@@ -159,6 +159,32 @@ const isOpenOpportunity=(row:ReturnType<typeof projectOpportunity>)=>
   !['enrolled','closed'].includes(row.state)&&row.salesStage!=='progress:closed';
 const canProgress=(actor:Employee,profile:any)=>profile.identityLifecycle!=='pending'&&permittedRecord(actor,profile,'crm.followup');
 
+export async function assistedEnrollmentOpportunity(c:Client,id:string,actor?:Employee) {
+  const row=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1 FOR UPDATE',[id])).rows[0];
+  const customer=row&&await canonicalIdentity(c,row.lead_id);
+  if(!customer||actor&&(!allowed(actor,customer.profile)||!canProgress(actor,customer.profile)))
+    invalid('enrollment_opportunity_not_found',404);
+  if(customer.profile.identityLifecycle==='pending'||(await pendingIdentity(c,customer.id)).length)
+    invalid('enrollment_assistance_identity',409);
+  const records=await recordsForOpportunity(c,id);
+  if(!isOpenOpportunity(projectOpportunity(row,records,customer.profile))
+    ||records.some(record=>record.kind==='order'&&!['ended','expired'].includes(record.state)))
+    invalid('enrollment_assistance_existing_order',409);
+  return {customer,level:String(row.level)};
+}
+
+export async function validateAssistedContacts(c:Client,customer:{id:string;profile:any},name:string,email:string,phone:string) {
+  const profile=customer.profile, digits=normalizeContactPhone(phone);
+  if(enrollmentLearnerNameKey(name)!==enrollmentLearnerNameKey(profile.fullName??'')
+    ||profile.email&&String(profile.email).trim().toLowerCase()!==email
+    ||profile.whatsapp&&normalizeContactPhone(profile.whatsapp)!==digits) invalid('enrollment_assistance_identity',409);
+  const matches=(await c.query(`SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1
+    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)`,
+    [email,digits,digits.startsWith('62')?'0'+digits.slice(2):digits,'00'+digits])).rows;
+  if(matches.some(match=>match.id!==customer.id&&match.profile.identityMergedInto!==customer.id))
+    invalid('enrollment_assistance_identity',409);
+}
+
 const changeEmailStatements = {
   order: {
     lock: 'SELECT email FROM enrollment_orders WHERE id=:p1 FOR UPDATE',
@@ -343,7 +369,16 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       }):[],
     })).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));
     const tasks=await opportunityTasks(c,canProgress(actor,customer.profile)?[customer.profile]:[]);
-    return {...attachOpportunityActions(actor,customer.profile,current,tasks),progress,emails};
+    const actions=attachOpportunityActions(actor,customer.profile,current,tasks);
+    const assistance=actions.canProgress?{
+      email:customer.profile.email||'',phone:customer.profile.whatsapp||'',
+      allowed:!current.records.some(record=>record.kind==='order'&&!['ended','expired'].includes(record.state)),
+    }:undefined;
+    const assistanceHistory=(await c.query(`SELECT id,class_id AS classId,order_id AS orderId,actor,
+      DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,
+      DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications
+      WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1`,[row.id])).rows[0];
+    return {...actions,progress,emails,assistance,assistanceHistory};
   }));
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);

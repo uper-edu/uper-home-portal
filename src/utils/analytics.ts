@@ -114,6 +114,7 @@ function withAnalytics(send: (current: NonNullable<typeof client>) => boolean) {
       configuration, GA_MEASUREMENT_ID, href, build?.environment || (import.meta as any).env?.MODE,
     )) return false;
     const route = new URL(href);
+    if(/^\/enrollment\/assist\/?$/.test(route.pathname))return false;
     const publicPage = !/^\/(crm|cms|system|studio)(?:\/|$)/i.test(route.pathname);
     const lookup = publicPage ? lookupPromotion(route.searchParams) : undefined;
     const sendCurrent = () => {

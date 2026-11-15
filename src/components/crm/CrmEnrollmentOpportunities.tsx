@@ -1,6 +1,7 @@
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useRef, useState } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
+import { CrmEnrollmentAssistance } from './CrmEnrollmentAssistance';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
 import { formatCrmEventTime, formatCrmSummaryTime, viewerTimeZone } from '../../utils/crmOperatingTime';
@@ -38,6 +39,8 @@ type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
   state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
   emails?:EnrollmentEmail[];
+  assistance?:{email:string;phone:string;allowed:boolean};
+  assistanceHistory?:{id:string;classId:string;orderId?:string;actor:string;createdAt:string;expiresAt:string;confirmedAt?:string};
   progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string;sources?:OpportunitySource[]}[];canProgress?:boolean;canInitiateFollowup?:boolean;followup?:OpportunityFollowup|null;
 };
 type OpportunityList = {opportunities:Opportunity[];customer?:{id:string;name:string}};
@@ -355,6 +358,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const [result,setResult]=useState<OpportunityList>();
   const list=result?.opportunities;
   const [detail,setDetail]=useState<Opportunity>();
+  const [assisting,setAssisting]=useState(false);
+  const [assistanceRevision,setAssistanceRevision]=useState(0);
   const [error,setError]=useState('');
   const targetRecord=params.get('enrollmentRecord');
   const resumeList=params.get('resumeOpportunityList')==='1';
@@ -376,7 +381,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     if(id) void read<Opportunity>(base+'/'+encodeURIComponent(id),controller.signal).then(setDetail,failure);
     else void read<OpportunityList>(base+(customerId?'?'+new URLSearchParams({customerId}):''),controller.signal).then(setResult,failure);
     return ()=>controller.abort();
-  },[id,customerId]);
+  },[id,customerId,assistanceRevision]);
   useEffect(()=>{
     if(id) return;
     const url=new URL(window.location.href);
@@ -498,6 +503,18 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
       {detail.identityPending&&canReviewIdentity&&<a className="crm-work-link" href={crmHref({tab:'leads',lead:detail.customerId,identityLead:detail.customerId})}>{t(lang,['核实身份','Review identity','Verifikasi identitas'])}</a>}
       {detail.canProgress&&<button type="button" className="crm-work-button justify-self-start" disabled={busy}
         onClick={()=>void openProgress(detail)}>{t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}</button>}
+      {detail.assistance?.allowed&&<button type="button" className="crm-work-button justify-self-start" onClick={()=>setAssisting(true)}>
+        {t(lang,['协助报名','Assist enrollment','Bantu pendaftaran'])}
+      </button>}
+      {detail.assistanceHistory&&<p className="crm-work-muted">
+        {t(lang,['最近一次协助报名','Latest assisted enrollment','Pendaftaran berbantuan terakhir'])} · {detail.assistanceHistory.confirmedAt
+          ?t(lang,['学员已确认','Confirmed by learner','Dikonfirmasi siswa'])
+          :Date.parse(detail.assistanceHistory.expiresAt)>Date.now()?t(lang,['待学员确认','Awaiting learner confirmation','Menunggu konfirmasi siswa']):
+            t(lang,['链接已失效','Link expired','Tautan kedaluwarsa'])}
+      </p>}
+      {assisting&&detail.assistance&&<CrmEnrollmentAssistance key={detail.id} opportunityId={detail.id} level={detail.level}
+        customerName={detail.customerName} contacts={detail.assistance} lang={lang} isLight={isLight}
+        onClose={()=>setAssisting(false)} onDone={()=>setAssistanceRevision(value=>value+1)}/>}
       {!!detail.progress?.length&&<section>
         <h2>{t(lang,['商机进展','Opportunity progress','Kemajuan peluang'])}</h2>
         <ol className="crm-course-records">{detail.progress.map(entry=><li key={entry.id}>

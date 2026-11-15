@@ -112,6 +112,7 @@ async function applyEnrollmentOrdersMigration(connection) {
       throw Error('Enrollment activity time does not match the expected schema: '+table);
   }
   await connection.query(await readFile(new URL('./schema-enrollment-20261115014556.sql',import.meta.url),'utf8'));
+  await connection.query(await readFile(new URL('./schema-enrollment-20261115183339.sql',import.meta.url),'utf8'));
 }
 
 async function applyContentMigration(connection){

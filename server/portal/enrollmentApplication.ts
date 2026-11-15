@@ -17,7 +17,8 @@ import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners
 import { markPriorityTransfersOnCancellation, startEnrollmentPriorityTransferSimulation } from './enrollmentTransferOffers.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
 import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
-import { mountEnrollmentCrm, recordEnrollmentCustomer } from './enrollmentCrm.ts';
+import { assistedEnrollmentOpportunity, mountEnrollmentCrm, recordEnrollmentCustomer, validateAssistedContacts } from './enrollmentCrm.ts';
+import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { proofTransferDetails } from './enrollmentProofTotals.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
@@ -57,7 +58,7 @@ async function session(c: Client, q: Request): Promise<string> {
 
 async function lockClass(c: Client, classId: string) {
   const row = (await c.query(
-    `SELECT id,course_id,state,data,
+    `SELECT id,course_id,state,data,revision,
       LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,
       COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active
       FROM enrollment_classes WHERE id=:p1 FOR UPDATE`,
@@ -239,16 +240,20 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   });
 
   async function reserveSeat(c:Client,cohort:Awaited<ReturnType<typeof lockClass>>,seats:number,input:{
-    email:string;name:string;phone:string;requestId:string;fingerprint:string;price:number;priority:boolean;source?:unknown;actor?:string;
+    email:string;name:string;phone:string;requestId:string;fingerprint:string;price:number;priority:boolean;source?:unknown;actor?:string;assistance?:{id:string;customerId:string;opportunityId:string};
   }) {
     const id=randomUUID();
-    const {email,name,phone,requestId,fingerprint,price,priority,source,actor}=input;
+    const {email,name,phone,requestId,fingerprint,price,priority,source,actor,assistance}=input;
     const {paymentHours}=await readEnrollmentRules(c);
     const {bank}=await readEnrollmentBank(c);
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
       VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,
     [id,cohort.id,email,requestId,fingerprint,price,{name,phone,priority,bank},paymentHours]);
-    await recordEnrollmentCustomer(c,{kind:'order',id,email,phone,name,level:cohort.data.level,emailVerified:!actor});
+    if(assistance){
+      await c.query(`INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)
+        VALUES('order',:p1,:p2,:p3,UTC_TIMESTAMP(6))`,[id,assistance.customerId,assistance.opportunityId]);
+      await c.query(`UPDATE enrollment_assisted_applications SET order_id=:p2,confirmed_at=UTC_TIMESTAMP(6) WHERE id=:p1`,[assistance.id,id]);
+    }else await recordEnrollmentCustomer(c,{kind:'order',id,email,phone,name,level:cohort.data.level,emailVerified:!actor});
     if(actor){
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.insert',:p2)",
         [actor,{orderId:id,classId:cohort.id,price}]);
@@ -262,6 +267,82 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     if(Number(reserved.received)<price)await orderNotice(c,'seat_reserved',id,undefined,{price:price-Number(reserved.received)});
     return view(reserved,cohort.state);
   }
+
+  const assistanceToken=(token:unknown)=>{
+    if(typeof token!=='string'||!/^[a-f0-9]{64}$/.test(token))invalid('enrollment_assistance_unavailable',404);
+    return sha(token);
+  };
+  const offerProjection=`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active FROM enrollment_assisted_applications WHERE token_digest=:p1`;
+  post('/api/crm/opportunities/:id/enrollment-assistance',async(q,r)=>{
+    const actor=await staff(q,'crm.followup');
+    const {token,classId,requestId,name:rawName,phone:rawPhone,email:rawEmail,lang}=q.body??{};
+    const digest=assistanceToken(token),email=contact(rawEmail),phone=enrollmentPhone(rawPhone);
+    const name=typeof rawName==='string'?rawName.trim():'',opportunityId=String(q.params.id);
+    if(!name||name.length>120||!phone||typeof classId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(classId)||!uuid.test(requestId))
+      invalid('enrollment_invalid_application');
+    const result=await moneyTx(async c=>{
+      const cohort=await lockClass(c,classId);
+      await lockIdentityRegistry(c);
+      const {customer,level}=await assistedEnrollmentOpportunity(c,opportunityId,actor);
+      return operation(c,actor.id,q.body,{leadId:customer.id,kind:'enrollment.assistance:'+opportunityId},async()=>{
+        await validateAssistedContacts(c,customer,name,email,phone);
+        if(cohort.data.level!==level||!allowsEnrollment(cohort)||!Number(cohort.course_active))
+          invalid('enrollment_class_unavailable',409);
+        await expireSeats(c,classId);
+        if(await takenSeats(c,classId)>=cohort.data.capacity)invalid('enrollment_class_full',409);
+        const id=randomUUID(),{firstLesson,schedule,price,period,format}=cohort.data;
+        await c.query(`UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)
+          WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)`,[opportunityId]);
+        await c.query(`INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,
+          actor,email,data,expires_at,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6))`,
+          [id,digest,opportunityId,customer.id,classId,cohort.revision,actor.id,email,
+            {name,phone,quote:{level,firstLesson,schedule,price,period,format},termsVersion:1,lang:['zh','en','id'].includes(lang)?lang:'en'}]);
+        const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1",[id])).rows[0];
+        return {id,expiresAt:expiry.expiresAt};
+      });
+    });
+    r.json(result);
+  });
+  post(base+'/assistance/preview',async(q,r)=>{
+    const digest=assistanceToken(q.body?.token);
+    const result=await enrollTx(async c=>{
+      const offer=(await c.query(offerProjection,[digest])).rows[0];
+      if(!offer||!Number(offer.active)&&!offer.order_id)invalid('enrollment_assistance_unavailable',404);
+      if(q.body?.verified!==true)return {classId:offer.class_id,quote:offer.data.quote};
+      if(await session(c,q)!==offer.email)invalid('enrollment_assistance_email',403);
+      return {classId:offer.class_id,quote:offer.data.quote,name:offer.data.name,phone:offer.data.phone,orderId:offer.order_id};
+    });
+    r.json(result);
+  });
+  post(base+'/assistance/confirm',async(q,r)=>{
+    const digest=assistanceToken(q.body?.token);
+    if(q.body?.termsVersion!==1||q.body?.confirmed!==true)invalid('enrollment_assistance_confirmation');
+    const result=await moneyTx(async c=>{
+      const email=await session(c,q);
+      const saved=(await c.query(offerProjection+' FOR UPDATE',[digest])).rows[0];
+      if(!saved||saved.email!==email)invalid('enrollment_assistance_unavailable',404);
+      if(saved.order_id){
+        const {order,cohort}=await lockOrder(c,saved.order_id,email);
+        return view(order,cohort.state);
+      }
+      if(!Number(saved.active))invalid('enrollment_assistance_unavailable',404);
+      const cohort=await lockClass(c,saved.class_id);
+      if(!allowsEnrollment(cohort)||!Number(cohort.course_active)||cohort.revision!==saved.class_revision)
+        invalid('enrollment_assistance_quote_changed',409);
+      await lockIdentityRegistry(c);
+      const {customer,level}=await assistedEnrollmentOpportunity(c,saved.opportunity_id);
+      if(customer.id!==saved.customer_id||cohort.data.level!==level)invalid('enrollment_assistance_identity',409);
+      await validateAssistedContacts(c,customer,saved.data.name,email,saved.data.phone);
+      await expireSeats(c,cohort.id);
+      if(await activeLearnerOrder(c,cohort.id,email,saved.data.name))invalid('enrollment_assistance_existing_order',409);
+      const seats=await takenSeats(c,cohort.id);
+      if(seats>=cohort.data.capacity)invalid('enrollment_class_full',409);
+      return reserveSeat(c,cohort,seats,{email,name:saved.data.name,phone:saved.data.phone,requestId:saved.id,fingerprint:digest,
+        price:saved.data.quote.price,priority:q.body?.priority===true,source:{lang:saved.data.lang},
+        assistance:{id:saved.id,customerId:customer.id,opportunityId:saved.opportunity_id}});
+    });
+    r.json(result);
+  });
 
   post(base + '/applications', async (q, r) => {
     const { classId, requestId, name, priority } = q.body;
