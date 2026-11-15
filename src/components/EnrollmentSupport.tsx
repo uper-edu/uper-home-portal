@@ -29,6 +29,14 @@ const topics = {
       'Berikan nomor pendaftaran. Tim layanan pelanggan dapat memeriksa pengembalian dana tercatat dan menindaklanjuti pengajuan Anda.',
     ],
   },
+  'one-on-one': {
+    title: ['联系销售客服约课','Schedule one-to-one lessons','Atur jadwal kelas privat'],
+    instructions: [
+      '告诉客服你的 HSK 级别和方便上课的时段，由客服和你确认时间及课次。',
+      'Share your HSK level and preferred times. Our team will confirm the schedule and number of lessons with you.',
+      'Sampaikan level HSK dan waktu yang cocok. Tim kami akan mengonfirmasi jadwal dan jumlah sesi bersama Anda.',
+    ],
+  },
   advisor: {
     title: ['联系课程顾问','Contact a course advisor','Hubungi konsultan kursus'],
     instructions: [
@@ -43,20 +51,34 @@ export function enrollmentSupportPath(topic: keyof typeof topics, language: Inte
   return '/enrollment/help/'+topic+'?lang='+language;
 }
 
-export function EnrollmentSupport({ topic, language }: {topic: string; language: InterestLanguage}) {
+export function EnrollmentSupport({topic,language,level,period,catalogPath}:{
+  topic:string;language:InterestLanguage;level?:string;period?:string;catalogPath?:string;
+}) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
+  const appointment=topic==='one-on-one';
+  const whatsapp=new URL(socialProfiles.whatsapp.url);
+  if(appointment&&level) {
+    const preferredTime=period==='weekend' ? t(['周末','weekends','akhir pekan'])
+      : period==='weekday-evening' ? t(['工作日晚间','weekday evenings','malam hari kerja']) : '';
+    const message=t([
+      `你好，我想咨询 HSK ${level} 一对一约课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
+      `Hello, I'd like to schedule HSK ${level} one-to-one lessons.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
+      `Halo, saya ingin menjadwalkan kelas privat HSK ${level}.${preferredTime?' Saya lebih suka '+preferredTime+'.':''}`,
+    ]);
+    whatsapp.searchParams.set('text',message);
+  }
   return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
-    <Link className="enrollment-back" to={'/enrollment/mine?lang='+language}><ArrowLeft size={15} aria-hidden="true"/>
-      {t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya'])}</Link>
+    <Link className="enrollment-back" to={appointment?catalogPath??'/enrollment?lang='+language:'/enrollment/mine?lang='+language}><ArrowLeft size={15} aria-hidden="true"/>
+      {appointment?t(['返回课程报名','Back to course enrollment','Kembali ke pendaftaran kursus']):t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya'])}</Link>
     {info ? <>
       <h1>{t(info.title)}</h1>
       <article className="enrollment-record">
-        <h2>{t(['联系说明','How to get help','Cara mendapatkan bantuan'])}</h2>
+        <h2>{appointment&&level?'HSK '+level+' · '+t(['一对一','One-to-one','Kelas privat']):t(['联系说明','How to get help','Cara mendapatkan bantuan'])}</h2>
         <p>{t(info.instructions)}</p>
       </article>
       <div className="enrollment-journey-actions">
-        <a className="enrollment-primary enrollment-whatsapp-action" href={socialProfiles.whatsapp.url} target="_blank" rel="noopener noreferrer">
+        <a className="enrollment-primary enrollment-whatsapp-action" href={appointment?whatsapp.toString():socialProfiles.whatsapp.url} target="_blank" rel="noopener noreferrer">
           <SocialProfileIcon platform="whatsapp" className="size-4"/>
           {t(['通过 WhatsApp 联系','Contact on WhatsApp','Hubungi via WhatsApp'])}
         </a>

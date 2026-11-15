@@ -627,3 +627,6 @@
   }
   .enrollment-lookup .enrollment-quiet { justify-content: center; }
 }
+
+.enrollment-appointment-card .enrollment-class-bottom { margin-top: 12px; }
+.enrollment-price-unit { font-size: 12px; font-weight: 600; color: var(--enrollment-muted); }

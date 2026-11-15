@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/currency';
 import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { PublicSingleSelect } from '../components/PublicSingleSelect';
 import { EnrollmentSupport } from '../components/EnrollmentSupport';
+import { oneToOneRate } from '../data/enrollmentOneToOne';
 import { EnrollmentApplication, enrollmentCopy } from '../components/EnrollmentApplication';
 import './enrollment.css';
 
@@ -27,6 +28,9 @@ const copy = {
   'weekday-evening': ['Weekday evenings', 'Malam hari kerja', '工作日晚间'],
   standard: ['Standard class', 'Kelas standar', '标准班'],
   small: ['Small group', 'Kelas kecil', '小班'],
+  'one-on-one': ['One-to-one', 'Kelas privat', '一对一'],
+  appointment: ['Arrange your lesson times with our team.', 'Atur jadwal bersama tim kami.', '上课时间与销售客服另行约定。'],
+  appointmentAction: ['Contact us to schedule', 'Hubungi tim untuk atur jadwal', '联系销售客服约课'],
   opened: ['Class confirmed', 'Kelas dikonfirmasi', '已成班'],
   recruiting: ['Enrollment open', 'Pendaftaran dibuka', '报名中'],
   apply: ['Apply for this class', 'Daftar kelas ini', '申请这个班'],
@@ -129,6 +133,10 @@ export default function Enrollment() {
     return '/enrollment/' + encodeURIComponent(id) + '?' + query.toString();
   };
   const selected = classes?.find(row => row.id === classId);
+  const privateLesson = format === 'one-on-one' || (!format && !period) ? oneToOneRate(level) : undefined;
+  const appointmentParams = new URLSearchParams(publicParams);
+  appointmentParams.set('lang', language);
+  appointmentParams.set('level', level);
   const rows = classes?.filter(row => row.level.startsWith('HSK ' + level) &&
     (!period || row.period === period) && (!format || row.format === format));
   const formatDay = (value: string) => new Intl.DateTimeFormat(locale, {
@@ -176,7 +184,8 @@ export default function Enrollment() {
     </article>;
   };
 
-  if (topic) return <EnrollmentSupport topic={topic} language={language}/>;
+  if (topic) return <EnrollmentSupport topic={topic} language={language}
+    level={params.has('level')&&oneToOneRate(level)?level:undefined} period={period} catalogPath={listPath}/>;
 
   if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
     <Link className="enrollment-back" to={detailsPath(classId!)}><ArrowLeft size={15} aria-hidden="true"/>{t('backDetail')}</Link>
@@ -288,13 +297,31 @@ export default function Enrollment() {
         <PublicSingleSelect label={t('period')} value={period} onChange={value => filter('period', value)}
           options={[{ value: '', label: t('allPeriods') }, { value: 'weekday-evening', label: t('weekday-evening') }, { value: 'weekend', label: t('weekend') }]}/>
         <PublicSingleSelect label={t('format')} value={format} onChange={value => filter('format', value)}
-          options={[{ value: '', label: t('allFormats') }, { value: 'standard', label: t('standard') }, { value: 'small', label: t('small') }]}/>
+          options={[{ value: '', label: t('allFormats') }, { value: 'standard', label: t('standard') }, { value: 'small', label: t('small') }, { value: 'one-on-one', label: t('one-on-one') }]}/>
       </div>
     </div>
-    {failed ? <p role="alert">{t('error')} <button className="enrollment-quiet" type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
-      : !classes ? <p role="status">{t('loading')}</p>
-      : rows?.length ? <div className="enrollment-class-grid">{rows.map(row => classCard(row, true))}</div>
-      : <div className="enrollment-class-card enrollment-empty"><CalendarDays size={20} aria-hidden="true"/><div><p><strong>{t('empty')}</strong></p><p>{t('noMatchBody')}</p></div><button className="enrollment-quiet" type="button" onClick={() => {
+    {format !== 'one-on-one' && (failed
+      ? <p role="alert">{t('error')} <button className="enrollment-quiet" type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
+      : !classes && <p role="status">{t('loading')}</p>)}
+    {rows?.length || privateLesson ? <div className="enrollment-class-grid">
+      {rows?.map(row => classCard(row, true))}
+      {privateLesson&&<article className="enrollment-class-card enrollment-appointment-card">
+        <h2>HSK {level} · {t('one-on-one')}</h2>
+        <p>{t('appointment')}</p>
+        <div className="enrollment-class-bottom">
+          <div className="enrollment-prices">
+            <strong>{formatCurrency(privateLesson.lessonPrice,language)}<span className="enrollment-price-unit">{enrollmentCopy(language,[' / 次课',' / session',' / sesi'])}</span></strong>
+            <small>{enrollmentCopy(language,[
+              `${privateLesson.referenceLessons} 课次折算 ${formatCurrency(privateLesson.lessonPrice*privateLesson.referenceLessons,language)}`,
+              `Reference total · ${privateLesson.referenceLessons} sessions · ${formatCurrency(privateLesson.lessonPrice*privateLesson.referenceLessons,language)}`,
+              `Perkiraan total · ${privateLesson.referenceLessons} sesi · ${formatCurrency(privateLesson.lessonPrice*privateLesson.referenceLessons,language)}`,
+            ])}</small>
+          </div>
+          <Link className="enrollment-primary" to={'/enrollment/help/one-on-one?'+appointmentParams.toString()}>{t('appointmentAction')}</Link>
+        </div>
+      </article>}
+    </div>
+      : classes&&!failed&&<div className="enrollment-class-card enrollment-empty"><CalendarDays size={20} aria-hidden="true"/><div><p><strong>{t('empty')}</strong></p><p>{t('noMatchBody')}</p></div><button className="enrollment-quiet" type="button" onClick={() => {
         const next = new URLSearchParams(params);
         next.delete('period'); next.delete('format');
         setParams(next, { replace: true, preventScrollReset: true });
