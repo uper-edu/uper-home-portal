@@ -24,7 +24,9 @@ type Context = {
 
 export async function takenSeats(c: Client, id: string) {
   return Number((await c.query(`SELECT (SELECT COUNT(*) FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded'))
-    + (SELECT COUNT(*) FROM enrollment_transfer_invitations WHERE target_class_id=:p1 AND state='offered' AND expires_at>UTC_TIMESTAMP(6)) AS count`, [id])).rows[0].count);
+    + (SELECT COUNT(*) FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
+      WHERE i.target_class_id=:p1 AND i.state='offered'
+        AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)) AS count`, [id])).rows[0].count);
 }
 
 export function allowsEnrollment(cohort: Cohort) {
@@ -84,7 +86,7 @@ async function recordDemandMatch(c: Client, demand: Demand, offer: Offer) {
 // Run inside the publication transaction, with the class already locked by the save.
 export async function matchPublishedEnrollmentClass(c: Client, classId: string) {
   const offer=(await c.query(`SELECT id,data FROM enrollment_classes
-    WHERE id=:p1 AND state='published' AND enrollment_closes_at>UTC_TIMESTAMP(6)`,[classId])).rows[0];
+    WHERE id=:p1 AND state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)`,[classId])).rows[0];
   if (!offer) return;
   await expireSeats(c,classId);
   if (await takenSeats(c,classId)>=offer.data.capacity) return;
@@ -127,7 +129,7 @@ export function startEnrollmentVacancySimulation(transact:Context['transact'],lo
 
 async function offers(c: Client) {
   return (await c.query(`SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
-    WHERE e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true
+    WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true
     AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
       AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
           WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))

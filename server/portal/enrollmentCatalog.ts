@@ -79,7 +79,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       FROM enrollment_classes e
       JOIN crm_courses c ON c.id=e.course_id
       LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
-      WHERE e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6)
+      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
         AND JSON_EXTRACT(c.value,'$.active')=true
       ORDER BY e.first_lesson_at,e.id
     `)).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number }) => {

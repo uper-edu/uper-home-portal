@@ -52,7 +52,8 @@ async function session(c: Client, q: Request): Promise<string> {
 
 async function lockClass(c: Client, classId: string) {
   const row = (await c.query(
-    `SELECT id,course_id,state,data,enrollment_closes_at,enrollment_closes_at>UTC_TIMESTAMP(6) AS accepting,
+    `SELECT id,course_id,state,data,
+      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,
       COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active
       FROM enrollment_classes WHERE id=:p1 FOR UPDATE`,
     [classId])).rows[0];
@@ -156,7 +157,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const confirmed=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[cohort.id])).rows[0];
       const transfers=canSelectTransfer(order,cohort)?(await c.query(`
         SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
-        WHERE e.id<>:p1 AND e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6)
+        WHERE e.id<>:p1 AND e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
           AND JSON_EXTRACT(c.value,'$.active')=true AND e.data->>'$.level'=:p2 AND e.data->>'$.format'=:p3
           AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
             AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
@@ -323,7 +324,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at FROM enrollment_transfer_invitations offer
           JOIN enrollment_classes target ON target.id=offer.target_class_id AND target.state='published'
           WHERE offer.order_id=o.id AND offer.source_class_id=o.class_id AND offer.state='offered'
-            AND offer.expires_at>UTC_TIMESTAMP(6) AND e.state='cancelled' AND o.state IN ('paid','recovered')
+            AND LEAST(offer.expires_at, DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+            AND e.state='cancelled' AND o.state IN ('paid','recovered')
           ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE
         WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100`, [email]);
       return rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,

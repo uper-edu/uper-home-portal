@@ -31,10 +31,13 @@ export interface EnrollmentClassAdmin extends EnrollmentClassConfig {
   canInsert?: boolean;
 }
 
-export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig,'firstLesson'|'enrollmentCloses'>, now = Date.now()) {
-  const startsOn = new Date(cohort.firstLesson.slice(0,10)+'T00:00:00+07:00').valueOf();
-  const closesAt = enrollmentInstant(cohort.enrollmentCloses);
-  return closesAt !== null && now >= closesAt.valueOf() && now >= startsOn;
+function enrollmentOpeningDayStart(firstLesson: string) {
+  return enrollmentInstant(firstLesson) && enrollmentInstant(firstLesson.slice(0, 10) + 'T00:00');
+}
+
+export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 'firstLesson'>, now = Date.now()) {
+  const startsOn = enrollmentOpeningDayStart(cohort.firstLesson);
+  return startsOn !== null && now >= startsOn.valueOf();
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
@@ -101,13 +104,15 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   const enrollmentCloses = string('enrollmentCloses', 16);
   const decisionAt = string('decisionAt', 16);
   const start = enrollmentInstant(firstLesson);
+  const startOfOpeningDay = enrollmentOpeningDayStart(firstLesson);
   const closes = enrollmentInstant(enrollmentCloses);
   const decision = enrollmentInstant(decisionAt);
   const capacity = integer('capacity', 200);
   const minimumPaid = integer('minimumPaid', capacity);
   const price = integer('price', 1_000_000_000);
   const standardPrice = input.standardPrice == null ? null : integer('standardPrice', 1_000_000_000);
-  if (!start || !closes || !decision || closes > start || decision > start || (standardPrice !== null && standardPrice <= price)) {
+  if (!start || !startOfOpeningDay || !closes || !decision || closes > startOfOpeningDay ||
+      decision > start || (standardPrice !== null && standardPrice <= price)) {
     invalidConfig();
   }
   return {

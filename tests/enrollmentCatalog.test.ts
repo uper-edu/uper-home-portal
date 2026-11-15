@@ -14,8 +14,9 @@ test('the first class uses WIB with an explicit cutoff and decision time', () =>
   const config = validateEnrollmentClass(sample);
   assert.deepEqual(config, sample);
   assert.equal(enrollmentInstant(config.firstLesson)?.toISOString(), '2026-12-19T08:00:00.000Z');
+  assert.equal(validateEnrollmentClass({ ...sample, enrollmentCloses: '2026-12-18T10:00' }).enrollmentCloses, '2026-12-18T10:00');
   for (const change of [
-    { firstLesson: '2026-02-30T15:00' }, { enrollmentCloses: '2026-12-20T00:00' },
+    { firstLesson: '2026-02-30T15:00' }, { enrollmentCloses: '2026-12-20T00:00' }, { enrollmentCloses: '2026-12-19T00:01' },
     { decisionAt: '2026-12-20T00:00' }, { minimumPaid: 21 }, { price: 575000.5 }, { format: 'one-on-one' },
     { standardPrice: 575000 },
   ]) {
@@ -34,10 +35,12 @@ test('only public class fields are returned to visitors', () => {
 });
 
 test('staff insertion starts on the first class day in WIB after self-service closes', () => {
-  const enrollmentCloses = '2026-12-18T10:00';
-  assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses},Date.parse('2026-12-18T16:59:59Z')),false);
-  assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses},Date.parse('2026-12-18T17:00:00Z')),true);
-  assert.equal(isEnrollmentInsertionWindow({...sample,enrollmentCloses:'2026-12-19T09:00'},Date.parse('2026-12-19T01:59:59Z')),false);
+  const midnight = Date.parse('2026-12-18T17:00:00Z');
+  const legacy = { ...sample, enrollmentCloses: '2026-12-19T09:00' };
+  assert.equal(isEnrollmentInsertionWindow(legacy, midnight - 1), false);
+  assert.equal(isEnrollmentInsertionWindow(legacy, midnight), true);
+  assert.equal(isEnrollmentInsertionWindow(legacy, Date.parse('2026-12-20T08:00:00Z')), true);
+  assert.equal(isEnrollmentInsertionWindow({ firstLesson: '2026-02-30T15:00' }, midnight), false);
 });
 
 test('class opening notice changes at the expected WIB time without inferring a class outcome',()=>{

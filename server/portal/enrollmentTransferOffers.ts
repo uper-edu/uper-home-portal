@@ -19,8 +19,9 @@ export async function createEnrollmentTransferInvitation(c:Client,orderId:string
   const {replyHours}=await readEnrollmentRules(c);
   await c.query(`INSERT INTO enrollment_transfer_invitations
     (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)
-    SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)),e.enrollment_closes_at),UTC_TIMESTAMP(6)
-    FROM enrollment_classes e WHERE e.id=:p5 AND e.enrollment_closes_at>UTC_TIMESTAMP(6)`,
+    SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)), e.enrollment_closes_at,
+      DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR),UTC_TIMESTAMP(6)
+    FROM enrollment_classes e WHERE e.id=:p5 AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)`,
   [invitationId,orderId,sourceClassId,actor,target.id,replyHours]);
   const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS replyBy FROM enrollment_transfer_invitations WHERE id=:p1",[invitationId])).rows[0];
   if(!expiry) return null;
@@ -59,7 +60,7 @@ export function startEnrollmentPriorityTransferSimulation({transact,lockOrder,lo
         // Once an invitation exists, an expired or rejected invitation must not reserve another seat automatically.
         if(previous) return;
         const options=(await c.query(`SELECT id FROM enrollment_classes
-          WHERE state='published' AND enrollment_closes_at>UTC_TIMESTAMP(6)
+          WHERE state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
             AND data->>'$.level'=:p1 AND data->>'$.format'=:p2 ORDER BY first_lesson_at,id`,
         [cohort.data.level,cohort.data.format])).rows;
         for(const option of options){

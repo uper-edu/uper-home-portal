@@ -40,7 +40,9 @@ async function refundLedger(c:Client,id:string) {
 export async function enrollmentAftercareStatus(c:Client,id:string) {
   const invitations=(await c.query(`SELECT i.id,i.target_class_id,
     DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expires_at_iso,
-    CASE WHEN i.state='offered' AND i.expires_at<=UTC_TIMESTAMP(6) THEN 'expired' ELSE i.state END AS state,e.data
+    CASE WHEN i.state='offered'
+      AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6)
+      THEN 'expired' ELSE i.state END AS state,e.data
     FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
     WHERE i.order_id=:p1 ORDER BY i.created_at DESC`,[id])).rows.map(row=>({
       id:row.id,targetClassId:row.target_class_id,expiresAt:row.expires_at_iso,
@@ -138,7 +140,10 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.transfer.invite',authorize:()=>supportActor(q)},async()=>{
       const {order,cohort}=await lockOrder(c,id);
       sameClass(cohort.id,q.body.classId);
-      const existing=(await c.query("SELECT id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND expires_at>UTC_TIMESTAMP(6) FOR UPDATE",[id])).rows[0];
+      const existing=(await c.query(`SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
+        WHERE i.order_id=:p1 AND i.state='offered'
+          AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+        FOR UPDATE OF i`,[id])).rows[0];
       if(existing) invalid('enrollment_active_invitation',409);
       const next=await target(c,cohort,order,to);
       const invitation=await createEnrollmentTransferInvitation(c,id,cohort.id,next,actor.id);
@@ -162,8 +167,10 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         sameClass(cohort.id,q.body.classId);
         if (!canSelectTransfer(order,cohort)) invalid('enrollment_transfer_unavailable',409);
         if(invitationId){
-          const invite=(await c.query(`SELECT * FROM enrollment_transfer_invitations WHERE id=:p1 AND order_id=:p2 AND source_class_id=:p3
-            AND target_class_id=:p4 AND state='offered' AND expires_at>UTC_TIMESTAMP(6) FOR UPDATE`,[invitationId,id,cohort.id,targetClassId])).rows[0];
+          const invite=(await c.query(`SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
+            WHERE i.id=:p1 AND i.order_id=:p2 AND i.source_class_id=:p3 AND i.target_class_id=:p4 AND i.state='offered'
+              AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+            FOR UPDATE OF i`,[invitationId,id,cohort.id,targetClassId])).rows[0];
           if(!invite) invalid('enrollment_invitation_expired',409);
         }
         if(decision==='decline'){
