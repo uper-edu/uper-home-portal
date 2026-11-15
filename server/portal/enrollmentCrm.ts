@@ -328,15 +328,18 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
     if(customerId!==undefined&&(typeof customerId!=='string'||!customerId||customerId.length>191)) invalid('enrollment_customer_not_found',404);
     const customer=typeof customerId==='string'?await canonicalIdentity(c,customerId):undefined;
     if(customerId!==undefined&&(!customer||!readProfile(actor,customer.profile))) invalid('enrollment_customer_not_found',404);
-    const rows=(await c.query(`SELECT o.*, customer.profile
+    const rows=(await c.query(`SELECT o.*, customer.profile,
+      (SELECT DATE_FORMAT(a.expires_at,'%Y-%m-%dT%H:%i:%sZ') FROM enrollment_assisted_applications a
+        WHERE a.opportunity_id=o.id AND a.order_id IS NULL AND a.expires_at>UTC_TIMESTAMP(6)
+        ORDER BY a.created_at DESC,a.id LIMIT 1) AS assistanceDueAt
       FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id
       JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)
       WHERE (:p1 IS NULL OR customer.id=:p1)
       ORDER BY o.created_at DESC,o.id`,[customer?.id??null])).rows.filter(row=>readProfile(actor,row.profile));
     const recordsById=await opportunityRecordsById(c,rows);
     const tasks=await opportunityTasks(c,rows.filter(row=>canProgress(actor,row.profile)).map(row=>row.profile));
-    const opportunities=rows.map(row=>attachOpportunityActions(actor,row.profile,
-      projectOpportunity(row,recordsById.get(row.id)??[],row.profile),tasks));
+    const opportunities=rows.map(row=>({...attachOpportunityActions(actor,row.profile,
+      projectOpportunity(row,recordsById.get(row.id)??[],row.profile),tasks),assistanceDueAt:row.assistanceDueAt}));
     return {opportunities,customer:customer?{id:customer.id,name:customer.profile.fullName}:undefined};
   }));
   app.get('/api/crm/opportunities/:id',read(async(c,q,actor)=>{
@@ -378,7 +381,9 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,
       DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications
       WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1`,[row.id])).rows[0];
-    return {...actions,progress,emails,assistance,assistanceHistory};
+    return {...actions,progress,emails,assistance,assistanceHistory,
+      assistanceDueAt:assistanceHistory&&!assistanceHistory.orderId&&Date.parse(assistanceHistory.expiresAt)>Date.now()
+        ?assistanceHistory.expiresAt:undefined};
   }));
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);

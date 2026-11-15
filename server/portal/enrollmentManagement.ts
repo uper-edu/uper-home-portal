@@ -58,7 +58,7 @@ async function summaries(c:Client,actor:Employee,scope:Scope,id:string|null){
     if(!cohort){
       const accepting=Number(row.accepting)===1;
       const status=row.state==='cancelled'?'cancelled':Number(row.opened)===1?'opened':accepting?'recruiting':'closed';
-      cohort={id:row.id,level:row.data.level,format:row.data.format,schedule:row.data.schedule,
+      cohort={id:row.id,level:row.data.level,format:row.data.format,period:row.data.period,schedule:row.data.schedule,
         firstLessonAt:row.first_lesson_at,capacity:row.data.capacity,minimumPaid:row.data.minimumPaid,status,accepting,
         counts:{awaiting_payment:0,proof_review:0,partial:0,paid:0,held:0,waiting:0,history:0},occupied:0,available:0};
       classes.set(row.id,cohort);

@@ -1,3 +1,4 @@
+import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone, CrmListViews } from './CrmList';
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useRef, useState } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
@@ -38,7 +39,7 @@ type OpportunityFollowup = {kind:'agreement'|'task';id:string;type?:string;actio
 type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
   state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
-  emails?:EnrollmentEmail[];
+  emails?:EnrollmentEmail[];assistanceDueAt?:string;
   assistance?:{email:string;phone:string;allowed:boolean};
   assistanceHistory?:{id:string;classId:string;orderId?:string;actor:string;createdAt:string;expiresAt:string;confirmedAt?:string};
   progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string;sources?:OpportunitySource[]}[];canProgress?:boolean;canInitiateFollowup?:boolean;followup?:OpportunityFollowup|null;
@@ -65,6 +66,7 @@ const states:Record<string,Copy> = {
   converted:['已转申请','Converted to application','Menjadi permohonan'],
   withdrawn:['已撤回','Withdrawn','Ditarik'],closed:['已结束','Closed','Ditutup'],
   active:['有效','Active','Aktif'],
+  awaiting_confirmation:['待学员确认','Awaiting learner confirmation','Menunggu konfirmasi siswa'],
   purchase_intent:['购课意向','Purchase intent','Minat membeli kursus'],
 };
 const next:Record<Opportunity['state'],Copy> = {
@@ -79,6 +81,7 @@ const enrollmentStatus:Record<Opportunity['state'],string> = {
 };
 const requiresPaymentReview=(record:CourseRecord)=>record.state==='proof_review'||record.state==='partial';
 function currentStatus(row:Opportunity) {
+  if(row.assistanceDueAt&&['interest','waiting'].includes(row.state)&&!ended(row))return 'awaiting_confirmation';
   if(row.state==='applying') return row.records.find(requiresPaymentReview)?.state??'awaiting_payment';
   if(row.state==='closed') return row.records.at(-1)?.state??'closed';
   if(row.state==='interest'&&!row.records.length)return 'purchase_intent';
@@ -450,7 +453,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     const reviewDue=row.records.flatMap(record=>record.firstReviewDueAt?[record.firstReviewDueAt]:[]).sort()[0];
     const reviewDeadline=reviewDue&&<CrmEnrollmentReviewDeadline dueAt={reviewDue} lang={lang} compact/>;
     if(review&&row.state==='applying'&&canFinance)return <>
-      <a className="crm-work-link" href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>
+      <a className="crm-list-action" href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>
       {reviewDeadline}</>;
     const due=row.records.find(record=>record.state==='awaiting_payment')?.paymentDueAt;
     const followup=row.followup;
@@ -459,19 +462,24 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
       const action=due?t(lang,['跟进付款','Follow up on payment','Tindak lanjuti pembayaran']):name;
       return <>
         {followup.kind==='agreement'?
-          <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{action}</button>:
+          <button type="button" className="crm-list-action" disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{action}</button>:
           <a className="crm-work-link" title={name} href={crmHref({tab:'leads',lead:row.customerId,target:'task',targetId:followup.id})}>{action}</a>}
         {followup.at||followup.date?<div className="crm-work-muted"><time dateTime={followup.at||followup.date}>{followup.at?formatCrmSummaryTime(followup.at):followup.date}</time></div>:null}
         {reviewDeadline}
       </>;
     }
+    if (currentStatus(row)==='awaiting_confirmation') return <>
+      <span>{t(lang,['等待学员确认','Wait for learner confirmation','Tunggu konfirmasi siswa'])}</span>
+      <span className="crm-list-secondary">{t(lang,['确认截止','Confirm by','Batas konfirmasi'])} ·{' '}
+        <time dateTime={row.assistanceDueAt}>{formatCrmSummaryTime(row.assistanceDueAt!)}</time></span>
+    </>;
     if(review&&row.state==='applying'){
       const status=t(lang,['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
       return <>{id===row.id?status:<a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}
         onClick={()=>rememberListPosition(row.id)}>{status}</a>}{reviewDeadline}</>;
     }
     if(due)return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div></>;
-    if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</button>;
+    if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <button type="button" className="crm-list-action" disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</button>;
     return <>{t(lang,row.state==='interest'&&!row.records.length?['跟进购课意向','Follow up on purchase intent','Tindak lanjuti minat membeli kursus']:next[row.state])}{reviewDeadline}</>;
   };
   const label=t(lang,['商机','Opportunities','Peluang']);
@@ -533,44 +541,50 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           href={crmHref({tab:'leads',lead:result.customer.id})}>{result.customer.name}</a></span>
         <a className="crm-work-link" href={crmHref({tab:'opportunities',...filters})}>{t(lang,['清除客户筛选','Clear customer filter','Hapus filter pelanggan'])}</a>
       </div>}
-      <div className="crm-opportunity-filters">
-        <input ref={searchField} type="search" aria-label={t(lang,['搜索商机','Search opportunities','Cari peluang'])} placeholder={t(lang,['姓名、客户编号或级别','Name, customer number, or level','Nama, nomor pelanggan, atau level'])} value={filters.opportunityQuery} onChange={event=>changeFilter('opportunityQuery',event.currentTarget.value)}/>
-        <CrmSingleSelect label={t(lang,['商机范围','Opportunity scope','Cakupan peluang'])} value={filters.opportunityStatus} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStatus',value)} options={[
-          {value:'active',label:t(lang,['进行中','In progress','Berlangsung'])},{value:'closed',label:t(lang,['已结束','Ended','Berakhir'])},{value:'all',label:allLabel},
-        ]}/>
+      <CrmListViews label={t(lang,['商机范围','Opportunity scope','Cakupan peluang'])}>
+        {([{value:'active',label:t(lang,['进行中','In progress','Berlangsung'])},
+          {value:'closed',label:t(lang,['已结束','Ended','Berakhir'])},{value:'all',label:allLabel}]).map(({value,label})=>
+          <button type="button" key={value} aria-pressed={filters.opportunityStatus===value} onClick={()=>changeFilter('opportunityStatus',value)}>{label}</button>)}
+      </CrmListViews>
+      <CrmListFilters label={t(lang,['商机筛选','Opportunity filters','Filter peluang'])}>
+        <CrmListSearch inputRef={searchField} label={t(lang,['搜索商机','Search opportunities','Cari peluang'])}
+          placeholder={t(lang,['姓名、客户编号或级别','Name, customer number, or level','Nama, nomor pelanggan, atau level'])}
+          value={filters.opportunityQuery} onChange={value=>changeFilter('opportunityQuery',value)}/>
         <CrmSingleSelect label={t(lang,['负责人','Owner','Penanggung jawab'])} value={filters.opportunityOwner} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityOwner',value)} options={[
           {value:'mine',label:t(lang,['我的商机','My opportunities','Peluang saya'])},{value:'all',label:t(lang,['权限内商机','Accessible opportunities','Peluang yang dapat diakses'])},
           {value:'unassigned',label:t(lang,['未分配','Unassigned','Belum ditugaskan'])},...ownerOptions.map(value=>({value,label:employeeName(value)||value})),
         ]}/>
         <CrmSingleSelect label={t(lang,['级别','Level','Level'])} value={filters.opportunityLevel} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityLevel',value)}
-          options={[{value:'',label:allLabel},...levels.map(value=>({value,label:value}))]}/>
+          options={[{value:'',label:t(lang,['全部级别','All levels','Semua level'])},...levels.map(value=>({value,label:value}))]}/>
         <CrmSingleSelect label={t(lang,['销售阶段','Sales stage','Tahap penjualan'])} value={filters.opportunityStage} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStage',value)}
-          options={[{value:'',label:allLabel},...salesProgressStages.map(([value])=>({value,label:progressLabel(value,lang)}))]}/>
-        <CrmSingleSelect label={t(lang,['业务状态','Enrollment status','Status pendaftaran'])} value={filters.opportunityState} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityState',value)}
-          options={[{value:'',label:allLabel},...businessStates.map(value=>({value,label:states[value]?t(lang,states[value]):value}))]}/>
+          options={[{value:'',label:t(lang,['全部销售阶段','All sales stages','Semua tahap penjualan'])},...salesProgressStages.map(([value])=>({value,label:progressLabel(value,lang)}))]}/>
+        <CrmSingleSelect label={t(lang,['报名状态','Enrollment status','Status pendaftaran'])} value={filters.opportunityState} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityState',value)}
+          options={[{value:'',label:t(lang,['全部报名状态','All enrollment statuses','Semua status pendaftaran'])},...businessStates.map(value=>({value,label:states[value]?t(lang,states[value]):value}))]}/>
         <CrmSingleSelect label={t(lang,['待办','Follow-up','Tindak lanjut'])} value={filters.opportunityFollowup} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityFollowup',value)}
-          options={[{value:'',label:allLabel},{value:'with',label:t(lang,['已有待办','Has follow-up','Ada tindak lanjut'])},
+          options={[{value:'',label:t(lang,['全部待办状态','All follow-up statuses','Semua status tindak lanjut'])},{value:'with',label:t(lang,['已有待办','Has follow-up','Ada tindak lanjut'])},
             {value:'without',label:t(lang,['暂无待办','No follow-up','Belum ada tindak lanjut'])}]}/>
-      </div>
+      </CrmListFilters>
+      {visible&&<p className="crm-list-meta" role="status">{t(lang,[`匹配 ${visible.length} 笔商机`,`${visible.length} matching opportunities`,`${visible.length} peluang cocok`])}</p>}
       {visible?.length===0?<p className="crm-work-muted">{t(lang,['当前没有符合条件的商机。','No opportunities match.','Tidak ada peluang yang sesuai.'])}</p>:visible&&
-        <div ref={tableScroll} className="crm-opportunity-table"><table>
-          <thead><tr>{([
-            ['商机','Opportunity','Peluang'],['学员','Learner','Siswa'],['负责人','Owner','Penanggung jawab'],
-            ['销售阶段','Sales stage','Tahap penjualan'],['业务状态','Enrollment status','Status pendaftaran'],
+        <CrmListTable label={label} viewportRef={tableScroll} headers={([
+            ['商机','Opportunity','Peluang'],['负责人','Owner','Penanggung jawab'],
+            ['销售阶段','Sales stage','Tahap penjualan'],['报名状态','Enrollment status','Status pendaftaran'],
             ['下一步','Next step','Langkah berikutnya'],['本次来源','Opportunity source','Sumber peluang'],
-          ] as const).map(copy=><th scope="col" key={copy[0]}>{t(lang,copy)}</th>)}</tr></thead>
-          <tbody>{visible.map(row=>{
+          ] as const).map(copy=>t(lang,copy))}>
+          {visible.map(row=>{
             const status=currentStatus(row);
             const attribution=[...row.records].reverse().find(record=>record.attribution)?.attribution;
             return <tr key={row.id} data-opportunity-id={row.id}>
-              <td><a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id})} onClick={()=>rememberListPosition(row.id)}>{row.level}</a></td>
-              <td><a className="crm-work-link" href={customerLink(row)}>{[...row.records].reverse().find(record=>record.learnerName)?.learnerName||row.customerName}</a></td>
-              <td>{owner(row)}</td><td>{stage(row,lang)}</td><td>{states[status]?t(lang,states[status]):status}</td>
+              <td><a className="crm-list-record" href={crmHref({...listRoute,opportunity:row.id})} onClick={()=>rememberListPosition(row.id)}>
+                {[...row.records].reverse().find(record=>record.learnerName)?.learnerName||row.customerName} · {row.level}</a>
+                <small>{row.businessNumber}</small></td>
+              <td>{owner(row)}</td><td>{stage(row,lang)}</td><td><CrmListStatus tone={enrollmentListTone(status)}>
+                {states[status]?t(lang,states[status]):status}</CrmListStatus></td>
               <td>{nextAction(row)}</td>
               <td>{!row.records.length&&row.state==='interest'?t(lang,['销售记录','Sales record','Catatan sales']):sourceLabel(attribution,lang)}</td>
             </tr>;
-          })}</tbody>
-        </table></div>}
+          })}
+        </CrmListTable>}
     </>}
     {notice&&<span className="crm-opportunity-feedback" role="status">{t(lang,['商机进展已保存','Opportunity progress saved','Kemajuan peluang tersimpan'])}</span>}
     {saveError&&<p role="alert">{t(lang,['暂时无法读取最新记录，请刷新后查看。','The latest record could not be loaded. Refresh to view it.','Catatan terbaru belum dapat dimuat. Muat ulang untuk melihatnya.'])}</p>}

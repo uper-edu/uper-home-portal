@@ -2,7 +2,7 @@ import type { Express, Request, Response } from 'express';
 import type { Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import { isCrmManager } from '../../src/utils/crmOutreach.ts';
-import { enrollmentClosureReason } from '../../src/utils/enrollmentOrderStatus.ts';
+import { enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { invalid, operation } from './trustWorkflow.ts';
@@ -42,7 +42,7 @@ async function refundLedger(c:Client,id:string) {
     requestedAt:entry.timing?.requestedAt??entry.createdAt,sendBy:entry.timing?.sendBy,timezone:entry.timing?.timezone}};
 }
 
-export async function enrollmentAftercareStatus(c:Client,id:string) {
+export async function enrollmentAftercareStatus(c:Client,id:string,includeRefund=true) {
   const invitations=(await c.query(`SELECT i.id,i.target_class_id,
     DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expires_at_iso,
     CASE WHEN i.state='offered'
@@ -53,7 +53,7 @@ export async function enrollmentAftercareStatus(c:Client,id:string) {
       id:row.id,targetClassId:row.target_class_id,expiresAt:row.expires_at_iso,
       state:row.state,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
     }));
-  const refund=await refundLedger(c,id);
+  const refund=includeRefund?await refundLedger(c,id):null;
   const transfers=(await c.query('SELECT source_class_id,target_class_id,created_at FROM enrollment_transfers WHERE order_id=:p1 ORDER BY created_at DESC',[id])).rows;
   return { invitations, transferHistory:transfers, refundProgress:refund?.progress??null };
 }
@@ -131,24 +131,100 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
   app.get(staff,wrap(async (q,r)=>{
     const actor=await supportActor(q);
     const all=mayDecideRefund(actor);
-    const orders=await read(async c=>(await c.query(`SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,
-      EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened,canonical.profile
-      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
-      LEFT JOIN enrollment_customer_records link ON link.kind='order' AND link.record_id=o.id
-      LEFT JOIN portal_leads existing ON existing.id=link.lead_id
-      LEFT JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(existing.profile->>'$.identityMergedInto','null'),existing.id)
-      WHERE (:p1=1 AND (o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')
-        OR (o.received>0 AND o.state IN ('expired','ended'))))
-        OR (canonical.profile->>'$.owner'=:p2 AND e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price)
-      ORDER BY o.created_at DESC LIMIT 100`,[Number(all),actor.id])).rows.flatMap(o=>{
-      const canInvite=canSelectTransfer(o,{state:o.class_state});
-      if(!all&&(!canInvite||o.profile?.identityLifecycle==='pending'||!permittedRecord(actor,o.profile,'crm.read')||
-        !permittedRecord(actor,o.profile,'crm.followup')))return [];
-      return [{id:o.id,classId:o.class_id,name:o.data.name,received:Number(o.received),opened:Number(o.opened)===1,
-        level:o.class_data.level,format:o.class_data.format,canInvite,
-        priorityRequested:o.data.priority===true,canEnd:all&&endable.includes(o.state),canRefund:all&&Number(o.received)>0,ended:o.state==='ended'}];
-    }));
-    r.set('Cache-Control','no-store').json({orders});
+    if(!all&&(!permittedRecord(actor,{owner:actor.id},'crm.read')||!permittedRecord(actor,{owner:actor.id},'crm.followup')))
+      invalid('enrollment_support_forbidden',403);
+    const scope=q.query.scope;
+    if(scope!==undefined&&(typeof scope!=='string'||!['transfer','refund','records'].includes(scope)))invalid('enrollment_support_invalid_scope');
+    if(scope==='refund'&&!all)invalid('enrollment_support_forbidden',403);
+    const search=typeof q.query.q==='string'?q.query.q.trim().slice(0,120).toLowerCase():'';
+    const selectedClass=typeof q.query.classId==='string'?q.query.classId:'';
+    if(selectedClass&&!classId(selectedClass))invalid('enrollment_support_invalid_class');
+    const offset=Math.max(0,Math.min(1_000_000,Math.floor(Number(q.query.offset)||0)));
+    const pageSize=30;
+    const progress=typeof q.query.progress==='string'?q.query.progress:'';
+    const progressOptions=scope==='transfer'?['awaiting_reply','ready_to_invite']:
+      scope==='refund'?['refunding','refunded']:
+      scope==='records'?['awaiting_payment','proof_review','partial','paid','paid_cancelled','closed']:[];
+    const statusFilter=progressOptions.includes(progress)?progress:'';
+    const quick=typeof q.query.aftercare==='string'?q.query.aftercare:'';
+    const quickFilter=['ready_to_invite','awaiting_reply','refunding','refunded'].includes(quick)?quick:'';
+    if(['refunding','refunded'].includes(quickFilter)&&!all)invalid('enrollment_support_forbidden',403);
+
+    const rows=await read(async c=>(await c.query(`SELECT ranked.* FROM (
+      SELECT scoped.*,COUNT(*) OVER() AS total,
+        ROW_NUMBER() OVER(ORDER BY CASE WHEN :p5='transfer' AND scoped.reply_by IS NULL THEN 0 ELSE 1 END,
+          CASE WHEN :p5='transfer' OR :p9='awaiting_reply' THEN scoped.reply_by END,scoped.created_at DESC,scoped.id) AS position
+      FROM (
+        SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,e.first_lesson_at,
+          o.created_at,EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened,
+          EXISTS(SELECT 1 FROM enrollment_transfers x WHERE x.order_id=o.id) AS transferred,
+          (e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price) AS can_transfer,
+          (SELECT MAX(LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR))
+            FROM enrollment_transfer_invitations i JOIN enrollment_classes target ON target.id=i.target_class_id
+            WHERE i.order_id=o.id AND i.state='offered'
+              AND LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)) AS reply_by
+        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
+        LEFT JOIN enrollment_customer_records link ON link.kind='order' AND link.record_id=o.id
+        LEFT JOIN portal_leads existing ON existing.id=link.lead_id
+        LEFT JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(existing.profile->>'$.identityMergedInto','null'),existing.id)
+        WHERE ( :p1=1 OR (canonical.profile->>'$.owner'=:p2
+          AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'
+          AND e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price))
+          AND (:p3='' OR o.class_id=:p3)
+          AND (:p4='' OR LOCATE(:p4,LOWER(CONCAT_WS(' ',o.id,o.data->>'$.name',e.id,e.data->>'$.level',e.data->>'$.schedule',DATE_FORMAT(e.first_lesson_at + INTERVAL 7 HOUR,'%Y-%m-%d'))))>0)
+          AND (:p5<>'' OR o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')
+            OR (o.received>0 AND o.state IN ('expired','ended')))
+      ) scoped
+      WHERE (:p5<>'transfer' OR scoped.can_transfer=1)
+        AND (:p5<>'refund' OR scoped.state IN ('refunding','refunded'))
+        AND (:p9=''
+          OR (:p9='ready_to_invite' AND scoped.can_transfer=1 AND scoped.reply_by IS NULL)
+          OR (:p9='awaiting_reply' AND scoped.can_transfer=1 AND scoped.reply_by IS NOT NULL)
+          OR (:p9 IN ('refunding','refunded') AND scoped.state=:p9))
+        AND (:p6='' OR (:p6='awaiting_reply' AND scoped.reply_by IS NOT NULL)
+          OR (:p6='ready_to_invite' AND scoped.reply_by IS NULL)
+          OR (:p6='closed' AND scoped.state IN ('expired','ended'))
+          OR (:p6='paid_cancelled' AND scoped.class_state='cancelled' AND scoped.state IN ('paid','recovered'))
+          OR (:p6='paid' AND scoped.class_state<>'cancelled' AND scoped.state IN ('paid','recovered'))
+          OR (:p6 NOT IN ('paid','paid_cancelled') AND scoped.state=:p6))
+      ) ranked WHERE ranked.position>:p8 AND ranked.position<=:p8+:p7 ORDER BY ranked.position`,[Number(all),actor.id,selectedClass,search,String(scope??''),
+        statusFilter,
+        scope===undefined?100:pageSize,offset,quickFilter])).rows);
+    const orders=rows.map(o=>({id:o.id,classId:o.class_id,name:o.data.name,received:Number(o.received),opened:Number(o.opened)===1,
+      level:o.class_data.level,format:o.class_data.format,period:o.class_data.period,schedule:o.class_data.schedule,
+      firstLessonAt:o.first_lesson_at,status:enrollmentOrderStatus(o.state,o.class_state),replyBy:o.reply_by,transferred:Number(o.transferred)===1,
+      closureReason:enrollmentClosureReason(o.state,o.data?.closureReason),canInvite:canSelectTransfer(o,{state:o.class_state}),
+      priorityRequested:o.data.priority===true,canEnd:all&&endable.includes(o.state),
+      canRefund:all&&Number(o.received)>0&&!['refunding','refunded'].includes(o.state)}));
+    r.set('Cache-Control','no-store').json({orders,total:Number(rows[0]?.total??0),pageSize,canReviewRefunds:all});
+  }));
+  app.get(staff+'/:id',wrap(async(q,r)=>{
+    const actor=await supportActor(q), id=String(q.params.id), all=mayDecideRefund(actor);
+    const details=await read(async c=>{
+      const order=(await c.query(`SELECT o.state,o.received,o.price,o.class_id,o.data,e.state AS class_state
+        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE o.id=:p1`,[id])).rows[0];
+      if(!order)invalid('enrollment_order_not_found',404);
+      if(!all){
+        if(!canSelectTransfer(order,{state:order.class_state}))invalid('enrollment_support_forbidden',403);
+        await authorizeInvitation(c,actor,id);
+      }
+      const aftercare=await enrollmentAftercareStatus(c,id,false);
+      const classes=(await c.query(`SELECT e.id,e.data->>'$.level' AS level,e.data->>'$.format' AS format,
+          e.data->>'$.period' AS period,e.first_lesson_at AS firstLessonAt
+        FROM enrollment_classes e
+        WHERE e.id IN (SELECT i.target_class_id FROM enrollment_transfer_invitations i WHERE i.order_id=:p1)
+          OR e.id IN (SELECT x.source_class_id FROM enrollment_transfers x WHERE x.order_id=:p1)
+          OR e.id IN (SELECT x.target_class_id FROM enrollment_transfers x WHERE x.order_id=:p1)`,[id])).rows;
+      if(!all)return {...aftercare,classes};
+      const refund=await refundLedger(c,id);
+      const receipts=(await c.query(`SELECT amount,settled_at AS settledAt FROM enrollment_receipts
+        WHERE order_id=:p1 ORDER BY settled_at,reference`,[id])).rows.map(row=>({amount:Number(row.amount),settledAt:row.settledAt}));
+      return {...aftercare,classes,receipts,refundProgress:refund?.progress??null,
+        refundPayments:refund?.installments.map(row=>({amount:row.amount,returned:row.returned}))??[],
+        creditIn:Number(order.data.creditIn??0),creditOut:Number(order.data.creditOut??0),
+        canEnd:endable.includes(order.state),canRefund:Number(order.received)>0&&!['refunding','refunded'].includes(order.state)};
+    });
+    r.set('Cache-Control','no-store').json(details);
   }));
   app.get('/api/crm/enrollment/finance/:id/refund-details',wrap(async(q,r)=>{
     await financeActor(q);

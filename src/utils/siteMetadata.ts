@@ -138,7 +138,7 @@ export const workspaceNames: Record<string, Words> = {
 export const moduleNames: Record<string, Record<string, Words>> = {
   crm: {
     payments: ["Payment verification","Verifikasi pembayaran","收款核验"],
-    "enrollment-aftercare": ["Enrollment support", "Layanan pendaftaran", "报名售后"],
+    "enrollment-aftercare": ["After-sales support", "Layanan purnajual", "售后服务"],
     leads: ["Customer Worklist", "Daftar Kerja Pelanggan", "客户工作列表"],
     analysis: ["Customer statistics and analysis", "Statistik dan analisis pelanggan", "客户统计与分析"],
     campaigns: ["Marketing Campaigns", "Kampanye Pemasaran", "营销活动"],

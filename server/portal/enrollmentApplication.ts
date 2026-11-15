@@ -491,18 +491,81 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     r.json(result);
   });
 
+  app.get(finance+'/worklist',wrap(async(q,r)=>{
+    await financeActor(q);
+    const search=typeof q.query.q==='string'?q.query.q.trim().slice(0,120).toLowerCase():'';
+    const status=typeof q.query.status==='string'&&['all','pending','proof_review','partial','paid','refund','closed'].includes(q.query.status)
+      ?q.query.status:'pending';
+    const page=Math.max(1,Math.min(1_000_000,Math.floor(Number(q.query.page)||1)));
+    const pageSize=25,offset=(page-1)*pageSize;
+    const result=await enrollTx(async c=>{
+      const sql=`SELECT ranked.* FROM (
+        SELECT filtered.*,COUNT(*) OVER() AS total,
+          ROW_NUMBER() OVER(ORDER BY
+          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.pending_review ELSE 0 END DESC,
+          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due IS NULL ELSE 0 END,
+          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due END ASC,
+          CASE WHEN :p2 IN ('pending','proof_review') AND filtered.pending_review=1 THEN filtered.proof_at END ASC,
+          filtered.created_at DESC,filtered.id) AS position
+        FROM (
+          SELECT o.id,o.state,o.price,o.received,o.created_at,o.data->>'$.name' AS name,e.state AS class_state,
+            e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
+            e.first_lesson_at AS firstLessonAt,
+            latest_proof.created_at IS NOT NULL AS has_proof,
+            DATE_FORMAT(latest_proof.created_at,'%Y-%m-%dT%H:%i:%sZ') AS proof_at,
+            IF(o.state IN ('proof_review','partial','expired') AND latest_proof.created_at IS NOT NULL
+              AND NOT EXISTS(SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at>=latest_proof.created_at),
+              1,0) AS pending_review,
+            CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
+              SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id
+                AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
+            ) THEN o.data->>'$.firstReviewDueAt' END AS review_due,
+            o.data->>'$.creditOut' IS NOT NULL AS has_credit
+          FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
+          LEFT JOIN LATERAL (SELECT p.created_at FROM enrollment_proofs p WHERE p.order_id=o.id
+            ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE
+          WHERE (:p1='' OR LOCATE(:p1,LOWER(CONCAT_WS(' ',o.data->>'$.name',o.id,e.id,e.data->>'$.level',
+            REPLACE(e.data->>'$.level',' ',''),e.data->>'$.schedule')))>0)
+        ) filtered
+        WHERE (filtered.state IN ('proof_review','partial','paid','recovered','refunding','refunded') OR filtered.has_proof=1
+          OR (filtered.state IN ('ended','expired') AND (filtered.received>0 OR filtered.has_credit=1)))
+        AND (:p2='all' OR (:p2='pending' AND (filtered.state IN ('proof_review','partial')
+              OR (filtered.state='expired' AND filtered.has_proof=1 AND filtered.received<filtered.price)))
+          OR (:p2='paid' AND filtered.state IN ('paid','recovered'))
+          OR (:p2='refund' AND filtered.state IN ('refunding','refunded'))
+          OR (:p2='closed' AND filtered.state IN ('ended','expired'))
+          OR (:p2='proof_review' AND (filtered.state='proof_review' OR
+            (filtered.state IN ('partial','expired') AND filtered.pending_review=1 AND filtered.received<filtered.price)))
+          OR (:p2='partial' AND filtered.state='partial'))
+      ) ranked WHERE ranked.position>:p3 AND ranked.position<=:p3+:p4 ORDER BY ranked.position`;
+      let rows=(await c.query(sql,[search,status,offset,pageSize])).rows;
+      const actualPage=page>1&&!rows.length?1:page;
+      if(actualPage!==page)rows=(await c.query(sql,[search,status,0,pageSize])).rows;
+      return {orders:rows.map(row=>({id:row.id,name:row.name,price:Number(row.price),received:Number(row.received),
+        level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt,
+        status:enrollmentOrderStatus(row.state,row.class_state),hasProof:Number(row.has_proof)===1,
+        proofAt:row.proof_at,reviewDueAt:row.review_due})),
+        page:actualPage,pageSize,total:Number(rows[0]?.total??0)};
+    });
+    r.set('Cache-Control','no-store').json(result);
+  }));
+
   app.get(finance, wrap(async (q, r) => {
     await financeActor(q);
     const orders = await enrollTx(async (c: Client) => {
-      const rows=(await c.query(`SELECT o.*,e.state AS class_state,
+      const rows=(await c.query(`SELECT o.*,e.state AS class_state,e.first_lesson_at AS firstLessonAt,
+        e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
         EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,
         CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
           SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id
             AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
         ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,
-        (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id
-      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
-        OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id))
+        latest_proof.id AS proof_id,latest_proof.mime AS proof_mime
+      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
+      LEFT JOIN LATERAL (SELECT p.id,p.mime FROM enrollment_proofs p
+        WHERE p.order_id=o.id ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE
+      WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
+        OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR latest_proof.id IS NOT NULL)
       ORDER BY o.created_at DESC LIMIT 150`,[typeof q.query.order==='string'?q.query.order:''])).rows;
       const receiptsByOrder=new Map<string,any[]>();
       const creditsByOrder=new Map<string,any[]>();
@@ -530,7 +593,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         }
       }
       return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
-        proofId:row.proof_id,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[]}));
+        proofId:row.proof_id,proofMime:row.proof_mime,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
+        level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt}));
     });
     r.set('Cache-Control', 'no-store').json({ orders });
   }));
@@ -539,7 +603,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const proof = await enrollTx(async (c: Client) => (await c.query('SELECT proof,mime FROM enrollment_proofs WHERE id=:p1', [q.params.id])).rows[0]);
     if (!proof) invalid('enrollment_proof_not_found', 404);
     const suffix = { 'image/png': 'png', 'image/jpeg': 'jpg', 'application/pdf': 'pdf' }[proof.mime as string] || 'bin';
-    r.set('Cache-Control', 'no-store').attachment('transfer-proof.' + suffix).send(proof.proof);
+    r.set({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+    if(q.query.preview==='image'&&(proof.mime==='image/png'||proof.mime==='image/jpeg')){
+      r.type(proof.mime).send(proof.proof);
+      return;
+    }
+    r.attachment('transfer-proof.' + suffix).send(proof.proof);
   }));
 
   post(finance + '/:id/receipts', async (q, r) => {

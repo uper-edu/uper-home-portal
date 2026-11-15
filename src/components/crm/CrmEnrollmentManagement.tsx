@@ -1,5 +1,5 @@
 import type { EnrollmentClosureReason } from '../../utils/enrollmentOrderStatus';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { enrollmentCopy } from '../EnrollmentApplication';
 import { formatCrmEventTime } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
@@ -60,8 +60,25 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const [requestVersion,setRequestVersion]=useState(0);
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
-  const [filter,setFilter]=useState<EnrollmentRosterState|''>('');
-  const [closure,setClosure]=useState('');
+  const rosterOrder=params.get('rosterOrder');
+  const restoredFilter=enrollmentRosterStates.find(state=>state===params.get('rosterStatus'))??'';
+  const restoredClosure=params.get('rosterClosure')??'';
+  const [filter,setFilter]=useState<EnrollmentRosterState|''>(restoredFilter);
+  const [closure,setClosure]=useState(restoredClosure);
+  const restored=useRef<string|null>(null);
+  const rosterHeading=useRef<HTMLHeadingElement>(null);
+  const rosterPositionKey='uper_enrollment_roster:'+employee.id+':'+id;
+  const financePath=(orderId:string)=>{
+    const returnParams=new URLSearchParams(classFilterQuery);
+    returnParams.set('tab','enrollment-management');returnParams.set('classId',id!);returnParams.set('rosterOrder',orderId);
+    if(filter)returnParams.set('rosterStatus',filter);
+    if(filter==='history'&&closure)returnParams.set('rosterClosure',closure);
+    return '/crm?'+new URLSearchParams({tab:'payments',paymentView:'enrollment',enrollmentOrder:orderId,
+      rosterReturn:'/crm?'+returnParams});
+  };
+  const rememberRoster=(orderId:string)=>{
+    try{sessionStorage.setItem(rosterPositionKey,JSON.stringify({orderId,top:window.scrollY}));}catch{}
+  };
   const [classFilter,setClassFilter]=useState(()=>params.get('classStatus')??'');
   const classFilterQuery=classFilter?'&classStatus='+encodeURIComponent(classFilter):'';
   const changeClassFilter=(status:string)=>{
@@ -72,7 +89,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     window.history.replaceState(window.history.state,'',url);
   };
   useEffect(()=>{
-    setLoaded(undefined);setFilter('');setClosure('');
+    setLoaded(undefined);setFilter(restoredFilter);setClosure(restoredClosure);
   },[id,aftercare,employee.id,allowed]);
   useEffect(()=>{
     if(aftercare||!allowed)return;
@@ -91,6 +108,24 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const cohort=result&&'cohort' in result&&result.cohort.id===id?result.cohort:null;
   const classes=result&&'classes' in result?result.classes:undefined;
   const rows=result&&'rows' in result&&cohort?result.rows.filter(row=>(!filter||row.status===filter)&&(filter!=='history'||!closure||row.closureReason===closure)):undefined;
+  useEffect(()=>{
+    if(!rows||!rosterOrder||restored.current===rosterOrder)return;
+    const target=document.getElementById('roster-verify-'+rosterOrder)??rosterHeading.current;
+    if(!target)return;
+    const frame=requestAnimationFrame(()=>{
+      restored.current=rosterOrder;
+      let saved:{orderId?:string;top?:number}|undefined;
+      try{
+        const value=sessionStorage.getItem(rosterPositionKey);
+        if(value)saved=JSON.parse(value);
+        sessionStorage.removeItem(rosterPositionKey);
+      }catch{}
+      if(saved?.orderId===rosterOrder&&typeof saved.top==='number')window.scrollTo({top:saved.top,behavior:'instant'});
+      else target.scrollIntoView({block:'nearest',behavior:'instant'});
+      target.focus({preventScroll:true});
+    });
+    return ()=>cancelAnimationFrame(frame);
+  },[rows,rosterOrder,rosterPositionKey]);
   const title=t(['报名管理','Enrollment management','Pengelolaan pendaftaran']);
   const classTitle=(row:EnrollmentClassSummary)=>row.level+' · '+t(row.format==='standard'
     ?['标准班','Standard class','Kelas standar']:['小班','Small group','Kelompok kecil'])+' · '+formatCrmEventTime(row.firstLessonAt);
@@ -104,18 +139,18 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     {id&&!aftercare&&<a className="crm-work-link" href={list+classFilterQuery}>{t(['← 返回班次列表','← Back to classes','← Kembali ke daftar kelas'])}</a>}
     <header className="admin-page-toolbar crm-enrollment-heading">
       <h1>{cohort?classTitle(cohort):title}</h1>
-      {!aftercare&&allowed&&<div className="crm-ops-actions">
+      {allowed&&(!aftercare||canSupport)&&<div className="crm-ops-actions">
         {scope.operations&&cohort&&<a className="crm-work-link" href={'/crm?tab=policy&policyTopic=enrollment-classes&enrollmentClass='+encodeURIComponent(cohort.id)}>{t(['班次设置','Class settings','Pengaturan kelas'])}</a>}
         <button type="button" className="crm-work-button" disabled={loading} onClick={()=>setRequestVersion(v=>v+1)}>{t(['刷新','Refresh','Segarkan'])}</button>
       </div>}
     </header>
     {!id&&allowed&&canSupport&&<nav className="crm-enrollment-views" aria-label={title}>
-      <a className="crm-work-link" href={list} aria-current={!aftercare?'page':undefined}>{t(['按班次','By class','Per kelas'])}</a>
-      <a className="crm-work-link" href={aftercarePath} aria-current={aftercare?'page':undefined}>{t(['报名售后','Enrollment support','Layanan pendaftaran'])}</a>
+      <a className="crm-work-link" href={list} aria-current={!aftercare?'page':undefined}>{t(['班次','Classes','Kelas'])}</a>
+      <a className="crm-work-link" href={aftercarePath} aria-current={aftercare?'page':undefined}>{t(['售后服务','After-sales support','Layanan purnajual'])}</a>
     </nav>}
     {!allowed||(aftercare&&!canSupport)||error==='403'||error==='401'
       ?<p role="alert">{t(['无权查看报名管理。','You do not have access to enrollment management.','Anda tidak memiliki akses ke pengelolaan pendaftaran.'])}</p>
-      :aftercare?<CrmEnrollmentSupport lang={lang} isLight={isLight} embedded/>
+      :aftercare?<CrmEnrollmentSupport key={authorizationKey} lang={lang} isLight={isLight} embedded refreshVersion={requestVersion} onRefreshingChange={setLoading}/>
       :<>
         {error&&<p role="alert">{error==='404'?t(['班次不存在或当前账号无权查看。','The class is unavailable or you cannot view it.','Kelas tidak tersedia atau tidak dapat Anda lihat.'])
           :t(['暂时无法读取，请刷新后重试。','Could not load enrollments. Refresh to retry.','Pendaftaran gagal dimuat. Segarkan dan coba lagi.'])}</p>}
@@ -154,7 +189,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
           </div>
           {filter==='history'&&<div className="crm-opportunity-filters"><CrmSingleSelect lang={lang} isLight={isLight} label={t(['关闭原因','Closure reason','Alasan penutupan'])} value={closure} onChange={setClosure}
             options={[{value:'',label:t(['全部原因','All reasons','Semua alasan'])},...Object.entries(closeReasons).map(([value,copy])=>({value,label:t(copy)}))]}/></div>}
-          <h2>{t(['学员名单','Learner roster','Daftar siswa'])}</h2>
+          <h2 ref={rosterHeading} tabIndex={-1}>{t(['学员名单','Learner roster','Daftar siswa'])}</h2>
           <p className="crm-work-muted">{t(['上方数字是全班总数。下方只显示当前账号有权查看的记录。','Totals cover the whole class. The roster shows records you have access to.','Angka di atas mencakup seluruh kelas. Daftar hanya menampilkan catatan yang dapat Anda akses.'])}</p>
           {rows?.length?<div className="crm-opportunity-table"><table>
             <thead><tr>{([
@@ -171,7 +206,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
               <td><div className="crm-enrollment-row-actions">
                 {row.customerId&&<a className="crm-work-link" href={'/crm?tab=leads&lead='+encodeURIComponent(row.customerId)}>{t(['客户','Customer','Pelanggan'])}</a>}
                 {row.opportunityId&&<a className="crm-work-link" href={'/crm?tab=opportunities&opportunity='+encodeURIComponent(row.opportunityId)}>{t(['商机','Opportunity','Peluang'])}</a>}
-                {row.canVerify&&<a className="crm-work-link" href={'/crm?tab=payments&enrollmentOrder='+encodeURIComponent(row.id)}>{t(['核对到账','Verify payment','Verifikasi pembayaran'])}</a>}
+                {row.canVerify&&<a className="crm-work-link" id={'roster-verify-'+row.id} href={financePath(row.id)} onClick={()=>rememberRoster(row.id)}>{t(['核对到账','Verify payment','Verifikasi pembayaran'])}</a>}
               </div></td>
             </tr>)}</tbody>
           </table></div>:<p>{t(['当前筛选下没有可查看的学员记录。','No visible learner records match this filter.','Tidak ada catatan siswa yang dapat dilihat untuk filter ini.'])}</p>}

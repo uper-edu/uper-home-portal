@@ -9,3 +9,20 @@
 .crm-finance-record-row{cursor:pointer}.crm-finance-record-row:hover{background:var(--admin-selected)}
 .crm-finance-customer{appearance:none;border:0;background:transparent;padding:0;min-height:40px;text-align:left;font:inherit;font-weight:500;color:var(--admin-text);cursor:pointer}
 .crm-finance-customer:hover{color:var(--admin-action);text-decoration:underline}
+
+.crm-finance-views{display:flex;flex-wrap:wrap;gap:24px;border-bottom:1px solid var(--admin-border)}
+.crm-finance-views a{display:inline-flex;align-items:center;min-height:44px;padding-inline:4px;border-bottom:2px solid transparent;color:var(--admin-muted)}
+.crm-finance-views a[aria-current="page"]{border-color:var(--admin-action);color:var(--admin-action);font-weight:650}
+.crm-finance-views a:focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+.crm-enrollment-finance-table table{min-width:800px}
+.crm-enrollment-finance-detail>article{display:grid;gap:12px;border:0;padding:0;margin:0}
+.crm-enrollment-finance-detail :is(h3,p){margin-block:0}
+.crm-opportunity-summary.crm-enrollment-finance-summary{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;padding:16px;border:1px solid var(--admin-border);border-radius:14px}
+.crm-enrollment-finance-summary dt{color:var(--admin-muted);font-size:13px;font-weight:500}
+.crm-enrollment-finance-summary dd{overflow-wrap:anywhere;font-weight:600}
+.crm-enrollment-finance-proof,.crm-enrollment-finance-receipts{display:grid;gap:12px;padding-block:12px;border-bottom:1px solid var(--admin-border)}
+.crm-enrollment-finance-proof-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.crm-enrollment-finance-detail h3{font-size:14px;font-weight:650}
+.crm-enrollment-finance-proof-image{display:block;max-width:100%;max-height:420px;object-fit:contain;object-position:left center;border:1px solid var(--admin-border);border-radius:10px}
+.crm-enrollment-finance-actions{display:flex;justify-content:flex-end;padding-block:12px}
+.crm-enrollment-finance-actions .crm-work-button{min-height:40px}

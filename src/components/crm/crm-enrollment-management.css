@@ -10,3 +10,6 @@
 .crm-enrollment-summary dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:12px; margin:0; }
 .crm-enrollment-summary dt, .crm-enrollment-summary small { font-size:13px; color:var(--admin-muted); }
 .crm-enrollment-summary dd { margin:4px 0 0; font-size:20px; font-weight:650; }
+
+.crm-aftercare-workspace,.crm-aftercare-controls { display:grid; gap:12px; min-width:0; }
+.crm-aftercare-pagination { font-size:13px; }
