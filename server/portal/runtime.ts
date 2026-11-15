@@ -1,5 +1,6 @@
 import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
+import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
@@ -350,6 +351,7 @@ export async function mountPortal(app: Express) {
   await initializePortalDefaults();
   mountCourseRoutes(app,{wrap,staff});
   app.use(accessRestoreGate);
+  mountEnrollmentCatalog(app, { wrap, staff });
   mountAccessOperations(app);
   mountLocalAuth(app, (req) => platform.authenticate(req));
   mountAccessHandovers(app);

@@ -27,6 +27,7 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
       await addPaymentAnalytics(connection);
       const result=await addPaymentAnalyticsDispatch(connection);
       await addPaymentAnalyticsOccurrence(connection);
+      await applyEnrollmentCatalogMigration(connection);
       if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
       return result;
     };
@@ -47,6 +48,16 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=1");
     return finish();
   });
+}
+
+async function applyEnrollmentCatalogMigration(connection) {
+  const source = await readFile(new URL('./schema-enrollment-20261114172847.sql', import.meta.url), 'utf8');
+  await connection.query(source);
+  const [columns] = await connection.query('SHOW COLUMNS FROM enrollment_classes');
+  const required = ['id', 'course_id', 'revision', 'state', 'first_lesson_at', 'enrollment_closes_at', 'data', 'updated_at'];
+  if (!required.every(name => columns.some(column => column.Field === name))) {
+    throw Error('Incomplete enrollment class schema');
+  }
 }
 
 async function applyContentMigration(connection){

@@ -322,6 +322,12 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "INSERT INTO enrollment_classes (course_id,revision,state,first_lesson_at,enrollment_closes_at,data,id,updated_at) VALUES (:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_classes (course_id,revision,state,first_lesson_at,enrollment_closes_at,data,id,updated_at) VALUES (:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
   "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at": {
     "sql": "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at",
     "sources": [
@@ -580,6 +586,12 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)",
     "sources": [
       "server/portal/courseCatalog.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)": {
@@ -1556,6 +1568,12 @@
       "server/portal/interactionTimeline.ts"
     ]
   },
+  "SELECT e.id,e.revision,e.state,e.data FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      WHERE e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.revision,e.state,e.data FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      WHERE e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
   "SELECT f.*,EXISTS(SELECT 1 FROM crm_facts x WHERE x.lead_id=f.lead_id AND x.kind='fact.corrected' AND JSON_UNQUOTE(JSON_EXTRACT(x.data,'$.correctionOf'))=f.id) AS withdrawn,m.id AS message_id,m.content AS message_content,m.created_at AS message_at FROM crm_facts f LEFT JOIN conversations c ON c.lead_id=f.lead_id AND c.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.conversationId')) LEFT JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND (m.request_id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId')) OR m.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId'))) WHERE JSON_CONTAINS(:p1,JSON_QUOTE(f.lead_id)) AND f.kind IN ('questionnaire.submitted','followup.recorded','task.request_evidence','information.extracted') ORDER BY f.created_at DESC,f.id": {
     "sql": "SELECT f.*,EXISTS(SELECT 1 FROM crm_facts x WHERE x.lead_id=f.lead_id AND x.kind='fact.corrected' AND JSON_UNQUOTE(JSON_EXTRACT(x.data,'$.correctionOf'))=f.id) AS withdrawn,m.id AS message_id,m.content AS message_content,m.created_at AS message_at FROM crm_facts f LEFT JOIN conversations c ON c.lead_id=f.lead_id AND c.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.conversationId')) LEFT JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND (m.request_id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId')) OR m.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId'))) WHERE JSON_CONTAINS(:p1,JSON_QUOTE(f.lead_id)) AND f.kind IN ('questionnaire.submitted','followup.recorded','task.request_evidence','information.extracted') ORDER BY f.created_at DESC,f.id",
     "sources": [
@@ -2112,6 +2130,12 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT id,revision,state,data FROM enrollment_classes ORDER BY first_lesson_at,id": {
+    "sql": "SELECT id,revision,state,data FROM enrollment_classes ORDER BY first_lesson_at,id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
   "SELECT id,source FROM conversations WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))": {
     "sql": "SELECT id,source FROM conversations WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))",
     "sources": [
@@ -2128,6 +2152,12 @@
     "sql": "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50",
     "sources": [
       "server/portal/trustRoutes.ts"
+    ]
+  },
+  "SELECT id,value FROM crm_courses ORDER BY id": {
+    "sql": "SELECT id,value FROM crm_courses ORDER BY id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')": {
@@ -2440,6 +2470,7 @@
     "sources": [
       "server/portal/assignmentBackfill.ts",
       "server/portal/courseCatalog.ts",
+      "server/portal/enrollmentCatalog.ts",
       "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
     ]
@@ -2456,6 +2487,12 @@
     "sources": [
       "server/portal/assessments.ts",
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
@@ -2572,6 +2609,12 @@
     "sql": "SELECT value FROM crm_courses ORDER BY id",
     "sources": [
       "server/portal/courseCatalog.ts"
+    ]
+  },
+  "SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id=:p1": {
@@ -2841,6 +2884,12 @@
     "sql": "UPDATE crm_users SET roles=:p1,access_revision=access_revision+1 WHERE id='Robert'",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "UPDATE enrollment_classes SET course_id=:p1,revision=:p2,state=:p3,first_lesson_at=:p4,enrollment_closes_at=:p5,data=:p6,updated_at=UTC_TIMESTAMP(6) WHERE id=:p7": {
+    "sql": "UPDATE enrollment_classes SET course_id=:p1,revision=:p2,state=:p3,first_lesson_at=:p4,enrollment_closes_at=:p5,data=:p6,updated_at=UTC_TIMESTAMP(6) WHERE id=:p7",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "UPDATE followup_tasks SET details=:p2,revision=revision+1 WHERE id=:p1": {

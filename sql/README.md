@@ -33,5 +33,6 @@ v<YYYYMMDDHHMMSS>_<简短用途>.sql
 ## 与其他 SQL 的关系
 
 - 应用启动自动迁移链（`cloud/mysql/schema*.sql` 与 `cloud/mysql/migrate.mjs`、`trial_schema_versions` 记录）由代码运行时管理，**不放入本目录**，也不要为它手工补编号。
+- `cloud/mysql/schema-enrollment-20261114172847.sql`（2026-11-14 17:28）由启动迁移创建并核对 `enrollment_classes`，用于报名班次的草稿和发布。重复运行只核对结构，不更改数据。
 - 仓库 CMS 正式种子与图片在 `cloud/mysql/seeds/cms/v2/`，是内容数据源，不是增量脚本。
 - 完整空库初始化见 [docs/operations/cms-cos-bootstrap.md](../docs/operations/cms-cos-bootstrap.md)；不要把初始化包当增量导入已有业务库。
