@@ -5,7 +5,7 @@ import { allowsEnrollment, reconcileWaitlist, takenSeats } from './enrollmentInt
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
 import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners.ts';
 import { classOpeningNotices, orderNotice } from './enrollmentNotices.ts';
-import { readEnrollmentRules } from './enrollmentRules.ts';
+import { createEnrollmentTransferInvitation } from './enrollmentTransferOffers.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
@@ -135,17 +135,9 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       const existing=(await c.query("SELECT id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND expires_at>UTC_TIMESTAMP(6) FOR UPDATE",[id])).rows[0];
       if(existing) invalid('enrollment_active_invitation',409);
       const next=await target(c,cohort,order,to);
-      const invitation=randomUUID();
-      const {replyHours}=await readEnrollmentRules(c);
-      await c.query(`INSERT INTO enrollment_transfer_invitations
-        (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)
-        SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)),e.enrollment_closes_at),UTC_TIMESTAMP(6)
-        FROM enrollment_classes e WHERE e.id=:p5 AND e.enrollment_closes_at>UTC_TIMESTAMP(6)`,[invitation,id,cohort.id,actor.id,next.id,replyHours]);
-      const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS replyBy FROM enrollment_transfer_invitations WHERE id=:p1",[invitation])).rows[0];
-      if(!expiry) invalid('enrollment_transfer_unavailable',409);
-      await reconcileWaitlist(c,next,await takenSeats(c,next.id));
-      await orderNotice(c,'transfer_invitation',id,invitation,{targetClass:next.data.level,targetFirstLesson:next.data.firstLesson,replyBy:expiry.replyBy});
-      return {invitationId:invitation,replyBy:expiry.replyBy};
+      const invitation=await createEnrollmentTransferInvitation(c,id,cohort.id,next,actor.id);
+      if(!invitation) invalid('enrollment_transfer_unavailable',409);
+      return invitation;
     }));
     r.json(result);
   });

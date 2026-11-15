@@ -13,6 +13,7 @@ import { enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts'
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
 import { mountEnrollmentRules, readEnrollmentRules } from './enrollmentRules.ts';
 import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners.ts';
+import { markPriorityTransfersOnCancellation, startEnrollmentPriorityTransferSimulation } from './enrollmentTransferOffers.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
 import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
 import { mountEnrollmentCrm, recordEnrollmentCustomer } from './enrollmentCrm.ts';
@@ -122,6 +123,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
   startEnrollmentWeeklySimulation(enrollTx);
   startEnrollmentVacancySimulation(enrollTx,lockClass);
+  startEnrollmentPriorityTransferSimulation({transact:enrollTx,lockOrder,lockClass});
   mountEnrollmentResolution(app,{wrap,post,transact:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
@@ -134,6 +136,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         const confirmed=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[id])).rows[0];
         if(cohort.state!=='published'||confirmed) invalid('enrollment_class_cannot_cancel',409);
         await c.query("UPDATE enrollment_classes SET state='cancelled',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
+        await markPriorityTransfersOnCancellation(c,id);
         await reconcileWaitlist(c,{...cohort,state:'cancelled'},await takenSeats(c,id));
         await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)",[actor.id,{classId:id}]);
         const orders=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded')",[id])).rows;
@@ -403,10 +406,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const received = Number(order.received) + amount;
       const due = new Date(order.payment_due_at.replace(' ', 'T') + 'Z');
       const timely = (await c.query('SELECT COALESCE(SUM(amount),0) AS sum FROM enrollment_receipts WHERE order_id=:p1 AND settled_at<=:p2', [id,due])).rows[0].sum;
-      const mayRestore = cohort.state === 'published' && Number(timely) >= order.price;
-      const state = order.state === 'ended' ? 'ended' : order.state === 'expired' || order.state === 'recovered'
-        ? mayRestore || order.state === 'recovered' ? 'recovered' : 'expired'
-        : received >= order.price ? 'paid' : 'partial';
+      let state=order.state;
+      if(order.state==='expired'&&Number(timely)>=order.price){
+        if(cohort.state==='published') state='recovered';
+        if(cohort.state==='cancelled') state='paid';
+      } else if(!['ended','expired','recovered'].includes(order.state)){
+        state=received>=order.price?'paid':'partial';
+      }
       await c.query('UPDATE enrollment_orders SET received=:p1,state=:p2 WHERE id=:p3', [received,state,id]);
       const paid = cohort.state==='cancelled' ? 0 : Number((await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')", [cohort.id])).rows[0].count);
       const openedBefore = (await c.query('SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1', [cohort.id])).rows[0];
