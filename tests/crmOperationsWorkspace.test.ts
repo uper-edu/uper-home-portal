@@ -1,6 +1,15 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{CrmPolicySettings}from'../src/components/crm/CrmPolicySettings';import{DEFAULT_CRM_POLICY_CONFIG}from'../src/types/crmPolicyConfig';import{operationSections,operationGroups,operationSectionForField}from'../src/components/crm/operationsSections';
+import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{CrmPolicySettings}from'../src/components/crm/CrmPolicySettings';import{DEFAULT_CRM_POLICY_CONFIG}from'../src/types/crmPolicyConfig';import{operationSections,operationGroups,operationGroupOrder,operationSectionForField}from'../src/components/crm/operationsSections';
 test('all operation topics provide three aligned translations and field errors route to the right topic',()=>{
- assert.equal(operationSections.length,14);assert.ok(operationSections.some(s=>s.id==='assignment'));assert.equal(operationGroups.length,3);for(const s of operationSections){assert.equal(s.title.length,3);for(let i=0;i<3;i++){assert.ok(s.title[i]&&s.purpose[i]);assert.equal(s.steps[i].length,3);}}
+ const firstGroup=operationGroupOrder[0];
+ assert.equal(operationGroups[firstGroup][2],'课程与班次');
+ assert.deepEqual(operationSections.filter(section=>section.group===firstGroup).map(section=>section.id),['courses','enrollment-classes','enrollment-rules']);
+ assert.equal(new Set(operationSections.map(section=>section.id)).size,operationSections.length);
+ assert.ok(operationSections.some(section=>section.id==='assignment'));
+ for(const section of operationSections){
+  assert.equal(section.title.length,3);
+  const steps=section.id==='enrollment-classes'||section.id==='enrollment-rules'?0:3;
+  for(let i=0;i<3;i++){assert.ok(section.title[i]&&section.purpose[i]);assert.equal(section.steps[i].length,steps);}
+ }
  for(const [field,topic]of Object.entries({'businessHours.endTime':'schedule','firstResponseSla.hot':'first_response','noResponseCadence.retryInterval':'retry','inactivityWatchdog.hotInactivity':'watchdog','milestones.trialReminderBefore':'milestone','reactivation.reactivatedResponse':'reactivation','identityReviewManagerOnly':'permissions'}))assert.equal(operationSectionForField(field),topic);
 });
 test('initial view selects the first topic without changing configuration',()=>{

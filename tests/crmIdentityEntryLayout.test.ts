@@ -30,8 +30,14 @@ test('pending without a stage omits the dash, but actual historical stage and st
  const html=render(React.createElement(CrmCurrentSalesState,{lead,lang:'zh'}));assert.ok(!html.includes('crm-current-stage'));assert.equal(badges(html),1);
  const existing=render(React.createElement(CrmCurrentSalesState,{lead:{...lead,currentStage:'progress:enrolled',contactArrangement:{state:'stopped'}},lang:'zh'}));assert.ok(existing.includes('已报名'));assert.ok(existing.includes('已停止主动联系'));assert.equal(badges(existing),1);
 });
-test('pending has no new action after review is completed; normal row actions remain available',()=>{
- const value={...lead,currentStage:'progress:discovery',identityReview:{pending:false,canReview:true}};const html=workspace(value,'worklist',{onClaim(){},canClaim:()=>true,progressAction:()=> 'enabled'});assert.equal(actions(html),0);assert.equal(badges(html),0);assert.ok(html.includes('自己认领'));assert.ok(html.includes('记录进展'));
+test('completed identity review leaves one relevant row action for unassigned and assigned customers',()=>{
+ const value={...lead,currentStage:'progress:discovery',identityReview:{pending:false,canReview:true}};
+ const handlers={onClaim(){},canClaim:()=>true,progressAction:()=> 'enabled'};
+ const unassigned=workspace(value,'worklist',handlers);
+ const assigned=workspace({...value,owner:'identity-layout'},'worklist',handlers);
+ for(const html of [unassigned,assigned]){assert.equal(actions(html),0);assert.equal(badges(html),0);}
+ assert.match(unassigned,/自己认领/);assert.doesNotMatch(unassigned,/记录进展/);
+ assert.match(assigned,/记录进展/);assert.doesNotMatch(assigned,/自己认领/);
 });
 test('three-language labels preserve customer names and reviewer availability',()=>{
  for(const lang of ['zh','en','id']){const html=workspace({...lead,identityReview:{pending:true,canReview:false}},'worklist',{},lang);assert.equal(actions(html),0);assert.ok(html.includes(crmUiText('身份待核实',lang)));assert.ok(html.includes(crmUiText('核实后可认领和联系',lang)));assert.ok(html.includes(lead.fullName));}

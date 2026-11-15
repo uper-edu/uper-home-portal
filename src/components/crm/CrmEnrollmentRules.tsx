@@ -2,7 +2,6 @@ import {useEffect,useId,useRef,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormActions,AdminFormSection} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
-import {adminText} from '../AdminHeader';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentBusinessDayLimit,enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
@@ -21,7 +20,7 @@ const emailRuleLabels:Record<typeof enrollmentEmailRuleFields[number],readonly [
 };
 
 export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:CrmLanguage;isLight:boolean;active:boolean;onDraftChange:(dirty:boolean)=>void}) {
-  const t=(en:string,id:string,zh:string)=>adminText(lang,en,id,zh);
+  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
   const fieldHelp=useId();
   const [saved,setSaved]=useState<EnrollmentRules>();
   const [draft,setDraft]=useState(()=>asDraft(enrollmentRuleDefaults));
