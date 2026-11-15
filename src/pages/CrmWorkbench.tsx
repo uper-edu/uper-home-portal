@@ -24,6 +24,7 @@ import {CrmEnrollmentNoticeTarget} from '../components/crm/CrmEnrollmentNoticeTa
 import {CrmEnrollmentOpportunities} from '../components/crm/CrmEnrollmentOpportunities';
 import {CrmOpenEnrollmentOpportunity} from '../components/crm/CrmOpenEnrollmentOpportunity';
 import '../components/crm/crm-opportunities.css';
+import '../components/crm/crm-record-workspace.css';
 import {CrmCustomerHistoryWindow} from '../components/crm/CrmCustomerHistoryWindow';
 import {progressSaveSummary} from '../utils/crmProgressRecord';
 import {CrmIdentityAction} from '../components/crm/CrmIdentityAction';
@@ -48,6 +49,7 @@ import {CrmPolling,crmJson,CrmRefreshError,stableCrmOrder} from "../utils/crmPol
 import { CrmPageIdentity } from "../components/crm/CrmPageIdentity";
 import { CrmPageAction } from "../components/crm/CrmPageAction";
 import {leadDetailTab,leadDetailUrl} from "../utils/crmDetailNavigation";
+import {CrmDetailActions,CrmRecordNavigation} from "../components/crm/CrmRecordWorkspace";
 import {CrmDetailHeader,CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
 import {CrmFollowupContext} from "../components/crm/CrmFollowupContext";
 import { CrmDisclosure } from "../components/crm/CrmDisclosure";
@@ -1145,6 +1147,17 @@ function CrmWorkspace({
   };
   const canAssignSelectedOwner=Boolean(selectedLead&&!selectedLead.identityReview?.pending&&canAssign&&permittedRecord(employee,selectedLead,"crm.assign")&&(!selectedLead.identityReview?.ownerAssignmentManagerOnly||isCrmManager(employee)));
   const openOwnerEditor=()=>{const open=()=>setOwnerOpen(true);if(discardDraft(open))open();};
+  const selectedProgress=selectedLead?progressActionState(employee,selectedLead):'hidden';
+  const showClaim=selectedLead&&canClaimForContact(employee,selectedLead);
+  const claimPrimary=Boolean(showClaim&&selectedLead&&!selectedLead.identityReview?.pending&&!canEditLead(selectedLead,'crm.followup'));
+  const customerClaim=showClaim&&selectedLead&&<button type="button" className="crm-work-button" data-primary={claimPrimary}
+    disabled={claiming===selectedLead.id} onClick={()=>claimLead(selectedLead.id)}>
+    <UserCheck size={15} aria-hidden="true"/>{claiming===selectedLead.id?t("Claiming…","认领中…"):
+      lang==='en'?"Assign to me":t("Claim for myself","自己认领")}
+  </button>;
+  const customerProgress=<CrmProgressAction state={selectedProgress} busy={isSubmittingLog} lang={lang}
+    primary={!selectedLead?.identityReview?.pending&&!claimPrimary} icon={<PlusCircle size={15} aria-hidden="true"/>} onClick={startContactRecord}/>;
+  const selectedPosition=filteredLeads.findIndex(lead=>lead.id===selectedLead?.id);
   const leadPanel =
     isDrawerOpen && selectedLead ? (
       <section
@@ -1152,41 +1165,24 @@ function CrmWorkspace({
         className="crm-customer-panel crm-detail-panel"
         aria-label={t("Customer workspace", "客户处理面板")}
       >
-        <CrmDetailHeader identityNavigation={{
-          label:t("Customer navigation","客户浏览"),
-          back:<button type="button" className="crm-detail-nav-button" title={t("Back to customer list","返回客户列表")} aria-label={t("Back to customer list","返回客户列表")} onClick={closeCustomer} disabled={isSubmittingLog||profileSave==="saving"}><ArrowLeft size={18} aria-hidden="true"/></button>,
-          adjacent:<>{[-1,1].map(offset=>{const position=filteredLeads.findIndex((l:any)=>l.id===selectedLead.id),target=filteredLeads[position+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label} disabled={position<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}>{offset<0?<ChevronLeft size={18} aria-hidden="true"/>:<ChevronRight size={18} aria-hidden="true"/>}</button>;})}</>
-        }} title={selectedLead.fullName} status={<CrmCurrentSalesState lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
+        <CrmDetailHeader title={selectedLead.fullName} status={<CrmCurrentSalesState lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
               {employees.find(e=>e.id===selectedLead.owner)?.displayName||selectedLead.owner||t("Unassigned","未分配")}{' · '}{leadDisplayNumber(selectedLead)}
-            </span>} actions={<>
-
-            <div className="crm-detail-contact-actions" role="group" aria-label={t("Customer actions","客户操作")}>
+            </span>} actions={<CrmDetailActions label={t("Customer actions","客户操作")}
+          secondary={<>
             <CrmCustomer360Button lang={lang} onClick={()=>openCustomerHistory({})}/>
             {canAssignSelectedOwner&&<button type="button" className="crm-work-button crm-owner-trigger" aria-label={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} disabled={isSubmittingLog||profileSave==='saving'} onClick={openOwnerEditor}><UserCheck size={15} aria-hidden="true"/>{selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')}</button>}
-            {canClaimForContact(employee,selectedLead) && (
-                <button
-                  type="button"
-                  className="crm-work-button"
-                  data-primary={!canEditLead(selectedLead,"crm.followup")&&!selectedLead.identityReview?.pending}
-                  disabled={claiming === selectedLead.id}
-                  onClick={() => claimLead(selectedLead.id)}
-                >
-                  <UserCheck size={15} aria-hidden="true" />{claiming === selectedLead.id
-                    ? t("Claiming…", "认领中…")
-                    : (lang==='en'?"Assign to me":t("Claim for myself", "自己认领"))}
-                </button>
-              )}
             {!selectedLead.identityReview?.pending&&<button type="button" disabled={!selectedLead.whatsapp?.trim() || selectedLead.contactArrangement?.state==='stopped'} title={!selectedLead.whatsapp?.trim()?t("No contact number recorded","尚未记录联系号码"):selectedLead.contactArrangement?.state==='stopped'?outreachText('CONTACT_STOPPED',lang):undefined} onClick={openContactPreview} className="crm-work-button">
               <MessageCircle size={15} aria-hidden="true" /> {t("Prepare contact","准备联系")}
             </button>}
             <button type="button" className="crm-work-button" disabled={isSubmittingLog} onClick={()=>{const open=()=>setPaymentOpen(true);if(discardDraft(open))open();}}>{lang==='zh'?'报名与收款':lang==='id'?'Pendaftaran & pembayaran':'Enrollment & payments'}</button>
-            <CrmProgressAction state={progressActionState(employee,selectedLead)} busy={isSubmittingLog} lang={lang} primary={!selectedLead.identityReview?.pending} icon={<PlusCircle size={15} aria-hidden="true"/>} onClick={startContactRecord}/>
             {canEditLead(selectedLead)&&<button type="button" className="crm-work-button" data-crm-stage-trigger disabled={isSubmittingLog||profileSave==='saving'} onClick={()=>openStageEditor()}><ArrowRightLeft size={15} aria-hidden="true" />{lang==='zh'?'更新阶段':lang==='id'?'Perbarui tahap':'Update stage'}</button>}
-            </div>
-            {selectedLead.identityReview?.pending&&selectedLead.identityReview?.canReview&&<CrmIdentityAction lang={lang} onClick={()=>openIdentityReview(selectedLead.id)}/>}
+            {!claimPrimary&&customerClaim}
+            {(claimPrimary||selectedLead.identityReview?.pending)&&customerProgress}
+          </>}
+          primary={selectedLead.identityReview?.pending
+            ? selectedLead.identityReview.canReview&&<CrmIdentityAction lang={lang} onClick={()=>openIdentityReview(selectedLead.id)}/>
+            : claimPrimary?customerClaim:customerProgress}/>}/>
 
-
-          </>}/>
         {!ownerOpen&&!paymentOpen&&(hasDraft||isSubmittingLog)&&<CrmSaveFeedback lang={lang} state={isSubmittingLog?"saving":"dirty"}/>}
         <div className="crm-panel-next"><CrmNextTaskSummary hideFirstContact hideContactNotice lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>
         <CrmDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
@@ -1463,6 +1459,10 @@ function CrmWorkspace({
               onProcess={processFromList}
               progressAction={lead=>progressActionState(employee,lead)}
               sidebarFilters={leadPanel?leadFilterControls:undefined}
+              detailNavigation={(toggle,showDetail)=><CrmRecordNavigation label={t("Customer navigation","客户浏览")}
+                back={{label:t("Back to customer list","返回客户列表"),onClick:closeCustomer,disabled:isSubmittingLog||profileSave==="saving"}}
+                tools={<>{showDetail&&selectedLead&&[-1,1].map(offset=>{const target=filteredLeads[selectedPosition+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label} disabled={selectedPosition<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}>{offset<0?<ChevronLeft size={18} aria-hidden="true"/>:<ChevronRight size={18} aria-hidden="true"/>}</button>;})}{toggle}</>}/>}
+
               search={filters.search} onSearch={value=>setFilters(current=>({...current,search:value}))}
               onReset={() => setFilters(defaultLeadFilters(employee.scope))}
             >
