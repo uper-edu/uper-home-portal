@@ -869,7 +869,7 @@ export default function Layout() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   // Scroll to top on route change, but restore scroll on back navigation
   const { pathname } = location;
-  const enrollmentScreen = /^\/enrollment(?:\/(?!mine(?:\/|$)|interest(?:\/|$))[^/]+)?\/?$/.test(pathname);
+  const enrollmentScreen = pathname.startsWith('/enrollment/mine/') || /^\/enrollment(?:\/(?!interest(?:\/|$))[^/]+)?\/?$/.test(pathname);
   const navType = useNavigationType();
   const scrollPath = useRef<string | null>(null);
 

@@ -41,6 +41,9 @@ const copy = {
   back: ['Back to classes', 'Kembali ke daftar kelas', '返回课程报名'],
   unavailable: ['This class is unavailable.', 'Kelas ini tidak tersedia.', '此班次暂不可查看。'],
   mine: ['My enrollments', 'Pendaftaran saya', '我的报名'],
+  waitlistDetail: ['Waitlist details', 'Detail daftar tunggu', '候补详情'],
+  demandDetail: ['Course preference details', 'Detail preferensi kursus', '选课需求详情'],
+  recordUnavailable: ['This record is not available.', 'Catatan ini tidak tersedia.', '这条记录无法查看。'],
   interest: ['Tell us what you want to study', 'Sampaikan kursus yang Anda inginkan', '告诉我们你想上的课'],
   full: ['Full', 'Penuh', '满班'],
   limited: ['Few seats left', 'Kursi terbatas', '空位紧张'],
@@ -57,9 +60,10 @@ export default function Enrollment() {
   const locale = language === 'zh' ? 'zh-CN' : language === 'id' ? 'id-ID' : 'en-GB';
   const t = (key: keyof typeof copy) => copy[key][language === 'zh' ? 2 : language === 'id' ? 1 : 0];
   const [params, setParams] = useSearchParams();
-  const { classId } = useParams();
+  const { classId, recordKind, recordId } = useParams();
   const pathname = useLocation().pathname.replace(/\/$/, '');
-  const mine = pathname === '/enrollment/mine';
+  const record = recordId && (recordKind === 'waitlist' || recordKind === 'demands') ? { kind:recordKind, id:recordId } as const : undefined;
+  const mine = pathname === '/enrollment/mine' || !!recordId;
   const interest = pathname === '/enrollment/interest';
   const payment = pathname === '/enrollment/payment';
   const application = params.get('apply') === '1' || params.has('order');
@@ -166,12 +170,31 @@ export default function Enrollment() {
       ? <EnrollmentApplication key={params.get('order')} language={language} paymentClasses={classes ?? []}/>
       : <p>{t('unavailable')}</p>}
   </section>;
-  if (mine || interest) return <section className="enrollment-page">
+  if (mine) return <section className="enrollment-screen enrollment-mine">
+    <Link className="enrollment-back" to={recordId ? minePath : listPath}><ArrowLeft size={15} aria-hidden="true"/>{t(recordId ? 'backMine' : 'back')}</Link>
+    <h1>{t(record?.kind === 'waitlist' ? 'waitlistDetail' : record?.kind === 'demands' ? 'demandDetail' : 'mine')}</h1>
+    {recordId && !record ? <p>{t('recordUnavailable')}</p>
+      : accepting === undefined ? <p role="status">{t('loading')}</p>
+      : accepting ? <EnrollmentApplication key={pathname} language={language} mineClasses={classes ?? []} record={record}/>
+      : <p>{t('unavailable')}</p>}
+  </section>;
+  if (interest) return <section className="enrollment-page">
     <Link to={listPath}>{t('back')}</Link>
     <h1>{t(interest?'interest':'mine')}</h1>
     {accepting === undefined ? <p role="status">{t('loading')}</p> :
       accepting ? <EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/> : <p>{t('unavailable')}</p>}
   </section>;
+
+  if (application && selected && selected.availability !== 'full' && !params.has('order') && accepting) {
+    return <section className="enrollment-screen enrollment-apply-screen">
+      <EnrollmentApplication key={selected.id} classId={selected.id} language={language} applicationClass={{
+        title: selected.level + ' · ' + t(selected.format) + ' · ' + dateLabel(selected),
+        schedule: selected.schedule,
+        price: selected.price,
+        detailsPath: detailsPath(selected.id),
+      }}/>
+    </section>;
+  }
 
   if (classId) return <section className="enrollment-screen enrollment-detail">
     <Link className="enrollment-back" to={application ? detailsPath(classId) : listPath}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'details' : 'back')}</Link>
