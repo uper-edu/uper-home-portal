@@ -102,6 +102,15 @@ async function applyEnrollmentOrdersMigration(connection) {
   }else if(refundTiming.Type.toLowerCase()!=='json'||refundTiming.Null!=='YES'||refundTiming.Default!==null){
     throw Error('Enrollment refund timing does not match the expected schema');
   }
+  const activityDdl=(await readFile(new URL('./schema-enrollment-20261115000007.sql',import.meta.url),'utf8'))
+    .split(';').map(sql=>sql.trim());
+  for(const [index,table] of ['enrollment_orders','enrollment_waitlist'].entries()){
+    const [fields]=await connection.query('SHOW FULL COLUMNS FROM '+table);
+    const activity=fields.find(column=>column.Field==='activity_at');
+    if(!activity)await connection.query(activityDdl[index]);
+    else if(activity.Type.toLowerCase()!=='datetime(6)'||activity.Null!=='YES'||activity.Default!==null)
+      throw Error('Enrollment activity time does not match the expected schema: '+table);
+  }
 }
 
 async function applyContentMigration(connection){

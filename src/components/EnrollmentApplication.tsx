@@ -8,6 +8,7 @@ import { enrollmentSupportPath } from './EnrollmentSupport';
 import { EnrollmentOrderResult } from './EnrollmentOrderResult';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
 import { EnrollmentDemandForm, interestOption, waitlistStates, type DemandItem, type Interests } from './EnrollmentInterests';
+import { sortEnrollmentRecords } from '../utils/enrollmentRecordOrder';
 
 type Language = 'zh' | 'en' | 'id';
 type Copy = readonly [string, string, string];
@@ -31,7 +32,7 @@ export async function enrollmentPost(path: string, body: unknown) {
   if (!response.ok) throw Error(data.error);
   return data;
 }
-type OrderSummary = Order & { level: string; firstLesson: string };
+type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string}};
 type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string };
 type InterestRecord = { kind: 'waitlist' | 'demands'; id: string };
 
@@ -464,23 +465,35 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     return t([dayFormat.format(date)+' '+time+' WIB 截止','Due '+dayFormat.format(date)+' at '+time+' WIB','Batas '+dayFormat.format(date)+' pukul '+time+' WIB']);
   }
   const orderIsActive = (row: OrderSummary) => row.restored || !['expired','ended','refunded'].includes(row.status);
+  function transferInvitationPath(id:string,invitationId:string) {
+    const query=new URLSearchParams(params);
+    query.delete('proof');
+    query.set('order',id);
+    query.set('view','invitation');
+    query.set('target',invitationId);
+    return '/enrollment/mine?'+query.toString();
+  }
   const orderCards = (orders ?? []).filter(()=>tab==='all'||tab==='orders').map(row => {
     const course = mineClasses?.find(item=>item.id===row.classId);
     const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
-    const payable = row.status==='awaiting_payment';
+    const payable = row.status==='awaiting_payment'&&!row.classCancelled;
     const action = t(payable ? ['查看转账与凭证','View transfer & proof','Lihat transfer dan bukti']
       : row.status==='expired'&&!row.restored ? ['查看原订单','View original order','Lihat pesanan asal']
       : ['查看报名','View enrollment','Lihat pendaftaran']);
-    return {key:'order-'+row.id,active,card:<article className="enrollment-record">
+    return {key:'order-'+row.id,active,updatedAt:row.updatedAt,needsAction:active&&!!(row.needsPayment||row.invitation),card:<article className="enrollment-record">
       <header><small>{t(['报名申请','Application','Pendaftaran'])}</small>
         <span className="enrollment-status" data-state={!active?'full':row.status==='paid'||row.restored?'confirmed':'pending'}>{status}</span></header>
       <h2>{classTitle(row.level,row.firstLesson,row.classId)}</h2>
-      {row.status==='awaiting_payment' && <p>{paymentDeadline(row.deadline)}</p>}
+      {row.invitation&&<p>{t(['待答复转班邀请','Transfer invitation awaiting reply','Undangan pindah kelas menunggu jawaban'])} · {paymentDeadline(row.invitation.deadline)}</p>}
+      {payable && <p>{paymentDeadline(row.deadline)}</p>}
+      {row.classCancelled&&row.status==='awaiting_payment'&&<p>{t(['原班已停止收款','Payment for the original class is closed','Pembayaran untuk kelas asal ditutup'])}</p>}
       {row.status==='expired'&&!row.restored && <p>{t(['付款凭证未按时提交','Proof was not submitted by the deadline','Bukti tidak dikirim sebelum batas waktu'])}</p>}
       {row.status==='paid' && course?.schedule && <p>{[course.opened&&t(['已确认开班','Class confirmed','Kelas dikonfirmasi']),course.schedule].filter(Boolean).join(' · ')}</p>}
       {row.learnerName&&<p>{row.learnerName}</p>}
-      {payable ? <Link className="enrollment-record-link" to={paymentPath(row.id)}>{action}<ChevronRight size={15} aria-hidden="true"/></Link>
+      {row.invitation ? <Link className="enrollment-record-link" to={transferInvitationPath(row.id,row.invitation.id)}>
+        {t(['查看转班邀请','View transfer invitation','Lihat undangan pindah kelas'])}<ChevronRight size={15} aria-hidden="true"/></Link>
+        : payable ? <Link className="enrollment-record-link" to={paymentPath(row.id)}>{action}<ChevronRight size={15} aria-hidden="true"/></Link>
         : <button type="button" className="enrollment-record-link" onClick={()=>selectOrder(row.id)}>{action}<ChevronRight size={15} aria-hidden="true"/></button>}
     </article>};
   });
@@ -574,7 +587,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     </div>;
   }
   const waitlistCards = (interests?.waitlist ?? []).filter(()=>tab==='all'||tab==='waitlist').map(row => ({
-    key:'waitlist-'+row.id, active:row.state==='waiting', card:<article className="enrollment-record">
+    key:'waitlist-'+row.id, active:row.state==='waiting',updatedAt:row.updatedAt,needsAction:row.state==='waiting'&&row.available, card:<article className="enrollment-record">
       <header><small>{t(['候补','Waitlist','Daftar tunggu'])}</small>
         <span className="enrollment-status" data-state={row.state==='waiting'?'pending':'full'}>{t(waitlistStates[row.state])}</span></header>
       <h2>{classTitle(row.level,row.firstLesson,row.classId)}</h2>
@@ -586,7 +599,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     </article>,
   }));
   const demandCards = (interests?.demands ?? []).filter(()=>tab==='all'||tab==='demands').map(row => ({
-    key:'demand-'+row.id, active:row.state==='active', card:<article className="enrollment-record">
+    key:'demand-'+row.id, active:row.state==='active',updatedAt:row.updatedAt,needsAction:row.state==='active'&&!!row.matches.length, card:<article className="enrollment-record">
       <header><small>{t(['选课需求','Course preferences','Preferensi kursus'])}</small>
         <span className="enrollment-status" data-state={row.state==='withdrawn'?'full':row.matches.length?'confirmed':'pending'}>{row.state==='withdrawn'
           ? t(['已撤回','Withdrawn','Ditarik']) : row.matches.length
@@ -597,7 +610,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       </Link>
     </article>,
   }));
-  const records = [...orderCards,...waitlistCards,...demandCards];
+  const records = sortEnrollmentRecords([...orderCards,...waitlistCards,...demandCards]);
   const activeRecords = records.filter(record=>record.active);
   const pastRecords = records.filter(record=>!record.active);
   const editingProof = paymentClasses && params.get('proof')==='upload' && order?.status!=='ended';

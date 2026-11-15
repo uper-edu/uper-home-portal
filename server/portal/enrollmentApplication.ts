@@ -309,10 +309,25 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const { rows } = await c.query(`SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,
         CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
           AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,
-        o.data,e.state AS class_state,e.data AS class_data
+        o.data,e.state AS class_state,e.data AS class_data,
+        i.id AS invitation_id,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,
+        (e.state='published' AND (o.state='partial' OR
+          (o.state='awaiting_payment' AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,
+        DATE_FORMAT(GREATEST(o.created_at,COALESCE(o.activity_at,o.created_at),COALESCE(n.latest,o.created_at),
+          COALESCE(i.created_at,o.created_at),IF(e.state='cancelled',e.updated_at,o.created_at)),
+          '%Y-%m-%dT%H:%i:%s.%fZ') AS updated_at_iso
         FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
-        WHERE o.email=:p1 ORDER BY o.created_at DESC,o.id DESC LIMIT 100`, [email]);
-      return rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson }));
+        LEFT JOIN LATERAL (SELECT MAX(recorded_at) AS latest FROM enrollment_notification_receipts
+          WHERE subject_id=o.id AND channel='email') n ON TRUE
+        LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at FROM enrollment_transfer_invitations offer
+          JOIN enrollment_classes target ON target.id=offer.target_class_id AND target.state='published'
+          WHERE offer.order_id=o.id AND offer.source_class_id=o.class_id AND offer.state='offered'
+            AND offer.expires_at>UTC_TIMESTAMP(6) AND e.state='cancelled' AND o.state IN ('paid','recovered')
+          ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE
+        WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100`, [email]);
+      return rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
+        classCancelled:row.class_state==='cancelled',updatedAt:row.updated_at_iso,needsPayment:Number(row.needs_payment)===1,
+        invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline}:undefined }));
     });
     r.set('Cache-Control', 'no-store').json({ orders });
   }));
@@ -361,7 +376,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       await c.query(`INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)
         VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,digest,encoded,transferDetails]);
       const state = order.state === 'awaiting_payment' ? 'proof_review' : order.state;
-      await c.query('UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
+      await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
       await proofNotices(c,order.id,cohort.id,digest,cohort.data.level);
       return view({...order,state},cohort.state);
     });
@@ -436,7 +451,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       } else if(!['ended','expired','recovered'].includes(order.state)){
         state=received>=order.price?'paid':'partial';
       }
-      await c.query('UPDATE enrollment_orders SET received=:p1,state=:p2 WHERE id=:p3', [received,state,id]);
+      await c.query('UPDATE enrollment_orders SET received=:p1,state=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3', [received,state,id]);
       const paid = cohort.state==='cancelled' ? 0 : Number((await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')", [cohort.id])).rows[0].count);
       const openedBefore = (await c.query('SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1', [cohort.id])).rows[0];
       const newlyPaid=cohort.state==='published'&&['paid','recovered'].includes(state)&&!['paid','recovered'].includes(order.state);

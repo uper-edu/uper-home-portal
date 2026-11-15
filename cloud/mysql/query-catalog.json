@@ -2380,8 +2380,8 @@
       "server/portal/notificationTarget.ts"
     ]
   },
-  "SELECT id,email,criteria,state,revision FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC": {
-    "sql": "SELECT id,email,criteria,state,revision FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC",
+  "SELECT id,email,criteria,state,revision,DATE_FORMAT(updated_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC": {
+    "sql": "SELECT id,email,criteria,state,revision,DATE_FORMAT(updated_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC",
     "sources": [
       "server/portal/enrollmentInterests.ts"
     ]
@@ -2596,8 +2596,8 @@
       "server/portal/trustRoutes.ts"
     ]
   },
-  "SELECT id,state,order_id FROM enrollment_waitlist WHERE email=:p1": {
-    "sql": "SELECT id,state,order_id FROM enrollment_waitlist WHERE email=:p1",
+  "SELECT id,state,order_id,\n        DATE_FORMAT(COALESCE(activity_at,created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_waitlist WHERE email=:p1": {
+    "sql": "SELECT id,state,order_id,\n        DATE_FORMAT(COALESCE(activity_at,created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_waitlist WHERE email=:p1",
     "sources": [
       "server/portal/enrollmentInterests.ts"
     ]
@@ -2631,6 +2631,12 @@
     "sql": "SELECT input_hash,visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT interest_id,\n        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events\n        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id": {
+    "sql": "SELECT interest_id,\n        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events\n        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "SELECT is_full,cycle FROM enrollment_vacancy_cycles WHERE class_id=:p1 FOR UPDATE": {
@@ -2863,8 +2869,8 @@
       "server/portal/enrollmentTransferOffers.ts"
     ]
   },
-  "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        o.data,e.state AS class_state,e.data AS class_data\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        WHERE o.email=:p1 ORDER BY o.created_at DESC,o.id DESC LIMIT 100": {
-    "sql": "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        o.data,e.state AS class_state,e.data AS class_data\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        WHERE o.email=:p1 ORDER BY o.created_at DESC,o.id DESC LIMIT 100",
+  "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        o.data,e.state AS class_state,e.data AS class_data,\n        i.id AS invitation_id,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,\n        (e.state='published' AND (o.state='partial' OR\n          (o.state='awaiting_payment' AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,\n        DATE_FORMAT(GREATEST(o.created_at,COALESCE(o.activity_at,o.created_at),COALESCE(n.latest,o.created_at),\n          COALESCE(i.created_at,o.created_at),IF(e.state='cancelled',e.updated_at,o.created_at)),\n          '%Y-%m-%dT%H:%i:%s.%fZ') AS updated_at_iso\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        LEFT JOIN LATERAL (SELECT MAX(recorded_at) AS latest FROM enrollment_notification_receipts\n          WHERE subject_id=o.id AND channel='email') n ON TRUE\n        LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at FROM enrollment_transfer_invitations offer\n          JOIN enrollment_classes target ON target.id=offer.target_class_id AND target.state='published'\n          WHERE offer.order_id=o.id AND offer.source_class_id=o.class_id AND offer.state='offered'\n            AND offer.expires_at>UTC_TIMESTAMP(6) AND e.state='cancelled' AND o.state IN ('paid','recovered')\n          ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE\n        WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100": {
+    "sql": "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        o.data,e.state AS class_state,e.data AS class_data,\n        i.id AS invitation_id,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,\n        (e.state='published' AND (o.state='partial' OR\n          (o.state='awaiting_payment' AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,\n        DATE_FORMAT(GREATEST(o.created_at,COALESCE(o.activity_at,o.created_at),COALESCE(n.latest,o.created_at),\n          COALESCE(i.created_at,o.created_at),IF(e.state='cancelled',e.updated_at,o.created_at)),\n          '%Y-%m-%dT%H:%i:%s.%fZ') AS updated_at_iso\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        LEFT JOIN LATERAL (SELECT MAX(recorded_at) AS latest FROM enrollment_notification_receipts\n          WHERE subject_id=o.id AND channel='email') n ON TRUE\n        LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at FROM enrollment_transfer_invitations offer\n          JOIN enrollment_classes target ON target.id=offer.target_class_id AND target.state='published'\n          WHERE offer.order_id=o.id AND offer.source_class_id=o.class_id AND offer.state='offered'\n            AND offer.expires_at>UTC_TIMESTAMP(6) AND e.state='cancelled' AND o.state IN ('paid','recovered')\n          ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE\n        WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -3589,8 +3595,14 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "UPDATE enrollment_orders SET class_id=:p1 WHERE id=:p2": {
-    "sql": "UPDATE enrollment_orders SET class_id=:p1 WHERE id=:p2",
+  "UPDATE enrollment_orders SET activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET class_id=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2": {
+    "sql": "UPDATE enrollment_orders SET class_id=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -3601,45 +3613,45 @@
       "server/portal/enrollmentTransferOffers.ts"
     ]
   },
-  "UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)) WHERE id=:p1": {
-    "sql": "UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)) WHERE id=:p1",
+  "UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)),activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)),activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "UPDATE enrollment_orders SET received=:p1,state=:p2 WHERE id=:p3": {
-    "sql": "UPDATE enrollment_orders SET received=:p1,state=:p2 WHERE id=:p3",
+  "UPDATE enrollment_orders SET received=:p1,state=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3": {
+    "sql": "UPDATE enrollment_orders SET received=:p1,state=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2": {
-    "sql": "UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2",
+  "UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2": {
+    "sql": "UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2",
     "sources": [
       "server/portal/enrollmentApplication.ts",
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "UPDATE enrollment_orders SET state='ended',upload_id=NULL,upload_expires_at=NULL WHERE id=:p1": {
-    "sql": "UPDATE enrollment_orders SET state='ended',upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",
+  "UPDATE enrollment_orders SET state='ended',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET state='ended',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "UPDATE enrollment_orders SET state='expired',upload_id=NULL,upload_expires_at=NULL\n    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)\n      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))": {
-    "sql": "UPDATE enrollment_orders SET state='expired',upload_id=NULL,upload_expires_at=NULL\n    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)\n      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))",
+  "UPDATE enrollment_orders SET state='expired',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL\n    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)\n      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))": {
+    "sql": "UPDATE enrollment_orders SET state='expired',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL\n    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)\n      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))",
     "sources": [
       "server/portal/enrollmentInterests.ts"
     ]
   },
-  "UPDATE enrollment_orders SET state='refunded' WHERE id=:p1": {
-    "sql": "UPDATE enrollment_orders SET state='refunded' WHERE id=:p1",
+  "UPDATE enrollment_orders SET state='refunded',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET state='refunded',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "UPDATE enrollment_orders SET state='refunding' WHERE id=:p1": {
-    "sql": "UPDATE enrollment_orders SET state='refunding' WHERE id=:p1",
+  "UPDATE enrollment_orders SET state='refunding',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET state='refunding',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -3680,20 +3692,20 @@
       "server/portal/enrollmentInterests.ts"
     ]
   },
-  "UPDATE enrollment_waitlist SET state='closed' WHERE class_id=:p1 AND state='waiting'": {
-    "sql": "UPDATE enrollment_waitlist SET state='closed' WHERE class_id=:p1 AND state='waiting'",
+  "UPDATE enrollment_waitlist SET state='closed',activity_at=UTC_TIMESTAMP(6) WHERE class_id=:p1 AND state='waiting'": {
+    "sql": "UPDATE enrollment_waitlist SET state='closed',activity_at=UTC_TIMESTAMP(6) WHERE class_id=:p1 AND state='waiting'",
     "sources": [
       "server/portal/enrollmentInterests.ts"
     ]
   },
-  "UPDATE enrollment_waitlist SET state='converted',order_id=:p1 WHERE id=:p2 AND state='waiting'": {
-    "sql": "UPDATE enrollment_waitlist SET state='converted',order_id=:p1 WHERE id=:p2 AND state='waiting'",
+  "UPDATE enrollment_waitlist SET state='converted',activity_at=UTC_TIMESTAMP(6),order_id=:p1 WHERE id=:p2 AND state='waiting'": {
+    "sql": "UPDATE enrollment_waitlist SET state='converted',activity_at=UTC_TIMESTAMP(6),order_id=:p1 WHERE id=:p2 AND state='waiting'",
     "sources": [
       "server/portal/enrollmentLearners.ts"
     ]
   },
-  "UPDATE enrollment_waitlist SET state='withdrawn' WHERE id=:p1 AND email=:p2 AND state='waiting'": {
-    "sql": "UPDATE enrollment_waitlist SET state='withdrawn' WHERE id=:p1 AND email=:p2 AND state='waiting'",
+  "UPDATE enrollment_waitlist SET state='withdrawn',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND email=:p2 AND state='waiting'": {
+    "sql": "UPDATE enrollment_waitlist SET state='withdrawn',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND email=:p2 AND state='waiting'",
     "sources": [
       "server/portal/enrollmentInterests.ts"
     ]

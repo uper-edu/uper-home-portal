@@ -26,5 +26,5 @@ export async function learnerWaitlist(c:Client,classId:string,email:string,name?
 
 export async function convertLearnerWaitlist(c:Client,classId:string,email:string,name:string,orderId:string) {
   const entry=await learnerWaitlist(c,classId,email,name);
-  if(entry) await c.query("UPDATE enrollment_waitlist SET state='converted',order_id=:p1 WHERE id=:p2 AND state='waiting'",[orderId,entry.id]);
+  if(entry) await c.query("UPDATE enrollment_waitlist SET state='converted',activity_at=UTC_TIMESTAMP(6),order_id=:p1 WHERE id=:p2 AND state='waiting'",[orderId,entry.id]);
 }

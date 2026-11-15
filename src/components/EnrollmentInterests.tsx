@@ -4,8 +4,8 @@ import { demandFormats, demandLevels, demandPeriods, parseDemand, type DemandCri
 
 export type InterestLanguage = 'zh'|'en'|'id';
 type Copy = readonly [string,string,string];
-export type WaitlistItem = { id:string; classId:string; learnerName?:string; state:string; orderId?:string; available:boolean; level:string; firstLesson:string };
-export type DemandItem = { id:string; revision:number; state:string; criteria:DemandCriteria; matches:{id:string;level:string;firstLesson:string}[] };
+export type WaitlistItem = { id:string; classId:string; learnerName?:string; state:string; orderId?:string; available:boolean; level:string; firstLesson:string; updatedAt?:string };
+export type DemandItem = { id:string; revision:number; state:string; criteria:DemandCriteria; matches:{id:string;level:string;firstLesson:string}[]; updatedAt?:string };
 export type Interests = { waitlist:WaitlistItem[]; demands:DemandItem[] };
 
 const words:Record<string,Copy> = {

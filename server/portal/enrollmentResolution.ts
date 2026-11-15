@@ -121,7 +121,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       sameClass(cohort.id,q.body?.classId);
       if(!canSelectTransfer(order,cohort)) invalid('enrollment_priority_unavailable',409);
       if(order.data.priority!==true){
-        await c.query("UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)) WHERE id=:p1",[id]);
+        await c.query("UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)),activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
         await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.priority.enable',:p2)",
           ['learner:'+createHash('sha256').update(email).digest('hex'),{orderId:id,classId:cohort.id}]);
       }
@@ -169,6 +169,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         if(decision==='decline'){
           const next=await lockClass(c,targetClassId);
           await c.query("UPDATE enrollment_transfer_invitations SET state='declined' WHERE id=:p1",[invitationId]);
+          await c.query('UPDATE enrollment_orders SET activity_at=UTC_TIMESTAMP(6) WHERE id=:p1',[id]);
           await expireSeats(c,next.id);
           await reconcileWaitlist(c,next,await takenSeats(c,next.id));
           return { classId:cohort.id,decision };
@@ -176,7 +177,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         const next=await target(c,cohort,order,targetClassId,invitationId);
         if(invitationId) await c.query("UPDATE enrollment_transfer_invitations SET state='accepted' WHERE id=:p1",[invitationId]);
         await releaseInvites(c,id,invitationId);
-        await c.query('UPDATE enrollment_orders SET class_id=:p1 WHERE id=:p2',[next.id,id]);
+        await c.query('UPDATE enrollment_orders SET class_id=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2',[next.id,id]);
         await convertLearnerWaitlist(c,next.id,email,order.data.name,id);
         await c.query(`INSERT INTO enrollment_transfers(id,order_id,source_class_id,target_class_id,invitation_id,created_at)
           VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[randomUUID(),id,cohort.id,next.id,invitationId??null]);
@@ -202,7 +203,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       const {order,cohort}=await lockOrder(c,id);
       sameClass(cohort.id,q.body.classId);
       if(!endable.includes(order.state)) invalid('enrollment_end_unavailable',409);
-      await c.query("UPDATE enrollment_orders SET state='ended',upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",[id]);
+      await c.query("UPDATE enrollment_orders SET state='ended',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",[id]);
       await releaseInvites(c,id);
       await reconcileWaitlist(c,cohort,await takenSeats(c,cohort.id));
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.end',:p2)",
@@ -235,7 +236,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       const timing={requestedAt:requested.toISOString(),sendBy,timezone:calendar.timezone};
       await c.query(`INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,timing,created_at)
         VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))`,[id,cohort.id,actor.id,reason.trim(),delivered,expected,timing]);
-      await c.query('UPDATE enrollment_orders SET state=:p1,upload_id=NULL,upload_expires_at=NULL WHERE id=:p2',[expected>0?'refunding':'refunded',id]);
+      await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2',[expected>0?'refunding':'refunded',id]);
       await releaseInvites(c,id);
       await reconcileWaitlist(c,cohort,await takenSeats(c,cohort.id));
       await orderNotice(c,'refund_accepted',id,undefined,{expected,sendBy:expected>0?sendBy:undefined});
@@ -266,7 +267,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         await c.query(`INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)
           VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[returned,original,id,amount,actor.id]);
       }catch(error:any){if(error.code==='ER_DUP_ENTRY') invalid('enrollment_duplicate_refund',409);throw error;}
-      if(cumulative===expected) await c.query("UPDATE enrollment_orders SET state='refunded' WHERE id=:p1",[id]);
+      if(cumulative===expected) await c.query("UPDATE enrollment_orders SET state='refunded',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
       await orderNotice(c,'refund_recorded',id,'payment-'+createHash('sha256').update(returned).digest('hex'),{installment:amount,refunded:cumulative,expected});
       return {orderId:id,refunded:cumulative,expected};
     }));
@@ -294,7 +295,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         await c.query(`INSERT INTO enrollment_refund_returns(reference,refund_reference,amount,actor,created_at)
           VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6))`,[bankReturn,refundReference,amount,actor.id]);
       }catch(error:any){if(error.code==='ER_DUP_ENTRY') invalid('enrollment_duplicate_refund_return',409);throw error;}
-      if(order.state==='refunded') await c.query("UPDATE enrollment_orders SET state='refunding' WHERE id=:p1",[id]);
+      await c.query("UPDATE enrollment_orders SET state='refunding',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
       return {orderId:id,refunded:ledger.progress.refunded-amount,expected:ledger.progress.expected};
     }));
     r.json(result);

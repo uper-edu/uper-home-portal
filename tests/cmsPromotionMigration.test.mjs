@@ -16,6 +16,7 @@ const learnerNameDdl='ALTER TABLE enrollment_waitlist ADD COLUMN learner_name VA
 const transferDetailsDdl='ALTER TABLE enrollment_proofs ADD COLUMN transfer_details JSON DEFAULT NULL';
 const receivingAccountDdl='ALTER TABLE enrollment_receipts ADD COLUMN receiving_account VARCHAR(160) DEFAULT NULL';
 const refundTimingDdl='ALTER TABLE enrollment_refund_cases ADD COLUMN timing JSON DEFAULT NULL';
+const activityDdl=['enrollment_orders','enrollment_waitlist'].map(table=>'ALTER TABLE '+table+' ADD COLUMN activity_at DATETIME(6) DEFAULT NULL');
 const cosColumns=()=>Object.entries({content:['mediumblob','YES'],storage_type:['varchar(16)','NO'],cos_url:['varchar(1024)','YES'],object_key:['varchar(255)','YES'],byte_size:['bigint unsigned','YES']}).map(([Field,[Type,Null]])=>({Field,Type,Null}));
 const queueColumns=(version=19)=>Object.entries({
  id:'char(64)',environment:"enum('dev','test','prod')",project_id:'varchar(191)',
@@ -39,6 +40,7 @@ function fixture(ready){
  const index=ready.includes(17)?[{p:'existing_promotion',campaign_id:'existing'}]:[];
  const shortLinks=ready.includes(18)?[{p:'existing_promotion',short_code:'abc234'}]:[];
  let transferDetailsColumn,receivingAccountColumn,refundTimingColumn;
+ const activityColumns=new Map();
  const connection={
   async query(sql,args){
    queries.push(sql);
@@ -57,7 +59,13 @@ function fixture(ready){
    if(sql==='SHOW CREATE TABLE crm_payment_analytics')return [tables.has('crm_payment_analytics')?[{'Create Table':'CREATE TABLE fixture (...) ENGINE=InnoDB'}]:[]];
    if(sql==='SHOW FULL COLUMNS FROM crm_payment_analytics')return [structuredClone(paymentColumns)];
    if(sql==='SHOW COLUMNS FROM enrollment_classes')return [tables.has('enrollment_classes')?enrollmentClassFields.map(Field=>({Field})):[]];
-   if(sql==='SHOW FULL COLUMNS FROM enrollment_waitlist')return [waitlistNameColumn?[waitlistNameColumn]:[]];
+   if(sql==='SHOW FULL COLUMNS FROM enrollment_waitlist')return [[waitlistNameColumn,activityColumns.get('enrollment_waitlist')].filter(Boolean)];
+   if(sql==='SHOW FULL COLUMNS FROM enrollment_orders')return [[activityColumns.get('enrollment_orders')].filter(Boolean)];
+   if(activityDdl.includes(sql)){
+    const table=sql.split(' ')[2];
+    if(!tables.has(table)||activityColumns.has(table))throw Error('Unexpected enrollment activity DDL');
+    activityColumns.set(table,{Field:'activity_at',Type:'datetime(6)',Null:'YES',Default:null});return [{}];
+   }
    if(sql==='SHOW FULL COLUMNS FROM enrollment_proofs')return [transferDetailsColumn?[transferDetailsColumn]:[]];
    if(sql==='SHOW FULL COLUMNS FROM enrollment_receipts')return [receivingAccountColumn?[receivingAccountColumn]:[]];
    if(sql==='SHOW FULL COLUMNS FROM enrollment_refund_cases')return [refundTimingColumn?[refundTimingColumn]:[]];
@@ -144,6 +152,7 @@ test('COS-MERGE-03: empty schema executes all 20 real migration stages in order'
  assert.equal(f.queries.filter(sql=>sql===transferDetailsDdl).length,1);
  assert.equal(f.queries.filter(sql=>sql===receivingAccountDdl).length,1);
  assert.equal(f.queries.filter(sql=>sql===refundTimingDdl).length,1);
+ for(const ddl of activityDdl)assert.equal(f.queries.filter(sql=>sql===ddl).length,1);
 });
 test('COS-MERGE-04: a ready marker cannot hide missing COS columns, even when v18 is ready',async()=>{
  const f=fixture(range(18));f.setColumns(cosColumns().filter(row=>row.Field!=='cos_url'));

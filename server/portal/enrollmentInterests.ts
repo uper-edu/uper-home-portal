@@ -33,7 +33,7 @@ export function allowsEnrollment(cohort: Cohort) {
 
 // The caller holds the class lock so an upload and an expiry cannot release the same seat.
 export async function expireSeats(c: Client, classId: string) {
-  await c.query(`UPDATE enrollment_orders SET state='expired',upload_id=NULL,upload_expires_at=NULL
+  await c.query(`UPDATE enrollment_orders SET state='expired',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL
     WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)
       AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))`, [classId]);
 }
@@ -41,7 +41,7 @@ export async function expireSeats(c: Client, classId: string) {
 export async function reconcileWaitlist(c: Client, cohort: Cohort, seats: number) {
   if (!allowsEnrollment(cohort)) {
     if (!Number(cohort.accepting) || cohort.state === 'cancelled') {
-      await c.query("UPDATE enrollment_waitlist SET state='closed' WHERE class_id=:p1 AND state='waiting'", [cohort.id]);
+      await c.query("UPDATE enrollment_waitlist SET state='closed',activity_at=UTC_TIMESTAMP(6) WHERE class_id=:p1 AND state='waiting'", [cohort.id]);
     }
     return;
   }
@@ -175,7 +175,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       const [entry]=(await c.query('SELECT class_id FROM enrollment_waitlist WHERE id=:p1 AND email=:p2',[q.params.id,email])).rows;
       if (!entry) invalid('enrollment_interest_not_found',404);
       await lockClass(c,entry.class_id);
-      await c.query("UPDATE enrollment_waitlist SET state='withdrawn' WHERE id=:p1 AND email=:p2 AND state='waiting'",[q.params.id,email]);
+      await c.query("UPDATE enrollment_waitlist SET state='withdrawn',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND email=:p2 AND state='waiting'",[q.params.id,email]);
     });
     send(r,{ok:true});
   });
@@ -192,26 +192,35 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
         await reconcileWaitlist(c,cohort,seats);
         availability.set(id,{cohort,available:allowsEnrollment(cohort)&&seats<cohort.data.capacity});
       }
-      const entries=availability.size ? (await c.query('SELECT id,state,order_id FROM enrollment_waitlist WHERE email=:p1',[email])).rows : [];
+      const entries=availability.size ? (await c.query(`SELECT id,state,order_id,
+        DATE_FORMAT(COALESCE(activity_at,created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt
+        FROM enrollment_waitlist WHERE email=:p1`,[email])).rows : [];
       const latestWaitlist=new Map(entries.map(entry=>[entry.id,entry]));
-      const {rows:demands}=await c.query('SELECT id,email,criteria,state,revision FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC',[email]);
+      const {rows:demands}=await c.query(`SELECT id,email,criteria,state,revision,DATE_FORMAT(updated_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt
+        FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC`,[email]);
       const candidates=demands.some(d=>d.state==='active') ? await offers(c) : [];
       const enriched=[];
       for(const demand of demands){
         const matched=demand.state==='active'?candidates.filter(cohort=>demandMatches(demand.criteria,cohort.data)):[];
         for (const match of matched) await recordDemandMatch(c,demand,match);
-        enriched.push({id:demand.id,criteria:demand.criteria,state:demand.state,revision:demand.revision,
+        enriched.push({id:demand.id,criteria:demand.criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,
           matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
       }
+      const interestIds=[...waiting,...demands].map(row=>row.id);
+      const activity=interestIds.length?(await c.query(`SELECT interest_id,
+        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events
+        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id`,[JSON.stringify(interestIds)])).rows:[];
+      const latestActivity=new Map(activity.map(row=>[row.interest_id,row.updatedAt]));
+      const mostRecent=(row:{id:string;updatedAt:string})=>[row.updatedAt,latestActivity.get(row.id)].filter(Boolean).sort().at(-1);
       return {
         waitlist:waiting.map(w=>{
           const current=availability.get(w.class_id);
           const latest=latestWaitlist.get(w.id) ?? w;
           const state=latest.state;
-          return {id:w.id,classId:w.class_id,learnerName:w.learner_name,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,
+          return {id:w.id,classId:w.class_id,learnerName:w.learner_name,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,updatedAt:mostRecent(latest),
             level:current?.cohort.data.level,firstLesson:current?.cohort.data.firstLesson};
         }),
-        demands:enriched,
+        demands:enriched.map(row=>({...row,updatedAt:mostRecent(row)})),
       };
     });
     send(r,data);
