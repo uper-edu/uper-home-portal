@@ -8,11 +8,14 @@ import { progressLabel, salesProgressStages } from '../../utils/crmSalesProgress
 import { interestOption } from '../EnrollmentInterests';
 import { enrollmentStatuses } from '../EnrollmentApplication';
 import { CrmOperationLayer } from './CrmOperationLayer';
+import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
+import { AdminFormActions } from '../AdminFormLayout';
 import { describeFollowUpTask } from '../../utils/crmFollowUp';
 import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
 import { CrmDisclosure } from './CrmDisclosure';
-import { CrmDiscardDialog } from './CrmDetailWorkspace';
+import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { opportunityFilterDefaults as filterDefaults,opportunityListPath,type OpportunityFilters as Filters } from '../../utils/crmEnrollmentOpportunityRoute';
+import { contactEmailText, validContactEmail } from '../../utils/contactEmail';
 
 type Copy = readonly [string,string,string];
 type CourseRecord = {
@@ -22,6 +25,7 @@ type CourseRecord = {
   price:number|null;received:number|null;learnerName?:string|null;paymentDueAt?:string|null;
   attribution?:{entry:string;source?:string;campaign?:string;verified:boolean}|null;
   latestNotice?:string;
+  enrollmentEmail?:string;
 };
 type EnrollmentEmail = {id:string;orderId:string;kind:string;state:string;subject:string|null;language:string|null;recordedAt:string};
 type OpportunityFollowup = {kind:'agreement'|'task';id:string;type?:string;action?:string;at?:string;date?:string};
@@ -122,8 +126,9 @@ function sourceLabel(attribution:CourseRecord['attribution'],lang:CrmLanguage) {
     ?t(lang,['官网','Website','Situs web']):t(lang,['直接访问','Direct','Langsung']);
   return [entry,attribution.verified?attribution.source:null,attribution.campaign].filter(Boolean).join(' · ');
 }
-function CourseRecords({ records, link, lang, emails, targetRecord }: {
+function CourseRecords({ records, link, lang, emails, targetRecord, onChangeEmail }: {
   records:CourseRecord[];link:boolean;lang:CrmLanguage;emails?:EnrollmentEmail[];targetRecord?:string|null;
+  onChangeEmail?:(row:CourseRecord)=>void;
 }) {
   if(!records.length) return <p className="crm-work-muted">{t(lang,['暂无课程记录。','No course records.','Belum ada catatan kursus.'])}</p>;
   return <ol className="crm-course-records">
@@ -136,24 +141,117 @@ function CourseRecords({ records, link, lang, emails, targetRecord }: {
       {row.attribution&&<p>{t(lang,['报名来源','Enrollment source','Sumber pendaftaran'])} · {sourceLabel(row.attribution,lang)}</p>}
       {link&&row.latestNotice&&<p>{t(lang,['最近一封邮件记录','Latest email record','Catatan email terakhir'])} · {row.latestNotice}</p>}
       {link&&row.opportunityId&&<a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:row.opportunityId,enrollmentRecord:row.id})}>{t(lang,['查看商机','View opportunity','Lihat peluang'])}</a>}
+      {onChangeEmail&&row.enrollmentEmail&&<p><button type="button" className="crm-work-link" onClick={()=>onChangeEmail(row)}>
+        {t(lang,['更改报名邮箱','Change enrollment email','Ubah email pendaftaran'])}</button></p>}
       {emails&&row.kind==='order'&&<OrderEmailHistory lang={lang} rows={emails.filter(mail=>mail.orderId===row.id)} open={targetRecord===row.id}/>}
     </li>)}
   </ol>;
 }
 
-export function CrmCustomerCourseRecords({id,lang}:{id:string;lang:CrmLanguage}) {
+function EnrollmentEmailChange({path,row,lang,isLight,onClose,onSaved}:{
+  path:string;row:CourseRecord;lang:CrmLanguage;isLight:boolean;onClose:()=>void;onSaved:(email:string)=>void;
+}) {
+  const [requestId]=useState(()=>crypto.randomUUID());
+  const [busy,setBusy]=useState(false);
+  const [unknown,setUnknown]=useState(false);
+  const [message,setMessage]=useState('');
+  const [dirty,setDirty]=useState(false);
+  const [discard,setDiscard]=useState(false);
+  const close=()=>{if(!busy&&!unknown){if(dirty)setDiscard(true);else onClose();}};
+  const label=t(lang,['更改报名邮箱','Change enrollment email','Ubah email pendaftaran']);
+  async function save(form:FormData) {
+    if(busy||unknown)return;
+    const email=String(form.get('email')??'').trim();
+    if(!validContactEmail(email)){setMessage(contactEmailText(lang).error);return;}
+    if(email.toLowerCase()===row.enrollmentEmail){
+      setMessage(t(lang,['请输入与原邮箱不同的新地址。','Enter an address different from the current one.','Masukkan alamat yang berbeda dari alamat saat ini.']));return;
+    }
+    setBusy(true);setMessage('');
+    try{
+      const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        requestId,kind:row.kind,recordId:row.id,previousEmail:row.enrollmentEmail,email,reason:form.get('reason'),confirmed:form.has('confirmed'),
+      })});
+      if(response.status>=500){setUnknown(true);return;}
+      const result=await response.json();
+      if(response.ok){onSaved(result.email);return;}
+      setMessage(result.error==='enrollment_email_changed'
+        ? t(lang,['原邮箱已变化，请关闭并重新打开客户全景后核对。','The email has changed. Reopen the customer overview and check the record.','Email telah berubah. Buka kembali ringkasan pelanggan dan periksa catatan.'])
+        : t(lang,['未保存。请核对填写内容和办理权限。','Changes were not saved. Check the details and your access.','Perubahan belum tersimpan. Periksa data dan akses Anda.']));
+    }catch{setUnknown(true);}finally{setBusy(false);}
+  }
+  async function checkResult() {
+    setBusy(true);setMessage('');
+    try{
+      const response=await fetch(path+'/results/'+requestId,{cache:'no-store'});
+      if(response.ok){onSaved((await response.json()).email);return;}
+      if(response.status===404)setUnknown(false);
+      setMessage(t(lang,['未找到已保存结果，可以重新核对记录。','No saved result was found. Check the record before trying again.','Hasil tersimpan tidak ditemukan. Periksa catatan sebelum mencoba lagi.']));
+    }catch{setMessage(t(lang,['暂时无法查询结果。','The result could not be checked.','Hasil belum dapat diperiksa.']));}
+    finally{setBusy(false);}
+  }
+  return <>
+    <CrmOperationLayer compose title={<>{label}<AdminRequiredNote inline lang={lang}/></>}
+      context={t(lang,kinds[row.kind])+' · '+(row.learnerName||row.id)} lang={lang} isLight={isLight}
+      customerContext={false} busy={busy||unknown} onClose={close}>
+      <AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onChange={()=>setDirty(true)} onSubmit={event=>{
+        event.preventDefault();void save(new FormData(event.currentTarget));
+      }}>
+        <div className="crm-editor-scroll">
+          <p>{t(lang,['当前邮箱','Current email','Email saat ini'])} · {row.enrollmentEmail}</p>
+          <p>{t(lang,['只更改这条记录。请让学员用新邮箱重新验证。','This changes only the selected record. Ask the learner to verify the new address.','Hanya catatan yang dipilih yang berubah. Minta siswa memverifikasi alamat baru.'])}</p>
+          <AdminField required>{t(lang,['新邮箱','New email','Email baru'])}<input name="email" type="email" required maxLength={254} disabled={busy||unknown}/></AdminField>
+          <AdminField required>{t(lang,['身份核对说明','Identity verification note','Catatan verifikasi identitas'])}
+            <textarea name="reason" required maxLength={500} disabled={busy||unknown}/></AdminField>
+          <label className="admin-field admin-field--choice"><input name="confirmed" type="checkbox" required disabled={busy||unknown}/><span>
+            {t(lang,['已核实申请人身份和这条记录的访问授权','I verified the requester’s identity and right to access this record','Saya telah memverifikasi identitas dan hak akses pemohon untuk catatan ini'])} *
+          </span></label>
+          {unknown&&<CrmSaveFeedback state="unknown" lang={lang}/>}
+          {message&&<p role="alert">{message}</p>}
+        </div>
+        <AdminFormActions className="crm-editor-actions">
+          {unknown?<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkResult()}>
+            {t(lang,['查询保存结果','Check save result','Periksa hasil simpan'])}</button>:<>
+            <button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t(lang,['取消','Cancel','Batal'])}</button>
+            <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t(lang,['保存','Save','Simpan'])}</button>
+          </>}
+        </AdminFormActions>
+      </AdminForm>
+    </CrmOperationLayer>
+    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
+  </>;
+}
+
+export function CrmCustomerCourseRecords({id,lang,isLight}:{id:string;lang:CrmLanguage;isLight:boolean}) {
   const [records,setRecords]=useState<CourseRecord[]>();
   const [error,setError]=useState(false);
+  const [canChangeEmail,setCanChangeEmail]=useState(false);
+  const [editingEmail,setEditingEmail]=useState<CourseRecord>();
+  const [saved,setSaved]=useState(false);
+  const path='/api/crm/leads/'+encodeURIComponent(id)+'/enrollment-records';
   useEffect(()=>{
     const controller=new AbortController();
-    read<{records:CourseRecord[]}>('/api/crm/leads/'+encodeURIComponent(id)+'/enrollment-records',controller.signal)
-      .then(data=>setRecords(data.records)).catch(cause=>{if(cause.name!=='AbortError'&&cause.message!=='404')setError(true);});
+    read<{records:CourseRecord[];canChangeEmail?:boolean}>(path,controller.signal)
+      .then(data=>{setRecords(data.records);setCanChangeEmail(data.canChangeEmail===true);})
+      .catch(cause=>{if(cause.name!=='AbortError'&&cause.message!=='404')setError(true);});
     return ()=>controller.abort();
-  },[id]);
+  },[path]);
+  useEffect(()=>{
+    if(!saved)return;
+    const timer=window.setTimeout(()=>setSaved(false),3500);
+    return ()=>window.clearTimeout(timer);
+  },[saved]);
   if(!records?.length&&!error) return null;
   return <section className="crm-opportunity-records" aria-label={t(lang,['课程报名记录','Course enrollment records','Catatan pendaftaran kursus'])}>
     <h3>{t(lang,['课程报名记录','Course enrollment records','Catatan pendaftaran kursus'])}</h3>
-    {error?<p role="alert">{t(lang,['暂时无法读取课程记录。','Course records could not be loaded.','Catatan kursus belum dapat dimuat.'])}</p>:<CourseRecords records={records??[]} link lang={lang}/>}
+    {error?<p role="alert">{t(lang,['暂时无法读取课程记录。','Course records could not be loaded.','Catatan kursus belum dapat dimuat.'])}</p>:
+      <CourseRecords records={records??[]} link lang={lang} onChangeEmail={canChangeEmail?setEditingEmail:undefined}/>}
+    {editingEmail&&<EnrollmentEmailChange path={path+'/email'} row={editingEmail} lang={lang} isLight={isLight}
+      onClose={()=>setEditingEmail(undefined)} onSaved={email=>{
+        setRecords(current=>current?.map(row=>row.id===editingEmail.id&&row.kind===editingEmail.kind?{...row,enrollmentEmail:email}:row));
+        setEditingEmail(undefined);setSaved(true);
+      }}/>}
+    {saved&&<span className="crm-opportunity-feedback" role="status">{t(lang,['报名邮箱已更新，请用新邮箱重新验证。',
+      'Enrollment email updated. Verify the new address.','Email pendaftaran diperbarui. Verifikasi alamat baru.'])}</span>}
   </section>;
 }
 

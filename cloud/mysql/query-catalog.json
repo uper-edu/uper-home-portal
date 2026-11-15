@@ -54,6 +54,18 @@
       "server/portal/localAuth.ts"
     ]
   },
+  "DELETE FROM enrollment_email_challenges WHERE email=:p1": {
+    "sql": "DELETE FROM enrollment_email_challenges WHERE email=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "DELETE FROM enrollment_email_sessions WHERE email=:p1": {
+    "sql": "DELETE FROM enrollment_email_sessions WHERE email=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "DELETE FROM portal_settings WHERE id LIKE 'lark_oauth:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.expiresAt'))<:p1": {
     "sql": "DELETE FROM portal_settings WHERE id LIKE 'lark_oauth:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.expiresAt'))<:p1",
     "sources": [
@@ -737,6 +749,12 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.priority.enable',:p2)",
     "sources": [
       "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.record.email.change',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.record.email.change',:p2)",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.rules.save',:p2)": {
@@ -1896,10 +1914,28 @@
       "server/portal/enrollmentCatalog.ts"
     ]
   },
-  "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6)": {
-    "sql": "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6)",
+  "SELECT email FROM enrollment_demands WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT email FROM enrollment_demands WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE": {
+    "sql": "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE",
     "sources": [
       "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_orders WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT email FROM enrollment_orders WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_waitlist WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT email FROM enrollment_waitlist WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE": {
@@ -1948,6 +1984,7 @@
   "SELECT GET_LOCK(:p1,5)": {
     "sql": "SELECT GET_LOCK(:p1,5)",
     "sources": [
+      "server/portal/enrollmentEmailAccess.ts",
       "server/portal/identityConsolidation.ts"
     ]
   },
@@ -2699,6 +2736,12 @@
       "scripts/portal-migrate.ts"
     ]
   },
+  "SELECT lead_id FROM enrollment_customer_records WHERE kind=:p1 AND record_id=:p2": {
+    "sql": "SELECT lead_id FROM enrollment_customer_records WHERE kind=:p1 AND record_id=:p2",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT lead_id,candidate_id,decision,reason,decided_by FROM identity_candidates WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision IN ('shared','different')": {
     "sql": "SELECT lead_id,candidate_id,decision,reason,decided_by FROM identity_candidates WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision IN ('shared','different')",
     "sources": [
@@ -3007,8 +3050,8 @@
       "server/portal/paymentAnalyticsDispatch.ts"
     ]
   },
-  "SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%sZ') AS created_at,\n    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n      AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'\n      ELSE COALESCE(o.state,w.state,d.state) END AS state,\n    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,\n    d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(o.class_id,w.class_id)\n  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id\n  LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id\n  LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts\n    WHERE channel='email' AND subject_id=r.record_id AND kind NOT IN ('otp_apply','otp_mine')\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE": {
-    "sql": "SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%sZ') AS created_at,\n    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n      AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'\n      ELSE COALESCE(o.state,w.state,d.state) END AS state,\n    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,\n    d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(o.class_id,w.class_id)\n  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id\n  LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id\n  LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts\n    WHERE channel='email' AND subject_id=r.record_id AND kind NOT IN ('otp_apply','otp_mine')\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE",
+  "SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%sZ') AS created_at,\n    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n      AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'\n      ELSE COALESCE(o.state,w.state,d.state) END AS state,\n    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,\n    d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(o.class_id,w.class_id)\n  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id\n  LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id\n  LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts\n    WHERE channel='email' AND subject_id=r.record_id AND kind NOT IN ('otp_apply','otp_mine')\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE": {
+    "sql": "SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%sZ') AS created_at,\n    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n      AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'\n      ELSE COALESCE(o.state,w.state,d.state) END AS state,\n    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,\n    d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(o.class_id,w.class_id)\n  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id\n  LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id\n  LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts\n    WHERE channel='email' AND subject_id=r.record_id AND kind NOT IN ('otp_apply','otp_mine')\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE",
     "sources": [
       "server/portal/enrollmentCrm.ts"
     ]
@@ -3075,6 +3118,7 @@
       "server/portal/assignmentBackfill.ts",
       "server/portal/courseCatalog.ts",
       "server/portal/enrollmentCatalog.ts",
+      "server/portal/enrollmentCrm.ts",
       "server/portal/enrollmentRules.ts",
       "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
@@ -3565,6 +3609,12 @@
       "server/portal/enrollmentInterests.ts"
     ]
   },
+  "UPDATE enrollment_demands SET email=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_demands SET email=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "UPDATE enrollment_demands SET state='withdrawn',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
     "sql": "UPDATE enrollment_demands SET state='withdrawn',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
@@ -3617,6 +3667,12 @@
     "sql": "UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)),activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "UPDATE enrollment_orders SET received=:p1,state=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3": {
@@ -3690,6 +3746,12 @@
     "sql": "UPDATE enrollment_vacancy_cycles SET is_full=:p1,cycle=:p2 WHERE class_id=:p3",
     "sources": [
       "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "UPDATE enrollment_waitlist SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_waitlist SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "UPDATE enrollment_waitlist SET state='closed',activity_at=UTC_TIMESTAMP(6) WHERE class_id=:p1 AND state='waiting'": {

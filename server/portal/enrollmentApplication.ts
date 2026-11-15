@@ -24,6 +24,7 @@ import { classOpeningNotices, orderNotice, proofNotices, startEnrollmentWeeklySi
 
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
 import { renderEnrollmentEmail } from './enrollmentEmail.ts';
+import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -45,7 +46,7 @@ const enrollTx = (work: (c: Client) => Promise<any>) => tx(work, { isolation: 'R
 async function session(c: Client, q: Request): Promise<string> {
   const token = q.headers.cookie?.match(/(?:^|;\s*)uper_enrollment_session=([a-f0-9]{64})(?:;|$)/)?.[1];
   if (!token) invalid('enrollment_verification_required', 401);
-  const row = (await c.query('SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6)', [sha(token!)])).rows[0];
+  const row = (await c.query('SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE', [sha(token!)])).rows[0];
   if (!row) invalid('enrollment_verification_required', 401);
   return row.email;
 }
@@ -68,6 +69,7 @@ async function lockOrder(c: Client, id: string, email?: string) {
   await expireSeats(c, row.class_id);
   const order = (await c.query(`SELECT *,payment_due_at>=UTC_TIMESTAMP(6) AS before_due,
     upload_expires_at>=UTC_TIMESTAMP(6) AS upload_active FROM enrollment_orders WHERE id=:p1 FOR UPDATE`, [id])).rows[0];
+  if (!order || (email && order.email !== email)) invalid('enrollment_order_not_found', 404);
   if(order.class_id!==cohort.id) invalid('enrollment_aftercare_conflict',409);
   return { order, cohort };
 }
@@ -187,6 +189,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     await enrollTx(async (c: Client) => {
+      await lockEnrollmentEmail(c, email);
       await c.query(`INSERT INTO enrollment_email_challenges(email,challenge_id,digest,expires_at,resend_at)
         VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE email=email`, [email, id, otpHash(id, code)]);
       const row = (await c.query(`SELECT resend_at>UTC_TIMESTAMP(6) AS blocked,locked_until>UTC_TIMESTAMP(6) AS locked
@@ -209,6 +212,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     if (!uuid.test(challengeId) || typeof code !== 'string' || !/^\d{6}$/.test(code)) invalid('enrollment_invalid_code');
     const token = randomBytes(32).toString('hex');
     const sessionHours = await enrollTx(async (c: Client) => {
+      await lockEnrollmentEmail(c, email);
       const row = (await c.query(`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active
         FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE`, [email])).rows[0];
       if (!row || row.challenge_id !== challengeId || !Number(row.active) || Number(row.used) || row.locked_until) return null;

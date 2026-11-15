@@ -2,6 +2,8 @@ import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { allowed, type Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
+import { canReviewIdentityRole } from '../../src/utils/crmOutreach.ts';
+import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { isSalesProgressStage } from '../../src/utils/crmSalesProgress.ts';
 import { contactPaused } from '../../src/utils/crmContact.ts';
 import { priorityAgreements } from '../../src/utils/crmAgreementPresentation.ts';
@@ -10,8 +12,9 @@ import { enrollmentLearnerNameKey, enrollmentOrderStatus } from '../../src/utils
 import { validMutationOrigin } from './accessTransport.ts';
 import { assignNewLead } from './autoAssignment.ts';
 import { canonicalIdentity, lockIdentityRegistry } from './identityConsolidation.ts';
-import { discoverIdentity } from './identityReview.ts';
+import { discoverIdentity, identityControls, pendingIdentity } from './identityReview.ts';
 import { invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
+import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
@@ -93,7 +96,7 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
     CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
-    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,
+    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,
     DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,
     d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice
   FROM enrollment_customer_records r
@@ -136,6 +139,26 @@ const recordsForOpportunity=async(c:Client,id:string)=>(await c.query(courseReco
 const isOpenOpportunity=(row:ReturnType<typeof projectOpportunity>)=>
   !['enrolled','closed'].includes(row.state)&&row.salesStage!=='progress:closed';
 const canProgress=(actor:Employee,profile:any)=>profile.identityLifecycle!=='pending'&&permittedRecord(actor,profile,'crm.followup');
+
+const changeEmailStatements = {
+  order: {
+    lock: 'SELECT email FROM enrollment_orders WHERE id=:p1 FOR UPDATE',
+    save: 'UPDATE enrollment_orders SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1',
+  },
+  waitlist: {
+    lock: 'SELECT email FROM enrollment_waitlist WHERE id=:p1 FOR UPDATE',
+    save: 'UPDATE enrollment_waitlist SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1',
+  },
+  demand: {
+    lock: 'SELECT email FROM enrollment_demands WHERE id=:p1 FOR UPDATE',
+    save: 'UPDATE enrollment_demands SET email=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1',
+  },
+};
+const emailChangeKind = 'enrollment.record.email.change';
+const canChangeEnrollmentEmail = async (c:Client, actor:Employee, customer:{id:string;profile:any}) =>
+  actor.permissions.includes('crm.write') && canReviewIdentityRole(actor,await identityControls(c)) &&
+  permittedRecord(actor,customer.profile,'crm.write') && canProgress(actor,customer.profile) &&
+  !(await pendingIdentity(c,customer.id)).length;
 type OpportunityProfile={id:string;enrollmentOpportunitySummary?:{count:number;only?:{id:string;level:string;stage:string}}};
 
 function opportunityAgreement(profile:any,id:string) {
@@ -321,7 +344,56 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
   app.get('/api/crm/leads/:id/enrollment-records',read(async(c,q,actor)=>{
     const customer=await canonicalIdentity(c,String(q.params.id));
     if (!customer || !readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
-    return {records:(await c.query(courseRecords+` JOIN portal_leads l ON l.id=r.lead_id
-      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY r.created_at DESC,r.record_id`,[customer.id])).rows.map(displayRecord)};
+    const canChangeEmail=await canChangeEnrollmentEmail(c,actor,customer);
+    const rows=(await c.query(courseRecords+` JOIN portal_leads l ON l.id=r.lead_id
+      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY r.created_at DESC,r.record_id`,[customer.id])).rows;
+    return {records:rows.map(row=>({...displayRecord(row),enrollmentEmail:canChangeEmail?row.enrollment_email:undefined})),canChangeEmail};
+  }));
+  const emailPath='/api/crm/leads/:id/enrollment-records/email';
+  app.get(emailPath+'/results/:requestId',read(async(c,q,actor)=>{
+    const customer=await canonicalIdentity(c,String(q.params.id));
+    if(!customer||!readProfile(actor,customer.profile)||!await canChangeEnrollmentEmail(c,actor,customer))
+      invalid('enrollment_customer_not_found',404);
+    const result=(await c.query('SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2',[actor.id,q.params.requestId])).rows[0]?.result;
+    if(result?.operationKind!==emailChangeKind||result?.leadId!==customer.id) invalid('enrollment_result_missing',404);
+    return result;
+  }));
+  app.post(emailPath,wrap(async(q,r)=>{
+    if(!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);
+    const actor=await staff(q,'crm.write');
+    const {kind,recordId,previousEmail,email,reason,confirmed}=q.body??{};
+    if(typeof kind!=='string'||!Object.hasOwn(changeEmailStatements,kind)||
+        typeof recordId!=='string'||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(recordId)||
+        typeof email!=='string'||typeof previousEmail!=='string'||!validContactEmail(email)||!validContactEmail(previousEmail)||typeof reason!=='string'||
+        !reason.trim()||reason.length>500||confirmed!==true) invalid('enrollment_invalid_email_change');
+    const next=email.trim().toLowerCase();
+    const previous=previousEmail.trim().toLowerCase();
+    if(next===previous) invalid('enrollment_invalid_email_change');
+    const result=await transact(async c=>{
+      const customer=await canonicalIdentity(c,String(q.params.id));
+      if(!customer||!readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
+      if(!await canChangeEnrollmentEmail(c,actor,customer)) invalid('enrollment_email_change_forbidden',403);
+      await lockEnrollmentEmail(c,next);
+      return operation(c,actor.id,q.body,{leadId:customer.id,kind:emailChangeKind},async()=>{
+        // Finish active requests and require a fresh code for the destination mailbox before access can move.
+        await c.query('DELETE FROM enrollment_email_sessions WHERE email=:p1',[next]);
+        await c.query('DELETE FROM enrollment_email_challenges WHERE email=:p1',[next]);
+        const sql=changeEmailStatements[kind as RecordKind];
+        const record=(await c.query(sql.lock,[recordId])).rows[0];
+        await lockIdentityRegistry(c);
+        const current=await canonicalIdentity(c,customer.id);
+        const linked=(await c.query('SELECT lead_id FROM enrollment_customer_records WHERE kind=:p1 AND record_id=:p2',[kind,recordId])).rows[0];
+        const owner=linked&&await canonicalIdentity(c,linked.lead_id);
+        if(!current||current.id!==customer.id||owner?.id!==customer.id||!readProfile(actor,current.profile))
+          invalid('enrollment_customer_not_found',404);
+        if(!await canChangeEnrollmentEmail(c,actor,current)) invalid('enrollment_email_change_forbidden',403);
+        if(record?.email!==previous) invalid('enrollment_email_changed',409);
+        await c.query(sql.save,[recordId,next]);
+        await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.record.email.change',:p2)",
+          [actor.id,{customerId:customer.id,kind,recordId,previousEmail:previous,email:next,reason:reason.trim()}]);
+        return {recordId,email:next};
+      });
+    });
+    r.set('Cache-Control','no-store').json(result);
   }));
 }
