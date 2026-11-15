@@ -1579,6 +1579,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT a.attribution->>'$.campaignId' AS campaign_id,\n   a.attribution->>'$.promotionId' AS promotion_id,\n   COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id) AS customer_id,\n   COUNT(*) AS submitted,SUM(a.kind='order') AS seats,\n   SUM(a.kind='order' AND (EXISTS(SELECT 1 FROM enrollment_notification_receipts n\n     WHERE n.subject_id=a.record_id AND n.channel='email' AND n.kind IN ('payment_confirmed','payment_and_opening'))\n     OR EXISTS(SELECT 1 FROM enrollment_transfers t WHERE t.order_id=a.record_id))) AS confirmed\n   FROM enrollment_record_attribution a\n   JOIN enrollment_customer_records r ON r.kind=a.kind AND r.record_id=a.record_id\n   JOIN portal_leads l ON l.id=r.lead_id\n   WHERE JSON_EXTRACT(a.attribution,'$.verified')=true\n   GROUP BY campaign_id,promotion_id,customer_id": {
+    "sql": "SELECT a.attribution->>'$.campaignId' AS campaign_id,\n   a.attribution->>'$.promotionId' AS promotion_id,\n   COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id) AS customer_id,\n   COUNT(*) AS submitted,SUM(a.kind='order') AS seats,\n   SUM(a.kind='order' AND (EXISTS(SELECT 1 FROM enrollment_notification_receipts n\n     WHERE n.subject_id=a.record_id AND n.channel='email' AND n.kind IN ('payment_confirmed','payment_and_opening'))\n     OR EXISTS(SELECT 1 FROM enrollment_transfers t WHERE t.order_id=a.record_id))) AS confirmed\n   FROM enrollment_record_attribution a\n   JOIN enrollment_customer_records r ON r.kind=a.kind AND r.record_id=a.record_id\n   JOIN portal_leads l ON l.id=r.lead_id\n   WHERE JSON_EXTRACT(a.attribution,'$.verified')=true\n   GROUP BY campaign_id,promotion_id,customer_id",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
+    ]
+  },
   "SELECT a.model,a.error,a.created_at,m.model AS final_model FROM ai_attempts a LEFT JOIN messages m ON m.id=a.message_id ORDER BY a.created_at DESC LIMIT 12": {
     "sql": "SELECT a.model,a.error,a.created_at,m.model AS final_model FROM ai_attempts a LEFT JOIN messages m ON m.id=a.message_id ORDER BY a.created_at DESC LIMIT 12",
     "sources": [

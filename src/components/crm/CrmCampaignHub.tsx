@@ -1181,6 +1181,25 @@ export function CrmCampaignHub({
                           </table>
                         </div>
                       )}
+                      {activeDetailCampaign.promotionResults?.some(row=>row.enrollmentJourney)&&(
+                        <div className="crm-doc-table-scroll">
+                          <table className="crm-doc-table">
+                            <caption>{u("Course enrollment by promotion link")}</caption>
+                            <thead><tr>
+                              {["Promotion link","Saved course records","Seats reserved","Enrollments confirmed after full payment"].map(label=>
+                                <th key={label} scope="col">{u(label)}</th>)}
+                            </tr></thead>
+                            <tbody>{activeDetailCampaign.promotionResults.flatMap(row=>row.enrollmentJourney?[(
+                              <tr key={row.key}>
+                                <th scope="row">{promotionLabel(row.key,row.name)}</th>
+                                <td>{row.enrollmentJourney.submitted}</td><td>{row.enrollmentJourney.seats}</td>
+                                <td>{row.enrollmentJourney.confirmed}</td>
+                              </tr>
+                            )]:[])}</tbody>
+                          </table>
+                          <p className="crm-work-muted">{u("Saved records include course preferences, waitlists, and applications with a seat. Counts are cumulative.")}</p>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-400">
                           {organicDetail
