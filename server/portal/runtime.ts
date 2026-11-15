@@ -1,5 +1,6 @@
 import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
+import { mountEnrollmentManagement } from './enrollmentManagement.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
 import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
@@ -355,6 +356,7 @@ export async function mountPortal(app: Express) {
   mountCourseRoutes(app,{wrap,staff});
   app.use(accessRestoreGate);
   mountEnrollmentCatalog(app, { wrap, staff });
+  mountEnrollmentManagement(app, wrap, staff);
   mountEnrollmentApplication(app, { wrap, staff });
   mountAccessOperations(app);
   mountLocalAuth(app, (req) => platform.authenticate(req));

@@ -1,0 +1,12 @@
+.crm-enrollment-management { display: grid; gap: 12px; min-width: 0; }
+.crm-enrollment-management .crm-enrollment-heading { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; align-items:center; }
+.crm-enrollment-management h1, .crm-enrollment-management h2, .crm-enrollment-management p { margin-block: 0; }
+.crm-enrollment-views, .crm-enrollment-conditions, .crm-enrollment-row-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.crm-enrollment-views a { display:inline-flex; align-items:center; min-height:40px; padding-inline:12px; border-radius:10px; }
+.crm-enrollment-views a[aria-current="page"], .crm-enrollment-conditions button[aria-pressed="true"] {
+  color:var(--admin-action); background:var(--admin-selected); border-color:var(--admin-action);
+}
+.crm-enrollment-summary { display:grid; gap:12px; padding:16px; border:1px solid var(--admin-border); border-radius:14px; }
+.crm-enrollment-summary dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:12px; margin:0; }
+.crm-enrollment-summary dt, .crm-enrollment-summary small { font-size:13px; color:var(--admin-muted); }
+.crm-enrollment-summary dd { margin:4px 0 0; font-size:20px; font-weight:650; }

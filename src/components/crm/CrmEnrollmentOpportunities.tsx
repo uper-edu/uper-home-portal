@@ -1,3 +1,4 @@
+import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useRef, useState } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmSingleSelect } from './CrmSingleSelect';
@@ -23,7 +24,7 @@ import type { OpportunitySource } from '../../utils/crmOpportunitySources';
 type Copy = readonly [string,string,string];
 type CourseRecord = {
   id:string; kind:'order'|'waitlist'|'demand'; opportunityId:string|null; state:string; createdAt:string;
-  class:{level:string;firstLesson:string;schedule:string;opened:boolean}|null;
+  class:{id?:string;level:string;firstLesson:string;schedule:string;opened:boolean}|null;
   criteria:{level:string;period:string;format:string;notes:string}|null;
   price:number|null;received:number|null;learnerName?:string|null;paymentDueAt?:string|null;firstReviewDueAt?:string|null;
   attribution?:{entry:string;source?:string;campaign?:string;verified:boolean}|null;
@@ -140,7 +141,7 @@ function CourseRecords({ records, link, lang, emails, targetRecord, onChangeEmai
   if(!records.length) return <p className="crm-work-muted">{t(lang,['暂无课程记录。','No course records.','Belum ada catatan kursus.'])}</p>;
   return <ol className="crm-course-records">
     {records.map(row=><li key={row.kind+row.id} id={link?undefined:'enrollment-record-'+row.id}>
-      <strong>{t(lang,kinds[row.kind])}{row.class?' · '+row.class.level:''}</strong> <span>{states[row.state]?t(lang,states[row.state]):row.state}</span>
+      <strong>{t(lang,kinds[row.kind])}{row.class&&<> · {row.class.id?<a className="crm-work-link" href={enrollmentClassManagementPath(row.class.id)}>{row.class.level}</a>:row.class.level}</>}</strong> <span>{states[row.state]?t(lang,states[row.state]):row.state}</span>
       <div className="crm-work-muted"><time dateTime={row.createdAt}>{new Date(row.createdAt).toLocaleDateString(crmLocale(lang))}</time> · {row.id}</div>
       {row.class&&<p>{row.class.firstLesson.replace('T',' ')} WIB · {row.class.schedule}{row.class.opened?' · '+t(lang,['已确认开班','Class confirmed','Kelas dikonfirmasi']):''}</p>}
       {row.criteria&&<p>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(lang,value)).join(' · ')}{row.criteria.notes?' — '+row.criteria.notes:''}</p>}

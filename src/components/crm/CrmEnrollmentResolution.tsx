@@ -20,7 +20,7 @@ type RefundDetails={
 const staff='/api/crm/enrollment/aftercare';
 const finance='/api/crm/enrollment/finance';
 
-export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:boolean}) {
+export function CrmEnrollmentSupport({lang,isLight,embedded=false}:{lang:CrmLanguage;isLight:boolean;embedded?:boolean}) {
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
   const [orders,setOrders]=useState<ServiceOrder[]>();
   const [classes,setClasses]=useState<PublicEnrollmentClass[]>([]);
@@ -47,7 +47,7 @@ export function CrmEnrollmentSupport({lang,isLight}:{lang:CrmLanguage;isLight:bo
   const refundTitle=t('受理退款','Accept refund request','Terima permintaan pengembalian');
   const inviteTitle=t('安排转班邀请','Arrange transfer invitation','Atur undangan pindah kelas');
   return <section className="crm-course-catalog">
-    <header className="admin-page-toolbar"><h1>{t('报名售后','Enrollment support','Layanan pendaftaran')}</h1></header>
+    {!embedded&&<header className="admin-page-toolbar"><h1>{t('报名售后','Enrollment support','Layanan pendaftaran')}</h1></header>}
     {!orders&&!error&&<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
     {orders?.length===0&&<p>{t('暂无需要处理的报名记录。','No enrollment records need attention.','Tidak ada pendaftaran yang perlu ditangani.')}</p>}
     {notice&&<p role="status">{notice}</p>}

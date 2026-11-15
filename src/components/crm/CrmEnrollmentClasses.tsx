@@ -1,3 +1,4 @@
+import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useState } from 'react';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminFormActions } from '../AdminFormLayout';
@@ -201,7 +202,8 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
         <td>{row.level}</td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
         <td>{formatCurrency(row.price, lang)}</td><td>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</td>
-        <td>{row.state!=='cancelled' && <button type="button" className="crm-work-button" onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</button>}
+        <td>{row.state!=='draft'&&<a className="crm-work-link" href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</a>}
+          {row.state!=='cancelled' && <button type="button" className="crm-work-button" onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</button>}
           {row.canInsert&&<button type="button" className="crm-work-button" onClick={()=>{
             setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
           }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</button>}
