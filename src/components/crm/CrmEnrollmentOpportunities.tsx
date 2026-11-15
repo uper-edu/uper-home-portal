@@ -60,6 +60,7 @@ const states:Record<string,Copy> = {
   converted:['已转申请','Converted to application','Menjadi permohonan'],
   withdrawn:['已撤回','Withdrawn','Ditarik'],closed:['已结束','Closed','Ditutup'],
   active:['有效','Active','Aktif'],
+  purchase_intent:['购课意向','Purchase intent','Minat membeli kursus'],
 };
 const next:Record<Opportunity['state'],Copy> = {
   enrolled:['已报名','Enrolled','Terdaftar'], applying:['办理报名','Complete enrollment','Selesaikan pendaftaran'],
@@ -75,6 +76,7 @@ const requiresPaymentReview=(record:CourseRecord)=>record.state==='proof_review'
 function currentStatus(row:Opportunity) {
   if(row.state==='applying') return row.records.find(requiresPaymentReview)?.state??'awaiting_payment';
   if(row.state==='closed') return row.records.at(-1)?.state??'closed';
+  if(row.state==='interest'&&!row.records.length)return 'purchase_intent';
   return enrollmentStatus[row.state];
 }
 function ended(row:Opportunity) {
@@ -380,7 +382,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     }
     if(due)return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div></>;
     if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <button type="button" className="crm-work-link" disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</button>;
-    return <>{t(lang,next[row.state])}{reviewDeadline}</>;
+    return <>{t(lang,row.state==='interest'&&!row.records.length?['跟进购课意向','Follow up on purchase intent','Tindak lanjuti minat membeli kursus']:next[row.state])}{reviewDeadline}</>;
   };
   const label=t(lang,['商机','Opportunities','Peluang']);
   const allLabel=t(lang,['全部','All','Semua']);
@@ -459,7 +461,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
               <td><a className="crm-work-link" href={customerLink(row)}>{[...row.records].reverse().find(record=>record.learnerName)?.learnerName||row.customerName}</a></td>
               <td>{owner(row)}</td><td>{stage(row,lang)}</td><td>{states[status]?t(lang,states[status]):status}</td>
               <td>{nextAction(row)}</td>
-              <td>{sourceLabel(attribution,lang)}</td>
+              <td>{!row.records.length&&row.state==='interest'?t(lang,['销售记录','Sales record','Catatan sales']):sourceLabel(attribution,lang)}</td>
             </tr>;
           })}</tbody>
         </table></div>}

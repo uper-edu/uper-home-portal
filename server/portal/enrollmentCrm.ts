@@ -17,10 +17,22 @@ import { invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { opportunitySourceKind, type OpportunitySourceRef } from '../../src/utils/crmOpportunitySources.ts';
 import { salesProgressContext } from './salesProgress.ts';
+import { enrollmentOpportunityLevels } from '../../src/utils/enrollmentCatalog.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
 type Submission = { kind: RecordKind; id: string; email: string; phone: string; name?: string; level?: string; emailVerified?: boolean };
+
+async function activeOpportunityCandidates(c:Client,lead:{id:string;profile:any},level:string) {
+  const rows=(await c.query(`SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id
+    WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2
+    AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')
+    AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id
+      WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))
+    ORDER BY o.created_at,o.id`,[lead.id,level])).rows;
+  const records=await opportunityRecordsById(c,rows);
+  return rows.filter(row=>isOpenOpportunity(projectOpportunity(row,records.get(row.id)??[],lead.profile)));
+}
 
 async function identityForSubmission(c: Client, { email, phone, name, emailVerified = true }: Submission) {
   const normalized = normalizeContactPhone(phone);
@@ -76,12 +88,7 @@ export async function recordEnrollmentCustomer(c: Client, record: Submission) {
   const leadId = existing?.lead_id ?? lead.id;
   let opportunityId: string | null = null;
   if (record.level) {
-    const active = (await c.query(`SELECT o.id FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id
-      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2
-      AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')
-      AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id
-        WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))
-      ORDER BY o.created_at,o.id LIMIT 2`, [lead.id,record.level])).rows;
+    const active=await activeOpportunityCandidates(c,lead,record.level);
     if (active.length===1) opportunityId=active[0].id;
     if (!active.length) {
       opportunityId=randomUUID();
@@ -133,7 +140,8 @@ function projectOpportunity(row: any, records: ReturnType<typeof displayRecord>[
   const state = states.some(state=>['paid','recovered'].includes(state)) ? 'enrolled'
     : states.includes('paid_cancelled') ? 'aftercare'
     : states.some(state=>['awaiting_payment','partial','proof_review'].includes(state)) ? 'applying'
-    : states.includes('waiting') ? 'waiting' : states.some(state=>['active','expired'].includes(state)) ? 'interest' : 'closed';
+    : states.includes('waiting') ? 'waiting'
+    : states.some(state=>['active','expired'].includes(state))||(!records.length&&row.sales_stage&&row.sales_stage!=='progress:closed') ? 'interest' : 'closed';
   const salesStage=state==='enrolled'?'progress:enrolled':state==='aftercare'?'progress:paused':row.sales_stage ??
     (state==='applying'?'progress:registration':state==='closed'?'progress:closed':'progress:unreached');
   return {id:row.id,level:row.level,customerId:profile.id,customerName:profile.fullName,
@@ -347,10 +355,37 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       if(!canProgress(actor,customer.profile)) invalid('enrollment_opportunity_progress_forbidden',403);
       return operation(c,actor.id,q.body,{leadId:customer.id,kind:'enrollment.opportunity.progress:'+id},async()=>{
         const saved=await saveProgress(c,customer.id,actor.id,{
-          workflowVersion:3,requestId:q.body.requestId,summary:note,recordKind:'internal',
+          workflowVersion:3,requestId:q.body.requestId,summary:note,recordKind:'internal',expectedRevision:customer.profile.simpleRevision||0,
           opportunityLink:{id,revision,stage,sourceRefs:q.body.sourceRefs},
         },profile=>readProfile(actor,profile)&&canProgress(actor,profile));
         return {revision:saved.opportunity.revision,logId:saved.logId};
+      });
+    });
+    r.set('Cache-Control','no-store').json(result);
+  }));
+  app.post('/api/crm/leads/:id/enrollment-opportunities',wrap(async(q,r)=>{
+    if(!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);
+    const actor=await staff(q,'crm.followup');
+    const {level,note,requestId,sourceRefs}=q.body??{};
+    if(!enrollmentOpportunityLevels.includes(level)||typeof note!=='string'||!note.trim()||note.length>2000)
+      invalid('enrollment_invalid_opportunity_progress');
+    const result=await transact(async c=>{
+      await lockIdentityRegistry(c);
+      const customer=await canonicalIdentity(c,String(q.params.id));
+      if(!customer||!readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
+      if(!canProgress(actor,customer.profile)) invalid('enrollment_opportunity_progress_forbidden',403);
+      return operation(c,actor.id,q.body,{leadId:customer.id,kind:'enrollment.opportunity.open'},async()=>{
+        const active=await activeOpportunityCandidates(c,customer,level);
+        if(active.length>1) invalid('enrollment_opportunity_selection_required',409);
+        const created=!active.length;
+        const id=active[0]?.id??randomUUID();
+        if(created) await c.query(`INSERT INTO enrollment_opportunities(id,lead_id,level,sales_stage,created_at)
+          VALUES(:p1,:p2,:p3,'progress:unreached',UTC_TIMESTAMP(6))`,[id,customer.id,level]);
+        const saved=await saveProgress(c,customer.id,actor.id,{
+          workflowVersion:3,requestId,summary:note,recordKind:'internal',expectedRevision:customer.profile.simpleRevision||0,
+          opportunityLink:{id,revision:Number(active[0]?.revision??0),sourceRefs},
+        },profile=>readProfile(actor,profile)&&canProgress(actor,profile));
+        return {opportunityId:id,created,logId:saved.logId};
       });
     });
     r.set('Cache-Control','no-store').json(result);

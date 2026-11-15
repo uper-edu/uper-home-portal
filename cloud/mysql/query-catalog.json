@@ -395,6 +395,12 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "INSERT INTO enrollment_opportunities(id,lead_id,level,sales_stage,created_at)\n          VALUES(:p1,:p2,:p3,'progress:unreached',UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_opportunities(id,lead_id,level,sales_stage,created_at)\n          VALUES(:p1,:p2,:p3,'progress:unreached',UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)": {
     "sql": "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)",
     "sources": [
@@ -2900,6 +2906,12 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n    WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2\n    AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')\n    AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n      WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))\n    ORDER BY o.created_at,o.id": {
+    "sql": "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n    WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2\n    AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')\n    AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n      WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))\n    ORDER BY o.created_at,o.id",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id": {
     "sql": "SELECT o.*, customer.profile\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id",
     "sources": [
@@ -2928,12 +2940,6 @@
     "sql": "SELECT o.id AS orderId,p.digest,p.transfer_details AS details,verified.amount AS verified,\n      COALESCE(r.amount,0) AS matched\n    FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1\n    JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s\n      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount<o.price\n    LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1\n      AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)\n    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS\n      (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n      AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n        AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ORDER BY p.created_at,p.id",
     "sources": [
       "server/portal/enrollmentProofTotals.ts"
-    ]
-  },
-  "SELECT o.id FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2\n      AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')\n      AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n        WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))\n      ORDER BY o.created_at,o.id LIMIT 2": {
-    "sql": "SELECT o.id FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2\n      AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')\n      AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n        WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))\n      ORDER BY o.created_at,o.id LIMIT 2",
-    "sources": [
-      "server/portal/enrollmentCrm.ts"
     ]
   },
   "SELECT o.id FROM enrollment_orders o\n        JOIN enrollment_classes e ON e.id=o.class_id\n        WHERE e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price\n          AND o.data->>'$.autoTransferSource'=o.class_id\n          AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i\n            WHERE i.order_id=o.id AND i.source_class_id=o.class_id)\n        ORDER BY o.created_at,o.id": {
