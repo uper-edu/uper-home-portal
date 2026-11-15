@@ -8,6 +8,8 @@ import { permittedRecord, type AccessEmployee } from '../../src/utils/accessCont
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import { allowsEnrollment, mountEnrollmentInterests, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
+import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
+import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollmentResolution.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -36,7 +38,7 @@ async function session(c: Client, q: Request): Promise<string> {
 
 async function lockClass(c: Client, classId: string) {
   const row = (await c.query(
-    `SELECT id,course_id,state,data,enrollment_closes_at>UTC_TIMESTAMP(6) AS accepting,
+    `SELECT id,course_id,state,data,enrollment_closes_at,enrollment_closes_at>UTC_TIMESTAMP(6) AS accepting,
       COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active
       FROM enrollment_classes WHERE id=:p1 FOR UPDATE`,
     [classId])).rows[0];
@@ -58,6 +60,7 @@ async function lockOrder(c: Client, id: string, email?: string) {
   await expireSeats(c, row.class_id);
   const order = (await c.query(`SELECT *,payment_due_at>=UTC_TIMESTAMP(6) AS before_due,
     upload_expires_at>=UTC_TIMESTAMP(6) AS upload_active FROM enrollment_orders WHERE id=:p1 FOR UPDATE`, [id])).rows[0];
+  if(order.class_id!==cohort.id) invalid('enrollment_aftercare_conflict',409);
   return { order, cohort };
 }
 
@@ -103,6 +106,57 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     }
     return actor;
   };
+  const supportActor = async (q:Request) => {
+    const actor=await staff(q,'crm.followup');
+    if(!permittedRecord(actor,{},'crm.read')||!permittedRecord(actor,{},'crm.followup')) invalid('enrollment_support_forbidden',403);
+    return actor;
+  };
+  mountEnrollmentResolution(app,{wrap,post,transact:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
+
+  post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
+    const actor=await staff(q,'crm.operations.manage');
+    const id=String(q.params.id);
+    const result=await enrollTx(c=>operation(c,actor.id,q.body,
+      {leadId:'class:'+id,kind:'enrollment.class.cancel',authorize:()=>staff(q,'crm.operations.manage')},async()=>{
+        const cohort=await lockClass(c,id);
+        if(cohort.state==='cancelled') return {classId:id,state:'cancelled'};
+        const confirmed=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[id])).rows[0];
+        if(cohort.state!=='published'||confirmed) invalid('enrollment_class_cannot_cancel',409);
+        await c.query("UPDATE enrollment_classes SET state='cancelled',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
+        await reconcileWaitlist(c,{...cohort,state:'cancelled'},await takenSeats(c,id));
+        await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)",[actor.id,{classId:id}]);
+        return {classId:id,state:'cancelled'};
+      }));
+    r.json(result);
+  });
+
+  app.get(base+'/orders/:id/aftercare',wrap(async(q,r)=>{
+    const result=await enrollTx(async c=>{
+      const email=await session(c,q);
+      const {order,cohort}=await lockOrder(c,String(q.params.id),email);
+      const verified=Number(order.received);
+      const confirmed=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[cohort.id])).rows[0];
+      const transfers=canSelectTransfer(order,cohort)?(await c.query(`
+        SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
+        WHERE e.id<>:p1 AND e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6)
+          AND JSON_EXTRACT(c.value,'$.active')=true AND e.data->>'$.level'=:p2 AND e.data->>'$.format'=:p3
+          AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','refunding','refunded')
+            AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
+          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))
+            < CAST(e.data->>'$.capacity' AS UNSIGNED)
+        ORDER BY e.first_lesson_at,e.id`,[cohort.id,cohort.data.level,cohort.data.format])).rows.map(row=>({
+          id:row.id,level:row.data.level,format:row.data.format,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
+        })):[];
+      const status=await enrollmentAftercareStatus(c,order.id);
+      return { originalClassState:cohort.state, currentClass:{firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule},
+        transfers, ...status, refund: verified<=0 ? { mode:'unavailable' } :
+        confirmed ? {mode:'special_review'} : {
+          mode:'contact_support',
+          maximum:enrollmentRefundEstimate({price:order.price,received:verified,refunded:0,transferred:0,sessions:cohort.data.sessions,delivered:0}),
+        } };
+    });
+    r.set('Cache-Control','no-store').json(result);
+  }));
 
   post(base + '/email/request', async (q, r) => {
     const email = contact(q.body.email);
@@ -165,7 +219,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       }
       const active = (await c.query("SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE", [cohort.course_id])).rows[0]?.value.active;
       if (!allowsEnrollment(cohort) || active !== true) invalid('enrollment_class_unavailable', 409);
-      const existingSeat = (await c.query("SELECT * FROM enrollment_orders WHERE class_id=:p1 AND email=:p2 AND state<>'expired' LIMIT 1", [classId,email])).rows[0];
+      const existingSeat = (await c.query("SELECT * FROM enrollment_orders WHERE class_id=:p1 AND email=:p2 AND state NOT IN ('expired','refunding','refunded') LIMIT 1", [classId,email])).rows[0];
       if (existingSeat) return view(existingSeat);
       const seats = await takenSeats(c,classId);
       if (Number(seats) >= cohort.data.capacity) invalid('enrollment_class_full', 409);
@@ -196,8 +250,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
 
   app.get(base + '/orders/:id', wrap(async (q, r) => {
     const result = await enrollTx(async (c: Client) => {
-      const { order } = await lockOrder(c, String(q.params.id), await session(c, q));
-      return { ...view(order), bank: order.state === 'awaiting_payment' || order.state === 'partial' ? order.data.bank : undefined };
+      const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
+      return { ...view(order), bank: cohort.state!=='cancelled' && (order.state === 'awaiting_payment' || order.state === 'partial') ? order.data.bank : undefined };
     });
     r.set('Cache-Control', 'no-store').json(result);
   }));
@@ -205,7 +259,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   post(base + '/orders/:id/proofs/start', async (q, r) => {
     const uploadId = await enrollTx(async (c: Client) => {
       const { order } = await lockOrder(c, String(q.params.id), await session(c, q));
-      if (order.state === 'paid' || order.state === 'recovered') invalid('enrollment_proof_not_available', 409);
+      if (['paid','recovered','refunding','refunded'].includes(order.state)) invalid('enrollment_proof_not_available', 409);
       if (Number(order.upload_active)) return order.upload_id;
       const id = randomUUID();
       await c.query('UPDATE enrollment_orders SET upload_id=:p1,upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id=:p2', [id,order.id]);
@@ -222,7 +276,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const { order } = await lockOrder(c, String(q.params.id), await session(c, q));
       const prior = (await c.query('SELECT order_id FROM enrollment_proofs WHERE id=:p1', [uploadId])).rows[0];
       if (prior?.order_id === order.id) return view(order);
-      if (order.upload_id !== uploadId || !Number(order.upload_active) || order.state === 'paid' || order.state === 'recovered') {
+      if (order.upload_id !== uploadId || !Number(order.upload_active) || ['paid','recovered','refunding','refunded'].includes(order.state)) {
         invalid('enrollment_upload_expired', 409);
       }
       let digest;
@@ -247,7 +301,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const orders = await enrollTx(async (c: Client) => (await c.query(`SELECT o.*,
         EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,
         (SELECT p.id FROM enrollment_proofs p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1) AS proof_id
-      FROM enrollment_orders o WHERE o.state IN ('proof_review','partial','paid','recovered')
+      FROM enrollment_orders o WHERE o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
         OR EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id)
       ORDER BY o.created_at DESC LIMIT 150`)).rows.map(row => ({ ...view(row), name: row.data.name, opened: Number(row.opened) === 1, proofId: row.proof_id })));
     r.set('Cache-Control', 'no-store').json({ orders });
@@ -272,6 +326,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const result = await enrollTx((c: Client) => operation(c, actor.id, q.body,
       { leadId: 'enrollment:' + id, kind: 'enrollment.receipt', authorize: () => financeActor(q) }, async () => {
       const { order, cohort } = await lockOrder(c, id);
+      if(['refunding','refunded'].includes(order.state)) invalid('enrollment_refund_in_progress',409);
       const ref = reference.trim().toUpperCase();
       try {
         await c.query(`INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,created_at)

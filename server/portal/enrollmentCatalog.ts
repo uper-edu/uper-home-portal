@@ -19,7 +19,9 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
   app.get(path, wrap(async (q, r) => {
     const actor = await staff(q, 'crm.operations.manage');
     const data = await tx(async c => {
-      const classes = (await c.query('SELECT id,revision,state,data FROM enrollment_classes ORDER BY first_lesson_at,id')).rows.map(record);
+      const classes = (await c.query(`SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened
+        FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id ORDER BY e.first_lesson_at,e.id`)).rows
+        .map((row:any)=>({...record(row),opened:Number(row.opened)===1}));
       const courses = (await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows.map((row: any) => ({
         id: row.id, name: row.value.name, active: row.value.active === true,
       }));
@@ -38,8 +40,9 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     const result = await tx(c => operation(c, actor.id, body, {
       leadId: 'class:' + body.id, kind, authorize: () => staff(q, 'crm.operations.manage'),
     }, async () => {
-      const current = (await c.query('SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE', [body.id])).rows[0];
+      const current = (await c.query('SELECT revision,state FROM enrollment_classes WHERE id=:p1 FOR UPDATE', [body.id])).rows[0];
       if ((current?.revision ?? 0) !== body.revision) invalid('enrollment_class_conflict', 409);
+      if(current?.state==='cancelled') invalid('enrollment_class_conflict',409);
       const course = (await c.query('SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE', [data.courseId])).rows[0];
       if (!course || (body.state === 'published' && course.value.active !== true)) invalid('enrollment_course_unavailable', 409);
       const revision = body.revision + 1;
@@ -65,8 +68,9 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
   app.get('/api/enrollment/classes', wrap(async (_q, r) => {
     const classes = await tx(async c => (await c.query(`
       SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
-        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state<>'expired'
-          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) AS seats
+        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','refunding','refunded')
+          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
+          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats
       FROM enrollment_classes e
       JOIN crm_courses c ON c.id=e.course_id
       LEFT JOIN enrollment_class_openings g ON g.class_id=e.id

@@ -1321,7 +1321,7 @@ function CrmWorkspace({
 
           </div>
         </div>}
-        {crmModule === "payments" ? (<><CrmFinanceWorkspace onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/><CrmEnrollmentFinance lang={lang}/></>) : crmModule === "campaigns" ? (
+        {crmModule === "payments" ? (<><CrmFinanceWorkspace onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/><CrmEnrollmentFinance lang={lang} isLight={isLight}/></>) : crmModule === "campaigns" ? (
           <CrmCampaignHub
             canManageCampaigns={canManageCampaigns}
             reviewCounts={{available: Boolean(promotionQueue.data?.counts), counts: promotionQueue.data?.counts ?? {}}}

@@ -16,7 +16,8 @@ type Context = {
 };
 
 export async function takenSeats(c: Client, id: string) {
-  return Number((await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state<>'expired'", [id])).rows[0].count);
+  return Number((await c.query(`SELECT (SELECT COUNT(*) FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','refunding','refunded'))
+    + (SELECT COUNT(*) FROM enrollment_transfer_invitations WHERE target_class_id=:p1 AND state='offered' AND expires_at>UTC_TIMESTAMP(6)) AS count`, [id])).rows[0].count);
 }
 
 export function allowsEnrollment(cohort: Cohort) {
@@ -50,8 +51,9 @@ export async function reconcileWaitlist(c: Client, cohort: Cohort, seats: number
 async function offers(c: Client) {
   return (await c.query(`SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
     WHERE e.state='published' AND e.enrollment_closes_at>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true
-    AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state<>'expired'
-      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6)))
+    AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','refunding','refunded')
+      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
+          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))
       < CAST(e.data->>'$.capacity' AS UNSIGNED)
     ORDER BY e.first_lesson_at,e.id`)).rows;
 }
@@ -75,7 +77,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       if (!allowsEnrollment(cohort)) invalid('enrollment_class_unavailable',409);
       if (seats<cohort.data.capacity) invalid('enrollment_seat_available',409);
       await reconcileWaitlist(c,cohort,seats);
-      const own=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND email=:p2 AND state<>'expired' LIMIT 1",[id,email])).rows[0];
+      const own=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND email=:p2 AND state NOT IN ('expired','refunding','refunded') LIMIT 1",[id,email])).rows[0];
       if (own) invalid('enrollment_already_has_seat',409);
       const prior=(await c.query("SELECT id FROM enrollment_waitlist WHERE class_id=:p1 AND email=:p2 AND state='waiting' LIMIT 1", [id,email])).rows[0];
       if (prior) return { id:prior.id };

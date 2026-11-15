@@ -1,4 +1,5 @@
 import {formatCurrency} from '../../utils/currency';
+import { CrmEnrollmentSupport } from './CrmEnrollmentResolution';
 import { CrmEnrollmentClasses } from './CrmEnrollmentClasses';
 import {useEffect,useRef,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
@@ -36,6 +37,6 @@ export function CrmCourses({lang,isLight}:any){
  {form.history?.length>0&&<details><summary>{t('Price history','Riwayat harga','价格历史')}</summary>{[...form.history].reverse().map((h:any)=><p key={h.id}>{formatCrmEventTime(h.at)} · {h.actor} · {h.before?money(h.before.price)+' → ':''}{money(h.after.price)} · {h.after.name} · {h.after.maxDiscountBps/100}%</p>)}</details>}
  </div><AdminFormActions className="crm-editor-actions">{unknown?<button type="button" className="crm-work-button" disabled={busy} onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button>:<><button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t('Cancel','Batal','取消')}</button><button type="submit" className="crm-work-button" data-primary disabled={busy}>{t('Save','Simpan','保存')}</button></>}</AdminFormActions></AdminForm></CrmOperationLayer>}
  {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);setForm(null);setDirty(false);setError('');}}/>}
- {data?.canManage && <CrmEnrollmentClasses lang={lang} isLight={isLight}/>}
+ {data?.canManage && <><CrmEnrollmentClasses lang={lang} isLight={isLight}/><CrmEnrollmentSupport lang={lang} isLight={isLight}/></>}
  </div>;
 }

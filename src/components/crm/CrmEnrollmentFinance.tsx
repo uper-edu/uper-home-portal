@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { enrollmentCopy, enrollmentPost, enrollmentStatuses } from '../EnrollmentApplication';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
+import { CrmEnrollmentRefund } from './CrmEnrollmentResolution';
 
 type RecordRow = { id: string; name: string; price: number; received: number; opened: boolean; status: string; proofId?: string };
 const endpoint = '/api/crm/enrollment/finance';
 
-export function CrmEnrollmentFinance({ lang }: { lang: CrmLanguage }) {
+export function CrmEnrollmentFinance({ lang,isLight=true }: { lang: CrmLanguage;isLight?:boolean }) {
   const t = (zh: string, en: string, id: string) => enrollmentCopy(lang, [zh,en,id]);
   const [orders, setOrders] = useState<RecordRow[]>();
   const [hidden, setHidden] = useState(false);
@@ -36,7 +37,8 @@ export function CrmEnrollmentFinance({ lang }: { lang: CrmLanguage }) {
       <p>{row.id} · {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}
         {row.opened && ' · '+t('已确认开班','Class confirmed','Kelas dikonfirmasi')}</p>
       {row.proofId && <a href={endpoint+'/proofs/'+encodeURIComponent(row.proofId)}>{t('下载凭证','Download proof','Unduh bukti')}</a>}
-      {selected !== row.id ? <button type="button" className="crm-work-button" onClick={() => {
+      {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={()=>void load().catch(failed)}/> :
+      selected !== row.id ? <button type="button" className="crm-work-button" onClick={() => {
         setSelected(row.id);setRequestId(crypto.randomUUID());setError('');
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button>
       : <form className="crm-form-layout" onSubmit={async event => {

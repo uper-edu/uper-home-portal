@@ -8,10 +8,11 @@ import { enrollmentFormats, enrollmentLevels, enrollmentPeriods } from '../../ut
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
+import { enrollmentPost } from '../EnrollmentApplication';
 
 type Copy = readonly [string, string, string];
 type Catalog = { classes: EnrollmentClassAdmin[]; courses: { name: string; id: string; active: boolean }[] };
-type Draft = { id: string; revision: number; state: EnrollmentClassAdmin['state']; config: EnrollmentClassConfig };
+type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: EnrollmentClassConfig };
 const initial: EnrollmentClassConfig = {
   courseId: '', level: 'HSK 1', format: 'standard', period: 'weekend',
   firstLesson: '', enrollmentCloses: '', decisionAt: '', schedule: '',
@@ -41,6 +42,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   const [draft, setDraft] = useState<Draft>();
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
+  const [closing, setClosing] = useState<{id:string;requestId:string}>();
   const [pending, setPending] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -61,11 +63,12 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, pending]);
   function edit(row?: EnrollmentClassAdmin) {
+    if (row?.state==='cancelled') return;
     setSaved(false);
     setError('');
     setDirty(false);
     if (row) {
-      const { id, revision, state, ...config } = row;
+      const { id, revision, state, opened, ...config } = row;
       setDraft({ id, revision, state, config });
     } else {
       setDraft({ id: crypto.randomUUID(), revision: 0, state: 'draft', config: { ...initial } });
@@ -138,8 +141,11 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
       <thead><tr><th>{t(['Level', 'Level', '级别'])}</th><th>{t(['Schedule', 'Jadwal', '课表'])}</th><th>{t(['Tuition', 'Biaya', '学费'])}</th><th>{t(['Status', 'Status', '状态'])}</th><th>{t(['Actions', 'Tindakan', '操作'])}</th></tr></thead>
       <tbody>{catalog.classes.map(row => <tr key={row.id}>
         <td>{row.level}</td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
-        <td>{formatCurrency(row.price, lang)}</td><td>{row.state === 'published' ? published : unpublished}</td>
-        <td><button type="button" className="crm-work-button" onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</button></td>
+        <td>{formatCurrency(row.price, lang)}</td><td>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
+          ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</td>
+        <td>{row.state!=='cancelled' && <button type="button" className="crm-work-button" onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</button>}
+          {row.state==='published'&&!row.opened&&<button type="button" className="crm-work-button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
+            {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</button>}</td>
       </tr>)}</tbody>
     </table></div>}
     {draft && <CrmOperationLayer compose title={<>{title}<AdminRequiredNote inline lang={lang}/></>} lang={lang} isLight={isLight} busy={busy} customerContext={false} onClose={close}>
@@ -180,5 +186,17 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
     {discard && <CrmDiscardDialog lang={lang} isLight={isLight} onKeep={() => setDiscard(false)} onDiscard={() => {
       setDiscard(false); setDirty(false); setDraft(undefined); setError('');
     }}/>}
+    {closing&&<CrmDiscardDialog lang={lang} isLight={isLight}
+      title={t(['Confirm the class will not open?','Konfirmasi kelas tidak dibuka?','确认这个班不开班？'])}
+      description={t(['New applications and transfers stop. Existing payment records remain available.','Pendaftaran dan transfer baru dihentikan. Riwayat pembayaran tetap tersedia.','关闭新报名和转账入口，保留已有付款记录。'])}
+      keepLabel={t(['Go back','Kembali','返回'])} discardLabel={t(['Confirm','Konfirmasi','确认不开班'])}
+      onKeep={()=>{if(!busy)setClosing(undefined);}} onDiscard={()=>{
+        if(busy)return;
+        setBusy(true);setError('');
+        void enrollmentPost(endpoint+'/'+closing.id+'/cancel',{requestId:closing.requestId})
+          .then(async()=>{setClosing(undefined);setSaved(true);await load();})
+          .catch(()=>{setClosing(undefined);setError(t(['Check the current class state.','Periksa status kelas terbaru.','请刷新核对当前班次状态。']));})
+          .finally(()=>setBusy(false));
+      }}/>}
   </section>;
 }

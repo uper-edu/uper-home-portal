@@ -26,7 +26,8 @@ export interface EnrollmentClassConfig {
 export interface EnrollmentClassAdmin extends EnrollmentClassConfig {
   id: string;
   revision: number;
-  state: 'draft' | 'published';
+  state: 'draft' | 'published' | 'cancelled';
+  opened?: boolean;
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,

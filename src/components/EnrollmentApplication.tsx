@@ -11,6 +11,8 @@ export const enrollmentStatuses: Record<string, Copy> = {
   partial: ['部分到账', 'Partially paid', 'Pembayaran sebagian'],
   paid: ['报名成功', 'Enrollment confirmed', 'Pendaftaran berhasil'],
   expired: ['订单已终止', 'Order expired', 'Pesanan kedaluwarsa'],
+  refunding: ['退款处理中','Refund in progress','Pengembalian diproses'],
+  refunded: ['退款已完成','Refund complete','Pengembalian selesai'],
 };
 export function enrollmentCopy(language: Language, text: Copy) {
   return text[language === 'zh' ? 0 : language === 'id' ? 2 : 1];
@@ -21,8 +23,16 @@ export async function enrollmentPost(path: string, body: unknown) {
   if (!response.ok) throw Error(data.error);
   return data;
 }
-type Order = { id: string; status: string; restored: boolean; price: number; received: number; deadline: string;
+type Order = { id: string; classId: string; status: string; restored: boolean; price: number; received: number; deadline: string;
   bank?: { name: string; accountName: string; accountNumber: string } };
+type Aftercare = {
+  originalClassState:string; transfers:{id:string;firstLesson:string;schedule:string}[];
+  currentClass:{firstLesson:string;schedule:string};
+  invitations:{id:string;targetClassId:string;state:string;expiresAt:string;firstLesson:string;schedule:string}[];
+  transferHistory:{source_class_id:string;target_class_id:string;created_at:string}[];
+  refundProgress?:{expected:number;refunded:number};
+  refund:{mode:string};
+};
 type OrderSummary = Order & { level: string; firstLesson: string };
 
 export function EnrollmentApplication({ classId, language, full = false, demandOnly = false }: {
@@ -32,6 +42,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const [params,setParams] = useSearchParams();
   const orderId = params.get('order');
   const [order,setOrder] = useState<Order>();
+  const [aftercare,setAftercare] = useState<Aftercare>();
   const [open,setOpen] = useState(!!orderId || !classId);
   const [orders,setOrders] = useState<OrderSummary[]>();
   const [interests,setInterests] = useState<Interests>();
@@ -56,6 +67,9 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     const response = await fetch(base+'/orders/'+encodeURIComponent(id),{cache:'no-store'});
     if (!response.ok) throw Error(response.status===401?'enrollment_verification_required':'enrollment_order_not_found');
     setOrder(await response.json());
+    const options=await fetch(base+'/orders/'+encodeURIComponent(id)+'/aftercare',{cache:'no-store'});
+    if(options.ok) setAftercare(await options.json());
+    else setAftercare(undefined);
   }
   async function getOrders() {
     const response = await fetch(base+'/orders',{cache:'no-store'});
@@ -147,11 +161,14 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     else {
       next.delete('order');
       setOrder(undefined);
+      setAftercare(undefined);
     }
     setError('');
     setParams(next, { replace:true, preventScrollReset:true });
   }
   const errors: Record<string, Copy> = {
+    enrollment_invitation_expired:['邀请已到期。请刷新查看可转班次。','This invitation has expired. Refresh to check available classes.','Undangan kedaluwarsa. Muat ulang untuk melihat kelas.'],
+    enrollment_aftercare_conflict:['报名状态已变化，请刷新后再操作。','Your enrollment has changed. Refresh before trying again.','Pendaftaran berubah. Muat ulang sebelum melanjutkan.'],
     enrollment_class_full:['最后一个席位已被占用。','The last seat has been taken.','Kursi terakhir sudah diambil.'],
     enrollment_seat_available:['现在有空位，可以申请这个班。','A seat is available. You can apply now.','Ada kursi tersedia. Anda dapat mendaftar.'],
     enrollment_demand_conflict:['这条需求已更新或撤回，请刷新后查看。','This request has changed or been withdrawn. Refresh to review.','Permintaan berubah atau ditarik. Muat ulang.'],
@@ -161,6 +178,13 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
   };
   const message=errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.'];
+  function transfer(targetClassId:string,decision:'accept'|'decline',invitationId?:string) {
+    if(!order) return;
+    void run(async()=>{
+      await enrollmentPost(base+'/orders/'+order.id+'/transfer',{classId:order.classId,targetClassId,decision,invitationId,requestId:crypto.randomUUID()});
+      await getOrder(order.id);
+    });
+  }
   if (!open) return <button className="enrollment-action" type="button" onClick={()=>setOpen(true)}>{hasNoSeat?joinText:applyText}</button>;
   return <section className="enrollment-card enrollment-application">
     {error && <p role="alert">{t(message)}</p>}
@@ -173,10 +197,35 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       <p>{t(['应付','Amount due','Tagihan'])} {formatCurrency(order.price,language)} · {t(['实际到账','Verified receipts','Dana terverifikasi'])} {formatCurrency(order.received,language)}</p>
       {order.status==='awaiting_payment' && <p>{t(['付款截止','Payment deadline','Batas pembayaran'])} {new Intl.DateTimeFormat(language==='zh'?'zh-CN':language,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(order.deadline))} WIB</p>}
       {order.bank && <p>{order.bank.name} · {order.bank.accountName} · {order.bank.accountNumber}<br/>{t(['模拟账号，请勿转账。','Test account. Do not transfer funds.','Rekening uji. Jangan transfer dana.'])}</p>}
-      {order.status!=='paid' && !order.restored && <form onSubmit={event=>{event.preventDefault();void upload();}}>
+      {aftercare?.originalClassState==='cancelled' && <p>{t(['原班已确认不开班。','The original class will not open.','Kelas asal tidak dibuka.'])}</p>}
+      {!!aftercare?.transferHistory.length && aftercare.originalClassState!=='cancelled' && <>
+        <p>{t(['已确认转班，原实收已用于目标班。','Transfer confirmed. Your payment was applied to the new class.','Pindah kelas dikonfirmasi. Pembayaran digunakan untuk kelas baru.'])}</p>
+        <p>{aftercare.currentClass.firstLesson.replace('T',' ')} WIB · {aftercare.currentClass.schedule}</p>
+      </>}
+      {!['paid','refunding','refunded'].includes(order.status) && !order.restored && <form onSubmit={event=>{event.preventDefault();void upload();}}>
         <label>{t(['转账凭证','Transfer proof','Bukti transfer'])}<input type="file" accept="image/png,image/jpeg,application/pdf" required onChange={event=>setFile(event.target.files?.[0])}/></label>
         <button className="enrollment-action" type="submit" disabled={busy||!file}>{t(['提交凭证','Submit proof','Kirim bukti'])}</button>
       </form>}
+      {aftercare?.invitations.filter(item=>['offered','expired'].includes(item.state)).map(item=><article key={item.id} className="enrollment-card">
+        {item.state==='offered' ? <>
+          <h3>{t(['转班邀请','Transfer invitation','Undangan pindah kelas'])}</h3>
+          <p>{item.firstLesson.replace('T',' ')} WIB · {item.schedule}</p>
+          <p>{t(['答复截止','Reply by','Batas jawaban'])} {new Intl.DateTimeFormat(language==='zh'?'zh-CN':language,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(item.expiresAt))} WIB</p>
+          <button type="button" className="enrollment-action" disabled={busy} onClick={()=>transfer(item.targetClassId,'accept',item.id)}>{t(['确认转班','Confirm transfer','Konfirmasi pindah kelas'])}</button>
+          <button type="button" disabled={busy} onClick={()=>transfer(item.targetClassId,'decline',item.id)}>{t(['拒绝邀请','Decline invitation','Tolak undangan'])}</button>
+        </> : item.state==='expired' ? <p>{t(['转班邀请已到期','Transfer invitation expired','Undangan pindah kelas kedaluwarsa'])}</p> : null}
+      </article>)}
+      {aftercare?.transfers.map(item=><article key={item.id} className="enrollment-card">
+        <p>{item.firstLesson.replace('T',' ')} WIB · {item.schedule}</p>
+        <button className="enrollment-action" type="button" disabled={busy} onClick={()=>transfer(item.id,'accept')}>{t(['转到这个班','Transfer to this class','Pindah ke kelas ini'])}</button>
+      </article>)}
+      {aftercare?.refundProgress ? <p>{t(['累计已原路退款','Total refunded to original payment','Total dikembalikan ke pembayaran asal'])} {formatCurrency(aftercare.refundProgress.refunded,language)} / {formatCurrency(aftercare.refundProgress.expected,language)}</p>
+        : aftercare?.refund.mode==='contact_support' && <Link to={'/contact?lang='+language}>{t(['联系销售客服申请退款','Contact support to request a refund','Hubungi layanan pelanggan untuk meminta pengembalian'])}</Link>}
+      {aftercare?.refund.mode==='special_review' && !aftercare.refundProgress && <p>{t([
+        '班次已确认开班。因特殊情况需要退出，请联系销售客服核实。',
+        'This class is confirmed. Contact support if exceptional circumstances require you to withdraw.',
+        'Kelas sudah dikonfirmasi. Hubungi layanan pelanggan jika harus mengundurkan diri karena keadaan khusus.',
+      ])} <Link to={'/contact?lang='+language}>{t(['联系销售客服','Contact support','Hubungi layanan pelanggan'])}</Link></p>}
       <button type="button" onClick={()=>void run(()=>getOrder(order.id))}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>
     </> : !verified ? <form onSubmit={event=>{event.preventDefault();void (challenge?verify():sendCode());}}>
       <h2>{t(['验证邮箱','Verify your email','Verifikasi email'])}</h2>
