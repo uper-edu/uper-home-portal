@@ -3652,6 +3652,12 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
+  "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n          AND opportunity_id IS NULL": {
+    "sql": "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n          AND opportunity_id IS NULL",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2": {
     "sql": "UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2",
     "sources": [
@@ -3686,6 +3692,12 @@
     "sql": "UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1",
     "sources": [
       "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1": {
+    "sql": "UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "UPDATE enrollment_opportunities SET sales_stage=COALESCE(:p1,sales_stage),revision=revision+1 WHERE id=:p2": {

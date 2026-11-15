@@ -13,7 +13,7 @@ import { validMutationOrigin } from './accessTransport.ts';
 import { assignNewLead } from './autoAssignment.ts';
 import { canonicalIdentity, lockIdentityRegistry } from './identityConsolidation.ts';
 import { discoverIdentity, identityControls, pendingIdentity } from './identityReview.ts';
-import { invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
+import { fact, invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { opportunitySourceKind, type OpportunitySourceRef } from '../../src/utils/crmOpportunitySources.ts';
 import { salesProgressContext } from './salesProgress.ts';
@@ -133,6 +133,11 @@ function displayRecord(row: any) {
     attribution:row.attribution?{entry:row.attribution.entry,source:row.attribution.source,campaign:row.attribution.campaign,verified:row.attribution.verified}:null,
     latestNotice:row.latest_notice,
   };
+}
+
+function recordOpportunityLevel(row:any):string|undefined {
+  const level=row.class_data?.level??row.criteria?.level;
+  if(enrollmentOpportunityLevels.includes(level))return level;
 }
 
 function projectOpportunity(row: any, records: ReturnType<typeof displayRecord>[], profile: any) {
@@ -411,7 +416,60 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
     const canChangeEmail=await canChangeEnrollmentEmail(c,actor,customer);
     const rows=(await c.query(courseRecords+` JOIN portal_leads l ON l.id=r.lead_id
       WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY r.created_at DESC,r.record_id`,[customer.id])).rows;
-    return {records:rows.map(row=>({...displayRecord(row),enrollmentEmail:canChangeEmail?row.enrollment_email:undefined})),canChangeEmail};
+    const canLink=canProgress(actor,customer.profile);
+    return {records:rows.map(row=>({...displayRecord(row),enrollmentEmail:canChangeEmail?row.enrollment_email:undefined,
+      canLinkOpportunity:canLink&&!row.opportunity_id&&Boolean(recordOpportunityLevel(row))})),canChangeEmail};
+  }));
+  const linkPath='/api/crm/leads/:id/enrollment-records/:kind/:recordId/opportunity';
+  const readLinkContext=async(c:Client,q:Request,actor:Employee)=>{
+    const customer=await canonicalIdentity(c,String(q.params.id));
+    if(!customer||!readProfile(actor,customer.profile))invalid('enrollment_customer_not_found',404);
+    if(!canProgress(actor,customer.profile))invalid('enrollment_opportunity_progress_forbidden',403);
+    const kind=String(q.params.kind),recordId=String(q.params.recordId);
+    if(!Object.hasOwn(changeEmailStatements,kind)||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(recordId))
+      invalid('enrollment_record_not_found',404);
+    const row=(await c.query(courseRecords+` JOIN portal_leads l ON l.id=r.lead_id
+      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND r.kind=:p2 AND r.record_id=:p3`,[customer.id,kind,recordId])).rows[0];
+    if(!row)invalid('enrollment_record_not_found',404);
+    return {customer,row,kind,recordId};
+  };
+  app.get(linkPath,read(async(c,q,actor)=>{
+    const {customer,row}=await readLinkContext(c,q,actor);
+    const level=recordOpportunityLevel(row);
+    const candidates=!row.opportunity_id&&level?await activeOpportunityCandidates(c,customer,level):[];
+    const records=await opportunityRecordsById(c,candidates);
+    return {opportunityId:row.opportunity_id,opportunities:candidates.map(item=>{
+      const projected=projectOpportunity(item,records.get(item.id)??[],customer.profile);
+      const latest=projected.records.at(-1);
+      return {id:item.id,level:item.level,stage:projected.salesStage,createdAt:item.created_at,
+        class:latest?.class??null,criteria:latest?.criteria??null};
+    })};
+  }));
+  app.post(linkPath,wrap(async(q,r)=>{
+    if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
+    const actor=await staff(q,'crm.followup');
+    const {opportunityId}=q.body??{};
+    if(typeof opportunityId!=='string'||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(opportunityId))
+      invalid('enrollment_opportunity_not_found',404);
+    const result=await transact(async c=>{
+      await lockIdentityRegistry(c);
+      const {customer,row,kind,recordId}=await readLinkContext(c,q,actor);
+      return operation(c,actor.id,q.body,{leadId:customer.id,kind:`enrollment.opportunity.link.${kind}:${recordId}`},async()=>{
+        if(row.opportunity_id){
+          if(row.opportunity_id!==opportunityId)invalid('enrollment_opportunity_already_linked',409);
+          return {opportunityId,recordId,kind};
+        }
+        const level=recordOpportunityLevel(row);
+        const candidates=level?await activeOpportunityCandidates(c,customer,level):[];
+        if(!candidates.some(candidate=>candidate.id===opportunityId))invalid('enrollment_opportunity_not_found',404);
+        await c.query(`UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3
+          AND opportunity_id IS NULL`,[opportunityId,kind,recordId]);
+        await c.query('UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1',[opportunityId]);
+        await fact(c,customer.id,'enrollment.opportunity.linked',actor.id,{opportunityId,recordId,kind});
+        return {opportunityId,recordId,kind};
+      });
+    });
+    r.set('Cache-Control','no-store').json(result);
   }));
   const emailPath='/api/crm/leads/:id/enrollment-records/email';
   app.get(emailPath+'/results/:requestId',read(async(c,q,actor)=>{
