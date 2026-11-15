@@ -17,7 +17,7 @@ export type EnrollmentOrder = {
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, schedule, language, status, canUpload, file, busy, setFile, upload }: {
+export function EnrollmentPayment({ order, course, schedule, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
   schedule?: string;
@@ -28,6 +28,7 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
   busy: boolean;
   setFile: (file?: File) => void;
   upload: () => void;
+  existingTransferOnly?: boolean;
 }) {
   const t = (zh: string, en: string, id: string) => language === 'zh' ? zh : language === 'en' ? en : id;
   const locale = t('zh-CN', 'en-GB', 'id-ID');
@@ -124,7 +125,8 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
         <p className="enrollment-payment-test-note">{t('模拟账号，请勿转账。', 'Test account. Do not transfer funds.', 'Rekening uji. Jangan transfer dana.')}</p>
       </section>
     </> : <div className="enrollment-payment-summary">
-      <p>{t('实际到账', 'Verified receipts', 'Dana terverifikasi')} · {formatCurrency(order.received, language)}</p>
+      {existingTransferOnly ? <p>{t('原付款入口已关闭。此处可提交已发生的转账记录。','The original payment link is closed. Only submit proof of a transfer you already made.','Pembayaran awal telah ditutup. Kirim bukti transfer yang sudah dilakukan.')}</p>
+        : <p>{t('实际到账', 'Verified receipts', 'Dana terverifikasi')} · {formatCurrency(order.received, language)}</p>}
     </div>}
     {canUpload && <form className="enrollment-payment-form" onSubmit={event => { event.preventDefault(); upload(); }}>
       <section className="enrollment-upload-section">
@@ -137,8 +139,10 @@ export function EnrollmentPayment({ order, course, schedule, language, status, c
         </label>
       </section>
       <div className="enrollment-proof-actions enrollment-payment-actions">
-        <p>{t('财务核实足额到账后，报名才算成功。', 'Enrollment is confirmed after Finance verifies full payment.', 'Pendaftaran berhasil setelah pembayaran penuh diverifikasi.')}</p>
-        <button className="enrollment-primary" type="submit" disabled={busy || !file}>{t('提交凭证', 'Submit proof', 'Kirim bukti')}</button>
+        {!existingTransferOnly && <p>{t('财务核实足额到账后，报名才算成功。', 'Enrollment is confirmed after Finance verifies full payment.', 'Pendaftaran berhasil setelah pembayaran penuh diverifikasi.')}</p>}
+        <button className="enrollment-primary" type="submit" disabled={busy || !file}>{existingTransferOnly
+          ? t('提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan')
+          : t('提交凭证', 'Submit proof', 'Kirim bukti')}</button>
       </div>
     </form>}
   </>;

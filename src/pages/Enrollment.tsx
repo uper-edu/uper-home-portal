@@ -108,6 +108,8 @@ export default function Enrollment() {
   catalogParams.delete('apply');
   catalogParams.delete('order');
   catalogParams.delete('proof');
+  catalogParams.delete('view');
+  catalogParams.delete('target');
   const listPath = '/enrollment?' + catalogParams.toString();
   const minePath = '/enrollment/mine?' + catalogParams.toString();
   const interestPath = '/enrollment/interest?' + catalogParams.toString();

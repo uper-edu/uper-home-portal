@@ -577,3 +577,33 @@
 @media (min-width: 768px) {
   .enrollment-demand-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+.enrollment-aftercare-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+}
+.enrollment-aftercare-secondary > * { min-height: 36px; }
+.enrollment-aftercare-refresh { justify-self: start; min-height: 38px; font-size: 13px; }
+.enrollment-transfer-card { gap: 6px; }
+.enrollment-transfer-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  border-top: 1px solid var(--enrollment-border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+.enrollment-transfer-card-actions strong { font-weight: 700; }
+.enrollment-transfer-card-actions .enrollment-primary { gap: 5px; font-size: 13px; }
+.enrollment-transfer-card-actions svg { flex: none; }
+@media (max-width: 767px) {
+  .enrollment-aftercare-secondary { justify-content: center; }
+  .enrollment-journey-actions .enrollment-quiet,
+  .enrollment-detail-actions .enrollment-quiet,
+  .enrollment-interest-actions .enrollment-quiet { font-size: 11px; }
+}

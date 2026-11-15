@@ -7,7 +7,7 @@ import { interestOption, interestText, type InterestLanguage } from './Enrollmen
 
 type Copy = readonly [string, string, string];
 
-export function EnrollmentOrderResult({ order, course, classInfo, classState, language, backPath, uploadPath, busy, onRefresh }: {
+export function EnrollmentOrderResult({ order, course, classInfo, classState, language, backPath, uploadPath, refundPath, busy, onRefresh }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
   classInfo?: { firstLesson: string; schedule: string };
@@ -15,6 +15,7 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
   language: InterestLanguage;
   backPath: string;
   uploadPath?: string;
+  refundPath?: string;
   busy: boolean;
   onRefresh: () => void;
 }) {
@@ -81,6 +82,7 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
       <div className="enrollment-result-tools">
         <button type="button" className="enrollment-quiet" disabled={busy} onClick={onRefresh}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>
         {uploadPath && <Link className="enrollment-quiet" to={uploadPath}>{t(['补交凭证','Submit another proof','Kirim bukti tambahan'])}</Link>}
+        {refundPath && <Link className="enrollment-quiet" to={refundPath}>{t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}</Link>}
       </div>
       <div className="enrollment-journey-actions">
         <Link className="enrollment-quiet" to={'/contact?lang='+language}>{support}</Link>

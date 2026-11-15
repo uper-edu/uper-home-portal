@@ -163,8 +163,11 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
           id:row.id,level:row.data.level,format:row.data.format,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
         })):[];
       const status=await enrollmentAftercareStatus(c,order.id);
-      return { originalClassState:cohort.state, currentClass:{firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule},
-        transfers, ...status, refund: verified<=0 ? { mode:'unavailable' } :
+      const lateProofSubmitted=order.state==='expired'&&verified===0&&
+        (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[order.id])).rows.length>0;
+      return { originalClassState:cohort.state, currentClass:{
+        level:cohort.data.level,format:cohort.data.format,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,opened:!!confirmed,
+      }, lateProofSubmitted, transfers, ...status, refund: verified<=0 ? { mode:'unavailable' } :
         confirmed ? {mode:'special_review'} : {
           mode:'contact_support',
           maximum:enrollmentRefundEstimate({price:order.price,received:verified,refunded:0,transferred:0,sessions:cohort.data.sessions,delivered:0}),
