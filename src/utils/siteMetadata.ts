@@ -87,7 +87,7 @@ export const publicPages: Record<string, { title: Words; description: Words }> =
     },
     "/enrollment": {
       title: ["Course Enrollment", "Pendaftaran Kelas", "课程报名"],
-      description: ["Browse UPER classes, schedules and tuition.", "Lihat kelas, jadwal, dan biaya UPER.", "查看 UPER 班次、上课时间和学费。"],
+      description: ["Browse UPER classes, schedules and tuition.", "Lihat kelas, jadwal, dan biaya UPER.", "查看 UPER HSK 课程班次、每周上课时间和学费，选择适合的班次申请报名。"],
     },
     "/csca": {
       title: ["CSCA Preparation", "Persiapan CSCA", "CSCA备考"],

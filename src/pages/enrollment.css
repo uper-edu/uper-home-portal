@@ -27,3 +27,21 @@
 .enrollment-order-list{display:grid;gap:.65rem}
 .enrollment-tab-count{margin-inline-start:.4rem;font-size:.8em;border-radius:1em;background:#dfeee8;color:#133d32;padding:.05rem .4rem}
 .enrollment-application textarea{width:100%;min-height:5rem;padding:.6rem;border:1px solid color-mix(in srgb,currentColor 24%,transparent);border-radius:.55rem}
+
+@media (max-width: 767px) {
+  .enrollment-page:has(.enrollment-proof-actions) {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .enrollment-proof-actions {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 45;
+    border-top: 1px solid #dbe7e3;
+    background: #fff;
+    padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .enrollment-proof-actions > button { width: 100%; }
+  body:has(.enrollment-proof-actions) .public-mobile-bottom-bar { display: none; }
+}

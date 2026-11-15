@@ -10,6 +10,7 @@ export const enrollmentStatuses: Record<string, Copy> = {
   proof_review: ['凭证待财务核实', 'Proof awaiting verification', 'Bukti menunggu verifikasi'],
   partial: ['部分到账', 'Partially paid', 'Pembayaran sebagian'],
   paid: ['报名成功', 'Enrollment confirmed', 'Pendaftaran berhasil'],
+  paid_cancelled: ['已到账 · 原班不开班', 'Paid · Original class cancelled', 'Sudah dibayar · Kelas asal dibatalkan'],
   expired: ['订单已终止', 'Order expired', 'Pesanan kedaluwarsa'],
   refunding: ['退款处理中','Refund in progress','Pengembalian diproses'],
   refunded: ['退款已完成','Refund complete','Pengembalian selesai'],
@@ -23,7 +24,7 @@ export async function enrollmentPost(path: string, body: unknown) {
   if (!response.ok) throw Error(data.error);
   return data;
 }
-type Order = { id: string; classId: string; status: string; restored: boolean; price: number; received: number; deadline: string;
+type Order = { id: string; classId: string; status: string; restored: boolean; learnerName?: string; price: number; received: number; deadline: string;
   bank?: { name: string; accountName: string; accountNumber: string } };
 type Aftercare = {
   originalClassState:string; transfers:{id:string;firstLesson:string;schedule:string}[];
@@ -198,6 +199,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         {t(['返回报名列表','Back to enrollments','Kembali ke daftar pendaftaran'])}
       </button>}
       <h2>{t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status])}</h2>
+      {order.learnerName&&<p>{t(['学员姓名','Learner name','Nama siswa'])} · {order.learnerName}</p>}
       <p>{t(['报名编号','Order number','Nomor pendaftaran'])} {order.id}</p>
       <p>{t(['应付','Amount due','Tagihan'])} {formatCurrency(order.price,language)} · {t(['实际到账','Verified receipts','Dana terverifikasi'])} {formatCurrency(order.received,language)}</p>
       {order.status==='awaiting_payment' && <p>{t(['付款截止','Payment deadline','Batas pembayaran'])} {new Intl.DateTimeFormat(language==='zh'?'zh-CN':language,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(order.deadline))} WIB</p>}
@@ -207,9 +209,11 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         <p>{t(['已确认转班，原实收已用于目标班。','Transfer confirmed. Your payment was applied to the new class.','Pindah kelas dikonfirmasi. Pembayaran digunakan untuk kelas baru.'])}</p>
         <p>{aftercare.currentClass.firstLesson.replace('T',' ')} WIB · {aftercare.currentClass.schedule}</p>
       </>}
-      {!['paid','refunding','refunded'].includes(order.status) && !order.restored && <form onSubmit={event=>{event.preventDefault();void upload();}}>
+      {!['paid','paid_cancelled','refunding','refunded'].includes(order.status) && !order.restored && <form onSubmit={event=>{event.preventDefault();void upload();}}>
         <label>{t(['转账凭证','Transfer proof','Bukti transfer'])}<input type="file" accept="image/png,image/jpeg,application/pdf" required onChange={event=>setFile(event.target.files?.[0])}/></label>
-        <button className="enrollment-action" type="submit" disabled={busy||!file}>{t(['提交凭证','Submit proof','Kirim bukti'])}</button>
+        <div className="enrollment-proof-actions">
+          <button className="enrollment-action" type="submit" disabled={busy||!file}>{t(['提交凭证','Submit proof','Kirim bukti'])}</button>
+        </div>
       </form>}
       {aftercare?.invitations.filter(item=>['offered','expired'].includes(item.state)).map(item=><article key={item.id} className="enrollment-card">
         {item.state==='offered' ? <>
@@ -257,12 +261,13 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       {(tab==='all'||tab==='orders') && orders?.map(row => <article className="enrollment-card" key={row.id}>
         <small>{t(['申请','Application','Pendaftaran'])}</small>
         <p>{row.level} · {row.firstLesson.slice(0,10)} · {t(enrollmentStatuses[row.status])}</p>
-        <p>{row.id}</p>
+        <p>{row.learnerName&&row.learnerName+' · '}{row.id}</p>
         <button type="button" className="enrollment-action" onClick={()=>selectOrder(row.id)}>{t(['查看报名','View enrollment','Lihat pendaftaran'])}</button>
       </article>)}
       {(tab==='all'||tab==='waitlist') && interests?.waitlist.map(row=><article className="enrollment-card" key={row.id}>
         <small>{t(['候补','Waitlist','Daftar tunggu'])}</small>
         <h2>{row.level} · {row.firstLesson?.slice(0,10)}</h2>
+        {row.learnerName&&<p>{row.learnerName}</p>}
         <p>{t(waitlistStates[row.state])}{row.state==='waiting' && ' · '+t(row.available
           ? ['有空位可申请','Seats available','Kursi tersedia']:['暂无空位','No seats available','Belum ada kursi'])}</p>
         {row.state==='waiting'&&<>

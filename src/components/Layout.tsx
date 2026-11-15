@@ -850,7 +850,7 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
 const MobileBottomBar = () => {
   const { t } = useTranslation();
   return (
-    <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 p-3 flex gap-3 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+    <div className="public-mobile-bottom-bar md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 p-3 flex gap-3 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
       <button className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:bg-slate-200 transition-colors">
         <FileText className="w-4 h-4" /> {t('mobile.freeGuide')}
       </button>

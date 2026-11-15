@@ -5,7 +5,7 @@ import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
 import { progressLabel, salesProgressStages } from '../../utils/crmSalesProgress';
 import { interestOption } from '../EnrollmentInterests';
-import { enrollmentPost } from '../EnrollmentApplication';
+import { enrollmentPost, enrollmentStatuses } from '../EnrollmentApplication';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminFormActions } from '../AdminFormLayout';
@@ -22,7 +22,7 @@ type CourseRecord = {
 };
 type Opportunity = {
   id:string; level:string;customerId:string;customerName:string;businessNumber:string;owner:string|null;identityPending:boolean;
-  state:'enrolled'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
+  state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
   progress?:{id:string;actor:string;stage:string;note:string;createdAt:string}[];canProgress?:boolean;
 };
 const base = '/api/crm/opportunities';
@@ -36,6 +36,7 @@ const states:Record<string,Copy> = {
   awaiting_payment:['待付款','Awaiting payment','Menunggu pembayaran'],
   proof_review:['凭证待核实','Proof awaiting review','Bukti menunggu pemeriksaan'],
   partial:['部分到账','Partially paid','Dibayar sebagian'],paid:['报名成功','Enrollment confirmed','Pendaftaran berhasil'],
+  paid_cancelled:enrollmentStatuses.paid_cancelled,
   recovered:['已恢复报名','Enrollment restored','Pendaftaran dipulihkan'],
   expired:['订单已终止','Order expired','Pesanan kedaluwarsa'],
   refunding:['退款处理中','Refund in progress','Pengembalian diproses'],
@@ -47,12 +48,14 @@ const states:Record<string,Copy> = {
 };
 const next:Record<Opportunity['state'],Copy> = {
   enrolled:['已报名','Enrolled','Terdaftar'], applying:['办理报名','Complete enrollment','Selesaikan pendaftaran'],
+  aftercare:['处理转班或退款','Arrange transfer or refund','Tangani pindah kelas atau pengembalian'],
   waiting:['等待班次空位','Wait for a seat','Menunggu kursi'],
   interest:['跟进选课需求','Follow up on course preferences','Tindak lanjuti preferensi kursus'],
   closed:['已结束','Closed','Ditutup'],
 };
 function nextAction(row:Opportunity,lang:CrmLanguage) {
   if (row.identityPending) return t(lang,['核实身份','Review identity','Verifikasi identitas']);
+  if (row.state==='aftercare') return t(lang,next.aftercare);
   if (row.records.some(record=>record.state==='proof_review'||record.state==='partial')) return t(lang,['核对到账','Verify payment','Verifikasi pembayaran']);
   if (row.records.some(record=>record.state==='awaiting_payment')) return t(lang,states.awaiting_payment);
   return t(lang,next[row.state]);

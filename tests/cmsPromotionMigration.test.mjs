@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import {migrate} from '../cloud/mysql/migrate.mjs';
 import {bootstrapTables} from '../scripts/lib/cms-bootstrap-contract.mjs';
 
+const enrollmentTables=[
+ 'enrollment_classes','enrollment_class_openings','enrollment_customer_records','enrollment_demands',
+ 'enrollment_email_challenges','enrollment_email_sessions','enrollment_interest_events','enrollment_notification_receipts',
+ 'enrollment_opportunities','enrollment_opportunity_progress','enrollment_orders','enrollment_proofs',
+ 'enrollment_receipts','enrollment_record_attribution','enrollment_refund_cases','enrollment_refund_payments',
+ 'enrollment_transfer_invitations','enrollment_transfers','enrollment_vacancy_cycles','enrollment_waitlist',
+];
+const enrollmentClassFields=['id','course_id','revision','state','first_lesson_at','enrollment_closes_at','data','updated_at'];
+const occurrenceDdl='ALTER TABLE crm_payment_analytics ADD COLUMN occurred_at DATETIME(6) NULL';
+const learnerNameDdl='ALTER TABLE enrollment_waitlist ADD COLUMN learner_name VARCHAR(120) NULL';
 const cosColumns=()=>Object.entries({content:['mediumblob','YES'],storage_type:['varchar(16)','NO'],cos_url:['varchar(1024)','YES'],object_key:['varchar(255)','YES'],byte_size:['bigint unsigned','YES']}).map(([Field,[Type,Null]])=>({Field,Type,Null}));
 const queueColumns=(version=19)=>Object.entries({
  id:'char(64)',environment:"enum('dev','test','prod')",project_id:'varchar(191)',
@@ -18,6 +28,7 @@ const queueIndexes=(version=19)=>[
 function fixture(ready){
  const versions=new Map(ready.map(version=>[version,'ready'])),queries=[],tables=new Set(ready.length?bootstrapTables(ready.includes(20)?20:ready.includes(19)?19:ready.includes(18)?18:16):[]);
  let paymentColumns=queueColumns(ready.includes(20)?20:19),paymentIndexes=queueIndexes(ready.includes(20)?20:19),crashAfterDdl=false,crashAfterDispatchDdl=false;
+ let waitlistNameColumn;
  let columns=ready.includes(16)?cosColumns():[{Field:'content',Type:'mediumblob',Null:'NO'}];
  let indexes=[{Key_name:'idx_cms_media_storage',Column_name:'storage_type',Seq_in_index:1}];
  const media=[{id:'old-image',content:Buffer.from('legacy image')},{id:'cos-image',content:null,cos_url:'https://example.invalid/unchanged.webp'}];
@@ -41,6 +52,16 @@ function fixture(ready){
    if(sql==='SHOW FULL COLUMNS FROM cms_media')return [structuredClone(columns)];
    if(sql==='SHOW CREATE TABLE crm_payment_analytics')return [tables.has('crm_payment_analytics')?[{'Create Table':'CREATE TABLE fixture (...) ENGINE=InnoDB'}]:[]];
    if(sql==='SHOW FULL COLUMNS FROM crm_payment_analytics')return [structuredClone(paymentColumns)];
+   if(sql==='SHOW COLUMNS FROM enrollment_classes')return [tables.has('enrollment_classes')?enrollmentClassFields.map(Field=>({Field})):[]];
+   if(sql==='SHOW FULL COLUMNS FROM enrollment_waitlist')return [waitlistNameColumn?[waitlistNameColumn]:[]];
+   if(sql===learnerNameDdl){
+    if(!tables.has('enrollment_waitlist')||waitlistNameColumn)throw Error('Unexpected waitlist learner DDL');
+    waitlistNameColumn={Field:'learner_name',Type:'varchar(120)',Null:'YES',Default:null};return [{}];
+   }
+   if(sql===occurrenceDdl){
+    if(paymentColumns.some(row=>row.Field==='occurred_at'))throw Error('Occurrence ALTER repeated');
+    paymentColumns.push({Field:'occurred_at',Type:'datetime(6)',Null:'YES',Default:null});return [{}];
+   }
    if(sql==='SHOW INDEX FROM crm_payment_analytics')return [structuredClone(paymentIndexes)];
    if(sql.startsWith('CREATE TABLE IF NOT EXISTS crm_payment_analytics')&&crashAfterDdl){
     tables.add('crm_payment_analytics');crashAfterDdl=false;throw Error('Interrupted after DDL');
@@ -95,10 +116,12 @@ test('COS-MERGE-02: existing COS v16 runs main promotion migrations and keeps as
 test('COS-MERGE-03: empty schema executes all 20 real migration stages in order',async()=>{
  const f=fixture([]);assert.equal((await run(f)).version,20);
  assert.deepEqual([...f.versions.keys()],range(20));assert.ok([...f.versions.values()].every(state=>state==='ready'));
- assert.deepEqual([...f.tables].sort(),bootstrapTables());
- const before=f.queries.filter(sql=>/^CREATE TABLE|^ALTER TABLE/.test(sql)).length;
+ assert.deepEqual([...f.tables].sort(),[...bootstrapTables(),...enrollmentTables].sort());
+ const before=f.queries.filter(sql=>sql.startsWith('ALTER TABLE')).length;
  await run(f);
- assert.equal(f.queries.filter(sql=>/^CREATE TABLE|^ALTER TABLE/.test(sql)).length,before+1);
+ assert.equal(f.queries.filter(sql=>sql.startsWith('ALTER TABLE')).length,before);
+ assert.equal(f.queries.filter(sql=>sql===occurrenceDdl).length,1);
+ assert.equal(f.queries.filter(sql=>sql===learnerNameDdl).length,1);
 });
 test('COS-MERGE-04: a ready marker cannot hide missing COS columns, even when v18 is ready',async()=>{
  const f=fixture(range(18));f.setColumns(cosColumns().filter(row=>row.Field!=='cos_url'));
@@ -156,8 +179,16 @@ test('GA dispatch migration resumes from v19 after interrupted ALTER and validat
  assert.equal(f.versions.get(20),'applying');
  assert.deepEqual(await run(f),{version:20,state:'ready',alreadyApplied:false});
  assert.equal((await run(f)).alreadyApplied,true);
- assert.equal(f.queries.filter(sql=>sql.startsWith('ALTER TABLE crm_payment_analytics')).length,1);
+ assert.equal(f.queries.filter(sql=>sql.startsWith('ALTER TABLE crm_payment_analytics')&&sql!==occurrenceDdl).length,1);
+ assert.equal(f.queries.filter(sql=>sql===occurrenceDdl).length,1);
  assert.ok(!f.queries.some(sql=>/^(INSERT INTO|UPDATE|DELETE FROM) crm_payment_analytics/.test(sql)));
  f.setPaymentColumns(queueColumns(20).filter(column=>column.Field!=='attempted_at'));
  await assert.rejects(run(f),/schema mismatch: attempted_at/);
+});
+
+test('CMS-only bootstrap keeps its table contract without applying Enrollment runtime tables',async()=>{
+ const f=fixture([]);
+ await migrate(f.pool,'uper_trial_mock',{initializeSystemDefaults:false,includeEnrollment:false});
+ assert.deepEqual([...f.tables].sort(),bootstrapTables());
+ assert.ok(!f.queries.includes(learnerNameDdl));
 });

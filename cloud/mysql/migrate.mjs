@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { openTrialDatabase, withLock } from './database.mjs';
 
-export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false,initializeSystemDefaults=true}={}) {
+export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false,initializeSystemDefaults=true,includeEnrollment=true}={}) {
   return withLock(pool, 'schema:' + name, async connection => {
     const [guards]=await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'access_restore_guard_%'",[name]);
     if(guards.length&&!allowRestoreGuard)throw Error('Interrupted restore: security review barrier not finalized');
@@ -27,8 +27,10 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
       await addPaymentAnalytics(connection);
       const result=await addPaymentAnalyticsDispatch(connection);
       await addPaymentAnalyticsOccurrence(connection);
-      await applyEnrollmentCatalogMigration(connection);
-      await applyEnrollmentOrdersMigration(connection);
+      if(includeEnrollment){
+        await applyEnrollmentCatalogMigration(connection);
+        await applyEnrollmentOrdersMigration(connection);
+      }
       if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
       return result;
     };
@@ -67,6 +69,14 @@ async function applyEnrollmentOrdersMigration(connection) {
     for (const statement of source.split(';').map(sql => sql.trim()).filter(Boolean)) {
       await connection.query(statement);
     }
+  }
+  const [columns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_waitlist');
+  const learnerName=columns.find(column=>column.Field==='learner_name');
+  if(!learnerName){
+    const sql=await readFile(new URL('./schema-enrollment-20261114193153.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(learnerName.Type.toLowerCase()!=='varchar(120)'||learnerName.Null!=='YES'||learnerName.Default!==null){
+    throw Error('Enrollment waitlist learner name does not match the expected schema');
   }
 }
 

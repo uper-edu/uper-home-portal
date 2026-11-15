@@ -1,4 +1,5 @@
 import type { Express,Request,Response } from 'express';
+import { enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
 import { invalid } from './trustWorkflow.ts';
@@ -33,13 +34,13 @@ export function mountEnrollmentCardTargets(app:Express,wrap:Wrap,staff:Staff,fin
         return {type,id,level:cohort.data.level,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
           paid,minimumPaid,capacity,received:verifiedReceipts,waiting,pending,pendingAmount};
       }
-      const order=(await c.query(`SELECT o.id,o.state,o.price,o.received,b.data AS class_data,
+      const order=(await c.query(`SELECT o.id,o.state,o.price,o.received,b.state AS class_state,b.data AS class_data,
         DATE_FORMAT(p.first_proof,'%Y-%m-%dT%H:%i:%sZ') AS proofAt
         FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id
         JOIN (SELECT order_id,MIN(created_at) AS first_proof FROM enrollment_proofs WHERE order_id=:p1 GROUP BY order_id) p
         ON p.order_id=o.id WHERE o.id=:p1`,[id])).rows[0];
       if(!order) invalid('enrollment_notice_target_not_found',404);
-      return {type,id,level:order.class_data.level,price:Number(order.price),received:Number(order.received),state:order.state,proofAt:order.proofAt};
+      return {type,id,level:order.class_data.level,price:Number(order.price),received:Number(order.received),state:enrollmentOrderStatus(order.state,order.class_state),proofAt:order.proofAt};
     });
     r.set('Cache-Control','no-store').json(result);
   }));

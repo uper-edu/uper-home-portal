@@ -4,6 +4,7 @@ import { demandMatches, enrollmentPhone, parseDemand } from '../../src/utils/enr
 import { invalid } from './trustWorkflow.ts';
 import { recordEnrollmentCustomer } from './enrollmentCrm.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
+import { activeLearnerOrder, learnerWaitlist } from './enrollmentLearners.ts';
 import { interestNotice } from './enrollmentNotices.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> };
@@ -83,13 +84,13 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       if (!allowsEnrollment(cohort)) invalid('enrollment_class_unavailable',409);
       if (seats<cohort.data.capacity) invalid('enrollment_seat_available',409);
       await reconcileWaitlist(c,cohort,seats);
-      const own=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND email=:p2 AND state NOT IN ('expired','refunding','refunded') LIMIT 1",[id,email])).rows[0];
+      const own=await activeLearnerOrder(c,id,email,name);
       if (own) invalid('enrollment_already_has_seat',409);
-      const prior=(await c.query("SELECT id FROM enrollment_waitlist WHERE class_id=:p1 AND email=:p2 AND state='waiting' LIMIT 1", [id,email])).rows[0];
+      const prior=await learnerWaitlist(c,id,email,name);
       if (prior) return { id:prior.id };
       const waiting=randomUUID();
-      await c.query("INSERT INTO enrollment_waitlist(id,class_id,email,phone,state,created_at) VALUES(:p1,:p2,:p3,:p4,'waiting',UTC_TIMESTAMP(6))",
-        [waiting,id,email,phone]);
+      await c.query("INSERT INTO enrollment_waitlist(id,class_id,email,phone,learner_name,state,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,'waiting',UTC_TIMESTAMP(6))",
+        [waiting,id,email,phone,name??null]);
       await recordEnrollmentCustomer(c,{kind:'waitlist',id:waiting,email,phone,name,level:cohort.data.level});
       await recordEnrollmentAttribution(c,'waitlist',waiting,q.body.source);
       return { id:waiting };
@@ -111,7 +112,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
   app.get(base+'/interests',wrap(async(q,r)=>{
     const data=await transact(async c=>{
       const email=await session(c,q);
-      const {rows:waiting}=await c.query('SELECT id,class_id,state,order_id FROM enrollment_waitlist WHERE email=:p1 ORDER BY created_at DESC,id DESC',[email]);
+      const {rows:waiting}=await c.query('SELECT id,class_id,state,order_id,learner_name FROM enrollment_waitlist WHERE email=:p1 ORDER BY created_at DESC,id DESC',[email]);
       const availability=new Map<string,{cohort:Cohort;available:boolean}>();
       for(const id of [...new Set(waiting.map(w=>String(w.class_id)))].sort()) {
         const cohort=await lockClass(c,id);
@@ -142,7 +143,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
           const current=availability.get(w.class_id);
           const latest=latestWaitlist.get(w.id) ?? w;
           const state=latest.state;
-          return {id:w.id,classId:w.class_id,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,
+          return {id:w.id,classId:w.class_id,learnerName:w.learner_name,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,
             level:current?.cohort.data.level,firstLesson:current?.cohort.data.firstLesson};
         }),
         demands:enriched,

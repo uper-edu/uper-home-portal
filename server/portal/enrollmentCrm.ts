@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { allowed, type Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import { isSalesProgressStage } from '../../src/utils/crmSalesProgress.ts';
+import { enrollmentLearnerNameKey, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { assignNewLead } from './autoAssignment.ts';
 import { canonicalIdentity, lockIdentityRegistry } from './identityConsolidation.ts';
@@ -12,14 +13,13 @@ import { invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
 type Submission = { kind: RecordKind; id: string; email: string; phone: string; name?: string; level?: string };
-const sameName = (a: string, b: string) => a.normalize('NFKC').trim().toLowerCase() === b.normalize('NFKC').trim().toLowerCase();
 
 async function identityForSubmission(c: Client, { email, phone, name }: Submission) {
   const normalized = normalizeContactPhone(phone);
   const anchors = (await c.query(`SELECT id,profile FROM portal_leads
     WHERE LOWER(profile->>'$.email')=:p1 AND profile->>'$.enrollmentEmailVerified'='true'`, [email])).rows;
   const compatible = anchors.filter(row => normalizeContactPhone(row.profile.whatsapp) === normalized &&
-    (!name || sameName(name, row.profile.fullName)));
+    (!name || enrollmentLearnerNameKey(name) === enrollmentLearnerNameKey(row.profile.fullName)));
   // An identical registration already held for review may add facts to that same submission.
   const roots = new Map();
   for (const anchor of compatible) {
@@ -90,7 +90,7 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
     CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
-    o.price,o.received,d.criteria,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice
+    o.price,o.received,d.criteria,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice
   FROM enrollment_customer_records r
   LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id
   LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id
@@ -103,7 +103,7 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
 
 function displayRecord(row: any) {
   return {
-    id:row.record_id,kind:row.kind,opportunityId:row.opportunity_id,state:row.state,createdAt:row.created_at,
+    id:row.record_id,kind:row.kind,opportunityId:row.opportunity_id,state:enrollmentOrderStatus(row.state,row.class_state),createdAt:row.created_at,
     class:row.class_data ? {level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
@@ -115,9 +115,10 @@ function displayRecord(row: any) {
 function projectOpportunity(row: any, records: ReturnType<typeof displayRecord>[], profile: any) {
   const states = records.map(record => record.state);
   const state = states.some(state=>['paid','recovered'].includes(state)) ? 'enrolled'
+    : states.includes('paid_cancelled') ? 'aftercare'
     : states.some(state=>['awaiting_payment','partial','proof_review'].includes(state)) ? 'applying'
     : states.includes('waiting') ? 'waiting' : states.some(state=>['active','expired'].includes(state)) ? 'interest' : 'closed';
-  const salesStage=state==='enrolled'?'progress:enrolled':row.sales_stage ??
+  const salesStage=state==='enrolled'?'progress:enrolled':state==='aftercare'?'progress:paused':row.sales_stage ??
     (state==='applying'?'progress:registration':state==='closed'?'progress:closed':'progress:unreached');
   return {id:row.id,level:row.level,customerId:profile.id,customerName:profile.fullName,
     businessNumber:profile.businessNumber,owner:profile.owner ?? null,identityPending:profile.identityLifecycle==='pending',

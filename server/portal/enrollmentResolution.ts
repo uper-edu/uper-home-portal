@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { invalid, operation } from './trustWorkflow.ts';
 import { allowsEnrollment, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../../src/utils/enrollmentAftercare.ts';
+import { activeLearnerOrder, convertLearnerWaitlist } from './enrollmentLearners.ts';
 import { classOpeningNotices, orderNotice } from './enrollmentNotices.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
@@ -50,8 +51,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     if(invitationId&&!ownHold) invalid('enrollment_invitation_expired',409);
     if (!allowsEnrollment(next)||next.data.level!==source.data.level||next.data.format!==source.data.format||
         await takenSeats(c,to)-(ownHold?1:0)>=next.data.capacity) invalid('enrollment_transfer_unavailable',409);
-    const existing=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND email=:p2 AND state NOT IN ('expired','refunding','refunded') LIMIT 1",[to,order.email])).rows[0];
-    if(existing) invalid('enrollment_already_has_seat',409);
+    if(await activeLearnerOrder(c,to,order.email,order.data.name)) invalid('enrollment_already_has_seat',409);
     return next;
   }
   async function releaseInvites(c:Client,orderId:string,keep?:string) {
@@ -147,7 +147,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         if(invitationId) await c.query("UPDATE enrollment_transfer_invitations SET state='accepted' WHERE id=:p1",[invitationId]);
         await releaseInvites(c,id,invitationId);
         await c.query('UPDATE enrollment_orders SET class_id=:p1 WHERE id=:p2',[next.id,id]);
-        await c.query("UPDATE enrollment_waitlist SET state='converted',order_id=:p1 WHERE class_id=:p2 AND email=:p3 AND state='waiting'",[id,next.id,email]);
+        await convertLearnerWaitlist(c,next.id,email,order.data.name,id);
         await c.query(`INSERT INTO enrollment_transfers(id,order_id,source_class_id,target_class_id,invitation_id,created_at)
           VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[randomUUID(),id,cohort.id,next.id,invitationId??null]);
         const paid=(await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",[next.id])).rows[0].count;

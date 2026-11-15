@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../src/utils/enrollmentAftercare';
+import { enrollmentLearnerNameKey, enrollmentOrderStatus } from '../src/utils/enrollmentOrderStatus';
 
 test('a transfer requires a cancelled source class and verified full payment',()=>{
   assert.equal(canSelectTransfer({state:'paid',received:575000,price:575000},{state:'cancelled'}),true);
@@ -14,4 +15,17 @@ test('refund arithmetic applies delivered classes and never exceeds available re
   assert.equal(enrollmentRefundEstimate({...order,received:120000,delivered:0}),120000);
   assert.equal(enrollmentRefundEstimate({...order,refunded:520000}),0);
   assert.equal(enrollmentRefundEstimate({...order,refunded:30000,transferred:20000}),450000);
+});
+
+test('paid in a cancelled class retains payment without confirming admission',()=>{
+  assert.equal(enrollmentOrderStatus('paid','cancelled'),'paid_cancelled');
+  assert.equal(enrollmentOrderStatus('recovered','cancelled'),'paid_cancelled');
+  assert.equal(enrollmentOrderStatus('partial','cancelled'),'partial');
+  assert.equal(enrollmentOrderStatus('refunded','cancelled'),'refunded');
+  assert.equal(enrollmentOrderStatus('paid','published'),'paid');
+});
+
+test('learner name identity normalizes spelling presentation without collapsing siblings',()=>{
+  assert.equal(enrollmentLearnerNameKey(' Maya　 Putri '),enrollmentLearnerNameKey('ＭＡＹＡ Putri'));
+  assert.notEqual(enrollmentLearnerNameKey('Maya Putri'),enrollmentLearnerNameKey('Nina Putri'));
 });
