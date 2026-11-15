@@ -7,8 +7,8 @@ import { useEffect, useRef, useState } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmEnrollmentAssistance } from './CrmEnrollmentAssistance';
 import { CrmSingleSelect } from './CrmSingleSelect';
-import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
-import { formatCrmEventTime, formatCrmSummaryTime, viewerTimeZone } from '../../utils/crmOperatingTime';
+import type { CrmLanguage } from '../../utils/crmLanguage';
+import { crmInstant, formatCrmEventTime, formatCrmSummaryTime, viewerTimeZone } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import { progressLabel, salesProgressStages } from '../../utils/crmSalesProgress';
 import { interestOption } from '../EnrollmentInterests';
@@ -28,7 +28,7 @@ import type { OpportunitySource } from '../../utils/crmOpportunitySources';
 
 type Copy = readonly [string,string,string];
 type CourseRecord = {
-  id:string; kind:'order'|'waitlist'|'demand'; opportunityId:string|null; state:string; createdAt:string;
+  id:string; kind:'order'|'waitlist'|'demand'; opportunityId:string|null; state:string; createdAt?:string|null;
   class:{id?:string;level:string;firstLesson:string;schedule:string;opened:boolean}|null;
   criteria:{level:string;period:string;format:string;notes:string}|null;
   price:number|null;received:number|null;learnerName?:string|null;paymentDueAt?:string|null;firstReviewDueAt?:string|null;
@@ -149,9 +149,15 @@ function CourseRecords({ records, link, lang, emails, targetRecord, onChangeEmai
 }) {
   if(!records.length) return <p className="crm-work-muted">{t(lang,['暂无课程记录。','No course records.','Belum ada catatan kursus.'])}</p>;
   return <ol className="crm-course-records">
-    {records.map(row=><li key={row.kind+row.id} id={link?undefined:'enrollment-record-'+row.id}>
+    {records.map(row=>{
+      const raw=typeof row.createdAt==='string'?row.createdAt.trim():'';
+      const recordedAt=crmInstant(raw)?.toISOString();
+      return <li key={row.kind+row.id} id={link?undefined:'enrollment-record-'+row.id}>
       <strong>{t(lang,kinds[row.kind])}{row.class&&<> · {row.class.id?<a className="crm-work-link" href={enrollmentClassManagementPath(row.class.id)}>{row.class.level}</a>:row.class.level}</>}</strong> <span>{states[row.state]?t(lang,states[row.state]):row.state}</span>
-      <div className="crm-work-muted"><time dateTime={row.createdAt}>{new Date(row.createdAt).toLocaleDateString(crmLocale(lang))}</time> · {row.id}</div>
+      <div className="crm-work-muted">{recordedAt
+        ?<time dateTime={recordedAt}>{formatCrmEventTime(recordedAt).slice(0,16)}</time>
+        :raw?t(lang,['时间待核对','Time needs review','Waktu perlu diperiksa']):
+          t(lang,['未记录时间','Time not recorded','Waktu belum tercatat'])} · {row.id}</div>
       {row.class&&<p>{row.class.firstLesson.replace('T',' ')} WIB · {row.class.schedule}{row.class.opened?' · '+t(lang,['已确认开班','Class confirmed','Kelas dikonfirmasi']):''}</p>}
       {row.criteria&&<p>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(lang,value)).join(' · ')}{row.criteria.notes?' — '+row.criteria.notes:''}</p>}
       {row.price!==null&&row.received!==null&&<p>{t(lang,['核实实收／应收','Verified receipts / amount due','Dana terverifikasi / tagihan'])} {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}</p>}
@@ -164,7 +170,8 @@ function CourseRecords({ records, link, lang, emails, targetRecord, onChangeEmai
       {onChangeEmail&&row.enrollmentEmail&&<p><button type="button" className="crm-work-link" onClick={()=>onChangeEmail(row)}>
         {t(lang,['更改报名邮箱','Change enrollment email','Ubah email pendaftaran'])}</button></p>}
       {emails&&row.kind==='order'&&<OrderEmailHistory lang={lang} rows={emails.filter(mail=>mail.orderId===row.id)} open={targetRecord===row.id}/>}
-    </li>)}
+    </li>;
+    })}
   </ol>;
 }
 
