@@ -1,3 +1,4 @@
+import {CrmSearchField} from './CrmSearchField';
 import { Printer } from "lucide-react";
 import { CrmPageAction } from "./CrmPageAction";
 import { CrmPageIdentity } from "./CrmPageIdentity";
@@ -487,23 +488,23 @@ export function CrmUserGuide({
             <span aria-hidden="true">↑</span>
             {t("Document start", "Awal dokumen", "文档开头")}
           </a>}
-          <label className="crm-doc-search-label">
+          <div className="crm-doc-search-label">
+            <label htmlFor="crm-doc-search-input">
             {t(
               "Search chapters, rules and fields",
               "Cari bab, aturan, dan kolom",
               "搜索章节、规则与字段",
             )}
-            <input
-              className="crm-doc-search"
-              type="search"
+            </label>
+            <CrmSearchField id="crm-doc-search-input" label={t("Search chapters, rules and fields","Cari bab, aturan, dan kolom","搜索章节、规则与字段")}
               value={query}
-              onChange={(e) => {
+              onChange={(value) => {
                 setReadingSearch(false);
-                setQuery(e.target.value);
-                setSearchMode(!!e.target.value.trim());
+                setQuery(value);
+                setSearchMode(!!value.trim());
               }}
             />
-          </label>
+          </div>
           {readingSearch&&<div className="crm-doc-search-return"><span>{t("Search","Pencarian","搜索")}：{query}</span><button type="button" onClick={()=>{setReadingSearch(false);setSearchMode(true);setFocusRequest(v=>v+1);}}>{t("Back to results","Kembali ke hasil","返回搜索结果")}</button></div>}
           {terms && (
             <button
@@ -715,7 +716,7 @@ export function CrmUserGuide({
                         </h4>
                       </>
                     )}
-                    <LessonOpening chapterKey={s.key} col={col} />
+                    <LessonOpening chapterKey={s.key} col={col} isLight={isLight} />
                     {s.blocks
                       .filter((b) => b.kind === "diagram")
                       .map((b, i) => (
@@ -929,7 +930,7 @@ export function CrmUserGuide({
                     className="crm-doc-card crm-doc-section"
                   >
                     <h3>{s.title[col]}</h3>
-                    <LessonOpening chapterKey={s.key} col={col} />
+                    <LessonOpening chapterKey={s.key} col={col} isLight={isLight} />
                     <details className="crm-doc-reference">
                       <summary>
                         {t(
