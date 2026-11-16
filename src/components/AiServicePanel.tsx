@@ -14,7 +14,11 @@ export function AiServicePanel({lang,isLight,renderHeading}:{lang:CrmLanguage;is
  const submitting=useRef(false);
  const [querying,setQuerying]=useState(false);
  const call=async(path='',body?:any)=>{const r=await fetch('/api/admin/ai-service'+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(body?155000:15000)});const d=await r.json();if(!r.ok)throw Error(d.error);return d;};
- const load=async(initial=false)=>{try{const d=await call();setData(d);const recent=d.checks?.find((c:any)=>c.ok&&c.revision===d.revision&&c.expiresAt>Date.now()&&JSON.stringify(c.selection)===JSON.stringify(selection));if(recent)setCheck(recent);if(initial){let draft;try{draft=JSON.parse(sessionStorage.getItem('uper-ai-draft')||'null')}catch{}setSelection(draft||d.current);}const pending=sessionStorage.getItem('uper-ai-pending');if(pending&&d.history?.some((v:any)=>v.requestId===pending)){setNotice('saved');setUnresolved(false);sessionStorage.removeItem('uper-ai-pending');sessionStorage.removeItem('uper-ai-draft');setSelection(d.current);setCheck(null);}}catch{setNotice('error');}};
+ const load=async(initial=false)=>{try{const d=await call();setData(d);const recent=d.checks?.find((c:any)=>c.ok&&c.revision===d.revision&&c.expiresAt>Date.now()&&JSON.stringify(c.selection)===JSON.stringify(selection));if(recent)setCheck(recent);if(initial){let draft;try{draft=JSON.parse(sessionStorage.getItem('uper-ai-draft')||'null')}catch{}setSelection(draft||d.current);}const pending=sessionStorage.getItem('uper-ai-pending');if(pending&&d.history?.some((v:any)=>v.requestId===pending)){setNotice('saved');setUnresolved(false);sessionStorage.removeItem('uper-ai-pending');sessionStorage.removeItem('uper-ai-draft');setSelection(d.current);setCheck(null);}
+  else if(pending)setNotice('unknown');
+ }catch{
+  setNotice(sessionStorage.getItem('uper-ai-pending')?'queryPendingFailed':'error');
+ }};
  useEffect(()=>{void load(true);},[]);
  const choose=(s:typeof selection)=>{setSelection(s);setCheck(null);sessionStorage.setItem('uper-ai-draft',JSON.stringify(s));};
  const submit=async()=>{

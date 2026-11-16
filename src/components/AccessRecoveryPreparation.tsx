@@ -31,6 +31,7 @@ export function AccessRecoveryPreparation({
     [error, setError] = useState(""),
     [download, setDownload] = useState(""),
     [query, setQuery] = useState(""),
+    [queryError, setQueryError] = useState<"unavailable" | "not-found" | "failed">(),
     [outcome, setOutcome] = useState<any>(null);
   const t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   useEffect(() => {
@@ -246,9 +247,11 @@ export function AccessRecoveryPreparation({
           {t("Recovery operation ID", "ID operasi pemulihan", "恢复操作ID")}
           <input
             required
+            disabled={busy}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value.trim());
+              setQueryError(undefined);
               setOutcome(null);
             }}
           />
@@ -257,17 +260,20 @@ export function AccessRecoveryPreparation({
           disabled={busy || !/^[a-f0-9-]{36}$/.test(query)}
           onClick={async () => {
             setBusy(true);
-            setError("");
+            setQueryError(undefined);
+            setOutcome(null);
             try {
               const r = await fetch(
                 "/api/crm/auth/operations/" + query + "?actor=offline-recovery",
                 { cache: "no-store" },
               );
-              const d = await r.json();
-              if (!r.ok) throw Error(d.error);
-              setOutcome(d);
-            } catch (e) {
-              setError((e as Error).message);
+              if (!r.ok) {
+                setQueryError(r.status === 404 ? "not-found" : r.status === 503 ? "unavailable" : "failed");
+                return;
+              }
+              setOutcome(await r.json());
+            } catch {
+              setQueryError("failed");
             } finally {
               setBusy(false);
             }
@@ -279,6 +285,21 @@ export function AccessRecoveryPreparation({
             "查询恢复结果",
           )}
         </button></AdminFormActions>
+        {queryError && (
+          <AdminFormFeedback state="error" lang={lang}>
+            {queryError === "not-found"
+              ? t("Recovery operation not found. Check the operation ID and query again.",
+                  "Operasi pemulihan tidak ditemukan. Periksa ID operasi lalu coba lagi.",
+                  "未查到恢复操作。请核对操作 ID 后再次查询。")
+              : queryError === "unavailable"
+                ? t("Recovery result lookup is temporarily unavailable. Please try again later.",
+                    "Pemeriksaan hasil pemulihan sementara tidak tersedia. Silakan coba lagi nanti.",
+                    "恢复结果查询暂不可用，请稍后重试。")
+                : t("Unable to query the recovery result. Please try again.",
+                    "Hasil pemulihan tidak dapat diperiksa. Silakan coba lagi.",
+                    "恢复结果查询失败，请重试。")}
+          </AdminFormFeedback>
+        )}
         {outcome && (
           <p role="status">
             {outcome.state === "historical"

@@ -9,6 +9,7 @@ export const aiServiceText={
  testFailed:['Some checks failed. Current configuration remains active.','Sebagian uji gagal. Konfigurasi aktif tetap digunakan.','测试未全部通过，当前生效配置保持不变。'],
  actualModel:['Returned model','Model yang dikembalikan','实际型号'],
  restoreActivate:['Restore tested configuration','Pulihkan konfigurasi teruji','恢复已测试配置'],
+ queryPendingFailed:['Query failed. The activation result is still unconfirmed. Please query again.','Pemeriksaan gagal. Hasil aktivasi masih belum terkonfirmasi. Silakan periksa lagi.','查询失败，启用结果仍待确认。请再次查询。'],
  support:['Records and help','Catatan dan bantuan','记录与说明'],
  help:['Credentials & testing notes','Kredensial & petunjuk pengujian','密钥状态与测试说明'],
  configured:['Configured','Tersedia','已配置'],
