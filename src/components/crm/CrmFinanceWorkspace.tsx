@@ -1,6 +1,6 @@
 import {AdminListPagination,AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import {formatCurrency} from '../../utils/currency';
 import {useEffect,useRef,useState} from 'react';
 import {CrmSingleSelect} from './CrmSingleSelect';
@@ -48,7 +48,7 @@ export function CrmFinanceWorkspace({employee,lang,isLight,refreshVersion,onRefr
  return <section ref={workspace} tabIndex={-1} className="crm-finance-workspace" aria-label={t('收款核验','Payment verification','Verifikasi pembayaran')}>
 
  {!permitted||denied?<AdminListState lang={lang} state="denied" message={t('你没有收款核验权限。','You do not have payment verification access.','Anda tidak memiliki akses verifikasi pembayaran.')}/>:<>
- <div className="crm-finance-filters"><CrmSearchField className="crm-finance-search" label={t('搜索客户、课程或负责人','Search customer, course or owner','Cari pelanggan, kursus atau penanggung jawab')} placeholder={t('客户、课程或负责人','Customer, course or owner','Pelanggan, kursus atau penanggung jawab')} value={filters.search} onChange={search=>change({search})}/><CrmSingleSelect label={t('收款状态','Payment status','Status pembayaran')} lang={lang} isLight={isLight} value={filters.state} options={states} onChange={state=>change({state:state as PaymentListFilters['state']})}/><CrmSingleSelect label={t('款项记录','Payment records','Catatan pembayaran')} lang={lang} isLight={isLight} value={filters.kind} options={[{value:'all',label:t('全部款项','All payments','Semua pembayaran')},{value:'receipt',label:t('付款','Receipts','Penerimaan')},{value:'refund',label:t('退款','Refunds','Pengembalian')}]} onChange={kind=>change({kind:kind as PaymentListFilters['kind']})}/></div>
+ <div className="crm-finance-filters"><AdminSearchField className="crm-finance-search" label={t('搜索客户、课程或负责人','Search customer, course or owner','Cari pelanggan, kursus atau penanggung jawab')} placeholder={t('客户、课程或负责人','Customer, course or owner','Pelanggan, kursus atau penanggung jawab')} value={filters.search} onChange={search=>change({search})}/><CrmSingleSelect label={t('收款状态','Payment status','Status pembayaran')} lang={lang} isLight={isLight} value={filters.state} options={states} onChange={state=>change({state:state as PaymentListFilters['state']})}/><CrmSingleSelect label={t('款项记录','Payment records','Catatan pembayaran')} lang={lang} isLight={isLight} value={filters.kind} options={[{value:'all',label:t('全部款项','All payments','Semua pembayaran')},{value:'receipt',label:t('付款','Receipts','Penerimaan')},{value:'refund',label:t('退款','Refunds','Pengembalian')}]} onChange={kind=>change({kind:kind as PaymentListFilters['kind']})}/></div>
  {error&&<AdminListState lang={lang} state="error" message={error} compact={Boolean(data?.rows.length)} onRetry={()=>setRefresh(v=>v+1)}/>}
  {!error&&!data&&<AdminListState lang={lang} state="loading"/>}
  {data&&<p className="crm-list-meta" role="status">{t(`匹配 ${data.total} 条款项记录`,`${data.total} matching payment records`,`${data.total} catatan pembayaran cocok`)}</p>}

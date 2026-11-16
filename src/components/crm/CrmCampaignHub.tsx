@@ -1,5 +1,5 @@
 import {AdminFormFeedback} from '../AdminFormLayout';
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
@@ -638,7 +638,7 @@ export function CrmCampaignHub({
             isLight={isLight}
           />
           <div className="campaign-home-toolbar">
-            <CrmSearchField className="campaign-list-search" label={u("Search campaigns")}
+            <AdminSearchField className="campaign-list-search" label={u("Search campaigns")}
               placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>
             <CrmSelect
               label={u("Campaign status filter")}
@@ -749,7 +749,7 @@ export function CrmCampaignHub({
                 <PanelLeftClose size={18} />
               </button>
             </div>
-            <CrmSearchField className="campaign-list-search" inputRef={listSearch} label={u("Search campaigns")}
+            <AdminSearchField className="campaign-list-search" inputRef={listSearch} label={u("Search campaigns")}
               placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>
             <CrmSelect
               label={u("Campaign status filter")}

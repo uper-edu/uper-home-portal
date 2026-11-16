@@ -2,7 +2,7 @@ import {metricSelectionLabel} from '../../utils/crmLeadAnalytics';
 import { useState } from "react";
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
 import { CrmRecordFilters, CrmRecordSearch } from "./CrmRecordWorkspace";
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import {
@@ -287,7 +287,7 @@ export function CrmLeadFilters({
         className="crm-filter-panel"
       >
         <div className="crm-filter-main">
-          <CrmSearchField className="crm-lead-search" maxLength={200}
+          <AdminSearchField className="crm-lead-search" maxLength={200}
             label={t("Search customers", "搜索客户")}
             placeholder={t("Name, phone, email or lead number…", "姓名、电话、邮箱或业务编号…")}
             value={f.search} onChange={search=>update({search})}/>

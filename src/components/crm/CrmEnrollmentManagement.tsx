@@ -2,7 +2,7 @@ import {AdminListTable,AdminListState,AdminListPagination} from '../admin/AdminL
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import {CrmContentNav} from './CrmDetailWorkspace';
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import type { EnrollmentClosureReason } from '../../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Settings } from 'lucide-react';
@@ -341,7 +341,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
       :<>
         {!id&&<section className="crm-enrollment-panel" ref={classResults}>
           <div className="crm-opportunity-filters crm-enrollment-filters" role="group" aria-label={t(['班次筛选','Class filters','Filter kelas'])}>
-            <CrmSearchField className="crm-enrollment-search" value={classFilters.search} maxLength={120}
+            <AdminSearchField className="crm-enrollment-search" value={classFilters.search} maxLength={120}
               label={searchLabel}
               placeholder={t(['搜索级别、班次编号、日期或课表','Search level, class ID, date or schedule','Cari level, ID kelas, tanggal atau jadwal'])}
               onChange={search=>changeClassFilters({search})}/>

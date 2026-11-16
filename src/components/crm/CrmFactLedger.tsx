@@ -1,5 +1,5 @@
 import {AdminDisclosure,AdminDisclosureIndicator,AdminDisclosureSummary} from '../admin/AdminDisclosure';
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import {CrmEnrollmentCorrectionAction,CrmEnrollmentVoidStatus} from './CrmEnrollmentCorrection';
 import {historyResultKind} from '../../utils/crmHistoryResultContent';
 import {CrmHistoryResultCard,CrmHistoryResultHeadline,CrmHistoryResultPreview} from './CrmHistoryResultCard';
@@ -120,7 +120,7 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
  return <CrmHistorySearch.Provider value={search}><section ref={ledgerRoot} className={"crm-history-timeline"+(windowMode?" crm-history-bilateral":"")} aria-label={ui("历史记录与依据")}>{!hideHeading&&<h3>{ui("历史记录与依据")}</h3>}
  <div className="crm-history-toolbar" role="group" aria-label={ui("历史记录筛选")}>
  <div className="crm-history-type-filter"><label htmlFor={typeId}>{ui("类型")}</label><CrmSingleSelect controlId={typeId} label={ui("历史记录类型")} value={filter} disabled={!!target} onChange={setFilter} lang={lang} isLight={isLight} options={Object.entries(historyCategories).map(([key,label])=>({value:key,label:ui(label)+(data?'（'+(key==='all'?groups.length:groups.filter(g=>g.category===key).length)+'）':'')}))}/></div>
- <div className="crm-history-search"><label htmlFor={searchId}>{ui("搜索原文与内容")}</label><CrmSearchField id={searchId} label={ui("搜索历史记录")} value={search} disabled={!!target} onChange={setSearch}/></div>
+ <div className="crm-history-search"><label htmlFor={searchId}>{ui("搜索原文与内容")}</label><AdminSearchField id={searchId} label={ui("搜索历史记录")} value={search} disabled={!!target} onChange={setSearch}/></div>
  <button type="button" className="crm-work-button crm-history-refresh" disabled={!!target} onClick={()=>{setRetry(n=>n+1);onReloadExtraction?.();}}><RefreshCw size={15} aria-hidden="true"/>{ui("刷新记录")}</button></div>
 
  {notice&&<p role="status">{ui(notice)}</p>}{error&&<p role="alert">{ui(error)} <button onClick={()=>setRetry(v=>v+1)}>{ui("重试读取")}</button></p>}

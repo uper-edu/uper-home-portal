@@ -2,7 +2,7 @@ import {AdminRecordBack,type AdminBackTarget} from '../admin/AdminRecordHeader';
 import {ChevronDown, PanelLeftClose, PanelLeftOpen, SlidersHorizontal} from 'lucide-react';
 import {useEffect, useId, useLayoutEffect, useRef, type MouseEventHandler, type ReactNode, useState} from 'react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import {CrmSearchField, type CrmSearchFieldProps} from './CrmSearchField';
+import {AdminSearchField, type AdminSearchFieldProps} from '../admin/AdminSearchField';
 import {containPaneKeys, revealRecord} from '../adminScroll';
 
 export function CrmRecordNavigation({label, back, tools}: {
@@ -79,8 +79,8 @@ export function CrmRecordRow({selected, name, title, href, onClick, meta, extra}
   </li>;
 }
 
-export function CrmRecordSearch({maxLength=200,...props}:Omit<CrmSearchFieldProps,'className'>) {
-  return <CrmSearchField {...props} maxLength={maxLength}/>;
+export function CrmRecordSearch({maxLength=200,...props}:Omit<AdminSearchFieldProps,'className'>) {
+  return <AdminSearchField {...props} maxLength={maxLength}/>;
 }
 
 export function CrmRecordFilters({lang, count, search, children}: {

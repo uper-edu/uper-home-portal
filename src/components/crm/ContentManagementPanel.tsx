@@ -1,7 +1,7 @@
 import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
 import {AdminFormGuide} from '../AdminFormGuide';
@@ -706,7 +706,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {/* Action Bar (Search & Add New) */}
                 <div className="flex items-center gap-2 self-stretch sm:self-auto">
-                  <CrmSearchField className="flex-1 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
+                  <AdminSearchField className="flex-1 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
                     value={searchQuery} onChange={setSearchQuery}
                     placeholder={t('Search in this table...', '搜索当前分类内容...')}/>
 

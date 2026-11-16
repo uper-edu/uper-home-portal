@@ -1,4 +1,4 @@
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import {adminFieldName,useAdminField} from '../AdminForm';
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -249,7 +249,7 @@ export function CrmSingleSelect({
               className="crm-filter-popover"
             >
               {searchable && (
-                <CrmSearchField className="crm-filter-option-search"
+                <AdminSearchField className="crm-filter-option-search"
                   label={t("Search ", "搜索") + label}
                   placeholder={t("Find options…", "搜索选项…")}
                   value={query}

@@ -1,6 +1,6 @@
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
-import {CrmSearchField} from '../components/crm/CrmSearchField';
+import {AdminSearchField} from '../components/admin/AdminSearchField';
 import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormGuide} from '../components/AdminFormGuide';
@@ -540,7 +540,7 @@ export function AccessWorkspace({
                 <div className="access-toolbar">
                   <AdminField>
                     {t("Find a user", "Cari pengguna", "查找用户")}
-                    <CrmSearchField label={t("Find a user","Cari pengguna","查找用户")}
+                    <AdminSearchField label={t("Find a user","Cari pengguna","查找用户")}
                       value={query} onChange={setQuery}
                     />
                   </AdminField>

@@ -466,18 +466,3 @@
 .crm-detail-choice-popup .crm-filter-option-search:focus-visible,
 .crm-detail-choice > .crm-filter-dimension-button:focus-visible{outline:2px solid var(--admin-focus);outline-offset:-2px}
 .crm-detail-choice-popup .crm-filter-option:disabled:hover{background:transparent}
-
-.crm-filter-area input.crm-filter-search {
-  font: inherit;
-  border: 1px solid var(--cf-border);
-  border-radius: var(--cf-radius);
-  background: var(--cf-bg);
-  color: var(--cf-text);
-  min-width: 0;
-  width: 100%;
-  height: var(--cf-control-height);
-  padding: 0 10px;
-}
-.crm-lead-search>svg{position:absolute;left:12px;top:12px;color:var(--cf-muted);pointer-events:none}
-.crm-lead-filter-v3 .crm-lead-search input.crm-filter-search{padding-left:36px}
-:root[data-design-style="apple"] #root .crm-lead-filter-v3 .crm-lead-search input[type="search"]{padding-left:36px!important}

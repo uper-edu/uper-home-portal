@@ -1,4 +1,4 @@
-import {CrmSearchField} from './CrmSearchField';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import { Printer } from "lucide-react";
 import { CrmPageAction } from "./CrmPageAction";
 import { CrmPageIdentity } from "./CrmPageIdentity";
@@ -496,7 +496,7 @@ export function CrmUserGuide({
               "搜索章节、规则与字段",
             )}
             </label>
-            <CrmSearchField id="crm-doc-search-input" label={t("Search chapters, rules and fields","Cari bab, aturan, dan kolom","搜索章节、规则与字段")}
+            <AdminSearchField id="crm-doc-search-input" label={t("Search chapters, rules and fields","Cari bab, aturan, dan kolom","搜索章节、规则与字段")}
               value={query}
               onChange={(value) => {
                 setReadingSearch(false);
