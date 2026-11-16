@@ -1,3 +1,4 @@
+import {AdminDisclosure} from './admin/AdminDisclosure';
 import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../utils/larkNotificationDefaults';
 import {allowsLarkGroup, allowsLarkPersonal, LARK_GROUP, LARK_PERSONAL, MAX_NOTIFICATION_GROUPS, notificationGroupIds, policyDeliveryChannels} from '../utils/notificationGroupTargets';
 import {LEAD_ASSIGNED_EVENT} from '../utils/leadAssignmentNotification';
@@ -338,7 +339,7 @@ export default function NotificationCenter({
   useEffect(()=>{if(notice){noticeRef.current?.focus({preventScroll:true});noticeRef.current?.scrollIntoView({block:'nearest',behavior:'instant'});}},[notice]);
   const targetJob=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
   const focusedNotificationJob=useRef<string|null>(null);
-  useEffect(()=>{if(tab!=='notification-jobs'||loading||!targetJob||focusedNotificationJob.current===targetJob)return;const frame=requestAnimationFrame(()=>{const node=document.getElementById('notification-job-'+targetJob);if(node){focusedNotificationJob.current=targetJob;node.querySelectorAll('details').forEach(d=>d.open=true);node.scrollIntoView({block:'center'});node.focus({preventScroll:true});}});return()=>cancelAnimationFrame(frame);},[rows,loading,tab,targetJob]);
+  useEffect(()=>{if(tab!=='notification-jobs'||loading||!targetJob||focusedNotificationJob.current===targetJob)return;const frame=requestAnimationFrame(()=>{const node=document.getElementById('notification-job-'+targetJob);if(node){focusedNotificationJob.current=targetJob;const receipt=node.querySelector<HTMLDetailsElement>('details[data-job-receipt]');if(receipt)receipt.open=true;node.scrollIntoView({block:'center'});node.focus({preventScroll:true});}});return()=>cancelAnimationFrame(frame);},[rows,loading,tab,targetJob]);
   const format = (value: string | undefined) =>
     value ? new Date(value).toLocaleString(crmLocale(lang)) : "—";
   const label = (name: string) =>
@@ -1879,17 +1880,10 @@ export default function NotificationCenter({
                                         )
                                       : "—"}
                                     {row.result && (
-                                      <details className="mt-1 text-xs">
-                                        <summary className="cursor-pointer">
-                                          {t(
-                                            "原始技术回执",
-                                            "Original technical receipt",
-                                          )}
-                                        </summary>
-                                        <pre className="whitespace-pre-wrap mt-1">
-                                          {row.result}
-                                        </pre>
-                                      </details>
+                                      <AdminDisclosure density="compact" data-job-receipt=""
+                                        heading={t("原始技术回执","Original technical receipt")}>
+                                        <pre className="admin-disclosure-original">{row.result}</pre>
+                                      </AdminDisclosure>
                                     )}
                                     {row.state === "pending" && (
                                       <button

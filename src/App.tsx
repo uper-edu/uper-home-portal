@@ -2,6 +2,7 @@ import './components/admin-colors.css';
 import ApplicationErrorBoundary from './components/ApplicationErrorBoundary';
 import './components/admin-form-layout.css';
 import './components/admin/admin-dialog.css';
+import './components/admin/admin-disclosure.css';
 import './components/admin-form.css';
 import './components/crm/crm-form-layout.css';
 import VisitorBoundary from './components/VisitorBoundary';

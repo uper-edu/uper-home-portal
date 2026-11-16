@@ -1,3 +1,4 @@
+import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
 import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
@@ -700,13 +701,11 @@ export function AccessWorkspace({
                   </p>
                 )}
                 {audit.map((a) => (
-                  <details key={a.id}>
-                    <summary>
-                      {a.actor} · {formatCrmEventTime(a.created_at)} ·{" "}
-                      {auditLabels[a.action]?.[col] || a.action}
-                    </summary>
-                    <pre>{JSON.stringify(a.data, null, 2)}</pre>
-                  </details>
+                  <AdminDisclosure key={a.id} density="compact" heading={<>
+                    {a.actor} · {formatCrmEventTime(a.created_at)} · {auditLabels[a.action]?.[col] || a.action}
+                  </>}>
+                    <pre className="admin-disclosure-original">{JSON.stringify(a.data,null,2)}</pre>
+                  </AdminDisclosure>
                 ))}
               </section>
             )}

@@ -1109,7 +1109,8 @@ function CrmWorkspace({
     if(!selectedLead)return;
     const finish=()=>{
       const details=source.details||{},message=selectedLead.chatTranscript?.find((m:any)=>m.conversation_id===details.sourceConversationId&&(m.id===details.sourceMessageId||m.request_id===details.sourceMessageId));
-      setHistoryConversationBack({leadId:selectedLead.id,tab:activeDrawerTab,request:{...historyRequest,id:source.returnId,search:source.returnSearch,filter:source.returnFilter}});
+      setHistoryConversationBack({leadId:selectedLead.id,tab:activeDrawerTab,request:{...historyRequest,id:source.returnId,search:source.returnSearch,filter:source.returnFilter,
+        fields:undefined,quote:undefined,returnPosition:source.returnPosition}});
       setHistoryRequest(null);
       setConversationReturn({conversationId:details.sourceConversationId,messageId:message?.id||details.sourceMessageId,requestId:(message as any)?.request_id||details.sourceMessageId});
       setActiveDrawerTab("chat");writeLeadRoute(selectedLead.id,"chat");
@@ -1158,6 +1159,7 @@ function CrmWorkspace({
   const customerProgress=<CrmProgressAction state={selectedProgress} busy={isSubmittingLog} lang={lang}
     primary={!selectedLead?.identityReview?.pending&&!claimPrimary} icon={<PlusCircle size={15} aria-hidden="true"/>} onClick={startContactRecord}/>;
   const selectedPosition=filteredLeads.findIndex(lead=>lead.id===selectedLead?.id);
+  const panoramaReturn=activeDrawerTab==='chat'&&historyConversationBack?.leadId===selectedLead?.id?historyConversationBack:null;
   const leadPanel =
     isDrawerOpen && selectedLead ? (
       <section
@@ -1171,7 +1173,13 @@ function CrmWorkspace({
             </span>}/>
           <CrmDetailActions label={t("Customer actions","客户操作")}
           secondary={<>
-            <CrmCustomer360Button lang={lang} onClick={()=>openCustomerHistory({})}/>
+            {panoramaReturn?<button type="button" className="crm-work-button" onClick={()=>{
+              setActiveDrawerTab(panoramaReturn.tab);
+              writeLeadRoute(selectedLead.id,panoramaReturn.tab);
+              setHistoryRequest({...panoramaReturn.request,leadId:selectedLead.id,token:Date.now()});
+              setHistoryConversationBack(null);
+            }}><ArrowLeft size={15} aria-hidden="true"/>{crmUiText('返回客户全景',lang)}</button>
+              :<CrmCustomer360Button lang={lang} onClick={()=>openCustomerHistory({})}/>}
             {canAssignSelectedOwner&&<button type="button" className="crm-work-button crm-owner-trigger" aria-label={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} disabled={isSubmittingLog||profileSave==='saving'} onClick={openOwnerEditor}><UserCheck size={15} aria-hidden="true"/>{selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')}</button>}
             {!selectedLead.identityReview?.pending&&<button type="button" disabled={!selectedLead.whatsapp?.trim() || selectedLead.contactArrangement?.state==='stopped'} title={!selectedLead.whatsapp?.trim()?t("No contact number recorded","尚未记录联系号码"):selectedLead.contactArrangement?.state==='stopped'?outreachText('CONTACT_STOPPED',lang):undefined} onClick={openContactPreview} className="crm-work-button">
               <MessageCircle size={15} aria-hidden="true" /> {t("Prepare contact","准备联系")}
@@ -1240,14 +1248,14 @@ function CrmWorkspace({
             />
           )}
           {activeDrawerTab === "chat" && (
-            <>{historyConversationBack?.leadId===selectedLead.id&&<button type="button" className="crm-work-link" onClick={()=>{const back=historyConversationBack;setActiveDrawerTab(back.tab);writeLeadRoute(selectedLead.id,back.tab);setHistoryRequest({...back.request,leadId:selectedLead.id,token:Date.now()});setHistoryConversationBack(null);}}>{crmUiText("返回客户全景",lang)}</button>}<CrmCustomerConversations
+            <CrmCustomerConversations
               isLight={isLight}
               onOpenTask={(taskId:string,message:any)=>openTaskList(taskId,message)}
               conversationContext={conversationReturn}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
-            /></>
+            />
           )}
           {activeDrawerTab === "activities" && <div className="crm-followup-sections">
             <section aria-labelledby="crm-customer-opportunities" className="crm-opportunity-records">
