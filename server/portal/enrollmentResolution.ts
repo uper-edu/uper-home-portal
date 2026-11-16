@@ -108,6 +108,38 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       invalid('enrollment_support_forbidden',403);
   }
 
+  // A result belongs to the original staff member, order, and command.
+  async function operationResult(c:Client,q:Request,actor:{id:string},kind:string) {
+    const id=String(q.params.id), requestId=String(q.params.requestId);
+    if(!classId(id)||!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requestId))
+      invalid('enrollment_result_missing',404);
+    const result=(await c.query('SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2',
+      [actor.id,requestId])).rows[0]?.result;
+    if(result?.leadId!=='enrollment:'+id||result?.operationKind!==kind)
+      invalid('enrollment_result_missing',404);
+    return {orderId:id,requestId,operationKind:kind,
+      ...(kind==='enrollment.transfer.invite'?{replyBy:result.replyBy}:{}),
+    };
+  }
+  app.get('/api/crm/enrollment/finance/:id/results/:operation/:requestId',wrap(async(q,r)=>{
+    const actor=await financeActor(q);
+    const operations={receipts:'enrollment.receipt',refunds:'enrollment.refund.payment','refund-returns':'enrollment.refund.return'} as const;
+    const name=String(q.params.operation);
+    if(!Object.hasOwn(operations,name))invalid('enrollment_result_missing',404);
+    const result=await read(c=>operationResult(c,q,actor,operations[name as keyof typeof operations]));
+    r.set('Cache-Control','no-store').json(result);
+  }));
+  app.get(staff+'/:id/results/:operation/:requestId',wrap(async(q,r)=>{
+    const name=String(q.params.operation);
+    if(name!=='invitations'&&name!=='refund')invalid('enrollment_result_missing',404);
+    const actor=name==='refund'?await manager(q):await supportActor(q);
+    const result=await read(async c=>{
+      if(name==='invitations')await authorizeInvitation(c,actor,String(q.params.id));
+      return operationResult(c,q,actor,name==='invitations'?'enrollment.transfer.invite':'enrollment.refund.intake');
+    });
+    r.set('Cache-Control','no-store').json(result);
+  }));
+
   post(learner+'/cancel',async(q,r)=>{
     const id=String(q.params.id);
     const result=await transact(async c=>{

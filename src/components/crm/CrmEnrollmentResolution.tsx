@@ -6,7 +6,8 @@ import { RefreshCw, Send, Wallet } from 'lucide-react';
 import { containPaneKeys, recordSplitMinWidth, revealRecord } from '../adminScroll';
 import { enrollmentCopy,enrollmentPost,enrollmentStatuses } from '../EnrollmentApplication';
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions } from '../AdminFormLayout';
+import {CrmOrderOperationFeedback,useCrmOrderOperation} from './CrmOrderOperation';
+import { AdminFormActions,AdminFormFeedback } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
 import { CrmPageAction } from './CrmPageAction';
@@ -85,7 +86,9 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
   const [classes,setClasses]=useState<PublicEnrollmentClass[]>([]);
   const [editor,setEditor]=useState<{order:ServiceOrder;mode:SupportAction;requestId:string}>();
   const [targetId,setTargetId]=useState('');
-  const [busy,setBusy]=useState(false);
+  const aftercareOperation=useCrmOrderOperation();
+  const [endBusy,setEndBusy]=useState(false);
+  const busy=aftercareOperation.busy||endBusy;
   const [dirty,setDirty]=useState(false);
   const [discard,setDiscard]=useState(false);
   const [notice,setNotice]=useState('');
@@ -203,12 +206,30 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
     setDetailFocus(undefined);
   },[details,selectedId,detailFocus,editor,independent]);
   const start=(order:ServiceOrder,mode:SupportAction)=>{
-    setEditor({order,mode,requestId:crypto.randomUUID()});setTargetId('');setDirty(false);setError('');setNotice('');
+    aftercareOperation.clear();setEditor({order,mode,requestId:crypto.randomUUID()});setTargetId('');setDirty(false);setError('');setNotice('');
   };
   const close=()=>{if(!busy){if(dirty)setDiscard(true);else setEditor(undefined);}};
   const endTitle=t('确认学员放弃报名','Confirm learner withdrawal','Konfirmasi siswa mengundurkan diri');
   const refundTitle=t('受理退款','Accept refund request','Terima permintaan pengembalian');
   const inviteTitle=t('发转班邀请','Send transfer invitation','Kirim undangan pindah kelas');
+  const finishAftercare=(mode:SupportAction,replyBy?:string)=>{
+    setEditor(undefined);setDirty(false);
+    const deadline=formatCrmEventTime(replyBy);
+    setNotice(mode==='refund'?t('已受理退款，相关席位已释放。','Refund accepted and the seat released.','Pengembalian diterima dan kursi dilepas.'):
+      mode==='end'?t('报名已结束，席位已释放。','Enrollment ended and its seat was released.','Pendaftaran berakhir dan kursi dilepas.'):
+        deadline?t(`转班邀请已登记，答复截止为 ${deadline}。`,`Transfer invitation recorded. Reply by ${deadline}.`,`Undangan pindah kelas dicatat. Jawab sebelum ${deadline}.`):
+          t('转班邀请已登记。','Transfer invitation recorded.','Undangan pindah kelas dicatat.'));
+    closeDetail();setListRevision(version=>version+1);
+  };
+  const aftercareOutcome=async(result:ReturnType<typeof aftercareOperation.submit>)=>{
+    const outcome=await result;
+    if(!editor||!outcome)return;
+    if(outcome.state==='saved'){finishAftercare(editor.mode,outcome.replyBy);return;}
+    setEditor({...editor,requestId:crypto.randomUUID()});
+    setError(outcome.code==='enrollment_active_invitation'
+      ? t('订单已有有效邀请，请核对当前转班进度。','There is already an active invitation. Review the transfer status.','Sudah ada undangan aktif. Periksa status pindah kelas.')
+      : t('操作被拒绝，请核对订单状态和填写内容。','Action rejected. Review the order and your input.','Tindakan ditolak. Periksa pesanan dan isian.'));
+  };
   const selected=selectedOrder;
   const className=(row:OrderClass)=>[row.level,[row.period,row.format].filter(Boolean).map(value=>interestOption(lang,value)).join(lang==='zh'?'':' ')].join(' · ');
   const classSchedule=(row:ServiceOrder)=>[row.firstLessonAt?t('首课','First session','Pertemuan pertama')+' '+formatCrmEventTime(row.firstLessonAt).slice(0,16):'',row.schedule].filter(Boolean).join(' · ');
@@ -428,42 +449,40 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
     {editor&&<CrmOperationLayer compose customerContext={false} title={<>{editor.mode==='invite'?inviteTitle:editor.mode==='end'?endTitle:refundTitle}<AdminRequiredNote inline lang={lang}/></>}
       lang={lang} isLight={isLight} busy={busy} onClose={close}>
       <AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onChange={()=>setDirty(true)} onSubmit={async event=>{
-        event.preventDefault();if(busy)return;
+        event.preventDefault();if(busy||aftercareOperation.pending)return;
         const form=new FormData(event.currentTarget);
-        if(editor.mode==='end'&&!String(form.get('reason')??'').trim()){
-          setError(t('请填写学员放弃报名的原因。','Enter the reason the learner withdrew.','Isi alasan siswa mengundurkan diri.'));return;
-        }
-        setBusy(true);setError('');
-        try{
-          let requestedAt:string|undefined;
-          if(editor.mode==='refund'){
-            const local=String(form.get('requestedAt')??'');
-            const instant=new Date(local);
-            try{validateLocalInstant(local,instant,viewerTimeZone());if(instant>new Date())throw Error();}
-            catch{
-              setError(t('请核对收到退款申请的时间。','Check when the refund request was received.','Periksa waktu pengajuan pengembalian diterima.'));
-              return;
-            }
-            requestedAt=instant.toISOString();
+        if(editor.mode==='end'){
+          if(!String(form.get('reason')??'').trim()){
+            setError(t('请填写学员放弃报名的原因。','Enter the reason the learner withdrew.','Isi alasan siswa mengundurkan diri.'));return;
           }
-          const result=await enrollmentPost(staff+'/'+editor.order.id+'/'+(editor.mode==='invite'?'invitations':editor.mode),{
-            classId:editor.order.classId,requestId:editor.requestId,
-            ...(editor.mode==='invite'?{targetClassId:targetId}:editor.mode==='end'?{reason:form.get('reason')}:
-              {reason:form.get('reason'),delivered:Number(form.get('delivered')||0),special:form.get('special')==='on',requestedAt}),
-          });
-          setEditor(undefined);setDirty(false);
-          const deadline=formatCrmEventTime(result.replyBy);
-          setNotice(editor.mode==='refund'?t('已受理退款，相关席位已释放。','Refund accepted and the seat released.','Pengembalian diterima dan kursi dilepas.'):
-            editor.mode==='end'?t('报名已结束，席位已释放。','Enrollment ended and its seat was released.','Pendaftaran berakhir dan kursi dilepas.'):
-              deadline?t(`转班邀请已登记，答复截止为 ${deadline}。`,`Transfer invitation recorded. Reply by ${deadline}.`,`Undangan pindah kelas dicatat. Jawab sebelum ${deadline}.`):
-                t('转班邀请已登记。','Transfer invitation recorded.','Undangan pindah kelas dicatat.'));
-          closeDetail();
-          setListRevision(version=>version+1);
-        }catch{setError(t('未能确认操作，请刷新核对订单。','The action could not be confirmed. Refresh to review the order.','Tindakan belum terkonfirmasi. Muat ulang pesanan.'));}
-        finally{setBusy(false);}
+          setEndBusy(true);setError('');
+          try{
+            await enrollmentPost(staff+'/'+editor.order.id+'/end',{classId:editor.order.classId,requestId:editor.requestId,reason:form.get('reason')});
+            finishAftercare('end');
+          }catch{setError(t('未能确认操作，请刷新核对订单。','The action could not be confirmed. Refresh to review the order.','Tindakan belum terkonfirmasi. Muat ulang pesanan.'));}
+          finally{setEndBusy(false);}
+          return;
+        }
+        const original={classId:editor.order.classId,requestId:editor.requestId};
+        setError('');
+        if(editor.mode==='invite'){
+          await aftercareOutcome(aftercareOperation.submit('invitations',editor.order.id,{...original,targetClassId:targetId}));
+          return;
+        }
+        const local=String(form.get('requestedAt')??'');
+        const instant=new Date(local);
+        try{validateLocalInstant(local,instant,viewerTimeZone());if(instant>new Date())throw Error();}
+        catch{
+          setError(t('请核对收到退款申请的时间。','Check when the refund request was received.','Periksa waktu pengajuan pengembalian diterima.'));return;
+        }
+        await aftercareOutcome(aftercareOperation.submit('refund',editor.order.id,{...original,reason:form.get('reason'),
+          delivered:Number(form.get('delivered')||0),special:form.get('special')==='on',requestedAt:instant.toISOString()}));
       }}><div className="crm-editor-scroll">
         <p>{editor.order.name} · {editor.order.id}</p>
-        {error&&<p role="alert">{error}</p>}
+        {error&&<AdminFormFeedback lang={lang} state="error">{error}</AdminFormFeedback>}
+        <CrmOrderOperationFeedback command={aftercareOperation} lang={lang}
+          onCheck={()=>void aftercareOutcome(aftercareOperation.check())} onRetry={()=>void aftercareOutcome(aftercareOperation.retry())}/>
+        <fieldset data-admin-stack="" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!aftercareOperation.pending}>
         {editor.mode==='invite'?<><AdminField required>{t('目标班次','Target class','Kelas tujuan')}
           <CrmSingleSelect lang={lang} isLight={isLight} required label={t('目标班次','Target class','Kelas tujuan')} value={targetId}
             options={classes.filter(row=>row.id!==editor.order.classId&&row.level===editor.order.level&&row.format===editor.order.format&&row.availability!=='full')
@@ -484,11 +503,12 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
             <AdminField required>{t('申请前已实际交付课次','Sessions delivered before the request','Pertemuan yang telah diberikan sebelum pengajuan')}<input name="delivered" type="number" min="0" step="1" required/></AdminField>
           </>}
         </>}
+        </fieldset>
       </div><AdminFormActions className="crm-editor-actions"><button type="button" className="crm-work-button" onClick={close}>{t('取消','Cancel','Batal')}</button>
-        <button type="submit" className="crm-work-button" data-primary disabled={busy||(editor.mode==='invite'&&!targetId)}>{t('确认保存','Confirm and save','Konfirmasi dan simpan')}</button>
+        <button type="submit" className="crm-work-button" data-primary disabled={busy||!!aftercareOperation.pending||(editor.mode==='invite'&&!targetId)}>{t('确认保存','Confirm and save','Konfirmasi dan simpan')}</button>
       </AdminFormActions></AdminForm>
     </CrmOperationLayer>}
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setEditor(undefined);setDiscard(false);setDirty(false);}}/>}
+    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{aftercareOperation.clear();setEditor(undefined);setDiscard(false);setDirty(false);}}/>}
   </section>;
 }
 
@@ -497,7 +517,9 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
   const [details,setDetails]=useState<RefundDetails>();
   const [source,setSource]=useState('');
   const [error,setError]=useState('');
-  const [busy,setBusy]=useState(false);
+  const refundOperation=useCrmOrderOperation();
+  const busy=refundOperation.busy;
+  const refundForm=useRef<HTMLFormElement>(null);
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const [returnEntry,setReturnEntry]=useState<{reference:string;requestId:string}>();
   const base=finance+'/'+id;
@@ -516,6 +538,25 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
       if(!signal?.aborted)setReadState('error');
     }
   };
+  const refundOutcome=async(result:ReturnType<typeof refundOperation.submit>,bankReturn:boolean)=>{
+    const outcome=await result;
+    if(!outcome)return;
+    if(outcome.state==='saved'){
+      if(bankReturn)setReturnEntry(undefined);
+      else {refundForm.current?.reset();setSource('');setRequestId(crypto.randomUUID());}
+      await load();onUpdate();
+      return;
+    }
+    if(bankReturn)setReturnEntry(entry=>entry&&{...entry,requestId:crypto.randomUUID()});
+    else setRequestId(crypto.randomUUID());
+    setError(outcome.code==='enrollment_duplicate_refund_return'
+      ? t('这笔银行退回已登记。','This bank return has already been recorded.','Pengembalian oleh bank ini sudah dicatat.')
+      : outcome.code==='enrollment_refund_return_amount_exceeds'
+        ? t('退回金额超过这笔退款流水尚可登记的金额。','This return exceeds the remaining amount of the refund payment.','Jumlah melebihi sisa pembayaran pengembalian.')
+        : outcome.code==='enrollment_refund_amount_exceeds'
+          ? t('金额超过该笔原流水或退款单的可退余额。','The amount exceeds the refundable balance.','Jumlah melebihi saldo pengembalian.')
+          : t('登记被拒绝，请核对退款单和流水。','Entry rejected. Review the refund and bank reference.','Entri ditolak. Periksa pengembalian dan referensi bank.'));
+  };
   useEffect(()=>{onBusyChange?.(busy);return ()=>onBusyChange?.(false);},[busy,onBusyChange]);
   useEffect(()=>{const request=new AbortController();void load(request.signal);return ()=>request.abort();},[id]);
   if(readState!=='ready'||!details)return <AdminListState lang={lang} compact state={readState==='ready'?'empty':readState}
@@ -525,6 +566,9 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
   const original=details.receipts.find(row=>row.reference===source);
   const payment=details.installments.find(entry=>entry.reference===returnEntry?.reference);
   return <section className="crm-course-catalog">
+    <CrmOrderOperationFeedback command={refundOperation} lang={lang}
+      onCheck={()=>void refundOutcome(refundOperation.check(),!!returnEntry)}
+      onRetry={()=>void refundOutcome(refundOperation.retry(),!!returnEntry)}/>
     <p>{t('累计已原路退款','Total refunded to original payment','Total dikembalikan ke pembayaran asal')} {formatCurrency(refunded,lang)} / {formatCurrency(expected,lang)}</p>
     {requestedAt&&<p>{sendBy?t('收到正式申请','Formal request received','Permintaan resmi diterima'):
       t('退款登记时间','Refund recorded at','Waktu pengembalian dicatat')} · <time dateTime={requestedAt}>{formatCrmEventTime(requestedAt)}</time></p>}
@@ -533,57 +577,42 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
       {details.installments.map(entry=><li key={entry.reference}>
         {formatCurrency(entry.amount,lang)} · {entry.reference} · {t('原收款','Original receipt','Penerimaan asal')} {entry.receiptReference}
         {entry.returned>0&&<> · {t('银行已退回','Returned by bank','Dikembalikan oleh bank')} {formatCurrency(entry.returned,lang)}</>}
-        {!returnEntry&&entry.amount>entry.returned&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>{
+        {!returnEntry&&entry.amount>entry.returned&&<button type="button" className="crm-work-button" disabled={busy||!!refundOperation.pending} onClick={()=>{
           setError('');setReturnEntry({reference:entry.reference,requestId:crypto.randomUUID()});
         }}>{t('登记银行退回','Record bank return','Catat pengembalian oleh bank')}</button>}
       </li>)}
     </ul>}
-    {error&&<p role="alert">{error}</p>}
+    {error&&<AdminFormFeedback lang={lang} state="error">{error}</AdminFormFeedback>}
     {returnEntry&&payment&&<AdminForm lang={lang} className="crm-form-layout" onSubmit={async event=>{
-      event.preventDefault();
-      if(busy) return;
+      event.preventDefault();if(busy||refundOperation.pending)return;
       const input=new FormData(event.currentTarget);
-      setBusy(true);setError('');
-      try{
-        await enrollmentPost(base+'/refund-returns',{
-          refundReference:payment.reference,reference:input.get('reference'),amount:Number(input.get('amount')),requestId:returnEntry.requestId,
-        });
-        setReturnEntry(undefined);
-        await load();onUpdate();
-      }catch(cause){
-        const reason=(cause as Error).message;
-        setError(reason==='enrollment_duplicate_refund_return'
-          ? t('这笔银行退回已登记。','This bank return has already been recorded.','Pengembalian oleh bank ini sudah dicatat.')
-          : reason==='enrollment_refund_return_amount_exceeds'
-            ? t('退回金额超过这笔退款流水尚可登记的金额。','This return exceeds the remaining amount of the refund payment.','Jumlah melebihi sisa pembayaran pengembalian.')
-            : t('未能确认银行退回，请核对原流水后再操作。','The bank return could not be confirmed. Check the original payment before continuing.','Pengembalian oleh bank belum terkonfirmasi. Periksa pembayaran asal sebelum melanjutkan.'));
-      }finally{setBusy(false);}
+      setError('');
+      await refundOutcome(refundOperation.submit('refund-returns',id,{
+        refundReference:payment.reference,reference:input.get('reference'),amount:Number(input.get('amount')),requestId:returnEntry.requestId,
+      }),true);
     }}>
       <p>{t('退款流水','Refund payment','Pembayaran pengembalian')} · {payment.reference} · {formatCurrency(payment.amount-payment.returned,lang)}</p>
       <AdminRequiredNote lang={lang}/>
+      <fieldset className="crm-form-layout" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!refundOperation.pending}>
       <AdminField required>{t('银行退回参考号','Bank return reference','Referensi pengembalian oleh bank')}<input name="reference" required maxLength={120}/></AdminField>
       <AdminField required>{t('银行退回金额（Rp）','Bank return amount (Rp)','Jumlah dikembalikan oleh bank (Rp)')}
         <input name="amount" type="number" min="1" max={payment.amount-payment.returned} step="1" required/>
       </AdminField>
+      </fieldset>
       <AdminFormActions>
-        <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{setReturnEntry(undefined);setError('');}}>{t('取消','Cancel','Batal')}</button>
-        <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t('确认登记退回','Confirm bank return','Konfirmasi pengembalian oleh bank')}</button>
+        <button type="button" className="crm-work-button" disabled={busy||!!refundOperation.pending} onClick={()=>{setReturnEntry(undefined);setError('');}}>{t('取消','Cancel','Batal')}</button>
+        <button type="submit" className="crm-work-button" data-primary disabled={busy||!!refundOperation.pending}>{t('确认登记退回','Confirm bank return','Konfirmasi pengembalian oleh bank')}</button>
       </AdminFormActions>
     </AdminForm>}
-    {refunded<expected&&<div hidden={!!returnEntry}><AdminForm lang={lang} className="crm-form-layout" onSubmit={async event=>{
-      event.preventDefault();if(!source||busy)return;
-      const form=event.currentTarget as HTMLFormElement;
-      const input=new FormData(form);
-      setBusy(true);setError('');
-      try{
-        await enrollmentPost(base+'/refunds',{receiptReference:source,reference:input.get('reference'),amount:Number(input.get('amount')),requestId});
-        form.reset();setSource('');setRequestId(crypto.randomUUID());
-        await load();onUpdate();
-      }catch(cause){
-        setError((cause as Error).message==='enrollment_refund_amount_exceeds'?t('金额超过该笔原流水或退款单的可退余额。','The amount exceeds the refundable balance.','Jumlah melebihi saldo pengembalian.'):
-          t('未能确认分笔退款，请核对流水。','The refund entry could not be confirmed. Review the bank reference.','Periksa referensi pengembalian.'));
-      }finally{setBusy(false);}
+    {refunded<expected&&<div hidden={!!returnEntry}><AdminForm ref={refundForm} lang={lang} className="crm-form-layout" onSubmit={async event=>{
+      event.preventDefault();if(!source||busy||refundOperation.pending)return;
+      const input=new FormData(event.currentTarget);
+      setError('');
+      await refundOutcome(refundOperation.submit('refunds',id,{
+        receiptReference:source,reference:input.get('reference'),amount:Number(input.get('amount')),requestId,
+      }),false);
     }}>
+      <fieldset className="crm-form-layout" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!refundOperation.pending}>
       <AdminField required>{t('原收款流水','Original receipt','Referensi penerimaan asal')}
         <CrmSingleSelect label={t('原收款流水','Original receipt','Referensi penerimaan asal')} value={source}
           lang={lang} isLight={isLight} required options={details.receipts.filter(row=>row.remaining>0)
@@ -592,7 +621,8 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
       {original&&<p>{t('原公司收款账户','Original company receiving account','Rekening penerima perusahaan asal')} · {original.account??t('未记录，请核对原交易','Not recorded. Check the original transaction.','Belum dicatat. Periksa transaksi asal.')}</p>}
       <AdminField required>{t('退款流水号','Refund bank reference','Referensi bank pengembalian')}<input name="reference" required maxLength={120}/></AdminField>
       <AdminField required>{t('本次退款金额（Rp）','Refund amount (Rp)','Jumlah pengembalian (Rp)')}<input name="amount" type="number" min="1" max={Math.min(expected-refunded,details.receipts.find(row=>row.reference===source)?.remaining??expected-refunded)} required/></AdminField>
-      <button type="submit" className="crm-work-button" data-primary disabled={busy||!source}>{t('登记分笔退款','Record refund installment','Catat tahap pengembalian')}</button>
+      </fieldset>
+      <button type="submit" className="crm-work-button" data-primary disabled={busy||!source||!!refundOperation.pending}>{t('登记分笔退款','Record refund installment','Catat tahap pengembalian')}</button>
     </AdminForm></div>}
   </section>;
 }

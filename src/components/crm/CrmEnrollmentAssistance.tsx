@@ -31,6 +31,8 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
   const [busy,setBusy]=useState(false);
   const [dirty,setDirty]=useState(false);
   const [discard,setDiscard]=useState(false);
+  const [needsMailCheck,setNeedsMailCheck]=useState(false);
+  const [mailRetryAllowed,setMailRetryAllowed]=useState(true);
   const [feedback,setFeedback]=useState<{state:AdminFeedbackState;message:string}>();
   const endpoint='/api/crm/opportunities/'+encodeURIComponent(opportunityId)+'/enrollment-assistance';
   useEffect(()=>{
@@ -53,13 +55,31 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
     `Halo, UPER telah membantu mengajukan pendaftaran ${level}. Buka tautan ini untuk memeriksa kelas dan biaya, lalu konfirmasi:`,
   ])+'\n'+link;
   async function retry(){
-    if(!result||busy)return;
+    if(!result||busy||needsMailCheck||!mailRetryAllowed)return;
     setBusy(true);setFeedback(undefined);
     try{
       const {mail}=await enrollmentPost(endpoint+'/'+result.id+'/retry',{previousAttempt:result.mail?.id??null});
       setResult({...result,mail});onDone();
     }catch{
-      setFeedback({state:'unknown',message:t('暂时无法核对发送结果。请刷新商机后再试。','Check the opportunity for delivery status before retrying.','Muat ulang peluang untuk memeriksa status pengiriman sebelum mencoba lagi.')});
+      setNeedsMailCheck(true);
+      setFeedback({state:'unknown',message:t('发送结果待确认，请先查询原申请。','Check the original application before attempting another send.','Periksa pengajuan awal sebelum mengirim ulang.')});
+    }finally{setBusy(false);}
+  }
+  async function checkMail(){
+    if(!result||busy||!needsMailCheck)return;
+    setBusy(true);
+    try{
+      const response=await fetch('/api/crm/opportunities/'+encodeURIComponent(opportunityId),{cache:'no-store'});
+      if(!response.ok)throw Error();
+      const detail=await response.json();
+      const application=detail.assistanceHistory;
+      if(application?.id!==result.id)throw Error();
+      setResult({...result,mail:application.mail});
+      const eligible=Boolean(Number(application.active)&&!application.orderId&&detail.assistance?.allowed);
+      setMailRetryAllowed(eligible);
+      setNeedsMailCheck(false);setFeedback(undefined);onDone();
+    }catch{
+      setFeedback({state:'unknown',message:t('暂时无法查询原申请，请稍后核对。','The original application is unavailable. Try checking again later.','Pengajuan awal belum dapat diperiksa. Coba lagi nanti.')});
     }finally{setBusy(false);}
   }
   return <>
@@ -88,7 +108,9 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
         </div>
         <AdminFormActions className="crm-editor-actions">
           <button type="button" className="crm-work-button" disabled={busy} onClick={onClose}>{t('关闭','Close','Tutup')}</button>
-          {result.mail?.state!=='simulated'&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void retry()}>
+          {needsMailCheck&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkMail()}>
+            {t('查询发送结果','Check delivery result','Periksa hasil pengiriman')}</button>}
+          {!needsMailCheck&&mailRetryAllowed&&result.mail?.state!=='simulated'&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void retry()}>
             {t('重发确认邮件','Retry confirmation email','Kirim ulang email konfirmasi')}</button>}
         </AdminFormActions>
       </div>:<AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onChange={()=>setDirty(true)} onSubmit={async event=>{

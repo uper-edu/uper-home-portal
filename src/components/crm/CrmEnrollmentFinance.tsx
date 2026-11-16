@@ -6,9 +6,10 @@ import { CrmSingleSelect } from './CrmSingleSelect';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
 import { interestOption } from '../EnrollmentInterests';
-import { enrollmentCopy, enrollmentPost, enrollmentStatuses } from '../EnrollmentApplication';
+import { enrollmentCopy, enrollmentStatuses } from '../EnrollmentApplication';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
+import {CrmOrderOperationFeedback,useCrmOrderOperation} from './CrmOrderOperation';
 import { CrmEnrollmentRefund } from './CrmEnrollmentResolution';
 import { enrollmentRosterReturnPath } from '../../utils/crmEnrollmentManagement';
 import { enrollmentOpportunityReturnPath } from '../../utils/crmEnrollmentOpportunityRoute';
@@ -66,7 +67,9 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   const [selected,setSelected]=useState<string>();
   const [requestId,setRequestId]=useState('');
   const [dirty,setDirty]=useState(false);
-  const [busy,setBusy]=useState(false);
+  const receiptOperation=useCrmOrderOperation();
+  const [refundBusy,setRefundBusy]=useState(false);
+  const busy=receiptOperation.busy||refundBusy;
   const [saved,setSaved]=useState(false);
   const [discard,setDiscard]=useState(false);
   useEffect(()=>{onRefreshingChange(loading);return()=>onRefreshingChange(false);},[loading,onRefreshingChange]);
@@ -124,7 +127,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   };
   const closeOrder=()=>{
     if(rosterBack){window.location.assign(rosterBack);return;}
-    setOrderId(null);setDetails(undefined);setSelected(undefined);setDirty(false);setDetailError('');setDiscard(false);setSaved(false);
+    receiptOperation.clear();setOrderId(null);setDetails(undefined);setSelected(undefined);setDirty(false);setDetailError('');setDiscard(false);setSaved(false);
     const url=new URL(window.location.href);
     if(url.searchParams.has('enrollmentOrder')){
       url.searchParams.delete('enrollmentOrder');url.searchParams.delete('opportunityReturn');url.searchParams.delete('rosterReturn');
@@ -134,6 +137,19 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   };
   const close=()=>{if(!busy){if(dirty)setDiscard(true);else closeOrder();}};
   const afterWrite=()=>{setDirty(false);setRefresh(value=>value+1);onQueueChanged();};
+  const receiptOutcome=async(result:ReturnType<typeof receiptOperation.submit>)=>{
+    const outcome=await result;
+    if(outcome?.state==='saved'){
+      setSaved(true);setSelected(undefined);afterWrite();
+    }else if(outcome?.state==='rejected'){
+      setRequestId(crypto.randomUUID());
+      setDetailError(outcome.code==='enrollment_duplicate_receipt'
+        ? t('这笔流水已登记。','This bank reference has already been recorded.','Referensi bank sudah dicatat.')
+        : outcome.code==='enrollment_receiving_account_required'
+          ? t('请填写实际收款账户。','Enter the actual receiving account.','Isi rekening penerima aktual.')
+          : t('到账登记被拒绝，请核对输入和订单状态。','Receipt rejected. Check the details and order status.','Penerimaan ditolak. Periksa data dan status pesanan.'));
+    }
+  };
   const filters=[
     {value:'pending',label:t('待核验及部分到账','Pending and partially paid','Menunggu verifikasi dan dibayar sebagian')},
     {value:'all',label:t('全部核款订单','All payment orders','Semua pesanan pembayaran')},
@@ -230,13 +246,13 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
           </a>
         </li>)}</ul>
       </CrmDisclosure>}
-      {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setBusy}/> :
+      {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy}/> :
       selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" className="crm-work-button" data-primary onClick={() => {
         setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSaved(false);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button></div>
       : <AdminForm lang={lang} className="crm-form-layout" onSubmit={async (event:React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (busy) return;
+        if (busy||receiptOperation.pending) return;
         const form = new FormData(event.currentTarget);
         const localTime=String(form.get('time'));
         const instant=new Date(localTime);
@@ -246,22 +262,14 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
           setDetailError(t('请核对实际到账日期和时间。','Check the actual receipt date and time.','Periksa tanggal dan waktu dana diterima.'));
           return;
         }
-        setDetailError('');setBusy(true);
-        try {
-          await enrollmentPost(endpoint+'/'+row.id+'/receipts',{amount:Number(form.get('amount')),reference:form.get('reference'),
-            receivingAccount:form.get('receivingAccount'),transferredAt:instant.toISOString(),requestId});
-          setSaved(true);
-          setSelected(undefined);
-          afterWrite();
-        } catch (cause) {
-          setDetailError((cause as Error).message==='enrollment_duplicate_receipt'
-            ? t('这笔流水已登记。','This bank reference has already been recorded.','Referensi bank sudah dicatat.')
-            : (cause as Error).message==='enrollment_receiving_account_required'
-            ? t('请填写实际收款账户。','Enter the actual receiving account.','Isi rekening penerima aktual.')
-            : t('未能确认结果，请核对后保留原单重试。','Review the result and retry with the original details.','Periksa hasil lalu coba lagi dengan data yang sama.'));
-        } finally {setBusy(false);}
+        setDetailError('');setDirty(true);
+        await receiptOutcome(receiptOperation.submit('receipts',row.id,{amount:Number(form.get('amount')),reference:form.get('reference'),
+          receivingAccount:form.get('receivingAccount'),transferredAt:instant.toISOString(),requestId}));
       }}>
         <h3 data-admin-form-title>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')} <AdminRequiredNote lang={lang} inline/></h3>
+        <CrmOrderOperationFeedback lang={lang} command={receiptOperation}
+          onCheck={()=>void receiptOutcome(receiptOperation.check())} onRetry={()=>void receiptOutcome(receiptOperation.retry())}/>
+        <fieldset className="crm-form-layout" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!receiptOperation.pending}>
         <AdminField>{t('银行流水号','Bank reference','Nomor referensi bank')}<input name="reference" maxLength={120} required/></AdminField>
         <AdminField>{t('实际收款账户','Actual receiving account','Rekening penerima aktual')}
           <input name="receivingAccount" maxLength={160} required autoComplete="off"/>
@@ -269,9 +277,10 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
         </AdminField>
         <AdminField>{t('实收金额（Rp）','Verified amount (Rp)','Nominal terverifikasi (Rp)')}<input name="amount" type="number" min="1" step="1" required/></AdminField>
         <AdminField>{t('实际到账时间','Actual receipt time','Waktu dana diterima')}<input name="time" type="datetime-local" required/></AdminField>
+        </fieldset>
         <AdminFormActions>
-          <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{setSelected(undefined);setDirty(false);setDetailError('');}}>{t('取消','Cancel','Batal')}</button>
-          <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t('保存到账','Save receipt','Simpan penerimaan')}</button>
+          <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{receiptOperation.clear();setSelected(undefined);setDirty(false);setDetailError('');}}>{t('取消','Cancel','Batal')}</button>
+          <button type="submit" className="crm-work-button" data-primary disabled={busy||!!receiptOperation.pending}>{t('保存到账','Save receipt','Simpan penerimaan')}</button>
         </AdminFormActions>
       </AdminForm>}
     </article>}

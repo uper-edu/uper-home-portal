@@ -3266,6 +3266,7 @@
       "server/portal/enrollmentBank.ts",
       "server/portal/enrollmentCatalog.ts",
       "server/portal/enrollmentCrm.ts",
+      "server/portal/enrollmentResolution.ts",
       "server/portal/enrollmentRules.ts",
       "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
@@ -4161,12 +4162,6 @@
     "sql": "UPDATE notification_jobs SET state='accepted',completed_at=:p2 WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
-    ]
-  },
-  "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'": {
-    "sql": "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'",
-    "sources": [
-      "server/portal/runtime.ts"
     ]
   },
   "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=:p3 WHERE id=:p1": {

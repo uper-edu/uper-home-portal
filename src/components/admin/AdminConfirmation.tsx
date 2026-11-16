@@ -3,9 +3,9 @@ import {AdminFormActions} from '../AdminFormLayout';
 import {AdminDialog} from './AdminDialog';
 
 export function AdminConfirmation({title,description,children,cancelLabel,confirmLabel,onCancel,onConfirm,
-  light,busy=false,danger=false,announceDescription=false,closeOnBackdrop=false}:{
+  light,busy=false,confirmDisabled=false,danger=false,announceDescription=false,closeOnBackdrop=false}:{
   title:ReactNode;description:ReactNode;children?:ReactNode;cancelLabel:ReactNode;confirmLabel?:ReactNode;
-  onCancel:()=>void;onConfirm?:()=>void;light:boolean;busy?:boolean;danger?:boolean;
+  onCancel:()=>void;onConfirm?:()=>void;light:boolean;busy?:boolean;confirmDisabled?:boolean;danger?:boolean;
   announceDescription?:boolean;closeOnBackdrop?:boolean;
 }){
   const id=useId();
@@ -16,8 +16,8 @@ export function AdminConfirmation({title,description,children,cancelLabel,confir
     <p id={id+'-description'} aria-live={announceDescription?'polite':undefined}>{description}</p>
     {children}
     <AdminFormActions className="admin-confirmation-actions">
-      <button type="button" autoFocus disabled={busy} onClick={onCancel}>{cancelLabel}</button>
-      {onConfirm&&<button type="button" data-confirm="" disabled={busy} onClick={onConfirm}>{confirmLabel}</button>}
+      <button type="button" data-admin-initial-focus="" disabled={busy} onClick={onCancel}>{cancelLabel}</button>
+      {onConfirm&&<button type="button" data-confirm="" disabled={busy||confirmDisabled} onClick={onConfirm}>{confirmLabel}</button>}
     </AdminFormActions>
   </AdminDialog>;
 }

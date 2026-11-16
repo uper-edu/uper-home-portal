@@ -46,6 +46,8 @@ export function AdminDialog({
     panel.showModal();
     if(initialFocus==='heading'){
       document.getElementById(panel.getAttribute('aria-labelledby')??'')?.focus({preventScroll:true});
+    }else{
+      panel.querySelector<HTMLElement>('[data-admin-initial-focus]')?.focus({preventScroll:true});
     }
     return ()=>{
       panel.close();

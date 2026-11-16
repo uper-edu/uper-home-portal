@@ -1461,6 +1461,8 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-jobs/:id/cancel",
     wrap(async (req, res) => {
       const employee = await staff(req, "notifications.manage");
+      const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+      if(!reason||reason.length>300) fail(400,"Cancellation reason is required");
       await tx(async (c) => {
         const job = (
           await c.query(
@@ -1471,10 +1473,6 @@ export async function mountPortal(app: Express) {
         if (!job) fail(404, "Notification not found");
         if (job.state !== "pending")
           fail(409, "Only pending notifications can be cancelled");
-        const reason = String(req.body.reason || "Cancelled by employee").slice(
-          0,
-          300,
-        );
         await c.query(
           "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
           [job.id, reason],
@@ -1934,17 +1932,6 @@ export async function mountPortal(app: Express) {
             : "Follow-up service unavailable",
         );
       }
-    }),
-  );
-  app.post(
-    "/api/crm/notification-jobs/:id/cancel",
-    wrap(async (req, res) => {
-      await staff(req, "notifications.manage");
-      await pool.query(
-        "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'",
-        [req.params.id],
-      );
-      res.json({ success: true });
     }),
   );
   app.get(

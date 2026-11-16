@@ -1,3 +1,4 @@
+import {AdminConfirmation} from './admin/AdminConfirmation';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminListPagination,AdminListState,AdminListTable} from './admin/AdminList';
 import {AdminStatus} from './AdminStatus';
@@ -9,7 +10,7 @@ import {larkNotificationColor} from '../utils/larkNotificationColors';
 import {dailyDigestPreview} from '../utils/larkDailyDigest';
 import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
-import {AdminFormSection} from './AdminFormLayout';
+import {AdminFormFeedback,AdminFormSection} from './AdminFormLayout';
 import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import { LarkChannelTestControls, type LarkChannelTest } from "./crm/LarkChannelTestControls";
 import {crmFormText} from '../utils/crmFormLanguage';
@@ -295,6 +296,9 @@ export default function NotificationCenter({
     [jobsLocation,setJobsLocation] = useState(notificationJobsLocation),
     [cancelId, setCancelId] = useState(""),
     [cancelReason, setCancelReason] = useState("");
+  const [cancelNeedsCheck,setCancelNeedsCheck]=useState(false);
+  const [cancelFeedback,setCancelFeedback]=useState<{state:'error'|'unknown';message:string}>();
+  const closeCancel=()=>{setCancelId('');setCancelReason('');setCancelFeedback(undefined);setCancelNeedsCheck(false);};
   const targetJob=jobsLocation.job;
   const [jobs,setJobs]=useState<{target:string|null;rows?:Row[];error?:string;denied?:boolean}>();
   const jobsTable=useRef<HTMLDivElement>(null);
@@ -437,6 +441,47 @@ export default function NotificationCenter({
     });
     return ()=>cancelAnimationFrame(frame);
   },[jobsResult,jobPage,jobsLocation.state,tab,targetJob,active]);
+  const cancelText=(zhText:string,enText:string,idText:string)=>lang==='zh'?zhText:lang==='id'?idText:enText;
+  const finishCancel=async()=>{
+    closeCancel();
+    setNotice(t('通知已取消','Notification cancelled'));
+    await load();
+  };
+  async function confirmCancel(){
+    if(!canEdit||busy||cancelNeedsCheck||!cancelId||!cancelReason.trim())return;
+    setBusy(true);setCancelFeedback(undefined);
+    try{
+      const outcome=await api('notification-jobs/'+encodeURIComponent(cancelId)+'/cancel',{reason:cancelReason});
+      if(outcome.success!==true)throw Error();
+      await finishCancel();
+    }catch(cause){
+      const status=(cause as {status?:number}).status;
+      const rejected=Boolean(status&&status<500&&status!==409&&status!==404);
+      setCancelNeedsCheck(!rejected);
+      setCancelFeedback(rejected?{state:'error',message:crmError((cause as Error).message,lang)}:
+        {state:'unknown',message:cancelText('取消结果待确认，请先查询这条通知。','Check this notification before trying again.','Periksa notifikasi ini sebelum mencoba lagi.')});
+    }finally{setBusy(false);}
+  }
+  async function checkCancelled(){
+    if(busy||!cancelId||!cancelNeedsCheck)return;
+    setBusy(true);
+    try{
+      const records=await api('notification-jobs?job='+encodeURIComponent(cancelId));
+      const job=Array.isArray(records)?records.find(row=>row.id===cancelId):undefined;
+      if(!job)throw Error();
+      if(job.state==='cancelled'){await finishCancel();return;}
+      if(job.state==='pending'){
+        setCancelNeedsCheck(false);
+        setCancelFeedback({state:'unknown',message:cancelText('通知仍在排队，可以再次确认取消。','The notification is still queued. You can confirm cancellation again.','Notifikasi masih dalam antrean. Anda dapat mengonfirmasi pembatalan lagi.')});
+        return;
+      }
+      closeCancel();
+      setNotice(cancelText('通知已开始处理，无法取消。请查看发送状态。','The notification has started processing and can no longer be cancelled. Review its delivery state.','Notifikasi sudah diproses dan tidak dapat dibatalkan. Periksa status pengiriman.'));
+      await load();
+    }catch{
+      setCancelFeedback({state:'unknown',message:cancelText('暂时无法查询这条通知，请稍后核对。','This notification is unavailable. Try checking again later.','Notifikasi belum dapat diperiksa. Coba lagi nanti.')});
+    }finally{setBusy(false);}
+  }
   const format = (value: string | undefined) =>
     value ? new Date(value).toLocaleString(crmLocale(lang)) : "—";
   const label = (name: string) =>
@@ -843,7 +888,7 @@ export default function NotificationCenter({
                     setRows([]);
                     setEditor(null);
                     setNotice("");
-                    setCancelId("");
+                    closeCancel();
                   })}
                   className={`flex gap-1.5 items-center px-3 py-2 rounded-lg text-xs font-semibold ${tab === value ? (isLight ? "bg-white text-primary-700 shadow-2xs" : "bg-primary-600 text-white") : muted}`}
                 >
@@ -1966,8 +2011,8 @@ export default function NotificationCenter({
                                       <button
                                         className={`${button} block mt-2`}
                                         onClick={() => {
+                                          closeCancel();
                                           setCancelId(row.id);
-                                          setCancelReason("");
                                         }}
                                       >
                                         {t("取消通知", "Cancel notification")}
@@ -1980,57 +2025,19 @@ export default function NotificationCenter({
                         {!targetJob&&<AdminListPagination lang={lang} page={jobPage} pageCount={jobPages}
                           onPageChange={page=>changeJobsLocation(jobsLocation.state,page)}/>}
                       </>}
-                      {cancelId && !jobsResult?.denied && (
-                        <div className={`${box} p-4 space-y-3`}>
-                          {text(
-                            t("取消原因", "Cancellation reason"),
-                            cancelReason,
-                            setCancelReason,
-                          )}
-                          <p className={`text-xs ${muted}`}>
-                            {t(
-                              "仅取消这条通知，不完成客户跟进任务。",
-                              "Cancels this notification only; does not complete follow-up.",
-                            )}
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              className={primary}
-                              disabled={
-                                !canEdit || busy || !cancelReason.trim()
-                              }
-                              onClick={async () => {
-                                setBusy(true);
-                                try {
-                                  await api(
-                                    "notification-jobs/" +
-                                      encodeURIComponent(cancelId) +
-                                      "/cancel",
-                                    { reason: cancelReason },
-                                  );
-                                  setCancelId("");
-                                  setNotice(
-                                    t("通知已取消", "Notification cancelled"),
-                                  );
-                                  await load();
-                                } catch (e) {
-                                  setError((e as Error).message);
-                                } finally {
-                                  setBusy(false);
-                                }
-                              }}
-                            >
-                              {t("确认取消", "Confirm cancellation")}
-                            </button>
-                            <button
-                              className={button}
-                              onClick={() => setCancelId("")}
-                            >
-                              {t("保留通知", "Keep notification")}
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      {cancelId && !jobsResult?.denied && <AdminConfirmation light={isLight} busy={busy} danger
+                        title={t('取消通知','Cancel notification')}
+                        description={<>{t('仅取消这条通知，不完成客户跟进任务。','Cancels this notification only; does not complete follow-up.')} · {cancelId}</>}
+                        cancelLabel={t('保留通知','Keep notification')} confirmLabel={t('确认取消','Confirm cancellation')}
+                        confirmDisabled={cancelNeedsCheck||!cancelReason.trim()} onCancel={closeCancel} onConfirm={()=>void confirmCancel()}>
+                        <AdminField required>{t('取消原因','Cancellation reason')}
+                          <textarea value={cancelReason} onChange={event=>setCancelReason(event.target.value)}
+                            required maxLength={300} disabled={busy||cancelNeedsCheck}/>
+                        </AdminField>
+                        {cancelFeedback&&<AdminFormFeedback lang={lang} state={cancelFeedback.state}>{cancelFeedback.message}</AdminFormFeedback>}
+                        {cancelNeedsCheck&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkCancelled()}>
+                          {cancelText('查询取消结果','Check cancellation result','Periksa hasil pembatalan')}</button>}
+                      </AdminConfirmation>}
                     </>
                   )}
                   {tab === "notification-audit" && (auditRead!=='ready'||!rows.length) && (
