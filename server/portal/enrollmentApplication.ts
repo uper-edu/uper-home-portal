@@ -1,3 +1,4 @@
+import {dispatchEnrollmentMail,enrollmentMailConfigured} from './enrollmentMail.ts';
 import type { Express, Request, Response } from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { tx } from './store.ts';
@@ -194,7 +195,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const email = contact(q.body.email);
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    await enrollTx(async (c: Client) => {
+    const pending=await enrollTx(async (c: Client) => {
       await lockEnrollmentEmail(c, email);
       await c.query(`INSERT INTO enrollment_email_challenges(email,challenge_id,digest,expires_at,resend_at)
         VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE email=email`, [email, id, otpHash(id, code)]);
@@ -205,10 +206,21 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       await c.query(`UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,
         expires_at=TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),resend_at=TIMESTAMPADD(SECOND,:p5,UTC_TIMESTAMP(6)) WHERE email=:p3`,
       [id, otpHash(id, code), email,emailCodeMinutes,emailResendSeconds]);
-      await local.deliver(id,email,code,renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{
+      const message=renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{
         language:q.body.language,code,codeMinutes:emailCodeMinutes,
-      }));
+      });
+      if(await enrollmentMailConfigured(c))return message;
+      await local.deliver(id,email,code,message);
     });
+    if(pending){
+      const result=await dispatchEnrollmentMail('otp:'+id,email,pending,{code,deliveryId:id});
+      if(result.state!=='accepted'&&result.state!=='simulated'){
+        await enrollTx(c=>c.query(`UPDATE enrollment_email_challenges SET used=TRUE,
+          resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2`,
+          [email,id,result.state!=='unknown']));
+        invalid('enrollment_code_wait',429);
+      }
+    }
     r.json({ challengeId: id });
   });
 
@@ -328,7 +340,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       if(!offer||offer.opportunity_id!==opportunityId||offer.customer_id!==customer.id||
           !Number(offer.active)||offer.order_id)invalid('enrollment_assistance_unavailable',404);
       const latest=await latestAssistanceMail(c,applicationId);
-      if(latest?.state==='simulated'||(latest?.id??null)!==q.body?.previousAttempt)return latest;
+      if(['simulated','accepted','queued','unknown'].includes(latest?.state)||(latest?.id??null)!==q.body?.previousAttempt)return latest;
       return sendAssistanceMail(c,local,offer,sha(latest?.id??'resume:'+applicationId));
     });
     r.json({mail});

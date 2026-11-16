@@ -6,3 +6,16 @@
 /* Required-field explanation belongs to the existing title, never a separate row. */
 h1>.admin-required-note,h2>.admin-required-note,h3>.admin-required-note,h4>.admin-required-note{display:inline-flex;align-items:center;gap:3px;margin:0 0 0 12px!important;padding:0!important;font-size:12px;font-weight:400;line-height:1.4;vertical-align:middle;white-space:nowrap;color:var(--cw-muted,var(--dw-muted,#52647c))}
 .admin-required-note-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+
+.admin-field input.admin-switch[type=checkbox] {
+  appearance:none;position:relative;flex:none;inline-size:36px;block-size:22px;margin:0;
+  border:1px solid var(--admin-muted);border-radius:999px;background:var(--admin-muted);cursor:pointer;
+}
+.admin-field input.admin-switch::after {
+  content:"";position:absolute;inset-block-start:2px;inset-inline-start:2px;
+  inline-size:16px;block-size:16px;border-radius:50%;background:var(--admin-surface);
+}
+.admin-field input.admin-switch:checked {background:var(--admin-action-fill);border-color:var(--admin-action-fill)}
+.admin-field input.admin-switch:checked::after {inset-inline-start:16px;background:var(--admin-on-action)}
+.admin-field input.admin-switch:focus-visible {outline:2px solid var(--admin-focus);outline-offset:3px}
+.admin-field input.admin-switch:disabled {opacity:.55;cursor:not-allowed}

@@ -8,6 +8,7 @@ export const enrollmentSettingSections = [
  {id:'courses',title:['Courses & pricing','Kursus & harga','课程与报价']},
  {id:'enrollment-classes',title:['Enrollment classes','Kelas pendaftaran','报名班次']},
  {id:'enrollment-rules',title:['Enrollment rules','Aturan pendaftaran','报名规则']},
+ {id:'enrollment-mail',title:['Admissions email','Email penerimaan','招生邮件']},
 ] as const;
 export type EnrollmentSettingTopic = typeof enrollmentSettingSections[number]['id'];
 

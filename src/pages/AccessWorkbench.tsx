@@ -1,3 +1,4 @@
+import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
 import {SystemAccessGuide} from '../components/SystemAccessGuide';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {CrmPageAction} from '../components/crm/CrmPageAction';
@@ -28,7 +29,7 @@ import '../components/crm/crm-detail-workspace.css';
 import '../components/crm/crm-record-workspace.css';
 import { accessError } from "../utils/accessLanguage";
 import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
-import {Pencil, Plus, BookOpen, Users, FlaskConical } from "lucide-react";
+import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -50,6 +51,7 @@ const moduleIcons = {
   guide: BookOpen,
   test: FlaskConical,
   ai: FlaskConical,
+  mail: Mail,
 };
 type User = {
   id: string;
@@ -127,6 +129,9 @@ export function AccessWorkspace({
   const [larkDirty,setLarkDirty]=useState(false);
   const [larkDraft,setLarkDraft]=useState<any>(undefined);
   const [initialLocation] = useState(()=>systemLocation(window.location.href,employee.id));
+  const [mailView,setMailView]=useState<'accounts'|'pool'>(initialLocation.params.get('mailView')==='pool'?'pool':'accounts');
+  const [mailRecordId,setMailRecordId]=useState(initialLocation.params.get(mailView==='pool'?'mailPool':'mailAccount')??'');
+  const [mailReturnPool,setMailReturnPool]=useState(initialLocation.params.get('mailFromPool')??'');
   const [tab, setTab] = useState(initialLocation.tab),
     [readDenied,setReadDenied]=useState(false),
     [data, setData] = useState<{ users: User[]; roles: Role[]; testDirectoryAvailable?:boolean } | null>(null),
@@ -299,6 +304,9 @@ export function AccessWorkspace({
     const {tab:nextTab,params,href:canonical}=systemLocation(href,employee.id);
     if(href!==canonical)window.history.replaceState(window.history.state,'',canonical);
     setTab(nextTab);
+    setMailView(params.get('mailView')==='pool'?'pool':'accounts');
+    setMailRecordId(params.get(params.get('mailView')==='pool'?'mailPool':'mailAccount')??'');
+    setMailReturnPool(params.get('mailFromPool')??'');
     setRecordId(nextTab==='users'?params.get('user')||'':nextTab==='roles'?params.get('role')||'':'');
     setRoleFilter(params.get('assignedRole')||'');
     setShowRecords(false);
@@ -661,10 +669,12 @@ export function AccessWorkspace({
             {[
               ["ai", "AI services", "Layanan AI", "AI服务配置"],
               ["users", "Users & access", "Pengguna & akses", "用户与权限"],
+              ["mail", "Email configuration", "Konfigurasi email", "邮件配置"],
               ["guide", "Guide", "Panduan", "使用指南"],
               ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
               .filter((a) => a[0] !== "ai" || isAiAdministrator(employee))
+              .filter((a) => a[0] !== "mail" || canUseAccessRecovery(employee))
               .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
                 const Icon = moduleIcons[a[0] as keyof typeof moduleIcons];
@@ -712,7 +722,7 @@ export function AccessWorkspace({
               <p>{t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。")}</p></div>
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")} secondary={refresh}/>
           </div>}/>
-          :tab!=='guide'&&!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
+          :tab!=='guide'&&tab!=='mail'&&!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
           <div>
             <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
@@ -768,6 +778,9 @@ export function AccessWorkspace({
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
+            {tab==='mail'&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} admin allowed={canUseAccessRecovery(employee)}
+              view={mailView} recordId={mailRecordId} returnPoolId={mailReturnPool} onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}
+              onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>}
             {tab==='guide'&&<SystemAccessGuide lang={lang} canAudit={can('access.audit')}
               canAi={isAiAdministrator(employee)} canTest={!!data?.testDirectoryAvailable}
               canRecover={canUseAccessRecovery(employee)} shellHeight={shellHeight}

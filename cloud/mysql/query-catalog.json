@@ -100,7 +100,8 @@
     "sql": "INSERT INTO access_operations(actor_id,operation_id,action,fingerprint,result) VALUES(:p1,:p2,:p3,:p4,:p5)",
     "sources": [
       "server/portal/accessOperations.ts",
-      "server/portal/accessRecovery.ts"
+      "server/portal/accessRecovery.ts",
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)": {
@@ -395,8 +396,26 @@
       "server/portal/enrollmentInterests.ts"
     ]
   },
-  "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,'simulated',UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key": {
-    "sql": "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,'simulated',UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key",
+  "INSERT INTO enrollment_mail_attempts(id,environment,event_key,account,recipient,day_key,month_key,started_ms,is_external,pool_id,state)\n      VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,:p10,'reserved')": {
+    "sql": "INSERT INTO enrollment_mail_attempts(id,environment,event_key,account,recipient,day_key,month_key,started_ms,is_external,pool_id,state)\n      VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,:p10,'reserved')",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO enrollment_mail_bindings(environment,recipient,account)\n        VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE account=account": {
+    "sql": "INSERT INTO enrollment_mail_bindings(environment,recipient,account)\n        VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE account=account",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO enrollment_mail_configuration(environment,revision,config)\n    VALUES(:p1,0,:p2) ON DUPLICATE KEY UPDATE environment=environment": {
+    "sql": "INSERT INTO enrollment_mail_configuration(environment,revision,config)\n    VALUES(:p1,0,:p2) ON DUPLICATE KEY UPDATE environment=environment",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key": {
+    "sql": "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key",
     "sources": [
       "server/portal/enrollmentNotices.ts"
     ]
@@ -659,6 +678,24 @@
       "server/portal/payments.ts",
       "server/portal/runtime.ts",
       "server/portal/salesWorkflow.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.configured',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.configured',:p2)",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.pool_selected',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.pool_selected',:p2)",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.reassigned',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.reassigned',:p2)",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.handover.required',:p2)": {
@@ -1101,7 +1138,8 @@
     "sql": "SELECT * FROM access_operations WHERE actor_id=:p1 AND operation_id=:p2",
     "sources": [
       "server/portal/accessOperations.ts",
-      "server/portal/accessRecovery.ts"
+      "server/portal/accessRecovery.ts",
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT * FROM access_roles": {
@@ -1634,6 +1672,24 @@
       "server/portal/aiServiceConfig.ts"
     ]
   },
+  "SELECT account FROM enrollment_mail_bindings WHERE environment=:p1 AND recipient=:p2": {
+    "sql": "SELECT account FROM enrollment_mail_bindings WHERE environment=:p1 AND recipient=:p2",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT account,\n    SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,recipient,NULL)) AS external,\n    COUNT(*) AS monthly,MAX(day_key=:p2 AND recipient=:p4) AS seen\n    FROM enrollment_mail_attempts WHERE environment=:p1 AND month_key=:p3 AND state<>'rejected'\n    GROUP BY account": {
+    "sql": "SELECT account,\n    SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,recipient,NULL)) AS external,\n    COUNT(*) AS monthly,MAX(day_key=:p2 AND recipient=:p4) AS seen\n    FROM enrollment_mail_attempts WHERE environment=:p1 AND month_key=:p3 AND state<>'rejected'\n    GROUP BY account",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT account,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2 GROUP BY account": {
+    "sql": "SELECT account,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2 GROUP BY account",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT actor,data,created_at FROM portal_audit WHERE action='campaign.promotion.review' AND JSON_CONTAINS(:p1,JSON_QUOTE(JSON_UNQUOTE(JSON_EXTRACT(data,'$.leadId')))) ORDER BY id DESC": {
     "sql": "SELECT actor,data,created_at FROM portal_audit WHERE action='campaign.promotion.review' AND JSON_CONTAINS(:p1,JSON_QUOTE(JSON_UNQUOTE(JSON_EXTRACT(data,'$.leadId')))) ORDER BY id DESC",
     "sources": [
@@ -1815,6 +1871,18 @@
     "sql": "SELECT COUNT(*) AS n FROM notification_jobs WHERE event_id=:p1",
     "sources": [
       "server/portal/worker.ts"
+    ]
+  },
+  "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id=:p3 AND state<>'rejected'": {
+    "sql": "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id=:p3 AND state<>'rejected'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2": {
+    "sql": "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT course_id,state FROM crm_payment_analytics WHERE id=:p1 FOR UPDATE": {
@@ -2035,6 +2103,12 @@
       "server/portal/enrollmentNotices.ts"
     ]
   },
+  "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40": {
+    "sql": "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT expected,timing,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n    FROM enrollment_refund_cases WHERE order_id=:p1": {
     "sql": "SELECT expected,timing,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n    FROM enrollment_refund_cases WHERE order_id=:p1",
     "sources": [
@@ -2057,6 +2131,12 @@
     "sql": "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE",
     "sources": [
       "server/portal/assignmentBackfill.ts"
+    ]
+  },
+  "SELECT FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) AS now_ms": {
+    "sql": "SELECT FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) AS now_ms",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT GET_LOCK(:p1,0) AS acquired": {
@@ -2223,6 +2303,12 @@
     "sql": "SELECT id FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p2 FOR SHARE",
     "sources": [
       "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')": {
@@ -2980,6 +3066,12 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "SELECT n.event_key AS id,n.subject_id AS recordId,n.kind,n.state,\n      n.payload->>'$.subject' AS subject,NULLIF(n.payload->>'$.sender','null') AS sender,\n      n.payload->>'$.routeReason' AS routeReason,\n      DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n      FROM enrollment_notification_receipts n WHERE n.channel='email' AND n.kind NOT IN ('otp_apply','otp_mine')\n      ORDER BY n.recorded_at DESC,n.event_key DESC LIMIT 100": {
+    "sql": "SELECT n.event_key AS id,n.subject_id AS recordId,n.kind,n.state,\n      n.payload->>'$.subject' AS subject,NULLIF(n.payload->>'$.sender','null') AS sender,\n      n.payload->>'$.routeReason' AS routeReason,\n      DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n      FROM enrollment_notification_receipts n WHERE n.channel='email' AND n.kind NOT IN ('otp_apply','otp_mine')\n      ORDER BY n.recorded_at DESC,n.event_key DESC LIMIT 100",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads": {
     "sql": "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads",
     "sources": [
@@ -3104,6 +3196,12 @@
     "sql": "SELECT payload FROM enrollment_notification_receipts\n          WHERE channel='lark' AND kind='weekly_report' AND event_key=:p1",
     "sources": [
       "server/portal/enrollmentCardTargets.ts"
+    ]
+  },
+  "SELECT pool_id,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id": {
+    "sql": "SELECT pool_id,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT profile FROM portal_leads": {
@@ -3286,6 +3384,18 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1": {
+    "sql": "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1 FOR UPDATE": {
+    "sql": "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT revision,state FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT revision,state FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
     "sources": [
@@ -3332,6 +3442,12 @@
     "sql": "SELECT state FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE",
     "sources": [
       "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT state,account,started_ms FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1": {
+    "sql": "SELECT state,account,started_ms FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT state,channel,attempts,snapshot,completed_at FROM notification_jobs WHERE id=:p1": {
@@ -3821,6 +3937,36 @@
     "sql": "UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1",
     "sources": [
       "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_email_challenges SET used=TRUE,\n          resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2": {
+    "sql": "UPDATE enrollment_email_challenges SET used=TRUE,\n          resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_mail_attempts SET state=:p2 WHERE id=:p1": {
+    "sql": "UPDATE enrollment_mail_attempts SET state=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_mail_bindings SET account=:p3 WHERE environment=:p1 AND recipient=:p2": {
+    "sql": "UPDATE enrollment_mail_bindings SET account=:p3 WHERE environment=:p1 AND recipient=:p2",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_mail_configuration SET config=:p2,revision=revision+1 WHERE environment=:p1": {
+    "sql": "UPDATE enrollment_mail_configuration SET config=:p2,revision=revision+1 WHERE environment=:p1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3\n          WHERE event_key=:p1 AND state='queued'": {
+    "sql": "UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3\n          WHERE event_key=:p1 AND state='queued'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1": {

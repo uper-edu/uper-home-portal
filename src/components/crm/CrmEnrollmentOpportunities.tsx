@@ -165,6 +165,9 @@ const emailKind:Record<string,Copy> = {
 };
 const emailDelivery:Record<string,Copy> = {
   simulated:['模拟记录','Simulated record','Catatan simulasi'],
+  queued:['待发送／等待额度','Queued / waiting for quota','Dalam antrean / menunggu kuota'],
+  accepted:['SMTP 已接收','SMTP accepted','Diterima SMTP'],
+  unknown:['结果待核对','Outcome unknown','Hasil belum pasti'],
   delivered:['已送达','Delivered','Terkirim'],
   failed:['投递失败','Delivery failed','Pengiriman gagal'],
 };

@@ -4,7 +4,7 @@
 [data-admin-form] .admin-field:not(.admin-field--choice)>.admin-field-label,[data-admin-form] .admin-field:not(.admin-field--choice)>label{margin:0;font-size:14px;line-height:1.6;font-weight:500;color:var(--af-text)}
 [data-admin-form] .admin-field :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),textarea,select){box-sizing:border-box;max-width:100%;min-width:0;min-height:40px;font-size:14px;line-height:1.6;border-radius:10px}
 [data-admin-form] .admin-field--choice{display:flex;align-items:flex-start;gap:8px;margin:0;min-width:0;font-size:14px;line-height:1.6}
-[data-admin-form] .admin-field--choice input:is([type=checkbox],[type=radio]){flex:0 0 auto;align-self:start;max-width:20px;width:auto}
+[data-admin-form] .admin-field--choice input:is([type=checkbox],[type=radio]):not(.admin-switch){flex:0 0 auto;align-self:start;max-width:20px;width:auto}
 [data-admin-form] .admin-field--choice .admin-field-label{font-weight:400}
 [data-admin-form] .admin-field-control{display:grid;gap:var(--admin-form-help-gap);min-width:0}
 [data-admin-form] .admin-field-control>:is(small,p){margin:0;font-size:13px;line-height:1.6;color:var(--af-muted)}

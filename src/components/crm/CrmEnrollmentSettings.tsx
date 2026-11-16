@@ -1,4 +1,5 @@
-import {BookOpen, CalendarCheck, Clock3} from 'lucide-react';
+import {EnrollmentMailWorkspace} from '../EnrollmentMailWorkspace';
+import {BookOpen, CalendarCheck, Clock3, Mail} from 'lucide-react';
 import {AdminTopicFrame} from '../AdminTopicFrame';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
@@ -10,7 +11,7 @@ import {CrmEnrollmentRules} from './CrmEnrollmentRules';
 import {CrmRecordTitle} from './CrmRecordWorkspace';
 import {enrollmentSettingSections, enrollmentSettingsPath, resolveEnrollmentSettingsTopic} from './operationsSections';
 
-const topicIcons={courses:BookOpen,'enrollment-classes':CalendarCheck,'enrollment-rules':Clock3};
+const topicIcons={courses:BookOpen,'enrollment-classes':CalendarCheck,'enrollment-rules':Clock3,'enrollment-mail':Mail};
 
 export function CrmEnrollmentSettings({lang,isLight,allowed,params,rulesDirty,onRulesDraftChange,onEditorDraftChange,onNavigate}:{
   lang:CrmLanguage;isLight:boolean;allowed:boolean;params:URLSearchParams;rulesDirty:boolean;
@@ -43,6 +44,7 @@ export function CrmEnrollmentSettings({lang,isLight,allowed,params,rulesDirty,on
         {topic==='courses'&&<CrmCourses lang={lang} isLight={isLight} onDraftChange={onEditorDraftChange}/>}
         {topic==='enrollment-classes'&&<CrmEnrollmentClasses key={classId??'all'} lang={lang} isLight={isLight} target={classId} onDraftChange={onEditorDraftChange}
           onShowAll={()=>onNavigate(enrollmentSettingsPath(topic,{returnTo}))}/>}
+        {topic==='enrollment-mail'&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} onDraft={onEditorDraftChange}/>}
         <div hidden={topic!=='enrollment-rules'}>
           <CrmEnrollmentRules lang={lang} isLight={isLight} active={topic==='enrollment-rules'} onDraftChange={onRulesDraftChange}/>
         </div>

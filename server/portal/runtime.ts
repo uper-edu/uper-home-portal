@@ -1,3 +1,4 @@
+import {mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
 import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentManagement } from './enrollmentManagement.ts';
@@ -358,6 +359,8 @@ export async function mountPortal(app: Express) {
   mountEnrollmentCatalog(app, { wrap, staff });
   mountEnrollmentManagement(app, wrap, staff);
   mountEnrollmentApplication(app, { wrap, staff });
+  mountEnrollmentMail(app,{wrap,staff});
+  startEnrollmentMail();
   mountAccessOperations(app);
   mountLocalAuth(app, (req) => platform.authenticate(req));
   mountAccessHandovers(app);

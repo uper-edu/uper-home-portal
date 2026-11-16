@@ -113,6 +113,16 @@ async function applyEnrollmentOrdersMigration(connection) {
   }
   await connection.query(await readFile(new URL('./schema-enrollment-20261115014556.sql',import.meta.url),'utf8'));
   await connection.query(await readFile(new URL('./schema-enrollment-20261115183339.sql',import.meta.url),'utf8'));
+  const mailDdl=await readFile(new URL('./schema-enrollment-20261116191537.sql',import.meta.url),'utf8');
+  for(const statement of mailDdl.split(';').map(sql=>sql.trim()).filter(Boolean))await connection.query(statement);
+  const [mailAttemptColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_mail_attempts');
+  const mailPoolId=mailAttemptColumns.find(column=>column.Field==='pool_id');
+  if(!mailPoolId){
+    const sql=await readFile(new URL('./schema-enrollment-20261116214753.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(mailPoolId.Type.toLowerCase()!=='varchar(40)'||mailPoolId.Null!=='YES'||mailPoolId.Default!==null){
+    throw Error('Enrollment mail attempt pool does not match the expected schema');
+  }
 }
 
 async function applyContentMigration(connection){

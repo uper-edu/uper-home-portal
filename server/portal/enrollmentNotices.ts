@@ -1,3 +1,4 @@
+import {enrollmentMailConfigured,enrollmentMailMode} from './enrollmentMail.ts';
 import { renderEnrollmentEmail, type EnrollmentEmailKind } from './enrollmentEmail.ts';
 import { cardMoney, enrollmentCard } from './enrollmentCards.ts';
 import { enrollmentWeekOf, enrollmentWeekTotals, latestDueEnrollmentWeek } from './enrollmentWeekly.ts';
@@ -10,10 +11,10 @@ type Notice = Exclude<EnrollmentEmailKind,'otp_apply'|'otp_mine'|'assistance_con
 const pendingMoney=(amount:number|null,unknown:number)=>cardMoney(amount)+(amount!==null&&unknown?'（另有 '+unknown+' 笔金额未知）':'');
 
 async function record(c:Client,key:string,channel:'email'|'lark',kind:string,subjectId:string,payload:object) {
-  // The local app records the exact result of simulated delivery. There is no network transport.
+  const queued=channel==='email'&&enrollmentMailMode()!=='disabled'&&await enrollmentMailConfigured(c);
   await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
-    VALUES(:p1,:p2,:p3,:p4,:p5,'simulated',UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key`,
-    [key,channel,kind,subjectId,payload]);
+    VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key`,
+    [key,channel,kind,subjectId,queued?{...payload,environment:process.env.PORTAL_ENV}:payload,queued?'queued':'simulated']);
 }
 export async function latestAssistanceMail(c:Client,id:string){
   return (await c.query(`SELECT event_key AS id,state,DATE_FORMAT(recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt
@@ -27,6 +28,12 @@ export async function sendAssistanceMail(c:Client,local:NonNullable<ReturnType<t
   const content={salutation:data.name,language:data.lang,class:data.quote.level,firstLesson:data.quote.firstLesson,
     schedule:data.quote.schedule,price:data.quote.price,deadline:expiresAt,url:enrollmentAssistancePath(id,data.lang)};
   const message=renderEnrollmentEmail('assistance_confirmation',content);
+  if(await enrollmentMailConfigured(c)){
+    await record(c,'email:assistance_confirmation:'+id+':'+attempt,'email','assistance_confirmation',id,{
+      ...message,recipient:email,environment:process.env.PORTAL_ENV,deliveryId:'assistance-'+attempt,
+    });
+    return latestAssistanceMail(c,id);
+  }
   let state='simulated';
   try{await local.deliverMessage('assistance-'+attempt,email,message);}
   catch{state='failed';}
