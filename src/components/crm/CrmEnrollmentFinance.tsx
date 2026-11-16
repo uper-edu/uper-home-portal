@@ -53,6 +53,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   const params=new URLSearchParams(window.location.search),target=params.get('enrollmentOrder');
   const rosterBack=enrollmentRosterReturnPath(params.get('rosterReturn'),target);
   const returnTo=enrollmentOpportunityReturnPath(params.get('opportunityReturn'));
+  const sourceBack=rosterBack??returnTo;
   const [orderId,setOrderId]=useState<string|null>(target);
   const [search,setSearch]=useState('');
   const [query,setQuery]=useState('');
@@ -77,7 +78,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   const [refundBusy,setRefundBusy]=useState(false);
   const busy=receiptOperation.busy||refundBusy;
   const [saved,setSaved]=useState(false);
-  const [discard,setDiscard]=useState(false);
+  const [discard,setDiscard]=useState<{destination?:string}>();
   useEffect(()=>{onRefreshingChange(loading);return()=>onRefreshingChange(false);},[loading,onRefreshingChange]);
   useEffect(()=>{onDirty(dirty);return ()=>onDirty(false);},[dirty,onDirty]);
   useEffect(()=>{onBusy(busy);return ()=>onBusy(false);},[busy,onBusy]);
@@ -131,9 +132,9 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
     setReviewFocus(review);
     setDetails(undefined);setDetailError('');setSaved(false);setOrderId(id);
   };
-  const closeOrder=()=>{
-    if(rosterBack){window.location.assign(rosterBack);return;}
-    receiptOperation.clear();setOrderId(null);setDetails(undefined);setSelected(undefined);setDirty(false);setDetailError('');setDiscard(false);setSaved(false);
+  const closeOrder=(destination?:string)=>{
+    if(destination){window.location.assign(destination);return;}
+    receiptOperation.clear();setOrderId(null);setDetails(undefined);setSelected(undefined);setDirty(false);setDetailError('');setDiscard(undefined);setSaved(false);
     const url=new URL(window.location.href);
     if(url.searchParams.has('enrollmentOrder')){
       url.searchParams.delete('enrollmentOrder');url.searchParams.delete('opportunityReturn');url.searchParams.delete('rosterReturn');
@@ -141,7 +142,11 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
       window.history.replaceState(window.history.state,'',url);onLocation(url.href);
     }
   };
-  const close=()=>{if(!busy){if(dirty)setDiscard(true);else closeOrder();}};
+  const requestClose=(destination?:string)=>{
+    if(busy)return;
+    if(dirty)setDiscard({destination});
+    else closeOrder(destination);
+  };
   const afterWrite=()=>{setDirty(false);setRefresh(value=>value+1);onQueueChanged();};
   const receiptOutcome=async(result:ReturnType<typeof receiptOperation.submit>)=>{
     const outcome=await result;
@@ -169,7 +174,6 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   const statusLabel=(state:string)=>enrollmentStatuses[state]?enrollmentCopy(lang,enrollmentStatuses[state]):
     state==='recovered'?t('已恢复报名','Enrollment restored','Pendaftaran dipulihkan'):state;
   const row=details?.id===orderId?details?.row:undefined;
-  const pending=row&&selected===row.id;
   const hasResults=Boolean(list?.orders.length);
   return <section className="crm-finance-workspace" aria-label={paymentWorkspaceLabel('enrollment',lang)}>
     {denied?<p role="alert">{t('你没有报名订单核款权限。','You do not have enrollment payment access.','Anda tidak memiliki akses verifikasi pembayaran.')}</p>:<>
@@ -213,10 +217,11 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
       </footer>}
     </>}
     {orderId&&<CrmOperationLayer title={row?.name??t('报名核款详情','Enrollment payment details','Detail pembayaran pendaftaran')}
-      context={row?className(row):undefined} navigation={row&&!pending&&(rosterBack
-        ? <AdminRecordBack target={{label:t('返回班次名单','Back to class roster','Kembali ke daftar siswa'),onClick:close,disabled:busy}}/>
-        : returnTo&&<AdminRecordBack target={{label:t('返回商机列表','Back to opportunities','Kembali ke daftar peluang'),href:returnTo}}/>)}
-      lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={close}>
+      context={row?className(row):undefined} navigation={row&&sourceBack&&<AdminRecordBack target={{
+        label:rosterBack?t('返回班次名单','Back to class roster','Kembali ke daftar siswa'):t('返回商机列表','Back to opportunities','Kembali ke daftar peluang'),
+        onClick:()=>requestClose(sourceBack),disabled:busy,
+      }}/>}
+      lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={()=>requestClose(rosterBack)}>
     <div className="crm-enrollment-finance-detail" onChange={()=>setDirty(true)}>
     {detailError&&<p role="alert">{detailError}</p>}
     {saved&&<span className="crm-opportunity-feedback" role="status">{t('实收已登记','Verified receipt recorded','Dana terverifikasi telah dicatat')}</span>}
@@ -252,7 +257,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
           </a>
         </li>)}</ul>
       </CrmDisclosure>}
-      {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy}/> :
+      {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy} onDraftChange={()=>setDirty(true)}/> :
       selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" ref={receiptTrigger} className="crm-work-button" data-primary onClick={() => {
         setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSaved(false);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button></div>
@@ -292,6 +297,6 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
     </article>}
     </div>
     </CrmOperationLayer>}
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={closeOrder}/>}
+    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(undefined)} onDiscard={()=>closeOrder(discard.destination)}/>}
   </section>;
 }

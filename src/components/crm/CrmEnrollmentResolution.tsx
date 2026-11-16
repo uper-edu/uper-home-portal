@@ -512,7 +512,7 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
   </section>;
 }
 
-export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:string;lang:CrmLanguage;isLight:boolean;onUpdate:()=>void;onBusyChange?:(busy:boolean)=>void}) {
+export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange,onDraftChange}:{id:string;lang:CrmLanguage;isLight:boolean;onUpdate:()=>void;onBusyChange?:(busy:boolean)=>void;onDraftChange?:()=>void}) {
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
   const [details,setDetails]=useState<RefundDetails>();
   const [source,setSource]=useState('');
@@ -622,7 +622,8 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
       <AdminField required>{t('原收款流水','Original receipt','Referensi penerimaan asal')}
         <CrmSingleSelect label={t('原收款流水','Original receipt','Referensi penerimaan asal')} value={source}
           lang={lang} isLight={isLight} required options={details.receipts.filter(row=>row.remaining>0)
-            .map(row=>({value:row.reference,label:row.reference+' · '+formatCurrency(row.remaining,lang)}))} onChange={setSource}/>
+            .map(row=>({value:row.reference,label:row.reference+' · '+formatCurrency(row.remaining,lang)}))}
+          onChange={value=>{if(value!==source){setSource(value);onDraftChange?.();}}}/>
       </AdminField>
       {original&&<p>{t('原公司收款账户','Original company receiving account','Rekening penerima perusahaan asal')} · {original.account??t('未记录，请核对原交易','Not recorded. Check the original transaction.','Belum dicatat. Periksa transaksi asal.')}</p>}
       <AdminField required>{t('退款流水号','Refund bank reference','Referensi bank pengembalian')}<input name="reference" required maxLength={120}/></AdminField>
