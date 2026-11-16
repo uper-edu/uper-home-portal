@@ -21,7 +21,7 @@ import { interestOption } from '../EnrollmentInterests';
 import { enrollmentStatuses } from '../EnrollmentApplication';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions } from '../AdminFormLayout';
+import { AdminFormActions, AdminFormFeedback } from '../AdminFormLayout';
 import { describeFollowUpTask } from '../../utils/crmFollowUp';
 import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
 import { CrmDisclosure } from './CrmDisclosure';
@@ -813,8 +813,12 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           })}
         </CrmListTable>}
     </>}
-    {notice&&<span className="crm-opportunity-feedback" role="status">{t(lang,['商机进展已保存','Opportunity progress saved','Kemajuan peluang tersimpan'])}</span>}
-    {saveError&&<p role="alert">{t(lang,['暂时无法读取最新记录，请刷新后查看。','The latest record could not be loaded. Refresh to view it.','Catatan terbaru belum dapat dimuat. Muat ulang untuk melihatnya.'])}</p>}
+    {saveError?<AdminFormFeedback state="error" lang={lang} placement="floating">
+      {notice?t(lang,['进展已保存，暂时无法刷新记录。','Progress saved, but the record could not be refreshed.','Kemajuan tersimpan, tetapi catatan belum dapat dimuat ulang.']):
+        t(lang,['暂时无法打开进展记录，请重试。','Progress could not be opened. Try again.','Catatan kemajuan belum dapat dibuka. Coba lagi.'])}
+    </AdminFormFeedback>:notice&&<AdminFormFeedback state="saved" lang={lang} placement="floating">
+      {t(lang,['商机进展已保存','Opportunity progress saved','Kemajuan peluang tersimpan'])}
+    </AdminFormFeedback>}
     {progress&&<CrmOperationLayer progress customerContext={false} lang={lang} isLight={isLight} busy={busy}
       context={progress.opportunity.customerName} title={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])} onClose={closeProgress}>
       <CrmSimpleWorkflow lead={progress.lead} fixedOpportunity={progress.opportunity} lang={lang} isLight={isLight} timezone={viewerTimeZone()}

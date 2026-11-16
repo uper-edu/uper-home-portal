@@ -1,9 +1,11 @@
+import {AdminCopyAction,AdminSecondaryActions} from '../admin/AdminRecordActions';
+import {AdminRowAction} from '../admin/AdminListControl';
 import {crmInstant,formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {INSTAGRAM_BIO_CAMPAIGN,isInstagramBioPromotion} from '../../utils/instagramBioCampaign';
 import evergreenLinks from '../../data/evergreenPromotionLinks.json';
 import {promotionLandingPaths, promotionKindForMedium, promotionCodePattern} from '../../utils/promotionNavigation';
 import {CrmFormSection} from './CrmFormLayout';
-import {AdminFormActions} from '../AdminFormLayout';
+import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
 import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
 import { campaignUi, campaignUiError } from "../../utils/campaignI18n";
 import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -86,8 +88,6 @@ function LinkCard({
   const shortUrl = campaignPromotionShortUrl(link.id, window.location.origin, link.shortCode);
   const [qrOpen, setQrOpen] = useState(false);
   const qr = useCampaignQr(qrOpen ? shortUrl : null);
-  const [feedback, setFeedback] = useState("");
-  const [fullLinkFeedback, setFullLinkFeedback] = useState("");
   return (
     <article className="campaign-promotion-card">
       <div>
@@ -99,39 +99,18 @@ function LinkCard({
             )}
           </h3>
           <div className="campaign-promotion-actions">
-            <button
-              type="button"
-              className="campaign-workspace-action campaign-primary"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(shortUrl);
-                  setFeedback("Short link copied.");
-                } catch {
-                  setFeedback(
-                    "Copy unavailable. Select the short link and copy it manually.",
-                  );
-                }
-              }}
-            >
-              {u("Copy short link")}
-            </button>
-            <button type="button" className="campaign-workspace-action" onClick={() => setQrOpen(true)}>
+            <AdminRowAction onClick={() => setQrOpen(true)}>
               {u("QR code")}
-            </button>
-            <a
-              className="campaign-workspace-action"
-              href={shortUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {u("Preview entry")}
-            </a>
-            {!isPreset && onDelete && (
-              <button type="button" className="campaign-workspace-action" onClick={onDelete}
-                aria-label={u("Delete promotion link: {name}", {name:link.name})}>
+            </AdminRowAction>
+            <AdminSecondaryActions label={u("More actions for {name}",{name:link.name})}>
+              <AdminRowAction href={shortUrl} target="_blank" rel="noreferrer">
+                {u("Preview entry")}
+              </AdminRowAction>
+              {!isPreset&&onDelete&&<button type="button" className="admin-row-action" onClick={onDelete} data-action-tone="danger"
+                aria-label={u("Delete promotion link: {name}",{name:link.name})}>
                 {u("Delete promotion link")}
-              </button>
-            )}
+              </button>}
+            </AdminSecondaryActions>
           </div>
         </div>
         <p>
@@ -148,31 +127,23 @@ function LinkCard({
             ? <time dateTime={createdAt.toISOString()}>{formatCrmEventTime(link.createdAt).slice(0,16)}</time>
             : u(link.createdAt ? "Time needs review" : "Time not recorded")}
         </p>
-        <AdminField className="campaign-field">
-          <span>{u("Short link")}</span>
-          <input
-            aria-label={u("Short link: {name}", { name: link.name })}
-            readOnly
-            value={shortUrl}
-            onFocus={(e) => e.target.select()}
-          />
-        </AdminField>
-        <p role="status">{feedback && u(feedback)}</p>
+        <div className="admin-copy-field">
+          <AdminField className="campaign-field">
+            <span>{u("Short link")}</span>
+            <input aria-label={u("Short link: {name}",{name:link.name})}
+              readOnly value={shortUrl} onFocus={event=>event.currentTarget.select()}/>
+          </AdminField>
+          <AdminCopyAction label={u("Copy short link")} value={shortUrl} lang={lang}/>
+        </div>
         <details>
           <summary>{u("Tracking details")}</summary>
-          <AdminField className="campaign-field">
-            <span>{u("Full link")}</span>
-            <input readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
-          </AdminField>
-          <button type="button" className="crm-work-button" onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(url);
-              setFullLinkFeedback("Full link copied.");
-            } catch {
-              setFullLinkFeedback("Copy unavailable. Select and copy the link above.");
-            }
-          }}>{u("Copy full link")}</button>
-          <p role="status">{fullLinkFeedback && u(fullLinkFeedback)}</p>
+          <div className="admin-copy-field">
+            <AdminField className="campaign-field">
+              <span>{u("Full link")}</span>
+              <input readOnly value={url} onFocus={event=>event.currentTarget.select()}/>
+            </AdminField>
+            <AdminCopyAction label={u("Copy full link")} value={url} lang={lang}/>
+          </div>
           <p>
             {u("Campaign:")} {campaign.code}
           </p>
@@ -384,9 +355,7 @@ export function CampaignPromotionLinks({
         </p>
       </header>
       {notice && (
-        <CrmSaveFeedback lang={lang} state="saved">
-          {u(notice)}
-        </CrmSaveFeedback>
+        <AdminFormFeedback lang={lang} state="saved" placement="floating">{u(notice)}</AdminFormFeedback>
       )}
       {adding && (
         <CrmOperationLayer compose customerContext={false}

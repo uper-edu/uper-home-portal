@@ -1,3 +1,4 @@
+import {AdminRowAction} from '../admin/AdminListControl';
 import { AdminFormSection } from '../AdminFormLayout';
 import { CrmDisclosure } from './CrmDisclosure';
 import { campaignUi, type CampaignUiLanguage } from '../../utils/campaignI18n';
@@ -10,12 +11,14 @@ export function CampaignSourceEvidence({
   originalPromotionId,
   onLead,
   lang = 'en',
+  embedded = false,
 }: {
   leadId: string;
   evidence: any;
   originalPromotionId?: string;
   onLead?: (id: string) => void;
   lang?: CampaignUiLanguage;
+  embedded?: boolean;
 }) {
   const u = campaignUi(lang);
   const distinctParameters = (parameters: {key: string; value: string}[] = []) =>
@@ -33,9 +36,8 @@ export function CampaignSourceEvidence({
     </dl>
   );
   const savedParameters = distinctParameters(evidence?.parameters);
-  return (
-    <AdminFormSection className="campaign-source-evidence crm-form-section" title={u('Source evidence')}
-      actions={onLead && <button type="button" className="campaign-workspace-action" onClick={() => onLead(leadId)}>{u('Open customer')}</button>}>
+  const openCustomer=onLead&&<AdminRowAction onClick={()=>onLead(leadId)}>{u('Open customer')}</AdminRowAction>;
+  const content=<>
       {parameterList(savedParameters)}
       {evidence?.entries?.map((entry: any) => {
         const heading = <>{entry.path} · {formatCrmEventTime(entry.lastActivityAt) || u('Time not recorded')}</>;
@@ -49,6 +51,9 @@ export function CampaignSourceEvidence({
         ) : <p className="campaign-review-evidence-entry" key={entry.conversationId}>{heading}</p>;
       })}
       {!savedParameters.length && !evidence?.entries?.length && <p>{u('No additional entry parameters recorded.')}</p>}
-    </AdminFormSection>
-  );
+  </>;
+  return embedded?<div className="campaign-source-evidence">{openCustomer}{content}</div>:
+    <AdminFormSection className="campaign-source-evidence crm-form-section" title={u('Source evidence')} actions={openCustomer}>
+      {content}
+    </AdminFormSection>;
 }

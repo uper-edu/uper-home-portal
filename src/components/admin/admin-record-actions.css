@@ -1,0 +1,62 @@
+.admin-compact-action {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--admin-action);
+  background: transparent;
+  cursor: pointer;
+}
+.admin-compact-action:hover:not(:disabled) { background: var(--admin-selected); }
+.admin-compact-action:focus-visible { outline: 2px solid var(--admin-focus); outline-offset: 2px; }
+.admin-compact-action:disabled { opacity: .55; cursor: default; }
+.admin-secondary-actions {
+  z-index: 70;
+  position: fixed;
+  inset: auto auto 8px 8px;
+  margin: 0;
+  padding: 6px;
+  min-width: 155px;
+  max-width: calc(100vw - 16px);
+  max-height: min(360px, calc(100dvh - 16px));
+  overflow: auto;
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 15%);
+}
+.admin-secondary-actions:popover-open { display: grid; gap: 2px; }
+.admin-secondary-actions > :is(button,a) { justify-content: flex-start; text-align: start; padding: 8px 10px; min-height: 40px; }
+.admin-secondary-actions > :is(button,a):hover { background: var(--admin-selected); }
+.admin-secondary-actions > [data-action-tone=danger] { color: var(--admin-danger); }
+.admin-copy-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px; }
+.admin-copy-field > .admin-field { margin-block: 0; min-width: 0; }
+.admin-copy-control { display: inline-flex; position: relative; }
+.admin-copy-status[data-state] {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + 4px);
+  right: 0;
+  width: max-content;
+  max-width: min(260px, 65vw);
+  padding: 5px 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  border: 1px solid var(--admin-success-border);
+  border-radius: 8px;
+  background: var(--admin-success-bg);
+  color: var(--admin-success);
+  pointer-events: none;
+}
+.admin-copy-status[data-state=failed] {
+  border-color: var(--admin-danger-border);
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger);
+}
+
+@media (max-width: 600px) { .admin-compact-action { width: 44px; height: 44px; } }

@@ -1,4 +1,5 @@
 import {AdminFormFeedback} from '../AdminFormLayout';
+import {CrmSearchField} from './CrmSearchField';
 import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
@@ -52,7 +53,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Search,
   QrCode,
   Copy,
   ExternalLink,
@@ -638,15 +638,8 @@ export function CrmCampaignHub({
             isLight={isLight}
           />
           <div className="campaign-home-toolbar">
-            <label className="campaign-list-search">
-              <Search size={16} />
-              <input
-                aria-label={u("Search campaigns")}
-                placeholder={u("Search name or code…")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </label>
+            <CrmSearchField className="campaign-list-search" label={u("Search campaigns")}
+              placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>
             <CrmSelect
               label={u("Campaign status filter")}
               lang={lang}
@@ -756,16 +749,8 @@ export function CrmCampaignHub({
                 <PanelLeftClose size={18} />
               </button>
             </div>
-            <label className="campaign-list-search">
-              <Search size={16} />
-              <input
-                ref={listSearch}
-                aria-label={u("Search campaigns")}
-                placeholder={u("Search name or code…")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </label>
+            <CrmSearchField className="campaign-list-search" inputRef={listSearch} label={u("Search campaigns")}
+              placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>
             <CrmSelect
               label={u("Campaign status filter")}
               lang={lang}
@@ -849,7 +834,7 @@ export function CrmCampaignHub({
                     ref={
                       c.id === requestedCampaign ? selectedListItem : undefined
                     }
-                    className="campaign-list-item"
+                    className="campaign-list-item admin-record-card-entry"
                     data-system-source={isOrganicCampaign(c)}
                     title={c.code}
                     aria-current={
@@ -932,6 +917,7 @@ export function CrmCampaignHub({
                 aria-labelledby="campaign-page-title"
               >
                 <CrmDetailHeader
+                  back={{label:u("Back to campaign list"),onClick:closeCampaign}}
                   titleId="campaign-page-title"
                   titleRef={pageHeading}
                   title={
@@ -988,14 +974,7 @@ export function CrmCampaignHub({
                             </button>
                           </>
                         )}
-                      <button
-                        type="button"
-                        className="crm-work-button"
-                        title={u("Return to campaign cards")}
-                        onClick={closeCampaign}
-                      >
-                        {u("Campaign list")}
-                      </button>
+
                     </>
                   }
                 />
