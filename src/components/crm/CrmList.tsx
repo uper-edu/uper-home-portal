@@ -1,6 +1,5 @@
 import {AdminSearchField, type AdminSearchFieldProps} from '../admin/AdminSearchField';
 import type { ReactNode } from 'react';
-import './crm-list.css';
 
 export function CrmListFilters({ label, children }: {label:string; children:ReactNode}) {
   return <div className="crm-list-filters" role="group" aria-label={label}>{children}</div>;

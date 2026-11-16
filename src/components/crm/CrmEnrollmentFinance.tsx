@@ -1,3 +1,4 @@
+import {paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
 import {AdminRecordBack} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone } from './CrmList';
@@ -170,8 +171,8 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   const row=details?.id===orderId?details?.row:undefined;
   const pending=row&&selected===row.id;
   const hasResults=Boolean(list?.orders.length);
-  return <section className="crm-finance-workspace" aria-label={t('课程报名核款','Enrollment payment verification','Verifikasi pembayaran pendaftaran')}>
-    {denied?<p role="alert">{t('你没有课程报名核款权限。','You do not have enrollment payment access.','Anda tidak memiliki akses verifikasi pembayaran.')}</p>:<>
+  return <section className="crm-finance-workspace" aria-label={paymentWorkspaceLabel('enrollment',lang)}>
+    {denied?<p role="alert">{t('你没有报名订单核款权限。','You do not have enrollment payment access.','Anda tidak memiliki akses verifikasi pembayaran.')}</p>:<>
       <CrmListFilters label={t('筛选核款订单','Filter enrollment payments','Filter pembayaran pendaftaran')}>
         <CrmListSearch label={t('搜索报名核款订单','Search enrollment payments','Cari pembayaran pendaftaran')}
           placeholder={t('学员、报名编号或班次','Learner, order number or class','Siswa, nomor pendaftaran, atau kelas')}
@@ -182,7 +183,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
       {error&&<p role="alert">{error}</p>}
       {loading&&!list&&<p className="crm-list-meta" role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
       {list&&<p className="crm-list-meta" role="status">{t(`匹配 ${list.total} 笔订单`,`${list.total} matching orders`,`${list.total} pesanan cocok`)}</p>}
-      {list&&(hasResults?<CrmListTable label={t('课程报名核款','Enrollment payment verification','Verifikasi pembayaran pendaftaran')}
+      {list&&(hasResults?<CrmListTable label={paymentWorkspaceLabel('enrollment',lang)}
         busy={loading||search.trim()!==query} headers={[t('学员与订单','Learner and order','Siswa dan pesanan'),t('班次','Class','Kelas'),
           {label:t('应收','Amount due','Tagihan'),numeric:true},{label:t('已核实实收','Verified receipts','Penerimaan terverifikasi'),numeric:true},
           {label:t('未收余额','Outstanding','Sisa tagihan'),numeric:true},t('核款状态','Payment status','Status pembayaran'),

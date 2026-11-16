@@ -20,7 +20,7 @@ test('table has one review action whether followup column is visible or hidden',
  finally{safeStorage.removeItem(key);}
 });
 test('detail sidebar is status-only even for a reviewer, without an empty stage placeholder',()=>{
- const html=workspace(lead,'worklist',{selectedId:lead.id,children:React.createElement('div',null,'DETAIL')});assert.equal(actions(html),0);assert.equal(badges(html),1);assert.doesNotMatch(html,/crm-current-stage|自己认领|核实后可认领和联系/);assert.ok(html.includes('aria-current="true"'));
+ const html=workspace(lead,'worklist',{selectedId:lead.id,children:()=>React.createElement('div',null,'DETAIL')});assert.equal(actions(html),0);assert.equal(badges(html),1);assert.doesNotMatch(html,/crm-current-stage|自己认领|核实后可认领和联系/);assert.ok(html.includes('aria-current="true"'));
 });
 test('nonreviewers see status and one brief explanation, never a disabled review button',()=>{
  const value={...lead,identityReview:{pending:true,canReview:false}};

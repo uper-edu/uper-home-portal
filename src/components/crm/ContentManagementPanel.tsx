@@ -554,10 +554,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
             </div>
             <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              {t(
-                'Manage website content and images in seven collections.',
-                '管理七类网站内容与图片。'
-              )}
+              {lang==='zh'? `管理 ${allSectionItems.length} 类网站内容与图片。` :
+                lang==='id'? `Kelola konten dan gambar situs dalam ${allSectionItems.length} koleksi.` :
+                  `Manage website content and images in ${allSectionItems.length} collections.`}
             </p>
           </div>
         </div>

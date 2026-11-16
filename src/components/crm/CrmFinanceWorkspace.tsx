@@ -6,7 +6,7 @@ import {useEffect,useRef,useState} from 'react';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {CrmPayments} from './CrmPayments';
 import {CrmPaymentStatus} from './CrmPaymentStatus';
-import {paymentRemainingTone} from '../../utils/crmPaymentPresentation';
+import {paymentRemainingTone,paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {canVerifyPayments,paymentListFilters,paymentListNextAction,type PaymentListFilters,type PaymentListRow} from '../../utils/crmPaymentWorklist';
@@ -52,9 +52,9 @@ export function CrmFinanceWorkspace({employee,lang,isLight,refreshVersion,onRefr
  {error&&<AdminListState lang={lang} state="error" message={data?.rows.length?error+' '+t('显示上次成功读取的结果。','Showing the last successful result.','Menampilkan hasil terakhir yang berhasil.'):error} compact={Boolean(data?.rows.length)} onRetry={()=>setRefresh(v=>v+1)}/>}
  {!error&&!data&&<AdminListState lang={lang} state="loading"/>}
  {data&&<p className="crm-list-meta" role="status">{t(`匹配 ${data.total} 条款项记录`,`${data.total} matching payment records`,`${data.total} catatan pembayaran cocok`)}</p>}
- {!error&&data&&!data.rows.length&&<AdminListState lang={lang} state="empty" message={t('暂无符合条件的报名记录','No matching enrollments','Tidak ada pendaftaran yang sesuai')}/>}
+ {!error&&data&&!data.rows.length&&<AdminListState lang={lang} state="empty" message={t('暂无符合条件的历史客户款项。','No matching historical payments.','Tidak ada riwayat pembayaran yang sesuai.')}/>}
  {Boolean(data?.rows.length)&&<AdminListTable className="crm-finance-table" busy={updating}
-   label={t('客户款项','Customer payments','Pembayaran pelanggan')} headers={[
+   label={paymentWorkspaceLabel('historical',lang)} headers={[
      t('客户','Customer','Pelanggan'),t('课程','Course','Kursus'),
      {label:t('应收','Amount due','Tagihan'),numeric:true},
      {label:t('已核实到账','Verified receipts','Penerimaan terverifikasi'),numeric:true},

@@ -14,6 +14,7 @@ import {
 } from "../src/components/crm/CrmCustomerDetails.tsx";
 import {
   validCustomerFields,
+  defaultCustomerFields,
   workspaceAssessment,
   buyingSignals,
 } from "../src/utils/crmWorkspace.ts";
@@ -253,4 +254,9 @@ test("buying signals remain original evidence, deduplicated only for display", (
     before = JSON.stringify(l);
   assert.deepEqual(buyingSignals(l), ["Asked price", "Asked schedule"]);
   assert.equal(JSON.stringify(l), before);
+});
+
+
+test('new and reset customer field tables use the same canonical column order',()=>{
+  assert.deepEqual(validCustomerFields(undefined),validCustomerFields(defaultCustomerFields));
 });

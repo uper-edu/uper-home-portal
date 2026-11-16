@@ -28,13 +28,8 @@ export const customerFields = [
   ["campaign", "Campaign", "营销活动"],
 ] as const;
 export type CustomerField = (typeof customerFields)[number][0];
-export const defaultCustomerFields: CustomerField[] = [
-  "number",
-  "name",
-  "owner",
-  "source",
-  "lastContact",
-];
+const defaultCustomerFieldKeys:Set<CustomerField>=new Set(["number","name","owner","source","lastContact"]);
+export const defaultCustomerFields=customerFields.map(([field])=>field).filter(field=>defaultCustomerFieldKeys.has(field));
 export function validCustomerFields(value: unknown): CustomerField[] {
   if (!Array.isArray(value)) return [...defaultCustomerFields];
   const selected = customerFields

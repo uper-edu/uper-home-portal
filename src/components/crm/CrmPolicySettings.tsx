@@ -1,3 +1,4 @@
+import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {CrmCourses} from './CrmCourses';
@@ -652,7 +653,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     { num: 0, en: "Sun", zh: "周日" },
   ];
   const ruleExplanation = (
-<details className="crm-ops-explanation"><summary>{["Rule explanation and examples","Penjelasan aturan dan contoh","规则解释与示例"][languageIndex]}</summary>      {['schedule','first_response'].includes(activeCategory)&&<p className="crm-ops-note"><strong>{['Illustrative case','Contoh ilustratif','模拟实例'][languageIndex]} · {simulationResult.tierTitle} · {simulationResult.sampleLabel} ({formData.businessHours.timezone}) → {simulationResult.finalDeadline}. {['Uses the existing calendar calculator; no task is created.','Memakai perhitungan kalender yang ada; tidak membuat tugas.','复用现有日历计算，不创建任务。'][languageIndex]}</strong></p>}
+<AdminDisclosure className="crm-ops-explanation" heading={["Rule explanation and examples","Penjelasan aturan dan contoh","规则解释与示例"][languageIndex]}>      {['schedule','first_response'].includes(activeCategory)&&<p className="crm-ops-note"><strong>{['Illustrative case','Contoh ilustratif','模拟实例'][languageIndex]} · {simulationResult.tierTitle} · {simulationResult.sampleLabel} ({formData.businessHours.timezone}) → {simulationResult.finalDeadline}. {['Uses the existing calendar calculator; no task is created.','Memakai perhitungan kalender yang ada; tidak membuat tugas.','复用现有日历计算，不创建任务。'][languageIndex]}</strong></p>}
       {['schedule','first_response'].includes(activeCategory)&&<>          <div className="flex items-center gap-2">
             {activeCategory !== 'schedule' && <button
               type="button"
@@ -1205,7 +1206,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         </div>
 
 </>}<div className="crm-ops-flow" aria-label={['Rule illustration','Ilustrasi aturan','规则图解'][languageIndex]}>{currentSection.steps[languageIndex].map((step,i)=><React.Fragment key={step}>{i>0&&<b aria-hidden="true">→</b>}<span>{step}</span></React.Fragment>)}</div>
-      <p className="crm-ops-note">{isNotificationTopic(activeCategory)?['Use the save controls in each notification section.','Gunakan tombol simpan di tiap bagian notifikasi.','通知在各自区域独立保存。'][languageIndex]:['The diagram explains the process. Save applies only to the current topic; existing task deadlines are retained.','Diagram menjelaskan proses. Simpan hanya menerapkan topik saat ini; tenggat tugas lama tetap.','图解说明处理逻辑。保存仅提交当前主题，已有任务截止时间保持不变。'][languageIndex]}</p></details>
+      <p className="crm-ops-note">{isNotificationTopic(activeCategory)?['Use the save controls in each notification section.','Gunakan tombol simpan di tiap bagian notifikasi.','通知在各自区域独立保存。'][languageIndex]:['The diagram explains the process. Save applies only to the current topic; existing task deadlines are retained.','Diagram menjelaskan proses. Simpan hanya menerapkan topik saat ini; tenggat tugas lama tetap.','图解说明处理逻辑。保存仅提交当前主题，已有任务截止时间保持不变。'][languageIndex]}</p></AdminDisclosure>
   );
   return (
     <div className="crm-ops-workspace-sample" data-theme={isLight?'light':'dark'}><AdminTopicFrame selection={activeCategory} label={["Configuration topics","Topik konfigurasi","配置主题"][languageIndex]} navigation={

@@ -9,6 +9,24 @@ export function metricTime(value: unknown, now = Infinity): number | null {
   const at = interactionInstant(value instanceof Date && Number.isFinite(value.getTime()) ? value.toISOString() : value);
   return at && Date.parse(at) <= now ? Date.parse(at) : null;
 }
+const durationBands={
+  fast:["不足1小时", "Under 1 hour", "Kurang dari 1 jam"],
+  day:["1–24小时（不含24）", "1–24 hours (under 24)", "1–24 jam (kurang dari 24)"],
+  later:["24小时及以上", "24 hours or more", "24 jam atau lebih"],
+  unknown:["时长不可计算", "Cannot calculate", "Tidak dapat dihitung"],
+} as const;
+
+export function durationBandLabel(band:keyof typeof durationBands,lang:string){
+  return durationBands[band][lang==='zh'?0:lang==='id'?2:1];
+}
+
+function durationMetricLabels(prefix:readonly [string,string,string],band:keyof typeof durationBands){
+  const label=durationBands[band];
+  return [prefix[0]+"："+label[0],prefix[1]+": "+label[1],prefix[2]+": "+label[2]] as const;
+}
+const firstOutreach=["首次主动联系","First outreach","Kontak pertama"] as const;
+const firstConversation=["首次有效沟通","First conversation","Komunikasi pertama"] as const;
+
 export const metricSelections = {
   first_pending: [
     "首次联系未完成",
@@ -51,46 +69,14 @@ export const metricSelections = {
     "No outreach recorded",
     "Belum ada kontak penjualan",
   ],
-  contact_fast: [
-    "首次主动联系：1小时内",
-    "First outreach within 1h",
-    "Kontak pertama dalam 1 jam",
-  ],
-  contact_day: [
-    "首次主动联系：1–24小时",
-    "First outreach 1–24h",
-    "Kontak pertama 1–24 jam",
-  ],
-  contact_later: [
-    "首次主动联系：超过24小时",
-    "First outreach over 24h",
-    "Kontak pertama lebih dari 24 jam",
-  ],
-  contact_unknown: [
-    "首次主动联系时长不可计算",
-    "First outreach duration unavailable",
-    "Durasi kontak pertama tidak tersedia",
-  ],
-  response_fast: [
-    "首次有效沟通：1小时内",
-    "First conversation within 1h",
-    "Komunikasi pertama dalam 1 jam",
-  ],
-  response_day: [
-    "首次有效沟通：1–24小时",
-    "First conversation 1–24h",
-    "Komunikasi pertama 1–24 jam",
-  ],
-  response_later: [
-    "首次有效沟通：超过24小时",
-    "First conversation over 24h",
-    "Komunikasi pertama lebih dari 24 jam",
-  ],
-  response_unknown: [
-    "首次有效沟通时长不可计算",
-    "First conversation duration unavailable",
-    "Durasi komunikasi pertama tidak tersedia",
-  ],
+  contact_fast: durationMetricLabels(firstOutreach,"fast"),
+  contact_day: durationMetricLabels(firstOutreach,"day"),
+  contact_later: durationMetricLabels(firstOutreach,"later"),
+  contact_unknown: durationMetricLabels(firstOutreach,"unknown"),
+  response_fast: durationMetricLabels(firstConversation,"fast"),
+  response_day: durationMetricLabels(firstConversation,"day"),
+  response_later: durationMetricLabels(firstConversation,"later"),
+  response_unknown: durationMetricLabels(firstConversation,"unknown"),
   outreach_day: [
     "上次销售联系：不足1天",
     "Last outreach under 1 day",

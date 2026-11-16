@@ -31,5 +31,5 @@ test('dangerous confirmation exposes description and cancel before the confirm a
  const html=render(h(AdminConfirmation,{title:'确认删除',description:'删除后无法撤销',light:true,danger:true,cancelLabel:'取消',confirmLabel:'确认删除',onCancel(){},onConfirm(){}}));
  assert.match(html,/role="alertdialog"[^>]*data-tone="danger"/);
  assert.match(html,/aria-describedby="[^"]+"/);
- assert.match(html,/<button type="button" autofocus="">取消<\/button><button type="button" data-confirm="">确认删除/);
+ assert.match(html,/<button type="button" data-admin-initial-focus="">取消<\/button><button type="button" data-confirm="">确认删除/);
 });

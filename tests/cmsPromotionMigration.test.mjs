@@ -4,7 +4,7 @@ import {migrate} from '../cloud/mysql/migrate.mjs';
 import {bootstrapTables} from '../scripts/lib/cms-bootstrap-contract.mjs';
 
 const enrollmentTables=[
- 'enrollment_classes','enrollment_class_openings','enrollment_customer_records','enrollment_demands',
+ 'enrollment_assisted_applications','enrollment_classes','enrollment_class_openings','enrollment_customer_records','enrollment_demands',
  'enrollment_email_challenges','enrollment_email_sessions','enrollment_interest_events','enrollment_notification_receipts',
  'enrollment_opportunities','enrollment_opportunity_progress','enrollment_orders','enrollment_payment_credits','enrollment_proofs',
  'enrollment_receipts','enrollment_record_attribution','enrollment_refund_cases','enrollment_refund_payments','enrollment_refund_returns',

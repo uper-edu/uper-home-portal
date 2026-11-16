@@ -58,14 +58,11 @@ test("Assessment hierarchy in three languages preserves evidence, zeros and scor
       assert.match(html, /crm-assessment-performance/);
       assert.match(
         html,
-        /<details class="crm-disclosure crm-assessment-evidence">/,
+        /<details[^>]*class="crm-disclosure crm-assessment-evidence"[^>]*data-admin-disclosure="default">/,
       );
       assert.doesNotMatch(
         html,
         /crm-assessment-context|Learning context|Konteks belajar|学习背景|Work in China|Bekerja di Tiongkok|赴华工作/,
-      );
-      const evidenceIndex = html.indexOf(
-        'class="crm-disclosure crm-assessment-evidence"',
       );
       const selfReportLabel = {
         en: "Self-reported level",

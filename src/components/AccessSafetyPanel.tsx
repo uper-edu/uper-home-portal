@@ -1,3 +1,4 @@
+import {AdminDisclosure} from './admin/AdminDisclosure';
 import {viewerTimeZone} from '../utils/crmOperatingTime';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
 import {isCrmManager} from '../utils/crmOutreach';
@@ -78,11 +79,7 @@ export function AccessHandoverPanel({
       data-theme={isLight ? "light" : "dark"}
       aria-label={t("Staff handover", "Serah terima staf", "人员交接")}
     >
-      <details>
-        <summary>
-          {t("Staff handover", "Serah terima staf", "人员交接")} ·{" "}
-          {cases.filter((h) => h.state !== "completed").length}
-        </summary>
+      <AdminDisclosure heading={<>{t("Staff handover","Serah terima staf","人员交接")} · {cases.filter(h=>h.state!=="completed").length}</>}>
         <p>
           {t(
             "Disabling access is immediate. Transfer only selected work; existing task deadlines stay unchanged.",
@@ -295,7 +292,7 @@ export function AccessHandoverPanel({
             void load();
           }}
         />
-      </details>
+      </AdminDisclosure>
     </section>
   );
 }
