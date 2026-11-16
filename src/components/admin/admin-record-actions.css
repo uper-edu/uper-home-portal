@@ -11,6 +11,15 @@
   background: transparent;
   cursor: pointer;
 }
+.admin-compact-action[data-appearance=header] {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  border-color: var(--admin-border);
+  border-radius: 12px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
 .admin-compact-action:hover:not(:disabled) { background: var(--admin-selected); }
 .admin-compact-action:focus-visible { outline: 2px solid var(--admin-focus); outline-offset: 2px; }
 .admin-compact-action:disabled { opacity: .55; cursor: default; }

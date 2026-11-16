@@ -2,7 +2,7 @@ import {Children,useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import {Copy,Ellipsis} from 'lucide-react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
-export function AdminSecondaryActions({label,children,alwaysMenu=false}:{label:string;children:ReactNode;alwaysMenu?:boolean}){
+export function AdminSecondaryActions({label,children,alwaysMenu=false,appearance='compact'}:{label:string;children:ReactNode;alwaysMenu?:boolean;appearance?:'compact'|'header'}){
   const actions=Children.toArray(children);
   const id=useId();
   const trigger=useRef<HTMLButtonElement>(null);
@@ -16,7 +16,7 @@ export function AdminSecondaryActions({label,children,alwaysMenu=false}:{label:s
     Object.assign(panel.style,{left:left+'px',top:top+'px',bottom:'auto'});
   };
   return <>
-    <button ref={trigger} type="button" className="admin-compact-action" aria-label={label} title={label} popoverTarget={id}>
+    <button ref={trigger} type="button" className="admin-compact-action" data-appearance={appearance} aria-label={label} title={label} popoverTarget={id}>
       <Ellipsis size={18} aria-hidden="true"/>
     </button>
     <div id={id} popover="auto" role="group" aria-label={label} className="admin-secondary-actions"

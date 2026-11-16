@@ -737,7 +737,7 @@ export function AccessWorkspace({
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
               secondary={<>
                 {isAccessTab(tab)&&canUseAccessRecovery(employee)&&<div className="access-recovery-menu">
-                  <AdminSecondaryActions alwaysMenu label={t('More actions','Tindakan lain','更多操作')}>
+                  <AdminSecondaryActions alwaysMenu appearance="header" label={t('More actions','Tindakan lain','更多操作')}>
                     <AdminRowAction href={recordHref('recovery')} onClick={event=>openRecord(event,'recovery','')}>
                       {t('Administrator recovery','Pemulihan administrator','管理员恢复')}
                     </AdminRowAction>
