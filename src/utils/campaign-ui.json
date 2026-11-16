@@ -1,4 +1,16 @@
 {
+  "The current campaign is outside these filters. Its details and draft stay open.": [
+    "Kampanye ini di luar hasil filter. Detail dan draf tetap terbuka.",
+    "当前活动不在筛选结果中，详情及草稿仍保留。"
+  ],
+  "Campaign actions": [
+    "Tindakan kampanye",
+    "活动操作"
+  ],
+  "Back to campaign details": [
+    "Kembali ke detail kampanye",
+    "返回活动详情"
+  ],
   "Address": [
     "Alamat",
     "地址"

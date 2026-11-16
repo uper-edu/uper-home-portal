@@ -1,3 +1,4 @@
+import {CrmRecordRow} from './CrmRecordWorkspace';
 import {formatCurrency} from '../../utils/currency';
 import { campaignUi, campaignUiLocale } from "../../utils/campaignI18n";
 import React from "react";
@@ -67,25 +68,28 @@ function CustomerMetrics({
     </dl>
   );
 }
-export function CampaignSidebarSummary({
+export function CampaignSidebarRow({
   campaign,
   lang,
   reviewCount,
+  selected,
+  onClick,
 }: {
   campaign: CrmCampaignRecord;
   lang: "en" | "id" | "zh";
   reviewCount?: number;
+  selected: boolean;
+  onClick: () => void;
 }) {
   const u = campaignUi(lang);
   const organic = isOrganicCampaign(campaign),
     entry = campaignEntrySummary(campaign, lang),
     date = campaignDateRange(campaign, lang);
-  return (
-    <>
-      {(campaign.presetKey || campaign.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
-      <strong>
-        {organic ? organicCampaignName(lang) : campaignName(campaign, lang)}
-      </strong>
+  const name=organic?organicCampaignName(lang):campaignName(campaign,lang);
+  return <CrmRecordRow selected={selected} name={name} title={u("Open campaign: {name}",{name})}
+    onClick={onClick} meta={<>
+      {(campaign.presetKey||campaign.systemManaged)&&<span className="campaign-preset-badge">{u("System preset")}</span>}
+      <code>{campaign.code}</code>
       <span>
         {organic
           ? u("Read-only · System managed")
@@ -128,8 +132,7 @@ export function CampaignSidebarSummary({
           )}
         </span>
       )}
-    </>
-  );
+    </>}/>;
 }
 export function CampaignCards({
   campaigns,

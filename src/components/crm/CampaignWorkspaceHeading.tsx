@@ -1,8 +1,10 @@
+import {AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {CrmDetailActions,CrmRecordTitle} from './CrmRecordWorkspace';
 import { campaignUi } from "../../utils/campaignI18n";
 import React from "react";
 import { CrmPageAction } from "./CrmPageAction";
 import { CrmPageIdentity } from "./CrmPageIdentity";
-import { ArrowLeft, ClipboardCheck, Plus, RefreshCw } from "lucide-react";
+import { ClipboardCheck, Plus, RefreshCw } from "lucide-react";
 import type { SourceReviewState } from "../../utils/campaignSourceNavigation";
 export function CampaignWorkspaceHeading({
   title = "Marketing Campaigns",
@@ -12,6 +14,7 @@ export function CampaignWorkspaceHeading({
   state,
   onOpen,
   onReturn,
+  returnToDetail=false,
   headingRef,
   lang = "en",
   showSubtitle = false,
@@ -31,6 +34,7 @@ export function CampaignWorkspaceHeading({
   state: SourceReviewState;
   onOpen?: () => void;
   onReturn: () => void;
+  returnToDetail?: boolean;
   headingRef?: React.Ref<HTMLHeadingElement>;
 }) {
   const u = campaignUi(lang);
@@ -44,16 +48,23 @@ export function CampaignWorkspaceHeading({
   ]
     .filter(Boolean)
     .join("; ");
+  const refresh=onRefresh&&<CrmPageAction
+    label={u(reviewing?"Refresh promotion reviews":"Refresh campaigns")}
+    icon={RefreshCw} iconOnly loading={refreshing} onClick={onRefresh}/>;
+  if(reviewing)return <AdminRecordHeader
+    back={{label:u(returnToDetail?"Back to campaign details":"Back to campaign list"),onClick:onReturn}}
+    title={<CrmRecordTitle title={u("Promotion source exceptions")} titleRef={headingRef}/>}
+    actions={<CrmDetailActions label={u("Campaign actions")} secondary={refresh}/>}/>;
   return (
     <header
       className="admin-page-toolbar crm-home-page-heading campaign-page-heading"
       data-theme={isLight ? "light" : "dark"}
     >
       <CrmPageIdentity
-        title={reviewing ? u("Promotion source exceptions") : u(title)}
+        title={u(title)}
         headingRef={headingRef}
         subtitle={
-          showSubtitle && !reviewing
+          showSubtitle
             ? u(
                 "Create campaigns and promotion links, verify acquisition sources, and review customer and enrollment results.",
               )
@@ -61,7 +72,7 @@ export function CampaignWorkspaceHeading({
         }
       />
       <div className="campaign-page-actions">
-        {!reviewing && onCreate && canManage && (
+        {onCreate && canManage && (
           <CrmPageAction
             label={u("Create campaign")}
             icon={Plus}
@@ -69,15 +80,7 @@ export function CampaignWorkspaceHeading({
             onClick={onCreate}
           />
         )}
-        {reviewing ? (
-          <CrmPageAction
-            label={u("Campaigns")}
-            icon={ArrowLeft}
-            className="campaign-source-return"
-            onClick={onReturn}
-          />
-        ) : (
-          canManage && onOpen && (
+        {canManage && onOpen && (
             <CrmPageAction
               id="campaign-source-review-trigger"
               label={u("Promotion source exceptions")}
@@ -100,17 +103,8 @@ export function CampaignWorkspaceHeading({
                 <span className="sr-only"> {u("— Items need review")}</span>
               )}
             </CrmPageAction>
-          )
         )}
-        {onRefresh && (
-          <CrmPageAction
-            label={u(reviewing ? "Refresh promotion reviews" : "Refresh campaigns")}
-            icon={RefreshCw}
-            iconOnly
-            loading={refreshing}
-            onClick={onRefresh}
-          />
-        )}
+        {refresh}
       </div>
     </header>
   );

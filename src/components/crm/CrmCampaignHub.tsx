@@ -1,9 +1,12 @@
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {AdminSearchField} from '../admin/AdminSearchField';
+import {AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {CrmDetailActions,CrmRecordFilters,CrmRecordSearch,CrmRecordSidebar,CrmRecordSidebarToggle,CrmRecordTitle} from './CrmRecordWorkspace';
+import {CrmPageAction} from './CrmPageAction';
 import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
-import {containPaneKeys,revealRecord} from '../adminScroll';
+import {containPaneKeys,recordSplitMinWidth} from '../adminScroll';
 import {loadCampaignWorkspace} from "../../utils/campaignWorkspaceRefresh";
 import { campaignUi, campaignUiError, campaignUiMessages } from "../../utils/campaignI18n";
 import { CampaignWorkspaceHeading } from "./CampaignWorkspaceHeading";
@@ -14,7 +17,6 @@ import {
 } from "../../utils/campaignSourceNavigation";
 import { campaignCollectionLabel } from "../../utils/campaignPresentation";
 import {
-  CrmDetailHeader,
   CrmDetailTabs,
   CrmDiscardDialog,
   useCrmShellHeight,
@@ -23,7 +25,7 @@ import {
 import { CampaignOverview } from "./CampaignOverview";
 import {
   CampaignCards,
-  CampaignSidebarSummary,
+  CampaignSidebarRow,
   type PromotionReviewCounts,
 } from "./CampaignCards";
 import { CampaignInformation } from "./CampaignInformation";
@@ -50,8 +52,6 @@ import { crmValue, crmLocale } from "../../utils/crmLanguage";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CampaignQrImage } from "./CampaignQrImage";
 import {
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   QrCode,
   Copy,
@@ -194,9 +194,18 @@ export function CrmCampaignHub({
   }, [pageUrl]);
   const [listCollapsed, setListCollapsed] = useState(false),
     [mobileList, setMobileList] = useState(false);
-  const selectedListItem = useRef<HTMLButtonElement>(null),
-    listToggle = useRef<HTMLButtonElement>(null),
-    listSearch = useRef<HTMLInputElement>(null);
+  const [wide,setWide] = useState(()=>typeof window!=="undefined"&&window.innerWidth>=recordSplitMinWidth);
+  useEffect(()=>{
+    const media=window.matchMedia(`(min-width: ${recordSplitMinWidth}px)`);
+    const sync=()=>{setWide(media.matches);if(media.matches)setMobileList(false);};
+    sync();
+    media.addEventListener("change",sync);
+    return ()=>media.removeEventListener("change",sync);
+  },[]);
+  const sidebarVisible=wide?!listCollapsed:mobileList;
+  const listToggle=useRef<HTMLButtonElement>(null);
+  const sidebarSearch=useRef<HTMLInputElement>(null);
+  const listSearch=useRef<HTMLInputElement>(null);
   const activeDetailCampaign =
     campaigns.find((c) => c.id === requestedCampaign) || null;
   const requestedDetailTab: DetailTab = (
@@ -223,6 +232,7 @@ export function CrmCampaignHub({
   const reviewReturn = useRef<{
       url: string;
       scrollY: number;
+      detailTop?: number;
       campaignId?: string;
     } | null>(null),
     previousArea = useRef(campaignArea);
@@ -338,6 +348,7 @@ export function CrmCampaignHub({
       reviewReturn.current = {
         url: campaignReviewReturnUrl(window.location.href, filters),
         scrollY: window.scrollY,
+        detailTop: document.getElementById("crm-campaign-content")?.scrollTop,
         campaignId: c?.id,
       };
       const url = campaignReviewUrl(window.location.href, filters, c?.id);
@@ -440,7 +451,9 @@ export function CrmCampaignHub({
               `[data-campaign-review="${CSS.escape(context.campaignId)}"]`,
             )
           : document.getElementById("campaign-source-review-trigger");
-        target?.focus({ preventScroll: true });
+        const body=document.getElementById("crm-campaign-content");
+        if(body&&context?.detailTop!==undefined)body.scrollTop=context.detailTop;
+        (target??(requestedCampaign?pageHeading.current:listSearch.current))?.focus({ preventScroll: true });
       } else if (requestedCampaign) {
         document
           .querySelector(".campaign-workpage")
@@ -448,12 +461,10 @@ export function CrmCampaignHub({
         pageHeading.current?.focus({ preventScroll: true });
       } else {
         window.scrollTo({ top: listScroll.current });
-        if (lastOpenedCampaign.current)
-          document
-            .querySelector<HTMLButtonElement>(
-              `[data-campaign-card="${CSS.escape(lastOpenedCampaign.current)}"]`,
-            )
-            ?.focus({ preventScroll: true });
+        const previous=lastOpenedCampaign.current&&document.querySelector<HTMLButtonElement>(
+          `[data-campaign-card="${CSS.escape(lastOpenedCampaign.current)}"]`,
+        );
+        if(lastOpenedCampaign.current)(previous||listSearch.current)?.focus({ preventScroll: true });
       }
     });
   }, [campaignArea, requestedCampaign, Boolean(activeDetailCampaign)]);
@@ -461,10 +472,6 @@ export function CrmCampaignHub({
     const body = document.getElementById("crm-campaign-content");
     if (body) body.scrollTop = 0;
   }, [requestedCampaign, detailTab]);
-  useEffect(() => {
-    const item=selectedListItem.current,pane=item?.closest<HTMLElement>(".campaign-list-items");
-    if(campaignArea==="campaigns"&&item&&pane)revealRecord(pane,item);
-  }, [requestedCampaign, listCollapsed, campaignArea]);
   // Canonicalize old organic links without exposing irrelevant promotion/material tabs.
   useEffect(() => {
     if (!organicDetail || detailTab === requestedDetailTab) return;
@@ -586,7 +593,7 @@ export function CrmCampaignHub({
         { "--crm-shell-height": `${shellHeight}px` } as React.CSSProperties
       }
     >
-      <CampaignWorkspaceHeading
+      {(!requestedCampaign||!activeDetailCampaign)&&<CampaignWorkspaceHeading
         onCreate={!requestedCampaign ? handleOpenCreateWizard : undefined}
         onRefresh={campaignArea === "sources" && canManageCampaigns ? () => {
           setReviewRefresh(value => value + 1);
@@ -602,8 +609,9 @@ export function CrmCampaignHub({
         state={sourceReviewState(promotionReviews, reviewCountsLoading)}
         onOpen={campaignArea === "campaigns" && !requestedCampaign ? () => openSourceReview() : undefined}
         onReturn={returnFromSourceReview}
+        returnToDetail={Boolean(reviewReturn.current&&new URL(reviewReturn.current.url).searchParams.has("campaign"))}
         headingRef={workspaceHeading}
-      />
+      />}
       {campaignArea === "sources" && canManageCampaigns && (
         <section aria-label={u("Promotion source exceptions")}>
           <CrmPromotionReviews
@@ -638,7 +646,7 @@ export function CrmCampaignHub({
             isLight={isLight}
           />
           <div className="campaign-home-toolbar">
-            <AdminSearchField className="campaign-list-search" label={u("Search campaigns")}
+            <AdminSearchField className="campaign-list-search" inputRef={listSearch} label={u("Search campaigns")}
               placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>
             <CrmSelect
               label={u("Campaign status filter")}
@@ -732,159 +740,53 @@ export function CrmCampaignHub({
         </section>
       )}
       {campaignArea === "campaigns" && requestedCampaign && (
-        <div
-          className={`campaign-split ${listCollapsed ? "is-collapsed" : ""} ${requestedCampaign ? "has-selection" : ""} ${mobileList ? "show-mobile-list" : ""}`}
-        >
-          <aside className="campaign-sidebar" aria-label={u("Campaign list")}>
-            <div className="campaign-sidebar-heading">
-              <h2>{u("Campaigns")}</h2>
-              <button
-                className="campaign-list-collapse"
-                aria-label={u("Collapse campaign list")}
-                onClick={() => {
-                  setListCollapsed(true);
-                  requestAnimationFrame(() => listToggle.current?.focus());
-                }}
-              >
-                <PanelLeftClose size={18} />
-              </button>
-            </div>
-            <AdminSearchField className="campaign-list-search" inputRef={listSearch} label={u("Search campaigns")}
-              placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>
-            <CrmSelect
-              label={u("Campaign status filter")}
-              lang={lang}
-              isLight={isLight}
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-            >
-              <option value="All">{u("All statuses")}</option>
-              {CAMPAIGN_STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {u(o.labelEn)}
-                </option>
-              ))}
-            </CrmSelect>
-            <details className="campaign-list-extra">
-              <summary>{u("More filters")}</summary>
-              <CrmSelect
-                label={u("Campaign type filter")}
-                lang={lang}
-                isLight={isLight}
-                value={selectedType}
-                onChange={setSelectedType}
-              >
-                <option value="All">{u("All campaign types")}</option>
-                {CAMPAIGN_TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {u(o.labelEn)}
-                  </option>
-                ))}
-              </CrmSelect>
-            </details>
-            <div className="campaign-list-actions">
-              {canManageCampaigns && (
-                <button
-                  className="campaign-workspace-action campaign-primary"
-                  onClick={handleOpenCreateWizard}
-                >
-                  <Plus size={16} />
-                  {u("Create campaign")}
-                </button>
-              )}
-              <button
-                className="campaign-workspace-action"
-                aria-label={u("Refresh campaigns")}
-                onClick={() => void fetchCampaigns()}
-              >
-                <RefreshCw size={16} />
-              </button>
-            </div>
-            <p className="campaign-list-count" aria-live="polite">
-              {campaignCollectionLabel(filteredCampaigns, lang)}
-            </p>
-            <div className="campaign-list-items" data-admin-scroll="records" tabIndex={0} role="region" aria-label={u("Campaign list")}>
-              {campaignError ? (
-                <p role="alert">
-                  {u("Campaigns unavailable. Refresh to retry.")}
-                </p>
-              ) : isLoading && !campaigns.length ? (
-                <p role="status">{u("Loading campaigns…")}</p>
-              ) : filteredCampaigns.length === 0 ? (
-                <p>
-                  {u("No matching campaigns.")}{" "}
-                  <button
-                    className="underline"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedStatus("All");
-                      setSelectedType("All");
-                    }}
-                  >
-                    {u("Reset filters")}
-                  </button>
-                </p>
-              ) : (
-                [
-                  ...filteredCampaigns.filter((c) => !isOrganicCampaign(c)),
-                  ...filteredCampaigns.filter(isOrganicCampaign),
-                ].map((c) => (
-                  <button
-                    key={c.id}
-                    ref={
-                      c.id === requestedCampaign ? selectedListItem : undefined
-                    }
-                    className="campaign-list-item admin-record-card-entry"
-                    data-system-source={isOrganicCampaign(c)}
-                    title={c.code}
-                    aria-current={
-                      c.id === requestedCampaign ? "page" : undefined
-                    }
-                    onClick={() => openCampaign(c)}
-                  >
-                    {isOrganicCampaign(c) && (
-                      <span className="campaign-list-source-label">
-                        {u("System source")}
-                      </span>
-                    )}
-                    <CampaignSidebarSummary
-                      campaign={c}
-                      lang={lang}
-                      reviewCount={
-                        promotionReviews.available
-                          ? promotionReviews.counts[c.id]
-                          : undefined
-                      }
-                    />
-                  </button>
-                ))
-              )}
-            </div>
-          </aside>
-          <div className="campaign-detail-column">
-            <div className="campaign-list-access">
-              <button
-                ref={listToggle}
-                className="campaign-workspace-action"
-                aria-expanded={!listCollapsed}
-                onClick={() => {
-                  setListCollapsed(false);
-                  setMobileList(true);
-                }}
-              >
-                <PanelLeftOpen size={17} />
-                <span>{u("Show campaign sidebar")}</span>
-              </button>
-              {mobileList && requestedCampaign && (
-                <button
-                  className="campaign-workspace-action"
-                  onClick={() => setMobileList(false)}
-                >
-                  {u("Return to selected campaign")}
-                </button>
-              )}
-            </div>
-
+        <div className="campaign-records" data-record-detail="true" data-record-scroll={scrollMode}
+          data-sidebar-visible={sidebarVisible}>
+          {!wide&&mobileList&&<div className="crm-record-navigation">
+            <CrmRecordSidebarToggle controls="crm-campaign-records" expanded label={u("Return to selected campaign")}
+              onClick={()=>{
+                setMobileList(false);
+                requestAnimationFrame(()=>listToggle.current?.focus({preventScroll:true}));
+              }}/>
+          </div>}
+          <CrmRecordSidebar id="crm-campaign-records" title={u("Campaigns")} count={campaignError?undefined:filteredCampaigns.length}
+            selectedId={requestedCampaign} hidden={!sidebarVisible} busy={isLoading} busyLabel={u("Loading campaigns…")}
+            note={activeDetailCampaign&&!isLoading&&!campaignError&&!filteredCampaigns.some(c=>c.id===requestedCampaign)
+              ?u("The current campaign is outside these filters. Its details and draft stay open."):undefined}
+            filters={<>
+              <CrmRecordFilters lang={lang} count={Number(selectedStatus!=="All")+Number(selectedType!=="All")}
+                search={<CrmRecordSearch inputRef={sidebarSearch} label={u("Search campaigns")}
+                  placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>}>
+                <CrmSelect label={u("Campaign status filter")} lang={lang} isLight={isLight}
+                  value={selectedStatus} onChange={setSelectedStatus}>
+                  <option value="All">{u("All statuses")}</option>
+                  {CAMPAIGN_STATUS_OPTIONS.map(o=><option key={o.value} value={o.value}>{u(o.labelEn)}</option>)}
+                </CrmSelect>
+                <CrmSelect label={u("Campaign type filter")} lang={lang} isLight={isLight}
+                  value={selectedType} onChange={setSelectedType}>
+                  <option value="All">{u("All campaign types")}</option>
+                  {CAMPAIGN_TYPE_OPTIONS.map(o=><option key={o.value} value={o.value}>{u(o.labelEn)}</option>)}
+                </CrmSelect>
+              </CrmRecordFilters>
+              <div className="campaign-sidebar-actions">
+                {canManageCampaigns&&<CrmPageAction icon={Plus} label={u("Create campaign")} onClick={handleOpenCreateWizard}/>}
+                <CrmPageAction icon={RefreshCw} iconOnly label={u("Refresh campaigns")} loading={isLoading}
+                  onClick={()=>void fetchCampaigns()}/>
+              </div>
+            </>}
+            empty={campaignError?<p className="crm-record-sidebar-message" role="alert">{u("Campaigns unavailable. Refresh to retry.")}</p>
+              :isLoading&&!campaigns.length?<p className="crm-record-sidebar-message" role="status">{u("Loading campaigns…")}</p>
+              :!filteredCampaigns.length?<p className="crm-record-sidebar-message">
+                {u("No matching campaigns.")}{" "}
+                <button type="button" className="crm-work-link" onClick={()=>{
+                  setSearchQuery("");setSelectedStatus("All");setSelectedType("All");
+                }}>{u("Reset filters")}</button>
+              </p>:undefined}>
+            {[...filteredCampaigns.filter(c=>!isOrganicCampaign(c)),...filteredCampaigns.filter(isOrganicCampaign)].map(c=>
+              <CampaignSidebarRow key={c.id} campaign={c} lang={lang} selected={c.id===requestedCampaign}
+                onClick={()=>openCampaign(c)} reviewCount={promotionReviews.available?promotionReviews.counts[c.id]:undefined}/>)}
+          </CrmRecordSidebar>
+          <div className="campaign-detail-column" hidden={!wide&&mobileList}>
             {requestedCampaign && !activeDetailCampaign && (
               <section aria-live="polite">
                 <p>
@@ -916,68 +818,35 @@ export function CrmCampaignHub({
                 className="campaign-workpage crm-detail-panel"
                 aria-labelledby="campaign-page-title"
               >
-                <CrmDetailHeader
-                  back={{label:u("Back to campaign list"),onClick:closeCampaign}}
-                  titleId="campaign-page-title"
-                  titleRef={pageHeading}
-                  title={
-                    <span className="campaign-preset-heading">
-                      {organicDetail ? organicCampaignName(lang) : campaignName(activeDetailCampaign, lang)}
-                      {(activeDetailCampaign.presetKey || activeDetailCampaign.systemManaged) && (
-                        <span className="campaign-preset-badge">{u("System preset")}</span>
-                      )}
-                    </span>
-                  }
-                  meta={
-                    <>
-                      <code>{activeDetailCampaign.code}</code>
-                      {!presetDetail && <span className="campaign-workpage-status">
-                        {organicDetail
-                          ? u("Read-only · System source")
-                          : u(
-                              CAMPAIGN_STATUS_OPTIONS.find(
-                                (o) => o.value === activeDetailCampaign.status,
-                              )?.labelEn || activeDetailCampaign.status,
-                            )}
-                      </span>}
-                    </>
-                  }
-                  actions={
-                    <>
-                      {detailTab === "overview" && canManageCampaigns && (
-                        <button type="button" className="campaign-workspace-action campaign-primary"
-                          onClick={() => setPromotionFormCampaignId(activeDetailCampaign.id)}>
-                          {u(activeDetailCampaign.promotionLinks?.length ? "Add another promotion link" : "Add promotion link")}
-                        </button>
-                      )}
-                      {canManageCampaigns &&
-                        !organicDetail && !presetDetail && (
-                          <>
-                            <button
-                              type="button"
-                              className="campaign-workspace-action"
-                              onClick={() => handleOpenEditWizard(activeDetailCampaign)}
-                            >
-                              <Edit3 size={16} />
-                              {u("Edit information")}
-                            </button>
-                            <button
-                              type="button"
-                              className="campaign-workspace-action"
-                              onClick={() => {
-                                setCampaignDeleteError("");
-                                setCampaignDeleteTarget(activeDetailCampaign);
-                              }}
-                            >
-                              <Trash2 size={16} aria-hidden="true" />
-                              {u("Delete campaign")}
-                            </button>
-                          </>
-                        )}
-
-                    </>
-                  }
-                />
+                <AdminRecordHeader back={{label:u("Back to campaign list"),onClick:closeCampaign}}
+                  title={<CrmRecordTitle id="campaign-page-title" titleRef={pageHeading}
+                    title={organicDetail?organicCampaignName(lang):campaignName(activeDetailCampaign,lang)}
+                    meta={<code>{activeDetailCampaign.code}</code>}
+                    status={<div className="campaign-record-status">
+                      {(activeDetailCampaign.presetKey||activeDetailCampaign.systemManaged)&&
+                        <span className="campaign-preset-badge">{u("System preset")}</span>}
+                      {!presetDetail&&<span className="campaign-workpage-status">{organicDetail?u("Read-only · System source"):
+                        u(CAMPAIGN_STATUS_OPTIONS.find(o=>o.value===activeDetailCampaign.status)?.labelEn||activeDetailCampaign.status)}</span>}
+                    </div>}/>}
+                  actions={<CrmDetailActions label={u("Campaign actions")}
+                    secondary={<>
+                      <CrmRecordSidebarToggle controls="crm-campaign-records" expanded={sidebarVisible} ref={listToggle}
+                        label={sidebarVisible?u("Collapse campaign list"):u("Show campaign sidebar")} onClick={()=>{
+                          if(wide){setListCollapsed(!listCollapsed);return;}
+                          setMobileList(true);
+                          requestAnimationFrame(()=>sidebarSearch.current?.focus({preventScroll:true}));
+                        }}/>
+                      {canManageCampaigns&&!organicDetail&&!presetDetail&&<>
+                        <CrmPageAction icon={Edit3} label={u("Edit information")} onClick={()=>handleOpenEditWizard(activeDetailCampaign)}/>
+                        <CrmPageAction icon={Trash2} label={u("Delete campaign")} onClick={()=>{
+                          setCampaignDeleteError("");
+                          setCampaignDeleteTarget(activeDetailCampaign);
+                        }}/>
+                      </>}
+                    </>}
+                    primary={detailTab==="overview"&&canManageCampaigns&&<CrmPageAction icon={Plus} variant="primary"
+                      label={u(activeDetailCampaign.promotionLinks?.length?"Add another promotion link":"Add promotion link")}
+                      onClick={()=>setPromotionFormCampaignId(activeDetailCampaign.id)}/>}/>}/>
                 {canManageCampaigns && !organicDetail && !presetDetail &&
                   campaignDeleteTarget?.id === activeDetailCampaign.id && (
                     <CrmDiscardDialog

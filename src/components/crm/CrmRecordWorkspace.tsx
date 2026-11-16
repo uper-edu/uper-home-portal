@@ -1,6 +1,6 @@
 import {AdminRecordBack,type AdminBackTarget} from '../admin/AdminRecordHeader';
 import {ChevronDown, PanelLeftClose, PanelLeftOpen, SlidersHorizontal} from 'lucide-react';
-import {useEffect, useId, useLayoutEffect, useRef, type MouseEventHandler, type ReactNode, useState} from 'react';
+import {useEffect, useId, useLayoutEffect, useRef, type MouseEventHandler, type ReactNode, type Ref, useState} from 'react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {AdminSearchField, type AdminSearchFieldProps} from '../admin/AdminSearchField';
 import {containPaneKeys, revealRecord} from '../adminScroll';
@@ -16,21 +16,21 @@ export function CrmRecordNavigation({label, back, tools}: {
   </nav>;
 }
 
-export function CrmRecordSidebarToggle({controls, expanded, label, onClick}: {
-  controls: string; expanded: boolean; label: string; onClick: () => void;
+export function CrmRecordSidebarToggle({controls, expanded, label, onClick, ref}: {
+  controls: string; expanded: boolean; label: string; onClick: () => void; ref?: Ref<HTMLButtonElement>;
 }) {
   const Icon=expanded?PanelLeftClose:PanelLeftOpen;
-  return <button type="button" className="crm-work-button crm-record-sidebar-toggle"
+  return <button ref={ref} type="button" className="crm-work-button crm-record-sidebar-toggle"
     aria-expanded={expanded} aria-controls={controls} onClick={onClick}>
     <Icon size={16} aria-hidden="true"/>{label}
   </button>;
 }
 
-export function CrmRecordTitle({title, status, meta}: {
-  title: ReactNode; status?: ReactNode; meta?: ReactNode;
+export function CrmRecordTitle({title, status, meta, id, titleRef}: {
+  title: ReactNode; status?: ReactNode; meta?: ReactNode; id?: string; titleRef?: Ref<HTMLHeadingElement>;
 }) {
   return <div className="crm-record-identity">
-    <h1 className="crm-record-title" tabIndex={-1}>{title}</h1>
+    <h1 id={id} ref={titleRef} className="crm-record-title" tabIndex={-1}>{title}</h1>
     {status&&<div className="crm-record-title-status">{status}</div>}
     {meta&&<div className="crm-record-title-meta">{meta}</div>}
   </div>;
