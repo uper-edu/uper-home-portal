@@ -2,10 +2,14 @@ import {Children,useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import {Copy,Ellipsis} from 'lucide-react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
-export function AdminSecondaryActions({label,children,alwaysMenu=false,appearance='compact'}:{label:string;children:ReactNode;alwaysMenu?:boolean;appearance?:'compact'|'header'}){
+export function AdminSecondaryActions({label,children,alwaysMenu=false,appearance='compact',disabled=false,closeOnSelect=true}:{label:string;children:ReactNode;alwaysMenu?:boolean;appearance?:'compact'|'header';disabled?:boolean;closeOnSelect?:boolean}){
   const actions=Children.toArray(children);
   const id=useId();
   const trigger=useRef<HTMLButtonElement>(null);
+  const panelRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    if(disabled&&panelRef.current?.matches(':popover-open'))panelRef.current.hidePopover();
+  },[disabled]);
   if(!alwaysMenu&&actions.length<2)return <>{actions}</>;
   const showPosition=(panel:HTMLElement)=>{
     const button=trigger.current?.getBoundingClientRect();
@@ -16,14 +20,14 @@ export function AdminSecondaryActions({label,children,alwaysMenu=false,appearanc
     Object.assign(panel.style,{left:left+'px',top:top+'px',bottom:'auto'});
   };
   return <>
-    <button ref={trigger} type="button" className="admin-compact-action" data-appearance={appearance} aria-label={label} title={label} popoverTarget={id}>
+    <button ref={trigger} type="button" className="admin-compact-action" data-appearance={appearance} aria-label={label} title={label} popoverTarget={id} disabled={disabled}>
       <Ellipsis size={18} aria-hidden="true"/>
     </button>
-    <div id={id} popover="auto" role="group" aria-label={label} className="admin-secondary-actions"
+    <div ref={panelRef} id={id} popover="auto" role="group" aria-label={label} className="admin-secondary-actions"
       onToggle={event=>{if(event.currentTarget.matches(':popover-open'))showPosition(event.currentTarget);}}
       onClickCapture={event=>{
         const item=(event.target as Element).closest('button,a[href]');
-        if(!item||item.matches(':disabled'))return;
+        if(!closeOnSelect||!item||item.matches(':disabled'))return;
         event.currentTarget.hidePopover();
         trigger.current?.focus({preventScroll:true});
       }}>
