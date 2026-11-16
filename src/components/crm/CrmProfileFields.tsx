@@ -3,7 +3,7 @@ import {profileAnalyticsReceipt} from '../../utils/analyticsReceipts';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
 import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
 import {CrmFormSection} from './CrmFormLayout';
-import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
+import {AdminFormActions,AdminFormFeedback,AdminFormGrid} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
 import { CrmOperationLayer } from "./CrmOperationLayer";
 import { CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -87,6 +87,11 @@ export function CrmProfileFields({
     delete rev[key];
     onChange(next, rev);
   };
+  const fieldEdits = Object.entries(updates || {});
+  const contactPreferences = ["communicationLanguage", "preferredChannel"];
+  const pairedPreferences = scope === "basic" && fieldEdits.some(([key], index) =>
+    contactPreferences.includes(key) && contactPreferences.includes(fieldEdits[index + 1]?.[0])
+  );
   return (
     <div data-admin-form="" className="crm-profile-batch">
       <div className="crm-profile-picker-heading">
@@ -157,11 +162,12 @@ export function CrmProfileFields({
           </div>
         </div>
       )}
-      <div className="crm-profile-batch-fields">
-        {Object.entries(updates || {}).map(([key, value]: any) => {
+      {fieldEdits.length > 0 && <AdminFormGrid className="crm-profile-batch-fields">
+        {fieldEdits.map(([key, value]: any) => {
           const meta = lead.profileFieldMeta?.[key];
           return (
-            <section key={key} className="crm-profile-field-editor">
+            <section key={key} className="crm-profile-field-editor"
+              data-admin-full-width={pairedPreferences && contactPreferences.includes(key) ? undefined : ""}>
               <div className="crm-profile-field-title">
                 <strong>
                   {ui(manualProfileFields[key])}
@@ -286,7 +292,7 @@ export function CrmProfileFields({
             </section>
           );
         })}
-      </div>
+      </AdminFormGrid>}
     </div>
   );
 }

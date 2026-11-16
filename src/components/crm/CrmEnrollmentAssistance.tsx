@@ -1,7 +1,7 @@
 import {AdminCopyAction} from '../admin/AdminRecordActions';
 import {useEffect,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
-import {AdminFormActions,AdminFormFeedback,type AdminFeedbackState} from '../AdminFormLayout';
+import {AdminFormActions,AdminFormFeedback,AdminFormGrid,type AdminFeedbackState} from '../AdminFormLayout';
 import {enrollmentCopy,enrollmentPost} from '../EnrollmentApplication';
 import {CrmOperationLayer} from './CrmOperationLayer';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
@@ -141,8 +141,10 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
           </AdminField>
           {chosen&&<p>{chosen.schedule} · {formatCurrency(chosen.price,lang)}</p>}
           <AdminField required>{t('学员姓名','Learner name','Nama siswa')}<input name="name" defaultValue={customerName} maxLength={120} required/></AdminField>
-          <AdminField required>{t('电子邮箱','Email address','Alamat email')}<input name="email" defaultValue={contacts.email} type="email" maxLength={254} required/></AdminField>
-          <AdminField required>{t('WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP')}<input name="phone" defaultValue={contacts.phone} type="tel" required/></AdminField>
+          <AdminFormGrid>
+            <AdminField required>{t('电子邮箱','Email address','Alamat email')}<input name="email" defaultValue={contacts.email} type="email" maxLength={254} required/></AdminField>
+            <AdminField required>{t('WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP')}<input name="phone" defaultValue={contacts.phone} type="tel" required/></AdminField>
+          </AdminFormGrid>
           <p>{t('提交后，系统会发送确认邮件。学员确认并取得席位后才开始付款计时。','We email the learner to confirm. Payment time starts when they confirm and receive a seat.','Email konfirmasi akan dikirim. Waktu pembayaran dimulai setelah siswa mengonfirmasi dan mendapat kursi.')}</p>
           <p>{t('新申请会关闭此商机原先尚未确认的申请。','A new application closes any previous unconfirmed application for this opportunity.','Pengajuan baru menutup pengajuan sebelumnya yang belum dikonfirmasi.')}</p>
         </div>

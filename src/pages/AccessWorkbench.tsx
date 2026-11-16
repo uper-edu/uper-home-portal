@@ -5,7 +5,7 @@ import {AdminSearchField} from '../components/admin/AdminSearchField';
 import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormGuide} from '../components/AdminFormGuide';
-import {AdminFormSection,AdminFormFeedback} from '../components/AdminFormLayout';
+import {AdminFormSection,AdminFormFeedback,AdminFormGrid} from '../components/AdminFormLayout';
 import {AiServicePanel} from '../components/AiServicePanel';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
@@ -728,7 +728,7 @@ export function AccessWorkspace({
         )}
       </main>
       {(user || role) && (
-        <AdminEditor variant="drawer" className="access-panel" lang={lang} light={isLight} required
+        <AdminEditor variant="drawer" responsiveForm={!!user} className="access-panel" lang={lang} light={isLight} required
           dialogRef={panel} onClose={close} busy={busy} bodyClassName="access-editor-body"
           title={user?t("User settings","Pengaturan pengguna","用户设置"):t("Role settings","Pengaturan peran","角色设置")}
           footer={<>
@@ -882,30 +882,32 @@ export function AccessWorkspace({
             {notice&&<AdminFormFeedback state="saved" lang={lang}>{notice}</AdminFormFeedback>}
             {user && (
               <AdminFormSection title={t("User details", "Detail pengguna", "用户信息")}>
-                <AdminField>
-                  {t("Login ID", "ID login", "登录ID")}
-                  <input
-                    required={!user.id}
-                    value={user.loginId}
-                    disabled={!!user.id}
-                    onChange={(e) => {
-                      setUser({ ...user, loginId: e.target.value });
-                      setDirty(true);
-                    }}
-                  />
-                </AdminField>
-                <AdminField>
-                  {t("Name", "Nama", "姓名")}
-                  <input
-                    disabled={!can("access.users")}
-                    required
-                    value={user.displayName}
-                    onChange={(e) => {
-                      setUser({ ...user, displayName: e.target.value });
-                      setDirty(true);
-                    }}
-                  />
-                </AdminField>
+                <AdminFormGrid>
+                  <AdminField>
+                    {t("Login ID", "ID login", "登录ID")}
+                    <input
+                      required={!user.id}
+                      value={user.loginId}
+                      disabled={!!user.id}
+                      onChange={(e) => {
+                        setUser({ ...user, loginId: e.target.value });
+                        setDirty(true);
+                      }}
+                    />
+                  </AdminField>
+                  <AdminField>
+                    {t("Name", "Nama", "姓名")}
+                    <input
+                      disabled={!can("access.users")}
+                      required
+                      value={user.displayName}
+                      onChange={(e) => {
+                        setUser({ ...user, displayName: e.target.value });
+                        setDirty(true);
+                      }}
+                    />
+                  </AdminField>
+                </AdminFormGrid>
                 <AdminField>
                   {t(
                     "Login email (optional)",

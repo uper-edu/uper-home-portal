@@ -20,7 +20,6 @@
 .crm-operation-compose .crm-editor-scroll.crm-owner-editor{gap:16px}
 .crm-form-section .crm-profile-batch-fields{margin-top:12px}
 .crm-form-section .crm-profile-field-editor{border:0;border-top:1px solid var(--cw-border);border-radius:0;padding:12px 0 0;gap:8px}
-.crm-form-section .crm-profile-batch-fields>.crm-profile-field-editor:only-child{grid-column:1/-1}
 .crm-form-section .crm-profile-basis label{display:flex;align-items:flex-start;gap:8px;margin-top:8px}
 .crm-form-section .crm-profile-basis input[type=checkbox]{flex:none;width:auto}
 .crm-contact-preparation-body .crm-editor-scroll>.crm-form-section{margin:0}
@@ -158,7 +157,6 @@
 .crm-attendance-fields .crm-attendance-actions{justify-content:flex-start}
 /* Keep group spacing in the owning stack, not in both stack and old sibling margins. */
 .crm-editor-scroll>.crm-form-section+.crm-form-section,.crm-form-layout>.crm-form-section+.crm-form-section{margin-top:0}
-.crm-form-section .crm-profile-batch-fields:empty{display:none;margin:0}
 .crm-form-section>.admin-form-section-body>.crm-profile-basis:first-child{border-top:0;padding-top:0}
 .crm-form-section .admin-form-section-heading h3{font-size:14px;line-height:1.6;font-weight:600}
 .crm-form-section,.notification-form-editor{--af-text:var(--cw-text,var(--dw-text,var(--admin-text)));--af-muted:var(--cw-muted,var(--dw-muted,var(--admin-muted)));--af-border:var(--cw-border,var(--dw-border,#cbd5e1));--af-surface:var(--cw-surface,var(--dw-surface,var(--admin-surface)));--af-soft:var(--cw-soft,var(--dw-soft,var(--admin-surface)))}
@@ -170,7 +168,6 @@
 .crm-promotion-editor .admin-form-section-body{padding-bottom:0}
 .crm-promotion-editor .crm-detail-choice{--cf-control-height:40px;--cf-radius:10px;font-size:14px;line-height:1.6}
 .crm-promotion-editor .admin-field input{height:40px;padding-block:0}
-.crm-promotion-custom-source{grid-column:1/-1}
 .crm-promotion-placement{display:grid;gap:var(--admin-form-label-gap)}
 .campaign-placement-suggestions{display:flex;flex-wrap:wrap;gap:8px}
 .campaign-placement-suggestions>button{min-height:40px}
