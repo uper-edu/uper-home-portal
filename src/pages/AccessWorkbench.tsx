@@ -1,3 +1,4 @@
+import {SystemAccessGuide} from '../components/SystemAccessGuide';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {CrmPageAction} from '../components/crm/CrmPageAction';
 import {AdminConfirmation} from '../components/admin/AdminConfirmation';
@@ -6,15 +7,12 @@ import {AdminEditor} from '../components/admin/AdminEditor';
 import {AdminSearchField} from '../components/admin/AdminSearchField';
 import {CrmContentNav,CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
-import {AdminFormGuide} from '../components/AdminFormGuide';
 import {AdminFormSection,AdminFormFeedback,AdminFormGrid} from '../components/AdminFormLayout';
 import {AiServicePanel} from '../components/AiServicePanel';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {AdminField,firstMissingAdminField} from '../components/AdminForm';
-import {BrowserMetadataGuide} from '../components/BrowserMetadataGuide';
 import {PageMetadata} from '../components/PageMetadata';
-import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
 import { managementRequest, pendingAccessOperations } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
 import {AdminSecondaryActions} from "../components/admin/AdminRecordActions";
@@ -28,7 +26,7 @@ import {containPaneKeys,recordSplitMinWidth} from '../components/adminScroll';
 import {useCrmShellHeight,useRecordScrollMode} from '../components/crm/CrmDetailWorkspace';
 import '../components/crm/crm-detail-workspace.css';
 import '../components/crm/crm-record-workspace.css';
-import { accessGuide, accessError } from "../utils/accessLanguage";
+import { accessError } from "../utils/accessLanguage";
 import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
 import {Pencil, Plus, BookOpen, Users, FlaskConical } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
@@ -714,7 +712,7 @@ export function AccessWorkspace({
               <p>{t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。")}</p></div>
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")} secondary={refresh}/>
           </div>}/>
-          :!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
+          :tab!=='guide'&&!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
           <div>
             <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
@@ -770,29 +768,10 @@ export function AccessWorkspace({
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
-            {tab === "guide" ? (
-              <section className="access-card">
-                <h2>
-                  {t(
-                    "How access works",
-                    "Cara kerja akses",
-                    "权限逻辑与操作指南",
-                  )}
-                </h2>
-                <BrowserMetadataGuide lang={lang}/><AdminFormGuide lang={lang}/>
-                <ol>
-                  {accessGuide.map((text, i) => (
-                    <li key={i}>{text[col]}</li>
-                  ))}
-                </ol>
-                {accessSafetyGuide.map((section) => (
-                  <section className="access-impact" key={section.title[0]}>
-                    <h3>{section.title[col]}</h3>
-                    <p>{section.body[col]}</p>
-                  </section>
-                ))}
-              </section>
-            ) : null}
+            {tab==='guide'&&<SystemAccessGuide lang={lang} canAudit={can('access.audit')}
+              canAi={isAiAdministrator(employee)} canTest={!!data?.testDirectoryAvailable}
+              canRecover={canUseAccessRecovery(employee)} shellHeight={shellHeight}
+              onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
             {recordTab && <section className="access-record-workspace crm-detail-root" data-theme={isLight?"light":"dark"} style={{"--crm-shell-height":shellHeight+"px"} as React.CSSProperties} aria-label={listTitle}>
               {!recordId && <div className="access-record-toolbar">
                 {searchControl}
