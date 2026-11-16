@@ -2,11 +2,11 @@ import {Children,useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import {Copy,Ellipsis} from 'lucide-react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
-export function AdminSecondaryActions({label,children}:{label:string;children:ReactNode}){
+export function AdminSecondaryActions({label,children,alwaysMenu=false}:{label:string;children:ReactNode;alwaysMenu?:boolean}){
   const actions=Children.toArray(children);
   const id=useId();
   const trigger=useRef<HTMLButtonElement>(null);
-  if(actions.length<2)return <>{actions}</>;
+  if(!alwaysMenu&&actions.length<2)return <>{actions}</>;
   const showPosition=(panel:HTMLElement)=>{
     const button=trigger.current?.getBoundingClientRect();
     if(!button)return;

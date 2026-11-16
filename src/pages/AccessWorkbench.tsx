@@ -17,7 +17,8 @@ import {PageMetadata} from '../components/PageMetadata';
 import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
 import { managementRequest, pendingAccessOperations } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
-import { AccessSafetyPanel } from "../components/AccessSafetyPanel";
+import {AdminSecondaryActions} from "../components/admin/AdminRecordActions";
+import { AccessSafetyPanel, canUseAccessRecovery } from "../components/AccessSafetyPanel";
 import {AdminListState,AdminListTable} from '../components/admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from '../components/admin/AdminListControl';
 import {AdminRecordHeader} from '../components/admin/AdminRecordHeader';
@@ -81,7 +82,7 @@ function systemLocation(href:string, employeeId:string) {
   const tab=url.searchParams.get('tab')||'users';
   return {
     href:url.pathname+url.search,
-    tab:Object.hasOwn(moduleIcons,tab)?tab:'users',
+    tab:Object.hasOwn(moduleIcons,tab)||tab==='recovery'||tab==='restore-review'?tab:'users',
     params:url.searchParams,
   };
 }
@@ -123,6 +124,8 @@ export function AccessWorkspace({
     col = lang === "zh" ? 2 : lang === "id" ? 1 : 0,
     t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   const [discarding, setDiscarding] = useState(false);
+  const [recoveryDraft,setRecoveryDraft]=useState(false);
+  const [recoveryBusy,setRecoveryBusy]=useState(false);
   const [larkDirty,setLarkDirty]=useState(false);
   const [larkDraft,setLarkDraft]=useState<any>(undefined);
   const [initialLocation] = useState(()=>systemLocation(window.location.href,employee.id));
@@ -238,6 +241,7 @@ export function AccessWorkspace({
         .then(setAudit)
         .catch((e) => setErr(e.message));
   }, [tab]);
+  const recoveryView=tab==='recovery'||tab==='restore-review';
   const editorHasDraft = Boolean(user || role) && (dirty || larkDirty || why.length > 0 || password.length > 0);
   const refreshAccess = async () => {
     if (refreshing.current || busy || editorHasDraft) return;
@@ -258,14 +262,14 @@ export function AccessWorkspace({
   };
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
-      if (editorHasDraft) {
+      if (editorHasDraft||recoveryDraft||recoveryBusy) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [editorHasDraft]);
+  }, [editorHasDraft,recoveryDraft,recoveryBusy]);
   const close = () => {
     if (busy) return;
     if (editorHasDraft) {
@@ -308,8 +312,8 @@ export function AccessWorkspace({
     applyLocation(href);
   };
   const requestNavigation=(action:()=>void)=>{
-    if(busy)return;
-    if(editorHasDraft){pendingNavigation.current=action;setDiscarding(true);return;}
+    if(busy||recoveryBusy)return;
+    if(editorHasDraft||recoveryDraft){pendingNavigation.current=action;setDiscarding(true);return;}
     if(user||role)resetEditor();
     action();
   };
@@ -331,14 +335,14 @@ export function AccessWorkspace({
     const onPop=()=>{
       const destination=window.location.pathname+window.location.search;
       if(destination===locationRef.current)return;
-      if(editorHasDraft||busy){
+      if(editorHasDraft||busy||recoveryDraft||recoveryBusy){
         window.history.pushState(window.history.state,'',locationRef.current);
         requestNavigation(()=>{window.history.replaceState(window.history.state,'',destination);applyLocation(destination);});
       }else requestNavigation(()=>applyLocation(destination));
     };
     window.addEventListener('popstate',onPop);
     return ()=>window.removeEventListener('popstate',onPop);
-  },[editorHasDraft,busy,user,role]);
+  },[editorHasDraft,busy,recoveryDraft,recoveryBusy,user,role]);
   useEffect(()=>{
     const frame=requestAnimationFrame(()=>{
       if(recordId){recordHeading.current?.focus({preventScroll:true});return;}
@@ -670,7 +674,7 @@ export function AccessWorkspace({
                   <button
                     type="button"
                     key={a[0]}
-                    aria-current={(a[0]==='users'?isAccessTab(tab):tab===a[0])?"page":undefined}
+                    aria-current={(a[0]==='users'?(isAccessTab(tab)||recoveryView):tab===a[0])?"page":undefined}
                     onClick={()=>{if(a[0]!=='users'||!isAccessTab(tab))navigateRecord(a[0],'');}}
                   >
                     <Icon size={16} aria-hidden="true" />
@@ -687,14 +691,30 @@ export function AccessWorkspace({
           lang={lang}
           onResolved={operationResolved}
         />
-        <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight} />
+        <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight}
+          view={tab==='recovery'?'recovery':tab==='restore-review'?'review':undefined}
+          onReview={()=>navigateRecord('restore-review','')}
+          onReturn={()=>requestNavigation(()=>{
+            proceedNavigation(recordHref('users'));
+            requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('.access-recovery-menu button')?.focus());
+          })}
+          onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>
+        {discarding&&!user&&!role&&<CrmDiscardDialog lang={lang} isLight={isLight}
+          onKeep={()=>{pendingNavigation.current=undefined;setDiscarding(false);}}
+          onDiscard={()=>{
+            const action=pendingNavigation.current;
+            pendingNavigation.current=undefined;
+            setDiscarding(false);
+            action?.();
+          }}/>}
+
         {tab==='ai'&&isAiAdministrator(employee)&&can('access.read')&&!readDenied
           ?<AiServicePanel lang={lang} isLight={isLight} renderHeading={refresh=><div className="admin-page-toolbar">
             <div><h1>{t("System management", "Manajemen sistem", "系统管理")}</h1>
               <p>{t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。")}</p></div>
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")} secondary={refresh}/>
           </div>}/>
-          :(!recordTab||!recordId)&&<div className="admin-page-toolbar">
+          :!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
           <div>
             <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
@@ -707,9 +727,18 @@ export function AccessWorkspace({
           </div>
           {can("access.read") && tab !== "ai" && (tab!=='audit'||can('access.audit')) && (
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
-              secondary={<AdminRefreshAction label={t("Refresh", "Segarkan", "刷新")}
+              secondary={<>
+                {isAccessTab(tab)&&canUseAccessRecovery(employee)&&<div className="access-recovery-menu">
+                  <AdminSecondaryActions alwaysMenu label={t('More actions','Tindakan lain','更多操作')}>
+                    <AdminRowAction href={recordHref('recovery')} onClick={event=>openRecord(event,'recovery','')}>
+                      {t('Administrator recovery','Pemulihan administrator','管理员恢复')}
+                    </AdminRowAction>
+                  </AdminSecondaryActions>
+                </div>}
+                <AdminRefreshAction label={t("Refresh", "Segarkan", "刷新")}
                 loading={isRefreshing} disabled={busy || editorHasDraft}
-                onClick={() => void refreshAccess()}/>}
+                onClick={() => void refreshAccess()}/>
+              </>}
               primary={recordTab&&can(userTab?'access.users':'access.roles')&&
                 <CrmPageAction icon={Plus} variant="primary"
                   label={userTab?t('Add user','Tambah pengguna','新增用户'):t('Add role','Tambah peran','新增角色')}
@@ -737,7 +766,7 @@ export function AccessWorkspace({
             {isAccessTab(tab)&&<CrmContentNav label={accessTitle}
               items={accessNav.map(([id,label])=>({href:recordHref(id),label,current:tab===id}))}
               onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
-            {!recordTab && !data && !err && (
+            {!recoveryView && !recordTab && !data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}

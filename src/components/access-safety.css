@@ -101,3 +101,10 @@
 .access-safety-refresh-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px}
 .access-safety-refresh-row>:is(p,h2){flex:1;margin:0}
 .access-safety-refresh-row>.crm-page-action{margin-inline-start:auto}
+
+.access-restore-banner { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; }
+.access-restore-banner > .admin-form-feedback { flex:1 1 280px; margin:0; }
+.access-recovery-sections { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)); gap:16px; align-items:start; }
+.access-recovery-sections > .admin-form-feedback { grid-column:1/-1; }
+.access-recovery-sections > .admin-form-section { background:var(--admin-surface); }
+.access-recovery-sections > .admin-form-section + .admin-form-section { margin-top:0; }
