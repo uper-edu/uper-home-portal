@@ -10,7 +10,8 @@ import {AdminEditor} from '../admin/AdminEditor';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {courseError} from '../../utils/crmCoursePricing';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
-export function CrmCourses({lang,isLight}:any){
+import type {CrmLanguage} from '../../utils/crmLanguage';
+export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void}){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const [data,setData]=useState<any>(null),[form,setForm]=useState<any>(null),[error,setError]=useState(''),[state,setState]=useState(''),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[latest,setLatest]=useState<any>(null);
  const pending=useRef<any>(null),gate=useRef(false);const busy=['saving','checking'].includes(state),unknown=state==='unknown';
@@ -29,6 +30,8 @@ export function CrmCourses({lang,isLight}:any){
  };
  const refresh=()=>void load().catch(()=>{});
  useEffect(refresh,[]);
+ useEffect(()=>{onDraftChange(dirty||unknown||busy);},[onDraftChange,dirty,unknown,busy]);
+ useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty||unknown){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty,unknown]);
  const edit=(c?:any)=>{setForm(c?{...c,config:{name:c.name,sessions:c.sessions,price:c.price,active:c.active,maxDiscountBps:c.maxDiscountBps,maxDiscountAmount:c.maxDiscountAmount}}:{id:crypto.randomUUID(),revision:0,config:{name:'',sessions:'',price:'',active:false,maxDiscountBps:0,maxDiscountAmount:null}});setError('');setLatest(null);setState('');setDirty(false);pending.current=null;};
  const patch=(k:string,v:any)=>{setForm((f:any)=>({...f,config:{...f.config,[k]:v}}));setDirty(true);setError('');setState('');};

@@ -42,7 +42,9 @@ const fields = {
   teacher: { type: 'text', label: ['Teacher', 'Pengajar', '授课教师'] },
 } satisfies Partial<Record<keyof EnrollmentClassConfig,{type:'text'|'number'|'datetime-local'|'textarea';label:Copy}>>;
 
-export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isLight: boolean }) {
+export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraftChange }: {
+  lang: CrmLanguage; isLight: boolean; target?: string; onShowAll: () => void; onDraftChange: (dirty:boolean) => void;
+}) {
   const t = ([en, id, zh]: Copy) => lang === 'zh' ? zh : lang === 'id' ? id : en;
   const [catalog, setCatalog] = useState<Catalog>();
   const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
@@ -76,6 +78,8 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   }
   const refresh=()=>void load().catch(()=>{});
   useEffect(refresh,[]);
+  useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[onDraftChange,dirty,busy,pending]);
+  useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
   useEffect(() => {
     if (!dirty && !pending) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
@@ -204,7 +208,6 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   const published = t(['Published', 'Diterbitkan', '已发布']);
   const unpublished = t(['Draft', 'Draf', '草稿']);
   const title = t(['Enrollment classes', 'Kelas pendaftaran', '报名班次']);
-  const target = new URLSearchParams(window.location.search).get('enrollmentClass');
   const query=search.trim().toLowerCase();
   const visibleClasses=catalog?.classes.filter(row=>target?row.id===target:
     (classState==='all'||row.state===classState)&&(!query||[row.id,row.level,row.schedule,row.firstLesson]
@@ -233,8 +236,8 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
       <h2>{title}</h2>
-      {target&&<AdminRowAction href="/crm?tab=policy&policyTopic=enrollment-classes">{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
       <div className="crm-ops-actions">
+        {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
         <button type="button" className="crm-work-button" onClick={refresh}>{t(['Refresh', 'Segarkan', '刷新'])}</button>
         <button type="button" className="crm-work-button" data-primary disabled={readState!=='ready'} onClick={() => edit()}>{t(['Create class', 'Buat kelas', '创建班次'])}</button>
       </div>

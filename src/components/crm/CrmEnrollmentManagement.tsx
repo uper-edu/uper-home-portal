@@ -22,6 +22,7 @@ import { CrmEnrollmentSupport } from './CrmEnrollmentResolution';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmPageAction } from './CrmPageAction';
+import { enrollmentSettingsPath } from './operationsSections';
 import { CrmDetailActions, CrmRecordFilters, CrmRecordNavigation, CrmRecordRow, CrmRecordSearch,
   CrmRecordSidebar, CrmRecordSidebarToggle, CrmRecordTitle } from './CrmRecordWorkspace';
 import { useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
@@ -86,12 +87,16 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
   const rosterOrder=params.get('rosterOrder');
-  const rosterPositionKey='uper_enrollment_roster:'+employee.id+':'+id;
+  const returnFromSettings=params.get('resumeRosterSettings')==='1';
+  const rosterPositionBase='uper_enrollment_roster:'+employee.id+':'+id;
+  const rosterPositionKey=rosterPositionBase+(returnFromSettings?':settings':'');
+  const rosterRestoreTarget=returnFromSettings?'settings':rosterOrder;
+  const settingsButtonId='crm-enrollment-class-settings';
   const [sidebarPreference,setSidebarPreference]=useState<boolean|undefined>(()=>{
-    if(!id||!rosterOrder)return undefined;
+    if(!id||!rosterRestoreTarget)return undefined;
     try{
       const position=JSON.parse(sessionStorage.getItem(rosterPositionKey)??'null');
-      if(position?.orderId===rosterOrder&&typeof position.sidebarOpen==='boolean')return position.sidebarOpen;
+      if(position?.orderId===rosterRestoreTarget&&typeof position.sidebarOpen==='boolean')return position.sidebarOpen;
     }catch{}
     return undefined;
   });
@@ -115,8 +120,8 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     return '/crm?'+new URLSearchParams({tab:'payments',paymentView:'enrollment',enrollmentOrder:orderId,
       rosterReturn:'/crm?'+returnParams});
   };
-  const rememberRoster=(orderId:string)=>{
-    try{sessionStorage.setItem(rosterPositionKey,JSON.stringify({orderId,sidebarOpen,top:window.scrollY,bodyTop:detailBody.current?.scrollTop,tableLeft:rosterTable.current?.scrollLeft}));}catch{}
+  const rememberRoster=(orderId:string,key=rosterPositionBase)=>{
+    try{sessionStorage.setItem(key,JSON.stringify({orderId,sidebarOpen,top:window.scrollY,bodyTop:detailBody.current?.scrollTop,tableLeft:rosterTable.current?.scrollLeft}));}catch{}
   };
   const [classFilters,setClassFilters]=useState(()=>readEnrollmentClassFilters(params));
   const classLinkParams=new URLSearchParams();
@@ -185,11 +190,11 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     allowed&&id&&sidebarClasses?.key===authorizationKey?sidebarClasses.classes:undefined;
   const rows=result&&'rows' in result&&cohort?result.rows.filter(row=>(!filter||row.status===filter)&&(filter!=='history'||!closure||row.closureReason===closure)):undefined;
   useEffect(()=>{
-    if(!rows||!rosterOrder||restored.current===rosterOrder)return;
-    const target=document.getElementById('roster-verify-'+rosterOrder)??rosterHeading.current;
+    if(!rows||!rosterRestoreTarget||restored.current===rosterRestoreTarget)return;
+    const target=document.getElementById(returnFromSettings?settingsButtonId:'roster-verify-'+rosterOrder)??rosterHeading.current;
     if(!target)return;
     const frame=requestAnimationFrame(()=>{
-      restored.current=rosterOrder;
+      restored.current=rosterRestoreTarget;
       let saved:{orderId?:string;top?:number;bodyTop?:number;tableLeft?:number}|undefined;
       try{
         const value=sessionStorage.getItem(rosterPositionKey);
@@ -197,17 +202,17 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
         sessionStorage.removeItem(rosterPositionKey);
       }catch{}
       const body=detailBody.current;
-      const sameOrder=saved?.orderId===rosterOrder;
+      const sameRecord=saved?.orderId===rosterRestoreTarget;
       if(independent&&body){
-        if(sameOrder&&typeof saved.bodyTop==='number')body.scrollTop=saved.bodyTop;
-        revealRecord(body,target);
-      }else if(sameOrder&&typeof saved.top==='number')window.scrollTo({top:saved.top,behavior:'instant'});
+        if(sameRecord&&typeof saved.bodyTop==='number')body.scrollTop=saved.bodyTop;
+        if(!returnFromSettings)revealRecord(body,target);
+      }else if(sameRecord&&typeof saved.top==='number')window.scrollTo({top:saved.top,behavior:'instant'});
       else target.scrollIntoView({block:'nearest',behavior:'instant'});
-      if(sameOrder&&rosterTable.current&&typeof saved.tableLeft==='number')rosterTable.current.scrollLeft=saved.tableLeft;
+      if(sameRecord&&rosterTable.current&&typeof saved.tableLeft==='number')rosterTable.current.scrollLeft=saved.tableLeft;
       target.focus({preventScroll:true});
     });
     return ()=>cancelAnimationFrame(frame);
-  },[rows,rosterOrder,rosterPositionKey,independent]);
+  },[rows,rosterRestoreTarget,returnFromSettings,rosterOrder,rosterPositionKey,independent]);
   useEffect(()=>{
     if(id||aftercare||!classes||!resumeClassList)return;
     // Let the list and its header settle before restoring the page position.
@@ -320,12 +325,24 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     label={sidebarOpen?t(['收起班次侧栏','Hide class sidebar','Sembunyikan daftar kelas']):
       t(['展开班次侧栏','Show class sidebar','Tampilkan daftar kelas'])}
     onClick={()=>setSidebarPreference(!sidebarOpen)}/>;
+  const openClassSettings=(classId:string)=>{
+    const returnTo=new URLSearchParams(classLinkParams);
+    returnTo.set('tab','enrollment-management');
+    returnTo.set('classId',classId);
+    if(filter)returnTo.set('rosterStatus',filter);
+    if(filter==='history'&&closure)returnTo.set('rosterClosure',closure);
+    rememberRoster('settings',rosterPositionBase+':settings');
+    onNavigate(enrollmentSettingsPath('enrollment-classes',{classId,returnTo:'/crm?'+returnTo}));
+  };
   const overviewHeader=<div className="crm-enrollment-overview">
     {!classDetail&&<header className="admin-page-toolbar crm-enrollment-heading" data-theme={isLight?'light':'dark'}>
       <CrmPageIdentity title={title}/>
-      {canRefresh&&<div className="crm-enrollment-heading-actions">
-        <button type="button" className="crm-work-button" disabled={loading} onClick={()=>setRequestVersion(v=>v+1)}>
-          <RefreshCw size={15} aria-hidden="true"/>{refreshLabel}</button>
+      {allowed&&(scope.operations||canRefresh)&&<div className="crm-enrollment-heading-actions">
+        {scope.operations&&<CrmPageAction icon={Settings}
+          label={t(['课程与班次设置','Course and class settings','Pengaturan kursus dan kelas'])}
+          onClick={()=>onNavigate(enrollmentSettingsPath('courses',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
+        {canRefresh&&<button type="button" className="crm-work-button" disabled={loading} onClick={()=>setRequestVersion(v=>v+1)}>
+          <RefreshCw size={15} aria-hidden="true"/>{refreshLabel}</button>}
       </div>}
     </header>}
     {!id&&allowed&&canSupport&&<CrmContentNav label={title} onNavigate={onNavigate} items={[
@@ -415,8 +432,8 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
             <AdminRecordHeader back={backToClasses} title={<CrmRecordTitle title={cohort?classTitle(cohort):t(['班次详情','Class details','Detail kelas'])}
                 status={cohort&&statusBadge(cohort)} meta={cohort&&[firstLesson(cohort),cohort.schedule].filter(Boolean).join(' · ')}/>}
               actions={<CrmDetailActions label={t(['班次操作','Class actions','Tindakan kelas'])} secondary={<>{sidebarToggle}
-                {scope.operations&&cohort&&<CrmPageAction icon={Settings} label={t(['班次设置','Class settings','Pengaturan kelas'])}
-                  href={'/crm?tab=policy&policyTopic=enrollment-classes&enrollmentClass='+encodeURIComponent(cohort.id)}/>}
+                {scope.operations&&cohort&&<CrmPageAction id={settingsButtonId} icon={Settings} label={t(['班次设置','Class settings','Pengaturan kelas'])}
+                  onClick={()=>openClassSettings(cohort.id)}/>}
                 {canRefresh&&<CrmPageAction icon={RefreshCw} label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
               </>}/>}/>
             {cohort&&<div className="crm-panel-next">

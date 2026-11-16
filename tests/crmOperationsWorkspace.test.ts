@@ -1,19 +1,21 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{CrmPolicySettings}from'../src/components/crm/CrmPolicySettings';import{DEFAULT_CRM_POLICY_CONFIG}from'../src/types/crmPolicyConfig';import{operationSections,operationGroups,operationGroupOrder,operationSectionForField}from'../src/components/crm/operationsSections';
+import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{CrmPolicySettings}from'../src/components/crm/CrmPolicySettings';import{DEFAULT_CRM_POLICY_CONFIG}from'../src/types/crmPolicyConfig';import{enrollmentSettingSections,operationSections,operationGroups,operationGroupOrder,operationSectionForField}from'../src/components/crm/operationsSections';
 test('all operation topics provide three aligned translations and field errors route to the right topic',()=>{
  const firstGroup=operationGroupOrder[0];
- assert.equal(operationGroups[firstGroup][2],'课程与班次');
- assert.deepEqual(operationSections.filter(section=>section.group===firstGroup).map(section=>section.id),['courses','enrollment-classes','enrollment-rules']);
+ assert.equal(operationGroups[firstGroup][2],'管理与工作时间');
+ assert.deepEqual(enrollmentSettingSections.map(section=>section.id),['courses','enrollment-classes','enrollment-rules']);
+ assert.ok(enrollmentSettingSections.every(section=>section.title.length===3&&section.title.every(Boolean)));
+ assert.ok(!operationSections.some(section=>enrollmentSettingSections.some(setting=>setting.id===String(section.id))));
  assert.equal(new Set(operationSections.map(section=>section.id)).size,operationSections.length);
  assert.ok(operationSections.some(section=>section.id==='assignment'));
  for(const section of operationSections){
   assert.equal(section.title.length,3);
-  const steps=section.id==='enrollment-classes'||section.id==='enrollment-rules'?0:3;
+  const steps=3;
   for(let i=0;i<3;i++){assert.ok(section.title[i]&&section.purpose[i]);assert.equal(section.steps[i].length,steps);}
  }
  for(const [field,topic]of Object.entries({'businessHours.endTime':'schedule','firstResponseSla.hot':'first_response','noResponseCadence.retryInterval':'retry','inactivityWatchdog.hotInactivity':'watchdog','milestones.trialReminderBefore':'milestone','reactivation.reactivatedResponse':'reactivation','identityReviewManagerOnly':'permissions'}))assert.equal(operationSectionForField(field),topic);
 });
 test('initial view selects the first topic without changing configuration',()=>{
- const original=JSON.stringify(DEFAULT_CRM_POLICY_CONFIG);for(const lang of ['en','id','zh'] as const){const html=renderToStaticMarkup(React.createElement(CrmPolicySettings,{lang,isLight:true,policyConfig:DEFAULT_CRM_POLICY_CONFIG,onSavePolicy:async()=>{throw Error('must not write while rendering')},onResetPolicy:async()=>false,notificationContent:React.createElement('input',{'aria-label':'test-notification-draft'})}));const current=html.match(/<button[^>]*aria-current="page"[^>]*>[\s\S]*?<\/button>/)?.[0];assert.ok(current?.includes(operationSections[0].title[lang==='en'?0:lang==='id'?1:2].replace('&','&amp;')));assert.ok(html.includes('crm-course-catalog'));assert.ok(html.indexOf('test-notification-draft')>html.indexOf('crm-course-catalog'));assert.equal((html.match(/fieldPath=/g)||[]).length,0);}
+ const original=JSON.stringify(DEFAULT_CRM_POLICY_CONFIG);for(const lang of ['en','id','zh'] as const){const html=renderToStaticMarkup(React.createElement(CrmPolicySettings,{lang,isLight:true,policyConfig:DEFAULT_CRM_POLICY_CONFIG,onSavePolicy:async()=>{throw Error('must not write while rendering')},onResetPolicy:async()=>false,notificationContent:React.createElement('input',{'aria-label':'test-notification-draft'})}));const current=html.match(/<button[^>]*aria-current="page"[^>]*>[\s\S]*?<\/button>/)?.[0];assert.ok(current?.includes(operationSections.find(section=>section.id==='permissions')?.title[lang==='en'?0:lang==='id'?1:2]??''));assert.ok(!html.includes('crm-course-catalog'));assert.ok(html.includes('test-notification-draft'));assert.equal((html.match(/fieldPath=/g)||[]).length,0);}
  assert.equal(JSON.stringify(DEFAULT_CRM_POLICY_CONFIG),original);
 });
 test('policy form has one named submit action and no separate command bar or hidden duplicate submit',()=>{const html=renderToStaticMarkup(React.createElement(CrmPolicySettings,{lang:'en',isLight:true,initialTopic:'schedule',policyConfig:DEFAULT_CRM_POLICY_CONFIG,onSavePolicy:async()=>false,onResetPolicy:async()=>false}));assert.equal((html.match(/type="submit"/g)||[]).length,1);assert.ok(!html.includes("Saves all policy-topic edits"));assert.ok(!html.includes('crm-ops-commandbar'));assert.match(html,/<button type="submit" disabled="">Save<\/button>/);});

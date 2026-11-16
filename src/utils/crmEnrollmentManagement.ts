@@ -44,6 +44,26 @@ export function enrollmentRosterReturnPath(value:string|null,orderId:string|null
 }
 
 
+export function enrollmentSettingsReturnPath(value:string|null){
+  if(!value?.startsWith('/crm?')||value.length>1000)return;
+  const query=new URLSearchParams(value.slice('/crm?'.length));
+  const tab=query.get('tab');
+  if(tab!=='enrollment-management'&&tab!=='enrollment-aftercare')return;
+  const safe=new URLSearchParams({tab});
+  writeEnrollmentClassFilters(safe,readEnrollmentClassFilters(query));
+  const classId=query.get('classId');
+  if(tab==='enrollment-management'&&classId&&/^[a-z0-9-]{1,64}$/i.test(classId)){
+    safe.set('classId',classId);
+    safe.set('resumeRosterSettings','1');
+    const status=enrollmentRosterStates.find(state=>state===query.get('rosterStatus'));
+    if(status)safe.set('rosterStatus',status);
+    const closure=query.get('rosterClosure');
+    if(status==='history'&&closure&&['learner_cancelled','payment_timeout','staff_ended'].includes(closure)){
+      safe.set('rosterClosure',closure);
+    }
+  }
+  return '/crm?'+safe;
+}
 
 export const enrollmentClassPageSize=20;
 export const enrollmentClassSorts=['upcoming','latest','oldest','seats','waitlist','opening'] as const;

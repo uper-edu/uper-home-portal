@@ -2,13 +2,16 @@ export const operationGroups = [
  ['Management and working time','Pengelolaan dan jam kerja','管理与工作时间'],
  ['Sales follow-up rules','Aturan tindak lanjut penjualan','销售跟进规则'],
  ['Notifications and audit','Notifikasi dan audit','通知与审计'],
- ['Courses and classes','Kursus dan kelas','课程与班次'],
 ] as const;
-export const operationGroupOrder = [3, 0, 1, 2] as const;
+export const operationGroupOrder = [0, 1, 2] as const;
+export const enrollmentSettingSections = [
+ {id:'courses',title:['Courses & pricing','Kursus & harga','课程与报价']},
+ {id:'enrollment-classes',title:['Enrollment classes','Kelas pendaftaran','报名班次']},
+ {id:'enrollment-rules',title:['Enrollment rules','Aturan pendaftaran','报名规则']},
+] as const;
+export type EnrollmentSettingTopic = typeof enrollmentSettingSections[number]['id'];
+
 export const operationSections = [
- {id:'courses',group:3,title:['Courses & pricing','Kursus & harga','课程与报价'],purpose:['Manage published prices and enrollment statistics.','Kelola harga dan statistik pendaftaran.','维护课程报价与报名付款统计。'],steps:[['Course','Price','Enrollment'],['Kursus','Harga','Pendaftaran'],['课程','报价','报名']]},
- {id:'enrollment-classes',group:3,title:['Enrollment classes','Kelas pendaftaran','报名班次'],purpose:['Publish and manage enrollment classes.','Terbitkan dan kelola kelas.','维护和发布报名班次。'],steps:[[],[],[]]},
- {id:'enrollment-rules',group:3,title:['Enrollment rules','Aturan pendaftaran','报名规则'],purpose:['Set payment and transfer deadlines.','Atur tenggat pembayaran dan pindah kelas.','设置付款和转班答复期限。'],steps:[[],[],[]]},
  {id:'assignment',group:1,title:['Automatic assignment','Penugasan otomatis','自动分案'],purpose:['Assign new verified, unassigned customers to selected salespeople.','Tugaskan pelanggan baru terverifikasi tanpa penanggung jawab ke sales terpilih.','将身份已核实且未分配的新客户分配给选定销售。'],steps:[['New verified customer','Round robin','Assignment history'],['Pelanggan baru terverifikasi','Giliran','Riwayat penugasan'],['新客户身份已核实','轮询分配','保留归属历史']]},
  {id:'permissions',group:0,title:['Review and ownership','Verifikasi dan kepemilikan','核实与归属权限'],purpose:['Control who may verify and assign; existing record access still applies.','Atur siapa yang boleh memverifikasi dan menugaskan; izin catatan tetap berlaku.','控制谁可以核实和分配；仍受现有记录访问权限约束。'],steps:[['Existing access','Permitted action','Audit'],['Izin yang ada','Tindakan diizinkan','Audit'],['现有访问权限','允许的操作','保留审计']]},
  {id:'schedule',group:0,title:['Time zone and work calendar','Zona waktu dan kalender kerja','时区与工作日历'],purpose:['Define working periods used by response-deadline calculations.','Tentukan jam kerja untuk perhitungan tenggat respons.','定义响应期限计算采用的运营时区和工作时段。'],steps:[['Inquiry arrives','Work calendar','Response deadline'],['Pertanyaan masuk','Kalender kerja','Tenggat respons'],['咨询进入','核对工作日历','计算响应截止']]},
@@ -24,16 +27,31 @@ export const operationSections = [
  {"id": "integration-readiness", "group": 2, "title": ["Integration checks", "Pemeriksaan integrasi", "接入检查"], "purpose": ["Check connectivity and configuration; tests use existing safeguards.", "Periksa koneksi dan konfigurasi; pengujian mengikuti pengamanan yang ada.", "检查连接和配置，测试仍遵循现有保护机制。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
 ] as const;
 export type OperationSection = typeof operationSections[number]['id'];
-export function isCourseTopic(section:string|null):section is 'courses'|'enrollment-classes'|'enrollment-rules' {
- return operationSections.some(topic=>topic.group===3&&topic.id===section);
+export function resolveEnrollmentSettingsTopic(params:URLSearchParams):EnrollmentSettingTopic {
+ const topic=params.get('policyTopic');
+ if((!topic||topic==='courses')&&params.has('enrollmentClass')) return 'enrollment-classes';
+ return enrollmentSettingSections.find(section=>section.id===topic)?.id??'courses';
 }
+
+export function isLegacyEnrollmentSettings(params:URLSearchParams) {
+ const topic=params.get('policyTopic');
+ return params.get('tab')==='policy' && (enrollmentSettingSections.some(section=>section.id===topic)
+   || (!topic && params.has('enrollmentClass')));
+}
+
+export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;returnTo?:string}){
+ const query=new URLSearchParams({tab:'enrollment-settings',policyTopic:topic});
+ if(topic==='enrollment-classes'&&options?.classId)query.set('enrollmentClass',options.classId);
+ if(options?.returnTo)query.set('enrollmentReturn',options.returnTo);
+ return '/crm?'+query;
+}
+
 export function resolveOperationTopic(params:URLSearchParams, canManageOperations:boolean, canReadNotifications:boolean):OperationSection {
  const topic=params.get('policyTopic');
  if(canReadNotifications&&topic&&isNotificationTopic(topic)) return topic as NotificationTopic;
  if(!canManageOperations) return 'notification-rules';
- if((!topic||topic==='courses')&&params.has('enrollmentClass')) return 'enrollment-classes';
  return operationSections.find(section=>section.id===topic&&section.group!==2&&
-   !['retry','milestone','reactivation'].includes(section.id))?.id??'courses';
+   !['retry','milestone','reactivation'].includes(section.id))?.id??'permissions';
 }
 
 export function operationSectionForField(field:string):OperationSection {
