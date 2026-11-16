@@ -1,3 +1,4 @@
+import {AdminRowAction} from '../admin/AdminListControl';
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useState } from 'react';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
@@ -186,7 +187,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
       <h2>{title}</h2>
-      {target&&<a className="crm-work-link" href="/crm?tab=policy&policyTopic=enrollment-classes">{t(['View all classes','Lihat semua kelas','查看全部班次'])}</a>}
+      {target&&<AdminRowAction href="/crm?tab=policy&policyTopic=enrollment-classes">{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
       <div className="crm-ops-actions">
         <button type="button" className="crm-work-button" onClick={() => void load().catch(loadFailure)}>{t(['Refresh', 'Segarkan', '刷新'])}</button>
         <button type="button" className="crm-work-button" data-primary disabled={!catalog} onClick={() => edit()}>{t(['Create class', 'Buat kelas', '创建班次'])}</button>
@@ -202,11 +203,11 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
         <td>{row.level}</td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
         <td>{formatCurrency(row.price, lang)}</td><td>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</td>
-        <td>{row.state!=='draft'&&<a className="crm-work-link" href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</a>}
-          {row.state!=='cancelled' && <button type="button" className="crm-work-button" onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</button>}
-          {row.canInsert&&<button type="button" className="crm-work-button" onClick={()=>{
+        <td>{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
+          {row.state!=='cancelled' && <AdminRowAction onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</AdminRowAction>}
+          {row.canInsert&&<AdminRowAction onClick={()=>{
             setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
-          }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</button>}
+          }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</AdminRowAction>}
           {row.state==='published'&&!row.opened&&<button type="button" className="crm-work-button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
             {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</button>}</td>
       </tr>)}</tbody>

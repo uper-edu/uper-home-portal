@@ -528,6 +528,18 @@ function CrmWorkspace({
     };
     if (discardDraft(finish)) finish();
   };
+  const changeEnrollmentPage=(href:string)=>{
+    const url=new URL(href,window.location.origin);
+    const module=url.searchParams.get('tab');
+    if(module!=='enrollment-management'&&module!=='enrollment-aftercare')return;
+    if(module==='enrollment-aftercare'&&!canEnrollmentSupport)return;
+    const apply=()=>{
+      window.history.pushState(window.history.state,'',url);
+      lastWorkspaceUrl.current=url.href;
+      setCrmModule(module);
+    };
+    if(discardDraft(apply))apply();
+  };
   const changeModule = (module: typeof crmModule) => {
     const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;setCrmModule(module);};
     const proceed=()=>{if(discardDraft(finish))finish();};
@@ -1385,7 +1397,7 @@ function CrmWorkspace({
 
           </div>
         </div>}
-        {crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"}/> : crmModule === "payments" ? (canFinance&&enrollmentPaymentView ?
+        {crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"} onNavigate={changeEnrollmentPage}/> : crmModule === "payments" ? (canFinance&&enrollmentPaymentView ?
           <CrmEnrollmentFinance key={employee.id} navigation={financeNavigation} lang={lang} isLight={isLight}
             onQueueChanged={paymentQueue.refresh} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={url=>{lastWorkspaceUrl.current=url;}}/> :
           <CrmFinanceWorkspace navigation={financeNavigation} onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight}

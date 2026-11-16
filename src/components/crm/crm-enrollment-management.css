@@ -1,14 +1,45 @@
-.crm-enrollment-management { display: grid; gap: 12px; min-width: 0; }
-.crm-enrollment-management .crm-enrollment-heading { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; align-items:center; }
-.crm-enrollment-management h1, .crm-enrollment-management h2, .crm-enrollment-management p { margin-block: 0; }
-.crm-enrollment-views, .crm-enrollment-conditions, .crm-enrollment-row-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
-.crm-enrollment-views a { display:inline-flex; align-items:center; min-height:40px; padding-inline:12px; border-radius:10px; }
-.crm-enrollment-views a[aria-current="page"], .crm-enrollment-conditions button[aria-pressed="true"] {
-  color:var(--admin-action); background:var(--admin-selected); border-color:var(--admin-action);
+.crm-enrollment-management { display:grid; gap:16px; min-width:0; color:var(--admin-text); font-size:14px; line-height:1.5; }
+.crm-enrollment-overview {display:contents}
+.crm-enrollment-management:has(.crm-aftercare-detail-shell) > .crm-enrollment-overview {display:none}
+.crm-enrollment-management .crm-enrollment-heading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; }
+.crm-enrollment-management h1, .crm-enrollment-management h2, .crm-enrollment-management p { margin-block:0; }
+.crm-enrollment-heading .crm-enrollment-heading-actions, .crm-enrollment-row-actions, .crm-enrollment-conditions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.crm-enrollment-heading button, .crm-enrollment-name { display:inline-flex; align-items:center; gap:8px; }
+.crm-enrollment-heading .crm-enrollment-heading-actions { margin-inline-start:auto; justify-content:flex-end; }
+.crm-enrollment-panel { min-width:0; border:1px solid var(--admin-border); border-radius:14px; background:var(--admin-surface); }
+.crm-enrollment-roster-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; padding:12px 16px; }
+.crm-enrollment-roster-heading h2 { font-size:16px; font-weight:650; }
+.crm-enrollment-conditions { padding:0 16px 12px; }
+.crm-enrollment-conditions .crm-work-button { min-height:40px; font-size:13px; }
+.crm-enrollment-conditions button[aria-pressed="true"] { color:var(--admin-action); background:var(--admin-selected); border-color:var(--admin-action); }
+.crm-enrollment-panel>.crm-opportunity-filters { padding:0 16px 12px; }
+.crm-enrollment-panel>.crm-enrollment-filters { padding:12px 16px; }
+.crm-enrollment-table table { font-size:14px; }
+.crm-enrollment-table :is(th,td) { padding:12px 16px; vertical-align:middle; }
+.crm-enrollment-table th { color:var(--admin-muted); font-size:13px; font-weight:600; border-top:1px solid var(--admin-border); }
+.crm-enrollment-table tr:last-child td { border-bottom:0; }
+.crm-enrollment-table td strong, .crm-enrollment-name { font-weight:650; }
+.crm-enrollment-table .crm-enrollment-name { text-align:start; }
+.crm-enrollment-table .crm-enrollment-roster-link,
+.crm-enrollment-table small, .crm-enrollment-order-detail small { display:block; margin-top:4px; color:var(--admin-muted); font-size:13px; line-height:1.5; }
+.crm-enrollment-class-cell { width:34%; }
+.crm-enrollment-table .crm-enrollment-money { white-space:nowrap; text-align:start; }
+.crm-enrollment-management .crm-enrollment-empty { padding:16px; overflow-wrap:anywhere; }
+.crm-enrollment-order-detail { display:grid; gap:16px; overflow-wrap:anywhere; font-size:14px; }
+.crm-enrollment-order-detail section { padding-top:16px; border-top:1px solid var(--cw-border); display:grid; gap:8px; justify-items:start; }
+.crm-enrollment-order-detail :is(h3,p) { margin:0; }
+.crm-enrollment-order-detail h3 { font-size:14px; font-weight:650; }
+.crm-enrollment-order-detail .crm-enrollment-close-order { color:var(--admin-danger); border-color:var(--admin-danger-border); }
+.crm-enrollment-detail-list { display:grid; gap:8px; margin:0; padding-inline-start:16px; }
+@media(max-width:759px) {
+  .crm-enrollment-table table { min-width:580px; }
 }
+.crm-opportunity-filters .crm-enrollment-search { flex:0 1 320px; }
+.crm-enrollment-management :is(a,button,input):focus-visible { outline:2px solid var(--admin-focus); outline-offset:2px; }
+.crm-enrollment-results { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:0 16px 12px; font-size:13px; color:var(--admin-muted); }
+.crm-enrollment-panel > .admin-list-pagination, .crm-aftercare-pagination { padding:8px 16px; border-top:1px solid var(--admin-border); font-size:13px; }
 
 .crm-aftercare-workspace,.crm-aftercare-controls { display:grid; gap:12px; min-width:0; }
-.crm-aftercare-pagination { font-size:13px; }
 
 .crm-enrollment-detail-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
 .crm-enrollment-detail-shell[data-sidebar=true]{grid-template-columns:var(--admin-record-sidebar-width) minmax(0,1fr);gap:16px 20px}
@@ -25,12 +56,17 @@
 .crm-enrollment-detail-roster .crm-enrollment-row-actions a{color:var(--admin-action)}
 .crm-enrollment-detail-roster .crm-enrollment-row-actions a:hover{text-decoration:underline}
 
-.crm-enrollment-class-list{display:grid;gap:12px}
-.crm-enrollment-detail-roster .crm-enrollment-roster-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px}
-.crm-enrollment-detail-roster .crm-enrollment-roster-heading h2{font-size:16px;font-weight:650}
-.crm-enrollment-detail-roster .crm-enrollment-conditions button{min-height:40px;font-size:13px}
-.crm-enrollment-detail-roster .crm-enrollment-table :is(th,td){padding:12px 16px;vertical-align:middle}
-.crm-enrollment-detail-roster .crm-enrollment-table th{color:var(--admin-muted);font-size:13px;font-weight:600}
-.crm-enrollment-detail-roster .crm-enrollment-table tr:last-child td{border-bottom:0}
-.crm-enrollment-detail-roster .crm-enrollment-empty{padding:16px}
-@media(max-width:759px){.crm-enrollment-detail-roster .crm-enrollment-table table{min-width:580px}}
+.crm-aftercare-list{display:grid;gap:12px;min-width:0}
+.crm-aftercare-list[hidden],.crm-detail-root .crm-aftercare-detail-panel[hidden]{display:none}
+.crm-aftercare-detail-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.crm-aftercare-detail-shell[data-sidebar=true]{grid-template-columns:var(--admin-record-sidebar-width) minmax(0,1fr);gap:16px 20px}
+.crm-aftercare-side-reference{flex-basis:100%}
+.crm-aftercare-summary small{display:block;color:var(--admin-muted);font-size:12px;margin-top:4px}
+.crm-aftercare-summary .crm-work-link{color:var(--admin-action)}
+.crm-aftercare-summary .crm-work-link:hover{text-decoration:underline}
+.crm-aftercare-detail-panel .crm-enrollment-order-detail{display:block}
+.crm-aftercare-detail-panel .crm-enrollment-order-detail>section{padding:0;border:0}
+.crm-aftercare-detail-panel .crm-enrollment-order-detail>section+section{border-top:1px solid var(--admin-border);margin-top:20px;padding-top:20px}
+.crm-aftercare-detail-panel .crm-enrollment-order-detail h2{font-size:16px;font-weight:650}
+
+.crm-aftercare-sidebar-pages{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:8px 12px;border-top:1px solid var(--admin-border);color:var(--admin-muted);font-size:12px}
