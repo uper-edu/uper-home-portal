@@ -217,8 +217,8 @@
 .crm-enrollment-rules .admin-edit-title h2 {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
+  align-items: center;
+  row-gap: 4px;
 }
 .crm-enrollment-rules .admin-edit-actions .crm-work-button[data-primary=true] {
   background: var(--admin-action-fill);

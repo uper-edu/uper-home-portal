@@ -250,7 +250,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
     </AdminField>;
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
-      <h2>{title}</h2>
+      <div className="admin-edit-title"><h2>{title}</h2></div>
       <div className="crm-ops-actions">
         {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
         <CrmPageAction icon={RefreshCw} label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
@@ -279,13 +279,13 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
         <td>{row.level}</td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
         <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus tone={row.opened||row.state==='published'?'success':'neutral'}>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</AdminStatus></td>
-        <td>{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
+        <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
           {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</AdminRowAction>}
           {row.canInsert&&<AdminRowAction disabled={readState==='error'} onClick={()=>{
             setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
           }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</AdminRowAction>}
           {row.state==='published'&&!row.opened&&<AdminRowAction disabled={readState==='error'} onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
-            {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</AdminRowAction>}</td>
+            {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</AdminRowAction>}</div></td>
       </tr>)}</AdminListTable>}
     {draft&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
       title={draft.revision?t(['Edit class','Edit kelas','编辑班次']):t(['Create class','Buat kelas','创建班次'])}
