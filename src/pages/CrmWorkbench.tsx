@@ -57,7 +57,7 @@ import { CrmDisclosure } from "../components/crm/CrmDisclosure";
 import {CrmTrustPanel,CrmStageEditor} from "../components/crm/CrmTrustPanel";
 import {PageMetadata} from '../components/PageMetadata';
 import {AccessHandoverPanel} from "../components/AccessSafetyPanel";
-import {isCourseTopic,type OperationSection} from "../components/crm/operationsSections";
+import {resolveOperationTopic,type OperationSection} from "../components/crm/operationsSections";
 import {eligibleOwner,permittedRecord} from '../utils/accessControl';
 import '../components/crm/crm-documentation.css';
 import { adminRoleLabel } from "../utils/adminWorkspace";
@@ -104,7 +104,7 @@ import { LeadActivity } from "../components/LeadAttention";
 import { projectPendingTasks } from "../utils/crmTaskPresentation";
 import { CrmNextTaskSummary } from "../components/crm/CrmNextTaskSummary";
 import NotificationCenter from "../components/NotificationCenter";
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { safeStorage } from "../utils/safeStorage";
 import {
@@ -203,13 +203,6 @@ export default function CrmWorkbench() {
     </CrmAccess>
   );
 }
-function crmOperationsInitialTopic(canReadNotifications:boolean):OperationSection|undefined {
-  const params=new URLSearchParams(window.location.search);
-  const topic=params.get("policyTopic");
-  if((topic==="courses"||!topic)&&params.has("enrollmentClass")) return "enrollment-classes";
-  if(isCourseTopic(topic)||(canReadNotifications&&topic==="notification-jobs")) return topic;
-}
-
 function isEnrollmentPaymentView(params:URLSearchParams){
   return params.get('paymentView')==='enrollment'||params.has('enrollmentOrder');
 }
@@ -258,6 +251,11 @@ function CrmWorkspace({
     } catch {}
     return defaultCrmModule(employee);
   });
+
+  const canManageOperations = employee.permissions.includes("crm.operations.manage");
+  const canReadNotifications = employee.permissions.includes("notifications.read");
+  const [policyLocation,setPolicyLocation] = useState(()=>window.location.search);
+  const policyTopic = resolveOperationTopic(new URLSearchParams(policyLocation),canManageOperations,canReadNotifications);
 
   const [policyConfig, setPolicyConfig] = useState<CrmPolicyConfig>(
     DEFAULT_CRM_POLICY_CONFIG,
@@ -528,7 +526,7 @@ function CrmWorkspace({
     if (discardDraft(finish)) finish();
   };
   const changeModule = (module: typeof crmModule) => {
-    const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;if(module==="payments")setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));setCrmModule(module);};
+    const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");url.searchParams.delete("deliveryState");url.searchParams.delete("deliveryPage");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;if(module==="payments")setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));if(module==="policy")setPolicyLocation(url.search);setCrmModule(module);};
     const proceed=()=>{if(discardDraft(finish))finish();};
     if(crmModule==="campaigns"&&module!==crmModule&&!window.dispatchEvent(new CustomEvent("crm-campaign-before-leave",{cancelable:true,detail:{proceed}})))return;
     proceed();
@@ -553,6 +551,17 @@ function CrmWorkspace({
     };
     if(discardDraft(apply))apply();
   };
+  const changePolicyTopic=useCallback((topic:OperationSection)=>{
+    if(topic===policyTopic)return;
+    const url=new URL(window.location.href);
+    url.searchParams.set('policyTopic',topic);
+    if(topic!=='enrollment-classes')url.searchParams.delete('enrollmentClass');
+    if(topic!=='notification-jobs')for(const key of ['job','deliveryState','deliveryPage'])url.searchParams.delete(key);
+    window.history.pushState(window.history.state,'',url);
+    lastWorkspaceUrl.current=url.href;
+    setPolicyLocation(url.search);
+  },[policyTopic]);
+
   // Keep the browser listener attached when the router renders during popstate.
   const restoreWorkspaceRoute=useRef<()=>void>(()=>{});
   restoreWorkspaceRoute.current=()=>{
@@ -564,6 +573,11 @@ function CrmWorkspace({
         return;
       }
       const module=params.get("tab");
+      if(module==="policy"&&crmModule==="policy"&&canManage){
+        lastWorkspaceUrl.current=target;
+        setPolicyLocation(params.toString());
+        return;
+      }
       if(module==="payments"&&crmModule==="payments"&&isEnrollmentPaymentView(params)===enrollmentPaymentView)return; // Each view owns its record history.
       if(module==="campaigns"&&crmModule==="campaigns")return; // Campaign owns its intra-object history.
       const apply=async()=>{
@@ -576,7 +590,7 @@ function CrmWorkspace({
         if(module==="opportunities"){setCrmModule("opportunities");return;}
         if(module==="enrollment-management"){setCrmModule(module);return;}
         if(module==="enrollment-aftercare"){setCrmModule(canEnrollmentSupport?module:defaultCrmModule(employee));return;}
-        if(module==="docs"||(module==="policy"&&canManage)){setCrmModule(module);return;}
+        if(module==="docs"||(module==="policy"&&canManage)){if(module==="policy")setPolicyLocation(params.toString());setCrmModule(module);return;}
         setCrmModule("leads");
         setLeadAnalysis(params.get("leadArea") === "analysis");
         setDigestJob(params.get("digestJob"));
@@ -1443,17 +1457,10 @@ function CrmWorkspace({
         ) : crmModule === "policy" && canManage ? (
           <>
             {employee.permissions.includes("crm.operations.manage") && <CrmPolicySettings
-              initialTopic={crmOperationsInitialTopic(employee.permissions.includes("notifications.read"))}
+              initialTopic={policyTopic}
               enrollmentRulesDirty={rulesDirty}
               onEnrollmentRulesDraftChange={setRulesDirty}
-              onTopicChange={topic=>{
-                const url=new URL(window.location.href);
-                if(isCourseTopic(topic)) url.searchParams.set("policyTopic",topic);
-                else if(isCourseTopic(url.searchParams.get("policyTopic"))) url.searchParams.delete("policyTopic");
-                if(topic!=="enrollment-classes") url.searchParams.delete("enrollmentClass");
-                window.history.replaceState({},"",url);
-                lastWorkspaceUrl.current=url.href;
-              }}
+              onTopicChange={changePolicyTopic}
               isLight={isLight}
               lang={lang}
               policyConfig={policyConfig}
@@ -1466,7 +1473,7 @@ function CrmWorkspace({
               notificationContent={employee.permissions.includes("notifications.read") ? (topic:string,active:boolean)=><NotificationTopicPanels enabled={active} topic={topic as NotificationTab} isLight={isLight} lang={lang} canEdit={employee.permissions.includes("notifications.manage")}/> : null}
               onActionControlsChange={setPolicyControls}
             />}
-            {!employee.permissions.includes("crm.operations.manage") && employee.permissions.includes("notifications.read") && <NotificationWorkspace isLight={isLight} lang={lang} canEdit={employee.permissions.includes("notifications.manage")}/>}
+            {!employee.permissions.includes("crm.operations.manage") && employee.permissions.includes("notifications.read") && <NotificationWorkspace topic={policyTopic as NotificationTab} onTopicChange={changePolicyTopic} isLight={isLight} lang={lang} canEdit={employee.permissions.includes("notifications.manage")}/>}
           </>
         ) : crmModule === "docs" ? (
           <CrmUserGuide

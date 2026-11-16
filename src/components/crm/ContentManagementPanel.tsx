@@ -1,4 +1,5 @@
 import {AdminDisclosure} from '../admin/AdminDisclosure';
+import {AdminListState} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
 import {AdminSearchField} from '../admin/AdminSearchField';
@@ -185,7 +186,12 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     newsPage: 7,
     programGallery: 0
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [contentRead,setContentRead] = useState<{section:CmsSection;state:'loading'|'ready'|'error'|'denied'}>();
+  const activeSectionRef=useRef(activeSection);
+  activeSectionRef.current=activeSection;
+  const contentRequests=useRef<Partial<Record<CmsSection,number>>>({});
+  const contentState=contentRead?.section===activeSection?contentRead.state:'loading';
+  const isLoading=contentState==='loading';
   const [searchQuery, setSearchQuery] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -228,21 +234,27 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   };
 
   const fetchItems = async (section: CmsSection) => {
-    setIsLoading(true);
+    const request=(contentRequests.current[section]??0)+1;
+    contentRequests.current[section]=request;
+    const current=()=>contentRequests.current[section]===request;
+    if(activeSectionRef.current===section)setContentRead({section,state:'loading'});
     try {
       const res = await fetch(`/api/cms/content/${section}`);
-      const data = await res.json();
-      if (data.success && Array.isArray(data.items)) {
-        setItems(data.items);
-        setSectionCounts(prev => ({ ...prev, [section]: data.items.length }));
-      } else {
-        setItems([]);
+      if(res.status===401||res.status===403){
+        if(current()&&activeSectionRef.current===section)setContentRead({section,state:'denied'});
+        return;
       }
-    } catch (err: any) {
-      console.error('Failed to fetch CMS items:', err);
-      showNotification('error', t('Failed to load content', '加载内容失败'));
-    } finally {
-      setIsLoading(false);
+      if(!res.ok)throw Error();
+      const data = await res.json();
+      if(!data.success||!Array.isArray(data.items))throw Error();
+      if(!current())return;
+      setSectionCounts(prev => ({...prev,[section]:data.items.length}));
+      if(activeSectionRef.current===section){
+        setItems(data.items);
+        setContentRead({section,state:'ready'});
+      }
+    } catch {
+      if(current()&&activeSectionRef.current===section)setContentRead({section,state:'error'});
     }
   };
 
@@ -741,6 +753,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
                 <span>{t('Loading local content...', '正在加载本地数据...')}</span>
               </div>
+            ) : contentState==='error'||contentState==='denied' ? (
+              <AdminListState lang={lang} state={contentState}
+                message={contentState==='error'?t('Failed to load content','加载内容失败'):undefined}
+                onRetry={()=>void fetchItems(activeSection)}/>
             ) : filteredItems.length === 0 ? (
               <div className={`py-16 text-center text-xs rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 ${
                 isLight ? 'border-slate-200 text-slate-400 bg-slate-50/50' : 'border-slate-800 text-slate-500 bg-slate-950/20'

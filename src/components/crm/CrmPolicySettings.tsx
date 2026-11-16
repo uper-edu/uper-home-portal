@@ -264,7 +264,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [currentMinutesInDay, setCurrentMinutesInDay] = useState(0);
   const [isCurrentlyWorking, setIsCurrentlyWorking] = useState(true);
   // Active section filter or layout mode
-  const [activeCategory, setActiveCategory] = useState<OperationSection>(initialTopic);
+  const activeCategory = initialTopic;
   const languageIndex = lang === "zh" ? 2 : lang === "id" ? 1 : 0;
   const currentSection = operationSections.find(section=>section.id===activeCategory)!;
   const [showCascadeDiagram, setShowCascadeDiagram] = useState(false);
@@ -304,16 +304,16 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     setFocusField(null);
   }, [focusField]);
   const focusCalendar = useCallback((errors: WorkTimeErrors) => {
-    setActiveCategory("schedule");
+    onTopicChange?.("schedule");
     setFocusField(errors.startTime ? "startTime" : "endTime");
-  }, []);
+  }, [onTopicChange]);
   const [pendingConfigField, setPendingConfigField] = useState<string | null>(null);
   const focusConfig = useCallback((errors: ConfigErrors) => {
     const field=Object.keys(errors)[0];
     if(field==='businessHours.startTime'||field==='businessHours.endTime') {
       focusCalendar({[field.split('.')[1]]:errors[field]} as WorkTimeErrors);
-    } else { setActiveCategory(operationSectionForField(field)); setPendingConfigField(field); }
-  },[focusCalendar]);
+    } else { onTopicChange?.(operationSectionForField(field)); setPendingConfigField(field); }
+  },[focusCalendar,onTopicChange]);
   useEffect(()=>{
     if(!pendingConfigField)return;
     const element=Array.from(document.querySelectorAll<HTMLElement>('[data-policy-field]')).find(e=>e.dataset.policyField===pendingConfigField);
@@ -1182,7 +1182,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     <div className="crm-ops-workspace-sample" data-theme={isLight?'light':'dark'}><AdminTopicFrame selection={activeCategory} label={["Configuration topics","Topik konfigurasi","配置主题"][languageIndex]} navigation={
       <nav className="crm-ops-nav" aria-label={['Operations topics','Topik operasional','运营主题'][languageIndex]}>
         <details open><summary>{['Configuration topics','Topik konfigurasi','配置主题'][languageIndex]}</summary><div>
-        {operationGroupOrder.map(i=><React.Fragment key={i}><h2>{operationGroups[i][languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{setActiveCategory(section.id);onTopicChange?.(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({assignment:UsersRound,permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send,courses:BookOpen,'enrollment-classes':CalendarCheck,'enrollment-rules':Clock3} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
+        {operationGroupOrder.map(i=><React.Fragment key={i}><h2>{operationGroups[i][languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{onTopicChange?.(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({assignment:UsersRound,permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send,courses:BookOpen,'enrollment-classes':CalendarCheck,'enrollment-rules':Clock3} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
         </div></details>{modifiedFieldsCount > 0 && <small role="status">{['Unsaved policy changes','Perubahan kebijakan belum disimpan','有未保存的策略修改'][languageIndex]}</small>}
       </nav>}>
       <div className="crm-ops-content">{activeCategory==='courses'?<CrmCourses lang={lang} isLight={isLight}/>:activeCategory==='enrollment-classes'?<CrmEnrollmentClasses lang={lang} isLight={isLight}/>:activeCategory==='enrollment-rules'?null:<AdminForm lang={lang} noValidate onSubmit={handleSave} className="crm-form-layout w-full mx-auto">

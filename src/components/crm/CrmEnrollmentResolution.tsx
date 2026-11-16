@@ -1,4 +1,5 @@
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {AdminListState} from '../admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { useEffect,useState,useRef } from 'react';
 import { RefreshCw, Send, Wallet } from 'lucide-react';
@@ -500,13 +501,26 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const [returnEntry,setReturnEntry]=useState<{reference:string;requestId:string}>();
   const base=finance+'/'+id;
-  const load=async()=>{
-    const response=await fetch(base+'/refund-details',{cache:'no-store'});
-    if(response.ok) setDetails(await response.json());
+  const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'|'empty'>('loading');
+  const load=async(signal?:AbortSignal)=>{
+    setReadState('loading');
+    try{
+      const response=await fetch(base+'/refund-details',{cache:'no-store',signal});
+      if(signal?.aborted)return;
+      if(response.status===401||response.status===403){setDetails(undefined);setReadState('denied');return;}
+      if(response.status===404){setDetails(undefined);setReadState('empty');return;}
+      if(!response.ok)throw Error();
+      const data=await response.json();
+      if(!signal?.aborted){setDetails(data);setReadState('ready');}
+    }catch{
+      if(!signal?.aborted)setReadState('error');
+    }
   };
   useEffect(()=>{onBusyChange?.(busy);return ()=>onBusyChange?.(false);},[busy,onBusyChange]);
-  useEffect(()=>{void load().catch(()=>setError(t('未能加载退款明细。','Refund details could not be loaded.','Rincian belum dapat dimuat.')));},[id]);
-  if(!details) return error?<p role="alert">{error}</p>:null;
+  useEffect(()=>{const request=new AbortController();void load(request.signal);return ()=>request.abort();},[id]);
+  if(readState!=='ready'||!details)return <AdminListState lang={lang} compact state={readState==='ready'?'empty':readState}
+    message={readState==='error'?t('未能加载退款明细。','Refund details could not be loaded.','Rincian belum dapat dimuat.'):undefined}
+    onRetry={()=>void load()}/>;
   const {expected,refunded,requestedAt,sendBy,timezone}=details.progress;
   const original=details.receipts.find(row=>row.reference===source);
   const payment=details.installments.find(entry=>entry.reference===returnEntry?.reference);

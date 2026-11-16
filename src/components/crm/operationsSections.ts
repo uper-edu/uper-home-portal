@@ -27,6 +27,15 @@ export type OperationSection = typeof operationSections[number]['id'];
 export function isCourseTopic(section:string|null):section is 'courses'|'enrollment-classes'|'enrollment-rules' {
  return operationSections.some(topic=>topic.group===3&&topic.id===section);
 }
+export function resolveOperationTopic(params:URLSearchParams, canManageOperations:boolean, canReadNotifications:boolean):OperationSection {
+ const topic=params.get('policyTopic');
+ if(canReadNotifications&&topic&&isNotificationTopic(topic)) return topic as NotificationTopic;
+ if(!canManageOperations) return 'notification-rules';
+ if((!topic||topic==='courses')&&params.has('enrollmentClass')) return 'enrollment-classes';
+ return operationSections.find(section=>section.id===topic&&section.group!==2&&
+   !['retry','milestone','reactivation'].includes(section.id))?.id??'courses';
+}
+
 export function operationSectionForField(field:string):OperationSection {
  const prefix=field.split('.')[0];return ({autoAssignment:'assignment',businessHours:'schedule',firstResponseSla:'first_response',noResponseCadence:'retry',inactivityWatchdog:'watchdog',milestones:'milestone',reactivation:'reactivation'} as Record<string,OperationSection>)[prefix]||'permissions';
 }

@@ -221,6 +221,7 @@ export default function NotificationCenter({
     [loading, setLoading] = useState(false),
     [busy, setBusy] = useState(false),
     [denied, setDenied] = useState(false);
+  const [auditRead,setAuditRead] = useState<"loading"|"ready"|"denied"|"error">("loading");
   const [editor, setEditor] = useState<"rule" | "channel" | null>(null),
     [key, setKey] = useState(""),
     [existing, setExisting] = useState(false),
@@ -360,8 +361,13 @@ export default function NotificationCenter({
       }finally{if(request===jobsRequest.current)setLoading(false);}
       return;
     }
+    if(tab==='notification-audit')setAuditRead(previous=>previous==='ready'?'ready':'loading');
     try {
       const data = await api(tab);
+      if(tab==='notification-audit'){
+        if(!Array.isArray(data))throw Error('Invalid notification history response');
+        setAuditRead('ready');
+      }
       if (tab === "notification-channels") setEnvironmentGroupWebhook(data.groupWebhookUsesEnvironment === true);
       setRows(
         tab === "integration-readiness"
@@ -387,8 +393,10 @@ export default function NotificationCenter({
       if (editorBaseline.current === null) setError("");
       setDenied(false);
     } catch (e) {
-      setError((e as Error).message);
-      setDenied((e as any).status === 403);
+      const status=(e as {status?:number}).status;
+      if(tab==='notification-audit')setAuditRead(status===401||status===403?'denied':'error');
+      else setError((e as Error).message);
+      setDenied(status===401||status===403);
     } finally {
       setLoading(false);
     }
@@ -888,7 +896,7 @@ export default function NotificationCenter({
               {notice}
             </p>
           )}
-          {(!denied||tab==="notification-jobs") && (
+          {(!denied||tab==="notification-jobs"||tab==="notification-audit") && (
             <>
               {tab !== "notification-channels" && !editor && <div className="notification-topic-toolbar">
                 <p className={`text-xs ${muted}`}>
@@ -1668,7 +1676,7 @@ export default function NotificationCenter({
               )}
               {!editor && (
                 <>
-                  {tab !== "notification-jobs" && rows.length === 0 && !loading && (
+                  {tab !== "notification-jobs" && tab !== "notification-audit" && rows.length === 0 && !loading && (
                     <p className={`text-xs text-center py-8 ${muted}`}>
                       {t("暂无记录", "No records yet")}
                     </p>
@@ -2025,7 +2033,11 @@ export default function NotificationCenter({
                       )}
                     </>
                   )}
-                  {tab === "notification-audit" && (
+                  {tab === "notification-audit" && (auditRead!=='ready'||!rows.length) && (
+                    <AdminListState lang={lang} state={auditRead==='ready'?'empty':auditRead}
+                      message={auditRead==='ready'?t("暂无记录","No records yet"):undefined} onRetry={()=>void load()}/>
+                  )}
+                  {tab === "notification-audit" && auditRead==='ready' && rows.length>0 && (
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs text-left">
                         <thead className={muted}>
@@ -2155,7 +2167,7 @@ export function NotificationTopicPanels({topic,enabled=true,...props}:{topic:Tab
 }
 
 /** Same navigation for notification readers without policy-management permission. */
-export function NotificationWorkspace(props:{isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
- const [topic,setTopic]=useState<Tab>(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('policyTopic')==='notification-jobs'?'notification-jobs':'notification-rules');const col=props.lang==='zh'?2:props.lang==='id'?1:0;
- return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>setTopic(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
+export function NotificationWorkspace({topic,onTopicChange,...props}:{topic:Tab;onTopicChange:(topic:Tab)=>void;isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
+ const col=props.lang==='zh'?2:props.lang==='id'?1:0;
+ return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>onTopicChange(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
 }
