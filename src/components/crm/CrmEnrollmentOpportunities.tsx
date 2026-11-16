@@ -1,6 +1,7 @@
+import {AdminListState} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
-import { GraduationCap, NotebookPen } from 'lucide-react';
+import { GraduationCap, NotebookPen, RefreshCw } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {containPaneKeys, revealRecord} from '../adminScroll';
 import {CrmDetailActions, CrmRecordFilters, CrmRecordNavigation, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordSidebarToggle, CrmRecordTitle} from './CrmRecordWorkspace';
@@ -420,12 +421,15 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const id=params.get('opportunity');
   const customerId=params.get('customerId');
   const listEndpoint=base+(customerId?'?'+new URLSearchParams({customerId}):'');
-  const [listResponse,setResult]=useState<{endpoint:string;data:OpportunityList}>();
-  const result=listResponse?.endpoint===listEndpoint?listResponse.data:undefined;
+  const [listResponse,setResult]=useState<{endpoint:string;actorId:string;data:OpportunityList}>();
+  const result=listResponse?.endpoint===listEndpoint&&listResponse.actorId===actorId?listResponse.data:undefined;
   const list=result?.opportunities;
   const [loadedDetail,setDetail]=useState<Opportunity>();
   const detail=loadedDetail?.id===id?loadedDetail:undefined;
   const [listFailed,setListFailed]=useState(false);
+  const [listLoading,setListLoading]=useState(true);
+  const [listRevision,setListRevision]=useState(0);
+  const [detailRevision,setDetailRevision]=useState(0);
   const shellHeight=useCrmShellHeight();
   const desktopRail=useRecordScrollMode(shellHeight)==='independent';
   const [collapsed,setCollapsed]=useState(false);
@@ -468,14 +472,19 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   },[progress,busy]);
   useEffect(()=>{
     const controller=new AbortController();
+    setListLoading(true);
     setListFailed(false);
     void read<OpportunityList>(listEndpoint,controller.signal).then(data=>{
-      if(!controller.signal.aborted)setResult({endpoint:listEndpoint,data});
-    },()=>{
-      if(!controller.signal.aborted){setResult(undefined);setListFailed(true);}
+      if(!controller.signal.aborted)setResult({endpoint:listEndpoint,actorId,data});
+    },(cause:Error)=>{
+      if(controller.signal.aborted)return;
+      if(['401','403','404'].includes(cause.message))setResult(undefined);
+      setListFailed(true);
+    }).finally(()=>{
+      if(!controller.signal.aborted)setListLoading(false);
     });
     return ()=>controller.abort();
-  },[listEndpoint,assistanceRevision,actorId]);
+  },[listEndpoint,assistanceRevision,actorId,listRevision]);
   useEffect(()=>{
     if(!id)return;
     const controller=new AbortController();
@@ -483,10 +492,10 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     void read<Opportunity>(base+'/'+encodeURIComponent(id),controller.signal).then(data=>{
       if(!controller.signal.aborted)setDetail(data);
     },(cause:Error)=>{
-      if(!controller.signal.aborted)setError(cause.message);
+      if(!controller.signal.aborted){setDetail(undefined);setError(cause.message);}
     });
     return ()=>controller.abort();
-  },[id,assistanceRevision,actorId]);
+  },[id,assistanceRevision,actorId,detailRevision]);
   useEffect(()=>{
     const url=new URL(window.location.href);
     if(url.searchParams.get('tab')!=='opportunities') return;
@@ -622,7 +631,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const previous=index>0?visible?.[index-1]:undefined;
   const following=index>=0?visible?.[index+1]:undefined;
   const activeRow=list?.find(row=>row.id===id);
-  const headingRecord=detail??(!error?activeRow:undefined);
+  const detailUnavailable=error==='401'||error==='403'||error==='404';
+  const headingRecord=detail??(!detailUnavailable?activeRow:undefined);
   const pendingAssistance=Number(detail?.assistanceHistory?.active)===1&&!detail?.assistanceHistory?.confirmedAt;
   const scopeLabel=t(lang,['商机范围','Opportunity scope','Cakupan peluang']);
   const scopes=[
@@ -648,12 +658,13 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           options={[{value:'',label:t(lang,['全部待办状态','All follow-up statuses','Semua status tindak lanjut'])},{value:'with',label:t(lang,['已有待办','Has follow-up','Ada tindak lanjut'])},
             {value:'without',label:t(lang,['暂无待办','No follow-up','Belum ada tindak lanjut'])}]}/>
   </>;
+  const listRefreshLabel=t(lang,['刷新','Refresh','Segarkan']);
   const backToOpportunities={label:t(lang,['返回商机列表','Back to opportunities','Kembali ke daftar peluang']),href:back};
   const sidebarToggle=<CrmRecordSidebarToggle controls="crm-opportunity-records" expanded={showSidebar}
             label={showSidebar?t(lang,['收起商机列表','Hide opportunity list','Sembunyikan daftar peluang']):
               t(lang,['展开商机列表','Show opportunity list','Tampilkan daftar peluang'])}
             onClick={()=>desktopRail?setCollapsed(value=>!value):setShowList(value=>!value)}/>;
-  return <section className="crm-opportunity-workspace" aria-busy={!error&&(id?!detail:!list&&!listFailed)}>
+  return <section className="crm-opportunity-workspace" aria-busy={id?!error&&!detail:listLoading}>
     {id?<div className="crm-opportunity-detail-shell crm-detail-root"
       data-sidebar={desktopRail&&showSidebar} data-record-scroll={desktopRail?'independent':'page'}
       data-theme={isLight?'light':'dark'} style={{'--crm-shell-height':shellHeight+'px'} as React.CSSProperties}>
@@ -746,7 +757,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         </div>}
         <div className="crm-detail-body crm-opportunity-detail-body" ref={detailBody} data-admin-scroll="detail"
           onKeyDown={containPaneKeys} tabIndex={0}>
-        {error?<p role="alert">{error==='404'?t(lang,['找不到此商机，或当前账号无权查看。','This opportunity is unavailable or outside your access.','Peluang tidak tersedia atau di luar akses Anda.']):t(lang,['暂时无法读取商机。','Opportunities could not be loaded.','Peluang belum dapat dimuat.'])}</p>:detail?<div className="crm-opportunity-sections">
+        {error?<AdminListState lang={lang} state={detailUnavailable?'denied':'error'}
+          message={detailUnavailable
+            ?t(lang,['找不到此商机，或当前账号无权查看。','This opportunity is unavailable or outside your access.','Peluang tidak tersedia atau di luar akses Anda.'])
+            :t(lang,['暂时无法读取商机。','Opportunity could not be loaded.','Peluang belum dapat dimuat.'])}
+          onRetry={()=>{detailBody.current?.focus({preventScroll:true});setDetailRevision(value=>value+1);}}/>:detail?<div className="crm-opportunity-sections">
         {detail.assistanceHistory&&<section>
           <h2>{t(lang,['协助报名','Assisted enrollment','Pendaftaran berbantuan'])}</h2>
           <p className="crm-work-muted">
@@ -782,8 +797,14 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         </div>
       </div>
     </div>:<>
-      <div className="admin-page-toolbar" data-theme={isLight?'light':'dark'}><CrmPageIdentity title={label}/></div>
-      {listFailed&&<p role="alert">{t(lang,['暂时无法读取商机。','Opportunities could not be loaded.','Peluang belum dapat dimuat.'])}</p>}
+      <div className="admin-page-toolbar" data-theme={isLight?'light':'dark'}>
+        <CrmPageIdentity title={label}/>
+        <CrmPageAction icon={RefreshCw} label={listRefreshLabel} loading={listLoading}
+          onClick={()=>setListRevision(value=>value+1)}/>
+      </div>
+      {listFailed&&<p role="alert">{list
+        ?t(lang,['刷新失败，仍显示上次读取的商机。','Refresh failed. Showing the last loaded opportunities.','Gagal menyegarkan. Peluang yang terakhir dimuat masih ditampilkan.'])
+        :t(lang,['暂时无法读取商机。','Opportunities could not be loaded.','Peluang belum dapat dimuat.'])}</p>}
       {result?.customer&&<div className="crm-opportunity-filters">
         <span className="crm-work-muted">{t(lang,['客户','Customer','Pelanggan'])} · <a className="crm-work-link"
           href={crmHref({tab:'leads',lead:result.customer.id})}>{result.customer.name}</a></span>
@@ -836,7 +857,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           setProgress(null);setNotice(true);
           try{
             const signal=new AbortController().signal;
-            const latest=read<OpportunityList>(listEndpoint,signal).then(data=>setResult({endpoint:listEndpoint,data}));
+            const latest=read<OpportunityList>(listEndpoint,signal).then(data=>setResult({endpoint:listEndpoint,actorId,data}));
             if(id)await Promise.all([latest,read<Opportunity>(base+'/'+id,signal).then(setDetail)]);
             else await latest;
           }catch{setSaveError(true);}
