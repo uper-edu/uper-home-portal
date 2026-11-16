@@ -1724,10 +1724,10 @@ export default function NotificationCenter({
                             <footer className="notification-policy-card-footer">
                               <small>{row.id} · v{row.version}</small>
                               {canEdit && <div className="notification-policy-card-actions">
-                                <button type="button" id={editorTriggerId("rule", row.id)} className="crm-work-button"
+                                <AdminRowAction id={editorTriggerId("rule", row.id)}
                                   disabled={busy} onClick={() => edit(row)}>
                                   {t("编辑策略", "Edit policy")}
-                                </button>
+                                </AdminRowAction>
                                 {typeof version === "number" && <button type="button"
                                   className="crm-work-button notification-channel-remove"
                                   aria-label={t("删除通知策略", "Delete notification policy")}
@@ -1765,9 +1765,9 @@ export default function NotificationCenter({
                             </header>
                             <p className="notification-channel-help">{t("个人业务通知和绑定确认使用此模式。", "This mode applies to personal business notifications and binding confirmations.")}</p>
                             {canEdit && <div className="notification-channel-card-actions">
-                              <button type="button" id={editorTriggerId("channel", row.id)} className="crm-work-button" disabled={busy} onClick={() => edit(row)}>
+                              <AdminRowAction id={editorTriggerId("channel", row.id)} disabled={busy} onClick={() => edit(row)}>
                                 {t("编辑渠道", "Edit channel")}
-                              </button>
+                              </AdminRowAction>
                               {row.testDelivery && <LarkChannelTestControls id={row.id} personal
                                 name={t("Lark 个人通知", "Lark personal notifications")} test={row.testDelivery}
                                 lang={lang} isLight={isLight} request={api}/>}
@@ -1825,9 +1825,9 @@ export default function NotificationCenter({
                             </dl>
                             {canEdit && (
                               <div className="notification-channel-card-actions">
-                                <button type="button" id={editorTriggerId("channel", row.id)} className="crm-work-button" disabled={busy} onClick={() => edit(row)}>
+                                <AdminRowAction id={editorTriggerId("channel", row.id)} disabled={busy} onClick={() => edit(row)}>
                                   {t("编辑渠道", "Edit channel")}
-                                </button>
+                                </AdminRowAction>
                                 {row.testDelivery && <LarkChannelTestControls id={row.id}
                                   name={name} test={row.testDelivery} lang={lang} isLight={isLight} request={api}/>}
                                 {row.testDelivery && !row.systemManaged && <button type="button"

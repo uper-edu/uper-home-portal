@@ -1,5 +1,7 @@
 import {AdminDisclosure} from '../admin/AdminDisclosure';
+import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
+import {CrmSearchField} from './CrmSearchField';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
 import {AdminFormGuide} from '../AdminFormGuide';
@@ -20,7 +22,6 @@ import {
   Newspaper, 
   GraduationCap, 
   Sparkles, 
-  Search, 
   Plus, 
   Edit3, 
   Trash2, 
@@ -204,6 +205,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const partnerCategories = [
+    ['Chinese Universities','中国高校'], ['Indonesian Universities & Schools','印尼院校及学校'],
+    ['Educational Institutions','教育机构'], ['Corporate Partners','企业伙伴'],
+  ] as const;
   const t = (en: string, zh: string) => cmsText(en, zh, lang);
   const closeEditor=()=>{if(isSaving||isUploading||pendingCms)return;if(JSON.stringify(editingItem)!==cmsDraftBase.current){setDiscardDraft(true);return;}setIsModalOpen(false);};
 
@@ -701,20 +706,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {/* Action Bar (Search & Add New) */}
                 <div className="flex items-center gap-2 self-stretch sm:self-auto">
-                  <div className="relative flex-1 sm:w-60">
-                    <Search className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={t(`Search in this table...`, `搜索当前分类内容...`)}
-                      className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border transition-colors outline-none ${
-                        isLight 
-                          ? 'bg-white border-slate-200 text-slate-900 focus:border-primary-500' 
-                          : 'bg-slate-900 border-slate-700 text-slate-100 focus:border-primary-500'
-                      }`}
-                    />
-                  </div>
+                  <CrmSearchField className="flex-1 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
+                    value={searchQuery} onChange={setSearchQuery}
+                    placeholder={t('Search in this table...', '搜索当前分类内容...')}/>
 
                   <button
                     type="button"
@@ -830,22 +824,17 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         </span>
 
                         <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(item)}
-                            className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-medium cursor-pointer ${
-                              isLight ? 'text-slate-600 hover:bg-slate-200/60' : 'text-slate-300 hover:bg-slate-800'
-                            }`}
-                          >
-                            <Edit3 className="w-3.5 h-3.5 text-primary-500" />
-                            <span>{t('Edit', '编辑')}</span>
-                          </button>
+                          <AdminRowAction onClick={() => handleOpenEdit(item)} aria-label={t('Edit','编辑')+' · '+title}>
+                            <Edit3 size={14} aria-hidden="true"/>
+                            {t('Edit', '编辑')}
+                          </AdminRowAction>
 
                           <button
                             type="button"
                             onClick={() => requestDelete(item)}
                             className="p-1.5 rounded-lg transition-colors text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                             title={t('Delete item (double confirmation required)', '删除此项（需二次确认）')}
+                            aria-label={t('Delete','删除')+' · '+title}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1080,18 +1069,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   <div className="grid grid-cols-2 gap-3">
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
-                      <select
+                      <CrmSingleSelect label={t('Category','所属类别')} lang={lang} isLight={isLight}
                         value={editingItem.category || ''}
-                        onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                        className={`w-full px-3 py-1.5 rounded-lg border ${
-                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                        }`}
-                      >
-                        <option value="Chinese Universities">{t('Chinese Universities', '中国高校')}</option>
-                        <option value="Indonesian Universities & Schools">{t('Indonesian Universities & Schools', '印尼院校及学校')}</option>
-                        <option value="Educational Institutions">{t('Educational Institutions', '教育机构')}</option>
-                        <option value="Corporate Partners">{t('Corporate Partners', '企业伙伴')}</option>
-                      </select>
+                        onChange={category=>setEditingItem({...editingItem,category})}
+                        options={partnerCategories.map(([value,zh])=>({value,label:t(value,zh)}))}/>
                     </AdminField>
 
                     <AdminField as="div">

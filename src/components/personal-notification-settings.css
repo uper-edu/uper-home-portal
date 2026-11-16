@@ -30,7 +30,7 @@
 .admin-notification-drawer .admin-personal-availability p{margin-top:var(--admin-form-help-gap);color:var(--admin-muted)}
 .admin-personal-language{display:grid;grid-template-columns:minmax(72px,1fr) minmax(0,220px);align-items:center;gap:16px;font-size:14px;line-height:1.6}
 .admin-personal-language .crm-filter-area{--input-font-size:14px}
-.admin-personal-language .crm-filter-dimension-button{width:100%;min-height:40px;font-size:14px}
+.admin-personal-language .crm-filter-dimension-button{width:100%}
 .admin-personal-preferences>.admin-form-section{margin:0;padding-top:var(--admin-form-group-gap);border-top:1px solid var(--cw-border)}
 .admin-personal-managed{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:1.6;color:var(--admin-muted)}
 .admin-personal-required-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:0;margin:0;list-style:none}

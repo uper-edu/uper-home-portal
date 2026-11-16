@@ -1,6 +1,7 @@
+import {CrmSingleSelect} from './crm/CrmSingleSelect';
 import {useEffect,useState} from 'react';
 import type {CrmLanguage} from '../utils/crmLanguage';
-export function LarkEmployeeBinding({employeeId,lang,onDraftChange,onBindingDraft,disabled=false}:{employeeId:string;lang:CrmLanguage;onDraftChange?:(dirty:boolean)=>void;onBindingDraft?:(draft:any)=>void;disabled?:boolean}){
+export function LarkEmployeeBinding({employeeId,lang,isLight,onDraftChange,onBindingDraft,disabled=false}:{employeeId:string;lang:CrmLanguage;isLight:boolean;onDraftChange?:(dirty:boolean)=>void;onBindingDraft?:(draft:any)=>void;disabled?:boolean}){
  const t=(zh:string,en:string,id:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const [method,setMethod]=useState<'mobile'|'email'>('mobile');
  const [binding,setBinding]=useState<any>(null),[email,setEmail]=useState(''),[candidate,setCandidate]=useState<any>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[removing,setRemoving]=useState(false);
@@ -24,7 +25,10 @@ export function LarkEmployeeBinding({employeeId,lang,onDraftChange,onBindingDraf
  return <section className="access-lark-binding" aria-label={t('Lark账号绑定','Lark account binding','Akun Lark')}>
  <p>{t('查询仅核对身份，点击底部“保存修改”后生效。','Lookup only verifies identity. Use Save changes below to apply.','Pencarian hanya memeriksa identitas. Gunakan Simpan perubahan di bawah untuk menerapkan.')}</p>
  <p>{binding?.openId?`${t('已绑定','Bound','Terhubung')} · ${binding.mobile||binding.email}`:t('未绑定Lark账号','Lark account not bound','Akun Lark belum terhubung')}</p>
- <label>{t('查询方式','Lookup method','Metode pencarian')}<select value={method} disabled={busy||disabled} onChange={e=>{setRemoving(false);setMethod(e.target.value as 'mobile'|'email');setEmail('');setCandidate(null);setError('');}}><option value="mobile">{t('手机号','Phone number','Nomor telepon')}</option><option value="email">{t('登录邮箱','Login email','Email login')}</option></select></label>
+ <div>{t('查询方式','Lookup method','Metode pencarian')}<CrmSingleSelect
+  label={t('查询方式','Lookup method','Metode pencarian')} lang={lang} isLight={isLight} value={method} disabled={busy||disabled}
+  options={[{value:'mobile',label:t('手机号','Phone number','Nomor telepon')},{value:'email',label:t('登录邮箱','Login email','Email login')}]}
+  onChange={value=>{setRemoving(false);setMethod(value==='email'?'email':'mobile');setEmail('');setCandidate(null);setError('');}}/></div>
  <label>{method==='mobile'?t('Lark登录手机号','Lark login phone','Nomor login Lark'):t('Lark登录邮箱','Lark login email','Email login Lark')}<input type={method==='mobile'?'tel':'email'} autoComplete="off" value={email} disabled={busy||disabled} onChange={e=>{setRemoving(false);setEmail(e.target.value);setCandidate(null);setError('');}} /></label>
  <small>{method==='mobile'?t('包含国家区号，例如 +6281234567890。','Include the country code, e.g. +6281234567890.','Sertakan kode negara, misalnya +6281234567890.'):t('使用Lark登录方式中绑定的邮箱；不支持员工资料里的企业业务邮箱。','Use the email bound to Lark sign-in, not the corporate business email in the employee profile.','Gunakan email yang terhubung untuk login Lark, bukan email bisnis pada profil staf.')}</small>
  <button type="button" disabled={busy||disabled||!email.trim()} onClick={()=>void run(async()=>setCandidate(await request('lark-lookup',{method,[method]:email})))}>{t('查询账号','Find account','Cari akun')}</button>

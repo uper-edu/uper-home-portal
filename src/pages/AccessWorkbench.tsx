@@ -1,5 +1,6 @@
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
+import {CrmSearchField} from '../components/crm/CrmSearchField';
 import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormGuide} from '../components/AdminFormGuide';
@@ -539,10 +540,8 @@ export function AccessWorkspace({
                 <div className="access-toolbar">
                   <AdminField>
                     {t("Find a user", "Cari pengguna", "查找用户")}
-                    <input
-                      type="search"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
+                    <CrmSearchField label={t("Find a user","Cari pengguna","查找用户")}
+                      value={query} onChange={setQuery}
                     />
                   </AdminField>
                   {can("access.users") && (
@@ -1107,7 +1106,7 @@ export function AccessWorkspace({
             )}
             {user?.id && can("access.users") && (
               <AdminFormSection title={t("Lark account", "Akun Lark", "Lark账号")}>
-                <LarkEmployeeBinding key={user.id} employeeId={user.id} lang={lang} onDraftChange={setLarkDirty} onBindingDraft={setLarkDraft} disabled={busy} />
+                <LarkEmployeeBinding key={user.id} employeeId={user.id} lang={lang} isLight={isLight} onDraftChange={setLarkDirty} onBindingDraft={setLarkDraft} disabled={busy} />
               </AdminFormSection>
             )}
             {role && (

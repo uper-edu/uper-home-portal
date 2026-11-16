@@ -162,12 +162,6 @@
   border-top: 1px solid var(--access-border);
   padding-top: 14px;
 }
-.access-record-action button {
-  width: 100%;
-}
-.access-record-action button:hover {
-  background: var(--access-bg);
-}
 @supports not (grid-template-rows: subgrid) {
   .access-user-card,
   .access-role-card {
