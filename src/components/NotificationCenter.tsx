@@ -1,4 +1,7 @@
 import {AdminDisclosure} from './admin/AdminDisclosure';
+import {AdminListPagination,AdminListState,AdminListTable} from './admin/AdminList';
+import {AdminStatus} from './AdminStatus';
+import {AdminRowAction} from './admin/AdminListControl';
 import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../utils/larkNotificationDefaults';
 import {allowsLarkGroup, allowsLarkPersonal, LARK_GROUP, LARK_PERSONAL, MAX_NOTIFICATION_GROUPS, notificationGroupIds, policyDeliveryChannels} from '../utils/notificationGroupTargets';
 import {LEAD_ASSIGNED_EVENT} from '../utils/leadAssignmentNotification';
@@ -156,6 +159,13 @@ const stateNames: Record<string, [string, string]> = {
   unknown: ["结果未知", "Unknown"],
   cancelled: ["已取消", "Cancelled"],
 };
+const jobsPageSize=25;
+const jobsPositionKey='uper_notification_jobs_position';
+function notificationJobsLocation(){
+  const params=typeof window==='undefined'?new URLSearchParams():new URLSearchParams(window.location.search);
+  const state=params.get('deliveryState')??'all',page=Number(params.get('deliveryPage'));
+  return {state:Object.hasOwn(stateNames,state)?state:'all',page:Number.isSafeInteger(page)&&page>0?page:1,job:params.get('job')};
+}
 async function api(path: string, body?: unknown, method = body === undefined ? "GET" : "POST") {
   const r = await fetch("/api/crm/" + path, {
     method,
@@ -281,9 +291,47 @@ export default function NotificationCenter({
       }[]
     >([]),
     [simulateAt, setSimulateAt] = useState(""),
-    [filter, setFilter] = useState("all"),
+    [jobsLocation,setJobsLocation] = useState(notificationJobsLocation),
     [cancelId, setCancelId] = useState(""),
     [cancelReason, setCancelReason] = useState("");
+  const targetJob=jobsLocation.job;
+  const [jobs,setJobs]=useState<{target:string|null;rows?:Row[];error?:string;denied?:boolean}>();
+  const jobsTable=useRef<HTMLDivElement>(null);
+  const jobsRequest=useRef(0);
+  const jobsResult=jobs?.target===targetJob?jobs:undefined;
+  const matchingJobs=jobsResult?.rows?.filter(row=>targetJob?row.id===targetJob:jobsLocation.state==='all'||row.state===jobsLocation.state);
+  const jobPages=Math.max(1,Math.ceil((matchingJobs?.length??0)/jobsPageSize));
+  const jobPage=Math.min(jobsLocation.page,jobPages);
+  const visibleJobs=matchingJobs?.slice((jobPage-1)*jobsPageSize,jobPage*jobsPageSize);
+  const changeJobsLocation=(state:string,page:number)=>{
+    const url=new URL(window.location.href);
+    if(state==='all')url.searchParams.delete('deliveryState');
+    else url.searchParams.set('deliveryState',state);
+    if(page===1)url.searchParams.delete('deliveryPage');
+    else url.searchParams.set('deliveryPage',String(page));
+    window.history.replaceState(window.history.state,'',url);
+    setJobsLocation(notificationJobsLocation());
+  };
+  const openAllJobs=()=>{
+    const url=new URL(window.location.href);
+    url.searchParams.delete('job');
+    window.history.pushState(window.history.state,'',url);
+    setJobsLocation(notificationJobsLocation());
+  };
+  useEffect(()=>{
+    if(tab!=='notification-jobs'||!active)return;
+    const restore=()=>setJobsLocation(notificationJobsLocation());
+    restore();
+    window.addEventListener('popstate',restore);
+    return ()=>window.removeEventListener('popstate',restore);
+  },[tab,active]);
+  const rememberJobPosition=(event:React.MouseEvent<HTMLAnchorElement>,id:string)=>{
+    if(event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+    const rowTop=event.currentTarget.closest('tr')?.getBoundingClientRect().top;
+    try{sessionStorage.setItem(jobsPositionKey,JSON.stringify({
+      url:window.location.pathname+window.location.search,id,rowTop,top:window.scrollY,left:jobsTable.current?.scrollLeft,
+    }));}catch{}
+  };
   const box = `rounded-2xl border ${isLight ? "bg-white border-slate-200/90" : "bg-slate-900 border-slate-800"}`;
   const muted = isLight ? "text-slate-500" : "text-slate-400";
   const input = `w-full h-9 px-3 rounded-lg border text-xs outline-none focus:ring-2 focus:ring-primary-500/30 ${isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-950 border-slate-700 text-slate-200"}`;
@@ -296,9 +344,24 @@ export default function NotificationCenter({
   };
   const load = useCallback(async () => {
     setLoading(true);
+    if(tab==='notification-jobs'){
+      const request=++jobsRequest.current;
+      try{
+        const data=await api(tab+(targetJob?'?job='+encodeURIComponent(targetJob):''));
+        if(!Array.isArray(data))throw Error('Invalid delivery records response');
+        if(request===jobsRequest.current){setJobs({target:targetJob,rows:data});setError('');}
+      }catch(e){
+        if(request===jobsRequest.current){
+          const status=(e as {status?:number}).status;
+          const denied=status===401||status===403;
+          setJobs(previous=>({target:targetJob,...(!denied&&previous?.target===targetJob?{rows:previous.rows}:{}),
+            error:(e as Error).message,denied}));
+        }
+      }finally{if(request===jobsRequest.current)setLoading(false);}
+      return;
+    }
     try {
-      const job=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
-      const data = await api(tab+(tab==='notification-jobs'&&job?'?job='+encodeURIComponent(job):''));
+      const data = await api(tab);
       if (tab === "notification-channels") setEnvironmentGroupWebhook(data.groupWebhookUsesEnvironment === true);
       setRows(
         tab === "integration-readiness"
@@ -329,17 +392,43 @@ export default function NotificationCenter({
     } finally {
       setLoading(false);
     }
-  }, [tab]);
+  }, [tab,targetJob]);
   useEffect(() => {
     if (!open || !active) return;
     void load();
     const timer = setInterval(() => void load(), 10000);
-    return () => clearInterval(timer);
-  }, [open, load, active]);
+    return ()=>{clearInterval(timer);if(tab==='notification-jobs')jobsRequest.current++;};
+  }, [open,load,active,tab]);
   useEffect(()=>{if(notice){noticeRef.current?.focus({preventScroll:true});noticeRef.current?.scrollIntoView({block:'nearest',behavior:'instant'});}},[notice]);
-  const targetJob=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
   const focusedNotificationJob=useRef<string|null>(null);
-  useEffect(()=>{if(tab!=='notification-jobs'||loading||!targetJob||focusedNotificationJob.current===targetJob)return;const frame=requestAnimationFrame(()=>{const node=document.getElementById('notification-job-'+targetJob);if(node){focusedNotificationJob.current=targetJob;const receipt=node.querySelector<HTMLDetailsElement>('details[data-job-receipt]');if(receipt)receipt.open=true;node.scrollIntoView({block:'center'});node.focus({preventScroll:true});}});return()=>cancelAnimationFrame(frame);},[rows,loading,tab,targetJob]);
+  useEffect(()=>{
+    if(!targetJob)focusedNotificationJob.current=null;
+    if(!active||tab!=='notification-jobs'||!visibleJobs?.length)return;
+    const frame=requestAnimationFrame(()=>{
+      if(targetJob&&focusedNotificationJob.current!==targetJob){
+        const node=document.getElementById('notification-job-'+targetJob);
+        if(node){
+          focusedNotificationJob.current=targetJob;
+          const receipt=node.querySelector<HTMLDetailsElement>('details[data-job-receipt]');
+          if(receipt)receipt.open=true;
+          node.scrollIntoView({block:'center'});
+          node.focus({preventScroll:true});
+        }
+      }
+      try{
+        const position=JSON.parse(sessionStorage.getItem(jobsPositionKey)??'null');
+        if(position?.url!==window.location.pathname+window.location.search)return;
+        sessionStorage.removeItem(jobsPositionKey);
+        if(jobsTable.current&&typeof position.left==='number')jobsTable.current.scrollLeft=position.left;
+        const row=document.getElementById('notification-job-'+position.id);
+        row?.querySelector('a')?.focus({preventScroll:true});
+        const top=row&&typeof position.rowTop==='number'
+          ?window.scrollY+row.getBoundingClientRect().top-position.rowTop:position.top;
+        window.scrollTo({top,behavior:'instant'});
+      }catch{}
+    });
+    return ()=>cancelAnimationFrame(frame);
+  },[jobsResult,jobPage,jobsLocation.state,tab,targetJob,active]);
   const format = (value: string | undefined) =>
     value ? new Date(value).toLocaleString(crmLocale(lang)) : "—";
   const label = (name: string) =>
@@ -745,7 +834,6 @@ export default function NotificationCenter({
                     setTab(value);
                     setRows([]);
                     setEditor(null);
-                    setFilter("all");
                     setNotice("");
                     setCancelId("");
                   })}
@@ -779,7 +867,7 @@ export default function NotificationCenter({
             </div>
             <p>{notificationHeading.purpose[languageIndex]}</p>
           </header>
-          {error && !editor && (
+          {error && !editor && (tab!=="notification-jobs"||cancelId) && (
             <p
               role="alert"
               className="text-xs p-3 rounded-lg bg-rose-500/10 text-rose-500"
@@ -800,7 +888,7 @@ export default function NotificationCenter({
               {notice}
             </p>
           )}
-          {!denied && (
+          {(!denied||tab==="notification-jobs") && (
             <>
               {tab !== "notification-channels" && !editor && <div className="notification-topic-toolbar">
                 <p className={`text-xs ${muted}`}>
@@ -1580,7 +1668,7 @@ export default function NotificationCenter({
               )}
               {!editor && (
                 <>
-                  {rows.length === 0 && !loading && (
+                  {tab !== "notification-jobs" && rows.length === 0 && !loading && (
                     <p className={`text-xs text-center py-8 ${muted}`}>
                       {t("暂无记录", "No records yet")}
                     </p>
@@ -1771,98 +1859,79 @@ export default function NotificationCenter({
                   )}
                   {tab === "notification-jobs" && (
                     <>
-                      {targetJob&&!loading&&!error&&rows.length===0&&<p role="alert">{lang==='zh'?'未找到对应发送记录，可能已移除或无权查看。':lang==='id'?'Catatan pengiriman tidak ditemukan atau tidak dapat diakses.':'Delivery record not found or unavailable to this account.'}</p>}
-                      <div className="max-w-xs">
-                        {select(
-                          t("发送状态", "Delivery state"),
-                          filter,
-                          [
-                            ["all", t("全部状态", "All states")],
-                            ...Object.entries(stateNames).map(
-                              ([v, n]) =>
-                                [
-                                  v,
-                                  lang === "id" ? crmId(n[1]) : n[zh ? 0 : 1],
-                                ] as [string, string],
-                            ),
-                          ],
-                          setFilter,
-                        )}
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left">
-                          <thead className={muted}>
-                            <tr>
-                              {[
-                                t("事件 / 客户", "Event / lead"),
-                                t("渠道 / 收件人", "Channel / recipient"),
-                                t("状态", "State"),
-                                t("计划时间 / 次数", "Scheduled / attempts"),
-                                t("结果 / 操作", "Result / action"),
-                              ].map((s) => (
-                                <th key={s} className="p-3 whitespace-nowrap">
-                                  {s}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rows
-                              .filter(
-                                (r) => filter === "all" || r.state === filter,
-                              )
-                              .map((row) => (
+                      {jobsResult?.denied?<AdminListState lang={lang} state="denied"/>:<>
+                        {targetJob?<AdminRowAction onClick={openAllJobs}>
+                          {zh?'查看全部发送记录':lang==='id'?'Lihat semua catatan pengiriman':'View all delivery records'}
+                        </AdminRowAction>:<div className="max-w-xs">
+                          {select(t("发送状态","Delivery state"),jobsLocation.state,[
+                            ["all",t("全部状态","All states")],
+                            ...Object.entries(stateNames).map(([value,name])=>[
+                              value,lang==="id"?crmId(name[1]):name[zh?0:1],
+                            ] as [string,string]),
+                          ],state=>changeJobsLocation(state,1))}
+                        </div>}
+                        {!targetJob&&<p className="crm-list-meta">
+                          {zh?'按当前筛选查看最近 200 条发送记录。':lang==='id'?'Filter berlaku pada 200 catatan pengiriman terakhir.':'Filters apply to the latest 200 delivery records.'}
+                        </p>}
+                        {!jobsResult&&<AdminListState lang={lang} state="loading"/>}
+                        {jobsResult?.error&&<AdminListState lang={lang} state="error" message={crmError(jobsResult.error,lang)}
+                          compact={Boolean(visibleJobs?.length)} onRetry={()=>void load()}/>}
+                        {jobsResult&&!jobsResult.error&&!visibleJobs?.length&&<AdminListState lang={lang} state="empty"
+                          message={targetJob?(zh?'未找到对应发送记录，可能已移除或无权查看。':lang==='id'?'Catatan pengiriman tidak ditemukan atau tidak dapat diakses.':'Delivery record not found or unavailable to this account.'):undefined}/>}
+                        {!!visibleJobs?.length&&<AdminListTable label={t("发送记录","Delivery records")} busy={loading} viewportRef={jobsTable}
+                          headers={[
+                            t("事件 / 客户","Event / lead"),t("渠道 / 收件人","Channel / recipient"),t("状态","State"),
+                            t("计划时间 / 次数","Scheduled / attempts"),t("结果 / 操作","Result / action"),
+                          ]}>
+                          {visibleJobs.map(row=>(
                                 <tr
                                   id={"notification-job-"+row.id}
                                   tabIndex={-1}
                                   data-notification-focused={targetJob===row.id||undefined}
                                   key={row.id}
-                                  className={`border-t ${isLight ? "border-slate-200" : "border-slate-800"}`}
                                 >
-                                  <td className="p-3">
+                                  <td>
                                     <p>{label(row.snapshot?.event || "")}</p>
                                     {row.snapshot?.leadId && (
-                                      <a
-                                        className="text-primary-500 underline"
+                                      <AdminRowAction
                                         href={
                                           "/crm?lead=" +
                                           encodeURIComponent(
                                             row.snapshot.leadId,
                                           )
                                         }
+                                        onClick={event=>rememberJobPosition(event,row.id)}
                                       >
                                         {t("查看客户", "View lead")}
-                                      </a>
+                                      </AdminRowAction>
                                     )}
                                     <p className={`text-[10px] ${muted}`}>
                                       {row.id}
                                     </p>
                                   </td>
-                                  <td className="p-3">
+                                  <td>
                                     {(row.systemGroupRecipient || (row.channel === "lark" && row.recipient === historicalSystemGroupId)) ? systemGroupLabel : <>
                                       {crmValue(row.channel, lang)}
                                       <br />
                                       {row.recipient}
                                     </>}
                                   </td>
-                                  <td className="p-3">
-                                    <span
-                                      className={`whitespace-nowrap ${row.state === "failed" || row.state === "unknown" ? "text-rose-500" : row.state === "accepted" ? "text-emerald-600" : muted}`}
-                                    >
+                                  <td>
+                                    <AdminStatus tone={row.state==='unknown'?'warning':row.state==='failed'?'danger':row.state==='accepted'?'success':'neutral'}>
                                       {(lang === "id"
                                         ? crmId(stateNames[row.state]?.[1])
                                         : stateNames[row.state]?.[
                                             zh ? 0 : 1
                                           ]) || row.state}
-                                    </span>
+                                    </AdminStatus>
                                   </td>
-                                  <td className="p-3 whitespace-nowrap">
+                                  <td className="whitespace-nowrap">
                                     {format(row.due_at)}
                                     <br />
                                     {row.attempts} {t("次", "attempts")} · v
                                     {row.version}
                                   </td>
-                                  <td className="p-3 max-w-xs break-words">
+                                  <td className="max-w-xs break-words">
                                     {row.historicalHold && (
                                       <p className={muted}>
                                         {lang === "zh"
@@ -1885,7 +1954,7 @@ export default function NotificationCenter({
                                         <pre className="admin-disclosure-original">{row.result}</pre>
                                       </AdminDisclosure>
                                     )}
-                                    {row.state === "pending" && (
+                                    {canEdit && row.state === "pending" && (
                                       <button
                                         className={`${button} block mt-2`}
                                         onClick={() => {
@@ -1899,10 +1968,11 @@ export default function NotificationCenter({
                                   </td>
                                 </tr>
                               ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      {cancelId && (
+                        </AdminListTable>}
+                        {!targetJob&&<AdminListPagination lang={lang} page={jobPage} pageCount={jobPages}
+                          onPageChange={page=>changeJobsLocation(jobsLocation.state,page)}/>}
+                      </>}
+                      {cancelId && !jobsResult?.denied && (
                         <div className={`${box} p-4 space-y-3`}>
                           {text(
                             t("取消原因", "Cancellation reason"),
