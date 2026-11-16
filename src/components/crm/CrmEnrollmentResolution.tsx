@@ -520,6 +520,11 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
   const refundOperation=useCrmOrderOperation();
   const busy=refundOperation.busy;
   const refundForm=useRef<HTMLFormElement>(null);
+  const returnTriggers=useRef(new Map<string,HTMLButtonElement>());
+  const cancelReturn=(reference:string)=>{
+    setReturnEntry(undefined);setError('');
+    requestAnimationFrame(()=>returnTriggers.current.get(reference)?.focus({preventScroll:true}));
+  };
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const [returnEntry,setReturnEntry]=useState<{reference:string;requestId:string}>();
   const base=finance+'/'+id;
@@ -577,7 +582,8 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
       {details.installments.map(entry=><li key={entry.reference}>
         {formatCurrency(entry.amount,lang)} · {entry.reference} · {t('原收款','Original receipt','Penerimaan asal')} {entry.receiptReference}
         {entry.returned>0&&<> · {t('银行已退回','Returned by bank','Dikembalikan oleh bank')} {formatCurrency(entry.returned,lang)}</>}
-        {!returnEntry&&entry.amount>entry.returned&&<button type="button" className="crm-work-button" disabled={busy||!!refundOperation.pending} onClick={()=>{
+        {!returnEntry&&entry.amount>entry.returned&&<button type="button" className="crm-work-button"
+          ref={node=>{if(node)returnTriggers.current.set(entry.reference,node);else returnTriggers.current.delete(entry.reference);}} disabled={busy||!!refundOperation.pending} onClick={()=>{
           setError('');setReturnEntry({reference:entry.reference,requestId:crypto.randomUUID()});
         }}>{t('登记银行退回','Record bank return','Catat pengembalian oleh bank')}</button>}
       </li>)}
@@ -600,7 +606,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange}:{id:
       </AdminField>
       </fieldset>
       <AdminFormActions>
-        <button type="button" className="crm-work-button" disabled={busy||!!refundOperation.pending} onClick={()=>{setReturnEntry(undefined);setError('');}}>{t('取消','Cancel','Batal')}</button>
+        <button type="button" className="crm-work-button" disabled={busy||!!refundOperation.pending} onClick={()=>cancelReturn(payment.reference)}>{t('取消','Cancel','Batal')}</button>
         <button type="submit" className="crm-work-button" data-primary disabled={busy||!!refundOperation.pending}>{t('确认登记退回','Confirm bank return','Konfirmasi pengembalian oleh bank')}</button>
       </AdminFormActions>
     </AdminForm>}

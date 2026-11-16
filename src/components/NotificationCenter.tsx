@@ -2045,25 +2045,8 @@ export default function NotificationCenter({
                       message={auditRead==='ready'?t("暂无记录","No records yet"):undefined} onRetry={()=>void load()}/>
                   )}
                   {tab === "notification-audit" && auditRead==='ready' && rows.length>0 && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead className={muted}>
-                          <tr>
-                            {[
-                              t("操作人", "Actor"),
-                              t("操作", "Action"),
-                              t(
-                                "对象 / 版本 / 原因",
-                                "Object / version / reason",
-                              ),
-                            ].map((s) => (
-                              <th className="p-3" key={s}>
-                                {s}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
+                    <AdminListTable label={t('执行与变更历史','Execution & change history')}
+                      headers={[t('操作人','Actor'),t('操作','Action'),t('对象 / 版本 / 原因','Object / version / reason')]}>
                           {rows.map((row) => (
                             <tr
                               key={row.id}
@@ -2098,9 +2081,7 @@ export default function NotificationCenter({
                               </td>
                             </tr>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    </AdminListTable>
                   )}
                   {tab === "integration-readiness" &&
                     rows.map((row) => (

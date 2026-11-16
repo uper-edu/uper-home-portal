@@ -65,6 +65,11 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   const [details,setDetails]=useState<{id:string;row?:RecordRow}>();
   const [detailError,setDetailError]=useState('');
   const [selected,setSelected]=useState<string>();
+  const receiptTrigger=useRef<HTMLButtonElement>(null);
+  const cancelReceipt=()=>{
+    receiptOperation.clear();setSelected(undefined);setDirty(false);setDetailError('');
+    requestAnimationFrame(()=>receiptTrigger.current?.focus({preventScroll:true}));
+  };
   const [requestId,setRequestId]=useState('');
   const [dirty,setDirty]=useState(false);
   const receiptOperation=useCrmOrderOperation();
@@ -247,7 +252,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
         </li>)}</ul>
       </CrmDisclosure>}
       {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy}/> :
-      selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" className="crm-work-button" data-primary onClick={() => {
+      selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" ref={receiptTrigger} className="crm-work-button" data-primary onClick={() => {
         setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSaved(false);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button></div>
       : <AdminForm lang={lang} className="crm-form-layout" onSubmit={async (event:React.FormEvent<HTMLFormElement>) => {
@@ -279,7 +284,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
         <AdminField>{t('实际到账时间','Actual receipt time','Waktu dana diterima')}<input name="time" type="datetime-local" required/></AdminField>
         </fieldset>
         <AdminFormActions>
-          <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{receiptOperation.clear();setSelected(undefined);setDirty(false);setDetailError('');}}>{t('取消','Cancel','Batal')}</button>
+          <button type="button" className="crm-work-button" disabled={busy} onClick={cancelReceipt}>{t('取消','Cancel','Batal')}</button>
           <button type="submit" className="crm-work-button" data-primary disabled={busy||!!receiptOperation.pending}>{t('保存到账','Save receipt','Simpan penerimaan')}</button>
         </AdminFormActions>
       </AdminForm>}

@@ -189,11 +189,11 @@ export function CrmSingleSelect({
         type="button"
         className="crm-filter-dimension-button"
         id={controlId||field?.id}
-        role={required?'combobox':undefined}
+        role={!multiple||required?'combobox':undefined}
         aria-required={required||undefined}
         data-admin-has-value={multiple?values.length>0:!!value}
         aria-label={label}
-        aria-description={displayValue||(selected?.description?selected.label+'; '+selected.description:undefined)}
+        aria-description={displayValue||(selected?[selected.label,selected.description].filter(Boolean).join('; '):!multiple?emptyLabel:undefined)}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
