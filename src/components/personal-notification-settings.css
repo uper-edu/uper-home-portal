@@ -12,11 +12,10 @@
 .admin-personal-account-state{padding:2px 6px;border-radius:6px;background:var(--cw-soft);color:var(--admin-muted);font-size:12px;line-height:20px;white-space:nowrap}
 .admin-personal-account-state[data-connected=true]{color:var(--admin-success);background:var(--admin-success-bg)}
 .admin-personal-lark-binding-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto}
-.admin-personal-lark-binding-actions button,.admin-personal-lark-actions button,.admin-personal-save-feedback button{min-height:40px;padding:8px 12px;border:1px solid var(--cw-border);border-radius:10px;background:var(--cw-surface);color:var(--admin-text);font-size:14px;line-height:1.5;cursor:pointer}
-.admin-personal-lark-binding-actions .admin-personal-refresh{display:inline-flex;justify-content:center;align-items:center;width:40px;padding:8px;border-color:transparent;color:var(--admin-muted)}
+.admin-personal-lark-binding-actions button:not(.crm-page-action),.admin-personal-lark-actions button,.admin-personal-save-feedback button{min-height:40px;padding:8px 12px;border:1px solid var(--cw-border);border-radius:10px;background:var(--cw-surface);color:var(--admin-text);font-size:14px;line-height:1.5;cursor:pointer}
 .admin-personal-lark-binding-actions .admin-personal-disconnect{border-color:transparent;color:var(--admin-muted)}
 .admin-personal-lark-binding-actions .admin-personal-connect-primary,.admin-personal-footer-buttons .admin-personal-save-primary:not(:disabled){background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
-.admin-personal-lark-binding-actions button:hover:not(:disabled):not(.admin-personal-connect-primary){background:var(--cw-soft)}
+.admin-personal-lark-binding-actions button:hover:not(:disabled):not(.admin-personal-connect-primary):not(.crm-page-action){background:var(--cw-soft)}
 .admin-personal-lark-binding-actions button:disabled,.admin-personal-lark-actions button:disabled{opacity:.6;cursor:default}
 .admin-personal-bind-help{color:var(--admin-muted);font-size:13px;line-height:1.6}
 .admin-personal-bind-help summary{cursor:pointer;list-style-position:inside}

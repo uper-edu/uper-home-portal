@@ -1,8 +1,9 @@
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { useEffect,useState,useRef } from 'react';
-import { RefreshCw, Send, Wallet } from 'lucide-react';
+import {Send, Wallet } from 'lucide-react';
 import { containPaneKeys, recordSplitMinWidth, revealRecord } from '../adminScroll';
 import { enrollmentCopy,enrollmentPost,enrollmentStatuses } from '../EnrollmentApplication';
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
@@ -382,10 +383,10 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
               {!wide&&<CrmRecordSidebarToggle controls="crm-aftercare-records" expanded={false}
                 label={t('查看售后订单','View after-sales orders','Lihat pesanan purnajual')}
                 onClick={()=>{setOrderListOpen(true);requestAnimationFrame(()=>document.querySelector<HTMLElement>('#crm-aftercare-records input[type=search]')?.focus({preventScroll:true}));}}/>}
-              <CrmPageAction icon={RefreshCw} label={t('刷新','Refresh','Segarkan')} loading={isSearching}
-                onClick={()=>setListRevision(version=>version+1)}/>
               {selected&&selectedDetails?.canRefund&&<CrmPageAction icon={Wallet} label={refundTitle}
                 disabled={isSearching} onClick={()=>start(selected,'refund')}/>}
+              <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={isSearching}
+                onClick={()=>setListRevision(version=>version+1)}/>
             </>}
             primary={selected&&selectedDetails&&inviteReady(selected)&&<CrmPageAction icon={Send} variant="primary"
               label={inviteTitle} disabled={isSearching} onClick={()=>start(selected,'invite')}/>}/>}/>

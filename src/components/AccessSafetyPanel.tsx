@@ -1,3 +1,4 @@
+import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {viewerTimeZone} from '../utils/crmOperatingTime';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
@@ -37,7 +38,8 @@ export function AccessHandoverPanel({
     [targets, setTargets] = useState<Record<string, string>>({}),
     [reasons, setReasons] = useState<Record<string, string>>({}),
     [busy, setBusy] = useState(false),
-    [loaded, setLoaded] = useState(false);
+    [loaded, setLoaded] = useState(false),
+    [refreshing, setRefreshing] = useState(false);
   const t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   const manager =
     actor.permissions.includes("crm.assign") &&
@@ -80,20 +82,20 @@ export function AccessHandoverPanel({
       aria-label={t("Staff handover", "Serah terima staf", "人员交接")}
     >
       <AdminDisclosure heading={<>{t("Staff handover","Serah terima staf","人员交接")} · {cases.filter(h=>h.state!=="completed").length}</>}>
-        <p>
+        <div className="access-safety-refresh-row"><p>
           {t(
             "Disabling access is immediate. Transfer only selected work; existing task deadlines stay unchanged.",
             "Penonaktifan akses berlaku segera. Alihkan hanya pekerjaan terpilih; tenggat tetap.",
             "停用立即生效；交接只处理所选事项，原任务截止时间保持不变。",
           )}
         </p>
+          <AdminRefreshAction label={t("Refresh handovers", "Muat ulang serah terima", "刷新交接")}
+            loading={refreshing} disabled={busy} onClick={async()=>{setRefreshing(true);try{await load();}finally{setRefreshing(false);}}}/>
+        </div>
         {!loaded && !error && (
           <p role="status">{t("Loading…", "Memuat…", "正在载入…")}</p>
         )}
         {error && <p role="alert">{accessError(error, lang)}</p>}
-        <button type="button" disabled={busy} onClick={() => void load()}>
-          {t("Refresh handovers", "Muat ulang serah terima", "刷新交接")}
-        </button>
         {cases
           .filter((h) => h.state !== "completed")
           .map((h) => {
@@ -310,7 +312,8 @@ export function AccessSafetyPanel({
     [error, setError] = useState(""),
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [refreshing, setRefreshing] = useState(false);
   const t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   const full = [
     "access.read",
@@ -395,16 +398,16 @@ export function AccessSafetyPanel({
             "恢复安全复核",
           )}
         >
-          <h2>
+          <header className="access-safety-refresh-row"><h2>
             {t(
               "Business access is locked for restore review",
               "Akses bisnis dikunci untuk tinjauan pemulihan",
               "恢复待复核，业务访问已锁定",
             )}
           </h2>
-          <button type="button" disabled={busy} onClick={() => void load()}>
-            {t("Refresh review", "Muat ulang tinjauan", "刷新复核")}
-          </button>
+            <AdminRefreshAction label={t("Refresh review", "Muat ulang tinjauan", "刷新复核")}
+              loading={refreshing} disabled={busy} onClick={async()=>{setRefreshing(true);try{await load();}finally{setRefreshing(false);}}}/>
+          </header>
           <p>
             {t(
               "Compare the latest trusted authorization checkpoint, or explicitly review every account. Active accounts require a fresh password reset. Old notifications remain held.",

@@ -42,9 +42,9 @@ export function AdminDetailActions({label, secondary, primary}: {
   return <div className="crm-record-actions" role="group" aria-label={label}>{secondary}{primary}</div>;
 }
 
-export function AdminRecordSidebar({id, title, count, selectedId, busy, busyLabel, hidden, filters, note, empty, footer, children}: {
+export function AdminRecordSidebar({id, title, count, selectedId, busy, busyLabel, hidden, filters, note, empty, footer, actions, children}: {
   id: string; title: string; count?: number; selectedId?: string; busy?: boolean; busyLabel: string; hidden?: boolean;
-  filters: ReactNode; note?: string; empty?: ReactNode; footer?: ReactNode; children?: ReactNode;
+  filters: ReactNode; note?: string; empty?: ReactNode; footer?: ReactNode; actions?: ReactNode; children?: ReactNode;
 }) {
   const rows=useRef<HTMLDivElement>(null);
   useLayoutEffect(()=>{
@@ -54,7 +54,8 @@ export function AdminRecordSidebar({id, title, count, selectedId, busy, busyLabe
   return <aside id={id} className="crm-record-sidebar" aria-labelledby={id+'-heading'} hidden={hidden}>
     <div className="crm-record-sidebar-heading">
       <h2 id={id+'-heading'}>{title}{count!==undefined&&<span> · {count}</span>}</h2>
-      <span className="crm-record-sidebar-updating" role="status" style={{visibility:busy?'visible':'hidden'}}>{busyLabel}</span>
+      <span className={actions?'sr-only':'crm-record-sidebar-updating'} role="status" style={{visibility:busy?'visible':'hidden'}}>{busyLabel}</span>
+      {actions&&<div className="crm-record-sidebar-actions">{actions}</div>}
     </div>
     {filters}
     {note&&<p className="crm-record-sidebar-note" role="status">{note}</p>}

@@ -1,16 +1,18 @@
+import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminFormSection,AdminFormActions,AdminFormFeedback} from './AdminFormLayout';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {testAndSaveAi} from '../utils/aiServiceSubmit';
 import type {CrmLanguage} from '../utils/crmLanguage';
 import {aiServiceText} from '../utils/aiServiceLanguage';
 import {AdminField,AdminRequiredNote} from './AdminForm';
-import {FlaskConical, Settings2, RefreshCw, CheckCircle2, XCircle, LoaderCircle} from 'lucide-react';
+import {FlaskConical, Settings2, CheckCircle2, XCircle, LoaderCircle} from 'lucide-react';
 import {CrmSingleSelect} from './crm/CrmSingleSelect';
 import {CrmDisclosure} from './crm/CrmDisclosure';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
-export function AiServicePanel({lang,isLight}:{lang:CrmLanguage;isLight:boolean}){
+export function AiServicePanel({lang,isLight,renderHeading}:{lang:CrmLanguage;isLight:boolean;renderHeading:(refresh:ReactNode)=>ReactNode}){
  const [data,setData]=useState<any>(null),[selection,setSelection]=useState({primary:'',fallback:''}),[check,setCheck]=useState<any>(null),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[unresolved,setUnresolved]=useState(typeof sessionStorage!=='undefined'&&!!sessionStorage.getItem('uper-ai-pending'));
  const submitting=useRef(false);
+ const [querying,setQuerying]=useState(false);
  const call=async(path='',body?:any)=>{const r=await fetch('/api/admin/ai-service'+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(body?155000:15000)});const d=await r.json();if(!r.ok)throw Error(d.error);return d;};
  const load=async(initial=false)=>{try{const d=await call();setData(d);const recent=d.checks?.find((c:any)=>c.ok&&c.revision===d.revision&&c.expiresAt>Date.now()&&JSON.stringify(c.selection)===JSON.stringify(selection));if(recent)setCheck(recent);if(initial){let draft;try{draft=JSON.parse(sessionStorage.getItem('uper-ai-draft')||'null')}catch{}setSelection(draft||d.current);}const pending=sessionStorage.getItem('uper-ai-pending');if(pending&&d.history?.some((v:any)=>v.requestId===pending)){setNotice('saved');setUnresolved(false);sessionStorage.removeItem('uper-ai-pending');sessionStorage.removeItem('uper-ai-draft');setSelection(d.current);setCheck(null);}}catch{setNotice('error');}};
  useEffect(()=>{void load(true);},[]);
@@ -28,15 +30,22 @@ export function AiServicePanel({lang,isLight}:{lang:CrmLanguage;isLight:boolean}
   finally{submitting.current=false;setBusy(false);}
  };
 
- return <AiServiceContent {...{lang,isLight,data,selection,check,busy,notice,unresolved}} onSelect={choose} onQuery={()=>void load()} onSubmit={submit}/>;
+ const query=async()=>{
+  setQuerying(true);
+  try{await load();}finally{setQuerying(false);}
+ };
+ return <>{renderHeading(<AdminRefreshAction label={aiServiceText.refresh[lang==='zh'?2:lang==='id'?1:0]}
+  loading={querying} disabled={busy} onClick={()=>void query()}/>)}
+  <AiServiceContent {...{lang,isLight,data,selection,check,busy,notice,unresolved}} onSelect={choose} onSubmit={submit}/>
+ </>;
 }
-type ContentProps={lang:CrmLanguage;isLight:boolean;data:any;selection:{primary:string;fallback:string};check:any;busy:boolean;notice:string;unresolved:boolean;onSelect:(s:{primary:string;fallback:string})=>void;onQuery:()=>void;onSubmit:()=>void};
-export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,unresolved,onSelect,onQuery,onSubmit}:ContentProps){
+type ContentProps={lang:CrmLanguage;isLight:boolean;data:any;selection:{primary:string;fallback:string};check:any;busy:boolean;notice:string;unresolved:boolean;onSelect:(s:{primary:string;fallback:string})=>void;onSubmit:()=>void};
+export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,unresolved,onSelect,onSubmit}:ContentProps){
  const col=lang==='zh'?2:lang==='id'?1:0,t=(k:keyof typeof aiServiceText)=>aiServiceText[k][col];
  const status=(ok:boolean)=> <span className="ai-check" data-ok={ok}>{ok?<CheckCircle2 size={15} aria-hidden="true"/>:<XCircle size={15} aria-hidden="true"/>}{t(ok?'ready':'failed')}</span>;
  const fields=(value:any)=> <dl className="ai-config-values">{(['primary','fallback'] as const).map(k=><div key={k}><dt>{t(k)}</dt><dd>{value[k]}</dd></div>)}</dl>;
  return <section data-admin-form="" className="ai-service-panel" aria-busy={busy}>
-  <div className="access-toolbar ai-service-toolbar"><p>{t('shortGuide')}</p><button type="button" disabled={busy} onClick={onQuery}><RefreshCw size={16} aria-hidden="true"/>{t('refresh')}</button></div>
+  <p className="ai-service-guide">{t('shortGuide')}</p>
   {notice&&<AdminFormFeedback className="ai-service-feedback" state={notice==='saved'||notice==='verified'?'saved':notice==='error'?'error':'unknown'} role="status">{t(notice as keyof typeof aiServiceText)}</AdminFormFeedback>}
   {!data?<p role="status">{t(notice?'error':'busy')}</p>:<>
    <div className="access-grid ai-service-grid">

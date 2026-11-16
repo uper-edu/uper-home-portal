@@ -8,7 +8,6 @@
 .crm-enrollment-fields{gap:12px}
 .crm-enrollment-field-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
 .crm-enrollment-field-heading>label{font-size:14px;font-weight:500;line-height:1.6;margin:0}
-.crm-enrollment-refresh{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;padding:8px;flex:none}
 .crm-enrollment-discount{display:grid;gap:4px;min-width:0}
 .crm-enrollment-discount-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 .crm-enrollment-discount-fields:has(>.admin-field:only-child){grid-template-columns:1fr}

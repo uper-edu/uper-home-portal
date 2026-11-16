@@ -202,14 +202,12 @@
 .campaign-page-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;max-width:100%}
 .campaign-home-card-heading{width:100%}.campaign-home-card-heading>.campaign-home-type{flex:1;flex-shrink:1;min-width:0}.campaign-home-card-heading>.crm-campaign-status{max-width:45%;white-space:normal;overflow-wrap:anywhere}.campaign-home-metrics>div{display:flex;flex-direction:column;min-width:0}.campaign-home-metrics dt{flex:1}
 @media(max-width:767px){.campaign-page-actions{width:100%}}
-@media(max-width:480px){.campaign-page-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px;align-items:stretch}.campaign-page-actions>button{min-width:0;padding:9px 8px}.crm-campaigns[data-campaign-area=sources] .campaign-page-actions{display:flex}}
 .campaign-editor-body>.admin-required-note{margin:0 0 16px}
 
 /* The record shell owns layout. Rows, filters and their states use shared styles. */
 .campaign-records{display:grid;grid-template-columns:minmax(0,1fr);gap:16px 20px;align-items:start}
 .campaign-records .campaign-detail-column[hidden]{display:none}
-.campaign-sidebar-actions,.campaign-record-status{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.campaign-sidebar-actions{padding:0 12px 12px}
+.campaign-record-status{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .campaign-list-count{font-size:12px;color:var(--admin-muted)}
 @media(min-width:1120px){
   .campaign-records[data-sidebar-visible=true]{grid-template-columns:var(--admin-record-sidebar-width) minmax(0,1fr)}

@@ -1,3 +1,4 @@
+import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {AdminRecordHeader} from '../components/admin/AdminRecordHeader';
 import {formatCurrency} from '../utils/currency';
 import {paymentWorkspaceLabel} from '../utils/crmPaymentPresentation';
@@ -123,8 +124,7 @@ import {
   Download,
   Filter,
   Search,
-  RefreshCw,
-  Calendar,
+Calendar,
   Award,
   ExternalLink,
   ArrowRight, ArrowLeft,
@@ -1425,11 +1425,9 @@ function CrmWorkspace({
                     label={t("Export current results (.JSON)", "导出当前结果 (.JSON)")}
                   />
                 )}
-                <CrmPageAction
+                <AdminRefreshAction
                   label={t("Refresh", "刷新数据")}
                   description={lastListRefresh?`${t("Last refreshed","上次刷新")} ${formatCrmEventTime(lastListRefresh)}`:t("No successful refresh yet","尚无成功刷新记录")}
-                  icon={RefreshCw}
-                  iconOnly
                   loading={isLoading}
                   onClick={() => void fetchLeads()}
                 />
@@ -1446,7 +1444,7 @@ function CrmWorkspace({
           <section className="crm-finance-workspace" aria-label={financeTitle}>
             <header className="admin-page-toolbar" data-theme={isLight?'light':'dark'}>
               <CrmPageIdentity title={financeTitle} subtitle={adminText(lang,'Review enrollment balances, receipts and refunds.','Periksa tagihan pendaftaran, penerimaan dan pengembalian.','核对报名应收、实际到账与退款。')}/>
-              {canFinance&&<CrmPageAction icon={RefreshCw} label={t('Refresh','刷新')} loading={financeLoading} onClick={()=>{setFinanceRefresh(v=>v+1);paymentQueue.refresh();}}/>}
+              {canFinance&&<AdminRefreshAction label={t('Refresh','刷新')} loading={financeLoading} onClick={()=>{setFinanceRefresh(v=>v+1);paymentQueue.refresh();}}/>}
             </header>
             {canFinance&&<CrmContentNav label={adminText(lang,'Finance workspace','Ruang kerja keuangan','财务工作区')} onNavigate={changeContentPage} items={[
               {href:'/crm?tab=payments&paymentView=enrollment',label:paymentWorkspaceLabel('enrollment',lang),current:enrollmentPaymentView},

@@ -1,10 +1,11 @@
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {CrmDetailActions,CrmRecordTitle} from './CrmRecordWorkspace';
 import { campaignUi } from "../../utils/campaignI18n";
 import React from "react";
 import { CrmPageAction } from "./CrmPageAction";
 import { CrmPageIdentity } from "./CrmPageIdentity";
-import { ClipboardCheck, Plus, RefreshCw } from "lucide-react";
+import { ClipboardCheck, Plus } from "lucide-react";
 import type { SourceReviewState } from "../../utils/campaignSourceNavigation";
 export function CampaignWorkspaceHeading({
   title = "Marketing Campaigns",
@@ -48,9 +49,8 @@ export function CampaignWorkspaceHeading({
   ]
     .filter(Boolean)
     .join("; ");
-  const refresh=onRefresh&&<CrmPageAction
-    label={u(reviewing?"Refresh promotion reviews":"Refresh campaigns")}
-    icon={RefreshCw} iconOnly loading={refreshing} onClick={onRefresh}/>;
+  const refresh=onRefresh&&<AdminRefreshAction
+    label={u(reviewing?"Refresh promotion reviews":"Refresh campaigns")} loading={refreshing} onClick={onRefresh}/>;
   if(reviewing)return <AdminRecordHeader
     back={{label:u(returnToDetail?"Back to campaign details":"Back to campaign list"),onClick:onReturn}}
     title={<CrmRecordTitle title={u("Promotion source exceptions")} titleRef={headingRef}/>}
@@ -72,14 +72,6 @@ export function CampaignWorkspaceHeading({
         }
       />
       <div className="campaign-page-actions">
-        {onCreate && canManage && (
-          <CrmPageAction
-            label={u("Create campaign")}
-            icon={Plus}
-            variant="primary"
-            onClick={onCreate}
-          />
-        )}
         {canManage && onOpen && (
             <CrmPageAction
               id="campaign-source-review-trigger"
@@ -105,6 +97,10 @@ export function CampaignWorkspaceHeading({
             </CrmPageAction>
         )}
         {refresh}
+        {onCreate && canManage && (
+          <CrmPageAction label={u("Create campaign")} icon={Plus}
+            variant="primary" onClick={onCreate}/>
+        )}
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import {RefreshCw} from 'lucide-react';
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminEditor} from '../admin/AdminEditor';
 import {CrmPageAction} from './CrmPageAction';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
@@ -253,7 +253,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
       <div className="admin-edit-title"><h2>{title}</h2></div>
       <div className="crm-ops-actions">
         {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
-        <CrmPageAction icon={RefreshCw} label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
+        <AdminRefreshAction label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
         <button type="button" className="crm-work-button" data-primary disabled={readState!=='ready'} onClick={() => edit()}>{t(['Create class', 'Buat kelas', '创建班次'])}</button>
       </div>
     </header>

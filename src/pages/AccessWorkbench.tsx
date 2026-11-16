@@ -1,3 +1,4 @@
+import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {CrmPageAction} from '../components/crm/CrmPageAction';
 import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
@@ -28,7 +29,7 @@ import '../components/crm/crm-detail-workspace.css';
 import '../components/crm/crm-record-workspace.css';
 import { accessGuide, accessError } from "../utils/accessLanguage";
 import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
-import {RefreshCw, Pencil, Plus, BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
+import {Pencil, Plus, BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -660,7 +661,13 @@ export function AccessWorkspace({
           onResolved={operationResolved}
         />
         <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight} />
-        {(!recordTab||!recordId)&&<div className="admin-page-toolbar">
+        {tab==='ai'&&isAiAdministrator(employee)&&can('access.read')&&!readDenied
+          ?<AiServicePanel lang={lang} isLight={isLight} renderHeading={refresh=><div className="admin-page-toolbar">
+            <div><h1>{t("System management", "Manajemen sistem", "系统管理")}</h1>
+              <p>{t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。")}</p></div>
+            <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")} secondary={refresh}/>
+          </div>}/>
+          :(!recordTab||!recordId)&&<div className="admin-page-toolbar">
           <div>
             <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
@@ -673,7 +680,7 @@ export function AccessWorkspace({
           </div>
           {can("access.read") && tab !== "ai" && (
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
-              secondary={<CrmPageAction icon={RefreshCw} keepFocusWhileLoading label={t("Refresh", "Segarkan", "刷新")}
+              secondary={<AdminRefreshAction label={t("Refresh", "Segarkan", "刷新")}
                 loading={isRefreshing} disabled={busy || editorHasDraft}
                 onClick={() => void refreshAccess()}/>}
               primary={recordTab&&can(userTab?'access.users':'access.roles')&&
@@ -703,7 +710,6 @@ export function AccessWorkspace({
             {!recordTab && !data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
-            {tab === 'ai' && isAiAdministrator(employee) && <AiServicePanel lang={lang} isLight={isLight}/>}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
             {tab === "guide" ? (
               <section className="access-card">
@@ -768,7 +774,7 @@ export function AccessWorkspace({
                       secondary={<>
                         {!wide&&<AdminRecordSidebarToggle ref={sidebarToggle} controls="access-records" expanded={false}
                           label={t('Show records','Tampilkan rekaman','查看记录列表')} onClick={()=>{setShowRecords(true);requestAnimationFrame(()=>railSearch.current?.focus());}}/>}
-                        <CrmPageAction icon={RefreshCw} keepFocusWhileLoading label={t('Refresh','Segarkan','刷新')} loading={isRefreshing} disabled={busy||editorHasDraft} onClick={()=>void refreshAccess()}/>
+                        <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={isRefreshing} disabled={busy||editorHasDraft} onClick={()=>void refreshAccess()}/>
                       </>}
                       primary={selectedRecord&&('loginId' in selectedRecord
                         ?(can('access.users')||can('access.sessions'))&&<CrmPageAction icon={Pencil} variant="primary"

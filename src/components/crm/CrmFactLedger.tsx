@@ -30,7 +30,8 @@ import {profileSaveSummary} from '../../utils/crmProfileSaveResult';
 import {viewerTimeZone,formatCrmOperatingTime} from '../../utils/crmOperatingTime';
 import {useEffect,useState,useRef,useId} from 'react';
 import {crmValue} from '../../utils/crmLanguage';
-import {MessageSquareText,NotebookText,ClipboardList,GraduationCap,UserRoundPen,FileSearch,ArrowLeftRight,RefreshCw,TrendingUp} from 'lucide-react';
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
+import {MessageSquareText,NotebookText,ClipboardList,GraduationCap,UserRoundPen,FileSearch,ArrowLeftRight,TrendingUp} from 'lucide-react';
 import {CrmRecordAmendmentForm}from'./CrmRecordAmendmentForm';
 import {CrmSaveFeedback}from'./CrmDetailWorkspace';
 import {contactCorrectionOptions,canAmendSalesRecord}from'../../utils/crmRecordAmendments';
@@ -41,6 +42,7 @@ const value=(v:any)=>v==null?'未填写':Array.isArray(v)?v.map(x=>crmValue(Stri
 export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,onDirty,onBusy,suspended,canEditProfile,isLight=true,lang='zh',focusRequest,onEditing,hideHeading=false,onProjection,extractions=[],extractionLoading=false,extractionError=false,onReloadExtraction,onViewAssessment,onSource,onAmendSalesRecord,requests=[],windowMode=false}:any){
  const ui=useCrmUiText(lang);
 
+ const [loading,setLoading]=useState(true);
  const typeId=useId(),searchId=useId(),ledgerRoot=useRef<HTMLElement>(null);
  const[data,setData]=useState<any>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0),[target,setTarget]=useState<any>(null),[notice,setNotice]=useState(''),[filter,setFilter]=useState('all'),[search,setSearch]=useState(''),[expanded,setExpanded]=useState<Set<string>>(new Set()),[evidenceSelection,setEvidenceSelection]=useState<{groupId:string;citation:HistoryCitation}|null>(null);
  useEffect(()=>{
@@ -48,13 +50,13 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
   const collapseOutside=(event:PointerEvent)=>{
    const node=event.target;if(!(node instanceof Element))return;
    const card=node.closest('.crm-history-node');
-   if(card&&ledgerRoot.current?.contains(card))return;
+   if(card&&ledgerRoot.current?.contains(card)||node.closest('.crm-history-heading .crm-page-action'))return;
    setExpanded(current=>current.size?new Set():current);
   };
   document.addEventListener('pointerdown',collapseOutside,true);
   return()=>document.removeEventListener('pointerdown',collapseOutside,true);
  },[windowMode,suspended]);
- useEffect(()=>{let active=true;setError('');onProjection?.({state:'loading',events:[]});fetch(`/api/crm/leads/${leadId}/facts`).then(async r=>{if(!r.ok)throw Error('历史依据暂不可用，请重试');return r.json();}).then(d=>{if(active){setData(d);onProjection?.({state:'ready',events:d.events});}}).catch(e=>{if(active){setError(e.message);onProjection?.({state:'error',events:[]});}});return()=>{active=false};},[leadId,revision,retry]);
+ useEffect(()=>{let active=true;setLoading(true);setError('');onProjection?.({state:'loading',events:[]});fetch(`/api/crm/leads/${leadId}/facts`).then(async r=>{if(!r.ok)throw Error('历史依据暂不可用，请重试');return r.json();}).then(d=>{if(active){setData(d);onProjection?.({state:'ready',events:d.events});}}).catch(e=>{if(active){setError(e.message);onProjection?.({state:'error',events:[]});}}).finally(()=>{if(active)setLoading(false);});return()=>{active=false};},[leadId,revision,retry]);
  const [preparedFocus,setPreparedFocus]=useState<any>(null);
  const handled=useRef<any>(null),positioned=useRef<any>(null),focusNode=useRef<HTMLDetailsElement>(null),settleFrame=useRef(0),groups=buildHistoryTimeline(data?.events||[],lead,extractions),focused=focusRequest&&data?historyGroupFor(groups,focusRequest.id):null;
  useEffect(()=>()=>cancelAnimationFrame(settleFrame.current),[focusRequest?.token]);
@@ -117,11 +119,16 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
  const firstInstant=historyFirstInstant(groups);
  const visible=groups.filter(g=>(filter==='all'||g.category===filter)&&(!search.trim()||[g.title,g.original,...g.events.map(e=>e.original||''),...g.extractions.map(r=>r.input?.text||'')].join('\n').toLowerCase().includes(search.trim().toLowerCase())));
  const day=(g:any)=>g.displayAt?time(g.displayAt).slice(0,10):ui('发生时间未注明');
- return <CrmHistorySearch.Provider value={search}><section ref={ledgerRoot} className={"crm-history-timeline"+(windowMode?" crm-history-bilateral":"")} aria-label={ui("历史记录与依据")}>{!hideHeading&&<h3>{ui("历史记录与依据")}</h3>}
+ return <CrmHistorySearch.Provider value={search}><section ref={ledgerRoot} className={"crm-history-timeline"+(windowMode?" crm-history-bilateral":"")} aria-label={ui("历史记录与依据")}>
+ <header className="crm-history-heading">
+  {!hideHeading&&<h3>{ui("历史记录与依据")}</h3>}
+  <AdminRefreshAction label={ui("刷新记录")} loading={loading||extractionLoading}
+   disabled={!!target} onClick={()=>{setRetry(n=>n+1);onReloadExtraction?.();}}/>
+ </header>
  <div className="crm-history-toolbar" role="group" aria-label={ui("历史记录筛选")}>
  <div className="crm-history-type-filter"><label htmlFor={typeId}>{ui("类型")}</label><CrmSingleSelect controlId={typeId} label={ui("历史记录类型")} value={filter} disabled={!!target} onChange={setFilter} lang={lang} isLight={isLight} options={Object.entries(historyCategories).map(([key,label])=>({value:key,label:ui(label)+(data?'（'+(key==='all'?groups.length:groups.filter(g=>g.category===key).length)+'）':'')}))}/></div>
  <div className="crm-history-search"><label htmlFor={searchId}>{ui("搜索原文与内容")}</label><AdminSearchField id={searchId} label={ui("搜索历史记录")} value={search} disabled={!!target} onChange={setSearch}/></div>
- <button type="button" className="crm-work-button crm-history-refresh" disabled={!!target} onClick={()=>{setRetry(n=>n+1);onReloadExtraction?.();}}><RefreshCw size={15} aria-hidden="true"/>{ui("刷新记录")}</button></div>
+ </div>
 
  {notice&&<p role="status">{ui(notice)}</p>}{error&&<p role="alert">{ui(error)} <button onClick={()=>setRetry(v=>v+1)}>{ui("重试读取")}</button></p>}
  {extractionError&&<p role="alert">{ui("AI整理状态暂不可用，原始记录仍保留。")}<button onClick={onReloadExtraction}>{ui("重试AI整理状态")}</button></p>}

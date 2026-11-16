@@ -97,3 +97,7 @@
     padding: 14px;
   }
 }
+
+.access-safety-refresh-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px}
+.access-safety-refresh-row>:is(p,h2){flex:1;margin:0}
+.access-safety-refresh-row>.crm-page-action{margin-inline-start:auto}

@@ -1,3 +1,4 @@
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
@@ -73,8 +74,7 @@ import {
   Target,
   MessageSquare,
   Printer,
-  RefreshCw,
-  X,
+X,
   ChevronRight,
   FileText,
   CheckCircle2,
@@ -753,8 +753,13 @@ export function CrmCampaignHub({
             selectedId={requestedCampaign} hidden={!sidebarVisible} busy={isLoading} busyLabel={u("Loading campaigns…")}
             note={activeDetailCampaign&&!isLoading&&!campaignError&&!filteredCampaigns.some(c=>c.id===requestedCampaign)
               ?u("The current campaign is outside these filters. Its details and draft stay open."):undefined}
-            filters={<>
-              <CrmRecordFilters lang={lang} count={Number(selectedStatus!=="All")+Number(selectedType!=="All")}
+            actions={<>
+              <AdminRefreshAction label={u("Refresh campaigns")} loading={isLoading}
+                onClick={()=>void fetchCampaigns()}/>
+              {canManageCampaigns&&<CrmPageAction icon={Plus} label={u("Create campaign")}
+                variant="primary" onClick={handleOpenCreateWizard}/>}
+            </>}
+            filters={<CrmRecordFilters lang={lang} count={Number(selectedStatus!=="All")+Number(selectedType!=="All")}
                 search={<CrmRecordSearch inputRef={sidebarSearch} label={u("Search campaigns")}
                   placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>}>
                 <CrmSelect label={u("Campaign status filter")} lang={lang} isLight={isLight}
@@ -767,13 +772,7 @@ export function CrmCampaignHub({
                   <option value="All">{u("All campaign types")}</option>
                   {CAMPAIGN_TYPE_OPTIONS.map(o=><option key={o.value} value={o.value}>{u(o.labelEn)}</option>)}
                 </CrmSelect>
-              </CrmRecordFilters>
-              <div className="campaign-sidebar-actions">
-                {canManageCampaigns&&<CrmPageAction icon={Plus} label={u("Create campaign")} onClick={handleOpenCreateWizard}/>}
-                <CrmPageAction icon={RefreshCw} iconOnly label={u("Refresh campaigns")} loading={isLoading}
-                  onClick={()=>void fetchCampaigns()}/>
-              </div>
-            </>}
+              </CrmRecordFilters>}
             empty={campaignError?<p className="crm-record-sidebar-message" role="alert">{u("Campaigns unavailable. Refresh to retry.")}</p>
               :isLoading&&!campaigns.length?<p className="crm-record-sidebar-message" role="status">{u("Loading campaigns…")}</p>
               :!filteredCampaigns.length?<p className="crm-record-sidebar-message">

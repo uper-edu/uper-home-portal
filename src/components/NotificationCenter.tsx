@@ -1,3 +1,4 @@
+import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminConfirmation} from './admin/AdminConfirmation';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminListPagination,AdminListState,AdminListTable} from './admin/AdminList';
@@ -35,7 +36,6 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
   Plus,
   Settings2,
   Radio,
@@ -904,10 +904,7 @@ export default function NotificationCenter({
               <h2>{notificationHeading.title[languageIndex]}</h2>
               {!editor && !denied && (
                 <div className="notification-topic-actions">
-                  <button type="button" className={button} disabled={loading} onClick={() => void load()}
-                    aria-label={t("刷新", "Refresh")} title={t("刷新", "Refresh")}>
-                    <RefreshCw aria-hidden="true" className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}/>
-                  </button>
+                  <AdminRefreshAction label={t("刷新", "Refresh")} loading={loading} onClick={()=>void load()}/>
                   {(isRuleTopic || (isChannelTopic && canEdit)) && (
                     <button type="button" id={editorTriggerId(isRuleTopic ? "rule" : "channel", "")}
                       className={`${primary} flex items-center gap-1`} disabled={!canEdit} onClick={() => edit()}>

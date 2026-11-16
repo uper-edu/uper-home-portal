@@ -13,6 +13,8 @@
 .crm-record-sidebar{display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid var(--admin-border);border-radius:14px;background:var(--admin-surface);color:var(--admin-text)}
 .crm-record-sidebar[hidden],.crm-record-filter-panel[hidden]{display:none}
 .crm-record-sidebar-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px 12px}
+.crm-record-sidebar-heading:has(.crm-record-sidebar-actions){flex-wrap:wrap}
+.crm-record-sidebar-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-inline-start:auto}
 .crm-record-sidebar-heading h2{margin:0;font-size:16px;font-weight:650;line-height:1.4}
 .crm-record-sidebar-heading h2 span,.crm-record-sidebar-updating{color:var(--admin-muted);font-size:12px;font-weight:500}
 .crm-record-sidebar-note,.crm-record-sidebar-message{overflow-wrap:anywhere;color:var(--admin-muted);font-size:12px;line-height:1.6}

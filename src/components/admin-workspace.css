@@ -33,9 +33,9 @@
 .admin-topic-notification-heading h2{font-size:20px;line-height:1.4;font-weight:650;margin:4px 0 8px}
 .admin-topic-notification-heading>p:last-child{font-size:14px;line-height:1.6;margin:0}
 .admin-topic-notification-heading>.crm-ops-note{margin:0;color:var(--ops-muted,#52647c)}
-.notification-topic-actions>button,.notification-topic-content article>button,.admin-edit-actions>button{min-height:40px;font-size:14px}
+.notification-topic-actions>button:not(.crm-page-action),.notification-topic-content article>button,.admin-edit-actions>button{min-height:40px;font-size:14px}
 .notification-topic-content article>p{font-size:13px;line-height:1.6}
-@media(max-width:600px){.notification-topic-actions>button,.notification-topic-content article>button,.admin-edit-actions>button{min-height:44px}.admin-edit-actions>button{font-size:12px}}
+@media(max-width:600px){.notification-topic-actions>button:not(.crm-page-action),.notification-topic-content article>button,.admin-edit-actions>button{min-height:44px}.admin-edit-actions>button{font-size:12px}}
 
 .policy-conflict-review{font-size:13px;color:var(--ops-text,#172b42);padding-top:8px}
 .policy-conflict-review dl{margin:8px 0}.policy-conflict-review dl>div{padding:8px 0;border-bottom:1px solid var(--ops-border,#cbd5e1)}.policy-conflict-review dt{font-weight:600}.policy-conflict-review dd{overflow-wrap:anywhere}

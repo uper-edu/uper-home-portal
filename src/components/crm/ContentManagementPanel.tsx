@@ -2,6 +2,8 @@ import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
+import {CrmPageAction} from './CrmPageAction';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
@@ -188,7 +190,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     newsPage: 7,
     programGallery: 0
   });
-  const [contentRead,setContentRead] = useState<{section:CmsSection;state:'loading'|'ready'|'error'|'denied'}>();
+  const [contentRead,setContentRead] = useState<{section:CmsSection;state:'loading'|'refreshing'|'ready'|'error'|'denied'}>();
   const activeSectionRef=useRef(activeSection);
   activeSectionRef.current=activeSection;
   const contentRequests=useRef<Partial<Record<CmsSection,number>>>({});
@@ -235,11 +237,11 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     setTimeout(() => setNotification(null), 3500);
   };
 
-  const fetchItems = async (section: CmsSection) => {
+  const fetchItems = async (section: CmsSection, retainItems = false) => {
     const request=(contentRequests.current[section]??0)+1;
     contentRequests.current[section]=request;
     const current=()=>contentRequests.current[section]===request;
-    if(activeSectionRef.current===section)setContentRead({section,state:'loading'});
+    if(activeSectionRef.current===section)setContentRead({section,state:retainItems?'refreshing':'loading'});
     try {
       const res = await fetch(`/api/cms/content/${section}`);
       if(res.status===401||res.status===403){
@@ -695,7 +697,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
             const ActiveSectionIcon = activeMeta.icon;
 
             return (
-              <div className={`p-4 rounded-xl border mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              <header className={`p-4 rounded-xl border mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                 isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-950/60 border-slate-800'
               }`}>
                 <div className="flex items-center gap-2.5">
@@ -719,38 +721,23 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   </div>
                 </div>
 
-                {/* Action Bar (Search & Add New) */}
-                <div className="flex items-center gap-2 self-stretch sm:self-auto">
-                  <AdminSearchField className="flex-1 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
-                    value={searchQuery} onChange={setSearchQuery}
-                    placeholder={t('Search in this table...', '搜索当前分类内容...')}/>
-
-                  <button
-                    type="button"
-                    onClick={() => fetchItems(activeSection)}
-                    className={`p-1.5 rounded-xl border text-xs transition-colors cursor-pointer ${
-                      isLight ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
-                    }`}
-                    title={t('Refresh data', '刷新数据')}
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary-500' : ''}`} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenAdd}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('Add New Item', '新增内容')}</span>
-                  </button>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <AdminRefreshAction label={t('Refresh data','刷新数据')}
+                    loading={isLoading||contentState==='refreshing'}
+                    onClick={()=>void fetchItems(activeSection,contentState==='ready')}/>
+                  <CrmPageAction icon={Plus} variant="primary"
+                    label={t('Add New Item','新增内容')} onClick={handleOpenAdd}/>
                 </div>
-              </div>
+              </header>
             );
           })()}
 
+          <AdminSearchField className="mb-4 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
+            value={searchQuery} onChange={setSearchQuery}
+            placeholder={t('Search in this table...', '搜索当前分类内容...')}/>
+
           {/* Content Grid / List */}
-          <div className="flex-1">
+          <div className="flex-1" aria-busy={isLoading||contentState==='refreshing'}>
             {isLoading ? (
               <div className="py-20 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
                 <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />

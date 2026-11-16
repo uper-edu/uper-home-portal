@@ -1,3 +1,4 @@
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminListTable,AdminListState,AdminListPagination} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
@@ -5,7 +6,7 @@ import {CrmContentNav} from './CrmDetailWorkspace';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import type { EnrollmentClosureReason } from '../../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
-import { RefreshCw, Settings } from 'lucide-react';
+import {Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { containPaneKeys, revealRecord } from '../adminScroll';
 import { interestOption } from '../EnrollmentInterests';
@@ -341,7 +342,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
         {scope.operations&&<CrmPageAction icon={Settings}
           label={t(['课程与班次设置','Course and class settings','Pengaturan kursus dan kelas'])}
           onClick={()=>onNavigate(enrollmentSettingsPath('courses',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
-        {canRefresh&&<CrmPageAction icon={RefreshCw} label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
+        {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
       </div>}
     </header>}
     {!id&&allowed&&canSupport&&<CrmContentNav label={title} onNavigate={onNavigate} items={[
@@ -433,7 +434,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
               actions={<CrmDetailActions label={t(['班次操作','Class actions','Tindakan kelas'])} secondary={<>{sidebarToggle}
                 {scope.operations&&cohort&&<CrmPageAction id={settingsButtonId} icon={Settings} label={t(['班次设置','Class settings','Pengaturan kelas'])}
                   onClick={()=>openClassSettings(cohort.id)}/>}
-                {canRefresh&&<CrmPageAction icon={RefreshCw} label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
+                {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
               </>}/>}/>
             {cohort&&<div className="crm-panel-next">
               <dl className="crm-enrollment-detail-summary">

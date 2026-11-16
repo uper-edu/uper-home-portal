@@ -1,5 +1,7 @@
+import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import { useEffect, useState } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { Copy } from "lucide-react";
+import {CrmPageAction} from './crm/CrmPageAction';
 import { adminText } from "./AdminHeader";
 import type { CrmLanguage } from "../utils/crmLanguage";
 import {testDirectoryText,type TestDirectory} from "../utils/testDirectory";
@@ -40,7 +42,7 @@ export function TestEnvironmentPanel({ lang }: { lang: CrmLanguage }) {
       className="access-card test-directory"
       aria-labelledby="test-directory-title"
     >
-      <div className="access-toolbar">
+      <header className="access-section-heading">
         <div>
           <h2 id="test-directory-title">
             {t(
@@ -57,13 +59,9 @@ export function TestEnvironmentPanel({ lang }: { lang: CrmLanguage }) {
             )}
           </p>
         </div>
-        <div className="access-actions">
-          <button type="button" disabled={loading} onClick={() => void load()}>
-            <RefreshCw size={16} aria-hidden="true" />
-            {t("Refresh", "Muat ulang", "刷新")}
-          </button>
-          <button
-            type="button"
+        <div className="access-section-actions">
+          <AdminRefreshAction label={t("Refresh", "Muat ulang", "刷新")} loading={loading} onClick={()=>void load()}/>
+          <CrmPageAction icon={Copy} variant="primary" label={t("Copy all", "Salin semua", "复制全部")}
             disabled={!data || loading}
             onClick={async () => {
               try {
@@ -75,12 +73,9 @@ export function TestEnvironmentPanel({ lang }: { lang: CrmLanguage }) {
                 setCopied(false);
               }
             }}
-          >
-            <Copy size={16} aria-hidden="true" />
-            {t("Copy all", "Salin semua", "复制全部")}
-          </button>
+          />
         </div>
-      </div>
+      </header>
       {loading && <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>}
       {error && (
         <p role="alert">

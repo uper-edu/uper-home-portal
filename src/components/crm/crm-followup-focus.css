@@ -434,14 +434,14 @@
 .crm-list-intent-row>.crm-list-intent-time[data-unknown=true]{color:var(--crm-contact-unanswered,#946200)}
 
 /* History filters use the shared selector and an aligned 40px toolbar. */
-.crm-history-toolbar{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr) auto;gap:12px;align-items:end}
+.crm-history-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.crm-history-heading>.crm-page-action{margin-inline-start:auto}
+.crm-history-toolbar{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);gap:12px;align-items:end}
 .crm-history-toolbar>div{display:grid;gap:6px;min-width:0}
 .crm-history-toolbar>div>label{display:block;margin:0;font-size:13px;font-weight:500;line-height:20px;color:var(--cw-muted)}
 .crm-history-toolbar .crm-detail-choice{width:100%;min-width:0;margin:0}
-.crm-history-toolbar>.crm-history-refresh{box-sizing:border-box;height:40px;min-height:40px;margin:0;padding:0 12px;border-radius:10px;font-size:14px;line-height:20px}
 .crm-history-toolbar .crm-filter-dimension-button{width:100%}
-.crm-history-toolbar>.crm-history-refresh{gap:6px;font-weight:500;white-space:nowrap}
-@media(max-width:760px){.crm-history-toolbar{grid-template-columns:minmax(0,1fr) auto}.crm-history-toolbar>.crm-history-type-filter{grid-column:1/-1}}
+@media(max-width:760px){.crm-history-toolbar{grid-template-columns:minmax(0,1fr)}}
 
 .crm-sales-stage-change{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:4px 6px;max-width:100%;font-size:inherit;line-height:inherit}
 .crm-sales-stage-change>.crm-sales-stage{font-weight:500}

@@ -1,7 +1,8 @@
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
-import { GraduationCap, NotebookPen, RefreshCw } from 'lucide-react';
+import { GraduationCap, NotebookPen } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {containPaneKeys, revealRecord} from '../adminScroll';
 import {CrmDetailActions, CrmRecordFilters, CrmRecordNavigation, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordSidebarToggle, CrmRecordTitle} from './CrmRecordWorkspace';
@@ -799,7 +800,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     </div>:<>
       <div className="admin-page-toolbar" data-theme={isLight?'light':'dark'}>
         <CrmPageIdentity title={label}/>
-        <CrmPageAction icon={RefreshCw} label={listRefreshLabel} loading={listLoading}
+        <AdminRefreshAction label={listRefreshLabel} loading={listLoading}
           onClick={()=>setListRevision(value=>value+1)}/>
       </div>
       {listFailed&&<p role="alert">{list

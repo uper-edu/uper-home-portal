@@ -173,12 +173,12 @@
     margin-top: auto;
   }
 }
-.access-page button {
+.access-page button:not(.crm-page-action) {
   min-height: 40px;
   padding: 8px 12px;
   border-radius: 10px;
 }
-.access-page main button,
+.access-page main button:not(.crm-page-action),
 .access-actions button {
   border: 1px solid var(--access-border);
   background: var(--access-surface);
@@ -327,15 +327,16 @@
   }
 }
 .test-directory textarea{width:100%;box-sizing:border-box;resize:vertical;line-height:1.7;min-height:24rem;font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;}
-.test-directory .access-actions button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;}
+.access-page .access-section-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 16px;}
+.access-section-heading h2{margin:0;}
+.access-section-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-inline-start:auto;}
 .test-directory p{overflow-wrap:anywhere;}
 
 /* Account enablement shares the same confirmed-success colour pair as CMS. */
 .access-page .access-record-status[data-active=true]{color:var(--admin-success);background:var(--admin-success-bg)}
 .access-page .access-record-status:not([data-active=true]){color:var(--admin-muted)}
 .ai-service-panel {display:grid;gap:16px;min-width:0;font-size:14px;line-height:1.5;}
-.ai-service-toolbar {margin:0;}
-.ai-service-toolbar p {margin:0;color:var(--admin-muted);}
+.ai-service-guide {margin:0;color:var(--admin-muted);}
 .ai-service-panel button {display:inline-flex;align-items:center;justify-content:center;gap:8px;}
 .ai-service-grid {grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
 .ai-service-card {display:flex;flex-direction:column;gap:20px;}

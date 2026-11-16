@@ -95,8 +95,7 @@
 .notification-channel-list,.notification-channel-heading{max-width:1120px}
 .notification-config-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;min-height:40px}
 .notification-config-heading-row h2{margin:0}
-.notification-config-heading-row .notification-topic-actions{width:auto}
-.notification-config-heading-row .notification-topic-actions>button:first-child{display:grid;place-items:center;min-width:40px}
+.notification-config-heading-row .notification-topic-actions{width:auto;flex-wrap:wrap;margin-inline-start:auto}
 .notification-channel-list,.notification-policy-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,312px),1fr));gap:12px}
 .notification-policy-list{grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))}
 .notification-channel-card,.notification-policy-card{display:grid;gap:8px;min-width:0;padding:12px;border:1px solid var(--af-border);border-radius:14px;background:var(--af-surface)}
