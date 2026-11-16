@@ -1,3 +1,4 @@
+import {AdminEditor} from '../admin/AdminEditor';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
@@ -5,10 +6,10 @@ import {AdminRowAction} from '../admin/AdminListControl';
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useState } from 'react';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions } from '../AdminFormLayout';
+import { AdminFormActions, AdminFormGrid, AdminFormSection } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
-import { CrmSingleSelect } from './CrmSingleSelect';
+import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
 import { enrollmentFormats, enrollmentLevels, enrollmentPeriods,enrollmentScheduleDefaults } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
@@ -24,22 +25,22 @@ const initial: EnrollmentClassConfig = {
   sessions: 23, minutes: 45, minimumPaid: 13, capacity: 20, price: 0, standardPrice: null,
   learningOutcomes: '', material: '', resources: '', teacher: '',
 };
-const fields: { name: keyof EnrollmentClassConfig; type: 'text' | 'number' | 'datetime-local' | 'textarea'; label: Copy }[] = [
-  { name: 'firstLesson', type: 'datetime-local', label: ['First class (WIB)', 'Kelas pertama (WIB)', '首课（WIB）'] },
-  { name: 'decisionAt', type: 'datetime-local', label: ['Expected decision (WIB)', 'Perkiraan keputusan (WIB)', '预计通知开班结果（WIB）'] },
-  { name: 'enrollmentCloses', type: 'datetime-local', label: ['Self-service deadline (WIB)', 'Batas daftar mandiri (WIB)', '自助报名截止（WIB）'] },
-  { name: 'schedule', type: 'text', label: ['Weekly schedule (WIB)', 'Jadwal mingguan (WIB)', '每周课表（WIB）'] },
-  { name: 'sessions', type: 'number', label: ['Sessions', 'Pertemuan', '课次'] },
-  { name: 'minutes', type: 'number', label: ['Minutes per session', 'Menit per pertemuan', '每课次分钟数'] },
-  { name: 'minimumPaid', type: 'number', label: ['Minimum fully paid', 'Minimum peserta lunas', '开班最低足额到账人数'] },
-  { name: 'capacity', type: 'number', label: ['Capacity', 'Kapasitas', '招生上限'] },
-  { name: 'price', type: 'number', label: ['Payable tuition (Rp)', 'Biaya yang harus dibayar (Rp)', '应付学费（Rp）'] },
-  { name: 'standardPrice', type: 'number', label: ['Standard comparison price (Rp)', 'Harga standar pembanding (Rp)', '对比标准价（Rp）'] },
-  { name: 'learningOutcomes', type: 'textarea', label: ['Learning outcomes', 'Hasil belajar', '学习成果'] },
-  { name: 'material', type: 'textarea', label: ['Course and materials', 'Kursus dan materi', '课程内容与教材'] },
-  { name: 'resources', type: 'textarea', label: ['Practice and resources', 'Latihan dan sumber daya', '练习与资源'] },
-  { name: 'teacher', type: 'text', label: ['Teacher', 'Pengajar', '授课教师'] },
-];
+const fields = {
+  firstLesson: { type: 'datetime-local', label: ['First class (WIB)', 'Kelas pertama (WIB)', '首课（WIB）'] },
+  decisionAt: { type: 'datetime-local', label: ['Expected decision (WIB)', 'Perkiraan keputusan (WIB)', '预计通知开班结果（WIB）'] },
+  enrollmentCloses: { type: 'datetime-local', label: ['Self-service deadline (WIB)', 'Batas daftar mandiri (WIB)', '自助报名截止（WIB）'] },
+  schedule: { type: 'text', label: ['Weekly schedule (WIB)', 'Jadwal mingguan (WIB)', '每周课表（WIB）'] },
+  sessions: { type: 'number', label: ['Sessions', 'Pertemuan', '课次'] },
+  minutes: { type: 'number', label: ['Minutes per session', 'Menit per pertemuan', '每课次分钟数'] },
+  minimumPaid: { type: 'number', label: ['Minimum fully paid', 'Minimum peserta lunas', '开班最低足额到账人数'] },
+  capacity: { type: 'number', label: ['Capacity', 'Kapasitas', '招生上限'] },
+  price: { type: 'number', label: ['Payable tuition (Rp)', 'Biaya yang harus dibayar (Rp)', '应付学费（Rp）'] },
+  standardPrice: { type: 'number', label: ['Standard comparison price (Rp)', 'Harga standar pembanding (Rp)', '对比标准价（Rp）'] },
+  learningOutcomes: { type: 'textarea', label: ['Learning outcomes', 'Hasil belajar', '学习成果'] },
+  material: { type: 'textarea', label: ['Course and materials', 'Kursus dan materi', '课程内容与教材'] },
+  resources: { type: 'textarea', label: ['Practice and resources', 'Latihan dan sumber daya', '练习与资源'] },
+  teacher: { type: 'text', label: ['Teacher', 'Pengajar', '授课教师'] },
+} satisfies Partial<Record<keyof EnrollmentClassConfig,{type:'text'|'number'|'datetime-local'|'textarea';label:Copy}>>;
 
 export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isLight: boolean }) {
   const t = ([en, id, zh]: Copy) => lang === 'zh' ? zh : lang === 'id' ? id : en;
@@ -213,6 +214,22 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
     {value:'draft',label:unpublished},{value:'published',label:published},
     {value:'cancelled',label:t(['Class will not open','Kelas tidak dibuka','已确认不开班'])},
   ];
+  const fieldDisabled=busy||!!pending;
+  const inputField=(name:keyof typeof fields,fullWidth=false)=>{
+    const {type,label}=fields[name],required=name!=='standardPrice';
+    const value=draft?.config[name]??'';
+    return <AdminField required={required} data-admin-full-width={fullWidth||undefined}>{t(label)}
+      {type==='textarea'
+        ? <textarea required={required} value={value} disabled={fieldDisabled} onChange={event=>change(name,event.target.value)}/>
+        : <input required={required} type={type} min={type==='number'?1:undefined} value={value} disabled={fieldDisabled}
+          onChange={event=>change(name,type==='number'?event.target.value?Number(event.target.value):null:event.target.value)}/>}
+    </AdminField>;
+  };
+  const selectField=(name:'courseId'|'level'|'format'|'period',label:Copy,options:CrmChoice[],fullWidth=false)=>
+    <AdminField required data-admin-full-width={fullWidth||undefined}>{t(label)}
+      <CrmSingleSelect label={t(label)} value={draft?.config[name]??''} options={options} lang={lang} isLight={isLight}
+        disabled={fieldDisabled} onChange={value=>change(name,value)}/>
+    </AdminField>;
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
       <h2>{title}</h2>
@@ -250,41 +267,60 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
           {row.state==='published'&&!row.opened&&<AdminRowAction onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
             {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</AdminRowAction>}</td>
       </tr>)}</AdminListTable>}
-    {draft && <CrmOperationLayer compose title={<>{title}<AdminRequiredNote inline lang={lang}/></>} lang={lang} isLight={isLight} busy={busy} customerContext={false} onClose={close}>
-      <AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onSubmit={event => { event.preventDefault(); void save(); }}>
-        <div className="crm-editor-scroll">
-          {error && <p role="alert">{error}</p>}
-          {pending && <CrmSaveFeedback state={busy?"saving":"unknown"} lang={lang}>{!busy&&checkMessage}</CrmSaveFeedback>}
-          <AdminField required>{t(['Course', 'Kursus', '关联课程'])}<CrmSingleSelect lang={lang} isLight={isLight}
-            label={t(['Course', 'Kursus', '关联课程'])} value={draft.config.courseId} disabled={busy || !!pending}
-            options={(catalog?.courses || []).map(course => ({ value: course.id, label: course.name, disabled: draft.state === 'published' && !course.active }))}
-            onChange={value => change('courseId', value)}/></AdminField>
-          {([
-            ['level', ['Level', 'Level', '级别'], enrollmentLevels.map(value => ({ value, label: value }))],
-            ['format', ['Class type', 'Jenis kelas', '班型'], enrollmentFormats.map(value => ({ value, label: value === 'standard' ? t(['Standard', 'Standar', '标准班']) : t(['Small group', 'Kelompok kecil', '小班']) }))],
-            ['period', ['Time slot', 'Waktu', '时段'], enrollmentPeriods.map(value => ({ value, label: value === 'weekend' ? t(['Weekend', 'Akhir pekan', '周末']) : t(['Weekday evening', 'Malam hari kerja', '工作日晚间']) }))],
-          ] as const).map(([name, label, options]) => <AdminField required key={name}>{t(label)}
-            <CrmSingleSelect label={t(label)} value={draft.config[name]} options={options} lang={lang} isLight={isLight} disabled={busy || !!pending}
-              onChange={value => change(name, value)}/>
-          </AdminField>)}
-          {fields.map(({ name, type, label }) => <AdminField required={name !== 'standardPrice'} key={name}>{t(label)}
-            {type === 'textarea'
-              ? <textarea required value={draft.config[name] ?? ''} disabled={busy || !!pending} onChange={event => change(name, event.target.value)}/>
-              : <input required={name !== 'standardPrice'} type={type} min={type === 'number' ? 1 : undefined}
-                value={draft.config[name] ?? ''} disabled={busy || !!pending}
-                onChange={event => change(name, type === 'number' ? event.target.value ? Number(event.target.value) : null : event.target.value)}/>}
-          </AdminField>)}
-          <label className="admin-field admin-field--choice"><input type="checkbox" checked={draft.state === 'published'} disabled={busy || !!pending}
-            onChange={event => { setDraft({ ...draft, state: event.target.checked ? 'published' : 'draft' }); setDirty(true); }}/>
-            <span>{t(['Publish class', 'Terbitkan kelas', '发布班次'])}</span></label>
-        </div>
-        <AdminFormActions className="crm-editor-actions">
+    {draft&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
+      title={draft.revision?t(['Edit class','Edit kelas','编辑班次']):t(['Create class','Buat kelas','创建班次'])}
+      lang={lang} light={isLight} busy={busy} closeDisabled={!!pending} onClose={close}
+      onSubmit={event=>{event.preventDefault();void save();}} footer={<>
           {pending ? <button type="button" className="crm-work-button" disabled={busy} onClick={() => void check().catch(() => {})}>{t(['Check save result', 'Periksa hasil simpan', '查询保存结果'])}</button>
             : <><button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t(['Cancel', 'Batal', '取消'])}</button>
-              <button type="submit" data-primary className="crm-work-button" disabled={busy || !draft.config.courseId}>{t(['Save', 'Simpan', '保存'])}</button></>}
-        </AdminFormActions>
-      </AdminForm>
-    </CrmOperationLayer>}
+              <button type="submit" data-primary="" disabled={busy || !draft.config.courseId}>{t(['Save', 'Simpan', '保存'])}</button></>}
+      </>}>
+          {error && <p role="alert">{error}</p>}
+          {pending && <CrmSaveFeedback state={busy?"saving":"unknown"} lang={lang}>{!busy&&checkMessage}</CrmSaveFeedback>}
+          <AdminFormSection variant="subgroup" title={t(['Class details','Informasi kelas','班次信息'])}>
+            <AdminFormGrid>
+              {selectField('courseId',['Course','Kursus','关联课程'],(catalog?.courses??[]).map(course=>({
+                value:course.id,label:course.name,disabled:draft.state==='published'&&!course.active,
+              })),true)}
+              {selectField('level',['Level','Level','级别'],enrollmentLevels.map(value=>({value,label:value})))}
+              {selectField('format',['Class type','Jenis kelas','班型'],enrollmentFormats.map(value=>({
+                value,label:value==='standard'?t(['Standard','Standar','标准班']):t(['Small group','Kelompok kecil','小班']),
+              })))}
+            </AdminFormGrid>
+          </AdminFormSection>
+          <AdminFormSection variant="subgroup" title={t(['Schedule and dates','Jadwal dan tanggal','课表与时间'])}>
+            <AdminFormGrid>
+              {selectField('period',['Time slot','Waktu','时段'],enrollmentPeriods.map(value=>({
+                value,label:value==='weekend'?t(['Weekend','Akhir pekan','周末']):t(['Weekday evening','Malam hari kerja','工作日晚间']),
+              })))}
+              {inputField('firstLesson')}
+              {inputField('decisionAt')}
+              {inputField('enrollmentCloses')}
+              {inputField('schedule',true)}
+              {inputField('sessions')}
+              {inputField('minutes')}
+            </AdminFormGrid>
+          </AdminFormSection>
+          <AdminFormSection variant="subgroup" title={t(['Enrollment and tuition','Pendaftaran dan biaya','招生与学费'])}>
+            <AdminFormGrid>
+              {inputField('minimumPaid')}
+              {inputField('capacity')}
+              {inputField('price')}
+              {inputField('standardPrice')}
+            </AdminFormGrid>
+          </AdminFormSection>
+          <AdminFormSection variant="subgroup" title={t(['Course overview','Ringkasan kursus','课程介绍'])}>
+            {inputField('teacher')}
+            {inputField('learningOutcomes')}
+            {inputField('material')}
+            {inputField('resources')}
+          </AdminFormSection>
+          <AdminFormSection variant="subgroup" title={t(['Publication settings','Pengaturan publikasi','发布设置'])}>
+            <label className="admin-field admin-field--choice"><input type="checkbox" checked={draft.state === 'published'} disabled={fieldDisabled}
+              onChange={event => { setDraft({ ...draft, state: event.target.checked ? 'published' : 'draft' }); setDirty(true); }}/>
+              <span>{t(['Publish class', 'Terbitkan kelas', '发布班次'])}</span></label>
+          </AdminFormSection>
+    </AdminEditor>}
     {insertion&&<CrmOperationLayer compose title={<>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}<AdminRequiredNote inline lang={lang}/></>}
       lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={()=>{
         if(busy||pending)return;

@@ -9,7 +9,7 @@ import {AdminFormGuide} from '../AdminFormGuide';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
-import {AdminFormSection,AdminFormFeedback} from '../AdminFormLayout';
+import {AdminFormGrid,AdminFormSection,AdminFormFeedback} from '../AdminFormLayout';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
 import {AdminTopicFrame} from "../AdminTopicFrame";
@@ -175,6 +175,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   useEffect(()=>{let live=true;fetch('/api/cms/identity').then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(!live)return;cmsActor.current=d.id;try{const saved=JSON.parse(sessionStorage.getItem('cms-pending:'+d.id)||'null');if(saved&&(!saved.actor||saved.actor===d.id)){setPendingCms({...saved,actor:d.id});setEditingItem(saved.draft);setActiveSection(saved.collection);setIsModalOpen(true);}}catch{}}).catch(()=>{});return()=>{live=false;};},[]);
 
   const [activeSection, setActiveSection] = useState<CmsSection>('partners');
+  const DisplaySettingsLayout=activeSection==='trendingPrograms'?AdminFormGrid:'div';
   const [items, setItems] = useState<any[]>([]);
   const [sectionCounts, setSectionCounts] = useState<Record<CmsSection, number>>({
     partners: 54,
@@ -866,9 +867,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         </section>
       </AdminTopicFrame>
 
-      {/* Edit / Add Modal */}
+      {/* Content editing */}
       {isModalOpen && editingItem && (
         <AdminEditor lang={lang} light={isLight} onClose={closeEditor} onSubmit={handleSave} required
+          variant={activeSection==='trendingPrograms'?'drawer':'modal'} responsiveForm={activeSection==='trendingPrograms'}
           title={editingItem._id?t('Edit Item','编辑内容与图片'):t('Create New Item','新建内容')}
           busy={isSaving||isUploading} closeDisabled={!!pendingCms}
           footer={<>
@@ -1199,101 +1201,99 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {/* Conditional Fields: Trending Programs */}
                 {activeSection === 'trendingPrograms' && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.category || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                          placeholder={t('Example: HSK course', '例如：HSK 课程')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Badge / Status Tag', '角标标签')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.badge || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, badge: e.target.value })}
-                          placeholder={t('Example: Open for registration', '例如：开放报名')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Tuition / Price', '学费 / 价格')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.price || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
-                          placeholder={`${lang==='zh'?'例如：':lang==='id'?'Contoh: ':'Example: '}${formatCurrency(1000000,lang)}`}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Term Duration', '课时周期')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.term || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, term: e.target.value })}
-                          placeholder={t('Example: 10 weeks', '例如：10 周')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Start Date', '开班 / 开学时间')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.startDate || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, startDate: e.target.value })}
-                          placeholder={t('Example: 15 July 2026', '例如：2026 年 7 月 15 日')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Seats / Capacity', '名额限制')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.seats || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, seats: e.target.value })}
-                          placeholder={t('Example: 15 places', '例如：15 个名额')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div" className="col-span-2">
-                        <label className="block font-semibold mb-1">{t('Target Page Link', '跳转链接')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.link || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, link: e.target.value })}
-                          placeholder={t('Example: /hsk', '例如：/hsk')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-                    </div>
+                  <AdminFormGrid>
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.category || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                        placeholder={t('Example: HSK course', '例如：HSK 课程')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
 
                     <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Badge / Status Tag', '角标标签')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.badge || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, badge: e.target.value })}
+                        placeholder={t('Example: Open for registration', '例如：开放报名')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Tuition / Price', '学费 / 价格')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.price || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
+                        placeholder={`${lang==='zh'?'例如：':lang==='id'?'Contoh: ':'Example: '}${formatCurrency(1000000,lang)}`}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Term Duration', '课时周期')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.term || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, term: e.target.value })}
+                        placeholder={t('Example: 10 weeks', '例如：10 周')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Start Date', '开班 / 开学时间')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.startDate || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, startDate: e.target.value })}
+                        placeholder={t('Example: 15 July 2026', '例如：2026 年 7 月 15 日')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Seats / Capacity', '名额限制')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.seats || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, seats: e.target.value })}
+                        placeholder={t('Example: 15 places', '例如：15 个名额')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div" data-admin-full-width="">
+                      <label className="block font-semibold mb-1">{t('Target Page Link', '跳转链接')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.link || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, link: e.target.value })}
+                        placeholder={t('Example: /hsk', '例如：/hsk')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div" data-admin-full-width="">
                       <label className="block font-semibold mb-1">{t('Course Description & Highlights', '课程亮点与介绍')}</label>
                       <textarea
                         rows={4}
@@ -1304,7 +1304,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         }`}
                       />
                     </AdminField>
-                  </div>
+                  </AdminFormGrid>
                 )}
 
                 {/* Conditional Fields: Student Stories */}
@@ -1476,7 +1476,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 </AdminFormSection>
                 <AdminFormSection title={t('Display settings', '展示设置')}>
                 {/* Common Settings: Active Toggle & Display Order */}
-                <div className="flex items-center justify-between gap-4">
+                <DisplaySettingsLayout className={activeSection==='trendingPrograms'?undefined:"flex items-center justify-between gap-4"}>
                   <AdminField className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1498,7 +1498,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       }`}
                     />
                   </AdminField>
-                </div>
+                </DisplaySettingsLayout>
                 </AdminFormSection>
               </fieldset>
         </AdminEditor>

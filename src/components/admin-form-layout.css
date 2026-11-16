@@ -10,6 +10,12 @@
 [data-admin-form] .admin-field-control>:is(small,p){margin:0;font-size:13px;line-height:1.6;color:var(--af-muted)}
 [data-admin-stack]{display:grid;gap:var(--admin-form-field-gap);align-content:start;min-width:0}
 [data-admin-grid]{column-gap:var(--admin-form-column-gap);row-gap:var(--admin-form-field-gap)}
+.admin-form-grid-container { container: admin-form-grid / inline-size; min-width: 0; }
+.admin-form-responsive-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+@container admin-form-grid (min-width: 560px) {
+  .admin-form-responsive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-form-responsive-grid > [data-admin-full-width] { grid-column: 1 / -1; }
+}
 .admin-form-section{min-width:0;color:var(--af-text);margin:0}
 .admin-form-section+.admin-form-section{margin-top:var(--admin-form-group-gap)}
 .admin-form-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--af-border)}

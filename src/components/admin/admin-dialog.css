@@ -25,6 +25,11 @@
 .admin-editor-dialog > .admin-editor-layout { max-height: inherit; }
 .admin-editor-dialog[data-editor=drawer] > .admin-editor-layout { height: 100%; }
 .admin-editor-dialog .admin-editor-title-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.admin-editor-dialog[data-responsive-form][data-editor=drawer] { --admin-editor-width: 780px; }
+.admin-editor-dialog[data-responsive-form] .admin-editor-title-line { align-items: center; gap: 4px 12px; }
+.admin-editor-dialog[data-responsive-form] .admin-required-note { margin: 0; }
+.admin-editor-dialog[data-responsive-form] .admin-editor-body { display: flex; flex-direction: column; gap: var(--admin-form-group-gap); }
+.admin-editor-dialog[data-responsive-form] .admin-editor-body > * { flex: none; }
 .admin-editor-dialog .admin-editor-description { margin-top: 4px; font-size: 13px; color: var(--admin-muted); }
 .admin-editor-dialog .admin-editor-body { overflow-x: hidden; }
 .admin-editor-dialog .admin-editor-footer > button,

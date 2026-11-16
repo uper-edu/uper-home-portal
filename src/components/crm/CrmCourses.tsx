@@ -4,9 +4,9 @@ import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
 import {useEffect,useRef,useState} from 'react';
-import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
-import {AdminFormActions} from '../AdminFormLayout';
-import {CrmOperationLayer} from './CrmOperationLayer';
+import {AdminField} from '../AdminForm';
+import {AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
+import {AdminEditor} from '../admin/AdminEditor';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {courseError} from '../../utils/crmCoursePricing';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
@@ -50,14 +50,49 @@ export function CrmCourses({lang,isLight}:any){
    {label:t('Paid in full','Lunas','已收齐人数'),numeric:true},
    {label:t('Net receipts','Penerimaan neto','净收款'),numeric:true},t('Actions','Tindakan','操作'),
  ]}>{data.courses.map((c:any)=><tr key={c.id}><td><strong>{c.name}</strong><p>{c.sessions} {t('sessions','pertemuan','课时')} · <AdminStatus tone={c.active?'success':'neutral'}>{c.active?t('Published','Diterbitkan','已发布'):t('Not on sale','Tidak dijual','未在售')}</AdminStatus></p></td><td className="crm-list-number">{money(c.price)}<p>{t('Max discount','Diskon maks.','优惠上限')} {c.maxDiscountBps/100}%{c.maxDiscountAmount!==null?' / '+money(c.maxDiscountAmount):''}</p></td><td className="crm-list-number">{c.stats.enrolled}{c.stats.voided>0&&<p>{t('Voided','Dibatalkan','已撤销')} {c.stats.voided}</p>}</td><td className="crm-list-number">{c.stats.paying}</td><td className="crm-list-number">{c.stats.paid}</td><td className="crm-list-number">{money(c.stats.net)}<p>{t('Receipts','Penerimaan','收款')} {money(c.stats.received)} · {t('Refunds','Pengembalian','退款')} {money(c.stats.refunded)}</p>{c.stats.pending>0&&<p>{t('Pending verification','Menunggu verifikasi','待核验')} {c.stats.pending}</p>}</td><td>{data.canManage&&<AdminRowAction disabled={unknown||busy} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>}</td></tr>)}</AdminListTable>}
- {form&&<CrmOperationLayer compose title={<>{form.revision?t('Edit course','Edit kursus','编辑课程'):t('Create course','Buat kursus','创建课程')}<AdminRequiredNote inline lang={lang}/></>} lang={lang} isLight={isLight} busy={busy} customerContext={false} onClose={close}><AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onSubmit={save}><div className="crm-editor-scroll">
- {error&&<p role="alert">{error}</p>}{latest&&<aside><p>{t('Latest standard price','Harga standar terbaru','最新标准价')}：{money(latest.price)}</p><button type="button" className="crm-work-button" onClick={()=>{setForm((f:any)=>({...f,revision:latest.revision}));setLatest(null);setError('');}}>{t('Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿继续')}</button></aside>}{unknown&&<CrmSaveFeedback state="unknown" lang={lang}/>}
- {[['name',t('Course name','Nama kursus','课程名称'),'text'],['sessions',t('Sessions','Pertemuan','课时'),'number'],['price',t('Standard total price (Rp)','Harga total standar (Rp)','标准总价（Rp）'),'number']].map(([k,label,type])=><AdminField required key={k}>{label}<input type={type} required min={k==='sessions'?1:0} step="1" disabled={busy||unknown} value={form.config[k]} onChange={e=>patch(k,e.target.value)}/></AdminField>)}
- <AdminField required>{t('Sales discount limit (%)','Batas diskon sales (%)','销售优惠比例上限（%）')}<input type="number" min="0" max="100" step="0.01" disabled={busy||unknown} value={form.config.maxDiscountBps===''?'':form.config.maxDiscountBps/100} onChange={e=>patch('maxDiscountBps',e.target.value===''?'':Math.round(Number(e.target.value)*100))}/></AdminField>
- <AdminField>{t('Sales discount amount cap (Rp)','Batas nominal diskon sales (Rp)','销售优惠金额上限（Rp）')}<input type="number" min="0" step="1" disabled={busy||unknown} value={form.config.maxDiscountAmount??''} onChange={e=>patch('maxDiscountAmount',e.target.value)}/></AdminField><p className="crm-work-muted">{t('Both limits apply when an amount cap is set. Blank means percentage limit only.','Kedua batas berlaku jika nominal diisi. Kosong berarti batas persentase saja.','金额上限填写后与比例上限同时生效，取更严格者；留空仅限制比例。')}</p>
- <label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown} checked={form.config.active} onChange={e=>patch('active',e.target.checked)}/><span>{t('Publish for new enrollment','Terbitkan untuk pendaftaran baru','发布并允许新报名')}</span></label>
- {form.history?.length>0&&<AdminDisclosure heading={t('Price history','Riwayat harga','价格历史')}>{[...form.history].reverse().map((h:any)=><p key={h.id}>{formatCrmEventTime(h.at)} · {h.actor} · {h.before?money(h.before.price)+' → ':''}{money(h.after.price)} · {h.after.name} · {h.after.maxDiscountBps/100}%</p>)}</AdminDisclosure>}
- </div><AdminFormActions className="crm-editor-actions">{unknown?<button type="button" className="crm-work-button" disabled={busy} onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button>:<><button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t('Cancel','Batal','取消')}</button><button type="submit" className="crm-work-button" data-primary disabled={busy}>{t('Save','Simpan','保存')}</button></>}</AdminFormActions></AdminForm></CrmOperationLayer>}
+ {form&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
+  title={form.revision?t('Edit course','Edit kursus','编辑课程'):t('Create course','Buat kursus','创建课程')}
+  lang={lang} light={isLight} busy={busy} onClose={close} onSubmit={save}
+  footer={unknown
+    ?<button type="button" disabled={busy} onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button>
+    :<><button type="button" disabled={busy} onClick={close}>{t('Cancel','Batal','取消')}</button>
+      <button type="submit" data-primary="" disabled={busy}>{t('Save','Simpan','保存')}</button></>}>
+  {error&&<p role="alert">{error}</p>}
+  {latest&&<aside><p>{t('Latest standard price','Harga standar terbaru','最新标准价')}：{money(latest.price)}</p>
+    <button type="button" className="crm-work-button" onClick={()=>{setForm((f:any)=>({...f,revision:latest.revision}));setLatest(null);setError('');}}>{t('Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿继续')}</button>
+  </aside>}
+  {unknown&&<CrmSaveFeedback state="unknown" lang={lang}/>}
+  <AdminFormSection variant="subgroup" title={t('Course details','Informasi kursus','课程信息')}>
+    <AdminFormGrid>
+      <AdminField required data-admin-full-width="">{t('Course name','Nama kursus','课程名称')}
+        <input type="text" required disabled={busy||unknown} value={form.config.name} onChange={e=>patch('name',e.target.value)}/>
+      </AdminField>
+      <AdminField required>{t('Sessions','Pertemuan','课时')}
+        <input type="number" required min="1" step="1" disabled={busy||unknown} value={form.config.sessions} onChange={e=>patch('sessions',e.target.value)}/>
+      </AdminField>
+      <AdminField required>{t('Standard total price (Rp)','Harga total standar (Rp)','标准总价（Rp）')}
+        <input type="number" required min="0" step="1" disabled={busy||unknown} value={form.config.price} onChange={e=>patch('price',e.target.value)}/>
+      </AdminField>
+    </AdminFormGrid>
+  </AdminFormSection>
+  <AdminFormSection variant="subgroup" title={t('Sales discount limits','Batas diskon sales','销售优惠上限')}>
+    <AdminFormGrid>
+      <AdminField required>{t('Sales discount limit (%)','Batas diskon sales (%)','销售优惠比例上限（%）')}
+        <input type="number" min="0" max="100" step="0.01" disabled={busy||unknown} value={form.config.maxDiscountBps===''?'':form.config.maxDiscountBps/100}
+          onChange={e=>patch('maxDiscountBps',e.target.value===''?'':Math.round(Number(e.target.value)*100))}/>
+      </AdminField>
+      <AdminField>{t('Sales discount amount cap (Rp)','Batas nominal diskon sales (Rp)','销售优惠金额上限（Rp）')}
+        <input type="number" min="0" step="1" disabled={busy||unknown} value={form.config.maxDiscountAmount??''} onChange={e=>patch('maxDiscountAmount',e.target.value)}/>
+      </AdminField>
+      <p className="crm-work-muted" data-admin-full-width="">{t('Both limits apply when an amount cap is set. Blank means percentage limit only.','Kedua batas berlaku jika nominal diisi. Kosong berarti batas persentase saja.','金额上限填写后与比例上限同时生效，取更严格者；留空仅限制比例。')}</p>
+    </AdminFormGrid>
+  </AdminFormSection>
+  <AdminFormSection variant="subgroup" title={t('Publication settings','Pengaturan publikasi','发布设置')}>
+    <label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown} checked={form.config.active} onChange={e=>patch('active',e.target.checked)}/>
+      <span>{t('Publish for new enrollment','Terbitkan untuk pendaftaran baru','发布并允许新报名')}</span></label>
+  </AdminFormSection>
+  {form.history?.length>0&&<AdminDisclosure heading={t('Price history','Riwayat harga','价格历史')}>{[...form.history].reverse().map((h:any)=><p key={h.id}>{formatCrmEventTime(h.at)} · {h.actor} · {h.before?money(h.before.price)+' → ':''}{money(h.after.price)} · {h.after.name} · {h.after.maxDiscountBps/100}%</p>)}</AdminDisclosure>}
+ </AdminEditor>}
  {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);setForm(null);setDirty(false);setError('');}}/>}
  </div>;
 }

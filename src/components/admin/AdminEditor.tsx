@@ -7,11 +7,11 @@ import type {CrmLanguage} from '../../utils/crmLanguage';
 
 export function AdminEditor({
   children,footer,title,description,lang,light,onClose,onSubmit,busy=false,closeDisabled=false,
-  required=false,variant='modal',className='',bodyClassName='',dialogRef,
+  required=false,variant='modal',responsiveForm=false,className='',bodyClassName='',dialogRef,
 }:{
   children:ReactNode;footer:ReactNode;title:ReactNode;description?:ReactNode;lang:CrmLanguage;light:boolean;
   onClose:()=>void;onSubmit?:FormEventHandler<HTMLFormElement>;busy?:boolean;closeDisabled?:boolean;
-  required?:boolean;variant?:'modal'|'drawer';className?:string;bodyClassName?:string;
+  required?:boolean;variant?:'modal'|'drawer';responsiveForm?:boolean;className?:string;bodyClassName?:string;
   dialogRef?:RefObject<HTMLDialogElement|null>;
 }){
   const titleId=useId();
@@ -31,7 +31,7 @@ export function AdminEditor({
     <AdminFormActions className="admin-editor-footer">{footer}</AdminFormActions>
   </>;
   return <AdminDialog aria-labelledby={titleId} light={light} busy={busy} onRequestClose={onClose} dialogRef={dialogRef}
-    className={`admin-editor-dialog ${className}`.trim()} data-editor={variant} data-admin-form="">
+    className={`admin-editor-dialog ${className}`.trim()} data-editor={variant} data-responsive-form={responsiveForm||undefined} data-admin-form="">
     {onSubmit?<AdminForm lang={lang} className="admin-editor-layout admin-editor-form" onSubmit={onSubmit}>{layout}</AdminForm>
       :<div className="admin-editor-layout">{layout()}</div>}
   </AdminDialog>;

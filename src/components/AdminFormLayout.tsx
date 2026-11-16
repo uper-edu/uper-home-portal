@@ -9,6 +9,12 @@ export function AdminFormSection({title,titleId,actions,description,children,cla
   <div className={`admin-form-section-body ${bodyClassName}`.trim()}>{children}</div>
  </section>;
 }
+/** Paired fields follow reading order and collapse when their own container is narrow. */
+export function AdminFormGrid({children,className=''}:{children:ReactNode;className?:string}){
+ return <div className={`admin-form-grid-container ${className}`.trim()}>
+  <div className="admin-form-responsive-grid" data-admin-grid="">{children}</div>
+ </div>;
+}
 export function AdminFormActions({children,className='',...props}:ComponentPropsWithoutRef<'div'>){return <div {...props} className={`admin-form-actions ${className}`.trim()}>{children}</div>;}
 export type AdminFeedbackState='dirty'|'saving'|'saved'|'error'|'unknown';
 const messages={
