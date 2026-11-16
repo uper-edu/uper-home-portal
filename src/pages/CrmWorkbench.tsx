@@ -1,3 +1,4 @@
+import {AdminRecordHeader} from '../components/admin/AdminRecordHeader';
 import {formatCurrency} from '../utils/currency';
 import '../components/crm/crm-payments.css';
 import '../components/crm/crm-finance-workspace.css';
@@ -1161,17 +1162,17 @@ function CrmWorkspace({
   const selectedPosition=filteredLeads.findIndex(lead=>lead.id===selectedLead?.id);
   const panoramaReturn=activeDrawerTab==='chat'&&historyConversationBack?.leadId===selectedLead?.id?historyConversationBack:null;
   const leadPanel =
-    isDrawerOpen && selectedLead ? (
+    isDrawerOpen && selectedLead ? (sidebarToggle:React.ReactNode)=>(
       <section
         id="crm-customer-panel"
         className="crm-customer-panel crm-detail-panel"
         aria-label={t("Customer workspace", "客户处理面板")}
       >
-        <header className="crm-detail-header">
+        <AdminRecordHeader back={{label:t("Back to customer list","返回客户列表"),onClick:closeCustomer,disabled:isSubmittingLog||profileSave==="saving"}}
+          title={
           <CrmRecordTitle title={selectedLead.fullName} status={<CrmCurrentSalesState lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
               {employees.find(e=>e.id===selectedLead.owner)?.displayName||selectedLead.owner||t("Unassigned","未分配")}{' · '}{leadDisplayNumber(selectedLead)}
-            </span>}/>
-          <CrmDetailActions label={t("Customer actions","客户操作")}
+            </span>}/>} actions={<CrmDetailActions label={t("Customer actions","客户操作")}
           secondary={<>
             {panoramaReturn?<button type="button" className="crm-work-button" onClick={()=>{
               setActiveDrawerTab(panoramaReturn.tab);
@@ -1191,10 +1192,18 @@ function CrmWorkspace({
           </>}
           primary={selectedLead.identityReview?.pending
             ? selectedLead.identityReview.canReview&&<CrmIdentityAction lang={lang} onClick={()=>openIdentityReview(selectedLead.id)}/>
-            : claimPrimary?customerClaim:customerProgress}/>
-        </header>
+            : claimPrimary?customerClaim:customerProgress}/>}/>
 
         {!ownerOpen&&!paymentOpen&&(hasDraft||isSubmittingLog)&&<CrmSaveFeedback lang={lang} state={isSubmittingLog?"saving":"dirty"}/>}
+            <div className="admin-record-browse" role="group" aria-label={t("Customer navigation","客户浏览")}>
+              {[-1,1].map(offset=>{
+                const target=filteredLeads[selectedPosition+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");
+                const Icon=offset<0?ChevronLeft:ChevronRight;
+                return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label}
+                  disabled={selectedPosition<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}><Icon size={18} aria-hidden="true"/></button>;
+              })}
+              {sidebarToggle}
+            </div>
         <div className="crm-panel-next"><CrmNextTaskSummary hideFirstContact hideContactNotice lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>
         <CrmDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
           {id:"activities",label:t("Follow-up","跟进"),icon:ListChecks},
@@ -1470,9 +1479,9 @@ function CrmWorkspace({
               onProcess={processFromList}
               progressAction={lead=>progressActionState(employee,lead)}
               sidebarFilters={leadPanel?leadFilterControls:undefined}
-              detailNavigation={(toggle,showDetail)=><CrmRecordNavigation label={t("Customer navigation","客户浏览")}
+              detailNavigation={toggle=><CrmRecordNavigation label={t("Customer navigation","客户浏览")}
                 back={{label:t("Back to customer list","返回客户列表"),onClick:closeCustomer,disabled:isSubmittingLog||profileSave==="saving"}}
-                tools={<>{showDetail&&selectedLead&&[-1,1].map(offset=>{const target=filteredLeads[selectedPosition+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label} disabled={selectedPosition<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}>{offset<0?<ChevronLeft size={18} aria-hidden="true"/>:<ChevronRight size={18} aria-hidden="true"/>}</button>;})}{toggle}</>}/>}
+                tools={toggle}/>}
 
               search={filters.search} onSearch={value=>setFilters(current=>({...current,search:value}))}
               onReset={() => setFilters(defaultLeadFilters(employee.scope))}

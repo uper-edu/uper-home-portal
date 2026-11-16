@@ -1,3 +1,4 @@
+import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import {CrmCurrentSalesState,CrmIdentityStatus} from './CrmCurrentSalesState';
 import {CrmIdentityAction} from './CrmIdentityAction';
 import {CrmProgressAction} from './CrmProgressAction';
@@ -63,11 +64,11 @@ function CustomerOpportunities({lead,lang,table=false}:{lead:CrmLeadRecord;lang:
  if(!summary.count)return table?'0':<span className="crm-work-muted">{lang==='zh'?'暂无进行中商机':lang==='id'?'Belum ada peluang aktif':'No active opportunities'}</span>;
  const list='/crm?'+new URLSearchParams({tab:'opportunities',customerId:lead.id,opportunityOwner:'all'});
  if(!table&&summary.only)return <>
-  <a className="crm-work-link" href={list+'&'+new URLSearchParams({opportunity:summary.only.id})}>{summary.only.level}</a>
+  <AdminRowAction href={list+'&'+new URLSearchParams({opportunity:summary.only.id})}>{summary.only.level}</AdminRowAction>
   <CrmSalesStage stage={summary.only.stage} lang={lang}/>
  </>;
  const label=lang==='zh'?`${summary.count} 笔进行中`:lang==='id'?`${summary.count} berlangsung`:`${summary.count} in progress`;
- return <a className="crm-work-link" href={list} aria-label={label}>{table?summary.count:label}</a>;
+ return <AdminRowAction href={list} aria-label={label}>{table?summary.count:label}</AdminRowAction>;
 }
 export interface LeadWorkspaceProps {
   leads: CrmLeadRecord[];
@@ -94,10 +95,10 @@ export interface LeadWorkspaceProps {
   onOpen: (lead: CrmLeadRecord, tab?: CustomerTab) => void;
   onReset: () => void;
   sidebarFilters?: React.ReactNode;
-  detailNavigation?: (toggle: React.ReactNode, showDetail: boolean) => React.ReactNode;
+  detailNavigation?: (toggle: React.ReactNode) => React.ReactNode;
   search?:string;
   onSearch?:(value:string)=>void;
-  children?: React.ReactNode;
+  children?: ((toggle:React.ReactNode)=>React.ReactNode)|null;
 }
 export function CrmLeadWorkspace({
   leads,
@@ -172,13 +173,11 @@ export function CrmLeadWorkspace({
         return leadDisplayNumber(lead);
       case "name":
         return (
-          <div><button
-            type="button"
-            className="crm-work-link crm-customer-open"
+          <div><AdminRecordEntry className="crm-customer-open"
             onClick={() => open(lead)}
           >
             {lead.fullName || t("Unnamed customer", "未填写姓名")}
-          </button><CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
+          </AdminRecordEntry><CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
         );
       case "owner":
         return owner(lead);
@@ -209,13 +208,15 @@ export function CrmLeadWorkspace({
         return crmValue(lead.tier, lang);
       case "opportunities":
         return <CustomerOpportunities lead={lead} lang={lang} table/>;
-      case "signal":
-        return (
-          visibleIntentEvidence(lead)
-            .map((s) => `${evidenceHeading(s.kind,lang)}: ${buyingEvidenceLabel(s,lang)}`)
-            .join(lang === "id" ? crmId(", ") : lang === "zh" ? "、" : ", ") ||
-          "—"
-        );
+      case "signal": {
+        const evidence=visibleIntentEvidence(lead);
+        if(!evidence.length)return "—";
+        return <ul className="crm-table-evidence-list">{evidence.map(item=>{
+          const label=evidenceHeading(item.kind,lang)+': '+buyingEvidenceLabel(item,lang);
+          return <li key={item.id}>{onSignal?<AdminRowAction onClick={()=>onSignal(lead,item.id)}
+            aria-label={t("View original evidence and history","查看原文依据及历次记录")+' · '+label}>{label}</AdminRowAction>:label}</li>;
+        })}</ul>;
+      }
       case "contact":
         return lead.connectStatus==="Interested"?t("Historical interest record","历史意向记录"):<CrmContactResult result={lead.connectStatus}>{crmValue(lead.connectStatus, lang)}</CrmContactResult>;
       case "touches":
@@ -257,7 +258,7 @@ export function CrmLeadWorkspace({
         { "--crm-shell-height": `${headerHeight}px` } as React.CSSProperties
       }
     >
-      {children&&detailNavigation?.(listToggle,independent||!showList)}
+      {children&&!independent&&showList&&detailNavigation?.(listToggle)}
       {children?<CrmRecordSidebar id="crm-customer-records" title={t("Customers","客户")} count={leads.length}
         selectedId={leads.some(lead=>lead.id===selectedId)?selectedId:undefined}
         busy={loading} busyLabel={t('Updating…','更新中…')} hidden={!sidebarVisible}
@@ -334,6 +335,7 @@ export function CrmLeadWorkspace({
                         {field(k, lead)}
                       </td>
                     ))}
+
                   </tr>
                 ))}
               </tbody>
@@ -363,18 +365,10 @@ export function CrmLeadWorkspace({
                     key={lead.id}
                     data-lead-id={lead.id}
                     data-selected={lead.id === selectedId}
-                    onClick={(e) => {
-                      if (
-                        !(e.target as HTMLElement).closest(
-                          "button,a,input,select",
-                        )
-                      )
-                        open(lead);
-                    }}
+
                   >
                     <div className="crm-work-identity">
-                      <button
-                        type="button"
+                      <AdminRecordEntry
                         className="crm-customer-open crm-work-name"
                         aria-label={
                           t("Open customer: ", "打开客户：") + lead.fullName
@@ -383,7 +377,7 @@ export function CrmLeadWorkspace({
                         onClick={() => open(lead)}
                       >
                         {lead.fullName || t("Unnamed customer", "未填写姓名")}
-                      </button>
+                      </AdminRecordEntry>
                       <div className="crm-work-muted">
                         {leadDisplayNumber(lead)} · {owner(lead)}
                       </div>
@@ -408,7 +402,7 @@ export function CrmLeadWorkspace({
                       />}
                       {<div className="crm-list-actions crm-identity-actions">
                         {lead.identityReview?.pending?identityAction(lead):!lead.owner&&onClaim&&canClaim?.(lead)!==false?
-                          <button type="button" className="crm-work-button" onClick={()=>onClaim(lead)}>{lang==='en'?"Assign to me":t("Claim for myself","自己认领")}</button>:
+                          <AdminRowAction onClick={()=>onClaim(lead)}>{lang==='en'?"Assign to me":t("Claim for myself","自己认领")}</AdminRowAction>:
                           <CrmProgressAction state={progressAction?.(lead)??(canProcess?.(lead)===false?'hidden':'enabled')} lang={lang} primary onClick={()=>onProcess?onProcess(lead):open(lead,"activities")}/>}
                       </div>}
                     </div>
@@ -416,7 +410,7 @@ export function CrmLeadWorkspace({
                     <div className="crm-work-progress">
                       <div className="crm-list-stage-line"><CustomerOpportunities lead={lead} lang={lang}/><span className="crm-work-group" title={t('Customer group','客户分组')}>{crmValue(lead.tier,lang)}</span></div>
                       {intents.length>0&&<div className="crm-list-intent"><span className="crm-list-progress-label">{intents[0].evidence.kind==='questionnaire'?t('Questionnaire interest','问卷关注'):t('Requests and interests','诉求与意向')}</span>
-                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?t('Latest known occurrence: ','最近已知发生时间：'):t('Occurred: ','实际发生于：')}${stamp}`:t('Occurrence time unknown','实际发生时间未知');return <button type="button" key={evidence.value} className="crm-work-support-link crm-list-intent-row" title={`${label} · ${description}`} aria-label={`${label}, ${description}, ${t('View original evidence and history','查看原文依据及历次记录')}`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span>{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></button>;})}
+                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?t('Latest known occurrence: ','最近已知发生时间：'):t('Occurred: ','实际发生于：')}${stamp}`:t('Occurrence time unknown','实际发生时间未知');return <AdminRowAction key={evidence.value} className="crm-list-intent-row admin-row-action-with-meta" title={`${label} · ${description}`} aria-label={`${label}, ${description}, ${t('View original evidence and history','查看原文依据及历次记录')}`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span className="admin-action-label">{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></AdminRowAction>;})}
                       </div>}
                       {<CrmListMilestones lang={lang} lead={lead} onOpen={()=>open(lead,'activities')}/>}
                     </div>
@@ -425,13 +419,12 @@ export function CrmLeadWorkspace({
                       {lead.mode?.trim()&&<div className="crm-work-muted">
                         {crmValue(lead.mode, lang)}
                       </div>}
-                      <button
-                        type="button"
+                      <AdminRowAction
                         className="crm-work-assessment"
                         onClick={() => open(lead, "assessment")}
                       >
                         {assessment.kind==='self'&&assessment.conclusion===(lang==='zh'?'水平未知':lang==='id'?crmId('Level unknown'):'Level unknown')?<span>{lang==='zh'?'尚无测评记录':lang==='id'?'Belum ada catatan asesmen':'No assessment recorded'}</span>:<><span>{assessment.source}</span><span>{listAssessmentConclusion(assessment.conclusion,lang)}</span></>}
-                      </button>
+                      </AdminRowAction>
                       {listLearningNeeds(lead,lang).length>0&&<dl className="crm-learning-details">{listLearningNeeds(lead,lang).map(row=><div className="crm-learning-need" key={row.label}><dt>{row.label}</dt><dd><LearningNeedText value={row.value} lang={lang}/></dd></div>)}</dl>}
                     </div>
                   </article>
@@ -441,7 +434,7 @@ export function CrmLeadWorkspace({
           </>
         )}
       </div>}
-      {children&&<div className="crm-lead-detail-column" hidden={!independent&&showList}>{children}</div>}
+      {children&&<div className="crm-lead-detail-column" hidden={!independent&&showList}>{children(listToggle)}</div>}
     </div>
   );
 }

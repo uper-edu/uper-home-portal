@@ -1,7 +1,8 @@
 import {metricSelectionLabel} from '../../utils/crmLeadAnalytics';
 import { useState } from "react";
-import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
 import { CrmRecordFilters, CrmRecordSearch } from "./CrmRecordWorkspace";
+import {CrmSearchField} from './CrmSearchField';
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import {
@@ -286,21 +287,10 @@ export function CrmLeadFilters({
         className="crm-filter-panel"
       >
         <div className="crm-filter-main">
-          <div className="crm-lead-search">
-            <Search size={16} aria-hidden="true" />
-            <input
-              type="search"
-              maxLength={200}
-              className="crm-filter-search"
-              aria-label={t("Search customers", "搜索客户")}
-              placeholder={t(
-                "Name, phone, email or lead number…",
-                "姓名、电话、邮箱或业务编号…",
-              )}
-              value={f.search}
-              onChange={(e) => update({ search: e.target.value })}
-            />
-          </div>
+          <CrmSearchField className="crm-lead-search" maxLength={200}
+            label={t("Search customers", "搜索客户")}
+            placeholder={t("Name, phone, email or lead number…", "姓名、电话、邮箱或业务编号…")}
+            value={f.search} onChange={search=>update({search})}/>
           {conditions}
           <button
             type="button"

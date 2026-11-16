@@ -1,3 +1,4 @@
+import {AdminRowAction} from '../admin/AdminListControl';
 import {enrollmentMilestoneLabel} from '../../utils/crmFactMilestones';
 import {formatCrmOperatingTime,viewerTimeZone} from '../../utils/crmOperatingTime';
 import {useCrmUiText,useCrmUiLanguage} from './CrmUiLanguage';
@@ -13,6 +14,6 @@ export function CrmListMilestones({lead,onOpen,lang:requested}:{lead:CrmLeadReco
  const count=g.key==='enrollment_confirmation'?t(`确认${g.count}条`,`${g.count} confirmations`,`${g.count} konfirmasi`):t(`${g.count}次`,`${g.count} attempts`,`${g.count} kali`);
  const unknown=t('实际发生时间未知','Occurrence time unknown','Waktu kejadian tidak diketahui');
  const history=t(`查看${name}的历次记录和依据，${count}，${stamp||unknown}`,`View ${name} history and evidence, ${count}, ${stamp||unknown}`,`Lihat riwayat dan bukti ${name}, ${count}, ${stamp||unknown}`);
- return <button type="button" key={g.key} className="crm-work-support-link" title={`${name} · ${count} · ${stamp||unknown}${g.unknownCount?t('；含'+g.unknownCount+'条时间未知',`; ${g.unknownCount} undated`,`; ${g.unknownCount} tanpa waktu`):''}`} aria-label={history} onClick={onOpen}><span>{name}{g.key==='enrollment_confirmation'?'':lang==='zh'?` ${count}`:` ×${g.count}`}</span><span className="crm-work-muted"> · {stamp?stamp.slice(5,10):ui('时间未知')}</span></button>;
+ return <AdminRowAction key={g.key} className="admin-row-action-with-meta" title={`${name} · ${count} · ${stamp||unknown}${g.unknownCount?t('；含'+g.unknownCount+'条时间未知',`; ${g.unknownCount} undated`,`; ${g.unknownCount} tanpa waktu`):''}`} aria-label={history} onClick={onOpen}><span className="admin-action-label">{name}{g.key==='enrollment_confirmation'?'':lang==='zh'?` ${count}`:` ×${g.count}`}</span><span className="crm-work-muted"> · {stamp?stamp.slice(5,10):ui('时间未知')}</span></AdminRowAction>;
  })}</div>;
 }

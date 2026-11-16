@@ -1,3 +1,4 @@
+import {AdminRowAction} from '../admin/AdminListControl';
 import {useEffect} from 'react';
 import {targetUnavailable} from '../../utils/crmNotificationTarget';
 import {CalendarDays} from 'lucide-react';
@@ -19,7 +20,7 @@ export function CrmListAgreements({lead,lang,timezone,onOpen,onCorrect,readOnly=
   return <div id={detail?"crm-agreement-"+v.id:undefined} tabIndex={detail?-1:undefined} data-notification-focused={focusedId===v.id||undefined} key={v.id} className="crm-list-agreement" data-tone={tone} onClick={readOnly?undefined:e=>e.stopPropagation()}>
    {detail?<div className="crm-agreement-detail-row"><span className="crm-agreement-item-icon">{icon}</span><p className="crm-agreement-action">{v.action}</p>{meta}</div>:<>
     {label&&<div className="crm-list-agreement-heading"><span className="crm-agreement-status" data-tone={tone}>{label}</span></div>}
-    {readOnly?<div className="crm-interaction-agreement crm-agreement-list-action">{icon}<span className="crm-list-agreement-preview">{v.action}</span></div>:<button type="button" className="crm-work-link crm-interaction-agreement crm-agreement-list-action" onClick={onOpen} title={v.action} aria-label={ui('客户约定')+'：'+v.action}>{icon}<span className="crm-list-agreement-preview">{v.action}</span></button>}
+    {readOnly?<div className="crm-interaction-agreement crm-agreement-list-action">{icon}<span className="crm-list-agreement-preview">{v.action}</span></div>:<AdminRowAction className="crm-interaction-agreement crm-agreement-list-action" onClick={onOpen} title={v.action} aria-label={ui('客户约定')+'：'+v.action}>{icon}<span className="crm-list-agreement-preview">{v.action}</span></AdminRowAction>}
     {status!=='invalid'&&<span className="crm-list-agreement-date" data-undated={status==='undated'||undefined}>{time}</span>}
    </>}
    {detail&&v.status==='active'&&onCorrect&&(lead.followUpLogs||[]).some((l:any)=>[l.id,l.requestId].filter(Boolean).includes(v.sourceId))&&<button type="button" className="crm-work-link" onClick={()=>onCorrect(v)}>{ui("纠正误记约定")}</button>}

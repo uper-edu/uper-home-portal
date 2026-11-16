@@ -1,3 +1,5 @@
+import {AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { GraduationCap, NotebookPen } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {containPaneKeys, revealRecord} from '../adminScroll';
@@ -185,7 +187,7 @@ function sourceLabel(attribution:CourseRecord['attribution'],lang:CrmLanguage) {
   return [entry,attribution.verified?attribution.source:null,attribution.campaign].filter(Boolean).join(' · ');
 }
 function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref, onChangeEmail, onLinkOpportunity }: {
-  records:CourseRecord[];link:boolean;lang:CrmLanguage;emails?:EnrollmentEmail[];targetRecord?:string|null;
+  records:CourseRecord[];link:boolean;lang:CrmLanguage;emails?:EnrollmentEmail[];assistanceDueAt?:string;targetRecord?:string|null;
   paymentHref?:(row:CourseRecord)=>string;
   onChangeEmail?:(row:CourseRecord)=>void;
   onLinkOpportunity?:(row:CourseRecord)=>void;
@@ -198,8 +200,8 @@ function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref,
       return <li key={row.kind+row.id} id={link?undefined:'enrollment-record-'+row.id}>
       <div className="crm-opportunity-record-heading">
         <div><strong>{t(lang,kinds[row.kind])}{row.class&&<> · {row.class.id?<a className="crm-work-link" href={enrollmentClassManagementPath(row.class.id)}>{row.class.level}</a>:row.class.level}</>}</strong> <span>{states[row.state]?t(lang,states[row.state]):row.state}</span></div>
-        {paymentHref&&row.kind==='order'&&requiresPaymentReview(row)&&<a className="crm-list-action" href={paymentHref(row)}>
-          {t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>}
+        {paymentHref&&row.kind==='order'&&requiresPaymentReview(row)&&<AdminRowAction href={paymentHref(row)}>
+          {t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</AdminRowAction>}
       </div>
       <div className="crm-work-muted">{recordedAt
         ?<time dateTime={recordedAt}>{formatCrmEventTime(recordedAt).slice(0,16)}</time>
@@ -564,7 +566,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     const reviewDeadline=id!==row.id&&reviewDue&&<CrmEnrollmentReviewDeadline dueAt={reviewDue} lang={lang} compact/>;
     if(review&&row.state==='applying'&&canFinance)return <>
       {id===row.id?t(lang,['待核对到账','Payment awaiting verification','Pembayaran menunggu verifikasi']):
-        <a className="crm-list-action" href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</a>}
+        <AdminRowAction href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</AdminRowAction>}
       {reviewDeadline}</>;
     const due=row.records.find(record=>record.state==='awaiting_payment')?.paymentDueAt;
     const followup=row.followup;
@@ -573,8 +575,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
       const action=due?t(lang,['跟进付款','Follow up on payment','Tindak lanjuti pembayaran']):name;
       return <>
         {followup.kind==='agreement'?
-          <button type="button" className="crm-list-action" disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{action}</button>:
-          <a className="crm-work-link" title={name} href={crmHref({tab:'leads',lead:row.customerId,target:'task',targetId:followup.id})}>{action}</a>}
+          <AdminRowAction disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{action}</AdminRowAction>:
+          <AdminRowAction title={name} href={crmHref({tab:'leads',lead:row.customerId,target:'task',targetId:followup.id})}>{action}</AdminRowAction>}
         {followup.at||followup.date?<div className="crm-work-muted"><time dateTime={followup.at||followup.date}>{followup.at?formatCrmSummaryTime(followup.at):followup.date}</time></div>:null}
         {reviewDeadline}
       </>;
@@ -586,11 +588,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     </>;
     if(review&&row.state==='applying'){
       const status=t(lang,['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
-      return <>{id===row.id?status:<a className="crm-work-link" href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}
-        onClick={()=>rememberListPosition(row.id)}>{status}</a>}{reviewDeadline}</>;
+      return <>{id===row.id?status:<AdminRowAction href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}
+        onClick={()=>rememberListPosition(row.id)}>{t(lang,['查看核验进度','View verification progress','Lihat status verifikasi'])}</AdminRowAction>}{reviewDeadline}</>;
     }
     if(due)return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div></>;
-    if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <button type="button" className="crm-list-action" disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</button>;
+    if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <AdminRowAction disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</AdminRowAction>;
     return <>{t(lang,row.state==='interest'&&!row.records.length?['跟进购课意向','Follow up on purchase intent','Tindak lanjuti minat membeli kursus']:next[row.state])}{reviewDeadline}</>;
   };
   const label=t(lang,['商机','Opportunities','Peluang']);
@@ -645,22 +647,17 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           options={[{value:'',label:t(lang,['全部待办状态','All follow-up statuses','Semua status tindak lanjut'])},{value:'with',label:t(lang,['已有待办','Has follow-up','Ada tindak lanjut'])},
             {value:'without',label:t(lang,['暂无待办','No follow-up','Belum ada tindak lanjut'])}]}/>
   </>;
+  const backToOpportunities={label:t(lang,['返回商机列表','Back to opportunities','Kembali ke daftar peluang']),href:back};
+  const sidebarToggle=<CrmRecordSidebarToggle controls="crm-opportunity-records" expanded={showSidebar}
+            label={showSidebar?t(lang,['收起商机列表','Hide opportunity list','Sembunyikan daftar peluang']):
+              t(lang,['展开商机列表','Show opportunity list','Tampilkan daftar peluang'])}
+            onClick={()=>desktopRail?setCollapsed(value=>!value):setShowList(value=>!value)}/>;
   return <section className="crm-opportunity-workspace" aria-busy={!error&&(id?!detail:!list&&!listFailed)}>
     {id?<div className="crm-opportunity-detail-shell crm-detail-root"
       data-sidebar={desktopRail&&showSidebar} data-record-scroll={desktopRail?'independent':'page'}
       data-theme={isLight?'light':'dark'} style={{'--crm-shell-height':shellHeight+'px'} as React.CSSProperties}>
-      <CrmRecordNavigation label={t(lang,['商机导航','Opportunity navigation','Navigasi peluang'])}
-        back={{label:t(lang,['返回商机列表','Back to opportunities','Kembali ke daftar peluang']),href:back}}
-        tools={<>
-          {!desktopRail&&!showList&&<>
-            {previous&&<Link className="crm-work-link" to={recordPath(previous)}>{t(lang,['上一笔','Previous','Sebelumnya'])}</Link>}
-            {following&&<Link className="crm-work-link" to={recordPath(following)}>{t(lang,['下一笔','Next','Berikutnya'])}</Link>}
-          </>}
-          <CrmRecordSidebarToggle controls="crm-opportunity-records" expanded={showSidebar}
-            label={showSidebar?t(lang,['收起商机列表','Hide opportunity list','Sembunyikan daftar peluang']):
-              t(lang,['展开商机列表','Show opportunity list','Tampilkan daftar peluang'])}
-            onClick={()=>desktopRail?setCollapsed(value=>!value):setShowList(value=>!value)}/>
-        </>}/>
+      {!desktopRail&&showList&&<CrmRecordNavigation label={t(lang,['商机导航','Opportunity navigation','Navigasi peluang'])}
+        back={backToOpportunities} tools={sidebarToggle}/>}
       <CrmRecordSidebar id="crm-opportunity-records" title={label} count={visible?.length}
         selectedId={activeRow?.id} busy={!list&&!listFailed} busyLabel={t(lang,['更新中…','Updating…','Memperbarui…'])} hidden={!showSidebar}
         filters={<CrmRecordFilters lang={lang} count={filterCount}
@@ -702,7 +699,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         })}
       </CrmRecordSidebar>
       <div className="crm-opportunity-detail-column crm-detail-panel" hidden={!desktopRail&&showList}>
-        <header className="crm-detail-header">
+        <AdminRecordHeader back={backToOpportunities} title={
           <CrmRecordTitle title={headingRecord?opportunityTitle(headingRecord):label}
             status={detail&&!error&&(detail.identityPending
               ?<CrmIdentityStatus lead={{identityReview:{pending:true}}} lang={lang}/>
@@ -711,15 +708,20 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
                 <CrmSalesStage stage={detail.salesStage} lang={lang}/>
               </div>)}
             meta={detail&&!error&&<>{t(lang,['负责人','Owner','Penanggung jawab'])} {owner(detail)}
-              {references.has(detail.id)&&<> · <span>{recordReference(detail)}</span></>}</>}/>
-          {detail&&!error&&(detail.canProgress||detail.assistance?.allowed)&&
+              {references.has(detail.id)&&<> · <span>{recordReference(detail)}</span></>}</>}/>}
+          actions={
             <CrmDetailActions label={t(lang,['商机操作','Opportunity actions','Tindakan peluang'])}
-              secondary={detail.assistance?.allowed&&<CrmPageAction icon={GraduationCap} disabled={busy}
-                label={t(lang,['协助报名','Assist enrollment','Bantu pendaftaran'])} onClick={()=>setAssisting(true)}/>}
-              primary={detail.canProgress&&<CrmPageAction icon={NotebookPen} variant="primary" loading={busy}
+              secondary={<>
+              {!desktopRail&&!showList&&<div className="admin-record-browse">
+                {previous&&<Link className="admin-row-action" to={recordPath(previous)}>{t(lang,['上一笔','Previous','Sebelumnya'])}</Link>}
+                {following&&<Link className="admin-row-action" to={recordPath(following)}>{t(lang,['下一笔','Next','Berikutnya'])}</Link>}
+              </div>}
+              {sidebarToggle}
+              {detail&&!error&&detail.assistance?.allowed&&<CrmPageAction icon={GraduationCap} disabled={busy}
+                label={t(lang,['协助报名','Assist enrollment','Bantu pendaftaran'])} onClick={()=>setAssisting(true)}/>}</>}
+              primary={detail&&!error&&detail.canProgress&&<CrmPageAction icon={NotebookPen} variant="primary" loading={busy}
                 label={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}
-                onClick={()=>void openProgress(detail)}/>}/>}
-        </header>
+                onClick={()=>void openProgress(detail)}/>}/>}/>
         {detail&&!error&&<div className="crm-panel-next">
           <dl className="crm-opportunity-summary">
             <div>
@@ -799,8 +801,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
             const status=currentStatus(row);
             const attribution=[...row.records].reverse().find(record=>record.attribution)?.attribution;
             return <tr key={row.id} data-opportunity-id={row.id}>
-              <td><a className="crm-list-record" href={recordPath(row)} onClick={()=>rememberListPosition(row.id)}>
-                {opportunityTitle(row)}</a>
+              <td><AdminRecordEntry href={recordPath(row)} onClick={()=>rememberListPosition(row.id)}>
+                {opportunityTitle(row)}</AdminRecordEntry>
                 <small>{row.businessNumber}</small>
                 {references.has(row.id)&&<small>{recordReference(row)}</small>}</td>
               <td>{owner(row)}</td><td>{stage(row,lang)}</td><td><CrmListStatus tone={enrollmentListTone(status)}>
