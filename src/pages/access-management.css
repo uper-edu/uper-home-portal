@@ -380,3 +380,22 @@
 .access-lark-binding label { display: grid; gap: 4px; font-size: 13px; }
 .access-lark-binding button { justify-self: start; }
 .access-lark-status { margin: 0; font-size: 12px; line-height: 1.5; }
+
+.access-record-workspace { min-width: 0; }
+.access-record-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.access-record-toolbar > .admin-search-field { flex: 1 1 260px; }
+.access-record-split { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px 20px; align-items: start; }
+.access-record-split [hidden] { display: none; }
+.access-record-detail { min-width: 0; }
+.access-record-body > section + section { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--admin-border); }
+.access-record-facts, .access-record-permissions dl { display: grid; gap: 8px; margin-block: 12px; }
+.access-record-facts > div, .access-record-permissions dl > div { display: grid; grid-template-columns: minmax(100px,1fr) minmax(0,2fr); gap: 12px; }
+.access-record-facts dd, .access-record-permissions dd { margin: 0; overflow-wrap: anywhere; }
+.access-record-facts dd a + a { margin-inline-start: 12px; }
+.access-record-facts dt, .access-record-permissions dd { color: var(--admin-muted); }
+.access-record-permissions { margin-block: 16px; }
+@media (min-width:1120px) {
+  .access-record-split { grid-template-columns: var(--admin-record-sidebar-width) minmax(0,1fr); }
+  .access-record-split[data-record-scroll=independent] .access-record-detail { height: var(--admin-record-pane-height); }
+  .access-record-split[data-record-scroll=independent] .access-record-body { overflow-y: auto; overscroll-behavior-y: contain; }
+}

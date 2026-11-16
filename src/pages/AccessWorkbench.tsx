@@ -17,10 +17,18 @@ import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
 import { managementRequest, pendingAccessOperations } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
 import { AccessSafetyPanel } from "../components/AccessSafetyPanel";
-import { AccessUserCard, AccessRoleCard } from "../components/AccessRecordCard";
+import {AdminListState,AdminListTable} from '../components/admin/AdminList';
+import {AdminRecordEntry,AdminRowAction} from '../components/admin/AdminListControl';
+import {AdminRecordHeader} from '../components/admin/AdminRecordHeader';
+import {AdminDetailActions,AdminRecordFilters,AdminRecordRow,AdminRecordSidebar,AdminRecordSidebarToggle,AdminRecordTitle} from '../components/admin/AdminRecordWorkspace';
+import {AdminStatus} from '../components/AdminStatus';
+import {containPaneKeys,recordSplitMinWidth} from '../components/adminScroll';
+import {useCrmShellHeight,useRecordScrollMode} from '../components/crm/CrmDetailWorkspace';
+import '../components/crm/crm-detail-workspace.css';
+import '../components/crm/crm-record-workspace.css';
 import { accessGuide, accessError } from "../utils/accessLanguage";
-import { Fragment, useEffect, useRef, useState } from "react";
-import { RefreshCw, BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
+import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
+import {RefreshCw, Pencil, Plus, BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -61,6 +69,10 @@ type Role = {
   enabled: boolean;
   revision: number;
 };
+function systemTab() {
+  const tab=new URLSearchParams(window.location.search).get('tab')||'users';
+  return Object.hasOwn(moduleIcons,tab)?tab:'users';
+}
 async function apiRequest(path = "", body?: any) {
   const r = await fetch("/api/admin/access" + path, {
     method: body ? "POST" : "GET",
@@ -69,7 +81,7 @@ async function apiRequest(path = "", body?: any) {
     cache: "no-store",
   });
   const d = await r.json();
-  if (!r.ok) throw Error(d.error || "access_unavailable");
+  if (!r.ok) throw Object.assign(Error(d.error || "access_unavailable"),{status:r.status});
   return d;
 }
 export default function AccessWorkbench() {
@@ -101,14 +113,14 @@ export function AccessWorkspace({
   const [discarding, setDiscarding] = useState(false);
   const [larkDirty,setLarkDirty]=useState(false);
   const [larkDraft,setLarkDraft]=useState<any>(undefined);
-  const [tab, setTab] = useState("users"),
+  const [tab, setTab] = useState(systemTab),
+    [readDenied,setReadDenied]=useState(false),
     [data, setData] = useState<{ users: User[]; roles: Role[]; testDirectoryAvailable?:boolean } | null>(null),
     [err, setErr] = useState(""),
     [notice, setNotice] = useState(""),
     [larkValidation, setLarkValidation] = useState(""),
     [busy, setBusy] = useState(false),
     [saving, setSaving] = useState(false),
-    [query, setQuery] = useState(""),
     [previewUserId, setPreviewUserId] = useState(employee.id),
     [audit, setAudit] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null),
@@ -122,6 +134,33 @@ export function AccessWorkspace({
   const [sensitiveAction,setSensitiveAction]=useState<"sessions"|"password">();
   const refreshing = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [recordId,setRecordId]=useState(()=>new URLSearchParams(window.location.search).get(tab==='roles'?'role':'user')||'');
+  const [roleFilter,setRoleFilter]=useState(()=>new URLSearchParams(window.location.search).get('assignedRole')||'');
+  const [filters,setFilters]=useState<Record<string,{query:string;status:string}>>({});
+  const {query='',status:statusFilter=''}=filters[tab]??{};
+  const setQuery=(query:string)=>setFilters(old=>({...old,[tab]:{query,status:statusFilter}}));
+  const setStatusFilter=(status:string)=>setFilters(old=>({...old,[tab]:{query,status}}));
+  const changeRoleFilter=(value:string)=>{
+    const url=new URL(window.location.href);
+    if(value)url.searchParams.set('assignedRole',value);else url.searchParams.delete('assignedRole');
+    locationRef.current=url.pathname+url.search;
+    window.history.replaceState(window.history.state,'',locationRef.current);
+    setRoleFilter(value);
+  };
+  const [showRecords,setShowRecords]=useState(false);
+  const [wide,setWide]=useState(()=>window.innerWidth>=recordSplitMinWidth);
+  const shellHeight=useCrmShellHeight("[data-admin-header]"),scrollMode=useRecordScrollMode(shellHeight);
+  const locationRef=useRef(window.location.pathname+window.location.search);
+  const pendingNavigation=useRef<(()=>void)|undefined>(undefined);
+  const listPosition=useRef<{module:string;id:string;top:number}|undefined>(undefined);
+  const listSearch=useRef<HTMLInputElement>(null),railSearch=useRef<HTMLInputElement>(null);
+  const recordHeading=useRef<HTMLHeadingElement>(null),sidebarToggle=useRef<HTMLButtonElement>(null);
+  useEffect(()=>{
+    const media=window.matchMedia(`(min-width: ${recordSplitMinWidth}px)`);
+    const sync=()=>{setWide(media.matches);if(media.matches)setShowRecords(false);};
+    media.addEventListener('change',sync);
+    return ()=>media.removeEventListener('change',sync);
+  },[]);
   const panel = useRef<HTMLDialogElement>(null);
   const can = (permission: string) => employee.permissions.includes(permission);
   useEffect(() => {setNotice("");setLarkValidation("");}, [lang]);
@@ -147,8 +186,11 @@ export function AccessWorkspace({
     setErr("");
     try {
       setData(await api());
+      setReadDenied(false);
     } catch (e) {
-      setErr((e as Error).message);
+      const failure=e as Error&{status?:number};
+      if(failure.status===401||failure.status===403){setReadDenied(true);setData(null);resetEditor();}
+      setErr(failure.message);
     }
   };
   useEffect(()=>{const refresh=()=>{void load();};window.addEventListener('uper-lark-changed',refresh);return()=>window.removeEventListener('uper-lark-changed',refresh);},[employee.id]);
@@ -229,6 +271,72 @@ export function AccessWorkspace({
     setWhy("");
     setImpact(null);
   };
+  const recordHref=(module:string,id='',assignedRole?:string)=>{
+    const params=new URLSearchParams({tab:module});
+    if(id)params.set(module==='users'?'user':'role',id);
+    if(assignedRole)params.set('assignedRole',assignedRole);
+    return '/system?'+params;
+  };
+  const applyLocation=(href:string)=>{
+    const params=new URL(href,window.location.origin).searchParams;
+    const module=params.get('tab')||'users';
+    const nextTab=Object.hasOwn(moduleIcons,module)?module:'users';
+    setTab(nextTab);
+    setRecordId(nextTab==='users'?params.get('user')||'':nextTab==='roles'?params.get('role')||'':'');
+    setRoleFilter(params.get('assignedRole')||'');
+    setShowRecords(false);
+    locationRef.current=href;
+  };
+  const proceedNavigation=(href:string)=>{
+    if(href===locationRef.current)return;
+    window.history.pushState(window.history.state,'',href);
+    applyLocation(href);
+  };
+  const requestNavigation=(action:()=>void)=>{
+    if(busy)return;
+    if(editorHasDraft){pendingNavigation.current=action;setDiscarding(true);return;}
+    if(user||role)resetEditor();
+    action();
+  };
+  const navigateRecord=(module:string,id:string,assignedRole?:string)=>{
+    if(!recordId&&id&&module===tab){
+      listPosition.current={module,id,top:window.scrollY};
+    }
+    requestNavigation(()=>{
+      if(assignedRole)setFilters(old=>({...old,users:{query:'',status:''}}));
+      proceedNavigation(recordHref(module,id,assignedRole??(module==='users'&&tab==='users'?roleFilter:'')));
+    });
+  };
+  const openRecord=(event:MouseEvent<HTMLElement>,module:string,id:string,assignedRole?:string)=>{
+    if(event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+    event.preventDefault();
+    navigateRecord(module,id,assignedRole);
+  };
+  useEffect(()=>{
+    const onPop=()=>{
+      const destination=window.location.pathname+window.location.search;
+      if(destination===locationRef.current)return;
+      if(editorHasDraft||busy){
+        window.history.pushState(window.history.state,'',locationRef.current);
+        requestNavigation(()=>{window.history.replaceState(window.history.state,'',destination);applyLocation(destination);});
+      }else requestNavigation(()=>applyLocation(destination));
+    };
+    window.addEventListener('popstate',onPop);
+    return ()=>window.removeEventListener('popstate',onPop);
+  },[editorHasDraft,busy,user,role]);
+  useEffect(()=>{
+    const frame=requestAnimationFrame(()=>{
+      if(recordId){recordHeading.current?.focus({preventScroll:true});return;}
+      const position=listPosition.current;
+      if(position?.module===tab){
+        window.scrollTo({top:position.top,behavior:'instant'});
+        const entry=[...document.querySelectorAll<HTMLElement>('[data-access-record]')].find(el=>el.dataset.accessRecord===position.id);
+        (entry??listSearch.current)?.focus({preventScroll:true});
+        listPosition.current=undefined;
+      }
+    });
+    return ()=>cancelAnimationFrame(frame);
+  },[recordId,tab,Boolean(data)]);
   const openUser = (u: User | null) => {
     setLarkDirty(false);setLarkDraft(undefined);
     setDiscarding(false);
@@ -451,6 +559,56 @@ export function AccessWorkspace({
   const priorAccess = data?.users.find((u) => u.id === user?.id)?.effective;
   const selectedPreviewUser =
     data?.users.find((u) => u.id === previewUserId) || data?.users[0];
+  const userTab=tab==='users';
+  const recordTab=(userTab||tab==='roles')&&can('access.read')&&!readDenied;
+  const listTitle=userTab?t('Users','Pengguna','用户'):t('Roles','Peran','角色');
+  const searchLabel=userTab?t('Find a user','Cari pengguna','查找用户'):t('Find a role','Cari peran','查找角色');
+  const nameLabel=t('Name','Nama','名称');
+  const idLabel=userTab?t('Login ID','ID login','登录 ID'):t('Role ID','ID peran','角色 ID');
+  const emailLabel=t('Login email','Email login','登录邮箱');
+  const rolesLabel=t('Roles','Peran','角色');
+  const statusLabel=t('Status','Status','状态');
+  const larkLabel=t('Lark binding','Koneksi Lark','Lark 绑定');
+  const permissionCountLabel=t('Permissions','Izin','权限项数');
+  const activeLabel=t('Enabled','Aktif','已启用');
+  const inactiveLabel=t('Disabled','Nonaktif','已停用');
+  const roleName=(id:string)=>data?.roles.find(r=>r.id===id)?.config.names[col]||id;
+  const recordName=(r:User|Role)=>'loginId' in r?r.displayName||r.loginId:r.config.names[col]||r.id;
+  const recordMeta=(r:User|Role)=>'loginId' in r?r.loginId:r.id;
+  const recordActive=(r:User|Role)=>'loginId' in r?r.active:r.enabled;
+  const recordStatus=(r:User|Role)=><AdminStatus active={recordActive(r)}>{recordActive(r)?activeLabel:inactiveLabel}</AdminStatus>;
+  const bindingStatus=(u:User)=>u.larkBound?t('Bound','Terhubung','已绑定'):t('Not bound','Belum terhubung','未绑定');
+  const allRecords=userTab?data?.users??[]:data?.roles??[];
+  const selectedRecord=allRecords.find(r=>r.id===recordId);
+  const searchTerm=query.trim().toLowerCase();
+  const records=[...allRecords].filter(r=>{
+    const terms='loginId' in r?[r.displayName,r.loginId,r.email]:[r.id,...r.config.names];
+    return terms.some(term=>term?.toLowerCase().includes(searchTerm)) &&
+      (!statusFilter || recordActive(r)===(statusFilter==='active')) &&
+      (!userTab || !roleFilter || ('loginId' in r && r.roles.includes(roleFilter)));
+  }).sort((a,b)=>userTab?Number(b.id===employee.id)-Number(a.id===employee.id):0);
+  const recordListState=err?'error':data?'empty':'loading';
+  const narrowRail=!wide&&showRecords;
+  const searchControl=<AdminSearchField inputRef={listSearch} label={searchLabel} value={query} onChange={setQuery}/>;
+  const filterControls=<>
+    <CrmSingleSelect lang={lang} isLight={isLight} label={statusLabel} value={statusFilter} onChange={setStatusFilter}
+      options={[{value:'',label:t('All statuses','Semua status','全部状态')},{value:'active',label:activeLabel},{value:'inactive',label:inactiveLabel}]}/>
+    {userTab&&<CrmSingleSelect lang={lang} isLight={isLight} label={rolesLabel} value={roleFilter} onChange={changeRoleFilter}
+      options={[{value:'',label:t('All roles','Semua peran','全部角色')},...(data?.roles??[]).map(r=>({value:r.id,label:roleName(r.id)}))]}/>}
+  </>;
+  const permissions=(r:User|Role)=>{
+    const userRecord='loginId' in r;
+    const entries=permissionCatalog.filter(p=>userRecord?r.effective.permissions.includes(p.key):Boolean(r.config.grants[p.key]));
+    return <section><h2>{userRecord?t('Effective access','Akses efektif','生效权限'):t('Granted permissions','Izin diberikan','授予权限')}</h2>
+      {!entries.length&&<p>{t('No permissions','Tanpa izin','无权限项')}</p>}
+      {[...new Set(entries.map(p=>p.module))].map(module=><section key={module} className="access-record-permissions">
+        <h3>{modules[module][col]}</h3>
+        <dl>{entries.filter(p=>p.module===module).map(p=><div key={p.key}><dt>{p.names[col]}</dt>
+          <dd>{p.scoped?(userRecord?r.effective.grants?.[p.key]??[]:[r.config.grants[p.key]]).map(scope=>scopeLabel(scope,p.key)).join(' / ')||'—':activeLabel}</dd>
+        </div>)}</dl>
+      </section>)}
+    </section>;
+  };
   return (
     <div data-admin-form="" className="access-page" data-admin-workspace="system" data-theme={isLight ? "light" : "dark"}>
       <PageMetadata lang={lang} options={{module:tab,state:can("access.read")?undefined:"denied"}}/>
@@ -485,13 +643,7 @@ export function AccessWorkspace({
                     type="button"
                     key={a[0]}
                     aria-current={tab === a[0] ? "page" : undefined}
-                    onClick={() => {
-                      if (user || role) {
-                        close();
-                        return;
-                      }
-                      setTab(a[0]);
-                    }}
+                    onClick={()=>navigateRecord(a[0],'')}
                   >
                     <Icon size={16} aria-hidden="true" />
                     {a[col + 1]}
@@ -508,7 +660,7 @@ export function AccessWorkspace({
           onResolved={operationResolved}
         />
         <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight} />
-        <div className="admin-page-toolbar">
+        {(!recordTab||!recordId)&&<div className="admin-page-toolbar">
           <div>
             <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
@@ -520,12 +672,17 @@ export function AccessWorkspace({
             </p>
           </div>
           {can("access.read") && tab !== "ai" && (
-            <CrmPageAction icon={RefreshCw} label={t("Refresh", "Segarkan", "刷新")}
-              loading={isRefreshing} keepFocusWhileLoading disabled={busy || editorHasDraft}
-              onClick={() => void refreshAccess()}/>
+            <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
+              secondary={<CrmPageAction icon={RefreshCw} keepFocusWhileLoading label={t("Refresh", "Segarkan", "刷新")}
+                loading={isRefreshing} disabled={busy || editorHasDraft}
+                onClick={() => void refreshAccess()}/>}
+              primary={recordTab&&can(userTab?'access.users':'access.roles')&&
+                <CrmPageAction icon={Plus} variant="primary"
+                  label={userTab?t('Add user','Tambah pengguna','新增用户'):t('Add role','Tambah peran','新增角色')}
+                  onClick={()=>userTab?openUser(null):openRole(null)}/>}/>
           )}
-        </div>
-        {!can("access.read") ? (
+        </div>}
+        {!can("access.read")||readDenied ? (
           <p role="alert">
             {t(
               "System management access denied.",
@@ -543,7 +700,7 @@ export function AccessWorkspace({
             {notice && !user && !role && (
               <AdminFormFeedback state="saved" lang={lang} placement="floating">{notice}</AdminFormFeedback>
             )}
-            {!data && !err && (
+            {!recordTab && !data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
             {tab === 'ai' && isAiAdministrator(employee) && <AiServicePanel lang={lang} isLight={isLight}/>}
@@ -571,92 +728,77 @@ export function AccessWorkspace({
                 ))}
               </section>
             ) : null}
-            {data && tab === "users" && (
-              <>
-                <div className="access-toolbar">
-                  <AdminField>
-                    {t("Find a user", "Cari pengguna", "查找用户")}
-                    <AdminSearchField label={t("Find a user","Cari pengguna","查找用户")}
-                      value={query} onChange={setQuery}
-                    />
-                  </AdminField>
-                  {can("access.users") && (
-                    <button onClick={() => openUser(null)}>
-                      {t("Add user", "Tambah pengguna", "新增用户")}
-                    </button>
-                  )}
-                </div>
-                <div className="access-grid access-user-grid">
-                  {data.users
-                    .filter((u) =>
-                      (u.displayName + " " + u.loginId + " " + (u.email || ""))
-                        .toLowerCase()
-                        .includes(query.toLowerCase()),
-                    )
-                    .sort(
-                      (a, b) =>
-                        Number(b.id === employee.id) -
-                        Number(a.id === employee.id),
-                    )
-                    .map((u) => (
-                      <AccessUserCard key={u.id}
-                        name={u.displayName}
-                        active={u.active}
-                        current={u.id === employee.id}
-                        lang={lang}
-                        loginId={u.loginId}
-                        email={u.email}
-                        larkBound={u.larkBound}
-                        roles={u.roles.map((id) => ({
-                          id,
-                          label:
-                            data.roles.find((r) => r.id === id)?.config.names[
-                              col
-                            ] || id,
-                        }))}
-                        onEdit={
-                          can("access.users") || can("access.sessions")
-                            ? () => openUser(u)
-                            : undefined
-                        }
-                      />
-                    ))}
-                </div>
-              </>
-            )}
-            {data && tab === "roles" && (
-              <>
-                <div className="access-toolbar">
-                  <p>
-                    {t(
-                      "Role IDs stay stable when names change.",
-                      "ID peran tetap saat nama berubah.",
-                      "角色名称可以修改，内部ID保持稳定。",
-                    )}
-                  </p>
-                  {can("access.roles") && (
-                    <button onClick={() => openRole(null)}>
-                      {t("Add role", "Tambah peran", "新增角色")}
-                    </button>
-                  )}
-                </div>
-                <div className="access-grid access-role-grid">
-                  {data.roles.map((r) => (
-                    <AccessRoleCard
-                      key={r.id}
-                      name={r.config.names[col]}
-                      description={r.config.description[col]}
-                      active={r.enabled}
-                      permissionCount={Object.keys(r.config.grants).length}
-                      lang={lang}
-                      onEdit={
-                        can("access.roles") ? () => openRole(r) : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              </>
-            )}
+            {recordTab && <section className="access-record-workspace crm-detail-root" data-theme={isLight?"light":"dark"} style={{"--crm-shell-height":shellHeight+"px"} as React.CSSProperties} aria-label={listTitle}>
+              {!recordId && <div className="access-record-toolbar">
+                {searchControl}
+                {filterControls}
+              </div>}
+              {!recordId && records.length>0 && <AdminListTable label={listTitle} busy={isRefreshing}
+                headers={userTab?[nameLabel,idLabel,emailLabel,rolesLabel,statusLabel,larkLabel]:
+                  [nameLabel,idLabel,statusLabel,permissionCountLabel]}>
+                {records.map(r=><tr key={r.id}>
+                  <td><AdminRecordEntry data-access-record={r.id} href={recordHref(tab,r.id,userTab?roleFilter:undefined)}
+                    onClick={event=>openRecord(event,tab,r.id)}>{recordName(r)}</AdminRecordEntry></td>
+                  <td>{recordMeta(r)}</td>
+                  {'loginId' in r?<><td>{r.email||'—'}</td><td>{r.roles.map(roleName).join(' · ')||'—'}</td>
+                    <td>{recordStatus(r)}</td><td>{bindingStatus(r)}</td></>:
+                    <><td>{recordStatus(r)}</td><td>{Object.keys(r.config.grants).length}</td></>}
+                </tr>)}
+              </AdminListTable>}
+              {!recordId&&!records.length&&<AdminListState lang={lang} state={recordListState} onRetry={refreshAccess}/>}
+              {recordId&&<div className="access-record-split" data-record-detail="true" data-record-scroll={scrollMode}>
+                {narrowRail&&<div className="crm-record-navigation">
+                  <AdminRecordSidebarToggle controls="access-records" expanded label={t('Return to details','Kembali ke detail','返回详情')}
+                    onClick={()=>{setShowRecords(false);requestAnimationFrame(()=>sidebarToggle.current?.focus());}}/>
+                </div>}
+                <AdminRecordSidebar id="access-records" title={listTitle} count={records.length} selectedId={recordId}
+                  hidden={!wide&&!narrowRail} busy={isRefreshing} busyLabel={t('Refreshing…','Memuat ulang…','正在刷新…')}
+                  filters={<AdminRecordFilters lang={lang} count={Number(Boolean(statusFilter))+Number(userTab&&Boolean(roleFilter))}
+                    search={<AdminSearchField inputRef={railSearch} label={searchLabel} value={query} onChange={setQuery}/>}>{filterControls}</AdminRecordFilters>}
+                  note={selectedRecord&&!records.includes(selectedRecord)?t('The open record is outside the current filters.','Rekaman terbuka di luar filter saat ini.','当前记录不在筛选结果中，详情仍保留。'):undefined}
+                  empty={!records.length?<AdminListState lang={lang} compact state={recordListState} onRetry={refreshAccess}/>:undefined}>
+                  {records.map(r=><AdminRecordRow key={r.id} selected={recordId===r.id} name={recordName(r)} title={recordName(r)}
+                    href={recordHref(tab,r.id,userTab?roleFilter:undefined)} onClick={event=>openRecord(event,tab,r.id)} meta={<>{recordMeta(r)} · {recordStatus(r)}</>}/>)}
+                </AdminRecordSidebar>
+                <article className="crm-detail-panel access-record-detail" hidden={narrowRail}>
+                  <AdminRecordHeader back={{label:userTab?t('Back to users','Kembali ke pengguna','返回用户列表'):t('Back to roles','Kembali ke peran','返回角色列表'),onClick:()=>navigateRecord(tab,'')}}
+                    title={<AdminRecordTitle title={selectedRecord?recordName(selectedRecord):listTitle} titleRef={recordHeading}
+                      status={selectedRecord&&recordStatus(selectedRecord)} meta={selectedRecord&&recordMeta(selectedRecord)}/>}
+                    actions={<AdminDetailActions label={t('Record actions','Tindakan rekaman','记录操作')}
+                      secondary={<>
+                        {!wide&&<AdminRecordSidebarToggle ref={sidebarToggle} controls="access-records" expanded={false}
+                          label={t('Show records','Tampilkan rekaman','查看记录列表')} onClick={()=>{setShowRecords(true);requestAnimationFrame(()=>railSearch.current?.focus());}}/>}
+                        <CrmPageAction icon={RefreshCw} keepFocusWhileLoading label={t('Refresh','Segarkan','刷新')} loading={isRefreshing} disabled={busy||editorHasDraft} onClick={()=>void refreshAccess()}/>
+                      </>}
+                      primary={selectedRecord&&('loginId' in selectedRecord
+                        ?(can('access.users')||can('access.sessions'))&&<CrmPageAction icon={Pencil} variant="primary"
+                          label={can('access.users')?t('Edit user','Edit pengguna','编辑用户'):t('Manage sessions and password','Kelola sesi dan sandi','管理会话与密码')}
+                          onClick={()=>openUser(selectedRecord)}/>
+                        :can('access.roles')&&<CrmPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
+                          onClick={()=>openRole(selectedRecord)}/>)}/>}/>
+                  <div className="crm-detail-body access-record-body" data-admin-scroll="detail" tabIndex={0} onKeyDown={containPaneKeys}>
+                    {selectedRecord?'loginId' in selectedRecord?<><section>
+                      <h2>{t('Account information','Informasi akun','账号信息')}</h2>
+                      <dl className="access-record-facts">
+                        <div><dt>{emailLabel}</dt><dd>{selectedRecord.email||'—'}</dd></div>
+                        <div><dt>{larkLabel}</dt><dd>{bindingStatus(selectedRecord)}</dd></div>
+                        <div><dt>{t('Assigned roles','Peran yang ditetapkan','已分配角色')}</dt>
+                          <dd>{selectedRecord.roles.length?selectedRecord.roles.map(id=>data?.roles.some(role=>role.id===id)
+                            ?<AdminRowAction key={id} href={recordHref('roles',id)} onClick={event=>openRecord(event,'roles',id)}>{roleName(id)}</AdminRowAction>
+                            :<span key={id}>{id}</span>):'—'}</dd></div>
+                      </dl>
+                    </section>{permissions(selectedRecord)}</>:<>
+                      <section><h2>{t('Purpose','Kegunaan','职责说明')}</h2><p>{selectedRecord.config.description[col]||'—'}</p>
+                        <AdminRowAction href={recordHref('users','',selectedRecord.id)} onClick={event=>openRecord(event,'users','',selectedRecord.id)}>
+                          {t('View users assigned this role','Lihat pengguna dengan peran ini','查看分配了此角色的用户')}
+                        </AdminRowAction></section>
+                      {permissions(selectedRecord)}
+                    </>:<AdminListState lang={lang} state={recordListState} onRetry={refreshAccess}
+                      message={recordListState==='empty'?t('This record is unavailable.','Rekaman ini tidak tersedia.','此记录已不存在或不可访问。'):undefined}/>}
+                  </div>
+                </article>
+              </div>}
+            </section>}
             {data && tab === "preview" && (
               <div className="access-preview">
                 <CrmSingleSelect
@@ -785,7 +927,11 @@ export function AccessWorkspace({
               description={t("Keep editing, or discard your unsaved changes and close. Saved records stay unchanged.", "Lanjutkan mengedit atau buang perubahan yang belum disimpan dan tutup. Data tersimpan tidak berubah.", "可以继续编辑，或放弃未保存的修改并关闭；已保存记录保持不变。")}
               keepLabel={t("Keep editing", "Lanjutkan mengedit", "继续编辑")}
               discardLabel={t("Discard draft and close", "Buang draf dan tutup", "放弃草稿并关闭")}
-              onKeep={()=>setDiscarding(false)} onDiscard={resetEditor} />}
+              onKeep={()=>{pendingNavigation.current=undefined;setDiscarding(false);}} onDiscard={()=>{
+                const action=pendingNavigation.current;
+                pendingNavigation.current=undefined;
+                resetEditor();action?.();
+              }} />}
             {sensitiveAction&&user?.id&&<AdminConfirmation light={isLight} busy={busy} danger
               title={sensitiveAction==='sessions'?t('Revoke sessions','Cabut sesi','撤销会话'):t('Reset password','Reset kata sandi','重置密码')}
               description={<>{user.displayName||user.loginId} · {sensitiveAction==='sessions'

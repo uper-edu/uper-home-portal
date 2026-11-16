@@ -187,10 +187,10 @@ export function CrmDiscardDialog({
     title={u(title)} description={u(description)} cancelLabel={u(keepLabel)} confirmLabel={u(discardLabel)}
     onCancel={onKeep} onConfirm={onDiscard}/>;
 }
-export function useCrmShellHeight() {
+export function useCrmShellHeight(selector="[data-crm-header]") {
   const [height, setHeight] = React.useState(120);
   useEffect(() => {
-    const header = document.querySelector("[data-crm-header]");
+    const header = document.querySelector(selector);
     if (!header) return;
     const measure = () =>
       setHeight(Math.ceil(header.getBoundingClientRect().height));
@@ -198,7 +198,7 @@ export function useCrmShellHeight() {
     const observer = new ResizeObserver(measure);
     observer.observe(header);
     return () => observer.disconnect();
-  }, []);
+  }, [selector]);
   return height;
 }
 
