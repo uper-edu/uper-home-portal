@@ -1,3 +1,4 @@
+import {AdminListPagination} from '../admin/AdminList';
 import {paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
 import {AdminRecordBack} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
@@ -210,11 +211,8 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
             :<span className="crm-work-muted">—</span>}</td>
         </tr>)}
       </CrmListTable>:<p className="crm-finance-empty">{t('暂无符合条件的报名订单。','No matching enrollment orders.','Tidak ada pesanan yang cocok.')}</p>)}
-      {list&&list.total>list.pageSize&&<footer className="crm-finance-pagination">
-        <span>{t('第','Page','Halaman')} {list.page} / {Math.ceil(list.total/list.pageSize)}</span>
-        <div><button type="button" className="crm-work-button" disabled={loading||list.page<=1} onClick={()=>setPage(list.page-1)}>{t('上一页','Previous','Sebelumnya')}</button>
-          <button type="button" className="crm-work-button" disabled={loading||list.page*list.pageSize>=list.total} onClick={()=>setPage(list.page+1)}>{t('下一页','Next','Berikutnya')}</button></div>
-      </footer>}
+      {list&&list.total>list.pageSize&&<AdminListPagination lang={lang} page={list.page}
+        pageCount={Math.ceil(list.total/list.pageSize)} busy={loading} onPageChange={setPage}/>}
     </>}
     {orderId&&<CrmOperationLayer title={row?.name??t('报名核款详情','Enrollment payment details','Detail pembayaran pendaftaran')}
       context={row?className(row):undefined} navigation={row&&sourceBack&&<AdminRecordBack target={{

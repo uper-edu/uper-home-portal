@@ -8,6 +8,7 @@ export function CrmPageAction({
   variant = "secondary",
   iconOnly = false,
   loading = false,
+  keepFocusWhileLoading = false,
   disabled = false,
   href,
   onClick,
@@ -22,6 +23,7 @@ export function CrmPageAction({
   variant?: "primary" | "secondary";
   iconOnly?: boolean;
   loading?: boolean;
+  keepFocusWhileLoading?: boolean;
   disabled?: boolean;
   href?: string;
   onClick?: () => void;
@@ -62,8 +64,9 @@ export function CrmPageAction({
       <button
         {...props}
         type="button"
-        onClick={onClick}
-        disabled={disabled || loading}
+        onClick={loading ? undefined : onClick}
+        disabled={disabled || (loading && !keepFocusWhileLoading)}
+        aria-disabled={loading && keepFocusWhileLoading ? true : undefined}
       >
         {content}
       </button>

@@ -1,3 +1,4 @@
+import {CrmPageAction} from '../components/crm/CrmPageAction';
 import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
@@ -19,7 +20,7 @@ import { AccessSafetyPanel } from "../components/AccessSafetyPanel";
 import { AccessUserCard, AccessRoleCard } from "../components/AccessRecordCard";
 import { accessGuide, accessError } from "../utils/accessLanguage";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
+import { RefreshCw, BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -119,6 +120,8 @@ export function AccessWorkspace({
     [password, setPassword] = useState(""),
     [dirty, setDirty] = useState(false);
   const [sensitiveAction,setSensitiveAction]=useState<"sessions"|"password">();
+  const refreshing = useRef(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const panel = useRef<HTMLDialogElement>(null);
   const can = (permission: string) => employee.permissions.includes(permission);
   useEffect(() => {setNotice("");setLarkValidation("");}, [lang]);
@@ -178,6 +181,23 @@ export function AccessWorkspace({
         .catch((e) => setErr(e.message));
   }, [tab]);
   const editorHasDraft = Boolean(user || role) && (dirty || larkDirty || why.length > 0 || password.length > 0);
+  const refreshAccess = async () => {
+    if (refreshing.current || busy || editorHasDraft) return;
+    refreshing.current = true;
+    setIsRefreshing(true);
+    setErr("");
+    try {
+      await Promise.all([
+        load(),
+        tab === "audit" && can("access.audit") ? api("/audit").then(setAudit) : undefined,
+      ]);
+    } catch (error) {
+      setErr((error as Error).message);
+    } finally {
+      refreshing.current = false;
+      setIsRefreshing(false);
+    }
+  };
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
       if (editorHasDraft) {
@@ -500,9 +520,9 @@ export function AccessWorkspace({
             </p>
           </div>
           {can("access.read") && tab !== "ai" && (
-            <button disabled={busy || editorHasDraft} onClick={() => void load()}>
-              {t("Reload", "Muat ulang", "重新载入")}
-            </button>
+            <CrmPageAction icon={RefreshCw} label={t("Refresh", "Segarkan", "刷新")}
+              loading={isRefreshing} keepFocusWhileLoading disabled={busy || editorHasDraft}
+              onClick={() => void refreshAccess()}/>
           )}
         </div>
         {!can("access.read") ? (
