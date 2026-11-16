@@ -4,7 +4,7 @@ import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
 import {AdminSearchField} from '../components/admin/AdminSearchField';
-import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
+import {CrmContentNav,CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormGuide} from '../components/AdminFormGuide';
 import {AdminFormSection,AdminFormFeedback,AdminFormGrid} from '../components/AdminFormLayout';
@@ -29,7 +29,7 @@ import '../components/crm/crm-detail-workspace.css';
 import '../components/crm/crm-record-workspace.css';
 import { accessGuide, accessError } from "../utils/accessLanguage";
 import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
-import {Pencil, Plus, BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
+import {Pencil, Plus, BookOpen, Users, FlaskConical } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -46,9 +46,8 @@ import "../components/crm/crm-lead-filters.css";
 import "./access-management.css";
 const moduleIcons = {
   users: Users,
-  roles: ShieldCheck,
-  preview: Eye,
-  audit: History,
+  roles: Users,
+  audit: Users,
   guide: BookOpen,
   test: FlaskConical,
   ai: FlaskConical,
@@ -70,9 +69,21 @@ type Role = {
   enabled: boolean;
   revision: number;
 };
-function systemTab() {
-  const tab=new URLSearchParams(window.location.search).get('tab')||'users';
-  return Object.hasOwn(moduleIcons,tab)?tab:'users';
+const accessTabs=['users','roles','audit'] as const;
+const isAccessTab=(tab:string)=>accessTabs.some(value=>value===tab);
+
+function systemLocation(href:string, employeeId:string) {
+  const url=new URL(href,window.location.origin);
+  if(url.searchParams.get('tab')==='preview'){
+    url.searchParams.set('tab','users');
+    if(!url.searchParams.get('user'))url.searchParams.set('user',employeeId);
+  }
+  const tab=url.searchParams.get('tab')||'users';
+  return {
+    href:url.pathname+url.search,
+    tab:Object.hasOwn(moduleIcons,tab)?tab:'users',
+    params:url.searchParams,
+  };
 }
 async function apiRequest(path = "", body?: any) {
   const r = await fetch("/api/admin/access" + path, {
@@ -114,7 +125,8 @@ export function AccessWorkspace({
   const [discarding, setDiscarding] = useState(false);
   const [larkDirty,setLarkDirty]=useState(false);
   const [larkDraft,setLarkDraft]=useState<any>(undefined);
-  const [tab, setTab] = useState(systemTab),
+  const [initialLocation] = useState(()=>systemLocation(window.location.href,employee.id));
+  const [tab, setTab] = useState(initialLocation.tab),
     [readDenied,setReadDenied]=useState(false),
     [data, setData] = useState<{ users: User[]; roles: Role[]; testDirectoryAvailable?:boolean } | null>(null),
     [err, setErr] = useState(""),
@@ -122,7 +134,6 @@ export function AccessWorkspace({
     [larkValidation, setLarkValidation] = useState(""),
     [busy, setBusy] = useState(false),
     [saving, setSaving] = useState(false),
-    [previewUserId, setPreviewUserId] = useState(employee.id),
     [audit, setAudit] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null),
     [role, setRole] = useState<Role | null>(null),
@@ -135,7 +146,7 @@ export function AccessWorkspace({
   const [sensitiveAction,setSensitiveAction]=useState<"sessions"|"password">();
   const refreshing = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [recordId,setRecordId]=useState(()=>new URLSearchParams(window.location.search).get(tab==='roles'?'role':'user')||'');
+  const [recordId,setRecordId]=useState(()=>(isAccessTab(tab)&&tab!=='audit'?initialLocation.params.get(tab==='roles'?'role':'user'):'')||'');
   const [roleFilter,setRoleFilter]=useState(()=>new URLSearchParams(window.location.search).get('assignedRole')||'');
   const [filters,setFilters]=useState<Record<string,{query:string;status:string}>>({});
   const {query='',status:statusFilter=''}=filters[tab]??{};
@@ -151,7 +162,11 @@ export function AccessWorkspace({
   const [showRecords,setShowRecords]=useState(false);
   const [wide,setWide]=useState(()=>window.innerWidth>=recordSplitMinWidth);
   const shellHeight=useCrmShellHeight("[data-admin-header]"),scrollMode=useRecordScrollMode(shellHeight);
-  const locationRef=useRef(window.location.pathname+window.location.search);
+  const locationRef=useRef(initialLocation.href);
+  useEffect(()=>{
+    if(window.location.pathname+window.location.search!==initialLocation.href)
+      window.history.replaceState(window.history.state,'',initialLocation.href);
+  },[initialLocation]);
   const pendingNavigation=useRef<(()=>void)|undefined>(undefined);
   const listPosition=useRef<{module:string;id:string;top:number}|undefined>(undefined);
   const listSearch=useRef<HTMLInputElement>(null),railSearch=useRef<HTMLInputElement>(null);
@@ -279,14 +294,13 @@ export function AccessWorkspace({
     return '/system?'+params;
   };
   const applyLocation=(href:string)=>{
-    const params=new URL(href,window.location.origin).searchParams;
-    const module=params.get('tab')||'users';
-    const nextTab=Object.hasOwn(moduleIcons,module)?module:'users';
+    const {tab:nextTab,params,href:canonical}=systemLocation(href,employee.id);
+    if(href!==canonical)window.history.replaceState(window.history.state,'',canonical);
     setTab(nextTab);
     setRecordId(nextTab==='users'?params.get('user')||'':nextTab==='roles'?params.get('role')||'':'');
     setRoleFilter(params.get('assignedRole')||'');
     setShowRecords(false);
-    locationRef.current=href;
+    locationRef.current=canonical;
   };
   const proceedNavigation=(href:string)=>{
     if(href===locationRef.current)return;
@@ -558,8 +572,12 @@ export function AccessWorkspace({
         )
       : null;
   const priorAccess = data?.users.find((u) => u.id === user?.id)?.effective;
-  const selectedPreviewUser =
-    data?.users.find((u) => u.id === previewUserId) || data?.users[0];
+  const accessTitle=t("Users & access","Pengguna & akses","用户与权限");
+  const accessNav=[
+    ['users',t('Users','Pengguna','用户')],
+    ['roles',t('Roles','Peran','角色')],
+    ...(can('access.audit')?[['audit',t('Change audit','Audit perubahan','变更审计')]]:[]),
+  ];
   const userTab=tab==='users';
   const recordTab=(userTab||tab==='roles')&&can('access.read')&&!readDenied;
   const listTitle=userTab?t('Users','Pengguna','用户'):t('Roles','Peran','角色');
@@ -604,9 +622,22 @@ export function AccessWorkspace({
       {!entries.length&&<p>{t('No permissions','Tanpa izin','无权限项')}</p>}
       {[...new Set(entries.map(p=>p.module))].map(module=><section key={module} className="access-record-permissions">
         <h3>{modules[module][col]}</h3>
-        <dl>{entries.filter(p=>p.module===module).map(p=><div key={p.key}><dt>{p.names[col]}</dt>
-          <dd>{p.scoped?(userRecord?r.effective.grants?.[p.key]??[]:[r.config.grants[p.key]]).map(scope=>scopeLabel(scope,p.key)).join(' / ')||'—':activeLabel}</dd>
-        </div>)}</dl>
+        {userRecord?<AdminListTable className="access-permission-table" label={modules[module][col]}
+          headers={[t('Permission','Izin','权限'),t('Effective scope','Cakupan efektif','生效范围'),t('Source roles','Peran sumber','来源角色')]}>
+          {entries.filter(p=>p.module===module).map(p=>{
+            const sources=data?.roles.filter(role=>r.roles.includes(role.id)&&role.enabled&&r.effective.rolePermissions?.[role.id]?.includes(p.key))??[];
+            const scope=p.scoped?(r.effective.grants?.[p.key]??[]).map(value=>scopeLabel(value,p.key)).join(' / ')||'—':activeLabel;
+            return <tr key={p.key}><td>{p.names[col]}</td><td>{scope}</td><td>
+              {sources.length?<div className="access-permission-sources">
+                {sources.map(role=><AdminRowAction key={role.id} href={recordHref('roles',role.id)}
+                  onClick={event=>openRecord(event,'roles',role.id)}>{role.config.names[col]}</AdminRowAction>)}
+              </div>:'—'}
+            </td></tr>;
+          })}
+        </AdminListTable>:<dl>{entries.filter(p=>p.module===module).map(p=><div key={p.key}>
+          <dt>{p.names[col]}</dt>
+          <dd>{p.scoped?scopeLabel(r.config.grants[p.key],p.key):activeLabel}</dd>
+        </div>)}</dl>}
       </section>)}
     </section>;
   };
@@ -627,15 +658,11 @@ export function AccessWorkspace({
           <>
             {[
               ["ai", "AI services", "Layanan AI", "AI服务配置"],
-              ["users", "Users", "Pengguna", "用户"],
-              ["roles", "Roles", "Peran", "角色"],
-              ["preview", "Access preview", "Pratinjau akses", "权限预览"],
-              ["audit", "Change audit", "Audit perubahan", "变更审计"],
+              ["users", "Users & access", "Pengguna & akses", "用户与权限"],
               ["guide", "Guide", "Panduan", "使用指南"],
               ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
               .filter((a) => a[0] !== "ai" || isAiAdministrator(employee))
-              .filter((a) => a[0] !== "audit" || can("access.audit"))
               .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
                 const Icon = moduleIcons[a[0] as keyof typeof moduleIcons];
@@ -643,8 +670,8 @@ export function AccessWorkspace({
                   <button
                     type="button"
                     key={a[0]}
-                    aria-current={tab === a[0] ? "page" : undefined}
-                    onClick={()=>navigateRecord(a[0],'')}
+                    aria-current={(a[0]==='users'?isAccessTab(tab):tab===a[0])?"page":undefined}
+                    onClick={()=>{if(a[0]!=='users'||!isAccessTab(tab))navigateRecord(a[0],'');}}
                   >
                     <Icon size={16} aria-hidden="true" />
                     {a[col + 1]}
@@ -678,7 +705,7 @@ export function AccessWorkspace({
               )}
             </p>
           </div>
-          {can("access.read") && tab !== "ai" && (
+          {can("access.read") && tab !== "ai" && (tab!=='audit'||can('access.audit')) && (
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
               secondary={<AdminRefreshAction label={t("Refresh", "Segarkan", "刷新")}
                 loading={isRefreshing} disabled={busy || editorHasDraft}
@@ -707,6 +734,9 @@ export function AccessWorkspace({
             {notice && !user && !role && (
               <AdminFormFeedback state="saved" lang={lang} placement="floating">{notice}</AdminFormFeedback>
             )}
+            {isAccessTab(tab)&&<CrmContentNav label={accessTitle}
+              items={accessNav.map(([id,label])=>({href:recordHref(id),label,current:tab===id}))}
+              onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
             {!recordTab && !data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
@@ -805,67 +835,10 @@ export function AccessWorkspace({
                 </article>
               </div>}
             </section>}
-            {data && tab === "preview" && (
-              <div className="access-preview">
-                <CrmSingleSelect
-                  label={t("Employee", "Staf", "员工")}
-                  value={selectedPreviewUser?.id || ""}
-                  options={data.users.map((u) => ({
-                    value: u.id,
-                    label: u.displayName,
-                  }))}
-                  onChange={setPreviewUserId}
-                  searchable
-                  lang={lang}
-                  isLight={isLight}
-                />
-                {[selectedPreviewUser]
-                  .filter((u): u is User => !!u)
-                  .map((u) => (
-                    <section className="access-card" key={u.id}>
-                      <h2>{u.displayName}</h2>
-                      {!u.active && (
-                        <p>
-                          {t(
-                            "Disabled: cannot authenticate.",
-                            "Nonaktif: tidak dapat login.",
-                            "已停用：无法登录。",
-                          )}
-                        </p>
-                      )}
-                      <ul>
-                        {permissionCatalog
-                          .filter((p) =>
-                            u.effective.permissions.includes(p.key),
-                          )
-                          .map((p) => (
-                            <li key={p.key}>
-                              {p.names[col]} —{" "}
-                              {p.scoped
-                                ? (u.effective.grants?.[p.key] || [])
-                                    .map((scope) => scopeLabel(scope, p.key))
-                                    .join(" / ")
-                                : t("Enabled", "Aktif", "已启用")}
-                              <small>
-                                {t("From", "Dari", "来源")}：
-                                {data.roles
-                                  .filter(
-                                    (r) =>
-                                      u.roles.includes(r.id) &&
-                                      r.enabled &&
-                                      r.config.grants[p.key],
-                                  )
-                                  .map((r) => r.config.names[col])
-                                  .join(" · ")}
-                              </small>
-                            </li>
-                          ))}
-                      </ul>
-                    </section>
-                  ))}
-              </div>
-            )}
-            {tab === "audit" && (
+            {tab === "audit" && !can('access.audit') && <p role="alert">
+              {t('You do not have access to change audit.','Anda tidak memiliki akses ke audit perubahan.','无变更审计访问权限。')}
+            </p>}
+            {tab === "audit" && can('access.audit') && (
               <section className="access-card">
                 <h2>
                   {t(

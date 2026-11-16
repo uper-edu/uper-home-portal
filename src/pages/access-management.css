@@ -400,3 +400,11 @@
   .access-record-split[data-record-scroll=independent] .access-record-detail { height: var(--admin-record-pane-height); }
   .access-record-split[data-record-scroll=independent] .access-record-body { overflow-y: auto; overscroll-behavior-y: contain; }
 }
+
+.access-permission-table { --admin-list-table-min: 460px; margin-top: 8px; }
+.access-permission-table table { table-layout: fixed; }
+.access-permission-table th:nth-child(1) { width: 36%; }
+.access-permission-table th:nth-child(2) { width: 24%; }
+.access-permission-table td { overflow-wrap: anywhere; }
+.access-permission-sources { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.access-permission-sources a { white-space: normal; text-align: start; }
