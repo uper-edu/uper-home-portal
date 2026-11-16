@@ -1196,6 +1196,15 @@ function CrmWorkspace({
               {employees.find(e=>e.id===selectedLead.owner)?.displayName||selectedLead.owner||t("Unassigned","未分配")}{' · '}{leadDisplayNumber(selectedLead)}
             </span>}/>} actions={<CrmDetailActions label={t("Customer actions","客户操作")}
           secondary={<>
+            <div className="admin-record-browse" role="group" aria-label={t("Customer navigation","客户浏览")}>
+              {[-1,1].map(offset=>{
+                const target=filteredLeads[selectedPosition+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");
+                const Icon=offset<0?ChevronLeft:ChevronRight;
+                return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label}
+                  disabled={selectedPosition<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}><Icon size={18} aria-hidden="true"/></button>;
+              })}
+              {sidebarToggle}
+            </div>
             {panoramaReturn?<button type="button" className="crm-work-button" onClick={()=>{
               setActiveDrawerTab(panoramaReturn.tab);
               writeLeadRoute(selectedLead.id,panoramaReturn.tab);
@@ -1217,15 +1226,6 @@ function CrmWorkspace({
             : claimPrimary?customerClaim:customerProgress}/>}/>
 
         {!ownerOpen&&!paymentOpen&&(hasDraft||isSubmittingLog)&&<CrmSaveFeedback lang={lang} state={isSubmittingLog?"saving":"dirty"}/>}
-            <div className="admin-record-browse" role="group" aria-label={t("Customer navigation","客户浏览")}>
-              {[-1,1].map(offset=>{
-                const target=filteredLeads[selectedPosition+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");
-                const Icon=offset<0?ChevronLeft:ChevronRight;
-                return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label}
-                  disabled={selectedPosition<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}><Icon size={18} aria-hidden="true"/></button>;
-              })}
-              {sidebarToggle}
-            </div>
         <div className="crm-panel-next"><CrmNextTaskSummary hideFirstContact hideContactNotice lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>
         <CrmDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
           {id:"activities",label:t("Follow-up","跟进"),icon:ListChecks},
