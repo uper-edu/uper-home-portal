@@ -41,7 +41,18 @@
   border-radius: 10px;
   padding: 8px 12px;
 }
-.admin-editor-dialog .admin-editor-close { display: grid; place-items: center; flex: none; width: 40px; padding: 0; cursor: pointer; }
+.admin-editor-dialog .admin-editor-close {
+  --admin-editor-close-size: 40px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  inline-size: var(--admin-editor-close-size);
+  block-size: var(--admin-editor-close-size);
+  padding: 0;
+  cursor: pointer;
+}
+.admin-editor-dialog .admin-editor-close > svg { display: block; inline-size: 20px; block-size: 20px; }
 .admin-editor-dialog .admin-editor-footer > button[data-primary] {
   color: var(--admin-on-action);
   background: var(--admin-action-fill);
@@ -61,7 +72,7 @@
 @media (max-width: 600px) {
   .admin-editor-dialog[data-editor=drawer] { border-radius: 0; }
   .admin-editor-dialog :is(.admin-editor-close,.admin-editor-footer > button) { min-height: 44px; }
-  .admin-editor-dialog .admin-editor-close { width: 44px; }
+  .admin-editor-dialog .admin-editor-close { --admin-editor-close-size: 44px; }
 }
 .admin-confirmation {
   width: min(460px, calc(100vw - 32px));
