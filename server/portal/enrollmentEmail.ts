@@ -1,11 +1,14 @@
 import { enrollmentRuleDefaults } from '../../src/utils/enrollmentRules.ts';
 import { formatCurrency } from '../../src/utils/currency.ts';
+import { enrollmentPreviewOrigin } from '../../src/utils/enrollmentAssistance.ts';
+export { enrollmentPreviewOrigin };
 
 type Copy = readonly [string,string,string];
 export const enrollmentEmailSubjects = {
   otp_apply:['UPER 课程报名验证码','Your UPER enrollment code','Kode verifikasi pendaftaran UPER'],
   otp_mine:['UPER「我的报名」验证码','Your UPER My Enrollments code','Kode verifikasi Pendaftaran Saya di UPER'],
   seat_reserved:['UPER 已为你保留席位','UPER has reserved your seat','Tempatmu di UPER sudah dipesan'],
+  assistance_confirmation:['请确认你的 UPER 报名申请','Confirm your UPER enrollment application','Konfirmasi pengajuan pendaftaran UPER'],
   proof_received:['已收到转账凭证，等待财务核实','Transfer proof received, awaiting finance verification','Bukti transfer diterima, menunggu verifikasi keuangan'],
   payment_confirmed:['报名成功，财务已核实足额到账','Enrollment confirmed. Full payment verified.','Pendaftaran berhasil. Pembayaran penuh terverifikasi.'],
   payment_and_opening:['报名成功，班次已确认开班','Enrollment confirmed and class confirmed','Pendaftaran berhasil dan kelas dikonfirmasi'],
@@ -23,7 +26,6 @@ type Facts = {language:unknown; salutation?:string; class?:string; firstLesson?:
   installment?:number; targetClass?:string; targetFirstLesson?:string; replyBy?:string; sendBy?:string; orderState?:string};
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const official='https://uperedu.com';
-export const enrollmentPreviewOrigin='http://localhost:3000';
 
 export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
   const language=facts.language==='zh'||facts.language==='id'?facts.language:'en';
@@ -38,7 +40,8 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
   const summary = [facts.class,when(facts.firstLesson),facts.schedule].filter(Boolean).join(' · ');
   const confirmed=tr(['首课及每周课表','First session and weekly schedule','Pertemuan pertama dan jadwal mingguan'])+' · '+summary;
   const thanks=tr(['你好','Hello','Halo'])+(facts.salutation?' '+facts.salutation:'');
-  const action=tr(['查看报名详情','View enrollment details','Lihat detail pendaftaran']);
+  const action=kind==='assistance_confirmation' ? tr(['确认报名','Confirm enrollment','Konfirmasi pendaftaran'])
+    : tr(['查看报名详情','View enrollment details','Lihat detail pendaftaran']);
   const heading=tr(enrollmentEmailSubjects[kind])+(facts.class?' · '+facts.class:'');
   const otp=kind==='otp_apply'||kind==='otp_mine';
   const cancellation=facts.orderState==='paid'||facts.orderState==='recovered'
@@ -49,6 +52,13 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
   const body:Record<EnrollmentEmailKind,string[]> = {
     otp_apply:[tr(['回到申请、候补或选课需求页面输入验证码。','Enter this code on the application, waitlist, or course preferences page.','Masukkan kode ini di halaman pendaftaran, daftar tunggu, atau preferensi kursus.'])],
     otp_mine:[tr(['回到「我的报名」输入验证码。','Enter this code on My Enrollments.','Masukkan kode ini di Pendaftaran Saya.'])],
+    assistance_confirmation:[
+      tr(['UPER 销售已协助提交你的申请。请核对班次与学费，验证报名邮箱后确认。','Your UPER advisor submitted your application. Review the class and fee, then verify your email to confirm.','Tim UPER telah membantu mengajukan pendaftaranmu. Periksa kelas dan biaya, lalu verifikasi email untuk mengonfirmasi.']),
+      summary,
+      tr(['学费','Tuition','Biaya kursus'])+' · '+amount(facts.price),
+      tr(['确认截止','Confirmation deadline','Batas konfirmasi'])+' · '+asWib(facts.deadline),
+      tr(['确认并取得席位后，页面会提供转账信息和付款截止时间。','Once you confirm and receive a seat, the page will show transfer instructions and the payment deadline.','Setelah konfirmasi dan mendapatkan kursi, halaman akan menampilkan informasi transfer dan batas pembayaran.']),
+    ],
     seat_reserved:[tr(['财务核实足额到账后，报名才算成功。','Enrollment is complete once full payment is verified.','Pendaftaran selesai setelah pembayaran penuh terverifikasi.']),
       tr(['应付及提交凭证截止','Amount due and proof deadline','Jumlah tagihan dan batas pengiriman bukti'])+' · '+[amount(facts.price),asWib(facts.deadline)].filter(Boolean).join(' · ')],
     proof_received:[tr(['财务仍需核对银行入账。请到「我的报名」查看进度。','Finance still needs to verify the bank receipt. Track it in My Enrollments.','Tim keuangan masih perlu memeriksa dana masuk. Lihat status di Pendaftaran Saya.'])],

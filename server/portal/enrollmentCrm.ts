@@ -18,6 +18,7 @@ import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { opportunitySourceKind, type OpportunitySourceRef } from '../../src/utils/crmOpportunitySources.ts';
 import { salesProgressContext } from './salesProgress.ts';
 import { enrollmentOpportunityLevels } from '../../src/utils/enrollmentCatalog.ts';
+import { latestAssistanceMail } from './enrollmentNotices.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
@@ -378,12 +379,14 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       allowed:!current.records.some(record=>record.kind==='order'&&!['ended','expired'].includes(record.state)),
     }:undefined;
     const assistanceHistory=(await c.query(`SELECT id,class_id AS classId,order_id AS orderId,actor,
+      data->>'$.lang' AS lang,expires_at>UTC_TIMESTAMP(6) AS active,
       DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,
       DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications
       WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1`,[row.id])).rows[0];
-    return {...actions,progress,emails,assistance,assistanceHistory,
-      assistanceDueAt:assistanceHistory&&!assistanceHistory.orderId&&Date.parse(assistanceHistory.expiresAt)>Date.now()
-        ?assistanceHistory.expiresAt:undefined};
+    const mail=assistanceHistory?await latestAssistanceMail(c,assistanceHistory.id):undefined;
+    return {...actions,progress,emails,assistance,
+      assistanceDueAt:Number(assistanceHistory?.active)===1&&!assistanceHistory?.orderId?assistanceHistory.expiresAt:undefined,
+      assistanceHistory:assistanceHistory&&{...assistanceHistory,mail}};
   }));
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);

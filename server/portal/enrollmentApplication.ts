@@ -22,7 +22,7 @@ import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { proofTransferDetails } from './enrollmentProofTotals.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
-import { orderNotice, proofNotices, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
+import { latestAssistanceMail, orderNotice, proofNotices, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
 import { applyEnrollmentPaymentCredits, lockEnrollmentFunds, updateEnrollmentPayment } from './enrollmentPaymentCredits.ts';
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
@@ -272,11 +272,17 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     if(typeof token!=='string'||!/^[a-f0-9]{64}$/.test(token))invalid('enrollment_assistance_unavailable',404);
     return sha(token);
   };
-  const offerProjection=`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active FROM enrollment_assisted_applications WHERE token_digest=:p1`;
+  const offerProjection=`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active,
+    DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt
+    FROM enrollment_assisted_applications WHERE token_digest=:p1 OR id=:p2`;
+  function offerLookup(body:any){
+    if(typeof body?.applicationId==='string'&&uuid.test(body.applicationId))return [null,body.applicationId];
+    return [assistanceToken(body?.token),null];
+  }
   post('/api/crm/opportunities/:id/enrollment-assistance',async(q,r)=>{
     const actor=await staff(q,'crm.followup');
     const {token,classId,requestId,name:rawName,phone:rawPhone,email:rawEmail,lang}=q.body??{};
-    const digest=assistanceToken(token),email=contact(rawEmail),phone=enrollmentPhone(rawPhone);
+    const email=contact(rawEmail),phone=enrollmentPhone(rawPhone);
     const name=typeof rawName==='string'?rawName.trim():'',opportunityId=String(q.params.id);
     if(!name||name.length>120||!phone||typeof classId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(classId)||!uuid.test(requestId))
       invalid('enrollment_invalid_application');
@@ -291,6 +297,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         await expireSeats(c,classId);
         if(await takenSeats(c,classId)>=cohort.data.capacity)invalid('enrollment_class_full',409);
         const id=randomUUID(),{firstLesson,schedule,price,period,format}=cohort.data;
+        const digest=token===undefined?sha(id):assistanceToken(token);
         await c.query(`UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)
           WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)`,[opportunityId]);
         await c.query(`INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,
@@ -298,28 +305,51 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
           [id,digest,opportunityId,customer.id,classId,cohort.revision,actor.id,email,
             {name,phone,quote:{level,firstLesson,schedule,price,period,format},termsVersion:1,lang:['zh','en','id'].includes(lang)?lang:'en'}]);
         const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1",[id])).rows[0];
-        return {id,expiresAt:expiry.expiresAt};
+        return {id,expiresAt:expiry.expiresAt,lang:['zh','en','id'].includes(lang)?lang:'en'};
       });
     });
-    r.json(result);
+    const mail=await enrollTx(async c=>{
+      const offer=(await c.query(offerProjection+' FOR UPDATE',[null,result.id])).rows[0];
+      if(!offer||offer.opportunity_id!==opportunityId)invalid('enrollment_assistance_unavailable',404);
+      const latest=await latestAssistanceMail(c,result.id);
+      return latest??(Number(offer.active)&&!offer.order_id
+        ?await sendAssistanceMail(c,local,offer,sha(actor.id+':'+requestId)):undefined);
+    });
+    r.json({...result,mail});
+  });
+  post('/api/crm/opportunities/:id/enrollment-assistance/:applicationId/retry',async(q,r)=>{
+    const actor=await staff(q,'crm.followup');
+    const opportunityId=String(q.params.id),applicationId=String(q.params.applicationId);
+    if(!uuid.test(applicationId))invalid('enrollment_assistance_unavailable',404);
+    const mail=await moneyTx(async c=>{
+      await lockIdentityRegistry(c);
+      const {customer}=await assistedEnrollmentOpportunity(c,opportunityId,actor);
+      const offer=(await c.query(offerProjection+' FOR UPDATE',[null,applicationId])).rows[0];
+      if(!offer||offer.opportunity_id!==opportunityId||offer.customer_id!==customer.id||
+          !Number(offer.active)||offer.order_id)invalid('enrollment_assistance_unavailable',404);
+      const latest=await latestAssistanceMail(c,applicationId);
+      if(latest?.state==='simulated'||(latest?.id??null)!==q.body?.previousAttempt)return latest;
+      return sendAssistanceMail(c,local,offer,sha(latest?.id??'resume:'+applicationId));
+    });
+    r.json({mail});
   });
   post(base+'/assistance/preview',async(q,r)=>{
-    const digest=assistanceToken(q.body?.token);
+    const lookup=offerLookup(q.body);
     const result=await enrollTx(async c=>{
-      const offer=(await c.query(offerProjection,[digest])).rows[0];
+      const offer=(await c.query(offerProjection,lookup)).rows[0];
       if(!offer||!Number(offer.active)&&!offer.order_id)invalid('enrollment_assistance_unavailable',404);
       if(q.body?.verified!==true)return {classId:offer.class_id,quote:offer.data.quote};
       if(await session(c,q)!==offer.email)invalid('enrollment_assistance_email',403);
-      return {classId:offer.class_id,quote:offer.data.quote,name:offer.data.name,phone:offer.data.phone,orderId:offer.order_id};
+      return {classId:offer.class_id,quote:offer.data.quote,name:offer.data.name,phone:offer.data.phone,email:offer.email,orderId:offer.order_id};
     });
     r.json(result);
   });
   post(base+'/assistance/confirm',async(q,r)=>{
-    const digest=assistanceToken(q.body?.token);
+    const lookup=offerLookup(q.body);
     if(q.body?.termsVersion!==1||q.body?.confirmed!==true)invalid('enrollment_assistance_confirmation');
     const result=await moneyTx(async c=>{
       const email=await session(c,q);
-      const saved=(await c.query(offerProjection+' FOR UPDATE',[digest])).rows[0];
+      const saved=(await c.query(offerProjection+' FOR UPDATE',lookup)).rows[0];
       if(!saved||saved.email!==email)invalid('enrollment_assistance_unavailable',404);
       if(saved.order_id){
         const {order,cohort}=await lockOrder(c,saved.order_id,email);
@@ -337,7 +367,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       if(await activeLearnerOrder(c,cohort.id,email,saved.data.name))invalid('enrollment_assistance_existing_order',409);
       const seats=await takenSeats(c,cohort.id);
       if(seats>=cohort.data.capacity)invalid('enrollment_class_full',409);
-      return reserveSeat(c,cohort,seats,{email,name:saved.data.name,phone:saved.data.phone,requestId:saved.id,fingerprint:digest,
+      return reserveSeat(c,cohort,seats,{email,name:saved.data.name,phone:saved.data.phone,requestId:saved.id,fingerprint:saved.token_digest,
         price:saved.data.quote.price,priority:q.body?.priority===true,source:{lang:saved.data.lang},
         assistance:{id:saved.id,customerId:customer.id,opportunityId:saved.opportunity_id}});
     });
@@ -399,7 +429,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   });
 
   app.get(base + '/orders', wrap(async (q, r) => {
-    const orders = await enrollTx(async (c: Client) => {
+    const result = await enrollTx(async (c: Client) => {
       const email = await session(c, q);
       const { rows } = await c.query(`SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,
         CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
@@ -421,11 +451,16 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
             AND e.state='cancelled' AND o.state IN ('paid','recovered')
           ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE
         WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100`, [email]);
-      return rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
+      const applications=(await c.query(`SELECT id,data,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,
+        DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,expires_at>UTC_TIMESTAMP(6) AS active
+        FROM enrollment_assisted_applications WHERE email=:p1 AND order_id IS NULL ORDER BY created_at DESC,id LIMIT 100`,[email])).rows
+        .map(row=>({id:row.id,quote:row.data.quote,name:row.data.name,createdAt:row.createdAt,expiresAt:row.expiresAt,active:Number(row.active)===1}));
+      const orders=rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
         classCancelled:row.class_state==='cancelled',updatedAt:row.updated_at_iso,needsPayment:Number(row.needs_payment)===1,
         invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline}:undefined }));
+      return {orders,applications};
     });
-    r.set('Cache-Control', 'no-store').json({ orders });
+    r.set('Cache-Control', 'no-store').json(result);
   }));
 
   app.get(base + '/orders/:id', wrap(async (q, r) => {

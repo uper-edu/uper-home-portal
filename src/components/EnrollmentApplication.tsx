@@ -10,6 +10,7 @@ import { EnrollmentOrderResult } from './EnrollmentOrderResult';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
 import { EnrollmentDemandForm, interestOption, waitlistStates, type DemandItem, type Interests } from './EnrollmentInterests';
 import { sortEnrollmentRecords } from '../utils/enrollmentRecordOrder';
+import { enrollmentAssistancePath } from '../utils/enrollmentAssistance';
 
 type Language = 'zh' | 'en' | 'id';
 type Copy = readonly [string, string, string];
@@ -34,6 +35,8 @@ export async function enrollmentPost(path: string, body: unknown) {
   return data;
 }
 type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string}};
+type AssistedApplication={id:string;name:string;quote:{level:string;format:string;firstLesson:string;schedule:string;price:number};
+  createdAt:string;expiresAt:string;active:boolean};
 type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string };
 type InterestRecord = { kind: 'waitlist' | 'demands'; id: string };
 
@@ -50,6 +53,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const [aftercare,setAftercare] = useState<EnrollmentAftercare>();
   const [open,setOpen] = useState(!!orderId || !classId || params.get('apply') === '1');
   const [orders,setOrders] = useState<OrderSummary[]>();
+  const [assistedApplications,setAssistedApplications] = useState<AssistedApplication[]>([]);
   const [interests,setInterests] = useState<Interests>();
   const tab = ['orders','waitlist','demands'].find(value=>value===params.get('tab')) || 'all';
   function selectTab(value: string) {
@@ -97,11 +101,14 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     if (response.status === 401) {
       setVerified(false);
       setOrders(undefined);
+      setAssistedApplications([]);
       setInterests(undefined);
       return;
     }
     if (!response.ok) throw Error('enrollment_failed');
-    setOrders((await response.json()).orders);
+    const data=await response.json();
+    setOrders(data.orders);
+    setAssistedApplications(data.applications??[]);
     setVerified(true);
     if (!classId && !demandOnly && !paymentClasses) {
       const response=await fetch(base+'/interests',{cache:'no-store'});
@@ -620,7 +627,25 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       </Link>
     </article>,
   }));
-  const records = sortEnrollmentRecords([...orderCards,...waitlistCards,...demandCards]);
+  const assistedCards=(tab==='all'||tab==='orders'?assistedApplications:[]).map(row=>({
+    key:'assistance-'+row.id,active:row.active,updatedAt:row.createdAt,needsAction:row.active,
+    card:<article className="enrollment-record">
+      <header><small>{t(['销售协助报名','Advisor-assisted application','Pendaftaran dibantu tim UPER'])}</small>
+        <span className="enrollment-status" data-state={row.active?'pending':'full'}>{row.active
+          ?t(['待学员确认','Awaiting your confirmation','Menunggu konfirmasi kamu'])
+          :t(['确认链接已失效','Confirmation link expired','Tautan konfirmasi kedaluwarsa'])}</span></header>
+      <h2>{[row.quote.level,interestOption(language,row.quote.format),row.quote.firstLesson.replace('T',' ')+' WIB'].join(' · ')}</h2>
+      <p>{row.name} · {formatCurrency(row.quote.price,language)}</p>
+      {row.active&&<>
+        <p>{t(['确认截止','Confirm by','Konfirmasi sebelum'])} · <time dateTime={row.expiresAt}>{new Intl.DateTimeFormat(language,
+          {dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(row.expiresAt))} WIB</time></p>
+        <Link className="enrollment-record-link" to={enrollmentAssistancePath(row.id,language)}>
+          {t(['确认报名','Confirm enrollment','Konfirmasi pendaftaran'])}<ChevronRight size={15} aria-hidden="true"/>
+        </Link>
+      </>}
+    </article>,
+  }));
+  const records = sortEnrollmentRecords([...orderCards,...assistedCards,...waitlistCards,...demandCards]);
   const activeRecords = records.filter(record=>record.active);
   const pastRecords = records.filter(record=>!record.active);
   const editingProof = paymentClasses && params.get('proof')==='upload' && !!canUpload;
@@ -725,7 +750,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
       <div className="enrollment-record-tabs" role="group" aria-label={t(['记录类别','Activity type','Jenis aktivitas'])}>
         {([
           ['all', ['全部','All','Semua'], undefined],
-          ['orders',['申请','Applications','Pendaftaran'],orders?.filter(orderIsActive).length],
+          ['orders',['申请','Applications','Pendaftaran'],orders&&orders.filter(orderIsActive).length+assistedApplications.filter(row=>row.active).length],
           ['waitlist',['候补','Waitlist','Daftar tunggu'],interests?.waitlist.filter(row=>row.state==='waiting').length],
           ['demands',['选课需求','Course preferences','Preferensi kursus'],interests?.demands.filter(row=>row.state==='active').length],
         ] as const).map(([key,label,count])=><button type="button" key={key} aria-pressed={tab===key} onClick={()=>selectTab(key)}>

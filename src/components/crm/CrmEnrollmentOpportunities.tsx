@@ -11,7 +11,7 @@ import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmPageAction } from './CrmPageAction';
 import { CrmSalesStage } from './CrmSalesStage';
 import { CrmIdentityStatus } from './CrmCurrentSalesState';
-import { CrmEnrollmentAssistance } from './CrmEnrollmentAssistance';
+import { assistanceMailLabel, CrmEnrollmentAssistance, type AssistanceResult } from './CrmEnrollmentAssistance';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { crmInstant, formatCrmEventTime, formatCrmSummaryTime, viewerTimeZone } from '../../utils/crmOperatingTime';
@@ -50,7 +50,7 @@ type Opportunity = {
   state:'enrolled'|'aftercare'|'applying'|'waiting'|'interest'|'closed';records:CourseRecord[];salesStage:string;revision:number;
   emails?:EnrollmentEmail[];assistanceDueAt?:string;
   assistance?:{email:string;phone:string;allowed:boolean};
-  assistanceHistory?:{id:string;classId:string;orderId?:string;actor:string;createdAt:string;expiresAt:string;confirmedAt?:string};
+  assistanceHistory?:AssistanceResult&{classId:string;orderId?:string;actor:string;createdAt:string;confirmedAt?:string;active:number};
   progress?:{id:string;actor:string;stage:string;note:string;createdAt:string;factId?:string;sources?:OpportunitySource[]}[];canProgress?:boolean;canInitiateFollowup?:boolean;followup?:OpportunityFollowup|null;
 };
 type OpportunityList = {opportunities:Opportunity[];customer?:{id:string;name:string}};
@@ -432,7 +432,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const [showList,setShowList]=useState(false);
   const showSidebar=desktopRail?!collapsed:showList;
   useEffect(()=>setShowList(false),[id]);
-  const [assisting,setAssisting]=useState(false);
+  const [assisting,setAssisting]=useState<'new'|'saved'>();
   const [assistanceRevision,setAssistanceRevision]=useState(0);
   const [error,setError]=useState('');
   const targetRecord=params.get('enrollmentRecord');
@@ -623,6 +623,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const following=index>=0?visible?.[index+1]:undefined;
   const activeRow=list?.find(row=>row.id===id);
   const headingRecord=detail??(!error?activeRow:undefined);
+  const pendingAssistance=Number(detail?.assistanceHistory?.active)===1&&!detail?.assistanceHistory?.confirmedAt;
   const scopeLabel=t(lang,['商机范围','Opportunity scope','Cakupan peluang']);
   const scopes=[
     {value:'active',label:t(lang,['进行中','In progress','Berlangsung'])},
@@ -718,7 +719,9 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
               </div>}
               {sidebarToggle}
               {detail&&!error&&detail.assistance?.allowed&&<CrmPageAction icon={GraduationCap} disabled={busy}
-                label={t(lang,['协助报名','Assist enrollment','Bantu pendaftaran'])} onClick={()=>setAssisting(true)}/>}</>}
+                label={pendingAssistance?t(lang,['查看协助报名','View assisted application','Lihat pendaftaran berbantuan']):
+                  t(lang,['协助报名','Assist enrollment','Bantu pendaftaran'])}
+                onClick={()=>setAssisting(pendingAssistance?'saved':'new')}/>}</>}
               primary={detail&&!error&&detail.canProgress&&<CrmPageAction icon={NotebookPen} variant="primary" loading={busy}
                 label={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}
                 onClick={()=>void openProgress(detail)}/>}/>}/>
@@ -744,16 +747,21 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         <div className="crm-detail-body crm-opportunity-detail-body" ref={detailBody} data-admin-scroll="detail"
           onKeyDown={containPaneKeys} tabIndex={0}>
         {error?<p role="alert">{error==='404'?t(lang,['找不到此商机，或当前账号无权查看。','This opportunity is unavailable or outside your access.','Peluang tidak tersedia atau di luar akses Anda.']):t(lang,['暂时无法读取商机。','Opportunities could not be loaded.','Peluang belum dapat dimuat.'])}</p>:detail?<div className="crm-opportunity-sections">
-        {detail.assistanceHistory&&(detail.identityPending||detail.followup||currentStatus(detail)!=='awaiting_confirmation')&&<section>
-          <h2>{t(lang,['最近一次协助报名','Latest assisted enrollment','Pendaftaran berbantuan terakhir'])}</h2>
-          <p className="crm-work-muted">{detail.assistanceHistory.confirmedAt
-            ?t(lang,['学员已确认','Confirmed by learner','Dikonfirmasi siswa'])
-            :Date.parse(detail.assistanceHistory.expiresAt)>Date.now()?t(lang,['待学员确认','Awaiting learner confirmation','Menunggu konfirmasi siswa']):
-              t(lang,['链接已失效','Link expired','Tautan kedaluwarsa'])}</p>
+        {detail.assistanceHistory&&<section>
+          <h2>{t(lang,['协助报名','Assisted enrollment','Pendaftaran berbantuan'])}</h2>
+          <p className="crm-work-muted">
+            {(detail.identityPending||detail.followup||currentStatus(detail)!=='awaiting_confirmation')&&<>
+              {detail.assistanceHistory.confirmedAt?t(lang,['学员已确认','Confirmed by learner','Dikonfirmasi siswa']):
+                pendingAssistance?t(lang,['待学员确认','Awaiting learner confirmation','Menunggu konfirmasi siswa']):
+                  t(lang,['链接已失效','Link expired','Tautan kedaluwarsa'])}{' · '}
+            </>}
+            {assistanceMailLabel(lang,detail.assistanceHistory.mail)}
+          </p>
         </section>}
         {assisting&&detail.assistance&&<CrmEnrollmentAssistance key={detail.id} opportunityId={detail.id} level={detail.level}
           customerName={detail.customerName} contacts={detail.assistance} lang={lang} isLight={isLight}
-          onClose={()=>setAssisting(false)} onDone={()=>setAssistanceRevision(value=>value+1)}/>}
+          initial={assisting==='saved'?detail.assistanceHistory:undefined}
+          onClose={()=>setAssisting(undefined)} onDone={()=>setAssistanceRevision(value=>value+1)}/>}
         {!!detail.progress?.length&&<section>
           <h2>{t(lang,['商机进展','Opportunity progress','Kemajuan peluang'])}</h2>
           <ol className="crm-course-records">{detail.progress.map(entry=><li key={entry.id}>

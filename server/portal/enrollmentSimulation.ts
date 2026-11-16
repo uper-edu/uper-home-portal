@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, isAbsolute } from 'node:path';
 
 export function enrollmentSimulation(env = process.env) {
@@ -8,11 +8,17 @@ export function enrollmentSimulation(env = process.env) {
       env.MYSQL_TRIAL_SOCKET !== '/private/tmp/uper-crm-mysql-local3000.sock' ||
       env.PORTAL_WORKER_ENABLED !== 'false' || env.PORTAL_GA_API_SECRET ||
       !directory || !isAbsolute(directory)) return null;
+  type Message={subject:string;html:string;text:string;language:string};
+  async function deliver(id:string,email:string,message:Message,code?:string){
+    await mkdir(directory, { mode: 0o700, recursive: true });
+    const file=resolve(directory,id+'.json'),content=JSON.stringify({email,code,...message});
+    try{await writeFile(file,content,{mode:0o600,flag:'wx'});}
+    catch(error){
+      if(code!==undefined||(error as NodeJS.ErrnoException).code!=='EEXIST'||await readFile(file,'utf8')!==content)throw error;
+    }
+  }
   return {
-    async deliver(challengeId: string, email: string, code: string, message: {subject:string;html:string;text:string;language:string}) {
-      await mkdir(directory, { mode: 0o700, recursive: true });
-      await writeFile(resolve(directory, challengeId + '.json'), JSON.stringify({ email, code, ...message }),
-        { mode: 0o600, flag: 'wx' });
-    },
+    deliver:(id:string,email:string,code:string,message:Message)=>deliver(id,email,message,code),
+    deliverMessage:(id:string,email:string,message:Message)=>deliver(id,email,message),
   };
 }
