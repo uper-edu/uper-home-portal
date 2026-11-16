@@ -458,7 +458,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     rememberCms(operation);setIsSaving(true);setCmsResult('');
     try{const res=await fetch(`/api/cms/content/${activeSection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});
       const data=await res.json();
-      if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');setCmsResult(t('Save rejected. Review permissions, fields or the latest version; draft retained.','保存被拒绝，请核对权限、字段或最新版本；草稿保留。'));return;}throw Error();}
+      if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');setCmsResult(res.status===409
+        ?(lang==='zh'?'这条内容或保存请求与当前版本冲突。草稿已保留，请核对最新版本。':lang==='id'?'Konten atau permintaan simpan bertentangan dengan versi saat ini. Draf disimpan; periksa versi terbaru.':'This content or save request conflicts with the current version. The draft is retained. Review the latest version.')
+        :t('Save rejected. Review permissions, fields or the latest version; draft retained.','保存被拒绝，请核对权限、字段或最新版本；草稿保留。'));return;}throw Error();}
       await finishCmsSave(operation,data);
     }catch{setCmsResult(t('Save outcome unconfirmed. Query the result before continuing.','保存结果尚未确认，请先查询再继续。'));}finally{setIsSaving(false);}
   };

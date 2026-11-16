@@ -29,6 +29,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
   const [feedback,setFeedback]=useState<Feedback>();
   const [busy,setBusy]=useState(false);
   const [pending,setPending]=useState<string>();
+  const [checkState,setCheckState]=useState<"missing"|"error">();
   const [bankDirty,setBankDirty]=useState(false);
   const inFlight=useRef(false);
   const dirty=!!saved&&enrollmentRuleFields.some(field=>draft[field]!==String(saved[field]));
@@ -76,7 +77,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
       if(!response.ok) {setFeedback('save-error');return;}
       confirm((await response.json()).rules);
     } catch {
-      setPending(requestId);
+      setCheckState(undefined);setPending(requestId);
     } finally {
       setBusy(false);
       inFlight.current=false;
@@ -89,11 +90,13 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
     try {
       const response=await fetch(endpoint+'/results/'+encodeURIComponent(pending),{cache:'no-store'});
       if(response.status===404) {
-        setPending(undefined);
-        setFeedback('save-error');
-      } else if(response.ok) confirm((await response.json()).rules);
-    } catch {
-      // Keep the request ID available for a later result check.
+        setCheckState('missing');
+      }else{
+        if(!response.ok)throw Error();
+        confirm((await response.json()).rules);
+      }
+    }catch{
+      setCheckState('error');
     } finally {
       setBusy(false);
       inFlight.current=false;
@@ -170,7 +173,9 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
       {feedback==='conflict'&&<CrmSaveFeedback state="error" lang={lang}>{t('Another employee updated these rules. Review the saved time limits before applying your draft.','Aturan diperbarui oleh staf lain. Periksa tenggat tersimpan sebelum menyimpan draf.','其他员工已更新报名规则。请核对已保存的期限，再决定是否保存当前草稿。')} <button type="button" className="crm-work-link" onClick={()=>void load(true)}>{t('Review saved rules','Periksa aturan tersimpan','核对已保存规则')}</button></CrmSaveFeedback>}
       {saved&&dirty&&!busy&&!pending&&feedback!== 'conflict'&&<CrmSaveFeedback state={feedback==='save-error'?'error':'dirty'} lang={lang}/>}
       {busy&&<CrmSaveFeedback state="saving" lang={lang}/>}
-      {pending&&!busy&&<CrmSaveFeedback state="unknown" lang={lang}>{t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
+      {pending&&!busy&&<CrmSaveFeedback state="unknown" lang={lang}>{checkState==='missing'?t('No result yet. Your draft is retained.','Hasil belum ditemukan. Draf disimpan.','暂未查到这次操作的结果，草稿已保留。'):
+        checkState==='error'?t('Unable to check the result. Your draft is retained.','Hasil belum dapat diperiksa. Draf disimpan.','暂时无法查询结果，草稿已保留。'):
+        t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
       {feedback==='saved'&&!dirty&&<CrmSaveFeedback state="saved" lang={lang}/>}
     </div>
   </AdminForm>;

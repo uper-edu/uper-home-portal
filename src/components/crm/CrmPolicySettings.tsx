@@ -1,3 +1,5 @@
+import {AdminConfirmation} from '../admin/AdminConfirmation';
+import {AdminFormFeedback} from '../AdminFormLayout';
 import {CrmCourses} from './CrmCourses';
 import {CrmEnrollmentClasses} from './CrmEnrollmentClasses';
 import {CrmEnrollmentRules} from './CrmEnrollmentRules';
@@ -265,6 +267,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [isCurrentlyWorking, setIsCurrentlyWorking] = useState(true);
   // Active section filter or layout mode
   const activeCategory = initialTopic;
+  const pendingTopics=useRef<Partial<Record<PolicyTopic,{submitted:CrmPolicyConfig;failure:PolicySaveError}>>>({});
+  const pendingPolicy=isPolicyTopic(activeCategory)?pendingTopics.current[activeCategory]:undefined;
   const languageIndex = lang === "zh" ? 2 : lang === "id" ? 1 : 0;
   const currentSection = operationSections.find(section=>section.id===activeCategory)!;
   const [showCascadeDiagram, setShowCascadeDiagram] = useState(false);
@@ -288,7 +292,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     : activeCategory==='reactivation' ? durationLabel(formData.reactivation.reactivatedResponse) : '';
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
-  useEffect(() => { setSaveError(null); }, [formData]);
+  useEffect(() => { setSaveError(pendingPolicy?.failure??null); }, [formData]);
   const receivedPolicy = useRef(JSON.stringify(policyConfig));
   useEffect(() => {
     const next = JSON.stringify(policyConfig);
@@ -539,7 +543,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
     }
   };
   const submitPolicy = useCallback(async (replacement?:CrmPolicyConfig) => {
-    if(inFlight.current||!isPolicyTopic(activeCategory))return;
+    if(inFlight.current||!isPolicyTopic(activeCategory)||pendingTopics.current[activeCategory])return;
     const topic=activeCategory,submitted=replacement||formData;
     setSaveSuccess(false);setSaveError(null);setServerTimeErrors({});setShowTimeErrors(true);
     const invalid=policyConfigErrors({...savedPolicy,...topicPatch(submitted,topic)});
@@ -553,32 +557,57 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       if(topic==='assignment'&&includeExisting&&submitted.autoAssignment.enabled){setIncludeExisting(false);setBackfillConfiguration(saved.autoAssignment);}
       setSaveSuccess(true);setTimeout(()=>setSaveSuccess(false),4000);
     }catch(error){
-      const failure=error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown');setSaveError(failure);
+      const failure=error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown');
+      if(failure.code==='policy_topic_unknown')pendingTopics.current[topic]={submitted,failure};
+      setSaveError(failure);
       setServerTimeErrors({startTime:failure.fields['businessHours.startTime'] as any,endTime:failure.fields['businessHours.endTime'] as any});
       if(Object.keys(failure.fields).length)focusConfig(failure.fields);
       else requestAnimationFrame(()=>{saveFeedback.current?.focus({preventScroll:true});saveFeedback.current?.scrollIntoView({block:'nearest'});});
     }finally{inFlight.current=false;setIsSaving(false);}
   },[formData,savedPolicy,activeCategory,focusConfig,includeExisting]);
   const checkSaveResult=async()=>{
-    if(inFlight.current||!isPolicyTopic(activeCategory))return;const topic=activeCategory,submitted=formData;inFlight.current=true;setIsSaving(true);setCheckingResult(true);
-    try{const saved=await readSavedPolicy();if(policyEqual(topicPatch(saved,topic),topicPatch(submitted,topic))){setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));setSaveError(null);setSaveSuccess(true);if(topic==='assignment'&&includeExisting&&saved.autoAssignment.enabled){setIncludeExisting(false);setBackfillConfiguration(saved.autoAssignment);}}else setSaveError(new PolicySaveError('policy_topic_unknown',{},saved));}
-    catch(error){setSaveError(error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown'));}
-    finally{inFlight.current=false;setIsSaving(false);setCheckingResult(false);}
+    if(inFlight.current||!isPolicyTopic(activeCategory))return;
+    const topic=activeCategory,original=pendingTopics.current[topic];
+    if(!original)return;
+    const {submitted}=original;
+    inFlight.current=true;setIsSaving(true);setCheckingResult(true);
+    try{
+      const saved=await readSavedPolicy();
+      if(policyEqual(topicPatch(saved,topic),topicPatch(submitted,topic))){
+        delete pendingTopics.current[topic];
+        setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));
+        setSaveError(null);setSaveSuccess(true);
+        if(topic==='assignment'&&includeExisting&&saved.autoAssignment.enabled){
+          setIncludeExisting(false);setBackfillConfiguration(saved.autoAssignment);
+        }
+      }else{
+        const failure=new PolicySaveError('policy_topic_unknown',{},saved);
+        pendingTopics.current[topic]={submitted,failure};setSaveError(failure);
+      }
+    }catch{
+      const failure=new PolicySaveError('policy_topic_unknown');
+      pendingTopics.current[topic]={submitted,failure};setSaveError(failure);
+    }finally{inFlight.current=false;setIsSaving(false);setCheckingResult(false);}
   };
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     void submitPolicy();
   };
+  const [resetTopic,setResetTopic]=useState<PolicyTopic>();
   const handleReset=useCallback(async()=>{
-    if(inFlight.current||!isPolicyTopic(activeCategory))return;
-    if(!window.confirm(['Restore and save defaults for this topic only? Other topic drafts and existing task deadlines stay unchanged.','Pulihkan dan simpan standar hanya untuk topik ini? Draf topik lain dan tenggat tugas tetap.','仅恢复并保存当前主题的默认值？其他主题草稿及已有任务截止时间保持不变。'][languageIndex]))return;
-    const reset={...formData,...topicPatch(DEFAULT_CRM_POLICY_CONFIG,activeCategory)};setFormData(reset);setIsResetting(true);try{await submitPolicy(reset);}finally{setIsResetting(false);}
-  },[activeCategory,formData,languageIndex,submitPolicy]);
+    if(!inFlight.current&&isPolicyTopic(activeCategory)&&!pendingTopics.current[activeCategory])setResetTopic(activeCategory);
+  },[activeCategory]);
+  const confirmReset=async()=>{
+    if(inFlight.current||resetTopic!==activeCategory)return;
+    const reset={...formData,...topicPatch(DEFAULT_CRM_POLICY_CONFIG,resetTopic)};
+    setFormData(reset);setIsResetting(true);
+    try{await submitPolicy(reset);}finally{setResetTopic(undefined);setIsResetting(false);}
+  };
   const discard=useCallback(()=>{
     if(!isPolicyTopic(activeCategory))return;
     setFormData(current=>({...current,...topicPatch(savedPolicy,activeCategory)}));setSaveError(null);setServerTimeErrors({});setShowTimeErrors(false);setSaveSuccess(false);
   },[activeCategory,savedPolicy,setFormData]);
-  useEffect(()=>{setSaveError(null);setSaveSuccess(false);setShowTimeErrors(false);},[activeCategory]);
+  useEffect(()=>{setResetTopic(undefined);setSaveError(pendingPolicy?.failure??null);setSaveSuccess(false);setShowTimeErrors(false);},[activeCategory]);
   useEffect(() => {
     onActionControlsChange?.({
       isDirty: modifiedFieldsCount > 0,
@@ -1188,7 +1217,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       <div className="crm-ops-content">{activeCategory==='courses'?<CrmCourses lang={lang} isLight={isLight}/>:activeCategory==='enrollment-classes'?<CrmEnrollmentClasses lang={lang} isLight={isLight}/>:activeCategory==='enrollment-rules'?null:<AdminForm lang={lang} noValidate onSubmit={handleSave} className="crm-form-layout w-full mx-auto">
 {!isNotificationTopic(activeCategory) && <AdminRequiredNote lang={lang}/>}
 
-{!isNotificationTopic(activeCategory)&&<header className="admin-edit-header" data-theme={isLight?"light":"dark"}><div className="admin-edit-title"><h2>{currentSection.title[languageIndex]}</h2></div>      <div className="crm-ops-actions"><span role="status">{activeModifiedCount} {['unsaved changes','perubahan belum disimpan','项修改尚未保存'][languageIndex]}</span><button type="submit" disabled={isSaving||isResetting||activeModifiedCount===0}>{checkingResult?['Checking…','Memeriksa…','正在核对…'][languageIndex]:isSaving?['Saving…','Menyimpan…','正在保存…'][languageIndex]:['Save','Simpan','保存'][languageIndex]}</button><details><summary>{['More actions','Tindakan lain','更多操作'][languageIndex]}</summary><div className="admin-save-menu"><button type="button" disabled={isSaving||isResetting} onClick={handleReset}>{['Restore topic defaults','Pulihkan standar topik','恢复本主题默认值'][languageIndex]}</button>{activeModifiedCount>0&&<button type="button" disabled={isSaving||isResetting} onClick={discard}>{['Discard topic edits','Buang perubahan topik','放弃本主题修改'][languageIndex]}</button>}      <details className="crm-ops-tools"><summary>{["Global presets and activation","Preset global dan aktivasi","全局预设与生效说明"][languageIndex]}</summary>
+{!isNotificationTopic(activeCategory)&&<header className="admin-edit-header" data-theme={isLight?"light":"dark"}><div className="admin-edit-title"><h2>{currentSection.title[languageIndex]}</h2></div>      <div className="crm-ops-actions"><span role="status">{activeModifiedCount} {['unsaved changes','perubahan belum disimpan','项修改尚未保存'][languageIndex]}</span><button type="submit" disabled={isSaving||isResetting||!!pendingPolicy||activeModifiedCount===0}>{checkingResult?['Checking…','Memeriksa…','正在核对…'][languageIndex]:isSaving?['Saving…','Menyimpan…','正在保存…'][languageIndex]:['Save','Simpan','保存'][languageIndex]}</button><details><summary>{['More actions','Tindakan lain','更多操作'][languageIndex]}</summary><div className="admin-save-menu"><button type="button" disabled={isSaving||isResetting||!!pendingPolicy} onClick={handleReset}>{['Restore topic defaults','Pulihkan standar topik','恢复本主题默认值'][languageIndex]}</button>{activeModifiedCount>0&&<button type="button" disabled={isSaving||isResetting} onClick={discard}>{['Discard topic edits','Buang perubahan topik','放弃本主题修改'][languageIndex]}</button>}      <details className="crm-ops-tools"><summary>{["Global presets and activation","Preset global dan aktivasi","全局预设与生效说明"][languageIndex]}</summary>
       {/* 1. Header & Live Status Banner */}
       <div
         className={`p-5 rounded-2xl border transition-all ${isLight ? "bg-white border-slate-200/90 shadow-xs" : "bg-slate-900 border-slate-800 shadow-md"}`}
@@ -1334,7 +1363,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       </div>
 
       </details>
-</div></details></div><div ref={saveFeedback} tabIndex={-1}>{saveError&&<div role="alert"><p>{policyMessage(saveError.code,lang)}</p>{saveError.code==='policy_topic_unknown'&&<button type="button" disabled={isSaving} onClick={()=>void checkSaveResult()}>{['Check save result','Periksa hasil simpan','查询保存结果'][languageIndex]}</button>}{saveError.currentPolicy&&isPolicyTopic(activeCategory)&&<details className="policy-conflict-review"><summary>{['Compare saved values','Bandingkan nilai tersimpan','核对最新已保存值'][languageIndex]}</summary><dl>{topicChangeFields(formData,saveError.currentPolicy,activeCategory).map(field=>{const read=(value:any)=>field.split('.').reduce((node,key)=>node?.[key],value);return <div key={field}><dt>{policyFieldLabel(field,lang)}</dt><dd>{['Saved','Tersimpan','已保存'][languageIndex]}: {displayPolicyValue(read(saveError.currentPolicy))} · {['Your draft','Draf Anda','你的草稿'][languageIndex]}: {displayPolicyValue(read(formData))}</dd></div>;})}</dl><button type="button" onClick={()=>{const latest=saveError.currentPolicy!;setPolicyDraft(state=>({...state,base:{...state.base,...topicPatch(latest,activeCategory as PolicyTopic)}}));setSaveError(null);}}>{['Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿'][languageIndex]}</button></details>}{Object.entries(saveError.fields).map(([field,code])=><button key={field} type="button" onClick={()=>focusConfig({[field]:code})}>{policyFieldLabel(field,lang)}: {policyMessage(code,lang)}</button>)}</div>}{saveSuccess&&<p role="status">{policyMessage('policy_topic_saved',lang)}</p>}</div></header>}      <header className="crm-ops-summary" hidden={isNotificationTopic(activeCategory)}><p className="crm-ops-note">{operationGroups[currentSection.group][languageIndex]}</p><p>{currentSection.purpose[languageIndex]}</p>{ruleSnapshot&&<p><strong>{["Current draft","Draf saat ini","当前草稿"][languageIndex]}: </strong>{ruleSnapshot}</p>}
+</div></details></div><div ref={saveFeedback} tabIndex={-1}>{saveError&&<div><AdminFormFeedback lang={lang} state={saveError.code==='policy_topic_unknown'?'unknown':'error'}>{policyMessage(saveError.code,lang)}</AdminFormFeedback>{saveError.code==='policy_topic_unknown'&&<button type="button" disabled={isSaving} onClick={()=>void checkSaveResult()}>{['Check save result','Periksa hasil simpan','查询保存结果'][languageIndex]}</button>}{saveError.currentPolicy&&isPolicyTopic(activeCategory)&&<details className="policy-conflict-review"><summary>{['Compare saved values','Bandingkan nilai tersimpan','核对最新已保存值'][languageIndex]}</summary><dl>{topicChangeFields(formData,saveError.currentPolicy,activeCategory).map(field=>{const read=(value:any)=>field.split('.').reduce((node,key)=>node?.[key],value);return <div key={field}><dt>{policyFieldLabel(field,lang)}</dt><dd>{['Saved','Tersimpan','已保存'][languageIndex]}: {displayPolicyValue(read(saveError.currentPolicy))} · {['Your draft','Draf Anda','你的草稿'][languageIndex]}: {displayPolicyValue(read(formData))}</dd></div>;})}</dl><button type="button" onClick={()=>{const latest=saveError.currentPolicy!;delete pendingTopics.current[activeCategory as PolicyTopic];setPolicyDraft(state=>({...state,base:{...state.base,...topicPatch(latest,activeCategory as PolicyTopic)}}));setSaveError(null);}}>{['Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿'][languageIndex]}</button></details>}{Object.entries(saveError.fields).map(([field,code])=><button key={field} type="button" onClick={()=>focusConfig({[field]:code})}>{policyFieldLabel(field,lang)}: {policyMessage(code,lang)}</button>)}</div>}{saveSuccess&&<AdminFormFeedback lang={lang} state="saved">{policyMessage('policy_topic_saved',lang)}</AdminFormFeedback>}</div></header>}      <header className="crm-ops-summary" hidden={isNotificationTopic(activeCategory)}><p className="crm-ops-note">{operationGroups[currentSection.group][languageIndex]}</p><p>{currentSection.purpose[languageIndex]}</p>{ruleSnapshot&&<p><strong>{["Current draft","Draf saat ini","当前草稿"][languageIndex]}: </strong>{ruleSnapshot}</p>}
 
 </header>
 
@@ -2024,6 +2053,10 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
           </div>
         )}
     </div>
-    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm>}<div hidden={activeCategory!=='enrollment-rules'}><CrmEnrollmentRules lang={lang} isLight={isLight} active={activeCategory==='enrollment-rules'} onDraftChange={onEnrollmentRulesDraftChange}/></div><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&activeCategory!=='notification-channels'&&ruleExplanation}</div></AdminTopicFrame>{backfillConfiguration&&<CrmAssignmentBackfill configuration={backfillConfiguration} lang={lang} isLight={isLight} onClose={()=>setBackfillConfiguration(null)}/>}</div>
+    {!isNotificationTopic(activeCategory)&&ruleExplanation}</AdminForm>}<div hidden={activeCategory!=='enrollment-rules'}><CrmEnrollmentRules lang={lang} isLight={isLight} active={activeCategory==='enrollment-rules'} onDraftChange={onEnrollmentRulesDraftChange}/></div><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&activeCategory!=='notification-channels'&&ruleExplanation}</div></AdminTopicFrame>{resetTopic===activeCategory&&<AdminConfirmation light={isLight} busy={isResetting} danger
+ title={['Restore defaults for this topic','Pulihkan standar topik ini','恢复本主题默认值'][languageIndex]}
+ description={<>{currentSection.title[languageIndex]} · {['Only this topic is restored and saved. Other drafts and task deadlines stay unchanged.','Hanya topik ini yang dipulihkan dan disimpan. Draf lain dan tenggat tugas tetap.','只恢复并保存当前主题。其他草稿和任务期限保持原样。'][languageIndex]}</>}
+ cancelLabel={['Cancel','Batal','取消'][languageIndex]} confirmLabel={['Restore and save','Pulihkan dan simpan','恢复并保存'][languageIndex]}
+ onCancel={()=>setResetTopic(undefined)} onConfirm={()=>void confirmReset()}/>}{backfillConfiguration&&<CrmAssignmentBackfill configuration={backfillConfiguration} lang={lang} isLight={isLight} onClose={()=>setBackfillConfiguration(null)}/>}</div>
   );
 };

@@ -1,3 +1,4 @@
+import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
 import {AdminSearchField} from '../components/admin/AdminSearchField';
@@ -117,6 +118,7 @@ export function AccessWorkspace({
     [impact, setImpact] = useState<any>(null),
     [password, setPassword] = useState(""),
     [dirty, setDirty] = useState(false);
+  const [sensitiveAction,setSensitiveAction]=useState<"sessions"|"password">();
   const panel = useRef<HTMLDialogElement>(null);
   const can = (permission: string) => employee.permissions.includes(permission);
   useEffect(() => {setNotice("");setLarkValidation("");}, [lang]);
@@ -124,6 +126,20 @@ export function AccessWorkspace({
     body && !path.endsWith("/preview")
       ? managementRequest(employee.id, "/api/admin/access" + path, body)
       : apiRequest(path, body);
+  const submitSensitiveAction=async()=>{
+    if(!sensitiveAction||busy||!user?.id||!can('access.sessions')||!why.trim()||
+      (sensitiveAction==='password'&&password.length<8))return;
+    const action=sensitiveAction;
+    setBusy(true);setErr('');
+    try{
+      await api('/users/'+user.id+'/'+action,action==='sessions'?{reason:why}:
+        {temporaryPassword:password,reason:why,revision:user.revision});
+      if(action==='password'){setPassword('');setUser({...user,revision:user.revision+1});}
+      setNotice(action==='sessions'?t('Sessions revoked.','Sesi dicabut.','会话已撤销。'):
+        t('Password reset; sessions revoked.','Kata sandi direset; sesi dicabut.','密码已重置，会话已撤销。'));
+    }catch(e){setErr((e as Error).message);}
+    finally{setSensitiveAction(undefined);setBusy(false);}
+  };
   const load = async () => {
     setErr("");
     try {
@@ -718,58 +734,10 @@ export function AccessWorkspace({
           footer={<>
               {user?.id && can("access.sessions") && (
                 <>
-                  <button
-                    disabled={busy || !why.trim()}
-                    onClick={async () => {
-                      setBusy(true);
-                      setErr("");
-                      try {
-                        await api("/users/" + user.id + "/sessions", {
-                          reason: why,
-                        });
-                        setNotice(
-                          t(
-                            "Sessions revoked.",
-                            "Sesi dicabut.",
-                            "会话已撤销。",
-                          ),
-                        );
-                      } catch (e) {
-                        setErr((e as Error).message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
+                  <button type="button" disabled={busy||!why.trim()} onClick={()=>setSensitiveAction('sessions')}>
                     {t("Revoke sessions", "Cabut sesi", "撤销会话")}
                   </button>
-                  <button
-                    disabled={busy || password.length < 8 || !why.trim()}
-                    onClick={async () => {
-                      setBusy(true);
-                      setErr("");
-                      try {
-                        await api("/users/" + user.id + "/password", {
-                          temporaryPassword: password,
-                          reason: why,
-                          revision: user.revision,
-                        });
-                        setPassword("");
-                        setUser({ ...user, revision: user.revision + 1 });
-                        setNotice(
-                          t(
-                            "Password reset; sessions revoked.",
-                            "Kata sandi direset; sesi dicabut.",
-                            "密码已重置，会话已撤销。",
-                          ),
-                        );
-                      } catch (e) {
-                        setErr((e as Error).message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
+                  <button type="button" disabled={busy||password.length<8||!why.trim()} onClick={()=>setSensitiveAction('password')}>
                     {t("Reset password", "Reset kata sandi", "重置密码")}
                   </button>
                 </>
@@ -798,6 +766,13 @@ export function AccessWorkspace({
               keepLabel={t("Keep editing", "Lanjutkan mengedit", "继续编辑")}
               discardLabel={t("Discard draft and close", "Buang draf dan tutup", "放弃草稿并关闭")}
               onKeep={()=>setDiscarding(false)} onDiscard={resetEditor} />}
+            {sensitiveAction&&user?.id&&<AdminConfirmation light={isLight} busy={busy} danger
+              title={sensitiveAction==='sessions'?t('Revoke sessions','Cabut sesi','撤销会话'):t('Reset password','Reset kata sandi','重置密码')}
+              description={<>{user.displayName||user.loginId} · {sensitiveAction==='sessions'
+                ? t('The employee will need to sign in again on all devices.','Staf perlu masuk lagi di semua perangkat.','该员工需要在所有设备上重新登录。')
+                : t('This revokes active sessions. The employee must change the temporary password at the next login.','Tindakan ini mencabut sesi aktif. Staf harus mengubah kata sandi sementara saat masuk berikutnya.','现有会话将失效，员工下次登录时必须修改临时密码。')}</>}
+              cancelLabel={t('Cancel','Batal','取消')} confirmLabel={t('Confirm','Konfirmasi','确认')}
+              onCancel={()=>setSensitiveAction(undefined)} onConfirm={()=>void submitSensitiveAction()}/>}
             <AccessOperationStatus
               actor={employee.id}
               lang={lang}

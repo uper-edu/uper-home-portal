@@ -3,7 +3,7 @@ import {profileAnalyticsReceipt} from '../../utils/analyticsReceipts';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
 import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
 import {CrmFormSection} from './CrmFormLayout';
-import {AdminFormActions} from '../AdminFormLayout';
+import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
 import { CrmOperationLayer } from "./CrmOperationLayer";
 import { CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -632,7 +632,7 @@ export function CrmProfileEditor({
         </h3>
         {editAction('needs','人工纠正学习需求')}
       </header>
-      {success && <p role="status">{success}</p>}
+      {success && <AdminFormFeedback lang={lang} state="saved" placement="floating">{success}</AdminFormFeedback>}
       <CrmProfileSaveResult results={results} />
       {(lead.reportedLevel||visibleProfileNeedsGroups(lead).length>0)&&<section className="crm-insights-group" aria-label={ui('学习需求与偏好')}><h4>{ui('学习需求与偏好')}</h4><div className="crm-profile-needs-group">
         <dl>
@@ -756,7 +756,7 @@ export function CrmProfileEditor({
                 />
               </AdminField>
               </CrmFormSection>
-              {error && <p role="alert">{error}</p>}
+              {error && <AdminFormFeedback lang={lang} state={unknown?"unknown":"error"}>{error}</AdminFormFeedback>}
             </div>
             <AdminFormActions className="crm-editor-actions">
               <button

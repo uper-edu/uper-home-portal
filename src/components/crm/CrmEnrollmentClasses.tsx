@@ -53,13 +53,19 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
   const [discard, setDiscard] = useState(false);
   const [closing, setClosing] = useState<{id:string;requestId:string}>();
   const [pending, setPending] = useState<string>();
+  const [checkState,setCheckState]=useState<'missing'|'error'>();
+  const checkMessage=checkState==='missing'
+    ? t(['No result yet. Your draft is retained.','Hasil belum ditemukan. Draf disimpan.','暂未查到这次操作的结果，草稿已保留。'])
+    : checkState==='error'
+      ? t(['Unable to check the result. Your draft is retained.','Hasil belum dapat diperiksa. Draf disimpan.','暂时无法查询结果，草稿已保留。'])
+      : undefined;
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const endpoint = '/api/crm/enrollment/classes';
 
   async function load() {
-    setReadState('loading');
+    setReadState(previous=>previous==='ready'?'ready':'loading');
     try{
       const result=await fetch(endpoint,{cache:'no-store'});
       if(result.status===401||result.status===403){setCatalog(undefined);setReadState('denied');return;}
@@ -136,16 +142,19 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
       if (receipt.classId !== draft.id) throw Error();
       await complete();
     } catch {
-      setPending(requestId);
+      setCheckState(undefined);setPending(requestId);
     } finally { setBusy(false); }
   }
   async function check() {
     if (!pending || busy) return;
     setBusy(true);
     try {
-      const result = await fetch(endpoint + '/results/' + encodeURIComponent(pending), { cache: 'no-store' });
-      if (result.ok && (await result.json()).classId === draft?.id) await complete();
-    } finally { setBusy(false); }
+      const result=await fetch(endpoint+'/results/'+encodeURIComponent(pending),{cache:'no-store'});
+      if(result.status===404){setCheckState('missing');return;}
+      if(!result.ok||(await result.json()).classId!==draft?.id)throw Error();
+      await complete();
+    }catch{setCheckState('error');}
+    finally{setBusy(false);}
   }
   async function completeInsertion() {
     setPending(undefined);
@@ -175,7 +184,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
       }
       if(result.classId!==insertion.row.id||!result.id) throw Error();
       await completeInsertion();
-    }catch{setPending(insertion.requestId);}
+    }catch{setCheckState(undefined);setPending(insertion.requestId);}
     finally{setBusy(false);}
   }
   async function checkInsertion() {
@@ -183,11 +192,13 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
     setBusy(true);
     try{
       const response=await fetch(endpoint+'/results/'+encodeURIComponent(pending),{cache:'no-store'});
-      if(response.ok){
-        const result=await response.json();
-        if(result.operationKind==='enrollment.order.insert'&&result.classId===insertion.row.id&&result.id) await completeInsertion();
-      }
-    }finally{setBusy(false);}
+      if(response.status===404){setCheckState('missing');return;}
+      if(!response.ok)throw Error();
+      const result=await response.json();
+      if(result.operationKind!=='enrollment.order.insert'||result.classId!==insertion.row.id||!result.id)throw Error();
+      await completeInsertion();
+    }catch{setCheckState('error');}
+    finally{setBusy(false);}
   }
   const published = t(['Published', 'Diterbitkan', '已发布']);
   const unpublished = t(['Draft', 'Draf', '草稿']);
@@ -243,7 +254,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
       <AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onSubmit={event => { event.preventDefault(); void save(); }}>
         <div className="crm-editor-scroll">
           {error && <p role="alert">{error}</p>}
-          {pending && <CrmSaveFeedback state="unknown" lang={lang}/>}
+          {pending && <CrmSaveFeedback state={busy?"saving":"unknown"} lang={lang}>{!busy&&checkMessage}</CrmSaveFeedback>}
           <AdminField required>{t(['Course', 'Kursus', '关联课程'])}<CrmSingleSelect lang={lang} isLight={isLight}
             label={t(['Course', 'Kursus', '关联课程'])} value={draft.config.courseId} disabled={busy || !!pending}
             options={(catalog?.courses || []).map(course => ({ value: course.id, label: course.name, disabled: draft.state === 'published' && !course.active }))}
@@ -288,7 +299,7 @@ export function CrmEnrollmentClasses({ lang, isLight }: { lang: CrmLanguage; isL
             'Konfirmasikan biaya dengan siswa sebelum memesan kursi. Batas pembayaran mengikuti aturan pendaftaran saat Anda menyimpan.',
             '分配席位前请先与学员确认应付金额。付款和提交凭证的截止时间按保存时生效的报名规则计算。'])}</p>
           {error&&<p role="alert">{error}</p>}
-          {pending&&<CrmSaveFeedback state="unknown" lang={lang}/>}
+          {pending&&<CrmSaveFeedback state={busy?"saving":"unknown"} lang={lang}>{!busy&&checkMessage}</CrmSaveFeedback>}
           <AdminField required>{t(['Learner name','Nama siswa','学员姓名'])}<input name="name" required maxLength={120} disabled={busy||!!pending}/></AdminField>
           <AdminField required>{t(['Email','Email','电子邮箱'])}<input name="email" type="email" required maxLength={254} disabled={busy||!!pending}/></AdminField>
           <AdminField required>{t(['Phone with country code','Nomor telepon dengan kode negara','手机号（含国家区号）'])}
