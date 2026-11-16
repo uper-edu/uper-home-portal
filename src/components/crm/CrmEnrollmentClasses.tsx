@@ -1,10 +1,12 @@
+import {RefreshCw} from 'lucide-react';
 import {AdminEditor} from '../admin/AdminEditor';
+import {CrmPageAction} from './CrmPageAction';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminFormActions, AdminFormGrid, AdminFormSection } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
@@ -67,17 +69,29 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
   const [error, setError] = useState('');
   const endpoint = '/api/crm/enrollment/classes';
 
+  const readRequest=useRef<AbortController|null>(null);
   async function load() {
-    setReadState(previous=>previous==='ready'?'ready':'loading');
+    readRequest.current?.abort();
+    const controller=new AbortController();
+    readRequest.current=controller;
+    const {signal}=controller;
+    setReadState('loading');
     try{
-      const result=await fetch(endpoint,{cache:'no-store'});
+      const result=await fetch(endpoint,{cache:'no-store',signal});
+      if(signal.aborted)return;
       if(result.status===401||result.status===403){setCatalog(undefined);setReadState('denied');return;}
       if(!result.ok)throw Error();
-      setCatalog(await result.json());setReadState('ready');
-    }catch{setReadState('error');throw Error();}
+      const data=await result.json();
+      if(signal.aborted)return;
+      setCatalog(data);setReadState('ready');
+    }catch(cause){
+      if(signal.aborted)return;
+      setReadState('error');
+      throw cause;
+    }
   }
   const refresh=()=>void load().catch(()=>{});
-  useEffect(refresh,[]);
+  useEffect(()=>{refresh();return ()=>readRequest.current?.abort();},[]);
   useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[onDraftChange,dirty,busy,pending]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
   useEffect(() => {
@@ -208,6 +222,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
   const published = t(['Published', 'Diterbitkan', '已发布']);
   const unpublished = t(['Draft', 'Draf', '草稿']);
   const title = t(['Enrollment classes', 'Kelas pendaftaran', '报名班次']);
+  const listState=readState==='loading'&&catalog?'ready':readState;
   const query=search.trim().toLowerCase();
   const visibleClasses=catalog?.classes.filter(row=>target?row.id===target:
     (classState==='all'||row.state===classState)&&(!query||[row.id,row.level,row.schedule,row.firstLesson]
@@ -238,23 +253,25 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
       <h2>{title}</h2>
       <div className="crm-ops-actions">
         {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
-        <button type="button" className="crm-work-button" onClick={refresh}>{t(['Refresh', 'Segarkan', '刷新'])}</button>
+        <CrmPageAction icon={RefreshCw} label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
         <button type="button" className="crm-work-button" data-primary disabled={readState!=='ready'} onClick={() => edit()}>{t(['Create class', 'Buat kelas', '创建班次'])}</button>
       </div>
     </header>
     {!!error && !draft && !insertion && <p role="alert">{error}</p>}
     {saved && <CrmSaveFeedback state="saved" lang={lang}/>}
-    {!target&&readState==='ready'&&<div className="crm-class-config-filters">
+    {!target&&catalog&&<div className="crm-class-config-filters">
       <AdminSearchField label={t(['Search classes by ID, level or schedule','Cari kelas berdasarkan ID, level atau jadwal','搜索班次 ID、级别或课表'])}
         placeholder={t(['Class ID, level or schedule','ID kelas, level atau jadwal','班次 ID、级别或课表'])}
         value={search} onChange={setSearch}/>
       <CrmSingleSelect label={t(['Class status','Status kelas','班次状态'])} lang={lang} isLight={isLight}
         value={classState} options={options} onChange={setClassState}/>
     </div>}
-    {(readState!=='ready'||!visibleClasses?.length)&&<AdminListState lang={lang}
-      state={readState==='ready'?'empty':readState}
-      message={readState==='ready'&&target?t(['Class not found.','Kelas tidak ditemukan.','班次不存在。']):undefined} onRetry={refresh}/>}
-    {readState==='ready'&&!!visibleClasses?.length&&<AdminListTable label={title} className="crm-course-list" headers={[
+    {(listState!=='ready'||!visibleClasses?.length)&&<AdminListState lang={lang}
+      state={listState==='ready'?'empty':listState}
+      message={listState==='ready'&&target?t(['Class not found.','Kelas tidak ditemukan.','班次不存在。'])
+        :listState==='error'&&catalog?t(['Refresh failed. Showing the last loaded classes.','Gagal menyegarkan. Kelas yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的班次。']):undefined}
+      onRetry={refresh}/>}
+    {!!visibleClasses?.length&&<AdminListTable label={title} className="crm-course-list" busy={readState==='loading'} headers={[
       t(['Level','Level','级别']),t(['Schedule','Jadwal','课表']),{label:t(['Tuition','Biaya','学费']),numeric:true},
       t(['Status','Status','状态']),t(['Actions','Tindakan','操作']),
     ]}>
@@ -263,11 +280,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
         <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus tone={row.opened||row.state==='published'?'success':'neutral'}>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</AdminStatus></td>
         <td>{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
-          {row.state!=='cancelled' && <AdminRowAction onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</AdminRowAction>}
-          {row.canInsert&&<AdminRowAction onClick={()=>{
+          {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</AdminRowAction>}
+          {row.canInsert&&<AdminRowAction disabled={readState==='error'} onClick={()=>{
             setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
           }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</AdminRowAction>}
-          {row.state==='published'&&!row.opened&&<AdminRowAction onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
+          {row.state==='published'&&!row.opened&&<AdminRowAction disabled={readState==='error'} onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
             {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</AdminRowAction>}</td>
       </tr>)}</AdminListTable>}
     {draft&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"

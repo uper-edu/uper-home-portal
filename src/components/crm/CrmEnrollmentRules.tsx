@@ -1,4 +1,5 @@
 import {useEffect,useId,useRef,useState} from 'react';
+import {AdminListState} from '../admin/AdminList';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormActions,AdminFormSection} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
@@ -7,7 +8,7 @@ import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentBusinessDayLimit,enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
 
-type Feedback='saved'|'load-error'|'save-error'|'conflict';
+type Feedback='saved'|'load-error'|'load-denied'|'save-error'|'conflict';
 const endpoint='/api/crm/enrollment/rules';
 const asDraft=(rules:typeof enrollmentRuleDefaults)=>Object.fromEntries(
   enrollmentRuleFields.map(key=>[key,String(rules[key])]),
@@ -23,10 +24,12 @@ const emailRuleLabels:Record<typeof enrollmentEmailRuleFields[number],readonly [
 export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:CrmLanguage;isLight:boolean;active:boolean;onDraftChange:(dirty:boolean)=>void}) {
   const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
   const fieldHelp=useId();
+  const heading=useRef<HTMLHeadingElement>(null);
   const [saved,setSaved]=useState<EnrollmentRules>();
   const [draft,setDraft]=useState(()=>asDraft(enrollmentRuleDefaults));
   const [showSaved,setShowSaved]=useState(false);
   const [feedback,setFeedback]=useState<Feedback>();
+  const [readAttempt,setReadAttempt]=useState(0);
   const [busy,setBusy]=useState(false);
   const [pending,setPending]=useState<string>();
   const [checkState,setCheckState]=useState<"missing"|"error">();
@@ -39,8 +42,11 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
   async function load(keepDraft=false,signal?:AbortSignal) {
     try {
       const response=await fetch(endpoint,{cache:'no-store',signal});
+      if(signal?.aborted)return;
+      if(!keepDraft&&(response.status===401||response.status===403)){setFeedback('load-denied');return;}
       if(!response.ok) throw Error();
       const rules:EnrollmentRules=await response.json();
+      if(signal?.aborted)return;
       setSaved(rules);
       if(!keepDraft) setDraft(asDraft(rules));
       setShowSaved(keepDraft);
@@ -54,7 +60,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
     const controller=new AbortController();
     void load(false,controller.signal);
     return ()=>controller.abort();
-  },[active,saved]);
+  },[active,saved,readAttempt]);
 
   function confirm(rules:EnrollmentRules) {
     setSaved(rules);
@@ -108,7 +114,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
     onSubmit={(event:React.FormEvent)=>{event.preventDefault();void save();}}>
     <header className="admin-edit-header" data-theme={isLight?'light':'dark'}>
       <div className="admin-edit-title">
-        <h2>{t('Enrollment rules','Aturan pendaftaran','报名规则')}{saved&&<AdminRequiredNote inline lang={lang}/>}</h2>
+        <h2 ref={heading} tabIndex={-1}>{t('Enrollment rules','Aturan pendaftaran','报名规则')}{saved&&<AdminRequiredNote inline lang={lang}/>}</h2>
       </div>
       {saved&&<AdminFormActions className="admin-edit-actions">
         <button type="submit" className="crm-work-button" data-primary disabled={!dirty||controlsDisabled||feedback==='conflict'}>
@@ -121,8 +127,10 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
         'Applies to all classes. Deadlines already recorded stay in effect.',
         'Berlaku untuk semua kelas. Tenggat yang sudah tercatat tetap berlaku.',
         '适用于所有班次。已生成的截止时间按原记录执行。')}</p>
-      {!saved&&feedback!=='load-error'&&<p role="status">{t('Loading…','Memuat…','正在加载…')}</p>}
-      {feedback==='load-error'&&<p role="alert">{t('Could not load enrollment rules.','Aturan pendaftaran gagal dimuat.','无法读取报名规则。')} <button type="button" className="crm-work-link" onClick={()=>void load()}>{t('Retry','Coba lagi','重试')}</button></p>}
+      {!saved&&<AdminListState lang={lang}
+        state={feedback==='load-error'?'error':feedback==='load-denied'?'denied':'loading'}
+        message={feedback==='load-error'?t('Could not load enrollment rules.','Aturan pendaftaran gagal dimuat.','无法读取报名规则。'):undefined}
+        onRetry={()=>{heading.current?.focus({preventScroll:true});setFeedback(undefined);setReadAttempt(value=>value+1);}}/>}
       {saved&&showSaved&&<div role="status">
         <strong>{t('Latest saved values','Nilai terakhir yang disimpan','最新已保存值')}</strong>
         <ul>

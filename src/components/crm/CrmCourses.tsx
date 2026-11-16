@@ -1,3 +1,5 @@
+import {RefreshCw} from 'lucide-react';
+import {CrmPageAction} from './CrmPageAction';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminStatus} from '../AdminStatus';
@@ -16,20 +18,33 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
  const [data,setData]=useState<any>(null),[form,setForm]=useState<any>(null),[error,setError]=useState(''),[state,setState]=useState(''),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[latest,setLatest]=useState<any>(null);
  const pending=useRef<any>(null),gate=useRef(false);const busy=['saving','checking'].includes(state),unknown=state==='unknown';
  const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
+ const readRequest=useRef<AbortController|null>(null);
  const title=t('Courses & pricing','Kursus & harga','课程与报价');
+ const listState=readState==='loading'&&data?'ready':readState;
  const money=(n:number)=>formatCurrency(n,lang);
  const load=async()=>{
+  readRequest.current?.abort();
+  const controller=new AbortController();
+  readRequest.current=controller;
+  const {signal}=controller;
   setReadState('loading');
   try{
-   const r=await fetch('/api/crm/courses?stats=1',{cache:'no-store'});
+   const r=await fetch('/api/crm/courses?stats=1',{cache:'no-store',signal});
+   if(signal.aborted)return;
    if(r.status===401||r.status===403){setData(null);setReadState('denied');return;}
    if(!r.ok)throw Error();
-   const d=await r.json();setData(d);setReadState('ready');
+   const d=await r.json();
+   if(signal.aborted)return;
+   setData(d);setReadState('ready');
    try{const id=sessionStorage.getItem('uper_course_pending:'+d.actorId);if(id&&!pending.current){pending.current={requestId:id};setState('unknown');}}catch{}
-  }catch{setReadState('error');throw Error();}
+  }catch(cause){
+   if(signal.aborted)return;
+   setReadState('error');
+   throw cause;
+  }
  };
  const refresh=()=>void load().catch(()=>{});
- useEffect(refresh,[]);
+ useEffect(()=>{refresh();return ()=>readRequest.current?.abort();},[]);
  useEffect(()=>{onDraftChange(dirty||unknown||busy);},[onDraftChange,dirty,unknown,busy]);
  useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty||unknown){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty,unknown]);
@@ -40,19 +55,21 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
  try{const r=await fetch('/api/crm/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok){if(r.status>=500){setState('unknown');return;}setState('failed');setError(courseError(d.error,lang));if(r.status===409){try{const fresh=await fetch('/api/crm/courses',{cache:'no-store'});if(fresh.ok)setLatest((await fresh.json()).courses.find((c:any)=>c.id===b.id));}catch{}}pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}return;}if(d.courseId!==b.id||d.operationKind!=='course')throw Error('unconfirmed');setDirty(false);setForm(null);pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}setState('saved');await load().catch(()=>setError(t('Saved; refresh to review.','Disimpan; segarkan untuk memeriksa.','已保存，请刷新核对。')));}catch{setState('unknown');}finally{gate.current=false;}};
  const query=async()=>{if(!pending.current||gate.current)return;gate.current=true;setState('checking');try{const r=await fetch('/api/crm/courses/results/'+pending.current.requestId,{cache:'no-store'});if(!r.ok)throw Error();setDirty(false);setForm(null);pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}setState('saved');await load().catch(()=>setError(t('Saved; refresh to review.','Disimpan; segarkan untuk memeriksa.','已保存，请刷新核对。')));}catch{setState('unknown');setError(t('Save result is not confirmed. Check again before resubmitting.','Hasil simpan belum pasti. Periksa lagi sebelum mengirim ulang.','保存结果尚未确认，请继续查询，不要重复提交。'));}finally{gate.current=false;}};
  return <div className="crm-course-catalog">
- <header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2><p className="crm-work-muted">{t('Publish course prices and sales discount allowances. Statistics follow your customer access.','Terbitkan harga dan batas diskon sales. Statistik mengikuti akses pelanggan.','维护在售课程、标准价和销售优惠上限；统计遵循当前客户查看范围。')}</p></div><div className="crm-ops-actions"><button type="button" className="crm-work-button" onClick={refresh}>{t('Refresh','Segarkan','刷新')}</button>{readState==='ready'&&data?.canManage&&<button type="button" className="crm-work-button" data-primary disabled={unknown||busy} onClick={()=>edit()}>{t('Create course','Buat kursus','创建课程')}</button>}</div></header>
+ <header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2><p className="crm-work-muted">{t('Publish course prices and sales discount allowances. Statistics follow your customer access.','Terbitkan harga dan batas diskon sales. Statistik mengikuti akses pelanggan.','维护在售课程、标准价和销售优惠上限；统计遵循当前客户查看范围。')}</p></div><div className="crm-ops-actions"><CrmPageAction icon={RefreshCw} label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>{data?.canManage&&<button type="button" className="crm-work-button" data-primary disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}>{t('Create course','Buat kursus','创建课程')}</button>}</div></header>
  {!form&&unknown&&<div><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" className="crm-work-button" onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></div>}{!form&&state==='saved'&&<CrmSaveFeedback state="saved" lang={lang}/ >}{!form&&error&&<p role="alert">{error}</p>}
- {(readState!=='ready'||!data?.courses.length)&&<AdminListState lang={lang}
-   state={readState==='ready'?'empty':readState}
-   message={readState==='ready'?t('No courses yet. Create and publish a course before confirming enrollment.','Belum ada kursus. Buat dan terbitkan sebelum konfirmasi pendaftaran.','暂无课程。创建并发布课程后，销售才能确认报名。'):undefined}
+ {(listState!=='ready'||!data?.courses.length)&&<AdminListState lang={lang}
+   state={listState==='ready'?'empty':listState}
+   message={listState==='ready'
+    ?t('No courses yet. Create and publish a course before confirming enrollment.','Belum ada kursus. Buat dan terbitkan sebelum konfirmasi pendaftaran.','暂无课程。创建并发布课程后，销售才能确认报名。')
+    :listState==='error'&&data?t('Refresh failed. Showing the last loaded courses.','Gagal menyegarkan. Kursus yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的课程。'):undefined}
    onRetry={refresh}/>}
- {readState==='ready'&&data?.courses.length>0&&<AdminListTable label={title} className="crm-course-list" headers={[
+ {data?.courses.length>0&&<AdminListTable label={title} className="crm-course-list" busy={readState==='loading'} headers={[
    t('Course','Kursus','课程'),{label:t('Standard price','Harga standar','标准价'),numeric:true},
    {label:t('Enrollments','Pendaftaran','报名人数'),numeric:true},
    {label:t('Paying customers','Pelanggan membayar','净付款人数'),numeric:true},
    {label:t('Paid in full','Lunas','已收齐人数'),numeric:true},
    {label:t('Net receipts','Penerimaan neto','净收款'),numeric:true},t('Actions','Tindakan','操作'),
- ]}>{data.courses.map((c:any)=><tr key={c.id}><td><strong>{c.name}</strong><p>{c.sessions} {t('sessions','pertemuan','课时')} · <AdminStatus tone={c.active?'success':'neutral'}>{c.active?t('Published','Diterbitkan','已发布'):t('Not on sale','Tidak dijual','未在售')}</AdminStatus></p></td><td className="crm-list-number">{money(c.price)}<p>{t('Max discount','Diskon maks.','优惠上限')} {c.maxDiscountBps/100}%{c.maxDiscountAmount!==null?' / '+money(c.maxDiscountAmount):''}</p></td><td className="crm-list-number">{c.stats.enrolled}{c.stats.voided>0&&<p>{t('Voided','Dibatalkan','已撤销')} {c.stats.voided}</p>}</td><td className="crm-list-number">{c.stats.paying}</td><td className="crm-list-number">{c.stats.paid}</td><td className="crm-list-number">{money(c.stats.net)}<p>{t('Receipts','Penerimaan','收款')} {money(c.stats.received)} · {t('Refunds','Pengembalian','退款')} {money(c.stats.refunded)}</p>{c.stats.pending>0&&<p>{t('Pending verification','Menunggu verifikasi','待核验')} {c.stats.pending}</p>}</td><td>{data.canManage&&<AdminRowAction disabled={unknown||busy} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>}</td></tr>)}</AdminListTable>}
+ ]}>{data.courses.map((c:any)=><tr key={c.id}><td><strong>{c.name}</strong><p>{c.sessions} {t('sessions','pertemuan','课时')} · <AdminStatus tone={c.active?'success':'neutral'}>{c.active?t('Published','Diterbitkan','已发布'):t('Not on sale','Tidak dijual','未在售')}</AdminStatus></p></td><td className="crm-list-number">{money(c.price)}<p>{t('Max discount','Diskon maks.','优惠上限')} {c.maxDiscountBps/100}%{c.maxDiscountAmount!==null?' / '+money(c.maxDiscountAmount):''}</p></td><td className="crm-list-number">{c.stats.enrolled}{c.stats.voided>0&&<p>{t('Voided','Dibatalkan','已撤销')} {c.stats.voided}</p>}</td><td className="crm-list-number">{c.stats.paying}</td><td className="crm-list-number">{c.stats.paid}</td><td className="crm-list-number">{money(c.stats.net)}<p>{t('Receipts','Penerimaan','收款')} {money(c.stats.received)} · {t('Refunds','Pengembalian','退款')} {money(c.stats.refunded)}</p>{c.stats.pending>0&&<p>{t('Pending verification','Menunggu verifikasi','待核验')} {c.stats.pending}</p>}</td><td>{data.canManage&&<AdminRowAction disabled={readState!=='ready'||unknown||busy} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>}</td></tr>)}</AdminListTable>}
  {form&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
   title={form.revision?t('Edit course','Edit kursus','编辑课程'):t('Create course','Buat kursus','创建课程')}
   lang={lang} light={isLight} busy={busy} onClose={close} onSubmit={save}

@@ -341,8 +341,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
         {scope.operations&&<CrmPageAction icon={Settings}
           label={t(['课程与班次设置','Course and class settings','Pengaturan kursus dan kelas'])}
           onClick={()=>onNavigate(enrollmentSettingsPath('courses',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
-        {canRefresh&&<button type="button" className="crm-work-button" disabled={loading} onClick={()=>setRequestVersion(v=>v+1)}>
-          <RefreshCw size={15} aria-hidden="true"/>{refreshLabel}</button>}
+        {canRefresh&&<CrmPageAction icon={RefreshCw} label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
       </div>}
     </header>}
     {!id&&allowed&&canSupport&&<CrmContentNav label={title} onNavigate={onNavigate} items={[
