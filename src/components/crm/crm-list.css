@@ -9,5 +9,3 @@
 :is(.crm-list-table,.crm-list-filters,.crm-list-views) :is(a,button,input):focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
 .crm-list-meta{font-size:13px;color:var(--admin-muted);margin:0}
 @media(max-width:600px){.crm-list-search{flex-basis:100%}.crm-list-table :is(.crm-list-record,.crm-list-action){min-height:44px}}
-
-.crm-list-table .crm-payment-status[data-tone=danger]{color:var(--admin-danger);background:var(--admin-danger-bg);border-color:var(--admin-danger-border)}

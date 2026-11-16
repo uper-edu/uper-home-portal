@@ -51,7 +51,7 @@ import { CrmPageIdentity } from "../components/crm/CrmPageIdentity";
 import { CrmPageAction } from "../components/crm/CrmPageAction";
 import {leadDetailTab,leadDetailUrl} from "../utils/crmDetailNavigation";
 import {CrmDetailActions,CrmRecordNavigation,CrmRecordTitle} from "../components/crm/CrmRecordWorkspace";
-import {CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
+import {CrmContentNav,CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
 import {CrmFollowupContext} from "../components/crm/CrmFollowupContext";
 import { CrmDisclosure } from "../components/crm/CrmDisclosure";
 import {CrmTrustPanel,CrmStageEditor} from "../components/crm/CrmTrustPanel";
@@ -210,6 +210,11 @@ function crmOperationsInitialTopic(canReadNotifications:boolean):OperationSectio
   if(isCourseTopic(topic)||(canReadNotifications&&topic==="notification-jobs")) return topic;
 }
 
+function isEnrollmentPaymentView(params:URLSearchParams){
+  return params.get('paymentView')==='enrollment'||params.has('enrollmentOrder');
+}
+const customerPaymentFilterKeys=['paymentState','paymentKind','paymentSearch','paymentPage'];
+
 function CrmWorkspace({
   employee,
   lang,
@@ -227,16 +232,10 @@ function CrmWorkspace({
   const [rulesDirty,setRulesDirty]=useState(false);
   const canManageCampaigns = employee.active !== false && employee.permissions.includes("campaigns.manage");
   const paymentQueue = useCrmQueueSummary("payments", canFinance ? employee.id : undefined);
-  const paymentParams=new URLSearchParams(typeof window==='undefined'?'':window.location.search);
-  const enrollmentPaymentView=paymentParams.get('paymentView')==='enrollment'||paymentParams.has('enrollmentOrder');
-  const financeNavigation=canFinance&&<nav className="crm-finance-views" aria-label={adminText(lang,'Finance workspace','Ruang kerja keuangan','财务工作区')}>
-    <a href="/crm?tab=payments" aria-current={!enrollmentPaymentView?'page':undefined}>
-      {adminText(lang,'Customer payments','Pembayaran pelanggan','客户款项')}
-    </a>
-    <a href="/crm?tab=payments&paymentView=enrollment" aria-current={enrollmentPaymentView?'page':undefined}>
-      {adminText(lang,'Enrollment payments','Pembayaran pendaftaran','课程报名核款')}
-    </a>
-  </nav>;
+  const [enrollmentPaymentView,setEnrollmentPaymentView]=useState(()=>isEnrollmentPaymentView(new URLSearchParams(window.location.search)));
+  const [financeRefresh,setFinanceRefresh]=useState(0);
+  const [financeLoading,setFinanceLoading]=useState(false);
+  const financeTitle=adminText(lang,'Payment verification','Verifikasi pembayaran','收款核验');
   const promotionQueue = useCrmQueueSummary("promotion", canManageCampaigns ? employee.id : undefined);
   const [financeDirty,setFinanceDirty]=useState(false);
   const [crmModule, setCrmModule] = useState<
@@ -485,7 +484,7 @@ function CrmWorkspace({
     (() => void) | null
   >(null);
   const clearDraft = () => {
-    setPaymentOpen(false);setPaymentDirty(false);
+    setPaymentOpen(false);setPaymentDirty(false);setFinanceDirty(false);
     setOpportunityOpen(false);setOpportunityDirty(false);
     setEnrollmentTarget(null);setEnrollmentDirty(false);setHistoryAmendTarget(null);setHistoryAmendDirty(false);
     if(selectedLead){delete draftCache.current[selectedLead.id];delete attendanceCache.current[selectedLead.id];}
@@ -528,26 +527,35 @@ function CrmWorkspace({
     };
     if (discardDraft(finish)) finish();
   };
-  const changeEnrollmentPage=(href:string)=>{
-    const url=new URL(href,window.location.origin);
-    const module=url.searchParams.get('tab');
-    if(module!=='enrollment-management'&&module!=='enrollment-aftercare')return;
-    if(module==='enrollment-aftercare'&&!canEnrollmentSupport)return;
-    const apply=()=>{
-      window.history.pushState(window.history.state,'',url);
-      lastWorkspaceUrl.current=url.href;
-      setCrmModule(module);
-    };
-    if(discardDraft(apply))apply();
-  };
   const changeModule = (module: typeof crmModule) => {
-    const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;setCrmModule(module);};
+    const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;if(module==="payments")setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));setCrmModule(module);};
     const proceed=()=>{if(discardDraft(finish))finish();};
     if(crmModule==="campaigns"&&module!==crmModule&&!window.dispatchEvent(new CustomEvent("crm-campaign-before-leave",{cancelable:true,detail:{proceed}})))return;
     proceed();
   };
-  useEffect(()=>{
-    const pop=()=>{
+  const changeContentPage=(href:string)=>{
+    const url=new URL(href,window.location.origin);
+    const module=url.searchParams.get('tab');
+    if(module!=='payments'&&module!=='enrollment-management'&&module!=='enrollment-aftercare')return;
+    if(module==='payments'){
+      if(!canFinance)return;
+      const current=new URLSearchParams(window.location.search);
+      for(const key of customerPaymentFilterKeys){
+        const value=current.get(key);
+        if(value!==null)url.searchParams.set(key,value);
+      }
+    }else if(module==='enrollment-aftercare'&&!canEnrollmentSupport)return;
+    const apply=()=>{
+      window.history.pushState(window.history.state,'',url);
+      lastWorkspaceUrl.current=url.href;
+      if(module==='payments')setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));
+      setCrmModule(module);
+    };
+    if(discardDraft(apply))apply();
+  };
+  // Keep the browser listener attached when the router renders during popstate.
+  const restoreWorkspaceRoute=useRef<()=>void>(()=>{});
+  restoreWorkspaceRoute.current=()=>{
       const target=window.location.href,params=new URL(target).searchParams;
       const nextIdentity=identityRoute(target);
       if(identitySelection||nextIdentity){
@@ -556,14 +564,14 @@ function CrmWorkspace({
         return;
       }
       const module=params.get("tab");
-      if(module==="payments"&&crmModule==="payments")return; // Finance owns its intra-record history.
+      if(module==="payments"&&crmModule==="payments"&&isEnrollmentPaymentView(params)===enrollmentPaymentView)return; // Each view owns its record history.
       if(module==="campaigns"&&crmModule==="campaigns")return; // Campaign owns its intra-object history.
       const apply=async()=>{
         window.history.replaceState({},"",target);lastWorkspaceUrl.current=target;
         const version=++leadRouteVersion.current;
         if(!module&&/^#(?:crm-guide-|chapter-)/.test(new URL(target).hash)){setCrmModule('docs');return;}
         if(!module&&!params.has('lead')&&!params.has('digestJob')&&defaultCrmModule(employee)==='payments'){setCrmModule('payments');return;}
-        if(module==="payments"){setCrmModule("payments");return;}
+        if(module==="payments"){setEnrollmentPaymentView(isEnrollmentPaymentView(params));setCrmModule("payments");return;}
         if(module==="campaigns"){setCrmModule("campaigns");return;}
         if(module==="opportunities"){setCrmModule("opportunities");return;}
         if(module==="enrollment-management"){setCrmModule(module);return;}
@@ -590,9 +598,11 @@ function CrmWorkspace({
       if(hasDraft||isSubmittingLog||profileSave==="saving"){
         window.history.pushState({},"",lastWorkspaceUrl.current);if(discardDraft(()=>void apply()))void apply();
       }else void apply();
-    };
+  };
+  useEffect(()=>{
+    const pop=()=>restoreWorkspaceRoute.current();
     window.addEventListener("popstate",pop);return()=>window.removeEventListener("popstate",pop);
-  });
+  },[]);
   useEffect(() => {
     if (!hasDraft && !policyControls?.isDirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -1397,11 +1407,22 @@ function CrmWorkspace({
 
           </div>
         </div>}
-        {crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"} onNavigate={changeEnrollmentPage}/> : crmModule === "payments" ? (canFinance&&enrollmentPaymentView ?
-          <CrmEnrollmentFinance key={employee.id} navigation={financeNavigation} lang={lang} isLight={isLight}
+        {crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"} onNavigate={changeContentPage}/> : crmModule === "payments" ? (
+          <section className="crm-finance-workspace" aria-label={financeTitle}>
+            <header className="admin-page-toolbar" data-theme={isLight?'light':'dark'}>
+              <CrmPageIdentity title={financeTitle} subtitle={adminText(lang,'Review enrollment balances, receipts and refunds.','Periksa tagihan pendaftaran, penerimaan dan pengembalian.','核对报名应收、实际到账与退款。')}/>
+              {canFinance&&<CrmPageAction icon={RefreshCw} label={t('Refresh','刷新')} loading={financeLoading} onClick={()=>{setFinanceRefresh(v=>v+1);paymentQueue.refresh();}}/>}
+            </header>
+            {canFinance&&<CrmContentNav label={adminText(lang,'Finance workspace','Ruang kerja keuangan','财务工作区')} onNavigate={changeContentPage} items={[
+              {href:'/crm?tab=payments',label:adminText(lang,'Customer payments','Pembayaran pelanggan','客户款项'),current:!enrollmentPaymentView},
+              {href:'/crm?tab=payments&paymentView=enrollment',label:adminText(lang,'Enrollment payments','Pembayaran pendaftaran','课程报名核款'),current:enrollmentPaymentView},
+            ]}/>}
+            {canFinance&&enrollmentPaymentView?
+          <CrmEnrollmentFinance key={employee.id} refreshVersion={financeRefresh} onRefreshingChange={setFinanceLoading} lang={lang} isLight={isLight}
             onQueueChanged={paymentQueue.refresh} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={url=>{lastWorkspaceUrl.current=url;}}/> :
-          <CrmFinanceWorkspace navigation={financeNavigation} onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight}
-            onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/>) : crmModule === "campaigns" ? (
+          <CrmFinanceWorkspace key={employee.id} refreshVersion={financeRefresh} onRefreshingChange={setFinanceLoading} onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight}
+            onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/>}
+          </section>) : crmModule === "campaigns" ? (
           <CrmCampaignHub
             canManageCampaigns={canManageCampaigns}
             reviewCounts={{available: Boolean(promotionQueue.data?.counts), counts: promotionQueue.data?.counts ?? {}}}

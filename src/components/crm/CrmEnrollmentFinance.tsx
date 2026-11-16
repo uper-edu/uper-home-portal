@@ -1,8 +1,7 @@
+import {AdminRecordBack} from '../admin/AdminRecordHeader';
+import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone } from './CrmList';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { CrmPageIdentity } from './CrmPageIdentity';
-import { CrmPageAction } from './CrmPageAction';
+import { useEffect, useRef, useState } from 'react';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
@@ -44,8 +43,8 @@ function EnrollmentProof({id,mime,lang}:{id:string;mime?:string;lang:CrmLanguage
   </section>;
 }
 
-export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBusy,onLocation,onQueueChanged}:{
-  lang:CrmLanguage;isLight?:boolean;navigation:ReactNode;onDirty:(dirty:boolean)=>void;onBusy:(busy:boolean)=>void;
+export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefreshingChange,onDirty,onBusy,onLocation,onQueueChanged}:{
+  lang:CrmLanguage;isLight?:boolean;refreshVersion:number;onRefreshingChange:(loading:boolean)=>void;onDirty:(dirty:boolean)=>void;onBusy:(busy:boolean)=>void;
   onLocation:(url:string)=>void;onQueueChanged:()=>void;
 }) {
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
@@ -70,6 +69,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
   const [busy,setBusy]=useState(false);
   const [saved,setSaved]=useState(false);
   const [discard,setDiscard]=useState(false);
+  useEffect(()=>{onRefreshingChange(loading);return()=>onRefreshingChange(false);},[loading,onRefreshingChange]);
   useEffect(()=>{onDirty(dirty);return ()=>onDirty(false);},[dirty,onDirty]);
   useEffect(()=>{onBusy(busy);return ()=>onBusy(false);},[busy,onBusy]);
   useEffect(()=>{
@@ -90,7 +90,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
         if(!controller.signal.aborted)setError(t('暂时无法读取课程报名订单。','Enrollment orders could not be loaded.','Pesanan pendaftaran belum dapat dimuat.'));
       }).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return ()=>controller.abort();
-  },[query,status,page,refresh]);
+  },[query,status,page,refresh,refreshVersion]);
   useEffect(()=>{
     if(!orderId)return;
     const controller=new AbortController();
@@ -104,7 +104,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
         if(!controller.signal.aborted)setDetailError(t('暂时无法读取核款详情。','Payment details could not be loaded.','Detail verifikasi belum dapat dimuat.'));
       });
     return ()=>controller.abort();
-  },[orderId,refresh]);
+  },[orderId,refresh,refreshVersion]);
   useEffect(()=>{
     if(!saved)return;
     const timer=window.setTimeout(()=>setSaved(false),6000);
@@ -150,11 +150,6 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
   const pending=row&&selected===row.id;
   const hasResults=Boolean(list?.orders.length);
   return <section className="crm-finance-workspace" aria-label={t('课程报名核款','Enrollment payment verification','Verifikasi pembayaran pendaftaran')}>
-    <header className="admin-page-toolbar" data-theme={isLight?'light':'dark'}>
-      <CrmPageIdentity title={t('课程报名核款','Enrollment payment verification','Verifikasi pembayaran pendaftaran')}/>
-      <CrmPageAction icon={RefreshCw} label={t('刷新','Refresh','Muat ulang')} loading={loading} onClick={()=>setRefresh(value=>value+1)}/>
-    </header>
-    {navigation}
     {denied?<p role="alert">{t('你没有课程报名核款权限。','You do not have enrollment payment access.','Anda tidak memiliki akses verifikasi pembayaran.')}</p>:<>
       <CrmListFilters label={t('筛选核款订单','Filter enrollment payments','Filter pembayaran pendaftaran')}>
         <CrmListSearch label={t('搜索报名核款订单','Search enrollment payments','Cari pembayaran pendaftaran')}
@@ -164,7 +159,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
           options={filters} onChange={next=>{setStatus(next);setPage(1);}}/>
       </CrmListFilters>
       {error&&<p role="alert">{error}</p>}
-      {loading&&!list&&<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
+      {loading&&!list&&<p className="crm-list-meta" role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
       {list&&<p className="crm-list-meta" role="status">{t(`匹配 ${list.total} 笔订单`,`${list.total} matching orders`,`${list.total} pesanan cocok`)}</p>}
       {list&&(hasResults?<CrmListTable label={t('课程报名核款','Enrollment payment verification','Verifikasi pembayaran pendaftaran')}
         busy={loading||search.trim()!==query} headers={[t('学员与订单','Learner and order','Siswa dan pesanan'),t('班次','Class','Kelas'),
@@ -172,8 +167,8 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
           {label:t('未收余额','Outstanding','Sisa tagihan'),numeric:true},t('核款状态','Payment status','Status pembayaran'),
           t('凭证与期限','Proof and deadline','Bukti dan tenggat'),t('下一步','Next step','Langkah berikutnya')]}>
         {list.orders.map(order=><tr key={order.id}>
-          <td><button type="button" className="crm-list-record" onClick={()=>open(order.id)}
-            aria-label={t('查看核款订单','View payment order','Lihat pesanan pembayaran')+' · '+order.name+' · '+order.id.slice(0,8)}>{order.name}</button>
+          <td><AdminRecordEntry onClick={()=>open(order.id)}
+            aria-label={t('查看核款订单','View payment order','Lihat pesanan pembayaran')+' · '+order.name+' · '+order.id.slice(0,8)}>{order.name}</AdminRecordEntry>
             <small title={order.id}>{t('订单','Order','Pesanan')} · {order.id.slice(0,8)}</small></td>
           <td><strong>{className(order)}</strong><small>{formatCrmEventTime(order.firstLessonAt).slice(0,16)}</small></td>
           <td className="crm-list-number">{formatCurrency(order.price,lang)}</td>
@@ -185,7 +180,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
           <td>{order.proofAt?<time dateTime={order.proofAt}>{t('提交于','Submitted','Dikirim')} · {formatCrmEventTime(order.proofAt).slice(0,16)}</time>:'—'}
             {order.reviewDueAt&&<div className="crm-list-secondary"><CrmEnrollmentReviewDeadline dueAt={order.reviewDueAt} lang={lang} compact/></div>}</td>
           <td>{(['proof_review','partial'].includes(order.status)||order.status==='expired'&&order.hasProof)
-            ?<button type="button" className="crm-list-action" onClick={()=>open(order.id,true)}>{t('核对到账','Verify payment','Verifikasi pembayaran')}</button>
+            ?<AdminRowAction onClick={()=>open(order.id,true)}>{t('核对到账','Verify payment','Verifikasi pembayaran')}</AdminRowAction>
             :<span className="crm-work-muted">—</span>}</td>
         </tr>)}
       </CrmListTable>:<p className="crm-finance-empty">{t('暂无符合条件的报名订单。','No matching enrollment orders.','Tidak ada pesanan yang cocok.')}</p>)}
@@ -196,16 +191,16 @@ export function CrmEnrollmentFinance({lang,isLight=true,navigation,onDirty,onBus
       </footer>}
     </>}
     {orderId&&<CrmOperationLayer title={row?.name??t('报名核款详情','Enrollment payment details','Detail pembayaran pendaftaran')}
-      context={row?className(row):undefined} lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={close}>
+      context={row?className(row):undefined} navigation={row&&!pending&&(rosterBack
+        ? <AdminRecordBack target={{label:t('返回班次名单','Back to class roster','Kembali ke daftar siswa'),onClick:close,disabled:busy}}/>
+        : returnTo&&<AdminRecordBack target={{label:t('返回商机列表','Back to opportunities','Kembali ke daftar peluang'),href:returnTo}}/>)}
+      lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={close}>
     <div className="crm-enrollment-finance-detail" onChange={()=>setDirty(true)}>
     {detailError&&<p role="alert">{detailError}</p>}
     {saved&&<span className="crm-opportunity-feedback" role="status">{t('实收已登记','Verified receipt recorded','Dana terverifikasi telah dicatat')}</span>}
     {!details&&!detailError&&<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
     {details?.id===orderId&&!row&&<p>{t('该报名订单暂不可核款。','This enrollment order is unavailable for verification.','Pesanan ini belum dapat diverifikasi.')}</p>}
     {row&&<article className="crm-course-catalog">
-      {rosterBack&&!pending&&<button type="button" className="crm-list-action" onClick={close}>
-        {t('返回班次名单','Back to class roster','Kembali ke daftar siswa')}</button>}
-      {returnTo&&!pending&&<a className="crm-work-link" href={returnTo}>{t('返回商机列表','Back to opportunities','Kembali ke daftar peluang')}</a>}
       <dl className="crm-opportunity-summary crm-enrollment-finance-summary">
         <div><dt>{t('报名编号','Order number','Nomor pendaftaran')}</dt><dd>{row.id}</dd></div>
         <div><dt>{t('核款状态','Payment status','Status pembayaran')}</dt><dd>{statusLabel(row.status)}</dd></div>
