@@ -36,10 +36,6 @@
 .admin-editor-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding:16px;padding:var(--admin-editor-padding)}
 .admin-editor-footer{flex:none;padding:12px var(--admin-editor-padding);border-top:1px solid var(--af-border);background:var(--af-surface)}
 .admin-editor-form{height:100%;max-height:inherit;margin:0}
-/* Existing modal lifecycles and parent-owned close/discard logic remain unchanged. */
-.access-panel.admin-editor-layout{padding:0;gap:0;overflow:hidden}
-.access-panel.admin-editor-layout>.admin-editor-heading{margin:0;position:static}
-.access-panel.admin-editor-layout>.admin-editor-footer{position:static;bottom:auto;margin:0}
 .admin-editor-layout .admin-editor-body .access-languages{gap:12px 16px}
 .admin-editor-layout .admin-editor-body .access-permission{padding-top:12px}
 .admin-editor-layout .admin-editor-body .access-impact{margin:0}
@@ -57,11 +53,8 @@
 .admin-editor-body .admin-form-section-body>:is(.space-y-3,.space-y-4)>*{margin-top:0;margin-bottom:0}
 .admin-form-feedback .crm-save-feedback{margin:0}
 /* Module styles load lazily: give the opt-in layout explicit precedence. */
-.access-panel.admin-editor-layout{display:flex}
 .ai-service-grid>.admin-form-section+.admin-form-section{margin-top:0}
 [data-admin-form] .admin-editor-body input[aria-label]:not([type=file]):not([type=checkbox]):not([type=radio]){min-height:40px;font-size:14px;line-height:1.6}
 .admin-form-guide h3{margin:0 0 4px;font-size:14px;font-weight:600;line-height:1.6}
 .admin-form-guide p{margin:0;font-size:14px;line-height:1.6}
 fieldset.admin-editor-body{border:0;margin:0;min-inline-size:0}
-.cms-delete-body{font-size:14px;line-height:1.6}
-.cms-delete-body>p{margin:0;font-size:14px;line-height:1.6}

@@ -1,15 +1,16 @@
+import {AdminEditor} from '../components/admin/AdminEditor';
 import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormGuide} from '../components/AdminFormGuide';
-import {AdminFormSection,AdminFormActions} from '../components/AdminFormLayout';
+import {AdminFormSection,AdminFormFeedback} from '../components/AdminFormLayout';
 import {AiServicePanel} from '../components/AiServicePanel';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
-import {AdminField,AdminRequiredNote,firstMissingAdminField} from '../components/AdminForm';
+import {AdminField,firstMissingAdminField} from '../components/AdminForm';
 import {BrowserMetadataGuide} from '../components/BrowserMetadataGuide';
 import {PageMetadata} from '../components/PageMetadata';
 import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
-import { managementRequest } from "../utils/accessOperationClient";
+import { managementRequest, pendingAccessOperations } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
 import { AccessSafetyPanel } from "../components/AccessSafetyPanel";
 import { AccessUserCard, AccessRoleCard } from "../components/AccessRecordCard";
@@ -100,7 +101,9 @@ export function AccessWorkspace({
     [data, setData] = useState<{ users: User[]; roles: Role[]; testDirectoryAvailable?:boolean } | null>(null),
     [err, setErr] = useState(""),
     [notice, setNotice] = useState(""),
+    [larkValidation, setLarkValidation] = useState(""),
     [busy, setBusy] = useState(false),
+    [saving, setSaving] = useState(false),
     [query, setQuery] = useState(""),
     [previewUserId, setPreviewUserId] = useState(employee.id),
     [audit, setAudit] = useState<any[]>([]);
@@ -112,10 +115,9 @@ export function AccessWorkspace({
     [impact, setImpact] = useState<any>(null),
     [password, setPassword] = useState(""),
     [dirty, setDirty] = useState(false);
-  const panel = useRef<HTMLElement>(null),
-    priorFocus = useRef<HTMLElement | null>(null);
+  const panel = useRef<HTMLDialogElement>(null);
   const can = (permission: string) => employee.permissions.includes(permission);
-  useEffect(() => setNotice(""), [lang]);
+  useEffect(() => {setNotice("");setLarkValidation("");}, [lang]);
   const api = (path = "", body?: any) =>
     body && !path.endsWith("/preview")
       ? managementRequest(employee.id, "/api/admin/access" + path, body)
@@ -157,12 +159,6 @@ export function AccessWorkspace({
         .then(setAudit)
         .catch((e) => setErr(e.message));
   }, [tab]);
-  useEffect(() => {
-    if (!user && !role) return;
-    priorFocus.current = document.activeElement as HTMLElement;
-    panel.current?.focus();
-    return () => priorFocus.current?.focus();
-  }, [!!user, !!role]);
   const editorHasDraft = Boolean(user || role) && (dirty || larkDirty || why.length > 0 || password.length > 0);
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
@@ -185,6 +181,7 @@ export function AccessWorkspace({
   const resetEditor = () => {
     setLarkDirty(false);
     setLarkDraft(undefined);
+    setLarkValidation("");
     setDiscarding(false);
     setUser(null);
     setRole(null);
@@ -253,10 +250,12 @@ export function AccessWorkspace({
   };
   const save = async () => {
     if (busy) return;
-    if(larkDirty && !larkDraft){setNotice(t("Look up the Lark identity first, or clear the input.","Cari identitas Lark dahulu atau kosongkan input.","请先查询核对Lark身份，或清空查询输入。"));return;}
+    if(larkDirty && !larkDraft){setLarkValidation(t("Look up the Lark identity first, or clear the input.","Cari identitas Lark dahulu atau kosongkan input.","请先查询核对Lark身份，或清空查询输入。"));return;}
+    setLarkValidation("");
     const missing=panel.current&&firstMissingAdminField(panel.current);
     if(missing){missing.focus();setErr('admin_required_missing');return;}
     setBusy(true);
+    setSaving(true);
     setErr("");
     try {
       if (user)
@@ -290,8 +289,10 @@ export function AccessWorkspace({
       setErr((e as Error).message);
     } finally {
       setBusy(false);
+      setSaving(false);
     }
   };
+  const hasPendingResult=err!==""&&pendingAccessOperations(employee.id).some(operation=>operation.url.startsWith("/api/admin/access/"));
   const errorText =
     err === "admin_required_missing" ? t("Complete the required fields.","Lengkapi kolom wajib.","请填写必填项。") : err === "access_preview_required"
       ? t(
@@ -501,10 +502,8 @@ export function AccessWorkspace({
                 {errorText}
               </p>
             )}
-            {notice && (
-              <p role="status" className="access-notice">
-                {notice}
-              </p>
+            {notice && !user && !role && (
+              <AdminFormFeedback state="saved" lang={lang} placement="floating">{notice}</AdminFormFeedback>
             )}
             {!data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
@@ -715,50 +714,86 @@ export function AccessWorkspace({
         )}
       </main>
       {(user || role) && (
-        <div
-          className="access-backdrop"
-          onKeyDown={(e) => {
-            if(discarding)return;
-            if (e.key === "Escape") close();
-            if (e.key === "Tab") {
-              const controls = Array.from(
-                panel.current?.querySelectorAll<HTMLElement>(
-                  "button:not(:disabled),input:not(:disabled),textarea:not(:disabled),summary,a[href]",
-                ) || [],
-              ).filter((e) => e.offsetParent !== null);
-              if (e.shiftKey && document.activeElement === controls[0]) {
-                e.preventDefault();
-                controls.at(-1)?.focus();
-              } else if (
-                !e.shiftKey &&
-                document.activeElement === controls.at(-1)
-              ) {
-                e.preventDefault();
-                controls[0]?.focus();
-              }
-            }
-          }}
-        >
-          <section
-            ref={panel}
-            tabIndex={-1}
-            data-admin-form="" className="access-panel admin-editor-layout"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="access-editor-title"
-          >
-            <div className="access-toolbar admin-editor-heading">
-              <h2 id="access-editor-title">
-                {user
-                  ? t("User settings", "Pengaturan pengguna", "用户设置")
-                  : t("Role settings", "Pengaturan peran", "角色设置")}
-              </h2>
-              <AdminRequiredNote lang={lang}/>
-              <button onClick={close} disabled={busy}>
-                {t("Close", "Tutup", "关闭")}
+        <AdminEditor variant="drawer" className="access-panel" lang={lang} light={isLight} required
+          dialogRef={panel} onClose={close} busy={busy} bodyClassName="access-editor-body"
+          title={user?t("User settings","Pengaturan pengguna","用户设置"):t("Role settings","Pengaturan peran","角色设置")}
+          footer={<>
+              {user?.id && can("access.sessions") && (
+                <>
+                  <button
+                    disabled={busy || !why.trim()}
+                    onClick={async () => {
+                      setBusy(true);
+                      setErr("");
+                      try {
+                        await api("/users/" + user.id + "/sessions", {
+                          reason: why,
+                        });
+                        setNotice(
+                          t(
+                            "Sessions revoked.",
+                            "Sesi dicabut.",
+                            "会话已撤销。",
+                          ),
+                        );
+                      } catch (e) {
+                        setErr((e as Error).message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    {t("Revoke sessions", "Cabut sesi", "撤销会话")}
+                  </button>
+                  <button
+                    disabled={busy || password.length < 8 || !why.trim()}
+                    onClick={async () => {
+                      setBusy(true);
+                      setErr("");
+                      try {
+                        await api("/users/" + user.id + "/password", {
+                          temporaryPassword: password,
+                          reason: why,
+                          revision: user.revision,
+                        });
+                        setPassword("");
+                        setUser({ ...user, revision: user.revision + 1 });
+                        setNotice(
+                          t(
+                            "Password reset; sessions revoked.",
+                            "Kata sandi direset; sesi dicabut.",
+                            "密码已重置，会话已撤销。",
+                          ),
+                        );
+                      } catch (e) {
+                        setErr((e as Error).message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    {t("Reset password", "Reset kata sandi", "重置密码")}
+                  </button>
+                </>
+              )}
+              <button type="button" disabled={busy} onClick={close}>{t("Cancel","Batal","取消")}</button>
+              <button type="button" data-primary=""
+                disabled={
+                  busy ||
+                  !why.trim() ||
+                  (!!user && !can("access.users")) ||
+                  (!dirty && !larkDraft) ||
+                  (!!role && !preview) ||
+                  (!user?.id && !!user && password.length < 8)
+                }
+                onClick={() => void save()}
+              >
+                {saving
+                  ? t("Saving…", "Menyimpan…", "保存中…")
+                  : t("Save changes", "Simpan perubahan", "保存修改")}
               </button>
-            </div>
-            <div className="admin-editor-body" data-admin-stack="">
+          </>}
+        >
             {discarding && <CrmDiscardDialog lang={lang} isLight={isLight}
               title={t("Unsaved changes", "Perubahan belum disimpan", "修改尚未保存")}
               description={t("Keep editing, or discard your unsaved changes and close. Saved records stay unchanged.", "Lanjutkan mengedit atau buang perubahan yang belum disimpan dan tutup. Data tersimpan tidak berubah.", "可以继续编辑，或放弃未保存的修改并关闭；已保存记录保持不变。")}
@@ -770,11 +805,9 @@ export function AccessWorkspace({
               lang={lang}
               onResolved={operationResolved}
             />
-            {err && (
-              <p role="alert" className="access-error">
-                {errorText}
-              </p>
-            )}
+            {saving&&<AdminFormFeedback state="saving" lang={lang}/>}
+            {err&&<AdminFormFeedback state={hasPendingResult?'unknown':'error'} lang={lang}>{errorText}</AdminFormFeedback>}
+            {larkValidation&&larkDirty&&!larkDraft&&<AdminFormFeedback state="error" lang={lang}>{larkValidation}</AdminFormFeedback>}
             {err && err!=="admin_required_missing" && (
               <button
                 disabled={busy}
@@ -873,11 +906,7 @@ export function AccessWorkspace({
                 </button>
               </section>
             )}
-            {notice && (
-              <p role="status" className="access-notice">
-                {notice}
-              </p>
-            )}
+            {notice&&<AdminFormFeedback state="saved" lang={lang}>{notice}</AdminFormFeedback>}
             {user && (
               <AdminFormSection title={t("User details", "Detail pengguna", "用户信息")}>
                 <AdminField>
@@ -1265,84 +1294,7 @@ export function AccessWorkspace({
                 onChange={(e) => setWhy(e.target.value)}
               />
             </AdminField>
-            </div>
-            <AdminFormActions className="access-actions admin-editor-footer">
-              <button
-                disabled={
-                  busy ||
-                  !why.trim() ||
-                  (!!user && !can("access.users")) ||
-                  (!dirty && !larkDraft) ||
-                  (!!role && !preview) ||
-                  (!user?.id && !!user && password.length < 8)
-                }
-                onClick={() => void save()}
-              >
-                {busy
-                  ? t("Saving…", "Menyimpan…", "保存中…")
-                  : t("Save changes", "Simpan perubahan", "保存修改")}
-              </button>
-              {user?.id && can("access.sessions") && (
-                <>
-                  <button
-                    disabled={busy || !why.trim()}
-                    onClick={async () => {
-                      setBusy(true);
-                      setErr("");
-                      try {
-                        await api("/users/" + user.id + "/sessions", {
-                          reason: why,
-                        });
-                        setNotice(
-                          t(
-                            "Sessions revoked.",
-                            "Sesi dicabut.",
-                            "会话已撤销。",
-                          ),
-                        );
-                      } catch (e) {
-                        setErr((e as Error).message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {t("Revoke sessions", "Cabut sesi", "撤销会话")}
-                  </button>
-                  <button
-                    disabled={busy || password.length < 8 || !why.trim()}
-                    onClick={async () => {
-                      setBusy(true);
-                      setErr("");
-                      try {
-                        await api("/users/" + user.id + "/password", {
-                          temporaryPassword: password,
-                          reason: why,
-                          revision: user.revision,
-                        });
-                        setPassword("");
-                        setUser({ ...user, revision: user.revision + 1 });
-                        setNotice(
-                          t(
-                            "Password reset; sessions revoked.",
-                            "Kata sandi direset; sesi dicabut.",
-                            "密码已重置，会话已撤销。",
-                          ),
-                        );
-                      } catch (e) {
-                        setErr((e as Error).message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {t("Reset password", "Reset kata sandi", "重置密码")}
-                  </button>
-                </>
-              )}
-            </AdminFormActions>
-          </section>
-        </div>
+        </AdminEditor>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {recordScrollMode} from '../adminScroll';
 import { campaignUi, type CampaignUiLanguage } from "../../utils/campaignI18n";
@@ -157,43 +158,10 @@ export function CrmDiscardDialog({
   announceDescription?: boolean;
   busy?: boolean;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null),
-    opener = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    opener.current = document.activeElement as HTMLElement;
-    dialog.current?.showModal();
-    return () => {
-      dialog.current?.close();
-      if (opener.current?.isConnected)
-        opener.current.focus({ preventScroll: true });
-    };
-  }, []);
-  return (
-    <dialog
-      className="crm-discard-dialog"
-      data-tone={tone}
-      data-theme={isLight ? "light" : "dark"}
-      ref={dialog}
-      aria-labelledby="crm-unsaved-title"
-      aria-describedby="crm-unsaved-description"
-      onCancel={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!busy) onKeep();
-      }}
-    >
-      <h2 id="crm-unsaved-title">{campaignUi(lang)(title)}</h2>
-      <p id="crm-unsaved-description" aria-live={announceDescription ? "polite" : undefined}>{campaignUi(lang)(description)}</p>
-      <footer>
-        <button type="button" autoFocus disabled={busy} onClick={onKeep}>
-          {campaignUi(lang)(keepLabel)}
-        </button>
-        {onDiscard && <button type="button" disabled={busy} onClick={onDiscard}>
-          {campaignUi(lang)(discardLabel)}
-        </button>}
-      </footer>
-    </dialog>
-  );
+  const u=campaignUi(lang);
+  return <AdminConfirmation light={isLight} danger={tone==='danger'} busy={busy} announceDescription={announceDescription}
+    title={u(title)} description={u(description)} cancelLabel={u(keepLabel)} confirmLabel={u(discardLabel)}
+    onCancel={onKeep} onConfirm={onDiscard}/>;
 }
 export function useCrmShellHeight() {
   const [height, setHeight] = React.useState(120);

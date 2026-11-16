@@ -2,11 +2,12 @@ import {formatCurrency} from '../../utils/currency';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
 import {AdminFormGuide} from '../AdminFormGuide';
-import {useAdminEditorFocus} from '../useAdminEditorFocus';
+import {AdminEditor} from '../admin/AdminEditor';
+import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
-import {AdminFormSection,AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
+import {AdminFormSection,AdminFormFeedback} from '../AdminFormLayout';
 import {AdminStatus} from '../AdminStatus';
-import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
+import {AdminField} from '../AdminForm';
 import {AdminTopicFrame} from "../AdminTopicFrame";
 import {BrowserMetadataGuide} from '../BrowserMetadataGuide';
 import {PageMetadata} from '../PageMetadata';
@@ -23,16 +24,12 @@ import {
   Edit3, 
   Trash2, 
   Upload, 
-  Check, 
-  X, 
   ExternalLink, 
   Image as ImageIcon, 
-  Save, 
   RefreshCw,
   Award,
   Calendar,
   LayoutList,
-  AlertCircle,
   ChevronRight,
   Layers,
   AlertTriangle
@@ -190,7 +187,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const [searchQuery, setSearchQuery] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const cmsDraftBase=useRef(''),editorPanel=useRef<HTMLDivElement>(null),deletePanel=useRef<HTMLDivElement>(null);
+  const cmsDraftBase=useRef('');
   const [discardDraft,setDiscardDraft]=useState(false),[isSaving,setIsSaving]=useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadTargetField, setUploadTargetField] = useState<'image' | 'certificateImage'>('image');
@@ -208,8 +205,6 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
   const t = (en: string, zh: string) => cmsText(en, zh, lang);
   const closeEditor=()=>{if(isSaving||isUploading||pendingCms)return;if(JSON.stringify(editingItem)!==cmsDraftBase.current){setDiscardDraft(true);return;}setIsModalOpen(false);};
-  useAdminEditorFocus(isModalOpen,editorPanel,closeEditor);
-  useAdminEditorFocus(Boolean(deleteConfirmTarget),deletePanel,()=>{if(!isDeleting)setDeleteConfirmTarget(null);});
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -374,6 +369,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     const id = item._id || item.id;
     const name = item.name || item.title || t('Untitled Item', '无标题内容');
     const subtitle = item.category || item.university || item.school || item.subtitle || '';
+    setNotification(null);
     setDeleteConfirmTarget({
       id,
       name,
@@ -515,17 +511,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     <div data-admin-form="" data-cms-theme={isLight ? "light" : "dark"} className={`rounded-2xl border transition-all ${
       isLight ? 'bg-white border-slate-200/90 shadow-sm' : 'bg-slate-900 border-slate-800'
     }`}>
-      {/* Toast Notification */}
-      {notification && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-200 ${
-          notification.type === 'success' 
-            ? 'bg-emerald-600 text-white shadow-emerald-600/20' 
-            : 'bg-rose-600 text-white shadow-rose-600/20'
-        }`}>
-          {notification.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-          <span>{notification.message}</span>
-        </div>
-      )}
+      {notification&&!isModalOpen&&!deleteConfirmTarget&&<AdminFormFeedback
+        state={notification.type==='success'?'saved':'error'} lang={lang} placement="floating">
+        {notification.message}
+      </AdminFormFeedback>}
 
       <PageMetadata lang={lang} options={{module:activeSection}}/>
       {pendingCms&&!isModalOpen&&<button type="button" onClick={()=>{setActiveSection(pendingCms.collection);setEditingItem(pendingCms.draft);setIsModalOpen(true);}}>{t('Review pending operation','查看待确认操作')}</button>}
@@ -873,43 +862,21 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
       {/* Edit / Add Modal */}
       {isModalOpen && editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div ref={editorPanel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="cms-editor-title" aria-busy={isSaving||isUploading} className={`admin-editor-layout w-full max-w-xl max-h-[90vh] rounded-2xl border shadow-2xl ${
-            isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
-          }`}>
-            <AdminForm lang={lang} className="admin-editor-layout admin-editor-form" onSubmit={handleSave}>
-
-              <div className={`admin-editor-heading ${
-                isLight ? 'bg-white/95 border-slate-100' : 'bg-slate-900/95 border-slate-800'
-              }`}>
-                <h3 id="cms-editor-title" className="font-bold text-sm flex items-center gap-2">
-                  <Edit3 className="w-4 h-4 text-primary-600" />
-                  <span>
-                    {editingItem._id ? t('Edit Item', '编辑内容与图片') : t('Create New Item', '新建内容')}
-                  </span>
-                </h3>
-                <AdminRequiredNote lang={lang}/>
-                <button
-                  type="button"
-                  onClick={closeEditor}
-                  disabled={isSaving||isUploading||!!pendingCms}
-                  aria-label={t('Close editor', '关闭编辑器')}
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                    isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-slate-800 text-slate-500'
-                  }`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="admin-editor-body">
+        <AdminEditor lang={lang} light={isLight} onClose={closeEditor} onSubmit={handleSave} required
+          title={editingItem._id?t('Edit Item','编辑内容与图片'):t('Create New Item','新建内容')}
+          busy={isSaving||isUploading} closeDisabled={!!pendingCms}
+          footer={<>
+            <button type="button" onClick={closeEditor} disabled={isSaving||isUploading||!!pendingCms}>{t('Cancel','取消')}</button>
+            <button type="submit" data-primary="" disabled={isSaving||isUploading||!!pendingCms}>{isSaving?t('Saving…','正在保存…'):t('Save Changes','保存生效')}</button>
+          </>}
+        >
               {(pendingCms||cmsResult)&&<AdminFormFeedback state={pendingCms?'unknown':cmsTone} lang={lang}>{cmsResult||t('Operation result unconfirmed. Query before continuing.','操作结果尚未确认，请先查询再继续。')}{pendingCms&&<button type="button" disabled={isSaving||isUploading} onClick={()=>void checkCmsResult()}>{t('Query operation result','查询操作结果')}</button>}</AdminFormFeedback>}
               {pendingCms&&cmsNotFound&&<button type="button" disabled={isSaving||isUploading} onClick={()=>void retryCms()}>{t('Retry original request','重试原请求')}</button>}
               {pendingCms&&retryImage&&<label>{t('Select original image','重新选择原图片')}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={isSaving||isUploading} onChange={handleFileUpload}/></label>}
               {storageWarning&&<AdminFormFeedback state="unknown" lang={lang}>{t('Draft remains on this page; refresh recovery is not guaranteed.','本页草稿仍保留；浏览器存储不可用，刷新恢复无法保证。')}</AdminFormFeedback>}
+              {isSaving&&<AdminFormFeedback state="saving" lang={lang}/>}
+              {notification&&<AdminFormFeedback state={notification.type==='error'?'error':'saved'} lang={lang}>{notification.message}</AdminFormFeedback>}
               <fieldset style={{border:0,padding:0,margin:0,minWidth:0}} data-admin-stack="" disabled={isSaving||isUploading||!!pendingCms} aria-label={t('Content fields','内容字段')}>
-                {isSaving&&<AdminFormFeedback state="saving" lang={lang}/>}
-                {notification&&<AdminFormFeedback state={notification.type==='error'?'error':'saved'} lang={lang}>{notification.message}</AdminFormFeedback>}
                 {/* Primary Image Upload & Preview Box */}
                 <div className={`p-4 rounded-xl border ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'
@@ -1535,184 +1502,22 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   </AdminField>
                 </div>
                 </AdminFormSection>
-              </fieldset></div>
-
-              {/* Modal Footer */}
-              <AdminFormActions className={`admin-editor-footer ${
-                isLight ? 'bg-white/95 border-slate-100' : 'bg-slate-900/95 border-slate-800'
-              }`}>
-                <button
-                  type="button"
-                  onClick={closeEditor}
-                  disabled={isSaving||isUploading||!!pendingCms}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-                    isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-slate-800 text-slate-300'
-                  }`}
-                >
-                  {t('Cancel', '取消')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving||isUploading||!!pendingCms}
-                  className="px-4 py-2 rounded-xl text-xs font-medium bg-primary-600 hover:bg-primary-500 text-white flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{isSaving?t('Saving…','正在保存…'):t('Save Changes', '保存生效')}</span>
-                </button>
-              </AdminFormActions>
-            </AdminForm>
-          </div>
-        </div>
+              </fieldset>
+        </AdminEditor>
       )}
       {discardDraft&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardDraft(false)} onDiscard={()=>{setDiscardDraft(false);setIsModalOpen(false);}}/>}
-      {/* Secondary Deletion Confirmation Modal (二次确认弹窗 - 严格对齐系统整体设计规范) */}
-      {deleteConfirmTarget && (
-        <div 
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity ${
-            isLight ? 'bg-slate-900/40 backdrop-blur-2xs' : 'bg-black/60 backdrop-blur-xs'
-          } animate-in fade-in duration-150`}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isDeleting) {
-              setDeleteConfirmTarget(null);
-            }
-          }}
-        >
-          <div ref={deletePanel} tabIndex={-1} role="alertdialog" aria-modal="true" aria-labelledby="cms-delete-title"
-            className={`admin-editor-layout w-full max-w-md max-h-[90vh] rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${
-              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-white'
-            }`}
-          >
-            {/* Modal Header */}
-            <div className={`admin-editor-heading ${
-              isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-950/50 border-slate-800/80'
-            }`}>
-              <div className="flex items-center gap-2.5">
-                <span className={`p-1.5 rounded-lg shrink-0 ${
-                  isLight ? 'bg-rose-100 text-rose-700' : 'bg-rose-950/60 text-rose-400'
-                }`}>
-                  <Trash2 className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 id="cms-delete-title" className={`font-bold text-sm leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    {t('Confirm Item Deletion', '确认删除内容条目')}
-                  </h3>
-                  <p className={`text-[10px] text-slate-400 dark:text-slate-500`}>
-                    {t('Action requires secondary confirmation', '此操作需要二次确认')}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setDeleteConfirmTarget(null)}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  isLight ? 'hover:bg-slate-200/60 text-slate-400' : 'hover:bg-slate-800 text-slate-500'
-                }`}
-                title={t('Cancel & Close', '取消并关闭')}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="admin-editor-body cms-delete-body" data-admin-stack="">
-              <p className={`leading-relaxed text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                {t(
-                  'Are you sure you want to permanently delete this content item? Once confirmed, the data will be immediately removed from local persistence and synchronised to the official portal.',
-                  '您确定要从系统数据模型中永久删除此项内容吗？确认后将直接从本地存储移除，并即时同步下架官方网站对应前台展示。'
-                )}
-              </p>
-
-              {/* Target Item Details Card */}
-              <div className={`p-3 rounded-xl border space-y-2 ${
-                isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-950/60 border-slate-800'
-              }`}>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>
-                    {t('Content Collection:', '所属数据表:')}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] border ${
-                    isLight ? 'bg-white border-slate-200 text-primary-700' : 'bg-slate-900 border-slate-700 text-primary-400'
-                  }`}>
-                    {t(deleteConfirmTarget.sectionTitleEn || '', deleteConfirmTarget.sectionTitleZh || '')}
-                  </span>
-                </div>
-
-                <div className="flex items-start justify-between gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-800">
-                  <span className={`text-[11px] shrink-0 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {t('Item Title:', '条目标题:')}
-                  </span>
-                  <span className="font-bold text-right text-slate-900 dark:text-white line-clamp-2">
-                    {deleteConfirmTarget.name}
-                  </span>
-                </div>
-
-                {deleteConfirmTarget.subtitle && (
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
-                    <span>{t('Category / Tag:', '分类 / 标签:')}</span>
-                    <span className="truncate max-w-[200px] text-slate-600 dark:text-slate-300 font-mono text-[10px]">
-                      {deleteConfirmTarget.subtitle}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* System Warning Banner */}
-              <div className={`p-2.5 rounded-xl border text-[11px] leading-relaxed flex items-start gap-2 ${
-                isLight 
-                  ? 'bg-rose-50/60 border-rose-200/70 text-rose-800' 
-                  : 'bg-rose-950/30 border-rose-900/60 text-rose-300'
-              }`}>
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
-                <span>
-                  {t(
-                    'Irreversible: Deleted records cannot be undone. Please ensure you have backup copies if this media asset is still required.',
-                    '不可逆操作提醒：此删除操作无法撤销。若后续仍需使用该素材或图文，请在删除前保留相关备份。'
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <AdminFormActions className={`admin-editor-footer ${
-              isLight ? 'bg-slate-50/60 border-slate-100' : 'bg-slate-950/40 border-slate-800/80'
-            }`}>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setDeleteConfirmTarget(null)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                  isLight 
-                    ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs' 
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                }`}
-              >
-                {t('Cancel', '取消')}
-              </button>
-
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleConfirmDelete}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isDeleting ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>{t('Deleting...', '正在删除...')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{t('Confirm Delete', '确认删除')}</span>
-                  </>
-                )}
-              </button>
-            </AdminFormActions>
-          </div>
-        </div>
-      )}
+      {deleteConfirmTarget&&<AdminConfirmation light={isLight} busy={isDeleting} danger closeOnBackdrop
+        title={t('Confirm Item Deletion','确认删除内容条目')}
+        description={t('This permanently removes the item from the website.','删除后，这项内容将从官网下架，且无法撤销。')}
+        cancelLabel={t('Cancel','取消')} confirmLabel={isDeleting?t('Deleting...','正在删除...'):t('Confirm Delete','确认删除')}
+        onCancel={()=>setDeleteConfirmTarget(null)} onConfirm={()=>void handleConfirmDelete()}
+      >
+        <p className="cms-delete-target">
+          <strong>{deleteConfirmTarget.name}</strong>
+          <span>{t(deleteConfirmTarget.sectionTitleEn||'',deleteConfirmTarget.sectionTitleZh||'')}{deleteConfirmTarget.subtitle&&` · ${deleteConfirmTarget.subtitle}`}</span>
+        </p>
+        {notification?.type==='error'&&<AdminFormFeedback lang={lang} state="error">{notification.message}</AdminFormFeedback>}
+      </AdminConfirmation>}
     </div>
   );
 }

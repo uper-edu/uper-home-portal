@@ -1,10 +1,11 @@
 import {campaignEditBase} from '../../utils/campaignEditConflict';
 import {CrmFormSection} from './CrmFormLayout';
 import {CrmDisclosure} from './CrmDisclosure';
-import {X} from 'lucide-react';
-import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminForm';
+import {AdminEditor} from '../admin/AdminEditor';
+import {AdminFormFeedback} from '../AdminFormLayout';
+import {AdminField,AdminFieldLabel} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
-import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { CrmDiscardDialog } from "./CrmDetailWorkspace";
 import React, { useEffect, useRef, useState } from "react";
 import type { CrmCampaignRecord } from "../../types/crmCampaign";
 import {
@@ -73,8 +74,7 @@ export function CampaignEditor({
     requestId = useRef(crypto.randomUUID()),
     pending = useRef<any>(null),
     savingRef = useRef(false);
-  const dialog = useRef<HTMLDialogElement>(null),
-    errorRef = useRef<HTMLParagraphElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const [busy, setBusy] = useState(false),
     [unknown, setUnknown] = useState(false),
     [error, setError] = useState("");
@@ -89,11 +89,6 @@ export function CampaignEditor({
     }
     onClose();
   };
-  useEffect(() => {
-    const d = dialog.current;
-    d?.showModal();
-    return () => d?.close();
-  }, []);
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
@@ -299,31 +294,17 @@ export function CampaignEditor({
   }
   return (
     <>
-      <dialog
-        ref={dialog}
-        className="campaign-editor crm-form-campaign-editor"
-        data-theme={isLight ? "light" : "dark"}
-        aria-labelledby="campaign-editor-title"
-        onCancel={(e) => {
-          e.preventDefault();
-          close();
-        }}
-      >
-        <AdminForm lang={lang} onSubmit={e=>{if(unknown){e.preventDefault();void checkSavedResult();}else void save(e);}}>
-
-          <header>
-            <div>
-              <h2 id="campaign-editor-title">
-                {campaign
+      <AdminEditor lang={lang} light={isLight} onClose={close} busy={busy} required
+        className="campaign-editor" bodyClassName="crm-form-layout"
+        onSubmit={e=>{if(unknown){e.preventDefault();void checkSavedResult();}else void save(e);}}
+        title={campaign
                   ? t(
                       "Edit campaign information",
                       "Edit informasi kampanye",
                       "编辑活动信息",
                     )
                   : t("Create campaign", "Buat kampanye", "创建活动")}
-              </h2>
-              <p>
-                {campaign
+        description={campaign
                   ? t(
                       "Changes preserve the campaign code and existing attribution.",
                       "Perubahan mempertahankan kode dan atribusi yang ada.",
@@ -334,36 +315,45 @@ export function CampaignEditor({
                       "Langkah 1 dari 2 · Beri nama kampanye. Berikutnya, tambahkan tautan promosi untuk setiap kanal atau penempatan.",
                       "第1步，共2步 · 填写活动名称，保存后为各渠道或投放位置添加推广链接。",
                     )}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={close}
-              disabled={busy}
-              aria-label={t("Close", "Tutup", "关闭")}
-            >
-              <X size={20} aria-hidden="true"/>
+        footer={<>
+            {unknown&&lookupMiss&&<button type="button" disabled={busy} onClick={()=>void save()}>{t('Retry original request','Ulangi permintaan awal','重试原请求')}</button>}
+            <button type="button" onClick={close} disabled={busy}>
+              {t("Cancel", "Batal", "取消")}
             </button>
-          </header>
-          <div className="campaign-editor-body crm-form-layout"><AdminRequiredNote lang={lang}/>
-            {(busy || dirty) && !error && (
-              <CrmSaveFeedback lang={lang} state={busy ? "saving" : "dirty"} />
+            <button data-primary="" type="submit" disabled={busy}>
+              {busy
+                ? unknown?t("Checking…","Memeriksa…","查询中…"):t("Saving…", "Menyimpan…", "保存中…")
+                : unknown
+                  ? t(
+                      "Check saved result",
+                      "Periksa hasil tersimpan",
+                      "查询保存结果",
+                    )
+                  : campaign
+                    ? t("Save changes", "Simpan perubahan", "保存修改")
+                    : t(
+                        "Create & add promotion link",
+                        "Buat & tambahkan tautan promosi",
+                        "创建并添加推广链接",
+                      )}
+            </button>
+        </>}
+      >
+            {(busy || dirty) && !error && !unknown && (
+              <AdminFormFeedback lang={lang} state={busy ? "saving" : "dirty"} />
             )}
             {error && (
-              <p
-                ref={errorRef}
-                tabIndex={-1}
-                role="alert"
-                className="campaign-error"
+              <AdminFormFeedback
+                ref={errorRef} tabIndex={-1} state={unknown?"unknown":"error"} lang={lang}
               >
                 {unknown
                   ? t(
                       "Save outcome unknown. Check the saved result first; keep the original request.",
-                      "Hasil belum diketahui. Ulangi permintaan yang sama untuk mendapatkan hasil; jangan buat kampanye lain.",
-                      "保存结果待确认。请重试原请求查询结果，不要重复创建活动。",
+                      "Hasil simpan belum pasti. Periksa hasilnya terlebih dahulu dan simpan permintaan awal.",
+                      "保存结果待确认，请先查询原请求的保存结果。",
                     )
                   : explainError(error)}
-              </p>
+              </AdminFormFeedback>
             )}
             {error==='campaign_edit_conflict'&&<aside role="note">{reviewed?<><p>{t('Latest name','Nama terbaru','最新名称')}：{reviewed.name} · {t('Budget','Anggaran','预算')}：{reviewed.stats?.budgetCost??'—'}</p><button type="button" onClick={()=>{baseCampaign.current=reviewed;setReviewed(null);setError('');}}>{t('Keep draft and use reviewed version','Pertahankan draf dan gunakan versi yang ditinjau','保留草稿并使用已核对版本')}</button></>:<button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{const r=await fetch('/api/crm/campaigns/'+encodeURIComponent(campaign!.id));const d=await r.json();if(!r.ok||d.campaign?.id!==campaign!.id)throw Error();setReviewed(d.campaign);}catch{setError('campaign_save_failed');}finally{setBusy(false);}}}>{t('Load latest saved version','Muat versi tersimpan terbaru','加载最新已保存版本')}</button>}</aside>}
             <fieldset disabled={busy || unknown} className="crm-form-layout">
@@ -606,32 +596,7 @@ export function CampaignEditor({
                 </>
               )}
             </fieldset>
-          </div>
-          <footer>
-            {unknown&&lookupMiss&&<button type="button" disabled={busy} onClick={()=>void save()}>{t('Retry original request','Ulangi permintaan awal','重试原请求')}</button>}
-            <button type="button" onClick={close} disabled={busy}>
-              {t("Cancel", "Batal", "取消")}
-            </button>
-            <button className="campaign-primary" type="submit" disabled={busy}>
-              {busy
-                ? t("Saving…", "Menyimpan…", "保存中…")
-                : unknown
-                  ? t(
-                      "Check saved result",
-                      "Periksa hasil tersimpan",
-                      "查询保存结果",
-                    )
-                  : campaign
-                    ? t("Save changes", "Simpan perubahan", "保存修改")
-                    : t(
-                        "Create & add promotion link",
-                        "Buat & tambahkan tautan promosi",
-                        "创建并添加推广链接",
-                      )}
-            </button>
-          </footer>
-        </AdminForm>
-      </dialog>
+      </AdminEditor>
       {confirmClose && (
         <CrmDiscardDialog
           lang={lang}

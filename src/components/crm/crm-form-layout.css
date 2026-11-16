@@ -33,9 +33,6 @@
 .crm-identity-decision.crm-form-section>.admin-form-section-body{padding:16px}
 .crm-identity-decision.crm-form-section .crm-identity-actions{padding-top:12px;border-top:1px solid var(--cw-border)}
 /* Campaign modal keeps one body scroller and one original save footer. */
-.campaign-editor.crm-form-campaign-editor>form{height:100%;min-height:0}
-.campaign-editor.crm-form-campaign-editor>form>header,.campaign-editor.crm-form-campaign-editor>form>footer{padding:16px 24px}
-.campaign-editor.crm-form-campaign-editor .campaign-editor-body{padding:16px 24px}
 .campaign-editor .crm-form-section>.admin-form-section-heading{padding:8px 0 12px;gap:12px;background:transparent}
 .campaign-editor .crm-form-section .admin-form-section-heading h3{font-size:14px;line-height:1.6;font-weight:600}
 .campaign-editor .crm-form-details.crm-disclosure{margin:0;padding:12px 0;border:0;border-top:1px solid var(--dw-border,var(--cw-border,#cbd5e1));border-radius:0;background:transparent}

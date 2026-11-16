@@ -40,8 +40,7 @@
   grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 16px;
 }
-.access-card,
-.access-panel {
+.access-card {
   background: var(--access-surface);
   border: 1px solid var(--access-border);
   border-radius: 16px;
@@ -186,7 +185,6 @@
   border-radius: 10px;
 }
 .access-page main button,
-.access-panel > button,
 .access-actions button {
   border: 1px solid var(--access-border);
   background: var(--access-surface);
@@ -201,7 +199,6 @@
   outline: 2px solid #0d9488;
   outline-offset: 3px;
 }
-.access-toolbar,
 .access-actions {
   display: flex;
   justify-content: space-between;
@@ -258,23 +255,8 @@
   overflow-wrap: anywhere;
   font-size: 12px;
 }
-.access-backdrop {
-  position: fixed;
-  inset: 0;
-  background: #0008;
-  z-index: 70;
-  display: flex;
-  justify-content: flex-end;
-}
-.access-panel {
-  width: min(720px, 100%);
-  height: 100dvh;
-  overflow: auto;
-  border-radius: 16px 0 0 16px;
-  display: grid;
-  align-content: start;
-  gap: 18px;
-}
+.access-panel { --admin-editor-width: 720px; }
+.access-editor-body { display: grid; align-content: start; gap: var(--admin-form-field-gap); }
 .access-error {
   color: #9f1239;
   background: #fff1f2;
@@ -333,10 +315,6 @@
 }
 @media (max-width: 600px) {
   .access-main {
-    padding: 16px;
-  }
-  .access-panel {
-    border-radius: 0;
     padding: 16px;
   }
   .access-languages {

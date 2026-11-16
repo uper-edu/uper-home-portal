@@ -1,0 +1,85 @@
+.admin-dialog {
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 20%);
+}
+.admin-dialog::backdrop { background: rgb(15 23 42 / 60%); }
+.admin-dialog :focus-visible { outline: 2px solid var(--admin-focus); outline-offset: 2px; }
+.admin-editor-dialog[data-editor] {
+  width: min(var(--admin-editor-width, 640px), calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.admin-editor-dialog[data-editor=drawer] {
+  width: min(var(--admin-editor-width, 680px), 100%);
+  height: 100dvh;
+  max-height: none;
+  margin: 0 0 0 auto;
+  border-radius: 14px 0 0 14px;
+}
+.admin-editor-dialog > .admin-editor-layout { max-height: inherit; }
+.admin-editor-dialog[data-editor=drawer] > .admin-editor-layout { height: 100%; }
+.admin-editor-dialog .admin-editor-title-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.admin-editor-dialog .admin-editor-description { margin-top: 4px; font-size: 13px; color: var(--admin-muted); }
+.admin-editor-dialog .admin-editor-body { overflow-x: hidden; }
+.admin-editor-dialog .admin-editor-footer > button,
+.admin-editor-dialog .admin-editor-close {
+  min-height: 40px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.admin-editor-dialog .admin-editor-close { display: grid; place-items: center; flex: none; width: 40px; padding: 0; cursor: pointer; }
+.admin-editor-dialog .admin-editor-footer > button[data-primary] {
+  color: var(--admin-on-action);
+  background: var(--admin-action-fill);
+  border-color: var(--admin-action-fill);
+}
+.admin-editor-dialog :is(.admin-editor-close,.admin-editor-footer > button):disabled { opacity: .55; cursor: default; }
+.admin-editor-dialog .admin-editor-close:not(:disabled):hover,
+.admin-editor-dialog .admin-editor-footer > button:not([data-primary],:disabled):hover { background: var(--admin-selected); }
+.admin-form-feedback[data-placement=floating] {
+  position: fixed;
+  z-index: 60;
+  bottom: 24px;
+  right: 24px;
+  max-width: min(420px, calc(100vw - 48px));
+  box-shadow: 0 8px 24px rgb(15 23 42 / 15%);
+}
+@media (max-width: 600px) {
+  .admin-editor-dialog[data-editor=drawer] { border-radius: 0; }
+  .admin-editor-dialog :is(.admin-editor-close,.admin-editor-footer > button) { min-height: 44px; }
+  .admin-editor-dialog .admin-editor-close { width: 44px; }
+}
+.admin-confirmation {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 24px;
+  border-radius: 14px;
+  overflow: auto;
+}
+.admin-confirmation h2 { margin: 0; font-size: 18px; font-weight: 650; }
+.admin-confirmation > p { margin: 12px 0 16px; font-size: 14px; line-height: 1.6; }
+.admin-confirmation-actions { margin-top: 16px; }
+.admin-confirmation-actions > button {
+  padding: 8px 12px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+.admin-confirmation[data-tone=danger] [data-confirm] {
+  color: var(--admin-danger);
+  background: var(--admin-danger-bg);
+  border-color: var(--admin-danger-border);
+}
+
+.cms-delete-target { display: grid; gap: 4px; }
+.cms-delete-target span { color: var(--admin-muted); }

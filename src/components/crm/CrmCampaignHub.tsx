@@ -1,3 +1,4 @@
+import {AdminFormFeedback} from '../AdminFormLayout';
 import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
@@ -14,7 +15,6 @@ import { campaignCollectionLabel } from "../../utils/campaignPresentation";
 import {
   CrmDetailHeader,
   CrmDetailTabs,
-  CrmSaveFeedback,
   CrmDiscardDialog,
   useCrmShellHeight,
   useRecordScrollMode,
@@ -1071,13 +1071,6 @@ export function CrmCampaignHub({
                   role="tabpanel"
                   aria-labelledby={`crm-campaign-tab-${detailTab}`}
                 >
-                  {saveNotice && (
-                    <CrmSaveFeedback lang={lang} state="saved">
-                      {u(
-                        "Campaign information saved. The campaign code and existing links stay unchanged.",
-                      )}
-                    </CrmSaveFeedback>
-                  )}
                   {/* TAB 1: OVERVIEW */}
                   {detailTab === "overview" && (
                     <div className="space-y-4">
@@ -1326,6 +1319,9 @@ export function CrmCampaignHub({
           </div>
         </div>
       )}
+      {saveNotice&&<AdminFormFeedback state="saved" lang={lang} placement="floating">
+        {u("Campaign information saved. The campaign code and existing links stay unchanged.")}
+      </AdminFormFeedback>}
       {pendingLeave && (
         <CrmDiscardDialog
           lang={lang}

@@ -56,7 +56,6 @@
 .admin-personal-save-feedback .admin-form-feedback{margin:0}
 .admin-personal-save-feedback button{margin-top:4px}
 .admin-notification-drawer :is(button,input,summary):focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
-.crm-discard-dialog[data-tone=danger] footer button:last-child{color:var(--admin-danger);background:var(--admin-danger-bg);border-color:var(--admin-danger-border)}
 @media(max-width:600px){.admin-personal-required-list{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-notification-drawer .admin-personal-settings-scroll{padding:16px}.admin-personal-account-row{align-items:flex-start}.admin-personal-lark-binding-actions{flex-wrap:wrap}.admin-personal-language{grid-template-columns:1fr;gap:8px}.admin-personal-lark-actions{padding:16px}.admin-personal-lark-actions button{min-height:44px}}
 
 /* Optional availability remains in place; only enabled types expose a switch. */
