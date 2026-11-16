@@ -1,4 +1,5 @@
 import {AdminConfirmation} from '../admin/AdminConfirmation';
+import {AdminRecordHeader,type AdminBackTarget} from '../admin/AdminRecordHeader';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {recordScrollMode} from '../adminScroll';
 import { campaignUi, type CampaignUiLanguage } from "../../utils/campaignI18n";
@@ -14,6 +15,7 @@ export function CrmDetailHeader({
   identityNavigation,
   titleId,
   titleRef,
+  back,
 }: {
   title: ReactNode;
   meta: ReactNode;
@@ -23,7 +25,13 @@ export function CrmDetailHeader({
   identityNavigation?: {back: ReactNode; adjacent: ReactNode; label: string};
   titleId?: string;
   titleRef?: React.Ref<HTMLHeadingElement>;
+  back?:AdminBackTarget;
 }) {
+  if(back)return <AdminRecordHeader back={back} title={<div className="crm-detail-identity">
+    <h2 id={titleId} ref={titleRef} tabIndex={-1}>{title}</h2>
+    {status&&<div className="crm-detail-current-state">{status}</div>}
+    <div className="crm-detail-meta">{meta}</div>
+  </div>} actions={<div className="crm-detail-actions">{actions}</div>}/>;
   return (
     <>
     {navigation && <nav className="crm-detail-navigation">{navigation}</nav>}
@@ -72,7 +80,7 @@ export function CrmDetailTabs({
     }
   }, [value, id]);
   return (
-    <div className="crm-detail-tabs" role="tablist" aria-label={label}>
+    <div className="crm-content-tabs crm-detail-tabs" role="tablist" aria-label={label}>
       {tabs.map((tab, i) => {
         const Icon = tab.icon;
         return (
@@ -80,6 +88,7 @@ export function CrmDetailTabs({
             key={tab.id}
             type="button"
             id={`${id}-tab-${tab.id}`}
+            className="crm-content-tab"
             role="tab"
             aria-selected={value === tab.id}
             aria-controls={contentId}
@@ -115,6 +124,21 @@ export function CrmDetailTabs({
     </div>
   );
 }
+export function CrmContentNav({label,items,onNavigate}:{
+  label:string;
+  items:{href:string;label:string;current:boolean}[];
+  onNavigate:(href:string)=>void;
+}) {
+  return <nav className="crm-content-tabs" aria-label={label}>
+    {items.map(item=><a key={item.href} className="crm-content-tab" href={item.href}
+      aria-current={item.current?'page':undefined} onClick={event=>{
+        if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+        event.preventDefault();
+        if(!item.current)onNavigate(item.href);
+      }}>{item.label}</a>)}
+  </nav>;
+}
+
 export function CrmSaveFeedback({
   state,
   children,

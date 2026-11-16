@@ -1,17 +1,17 @@
-import {ArrowLeft, ChevronDown, PanelLeftClose, PanelLeftOpen, Search, SlidersHorizontal} from 'lucide-react';
-import {useEffect, useId, useLayoutEffect, useRef, type MouseEventHandler, type ReactNode, type Ref, useState} from 'react';
+import {AdminRecordBack,type AdminBackTarget} from '../admin/AdminRecordHeader';
+import {ChevronDown, PanelLeftClose, PanelLeftOpen, SlidersHorizontal} from 'lucide-react';
+import {useEffect, useId, useLayoutEffect, useRef, type MouseEventHandler, type ReactNode, useState} from 'react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
+import {CrmSearchField, type CrmSearchFieldProps} from './CrmSearchField';
 import {containPaneKeys, revealRecord} from '../adminScroll';
 
 export function CrmRecordNavigation({label, back, tools}: {
   label: string;
-  back: {label: string; href: string} | {label: string; onClick: () => void; disabled?: boolean};
+  back: AdminBackTarget;
   tools?: ReactNode;
 }) {
-  const content=<><ArrowLeft size={16} aria-hidden="true"/>{back.label}</>;
   return <nav className="crm-record-navigation" aria-label={label}>
-    {'href' in back?<a className="crm-work-link" href={back.href}>{content}</a>:
-      <button type="button" className="crm-work-link" onClick={back.onClick} disabled={back.disabled}>{content}</button>}
+    <AdminRecordBack target={back}/>
     {tools&&<div className="crm-record-nav-tools">{tools}</div>}
   </nav>;
 }
@@ -42,9 +42,9 @@ export function CrmDetailActions({label, secondary, primary}: {
   return <div className="crm-record-actions" role="group" aria-label={label}>{secondary}{primary}</div>;
 }
 
-export function CrmRecordSidebar({id, title, count, selectedId, busy, busyLabel, hidden, filters, note, empty, children}: {
+export function CrmRecordSidebar({id, title, count, selectedId, busy, busyLabel, hidden, filters, note, empty, footer, children}: {
   id: string; title: string; count?: number; selectedId?: string; busy?: boolean; busyLabel: string; hidden?: boolean;
-  filters: ReactNode; note?: string; empty?: ReactNode; children?: ReactNode;
+  filters: ReactNode; note?: string; empty?: ReactNode; footer?: ReactNode; children?: ReactNode;
 }) {
   const rows=useRef<HTMLDivElement>(null);
   useLayoutEffect(()=>{
@@ -62,6 +62,7 @@ export function CrmRecordSidebar({id, title, count, selectedId, busy, busyLabel,
       aria-busy={busy} tabIndex={children?0:undefined} onKeyDown={containPaneKeys}>
       {empty??<ul>{children}</ul>}
     </div>
+    {footer}
   </aside>;
 }
 
@@ -78,14 +79,8 @@ export function CrmRecordRow({selected, name, title, href, onClick, meta, extra}
   </li>;
 }
 
-export function CrmRecordSearch({label, placeholder, value, onChange, inputRef}: {
-  label: string; placeholder: string; value: string; onChange: (value: string) => void; inputRef?: Ref<HTMLInputElement>;
-}) {
-  return <div className="crm-record-search">
-    <Search size={16} aria-hidden="true"/>
-    <input ref={inputRef} type="search" maxLength={200} aria-label={label} placeholder={placeholder}
-      value={value} onChange={event=>onChange(event.target.value)}/>
-  </div>;
+export function CrmRecordSearch({maxLength=200,...props}:Omit<CrmSearchFieldProps,'className'>) {
+  return <CrmSearchField {...props} maxLength={maxLength}/>;
 }
 
 export function CrmRecordFilters({lang, count, search, children}: {

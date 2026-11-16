@@ -42,6 +42,10 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 
 新增或改造管理端记录详情时执行[记录详情规范](docs/design/admin-record-detail-system.md)，复用详情操作区和适用页面的记录侧栏。
 
+## 管理端搜索、下拉和内容页签
+
+CRM、CMS 和系统管理新增或调整搜索、枚举下拉与内容页签时，必须遵循[共享控件规范](docs/design/admin-list-controls.md)。使用 `CrmSearchField`、`CrmSingleSelect` 与 `CrmDetailTabs`／`CrmContentNav` 对应接入，页面只定义业务选项和布局，不复制控件样式。验收应检查展开后的选项与键盘焦点，并区分页内切换和链接导航。
+
 ## 管理界面颜色执行要求
 
 CRM、CMS和系统管理的颜色变更必须执行[全局颜色与状态规范](docs/design/admin-color-system.md)，复用 `src/components/admin-colors.css` 的语义变量及现有共享业务组件；不得按页面新增近似状态色。营销站主题不能改变管理业务状态。颜色只呈现已存在的状态，不授权新增任务、评级或业务规则。修改时检查文字、背景和边框的浅深色配对、键盘焦点及文字含义，报告未验证状态。无能力权限或当前客户范围权限时隐藏“记录进展”；可执行认领前置步骤时禁用并解释；保存中保留禁用反馈，服务端校验不变。

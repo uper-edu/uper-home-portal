@@ -1,3 +1,4 @@
+import {CrmSearchField} from './CrmSearchField';
 import {adminFieldName,useAdminField} from '../AdminForm';
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -115,7 +116,7 @@ export function CrmSingleSelect({
     };
     document.addEventListener("pointerdown", dismiss);
     (
-      popup.current?.querySelector<HTMLElement>("input") ||
+      popup.current?.querySelector<HTMLElement>('input[type="search"]') ||
       popup.current?.querySelector<HTMLElement>(
         '[aria-selected="true"]:not(:disabled)',
       ) ||
@@ -134,6 +135,24 @@ export function CrmSingleSelect({
       event.preventDefault();
       event.stopPropagation();
       close();
+      return;
+    }
+    if (event.key === "Tab") {
+      const field = popup.current?.querySelector<HTMLInputElement>('input[type="search"]');
+      const firstChoice = popup.current?.querySelector<HTMLElement>('[aria-selected="true"]:not(:disabled)')
+        || popup.current?.querySelector<HTMLElement>('[role="option"]:not(:disabled)');
+      const footerButtons = Array.from(popup.current?.querySelectorAll<HTMLButtonElement>(
+        '.crm-filter-popover-footer button:not(:disabled)',
+      ) ?? []);
+      const index = footerButtons.indexOf(event.target as HTMLButtonElement);
+      const next = index >= 0
+        ? event.shiftKey ? footerButtons[index - 1] ?? firstChoice ?? field : footerButtons[index + 1]
+        : event.shiftKey ? (event.target === field ? undefined : field)
+          : (event.target === field ? firstChoice ?? footerButtons[0] : footerButtons[0]);
+      if (next) {
+        event.preventDefault();
+        next.focus();
+      } else close();
       return;
     }
     if (
@@ -230,13 +249,11 @@ export function CrmSingleSelect({
               className="crm-filter-popover"
             >
               {searchable && (
-                <input
-                  type="search"
-                  className="crm-filter-option-search"
-                  aria-label={t("Search ", "搜索") + label}
+                <CrmSearchField className="crm-filter-option-search"
+                  label={t("Search ", "搜索") + label}
                   placeholder={t("Find options…", "搜索选项…")}
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={setQuery}
                 />
               )}
               <div
