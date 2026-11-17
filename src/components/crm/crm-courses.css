@@ -17,3 +17,6 @@
 .crm-enrollment-fields .crm-enrollment-confirmation{align-items:center;font-size:14px;line-height:1.6}
 [data-admin-form] .crm-enrollment-fields .crm-enrollment-confirmation input[type=checkbox]{flex:none;align-self:center;margin:0}
 @media(max-width:600px){.crm-enrollment-discount-fields{grid-template-columns:1fr}}
+
+.crm-class-quote-feedback { flex:0 0 100%; font-size:13px; line-height:1.5; }
+.crm-class-quote-feedback p { margin:0 0 4px; }

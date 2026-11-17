@@ -476,15 +476,17 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
     </div>}
     {business&&settings&&<div className="enrollment-mail-sections" data-admin-form="">
       <AdminFormSection title={t('发信设置','Email settings','Pengaturan email')}>
+        <div className="enrollment-mail-routing" data-admin-stack>
         <AdminField as="div" className="enrollment-mail-pool-select">
           <label>{t('选用发信池','Select sending pool','Pilih pool pengiriman')}</label>
           <CrmSingleSelect lang={lang} isLight={isLight} label={t('选用发信池','Select sending pool','Pilih pool pengiriman')}
             disabled={busy||feedback==='unknown'} value={settings.pool} options={business.pools.map(pool=>({value:pool.id,
               label:pool.enabled?pool.name:pool.name+' · '+word('disabled')}))} onChange={pool=>changeSettings({pool})}/>
         </AdminField>
-        <p className="crm-work-muted enrollment-mail-delivery-mode">
-          {t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')} · {word(business.mode)}
-        </p>
+        <dl className="enrollment-mail-delivery-mode">
+          <dt>{t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')}</dt>
+          <dd>{word(business.mode)}</dd>
+        </dl>
         <div data-admin-stack className="enrollment-mail-fixed-sender">
           <AdminField className="enrollment-mail-switch-row">{t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran')}
             <input className="admin-switch" type="checkbox" role="switch" aria-describedby={stickyHelpId}
@@ -505,6 +507,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
             {t('放弃草稿并查看最新设置','Discard draft and view current settings','Buang draf dan lihat pengaturan terkini')}
           </AdminRowAction>
         </AdminFormFeedback>:feedback&&feedback!=='saved'?<AdminFormFeedback state={feedback} lang={lang}/>:null}
+        </div>
       </AdminFormSection>
       <AdminFormSection title={historyTitle} description={t('最近 100 条业务邮件。SMTP 已接收表示邮件已交给邮件服务。','Latest 100 business emails. SMTP accepted means the mail service accepted the message.','100 email bisnis terakhir. Diterima SMTP berarti pesan diterima oleh layanan email.')}>
         <div className="enrollment-mail-history-controls">

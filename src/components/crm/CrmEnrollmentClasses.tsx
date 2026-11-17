@@ -1,3 +1,5 @@
+import {AdminSecondaryActions} from '../admin/AdminRecordActions';
+import {CrmEnrollmentTemplates} from './CrmEnrollmentTemplates';
 import {enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type EnrollmentTemplate} from '../../utils/enrollmentTemplates';
 import {EnrollmentClassPreview} from '../EnrollmentClassPreview';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
@@ -59,6 +61,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const [search,setSearch]=useState('');
   const [classState,setClassState]=useState('all');
   const [draft, setDraft] = useState<Draft>();
+  const [quoteDirty,setQuoteDirty]=useState(false);
+  const [quoteTemplateId,setQuoteTemplateId]=useState<string>();
   const [preview,setPreview]=useState<EnrollmentClassAdmin>();
   const createOpened=useRef<string|undefined>(undefined);
   const [insertion, setInsertion] = useState<{row:EnrollmentClassAdmin;requestId:string}>();
@@ -100,7 +104,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   }
   const refresh=()=>void load().catch(()=>{});
   useEffect(()=>{refresh();return ()=>readRequest.current?.abort();},[]);
-  useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[onDraftChange,dirty,busy,pending]);
+  useEffect(()=>{onDraftChange(dirty||busy||!!pending||quoteDirty);},[onDraftChange,dirty,busy,pending,quoteDirty]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
   useEffect(() => {
     if (!dirty && !pending) return;
@@ -339,10 +343,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
           {row.canInsert&&<AdminRowAction disabled={readState==='error'} onClick={()=>{
             setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
           }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</AdminRowAction>}
-          {row.state==='published'&&!row.opened&&<AdminRowAction disabled={readState==='error'} onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
-            {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</AdminRowAction>}</div></td>
+          {row.state==='published'&&!row.opened&&<AdminSecondaryActions alwaysMenu disabled={readState==='error'} label={t(['More actions','Tindakan lain','更多操作'])}>
+            <button type="button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>{t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</button>
+          </AdminSecondaryActions>}</div></td>
       </tr>)}</AdminListTable>}
-    {draft&&!preview&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
+    {draft&&!preview&&!quoteTemplateId&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
       title={draft.revision?t(['Edit class','Edit kelas','编辑班次']):t(['Create class','Buat kelas','创建班次'])}
       lang={lang} light={isLight} busy={busy} closeDisabled={!!pending} onClose={close}
       onSubmit={event=>{event.preventDefault();void save();}} footer={<>
@@ -425,8 +430,21 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
           </AdminFormSection>
           </div>
     </AdminEditor>}
-    {preview&&<AdminEditor variant="drawer" lang={lang} light={isLight} title={t(['Learner preview','Pratinjau siswa','学员预览'])}
+    {quoteTemplateId&&<CrmEnrollmentTemplates lang={lang} isLight={isLight} onDraftChange={setQuoteDirty}
+      quoteEdit={{id:quoteTemplateId,onReturn:()=>{
+        refresh();
+        setQuoteTemplateId(undefined);
+      }}}/>}
+    {preview&&!quoteTemplateId&&<AdminEditor variant="drawer" lang={lang} light={isLight} title={t(['Learner preview','Pratinjau siswa','学员预览'])}
       onClose={()=>setPreview(undefined)} footer={<>
+        {draft?.state==='draft'&&!preview.price&&<div className="crm-class-quote-feedback">
+          <p>{t(['Add pricing to the class template before publishing.','Tambahkan harga pada templat kelas sebelum menerbitkan.','班型模板缺少报价，补齐后才能发布。'])}</p>
+          {draft.config.templateId&&<AdminRowAction onClick={()=>{
+            setQuoteTemplateId(draft.config.templateId);
+            setPreview(undefined);
+          }}>{t(['Add pricing in the class template','Tambahkan harga di templat kelas','前往班型模板补报价'])}</AdminRowAction>}
+        </div>}
+
         <button type="button" onClick={()=>setPreview(undefined)}>{t(['Back to editing','Kembali mengedit','返回编辑'])}</button>
         {draft?.state==='draft'&&<button type="button" data-primary="" disabled={busy||scheduleMismatch||timeSlotMismatch||!!templateUpdate||!!pending||!preview.price||!preview.firstLesson||!(preview.weeklySchedule?enrollmentWeeklyScheduleText(preview.weeklySchedule,preview.minutes,lang):preview.schedule)||!preview.decisionAt||!preview.enrollmentCloses}
           onClick={()=>void save('published')}>{t(['Publish class','Terbitkan kelas','发布班次'])}</button>}
