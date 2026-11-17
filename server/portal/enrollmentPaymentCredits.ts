@@ -23,8 +23,8 @@ export async function updateEnrollmentPayment(c:Client,{order,cohort}:LockedOrde
     await c.query('INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id',[cohort.id]);
   }
   const opened=Boolean(openedBefore||cohort.state==='published'&&paid>=cohort.data.minimumPaid);
-  if(newlyPaid)await orderNotice(c,opened?'payment_and_opening':'payment_confirmed',order.id,undefined,{received});
-  if(opened&&!openedBefore)await classOpeningNotices(c,cohort,newlyPaid?order.id:undefined);
+  if(newlyPaid)await orderNotice(c,'payment_confirmed',order.id,undefined,{received});
+  if(opened&&!openedBefore)await classOpeningNotices(c,cohort);
   return {paidCount:paid,opened};
 }
 

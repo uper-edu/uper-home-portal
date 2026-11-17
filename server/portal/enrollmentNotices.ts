@@ -1,5 +1,5 @@
 import {enrollmentMailConfigured,enrollmentMailMode} from './enrollmentMail.ts';
-import { renderEnrollmentEmail, type EnrollmentEmailKind } from './enrollmentEmail.ts';
+import { enrollmentOrderEmailPath, renderEnrollmentEmail, type EnrollmentEmailKind } from './enrollmentEmail.ts';
 import { cardMoney, enrollmentCard } from './enrollmentCards.ts';
 import { enrollmentWeekOf, enrollmentWeekTotals, latestDueEnrollmentWeek } from './enrollmentWeekly.ts';
 import { pendingEnrollmentProofTotals } from './enrollmentProofTotals.ts';
@@ -25,7 +25,7 @@ export async function latestAssistanceMail(c:Client,id:string){
 export async function sendAssistanceMail(c:Client,local:NonNullable<ReturnType<typeof enrollmentSimulation>>,
   offer:any,attempt:string){
   const {id,email,data,expiresAt}=offer;
-  const content={salutation:data.name,language:data.lang,class:data.quote.level,firstLesson:data.quote.firstLesson,
+  const content={salutation:data.name,language:data.lang,class:data.quote.level,format:data.quote.format,period:data.quote.period,firstLesson:data.quote.firstLesson,
     schedule:data.quote.schedule,price:data.quote.price,deadline:expiresAt,url:enrollmentAssistancePath(id,data.lang)};
   const message=renderEnrollmentEmail('assistance_confirmation',content);
   if(await enrollmentMailConfigured(c)){
@@ -51,8 +51,8 @@ export async function orderNotice(c:Client,kind:Notice,orderId:string,discrimina
   const language=row.attribution?.lang??'en';
   const content={
     salutation:row.data.name, language, orderId, orderState:row.state,
-    class:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,
-    deadline:row.deadline,...facts,url:'/enrollment/mine?'+new URLSearchParams({lang:language,order:orderId}),
+    class:row.class_data.level,format:row.class_data.format,period:row.class_data.period,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,
+    deadline:row.deadline,...facts,url:enrollmentOrderEmailPath(kind,language,orderId,discriminator),
   };
   await record(c,'email:'+kind+':'+orderId+':'+discriminator,'email',kind,orderId,{
     recipient:row.email,...content,...renderEnrollmentEmail(kind,content),
@@ -62,7 +62,7 @@ export async function interestNotice(c:Client,kind:'waitlist_vacancy'|'demand_ma
   const type=kind==='waitlist_vacancy'?'waitlist':'demand';
   const attribution=(await c.query('SELECT attribution FROM enrollment_record_attribution WHERE kind=:p1 AND record_id=:p2',[type,interestId])).rows[0]?.attribution;
   const language=attribution?.lang??'en';
-  const content={language,class:cohort.data.level,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
+  const content={language,class:cohort.data.level,format:cohort.data.format,period:cohort.data.period,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
     url:'/enrollment/'+encodeURIComponent(cohort.id)+'?'+new URLSearchParams({lang:language})};
   await record(c,'email:'+kind+':'+interestId+':'+cohort.id+':'+cycle,'email',kind,interestId,{
     recipient:email,...content,...renderEnrollmentEmail(kind,content),
@@ -77,7 +77,7 @@ export async function proofNotices(c:Client,orderId:string,classId:string,digest
     }),
   });
 }
-export async function classOpeningNotices(c:Client,cohort:any,combinedOrderId?:string) {
+export async function classOpeningNotices(c:Client,cohort:any) {
   const {rows}=await c.query(`SELECT
     SUM(state IN ('paid','recovered')) AS paid,
     COALESCE(SUM(received),0) AS received,
@@ -97,10 +97,6 @@ export async function classOpeningNotices(c:Client,cohort:any,combinedOrderId?:s
       待核实金额:pendingMoney(pendingAmount,pendingUnknownCount),待付款人数:Number(totals.waiting),
     }),
   });
-  const paid=(await c.query("SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",[cohort.id])).rows;
-  for(const order of paid) {
-    if(order.id!==combinedOrderId) await orderNotice(c,'class_confirmed',order.id,cohort.id);
-  }
 }
 
 export async function recordDueEnrollmentWeekly(c:Client,now=new Date()) {

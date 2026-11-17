@@ -1,3 +1,4 @@
+import {portalPublicOrigin} from './enrollmentEmail.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import nodemailer from 'nodemailer';
 import type {Express,Request,Response} from 'express';
@@ -27,7 +28,7 @@ const isLocalMailEnvironment=()=>environment()==='dev'&&process.env.TRIAL_DATASE
 export function enrollmentMailMode(){
   if(process.env.PORTAL_ENROLLMENT_MAIL_TRANSPORT==='smtp'){
     if((environment()==='prod'&&process.env.PORTAL_DEPLOYMENT==='production'||environment()==='test'||isLocalMailEnvironment())&&
-      process.env.PORTAL_ENROLLMENT_PUBLIC_ORIGIN)return 'smtp';
+      portalPublicOrigin())return 'smtp';
     return 'disabled';
   }
   return enrollmentSimulation()?'simulation':'disabled';
@@ -133,18 +134,19 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
   const secret=resolveMailPassword(environment(),account);
   if(!secret||enrollmentMailMode()!=='smtp')return 'rejected';
   try{
-    const site=new URL(process.env.PORTAL_ENROLLMENT_PUBLIC_ORIGIN!);
+    const origin=portalPublicOrigin();
+    if(!origin)return 'rejected';
+    const site=new URL(origin);
     const hosts=(process.env.PORTAL_ENROLLMENT_SMTP_ALLOWED_HOSTS||'smtp.larksuite.com').split(',').map(v=>v.trim().toLowerCase());
     if((site.protocol!=='https:'&&!(isLocalMailEnvironment()&&site.origin==='http://localhost:3000'))||!hosts.includes(account.host.toLowerCase()))return 'rejected';
-    const {origin}=site;
     const transport=nodemailer.createTransport({
       host:account.host,port:account.port,secure:account.port===465,requireTLS:account.port===587,
       auth:{user:account.address,pass:secret},connectionTimeout:10_000,greetingTimeout:10_000,socketTimeout:20_000,
     });
     const result=await transport.sendMail({from:{name:'UPER Admissions',address:account.address},to:recipient,
       subject:mail.subject,
-      text:mail.text.replace(/(^|\s)(\/enrollment(?=[/?"\s]|$))/g,(_match,space,link)=>space+origin+link),
-      html:mail.html.replace(/(href=["'])(\/enrollment(?=[/?'"]))/g,(_match,attribute,link)=>attribute+origin+link),
+      text:mail.text.replace(/(^|\s)(?:http:\/\/localhost:3000)?(\/enrollment(?=[/?"\s]|$))/g,(_match,space,link)=>space+origin+link),
+      html:mail.html.replace(/(href=["'])(?:http:\/\/localhost:3000)?(\/enrollment(?=[/?'"]))/g,(_match,attribute,link)=>attribute+origin+link),
       disableFileAccess:true,disableUrlAccess:true});
     return result.accepted.length?'accepted':'rejected';
   }catch(error){
