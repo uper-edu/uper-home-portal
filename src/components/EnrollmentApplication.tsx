@@ -1,3 +1,4 @@
+import { enrollmentClassTitle } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
@@ -425,12 +426,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   }
   function classTitle(level: string, firstLesson: string, id: string) {
     const course = waitlistClass?.id===id ? waitlistClass : mineClasses?.find(row=>row.id===id);
-    const format = course && interestOption(language,course.format);
-    const date = displayDate(firstLesson);
-    const dateText = date && (course?.opened===false
-      ? t(['预计 '+date+'开课','Expected '+date,'Perkiraan '+date])
-      : t([date+'开课','Starts '+date,'Mulai '+date]));
-    return [level,format,dateText].filter(Boolean).join(' · ');
+    if(course)return enrollmentClassTitle(course,language);
+    return [level,displayDate(firstLesson)].filter(Boolean).join(' · ');
   }
   if (waitlistClass || demandOnly) {
     const completed = joined || savedDemand;

@@ -14,7 +14,7 @@ import { AdminFormActions, AdminFormGrid, AdminFormSection, AdminFormSummary } f
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
-import { enrollmentTimeSlotMatches,enrollmentFirstSessionMatches,enrollmentInstant,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentTimeSlotMatches,enrollmentFirstSessionMatches,enrollmentInstant,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
@@ -196,7 +196,9 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       if (result.status >= 500) throw Error();
       if (!result.ok) {
         const failure=await result.json();
-        setError(failure.error==='enrollment_class_timeslot_mismatch'
+        setError(failure.error==='enrollment_class_batch_scope_fixed'
+          ? t(['The time slot cannot change after publication. Create another class instead.','Waktu kelas tidak dapat diubah setelah diterbitkan. Buat kelas baru.','班次发布后不能更改时段类型，请另建班次。'])
+          : failure.error==='enrollment_class_timeslot_mismatch'
           ? timeSlotMessage
           : failure.error==='enrollment_class_schedule_mismatch'
           ? t(['The first session must match the weekly class day and start time.','Pertemuan pertama harus sesuai dengan hari dan waktu mulai jadwal mingguan.','首次上课的星期和开始时间须与每周课表一致。'])
@@ -278,7 +280,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const listState=readState==='loading'&&catalog?'ready':readState;
   const query=search.trim().toLowerCase();
   const visibleClasses=catalog?.classes.filter(row=>target?row.id===target:
-    (classState==='all'||row.state===classState)&&(!query||[row.id,row.level,row.schedule,row.firstLesson]
+    (classState==='all'||row.state===classState)&&(!query||[row.id,enrollmentClassTitle(row,lang),row.schedule,row.firstLesson]
       .some(value=>value?.toLowerCase().includes(query))));
   const options=[
     {value:'all',label:t(['All statuses','Semua status','全部状态'])},
@@ -299,7 +301,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const selectField=(name:'courseId'|'level'|'format'|'period',label:Copy,options:CrmChoice[],fullWidth=false)=>
     <AdminField required data-admin-full-width={fullWidth||undefined}>{t(label)}
       <CrmSingleSelect label={t(label)} value={draft?.config[name]??''} options={options} lang={lang} isLight={isLight}
-        disabled={fieldDisabled} onChange={value=>change(name,value)}/>
+        disabled={fieldDisabled||(name==='period'&&draft?.state==='published')} onChange={value=>change(name,value)}/>
     </AdminField>;
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
@@ -325,11 +327,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         :listState==='error'&&catalog?t(['Refresh failed. Showing the last loaded classes.','Gagal menyegarkan. Kelas yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的班次。']):undefined}
       onRetry={refresh}/>}
     {!!visibleClasses?.length&&<AdminListTable label={title} className="crm-course-list" busy={readState==='loading'} headers={[
-      t(['Level','Level','级别']),t(['Schedule','Jadwal','课表']),{label:t(['Tuition','Biaya','学费']),numeric:true},
+      t(['Class','Kelas','班次']),t(['Schedule','Jadwal','课表']),{label:t(['Tuition','Biaya','学费']),numeric:true},
       t(['Status','Status','状态']),t(['Actions','Tindakan','操作']),
     ]}>
       {visibleClasses.map(row => <tr key={row.id}>
-        <td>{row.level}</td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
+        <td>{enrollmentClassTitle(row,lang)}<br/><small>{enrollmentTeacherLabel(row.teacherType,lang)}</small></td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
         <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus tone={row.opened||row.state==='published'?'success':'neutral'}>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</AdminStatus></td>
         <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
@@ -429,6 +431,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         {draft?.state==='draft'&&<button type="button" data-primary="" disabled={busy||scheduleMismatch||timeSlotMismatch||!!templateUpdate||!!pending||!preview.price||!preview.firstLesson||!(preview.weeklySchedule?enrollmentWeeklyScheduleText(preview.weeklySchedule,preview.minutes,lang):preview.schedule)||!preview.decisionAt||!preview.enrollmentCloses}
           onClick={()=>void save('published')}>{t(['Publish class','Terbitkan kelas','发布班次'])}</button>}
       </>}>
+      {!preview.batchNumber&&<p>{t(['Batch number assigned on first publication.','Nomor angkatan ditetapkan saat pertama diterbitkan.','首次发布时自动分配期数。'])}</p>}
       {error&&<p role="alert">{error}</p>}
       {pending&&<><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" disabled={busy} onClick={()=>void check()}>{t(['Check save result','Periksa hasil simpan','查询保存结果'])}</button></>}
       <EnrollmentClassPreview row={preview} language={lang} showDetails/>
@@ -446,7 +449,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
           <p>{t(['Confirm tuition with the learner before reserving a seat. The payment deadline uses the enrollment rules in effect when you save.',
             'Konfirmasikan biaya dengan siswa sebelum memesan kursi. Batas pembayaran mengikuti aturan pendaftaran saat Anda menyimpan.',
             '分配席位前请先与学员确认应付金额。付款和提交凭证的截止时间按保存时生效的报名规则计算。'])}</p>
-          {error&&<p role="alert">{error}</p>}
+      {error&&<p role="alert">{error}</p>}
           {pending&&<CrmSaveFeedback state={busy?"saving":"unknown"} lang={lang}>{!busy&&checkMessage}</CrmSaveFeedback>}
           <AdminField required>{t(['Learner name','Nama siswa','学员姓名'])}<input name="name" required maxLength={120} disabled={busy||!!pending}/></AdminField>
           <AdminField required>{t(['Email','Email','电子邮箱'])}<input name="email" type="email" required maxLength={254} disabled={busy||!!pending}/></AdminField>

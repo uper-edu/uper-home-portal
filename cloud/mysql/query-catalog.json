@@ -992,6 +992,7 @@
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
+      "server/portal/enrollmentCatalog.ts",
       "server/portal/larkChannelModes.ts"
     ]
   },
@@ -1031,6 +1032,12 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES('enrollment_bank',:p1) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('enrollment_batch_lock',JSON_OBJECT()) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('enrollment_batch_lock',JSON_OBJECT()) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id": {
@@ -3659,6 +3666,7 @@
   "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE",
     "sources": [
+      "server/portal/enrollmentCatalog.ts",
       "server/portal/enrollmentTemplates.ts",
       "server/portal/larkChannelModes.ts"
     ]
@@ -3706,6 +3714,12 @@
     "sql": "SELECT value FROM portal_settings WHERE id='enrollment_bank' FOR UPDATE",
     "sources": [
       "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_batch_lock' FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_batch_lock' FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='enrollment_rules'": {
@@ -4671,6 +4685,7 @@
   "UPDATE portal_settings SET value=:p2 WHERE id=:p1": {
     "sql": "UPDATE portal_settings SET value=:p2 WHERE id=:p1",
     "sources": [
+      "server/portal/enrollmentCatalog.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/runtime.ts"
     ]

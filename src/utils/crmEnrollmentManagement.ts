@@ -14,7 +14,7 @@ export const canViewEnrollmentManagement = (actor:AccessEmployee) =>
 export const enrollmentRosterStates=['awaiting_payment','proof_review','partial','paid','held','waiting','history'] as const;
 export type EnrollmentRosterState=typeof enrollmentRosterStates[number];
 export type EnrollmentClassSummary={
-  id:string; level:string; format:'standard'|'small'; period:'weekday-evening'|'weekend'; schedule:string;
+  id:string; batchNumber?:number;teacherType?:'local'|'foreign'; level:string; format:'standard'|'small'; period:'weekday-evening'|'weekend'; schedule:string;
   firstLessonAt:string; capacity:number; minimumPaid:number;
   status:'recruiting'|'opened'|'cancelled'|'closed'; accepting:boolean;
   counts:Record<EnrollmentRosterState,number>; occupied:number; available:number;

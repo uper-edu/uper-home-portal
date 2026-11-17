@@ -51,7 +51,7 @@ export async function enrollmentAftercareStatus(c:Client,id:string,includeRefund
     FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
     WHERE i.order_id=:p1 ORDER BY i.created_at DESC`,[id])).rows.map(row=>({
       id:row.id,targetClassId:row.target_class_id,expiresAt:row.expires_at_iso,
-      state:row.state,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
+      state:row.state,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
     }));
   const refund=includeRefund?await refundLedger(c,id):null;
   const transfers=(await c.query('SELECT source_class_id,target_class_id,created_at FROM enrollment_transfers WHERE order_id=:p1 ORDER BY created_at DESC',[id])).rows;

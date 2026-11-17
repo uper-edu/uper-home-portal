@@ -1,3 +1,4 @@
+import {enrollmentClassTitle} from '../../utils/enrollmentCatalog';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminListTable,AdminListState,AdminListPagination} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
@@ -245,7 +246,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     return ()=>{cancelAnimationFrame(frame);cancelAnimationFrame(restoreFrame);};
   },[id,aftercare,classes,resumeClassList,classPositionKey]);
   const title=t(['报名管理','Enrollment management','Pengelolaan pendaftaran']);
-  const classTitle=(row:EnrollmentClassSummary)=>row.level+' · '+[row.period,row.format].filter(Boolean).map(value=>interestOption(lang,value)).join(lang==='zh'?'':' ');
+  const classTitle=(row:EnrollmentClassSummary)=>enrollmentClassTitle(row,lang);
   const matchedClasses=filterEnrollmentClasses(classes??[],classFilters,classTitle);
   const pageCount=Math.max(1,Math.ceil(matchedClasses.length/enrollmentClassPageSize));
   const page=Math.min(classFilters.page,pageCount);

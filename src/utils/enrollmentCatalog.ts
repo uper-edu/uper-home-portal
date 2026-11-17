@@ -8,6 +8,8 @@ export interface EnrollmentClassConfig {
   courseName?: string;
   templateId?: string;
   templateRevision?: number;
+  /** Assigned by the server on first publication; never reused. */
+  batchNumber?: number;
   teacherType?: 'local'|'foreign';
   level: typeof enrollmentLevels[number];
   format: typeof enrollmentFormats[number];
@@ -79,9 +81,9 @@ export function enrollmentOpeningNotice(
 }
 
 export function publicEnrollmentClass(record: EnrollmentClassAdmin): PublicEnrollmentClass {
-  const { id, level, courseName, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
+  const { id, level, courseName, batchNumber, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher } = record;
-  return { id, level, courseName, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
+  return { id, level, courseName, batchNumber, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher };
 }
 
@@ -176,4 +178,21 @@ export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undef
   const index=lang==='zh'?0:lang==='en'?1:2;
   const days=[...new Set(plan.days)].sort((a,b)=>a-b).map(day=>lang==='zh'?enrollmentWeekdays[day-1][index].slice(1):enrollmentWeekdays[day-1][index]).join(lang==='zh'?'、':', ');
   return (lang==='zh'?'每周':'')+days+' '+plan.start+'–'+endTime+' WIB';
+}
+
+/** One title contract for the catalog, CRM, applications and order details. */
+export type EnrollmentClassIdentity = {level?:string;format?:string;period?:string;batchNumber?:number};
+export function enrollmentClassTitle(row:EnrollmentClassIdentity,language:'zh'|'en'|'id') {
+  const labels={
+    zh:{standard:'标准班',small:'小班',weekend:'周末班','weekday-evening':'工作日晚班'},
+    en:{standard:'Standard Class',small:'Small Group',weekend:'Weekend','weekday-evening':'Weekday Evening'},
+    id:{standard:'Kelas Standar',small:'Kelas Kecil',weekend:'Akhir Pekan','weekday-evening':'Malam Hari Kerja'},
+  }[language] as Record<string,string>;
+  const batch=row.batchNumber&&Number.isSafeInteger(row.batchNumber)&&row.batchNumber>0
+    ? {zh:`第 ${row.batchNumber} 期`,en:`Batch ${row.batchNumber}`,id:`Angkatan ${row.batchNumber}`}[language]:'';
+  return [row.level,row.format&&labels[row.format],row.period&&labels[row.period],batch].filter(Boolean).join(' · ');
+}
+export function enrollmentTeacherLabel(type:'local'|'foreign'|undefined,language:'zh'|'en'|'id') {
+  if(!type)return '';
+  return {zh:{local:'本土教师',foreign:'外教'},en:{local:'Indonesian Teacher',foreign:'Foreign Teacher'},id:{local:'Pengajar Lokal',foreign:'Pengajar Asing'}}[language][type];
 }

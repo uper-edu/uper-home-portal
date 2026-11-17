@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Clock3, Copy as CopyIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
-import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import {enrollmentTeacherLabel,enrollmentClassTitle, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { enrollmentSupportPath } from './EnrollmentSupport';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 
 type Copy = readonly [string, string, string];
-type Course = { level?: string; format?: string; opened?: boolean; firstLesson: string; schedule: string; decisionAt?:string };
+type Course = Partial<PublicEnrollmentClass> & { level?: string; format?: string; opened?: boolean; firstLesson: string; schedule: string; decisionAt?:string };
 type TransferTarget = Course & { id: string };
 type Invitation = Course & { id: string; targetClassId: string; state: string; expiresAt: string };
 export type EnrollmentAftercare = {
@@ -87,6 +87,7 @@ export function EnrollmentOrderAftercare({
 
   function courseTitle(value?: Course, fallback?: Course, expected = false) {
     if (!value) return t(['报名编号','Order number','Nomor pendaftaran'])+' · '+order.id;
+    if(value.period||fallback?.period)return enrollmentClassTitle({...fallback,...value},language);
     const date = new Date(value.firstLesson.slice(0,10)+'T00:00:00+07:00');
     const day = Number.isFinite(date.valueOf()) ? dateFormat.format(date) : '';
     const format = value.format ?? fallback?.format;
@@ -98,6 +99,7 @@ export function EnrollmentOrderAftercare({
   const classCard = (value?: Course, label?: string, isOriginal = false) => <article className="enrollment-record">
     {label&&<small>{label}</small>}
     <h2>{courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}</h2>
+    {value&&<p>{[enrollmentTeacherLabel(value.teacherType??course?.teacherType,language),value.firstLesson.replace('T',' ')+' WIB'].filter(Boolean).join(' | ')}</p>}
     {value?.schedule&&<p>{value.schedule}</p>}
     {isOriginal&&closed&&<p>{originalClosed}</p>}
   </article>;

@@ -1,3 +1,4 @@
+import { enrollmentClassTitle } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, Minus, Plus } from 'lucide-react';
@@ -216,7 +217,7 @@ export default function Enrollment() {
   if (application && selected && selected.availability !== 'full' && !params.has('order') && accepting) {
     return <section className="enrollment-screen enrollment-apply-screen">
       <EnrollmentApplication key={selected.id} classId={selected.id} language={language} applicationClass={{
-        title: selected.level + ' · ' + t(selected.format) + ' · ' + dateLabel(selected),
+        title: enrollmentClassTitle(selected,language),
         schedule: selected.schedule,
         price: selected.price,
         detailsPath: waitlistPath ?? detailsPath(selected.id),

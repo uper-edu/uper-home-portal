@@ -1,10 +1,11 @@
+import {enrollmentClassTitle,type EnrollmentClassIdentity} from '../utils/enrollmentCatalog';
 import {useEffect,useState} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
 import {enrollmentCopy,enrollmentPost} from './EnrollmentApplication';
 import {interestOption,type InterestLanguage} from './EnrollmentInterests';
 import {formatCurrency} from '../utils/currency';
 
-type Offer={classId:string;quote:{level:string;firstLesson:string;schedule:string;price:number;period:string;format:string};name?:string;phone?:string;email?:string;orderId?:string};
+type Offer={classId:string;quote:EnrollmentClassIdentity & {level:string;firstLesson:string;schedule:string;price:number;period:string;format:string};name?:string;phone?:string;email?:string;orderId?:string};
 
 export function EnrollmentAssistance({language}:{language:InterestLanguage}){
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
@@ -56,8 +57,8 @@ export function EnrollmentAssistance({language}:{language:InterestLanguage}){
     {error&&<p className="enrollment-form-error" role="alert">{enrollmentCopy(language,errors[error]??[
       '暂时无法继续，请核对邮箱、验证码或联系销售。','Check your email and verification code or contact your advisor.','Periksa email dan kode verifikasi, atau hubungi tim kami.'])}</p>}
     {offer&&<><article className="enrollment-record">
-      <h2>{[offer.quote.level,interestOption(language,offer.quote.format),offer.quote.firstLesson.replace('T',' ')+' WIB'].join(' · ')}</h2>
-      <p>{offer.quote.schedule}</p><p><strong>{formatCurrency(offer.quote.price,language)}</strong></p>
+      <h2>{enrollmentClassTitle(offer.quote,language)}</h2>
+      <p>{offer.quote.firstLesson.replace('T',' ')} WIB</p><p>{offer.quote.schedule}</p><p><strong>{formatCurrency(offer.quote.price,language)}</strong></p>
       <Link target="_blank" rel="noopener noreferrer" to={'/enrollment/'+encodeURIComponent(offer.classId)+'?view=rules&lang='+language}>
         {t('查看开班与退款说明','Class opening and refund policy','Ketentuan pembukaan kelas dan pengembalian dana')}</Link>
     </article>

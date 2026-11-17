@@ -1,7 +1,7 @@
 import {Link} from 'react-router-dom';
 import {ChevronRight} from 'lucide-react';
 import {formatCurrency} from '../utils/currency';
-import {enrollmentOpeningNotice,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentClassTitle,enrollmentTeacherLabel,enrollmentOpeningNotice,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import {enrollmentCopy} from './EnrollmentApplication';
 import '../pages/enrollment.css';
 
@@ -15,20 +15,17 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
    month:'long',day:'numeric',timeZone:'Asia/Jakarta',
  }).format(dateValue).replaceAll(' ','\u00a0'):'';
  const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('预计 '+date+'开课','Expected '+date,'Perkiraan '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
- const type=row.format==='standard'?t('标准班','Standard Class','Kelas Standar'):t('小班','Small Group','Kelas Kecil');
- const period=row.period==='weekend'?t('周末','Weekend','Akhir Pekan'):t('工作日晚间','Weekday Evening','Malam Hari Kerja');
- const classLabel=t(period+type,period+' '+type,type+' '+period);
  const size=row.format==='standard'?'10–15':'4–6';
- const title=row.level+' · '+classLabel+' · '+dateLabel;
+ const title=enrollmentClassTitle(row,language);
  const openingNotice=row.opened?'':enrollmentOpeningNotice(row.decisionAt,language,clock);
  const availability=row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),
  })[row.availability];
  return <article className="enrollment-class-card">
    <h2>{titleLink?<Link to={titleLink}>{title}<ChevronRight size={15} aria-hidden="true"/></Link>:title}</h2>
+   <p>{[enrollmentTeacherLabel(row.teacherType,language),dateLabel].filter(Boolean).join(' | ')}</p>
    <p>{t(size+' 人 · '+row.sessions+' 节 · 每节 '+row.minutes+' 分钟',size+' learners · '+row.sessions+' periods · '+row.minutes+' min each',size+' siswa · '+row.sessions+' jam pelajaran · '+row.minutes+' menit per jam pelajaran')}</p>
    <p className="enrollment-schedule">{enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language)||row.schedule}</p>
-   {row.teacherType&&<p>{row.teacherType==='foreign'?t('外教','Foreign teacher','Pengajar asing'):t('本土教师','Local teacher','Pengajar lokal')}</p>}
    <div className="enrollment-class-status">
      <span className="enrollment-status" data-state={row.availability==='full'?'full':row.opened?'confirmed':'pending'}>
        {!row.price?t('暂不可申请','Applications unavailable','Pendaftaran belum tersedia'):row.opened?t('已成班','Confirmed','Dikonfirmasi'):t('报名中','Open for applications','Pendaftaran dibuka')}{availability&&' · '+availability}

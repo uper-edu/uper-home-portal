@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { enrollmentInstant, enrollmentOpeningNotice, enrollmentScheduleDefaults, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentOpeningNotice, enrollmentScheduleDefaults, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
@@ -92,4 +92,22 @@ test('time slots match all scheduled weekdays, including mixed day selections',(
   }
   assert.equal(validateEnrollmentClass({...sample,weeklySchedule:{days:[6,7],start:'15:00',lessons:2}}).period,'weekend');
   assert.equal(validateEnrollmentClass({...dated,period:'weekday-evening',weeklySchedule:{days:[1,3,5],start:'15:00',lessons:2}}).period,'weekday-evening');
+});
+
+
+test('automatic titles use class type, time slot and immutable batch in all three languages',()=>{
+  const row={...sample,batchNumber:3,teacherType:'local' as const};
+  assert.equal(enrollmentClassTitle(row,'zh'),'HSK 1 · 标准班 · 周末班 · 第 3 期');
+  assert.equal(enrollmentClassTitle(row,'en'),'HSK 1 · Standard Class · Weekend · Batch 3');
+  assert.equal(enrollmentClassTitle(row,'id'),'HSK 1 · Kelas Standar · Akhir Pekan · Angkatan 3');
+  assert.equal(enrollmentTeacherLabel('local','en'),'Indonesian Teacher');
+  assert.equal(enrollmentTeacherLabel('local','id'),'Pengajar Lokal');
+  assert.equal(enrollmentTeacherLabel('foreign','zh'),'外教');
+  assert.equal(enrollmentClassTitle({...row,period:'weekday-evening'},'en'),'HSK 1 · Standard Class · Weekday Evening · Batch 3');
+  assert.equal(enrollmentClassTitle({...row,batchNumber:undefined},'zh'),'HSK 1 · 标准班 · 周末班');
+  const view=publicEnrollmentClass({...row,id:'demo',state:'published',revision:1});
+  assert.equal(view.batchNumber,3);
+  assert.equal(view.teacherType,'local');
+  assert.equal('templateId' in view,false);
+  assert.equal(validateEnrollmentClass({...sample,batchNumber:999}).batchNumber,undefined);
 });

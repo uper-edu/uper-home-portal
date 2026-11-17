@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
 import {enrollmentTemplateClassFields} from '../../src/utils/enrollmentTemplates.ts';
 import type { Express, Request, Response } from 'express';
@@ -47,6 +48,10 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     const result = await tx(c => operation(c, actor.id, body, {
       leadId: 'class:' + body.id, kind, authorize: () => staff(q, 'crm.operations.manage'),
     }, async () => {
+      // Serialize catalog writes before locking class rows, including new-row gap locks.
+      // The counter and class publication commit or roll back together.
+      await c.query("INSERT INTO portal_settings(id,value) VALUES('enrollment_batch_lock',JSON_OBJECT()) ON DUPLICATE KEY UPDATE id=id");
+      await c.query("SELECT value FROM portal_settings WHERE id='enrollment_batch_lock' FOR UPDATE");
       const current = (await c.query('SELECT revision,state,data FROM enrollment_classes WHERE id=:p1 FOR UPDATE', [body.id])).rows[0];
       if ((current?.revision ?? 0) !== body.revision) invalid('enrollment_class_conflict', 409);
       if(current?.state==='cancelled') invalid('enrollment_class_conflict',409);
@@ -63,6 +68,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       const snapshot=template?enrollmentTemplateClassFields(template,{...course,id:courseId}):null;
       if(template&&!snapshot)invalid('enrollment_template_invalid');
       if(snapshot&&body.state==='published'&&!snapshot.price)invalid('enrollment_template_missing_quote',409);
+      if(isPublished&&raw.period!==current.data.period)invalid('enrollment_class_batch_scope_fixed',409);
       const dates={firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,decisionAt:raw.decisionAt,period:raw.period,schedule:raw.schedule};
       const teacher=raw.teacher===undefined?current?.data.teacher??'':raw.teacher;
       const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:raw),teacher};
@@ -74,10 +80,21 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       }else if(snapshot||current?.data?.weeklySchedule){
         invalid('enrollment_class_invalid');
       }
-      const data={...validateEnrollmentClass(config,!!snapshot&&body.state==='draft'),
-        ...(weeklySchedule?{weeklySchedule:{days:[...new Set(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons}}:{}),
+      const data:EnrollmentClassConfig={...validateEnrollmentClass(config,!!snapshot&&body.state==='draft'),
+        ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons}}:{}),
         ...(config.templateId?{templateId:config.templateId,templateRevision:config.templateRevision,teacherType:config.teacherType,courseName:config.courseName}:{})};
 
+      // Ignore client-supplied numbers. Drafts never consume a number.
+      if(current?.data.batchNumber)data.batchNumber=current.data.batchNumber;
+      if(body.state==='published'&&!data.batchNumber){
+        if(!data.templateId)invalid('enrollment_template_required');
+        const key='enrollment_batch:'+createHash('sha256').update(JSON.stringify([data.templateId,data.period])).digest('hex');
+        await c.query('INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id',[key,{last:0}]);
+        const counter=(await c.query('SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE',[key])).rows[0].value;
+        if(!Number.isSafeInteger(counter.last)||counter.last<0||counter.last>=Number.MAX_SAFE_INTEGER)invalid('enrollment_class_invalid');
+        data.batchNumber=counter.last+1;
+        await c.query('UPDATE portal_settings SET value=:p2 WHERE id=:p1',[key,{...counter,last:data.batchNumber}]);
+      }
       const revision = body.revision + 1;
       const fields = [data.courseId, revision, body.state, enrollmentInstant(data.firstLesson), enrollmentInstant(data.enrollmentCloses), data];
       if (current) {
