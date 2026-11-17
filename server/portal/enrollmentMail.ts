@@ -159,45 +159,65 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
 }
 const mailDeliveryId=(event:string)=>createHash('sha256').update(event).digest('hex');
 
-export async function reconcileLegacyEnrollmentMail(eventKeys:readonly string[]){
+export async function reconcileLegacyEnrollmentMail(eventKeys:readonly string[], {preview=false}={}){
   return transact(async c=>{
-    await configuration(c,true);
+    if(!preview)await configuration(c,true);
     const result={cancelled:0,replaced:0,preserved:0};
+    const decisions:Record<string,string>=Object.create(null);
+    const plannedOrders=new Set<string>();
     for(const key of new Set(eventKeys)){
       const [row]=(await c.query(`SELECT kind,subject_id,payload FROM enrollment_notification_receipts
         WHERE event_key=:p1 AND channel='email' AND state='queued'
-        AND kind IN ('class_confirmed','payment_and_opening') AND payload->>'$.environment'=:p2 FOR UPDATE`,
-      [key,environment()])).rows;
-      if(!row)continue;
+        AND kind IN ('class_confirmed','payment_and_opening')${preview?'':' FOR UPDATE'}`,
+      [key])).rows;
+      if(!row){
+        decisions[key]='not_eligible';
+        continue;
+      }
+      if(row.payload?.environment!==environment()){
+        decisions[key]=row.payload?.environment?'different_environment':'missing_environment';
+        result.preserved++;
+        continue;
+      }
       const [attempt]=(await c.query(`SELECT id FROM enrollment_mail_attempts
         WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1`,
       [environment(),key])).rows;
       if(attempt){
+        decisions[key]='delivery_attempt_exists';
         result.preserved++;
         continue;
       }
       if(row.kind==='payment_and_opening'){
-        const [prior]=(await c.query(`SELECT state FROM enrollment_notification_receipts
-          WHERE subject_id=:p1 AND channel='email' AND kind='payment_confirmed'`,[row.subject_id])).rows;
-        if(prior&&!['accepted','simulated','queued'].includes(prior.state)){
+        const {rows:prior}=await c.query(`SELECT event_key,state,payload->>'$.environment' AS environment
+          FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email'
+          AND kind='payment_confirmed'`,[row.subject_id]);
+        const hasConfirmation=plannedOrders.has(row.subject_id)||prior.some(mail=>mail.state==='accepted'||
+          mail.state==='queued'&&mail.environment===environment());
+        if(!hasConfirmation&&prior.some(mail=>mail.state!=='simulated')){
+          decisions[key]='confirmation_requires_review';
           result.preserved++;
           continue;
         }
-        if(!prior){
+        if(!hasConfirmation){
+          const canonical='email:payment_confirmed:'+row.subject_id+':';
+          const replacement=prior.some(mail=>mail.event_key===canonical)?canonical+'legacy-opening':canonical;
           const {recipient,language,salutation,class:level,format,period,schedule,received}=row.payload;
           const content={recipient,language,salutation,class:level,format,period,schedule,received,
             orderId:row.subject_id,url:enrollmentOrderEmailPath('payment_confirmed',language,row.subject_id)};
-          await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
+          if(!preview)await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
             VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))`,
-          ['email:payment_confirmed:'+row.subject_id+':',row.subject_id,
+          [replacement,row.subject_id,
             {...content,...renderEnrollmentEmail('payment_confirmed',content),environment:environment()}]);
+          plannedOrders.add(row.subject_id);
+          decisions[key]='replace';
           result.replaced++;
         }
       }
-      await c.query("UPDATE enrollment_notification_receipts SET state='cancelled' WHERE event_key=:p1",[key]);
+      decisions[key]??='cancel';
+      if(!preview)await c.query("UPDATE enrollment_notification_receipts SET state='cancelled' WHERE event_key=:p1",[key]);
       result.cancelled++;
     }
-    return result;
+    return preview?{...result,decisions}:result;
   });
 }
 
