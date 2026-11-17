@@ -31,12 +31,12 @@ const initial: ClassDraftConfig = {
   learningOutcomes: '', material: '', resources: '', teacher: '',
 };
 const fields = {
-  firstLesson: { type: 'datetime-local', label: ['First class (WIB)', 'Kelas pertama (WIB)', '首课（WIB）'] },
+  firstLesson: { type: 'datetime-local', label: ['First session (WIB)', 'Pertemuan pertama (WIB)', '首次上课（WIB）'] },
   decisionAt: { type: 'datetime-local', label: ['Expected decision (WIB)', 'Perkiraan keputusan (WIB)', '预计通知开班结果（WIB）'] },
   enrollmentCloses: { type: 'datetime-local', label: ['Self-service deadline (WIB)', 'Batas daftar mandiri (WIB)', '自助报名截止（WIB）'] },
   schedule: { type: 'text', label: ['Weekly schedule (WIB)', 'Jadwal mingguan (WIB)', '每周课表（WIB）'] },
-  sessions: { type: 'number', label: ['Sessions', 'Pertemuan', '课次'] },
-  minutes: { type: 'number', label: ['Minutes per session', 'Menit per pertemuan', '每课次分钟数'] },
+  sessions: { type: 'number', label: ['Periods', 'Jam pelajaran', '节数'] },
+  minutes: { type: 'number', label: ['Minutes per period', 'Menit per jam pelajaran', '每节分钟数'] },
   minimumPaid: { type: 'number', label: ['Minimum fully paid', 'Minimum peserta lunas', '开班最低足额到账人数'] },
   capacity: { type: 'number', label: ['Capacity', 'Kapasitas', '招生上限'] },
   price: { type: 'number', label: ['Payable tuition (Rp)', 'Biaya yang harus dibayar (Rp)', '应付学费（Rp）'] },
@@ -348,7 +348,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
             </AdminField>
             {!!draft.config.courseId&&<AdminFormSummary fields={[
               [t(['Course','Kursus','课程']),draft.config.courseName||draft.config.level,'wide'],
-              [t(['Lessons × minutes','Sesi × menit','节数 × 分钟']),draft.config.sessions+' × '+draft.config.minutes],
+              [t(['Periods × minutes','Jam pelajaran × menit','节数 × 分钟']),draft.config.sessions+' × '+draft.config.minutes],
               [t(['Teacher type','Jenis pengajar','教师类型']),draft.config.teacherType==='foreign'?t(['Foreign teacher','Pengajar asing','外教']):draft.config.teacherType==='local'?t(['Local teacher','Pengajar lokal','本土教师']):'—'],
               [t(['Minimum fully paid','Minimum peserta lunas','足额到账开班底线']),draft.config.minimumPaid],
               [t(['Capacity','Kapasitas','招生上限']),draft.config.capacity],
@@ -376,8 +376,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
                   emptyLabel={t(['Select weekdays','Pilih hari','请选择上课日'])} values={weekly.days.map(String)} onChange={()=>{}} onValuesChange={days=>changeWeekly({days:days.map(Number)})}
                   options={enrollmentWeekdays.map(([zh,en,id],index)=>({value:String(index+1),label:t([en,id,zh])}))}/>
               </AdminField>
-              <AdminField required={!!draft.config.templateId}>{t(['Class start time (WIB)','Waktu mulai (WIB)','每次开始时间（WIB）'])}<input type="time" required={!!draft.config.templateId} value={weekly.start} disabled={fieldDisabled} onChange={e=>changeWeekly({start:e.target.value})}/></AdminField>
-              <AdminField required={!!draft.config.templateId}>{t(['Lessons per meeting','Sesi per pertemuan','每次上几节'])}<input type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/></AdminField>
+              <AdminField required={!!draft.config.templateId}>{t(['Session start time (WIB)','Waktu mulai pertemuan (WIB)','每次开始时间（WIB）'])}<input type="time" required={!!draft.config.templateId} value={weekly.start} disabled={fieldDisabled} onChange={e=>changeWeekly({start:e.target.value})}/></AdminField>
+              <AdminField required={!!draft.config.templateId}>{t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])}<input type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/></AdminField>
               <AdminField data-admin-full-width="">{t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
                 <input readOnly value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
               </AdminField>

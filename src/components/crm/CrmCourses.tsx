@@ -124,7 +124,7 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
  </div>}
  {!!rows.length&&<AdminListTable label={title} busy={readState==='loading'} headers={[
    t('Course','Kursus','课程'),t('Level','Level','级别'),t('Textbook','Buku ajar','主教材'),
-   t('Lessons','Sesi','节数'),t('Status','Status','状态'),t('Actions','Tindakan','操作'),
+   t('Periods','Jam pelajaran','节数'),t('Status','Status','状态'),t('Actions','Tindakan','操作'),
  ]}>{rows.map((c:any)=><tr key={c.id}><td><strong>{c.name}</strong>{c.systemManaged&&<div><AdminStatus tone="neutral">{t('System preset','Preset sistem','系统预置')}</AdminStatus></div>}</td><td>{c.teaching?.level??'—'}</td>
    <td>{c.teaching?.material??'—'}</td><td>{c.sessions}{c.teaching?' × '+c.teaching.minutes+' min':''}</td>
    <td><AdminStatus tone={c.active?'success':'neutral'}>{c.active?t('Published','Diterbitkan','已发布'):t('Draft','Draf','草稿')}</AdminStatus></td>
@@ -159,10 +159,10 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
       </AdminField>
       {addingBook&&<AdminField required data-admin-full-width="">{t('New textbook name and edition','Judul dan edisi buku baru','新教材名称及版本')}
         <input required maxLength={1200} value={form.config.teaching.material} onChange={e=>teach('material',e.target.value)}/></AdminField>}
-      <AdminField required={!fixed}>{t('Lessons','Sesi','总节数')}<input type="number" required min="1" max="1000" readOnly={fixed} value={form.config.sessions} onChange={e=>patch('sessions',e.target.value)}/></AdminField>
-      <AdminField required={!fixed}>{t('Minutes per lesson','Menit per sesi','每节时长（分钟）')}
+      <AdminField required={!fixed}>{t('Periods','Jam pelajaran','总节数')}<input type="number" required min="1" max="1000" readOnly={fixed} value={form.config.sessions} onChange={e=>patch('sessions',e.target.value)}/></AdminField>
+      <AdminField required={!fixed}>{t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
         <CrmSingleSelect lang={lang} isLight={isLight} disabled={fixed||busy||unknown}
-          label={t('Minutes per lesson','Menit per sesi','每节时长（分钟）')}
+          label={t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
           value={form.config.teaching.minutes?String(form.config.teaching.minutes):''}
           options={[...new Set([30,45,50,60,90,...(fixed?[form.config.teaching.minutes]:[])])].map(minutes=>({value:String(minutes),label:String(minutes)}))}
           onChange={v=>teach('minutes',Number(v))}/>
@@ -170,7 +170,7 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
       <AdminField required data-admin-full-width="">{t('Course name','Nama kursus','课程名称')}
         <input type="text" required maxLength={200} disabled={busy||unknown} value={form.config.name}
           onChange={e=>{setManualName(!!e.target.value.trim());patch('name',e.target.value);}}/>
-        <small>{t('The default name uses the level, textbook, lesson count and duration in English format. You can edit it.','Nama bawaan memakai level, buku ajar, jumlah sesi, dan durasi dalam format bahasa Inggris. Nama dapat diedit.','默认用英文格式按「级别 · 主教材 · 总节数 × 每节时长」生成，可手动修改。')}</small>
+        <small>{t('The default name uses the level, textbook, period count and duration in English format. You can edit it.','Nama bawaan memakai level, buku ajar, jumlah jam pelajaran, dan durasi dalam format bahasa Inggris. Nama dapat diedit.','默认用英文格式按「级别 · 主教材 · 总节数 × 每节时长」生成，可手动修改。')}</small>
       </AdminField>
     </AdminFormGrid>
   </AdminFormSection>

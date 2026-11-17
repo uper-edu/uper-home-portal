@@ -32,7 +32,7 @@ const copy = {
   standard: ['Standard class', 'Kelas standar', '标准班'],
   small: ['Small group', 'Kelas kecil', '小班'],
   'one-on-one': ['One-to-one', 'Kelas privat', '一对一'],
-  appointment: ['Arrange your lesson times with our team.', 'Atur jadwal bersama tim kami.', '上课时间与销售客服另行约定。'],
+  appointment: ['Arrange your session times with our team.', 'Atur jadwal bersama tim kami.', '上课时间与销售客服另行约定。'],
   appointmentAction: ['Contact us to schedule', 'Hubungi tim untuk atur jadwal', '联系销售客服约课'],
   opened: ['Class confirmed', 'Kelas dikonfirmasi', '已成班'],
   recruiting: ['Enrollment open', 'Pendaftaran dibuka', '报名中'],
@@ -288,12 +288,12 @@ export default function Enrollment() {
         <p>{item.teacherType==='foreign'?enrollmentCopy(language,['外教','Foreign teacher','Pengajar asing']):enrollmentCopy(language,['本土教师','Local teacher','Pengajar lokal'])} · {t('appointment')}</p>
         <div className="enrollment-class-bottom">
           <div className="enrollment-prices">
-            <strong>{formatCurrency(item.price,language)}<span className="enrollment-price-unit">{enrollmentCopy(language,['／节',' / lesson',' / sesi'])}</span></strong>
+            <strong>{formatCurrency(item.price,language)}<span className="enrollment-price-unit">{enrollmentCopy(language,['／节',' / period',' / jam pelajaran'])}</span></strong>
             {item.standardPrice>item.price&&<small><del>{formatCurrency(item.standardPrice,language)}</del></small>}
             <small>{enrollmentCopy(language,[
               `${item.lessons} 节 · 每节 ${item.minutes} 分钟 · 参考总价 ${formatCurrency(item.price*item.lessons,language)}`,
-              `${item.lessons} lessons · ${item.minutes} min each · reference total ${formatCurrency(item.price*item.lessons,language)}`,
-              `${item.lessons} sesi · ${item.minutes} menit per sesi · perkiraan total ${formatCurrency(item.price*item.lessons,language)}`,
+              `${item.lessons} periods · ${item.minutes} min each · reference total ${formatCurrency(item.price*item.lessons,language)}`,
+              `${item.lessons} jam pelajaran · ${item.minutes} menit per jam pelajaran · perkiraan total ${formatCurrency(item.price*item.lessons,language)}`,
             ])}</small>
           </div>
           <Link className="enrollment-primary" to={'/enrollment/help/one-on-one?'+appointmentParams.toString()}>{t('appointmentAction')}</Link>

@@ -12,6 +12,7 @@ export type EnrollmentTeachingCourse = {
   id: string;
   name: string;
   active: boolean;
+  /** Legacy key for the total number of billable periods. */
   sessions: number;
   teaching?: EnrollmentTeaching;
 };
@@ -43,10 +44,10 @@ export function defaultEnrollmentCourseName(teaching: Pick<EnrollmentTeaching,'m
   return prefix+book.slice(0, Math.min(140, maxLength-prefix.length-duration.length))+duration;
 }
 
-export function enrollmentTemplateQuote(template: Pick<EnrollmentTemplate,'standardUnitPrice'|'saleUnitPrice'>, sessions: number) {
+export function enrollmentTemplateQuote(template: Pick<EnrollmentTemplate,'standardUnitPrice'|'saleUnitPrice'>, totalPeriods: number) {
   const {standardUnitPrice, saleUnitPrice} = template;
   if (!standardUnitPrice || !saleUnitPrice) return null;
-  return {price:saleUnitPrice*sessions, standardPrice:standardUnitPrice>saleUnitPrice?standardUnitPrice*sessions:null};
+  return {price:saleUnitPrice*totalPeriods, standardPrice:standardUnitPrice>saleUnitPrice?standardUnitPrice*totalPeriods:null};
 }
 
 export function enrollmentTemplateClassFields(template:EnrollmentTemplate, course:EnrollmentTeachingCourse): Partial<EnrollmentClassConfig>|null {

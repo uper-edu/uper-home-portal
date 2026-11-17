@@ -26,7 +26,7 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
  })[row.availability];
  return <article className="enrollment-class-card">
    <h2>{titleLink?<Link to={titleLink}>{title}<ChevronRight size={15} aria-hidden="true"/></Link>:title}</h2>
-   <p>{t(size+' 人 · '+row.sessions+' 节 · 每节 '+row.minutes+' 分钟',size+' learners · '+row.sessions+' lessons · '+row.minutes+' min each',size+' siswa · '+row.sessions+' sesi · '+row.minutes+' menit per sesi')}</p>
+   <p>{t(size+' 人 · '+row.sessions+' 节 · 每节 '+row.minutes+' 分钟',size+' learners · '+row.sessions+' periods · '+row.minutes+' min each',size+' siswa · '+row.sessions+' jam pelajaran · '+row.minutes+' menit per jam pelajaran')}</p>
    <p className="enrollment-schedule">{enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language)||row.schedule}</p>
    {row.teacherType&&<p>{row.teacherType==='foreign'?t('外教','Foreign teacher','Pengajar asing'):t('本土教师','Local teacher','Pengajar lokal')}</p>}
    <div className="enrollment-class-status">
@@ -37,7 +37,7 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
    <div className="enrollment-class-bottom">
      <div className="enrollment-prices">{row.price>0?<><strong>{formatCurrency(row.price,language)}</strong>
        {row.standardPrice&&<small>{t('标准价','Standard price','Harga standar')} <del>{formatCurrency(row.standardPrice,language)}</del></small>}
-       <small>{formatCurrency(Math.round(row.price/row.sessions),language)}{t('／节',' / lesson',' / sesi')}</small></>:<strong>{t('报价待确认','Quote pending','Harga belum dikonfirmasi')}</strong>}</div>
+       <small>{formatCurrency(Math.round(row.price/row.sessions),language)}{t('／节',' / period',' / jam pelajaran')}</small></>:<strong>{t('报价待确认','Quote pending','Harga belum dikonfirmasi')}</strong>}</div>
      {actionLink&&<Link className="enrollment-primary" to={actionLink}>{row.availability==='full'?t('加入候补','Join waitlist','Daftar tunggu'):t('申请这个班','Apply for this class','Daftar kelas ini')}</Link>}
    </div>
    {showDetails&&<section aria-label={t('课程介绍','Course details','Rincian kursus')}>

@@ -184,8 +184,8 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
          {draftCourse?.teaching&&<AdminFormSummary fields={[
            [t('Level','Level','级别'),draftCourse.teaching.level],
            [t('Main textbook and edition','Buku ajar utama dan edisi','主教材及版本'),draftCourse.teaching.material],
-           [t('Lessons','Sesi','总节数'),draftCourse.sessions],
-           [t('Minutes per lesson','Menit per sesi','每节时长（分钟）'),draftCourse.teaching.minutes],
+           [t('Periods','Jam pelajaran','总节数'),draftCourse.sessions],
+           [t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）'),draftCourse.teaching.minutes],
          ]}/>}
        </AdminFormSection>
        <AdminFormSection variant="subgroup" title={t('Class type and teacher','Jenis kelas dan pengajar','班型与师资')}>
@@ -205,7 +205,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
        <AdminFormSection variant="subgroup" title={t('Class size','Jumlah peserta','招生人数')}><AdminFormGrid>
          {([['minimumPaid',t('Minimum fully paid to open','Minimum peserta lunas','足额到账开班底线')],['capacity',t('Seat limit','Kapasitas','招生上限')]] as const).map(([key,label])=><AdminField required key={key}>{label}<input required type="number" min="1" max="200" value={draft[key]||''} onChange={e=>patch({[key]:Number(e.target.value)})}/></AdminField>)}
        </AdminFormGrid></AdminFormSection>
-       <AdminFormSection variant="subgroup" title={t('Quote per lesson','Harga per sesi','每节报价')}><AdminFormGrid>
+       <AdminFormSection variant="subgroup" title={t('Price per period','Harga per jam pelajaran','每节报价')}><AdminFormGrid>
          {([['standardUnitPrice',t('Standard price (Rp)','Harga standar (Rp)','标准价（Rp）')],['saleUnitPrice',t('Enrollment price (Rp)','Harga pendaftaran (Rp)','报名优惠价（Rp）')]] as const).map(([key,label])=><AdminField key={key}>{label}<input type="number" min="1" value={draft[key]??''} onChange={e=>patch({[key]:e.target.value?Number(e.target.value):null})}/></AdminField>)}
        </AdminFormGrid>
        {draftQuote?<AdminFormSummary title={t('Total tuition','Total biaya kursus','学费总价')} fields={[

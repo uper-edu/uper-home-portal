@@ -11,12 +11,14 @@ export interface EnrollmentClassConfig {
   teacherType?: 'local'|'foreign';
   level: typeof enrollmentLevels[number];
   format: typeof enrollmentFormats[number];
+  /** Legacy key for the time slot, such as weekend. */
   period: typeof enrollmentPeriods[number];
   firstLesson: string;
   enrollmentCloses: string;
   decisionAt: string;
   schedule: string;
   weeklySchedule?: EnrollmentWeeklySchedule;
+  /** Legacy key for the total number of billable periods. */
   sessions: number;
   minutes: number;
   minimumPaid: number;
@@ -135,6 +137,7 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   };
 }
 
+/** lessons stores the number of periods per scheduled session. */
 export type EnrollmentWeeklySchedule={days:number[];start:string;lessons:number};
 export const enrollmentWeekdays=[
   ['周一','Mon','Sen'],['周二','Tue','Sel'],['周三','Wed','Rab'],['周四','Thu','Kam'],
@@ -142,11 +145,12 @@ export const enrollmentWeekdays=[
 ] as const;
 
 /** In local Jakarta time, with Monday as day 1. */
-export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutes:number,lang:'zh'|'en'|'id'='zh'){
+export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
   if(!plan||!Array.isArray(plan.days)||!plan.days.length||plan.days.some(day=>!Number.isInteger(day)||day<1||day>7)||
     typeof plan.start!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(plan.start)||!Number.isInteger(plan.lessons)||plan.lessons<1||plan.lessons>24)return '';
   const [h,m]=plan.start.split(':').map(Number);
-  const end=h*60+m+plan.lessons*minutes;
+  const periodsPerSession=plan.lessons;
+  const end=h*60+m+periodsPerSession*minutesPerPeriod;
   if(!Number.isInteger(end)||end>=1440)return '';
   const endTime=[Math.floor(end/60),end%60].map(x=>String(x).padStart(2,'0')).join(':');
   const index=lang==='zh'?0:lang==='en'?1:2;
