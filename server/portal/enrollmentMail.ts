@@ -1,4 +1,4 @@
-import {portalPublicOrigin} from './enrollmentEmail.ts';
+import {enrollmentOrderEmailPath, portalPublicOrigin, renderEnrollmentEmail} from './enrollmentEmail.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import nodemailer from 'nodemailer';
 import type {Express,Request,Response} from 'express';
@@ -71,9 +71,11 @@ async function counters(c:Client,now:number,recipient=''){
 }
 const isExternal=(recipient:string)=>!(process.env.PORTAL_ENROLLMENT_MAIL_INTERNAL_DOMAINS??'')
   .split(',').map(v=>v.trim().toLowerCase()).includes(recipient.split('@').at(-1)??'');
-async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set<string>){
+async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set<string>,queueKey?:string){
   return transact(async c=>{
     const {config}=await configuration(c,true);
+    if(queueKey&&!(await c.query(`SELECT event_key FROM enrollment_notification_receipts
+      WHERE event_key=:p1 AND state='queued'`,[queueKey])).rows.length)return {reason:'paused'} as const;
     if(!config.enabled||enrollmentMailMode()==='disabled')return {reason:'paused'} as const;
     if(!permittedRecipient(recipient))return {reason:'recipient_blocked'} as const;
     const prior=(await c.query(`SELECT state,account,started_ms FROM enrollment_mail_attempts
@@ -155,13 +157,57 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
     return e.responseCode&&e.responseCode>=400||e.command==='CONN'||e.command==='AUTH'?'rejected':'unknown';
   }
 }
-export async function dispatchEnrollmentMail(event:string,recipient:string,mail:Mail,{code,deliveryId=createHash('sha256').update(event).digest('hex')}:{
-  code?:string;deliveryId?:string;
+const mailDeliveryId=(event:string)=>createHash('sha256').update(event).digest('hex');
+
+export async function reconcileLegacyEnrollmentMail(eventKeys:readonly string[]){
+  return transact(async c=>{
+    await configuration(c,true);
+    const result={cancelled:0,replaced:0,preserved:0};
+    for(const key of new Set(eventKeys)){
+      const [row]=(await c.query(`SELECT kind,subject_id,payload FROM enrollment_notification_receipts
+        WHERE event_key=:p1 AND channel='email' AND state='queued'
+        AND kind IN ('class_confirmed','payment_and_opening') AND payload->>'$.environment'=:p2 FOR UPDATE`,
+      [key,environment()])).rows;
+      if(!row)continue;
+      const [attempt]=(await c.query(`SELECT id FROM enrollment_mail_attempts
+        WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1`,
+      [environment(),key])).rows;
+      if(attempt){
+        result.preserved++;
+        continue;
+      }
+      if(row.kind==='payment_and_opening'){
+        const [prior]=(await c.query(`SELECT state FROM enrollment_notification_receipts
+          WHERE subject_id=:p1 AND channel='email' AND kind='payment_confirmed'`,[row.subject_id])).rows;
+        if(prior&&!['accepted','simulated','queued'].includes(prior.state)){
+          result.preserved++;
+          continue;
+        }
+        if(!prior){
+          const {recipient,language,salutation,class:level,format,period,schedule,received}=row.payload;
+          const content={recipient,language,salutation,class:level,format,period,schedule,received,
+            orderId:row.subject_id,url:enrollmentOrderEmailPath('payment_confirmed',language,row.subject_id)};
+          await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
+            VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))`,
+          ['email:payment_confirmed:'+row.subject_id+':',row.subject_id,
+            {...content,...renderEnrollmentEmail('payment_confirmed',content),environment:environment()}]);
+          result.replaced++;
+        }
+      }
+      await c.query("UPDATE enrollment_notification_receipts SET state='cancelled' WHERE event_key=:p1",[key]);
+      result.cancelled++;
+    }
+    return result;
+  });
+}
+
+export async function dispatchEnrollmentMail(event:string,recipient:string,mail:Mail,{code,deliveryId=mailDeliveryId(event),queueKey}:{
+  code?:string;deliveryId?:string;queueKey?:string;
 }={}):Promise<{state:State;account?:string;reason:RouteReason}>{
   const excluded=new Set<string>();
   let lastRejected:string|undefined;
   for(;;){
-    const plan=await reserve(event,recipient,code!==undefined,excluded);
+    const plan=await reserve(event,recipient,code!==undefined,excluded,queueKey);
     if(!('id' in plan)&&'reason' in plan){
       if(plan.reason==='recipient_blocked'||lastRejected)return {state:'rejected',account:lastRejected,reason:plan.reason};
       return {state:'waiting',account:'waitingAccount' in plan?plan.waitingAccount:undefined,reason:plan.reason};
@@ -383,7 +429,7 @@ export function startEnrollmentMail(){
         ORDER BY recorded_at,event_key LIMIT 40`,[environment(),Date.now()]);
       for(const row of rows){
         const payload=row.payload;
-        const {state,account,reason}=await dispatchEnrollmentMail(row.event_key,payload.recipient,payload,{deliveryId:payload.deliveryId});
+        const {state,account,reason}=await dispatchEnrollmentMail(row.event_key,payload.recipient,payload,{deliveryId:payload.deliveryId,queueKey:row.event_key});
         const next=state==='waiting'?'queued':state==='rejected'?'failed':state;
         // Delay blocked mail so later recipients can use other accounts.
         await pool.query(`UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3
