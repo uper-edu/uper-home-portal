@@ -73,8 +73,23 @@ test('first session weekday and time must match the recurring schedule in WIB',(
     assert.throws(()=>validateEnrollmentClass({...sample,firstLesson,decisionAt:'2026-12-14T17:00',
       enrollmentCloses:'2026-12-15T00:00',weeklySchedule}),/enrollment_class_schedule_mismatch/);
   }
-  const midnight={...sample,firstLesson:'2026-12-21T00:00',decisionAt:'2026-12-19T17:00',
+  const midnight={...sample,period:'weekday-evening',firstLesson:'2026-12-21T00:00',decisionAt:'2026-12-19T17:00',
     enrollmentCloses:'2026-12-21T00:00',weeklySchedule:{days:[1],start:'00:00',lessons:1}};
   assert.equal(validateEnrollmentClass(midnight).firstLesson,midnight.firstLesson);
   assert.throws(()=>validateEnrollmentClass({...sample,weeklySchedule:{...weeklySchedule,days:[]}}),/enrollment_class_invalid/);
+});
+
+
+test('time slots match all scheduled weekdays, including mixed day selections',()=>{
+  const dated={...sample,firstLesson:'2026-12-21T15:00',decisionAt:'2026-12-19T17:00',enrollmentCloses:'2026-12-21T00:00'};
+  for(const days of [[1],[1,3],[5,6],[7,1]]) {
+    assert.throws(()=>validateEnrollmentClass({...dated,weeklySchedule:{days,start:'15:00',lessons:1}}),
+      /enrollment_class_timeslot_mismatch/);
+  }
+  for(const days of [[6],[7],[6,7]]) {
+    assert.throws(()=>validateEnrollmentClass({...sample,period:'weekday-evening',weeklySchedule:{days,start:'15:00',lessons:1}}),
+      /enrollment_class_timeslot_mismatch/);
+  }
+  assert.equal(validateEnrollmentClass({...sample,weeklySchedule:{days:[6,7],start:'15:00',lessons:2}}).period,'weekend');
+  assert.equal(validateEnrollmentClass({...dated,period:'weekday-evening',weeklySchedule:{days:[1,3,5],start:'15:00',lessons:2}}).period,'weekday-evening');
 });

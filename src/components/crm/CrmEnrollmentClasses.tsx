@@ -14,7 +14,7 @@ import { AdminFormActions, AdminFormGrid, AdminFormSection, AdminFormSummary } f
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
-import { enrollmentFirstSessionMatches,enrollmentInstant,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
+import { enrollmentTimeSlotMatches,enrollmentFirstSessionMatches,enrollmentInstant,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
@@ -53,6 +53,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const t = ([en, id, zh]: Copy) => lang === 'zh' ? zh : lang === 'id' ? id : en;
   const teacherHelpId=useId();
   const scheduleErrorId=useId();
+  const timeSlotErrorId=useId();
   const [catalog, setCatalog] = useState<Catalog>();
   const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
   const [search,setSearch]=useState('');
@@ -154,6 +155,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const scheduleText=enrollmentWeeklyScheduleText(draft?.config.weeklySchedule,draft?.config.minutes??45,lang);
   const scheduleMismatch=!!(draft&&scheduleText&&enrollmentInstant(draft.config.firstLesson)&&
     !enrollmentFirstSessionMatches(draft.config.firstLesson,draft.config.weeklySchedule!));
+  const timeSlotMismatch=!!(draft?.config.period&&weekly.days.length&&
+    !enrollmentTimeSlotMatches(draft.config.period,weekly.days));
+  const timeSlotMessage=draft?.config.period==='weekend'
+    ? t(['Weekend classes must use Saturday or Sunday.','Kelas akhir pekan harus dijadwalkan pada Sabtu atau Minggu.','周末班的每周上课日只能选择周六、周日。'])
+    : t(['Weekday evening classes must use Monday to Friday.','Kelas malam hari kerja harus dijadwalkan pada Senin hingga Jumat.','工作日晚间班的每周上课日只能选择周一至周五。']);
   const currentTemplate=draft?.state==='draft'&&catalog?.templates.find(item=>item.id===draft.config.templateId);
   const templateUpdate=currentTemplate&&currentTemplate.revision!==draft?.config.templateRevision?currentTemplate:undefined;
   const updatedCourse=templateUpdate&&catalog?.courses.find(item=>item.id===templateUpdate.courseId);
@@ -177,7 +183,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     await load().catch(()=>{});
   }
   async function save(state:Draft['state']=draft?.state??'draft') {
-    if (!draft || busy || pending || scheduleMismatch || templateUpdate || !draft.config.courseId || !draft.config.period || !(draft.config.weeklySchedule?scheduleText:draft.config.schedule)) return;
+    if (!draft || busy || pending || scheduleMismatch || timeSlotMismatch || templateUpdate || !draft.config.courseId || !draft.config.period || !(draft.config.weeklySchedule?scheduleText:draft.config.schedule)) return;
     if(state==='published'&&!draft.config.price)return;
     const requestId = crypto.randomUUID();
     setError('');
@@ -190,7 +196,9 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       if (result.status >= 500) throw Error();
       if (!result.ok) {
         const failure=await result.json();
-        setError(failure.error==='enrollment_class_schedule_mismatch'
+        setError(failure.error==='enrollment_class_timeslot_mismatch'
+          ? timeSlotMessage
+          : failure.error==='enrollment_class_schedule_mismatch'
           ? t(['The first session must match the weekly class day and start time.','Pertemuan pertama harus sesuai dengan hari dan waktu mulai jadwal mingguan.','首次上课的星期和开始时间须与每周课表一致。'])
           : failure.error==='enrollment_template_conflict'
           ? t(['The template changed. Review the latest settings before saving.','Templat berubah. Periksa pengaturan terbaru sebelum menyimpan.','模板已更新，请核对最新配置后再保存。'])
@@ -338,10 +346,10 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       onSubmit={event=>{event.preventDefault();void save();}} footer={<>
           {pending ? <button type="button" className="crm-work-button" disabled={busy} onClick={() => void check().catch(() => {})}>{t(['Check save result', 'Periksa hasil simpan', '查询保存结果'])}</button>
             : <><button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t(['Cancel', 'Batal', '取消'])}</button>
-              <button type="button" className="crm-work-button" disabled={busy||scheduleMismatch||!!templateUpdate||!draft.config.courseId||!draft.config.period}
+              <button type="button" className="crm-work-button" disabled={busy||scheduleMismatch||timeSlotMismatch||!!templateUpdate||!draft.config.courseId||!draft.config.period}
                 onClick={()=>{if(draft.config.period)setPreview({...draft.config,period:draft.config.period,id:draft.id,state:draft.state,revision:draft.revision});}}>
                 {t(['Preview for learners','Pratinjau siswa','学员预览'])}</button>
-              <button type="submit" data-primary="" disabled={busy || scheduleMismatch || !!templateUpdate || !draft.config.courseId || !draft.config.period || !!draft.config.templateId&&!scheduleText}>{draft.state==='draft'?t(['Save draft','Simpan draf','保存草稿']):t(['Save','Simpan','保存'])}</button></>}
+              <button type="submit" data-primary="" disabled={busy || scheduleMismatch || timeSlotMismatch || !!templateUpdate || !draft.config.courseId || !draft.config.period || !!draft.config.templateId&&!scheduleText}>{draft.state==='draft'?t(['Save draft','Simpan draf','保存草稿']):t(['Save','Simpan','保存'])}</button></>}
       </>}>
           {error && <p role="alert">{error}</p>}
           {readState==='error'&&<AdminRefreshAction label={t(['Retry loading latest settings','Coba muat ulang pengaturan terbaru','重新读取最新配置'])}
@@ -396,13 +404,14 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
               {scheduleMismatch&&<p id={scheduleErrorId} role="alert" data-admin-full-width="">
                 {t(['The first session must match the weekly class day and start time.','Pertemuan pertama harus sesuai dengan hari dan waktu mulai jadwal mingguan.','首次上课的星期和开始时间须与每周课表一致。'])}
               </p>}
-              <AdminField required={!!draft.config.templateId} data-admin-full-width="">
-                {t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}
+              <AdminField as="div" role="group" aria-describedby={timeSlotMismatch?timeSlotErrorId:undefined} required={!!draft.config.templateId} data-admin-full-width="">
+                <label>{t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}</label>
                 <CrmSingleSelect multiple value="" lang={lang} isLight={isLight} disabled={fieldDisabled}
                   label={t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}
                   emptyLabel={t(['Select weekdays','Pilih hari','请选择上课日'])} values={weekly.days.map(String)} onChange={()=>{}} onValuesChange={days=>changeWeekly({days:days.map(Number)})}
                   options={enrollmentWeekdays.map(([zh,en,id],index)=>({value:String(index+1),label:t([en,id,zh])}))}/>
               </AdminField>
+              {timeSlotMismatch&&<p id={timeSlotErrorId} role="alert" data-admin-full-width="">{timeSlotMessage}</p>}
               <AdminField required={!!draft.config.templateId}>{t(['Session start time (WIB)','Waktu mulai pertemuan (WIB)','每次开始时间（WIB）'])}<input type="time" required={!!draft.config.templateId} value={weekly.start} disabled={fieldDisabled} onChange={e=>changeWeekly({start:e.target.value})}/></AdminField>
               <AdminField required={!!draft.config.templateId}>{t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])}<input type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/></AdminField>
               <AdminField data-admin-full-width="">{t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
@@ -417,7 +426,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     {preview&&<AdminEditor variant="drawer" lang={lang} light={isLight} title={t(['Learner preview','Pratinjau siswa','学员预览'])}
       onClose={()=>setPreview(undefined)} footer={<>
         <button type="button" onClick={()=>setPreview(undefined)}>{t(['Back to editing','Kembali mengedit','返回编辑'])}</button>
-        {draft?.state==='draft'&&<button type="button" data-primary="" disabled={busy||scheduleMismatch||!!templateUpdate||!!pending||!preview.price||!preview.firstLesson||!(preview.weeklySchedule?enrollmentWeeklyScheduleText(preview.weeklySchedule,preview.minutes,lang):preview.schedule)||!preview.decisionAt||!preview.enrollmentCloses}
+        {draft?.state==='draft'&&<button type="button" data-primary="" disabled={busy||scheduleMismatch||timeSlotMismatch||!!templateUpdate||!!pending||!preview.price||!preview.firstLesson||!(preview.weeklySchedule?enrollmentWeeklyScheduleText(preview.weeklySchedule,preview.minutes,lang):preview.schedule)||!preview.decisionAt||!preview.enrollmentCloses}
           onClick={()=>void save('published')}>{t(['Publish class','Terbitkan kelas','发布班次'])}</button>}
       </>}>
       {error&&<p role="alert">{error}</p>}

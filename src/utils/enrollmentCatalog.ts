@@ -116,6 +116,7 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   const closes = enrollmentInstant(enrollmentCloses);
   const decision = enrollmentInstant(decisionAt);
   const capacity = integer('capacity', 200);
+  const period = option('period', enrollmentPeriods);
   const minimumPaid = integer('minimumPaid', capacity);
   const price = unpublishedTemplate && input.price === 0 ? 0 : integer('price', 1_000_000_000);
   const standardPrice = input.standardPrice == null ? null : integer('standardPrice', 1_000_000_000);
@@ -126,6 +127,8 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   if (input.weeklySchedule) {
     const plan=input.weeklySchedule as EnrollmentWeeklySchedule;
     if (!enrollmentWeeklyScheduleText(plan, Number(input.minutes))) invalidConfig();
+    if (!enrollmentTimeSlotMatches(period,plan.days))
+      throw Object.assign(Error('enrollment_class_timeslot_mismatch'),{status:400});
     if (!enrollmentFirstSessionMatches(firstLesson,plan))
       throw Object.assign(Error('enrollment_class_schedule_mismatch'),{status:400});
   }
@@ -133,7 +136,7 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     courseId,
     level: option('level', enrollmentLevels),
     format: option('format', enrollmentFormats),
-    period: option('period', enrollmentPeriods),
+    period,
     firstLesson, enrollmentCloses, decisionAt,
     schedule: string('schedule', 300), sessions: integer('sessions', 1000), minutes: integer('minutes', 600),
     minimumPaid, capacity, price, standardPrice,
@@ -145,6 +148,11 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
 
 /** lessons stores the number of periods per scheduled session. */
 export type EnrollmentWeeklySchedule={days:number[];start:string;lessons:number};
+/** Only the weekday category is checked; no evening-hour cutoff is implied. */
+export function enrollmentTimeSlotMatches(period:string,days:readonly number[]) {
+  const allowed=period==='weekend'?[6,7]:period==='weekday-evening'?[1,2,3,4,5]:[];
+  return days.length>0&&days.every(day=>allowed.includes(day));
+}
 /** firstLesson is stored as a local WIB date and time. Weekdays use Monday=1. */
 export function enrollmentFirstSessionMatches(firstLesson:string,plan:EnrollmentWeeklySchedule) {
   if (!enrollmentInstant(firstLesson)) return false;
