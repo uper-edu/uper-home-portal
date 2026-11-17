@@ -42,8 +42,10 @@ export function CrmEnrollmentSettings({lang,isLight,allowed,params,rulesDirty,on
       </nav>
     }>
       <div className="crm-ops-content">
-        {topic==='courses'&&<CrmCourses lang={lang} isLight={isLight} onDraftChange={onEditorDraftChange}/>}
+        {topic==='courses'&&<CrmCourses lang={lang} isLight={isLight} onDraftChange={onEditorDraftChange}
+          onCreateTemplate={createFromCourse=>onNavigate(enrollmentSettingsPath('enrollment-templates',{returnTo,createFromCourse}))}/>}
         {topic==='enrollment-templates'&&<CrmEnrollmentTemplates lang={lang} isLight={isLight} selected={params.get('enrollmentTemplate')??undefined}
+          createFromCourse={params.get('createFromCourse')??undefined}
           onCreateClass={createFrom=>onNavigate(enrollmentSettingsPath('enrollment-classes',{returnTo,createFrom}))} onDraftChange={onEditorDraftChange}/>}
         {topic==='enrollment-classes'&&<CrmEnrollmentClasses key={classId??'all'} lang={lang} isLight={isLight} target={classId} createFrom={params.get('createFromTemplate')??undefined} onDraftChange={onEditorDraftChange}
           onShowAll={()=>onNavigate(enrollmentSettingsPath(topic,{returnTo}))}/>}

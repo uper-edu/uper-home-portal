@@ -23,9 +23,9 @@ type TemplateDraft=Omit<EnrollmentTemplate,'format'|'teacherType'>&{
  format:EnrollmentTemplate['format']|'';
  teacherType:EnrollmentTemplate['teacherType']|'';
 };
-type Props={lang:CrmLanguage;isLight:boolean;selected?:string;onCreateClass:(id:string)=>void;onDraftChange:(dirty:boolean)=>void};
+type Props={lang:CrmLanguage;isLight:boolean;selected?:string;createFromCourse?:string;onCreateClass:(id:string)=>void;onDraftChange:(dirty:boolean)=>void};
 
-export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDraftChange}:Props){
+export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,onCreateClass,onDraftChange}:Props){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const title=t('Class templates','Templat kelas','班型模板');
  const [catalog,setCatalog]=useState<Catalog>(),[read,setRead]=useState<'loading'|'ready'|'denied'|'error'>('loading');
@@ -38,6 +38,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDr
  const [deleteError,setDeleteError]=useState('');
  const [deleted,setDeleted]=useState(false);
  const request=useRef<AbortController|null>(null),inFlight=useRef(false),located=useRef<string|undefined>(undefined);
+ const openedFromCourse=useRef<string|undefined>(undefined);
  const money=(amount:number)=>formatCurrency(amount,lang);
  const formats={standard:t('Standard','Standar','标准班'),small:t('Small group','Kelompok kecil','小班'),'one-on-one':t('One-to-one','Privat','一对一')};
  const teachers={local:t('Local teacher','Pengajar lokal','本土教师'),foreign:t('Foreign teacher','Pengajar asing','外教')};
@@ -91,12 +92,20 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDr
    return courseLabel+suffix;
  };
  const priceStatus=(item:Pick<EnrollmentTemplate,'saleUnitPrice'>)=><AdminStatus tone={item.saleUnitPrice?'success':'warning'}>{item.saleUnitPrice?t('Quote configured','Harga tersedia','报价已配置'):t('Quote pending','Harga belum dikonfirmasi','报价待确认')}</AdminStatus>;
- const edit=(item?:EnrollmentTemplate)=>{
+ const edit=(item?:EnrollmentTemplate,courseId='')=>{
    if(!item&&!newCourse)return;
-   const seed:TemplateDraft=item??{id:crypto.randomUUID(),revision:0,name:'',courseId:'',format:'',teacherType:'',
+   const seed:TemplateDraft=item??{id:crypto.randomUUID(),revision:0,name:'',courseId,format:'',teacherType:'',
      minimumPaid:0,capacity:0,standardUnitPrice:null,saleUnitPrice:null};
    setDraft({...seed,name:item?.name??auto(seed)});setManualName(!!item&&item.name!==auto(item));setError('');setSaved(false);setDirty(false);
  };
+ useEffect(()=>{
+   if(!createFromCourse){openedFromCourse.current=undefined;return;}
+   if(read!=='ready'||draft||openedFromCourse.current===createFromCourse)return;
+   const source=course(createFromCourse);
+   if(!source?.active||!source.teaching)return;
+   openedFromCourse.current=createFromCourse;
+   edit(undefined,source.id);
+ },[catalog,read,createFromCourse,draft]);
  const patch=(values:Partial<TemplateDraft>,manual=manualName)=>{
    setDraft(prev=>{
      if(!prev)return prev;

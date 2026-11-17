@@ -41,11 +41,12 @@ export function isLegacyEnrollmentSettings(params:URLSearchParams) {
    || (!topic && params.has('enrollmentClass')));
 }
 
-export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;returnTo?:string;templateId?:string;createFrom?:string}){
+export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;returnTo?:string;templateId?:string;createFrom?:string;createFromCourse?:string}){
  const query=new URLSearchParams({tab:'enrollment-settings',policyTopic:topic});
  if(topic==='enrollment-classes'&&options?.classId)query.set('enrollmentClass',options.classId);
  if(options?.templateId)query.set('enrollmentTemplate',options.templateId);
  if(options?.createFrom)query.set('createFromTemplate',options.createFrom);
+ if(options?.createFromCourse)query.set('createFromCourse',options.createFromCourse);
  if(options?.returnTo)query.set('enrollmentReturn',options.returnTo);
  return '/crm?'+query;
 }

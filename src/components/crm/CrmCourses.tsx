@@ -16,7 +16,7 @@ import {AdminEditor} from '../admin/AdminEditor';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {courseError} from '../../utils/crmCoursePricing';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void}){
+export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void;onCreateTemplate:(courseId:string)=>void}){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const [data,setData]=useState<any>(null),[form,setForm]=useState<any>(null),[error,setError]=useState(''),[state,setState]=useState(''),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[latest,setLatest]=useState<any>(null);
  const pending=useRef<any>(null),gate=useRef(false);const busy=['saving','checking'].includes(state),unknown=state==='unknown';
@@ -128,8 +128,10 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
  ]}>{rows.map((c:any)=><tr key={c.id}><td><strong>{c.name}</strong>{c.systemManaged&&<div><AdminStatus tone="neutral">{t('System preset','Preset sistem','系统预置')}</AdminStatus></div>}</td><td>{c.teaching?.level??'—'}</td>
    <td>{c.teaching?.material??'—'}</td><td>{c.sessions}{c.teaching?' × '+c.teaching.minutes+' min':''}</td>
    <td><AdminStatus tone={c.active?'success':'neutral'}>{c.active?t('Published','Diterbitkan','已发布'):t('Draft','Draf','草稿')}</AdminStatus></td>
-   <td>{data.canManage&&<div className="flex gap-3">
+   <td>{data.canManage&&<div className="flex flex-wrap gap-x-3 gap-y-1">
      <AdminRowAction disabled={busy||unknown} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>
+     {c.active&&c.teaching&&<AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>onCreateTemplate(c.id)}>
+       {t('Create template','Buat templat','创建模板')}</AdminRowAction>}
      {c.canDelete&&<AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>{setDeleteError('');setDeleting({id:c.id,name:c.name,revision:c.revision,requestId:crypto.randomUUID()});}}>
        {t('Delete','Hapus','删除')}</AdminRowAction>}
    </div>}</td></tr>)}</AdminListTable>}
