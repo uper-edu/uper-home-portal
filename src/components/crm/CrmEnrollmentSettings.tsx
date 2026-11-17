@@ -1,17 +1,18 @@
 import {EnrollmentMailWorkspace} from '../EnrollmentMailWorkspace';
-import {BookOpen, CalendarCheck, Clock3, Mail} from 'lucide-react';
+import {BookOpen, Layers, CalendarCheck, Clock3, Mail} from 'lucide-react';
 import {AdminTopicFrame} from '../AdminTopicFrame';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentSettingsReturnPath} from '../../utils/crmEnrollmentManagement';
+import {CrmEnrollmentTemplates} from './CrmEnrollmentTemplates';
 import {CrmCourses} from './CrmCourses';
 import {CrmEnrollmentClasses} from './CrmEnrollmentClasses';
 import {CrmEnrollmentRules} from './CrmEnrollmentRules';
 import {CrmRecordTitle} from './CrmRecordWorkspace';
 import {enrollmentSettingSections, enrollmentSettingsPath, resolveEnrollmentSettingsTopic} from './operationsSections';
 
-const topicIcons={courses:BookOpen,'enrollment-classes':CalendarCheck,'enrollment-rules':Clock3,'enrollment-mail':Mail};
+const topicIcons={courses:BookOpen,'enrollment-templates':Layers,'enrollment-classes':CalendarCheck,'enrollment-rules':Clock3,'enrollment-mail':Mail};
 
 export function CrmEnrollmentSettings({lang,isLight,allowed,params,rulesDirty,onRulesDraftChange,onEditorDraftChange,onNavigate}:{
   lang:CrmLanguage;isLight:boolean;allowed:boolean;params:URLSearchParams;rulesDirty:boolean;
@@ -42,7 +43,10 @@ export function CrmEnrollmentSettings({lang,isLight,allowed,params,rulesDirty,on
     }>
       <div className="crm-ops-content">
         {topic==='courses'&&<CrmCourses lang={lang} isLight={isLight} onDraftChange={onEditorDraftChange}/>}
-        {topic==='enrollment-classes'&&<CrmEnrollmentClasses key={classId??'all'} lang={lang} isLight={isLight} target={classId} onDraftChange={onEditorDraftChange}
+        {topic==='enrollment-templates'&&<CrmEnrollmentTemplates lang={lang} isLight={isLight} selected={params.get('enrollmentTemplate')??undefined}
+          onSelect={templateId=>onNavigate(enrollmentSettingsPath(topic,{returnTo,templateId}))}
+          onCreateClass={createFrom=>onNavigate(enrollmentSettingsPath('enrollment-classes',{returnTo,createFrom}))} onDraftChange={onEditorDraftChange}/>}
+        {topic==='enrollment-classes'&&<CrmEnrollmentClasses key={classId??'all'} lang={lang} isLight={isLight} target={classId} createFrom={params.get('createFromTemplate')??undefined} onDraftChange={onEditorDraftChange}
           onShowAll={()=>onNavigate(enrollmentSettingsPath(topic,{returnTo}))}/>}
         {topic==='enrollment-mail'&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} onDraft={onEditorDraftChange}/>}
         <div hidden={topic!=='enrollment-rules'}>

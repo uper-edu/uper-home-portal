@@ -5,6 +5,10 @@ export const enrollmentPeriods = ['weekday-evening', 'weekend'] as const;
 
 export interface EnrollmentClassConfig {
   courseId: string;
+  courseName?: string;
+  templateId?: string;
+  templateRevision?: number;
+  teacherType?: 'local'|'foreign';
   level: typeof enrollmentLevels[number];
   format: typeof enrollmentFormats[number];
   period: typeof enrollmentPeriods[number];
@@ -12,6 +16,7 @@ export interface EnrollmentClassConfig {
   enrollmentCloses: string;
   decisionAt: string;
   schedule: string;
+  weeklySchedule?: EnrollmentWeeklySchedule;
   sessions: number;
   minutes: number;
   minimumPaid: number;
@@ -42,7 +47,7 @@ export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
-  'courseId' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
+  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
 
 export function enrollmentInstant(value: unknown): Date | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
@@ -72,9 +77,9 @@ export function enrollmentOpeningNotice(
 }
 
 export function publicEnrollmentClass(record: EnrollmentClassAdmin): PublicEnrollmentClass {
-  const { id, level, format, period, firstLesson, decisionAt, schedule, sessions, minutes, price,
+  const { id, level, courseName, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher } = record;
-  return { id, level, format, period, firstLesson, decisionAt, schedule, sessions, minutes, price,
+  return { id, level, courseName, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher };
 }
 
@@ -82,13 +87,13 @@ function invalidConfig(): never {
   throw Object.assign(Error('enrollment_class_invalid'), { status: 400 });
 }
 
-export function validateEnrollmentClass(raw: Record<string, unknown> | null | undefined): EnrollmentClassConfig {
+export function validateEnrollmentClass(raw: Record<string, unknown> | null | undefined, unpublishedTemplate = false): EnrollmentClassConfig {
   if (!raw) invalidConfig();
   const input = raw as Record<string, unknown>;
-  const string = (key: string, max: number) => {
+  const string = (key: string, max: number, { optional = false } = {}) => {
     const value = input[key];
-    if (typeof value !== 'string' || !value.trim() || value.length > max) invalidConfig();
-    return (value as string).trim();
+    if (typeof value !== 'string' || value.length > max || (!optional && !value.trim())) invalidConfig();
+    return value.trim();
   };
   const integer = (key: string, upper: number) => {
     const value = input[key];
@@ -110,7 +115,7 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   const decision = enrollmentInstant(decisionAt);
   const capacity = integer('capacity', 200);
   const minimumPaid = integer('minimumPaid', capacity);
-  const price = integer('price', 1_000_000_000);
+  const price = unpublishedTemplate && input.price === 0 ? 0 : integer('price', 1_000_000_000);
   const standardPrice = input.standardPrice == null ? null : integer('standardPrice', 1_000_000_000);
   if (!start || !startOfOpeningDay || !closes || !decision || closes > startOfOpeningDay ||
       decision > start || (standardPrice !== null && standardPrice <= price)) {
@@ -124,7 +129,27 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     firstLesson, enrollmentCloses, decisionAt,
     schedule: string('schedule', 300), sessions: integer('sessions', 1000), minutes: integer('minutes', 600),
     minimumPaid, capacity, price, standardPrice,
-    learningOutcomes: string('learningOutcomes', 2500), material: string('material', 2500),
-    resources: string('resources', 2500), teacher: string('teacher', 2500),
+    learningOutcomes: input.templateId && input.learningOutcomes === '' ? '' : string('learningOutcomes', 2500), material: string('material', 2500),
+    resources: input.templateId && input.resources === '' ? '' : string('resources', 2500),
+    teacher: string('teacher', 2500, { optional: true }),
   };
+}
+
+export type EnrollmentWeeklySchedule={days:number[];start:string;lessons:number};
+export const enrollmentWeekdays=[
+  ['周一','Mon','Sen'],['周二','Tue','Sel'],['周三','Wed','Rab'],['周四','Thu','Kam'],
+  ['周五','Fri','Jum'],['周六','Sat','Sab'],['周日','Sun','Min'],
+] as const;
+
+/** In local Jakarta time, with Monday as day 1. */
+export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutes:number,lang:'zh'|'en'|'id'='zh'){
+  if(!plan||!Array.isArray(plan.days)||!plan.days.length||plan.days.some(day=>!Number.isInteger(day)||day<1||day>7)||
+    typeof plan.start!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(plan.start)||!Number.isInteger(plan.lessons)||plan.lessons<1||plan.lessons>24)return '';
+  const [h,m]=plan.start.split(':').map(Number);
+  const end=h*60+m+plan.lessons*minutes;
+  if(!Number.isInteger(end)||end>=1440)return '';
+  const endTime=[Math.floor(end/60),end%60].map(x=>String(x).padStart(2,'0')).join(':');
+  const index=lang==='zh'?0:lang==='en'?1:2;
+  const days=[...new Set(plan.days)].sort((a,b)=>a-b).map(day=>lang==='zh'?enrollmentWeekdays[day-1][index].slice(1):enrollmentWeekdays[day-1][index]).join(lang==='zh'?'、':', ');
+  return (lang==='zh'?'每周':'')+days+' '+plan.start+'–'+endTime+' WIB';
 }

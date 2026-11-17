@@ -1,3 +1,5 @@
+import {enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type EnrollmentTemplate} from '../../utils/enrollmentTemplates';
+import {EnrollmentClassPreview} from '../EnrollmentClassPreview';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminEditor} from '../admin/AdminEditor';
 import {CrmPageAction} from './CrmPageAction';
@@ -6,25 +8,26 @@ import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions, AdminFormGrid, AdminFormSection } from '../AdminFormLayout';
+import { AdminFormActions, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
-import { enrollmentFormats, enrollmentLevels, enrollmentPeriods,enrollmentScheduleDefaults } from '../../utils/enrollmentCatalog';
+import { enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
 import { enrollmentPost } from '../EnrollmentApplication';
 
 type Copy = readonly [string, string, string];
-type Catalog = { classes: EnrollmentClassAdmin[]; courses: { name: string; id: string; active: boolean }[] };
-type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: EnrollmentClassConfig };
-const initial: EnrollmentClassConfig = {
-  courseId: '', level: 'HSK 1', format: 'standard', period: 'weekend',
+type Catalog = { classes: EnrollmentClassAdmin[]; courses: EnrollmentTeachingCourse[]; templates: EnrollmentTemplate[] };
+type ClassDraftConfig=Omit<EnrollmentClassConfig,'period'>&{period:EnrollmentClassConfig['period']|''};
+type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: ClassDraftConfig };
+const initial: ClassDraftConfig = {
+  courseId: '', level: 'HSK 1', format: 'standard', period: '',
   firstLesson: '', enrollmentCloses: '', decisionAt: '', schedule: '',
-  sessions: 23, minutes: 45, minimumPaid: 13, capacity: 20, price: 0, standardPrice: null,
+  sessions: 23, minutes: 45, minimumPaid: 10, capacity: 15, price: 0, standardPrice: null,
   learningOutcomes: '', material: '', resources: '', teacher: '',
 };
 const fields = {
@@ -44,15 +47,18 @@ const fields = {
   teacher: { type: 'text', label: ['Teacher', 'Pengajar', '授课教师'] },
 } satisfies Partial<Record<keyof EnrollmentClassConfig,{type:'text'|'number'|'datetime-local'|'textarea';label:Copy}>>;
 
-export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraftChange }: {
-  lang: CrmLanguage; isLight: boolean; target?: string; onShowAll: () => void; onDraftChange: (dirty:boolean) => void;
+export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShowAll, onDraftChange }: {
+  lang: CrmLanguage; isLight: boolean; target?: string; createFrom?: string; onShowAll: () => void; onDraftChange: (dirty:boolean) => void;
 }) {
   const t = ([en, id, zh]: Copy) => lang === 'zh' ? zh : lang === 'id' ? id : en;
+  const teacherHelpId=useId();
   const [catalog, setCatalog] = useState<Catalog>();
   const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
   const [search,setSearch]=useState('');
   const [classState,setClassState]=useState('all');
   const [draft, setDraft] = useState<Draft>();
+  const [preview,setPreview]=useState<EnrollmentClassAdmin>();
+  const createOpened=useRef<string|undefined>(undefined);
   const [insertion, setInsertion] = useState<{row:EnrollmentClassAdmin;requestId:string}>();
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
@@ -107,11 +113,29 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
     setDirty(false);
     if (row) {
       const { id, revision, state, opened, canInsert, ...config } = row;
-      setDraft({ id, revision, state, config });
+      const template=state==='draft'&&catalog?.templates.find(item=>item.id===config.templateId);
+      const course=template&&catalog?.courses.find(item=>item.id===template.courseId);
+      const updated=template&&course&&template.revision!==config.templateRevision&&enrollmentTemplateClassFields(template,course);
+      setDraft({id,revision,state,config:updated?{...config,...updated}:config});
     } else {
       setDraft({ id: crypto.randomUUID(), revision: 0, state: 'draft', config: { ...initial } });
     }
   }
+  function chooseTemplate(id:string){
+    const template=catalog?.templates.find(item=>item.id===id);
+    const course=catalog?.courses.find(item=>item.id===template?.courseId);
+    const derived=template&&course&&enrollmentTemplateClassFields(template,course);
+    if(!derived)return;
+    setDraft(value=>value&&({...value,config:{...value.config,...derived,
+      teacher:value.config.teacherType&&value.config.teacherType!==derived.teacherType?'':value.config.teacher}}));
+    setDirty(true);
+  }
+  useEffect(()=>{
+    if(!catalog||!createFrom||createOpened.current===createFrom)return;
+    createOpened.current=createFrom;
+    edit();
+    chooseTemplate(createFrom);
+  },[catalog,createFrom]);
   function change(name: keyof EnrollmentClassConfig, value: string | number | null) {
     setDraft(current=>{
       if(!current)return current;
@@ -128,6 +152,14 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
     });
     setDirty(true);
   }
+  const weekly=draft?.config.weeklySchedule??{days:[],start:'',lessons:1};
+  const scheduleText=enrollmentWeeklyScheduleText(draft?.config.weeklySchedule,draft?.config.minutes??45,lang);
+  function changeWeekly(values:Partial<EnrollmentWeeklySchedule>){
+    const next={...weekly,...values};
+    setDraft(current=>current&&({...current,config:{...current.config,weeklySchedule:next,
+      schedule:enrollmentWeeklyScheduleText(next,current.config.minutes,lang)}}));
+    setDirty(true);
+  }
   function close() {
     if (busy || pending) return;
     if (dirty) setDiscard(true);
@@ -140,25 +172,28 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
     setSaved(true);
     await load().catch(()=>{});
   }
-  async function save() {
-    if (!draft || busy || pending || !draft.config.courseId) return;
+  async function save(state:Draft['state']=draft?.state??'draft') {
+    if (!draft || busy || pending || !draft.config.courseId || !draft.config.period || !(draft.config.weeklySchedule?scheduleText:draft.config.schedule)) return;
+    if(state==='published'&&!draft.config.price)return;
     const requestId = crypto.randomUUID();
     setError('');
     setBusy(true);
     try {
       const result = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...draft, requestId }),
+        body: JSON.stringify({ ...draft, state, requestId }),
       });
       if (result.status >= 500) throw Error();
       if (!result.ok) {
         setError(result.status === 409
           ? t(['Refresh to review the latest class and course.', 'Segarkan untuk memeriksa data kelas dan kursus terbaru.', '请刷新核对最新的班次及课程状态。'])
           : t(['Check the class dates, capacity and tuition.', 'Periksa jadwal, kapasitas, dan biaya kelas.', '请核对班次日期、人数和学费。']));
+        if(result.status===409)await load();
         return;
       }
       const receipt = await result.json();
       if (receipt.classId !== draft.id) throw Error();
+      setPreview(undefined);
       await complete();
     } catch {
       setCheckState(undefined);setPending(requestId);
@@ -171,6 +206,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
       const result=await fetch(endpoint+'/results/'+encodeURIComponent(pending),{cache:'no-store'});
       if(result.status===404){setCheckState('missing');return;}
       if(!result.ok||(await result.json()).classId!==draft?.id)throw Error();
+      setPreview(undefined);
       await complete();
     }catch{setCheckState('error');}
     finally{setBusy(false);}
@@ -287,59 +323,79 @@ export function CrmEnrollmentClasses({ lang, isLight, target, onShowAll, onDraft
           {row.state==='published'&&!row.opened&&<AdminRowAction disabled={readState==='error'} onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>
             {t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</AdminRowAction>}</div></td>
       </tr>)}</AdminListTable>}
-    {draft&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
+    {draft&&!preview&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
       title={draft.revision?t(['Edit class','Edit kelas','编辑班次']):t(['Create class','Buat kelas','创建班次'])}
       lang={lang} light={isLight} busy={busy} closeDisabled={!!pending} onClose={close}
       onSubmit={event=>{event.preventDefault();void save();}} footer={<>
           {pending ? <button type="button" className="crm-work-button" disabled={busy} onClick={() => void check().catch(() => {})}>{t(['Check save result', 'Periksa hasil simpan', '查询保存结果'])}</button>
             : <><button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t(['Cancel', 'Batal', '取消'])}</button>
-              <button type="submit" data-primary="" disabled={busy || !draft.config.courseId}>{t(['Save', 'Simpan', '保存'])}</button></>}
+              <button type="button" className="crm-work-button" disabled={busy||!draft.config.courseId||!draft.config.period}
+                onClick={()=>{if(draft.config.period)setPreview({...draft.config,period:draft.config.period,id:draft.id,state:draft.state,revision:draft.revision});}}>
+                {t(['Preview for learners','Pratinjau siswa','学员预览'])}</button>
+              <button type="submit" data-primary="" disabled={busy || !draft.config.courseId || !draft.config.period || !!draft.config.templateId&&!scheduleText}>{draft.state==='draft'?t(['Save draft','Simpan draf','保存草稿']):t(['Save','Simpan','保存'])}</button></>}
       </>}>
           {error && <p role="alert">{error}</p>}
           {pending && <CrmSaveFeedback state={busy?"saving":"unknown"} lang={lang}>{!busy&&checkMessage}</CrmSaveFeedback>}
-          <AdminFormSection variant="subgroup" title={t(['Class details','Informasi kelas','班次信息'])}>
-            <AdminFormGrid>
-              {selectField('courseId',['Course','Kursus','关联课程'],(catalog?.courses??[]).map(course=>({
-                value:course.id,label:course.name,disabled:draft.state==='published'&&!course.active,
-              })),true)}
-              {selectField('level',['Level','Level','级别'],enrollmentLevels.map(value=>({value,label:value})))}
-              {selectField('format',['Class type','Jenis kelas','班型'],enrollmentFormats.map(value=>({
-                value,label:value==='standard'?t(['Standard','Standar','标准班']):t(['Small group','Kelompok kecil','小班']),
-              })))}
-            </AdminFormGrid>
+          <div data-admin-section-stack="open">
+          <AdminFormSection variant="subgroup" title={t(['Class template','Templat kelas','班型模板'])}>
+            <AdminField required={!draft.revision||!!draft.config.templateId}>
+              {t(['Select a class template','Pilih templat kelas','选择班型模板'])}
+              <CrmSingleSelect label={t(['Select a class template','Pilih templat kelas','选择班型模板'])} lang={lang} isLight={isLight}
+                value={draft.config.templateId??''} disabled={fieldDisabled||draft.state==='published'}
+                options={(catalog?.templates??[]).filter(item=>item.format!=='one-on-one').map(item=>({value:item.id,
+                  label:item.name+(item.saleUnitPrice?'':' · '+t(['Quote pending','Harga belum dikonfirmasi','报价待确认']))}))}
+                onChange={chooseTemplate}/>
+            </AdminField>
+            {!!draft.config.courseId&&<AdminFormSummary title={t(['Template summary · read only','Ringkasan templat · hanya baca','模板摘要 · 只读'])} fields={[
+              [t(['Course','Kursus','课程']),draft.config.courseName||draft.config.level],
+              [t(['Lessons × minutes','Sesi × menit','节数 × 分钟']),draft.config.sessions+' × '+draft.config.minutes],
+              [t(['Teacher type','Jenis pengajar','教师类型']),draft.config.teacherType==='foreign'?t(['Foreign teacher','Pengajar asing','外教']):draft.config.teacherType==='local'?t(['Local teacher','Pengajar lokal','本土教师']):'—'],
+              [t(['Minimum fully paid','Minimum peserta lunas','足额到账开班底线']),draft.config.minimumPaid],
+              [t(['Capacity','Kapasitas','招生上限']),draft.config.capacity],
+              ...(draft.config.standardPrice?[[t(['Standard total','Total harga standar','标准总价']),<del>{formatCurrency(draft.config.standardPrice,lang)}</del>] as const]:[]),
+              [t(['Enrollment total','Total harga pendaftaran','报名总价']),draft.config.price?<strong>{formatCurrency(draft.config.price,lang)}</strong>:'—'],
+            ]}/>}
+            {!!draft.config.courseId&&!draft.config.price&&<p className="crm-work-muted">{t(['Quote pending. Publication is blocked.','Harga belum dikonfirmasi. Kelas belum bisa diterbitkan.','报价待确认，可保存草稿，暂不能发布。'])}</p>}
           </AdminFormSection>
-          <AdminFormSection variant="subgroup" title={t(['Schedule and dates','Jadwal dan tanggal','课表与时间'])}>
+          <AdminFormSection variant="subgroup" title={t(['Schedule and dates','Jadwal dan tanggal','本期时间安排'])}>
             <AdminFormGrid>
+              <AdminField as="div" data-admin-full-width="">
+                <label>{t(['Teacher','Pengajar','授课教师'])}</label>
+                <input type="text" maxLength={2500} aria-describedby={teacherHelpId} value={draft.config.teacher??''} disabled={fieldDisabled}
+                  onChange={event=>change('teacher',event.target.value)}/>
+                <small id={teacherHelpId}>{t(['Enter the name displayed to learners. Leave blank if a teacher hasn’t been assigned.','Masukkan nama yang ditampilkan kepada siswa. Kosongkan jika pengajar belum ditetapkan.','填写对学员公开的姓名。尚未排定教师时可留空。'])}</small>
+              </AdminField>
               {selectField('period',['Time slot','Waktu','时段'],enrollmentPeriods.map(value=>({
                 value,label:value==='weekend'?t(['Weekend','Akhir pekan','周末']):t(['Weekday evening','Malam hari kerja','工作日晚间']),
               })))}
               {inputField('firstLesson')}
+              <AdminField required={!!draft.config.templateId} data-admin-full-width="">
+                {t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}
+                <CrmSingleSelect multiple value="" lang={lang} isLight={isLight} disabled={fieldDisabled}
+                  label={t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}
+                  emptyLabel={t(['Select weekdays','Pilih hari','请选择上课日'])} values={weekly.days.map(String)} onChange={()=>{}} onValuesChange={days=>changeWeekly({days:days.map(Number)})}
+                  options={enrollmentWeekdays.map(([zh,en,id],index)=>({value:String(index+1),label:t([en,id,zh])}))}/>
+              </AdminField>
+              <AdminField required={!!draft.config.templateId}>{t(['Class start time (WIB)','Waktu mulai (WIB)','每次开始时间（WIB）'])}<input type="time" required={!!draft.config.templateId} value={weekly.start} disabled={fieldDisabled} onChange={e=>changeWeekly({start:e.target.value})}/></AdminField>
+              <AdminField required={!!draft.config.templateId}>{t(['Lessons per meeting','Sesi per pertemuan','每次上几节'])}<input type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/></AdminField>
+              <AdminField data-admin-full-width="">{t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
+                <input readOnly value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
+              </AdminField>
               {inputField('decisionAt')}
               {inputField('enrollmentCloses')}
-              {inputField('schedule',true)}
-              {inputField('sessions')}
-              {inputField('minutes')}
             </AdminFormGrid>
           </AdminFormSection>
-          <AdminFormSection variant="subgroup" title={t(['Enrollment and tuition','Pendaftaran dan biaya','招生与学费'])}>
-            <AdminFormGrid>
-              {inputField('minimumPaid')}
-              {inputField('capacity')}
-              {inputField('price')}
-              {inputField('standardPrice')}
-            </AdminFormGrid>
-          </AdminFormSection>
-          <AdminFormSection variant="subgroup" title={t(['Course overview','Ringkasan kursus','课程介绍'])}>
-            {inputField('teacher')}
-            {inputField('learningOutcomes')}
-            {inputField('material')}
-            {inputField('resources')}
-          </AdminFormSection>
-          <AdminFormSection variant="subgroup" title={t(['Publication settings','Pengaturan publikasi','发布设置'])}>
-            <label className="admin-field admin-field--choice"><input type="checkbox" checked={draft.state === 'published'} disabled={fieldDisabled}
-              onChange={event => { setDraft({ ...draft, state: event.target.checked ? 'published' : 'draft' }); setDirty(true); }}/>
-              <span>{t(['Publish class', 'Terbitkan kelas', '发布班次'])}</span></label>
-          </AdminFormSection>
+          </div>
+    </AdminEditor>}
+    {preview&&<AdminEditor variant="drawer" lang={lang} light={isLight} title={t(['Learner preview','Pratinjau siswa','学员预览'])}
+      onClose={()=>setPreview(undefined)} footer={<>
+        <button type="button" onClick={()=>setPreview(undefined)}>{t(['Back to editing','Kembali mengedit','返回编辑'])}</button>
+        {draft?.state==='draft'&&<button type="button" data-primary="" disabled={busy||!!pending||!preview.price||!preview.firstLesson||!(preview.weeklySchedule?enrollmentWeeklyScheduleText(preview.weeklySchedule,preview.minutes,lang):preview.schedule)||!preview.decisionAt||!preview.enrollmentCloses}
+          onClick={()=>void save('published')}>{t(['Publish class','Terbitkan kelas','发布班次'])}</button>}
+      </>}>
+      {error&&<p role="alert">{error}</p>}
+      {pending&&<><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" disabled={busy} onClick={()=>void check()}>{t(['Check save result','Periksa hasil simpan','查询保存结果'])}</button></>}
+      <EnrollmentClassPreview row={preview} language={lang} showDetails/>
     </AdminEditor>}
     {insertion&&<CrmOperationLayer compose title={<>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}<AdminRequiredNote inline lang={lang}/></>}
       lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={()=>{

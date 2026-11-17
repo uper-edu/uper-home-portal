@@ -29,8 +29,20 @@ test('only public class fields are returned to visitors', () => {
   const view = publicEnrollmentClass(admin);
   assert.equal(view.id, admin.id);
   assert.equal(view.price, 575000);
+  assert.equal(view.teacher, 'Sample teacher');
   for (const key of ['capacity', 'minimumPaid', 'courseId', 'revision', 'state', 'enrollmentCloses']) {
     assert.equal(Object.hasOwn(view, key), false);
+  }
+});
+
+test('the class teacher can be assigned later or cleared without affecting the price', () => {
+  for (const [teacher, expected] of [['  Dewi Tan  ', 'Dewi Tan'], ['', ''], ['   ', '']]) {
+    const config = validateEnrollmentClass({ ...sample, teacher });
+    assert.equal(config.teacher, expected);
+    assert.equal(config.price, sample.price);
+  }
+  for (const teacher of [null, 12, 'x'.repeat(2501)]) {
+    assert.throws(() => validateEnrollmentClass({ ...sample, teacher }), /enrollment_class_invalid/);
   }
 });
 

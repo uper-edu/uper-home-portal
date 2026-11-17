@@ -1,14 +1,15 @@
+import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, Minus, Plus } from 'lucide-react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { normalizeSiteLanguage } from '../utils/siteMetadata';
 import { formatCurrency } from '../utils/currency';
-import { enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import { PublicSingleSelect } from '../components/PublicSingleSelect';
 import { EnrollmentSupport } from '../components/EnrollmentSupport';
-import { oneToOneRate } from '../data/enrollmentOneToOne';
+
 import { EnrollmentApplication, enrollmentCopy } from '../components/EnrollmentApplication';
 import { EnrollmentAssistance } from '../components/EnrollmentAssistance';
 import './enrollment.css';
@@ -81,6 +82,8 @@ export default function Enrollment() {
   useEffect(() => {
     if (classId && (application || rulesPage)) window.scrollTo(0, 0);
   }, [classId, application, rulesPage]);
+  type Appointment={id:string;level:string;course:string;teacherType:'local'|'foreign';lessons:number;minutes:number;price:number;standardPrice:number};
+  const [appointments,setAppointments]=useState<Appointment[]>([]);
   const [classes, setClasses] = useState<PublicEnrollmentClass[]>();
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -95,8 +98,9 @@ export default function Enrollment() {
     setFailed(false);
     fetch('/api/enrollment/classes', { signal: abort.signal, cache: 'no-store' }).then(async response => {
       if (!response.ok) throw Error();
-      const data: { classes: PublicEnrollmentClass[] } = await response.json();
+      const data: { classes: PublicEnrollmentClass[]; appointments?:Appointment[] } = await response.json();
       setClasses(data.classes);
+      setAppointments(data.appointments??[]);
     }).catch(() => { if (!abort.signal.aborted) setFailed(true); });
     return () => abort.abort();
   }, [reload]);
@@ -136,7 +140,7 @@ export default function Enrollment() {
     return '/enrollment/' + encodeURIComponent(id) + '?' + query.toString();
   };
   const selected = classes?.find(row => row.id === classId);
-  const privateLesson = format === 'one-on-one' || (!format && !period) ? oneToOneRate(level) : undefined;
+  const privateLessons = format === 'one-on-one' || (!format && !period) ? appointments.filter(item=>item.level.startsWith('HSK '+level)) : [];
   const appointmentParams = new URLSearchParams(publicParams);
   appointmentParams.set('lang', language);
   appointmentParams.set('level', level);
@@ -152,40 +156,13 @@ export default function Enrollment() {
       : ['预计 ' + date + '开课', 'Expected ' + date, 'Perkiraan ' + date]);
   };
 
-  const classCard = (row: PublicEnrollmentClass, inCatalog: boolean) => {
-    const groupSize = row.format === 'standard' ? '15–20' : '4–6';
-    const facts = enrollmentCopy(language, [
-      `${groupSize} 人 · ${row.sessions} 次课 · 每次 ${row.minutes} 分钟`,
-      `${groupSize} learners · ${row.sessions} sessions · ${row.minutes} min each`,
-      `${groupSize} siswa · ${row.sessions} sesi · ${row.minutes} menit per sesi`,
-    ]);
-    const openingNotice=row.opened?'':enrollmentOpeningNotice(row.decisionAt,language,openingClock);
-    const title = row.level + ' · ' + t(row.format) + ' · ' + dateLabel(row);
-    return <article className="enrollment-class-card" key={row.id}>
-      <h2>{inCatalog ? <Link to={detailsPath(row.id)}>{title}<ChevronRight size={15} aria-hidden="true"/></Link> : title}</h2>
-      <p>{facts}</p>
-      <p className="enrollment-schedule">{row.schedule}</p>
-      <div className="enrollment-class-status">
-        <span className="enrollment-status" data-state={row.availability === 'full' ? 'full' : row.opened ? 'confirmed' : 'pending'}>
-          {t(row.opened ? 'opened' : 'recruiting')}{row.availability && ' · ' + t(row.availability)}
-        </span>
-        {openingNotice&&<small>{openingNotice}</small>}
-      </div>
-      <div className="enrollment-class-bottom">
-        <div className="enrollment-prices">
-          <strong>{formatCurrency(row.price, language)}</strong>
-          {row.standardPrice && <small>{t('standardPrice')} <del>{formatCurrency(row.standardPrice, language)}</del></small>}
-          <small>{formatCurrency(Math.round(row.price / row.sessions), language)}
-            {enrollmentCopy(language, [' / 次课', ' / session', ' / sesi'])}</small>
-        </div>
-        {inCatalog && accepting && <Link className="enrollment-primary" to={detailsPath(row.id, true)}>{t(row.availability === 'full' ? 'join' : 'apply')}</Link>}
-      </div>
-    </article>;
-  };
+  const classCard=(row:PublicEnrollmentClass,inCatalog:boolean)=><EnrollmentClassPreview key={row.id} row={row} language={language}
+    clock={openingClock} titleLink={inCatalog?detailsPath(row.id):undefined}
+    actionLink={inCatalog&&accepting?detailsPath(row.id,true):undefined}/>;
 
   if (pathname==='/enrollment/assist') return <EnrollmentAssistance language={language}/>;
   if (topic) return <EnrollmentSupport topic={topic} language={language}
-    level={params.has('level')&&oneToOneRate(level)?level:undefined} period={period} catalogPath={listPath}/>;
+    level={params.has('level')&&['1','2','3','4'].includes(level)?level:undefined} period={period} catalogPath={listPath}/>;
 
   if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
     <Link className="enrollment-back" to={detailsPath(classId!)}><ArrowLeft size={15} aria-hidden="true"/>{t('backDetail')}</Link>
@@ -270,6 +247,7 @@ export default function Enrollment() {
           <h2>{t('courseIntro')}</h2>
           {(['outcomes', 'material', 'resources', 'teacher'] as const).map(key => {
             const description = key === 'outcomes' ? selected.learningOutcomes : selected[key];
+            if (!description) return null;
             return <details key={key} open={key === 'outcomes'}>
               <summary>
                 <span>{t(key)}<small aria-hidden="true">{description}</small></span>
@@ -303,23 +281,24 @@ export default function Enrollment() {
     {format !== 'one-on-one' && (failed
       ? <p role="alert">{t('error')} <button className="enrollment-quiet" type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
       : !classes && <p role="status">{t('loading')}</p>)}
-    {rows?.length || privateLesson ? <div className="enrollment-class-grid">
+    {rows?.length || privateLessons.length ? <div className="enrollment-class-grid">
       {rows?.map(row => classCard(row, true))}
-      {privateLesson&&<article className="enrollment-class-card enrollment-appointment-card">
-        <h2>HSK {level} · {t('one-on-one')}</h2>
-        <p>{t('appointment')}</p>
+      {privateLessons.map(item=><article key={item.id} className="enrollment-class-card enrollment-appointment-card">
+        <h2>{item.course} · {t('one-on-one')}</h2>
+        <p>{item.teacherType==='foreign'?enrollmentCopy(language,['外教','Foreign teacher','Pengajar asing']):enrollmentCopy(language,['本土教师','Local teacher','Pengajar lokal'])} · {t('appointment')}</p>
         <div className="enrollment-class-bottom">
           <div className="enrollment-prices">
-            <strong>{formatCurrency(privateLesson.lessonPrice,language)}<span className="enrollment-price-unit">{enrollmentCopy(language,[' / 次课',' / session',' / sesi'])}</span></strong>
+            <strong>{formatCurrency(item.price,language)}<span className="enrollment-price-unit">{enrollmentCopy(language,['／节',' / lesson',' / sesi'])}</span></strong>
+            {item.standardPrice>item.price&&<small><del>{formatCurrency(item.standardPrice,language)}</del></small>}
             <small>{enrollmentCopy(language,[
-              `${privateLesson.referenceLessons} 课次折算 ${formatCurrency(privateLesson.lessonPrice*privateLesson.referenceLessons,language)}`,
-              `Reference total · ${privateLesson.referenceLessons} sessions · ${formatCurrency(privateLesson.lessonPrice*privateLesson.referenceLessons,language)}`,
-              `Perkiraan total · ${privateLesson.referenceLessons} sesi · ${formatCurrency(privateLesson.lessonPrice*privateLesson.referenceLessons,language)}`,
+              `${item.lessons} 节 · 每节 ${item.minutes} 分钟 · 参考总价 ${formatCurrency(item.price*item.lessons,language)}`,
+              `${item.lessons} lessons · ${item.minutes} min each · reference total ${formatCurrency(item.price*item.lessons,language)}`,
+              `${item.lessons} sesi · ${item.minutes} menit per sesi · perkiraan total ${formatCurrency(item.price*item.lessons,language)}`,
             ])}</small>
           </div>
           <Link className="enrollment-primary" to={'/enrollment/help/one-on-one?'+appointmentParams.toString()}>{t('appointmentAction')}</Link>
         </div>
-      </article>}
+      </article>)}
     </div>
       : classes&&!failed&&<div className="enrollment-class-card enrollment-empty"><CalendarDays size={20} aria-hidden="true"/><div><p><strong>{t('empty')}</strong></p><p>{t('noMatchBody')}</p></div><button className="enrollment-quiet" type="button" onClick={() => {
         const next = new URLSearchParams(params);

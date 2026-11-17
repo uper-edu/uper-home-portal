@@ -28,6 +28,12 @@
 .admin-form-section[data-admin-section=card]>.admin-form-section-body{padding:16px}
 .admin-form-section[data-admin-section=subgroup]>.admin-form-section-heading{padding:0;border:0}
 .admin-form-section[data-admin-section=subgroup]>.admin-form-section-body{padding-bottom:0}
+/* Open groups use spacing so the fixed editor header and footer own the dividers. */
+[data-admin-section-stack="open"]{container:admin-form-sections / inline-size;min-inline-size:0;margin:0;padding:0;border:0}
+[data-admin-section-stack="open"]>.admin-form-section+.admin-form-section{padding-top:24px;margin:0}
+@container admin-form-sections (min-width:568px){
+  [data-admin-section-stack="open"]>.admin-form-section>.admin-form-section-body{padding-inline-start:8px}
+}
 .admin-form-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
 .admin-form-actions>button{min-height:40px;border-radius:10px;font-size:14px;line-height:1.5}
 .admin-form-feedback{margin:0;padding:10px 12px;border:1px solid var(--af-border,var(--admin-border));border-radius:10px;font-size:14px;line-height:1.6;overflow-wrap:anywhere}

@@ -17,6 +17,12 @@
       "server/portal/campaignPromotion.ts"
     ]
   },
+  "DELETE FROM crm_courses WHERE id=:p1": {
+    "sql": "DELETE FROM crm_courses WHERE id=:p1",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2": {
     "sql": "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2",
     "sources": [
@@ -782,6 +788,12 @@
       "server/portal/agreementRestore.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.delete',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.delete',:p2)",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)",
     "sources": [
@@ -834,6 +846,12 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.rules.save',:p2)",
     "sources": [
       "server/portal/enrollmentRules.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)": {
@@ -962,6 +980,7 @@
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
     "sources": [
+      "server/portal/enrollmentTemplates.ts",
       "server/portal/larkSelfService.ts"
     ]
   },
@@ -2007,6 +2026,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT DISTINCT course_id FROM enrollment_classes": {
+    "sql": "SELECT DISTINCT course_id FROM enrollment_classes",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "SELECT DISTINCT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(payload,'$.source')),'null') value FROM outbox WHERE JSON_CONTAINS_PATH(payload,'one','$.\"source\"') UNION SELECT DISTINCT source value FROM conversations": {
     "sql": "SELECT DISTINCT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(payload,'$.source')),'null') value FROM outbox WHERE JSON_CONTAINS_PATH(payload,'one','$.\"source\"') UNION SELECT DISTINCT source value FROM conversations",
     "sources": [
@@ -2297,6 +2322,12 @@
     "sql": "SELECT id FROM enrollment_classes\n          WHERE state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n            AND data->>'$.level'=:p1 AND data->>'$.format'=:p2 ORDER BY first_lesson_at,id",
     "sources": [
       "server/portal/enrollmentTransferOffers.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_classes WHERE course_id=:p1 LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_classes WHERE course_id=:p1 LIMIT 1",
+    "sources": [
+      "server/portal/courseCatalog.ts"
     ]
   },
   "SELECT id FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p2 FOR SHARE": {
@@ -2938,6 +2969,12 @@
       "scripts/portal-migrate.ts"
     ]
   },
+  "SELECT lead_id FROM crm_payment_ledgers WHERE JSON_CONTAINS(value,JSON_OBJECT('priceSnapshot',JSON_OBJECT('courseId',:p1)),'$.projects') LIMIT 1": {
+    "sql": "SELECT lead_id FROM crm_payment_ledgers WHERE JSON_CONTAINS(value,JSON_OBJECT('priceSnapshot',JSON_OBJECT('courseId',:p1)),'$.projects') LIMIT 1",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "SELECT lead_id FROM enrollment_customer_records WHERE kind=:p1 AND record_id=:p2": {
     "sql": "SELECT lead_id FROM enrollment_customer_records WHERE kind=:p1 AND record_id=:p2",
     "sources": [
@@ -3366,6 +3403,7 @@
       "server/portal/enrollmentCrm.ts",
       "server/portal/enrollmentResolution.ts",
       "server/portal/enrollmentRules.ts",
+      "server/portal/enrollmentTemplates.ts",
       "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
     ]
@@ -3396,8 +3434,8 @@
       "server/portal/enrollmentMail.ts"
     ]
   },
-  "SELECT revision,state FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
-    "sql": "SELECT revision,state FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+  "SELECT revision,state,data FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT revision,state,data FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
     ]
@@ -3558,7 +3596,14 @@
     "sql": "SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE",
     "sources": [
       "server/portal/enrollmentApplication.ts",
-      "server/portal/enrollmentCatalog.ts"
+      "server/portal/enrollmentCatalog.ts",
+      "server/portal/enrollmentTemplates.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id": {
+    "sql": "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id=:p1": {
@@ -3569,9 +3614,16 @@
       "server/portal/paymentAnalyticsDispatch.ts"
     ]
   },
+  "SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
+    ]
+  },
   "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE",
     "sources": [
+      "server/portal/enrollmentTemplates.ts",
       "server/portal/larkChannelModes.ts"
     ]
   },

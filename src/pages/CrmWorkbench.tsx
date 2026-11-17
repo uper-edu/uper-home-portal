@@ -226,7 +226,12 @@ function CrmWorkspace({
   const canEnrollmentManagement=canViewEnrollmentManagement(employee);
   const canEnrollmentSupport=employee.permissions.includes("crm.read")&&employee.permissions.includes("crm.followup");
   const [rulesDirty,setRulesDirty]=useState(false);
-  const [enrollmentSettingsEditorDirty,setEnrollmentSettingsEditorDirty]=useState(false);
+  const [enrollmentSettingsEditorDirty,setEnrollmentSettingsEditorDirtyState]=useState(false);
+  const enrollmentSettingsEditorDirtyRef=useRef(false);
+  const setEnrollmentSettingsEditorDirty=useCallback((dirty:boolean)=>{
+    enrollmentSettingsEditorDirtyRef.current=dirty;
+    setEnrollmentSettingsEditorDirtyState(dirty);
+  },[]);
   const canManageCampaigns = employee.active !== false && employee.permissions.includes("campaigns.manage");
   const paymentQueue = useCrmQueueSummary("payments", canFinance ? employee.id : undefined);
   const [enrollmentPaymentView,setEnrollmentPaymentView]=useState(()=>isEnrollmentPaymentView(new URLSearchParams(window.location.search)));
@@ -560,7 +565,7 @@ function CrmWorkspace({
       }
       setCrmModule(module);
     };
-    if((crmModule==='enrollment-settings'&&module===crmModule&&!enrollmentSettingsEditorDirty)||discardDraft(apply))apply();
+    if((crmModule==='enrollment-settings'&&module===crmModule&&!enrollmentSettingsEditorDirtyRef.current)||discardDraft(apply))apply();
   };
   const changePolicyTopic=useCallback((topic:OperationSection)=>{
     if(topic===policyTopic)return;

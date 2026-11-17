@@ -1,8 +1,10 @@
+import {listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
+import {enrollmentTemplateClassFields} from '../../src/utils/enrollmentTemplates.ts';
 import type { Express, Request, Response } from 'express';
 import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
-import { enrollmentInstant, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentInstant, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
@@ -18,6 +20,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
   wrap: (fn: (q: Request, r: Response) => Promise<unknown>) => (q: Request, r: Response) => void;
   staff: (q: Request, permission: string) => Promise<{ id: string }>;
 }) {
+  mountEnrollmentTemplates(app,{wrap,staff});
   app.get(path, wrap(async (q, r) => {
     const actor = await staff(q, 'crm.operations.manage');
     const data = await tx(async c => {
@@ -25,11 +28,11 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id ORDER BY e.first_lesson_at,e.id`)).rows
         .map((row:any)=>({...record(row),opened:Number(row.opened)===1}));
       const courses = (await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows.map((row: any) => ({
-        id: row.id, name: row.value.name, active: row.value.active === true,
+        id: row.id, name: row.value.name, active: row.value.active === true, sessions:row.value.sessions, teaching:row.value.teaching,
       }));
       const active = new Set(courses.filter(course=>course.active).map(course=>course.id));
       const canOperate = !!enrollmentSimulation();
-      return { classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses };
+      return { templates:await listEnrollmentTemplates(c), classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses };
     });
     r.set('Cache-Control', 'no-store').json({ ...data, actorId: actor.id });
   }));
@@ -40,15 +43,40 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     if (typeof body?.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(body.id) ||
       !Number.isSafeInteger(body.revision) || body.revision < 0 ||
       !['draft', 'published'].includes(body.state)) invalid('enrollment_class_invalid');
-    const data = validateEnrollmentClass(body.config);
+    if(!body.config||typeof body.config!=='object')invalid('enrollment_class_invalid');
     const result = await tx(c => operation(c, actor.id, body, {
       leadId: 'class:' + body.id, kind, authorize: () => staff(q, 'crm.operations.manage'),
     }, async () => {
-      const current = (await c.query('SELECT revision,state FROM enrollment_classes WHERE id=:p1 FOR UPDATE', [body.id])).rows[0];
+      const current = (await c.query('SELECT revision,state,data FROM enrollment_classes WHERE id=:p1 FOR UPDATE', [body.id])).rows[0];
       if ((current?.revision ?? 0) !== body.revision) invalid('enrollment_class_conflict', 409);
       if(current?.state==='cancelled') invalid('enrollment_class_conflict',409);
-      const course = (await c.query('SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE', [data.courseId])).rows[0];
-      if (!course || (body.state === 'published' && course.value.active !== true)) invalid('enrollment_course_unavailable', 409);
+      const isPublished=current?.state==='published';
+      const raw=body.config;
+      if(isPublished&&body.state!=='published')invalid('enrollment_class_conflict',409);
+      if(!isPublished&&(!current||body.state==='published'||current.data?.templateId)&&!raw.templateId)invalid('enrollment_template_required');
+      const useTemplate=raw.templateId&&!isPublished;
+      const template=useTemplate?await readEnrollmentTemplate(c,raw.templateId):undefined;
+      if(useTemplate&&(!template||template.revision!==raw.templateRevision))invalid('enrollment_template_conflict',409);
+      const courseId=isPublished?current.data.courseId:template?.courseId??raw.courseId;
+      const course=(await c.query('SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE',[courseId])).rows[0]?.value;
+      if(!course||body.state==='published'&&!course.active)invalid('enrollment_course_unavailable',409);
+      const snapshot=template?enrollmentTemplateClassFields(template,{...course,id:courseId}):null;
+      if(template&&!snapshot)invalid('enrollment_template_invalid');
+      if(snapshot&&body.state==='published'&&!snapshot.price)invalid('enrollment_template_missing_quote',409);
+      const dates={firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,decisionAt:raw.decisionAt,period:raw.period,schedule:raw.schedule};
+      const teacher=raw.teacher===undefined?current?.data.teacher??'':raw.teacher;
+      const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:raw),teacher};
+      const weeklySchedule=raw.weeklySchedule;
+      if(weeklySchedule){
+        config.schedule=enrollmentWeeklyScheduleText(weeklySchedule,config.minutes);
+        if(!config.schedule)invalid('enrollment_class_invalid');
+      }else if(snapshot||current?.data?.weeklySchedule){
+        invalid('enrollment_class_invalid');
+      }
+      const data={...validateEnrollmentClass(config,!!snapshot&&body.state==='draft'),
+        ...(weeklySchedule?{weeklySchedule:{days:[...new Set(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons}}:{}),
+        ...(config.templateId?{templateId:config.templateId,templateRevision:config.templateRevision,teacherType:config.teacherType,courseName:config.courseName}:{})};
+
       const revision = body.revision + 1;
       const fields = [data.courseId, revision, body.state, enrollmentInstant(data.firstLesson), enrollmentInstant(data.enrollmentCloses), data];
       if (current) {
@@ -87,6 +115,16 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       const availability = available <= 0 ? 'full' : available <= 3 ? 'limited' : 'available';
       return { ...publicEnrollmentClass(record(row)), opened: Number(row.opened) === 1, availability };
     }));
-    r.set('Cache-Control', 'no-store').json({ classes });
+    const appointments=await tx(async c=>{
+      const templates=await listEnrollmentTemplates(c);
+      const courses=(await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows;
+      return templates.flatMap(template=>{
+        const course=courses.find((row:any)=>row.id===template.courseId)?.value;
+        if(template.format!=='one-on-one'||!template.saleUnitPrice||!template.standardUnitPrice||!course?.active||!course.teaching)return [];
+        return [{id:template.id,level:course.teaching.level,course:course.name,teacherType:template.teacherType,
+          lessons:course.sessions,minutes:course.teaching.minutes,price:template.saleUnitPrice,standardPrice:template.standardUnitPrice}];
+      });
+    });
+    r.set('Cache-Control', 'no-store').json({ classes,appointments });
   }));
 }

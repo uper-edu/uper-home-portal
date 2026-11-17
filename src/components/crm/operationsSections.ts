@@ -5,7 +5,8 @@ export const operationGroups = [
 ] as const;
 export const operationGroupOrder = [0, 1, 2] as const;
 export const enrollmentSettingSections = [
- {id:'courses',title:['Courses & pricing','Kursus & harga','课程与报价']},
+ {id:'courses',title:['Courses','Kursus','课程']},
+ {id:'enrollment-templates',title:['Class templates','Templat kelas','班型模板']},
  {id:'enrollment-classes',title:['Enrollment classes','Kelas pendaftaran','报名班次']},
  {id:'enrollment-rules',title:['Enrollment rules','Aturan pendaftaran','报名规则']},
  {id:'enrollment-mail',title:['Admissions email','Email penerimaan','招生邮件']},
@@ -40,9 +41,11 @@ export function isLegacyEnrollmentSettings(params:URLSearchParams) {
    || (!topic && params.has('enrollmentClass')));
 }
 
-export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;returnTo?:string}){
+export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;returnTo?:string;templateId?:string;createFrom?:string}){
  const query=new URLSearchParams({tab:'enrollment-settings',policyTopic:topic});
  if(topic==='enrollment-classes'&&options?.classId)query.set('enrollmentClass',options.classId);
+ if(options?.templateId)query.set('enrollmentTemplate',options.templateId);
+ if(options?.createFrom)query.set('createFromTemplate',options.createFrom);
  if(options?.returnTo)query.set('enrollmentReturn',options.returnTo);
  return '/crm?'+query;
 }
