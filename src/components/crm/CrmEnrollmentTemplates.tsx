@@ -2,6 +2,7 @@ import {Plus} from 'lucide-react';
 import {CrmPageAction} from './CrmPageAction';
 import {useEffect,useRef,useState} from 'react';
 import {AdminEditor} from '../admin/AdminEditor';
+import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
@@ -17,7 +18,7 @@ import {formatCurrency} from '../../utils/currency';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
 const endpoint='/api/crm/enrollment/templates';
-type Catalog={courses:EnrollmentTeachingCourse[];templates:EnrollmentTemplate[]};
+type Catalog={courses:EnrollmentTeachingCourse[];templates:EnrollmentTemplate[];classes:{templateId?:string}[]};
 type TemplateDraft=Omit<EnrollmentTemplate,'format'|'teacherType'>&{
  format:EnrollmentTemplate['format']|'';
  teacherType:EnrollmentTemplate['teacherType']|'';
@@ -32,6 +33,10 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDr
  const [draft,setDraft]=useState<TemplateDraft>(),[manualName,setManualName]=useState(false),[dirty,setDirty]=useState(false);
  const [discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState('');
  const [pending,setPending]=useState<string>();
+ const [deleting,setDeleting]=useState<{item:EnrollmentTemplate;requestId:string}>();
+ const [deleteUnknown,setDeleteUnknown]=useState(false);
+ const [deleteError,setDeleteError]=useState('');
+ const [deleted,setDeleted]=useState(false);
  const request=useRef<AbortController|null>(null),inFlight=useRef(false),located=useRef<string|undefined>(undefined);
  const money=(amount:number)=>formatCurrency(amount,lang);
  const formats={standard:t('Standard','Standar','标准班'),small:t('Small group','Kelompok kecil','小班'),'one-on-one':t('One-to-one','Privat','一对一')};
@@ -52,7 +57,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDr
    }catch{if(!controller.signal.aborted)setRead('error');}
  };
  useEffect(()=>{void load();return ()=>request.current?.abort();},[]);
- useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[dirty,busy,pending,onDraftChange]);
+ useEffect(()=>{onDraftChange(dirty||busy||!!pending||!!deleting);},[dirty,busy,pending,deleting,onDraftChange]);
  useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
 
  const visible=catalog?.templates.filter(item=>{
@@ -128,6 +133,34 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDr
    }catch{setError(t('Save not confirmed. Check again before retrying.','Penyimpanan belum terkonfirmasi. Periksa lagi.','保存结果未确认，请继续查询。'));}
    finally{inFlight.current=false;setBusy(false);}
  };
+ const referencedTemplates=new Set(catalog?.classes.map(row=>row.templateId));
+ const deleteTemplate=async()=>{
+   if(!deleting||inFlight.current)return;
+   const {item,requestId}=deleting;
+   inFlight.current=true;setBusy(true);setDeleteError('');
+   try{
+     const response=deleteUnknown
+       ? await fetch(endpoint+'/results/'+encodeURIComponent(requestId),{cache:'no-store'})
+       : await fetch(endpoint+'/delete',{method:'POST',headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({id:item.id,revision:item.revision,requestId})});
+     if(response.status>=500||deleteUnknown&&!response.ok)throw Error();
+     const result=await response.json();
+     if(!response.ok){
+       setDeleteError(result.error==='enrollment_template_in_use'
+         ? t('A class already uses this template.','Templat ini sudah digunakan oleh kelas.','已有班次使用此模板，无法删除。')
+         : t('Deletion failed. Refresh and review the template.','Penghapusan gagal. Segarkan dan periksa templat.','删除失败，请刷新并核对模板。'));
+       await load();
+       return;
+     }
+     if(result.operationKind!=='enrollment.template.delete'||result.templateId!==item.id)throw Error();
+     setCatalog(value=>value&&({...value,templates:value.templates.filter(template=>template.id!==item.id)}));
+     setDeleting(undefined);setDeleteUnknown(false);setDeleted(true);
+     await load();
+   }catch{
+     setDeleteUnknown(true);
+     setDeleteError(t('Deletion is unconfirmed. Check the original result.','Penghapusan belum terkonfirmasi. Periksa hasil awal.','删除结果尚未确认，请查询原操作结果。'));
+   }finally{inFlight.current=false;setBusy(false);}
+ };
  const field=(label:string,value:string,options:CrmChoice[],change:(v:string)=>void,disabled=false)=><AdminField required>{label}<CrmSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change} disabled={disabled}/></AdminField>;
  const searchLabel=t('Search templates','Cari templat','搜索模板');
  const filters=<div className="crm-ops-actions">
@@ -165,12 +198,26 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDr
              {item.format!=='one-on-one'&&<AdminRowAction disabled={read!=='ready'} onClick={()=>onCreateClass(item.id)}>
                {t('Create class','Buat kelas','创建班次')}
              </AdminRowAction>}
+             {!referencedTemplates.has(item.id)&&<AdminRowAction disabled={read!=='ready'} onClick={()=>{
+               setDeleteError('');setDeleteUnknown(false);setDeleted(false);setSaved(false);
+               setDeleting({item,requestId:crypto.randomUUID()});
+             }}>{t('Delete','Hapus','删除')}</AdminRowAction>}
            </div></td>
          </tr>;
        })}
      </AdminListTable>}
    {(read!=='ready'||!visible.length)&&<AdminListState lang={lang} state={read==='ready'?'empty':read} onRetry={()=>void load()}/>}
    {saved&&!draft&&<CrmSaveFeedback lang={lang} state="saved"/>}
+   {deleted&&<CrmSaveFeedback lang={lang} state="saved">{t('Template deleted.','Templat dihapus.','模板已删除。')}</CrmSaveFeedback>}
+   {deleting&&<AdminConfirmation light={isLight} danger busy={busy}
+     title={t('Delete class template?','Hapus templat kelas?','删除班型模板？')}
+     description={deleting.item.name+' · '+t('This action cannot be undone.','Tindakan ini tidak dapat dibatalkan.','删除后无法恢复。')}
+     cancelLabel={deleteUnknown?t('Close','Tutup','关闭'):t('Cancel','Batal','取消')}
+     confirmLabel={deleteUnknown?t('Check result','Periksa hasil','查询结果'):t('Delete','Hapus','删除')}
+     confirmDisabled={!deleteUnknown&&!!deleteError}
+     onCancel={()=>{if(!inFlight.current)setDeleting(undefined);}} onConfirm={()=>void deleteTemplate()}>
+     {deleteError&&<p role="alert">{deleteError}</p>}
+   </AdminConfirmation>}
    {draft&&<AdminEditor lang={lang} light={isLight} variant="drawer" className="crm-course-editor" responsiveForm required busy={busy}
      title={draft.revision?t('Edit template','Edit templat','编辑模板'):t('New template','Templat baru','新建模板')} onClose={close} onSubmit={save}
      footer={<><button type="button" onClick={close} disabled={busy||!!pending}>{t('Cancel','Batal','取消')}</button>

@@ -63,11 +63,31 @@ export function mountEnrollmentTemplates(app:Express,{wrap,staff}:{
     }));
     r.json(result);
   }));
+  app.post(path+'/delete',wrap(async(q,r)=>{
+    const actor=await access(q);
+    if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
+    const body=q.body;
+    const {id,revision}=body??{};
+    if(!isId(id)||!Number.isSafeInteger(revision)||revision<1)invalid('enrollment_template_invalid');
+    const result=await tx(c=>operation(c,actor.id,body,{
+      leadId:'template:'+id,kind:'enrollment.template.delete',authorize:()=>access(q),
+    },async()=>{
+      // Class creation holds a shared template lock until its class row is committed.
+      const {rows}=await c.query('SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE',[prefix+id]);
+      if(rows[0]?.value?.revision!==revision)invalid('enrollment_template_conflict',409);
+      const usage=await c.query("SELECT id FROM enrollment_classes WHERE JSON_UNQUOTE(JSON_EXTRACT(data,'$.templateId'))=:p1 LIMIT 1",[id]);
+      if(usage.rows.length)invalid('enrollment_template_in_use',409);
+      await c.query('DELETE FROM portal_settings WHERE id=:p1',[prefix+id]);
+      await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.delete',:p2)",[actor.id,{templateId:id,revision}]);
+      return {templateId:id};
+    }),{isolation:'READ COMMITTED'});
+    r.json(result);
+  }));
   app.get(path+'/results/:requestId',wrap(async(q,r)=>{
     const actor=await access(q);
     const {rows}=await tx(c=>c.query('SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2',[actor.id,q.params.requestId]));
     const result=rows[0]?.result;
-    if(result?.operationKind!=='enrollment.template.save')invalid('enrollment_result_missing',404);
+    if(result?.operationKind!=='enrollment.template.save'&&result?.operationKind!=='enrollment.template.delete')invalid('enrollment_result_missing',404);
     r.set('Cache-Control','no-store').json(result);
   }));
 }
