@@ -420,6 +420,12 @@
       "server/portal/enrollmentMail.ts"
     ]
   },
+  "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n            VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n            VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key": {
     "sql": "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key",
     "sources": [
@@ -2122,6 +2128,12 @@
       "server/portal/enrollmentNotices.ts"
     ]
   },
+  "SELECT event_key FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'": {
+    "sql": "SELECT event_key FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT event_key FROM enrollment_notification_receipts WHERE event_key=:p1": {
     "sql": "SELECT event_key FROM enrollment_notification_receipts WHERE event_key=:p1",
     "sources": [
@@ -2130,6 +2142,12 @@
   },
   "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40": {
     "sql": "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT event_key,state,payload->>'$.environment' AS environment\n          FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email'\n          AND kind='payment_confirmed'": {
+    "sql": "SELECT event_key,state,payload->>'$.environment' AS environment\n          FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email'\n          AND kind='payment_confirmed'",
     "sources": [
       "server/portal/enrollmentMail.ts"
     ]
@@ -2336,16 +2354,16 @@
       "server/portal/enrollmentInterests.ts"
     ]
   },
-  "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1": {
-    "sql": "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1",
+  "SELECT id FROM enrollment_mail_attempts\n        WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_mail_attempts\n        WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1",
     "sources": [
       "server/portal/enrollmentMail.ts"
     ]
   },
-  "SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')": {
-    "sql": "SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",
+  "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1",
     "sources": [
-      "server/portal/enrollmentNotices.ts"
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded')": {
@@ -4017,6 +4035,12 @@
   },
   "UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3\n          WHERE event_key=:p1 AND state='queued'": {
     "sql": "UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3\n          WHERE event_key=:p1 AND state='queued'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_notification_receipts SET state='cancelled' WHERE event_key=:p1": {
+    "sql": "UPDATE enrollment_notification_receipts SET state='cancelled' WHERE event_key=:p1",
     "sources": [
       "server/portal/enrollmentMail.ts"
     ]
