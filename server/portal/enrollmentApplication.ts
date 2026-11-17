@@ -308,14 +308,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
           invalid('enrollment_class_unavailable',409);
         await expireSeats(c,classId);
         if(await takenSeats(c,classId)>=cohort.data.capacity)invalid('enrollment_class_full',409);
-        const id=randomUUID(),{firstLesson,schedule,price,period,format}=cohort.data;
+        const id=randomUUID(),{firstLesson,schedule,weeklySchedule,minutes,price,period,format}=cohort.data;
         const digest=token===undefined?sha(id):assistanceToken(token);
         await c.query(`UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)
           WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)`,[opportunityId]);
         await c.query(`INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,
           actor,email,data,expires_at,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6))`,
           [id,digest,opportunityId,customer.id,classId,cohort.revision,actor.id,email,
-            {name,phone,quote:{level,firstLesson,schedule,price,period,format},termsVersion:1,lang:['zh','en','id'].includes(lang)?lang:'en'}]);
+            {name,phone,quote:{level,firstLesson,schedule,weeklySchedule,minutes,price,period,format},termsVersion:1,lang:['zh','en','id'].includes(lang)?lang:'en'}]);
         const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1",[id])).rows[0];
         return {id,expiresAt:expiry.expiresAt,lang:['zh','en','id'].includes(lang)?lang:'en'};
       });

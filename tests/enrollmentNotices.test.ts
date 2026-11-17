@@ -63,6 +63,7 @@ test('each email template renders localized HTML and plain text and escapes save
       assert.doesNotMatch(supportMessage,/123456|Santi/);
       const otp=kind==='otp_apply'||kind==='otp_mine';
       const index=['zh','en','id'].indexOf(language);
+      const hasSchedule=!otp&&!['payment_confirmed','refund_accepted','refund_recorded'].includes(kind);
       const opening=email.text.split('\n\n')[1];
       assert.ok(opening);
       assert.doesNotMatch(opening,/HSK 1|123456|WIB/);
@@ -73,8 +74,8 @@ test('each email template renders localized HTML and plain text and escapes save
       assert.equal(email.html.includes('123456'),otp);
       assert.equal(email.html.includes('/enrollment/mine?lang='),!otp);
       assert.equal(email.html.includes('HSK 1'),!otp);
-      assert.equal(email.text.includes('Sat & Sun'),!otp&&kind!=='payment_confirmed');
-      assert.equal(email.text.includes('WIB'),!otp&&kind!=='payment_confirmed');
+      assert.equal(email.text.includes('Sat & Sun'),hasSchedule);
+      assert.equal(email.text.split('Best regards,')[0].split('Salam hormat,')[0].split('谢谢！')[0].includes('WIB'),hasSchedule);
       assert.ok(email.text.includes(['谢谢！','Best regards,','Salam hormat,'][index]+'\n'));
       assert.ok(email.html.includes(['标准班','Standard class','Kelas standar'][index])===!otp);
     }
@@ -89,7 +90,7 @@ test('payment confirmation leaves class arrangements to staff and has no separat
       firstLesson:'2026-12-19T15:00',schedule:'QA planned schedule'});
     assert.match(email.text,/575[.,]000/);
     assert.doesNotMatch(email.text,/QA planned schedule|WIB/);
-    assert.match(email.text,/会在首课前联系|will contact you before your first lesson|akan menghubungi Anda sebelum pertemuan pertama/);
+    assert.match(email.text,/会在首课前联系|will contact you before your first session|akan menghubungi Anda sebelum pertemuan pertama/);
   }
 });
 
@@ -116,9 +117,9 @@ test('transfer email distinguishes both classes and omits an absent date or name
   assert.match(email.text,/Original class · HSK 1 · Standard class · Weekend/);
   assert.doesNotMatch(email.text,/Originally scheduled first class/);
   assert.match(email.text,/New class · HSK 1 · Small group · Weekday evening/);
-  assert.match(email.text,/New class first lesson[^\n]*3:00[^\n]*WIB/);
+  assert.match(email.text,/New first session[^\n]*15:00[^\n]*WIB/);
   assert.match(email.text,/New class weekly schedule · Mon and Wed/);
-  assert.match(email.text,/Reply deadline[^\n]*5:00[^\n]*WIB/);
+  assert.match(email.text,/Reply deadline[^\n]*17:00[^\n]*WIB/);
 });
 
 test('three Lark buttons target the suite route without changing the authenticated origin',()=>{
@@ -149,4 +150,73 @@ test('order emails link to the existing payment, invitation, and refund views',(
     assert.equal(destination.searchParams.get('target'),target);
     assert.ok(renderEnrollmentEmail(kind,{language:'id',url}).html.includes(url.replaceAll('&','&amp;')));
   }
+});
+
+test('email times and schedules use WIB and 24-hour times in each language',()=>{
+  for(const language of ['zh','en','id']){
+    const email=renderEnrollmentEmail('seat_reserved',{language,firstLesson:'2026-12-19T15:00',
+      weeklySchedule:{days:[6,7],start:'15:00',lessons:2},minutes:45,
+      schedule:'原始中文课表',deadline:'2026-12-18T17:00:00Z'});
+    assert.match(email.text,/15:00–16:30 WIB/);
+    assert.doesNotMatch(email.text,/AM|PM|原始中文课表/);
+    assert.match(email.text,/00[:.]00 WIB/);
+    assert.equal(email.subject.split('UPER').length-1,1);
+  }
+});
+
+test('transfer invitation collapses identical schedules and retains distinct schedules',()=>{
+  const facts={language:'en',class:'HSK 1',targetClass:'HSK 1',firstLesson:'2026-12-19T15:00',
+    targetFirstLesson:'2026-12-26T15:00',minutes:45,targetMinutes:45,
+    weeklySchedule:{days:[6,7],start:'15:00',lessons:1},
+    targetWeeklySchedule:{days:[7,6],start:'15:00',lessons:1}};
+  const same=renderEnrollmentEmail('transfer_invitation',facts);
+  assert.equal(same.text.split('15:00–15:45 WIB').length-1,1);
+  assert.match(same.text,/Original first session/);
+  const different=renderEnrollmentEmail('transfer_invitation',{...facts,
+    targetWeeklySchedule:{days:[1,3],start:'18:00',lessons:2}});
+  assert.match(different.text,/Original weekly schedule/);
+  assert.match(different.text,/18:00–19:30 WIB/);
+});
+
+test('refund assessment and dispatch are explicit and keep zero-refund emails free of payout promises',()=>{
+  for(const language of ['zh','en','id']){
+    const facts={language,expected:200000,installment:50000,refunded:150000,sendBy:'2026-12-15T10:00:00Z',
+      schedule:'SCHEDULE NOT NEEDED',firstLesson:'2026-12-19T15:00'};
+    const accepted=renderEnrollmentEmail('refund_accepted',facts);
+    const zero=renderEnrollmentEmail('refund_accepted',{...facts,expected:0});
+    const sent=renderEnrollmentEmail('refund_recorded',facts);
+    assert.doesNotMatch(accepted.text,/SCHEDULE NOT NEEDED/);
+    assert.doesNotMatch(sent.text,/SCHEDULE NOT NEEDED/);
+    assert.match(sent.text,/50[.,]000/);
+    assert.match(sent.text,/150[.,]000/);
+    assert.doesNotMatch(zero.text,/17[:.]00 WIB/);
+    assert.doesNotMatch(zero.subject,/Refund approved|disetujui|退款已获批/);
+  }
+});
+
+test('demand match includes tuition when supplied and avoids empty labels for legacy payloads',()=>{
+  const details=renderEnrollmentEmail('demand_match',{language:'en',price:2277000});
+  assert.match(details.text,/Current tuition · Rp 2,277,000/);
+  assert.match(details.text,/latest price and availability/);
+  assert.doesNotMatch(renderEnrollmentEmail('demand_match',{language:'en'}).text,/Current tuition/);
+});
+
+test('cancelled class instructions follow the existing payment state',()=>{
+  for(const language of ['zh','en','id']){
+    const paid=renderEnrollmentEmail('class_cancelled',{language,orderState:'paid'}).text;
+    const pending=renderEnrollmentEmail('class_cancelled',{language,orderState:'proof_review'}).text;
+    const partial=renderEnrollmentEmail('class_cancelled',{language,orderState:'partial'}).text;
+    const unpaid=renderEnrollmentEmail('class_cancelled',{language,orderState:'awaiting_payment'}).text;
+    assert.match(paid,/可转班次|class transfer options|opsi pindah kelas/);
+    assert.match(pending,/继续核对|continue reviewing|tetap memeriksa/);
+    assert.equal(partial,pending);
+    assert.match(unpaid,/请勿再转账|Please do not transfer|Jangan transfer/);
+  }
+});
+
+test('legacy free-text schedules retain their original content',()=>{
+  const email=renderEnrollmentEmail('seat_reserved',{language:'en',schedule:'Original staff-entered schedule'});
+  assert.match(email.text,/Original staff-entered schedule/);
+  const otp=renderEnrollmentEmail('otp_apply',{language:'en',codeMinutes:1});
+  assert.match(otp.text,/expires in 1 minute\./);
 });

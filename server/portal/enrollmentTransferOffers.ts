@@ -28,7 +28,8 @@ export async function createEnrollmentTransferInvitation(c:Client,orderId:string
   await reconcileWaitlist(c,target,await takenSeats(c,target.id));
   await orderNotice(c,'transfer_invitation',orderId,invitationId,{
     targetClass:target.data.level,targetFormat:target.data.format,targetPeriod:target.data.period,
-    targetFirstLesson:target.data.firstLesson,targetSchedule:target.data.schedule,replyBy:expiry.replyBy,
+    targetFirstLesson:target.data.firstLesson,targetSchedule:target.data.schedule,
+    targetWeeklySchedule:target.data.weeklySchedule,targetMinutes:target.data.minutes,replyBy:expiry.replyBy,
   });
   return {invitationId,replyBy:expiry.replyBy};
 }
