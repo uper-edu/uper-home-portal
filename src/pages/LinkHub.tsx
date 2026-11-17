@@ -21,8 +21,6 @@ import { SocialProfileIcon, socialProfiles } from "../components/SocialProfileIc
 import { linkHubConsultUrl } from '../utils/instagramBioCampaign';
 
 const whatsapp = "https://wa.me/6281116612062";
-const community =
-  "https://chat.whatsapp.com/JB76F7F25DA7DggiYamZul?mode=ems_copy_t";
 const handbook = "/link-assets/uper-handbook-2026.pdf";
 const words = {
   en: {
@@ -32,10 +30,10 @@ const words = {
     tagline: "HSK | CSCA | Study Abroad",
     enrollment: "Browse Courses & Enroll",
     enrollmentNote: "HSK 1–4 · Schedules, class types & fees",
-    consult: "FREE Online Consultation",
-    consultNote: "24/7 AI · UPER Consultation Team (Business Hours)",
-    community: "Join UPER Community",
-    free: "WhatsApp Community · Free to join",
+    consult: "Free HSK Test · 24/7 AI Chat",
+    consultNote: "Check your level · Get course advice",
+    whatsappConsult: "Free Consultation (WhatsApp)",
+    whatsappConsultNote: "UPER Team · Business Hours",
     document: "PDF · Document",
     description:
       "Your guide to China education, career opportunities, scholarships, and more 🇨🇳",
@@ -58,10 +56,10 @@ const words = {
     tagline: "HSK | CSCA | Studi di Luar Negeri",
     enrollment: "Lihat & Daftar Kelas",
     enrollmentNote: "HSK 1–4 · Jadwal kelas dan biaya",
-    consult: "Konsultasi Online GRATIS",
-    consultNote: "AI 24/7 · Tim Konsultasi UPER (Jam Kerja)",
-    community: "Gabung Komunitas UPER",
-    free: "Komunitas WhatsApp · Gratis",
+    consult: "Tes HSK Gratis · AI 24/7",
+    consultNote: "Cek level · Saran kelas",
+    whatsappConsult: "Konsultasi Gratis (WhatsApp)",
+    whatsappConsultNote: "Tim UPER · Jam Kerja",
     document: "PDF · Dokumen",
     description:
       "Panduan pendidikan di Tiongkok, peluang karier, beasiswa, dan lainnya 🇨🇳",
@@ -84,10 +82,10 @@ const words = {
     tagline: "HSK | CSCA | 留学",
     enrollment: "查看课程与报名",
     enrollmentNote: "HSK 1–4 · 班次时间与学费",
-    consult: "免费在线咨询",
-    consultNote: "7×24 AI · 工作时间人工",
-    community: "加入UPER社群",
-    free: "WhatsApp社群 · 免费加入",
+    consult: "免费 HSK 测评 · 全天候 AI 咨询",
+    consultNote: "水平测试与选课建议",
+    whatsappConsult: "免费咨询（WhatsApp）",
+    whatsappConsultNote: "UPER 咨询团队 · 工作时间在线",
     document: "PDF · 文档",
     description: "了解中国教育、职业机会、奖学金及更多信息 🇨🇳",
     share: "分享",
@@ -354,19 +352,19 @@ export default function LinkHub() {
           <div className="linkhub-card">
             <a
               className="linkhub-card-main"
-              href={community}
-              onClick={()=>trackEvent('link_click',{target:'community',entry_point:'linkhub'})}
+              href={whatsapp}
+              onClick={()=>trackEvent('link_click',{target:'whatsapp',entry_point:'linkhub'})}
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span>{t.community}</span>
-              <small>{t.free}</small>
+              <span>{t.whatsappConsult}</span>
+              <small>{t.whatsappConsultNote}</small>
             </a>
             <button
               className="linkhub-card-share"
               type="button"
-              aria-label={`${t.share}: ${t.community}`}
-              onClick={() => shareItem(t.community, community)}
+              aria-label={`${t.share}: ${t.whatsappConsult}`}
+              onClick={() => shareItem(t.whatsappConsult, whatsapp)}
             >
               <MoreVertical size={19} />
             </button>
