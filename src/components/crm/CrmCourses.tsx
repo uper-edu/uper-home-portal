@@ -11,7 +11,7 @@ import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
 import {useEffect,useRef,useState} from 'react';
 import {AdminField} from '../AdminForm';
-import {AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
+import {AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
 import {AdminEditor} from '../admin/AdminEditor';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {courseError} from '../../utils/crmCoursePricing';
@@ -151,24 +151,31 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
   <div data-admin-section-stack="open">
   <AdminFormSection variant="subgroup" title={t('Course details','Informasi kursus','课程信息')}>
     <AdminFormGrid>
-      <AdminField required>{t('Level','Level','级别')}<CrmSingleSelect lang={lang} isLight={isLight} disabled={fixed||busy||unknown}
+      {fixed?<>
+        <AdminStaticField label={t('Level','Level','级别')} value={form.config.teaching.level}/>
+        <AdminStaticField label={textbookLabel} value={form.config.teaching.material}/>
+        <AdminStaticField label={t('Periods','Jam pelajaran','总节数')} value={form.config.sessions}/>
+        <AdminStaticField label={t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')} value={form.config.teaching.minutes}/>
+      </>:<>
+      <AdminField required>{t('Level','Level','级别')}<CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
         label={t('Level','Level','级别')} value={form.config.teaching.level} onChange={v=>teach('level',v)} options={enrollmentLevels.map(value=>({value,label:value}))}/></AdminField>
-      <AdminField required={!fixed}>{textbookLabel}
-        <CrmSingleSelect lang={lang} isLight={isLight} searchable disabled={fixed||busy||unknown} label={textbookLabel}
+      <AdminField required>{textbookLabel}
+        <CrmSingleSelect lang={lang} isLight={isLight} searchable disabled={busy||unknown} label={textbookLabel}
           value={addingBook?'new-textbook:':form.config.teaching.material?'book:'+form.config.teaching.material:''}
           options={[...books.map(book=>({value:'book:'+book,label:book})),{value:'new-textbook:',label:t('Add a textbook','Tambah buku ajar','新增教材')}]}
           onChange={value=>{setAddingBook(value==='new-textbook:');teach('material',value.startsWith('book:')?value.slice(5):'');}}/>
       </AdminField>
       {addingBook&&<AdminField required data-admin-full-width="">{t('New textbook name and edition','Judul dan edisi buku baru','新教材名称及版本')}
         <input required maxLength={1200} value={form.config.teaching.material} onChange={e=>teach('material',e.target.value)}/></AdminField>}
-      <AdminField required={!fixed}>{t('Periods','Jam pelajaran','总节数')}<input type="number" required min="1" max="1000" readOnly={fixed} value={form.config.sessions} onChange={e=>patch('sessions',e.target.value)}/></AdminField>
-      <AdminField required={!fixed}>{t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
-        <CrmSingleSelect lang={lang} isLight={isLight} disabled={fixed||busy||unknown}
+      <AdminField required>{t('Periods','Jam pelajaran','总节数')}<input type="number" required min="1" max="1000" disabled={busy||unknown} value={form.config.sessions} onChange={e=>patch('sessions',e.target.value)}/></AdminField>
+      <AdminField required>{t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
+        <CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
           label={t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
           value={form.config.teaching.minutes?String(form.config.teaching.minutes):''}
-          options={[...new Set([30,45,50,60,90,...(fixed?[form.config.teaching.minutes]:[])])].map(minutes=>({value:String(minutes),label:String(minutes)}))}
+          options={[30,45,50,60,90].map(minutes=>({value:String(minutes),label:String(minutes)}))}
           onChange={v=>teach('minutes',Number(v))}/>
       </AdminField>
+      </>}
       <AdminField required data-admin-full-width="">{t('Course name','Nama kursus','课程名称')}
         <input type="text" required maxLength={200} disabled={busy||unknown} value={form.config.name}
           onChange={e=>{setManualName(!!e.target.value.trim());patch('name',e.target.value);}}/>

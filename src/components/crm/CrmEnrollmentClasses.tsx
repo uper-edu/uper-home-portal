@@ -12,7 +12,7 @@ import {AdminRowAction} from '../admin/AdminListControl';
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
+import { AdminStaticField, AdminFormActions, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
@@ -303,9 +303,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     </AdminField>;
   };
   const selectField=(name:'courseId'|'level'|'format'|'period',label:Copy,options:CrmChoice[],fullWidth=false)=>
-    <AdminField required data-admin-full-width={fullWidth||undefined}>{t(label)}
+    name==='period'&&draft?.state==='published'
+      ? <AdminStaticField label={t(label)} value={options.find(option=>option.value===draft.config.period)?.label} fullWidth={fullWidth}/>
+      : <AdminField required data-admin-full-width={fullWidth||undefined}>{t(label)}
       <CrmSingleSelect label={t(label)} value={draft?.config[name]??''} options={options} lang={lang} isLight={isLight}
-        disabled={fieldDisabled||(name==='period'&&draft?.state==='published')} onChange={value=>change(name,value)}/>
+        disabled={fieldDisabled} onChange={value=>change(name,value)}/>
     </AdminField>;
   return <section className="crm-course-catalog">
     <header className="admin-edit-header">
@@ -377,14 +379,17 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
           </AdminFormSection>}
           <div data-admin-section-stack="open">
           <AdminFormSection variant="subgroup" title={t(['Class template','Templat kelas','班型模板'])}>
-            <AdminField required={!draft.revision||!!draft.config.templateId}>
+            {draft.state==='published'
+              ? <AdminStaticField label={t(['Class template','Templat kelas','班型模板'])}
+                  value={catalog?.templates.find(item=>item.id===draft.config.templateId)?.name}/>
+              : <AdminField required={!draft.revision||!!draft.config.templateId}>
               {t(['Select a class template','Pilih templat kelas','选择班型模板'])}
               <CrmSingleSelect label={t(['Select a class template','Pilih templat kelas','选择班型模板'])} lang={lang} isLight={isLight}
-                value={draft.config.templateId??''} disabled={fieldDisabled||draft.state==='published'}
+                value={draft.config.templateId??''} disabled={fieldDisabled}
                 options={(catalog?.templates??[]).filter(item=>item.format!=='one-on-one').map(item=>({value:item.id,
                   label:item.name+(item.saleUnitPrice?'':' · '+t(['Quote pending','Harga belum dikonfirmasi','报价待确认']))}))}
                 onChange={chooseTemplate}/>
-            </AdminField>
+            </AdminField>}
             {!!draft.config.courseId&&<AdminFormSummary fields={[
               [t(['Course','Kursus','课程']),draft.config.courseName||draft.config.level,'wide'],
               [t(['Periods × minutes','Jam pelajaran × menit','节数 × 分钟']),draft.config.sessions+' × '+draft.config.minutes],
@@ -421,9 +426,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
               {timeSlotMismatch&&<p id={timeSlotErrorId} role="alert" data-admin-full-width="">{timeSlotMessage}</p>}
               <AdminField required={!!draft.config.templateId}>{t(['Session start time (WIB)','Waktu mulai pertemuan (WIB)','每次开始时间（WIB）'])}<input type="time" required={!!draft.config.templateId} value={weekly.start} disabled={fieldDisabled} onChange={e=>changeWeekly({start:e.target.value})}/></AdminField>
               <AdminField required={!!draft.config.templateId}>{t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])}<input type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/></AdminField>
-              <AdminField data-admin-full-width="">{t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
-                <input readOnly value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
-              </AdminField>
+              <AdminStaticField fullWidth label={t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
+                value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
               {inputField('decisionAt')}
               {inputField('enrollmentCloses')}
             </AdminFormGrid>
@@ -439,7 +443,9 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       onClose={()=>setPreview(undefined)} footer={<>
         {draft?.state==='draft'&&!preview.price&&<div className="crm-class-quote-feedback">
           <p>{t(['Add pricing to the class template before publishing.','Tambahkan harga pada templat kelas sebelum menerbitkan.','班型模板缺少报价，补齐后才能发布。'])}</p>
-          {draft.config.templateId&&<AdminRowAction onClick={()=>{
+          {catalog?.classes.some(row=>row.templateId===draft.config.templateId)
+            ? <p>{t(['This template is locked. Go back and select a template with pricing.','Templat ini terkunci. Kembali dan pilih templat dengan harga.','该模板已有班次，报价已锁定。请返回编辑并选择已有报价的模板。'])}</p>
+            : draft.config.templateId&&<AdminRowAction onClick={()=>{
             setQuoteTemplateId(draft.config.templateId);
             setPreview(undefined);
           }}>{t(['Add pricing in the class template','Tambahkan harga di templat kelas','前往班型模板补报价'])}</AdminRowAction>}

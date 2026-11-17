@@ -34,3 +34,13 @@ export function AdminFormFeedback({state,lang='en',children,className='',placeme
  const tone=({dirty:'neutral',saving:'info',saved:'success',error:'danger',unknown:'warning'}as const)[state];
  return <p {...props} className={`admin-form-feedback ${className}`.trim()} data-state={state} data-tone={tone} data-placement={placement} role={props.role||(state==='error'||state==='unknown'?'alert':'status')} aria-atomic="true">{children||messages[state][lang==='zh'?2:lang==='id'?1:0]}</p>;
 }
+
+/** A fixed value in an editor. It stays readable and selectable without a form control. */
+export function AdminStaticField({label,value,fullWidth=false}:{
+  label:ReactNode;value:ReactNode;fullWidth?:boolean;
+}){
+  return <dl className="admin-field" data-admin-full-width={fullWidth||undefined}>
+    <dt className="admin-field-label">{label}</dt>
+    <dd className="admin-static-field-value">{value==null||value===''?'—':value}</dd>
+  </dl>;
+}

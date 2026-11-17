@@ -20,3 +20,5 @@
 
 .crm-class-quote-feedback { flex:0 0 100%; font-size:13px; line-height:1.5; }
 .crm-class-quote-feedback p { margin:0 0 4px; }
+
+.crm-course-editor :is(input:not([type=checkbox]), .crm-filter-dimension-button):disabled { background:var(--af-soft);color:var(--af-muted);border-color:var(--af-border);opacity:1;cursor:not-allowed; }

@@ -6,7 +6,7 @@ import {AdminSearchField} from './admin/AdminSearchField';
 import {AdminEditor} from './admin/AdminEditor';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminField} from './AdminForm';
-import {AdminFormActions,AdminFormGrid,AdminFormSection,AdminFormFeedback} from './AdminFormLayout';
+import {AdminStaticField,AdminFormActions,AdminFormGrid,AdminFormSection,AdminFormFeedback} from './AdminFormLayout';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminRecordHeader} from './admin/AdminRecordHeader';
 import {AdminDetailActions,AdminRecordTitle} from './admin/AdminRecordWorkspace';
@@ -631,12 +631,14 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
           <AdminField>{t('启用发件账号','Enable sending account','Aktifkan akun pengirim')}
             <input className="admin-switch" type="checkbox" role="switch" checked={account.enabled} disabled={busy}
               onChange={e=>changeAccount({enabled:e.target.checked})}/></AdminField>
-          <AdminField required>{t('发件邮箱','Sender address','Alamat pengirim')}<input type="email" required
+          {typeof editing==='number'&&editing<draft.accounts.length
+            ? <AdminStaticField label={t('发件邮箱','Sender address','Alamat pengirim')} value={account.address}/>
+            : <AdminField required>{t('发件邮箱','Sender address','Alamat pengirim')}<input type="email" required
             aria-invalid={!!account.address&&(!validAccountEmail||duplicateAccount)||undefined}
-            readOnly={typeof editing==='number'&&editing<draft.accounts.length} value={account.address} onChange={e=>changeAccount({address:e.target.value})}/>
+            value={account.address} onChange={e=>changeAccount({address:e.target.value})}/>
             {duplicateAccount?<small>{t('此发件邮箱已存在。','This sender address already exists.','Alamat pengirim ini sudah ada.')}</small>:
               !!account.address&&!validAccountEmail&&<small>{contactEmailText(lang).error}</small>}
-          </AdminField>
+          </AdminField>}
           <AdminFormGrid>
             <AdminField required>{smtpHostLabel}<input required pattern={mailSmtpHostPattern} value={account.host} onChange={e=>changeAccount({host:e.target.value})}/></AdminField>
             <AdminField required>{smtpPortLabel}

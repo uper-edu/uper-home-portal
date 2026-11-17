@@ -9,7 +9,7 @@ import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
-import {AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
+import {AdminStaticField,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {CrmSingleSelect, type CrmChoice} from './CrmSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
@@ -138,7 +138,14 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
    try{
      const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,requestId})});
      if(response.status>=500)throw Error();
-     if(!response.ok){setError(response.status===409?t('Reload to check the latest version. Your draft is kept.','Muat ulang untuk memeriksa versi terbaru. Draf disimpan.','请刷新核对最新版本，草稿已保留。'):t('Check the name, seat limits and price pair.','Periksa nama, batas peserta, dan kedua harga.','请核对名称、人数及两项单价。'));return;}
+     if(!response.ok){
+       const failure=await response.json().catch(()=>null);
+       if(failure?.error==='enrollment_template_terms_locked'){
+         setError(t('This template already has a class. Its size and prices are locked.','Templat ini sudah memiliki kelas. Kapasitas dan harga terkunci.','此模板已有班次，人数和报价已锁定。'));
+         await load();
+         return;
+       }
+       setError(response.status===409?t('Reload to check the latest version. Your draft is kept.','Muat ulang untuk memeriksa versi terbaru. Draf disimpan.','请刷新核对最新版本，草稿已保留。'):t('Check the name, seat limits and price pair.','Periksa nama, batas peserta, dan kedua harga.','请核对名称、人数及两项单价。'));return;}
      if((await response.json()).templateId!==draft.id)throw Error();
      await complete();
    }catch{setPending(requestId);}finally{inFlight.current=false;setBusy(false);}
@@ -181,7 +188,10 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      setDeleteError(t('Deletion is unconfirmed. Check the original result.','Penghapusan belum terkonfirmasi. Periksa hasil awal.','删除结果尚未确认，请查询原操作结果。'));
    }finally{inFlight.current=false;setBusy(false);}
  };
- const field=(label:string,value:string,options:CrmChoice[],change:(v:string)=>void,disabled=false)=><AdminField required>{label}<CrmSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change} disabled={disabled}/></AdminField>;
+ const field=(label:string,value:string,options:CrmChoice[],change:(v:string)=>void,locked=false)=>locked
+   ? <AdminStaticField label={label} value={options.find(option=>option.value===value)?.label}/>
+   : <AdminField required>{label}<CrmSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change}/></AdminField>;
+ const termsLocked=!!draft&&referencedTemplates.has(draft.id);
  const searchLabel=t('Search templates','Cari templat','搜索模板');
  const filters=<div className="crm-ops-actions">
    <AdminSearchField label={searchLabel} placeholder={searchLabel} value={search} onChange={setSearch}/>
@@ -274,15 +284,16 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
          </AdminFormGrid>
        </AdminFormSection>
        <AdminFormSection variant="subgroup" title={t('Class size','Jumlah peserta','招生人数')}><AdminFormGrid>
-         {([['minimumPaid',t('Minimum fully paid to open','Minimum peserta lunas','足额到账开班底线')],['capacity',t('Seat limit','Kapasitas','招生上限')]] as const).map(([key,label])=><AdminField required key={key}>{label}<input required type="number" min="1" max="200" value={draft[key]||''} onChange={e=>patch({[key]:Number(e.target.value)})}/></AdminField>)}
+         {([['minimumPaid',t('Minimum fully paid to open','Minimum peserta lunas','足额到账开班底线')],['capacity',t('Seat limit','Kapasitas','招生上限')]] as const).map(([key,label])=>termsLocked?<AdminStaticField key={key} label={label} value={draft[key]}/>:<AdminField required key={key}>{label}<input required type="number" min="1" max="200" value={draft[key]||''} onChange={e=>patch({[key]:Number(e.target.value)})}/></AdminField>)}
        </AdminFormGrid></AdminFormSection>
        <AdminFormSection variant="subgroup" title={t('Price per period','Harga per jam pelajaran','每节报价')}><AdminFormGrid>
-         {([['standardUnitPrice',t('Standard price (Rp)','Harga standar (Rp)','标准价（Rp）')],['saleUnitPrice',t('Enrollment price (Rp)','Harga pendaftaran (Rp)','报名优惠价（Rp）')]] as const).map(([key,label])=><AdminField key={key}>{label}<input type="number" min="1" value={draft[key]??''} onChange={e=>patch({[key]:e.target.value?Number(e.target.value):null})}/></AdminField>)}
+         {([['standardUnitPrice',t('Standard price (Rp)','Harga standar (Rp)','标准价（Rp）')],['saleUnitPrice',t('Enrollment price (Rp)','Harga pendaftaran (Rp)','报名优惠价（Rp）')]] as const).map(([key,label])=>termsLocked?<AdminStaticField key={key} label={label} value={draft[key]}/>:<AdminField key={key}>{label}<input type="number" min="1" value={draft[key]??''} onChange={e=>patch({[key]:e.target.value?Number(e.target.value):null})}/></AdminField>)}
        </AdminFormGrid>
        {draftQuote?<AdminFormSummary title={t('Total tuition','Total biaya kursus','学费总价')} fields={[
          [t('Standard total','Total harga standar','标准总价'),draftQuote.standardPrice?<del>{money(draftQuote.standardPrice)}</del>:'—'],
          [t('Enrollment total','Total harga pendaftaran','报名总价'),<strong>{money(draftQuote.price)}</strong>],
        ]}/>:<p className="crm-work-muted">{priceStatus(draft)}</p>}
+       {termsLocked&&<p className="crm-work-muted">{t('This template is used by a class. Class size and prices are locked.','Templat ini sudah dipakai oleh kelas. Kapasitas dan harga terkunci.','此模板已有班次，人数和报价已锁定。')}</p>}
        <small className="crm-work-muted">{t('Published classes and existing orders keep their saved prices.','Kelas terbit dan pesanan lama mempertahankan harga tersimpan.','已发布班次和已有订单沿用原价。')}</small></AdminFormSection>
      </fieldset>
    </AdminEditor>}

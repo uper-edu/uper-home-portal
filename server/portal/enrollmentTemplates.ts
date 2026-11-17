@@ -52,6 +52,11 @@ export function mountEnrollmentTemplates(app:Express,{wrap,staff}:{
       if(revision!==(prior?.revision??0))invalid('enrollment_template_conflict',409);
       if(prior&&(prior.courseId!==courseId||prior.format!==format||prior.teacherType!==teacherType))
         invalid('enrollment_template_identity_locked',409);
+      if(prior && (prior.minimumPaid!==minimumPaid || prior.capacity!==capacity ||
+        prior.standardUnitPrice!==standardUnitPrice || prior.saleUnitPrice!==saleUnitPrice)){
+        const usage=await c.query("SELECT id FROM enrollment_classes WHERE JSON_UNQUOTE(JSON_EXTRACT(data,'$.templateId'))=:p1 LIMIT 1",[id]);
+        if(usage.rows.length)invalid('enrollment_template_terms_locked',409);
+      }
       const course=(await c.query('SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE',[courseId])).rows[0]?.value;
       if(!course?.teaching)invalid('enrollment_course_unavailable',409);
       const value:EnrollmentTemplate={id,revision:revision+1,name:name.trim(),courseId,format,teacherType,capacity,minimumPaid,standardUnitPrice,saleUnitPrice};
@@ -60,7 +65,7 @@ export function mountEnrollmentTemplates(app:Express,{wrap,staff}:{
       await c.query('INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2',[prefix+id,value]);
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.save',:p2)",[actor.id,{templateId:id,revision:value.revision}]);
       return {templateId:id,revision:value.revision};
-    }));
+    }),{isolation:'READ COMMITTED'});
     r.json(result);
   }));
   app.post(path+'/delete',wrap(async(q,r)=>{
