@@ -15,9 +15,11 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
    month:'long',day:'numeric',timeZone:'Asia/Jakarta',
  }).format(dateValue).replaceAll(' ','\u00a0'):'';
  const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('预计 '+date+'开课','Expected '+date,'Perkiraan '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
- const type=row.format==='standard'?t('标准班','Standard','Standar'):t('小班','Small group','Kelompok kecil');
+ const type=row.format==='standard'?t('标准班','Standard Class','Kelas Standar'):t('小班','Small Group','Kelas Kecil');
+ const period=row.period==='weekend'?t('周末','Weekend','Akhir Pekan'):t('工作日晚间','Weekday Evening','Malam Hari Kerja');
+ const classLabel=t(period+type,period+' '+type,type+' '+period);
  const size=row.format==='standard'?'10–15':'4–6';
- const title=(row.courseName||row.level)+' · '+type+' · '+dateLabel;
+ const title=row.level+' · '+classLabel+' · '+dateLabel;
  const openingNotice=row.opened?'':enrollmentOpeningNotice(row.decisionAt,language,clock);
  const availability=row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),

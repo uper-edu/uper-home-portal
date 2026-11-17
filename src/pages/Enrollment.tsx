@@ -284,7 +284,7 @@ export default function Enrollment() {
     {rows?.length || privateLessons.length ? <div className="enrollment-class-grid">
       {rows?.map(row => classCard(row, true))}
       {privateLessons.map(item=><article key={item.id} className="enrollment-class-card enrollment-appointment-card">
-        <h2>{item.course} · {t('one-on-one')}</h2>
+        <h2>{item.level} · {t('one-on-one')}</h2>
         <p>{item.teacherType==='foreign'?enrollmentCopy(language,['外教','Foreign teacher','Pengajar asing']):enrollmentCopy(language,['本土教师','Local teacher','Pengajar lokal'])} · {t('appointment')}</p>
         <div className="enrollment-class-bottom">
           <div className="enrollment-prices">

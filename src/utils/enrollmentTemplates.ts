@@ -35,6 +35,14 @@ export const templateSize = {
   'one-on-one':{typical:'1',minimumPaid:1,capacity:1},
 } as const;
 
+export function defaultEnrollmentCourseName(teaching: Pick<EnrollmentTeaching,'material'|'minutes'> & {level:string}, sessions: string|number, maxLength = 200) {
+  const book = teaching.material.trim();
+  if (!book || !teaching.level) return '';
+  const duration = Number(sessions) > 0 && teaching.minutes > 0 ? ' · '+sessions+' × '+teaching.minutes+' min' : '';
+  const prefix = teaching.level+' · ';
+  return prefix+book.slice(0, Math.min(140, maxLength-prefix.length-duration.length))+duration;
+}
+
 export function enrollmentTemplateQuote(template: Pick<EnrollmentTemplate,'standardUnitPrice'|'saleUnitPrice'>, sessions: number) {
   const {standardUnitPrice, saleUnitPrice} = template;
   if (!standardUnitPrice || !saleUnitPrice) return null;

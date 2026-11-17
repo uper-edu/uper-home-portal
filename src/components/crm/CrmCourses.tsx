@@ -2,6 +2,7 @@ import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
+import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {CrmPageAction} from './CrmPageAction';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
@@ -54,15 +55,8 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
  const [manualName,setManualName]=useState(false);
  const [addingBook,setAddingBook]=useState(false);
  const emptyTeaching={level:'',material:'',knowledge:'',learningOutcomes:'',resources:'',minutes:0};
- const courseName=(teaching:typeof emptyTeaching,sessions:string|number)=>{
-   const book=teaching.material.trim();
-   const duration=Number(sessions)>0&&teaching.minutes>0
-     ? t(sessions+' × '+teaching.minutes+' min',sessions+' × '+teaching.minutes+' menit',sessions+' 节 × '+teaching.minutes+' 分钟')
-     : '';
-   return book&&teaching.level?[teaching.level,book.slice(0,140),duration].filter(Boolean).join(' · '):'';
- };
  const edit=(c?:any)=>{
-   setManualName(!!c&&c.name!==courseName(c.teaching??emptyTeaching,c.sessions));
+   setManualName(!!c&&c.name!==defaultEnrollmentCourseName(c.teaching??emptyTeaching,c.sessions));
    setAddingBook(false);
    setForm(c?{...c,config:{name:c.name,sessions:c.sessions,teaching:c.teaching??emptyTeaching,price:c.price,active:c.active,maxDiscountBps:c.maxDiscountBps,maxDiscountAmount:c.maxDiscountAmount}}:{id:crypto.randomUUID(),revision:0,config:{name:'',sessions:'',price:0,teaching:emptyTeaching,active:false,maxDiscountBps:0,maxDiscountAmount:null}});
    setError('');setLatest(null);setState('');setDirty(false);pending.current=null;
@@ -70,7 +64,7 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
  const patch=(k:string,v:any)=>{
    setForm((f:any)=>{
      const config={...f.config,[k]:v};
-     if(!manualName&&(k==='teaching'||k==='sessions'))config.name=courseName(config.teaching,config.sessions);
+     if(!manualName&&(k==='teaching'||k==='sessions'))config.name=defaultEnrollmentCourseName(config.teaching,config.sessions);
      return {...f,config};
    });
    setDirty(true);setError('');setState('');
@@ -176,7 +170,7 @@ export function CrmCourses({lang,isLight,onDraftChange}:{lang:CrmLanguage;isLigh
       <AdminField required data-admin-full-width="">{t('Course name','Nama kursus','课程名称')}
         <input type="text" required maxLength={200} disabled={busy||unknown} value={form.config.name}
           onChange={e=>{setManualName(!!e.target.value.trim());patch('name',e.target.value);}}/>
-        <small>{t('Generated from level, textbook, lesson count and duration. You can edit it.','Dibuat dari level, buku ajar, jumlah sesi, dan durasi. Nama dapat diedit.','默认按「级别 · 主教材 · 总节数 × 每节时长」生成，可手动修改。')}</small>
+        <small>{t('The default name uses the level, textbook, lesson count and duration in English format. You can edit it.','Nama bawaan memakai level, buku ajar, jumlah sesi, dan durasi dalam format bahasa Inggris. Nama dapat diedit.','默认用英文格式按「级别 · 主教材 · 总节数 × 每节时长」生成，可手动修改。')}</small>
       </AdminField>
     </AdminFormGrid>
   </AdminFormSection>

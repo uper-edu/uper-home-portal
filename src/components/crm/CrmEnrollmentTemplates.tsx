@@ -15,7 +15,7 @@ import {AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayou
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {CrmSingleSelect, type CrmChoice} from './CrmSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
-import {enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
+import {defaultEnrollmentCourseName,enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
 import {formatCurrency} from '../../utils/currency';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
@@ -68,8 +68,17 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
  const newCourse=catalog?.courses.find(c=>c.active&&c.teaching);
  const auto=(item:TemplateDraft)=>{
    if(!item.courseId||!item.format||!item.teacherType)return '';
-   const suffix=' · '+formats[item.format]+' · '+teachers[item.teacherType];
-   return (course(item.courseId)?.name??'').slice(0,200-suffix.length)+suffix;
+   const selectedCourse=course(item.courseId);
+   if(!selectedCourse?.teaching)return '';
+   const {level}=selectedCourse.teaching;
+   const hasSameLevel=catalog?.courses.some(other=>other.id!==selectedCourse.id&&other.teaching?.level===level);
+   const classType={standard:'Standard Class',small:'Small Group','one-on-one':'One-to-One'}[item.format];
+   const teacherType=item.teacherType==='local'?'Local Teacher':'Foreign Teacher';
+   const suffix=' · '+classType+' · '+teacherType;
+   const courseLabel=hasSameLevel
+     ? defaultEnrollmentCourseName(selectedCourse.teaching,selectedCourse.sessions,200-suffix.length)||level
+     : level;
+   return courseLabel+suffix;
  };
  const priceStatus=(item:Pick<EnrollmentTemplate,'saleUnitPrice'>)=><AdminStatus tone={item.saleUnitPrice?'success':'warning'}>{item.saleUnitPrice?t('Quote configured','Harga tersedia','报价已配置'):t('Quote pending','Harga belum dikonfirmasi','报价待确认')}</AdminStatus>;
  const edit=(item?:EnrollmentTemplate)=>{
@@ -186,7 +195,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
            <div data-admin-full-width="">
              <AdminField required>{t('Template name','Nama templat','模板名称')}<input required maxLength={200} value={draft.name} onChange={e=>{setManualName(true);patch({name:e.target.value},true);}}/></AdminField>
              <div className="admin-template-name-help">
-               <small className="crm-work-muted">{t('Default name uses the course, class type and teacher type.','Nama bawaan memakai kursus, jenis kelas, dan jenis pengajar.','默认按课程、班型和教师类型命名，可手动修改。')}</small>
+               <small className="crm-work-muted">{t('The default name uses the course, class type and teacher type in English format. You can edit it.','Nama bawaan memakai kursus, jenis kelas, dan jenis pengajar dalam format bahasa Inggris. Nama dapat diedit.','默认用英文格式按课程、班型和教师类型命名，可手动修改。')}</small>
                {manualName&&draft.name!==auto(draft)&&<button type="button" className="crm-work-link"
                  onClick={()=>{setManualName(false);patch({},false);}}>{t('Use default name','Gunakan nama bawaan','使用默认名称')}</button>}
              </div>
