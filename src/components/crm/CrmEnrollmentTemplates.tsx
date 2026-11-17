@@ -1,12 +1,9 @@
-import {Pencil,Plus} from 'lucide-react';
+import {Plus} from 'lucide-react';
 import {CrmPageAction} from './CrmPageAction';
-import './crm-record-workspace.css';
 import {useEffect,useRef,useState} from 'react';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
-import {AdminRecordEntry} from '../admin/AdminListControl';
-import {AdminRecordHeader} from '../admin/AdminRecordHeader';
-import {AdminDetailActions,AdminRecordRow,AdminRecordSidebar,AdminRecordTitle} from '../admin/AdminRecordWorkspace';
+import {AdminRowAction} from '../admin/AdminListControl';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
@@ -25,9 +22,9 @@ type TemplateDraft=Omit<EnrollmentTemplate,'format'|'teacherType'>&{
  format:EnrollmentTemplate['format']|'';
  teacherType:EnrollmentTemplate['teacherType']|'';
 };
-type Props={lang:CrmLanguage;isLight:boolean;selected?:string;onSelect:(id?:string)=>void;onCreateClass:(id:string)=>void;onDraftChange:(dirty:boolean)=>void};
+type Props={lang:CrmLanguage;isLight:boolean;selected?:string;onCreateClass:(id:string)=>void;onDraftChange:(dirty:boolean)=>void};
 
-export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateClass,onDraftChange}:Props){
+export function CrmEnrollmentTemplates({lang,isLight,selected,onCreateClass,onDraftChange}:Props){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const title=t('Class templates','Templat kelas','班型模板');
  const [catalog,setCatalog]=useState<Catalog>(),[read,setRead]=useState<'loading'|'ready'|'denied'|'error'>('loading');
@@ -35,7 +32,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
  const [draft,setDraft]=useState<TemplateDraft>(),[manualName,setManualName]=useState(false),[dirty,setDirty]=useState(false);
  const [discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState('');
  const [pending,setPending]=useState<string>();
- const request=useRef<AbortController|null>(null),inFlight=useRef(false),focusedEntry=useRef<HTMLButtonElement|null>(null),listTop=useRef(0);
+ const request=useRef<AbortController|null>(null),inFlight=useRef(false),located=useRef<string|undefined>(undefined);
  const money=(amount:number)=>formatCurrency(amount,lang);
  const formats={standard:t('Standard','Standar','标准班'),small:t('Small group','Kelompok kecil','小班'),'one-on-one':t('One-to-one','Privat','一对一')};
  const teachers={local:t('Local teacher','Pengajar lokal','本土教师'),foreign:t('Foreign teacher','Pengajar asing','外教')};
@@ -64,7 +61,15 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
    return [item.name,c?.name,c?.teaching?.material].some(value=>value?.toLowerCase().includes(query))&&
      (!level||c?.teaching?.level===level)&&(!quoteFilter||(item.saleUnitPrice?'ready':'missing')===quoteFilter);
  })??[];
- const current=catalog?.templates.find(item=>item.id===selected);
+ useEffect(()=>{
+   if(!selected){located.current=undefined;return;}
+   if(read!=='ready'||located.current===selected)return;
+   const row=document.getElementById('enrollment-template-row-'+selected);
+   if(!row)return;
+   located.current=selected;
+   row.scrollIntoView({block:'nearest'});
+   row.focus({preventScroll:true});
+ },[read,selected]);
  const newCourse=catalog?.courses.find(c=>c.active&&c.teaching);
  const auto=(item:TemplateDraft)=>{
    if(!item.courseId||!item.format||!item.teacherType)return '';
@@ -96,10 +101,9 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
    setDirty(true);setError('');
  };
  const close=()=>{if(busy||pending)return;if(dirty)setDiscard(true);else setDraft(undefined);};
- const complete=async(id:string)=>{
+ const complete=async()=>{
    await load();
    setDraft(undefined);setPending(undefined);setDirty(false);setSaved(true);onDraftChange(false);
-   if(selected!==id)onSelect(id);
  };
  const save=async(e:React.FormEvent)=>{
    e.preventDefault();
@@ -111,7 +115,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
      if(response.status>=500)throw Error();
      if(!response.ok){setError(response.status===409?t('Reload to check the latest version. Your draft is kept.','Muat ulang untuk memeriksa versi terbaru. Draf disimpan.','请刷新核对最新版本，草稿已保留。'):t('Check the name, seat limits and price pair.','Periksa nama, batas peserta, dan kedua harga.','请核对名称、人数及两项单价。'));return;}
      if((await response.json()).templateId!==draft.id)throw Error();
-     await complete(draft.id);
+     await complete();
    }catch{setPending(requestId);}finally{inFlight.current=false;setBusy(false);}
  };
  const check=async()=>{
@@ -120,7 +124,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
    try{
      const response=await fetch(endpoint+'/results/'+encodeURIComponent(pending),{cache:'no-store'});
      if(!response.ok||(await response.json()).templateId!==draft.id)throw Error();
-     await complete(draft.id);
+     await complete();
    }catch{setError(t('Save not confirmed. Check again before retrying.','Penyimpanan belum terkonfirmasi. Periksa lagi.','保存结果未确认，请继续查询。'));}
    finally{inFlight.current=false;setBusy(false);}
  };
@@ -132,45 +136,40 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
    <CrmSingleSelect label={t('Quote status','Status harga','报价状态')} value={quoteFilter} onChange={setQuoteFilter} lang={lang} isLight={isLight} options={[
      {value:'',label:t('All quote statuses','Semua status harga','全部报价状态')},{value:'ready',label:t('Configured','Tersedia','已配置')},{value:'missing',label:t('Pending','Menunggu','待确认')}]}/>
  </div>;
- const back=()=>{onSelect(undefined);requestAnimationFrame(()=>requestAnimationFrame(()=>{window.scrollTo(0,listTop.current);document.querySelector<HTMLElement>('[data-template-entry="'+focusedEntry.current?.dataset.templateEntry+'"]')?.focus({preventScroll:true});}));};
- const currentCourse=current&&course(current.courseId),currentQuote=current&&currentCourse&&enrollmentTemplateQuote(current,currentCourse.sessions);
  const draftCourse=draft&&course(draft.courseId),draftQuote=draft&&draftCourse&&enrollmentTemplateQuote(draft,draftCourse.sessions);
  const ready=!!catalog&&read!=='denied';
  const titleActions=<AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={read==='loading'} onClick={()=>void load()}/>;
  return <div className="crm-course-catalog">
-   {current&&ready?<><AdminRecordHeader back={{label:t('Back to templates','Kembali ke templat','返回班型模板'),onClick:back}}
-     title={<AdminRecordTitle title={current.name} status={priceStatus(current)}/>}
-     actions={<AdminDetailActions label={title} primary={<CrmPageAction icon={Pencil} variant="primary" label={t('Edit template','Edit templat','编辑模板')} onClick={()=>edit(current)}/>}
-       secondary={current.format!=='one-on-one'&&<button type="button" className="crm-work-button" onClick={()=>onCreateClass(current.id)}>{t('Create class from template','Buat kelas dari templat','使用模板创建班次')}</button>}/>}/>
-     <div className="grid min-w-0 gap-4 xl:grid-cols-[280px_minmax(0,1fr)]" data-record-detail="true">
-       <AdminRecordSidebar id="enrollment-template-sidebar" title={title} selectedId={current.id} busyLabel={t('Loading','Memuat','正在读取')} filters={filters}>
-         {visible.map(item=><AdminRecordRow key={item.id} selected={item.id===current.id} name={item.name} title={item.name} onClick={()=>onSelect(item.id)} meta={course(item.courseId)?.teaching?.material}/>)}
-       </AdminRecordSidebar>
-       <div className="crm-detail-panel min-w-0 space-y-4 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-         <AdminFormSection title={t('Course and teacher','Kursus dan pengajar','课程与师资')}>
-           <p>{currentCourse?.name} · {currentCourse?.teaching?.material}</p>
-           <p>{currentCourse?.sessions} × {currentCourse?.teaching?.minutes} min · {formats[current.format]} · {teachers[current.teacherType]}</p>
-         </AdminFormSection>
-         <AdminFormSection title={t('Enrollment rules','Aturan pendaftaran','招生规则')}>
-           <p>{templateSize[current.format].typical} · {t('Seat limit','Kapasitas','招生上限')} {current.capacity}</p>
-           {current.format!=='one-on-one'&&<p>{t('Minimum fully paid to open','Minimum peserta lunas','足额到账开班底线')} {current.minimumPaid}</p>}
-         </AdminFormSection>
-         <AdminFormSection title={t('Quote','Harga','报价')}>
-           {currentQuote?<><p>{money(current.standardUnitPrice!)} → <strong>{money(current.saleUnitPrice!)}</strong></p>
-             <p>{currentQuote.standardPrice&&<del>{money(currentQuote.standardPrice)} </del>}<strong>{money(currentQuote.price)}</strong></p></>:priceStatus(current)}
-         </AdminFormSection>
-       </div>
-     </div></>:<>
      <header className="admin-edit-header"><h2>{title}</h2><div className="crm-ops-actions">{titleActions}
        <CrmPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></div></header>
      {ready&&filters}
-     {ready&&!!visible.length&&<AdminListTable label={title} busy={read==='loading'} headers={[t('Template name','Nama templat','模板名称'),t('Class type','Jenis kelas','班型'),t('Teacher type','Jenis pengajar','教师类型'),t('Typical size','Ukuran kelas','通常人数'),t('Price per lesson','Harga per sesi','每节优惠价'),t('Quote status','Status harga','报价状态')]}>
-       {visible.map(item=><tr key={item.id}><td><AdminRecordEntry data-template-entry={item.id} onClick={e=>{focusedEntry.current=e.currentTarget;listTop.current=window.scrollY;onSelect(item.id);}}>{item.name}</AdminRecordEntry>
-         <div>{course(item.courseId)?.teaching?.material} · {course(item.courseId)?.sessions}</div></td><td>{formats[item.format]}</td><td>{teachers[item.teacherType]}</td>
-         <td>{templateSize[item.format].typical}</td><td>{item.saleUnitPrice?money(item.saleUnitPrice):'—'}</td><td>{priceStatus(item)}</td></tr>)}
+     {ready&&!!visible.length&&<AdminListTable label={title} busy={read==='loading'} headers={[
+       t('Template name','Nama templat','模板名称'),t('Class type and teacher','Jenis kelas dan pengajar','班型与师资'),
+       t('Class size','Jumlah peserta','招生人数'),t('Price per period','Harga per jam pelajaran','每节报价'),t('Actions','Tindakan','操作'),
+     ]}>
+       {visible.map(item=>{
+         const linkedCourse=course(item.courseId);
+         const quote=linkedCourse&&enrollmentTemplateQuote(item,linkedCourse.sessions);
+         return <tr key={item.id} id={'enrollment-template-row-'+item.id} tabIndex={-1}>
+           <td><strong>{item.name}</strong>{linkedCourse?.teaching&&<div className="crm-work-muted">
+             {linkedCourse.teaching.material} · {linkedCourse.sessions} {t('periods','jam pelajaran','节')} × {linkedCourse.teaching.minutes} {t('min','menit','分钟')}
+           </div>}</td>
+           <td>{formats[item.format]}<div className="crm-work-muted">{teachers[item.teacherType]}</div></td>
+           <td>{item.format!=='one-on-one'&&<div>{t('Minimum fully paid','Minimum peserta lunas','足额到账开班底线')} {item.minimumPaid}</div>}
+             <div>{t('Seat limit','Kapasitas','招生上限')} {item.capacity}</div>
+           </td>
+           <td>{quote?<><strong>{money(item.saleUnitPrice!)}</strong>{quote.standardPrice&&<> <del className="crm-work-muted">{money(item.standardUnitPrice!)}</del></>}
+             <div className="crm-work-muted">{t('Enrollment total','Total harga pendaftaran','报名总价')} {money(quote.price)}</div></>:priceStatus(item)}</td>
+           <td><div className="flex flex-wrap gap-x-3 gap-y-1">
+             <AdminRowAction disabled={read!=='ready'} onClick={()=>edit(item)}>{t('Edit','Edit','编辑')}</AdminRowAction>
+             {item.format!=='one-on-one'&&<AdminRowAction disabled={read!=='ready'} onClick={()=>onCreateClass(item.id)}>
+               {t('Create class','Buat kelas','创建班次')}
+             </AdminRowAction>}
+           </div></td>
+         </tr>;
+       })}
      </AdminListTable>}
-   </>}
-   {(read!=='ready'||!current&&!visible.length)&&<AdminListState lang={lang} state={read==='ready'?'empty':read} onRetry={()=>void load()}/>}
+   {(read!=='ready'||!visible.length)&&<AdminListState lang={lang} state={read==='ready'?'empty':read} onRetry={()=>void load()}/>}
    {saved&&!draft&&<CrmSaveFeedback lang={lang} state="saved"/>}
    {draft&&<AdminEditor lang={lang} light={isLight} variant="drawer" className="crm-course-editor" responsiveForm required busy={busy}
      title={draft.revision?t('Edit template','Edit templat','编辑模板'):t('New template','Templat baru','新建模板')} onClose={close} onSubmit={save}
