@@ -123,6 +123,12 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
       decision > start || (standardPrice !== null && standardPrice <= price)) {
     invalidConfig();
   }
+  if (input.weeklySchedule) {
+    const plan=input.weeklySchedule as EnrollmentWeeklySchedule;
+    if (!enrollmentWeeklyScheduleText(plan, Number(input.minutes))) invalidConfig();
+    if (!enrollmentFirstSessionMatches(firstLesson,plan))
+      throw Object.assign(Error('enrollment_class_schedule_mismatch'),{status:400});
+  }
   return {
     courseId,
     level: option('level', enrollmentLevels),
@@ -139,6 +145,12 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
 
 /** lessons stores the number of periods per scheduled session. */
 export type EnrollmentWeeklySchedule={days:number[];start:string;lessons:number};
+/** firstLesson is stored as a local WIB date and time. Weekdays use Monday=1. */
+export function enrollmentFirstSessionMatches(firstLesson:string,plan:EnrollmentWeeklySchedule) {
+  if (!enrollmentInstant(firstLesson)) return false;
+  const weekday=new Date(firstLesson.slice(0,10)+'T00:00:00Z').getUTCDay()||7;
+  return plan.days.includes(weekday)&&firstLesson.slice(11)===plan.start;
+}
 export const enrollmentWeekdays=[
   ['周一','Mon','Sen'],['周二','Tue','Sel'],['周三','Wed','Rab'],['周四','Thu','Kam'],
   ['周五','Fri','Jum'],['周六','Sat','Sab'],['周日','Sun','Min'],

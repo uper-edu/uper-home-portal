@@ -65,3 +65,16 @@ test('class opening notice changes at the expected WIB time without inferring a 
   assert.equal(enrollmentOpeningNotice(decisionAt,'id',exact+1),'Pembukaan kelas masih menunggu konfirmasi');
   assert.equal(enrollmentOpeningNotice(undefined,'zh',exact),'');
 });
+
+test('first session weekday and time must match the recurring schedule in WIB',()=>{
+  const weeklySchedule={days:[6,7],start:'15:00',lessons:2};
+  assert.equal(validateEnrollmentClass({...sample,weeklySchedule}).firstLesson,'2026-12-19T15:00');
+  for(const firstLesson of ['2026-12-19T14:00','2026-12-16T15:00','2026-12-16T14:00']){
+    assert.throws(()=>validateEnrollmentClass({...sample,firstLesson,decisionAt:'2026-12-14T17:00',
+      enrollmentCloses:'2026-12-15T00:00',weeklySchedule}),/enrollment_class_schedule_mismatch/);
+  }
+  const midnight={...sample,firstLesson:'2026-12-21T00:00',decisionAt:'2026-12-19T17:00',
+    enrollmentCloses:'2026-12-21T00:00',weeklySchedule:{days:[1],start:'00:00',lessons:1}};
+  assert.equal(validateEnrollmentClass(midnight).firstLesson,midnight.firstLesson);
+  assert.throws(()=>validateEnrollmentClass({...sample,weeklySchedule:{...weeklySchedule,days:[]}}),/enrollment_class_invalid/);
+});

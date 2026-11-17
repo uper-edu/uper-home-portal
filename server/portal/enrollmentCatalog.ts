@@ -70,6 +70,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       if(weeklySchedule){
         config.schedule=enrollmentWeeklyScheduleText(weeklySchedule,config.minutes);
         if(!config.schedule)invalid('enrollment_class_invalid');
+        config.weeklySchedule=weeklySchedule;
       }else if(snapshot||current?.data?.weeklySchedule){
         invalid('enrollment_class_invalid');
       }
