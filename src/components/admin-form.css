@@ -20,10 +20,14 @@ h1>.admin-required-note,h2>.admin-required-note,h3>.admin-required-note,h4>.admi
 .admin-field input.admin-switch:focus-visible {outline:2px solid var(--admin-focus);outline-offset:3px}
 .admin-field input.admin-switch:disabled {opacity:.55;cursor:not-allowed}
 
-.admin-form-summary{padding:12px;border:1px solid var(--admin-border);border-radius:10px;background:var(--af-soft,var(--admin-surface));color:var(--admin-text);overflow-wrap:anywhere}
+.admin-form-summary{container:admin-form-summary / inline-size;padding:12px;border:1px solid var(--admin-border);border-radius:10px;background:var(--af-soft,var(--admin-surface));color:var(--admin-text);overflow-wrap:anywhere}
 .admin-form-summary .admin-form-summary-title{margin:0 0 8px;font-size:13px;font-weight:650}
 .admin-form-summary dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:var(--admin-form-label-gap) var(--admin-form-column-gap);margin:0}
 .admin-form-summary dl>div{min-inline-size:0}
+/* Two 150px tracks plus the shared 16px column gap. */
+@container admin-form-summary (min-width:316px){
+ .admin-form-summary [data-summary-span="wide"]{grid-column:span 2}
+}
 .admin-form-summary dt{color:var(--admin-muted);font-size:12px}
 .admin-form-summary dd{margin:2px 0 0;font-size:14px}
 .admin-template-name-help{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 12px;margin-top:4px}

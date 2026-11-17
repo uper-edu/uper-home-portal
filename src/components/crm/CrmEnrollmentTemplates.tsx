@@ -172,7 +172,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,onSelect,onCreateC
      <fieldset disabled={busy||!!pending} data-admin-section-stack="open">
        <AdminFormSection variant="subgroup" title={t('Course','Kursus','课程')}>
          {field(t('Select a course','Pilih kursus','选择课程'),draft.courseId,catalog?.courses.filter(c=>c.teaching&&(c.active||c.id===draft.courseId)).map(c=>({value:c.id,label:c.name}))??[],v=>patch({courseId:v}),!!draft.revision)}
-         {draftCourse?.teaching&&<AdminFormSummary title={t('Course summary · read only','Ringkasan kursus · hanya baca','课程摘要 · 只读')} fields={[
+         {draftCourse?.teaching&&<AdminFormSummary fields={[
            [t('Level','Level','级别'),draftCourse.teaching.level],
            [t('Main textbook and edition','Buku ajar utama dan edisi','主教材及版本'),draftCourse.teaching.material],
            [t('Lessons','Sesi','总节数'),draftCourse.sessions],

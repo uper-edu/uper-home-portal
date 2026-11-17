@@ -15,10 +15,10 @@ export function AdminFormGrid({children,className=''}:{children:ReactNode;classN
   <div className="admin-form-responsive-grid" data-admin-grid="">{children}</div>
  </div>;
 }
-export function AdminFormSummary({title,fields}:{title:string;fields:readonly (readonly [string,ReactNode])[]}){
+export function AdminFormSummary({title,fields}:{title?:string;fields:readonly (readonly [string,ReactNode,'wide'?])[]}){
  return <div className="admin-form-summary">
-  <p className="admin-form-summary-title">{title}</p>
-  <dl>{fields.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+  {title&&<p className="admin-form-summary-title">{title}</p>}
+  <dl>{fields.map(([label,value,span])=><div key={label} data-summary-span={span}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
  </div>;
 }
 export function AdminFormActions({children,className='',...props}:ComponentPropsWithoutRef<'div'>){return <div {...props} className={`admin-form-actions ${className}`.trim()}>{children}</div>;}

@@ -346,8 +346,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
                   label:item.name+(item.saleUnitPrice?'':' · '+t(['Quote pending','Harga belum dikonfirmasi','报价待确认']))}))}
                 onChange={chooseTemplate}/>
             </AdminField>
-            {!!draft.config.courseId&&<AdminFormSummary title={t(['Template summary · read only','Ringkasan templat · hanya baca','模板摘要 · 只读'])} fields={[
-              [t(['Course','Kursus','课程']),draft.config.courseName||draft.config.level],
+            {!!draft.config.courseId&&<AdminFormSummary fields={[
+              [t(['Course','Kursus','课程']),draft.config.courseName||draft.config.level,'wide'],
               [t(['Lessons × minutes','Sesi × menit','节数 × 分钟']),draft.config.sessions+' × '+draft.config.minutes],
               [t(['Teacher type','Jenis pengajar','教师类型']),draft.config.teacherType==='foreign'?t(['Foreign teacher','Pengajar asing','外教']):draft.config.teacherType==='local'?t(['Local teacher','Pengajar lokal','本土教师']):'—'],
               [t(['Minimum fully paid','Minimum peserta lunas','足额到账开班底线']),draft.config.minimumPaid],
