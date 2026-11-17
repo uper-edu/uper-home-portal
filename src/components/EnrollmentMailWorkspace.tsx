@@ -16,7 +16,7 @@ import {CrmContentNav,CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import {CrmSingleSelect} from './crm/CrmSingleSelect';
 import {AdminStatus} from './AdminStatus';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
-import {enrollmentMailDefaults,enrollmentMailPoolLimit,mailAccountDefaults,mailPoolDailyLimitMax,mailPoolDefaults,mailPoolMembers,mailSecretReferencePattern,mailSmtpHostPattern,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../utils/enrollmentMailConfig';
+import {enrollmentMailDefaults,enrollmentMailPoolLimit,mailAccountDefaults,mailPoolDailyLimitMax,mailPoolDefaults,mailPoolMembers,mailSmtpHostPattern,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../utils/enrollmentMailConfig';
 import {contactEmailText,validContactEmail} from '../utils/contactEmail';
 import type {CrmLanguage} from '../utils/crmLanguage';
 import './enrollment-mail-workspace.css';
@@ -64,6 +64,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const validPoolLimit=draft?.dailyLimit==null||
     Number.isInteger(draft.dailyLimit)&&draft.dailyLimit>=1&&draft.dailyLimit<=mailPoolDailyLimitMax;
   const [discard,setDiscard]=useState(false),[feedback,setFeedback]=useState<'saved'|'error'|'unknown'>();
+  const [password,setPassword]=useState(''),[clearPassword,setClearPassword]=useState(false);
+  const [credentialKeyError,setCredentialKeyError]=useState(false);
   const [pendingOperation,setPendingOperation]=useState<string>(),[operationCheck,setOperationCheck]=useState<'unconfirmed'|'error'>();
   const [adminConflict,setAdminConflict]=useState(false);
   const [revision,setRevision]=useState(0);
@@ -173,6 +175,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
     }
   };
   const close=useCallback(()=>{
+    setPassword('');setClearPassword(false);setCredentialKeyError(false);
     setEditing(undefined);setDraft(undefined);setAccount(undefined);setFeedback(undefined);setDirty(false);setDiscard(false);
     setPendingOperation(undefined);setOperationCheck(undefined);setAdminConflict(false);
   },[]);
@@ -180,6 +183,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   useLayoutEffect(()=>{if(admin&&(!allowed||failure==='denied'))close();},[admin,allowed,failure,close]);
   const edit=(target:MailEditorTarget,current=activeView)=>{
     if(!current)return;
+    setPassword('');setClearPassword(false);setCredentialKeyError(false);
     setRevision(current.revision);setFeedback(undefined);setDirty(false);setEditing(target);
     setAdminConflict(false);setPendingOperation(undefined);setOperationCheck(undefined);
     const fields=typeof target==='object'?target.pool:target==='new-pool'?
@@ -192,7 +196,6 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const validMonthly=account?.monthly==null||
     Number.isInteger(account.monthly)&&account.monthly>=1&&account.monthly<=10000000;
   const validAccountEmail=validContactEmail(account?.address);
-  const validSecretReference=!account?.secret||new RegExp('^'+mailSecretReferencePattern+'$').test(account.secret);
   const duplicateAccount=!!account&&typeof editing==='number'&&!!draft?.accounts.some((item,index)=>
     index!==editing&&item.address===account.address.trim().toLowerCase());
   const validRecipient=validContactEmail(replacement.recipient);
@@ -226,7 +229,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   };
   const save=async()=>{
     if(!draft||busy||pendingOperation||adminConflict||isPoolEditor&&!validPoolLimit||
-      typeof editing==='number'&&(!validPort||!validMonthly||!validAccountEmail||duplicateAccount||!validSecretReference)||
+      typeof editing==='number'&&(!validPort||!validMonthly||!validAccountEmail||duplicateAccount)||
       editing==='reassign'&&(!validRecipient||!replacement.account||!replacement.reason.trim()))return;
     const {dailyLimit,strategy,...base}=draft;
     const next={...base,accounts:[...base.accounts],members:mailPoolMembers(base)};
@@ -238,15 +241,18 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
       const pools=draft.pools??[];
       next.pools=editing==='new-pool'?[...pools,pool]:pools.map(existing=>existing.id===pool.id?pool:existing);
     }
+    const credential=typeof editing==='number'&&account&&(clearPassword||password!=='')?
+      {address:account.address.trim().toLowerCase(),password:clearPassword?null:password}:undefined;
     const requestId=crypto.randomUUID();
-    setBusy(true);setFeedback(undefined);
+    setBusy(true);setFeedback(undefined);setCredentialKeyError(false);
     try{
       const response=await fetch(editing==='reassign'?adminPath+'/reassign':adminPath,{
         method:editing==='reassign'?'POST':'PUT',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(editing==='reassign'?{...replacement,requestId}:{config:next,revision,requestId})});
+        body:JSON.stringify(editing==='reassign'?{...replacement,requestId}:{config:next,revision,requestId,credential})});
       if(response.status>=500)throw Error();
       if(!response.ok){
         const problem=await response.json().catch(()=>null);
+        if(problem?.error==='enrollment_mail_credential_key_missing')setCredentialKeyError(true);
         if(response.status===409&&problem?.error==='enrollment_mail_conflict'){
           setAdminConflict(true);
           await refresh();
@@ -532,7 +538,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
           disabled={busy} onClick={()=>void checkAdminResult()}/>}
         <button type="submit" data-primary
           disabled={busy||!dirty||!!pendingOperation||adminConflict||isPoolEditor&&(!draft.name.trim()||!validPoolLimit)||
-            typeof editing==='number'&&(!validPort||!validMonthly||duplicateAccount||!validSecretReference)||
+            typeof editing==='number'&&(!validPort||!validMonthly||duplicateAccount)||
             editing==='reassign'&&(!validRecipient||!replacement.account||!replacement.reason.trim())}>{t('保存','Save','Simpan')}</button></>}>
       {adminConflict?<AdminFormFeedback state="error" lang={lang}>
         {t('邮件设置已在别处更新，当前草稿仍保留。','Email settings were updated elsewhere. Your draft is retained.',
@@ -540,6 +546,10 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
         {' '}<AdminRowAction disabled={busy} onClick={()=>void reloadEditor()}>
           {t('放弃草稿并载入最新设置','Discard draft and load current settings','Buang draf dan muat pengaturan terkini')}
         </AdminRowAction>
+      </AdminFormFeedback>:credentialKeyError?<AdminFormFeedback state="error" lang={lang}>
+        {t('本环境尚未配置 SMTP 凭证加密密钥，暂时无法保存密码。',
+          'The SMTP credential encryption key is missing in this environment. The password cannot be saved yet.',
+          'Kunci enkripsi kredensial SMTP belum tersedia di lingkungan ini. Kata sandi belum dapat disimpan.')}
       </AdminFormFeedback>:feedback&&<AdminFormFeedback state={feedback} lang={lang}/>}
       {savedComparison&&<AdminDisclosure heading={t('查看最新已保存设置','View the latest saved settings','Lihat pengaturan terbaru yang disimpan')}>
         <dl className="access-record-facts">{savedComparison.map(([label,value],index)=>
@@ -633,11 +643,20 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
               <small>{t('支持 465 或 587。','Enter 465 or 587.','Masukkan 465 atau 587.')}</small>
             </AdminField>
           </AdminFormGrid>
-          <AdminField>{t('私有配置变量名','Private configuration variable','Variabel konfigurasi privat')}
-            <input placeholder="PORTAL_ENROLLMENT_SMTP_ADMISSIONS" aria-invalid={!validSecretReference||undefined}
-              value={account.secret} onChange={e=>changeAccount({secret:e.target.value})}/>
-            {!validSecretReference&&<small>{t('请输入 PORTAL_ENROLLMENT_SMTP_ 开头的环境变量名。','Enter an environment variable starting with PORTAL_ENROLLMENT_SMTP_.','Masukkan variabel lingkungan yang dimulai dengan PORTAL_ENROLLMENT_SMTP_.')}</small>}
+          <AdminField>{t('SMTP 密码','SMTP password','Kata sandi SMTP')}
+            <input type="password" autoComplete="new-password" maxLength={1024} value={password}
+              disabled={clearPassword}
+              onChange={e=>{setPassword(e.target.value);setCredentialKeyError(false);setDirty(true);}}/>
+            <small>{credentialStatus(account.address)} · {t('留空沿用当前凭证。输入新密码后保存即可替换。',
+              'Leave blank to keep the current credential. Enter a new password to replace it.',
+              'Kosongkan untuk mempertahankan kredensial saat ini. Masukkan kata sandi baru untuk menggantinya.')}</small>
           </AdminField>
+          {typeof editing==='number'&&editing<draft.accounts.length&&<AdminField as="label">
+            <input type="checkbox" checked={clearPassword} onChange={e=>{
+              setClearPassword(e.target.checked);setPassword('');setCredentialKeyError(false);setDirty(true);
+            }}/>
+            {t('保存时清除凭证','Clear credential when saving','Hapus kredensial saat menyimpan')}
+          </AdminField>}
         </AdminFormSection>
         <AdminFormSection title={quotaLabel}>
           <AdminFormGrid>{inputNumber(rateLabel,account.rate,rate=>changeAccount({rate}),100000)}

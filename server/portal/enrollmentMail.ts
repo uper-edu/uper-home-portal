@@ -7,6 +7,7 @@ import {invalid} from './trustWorkflow.ts';
 import {enrollmentSimulation} from './enrollmentSimulation.ts';
 import {validContactEmail} from '../../src/utils/contactEmail.ts';
 import {activeEnrollmentMailConfig,enrollmentMailPoolLimit,enrollmentSmtpLimit,mailPoolDailyLimitMax,mailPoolMembers,mailSecretReferencePattern,mailSmtpHostPattern, type EnrollmentMailConfig, type MailAccount} from '../../src/utils/enrollmentMailConfig.ts';
+import {mailCredentialKeyConfigured,mailPasswordFingerprint,resolveMailPassword,sealMailPassword,type StoredMailAccount} from './enrollmentMailCredentials.ts';
 import {enrollmentMailPreset} from './enrollmentMailPresets.ts';
 import {selectMailAccount,type Usage} from './enrollmentMailRouting.ts';
 
@@ -16,7 +17,7 @@ type State='accepted'|'simulated'|'rejected'|'unknown'|'waiting';
 type Mail={subject:string;text:string;html:string;language:string};
 const environment=()=>process.env.PORTAL_ENV||'unconfigured';
 const timezone=()=>process.env.PORTAL_ENROLLMENT_MAIL_TIMEZONE||'Asia/Jakarta';
-const privateSecret=(key:string)=>key?process.env[key]:undefined;
+
 const transact=<T>(work:(c:Client)=>Promise<T>):Promise<T>=>tx(work,{isolation:'READ COMMITTED'});
 
 const isLocalMailEnvironment=()=>environment()==='dev'&&process.env.TRIAL_DATASET==='local-crm'&&
@@ -100,7 +101,7 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     const external=isExternal(recipient);
     const members=new Set(mailPoolMembers(config));
     const candidates=config.accounts.filter(a=>a.enabled&&members.has(a.address)&&(!bound||a.address===bound)&&
-      !excluded.has(a.address)&&(enrollmentMailMode()==='simulation'||privateSecret(a.secret)));
+      !excluded.has(a.address)&&(enrollmentMailMode()==='simulation'||resolveMailPassword(environment(),a)));
     const eligible=new Set<string>();
     for(const window of new Set(candidates.map(a=>a.windowSeconds))){
       const rows=(await c.query('SELECT account,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2 GROUP BY account',
@@ -120,7 +121,7 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
   });
 }
 
-async function deliver(account:MailAccount,id:string,recipient:string,mail:Mail,code?:string):Promise<State|'address_rejected'>{
+async function deliver(account:StoredMailAccount,id:string,recipient:string,mail:Mail,code?:string):Promise<State|'address_rejected'>{
   const local=enrollmentMailMode()==='simulation'?enrollmentSimulation():null;
   if(local){
     try{
@@ -129,7 +130,7 @@ async function deliver(account:MailAccount,id:string,recipient:string,mail:Mail,
       return 'simulated';
     }catch{return 'unknown';}
   }
-  const secret=privateSecret(account.secret);
+  const secret=resolveMailPassword(environment(),account);
   if(!secret||enrollmentMailMode()!=='smtp')return 'rejected';
   try{
     const site=new URL(process.env.PORTAL_ENROLLMENT_PUBLIC_ORIGIN!);
@@ -189,13 +190,13 @@ function parseConfig(value:any):Omit<EnrollmentMailConfig,'sticky'>{
     const address=typeof a?.address==='string'?a.address.trim().toLowerCase():'';
     if(!validContactEmail(address)||seen.has(address)||typeof a.host!=='string'||
       !new RegExp('^'+mailSmtpHostPattern+'$').test(a.host)||
-      ![465,587].includes(a.port)||typeof a.secret!=='string'||
-      a.secret!==''&&!new RegExp('^'+mailSecretReferencePattern+'$').test(a.secret)||
+      ![465,587].includes(a.port)||
+      a.secret!==undefined&&(typeof a.secret!=='string'||a.secret!==''&&!new RegExp('^'+mailSecretReferencePattern+'$').test(a.secret))||
       typeof a.enabled!=='boolean'||!integer(a.daily,1,100000)||!integer(a.external,1,100000)||
       a.monthly!==null&&!integer(a.monthly,1,10000000)||
       !integer(a.rate,1,100000)||!integer(a.windowSeconds,1,3600))invalid('enrollment_mail_invalid',400);
     seen.add(address);
-    return {address,host:a.host,port:a.port,secret:a.secret,enabled:a.enabled,daily:a.daily,external:a.external,monthly:a.monthly,
+    return {address,host:a.host,port:a.port,secret:a.secret??'',enabled:a.enabled,daily:a.daily,external:a.external,monthly:a.monthly,
       rate:a.rate,windowSeconds:a.windowSeconds};
   });
   const validMembers=(members:any)=>Array.isArray(members)&&members.every(a=>typeof a==='string'&&seen.has(a))&&
@@ -255,8 +256,9 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
     const {rows:poolCounts}=await pool.query("SELECT pool_id,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id",
       [environment(),day]);
     const poolUsage=Object.fromEntries(poolCounts.map(row=>[row.pool_id,Number(row.total)]));
-    return {config,revision,environment:environment(),mode:enrollmentMailMode(),usage,poolUsage,timezone:timezone(),
-      configured:config.accounts.map(a=>({address:a.address,configured:!!privateSecret(a.secret)}))};
+    const accounts=config.accounts.map(({encryptedPassword,secret,...account})=>account);
+    return {config:{...config,accounts},revision,environment:environment(),mode:enrollmentMailMode(),usage,poolUsage,timezone:timezone(),
+      configured:config.accounts.map(a=>({address:a.address,configured:!!resolveMailPassword(environment(),a)}))};
   };
   app.get(path,wrap(async(q,r)=>{
     await authorize(q);
@@ -272,16 +274,36 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
     const actor=await authorize(q);
     if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
     const edited=parseConfig(q.body?.config);
+    const input=q.body?.credential;
+    let credential:{address:string;password:string|null}|undefined;
+    if(input!==undefined){
+      if(!input||typeof input.address!=='string'||!edited.accounts.some(account=>account.address===input.address)||
+        !(input.password===null||typeof input.password==='string'&&input.password.length>0&&input.password.length<=1024))
+        invalid('enrollment_mail_invalid',400);
+      credential={address:input.address,password:input.password};
+    }
+    if(credential?.password&&!mailCredentialKeyConfigured())invalid('enrollment_mail_credential_key_missing',422);
+    const credentialReceipt=credential&&{address:credential.address,change:credential.password===null?'clear':'replace',
+      fingerprint:credential.password===null?null:mailPasswordFingerprint(environment(),credential.address,credential.password)};
     const result=await transact(async c=>{
       const before=await configuration(c,true);
-      return mailOperation(c,actor.id,q.body?.requestId,'access.enrollment_mail.configured',[q.body?.revision,edited],async()=>{
+      return mailOperation(c,actor.id,q.body?.requestId,'access.enrollment_mail.configured',credentialReceipt?[q.body?.revision,edited,credentialReceipt]:[q.body?.revision,edited],async()=>{
         if(before.revision!==q.body?.revision)invalid('enrollment_mail_conflict',409);
-        const config=activeEnrollmentMailConfig({...edited,sticky:before.config.sticky});
+        const accounts=edited.accounts.map((account):StoredMailAccount=>{
+          if(credential?.address===account.address){
+            if(credential.password===null)return {...account,secret:''};
+            return {...account,secret:'',encryptedPassword:sealMailPassword(environment(),account.address,credential.password)};
+          }
+          const previous=before.config.accounts.find(item=>item.address===account.address);
+          return {...account,secret:previous?.secret??'',encryptedPassword:previous?.encryptedPassword};
+        });
+        const config=activeEnrollmentMailConfig({...edited,accounts,sticky:before.config.sticky});
         const revision=before.revision+1;
         await c.query('UPDATE enrollment_mail_configuration SET config=:p2,revision=revision+1 WHERE environment=:p1',
           [environment(),config]);
         await c.query(`INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.configured',:p2)`,
-          [actor.id,{environment:environment(),revision,enabled:config.enabled,sticky:config.sticky,accounts:config.accounts.length}]);
+          [actor.id,{environment:environment(),revision,enabled:config.enabled,sticky:config.sticky,accounts:config.accounts.length,
+            credentialChange:credentialReceipt&&{address:credentialReceipt.address,action:credentialReceipt.change}}]);
         return {revision};
       });
     });

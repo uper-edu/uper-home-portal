@@ -1,8 +1,9 @@
+import type {StoredMailAccount} from './enrollmentMailCredentials.ts';
 import {activeEnrollmentMailConfig,enrollmentMailDefaults,mailAccountDefaults,mailPoolDefaults,mailPoolMembers,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../../src/utils/enrollmentMailConfig.ts';
 
 type SavedPool=Omit<MailPool,'dailyLimit'|'strategy'> & Partial<Pick<MailPool,'dailyLimit'|'strategy'>> & {sticky?:boolean;rate?:number;windowSeconds?:number};
 type SavedMailConfig=Omit<EnrollmentMailConfig,'accounts'|'pools'> & {
-  accounts:(Omit<MailAccount,'rate'|'windowSeconds'> & Partial<Pick<MailAccount,'rate'|'windowSeconds'>>)[];
+  accounts:(Omit<StoredMailAccount,'rate'|'windowSeconds'> & Partial<Pick<MailAccount,'rate'|'windowSeconds'>>)[];
   pools?:SavedPool[];rate?:number;windowSeconds?:number;
 };
 
@@ -18,7 +19,9 @@ const developmentAccounts={
 } as const;
 const productionPoolName='Enrollment · Production';
 
-export function enrollmentMailPreset(environment:string,saved?:SavedMailConfig):EnrollmentMailConfig{
+type StoredMailConfig = Omit<EnrollmentMailConfig,'accounts'> & {accounts: StoredMailAccount[]};
+
+export function enrollmentMailPreset(environment:string,saved?:SavedMailConfig):StoredMailConfig{
   const poolDefaults={...mailPoolDefaults,transport:'smtp' as const};
   const development=Object.values(developmentAccounts);
   const presets:MailPool[]=[
@@ -48,5 +51,5 @@ export function enrollmentMailPreset(environment:string,saved?:SavedMailConfig):
     ...missingDevelopment.map(({address,secret})=>({...mailAccountDefaults,address,secret,host:'smtp.gmail.com',port:587 as const}))];
   const selectedPool=pools.some(p=>p.id===saved?.selectedPool)?saved!.selectedPool!:defaultId;
   const sticky=existingPools.find(pool=>pool.id===selectedPool)?.sticky??saved?.sticky??enrollmentMailDefaults.sticky;
-  return activeEnrollmentMailConfig({...enrollmentMailDefaults,sticky,accounts,pools,selectedPool});
+  return {...activeEnrollmentMailConfig({...enrollmentMailDefaults,sticky,accounts,pools,selectedPool}),accounts};
 }
