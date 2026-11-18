@@ -99,7 +99,7 @@ export function EnrollmentOrderAftercare({
   const classCard = (value?: Course, label?: string, isOriginal = false) => <article className="enrollment-record">
     {label&&<small>{label}</small>}
     <h2>{courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}</h2>
-    {value&&<p>{[enrollmentTeacherLabel(value.teacherType??course?.teacherType,language),value.firstLesson.replace('T',' ')+' WIB'].filter(Boolean).join(' | ')}</p>}
+    {value&&<p>{[enrollmentTeacherLabel(value.teacherType??course?.teacherType,language),value.firstLesson.replace('T',' ')+' WIB'].filter(Boolean).join(' · ')}</p>}
     {value?.schedule&&<p>{value.schedule}</p>}
     {isOriginal&&closed&&<p>{originalClosed}</p>}
   </article>;

@@ -104,7 +104,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   return <>
     <div className="enrollment-payment-summary">
       <h2>{title || status}</h2>
-      {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('预计 '+start+'开课','Expected '+start,'Perkiraan '+start))].filter(Boolean).join(' | ')}</p>}
+      {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('预计 '+start+'开课','Expected '+start,'Perkiraan '+start))].filter(Boolean).join(' · ')}</p>}
       {cohort?.schedule&&<p>{cohort.schedule}</p>}
       {openingNotice&&<p>{openingNotice}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={now} language={language}/>}

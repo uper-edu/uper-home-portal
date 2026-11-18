@@ -54,7 +54,7 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
     <div className="enrollment-result-body">
       <article className="enrollment-record">
         <h2>{title || t(['报名编号','Order number','Nomor pendaftaran'])+' · '+order.id}</h2>
-        <p>{[enrollmentTeacherLabel(classInfo?.teacherType??course?.teacherType,language),openingDate].filter(Boolean).join(' | ')}</p>
+        <p>{[enrollmentTeacherLabel(classInfo?.teacherType??course?.teacherType,language),openingDate].filter(Boolean).join(' · ')}</p>
         {cancelled ? <p>{t(['原班已确认不开班。','The original class will not open.','Kelas asal tidak dibuka.'])}</p>
           : opened && <p>{t(['已确认开班','Class opening confirmed','Pembukaan kelas dikonfirmasi'])}</p>}
         {!paid && schedule && <p>{schedule}</p>}
