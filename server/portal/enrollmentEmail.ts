@@ -64,7 +64,7 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
   const classIdentity=(level?:string,format?:string,period?:string)=>[
     level?.trim(),
     format==='standard'?tr(['标准班','Standard class','Kelas standar']):format==='small'?tr(['小班','Small group','Kelas kecil']):'',
-    period==='weekend'?tr(['周末','Weekend','Akhir pekan']):period==='weekday-evening'?tr(['工作日晚课','Weekday evening','Malam hari kerja']):'',
+    period==='mixed'?tr(['工作日与周末','Weekdays & weekends','Hari kerja & akhir pekan']):period==='weekend'?tr(['周末','Weekend','Akhir pekan']):period==='weekday-evening'?tr(['工作日晚课','Weekday evening','Malam hari kerja']):'',
   ].filter(Boolean).join(' · ');
   const className=classIdentity(facts.class,facts.format,facts.period);
   const name=facts.salutation?.replace(/\s+/g,' ').trim();

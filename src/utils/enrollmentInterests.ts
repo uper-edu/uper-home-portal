@@ -1,7 +1,7 @@
 import {validContactPhone} from './contactPhone';
 
 export const demandLevels = ['HSK 1','HSK 2','HSK 3','HSK 4','unsure','other'] as const;
-export const demandPeriods = ['weekday-day','weekday-evening','weekend','any','other'] as const;
+export const demandPeriods = ['weekday-day','weekday-evening','weekend','mixed','any','other'] as const;
 export const demandFormats = ['standard','small','one-on-one','any','other'] as const;
 
 export interface DemandCriteria {

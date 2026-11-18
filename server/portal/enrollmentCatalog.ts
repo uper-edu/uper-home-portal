@@ -6,7 +6,7 @@ import type { Express, Request, Response } from 'express';
 import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
-import { enrollmentInstant, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentInstant, enrollmentScheduleReviewFields, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
@@ -72,7 +72,13 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       if ((current?.revision ?? 0) !== body.revision) invalid('enrollment_class_conflict', 409);
       if(current?.state==='cancelled') invalid('enrollment_class_conflict',409);
       const isPublished=current?.state==='published';
+      const isDraft=body.state==='draft';
       const raw=body.config;
+      const scheduleReview=raw.scheduleReview ?? current?.data.scheduleReview ?? {};
+      if(typeof scheduleReview!=='object'||Array.isArray(scheduleReview)||
+        Object.entries(scheduleReview).some(([key,note])=>!enrollmentScheduleReviewFields.some(field=>field===key)||
+          typeof note!=='string'||!note.trim()||note.length>1000)) invalid('enrollment_class_invalid');
+      if(!isDraft&&Object.keys(scheduleReview).length)invalid('enrollment_class_schedule_review_pending',409);
       if(raw.holidayDates!==undefined&&(!Array.isArray(raw.holidayDates)||!raw.holidayDates.every(validEnrollmentHolidayDate)))
         invalid('enrollment_class_invalid');
       if(isPublished&&body.state!=='published')invalid('enrollment_class_conflict',409);
@@ -93,13 +99,15 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       const weeklySchedule=raw.weeklySchedule;
       if(weeklySchedule){
         config.schedule=enrollmentWeeklyScheduleText(weeklySchedule,config.minutes);
-        if(!config.schedule)invalid('enrollment_class_invalid');
+        if(!isDraft&&!config.schedule)invalid('enrollment_class_invalid');
         config.weeklySchedule=weeklySchedule;
       }else if(snapshot||current?.data?.weeklySchedule){
         invalid('enrollment_class_invalid');
       }
-      const data:EnrollmentClassConfig={...validateEnrollmentClass(config,!!snapshot&&body.state==='draft'),
-        ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons}}:{}),
+      const data:EnrollmentClassConfig={...validateEnrollmentClass(config,isDraft),
+        ...(isDraft&&Object.keys(scheduleReview).length?{scheduleReview}:{}),
+        ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons,
+          ...(weeklySchedule.startByDay!==undefined?{startByDay:weeklySchedule.startByDay}:{})}}:{}),
         ...(config.templateId?{templateId:config.templateId,templateRevision:config.templateRevision,teacherType:config.teacherType,courseName:config.courseName}:{})};
       const holidayDates=raw.holidayDates===undefined?undefined:[...new Set<string>(raw.holidayDates)].sort();
       const breakDatesChanged=holidayDates!==undefined&&!isDeepStrictEqual(holidayDates,current?.data.holidayDates??[]);

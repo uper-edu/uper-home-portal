@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentOpeningNotice, enrollmentScheduleDefaults, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentOpeningNotice, enrollmentScheduleDefaults, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
 
 const sample = {
@@ -162,4 +162,32 @@ test('first session seeds only blank recurring fields and keeps manual choices',
     assert.ok(enrollmentScheduleErrors({...next,weeklySchedule:{...next.weeklySchedule,days:[7]}},lang).days);
     assert.ok(enrollmentScheduleErrors({...next,weeklySchedule:{...next.weeklySchedule,start:'23:30',lessons:2}},lang).start);
   }
+});
+
+test('drafts retain unresolved weekly schedules and conflicts while published classes require a matching plan', () => {
+  for (const weeklySchedule of [
+    {days:[],start:'19:00',lessons:2},
+    {days:[6,7],start:'',lessons:2},
+    {days:[5,6],start:'19:00',lessons:2},
+    {days:[6,7],start:'17:00',lessons:2},
+  ]) {
+    const config={...sample,weeklySchedule,schedule:''};
+    assert.equal(validateEnrollmentClass(config,true).schedule,'');
+    assert.throws(()=>validateEnrollmentClass({...config,schedule:sample.schedule}),/enrollment_class_(invalid|timeslot_mismatch|schedule_mismatch)/);
+  }
+  assert.throws(()=>validateEnrollmentClass({...sample,weeklySchedule:{days:[8],start:'19:00',lessons:2}},true),/enrollment_class_invalid/);
+});
+
+test('mixed schedules keep the actual weekday times and validate the first session against its own day', () => {
+  const plan={days:[5,6],start:'',startByDay:{5:'19:00',6:'15:00'},lessons:2};
+  const config={...sample,period:'mixed',firstLesson:'2026-12-18T19:00',enrollmentCloses:'2026-12-18T00:00',
+    weeklySchedule:plan};
+  assert.equal(validateEnrollmentClass(config).period,'mixed');
+  assert.throws(()=>validateEnrollmentClass({...config,firstLesson:'2026-12-18T15:00'}),/enrollment_class_schedule_mismatch/);
+  assert.throws(()=>validateEnrollmentClass({...config,period:'weekday-evening'}),/enrollment_class_timeslot_mismatch/);
+  assert.throws(()=>validateEnrollmentClass({...config,weeklySchedule:{...plan,startByDay:{5:'19:00'}}}),/enrollment_class_invalid/);
+  assert.equal(previewEnrollmentClassSchedule(config,['2026-12-19'])?.skippedDates[0],'2026-12-19');
+  assert.equal(enrollmentWeeklyScheduleText(plan,45,'zh'),'每周五 19:00–20:30；周六 15:00–16:30 WIB');
+  assert.equal(enrollmentWeeklyScheduleText(plan,45,'en'),'Fri 19:00–20:30 / Sat 15:00–16:30 WIB');
+  assert.equal(enrollmentWeeklyScheduleText(plan,45,'id'),'Jum 19:00–20:30 / Sab 15:00–16:30 WIB');
 });

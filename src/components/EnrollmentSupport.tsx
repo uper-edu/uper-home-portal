@@ -74,6 +74,7 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,pe
   const whatsapp=new URL(socialProfiles.whatsapp.url);
   if(appointment&&appointmentCourse) {
     const preferredTime=period==='weekend' ? t(['周末','weekends','akhir pekan'])
+      : period==='mixed' ? t(['工作日与周末','weekdays & weekends','hari kerja & akhir pekan'])
       : period==='weekday-evening' ? t(['工作日晚间','weekday evenings','malam hari kerja']) : '';
     const message=t([
       `你好，我想咨询 ${appointmentCourse} 的一对一约课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,

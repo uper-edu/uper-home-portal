@@ -42,3 +42,6 @@
 .crm-class-break-summary > div { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .crm-class-break-summary small { color: var(--admin-muted); }
 .crm-class-break-summary small[data-tone=warning] { color: var(--admin-warning); }
+
+[data-admin-form] .crm-class-per-day-choice.admin-field--choice{align-items:center}
+[data-admin-form] .crm-class-per-day-choice.admin-field--choice input[type=checkbox]:not(.admin-switch){align-self:center;width:16px;height:16px;margin:0;accent-color:var(--admin-action)}

@@ -31,6 +31,7 @@ const copy = {
   allPeriods: ['All times', 'Semua waktu', '全部时段'],
   allFormats: ['All class types', 'Semua jenis kelas', '全部班型'],
   weekend: ['Weekend', 'Akhir pekan', '周末'],
+  mixed: ['Weekdays & weekends', 'Hari kerja & akhir pekan', '工作日与周末'],
   'weekday-evening': ['Weekday evenings', 'Malam hari kerja', '工作日晚间'],
   standard: ['Standard class', 'Kelas standar', '标准班'],
   small: ['Small group', 'Kelas kecil', '小班'],
@@ -360,7 +361,7 @@ export default function Enrollment() {
       </div>
       <div className="enrollment-filters">
         <PublicSingleSelect label={t('period')} value={period} onChange={value => filter('period', value)}
-          options={[{ value: '', label: t('allPeriods') }, { value: 'weekday-evening', label: t('weekday-evening') }, { value: 'weekend', label: t('weekend') }]}/>
+          options={[{ value: '', label: t('allPeriods') }, { value: 'weekday-evening', label: t('weekday-evening') }, { value: 'weekend', label: t('weekend') }, { value: 'mixed', label: t('mixed') }]}/>
         <PublicSingleSelect label={t('format')} value={format} onChange={value => filter('format', value)}
           options={[{ value: '', label: t('allFormats') }, { value: 'standard', label: t('standard') }, { value: 'small', label: t('small') }, { value: 'one-on-one', label: t('one-on-one') }]}/>
       </div>

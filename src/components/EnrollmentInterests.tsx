@@ -12,6 +12,7 @@ export type Interests = { waitlist:WaitlistItem[]; demands:DemandItem[] };
 const words:Record<string,Copy> = {
   'weekday-day':['工作日白天','Weekday daytime','Siang hari kerja'],
   'weekday-evening':['工作日晚间','Weekday evening','Malam hari kerja'],
+  mixed:['工作日与周末','Weekdays & weekends','Hari kerja & akhir pekan'],
   weekend:['周末','Weekend','Akhir pekan'],
   standard:['标准班','Standard class','Kelas standar'],
   small:['小班','Small group','Kelompok kecil'],
