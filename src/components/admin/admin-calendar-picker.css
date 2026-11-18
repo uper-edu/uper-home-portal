@@ -1,0 +1,95 @@
+.admin-calendar-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  font: inherit;
+  cursor: pointer;
+}
+.admin-calendar-trigger:disabled { opacity: .55; cursor: default; }
+.admin-calendar-trigger[aria-invalid=true] { border-color: var(--admin-danger-border); }
+.admin-calendar-trigger:hover:not(:disabled) { background: var(--admin-selected); }
+.admin-calendar-trigger:focus-visible,
+.admin-calendar-popup td button:focus-visible { outline: 2px solid var(--admin-focus); outline-offset: 1px; }
+.admin-calendar-popup {
+  position: fixed;
+  inset: 8px auto auto 8px;
+  box-sizing: border-box;
+  width: min(320px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 15%);
+}
+.admin-calendar-month,
+.admin-calendar-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.admin-calendar-popup table { width: 100%; table-layout: fixed; text-align: center; border-spacing: 2px; }
+.admin-calendar-popup th { font-size: 12px; font-weight: 500; color: var(--admin-text-muted, var(--admin-text)); }
+.admin-calendar-popup td { padding: 0; }
+.admin-calendar-popup td button {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 36px;
+  color: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+.admin-calendar-popup td button[data-adjacent] { color: var(--admin-muted); }
+.admin-calendar-popup td[aria-selected=true] button {
+  color: var(--admin-action);
+  background: var(--admin-selected);
+  border-color: var(--admin-action);
+}
+.admin-calendar-popup td button:hover { background: var(--admin-selected); }
+.admin-calendar-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--admin-border); }
+.admin-calendar-footer-summary { display: grid; gap: 2px; }
+.admin-calendar-footer [role=status] { font-size: 13px; color: var(--admin-muted); }
+.admin-schedule-date-time { display: grid; grid-template-columns: minmax(0, 1fr) minmax(85px, 1fr); gap: 8px; }
+.admin-schedule-date-time > * { min-width: 0; width: 100%; }
+.admin-calendar-date-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.admin-calendar-date-list li { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid var(--admin-border); border-radius: 8px; }
+.admin-calendar-date-list .admin-compact-action { width: 28px; height: 28px; }
+.admin-calendar-popup [data-mark=info] { --calendar-mark:var(--admin-info); --calendar-mark-bg:var(--admin-info-bg); }
+.admin-calendar-popup [data-mark=warning] { --calendar-mark:var(--admin-warning); --calendar-mark-bg:var(--admin-warning-bg); }
+.admin-calendar-popup [data-mark=success] { --calendar-mark:var(--admin-success); --calendar-mark-bg:var(--admin-success-bg); }
+.admin-calendar-popup td button { position: relative; padding: 0; }
+.admin-calendar-popup td button[data-mark] {
+  color: var(--calendar-mark);
+  background: var(--calendar-mark-bg);
+}
+.admin-calendar-popup td[aria-selected=true] button[data-mark] {
+  border-color: var(--calendar-mark);
+}
+.admin-calendar-mark,
+.admin-calendar-check { position: absolute; right: 2px; }
+.admin-calendar-mark { bottom: 2px; color: var(--calendar-mark); }
+.admin-calendar-check { top: 2px; }
+.admin-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 4px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 12px;
+}
+.admin-calendar-legend li { display: inline-flex; align-items: center; gap: 4px; color: var(--calendar-mark); }
+.admin-calendar-preview { font-size: 12px; color: var(--admin-muted); }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentOpeningNotice, enrollmentScheduleDefaults, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
@@ -9,6 +10,30 @@ const sample = {
   price: 575000, standardPrice: null, learningOutcomes: 'Introduction and greetings',
   material: 'Sample materials', resources: 'Sample practice', teacher: 'Sample teacher',
 };
+
+test('class break preview keeps the period total and uses later sessions on the same weekly schedule',()=>{
+  const config={...sample,firstLesson:'2026-12-10T20:00',sessions:5,weeklySchedule:{days:[2,4],start:'20:00',lessons:2}};
+  const preview=previewEnrollmentClassSchedule(config,['2026-12-10','2026-12-15','2026-12-16','2027-01-05']);
+  assert.deepEqual(preview?.originalDates,['2026-12-10','2026-12-15','2026-12-17']);
+  assert.deepEqual(preview?.skippedDates,['2026-12-10','2026-12-15']);
+  assert.deepEqual(preview?.unneededDates,['2026-12-16','2027-01-05']);
+  assert.deepEqual(preview?.makeupDates,['2026-12-22','2026-12-24']);
+  assert.deepEqual(preview?.meetings.map(({periods})=>periods),[2,2,1]);
+  assert.equal(preview?.first,'2026-12-17');
+  assert.equal(preview?.end,'2026-12-24');
+  assert.equal(config.firstLesson,'2026-12-10T20:00');
+  assert.equal(config.enrollmentCloses,sample.enrollmentCloses);
+});
+
+test('class break preview skips a selected date in the extended schedule across a new year',()=>{
+  const config={...sample,firstLesson:'2026-12-31T20:00',sessions:2,weeklySchedule:{days:[2,4],start:'20:00',lessons:1}};
+  const dates=['2027-01-05','2027-01-07'];
+  const preview=previewEnrollmentClassSchedule(config,dates);
+  assert.deepEqual(preview?.skippedDates,dates);
+  assert.deepEqual(preview?.makeupDates,['2027-01-12']);
+  assert.equal(preview?.end,'2027-01-12');
+  assert.equal(previewEnrollmentClassSchedule({...config,firstLesson:'2027-01-01T20:00'},dates),null);
+});
 
 test('the first class uses WIB with an explicit cutoff and decision time', () => {
   const config = validateEnrollmentClass(sample);

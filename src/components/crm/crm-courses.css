@@ -31,3 +31,14 @@
 .crm-learner-preview{display:grid;justify-items:center;gap:12px}
 .crm-learner-preview button[aria-pressed="true"]{border-color:var(--admin-action);color:var(--admin-action)}
 .crm-learner-preview iframe{width:min(100%,390px);height:min(660px,62dvh);border:0;outline:1px solid var(--admin-border);border-radius:12px;background:white}
+
+.crm-class-break-summary {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+}
+.crm-class-break-summary > div { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.crm-class-break-summary small { color: var(--admin-muted); }
+.crm-class-break-summary small[data-tone=warning] { color: var(--admin-warning); }

@@ -100,8 +100,13 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       const data:EnrollmentClassConfig={...validateEnrollmentClass(config,!!snapshot&&body.state==='draft'),
         ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons}}:{}),
         ...(config.templateId?{templateId:config.templateId,templateRevision:config.templateRevision,teacherType:config.teacherType,courseName:config.courseName}:{})};
-      if(raw.holidayDates!==undefined) data.holidayDates=[...new Set<string>(raw.holidayDates)].sort();
+      const holidayDates=raw.holidayDates===undefined?undefined:[...new Set<string>(raw.holidayDates)].sort();
+      if(isPublished&&holidayDates!==undefined&&
+        !isDeepStrictEqual(holidayDates,current.data.holidayDates??[])) invalid('enrollment_class_break_preview_only',409);
+      if(!isPublished&&holidayDates!==undefined) data.holidayDates=holidayDates;
       else if(current?.data.holidayDates!==undefined) data.holidayDates=current.data.holidayDates;
+      if(!isPublished&&body.state==='published'&&data.holidayDates?.includes(data.firstLesson.slice(0,10)))
+        invalid('enrollment_class_first_session_on_break',409);
 
       // Ignore client-supplied numbers. Drafts never consume a number.
       if(current?.data.batchNumber)data.batchNumber=current.data.batchNumber;
@@ -123,9 +128,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       }
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)",
         [actor.id, { classId: body.id, state: body.state, revision }]);
-      const onlyHolidayDates = isPublished && raw.holidayDates !== undefined &&
-        isDeepStrictEqual({...current.data,holidayDates:undefined},{...data,holidayDates:undefined});
-      if (body.state === 'published' && !onlyHolidayDates && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
+      if (body.state === 'published' && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
       return { classId: body.id, revision };
     }));
     r.json(result);
