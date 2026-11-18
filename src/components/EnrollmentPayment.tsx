@@ -103,7 +103,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   return <>
     <div className="enrollment-payment-summary">
       <h2>{title || status}</h2>
-      {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('计划首课 '+start,'Planned first session '+start,'Pertemuan pertama direncanakan '+start))].filter(Boolean).join(' · ')}</p>}
+      {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('首课 '+start,'First session '+start,'Pertemuan pertama '+start))].filter(Boolean).join(' · ')}</p>}
       {cohort?.schedule&&<p>{cohort.schedule}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={now} language={language}/>}
       {course && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}

@@ -41,7 +41,7 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
   const openingDate = courseDay && (opened
     ? t([courseDay+'开课','Starts '+courseDay,'Mulai '+courseDay])
     : opened===false && !cancelled
-      ? t(['计划首课 '+courseDay,'Planned first session '+courseDay,'Pertemuan pertama direncanakan '+courseDay])
+      ? t(['首课 '+courseDay,'First session '+courseDay,'Pertemuan pertama '+courseDay])
       : courseDay);
   const title = enrollmentClassTitle({...course,...classInfo},language);
   const back = t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya']);

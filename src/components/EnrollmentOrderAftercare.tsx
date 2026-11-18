@@ -92,7 +92,7 @@ export function EnrollmentOrderAftercare({
     const day = Number.isFinite(date.valueOf()) ? dateFormat.format(date) : '';
     const format = value.format ?? fallback?.format;
     const dayLabel = day && t(expected
-      ? ['计划首课 '+day,'Planned first session '+day,'Pertemuan pertama direncanakan '+day] : [day+'开课','Starts '+day,'Mulai '+day]);
+      ? ['首课 '+day,'First session '+day,'Pertemuan pertama '+day] : [day+'开课','Starts '+day,'Mulai '+day]);
     return [value.level ?? fallback?.level,format && interestOption(language,format),dayLabel].filter(Boolean).join(' · ');
   }
 

@@ -14,7 +14,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
  const date=Number.isFinite(dateValue.valueOf())?new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[language],{
    month:'long',day:'numeric',timeZone:'Asia/Jakarta',
  }).format(dateValue).replaceAll(' ','\u00a0'):'';
- const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('计划首课 '+date,'Planned first session '+date,'Pertemuan pertama direncanakan '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
+ const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('首课 '+date,'First session '+date,'Pertemuan pertama '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
  const size=row.format==='standard'?'10–15':'4–6';
  const title=enrollmentClassTitle(row,language);
  const titleContent=<span className="enrollment-card-title">{title.split(' · ').map((part,index)=><span className="enrollment-title-part" key={index}>{(index?' · ':'')+part}</span>)}</span>;
