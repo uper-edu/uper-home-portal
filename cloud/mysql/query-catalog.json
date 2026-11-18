@@ -60,6 +60,12 @@
       "server/portal/localAuth.ts"
     ]
   },
+  "DELETE FROM enrollment_classes WHERE id=:p1": {
+    "sql": "DELETE FROM enrollment_classes WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
   "DELETE FROM enrollment_email_challenges WHERE email=:p1": {
     "sql": "DELETE FROM enrollment_email_challenges WHERE email=:p1",
     "sources": [
@@ -822,6 +828,12 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)",
     "sources": [
       "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.delete',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.delete',:p2)",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)": {
@@ -2099,14 +2111,14 @@
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened\n        FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id ORDER BY e.first_lesson_at,e.id": {
-    "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened\n        FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id ORDER BY e.first_lesson_at,e.id",
+  "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
     ]
   },
-  "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id": {
-    "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id",
+  "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n    (e.state='draft' AND g.class_id IS NULL AND JSON_EXTRACT(e.data,'$.batchNumber') IS NULL\n      AND NOT EXISTS (SELECT 1 FROM enrollment_assisted_applications a WHERE a.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i WHERE i.source_class_id=e.id OR i.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfers x WHERE x.source_class_id=e.id OR x.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_refund_cases f WHERE f.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_interest_events n WHERE n.class_id=e.id)) AS canDelete\n    FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n    WHERE (:p1 IS NULL OR e.id=:p1) ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n    (e.state='draft' AND g.class_id IS NULL AND JSON_EXTRACT(e.data,'$.batchNumber') IS NULL\n      AND NOT EXISTS (SELECT 1 FROM enrollment_assisted_applications a WHERE a.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i WHERE i.source_class_id=e.id OR i.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfers x WHERE x.source_class_id=e.id OR x.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_refund_cases f WHERE f.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_interest_events n WHERE n.class_id=e.id)) AS canDelete\n    FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n    WHERE (:p1 IS NULL OR e.id=:p1) ORDER BY e.first_lesson_at,e.id",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
     ]
@@ -3463,6 +3475,12 @@
     "sources": [
       "server/portal/assessments.ts",
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1": {

@@ -1,4 +1,5 @@
 import {AdminSecondaryActions} from '../admin/AdminRecordActions';
+import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {CrmEnrollmentTemplates} from './CrmEnrollmentTemplates';
 import {enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type EnrollmentTemplate} from '../../utils/enrollmentTemplates';
 import {EnrollmentClassPreview} from '../EnrollmentClassPreview';
@@ -69,6 +70,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
   const [closing, setClosing] = useState<{id:string;requestId:string}>();
+  const [deleting,setDeleting]=useState<{row:EnrollmentClassAdmin;requestId:string}>();
+  const [deleteUnknown,setDeleteUnknown]=useState(false);
+  const [deleteError,setDeleteError]=useState('');
+  const [deleted,setDeleted]=useState(false);
+  const deletingInFlight=useRef(false);
   const [pending, setPending] = useState<string>();
   const [checkState,setCheckState]=useState<'missing'|'error'>();
   const checkMessage=checkState==='missing'
@@ -103,6 +109,38 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     }
   }
   const refresh=()=>void load().catch(()=>{});
+  async function deleteClass() {
+    if(!deleting||deletingInFlight.current)return;
+    const {row,requestId}=deleting;
+    deletingInFlight.current=true;
+    setBusy(true);
+    setDeleteError('');
+    try{
+      const response=deleteUnknown
+        ? await fetch(endpoint+'/results/'+encodeURIComponent(requestId),{cache:'no-store'})
+        : await fetch(endpoint+'/delete',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({id:row.id,revision:row.revision,requestId})});
+      if(response.status>=500||deleteUnknown&&!response.ok)throw Error();
+      if(!response.ok){
+        setDeleteError(t(['This draft can no longer be deleted. Refresh to check its current state.',
+          'Draf ini tidak dapat dihapus. Segarkan untuk melihat status terkini.','当前草稿无法删除，请刷新核对最新状态。']));
+        return;
+      }
+      const result=await response.json();
+      if(result.classId!==row.id||result.operationKind!=='enrollment.class.delete')throw Error();
+      setCatalog(current=>current&&{...current,classes:current.classes.filter(item=>item.id!==row.id)});
+      setDeleting(undefined);
+      setDeleted(true);
+      refresh();
+    }catch{
+      setDeleteUnknown(true);
+      setDeleteError(t(['Deletion is not confirmed yet. Check the result before retrying.',
+        'Penghapusan belum terkonfirmasi. Periksa hasil sebelum mencoba lagi.','删除结果尚未确认，请先查询结果。']));
+    }finally{
+      deletingInFlight.current=false;
+      setBusy(false);
+    }
+  }
   useEffect(()=>{refresh();return ()=>readRequest.current?.abort();},[]);
   useEffect(()=>{onDraftChange(dirty||busy||!!pending||quoteDirty);},[onDraftChange,dirty,busy,pending,quoteDirty]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
@@ -320,6 +358,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     </header>
     {!!error && !draft && !insertion && <p role="alert">{error}</p>}
     {saved && <CrmSaveFeedback state="saved" lang={lang}/>}
+    {deleted && <CrmSaveFeedback state="saved" lang={lang}>{t(['Class draft deleted.','Draf kelas dihapus.','班次草稿已删除。'])}</CrmSaveFeedback>}
     {!target&&catalog&&<div className="crm-class-config-filters">
       <AdminSearchField label={t(['Search classes by ID, level or schedule','Cari kelas berdasarkan ID, level atau jadwal','搜索班次 ID、级别或课表'])}
         placeholder={t(['Class ID, level or schedule','ID kelas, level atau jadwal','班次 ID、级别或课表'])}
@@ -342,6 +381,10 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
           ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</AdminStatus></td>
         <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
           {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</AdminRowAction>}
+          {row.canDelete&&<AdminRowAction disabled={readState!=='ready'} onClick={()=>{
+            setDeleted(false);setDeleteError('');setDeleteUnknown(false);
+            setDeleting({row,requestId:crypto.randomUUID()});
+          }}>{t(['Delete','Hapus','删除'])}</AdminRowAction>}
           {row.canInsert&&<AdminRowAction disabled={readState==='error'} onClick={()=>{
             setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
           }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</AdminRowAction>}
@@ -497,6 +540,15 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     {discard && <CrmDiscardDialog lang={lang} isLight={isLight} onKeep={() => setDiscard(false)} onDiscard={() => {
       setDiscard(false); setDirty(false); setDraft(undefined); setInsertion(undefined); setError('');
     }}/>}
+    {deleting&&<AdminConfirmation light={isLight} danger busy={busy}
+      title={t(['Delete class draft?','Hapus draf kelas?','删除班次草稿？'])}
+      description={enrollmentClassTitle(deleting.row,lang)+' · '+t(['This action cannot be undone.','Tindakan ini tidak dapat dibatalkan.','删除后无法恢复。'])}
+      cancelLabel={deleteUnknown?t(['Close','Tutup','关闭']):t(['Cancel','Batal','取消'])}
+      confirmLabel={deleteUnknown?t(['Check result','Periksa hasil','查询结果']):t(['Delete','Hapus','删除'])}
+      confirmDisabled={!deleteUnknown&&!!deleteError}
+      onCancel={()=>{if(!deletingInFlight.current)setDeleting(undefined);}} onConfirm={()=>void deleteClass()}>
+      {deleteError&&<p role="alert">{deleteError}</p>}
+    </AdminConfirmation>}
     {closing&&<CrmDiscardDialog lang={lang} isLight={isLight}
       title={t(['Confirm the class will not open?','Konfirmasi kelas tidak dibuka?','确认这个班不开班？'])}
       description={t(['New applications and transfers stop. Existing payment records remain available.','Pendaftaran dan transfer baru dihentikan. Riwayat pembayaran tetap tersedia.','关闭新报名和转账入口，保留已有付款记录。'])}

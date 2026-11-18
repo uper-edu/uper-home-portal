@@ -12,6 +12,21 @@ import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/util
 
 const path = '/api/crm/enrollment/classes';
 const kind = 'enrollment.class.save';
+const deleteKind = 'enrollment.class.delete';
+
+async function readClasses(c: Parameters<Parameters<typeof tx>[0]>[0], id: string | null) {
+  return (await c.query(`SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
+    (e.state='draft' AND g.class_id IS NULL AND JSON_EXTRACT(e.data,'$.batchNumber') IS NULL
+      AND NOT EXISTS (SELECT 1 FROM enrollment_assisted_applications a WHERE a.class_id=e.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i WHERE i.source_class_id=e.id OR i.target_class_id=e.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_transfers x WHERE x.source_class_id=e.id OR x.target_class_id=e.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_refund_cases f WHERE f.class_id=e.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_interest_events n WHERE n.class_id=e.id)) AS canDelete
+    FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
+    WHERE (:p1 IS NULL OR e.id=:p1) ORDER BY e.first_lesson_at,e.id`, [id])).rows;
+}
 
 function record(row: { id: string; revision: number; state: EnrollmentClassAdmin['state']; data: EnrollmentClassConfig }): EnrollmentClassAdmin {
   return { ...row.data, id: row.id, revision: row.revision, state: row.state };
@@ -25,9 +40,8 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
   app.get(path, wrap(async (q, r) => {
     const actor = await staff(q, 'crm.operations.manage');
     const data = await tx(async c => {
-      const classes = (await c.query(`SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened
-        FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id ORDER BY e.first_lesson_at,e.id`)).rows
-        .map((row:any)=>({...record(row),opened:Number(row.opened)===1}));
+      const classes = (await readClasses(c,null))
+        .map(row=>({...record(row),opened:Number(row.opened)===1,canDelete:Number(row.canDelete)===1}));
       const courses = (await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows.map((row: any) => ({
         id: row.id, name: row.value.name, active: row.value.active === true, sessions:row.value.sessions, teaching:row.value.teaching,
       }));
@@ -109,11 +123,33 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     }));
     r.json(result);
   }));
+  app.post(path + '/delete', wrap(async (q, r) => {
+    const actor = await staff(q, 'crm.operations.manage');
+    if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);
+    const body = q.body;
+    const {id,revision} = body ?? {};
+    if (typeof id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(id) ||
+      !Number.isSafeInteger(revision) || revision < 1) invalid('enrollment_class_invalid');
+    const result = await tx(c => operation(c, actor.id, body, {
+      leadId:'class:'+id, kind:deleteKind, authorize:()=>staff(q,'crm.operations.manage'),
+    }, async () => {
+      // Publication and enrollment writers must acquire this same class row lock.
+      const current = (await c.query('SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE',[id])).rows[0];
+      if (current?.revision !== revision) invalid('enrollment_class_conflict',409);
+      const [row] = await readClasses(c,id);
+      if (Number(row?.canDelete) !== 1) invalid('enrollment_class_cannot_delete',409);
+      await c.query('DELETE FROM enrollment_classes WHERE id=:p1',[id]);
+      await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.delete',:p2)",
+        [actor.id,{classId:id,revision}]);
+      return {classId:id};
+    }),{isolation:'READ COMMITTED'});
+    r.json(result);
+  }));
   app.get(path + '/results/:requestId', wrap(async (q, r) => {
     const actor = await staff(q, 'crm.operations.manage');
     const result = await tx(async c => (await c.query('SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2',
       [actor.id, q.params.requestId])).rows[0]?.result);
-    if (result?.operationKind !== kind && result?.operationKind !== 'enrollment.order.insert') invalid('enrollment_result_missing', 404);
+    if (![kind,deleteKind,'enrollment.order.insert'].includes(result?.operationKind)) invalid('enrollment_result_missing', 404);
     r.set('Cache-Control', 'no-store').json(result);
   }));
   app.get('/api/enrollment/classes', wrap(async (_q, r) => {
