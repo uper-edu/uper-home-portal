@@ -2,7 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { interestText, type InterestLanguage } from './EnrollmentInterests';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
-import { enrollmentInstant } from '../utils/enrollmentCatalog';
+import { enrollmentInstant,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 
 type Copy = readonly [string,string,string];
 const topics = {
@@ -64,20 +64,21 @@ export function EnrollmentJoiningNote({firstLesson,now,language}:{
   ])}</Link></p>;
 }
 
-export function EnrollmentSupport({topic,language,level,period,catalogPath}:{
-  topic:string;language:InterestLanguage;level?:string;period?:string;catalogPath?:string;
+export function EnrollmentSupport({topic,language,level,appointment:selection,period,catalogPath}:{
+  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;catalogPath?:string;
 }) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
   const appointment=topic==='one-on-one';
+  const appointmentCourse=selection?[selection.course,enrollmentTeacherLabel(selection.teacherType,language)].join(' · '):level?'HSK '+level:'';
   const whatsapp=new URL(socialProfiles.whatsapp.url);
-  if(appointment&&level) {
+  if(appointment&&appointmentCourse) {
     const preferredTime=period==='weekend' ? t(['周末','weekends','akhir pekan'])
       : period==='weekday-evening' ? t(['工作日晚间','weekday evenings','malam hari kerja']) : '';
     const message=t([
-      `你好，我想咨询 HSK ${level} 一对一约课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
-      `Hello, I'd like to schedule HSK ${level} one-to-one lessons.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
-      `Halo, saya ingin menjadwalkan kelas privat HSK ${level}.${preferredTime?' Saya lebih suka '+preferredTime+'.':''}`,
+      `你好，我想咨询 ${appointmentCourse} 的一对一约课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
+      `Hello, I'd like to schedule one-to-one lessons for ${appointmentCourse}.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
+      `Halo, saya ingin menjadwalkan kelas privat untuk ${appointmentCourse}.${preferredTime?' Saya lebih suka '+preferredTime+'.':''}`,
     ]);
     whatsapp.searchParams.set('text',message);
   }
@@ -87,7 +88,7 @@ export function EnrollmentSupport({topic,language,level,period,catalogPath}:{
     {info ? <>
       <h1>{t(info.title)}</h1>
       <article className="enrollment-record">
-        <h2>{appointment&&level?'HSK '+level+' · '+t(['一对一','One-to-one','Kelas privat']):t(['联系说明','How to get help','Cara mendapatkan bantuan'])}</h2>
+        <h2>{appointment&&appointmentCourse?appointmentCourse+' · '+t(['一对一','One-to-one','Kelas privat']):t(['联系说明','How to get help','Cara mendapatkan bantuan'])}</h2>
         <p>{t(info.instructions)}</p>
       </article>
       <div className="enrollment-journey-actions">

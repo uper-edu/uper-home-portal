@@ -1,4 +1,4 @@
-import { enrollmentClassTitle } from '../utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, Minus, Plus } from 'lucide-react';
@@ -182,6 +182,7 @@ export default function Enrollment() {
   catalogParams.delete('view');
   catalogParams.delete('target');
   catalogParams.delete('appointmentLevel');
+  catalogParams.delete('appointment');
   const waitlistId = params.get('waitlist');
   const matchId = params.get('fromDemand');
   const publicParams = new URLSearchParams(catalogParams);
@@ -212,6 +213,7 @@ export default function Enrollment() {
     const query = new URLSearchParams(publicParams);
     query.set('lang', language);
     query.set('appointmentLevel', catalogLevel(item.level));
+    query.set('appointment',item.id);
     return '/enrollment/help/one-on-one?' + query.toString();
   };
   const formatDay = (value: string) => new Intl.DateTimeFormat(locale, {
@@ -239,8 +241,10 @@ export default function Enrollment() {
   if (pathname==='/enrollment/assist') return <EnrollmentAssistance language={language}/>;
   if (topic) {
     const appointmentLevel = params.get('appointmentLevel') ?? requestedLevel;
+    const appointment=topic==='one-on-one'?appointments.find(item=>item.id===params.get('appointment')):undefined;
     return <EnrollmentSupport topic={topic} language={language}
-      level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined} period={period} catalogPath={listPath}/>;
+      level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined}
+      appointment={appointment} period={period} catalogPath={listPath}/>;
   }
 
   if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
@@ -249,15 +253,15 @@ export default function Enrollment() {
     <div className="enrollment-result-body">
       <article className="enrollment-record"><h2>{enrollmentCopy(language,['原班无法如期开课','If the original class won’t open','Jika kelas asal tidak dibuka'])}</h2>
         <p>{enrollmentCopy(language,[
-          '已核实足额到账的学员可以转班、等待合适班次，或联系销售或客服申请原路退款。',
-          'After full payment is verified, you can transfer, wait for another class, or contact sales or support to request a refund to the original payment method.',
-          'Setelah pembayaran lunas diverifikasi, Anda bisa pindah kelas, menunggu kelas lain, atau menghubungi tim penjualan atau layanan pelanggan untuk meminta pengembalian ke metode pembayaran awal.',
+          '班次确认不开班后请勿再转账。已转账仍可提交凭证。核实足额到账后，可转班或等待合适班次。已有核实到账的学员也可联系销售或客服申请原路退款。',
+          'Please stop making payments when the class is cancelled. If you already transferred funds, you can still submit proof. Once full payment is verified, you can transfer to another class or wait for a suitable one. Contact sales or support to request a refund of verified payments to the original payment method.',
+          'Jika kelas dibatalkan, jangan lakukan transfer lagi. Jika sudah mentransfer, Anda masih dapat mengirim bukti. Setelah pembayaran lunas diverifikasi, Anda dapat pindah atau menunggu kelas yang sesuai. Hubungi tim penjualan atau layanan pelanggan untuk meminta pengembalian pembayaran terverifikasi ke metode pembayaran awal.',
         ])}</p></article>
       <article className="enrollment-record"><h2>{enrollmentCopy(language,['学员自行退出','If you decide to withdraw','Jika Anda mengundurkan diri'])}</h2>
         <p>{enrollmentCopy(language,[
-          '由销售或客服按报名前公示的政策核对适用条件和金额。已确认开班时，退款须按特殊情况审核。',
-          'Sales or support checks eligibility and amounts against the policy shown before enrollment. Once a class is confirmed, refunds require special review.',
-          'Tim penjualan atau layanan pelanggan memeriksa syarat dan jumlah sesuai kebijakan sebelum pendaftaran. Setelah kelas dikonfirmasi, pengembalian dana memerlukan peninjauan khusus.',
+          '班次待成班时，可联系销售或客服申请退回已核实的实收。确认开班后，个人原因退出原则上不退款。特殊情况请联系销售或客服申请审核。',
+          'While class opening is pending, contact sales or support to request a refund of verified payments. Once the class is confirmed, personal withdrawals are generally non-refundable. Contact sales or support if you need an exception reviewed.',
+          'Selama pembukaan kelas belum dikonfirmasi, hubungi tim penjualan atau layanan pelanggan untuk meminta pengembalian pembayaran terverifikasi. Setelah kelas dikonfirmasi, pengunduran diri karena alasan pribadi umumnya tidak dapat dikembalikan dananya. Hubungi tim kami untuk peninjauan kasus khusus.',
         ])}</p></article>
     </div>
   </section>;
@@ -314,11 +318,11 @@ export default function Enrollment() {
       : application ? <div className="enrollment-apply-layout">
         {classCard(selected, false)}
         {accepting && <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full={selected.availability==='full'}/>}
+        {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath}>{t('intakePaused')}</Link>}
       </div> : <div className="enrollment-detail-layout">
         <aside className="enrollment-detail-aside">
           {classCard(selected, false)}
           <div className="enrollment-detail-actions">
-        {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath}>{t('intakePaused')}</Link>}
             <Link className="enrollment-quiet" to={detailsPath(selected.id)+'&view=rules'}>{t('rules')}</Link>
             {accepting && <Link className="enrollment-primary" to={detailsPath(selected.id, true)}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>}
           </div>
@@ -368,7 +372,8 @@ export default function Enrollment() {
       {rows?.map(row => classCard(row, true))}
       {privateLessons.map(item=><article key={item.id} className="enrollment-class-card enrollment-appointment-card">
         <h2>{item.level} · {t('one-on-one')}</h2>
-        <p>{item.teacherType==='foreign'?enrollmentCopy(language,['外教','Foreign teacher','Pengajar asing']):enrollmentCopy(language,['本土教师','Local teacher','Pengajar lokal'])} · {t('appointment')}</p>
+        <p>{item.course} · {enrollmentTeacherLabel(item.teacherType,language)}</p>
+        <p>{t('appointment')}</p>
         <div className="enrollment-class-bottom">
           <div className="enrollment-prices">
             <strong>{formatCurrency(item.price,language)}<span className="enrollment-price-unit">{enrollmentCopy(language,['／节',' / period',' / jam pelajaran'])}</span></strong>
