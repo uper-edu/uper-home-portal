@@ -41,6 +41,7 @@ export interface EnrollmentClassAdmin extends EnrollmentClassConfig {
   opened?: boolean;
   canInsert?: boolean;
   canDelete?: boolean;
+  hasOrders?: boolean;
 }
 
 function enrollmentOpeningDayStart(firstLesson: string) {
@@ -53,7 +54,7 @@ export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
-  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'canDelete' | 'holidayDates'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
+  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'canDelete' | 'hasOrders' | 'holidayDates'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
 
 export function validEnrollmentHolidayDate(value: unknown): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&

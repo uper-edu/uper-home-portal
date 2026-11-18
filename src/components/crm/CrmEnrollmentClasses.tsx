@@ -32,13 +32,13 @@ import { enrollmentPost } from '../EnrollmentApplication';
 
 type Copy = readonly [string, string, string];
 
-function EnrollmentHolidayDates({config, published, disabled, lang, t, onChange}:{
-  config:ClassDraftConfig; published:boolean; disabled:boolean; lang:CrmLanguage;
+function EnrollmentHolidayDates({config, previewOnly, disabled, lang, t, onChange}:{
+  config:ClassDraftConfig; previewOnly:boolean; disabled:boolean; lang:CrmLanguage;
   t:(text:Copy)=>string; onChange:(dates:string[])=>void;
 }) {
   const [proposedDates,setProposedDates]=useState<string[]>();
   const dates=proposedDates??config.holidayDates??[];
-  const changeDates=published?setProposedDates:onChange;
+  const changeDates=previewOnly?setProposedDates:onChange;
   const firstDate=config.firstLesson.split('T')[0];
   const plan=previewEnrollmentClassSchedule(config,dates);
   const classDay:AdminCalendarDayMark={tone:'info',label:t(['Class','Kelas','上课日'])};
@@ -54,12 +54,12 @@ function EnrollmentHolidayDates({config, published, disabled, lang, t, onChange}
   };
   const endLabel=t(['Estimated end date','Perkiraan tanggal selesai','预计结课']);
   const label = t(['Class break dates', 'Tanggal libur kelas', '停课日期']);
-  const trigger = t(['Select dates','Pilih tanggal','选择日期']);
+  const trigger = t(['View and select dates','Lihat dan pilih tanggal','查看并选择日期']);
   const count = t([`${dates.length} selected`,`${dates.length} tanggal dipilih`,`已选 ${dates.length} 天`]);
   return <AdminField as="div" data-admin-full-width="">
     <span className="admin-field-label">{label}{dates.length>0&&` · ${count}`}</span>
-    {published&&<small>{t(['Preview only. Saving the class keeps its recorded break dates.',
-      'Hanya pratinjau. Menyimpan kelas mempertahankan tanggal libur yang tercatat.','已发布班次仅预览，保存班次时保留原停课日期。'])}</small>}
+    {previewOnly&&<small>{t(['This class has orders. Break date changes are for preview only.',
+      'Kelas ini memiliki pesanan. Perubahan tanggal libur hanya untuk pratinjau.','此班次已有订单，停课日期变更仅供预览。'])}</small>}
     <AdminCalendarPicker multiple value={dates} onChange={changeDates} label={label} placeholder={trigger}
       lang={lang} anchorDate={validEnrollmentHolidayDate(firstDate)?firstDate:undefined} disabled={disabled}
       dayMarks={marks} legend={[classDay,holiday,makeup]} selectionPreview={selection=>{
@@ -94,6 +94,7 @@ function EnrollmentHolidayDates({config, published, disabled, lang, t, onChange}
 type Catalog = { classes: EnrollmentClassAdmin[]; courses: EnrollmentTeachingCourse[]; templates: EnrollmentTemplate[] };
 type ClassDraftConfig=Omit<EnrollmentClassConfig,'period'>&{period:EnrollmentClassConfig['period']|''};
 type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: ClassDraftConfig;
+  hasOrders?: boolean;
   publishedDates?: Pick<EnrollmentClassConfig,'firstLesson'|'enrollmentCloses'> };
 const classFiltersDefault={search:'',level:'',format:'',period:'',status:'',date:'',teacher:'',sort:'upcoming'};
 const inlineFilterWidth=880;
@@ -232,9 +233,9 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     setError('');
     setDirty(false);
     if (row) {
-      const { id, revision, state, opened, canInsert, ...config } = row;
+      const { id, revision, state, opened, canInsert, hasOrders, ...config } = row;
       const publishedDates=state==='published'?{firstLesson:config.firstLesson,enrollmentCloses:config.enrollmentCloses}:undefined;
-      setDraft({id,revision,state,config,publishedDates});
+      setDraft({id,revision,state,config,hasOrders,publishedDates});
     } else {
       setDraft({ id: crypto.randomUUID(), revision: 0, state: 'draft', config: { ...initial } });
     }
@@ -336,7 +337,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       if (result.status >= 500) throw Error();
       if (!result.ok) {
         const failure=await result.json();
-        setError(failure.error==='enrollment_class_batch_scope_fixed'
+        setError(failure.error==='enrollment_class_break_preview_only'
+          ? t(['An order now exists. Reopen the editor to preview break dates.','Sudah ada pesanan. Buka ulang editor untuk melihat pratinjau tanggal libur.','该班次已有订单，请重新打开编辑器预览停课日期。'])
+          : failure.error==='enrollment_class_first_session_on_break'
+          ? firstSessionOnBreakMessage
+          : failure.error==='enrollment_class_batch_scope_fixed'
           ? t(['The time slot cannot change after publication. Create another class instead.','Waktu kelas tidak dapat diubah setelah diterbitkan. Buat kelas baru.','班次发布后不能更改时段类型，请另建班次。'])
           : failure.error==='enrollment_class_timeslot_mismatch'
           ? timeSlotMessage
@@ -625,7 +630,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
               <AdminField required={!!draft.config.templateId}>{t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])}<input aria-label={t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])} {...hintProps('lessons')} type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/>{hint('lessons')}</AdminField>
               <AdminStaticField fullWidth label={t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
                 value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
-              <EnrollmentHolidayDates key={draft.id} config={draft.config} published={draft.state==='published'} disabled={fieldDisabled} lang={lang} t={t}
+              <EnrollmentHolidayDates key={draft.id} config={draft.config} previewOnly={draft.state==='published'&&draft.hasOrders!==false} disabled={fieldDisabled} lang={lang} t={t}
                 onChange={holidayDates=>{
                   if(holidayDates.join()===draft.config.holidayDates?.join()||(!holidayDates.length&&!draft.config.holidayDates?.length))return;
                   setDirty(true);

@@ -17,6 +17,7 @@ const deleteKind = 'enrollment.class.delete';
 
 async function readClasses(c: Parameters<Parameters<typeof tx>[0]>[0], id: string | null) {
   return (await c.query(`SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
+    EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id) AS hasOrders,
     (e.state='draft' AND g.class_id IS NULL AND JSON_EXTRACT(e.data,'$.batchNumber') IS NULL
       AND NOT EXISTS (SELECT 1 FROM enrollment_assisted_applications a WHERE a.class_id=e.id)
       AND NOT EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id)
@@ -42,7 +43,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     const actor = await staff(q, 'crm.operations.manage');
     const data = await tx(async c => {
       const classes = (await readClasses(c,null))
-        .map(row=>({...record(row),opened:Number(row.opened)===1,canDelete:Number(row.canDelete)===1}));
+        .map(row=>({...record(row),opened:Number(row.opened)===1,canDelete:Number(row.canDelete)===1,hasOrders:Number(row.hasOrders)===1}));
       const courses = (await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows.map((row: any) => ({
         id: row.id, name: row.value.name, active: row.value.active === true, sessions:row.value.sessions, teaching:row.value.teaching,
       }));
@@ -101,11 +102,15 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons}}:{}),
         ...(config.templateId?{templateId:config.templateId,templateRevision:config.templateRevision,teacherType:config.teacherType,courseName:config.courseName}:{})};
       const holidayDates=raw.holidayDates===undefined?undefined:[...new Set<string>(raw.holidayDates)].sort();
-      if(isPublished&&holidayDates!==undefined&&
-        !isDeepStrictEqual(holidayDates,current.data.holidayDates??[])) invalid('enrollment_class_break_preview_only',409);
-      if(!isPublished&&holidayDates!==undefined) data.holidayDates=holidayDates;
+      const breakDatesChanged=holidayDates!==undefined&&!isDeepStrictEqual(holidayDates,current?.data.holidayDates??[]);
+      if(isPublished&&breakDatesChanged){
+        // Order creation takes the same class row lock before reserving a seat.
+        const orders=await c.query('SELECT id FROM enrollment_orders WHERE class_id=:p1 LIMIT 1 FOR UPDATE',[body.id]);
+        if(orders.rows.length)invalid('enrollment_class_break_preview_only',409);
+      }
+      if(holidayDates!==undefined&&(!isPublished||breakDatesChanged)) data.holidayDates=holidayDates;
       else if(current?.data.holidayDates!==undefined) data.holidayDates=current.data.holidayDates;
-      if(!isPublished&&body.state==='published'&&data.holidayDates?.includes(data.firstLesson.slice(0,10)))
+      if(body.state==='published'&&data.holidayDates?.includes(data.firstLesson.slice(0,10)))
         invalid('enrollment_class_first_session_on_break',409);
 
       // Ignore client-supplied numbers. Drafts never consume a number.
@@ -128,7 +133,9 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       }
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)",
         [actor.id, { classId: body.id, state: body.state, revision }]);
-      if (body.state === 'published' && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
+      const breakDatesOnly=isPublished&&breakDatesChanged&&data.firstLesson===current.data.firstLesson&&
+        data.enrollmentCloses===current.data.enrollmentCloses;
+      if (body.state === 'published' && !breakDatesOnly && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
       return { classId: body.id, revision };
     }));
     r.json(result);
