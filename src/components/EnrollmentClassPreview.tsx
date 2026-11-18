@@ -1,24 +1,23 @@
 import {Link} from 'react-router-dom';
 import {ChevronRight} from 'lucide-react';
 import {formatCurrency} from '../utils/currency';
-import {enrollmentClassTitle,enrollmentTeacherLabel,enrollmentOpeningNotice,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentClassTitle,enrollmentTeacherLabel,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import {enrollmentCopy} from './EnrollmentApplication';
 import '../pages/enrollment.css';
 
 type Language='zh'|'en'|'id';
-export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,showDetails=false,intakePaused=false}:{
-  row:PublicEnrollmentClass;language:Language;clock?:number;titleLink?:string;actionLink?:string;showDetails?:boolean;intakePaused?:boolean;
+export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDetails=false,intakePaused=false}:{
+  row:PublicEnrollmentClass;language:Language;titleLink?:string;actionLink?:string;showDetails?:boolean;intakePaused?:boolean;
 }){
  const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
  const dateValue=new Date(row.firstLesson+':00+07:00');
  const date=Number.isFinite(dateValue.valueOf())?new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[language],{
    month:'long',day:'numeric',timeZone:'Asia/Jakarta',
  }).format(dateValue).replaceAll(' ','\u00a0'):'';
- const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('预计 '+date+'开课','Expected '+date,'Perkiraan '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
+ const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('计划首课 '+date,'Planned first session '+date,'Pertemuan pertama direncanakan '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
  const size=row.format==='standard'?'10–15':'4–6';
  const title=enrollmentClassTitle(row,language);
  const titleContent=<span className="enrollment-card-title">{title.split(' · ').map((part,index)=><span className="enrollment-title-part" key={index}>{(index?' · ':'')+part}</span>)}</span>;
- const openingNotice=row.opened?'':enrollmentOpeningNotice(row.decisionAt,language,clock);
  const availability=!intakePaused&&row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),
  })[row.availability];
@@ -30,7 +29,7 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
    <div className="enrollment-class-status">
      <span className="enrollment-status" data-state={!intakePaused&&row.availability==='full'?'full':row.opened?'confirmed':'pending'}>
        {!row.price||intakePaused?t('暂不可申请','Applications unavailable','Pendaftaran belum tersedia'):row.opened?t('已成班','Confirmed','Dikonfirmasi'):t('报名中','Open for applications','Pendaftaran dibuka')}{availability&&' · '+availability}
-     </span>{openingNotice&&<small>{openingNotice}</small>}
+     </span>
    </div>
    <div className="enrollment-class-bottom">
      <div className="enrollment-prices">{row.price>0?<><strong>{formatCurrency(row.price,language)}</strong>

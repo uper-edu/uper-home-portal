@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentOpeningNotice, enrollmentScheduleDefaults, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
-  firstLesson: '2026-12-19T15:00', decisionAt: '2026-12-17T17:00', enrollmentCloses: '2026-12-19T00:00',
+  firstLesson: '2026-12-19T15:00', enrollmentCloses: '2026-12-19T00:00',
   schedule: 'Saturday and Sunday, 15:00–15:45 WIB', sessions: 23, minutes: 45, minimumPaid: 13, capacity: 20,
   price: 575000, standardPrice: null, learningOutcomes: 'Introduction and greetings',
   material: 'Sample materials', resources: 'Sample practice', teacher: 'Sample teacher',
@@ -42,7 +42,7 @@ test('the first class uses WIB with an explicit cutoff and decision time', () =>
   assert.equal(validateEnrollmentClass({ ...sample, enrollmentCloses: '2026-12-18T10:00' }).enrollmentCloses, '2026-12-18T10:00');
   for (const change of [
     { firstLesson: '2026-02-30T15:00' }, { enrollmentCloses: '2026-12-20T00:00' }, { enrollmentCloses: '2026-12-19T00:01' },
-    { decisionAt: '2026-12-20T00:00' }, { minimumPaid: 21 }, { price: 575000.5 }, { format: 'one-on-one' },
+    { minimumPaid: 21 }, { price: 575000.5 }, { format: 'one-on-one' },
     { standardPrice: 575000 },
   ]) {
     assert.throws(() => validateEnrollmentClass({ ...sample, ...change }), /enrollment_class_invalid/);
@@ -80,25 +80,22 @@ test('staff insertion starts on the first class day in WIB after self-service cl
   assert.equal(isEnrollmentInsertionWindow({ firstLesson: '2026-02-30T15:00' }, midnight), false);
 });
 
-test('class opening notice changes at the expected WIB time without inferring a class outcome',()=>{
-  const decisionAt='2026-12-17T17:00';
-  assert.deepEqual(enrollmentScheduleDefaults('2027-01-01T15:00'),{enrollmentCloses:'2027-01-01T00:00',decisionAt:'2026-12-30T17:00'});
-  const exact=Date.parse('2026-12-17T10:00:00Z');
-  assert.match(enrollmentOpeningNotice(decisionAt,'zh',exact-1),/预计.*通知开班结果/);
-  assert.equal(enrollmentOpeningNotice(decisionAt,'zh',exact),'开班结果待确认');
-  assert.equal(enrollmentOpeningNotice(decisionAt,'en',exact+1),'Class opening still to be confirmed');
-  assert.equal(enrollmentOpeningNotice(decisionAt,'id',exact+1),'Pembukaan kelas masih menunggu konfirmasi');
-  assert.equal(enrollmentOpeningNotice(undefined,'zh',exact),'');
+test('signup cutoff defaults to midnight WIB; the old notice date does not affect class validation or public output',()=>{
+  assert.deepEqual(enrollmentScheduleDefaults('2027-01-01T15:00'),{enrollmentCloses:'2027-01-01T00:00'});
+  assert.deepEqual(validateEnrollmentClass({...sample,decisionAt:'legacy-invalid'}),validateEnrollmentClass(sample));
+  const publicClass=publicEnrollmentClass({...validateEnrollmentClass(sample),decisionAt:'2026-12-17T17:00',
+    id:'legacy',revision:1,state:'published'});
+  assert.ok(!('decisionAt' in publicClass));
 });
 
 test('first session weekday and time must match the recurring schedule in WIB',()=>{
   const weeklySchedule={days:[6,7],start:'15:00',lessons:2};
   assert.equal(validateEnrollmentClass({...sample,weeklySchedule}).firstLesson,'2026-12-19T15:00');
   for(const firstLesson of ['2026-12-19T14:00','2026-12-16T15:00','2026-12-16T14:00']){
-    assert.throws(()=>validateEnrollmentClass({...sample,firstLesson,decisionAt:'2026-12-14T17:00',
+    assert.throws(()=>validateEnrollmentClass({...sample,firstLesson,
       enrollmentCloses:'2026-12-15T00:00',weeklySchedule}),/enrollment_class_schedule_mismatch/);
   }
-  const midnight={...sample,period:'weekday-evening',firstLesson:'2026-12-21T00:00',decisionAt:'2026-12-19T17:00',
+  const midnight={...sample,period:'weekday-evening',firstLesson:'2026-12-21T00:00',
     enrollmentCloses:'2026-12-21T00:00',weeklySchedule:{days:[1],start:'00:00',lessons:1}};
   assert.equal(validateEnrollmentClass(midnight).firstLesson,midnight.firstLesson);
   assert.throws(()=>validateEnrollmentClass({...sample,weeklySchedule:{...weeklySchedule,days:[]}}),/enrollment_class_invalid/);
@@ -106,7 +103,7 @@ test('first session weekday and time must match the recurring schedule in WIB',(
 
 
 test('time slots match all scheduled weekdays, including mixed day selections',()=>{
-  const dated={...sample,firstLesson:'2026-12-21T15:00',decisionAt:'2026-12-19T17:00',enrollmentCloses:'2026-12-21T00:00'};
+  const dated={...sample,firstLesson:'2026-12-21T15:00',enrollmentCloses:'2026-12-21T00:00'};
   for(const days of [[1],[1,3],[5,6],[7,1]]) {
     assert.throws(()=>validateEnrollmentClass({...dated,weeklySchedule:{days,start:'15:00',lessons:1}}),
       /enrollment_class_timeslot_mismatch/);
@@ -155,8 +152,8 @@ test('first session seeds only blank recurring fields and keeps manual choices',
   assert.equal(enrollmentAutofillStart(draft,'').weeklySchedule.start,'');
   assert.deepEqual(enrollmentScheduleErrors({...next,templateId:'example'},'zh'),{});
   for(const lang of ['zh','en','id'] as const){
-    const empty=enrollmentScheduleErrors({...draft,templateId:'example',period:'',firstLesson:'',decisionAt:'',enrollmentCloses:'',weeklySchedule:{days:[],start:'',lessons:0}},lang);
-    for(const field of ['period','firstLesson','decisionAt','enrollmentCloses','days','start','lessons'])assert.ok(empty[field]);
+    const empty=enrollmentScheduleErrors({...draft,templateId:'example',period:'',firstLesson:'',enrollmentCloses:'',weeklySchedule:{days:[],start:'',lessons:0}},lang);
+    for(const field of ['period','firstLesson','enrollmentCloses','days','start','lessons'])assert.ok(empty[field]);
     const mismatch=enrollmentScheduleErrors({...next,firstLesson:'2026-12-19T16:00'},lang);
     assert.match(mismatch.start,/15:00/);assert.match(mismatch.start,/16:00/);
     assert.ok(enrollmentScheduleErrors({...next,weeklySchedule:{...next.weeklySchedule,days:[7]}},lang).days);

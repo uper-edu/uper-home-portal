@@ -201,7 +201,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[order.id])).rows.length>0;
       return { originalClassState:cohort.state, currentClass:{
         level:cohort.data.level,format:cohort.data.format,period:cohort.data.period,batchNumber:cohort.data.batchNumber,teacherType:cohort.data.teacherType,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
-        decisionAt:cohort.data.decisionAt,opened:!!confirmed,
+        opened:!!confirmed,
       }, lateProofSubmitted, priorityRequested:typeof order.data?.priority==='boolean' ? order.data.priority : undefined,
         transfers, ...status, refund: verified<=0 ? { mode:'unavailable' } :
         confirmed ? {mode:'special_review'} : {

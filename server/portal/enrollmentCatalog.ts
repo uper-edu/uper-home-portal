@@ -93,7 +93,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       if(template&&!snapshot)invalid('enrollment_template_invalid');
       if(snapshot&&body.state==='published'&&!snapshot.price)invalid('enrollment_template_missing_quote',409);
       if(isPublished&&raw.period!==current.data.period)invalid('enrollment_class_batch_scope_fixed',409);
-      const dates={firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,decisionAt:raw.decisionAt,period:raw.period,schedule:raw.schedule};
+      const dates={firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,period:raw.period,schedule:raw.schedule};
       const teacher=raw.teacher===undefined?current?.data.teacher??'':raw.teacher;
       const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:raw),teacher};
       const weeklySchedule=raw.weeklySchedule;
@@ -105,6 +105,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         invalid('enrollment_class_invalid');
       }
       const data:EnrollmentClassConfig={...validateEnrollmentClass(config,isDraft),
+        ...(current?.data.decisionAt!==undefined?{decisionAt:current.data.decisionAt}:{}),
         ...(isDraft&&Object.keys(scheduleReview).length?{scheduleReview}:{}),
         ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons,
           ...(weeklySchedule.startByDay!==undefined?{startByDay:weeklySchedule.startByDay}:{})}}:{}),

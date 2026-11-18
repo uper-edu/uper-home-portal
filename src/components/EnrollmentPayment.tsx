@@ -1,7 +1,7 @@
 import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
-import { enrollmentTeacherLabel, enrollmentClassTitle, enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { enrollmentTeacherLabel, enrollmentClassTitle, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
 import { EnrollmentJoiningNote } from './EnrollmentSupport';
 import type { EnrollmentBank } from '../utils/enrollmentBank';
@@ -26,7 +26,7 @@ type Language = 'zh' | 'en' | 'id';
 export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false, onCancel }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
-  classInfo?:Partial<PublicEnrollmentClass> & {firstLesson:string;schedule:string;level?:string;format?:string;decisionAt?:string;opened?:boolean};
+  classInfo?:Partial<PublicEnrollmentClass> & {firstLesson:string;schedule:string;level?:string;format?:string;opened?:boolean};
   language: Language;
   status: string;
   canUpload: boolean;
@@ -72,7 +72,6 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   const cohort=classInfo??course;
   const start = cohort && dayFormat.format(new Date(cohort.firstLesson + ':00+07:00'));
   const title = cohort && enrollmentClassTitle({...course,...classInfo},language);
-  const openingNotice=cohort?.opened||existingTransferOnly?'':enrollmentOpeningNotice(cohort?.decisionAt,language,now);
   const bank = order.bank;
   const bankRows = bank ? [
     [t('银行', 'Bank', 'Bank'), bank.name],
@@ -104,9 +103,8 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   return <>
     <div className="enrollment-payment-summary">
       <h2>{title || status}</h2>
-      {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('预计 '+start+'开课','Expected '+start,'Perkiraan '+start))].filter(Boolean).join(' · ')}</p>}
+      {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('计划首课 '+start,'Planned first session '+start,'Pertemuan pertama direncanakan '+start))].filter(Boolean).join(' · ')}</p>}
       {cohort?.schedule&&<p>{cohort.schedule}</p>}
-      {openingNotice&&<p>{openingNotice}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={now} language={language}/>}
       {course && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}

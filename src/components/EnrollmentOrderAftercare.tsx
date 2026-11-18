@@ -9,7 +9,7 @@ import { enrollmentSupportPath } from './EnrollmentSupport';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 
 type Copy = readonly [string, string, string];
-type Course = Partial<PublicEnrollmentClass> & { level?: string; format?: string; opened?: boolean; firstLesson: string; schedule: string; decisionAt?:string };
+type Course = Partial<PublicEnrollmentClass> & { level?: string; format?: string; opened?: boolean; firstLesson: string; schedule: string };
 type TransferTarget = Course & { id: string };
 type Invitation = Course & { id: string; targetClassId: string; state: string; expiresAt: string };
 export type EnrollmentAftercare = {
@@ -92,7 +92,7 @@ export function EnrollmentOrderAftercare({
     const day = Number.isFinite(date.valueOf()) ? dateFormat.format(date) : '';
     const format = value.format ?? fallback?.format;
     const dayLabel = day && t(expected
-      ? ['预计 '+day+'开课','Expected '+day,'Perkiraan '+day] : [day+'开课','Starts '+day,'Mulai '+day]);
+      ? ['计划首课 '+day,'Planned first session '+day,'Pertemuan pertama direncanakan '+day] : [day+'开课','Starts '+day,'Mulai '+day]);
     return [value.level ?? fallback?.level,format && interestOption(language,format),dayLabel].filter(Boolean).join(' · ');
   }
 
@@ -305,9 +305,7 @@ export function EnrollmentOrderAftercare({
         <CircleCheck size={19} aria-hidden="true"/>
         {t(course?.opened===true
           ? ['转班成功 · 已确认开班','Transfer complete · Class opening confirmed','Pindah kelas berhasil · Pembukaan kelas dikonfirmasi']
-          : course?.opened===false
-            ? ['转班成功 · 开班待确认','Transfer complete · Awaiting class confirmation','Pindah kelas berhasil · Menunggu konfirmasi kelas']
-            : ['转班成功','Transfer complete','Pindah kelas berhasil'])}
+          : ['转班成功','Transfer complete','Pindah kelas berhasil'])}
       </p>
       {classCard(course)}
       <article className="enrollment-record">

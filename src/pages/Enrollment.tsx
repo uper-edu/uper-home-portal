@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { normalizeSiteLanguage } from '../utils/siteMetadata';
 import { formatCurrency } from '../utils/currency';
 import { type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
-import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import { PublicSingleSelect } from '../components/PublicSingleSelect';
 import { EnrollmentSupport } from '../components/EnrollmentSupport';
 
@@ -76,7 +75,6 @@ const catalogLevel = (label: string) => label === 'HSK 4A' || label === 'HSK 4B'
 export default function Enrollment() {
   const { i18n } = useTranslation();
   const language = normalizeSiteLanguage(i18n.resolvedLanguage || i18n.language);
-  const locale = language === 'zh' ? 'zh-CN' : language === 'id' ? 'id-ID' : 'en-GB';
   const t = (key: keyof typeof copy) => copy[key][language === 'zh' ? 2 : language === 'id' ? 1 : 0];
   const [params, setParams] = useSearchParams();
   const { classId:routeClassId, recordKind, recordId, topic } = useParams();
@@ -103,7 +101,6 @@ export default function Enrollment() {
   const classes=previewToken?(previewRow?[previewRow]:undefined):liveClasses;
   const accepting=previewToken?!!previewRow?.price:availability?.accepting;
   const servicing=availability?.servicing;
-  const openingClock=useEnrollmentOpeningClock();
   const requestedLevel = params.get('level');
   const level = requestedLevel && catalogLevels.includes(requestedLevel) ? requestedLevel : '1';
   const period = params.get('period') || '';
@@ -217,18 +214,8 @@ export default function Enrollment() {
     query.set('appointment',item.id);
     return '/enrollment/help/one-on-one?' + query.toString();
   };
-  const formatDay = (value: string) => new Intl.DateTimeFormat(locale, {
-    month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta',
-  }).format(new Date(value + ':00+07:00'));
-  const dateLabel = (row: PublicEnrollmentClass) => {
-    const date = formatDay(row.firstLesson).replaceAll(' ', '\u00a0');
-    return enrollmentCopy(language, row.opened
-      ? [date + '开课', 'Starts ' + date, 'Mulai ' + date]
-      : ['预计 ' + date + '开课', 'Expected ' + date, 'Perkiraan ' + date]);
-  };
-
   const classCard=(row:PublicEnrollmentClass,inCatalog:boolean)=><EnrollmentClassPreview key={row.id} row={row} language={language}
-    clock={openingClock} intakePaused={!previewToken&&accepting===false} titleLink={inCatalog?detailsPath(row.id):undefined}
+    intakePaused={!previewToken&&accepting===false} titleLink={inCatalog?detailsPath(row.id):undefined}
     actionLink={inCatalog&&accepting?detailsPath(row.id,true):undefined}/>;
 
   if(previewToken&&!previewRow)return <p className="enrollment-screen" role="status">{t('loading')}</p>;

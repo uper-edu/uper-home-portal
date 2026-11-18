@@ -20,7 +20,8 @@ export interface EnrollmentClassConfig {
   period: typeof enrollmentPeriods[number];
   firstLesson: string;
   enrollmentCloses: string;
-  decisionAt: string;
+  /** Legacy value retained when editing existing records. */
+  decisionAt?: string;
   schedule: string;
   weeklySchedule?: EnrollmentWeeklySchedule;
   holidayDates?: string[];
@@ -58,7 +59,7 @@ export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
-  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'canDelete' | 'hasOrders' | 'holidayDates' | 'scheduleReview'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
+  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'decisionAt' | 'canDelete' | 'hasOrders' | 'holidayDates' | 'scheduleReview'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
 
 export function validEnrollmentHolidayDate(value: unknown): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
@@ -76,26 +77,13 @@ export function enrollmentInstant(value: unknown): Date | null {
 export function enrollmentScheduleDefaults(firstLesson:string) {
   if(!enrollmentInstant(firstLesson))return null;
   const date=firstLesson.slice(0,10);
-  const decisionDay=new Date(Date.parse(date+'T00:00:00Z')-2*86_400_000).toISOString().slice(0,10);
-  return {enrollmentCloses:date+'T00:00',decisionAt:decisionDay+'T17:00'};
-}
-
-export function enrollmentOpeningNotice(
-  decisionAt:string|undefined,language:'zh'|'en'|'id',now=Date.now(),
-) {
-  const decision=enrollmentInstant(decisionAt);
-  if(!decision)return '';
-  if(now>=decision.valueOf())return {zh:'开班结果待确认',en:'Class opening still to be confirmed',id:'Pembukaan kelas masih menunggu konfirmasi'}[language];
-  const date=new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[language],{
-    month:'long',day:'numeric',timeZone:'Asia/Jakarta',
-  }).format(decision);
-  return {zh:`预计 ${date} 通知开班结果`,en:`Opening update expected ${date}`,id:`Kabar pembukaan diperkirakan ${date}`}[language];
+  return {enrollmentCloses:date+'T00:00'};
 }
 
 export function publicEnrollmentClass(record: EnrollmentClassAdmin): PublicEnrollmentClass {
-  const { id, level, courseName, batchNumber, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
+  const { id, level, courseName, batchNumber, format, period, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher } = record;
-  return { id, level, courseName, batchNumber, format, period, firstLesson, decisionAt, schedule, weeklySchedule, sessions, minutes, teacherType, price,
+  return { id, level, courseName, batchNumber, format, period, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher };
 }
 
@@ -124,17 +112,15 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   const courseId = string('courseId', 100);
   const firstLesson = string('firstLesson', 16);
   const enrollmentCloses = string('enrollmentCloses', 16);
-  const decisionAt = string('decisionAt', 16);
   const start = enrollmentInstant(firstLesson);
   const startOfOpeningDay = enrollmentOpeningDayStart(firstLesson);
   const closes = enrollmentInstant(enrollmentCloses);
-  const decision = enrollmentInstant(decisionAt);
   const capacity = integer('capacity', 200);
   const period = option('period', enrollmentPeriods);
   const minimumPaid = integer('minimumPaid', capacity);
   const price = draft && input.price === 0 ? 0 : integer('price', 1_000_000_000);
   const standardPrice = input.standardPrice == null ? null : integer('standardPrice', 1_000_000_000);
-  if (!start || !startOfOpeningDay || !closes || !decision || (!draft && (closes > startOfOpeningDay || decision > start)) || (standardPrice !== null && standardPrice <= price)) {
+  if (!start || !startOfOpeningDay || !closes || (!draft && closes > startOfOpeningDay) || (standardPrice !== null && standardPrice <= price)) {
     invalidConfig();
   }
   if (input.weeklySchedule) {
@@ -159,7 +145,7 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     level: option('level', enrollmentLevels),
     format: option('format', enrollmentFormats),
     period,
-    firstLesson, enrollmentCloses, decisionAt,
+    firstLesson, enrollmentCloses,
     schedule: string('schedule', 300, {optional:draft}), sessions: integer('sessions', 1000), minutes: integer('minutes', 600),
     minimumPaid, capacity, price, standardPrice,
     learningOutcomes: input.templateId && input.learningOutcomes === '' ? '' : string('learningOutcomes', 2500), material: string('material', 2500),
@@ -251,11 +237,9 @@ export function enrollmentScheduleErrors(config:Partial<Omit<EnrollmentClassConf
   const errors:Record<string,string>={};
   const t=(zh:string,en:string,id:string)=>({zh,en,id})[language];
   const plan=config.weeklySchedule??{days:[],start:'',lessons:1};
-  const first=enrollmentInstant(config.firstLesson),decision=enrollmentInstant(config.decisionAt),closes=enrollmentInstant(config.enrollmentCloses);
+  const first=enrollmentInstant(config.firstLesson),closes=enrollmentInstant(config.enrollmentCloses);
   if(!config.period)errors.period=t('请选择时段。','Select a time slot.','Pilih waktu kelas.');
   if(!first)errors.firstLesson=t('请填写完整的首次上课日期和时间。','Enter the full first session date and time.','Isi tanggal dan waktu pertemuan pertama.');
-  if(!decision)errors.decisionAt=t('请填写预计通知开班结果的日期和时间。','Enter the expected decision date and time.','Isi tanggal dan waktu perkiraan keputusan.');
-  else if(first&&decision>first)errors.decisionAt=t('通知时间不能晚于首次上课时间。','The decision cannot be later than the first session.','Waktu keputusan tidak boleh setelah pertemuan pertama.');
   if(!closes)errors.enrollmentCloses=t('请填写自助报名截止日期和时间。','Enter the self-service enrollment deadline.','Isi batas waktu pendaftaran mandiri.');
   else if(first&&closes>enrollmentInstant(config.firstLesson!.slice(0,10)+'T00:00')!)errors.enrollmentCloses=t('自助报名最晚须在开课当天 00:00 截止。','Self-service enrollment must close by 00:00 on the first session day.','Pendaftaran mandiri harus ditutup paling lambat pukul 00.00 pada hari pertama kelas.');
   if(config.templateId||plan){

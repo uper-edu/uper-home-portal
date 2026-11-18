@@ -1,7 +1,7 @@
 import { ArrowLeft, CircleCheck, Clock3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
-import { enrollmentTeacherLabel, enrollmentClassTitle, enrollmentOpeningNotice,type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { enrollmentTeacherLabel, enrollmentClassTitle, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { EnrollmentJoiningNote, enrollmentSupportPath } from './EnrollmentSupport';
@@ -12,7 +12,7 @@ type Copy = readonly [string, string, string];
 export function EnrollmentOrderResult({ order, course, classInfo, classState, language, backPath, uploadPath, refundPath, balancePath, busy, onRefresh }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
-  classInfo?: Partial<PublicEnrollmentClass> & {firstLesson:string;schedule:string;level?:string;format?:string;decisionAt?:string;opened?:boolean};
+  classInfo?: Partial<PublicEnrollmentClass> & {firstLesson:string;schedule:string;level?:string;format?:string;opened?:boolean};
   classState?: string;
   language: InterestLanguage;
   backPath: string;
@@ -41,10 +41,9 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
   const openingDate = courseDay && (opened
     ? t([courseDay+'开课','Starts '+courseDay,'Mulai '+courseDay])
     : opened===false && !cancelled
-      ? t(['预计 '+courseDay+'开课','Expected '+courseDay,'Perkiraan '+courseDay])
+      ? t(['计划首课 '+courseDay,'Planned first session '+courseDay,'Pertemuan pertama direncanakan '+courseDay])
       : courseDay);
   const title = enrollmentClassTitle({...course,...classInfo},language);
-  const openingUpdate=opened||cancelled?'':enrollmentOpeningNotice(classInfo?.decisionAt??course?.decisionAt,language,openingClock);
   const back = t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya']);
   const support = t(['联系销售或客服','Contact sales or support','Hubungi tim penjualan atau layanan pelanggan']);
 
@@ -81,15 +80,10 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
         {paid && schedule && <article className="enrollment-record">
           <h2>{t(['每周上课时间','Weekly schedule','Jadwal mingguan'])}</h2><p>{schedule}</p>
         </article>}
-        {paid && !cancelled && opened===false && <article className="enrollment-record">
-          <h2>{t(['开班结果','Class opening','Pembukaan kelas'])}</h2>
-          <p>{openingUpdate||t(['待成班','Awaiting class confirmation','Menunggu konfirmasi kelas'])}</p>
-        </article>}
       </> : <article className="enrollment-record">
         <h2>{t(['下一步','What happens next','Langkah berikutnya'])}</h2>
         <p>{t(['财务会核对实际到账，你可以在这里查看进度。','Finance will check whether the payment arrived. You can follow the status here.','Tim keuangan akan memeriksa dana yang masuk. Anda dapat melihat statusnya di sini.'])}</p>
         {!cancelled && (course || classState==='published') && <p>{t(['你的席位继续保留。','Your seat stays reserved.','Kursi Anda tetap disimpan.'])}</p>}
-        {!opened && !cancelled && openingUpdate && <p>{openingUpdate}</p>}
       </article>}
       <div className="enrollment-result-tools">
         <button type="button" className="enrollment-quiet" disabled={busy} onClick={onRefresh}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>
