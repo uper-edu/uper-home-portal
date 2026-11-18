@@ -5,7 +5,8 @@ import {bootstrapTables} from '../scripts/lib/cms-bootstrap-contract.mjs';
 
 const enrollmentTables=[
  'enrollment_assisted_applications','enrollment_classes','enrollment_class_openings','enrollment_customer_records','enrollment_demands',
- 'enrollment_email_challenges','enrollment_email_sessions','enrollment_interest_events','enrollment_notification_receipts',
+ 'enrollment_email_challenges','enrollment_email_sessions','enrollment_interest_events','enrollment_mail_attempts','enrollment_mail_bindings',
+ 'enrollment_mail_configuration','enrollment_notification_receipts',
  'enrollment_opportunities','enrollment_opportunity_progress','enrollment_orders','enrollment_payment_credits','enrollment_proofs',
  'enrollment_receipts','enrollment_record_attribution','enrollment_refund_cases','enrollment_refund_payments','enrollment_refund_returns',
  'enrollment_transfer_invitations','enrollment_transfers','enrollment_vacancy_cycles','enrollment_waitlist',
@@ -16,6 +17,7 @@ const learnerNameDdl='ALTER TABLE enrollment_waitlist ADD COLUMN learner_name VA
 const transferDetailsDdl='ALTER TABLE enrollment_proofs ADD COLUMN transfer_details JSON DEFAULT NULL';
 const receivingAccountDdl='ALTER TABLE enrollment_receipts ADD COLUMN receiving_account VARCHAR(160) DEFAULT NULL';
 const refundTimingDdl='ALTER TABLE enrollment_refund_cases ADD COLUMN timing JSON DEFAULT NULL';
+const mailPoolDdl='ALTER TABLE enrollment_mail_attempts\n  ADD COLUMN pool_id VARCHAR(40) NULL,\n  ADD KEY mail_pool_daily (environment, day_key, pool_id)';
 const activityDdl=['enrollment_orders','enrollment_waitlist'].map(table=>'ALTER TABLE '+table+' ADD COLUMN activity_at DATETIME(6) DEFAULT NULL');
 const cosColumns=()=>Object.entries({content:['mediumblob','YES'],storage_type:['varchar(16)','NO'],cos_url:['varchar(1024)','YES'],object_key:['varchar(255)','YES'],byte_size:['bigint unsigned','YES']}).map(([Field,[Type,Null]])=>({Field,Type,Null}));
 const queueColumns=(version=19)=>Object.entries({
@@ -39,7 +41,7 @@ function fixture(ready){
  const campaigns=ready.length?[{id:'existing',code:'existing',config:{id:'existing',code:'existing',promotionLinks:[{id:'existing_promotion'}]}}]:[];
  const index=ready.includes(17)?[{p:'existing_promotion',campaign_id:'existing'}]:[];
  const shortLinks=ready.includes(18)?[{p:'existing_promotion',short_code:'abc234'}]:[];
- let transferDetailsColumn,receivingAccountColumn,refundTimingColumn;
+ let transferDetailsColumn,receivingAccountColumn,refundTimingColumn,mailPoolColumn;
  const activityColumns=new Map();
  const connection={
   async query(sql,args){
@@ -69,6 +71,11 @@ function fixture(ready){
    if(sql==='SHOW FULL COLUMNS FROM enrollment_proofs')return [transferDetailsColumn?[transferDetailsColumn]:[]];
    if(sql==='SHOW FULL COLUMNS FROM enrollment_receipts')return [receivingAccountColumn?[receivingAccountColumn]:[]];
    if(sql==='SHOW FULL COLUMNS FROM enrollment_refund_cases')return [refundTimingColumn?[refundTimingColumn]:[]];
+   if(sql==='SHOW FULL COLUMNS FROM enrollment_mail_attempts')return [mailPoolColumn?[mailPoolColumn]:[]];
+   if(sql===mailPoolDdl){
+    if(!tables.has('enrollment_mail_attempts')||mailPoolColumn)throw Error('Unexpected enrollment mail pool DDL');
+    mailPoolColumn={Field:'pool_id',Type:'varchar(40)',Null:'YES',Default:null};return [{}];
+   }
    if(sql===transferDetailsDdl){
     if(!tables.has('enrollment_proofs')||transferDetailsColumn)throw Error('Unexpected proof transfer DDL');
     transferDetailsColumn={Field:'transfer_details',Type:'json',Null:'YES',Default:null};return [{}];

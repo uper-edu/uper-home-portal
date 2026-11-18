@@ -1953,6 +1953,12 @@
       "server/portal/followup.ts"
     ]
   },
+  "SELECT criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 AND state='active'": {
+    "sql": "SELECT criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 AND state='active'",
+    "sources": [
+      "server/portal/enrollmentInterestDelivery.ts"
+    ]
+  },
   "SELECT d.id,d.email,d.criteria,d.revision FROM enrollment_demands d\n    WHERE d.state='active' AND NOT EXISTS (\n      SELECT 1 FROM enrollment_interest_events e\n      WHERE e.kind='match' AND e.interest_id=d.id AND e.class_id=:p1 AND e.cycle=0)\n    ORDER BY d.id": {
     "sql": "SELECT d.id,d.email,d.criteria,d.revision FROM enrollment_demands d\n    WHERE d.state='active' AND NOT EXISTS (\n      SELECT 1 FROM enrollment_interest_events e\n      WHERE e.kind='match' AND e.interest_id=d.id AND e.class_id=:p1 AND e.cycle=0)\n    ORDER BY d.id",
     "sources": [
@@ -2087,6 +2093,12 @@
       "server/portal/interactionTimeline.ts"
     ]
   },
+  "SELECT e.data,\n    (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6)))\n    + (SELECT COUNT(*) FROM enrollment_transfer_invitations t WHERE t.target_class_id=e.id AND t.state='offered'\n      AND t.expires_at>UTC_TIMESTAMP(6)) AS occupied\n    FROM enrollment_classes e JOIN crm_courses course ON course.id=e.course_id\n    WHERE e.id=:p1 AND e.state='published' AND JSON_EXTRACT(course.value,'$.active')=true\n      AND LEAST(e.enrollment_closes_at,DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)": {
+    "sql": "SELECT e.data,\n    (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6)))\n    + (SELECT COUNT(*) FROM enrollment_transfer_invitations t WHERE t.target_class_id=e.id AND t.state='offered'\n      AND t.expires_at>UTC_TIMESTAMP(6)) AS occupied\n    FROM enrollment_classes e JOIN crm_courses course ON course.id=e.course_id\n    WHERE e.id=:p1 AND e.state='published' AND JSON_EXTRACT(course.value,'$.active')=true\n      AND LEAST(e.enrollment_closes_at,DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/enrollmentInterestDelivery.ts"
+    ]
+  },
   "SELECT e.id AS class_id FROM enrollment_classes e\n        LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id\n        WHERE (e.state='published' AND EXISTS (\n          SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id AND o.state='awaiting_payment' AND o.received=0\n            AND o.payment_due_at<UTC_TIMESTAMP(6) AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6))\n        )) OR ((v.is_full=TRUE OR e.state='cancelled'\n          OR LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6))\n          AND EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id AND w.state='waiting'))\n        ORDER BY e.id": {
     "sql": "SELECT e.id AS class_id FROM enrollment_classes e\n        LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id\n        WHERE (e.state='published' AND EXISTS (\n          SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id AND o.state='awaiting_payment' AND o.received=0\n            AND o.payment_due_at<UTC_TIMESTAMP(6) AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6))\n        )) OR ((v.is_full=TRUE OR e.state='cancelled'\n          OR LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6))\n          AND EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id AND w.state='waiting'))\n        ORDER BY e.id",
     "sources": [
@@ -2157,12 +2169,6 @@
     "sql": "SELECT event_key AS id,state,DATE_FORMAT(recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n    FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email' AND kind='assistance_confirmation'\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1",
     "sources": [
       "server/portal/enrollmentNotices.ts"
-    ]
-  },
-  "SELECT event_key FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'": {
-    "sql": "SELECT event_key FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'",
-    "sources": [
-      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT event_key FROM enrollment_notification_receipts WHERE event_key=:p1": {
@@ -3018,6 +3024,12 @@
       "server/portal/accessRecovery.ts"
     ]
   },
+  "SELECT kind,subject_id,payload FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'": {
+    "sql": "SELECT kind,subject_id,payload FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1": {
     "sql": "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1",
     "sources": [
@@ -3786,6 +3798,12 @@
     "sql": "SELECT w.class_id,w.id,w.id AS record_id,'waitlist' AS kind,w.state,w.learner_name AS name,\n    w.email,w.phone,NULL AS price,NULL AS received,NULL AS due_at,NULL AS recorded_closure\n  FROM enrollment_waitlist w WHERE (:p1 IS NULL OR w.class_id=:p1)",
     "sources": [
       "server/portal/enrollmentManagement.ts"
+    ]
+  },
+  "SELECT w.id FROM enrollment_waitlist w JOIN enrollment_vacancy_cycles v ON v.class_id=w.class_id\n      WHERE w.id=:p1 AND w.email=:p2 AND w.class_id=:p3 AND w.state='waiting' AND v.cycle=:p4 AND v.is_full=FALSE": {
+    "sql": "SELECT w.id FROM enrollment_waitlist w JOIN enrollment_vacancy_cycles v ON v.class_id=w.class_id\n      WHERE w.id=:p1 AND w.email=:p2 AND w.class_id=:p3 AND w.state='waiting' AND v.cycle=:p4 AND v.is_full=FALSE",
+    "sources": [
+      "server/portal/enrollmentInterestDelivery.ts"
     ]
   },
   "SELECT w.id,COALESCE(w.learner_name,\n    NULLIF(l.profile->>'$.fullName',w.email)) AS learner_name\n    FROM enrollment_waitlist w LEFT JOIN enrollment_customer_records a ON a.kind='waitlist' AND a.record_id=w.id\n    LEFT JOIN portal_leads l ON l.id=a.lead_id\n    WHERE w.class_id=:p1 AND w.email=:p2 AND w.state='waiting' ORDER BY w.created_at,w.id": {
