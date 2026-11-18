@@ -23,8 +23,8 @@ import { crmId } from "../../utils/crmIndonesian";
 import { CrmSelect } from "./CrmSelect";
 import { CampaignDateTimeField } from "./CampaignDateTimeField";
 import {
-  campaignDateTimeValue,
-  type CampaignScheduleParts,
+  campaignStoredSchedule,
+  splitCampaignDateTime,
 } from "../../utils/campaignScheduleInput";
 export function CampaignEditor({
   campaign,
@@ -78,7 +78,20 @@ export function CampaignEditor({
   const [busy, setBusy] = useState(false),
     [unknown, setUnknown] = useState(false),
     [error, setError] = useState("");
-  const dirty = JSON.stringify(v) !== JSON.stringify(initial.current);
+  const [scheduleDraft,setScheduleDraft]=useState<Partial<Record<'start'|'end',string>>>({});
+  const scheduleInputError=(endpoint:'start'|'end')=>{
+    const value=scheduleDraft[endpoint];
+    if(!value)return '';
+    const parts=splitCampaignDateTime(value);
+    if(!parts)return t('Enter a complete date and 24-hour time.','Isi tanggal dan waktu 24 jam secara lengkap.','请填写完整日期和 24 小时时间。');
+    try{campaignStoredSchedule(parts.date,parts.time);return '';}
+    catch{return u('Invalid local date and time');}
+  };
+  const startScheduleError=scheduleInputError('start');
+  const endScheduleError=scheduleInputError('end');
+  const scheduleKeys=['startDate','startTime','endDate','endTime'] as const;
+  const rangeError=scheduleKeys.some(key=>v[key]!==initial.current[key])&&campaignScheduleError(v);
+  const dirty = JSON.stringify(v) !== JSON.stringify(initial.current)||!!startScheduleError||!!endScheduleError;
   const [confirmClose, setConfirmClose] = useState(false);
   const [lookupMiss,setLookupMiss]=useState(false);
   const close = () => {
@@ -106,17 +119,26 @@ export function CampaignEditor({
     setV((old) => ({ ...old, [key]: value }));
     setError("");
   }
-  function updateSchedule(
-    endpoint: "start" | "end",
-    parts: CampaignScheduleParts,
-  ) {
-    setV((old) => ({
-      ...old,
-      [`${endpoint}Date`]: parts.date,
-      [`${endpoint}Time`]: parts.time,
-    }));
-    setError("");
+  function updateSchedule(endpoint:'start'|'end',value:string) {
+    setScheduleDraft(current=>({...current,[endpoint]:value}));
+    setError('');
+    const parts=splitCampaignDateTime(value);
+    if(!parts)return;
+    try{
+      const stored=campaignStoredSchedule(parts.date,parts.time);
+      setV(old=>({...old,[`${endpoint}Date`]:stored.date,[`${endpoint}Time`]:stored.time}));
+    }catch{
+      // Keep the invalid local input visible for correction and leave stored values intact.
+    }
   }
+  const scheduleFields=<>
+    <CampaignDateTimeField lang={lang} label={u('Start date and time')} date={v.startDate} time={v.startTime}
+      draft={scheduleDraft.start} error={startScheduleError||undefined} onChange={value=>updateSchedule('start',value)}/>
+    <CampaignDateTimeField lang={lang} label={u('End date and time')} date={v.endDate} time={v.endTime}
+      draft={scheduleDraft.end} error={endScheduleError||(rangeError?t('Check the date and time. The end must not precede the start.',
+        'Periksa tanggal dan waktu. Akhir tidak boleh mendahului awal.','请核对日期与时间，结束不得早于开始。'):undefined)}
+      onChange={value=>updateSchedule('end',value)}/>
+  </>;
   function chooseType(value: string) {
     setV((old) => ({
       ...old,
@@ -203,7 +225,7 @@ export function CampaignEditor({
         setError("campaign_budget_invalid");
         return;
       }
-      if (campaign && campaignScheduleError(v)) {
+      if (startScheduleError || endScheduleError || rangeError) {
         setError("campaign_schedule_invalid");
         return;
       }
@@ -248,6 +270,9 @@ export function CampaignEditor({
         ] as const)
           if (v[k] !== initial.current[k])
             fields.boundUtm = { ...fields.boundUtm, [k]: v[k] };
+      }
+      if(!campaign)for(const key of scheduleKeys){
+        if(v[key])fields[key]=v[key];
       }
       if(campaign)fields.expectedFields=campaignEditBase(baseCampaign.current,fields);
       pending.current = fields;
@@ -407,15 +432,9 @@ export function CampaignEditor({
                   )}
                 </div>
               </CrmDisclosure>
-              {!campaign && (
-                <p className="campaign-hint">
-                  {t(
-                    "Created as Planning. Budget and schedule remain unrecorded until you add them.",
-                    "Dibuat dengan status Perencanaan. Anggaran dan jadwal belum tercatat sampai Anda mengisinya.",
-                    "创建为筹备中。预算与排期在补充前保持未填写。",
-                  )}
-                </p>
-              )}
+              {!campaign&&<CrmDisclosure className="crm-form-details" heading={t('Schedule','Jadwal','排期')}>
+                <div className="campaign-fields-grid" data-admin-grid="">{scheduleFields}</div>
+              </CrmDisclosure>}
               </CrmFormSection>
               {campaign && (
                 <>
@@ -475,25 +494,7 @@ export function CampaignEditor({
 
 
                     <div className="campaign-fields-grid" data-admin-grid="">
-                      <>
-                        <CampaignDateTimeField
-                          lang={lang}
-                          name="startDateTime"
-                          label={u("Start date and time")}
-                          date={v.startDate}
-                          time={v.startTime}
-                          onChange={(parts) => updateSchedule("start", parts)}
-                        />
-                        <CampaignDateTimeField
-                          lang={lang}
-                          name="endDateTime"
-                          label={u("End date and time")}
-                          date={v.endDate}
-                          time={v.endTime}
-                          min={campaignDateTimeValue(v.startDate, v.startTime)}
-                          onChange={(parts) => updateSchedule("end", parts)}
-                        />
-                      </>
+                      {scheduleFields}
                       {field("city", t("City", "Kota", "城市"))}
                       {field("venue", t("Venue", "Tempat", "场地"))}
                       {field("address", t("Address", "Alamat", "地址"))}

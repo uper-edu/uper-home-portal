@@ -166,8 +166,8 @@ test("Campaign cards, four-tab facts, editor, materials and source evidence loca
       onClose: () => {},
       onSaved: () => {},
     });
-    assert.equal((editor.match(/type="datetime-local"/g) || []).length, 2);
-    assert.doesNotMatch(editor, /type="date"|type="time"/);
+    assert.equal((editor.match(/class="admin-calendar-trigger"/g) || []).length, 2);
+    assert.doesNotMatch(editor, /type="date"|type="time"|type="datetime-local"/);
     assert.ok(editor.includes(u("Start date and time")));
     const materials = render(CampaignMaterials, {
       campaign: c,
