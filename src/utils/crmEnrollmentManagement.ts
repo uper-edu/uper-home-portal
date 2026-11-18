@@ -97,43 +97,53 @@ export function enrollmentClassShortfall(row:EnrollmentClassSummary) {
   return Math.max(0,row.minimumPaid-row.counts.paid);
 }
 
+export function enrollmentClassDateFilter(value:string,now=Date.now()){
+  if(!value)return (_time:Date|null)=>true;
+  const today=formatCrmEventTime(new Date(now).toISOString()).slice(0,10);
+  const lastDay=value==='7'||value==='30'
+    ?new Date(Date.parse(today+'T00:00:00Z')+(Number(value)-1)*86_400_000).toISOString().slice(0,10):'';
+  return (time:Date|null)=>{
+    if(!time)return false;
+    if(value==='past')return time.getTime()<now;
+    const date=formatCrmEventTime(time.toISOString()).slice(0,10);
+    return time.getTime()>=now&&date>=today&&date<=lastDay;
+  };
+}
+
+export function compareEnrollmentClassStarts(left:number|null,right:number|null,sort:string,now:number){
+  if(left===null||right===null)return Number(left===null)-Number(right===null);
+  if(sort==='latest')return right-left;
+  if(sort==='oldest')return left-right;
+  const leftPast=left<now,rightPast=right<now;
+  return Number(leftPast)-Number(rightPast)||(leftPast?right-left:left-right);
+}
+
 export function filterEnrollmentClasses(
   rows:EnrollmentClassSummary[],filters:EnrollmentClassFilters,title:(row:EnrollmentClassSummary)=>string,now=Date.now(),
 ) {
   const normalize=(value:string)=>value.normalize('NFKC').toLowerCase().trim();
   const tokens=normalize(filters.search).split(/\s+/u).filter(Boolean);
-  const today=formatCrmEventTime(new Date(now).toISOString()).slice(0,10);
-  // Add calendar days to the viewer's date without assuming all local days have 24 hours.
-  const lastDay=filters.date==='7'||filters.date==='30'
-    ?new Date(Date.parse(today+'T00:00:00Z')+(Number(filters.date)-1)*86_400_000).toISOString().slice(0,10):'';
+  const matchesDate=enrollmentClassDateFilter(filters.date,now);
   const matches=rows.flatMap(row=>{
     if((filters.level&&row.level!==filters.level)||(filters.format&&row.format!==filters.format)
       ||(filters.period&&row.period!==filters.period)||(filters.status&&row.status!==filters.status))return [];
     const seats=row.accepting?(row.available>0?'available':'full'):'closed';
     if(filters.seats&&seats!==filters.seats)return [];
     const instant=crmInstant(row.firstLessonAt);
-    const displayed=instant&&(tokens.length||filters.date)?formatCrmEventTime(row.firstLessonAt):'';
-    const date=displayed.slice(0,10);
-    if(filters.date&&(!instant||(filters.date==='past'?instant.getTime()>=now:instant.getTime()<now||date<today||date>lastDay)))return [];
+    if(!matchesDate(instant))return [];
     if(tokens.length){
+      const displayed=instant?formatCrmEventTime(row.firstLessonAt):'';
       const haystack=normalize([title(row),row.level.replace(/\s+/gu,''),row.id,row.schedule,displayed].join(' '));
       if(!tokens.every(token=>haystack.includes(token)))return [];
     }
     return [{row,time:instant?.getTime()??null}];
   });
-  const chronological=(left:typeof matches[number],right:typeof matches[number])=>{
-    if(left.time===null||right.time===null)return Number(left.time===null)-Number(right.time===null);
-    if(filters.sort==='latest')return right.time-left.time;
-    if(filters.sort==='oldest')return left.time-right.time;
-    const leftPast=left.time<now,rightPast=right.time<now;
-    return Number(leftPast)-Number(rightPast)||(leftPast?right.time-left.time:left.time-right.time);
-  };
   const pending=(row:EnrollmentClassSummary)=>row.status==='recruiting'||row.status==='closed';
   return matches.sort((left,right)=>{
     const a=left.row,b=right.row;
     const priority=filters.sort==='seats'?Number(b.accepting)-Number(a.accepting)||(a.accepting?b.available-a.available:0):
       filters.sort==='waitlist'?b.counts.waiting-a.counts.waiting:
       filters.sort==='opening'?Number(pending(b))-Number(pending(a))||(pending(a)&&pending(b)?enrollmentClassShortfall(a)-enrollmentClassShortfall(b):0):0;
-    return priority||chronological(left,right)||a.id.localeCompare(b.id);
+    return priority||compareEnrollmentClassStarts(left.time,right.time,filters.sort,now)||a.id.localeCompare(b.id);
   }).map(({row})=>row);
 }

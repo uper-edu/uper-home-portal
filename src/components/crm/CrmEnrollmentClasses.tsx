@@ -1,5 +1,7 @@
 import {AdminSecondaryActions} from '../admin/AdminRecordActions';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
+import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters,type EnrollmentListCopy} from './EnrollmentSettingsListControls';
 import {CrmEnrollmentTemplates} from './CrmEnrollmentTemplates';
 import {enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type EnrollmentTemplate} from '../../utils/enrollmentTemplates';
 import {EnrollmentClassPreview} from '../EnrollmentClassPreview';
@@ -10,14 +12,15 @@ import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
-import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
+import { compareEnrollmentClassStarts,enrollmentClassDateFilter,enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
+import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminStaticField, AdminFormActions, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
-import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentTimeSlotMatches,enrollmentFirstSessionMatches,enrollmentInstant,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentTimeSlotMatches,enrollmentFirstSessionMatches,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
@@ -27,6 +30,15 @@ type Copy = readonly [string, string, string];
 type Catalog = { classes: EnrollmentClassAdmin[]; courses: EnrollmentTeachingCourse[]; templates: EnrollmentTemplate[] };
 type ClassDraftConfig=Omit<EnrollmentClassConfig,'period'>&{period:EnrollmentClassConfig['period']|''};
 type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: ClassDraftConfig };
+const classFiltersDefault={search:'',level:'',format:'',period:'',status:'',date:'',teacher:'',sort:'upcoming'};
+const inlineFilterWidth=880;
+const classStatusCopy={
+  draft:['Draft','Draf','草稿'],
+  published:['Published · Awaiting class confirmation','Diterbitkan · Menunggu konfirmasi kelas','已发布 · 待确认开班'],
+  opened:['Class confirmed','Kelas dikonfirmasi','已确认开班'],
+  cancelled:['Class will not open','Kelas tidak dibuka','已确认不开班'],
+} as const;
+const classStatus=(row:EnrollmentClassAdmin)=>row.state==='published'&&row.opened?'opened':row.state;
 const initial: ClassDraftConfig = {
   courseId: '', level: 'HSK 1', format: 'standard', period: '',
   firstLesson: '', enrollmentCloses: '', decisionAt: '', schedule: '',
@@ -59,8 +71,9 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const timeSlotErrorId=useId();
   const [catalog, setCatalog] = useState<Catalog>();
   const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
-  const [search,setSearch]=useState('');
-  const [classState,setClassState]=useState('all');
+  const {filters,change:changeFilters,clear}=useEnrollmentSettingsFilters('classes',classFiltersDefault);
+  const catalogPanel=useRef<HTMLElement>(null);
+  const [showAllFilters,setShowAllFilters]=useState(false);
   const [draft, setDraft] = useState<Draft>();
   const [quoteDirty,setQuoteDirty]=useState(false);
   const [quoteTemplateId,setQuoteTemplateId]=useState<string>();
@@ -142,6 +155,15 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     }
   }
   useEffect(()=>{refresh();return ()=>readRequest.current?.abort();},[]);
+  useEffect(()=>{
+    const panel=catalogPanel.current;
+    if(!panel)return;
+    const measure=()=>setShowAllFilters(panel.clientWidth>=inlineFilterWidth);
+    measure();
+    const observer=new ResizeObserver(measure);
+    observer.observe(panel);
+    return ()=>observer.disconnect();
+  },[]);
   useEffect(()=>{onDraftChange(dirty||busy||!!pending||quoteDirty);},[onDraftChange,dirty,busy,pending,quoteDirty]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
   useEffect(() => {
@@ -316,19 +338,37 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     }catch{setCheckState('error');}
     finally{setBusy(false);}
   }
-  const published = t(['Published', 'Diterbitkan', '已发布']);
-  const unpublished = t(['Draft', 'Draf', '草稿']);
   const title = t(['Enrollment classes', 'Kelas pendaftaran', '报名班次']);
   const listState=readState==='loading'&&catalog?'ready':readState;
-  const query=search.trim().toLowerCase();
-  const visibleClasses=catalog?.classes.filter(row=>target?row.id===target:
-    (classState==='all'||row.state===classState)&&(!query||[row.id,enrollmentClassTitle(row,lang),row.schedule,row.firstLesson]
-      .some(value=>value?.toLowerCase().includes(query))));
-  const options=[
-    {value:'all',label:t(['All statuses','Semua status','全部状态'])},
-    {value:'draft',label:unpublished},{value:'published',label:published},
-    {value:'cancelled',label:t(['Class will not open','Kelas tidak dibuka','已确认不开班'])},
-  ];
+  const normalize=(value:string)=>value.normalize('NFKC').toLowerCase().trim();
+  const tokens=normalize(filters.search).split(/\s+/u).filter(Boolean);
+  const now=Date.now();
+  const matchesDate=enrollmentClassDateFilter(filters.date,now);
+  const visibleClasses=catalog?.classes.flatMap(row=>{
+    if(target&&row.id!==target)return [];
+    const start=enrollmentInstant(row.firstLesson);
+    if(!target&&((filters.level&&row.level!==filters.level)||(filters.format&&row.format!==filters.format)||
+      (filters.period&&row.period!==filters.period)||(filters.status&&classStatus(row)!==filters.status)||
+      (filters.teacher&&row.teacherType!==filters.teacher)||!matchesDate(start)))return [];
+    const entry={row,time:start?.getTime()??null,firstSession:start?formatCrmEventTime(start.toISOString()).slice(0,16):'—'};
+    if(target||!tokens.length)return [entry];
+    const haystack=normalize([row.id,row.courseName,row.level.replace(/\s+/gu,''),enrollmentClassTitle(row,lang),
+      row.schedule,row.firstLesson,entry.firstSession,enrollmentTeacherLabel(row.teacherType,lang),row.teacher].join(' '));
+    return tokens.every(token=>haystack.includes(token))?[entry]:[];
+  }).sort((a,b)=>compareEnrollmentClassStarts(a.time,b.time,filters.sort,now)||a.row.id.localeCompare(b.row.id));
+  const advancedCount=Number(!!filters.date)+Number(!!filters.teacher);
+  const select=(field:keyof typeof classFiltersDefault,label:EnrollmentListCopy,options:CrmChoice[],all?:EnrollmentListCopy)=>
+    <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={label} all={all} options={options}
+      value={filters[field]} onChange={value=>changeFilters({[field]:value})}/>;
+  const additionalFilters=<>
+    {select('date',['First-session date','Tanggal pertemuan pertama','首课日期'],[
+      {value:'7',label:t(['Next 7 days including today','7 hari ke depan termasuk hari ini','未来 7 天（含今天）'])},
+      {value:'30',label:t(['Next 30 days including today','30 hari ke depan termasuk hari ini','未来 30 天（含今天）'])},
+      {value:'past',label:t(['First session has passed','Pertemuan pertama sudah lewat','首课时间已过'])},
+    ],['All first-session dates','Semua tanggal pertemuan pertama','全部首课日期'])}
+    {select('teacher',['Teacher type','Jenis pengajar','教师类型'],(['local','foreign'] as const).map(value=>({value,label:enrollmentTeacherLabel(value,lang)})),
+      ['All teacher types','Semua jenis pengajar','全部教师类型'])}
+  </>;
   const fieldDisabled=busy||!!pending;
   const inputField=(name:keyof typeof fields,fullWidth=false)=>{
     const {type,label}=fields[name],required=name!=='standardPrice';
@@ -347,7 +387,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       <CrmSingleSelect label={t(label)} value={draft?.config[name]??''} options={options} lang={lang} isLight={isLight}
         disabled={fieldDisabled} onChange={value=>change(name,value)}/>
     </AdminField>;
-  return <section className="crm-course-catalog">
+  return <section className="crm-course-catalog" ref={catalogPanel}>
     <header className="admin-edit-header">
       <div className="admin-edit-title"><h2>{title}</h2></div>
       <div className="crm-ops-actions">
@@ -359,26 +399,49 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     {!!error && !draft && !insertion && <p role="alert">{error}</p>}
     {saved && <CrmSaveFeedback state="saved" lang={lang}/>}
     {deleted && <CrmSaveFeedback state="saved" lang={lang}>{t(['Class draft deleted.','Draf kelas dihapus.','班次草稿已删除。'])}</CrmSaveFeedback>}
-    {!target&&catalog&&<div className="crm-class-config-filters">
-      <AdminSearchField label={t(['Search classes by ID, level or schedule','Cari kelas berdasarkan ID, level atau jadwal','搜索班次 ID、级别或课表'])}
-        placeholder={t(['Class ID, level or schedule','ID kelas, level atau jadwal','班次 ID、级别或课表'])}
-        value={search} onChange={setSearch}/>
-      <CrmSingleSelect label={t(['Class status','Status kelas','班次状态'])} lang={lang} isLight={isLight}
-        value={classState} options={options} onChange={setClassState}/>
-    </div>}
+    {!target&&catalog&&<>
+      <div className="crm-class-config-filters">
+        <AdminSearchField label={t(['Search classes','Cari kelas','搜索班次'])}
+          placeholder={t(['Class, teacher or schedule','Kelas, pengajar, atau jadwal','班次、教师或课表'])}
+          value={filters.search} onChange={search=>changeFilters({search})}/>
+        {select('level',['Level','Level','级别'],enrollmentLevels.map(value=>({value,label:value})),['All levels','Semua level','全部级别'])}
+        {select('format',['Class type','Jenis kelas','班型'],[
+          {value:'standard',label:t(['Standard class','Kelas standar','标准班'])},
+          {value:'small',label:t(['Small group','Kelompok kecil','小班'])},
+        ],['All class types','Semua jenis kelas','全部班型'])}
+        {select('period',['Time slot','Waktu kelas','时段'],[
+          {value:'weekday-evening',label:t(['Weekday evening','Malam hari kerja','工作日晚班'])},
+          {value:'weekend',label:t(['Weekend','Akhir pekan','周末班'])},
+        ],['All time slots','Semua waktu kelas','全部时段'])}
+        {select('status',['Class status','Status kelas','班次状态'],Object.entries(classStatusCopy).map(([value,copy])=>({value,label:t(copy)})),
+          ['All statuses','Semua status','全部状态'])}
+        {showAllFilters&&additionalFilters}
+      </div>
+      {!showAllFilters&&<AdminDisclosure heading={t(['More filters','Filter lainnya','更多筛选'])+(advancedCount?' · '+advancedCount:'')} density="compact">
+        <div className="crm-class-config-filters">{additionalFilters}</div>
+      </AdminDisclosure>}
+      <EnrollmentSettingsListSummary lang={lang} count={visibleClasses?.length??0} total={catalog.classes.length}
+        filtered={!!(filters.search||filters.level||filters.format||filters.period||filters.status||advancedCount)} onClear={clear}>
+        {select('sort',['Sort','Urutkan','排序'],[
+          {value:'upcoming',label:t(['Upcoming classes first','Kelas mendatang dahulu','即将开课优先'])},
+          {value:'oldest',label:t(['First session date · Oldest to newest','Tanggal pertemuan pertama · Terlama ke terbaru','首课日期从早到晚'])},
+          {value:'latest',label:t(['First session date · Newest to oldest','Tanggal pertemuan pertama · Terbaru ke terlama','首课日期从晚到早'])},
+        ])}
+      </EnrollmentSettingsListSummary>
+    </>}
     {(listState!=='ready'||!visibleClasses?.length)&&<AdminListState lang={lang}
       state={listState==='ready'?'empty':listState}
       message={listState==='ready'&&target?t(['Class not found.','Kelas tidak ditemukan.','班次不存在。'])
         :listState==='error'&&catalog?t(['Refresh failed. Showing the last loaded classes.','Gagal menyegarkan. Kelas yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的班次。']):undefined}
       onRetry={refresh}/>}
     {!!visibleClasses?.length&&<AdminListTable label={title} className="crm-course-list" busy={readState==='loading'} headers={[
-      t(['Class','Kelas','班次']),t(['Schedule','Jadwal','课表']),{label:t(['Tuition','Biaya','学费']),numeric:true},
+      t(['Class','Kelas','班次']),{label:t(['Schedule','Jadwal','课表']),sort:target?undefined:filters.sort==='oldest'?'ascending':filters.sort==='latest'?'descending':'other'},
+      {label:t(['Tuition','Biaya','学费']),numeric:true},
       t(['Status','Status','状态']),t(['Actions','Tindakan','操作']),
     ]}>
-      {visibleClasses.map(row => <tr key={row.id}>
-        <td>{enrollmentClassTitle(row,lang)}<br/><small>{enrollmentTeacherLabel(row.teacherType,lang)}</small></td><td>{row.firstLesson.replace('T', ' ')} WIB<br/>{row.schedule}</td>
-        <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus tone={row.opened||row.state==='published'?'success':'neutral'}>{row.opened?t(['Class confirmed','Kelas dikonfirmasi','已确认开班']):row.state === 'cancelled'
-          ? t(['Class will not open','Kelas tidak dibuka','已确认不开班']) : row.state === 'published' ? published : unpublished}</AdminStatus></td>
+      {visibleClasses.map(({row,firstSession}) => <tr key={row.id}>
+        <td>{enrollmentClassTitle(row,lang)}<br/><small>{enrollmentTeacherLabel(row.teacherType,lang)}</small></td><td>{firstSession}<br/>{row.schedule}</td>
+        <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus tone={row.opened||row.state==='published'?'success':'neutral'}>{t(classStatusCopy[classStatus(row)])}</AdminStatus></td>
         <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
           {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</AdminRowAction>}
           {row.canDelete&&<AdminRowAction disabled={readState!=='ready'} onClick={()=>{

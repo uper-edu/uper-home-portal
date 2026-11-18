@@ -3,6 +3,7 @@ import {CrmPageAction} from './CrmPageAction';
 import {useEffect,useRef,useState} from 'react';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
+import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
@@ -29,7 +30,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const title=t('Class templates','Templat kelas','班型模板');
  const [catalog,setCatalog]=useState<Catalog>(),[read,setRead]=useState<'loading'|'ready'|'denied'|'error'>('loading');
- const [search,setSearch]=useState(''),[level,setLevel]=useState(''),[quoteFilter,setQuoteFilter]=useState('');
+ const {filters,change,clear}=useEnrollmentSettingsFilters('templates',{search:'',level:'',quote:'',format:'',teacher:'',sort:'course'});
  const [draft,setDraft]=useState<TemplateDraft>(),[manualName,setManualName]=useState(false),[dirty,setDirty]=useState(false);
  const [discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState('');
  const [pending,setPending]=useState<string>();
@@ -63,10 +64,20 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
 
  const visible=catalog?.templates.filter(item=>{
    const c=course(item.courseId);
-   const query=search.trim().toLowerCase();
+   const query=filters.search.trim().toLowerCase();
    return [item.name,c?.name,c?.teaching?.material].some(value=>value?.toLowerCase().includes(query))&&
-     (!level||c?.teaching?.level===level)&&(!quoteFilter||(item.saleUnitPrice?'ready':'missing')===quoteFilter);
+     (!filters.level||c?.teaching?.level===filters.level)&&(!filters.quote||(item.saleUnitPrice?'ready':'missing')===filters.quote)&&
+     (!filters.format||item.format===filters.format)&&(!filters.teacher||item.teacherType===filters.teacher);
+ }).sort((a,b)=>{
+   const rank=(id:string)=>enrollmentLevels.findIndex(level=>level===course(id)?.teaching?.level);
+   const ar=rank(a.courseId),br=rank(b.courseId);
+   const name=a.name.localeCompare(b.name,lang,{numeric:true});
+   const byCourse=(ar<0?enrollmentLevels.length:ar)-(br<0?enrollmentLevels.length:br)||
+     Object.keys(formats).indexOf(a.format)-Object.keys(formats).indexOf(b.format)||
+     Object.keys(teachers).indexOf(a.teacherType)-Object.keys(teachers).indexOf(b.teacherType);
+   return (filters.sort==='name-desc'?-name:filters.sort==='name-asc'?name:byCourse||name)||a.id.localeCompare(b.id);
  })??[];
+ const selectedVisible=visible.some(item=>item.id===selected);
  useEffect(()=>{
    if(!selected){located.current=undefined;return;}
    if(read!=='ready'||located.current===selected)return;
@@ -75,7 +86,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
    located.current=selected;
    row.scrollIntoView({block:'nearest'});
    row.focus({preventScroll:true});
- },[read,selected]);
+ },[read,selected,selectedVisible]);
  const newCourse=catalog?.courses.find(c=>c.active&&c.teaching);
  const auto=(item:TemplateDraft)=>{
    if(!item.courseId||!item.format||!item.teacherType)return '';
@@ -193,11 +204,17 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
    : <AdminField required>{label}<CrmSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change}/></AdminField>;
  const termsLocked=!!draft&&referencedTemplates.has(draft.id);
  const searchLabel=t('Search templates','Cari templat','搜索模板');
- const filters=<div className="crm-ops-actions">
-   <AdminSearchField label={searchLabel} placeholder={searchLabel} value={search} onChange={setSearch}/>
-   <CrmSingleSelect label={t('Level','Level','级别')} value={level} onChange={setLevel} lang={lang} isLight={isLight} options={[{value:'',label:t('All levels','Semua level','全部级别')},...enrollmentLevels.map(v=>({value:v,label:v}))]}/>
-   <CrmSingleSelect label={t('Quote status','Status harga','报价状态')} value={quoteFilter} onChange={setQuoteFilter} lang={lang} isLight={isLight} options={[
-     {value:'',label:t('All quote statuses','Semua status harga','全部报价状态')},{value:'ready',label:t('Configured','Tersedia','已配置')},{value:'missing',label:t('Pending','Menunggu','待确认')}]}/>
+ const filterControls=<div className="crm-class-config-filters">
+   <AdminSearchField label={searchLabel} placeholder={t('Template, course or textbook','Templat, kursus, atau buku ajar','模板、课程或教材')} value={filters.search} onChange={search=>change({search})}/>
+   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Level','Level','级别']} all={['All levels','Semua level','全部级别']}
+     value={filters.level} onChange={level=>change({level})} options={enrollmentLevels.map(value=>({value,label:value}))}/>
+   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Class type','Jenis kelas','班型']} all={['All class types','Semua jenis kelas','全部班型']}
+     value={filters.format} onChange={format=>change({format})} options={Object.entries(formats).map(([value,label])=>({value,label}))}/>
+   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Teacher type','Jenis pengajar','教师类型']} all={['All teacher types','Semua jenis pengajar','全部教师类型']}
+     value={filters.teacher} onChange={teacher=>change({teacher})} options={Object.entries(teachers).map(([value,label])=>({value,label}))}/>
+   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Quote status','Status harga','报价状态']} all={['All quote statuses','Semua status harga','全部报价状态']}
+     value={filters.quote} onChange={quote=>change({quote})} options={[
+       {value:'ready',label:t('Configured','Tersedia','已配置')},{value:'missing',label:t('Pending','Menunggu','待确认')}]}/>
  </div>;
  const draftCourse=draft&&course(draft.courseId),draftQuote=draft&&draftCourse&&enrollmentTemplateQuote(draft,draftCourse.sessions);
  const ready=!!catalog&&read!=='denied';
@@ -205,9 +222,22 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  return <div className="crm-course-catalog">
      {!quoteEdit&&<><header className="admin-edit-header"><h2>{title}</h2><div className="crm-ops-actions">{titleActions}
        <CrmPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></div></header>
-     {ready&&filters}
+     {ready&&filterControls}
+     {ready&&<EnrollmentSettingsListSummary lang={lang} count={visible.length} total={catalog.templates.length}
+       filtered={!!(filters.search||filters.level||filters.format||filters.teacher||filters.quote)} onClear={clear}>
+       <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Sort','Urutkan','排序']} value={filters.sort} onChange={sort=>change({sort})} options={[
+         {value:'course',label:t('Level, class type and teacher','Level, jenis kelas, dan pengajar','级别、班型、教师类型')},
+         {value:'name-asc',label:t('Name · Ascending','Nama · Naik','名称升序')},
+         {value:'name-desc',label:t('Name · Descending','Nama · Turun','名称降序')},
+       ]}/>
+     </EnrollmentSettingsListSummary>}
+     {ready&&selected&&!selectedVisible&&catalog.templates.some(item=>item.id===selected)&&<p className="crm-work-muted">
+       {t('The linked template is outside the current filters. Clear filters to show it.',
+         'Templat yang ditautkan berada di luar filter saat ini. Hapus filter untuk menampilkannya.','当前筛选未包含链接指向的模板。清除筛选即可查看。')}
+     </p>}
      {ready&&!!visible.length&&<AdminListTable label={title} busy={read==='loading'} headers={[
-       t('Template name','Nama templat','模板名称'),t('Class type and teacher','Jenis kelas dan pengajar','班型与师资'),
+       {label:t('Template name','Nama templat','模板名称'),sort:filters.sort==='name-asc'?'ascending':filters.sort==='name-desc'?'descending':undefined},
+       t('Class type and teacher','Jenis kelas dan pengajar','班型与师资'),
        t('Class size','Jumlah peserta','招生人数'),t('Price per period','Harga per jam pelajaran','每节报价'),t('Actions','Tindakan','操作'),
      ]}>
        {visible.map(item=>{

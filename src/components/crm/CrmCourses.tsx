@@ -1,5 +1,6 @@
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminSearchField} from '../admin/AdminSearchField';
+import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
 import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
@@ -23,7 +24,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
  const readRequest=useRef<AbortController|null>(null);
  const title=t('Courses','Kursus','课程');
- const [search,setSearch]=useState(''),[level,setLevel]=useState('');
+ const {filters,change,clear}=useEnrollmentSettingsFilters('courses',{search:'',level:'',status:'',sort:'level'});
  const listState=readState==='loading'&&data?'ready':readState;
  const money=(n:number)=>formatCurrency(n,lang);
  const load=async()=>{
@@ -74,7 +75,18 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  const textbookLabel=t('Main textbook and edition','Buku ajar utama dan edisi','主教材及版本');
  const visibleLabel=t('Visible to learners','Ditampilkan kepada siswa','学员可见');
  const fixed=!!data?.courses.find((c:any)=>c.id===form?.id)?.teaching;
- const rows=data?.courses.filter((c:any)=>(!level||c.teaching?.level===level)&&[c.name,c.teaching?.material].some(v=>v?.toLowerCase().includes(search.trim().toLowerCase())))??[];
+ const levelRank=(course:any)=>{
+   const rank=enrollmentLevels.indexOf(course.teaching?.level);
+   return rank<0?enrollmentLevels.length:rank;
+ };
+ const searchQuery=filters.search.trim().toLowerCase();
+ const rows=data?.courses.filter((c:any)=>(!filters.level||c.teaching?.level===filters.level)&&
+   (!filters.status||(c.active?'published':'draft')===filters.status)&&
+   [c.name,c.teaching?.material].some(v=>v?.toLowerCase().includes(searchQuery))).sort((a:any,b:any)=>{
+   const name=a.name.localeCompare(b.name,lang,{numeric:true});
+   return (filters.sort==='name-desc'?-name:filters.sort==='name-asc'?name:levelRank(a)-levelRank(b)||name)||
+     a.id.localeCompare(b.id);
+ })??[];
  const close=()=>{if(dirty||unknown)setDiscard(true);else setForm(null);};
  const save=async(e:any)=>{e.preventDefault();if(gate.current||unknown)return;if(!form.config.teaching.level){setError(t('Select the level.','Pilih level.','请选择级别。'));return;}if(!form.config.teaching.material.trim()){setError(t('Select or add a textbook.','Pilih atau tambahkan buku ajar.','请选择或新增主教材。'));return;}gate.current=true;setState('saving');setError('');const b={id:form.id,revision:form.revision,requestId:crypto.randomUUID(),config:{...form.config,sessions:Number(form.config.sessions),price:Number(form.config.price),maxDiscountBps:Number(form.config.maxDiscountBps),maxDiscountAmount:form.config.maxDiscountAmount===null||form.config.maxDiscountAmount===''?null:Number(form.config.maxDiscountAmount)}};pending.current=b;try{sessionStorage.setItem('uper_course_pending:'+data.actorId,b.requestId);}catch{}
  try{const r=await fetch('/api/crm/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok){if(r.status>=500){setState('unknown');return;}setState('failed');setError(courseError(d.error,lang));if(r.status===409){try{const fresh=await fetch('/api/crm/courses',{cache:'no-store'});if(fresh.ok)setLatest((await fresh.json()).courses.find((c:any)=>c.id===b.id));}catch{}}pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}return;}if(d.courseId!==b.id||d.operationKind!=='course')throw Error('unconfirmed');setDirty(false);setForm(null);pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}setState('saved');await load().catch(()=>setError(t('Saved; refresh to review.','Disimpan; segarkan untuk memeriksa.','已保存，请刷新核对。')));}catch{setState('unknown');}finally{gate.current=false;}};
@@ -117,13 +129,29 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
     ?t('No courses yet. Create and publish a course before confirming enrollment.','Belum ada kursus. Buat dan terbitkan sebelum konfirmasi pendaftaran.','暂无课程。创建并发布课程后，销售才能确认报名。')
     :listState==='error'&&data?t('Refresh failed. Showing the last loaded courses.','Gagal menyegarkan. Kursus yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的课程。'):undefined}
    onRetry={refresh}/>}
- {data&&<div className="crm-ops-actions">
-   <AdminSearchField label={t('Search courses','Cari kursus','搜索课程')} value={search} onChange={setSearch}/>
-   <CrmSingleSelect lang={lang} isLight={isLight} label={t('Level','Level','级别')} value={level} onChange={setLevel}
-     options={[{value:'',label:t('All levels','Semua level','全部级别')},...enrollmentLevels.map(v=>({value:v,label:v}))]}/>
- </div>}
+ {data&&<>
+  <div className="crm-class-config-filters">
+   <AdminSearchField label={t('Search courses','Cari kursus','搜索课程')} placeholder={t('Course or textbook','Kursus atau buku ajar','课程或教材')}
+     value={filters.search} onChange={search=>change({search})}/>
+   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Level','Level','级别']} all={['All levels','Semua level','全部级别']}
+     value={filters.level} onChange={level=>change({level})} options={enrollmentLevels.map(value=>({value,label:value}))}/>
+   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Publication status','Status publikasi','发布状态']}
+     all={['All statuses','Semua status','全部状态']} value={filters.status} onChange={status=>change({status})} options={[
+       {value:'published',label:t('Published','Diterbitkan','已发布')},{value:'draft',label:t('Draft','Draf','草稿')},
+     ]}/>
+  </div>
+  <EnrollmentSettingsListSummary lang={lang} count={rows.length} total={data.courses.length}
+    filtered={!!(filters.search||filters.level||filters.status)} onClear={clear}>
+    <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Sort','Urutkan','排序']} value={filters.sort} onChange={sort=>change({sort})} options={[
+      {value:'level',label:t('Level, then course name','Level, lalu nama kursus','级别、课程名称')},
+      {value:'name-asc',label:t('Name · Ascending','Nama · Naik','名称升序')},
+      {value:'name-desc',label:t('Name · Descending','Nama · Turun','名称降序')},
+    ]}/>
+  </EnrollmentSettingsListSummary>
+ </>}
  {!!rows.length&&<AdminListTable label={title} busy={readState==='loading'} headers={[
-   t('Course','Kursus','课程'),t('Level','Level','级别'),t('Textbook','Buku ajar','主教材'),
+   {label:t('Course','Kursus','课程'),sort:filters.sort==='name-asc'?'ascending':filters.sort==='name-desc'?'descending':undefined},
+   {label:t('Level','Level','级别'),sort:filters.sort==='level'?'ascending':undefined},t('Textbook','Buku ajar','主教材'),
    t('Periods','Jam pelajaran','节数'),t('Status','Status','状态'),t('Actions','Tindakan','操作'),
  ]}>{rows.map((c:any)=><tr key={c.id}><td><strong>{c.name}</strong>{c.systemManaged&&<div><AdminStatus tone="neutral">{t('System preset','Preset sistem','系统预置')}</AdminStatus></div>}</td><td>{c.teaching?.level??'—'}</td>
    <td>{c.teaching?.material??'—'}</td><td>{c.sessions}{c.teaching?' × '+c.teaching.minutes+' min':''}</td>
