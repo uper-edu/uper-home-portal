@@ -374,9 +374,9 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     {error && <p className="enrollment-form-error" role="alert">{t(message)}</p>}
     {verificationStep ? <form className="enrollment-journey-form" onSubmit={event=>{event.preventDefault();void verifyApplication();}}>
       <p className="enrollment-journey-note">{t([
-        '验证后，你可以用这个邮箱查看报名。开班结果、转班邀请等重要消息也会通过邮件发送。',
-        'Use this email to check your enrollment. We’ll also email important updates, including class opening decisions and transfer invitations.',
-        'Gunakan email ini untuk melihat pendaftaran. Kami juga mengirim kabar penting, termasuk keputusan pembukaan kelas dan undangan pindah kelas.',
+        '验证后，你可以用这个邮箱查看报名。转班邀请、班次取消等重要事项也会通过邮件通知你。',
+        'Use this email to check your enrollment. We’ll also email you about important updates, such as class transfer invitations and class cancellations.',
+        'Gunakan email ini untuk melihat pendaftaran. Kami juga akan mengirimkan pemberitahuan penting melalui email, seperti undangan pindah kelas dan pembatalan kelas.',
       ])}</p>
       <label className="enrollment-field">{emailLabel}<input type="email" value={email} readOnly autoComplete="email"/></label>
       {codeField}
