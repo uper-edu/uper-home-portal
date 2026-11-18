@@ -1,3 +1,4 @@
+import {AdminDateField} from '../admin/AdminDateField';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
@@ -1400,17 +1401,16 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       />
                     </AdminField>
 
-                    <AdminField as="div">
-                      <label className="block font-semibold mb-1">{t('Countdown Date / Event Date', '倒计时 / 举办日期')}</label>
-                      <input
-                        type="date"
-                        value={editingItem.countdownDate ? new Date(editingItem.countdownDate).toISOString().slice(0, 10) : ''}
-                        onChange={(e) => setEditingItem({ ...editingItem, countdownDate: new Date(e.target.value).toISOString() })}
-                        className={`w-full px-3 py-1.5 rounded-lg border ${
-                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                        }`}
-                      />
-                    </AdminField>
+                    {(()=>{
+                      const stored=editingItem.countdownDate;
+                      const instant=stored?new Date(stored):null;
+                      const invalid=!!instant&&!Number.isFinite(instant.getTime());
+                      return <AdminDateField lang={lang} clearable
+                        label={lang==='id'?'Tanggal hitung mundur / acara':t('Countdown Date / Event Date', '倒计时 / 举办日期')}
+                        value={instant&&!invalid?instant.toISOString().slice(0,10):''}
+                        error={invalid?(lang==='id'?'Tanggal tersimpan perlu diperiksa.':t('Review the saved date.','原日期待核对。')):undefined}
+                        onChange={date=>setEditingItem({...editingItem,countdownDate:date?new Date(date+'T00:00:00Z').toISOString():''})}/>;
+                    })()}
 
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Campaign Details / Agenda', '活动详情安排')}</label>
