@@ -1,3 +1,5 @@
+import {validContactPhone} from './contactPhone';
+
 export const demandLevels = ['HSK 1','HSK 2','HSK 3','HSK 4','unsure','other'] as const;
 export const demandPeriods = ['weekday-day','weekday-evening','weekend','any','other'] as const;
 export const demandFormats = ['standard','small','one-on-one','any','other'] as const;
@@ -11,6 +13,10 @@ export interface DemandCriteria {
 }
 
 export function enrollmentPhone(input: unknown): string | null {
+  return typeof input === 'string' && validContactPhone(input) ? input.trim() : null;
+}
+
+export function enrollmentInsertionPhone(input: unknown): string | null {
   if (typeof input !== 'string') return null;
   const phone = input.trim();
   const digits = phone.replace(/\D/g,'').length;

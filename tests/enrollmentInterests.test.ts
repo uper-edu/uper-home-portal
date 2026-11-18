@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { demandMatches, parseDemand } from '../src/utils/enrollmentInterests';
+import { demandMatches, enrollmentPhone, parseDemand } from '../src/utils/enrollmentInterests';
 import {sortEnrollmentRecords} from '../src/utils/enrollmentRecordOrder';
 import {enrollmentInterestStillAvailable} from '../server/portal/enrollmentInterestDelivery';
 
@@ -48,4 +48,12 @@ test('my enrollments ranks actionable records first, then interleaves all catego
   assert.deepEqual(sortEnrollmentRecords(records).map(row=>row.key),
     ['demand-match','order-awaiting','waitlist-full','order-verified','demand-older']);
   assert.equal(records[0].key,'order-awaiting');
+});
+
+test('enrollment intake uses the shared country numbering rules', () => {
+  const invalidNumber = '+6280650713191';
+  const validNumber = '0812-5071-3191';
+  assert.equal(enrollmentPhone(invalidNumber), null);
+  assert.equal(enrollmentPhone(' '+validNumber+' '), validNumber);
+  assert.equal(parseDemand({level:'HSK 1',period:'any',format:'any',notes:'',phone:invalidNumber}), null);
 });

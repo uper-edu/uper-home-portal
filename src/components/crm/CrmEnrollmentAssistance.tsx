@@ -1,3 +1,4 @@
+import {useEnrollmentPhoneField} from '../useEnrollmentPhoneField';
 import {AdminCopyAction} from '../admin/AdminRecordActions';
 import {useEffect,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
@@ -26,6 +27,8 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
   const [classes,setClasses]=useState<PublicEnrollmentClass[]>();
   const [classId,setClassId]=useState('');
+  const [phone,setPhone]=useState(contacts.phone);
+  const phoneField=useEnrollmentPhoneField(lang,phone);
   const [result,setResult]=useState(initial);
   const [requestId]=useState(()=>crypto.randomUUID());
   const [busy,setBusy]=useState(false);
@@ -114,7 +117,7 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
             {t('重发确认邮件','Retry confirmation email','Kirim ulang email konfirmasi')}</button>}
         </AdminFormActions>
       </div>:<AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onChange={()=>setDirty(true)} onSubmit={async event=>{
-        event.preventDefault();if(busy||!classId)return;
+        event.preventDefault();if(busy||!classId||!phoneField.check())return;
         const data=new FormData(event.currentTarget);
         setBusy(true);setFeedback(undefined);
         try{
@@ -143,7 +146,9 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
           <AdminField required>{t('学员姓名','Learner name','Nama siswa')}<input name="name" defaultValue={customerName} maxLength={120} required/></AdminField>
           <AdminFormGrid>
             <AdminField required>{t('电子邮箱','Email address','Alamat email')}<input name="email" defaultValue={contacts.email} type="email" maxLength={254} required/></AdminField>
-            <AdminField required>{t('WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP')}<input name="phone" defaultValue={contacts.phone} type="tel" required/></AdminField>
+            <AdminField required>{t('WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP')}<input name="phone" value={phone} onChange={event=>setPhone(event.target.value)} {...phoneField.inputProps} type="tel" required/>
+              {phoneField.error&&<small className="admin-required-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>}
+            </AdminField>
           </AdminFormGrid>
           <p>{t('提交后，系统会发送确认邮件。学员确认并取得席位后才开始付款计时。','We email the learner to confirm. Payment time starts when they confirm and receive a seat.','Email konfirmasi akan dikirim. Waktu pembayaran dimulai setelah siswa mengonfirmasi dan mendapat kursi.')}</p>
           <p>{t('新申请会关闭此商机原先尚未确认的申请。','A new application closes any previous unconfirmed application for this opportunity.','Pengajuan baru menutup pengajuan sebelumnya yang belum dikonfirmasi.')}</p>

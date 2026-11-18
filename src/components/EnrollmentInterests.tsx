@@ -1,3 +1,4 @@
+import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import { useState, type ReactNode } from 'react';
 import { PublicSingleSelect } from './PublicSingleSelect';
 import { demandFormats, demandLevels, demandPeriods, parseDemand, type DemandCriteria } from '../utils/enrollmentInterests';
@@ -41,6 +42,7 @@ export function EnrollmentDemandForm({ language, initial, onSave, busy, verifica
   const [id]=useState(initial?.id||crypto.randomUUID());
   const [name,setName]=useState('');
   const [criteria,setCriteria]=useState<DemandCriteria>(initial?.criteria ?? {level:'unsure',period:'any',format:'any',notes:'',phone:''});
+  const phoneField = useEnrollmentPhoneField(language,criteria.phone);
   const notesRequired=[criteria.level,criteria.period,criteria.format].includes('other');
   const [invalid,setInvalid]=useState(false);
   const fields=[
@@ -50,6 +52,7 @@ export function EnrollmentDemandForm({ language, initial, onSave, busy, verifica
   ] as const;
   return <form className={verification ? "enrollment-journey-form enrollment-demand-form" : undefined} onSubmit={event=>{
     event.preventDefault();
+    if(!phoneField.check())return;
     const value=parseDemand({...criteria});
     if (!value) {setInvalid(true);return;}
     setInvalid(false);onSave({id,revision:initial?.revision??0,criteria:value,name:initial?undefined:name.trim()});
@@ -71,7 +74,8 @@ export function EnrollmentDemandForm({ language, initial, onSave, busy, verifica
       <input required autoComplete="name" maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>}
     {verification?.email}
     <label className={verification?'enrollment-field':undefined}>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}
-      <input type="tel" autoComplete="tel" required maxLength={26} value={criteria.phone} onChange={event=>setCriteria({...criteria,phone:event.target.value})}/></label>
+      <input type="tel" autoComplete="tel" required {...phoneField.inputProps} value={criteria.phone} onChange={event=>setCriteria({...criteria,phone:event.target.value})}/>
+      {phoneField.error&&<small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>}</label>
     {verification?.code}
     {invalid && <p role="alert">{t(['请检查联系方式和补充说明。','Check your phone number and additional details.','Periksa nomor telepon dan rincian tambahan.'])}</p>}
     {verification ? <div className="enrollment-journey-actions">

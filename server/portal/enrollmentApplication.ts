@@ -10,7 +10,7 @@ import type { Employee } from './identity.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
-import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
+import { enrollmentInsertionPhone, enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
 import { mountEnrollmentRules, readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
@@ -448,7 +448,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const classId=String(q.params.id);
     const {name,price,confirmed,requestId,email:rawEmail,phone:rawPhone}=q.body??{};
     const email=contact(rawEmail);
-    const phone=enrollmentPhone(rawPhone);
+    const phone=enrollmentInsertionPhone(rawPhone);
     if(!/^[a-zA-Z0-9-]{1,64}$/.test(classId)||typeof name!=='string'||!name.trim()||name.length>120||!phone||
         typeof requestId!=='string'||!uuid.test(requestId)||!Number.isSafeInteger(price)||price<1||price>1_000_000_000||confirmed!==true)
       invalid('enrollment_invalid_insertion');
