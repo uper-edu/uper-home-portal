@@ -58,6 +58,19 @@
 
 **截至 `2b0ddb8`，本地 3000 的 Enrollment 首版报名与支付验收已收口，本轮范围内无剩余必验项。** 3000 已恢复开放模拟报名，临时验收记录已清理。验收覆盖手机浏览器视口。实体手机、独立 MySQL 空库及旧库重跑、正式 SMTP 和真实 Lark 客户端留待相应验证。真实 Lark 通报继续单独放行。
 
+### 日常自然推广报名短链复验
+
+以本地 `main` 的 `755dcd6` 为基线，在本地 3000 的桌面浏览器打开「营销活动中心 → 日常自然推广 → 推广链接」。四条 Enrollment 短链均显示为「系统预置」。逐条点击「复制短链接」，读取剪贴板并打开复制出的地址。四条都直达印尼文报名页 `/enrollment`，落地页显示「Pendaftaran kelas」。
+
+| 平台 | 剪贴板中的短链 | 落地页推广 ID（`p`） | 落地页来源（`utm_source`） |
+| --- | --- | --- | --- |
+| Instagram | `http://localhost:3000/s/enroll-ig` | `enroll-ig` | `instagram` |
+| TikTok | `http://localhost:3000/s/enroll-tt` | `enroll-tt` | `tiktok` |
+| YouTube | `http://localhost:3000/s/enroll-yt` | `enroll-yt` | `youtube` |
+| Threads | `http://localhost:3000/s/enroll-th` | `enroll-th` | `threads` |
+
+四条落地地址的 `utm_campaign` 均为 `social-bio`，`utm_medium` 均为 `social`，`utm_content` 均为 `enrollment`，语言均为 `lang=id`。本轮浏览器复验覆盖列表、复制、落地页和归因参数，报名提交及 CRM 商机写入沿用此前的模拟验收结果。
+
 ## 班次资料补录与回读
 
 已在本地 3000 补齐六个现有班次的教师并逐班回读。H2-STD-17Dec 使用 HSK 2 外教标准班模板保存为草稿。
