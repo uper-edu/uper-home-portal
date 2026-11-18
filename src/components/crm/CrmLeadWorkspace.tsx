@@ -382,7 +382,7 @@ export function CrmLeadWorkspace({
                         {leadDisplayNumber(lead)} · {owner(lead)}
                       </div>
                       {identityFacts.length>0&&<div className="crm-work-muted crm-work-demographics" aria-label={lang==='zh'?'居住地与客户身份':lang==='id'?'Domisili dan identitas pelanggan':'Residence and customer identity'}>{identityFacts.join(' · ')}</div>}
-                      {<CrmIdentityStatus lead={lead} lang={lang} explain/>}
+                      {!lead.identityReview?.canReview&&<CrmIdentityStatus lead={lead} lang={lang} explain/>}
                       {['ai.failed','task.overdue'].includes(lead.attention?.latest?.type||'')&&<LeadActivity
                         lead={lead}
                         lang={lang}

@@ -11,8 +11,8 @@ const lead:any={id:'TEST-identity-layout',fullName:'TEST Identity Layout',owner:
 const workspace=(value=lead,view='worklist',extra:any={},lang:any='zh')=>render(React.createElement(CrmUiProvider,{lang,children:React.createElement(CrmLeadWorkspace,{leads:[value],view,lang,isLight:true,timezone:'Asia/Jakarta',employeeId:'identity-layout',employees:[],onOpen(){},onReset(){},onIdentity(){},...extra})}));
 const actions=(html:string)=>(html.match(/data-identity-priority="true"/g)||[]).length;
 const badges=(html:string)=>(html.match(/data-restriction="identity"/g)||[]).length;
-test('main worklist gives each pending lead one status and one actionable review entry',()=>{
- const before=JSON.stringify(lead),html=workspace();assert.equal(actions(html),1);assert.equal(badges(html),1);assert.doesNotMatch(html,/disabled=""[^>]*data-identity-priority|⚠|自己认领|记录进展/);assert.equal(JSON.stringify(lead),before);
+test('main worklist shows only the actionable review entry to a reviewer',()=>{
+ const before=JSON.stringify(lead),html=workspace();assert.equal(actions(html),1);assert.equal(badges(html),0);assert.doesNotMatch(html,/disabled=""[^>]*data-identity-priority|⚠|自己认领|记录进展/);assert.equal(JSON.stringify(lead),before);
 });
 test('table has one review action whether followup column is visible or hidden',()=>{
  const key='uper_crm_customer_fields_identity-layout';
