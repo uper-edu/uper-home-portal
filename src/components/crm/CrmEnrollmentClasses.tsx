@@ -102,7 +102,7 @@ const classStatusCopy={
   draft:['Draft','Draf','草稿'],
   published:['Published · Awaiting class confirmation','Diterbitkan · Menunggu konfirmasi kelas','已发布 · 待确认开班'],
   opened:['Class confirmed','Kelas dikonfirmasi','已确认开班'],
-  cancelled:['Class will not open','Kelas tidak dibuka','已确认不开班'],
+  cancelled:['Cancelled','Dibatalkan','已取消'],
 } as const;
 const classStatus=(row:EnrollmentClassAdmin)=>row.state==='published'&&row.opened?'opened':row.state;
 const initial: ClassDraftConfig = {
@@ -450,10 +450,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     if(!target&&((filters.level&&row.level!==filters.level)||(filters.format&&row.format!==filters.format)||
       (filters.period&&row.period!==filters.period)||(filters.status&&classStatus(row)!==filters.status)||
       (filters.teacher&&row.teacherType!==filters.teacher)||!matchesDate(start)))return [];
-    const entry={row,time:start?.getTime()??null,firstSession:start?formatCrmEventTime(start.toISOString()).slice(0,16):'—'};
+    const schedule=enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,lang)||(row.weeklySchedule?'':row.schedule);
+    const entry={row,schedule,time:start?.getTime()??null,firstSession:start?formatCrmEventTime(start.toISOString()).slice(0,16):'—'};
     if(target||!tokens.length)return [entry];
     const haystack=normalize([row.id,row.courseName,row.level.replace(/\s+/gu,''),enrollmentClassTitle(row,lang),
-      row.schedule,row.firstLesson,entry.firstSession,enrollmentTeacherLabel(row.teacherType,lang),row.teacher].join(' '));
+      schedule,row.schedule,row.firstLesson,entry.firstSession,enrollmentTeacherLabel(row.teacherType,lang),row.teacher].join(' '));
     return tokens.every(token=>haystack.includes(token))?[entry]:[];
   }).sort((a,b)=>compareEnrollmentClassStarts(a.time,b.time,filters.sort,now)||a.row.id.localeCompare(b.row.id));
   const advancedCount=Number(!!filters.date)+Number(!!filters.teacher);
@@ -552,20 +553,20 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       {label:t(['Tuition','Biaya','学费']),numeric:true},
       t(['Status','Status','状态']),t(['Actions','Tindakan','操作']),
     ]}>
-      {visibleClasses.map(({row,firstSession}) => <tr key={row.id}>
-        <td>{enrollmentClassTitle(row,lang)}<br/><small>{enrollmentTeacherLabel(row.teacherType,lang)}</small></td><td>{firstSession}<br/>{row.schedule}</td>
+      {visibleClasses.map(({row,firstSession,schedule}) => <tr key={row.id}>
+        <td>{enrollmentClassTitle(row,lang)}<br/><small>{enrollmentTeacherLabel(row.teacherType,lang)}</small></td><td>{firstSession}{schedule&&<><br/>{schedule}</>}</td>
         <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus showDot={false} tone={row.opened||row.state==='published'?'success':'neutral'}>{t(classStatusCopy[classStatus(row)])}</AdminStatus></td>
-        <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)}>{t(['View enrollments','Lihat pendaftaran','查看报名'])}</AdminRowAction>}
-          {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Edit', '编辑'])}</AdminRowAction>}
-          {row.canDelete&&<AdminRowAction disabled={readState!=='ready'} onClick={()=>{
+        <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)} title={t(['View enrollments','Lihat pendaftaran','查看报名'])}>{t(['View','Lihat','查看'])}</AdminRowAction>}
+          {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Ubah', '编辑'])}</AdminRowAction>}
+          {row.canDelete&&<AdminRowAction title={t(['Delete draft','Hapus draf','删除班次草稿'])} disabled={readState!=='ready'} onClick={()=>{
             setDeleted(false);setDeleteError('');setDeleteUnknown(false);
             setDeleting({row,requestId:crypto.randomUUID()});
           }}>{t(['Delete','Hapus','删除'])}</AdminRowAction>}
-          {row.canInsert&&<AdminRowAction disabled={readState==='error'} onClick={()=>{
+          {row.canInsert&&<AdminRowAction title={t(['Add learner','Tambah siswa ke kelas','插班'])} disabled={readState==='error'} onClick={()=>{
             setInsertion({row,requestId:crypto.randomUUID()});setDirty(false);setError('');setSaved(false);
-          }}>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}</AdminRowAction>}
+          }}>{t(['Add','Tambah','插班'])}</AdminRowAction>}
           {row.state==='published'&&!row.opened&&<AdminSecondaryActions alwaysMenu disabled={readState==='error'} label={t(['More actions','Tindakan lain','更多操作'])}>
-            <button type="button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>{t(['Class will not open','Kelas tidak dibuka','确认不开班'])}</button>
+            <button type="button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>{t(['Cancel class','Batalkan kelas','取消班次'])}</button>
           </AdminSecondaryActions>}</div></td>
       </tr>)}</AdminListTable>}
     {draft&&!preview&&!quoteTemplateId&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
@@ -719,7 +720,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       {pending&&<><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" disabled={busy} onClick={()=>void check()}>{t(['Check save result','Periksa hasil simpan','查询保存结果'])}</button></>}
       {previewRow&&<EnrollmentLearnerPreview row={previewRow} language={lang}/>}
     </AdminEditor>}
-    {insertion&&<CrmOperationLayer compose title={<>{t(['Add to class','Tambah siswa ke kelas','办理插班'])}<AdminRequiredNote inline lang={lang}/></>}
+    {insertion&&<CrmOperationLayer compose title={<>{t(['Add learner','Tambah siswa ke kelas','插班'])}<AdminRequiredNote inline lang={lang}/></>}
       lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={()=>{
         if(busy||pending)return;
         if(dirty)setDiscard(true);else setInsertion(undefined);
@@ -728,7 +729,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         event.preventDefault();void saveInsertion(new FormData(event.currentTarget));
       }}>
         <div className="crm-editor-scroll">
-          <p>{insertion.row.level} · {insertion.row.schedule}</p>
+          <p>{insertion.row.level} · {enrollmentWeeklyScheduleText(insertion.row.weeklySchedule,insertion.row.minutes,lang)||insertion.row.schedule}</p>
           <p>{t(['Confirm tuition with the learner before reserving a seat. The payment deadline uses the enrollment rules in effect when you save.',
             'Konfirmasikan biaya dengan siswa sebelum memesan kursi. Batas pembayaran mengikuti aturan pendaftaran saat Anda menyimpan.',
             '分配席位前请先与学员确认应付金额。付款和提交凭证的截止时间按保存时生效的报名规则计算。'])}</p>
@@ -748,7 +749,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
             {t(['Check save result','Periksa hasil simpan','查询保存结果'])}</button>:<>
             <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{if(dirty)setDiscard(true);else setInsertion(undefined);}}>
               {t(['Cancel','Batal','取消'])}</button>
-            <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t(['Confirm and reserve seat','Konfirmasi dan pesan kursi','确认并分配席位'])}</button>
+            <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t(['Reserve seat','Pesan kursi','分配席位'])}</button>
           </>}
         </AdminFormActions>
       </AdminForm>
@@ -776,9 +777,9 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       {deleteError&&<p role="alert">{deleteError}</p>}
     </AdminConfirmation>}
     {closing&&<CrmDiscardDialog lang={lang} isLight={isLight}
-      title={t(['Confirm the class will not open?','Konfirmasi kelas tidak dibuka?','确认这个班不开班？'])}
-      description={t(['New applications and transfers stop. Existing payment records remain available.','Pendaftaran dan transfer baru dihentikan. Riwayat pembayaran tetap tersedia.','关闭新报名和转账入口，保留已有付款记录。'])}
-      keepLabel={t(['Go back','Kembali','返回'])} discardLabel={t(['Confirm','Konfirmasi','确认不开班'])}
+      title={t(['Cancel this class?','Batalkan kelas ini?','取消这个班次？'])}
+      description={t(['Stops new applications and payments. Existing payment records stay available.','Pendaftaran dan pembayaran baru dihentikan. Riwayat pembayaran tetap tersedia.','关闭新报名和转账入口，保留已有付款记录。'])}
+      keepLabel={t(['Keep class','Pertahankan kelas','保留班次'])} discardLabel={t(['Cancel class','Batalkan kelas','取消班次'])}
       onKeep={()=>{if(!busy)setClosing(undefined);}} onDiscard={()=>{
         if(busy)return;
         setBusy(true);setError('');
