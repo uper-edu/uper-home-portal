@@ -1,4 +1,4 @@
-import {dispatchEnrollmentMail,enrollmentMailConfigured} from './enrollmentMail.ts';
+import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailMode,enrollmentSmtpReady} from './enrollmentMail.ts';
 import type { Express, Request, Response } from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { tx } from './store.ts';
@@ -8,6 +8,7 @@ import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
 import { enrollmentSimulation } from './enrollmentSimulation.ts';
+import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
@@ -29,7 +30,7 @@ import { applyEnrollmentPaymentCredits, lockEnrollmentFunds, updateEnrollmentPay
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
 import { renderEnrollmentEmail } from './enrollmentEmail.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
-import { mountEnrollmentBank,readEnrollmentBank } from './enrollmentBank.ts';
+import { hasConfiguredEnrollmentBank,mountEnrollmentBank,readEnrollmentBank } from './enrollmentBank.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -104,12 +105,32 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   staff: (q: Request, permission: string) => Promise<Employee>;
 }) {
   const local = enrollmentSimulation();
+  const policy = enrollmentServicePolicy();
   mountEnrollmentRules(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
+  mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
-  app.get(base + '/availability', (_q, r) => r.set('Cache-Control', 'no-store').json({ accepting: !!local }));
-  if (!local) return;
-  mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
+
+  async function readiness(c:Client,explain=false) {
+    const reasons = policy.acceptingNew ? [] : [policy.servicing ? 'paused' : 'service_disabled'];
+    if (!policy.simulation && (policy.acceptingNew || explain)) {
+      if (!hasConfiguredEnrollmentBank(await readEnrollmentBank(c))) reasons.push('bank_required');
+      if (!await enrollmentSmtpReady(c)) reasons.push('mail_required');
+    }
+    return {accepting:reasons.length===0,servicing:policy.servicing,reasons};
+  }
+  async function requireNewEnrollment(c:Client) {
+    if (!(await readiness(c)).accepting) invalid('enrollment_intake_paused',503);
+  }
+  app.get(base + '/availability', wrap(async (_q,r) => {
+    const accepting=policy.acceptingNew&&await enrollTx(async c=>(await readiness(c)).accepting).catch(()=>false);
+    r.set('Cache-Control','no-store').json({accepting,servicing:policy.servicing});
+  }));
+  app.get('/api/crm/enrollment/readiness', wrap(async (q,r) => {
+    await staff(q,'crm.operations.manage');
+    r.set('Cache-Control','no-store').json(await enrollTx(c=>readiness(c,true)));
+  }));
+  if (!policy.servicing) return;
   mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow});
 
   const post = (path: string, handler: Route) => app.post(path, wrap(async (q, r) => {
@@ -117,7 +138,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     r.set('Cache-Control', 'no-store');
     return handler(q, r);
   }));
-  mountEnrollmentInterests(app,{wrap,post,transact:enrollTx,session,lockClass,expireSeats});
+  mountEnrollmentInterests(app,{wrap,post,transact:enrollTx,session,lockClass,expireSeats,requireNewEnrollment});
   const financeActor = async (q: Request) => {
     const actor = await staff(q, 'crm.payments.verify');
     // Orders have no CRM owner until the customer and opportunity integration is added.
@@ -133,7 +154,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     return actor;
   };
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
-  startEnrollmentWeeklySimulation(enrollTx);
+  if(local) startEnrollmentWeeklySimulation(enrollTx);
   startEnrollmentVacancySimulation(enrollTx,lockClass);
   startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass});
   mountEnrollmentResolution(app,{wrap,post,transact:moneyTx,read:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
@@ -210,6 +231,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         language:q.body.language,code,codeMinutes:emailCodeMinutes,
       });
       if(await enrollmentMailConfigured(c))return message;
+      if(!local||enrollmentMailMode()!=='simulation')invalid('enrollment_email_unavailable',503);
       await local.deliver(id,email,code,message);
     });
     if(pending){
@@ -218,7 +240,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         await enrollTx(c=>c.query(`UPDATE enrollment_email_challenges SET used=TRUE,
           resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2`,
           [email,id,result.state!=='unknown']));
-        invalid('enrollment_code_wait',429);
+        if(result.state==='waiting')invalid('enrollment_code_wait',429);
+        invalid('enrollment_email_unavailable',503);
       }
     }
     r.json({ challengeId: id });
@@ -257,7 +280,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const id=randomUUID();
     const {email,name,phone,requestId,fingerprint,price,priority,source,actor,assistance}=input;
     const {paymentHours}=await readEnrollmentRules(c);
-    const {bank}=await readEnrollmentBank(c);
+    await requireNewEnrollment(c);
+    const bankSettings=await readEnrollmentBank(c);
+    if(!policy.simulation&&!hasConfiguredEnrollmentBank(bankSettings))invalid('enrollment_intake_paused',503);
+    const {bank}=bankSettings;
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
       VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,
     [id,cohort.id,email,requestId,fingerprint,price,{name,phone,priority,bank},paymentHours]);
@@ -303,6 +329,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       await lockIdentityRegistry(c);
       const {customer,level}=await assistedEnrollmentOpportunity(c,opportunityId,actor);
       return operation(c,actor.id,q.body,{leadId:customer.id,kind:'enrollment.assistance:'+opportunityId},async()=>{
+        await requireNewEnrollment(c);
         await validateAssistedContacts(c,customer,name,email,phone);
         if(cohort.data.level!==level||!allowsEnrollment(cohort)||!Number(cohort.course_active))
           invalid('enrollment_class_unavailable',409);

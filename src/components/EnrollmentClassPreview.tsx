@@ -6,8 +6,8 @@ import {enrollmentCopy} from './EnrollmentApplication';
 import '../pages/enrollment.css';
 
 type Language='zh'|'en'|'id';
-export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,showDetails=false}:{
-  row:PublicEnrollmentClass;language:Language;clock?:number;titleLink?:string;actionLink?:string;showDetails?:boolean;
+export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,showDetails=false,intakePaused=false}:{
+  row:PublicEnrollmentClass;language:Language;clock?:number;titleLink?:string;actionLink?:string;showDetails?:boolean;intakePaused?:boolean;
 }){
  const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
  const dateValue=new Date(row.firstLesson+':00+07:00');
@@ -19,7 +19,7 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
  const title=enrollmentClassTitle(row,language);
  const titleContent=<span className="enrollment-card-title">{title.split(' · ').map((part,index)=><span className="enrollment-title-part" key={index}>{(index?' · ':'')+part}</span>)}</span>;
  const openingNotice=row.opened?'':enrollmentOpeningNotice(row.decisionAt,language,clock);
- const availability=row.availability&&({
+ const availability=!intakePaused&&row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),
  })[row.availability];
  return <article className="enrollment-class-card">
@@ -28,8 +28,8 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
    <p>{t(size+' 人 · '+row.sessions+' 节 · 每节 '+row.minutes+' 分钟',size+' learners · '+row.sessions+' periods · '+row.minutes+' min each',size+' siswa · '+row.sessions+' jam pelajaran · '+row.minutes+' menit per jam pelajaran')}</p>
    <p className="enrollment-schedule">{enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language)||row.schedule}</p>
    <div className="enrollment-class-status">
-     <span className="enrollment-status" data-state={row.availability==='full'?'full':row.opened?'confirmed':'pending'}>
-       {!row.price?t('暂不可申请','Applications unavailable','Pendaftaran belum tersedia'):row.opened?t('已成班','Confirmed','Dikonfirmasi'):t('报名中','Open for applications','Pendaftaran dibuka')}{availability&&' · '+availability}
+     <span className="enrollment-status" data-state={!intakePaused&&row.availability==='full'?'full':row.opened?'confirmed':'pending'}>
+       {!row.price||intakePaused?t('暂不可申请','Applications unavailable','Pendaftaran belum tersedia'):row.opened?t('已成班','Confirmed','Dikonfirmasi'):t('报名中','Open for applications','Pendaftaran dibuka')}{availability&&' · '+availability}
      </span>{openingNotice&&<small>{openingNotice}</small>}
    </div>
    <div className="enrollment-class-bottom">

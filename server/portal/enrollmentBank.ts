@@ -26,6 +26,10 @@ export async function readEnrollmentBank(c:Client):Promise<{bank:EnrollmentBank;
   return {bank,revision:row.value.revision};
 }
 
+export function hasConfiguredEnrollmentBank(settings:Awaited<ReturnType<typeof readEnrollmentBank>>) {
+  return settings.revision > 0 && fields.every(key => settings.bank[key] !== defaults.bank[key]);
+}
+
 export function mountEnrollmentBank(app:Express,{wrap,transact,authorize}:{
   wrap:(fn:Handler)=>(q:Request,r:Response)=>void;
   transact:(fn:(c:Client)=>Promise<unknown>)=>Promise<unknown>;

@@ -100,6 +100,8 @@
 | --- | --- |
 | `PORTAL_ENROLLMENT_MAIL_CREDENTIAL_KEY` | 加密和解密数据库中的 SMTP 密码。首次保存密码前在正式私有配置提供 32 字节随机值的 64 位十六进制编码。已有凭证时沿用对应密钥。 |
 | `PORTAL_ENROLLMENT_MAIL_TRANSPORT` | 默认留空，正式环境不启用 SMTP。旧队列、发信池和凭证核对通过并获发信授权后设为 smtp。 |
+| `PORTAL_ENROLLMENT_SERVICE_ENABLED` | 默认 `false`。完成权限和存量服务联调后启用报名服务，包括查询、补交凭证、核款和退款处理。 |
+| `PORTAL_ENROLLMENT_ACCEPTING_NEW` | 默认 `false`。只有报名服务已启用、正式收款资料和招生邮件配置已就绪时，才允许创建新的订单、候补、选课需求和协助申请。暂停招生只关闭这一项。 |
 
 旧 SMTP 账号密码变量仅在对应账号仍引用环境变量凭证时按需保留。在系统管理中保存加密密码并确认可解密后，移除该账号的旧变量。
 
@@ -167,4 +169,6 @@
 
 健康或版本不一致、关键权限异常、金额差异、迁移失败或误发时，停止放行并隔离受影响的写入或外发，保留日志、记录编号和发送回执。确认旧应用兼容当前数据库后方可回切旧制品。需要恢复数据库时，由回退决策人批准恢复点，先登记切换后的新增业务及对账安排，防止恢复覆盖已发生的收付款。回退后复核健康、版本、账务和队列状态。
 
-配套资料：[CRM 生产发布与升级验收清单](crm/production-release-checklist.md) · [Enrollment 邮件验收及旧队列操作](requirements/enrollment-mail.md) · [环境配置与打包](environment-configuration.md)
+招生放行前，在「报名管理 → 课程与班次设置 → 报名规则」核对正式收款账户，在「招生邮件」核对发信池和招生就绪提示。先保持 `PORTAL_ENROLLMENT_ACCEPTING_NEW=false` 验证存量订单链路，再在获准开放后启用新报名。暂停时保留 `PORTAL_ENROLLMENT_SERVICE_ENABLED=true`，使已有订单仍可正常处理。就绪提示核对保存的配置，正式 SMTP 的实际投递另行联调。
+
+配套资料：[Enrollment 首版放行验收](requirements/enrollment-v1-release.md) · [CRM 生产发布与升级验收清单](crm/production-release-checklist.md) · [Enrollment 邮件验收及旧队列操作](requirements/enrollment-mail.md) · [环境配置与打包](environment-configuration.md)

@@ -27,6 +27,7 @@ type AdminView={config:EnrollmentMailConfig;revision:number;environment:string;m
   usage:Record<string,Usage>;poolUsage:Record<string,number>;configured:{address:string;configured:boolean}[]};
 type MailEditorDraft=EnrollmentMailConfig & Partial<Pick<MailPool,'dailyLimit'|'strategy'>>;
 type BusinessView={revision:number;selectedPool:string;sticky:boolean;pools:Pick<MailPool,'id'|'name'|'enabled'>[];name:string;enabled:boolean;mode:string;rows:{id:string;subject:string;sender:string;routeReason?:string;state:string;recordedAt:string}[]};
+type EnrollmentReadiness={accepting:boolean;reasons:string[]};
 const adminPath='/api/admin/enrollment-mail';
 const accountListHref='/system?tab=mail';
 const poolListHref='/system?tab=mail&mailView=pool';
@@ -47,6 +48,12 @@ const stateWords:Record<string,[string,string,string]>={
 };
 
 export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
+const readinessWords:Record<string,[string,string,string]>={
+  service_disabled:['报名服务尚未启用','Enrollment service is disabled','Layanan pendaftaran belum aktif'],
+  paused:['新报名已暂停','New applications are paused','Pendaftaran baru dijeda'],
+  bank_required:['请在报名规则中配置正式收款账户','Configure the payment account in Enrollment rules','Atur rekening pembayaran di Aturan pendaftaran'],
+  mail_required:['请核对 SMTP 投递、发信池和发件账号','Check SMTP delivery, the sending pool, and sender accounts','Periksa pengiriman SMTP, pool, dan akun pengirim'],
+};
   lang:CrmLanguage;isLight:boolean;admin?:boolean;allowed?:boolean;
   view?:'accounts'|'pool';recordId?:string;returnPoolId?:string;onNavigate?:(href:string)=>void;
   onDraft?:(dirty:boolean)=>void;onBusy?:(busy:boolean)=>void;
@@ -57,6 +64,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const [result,setResult]=useState<AdminView|BusinessView>();
   const [loading,setLoading]=useState(false),[failure,setFailure]=useState<'error'|'denied'>();
   const [draft,setDraft]=useState<MailEditorDraft>(),[account,setAccount]=useState<MailAccount>();
+  const [readiness,setReadiness]=useState<EnrollmentReadiness>();
   const [portInput,setPortInput]=useState('');
   const validPort=portInput==='465'||portInput==='587';
   const [editing,setEditing]=useState<MailEditorTarget>(),[dirty,setDirty]=useState(false),[busy,setBusy]=useState(false);
@@ -79,7 +87,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const poolPosition=useRef<{id:string;address:string;top:number}>(null);
   const refresh=useCallback(async()=>{
     if(!allowed)return;
-    setLoading(true);setFailure(undefined);
+    setLoading(true);setFailure(undefined);setReadiness(undefined);
     try{
       const response=await fetch(admin?adminPath:'/api/crm/enrollment/mail',{cache:'no-store'});
       if(response.status===403||response.status===401){
@@ -90,6 +98,10 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
       setResult(next);
       return next;
     }catch{setFailure('error');}
+      if(!admin){
+        const intake=await fetch('/api/crm/enrollment/readiness',{cache:'no-store'}).catch(()=>undefined);
+        if(intake?.ok)setReadiness(await intake.json());
+      }
     finally{setLoading(false);}
   },[admin,allowed]);
   useEffect(()=>{void refresh();},[refresh]);
@@ -487,6 +499,9 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
         </AdminFormGrid>
         <div data-admin-stack className="enrollment-mail-fixed-sender">
           <AdminField className="enrollment-mail-switch-row">{t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran')}
+        {readiness?.reasons.length?<AdminFormFeedback state="error" lang={lang}>
+          {readiness.reasons.map(reason=>readinessWords[reason]?t(...readinessWords[reason]):'').filter(Boolean).join(' · ')}
+        </AdminFormFeedback>:null}
             <input className="admin-switch" type="checkbox" role="switch" aria-describedby={stickyHelpId}
               checked={settings.sticky} disabled={busy||feedback==='unknown'}
               onChange={event=>changeSettings({sticky:event.target.checked})}/></AdminField>

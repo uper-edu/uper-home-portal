@@ -20,6 +20,7 @@ type Context = {
   session: (c: Client, q: Request) => Promise<string>;
   lockClass: (c: Client, id: string) => Promise<Cohort>;
   expireSeats: (c: Client, id: string) => Promise<void>;
+  requireNewEnrollment: (c: Client) => Promise<void>;
 };
 
 export async function takenSeats(c: Client, id: string) {
@@ -143,7 +144,7 @@ async function offers(c: Client) {
 }
 
 export function mountEnrollmentInterests(app: Express, ctx: Context) {
-  const { wrap, post, transact, session, lockClass, expireSeats }=ctx;
+  const { wrap, post, transact, session, lockClass, expireSeats,requireNewEnrollment }=ctx;
   const base='/api/enrollment';
   function send(r: Response, data: unknown) {
     return r.set('Cache-Control','no-store').json(data);
@@ -166,6 +167,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       if (own) invalid('enrollment_already_has_seat',409);
       const prior=await learnerWaitlist(c,id,email,name);
       if (prior) return { id:prior.id };
+      await requireNewEnrollment(c);
       const waiting=randomUUID();
       await c.query("INSERT INTO enrollment_waitlist(id,class_id,email,phone,learner_name,state,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,'waiting',UTC_TIMESTAMP(6))",
         [waiting,id,email,phone,name??null]);
@@ -246,6 +248,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       const existing=(await c.query('SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[id])).rows[0];
       if (!existing) {
         if (revision!==0) invalid('enrollment_interest_not_found',404);
+        await requireNewEnrollment(c);
         await c.query("INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))",
           [id,email,criteria]);
         await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,name,level});

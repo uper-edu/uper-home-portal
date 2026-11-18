@@ -273,6 +273,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     enrollment_already_has_seat:['这位学员已有本班席位。请前往「我的报名」查看。','This learner already has a seat. Check My enrollments.','Siswa ini sudah mendapat kursi. Lihat Pendaftaran saya.'],
     enrollment_invalid_application:['请检查学员姓名和带区号的电话号码。','Check the learner name and phone number with country code.','Periksa nama siswa dan nomor telepon beserta kode negara.'],
     enrollment_class_unavailable:['此班次已停止接受报名。','This class is no longer accepting applications.','Pendaftaran kelas ini sudah ditutup.'],
+    enrollment_intake_paused:['新报名暂时暂停。已有订单仍可在「我的报名」查看。','New applications are paused. You can still access existing orders from My enrollments.','Pendaftaran baru dijeda. Pesanan yang sudah ada tetap dapat dibuka di Pendaftaran saya.'],
+    enrollment_email_unavailable:['目前无法发送验证码，请稍后重试或联系销售。','We could not send your verification code. Try again later or contact our team.','Kode verifikasi belum dapat dikirim. Coba lagi nanti atau hubungi tim kami.'],
     enrollment_transfer_unavailable:['该班次目前无法转入，请返回可转班次刷新查看。','This class is no longer available for transfer. Go back and check the list again.','Kelas ini tidak lagi tersedia. Kembali dan periksa daftar kelas.'],
     enrollment_priority_unavailable:['当前报名无法开启优先安排，请刷新核对状态。','Priority arrangements are unavailable for this enrollment. Refresh to check its status.','Pengaturan prioritas tidak tersedia untuk pendaftaran ini. Muat ulang untuk memeriksa status.'],
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],

@@ -22,7 +22,7 @@ export async function latestAssistanceMail(c:Client,id:string){
     ORDER BY recorded_at DESC,event_key DESC LIMIT 1`,[id])).rows[0];
 }
 
-export async function sendAssistanceMail(c:Client,local:NonNullable<ReturnType<typeof enrollmentSimulation>>,
+export async function sendAssistanceMail(c:Client,local:ReturnType<typeof enrollmentSimulation>,
   offer:any,attempt:string){
   const {id,email,data,expiresAt}=offer;
   const content={salutation:data.name,language:data.lang,class:data.quote.level,format:data.quote.format,period:data.quote.period,firstLesson:data.quote.firstLesson,
@@ -35,8 +35,8 @@ export async function sendAssistanceMail(c:Client,local:NonNullable<ReturnType<t
     });
     return latestAssistanceMail(c,id);
   }
-  let state='simulated';
-  try{await local.deliverMessage('assistance-'+attempt,email,message);}
+  let state=local?'simulated':'failed';
+  try{if(local)await local.deliverMessage('assistance-'+attempt,email,message);}
   catch{state='failed';}
   await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
     VALUES(:p1,'email','assistance_confirmation',:p2,:p3,:p4,UTC_TIMESTAMP(6))`,

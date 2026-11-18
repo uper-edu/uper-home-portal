@@ -6,7 +6,7 @@ import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { enrollmentInstant, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
-import { enrollmentSimulation } from './enrollmentSimulation.ts';
+import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
 
@@ -46,7 +46,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         id: row.id, name: row.value.name, active: row.value.active === true, sessions:row.value.sessions, teaching:row.value.teaching,
       }));
       const active = new Set(courses.filter(course=>course.active).map(course=>course.id));
-      const canOperate = !!enrollmentSimulation();
+      const canOperate = enrollmentServicePolicy().acceptingNew;
       return { templates:await listEnrollmentTemplates(c), classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses };
     });
     r.set('Cache-Control', 'no-store').json({ ...data, actorId: actor.id });
@@ -118,7 +118,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       }
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)",
         [actor.id, { classId: body.id, state: body.state, revision }]);
-      if (body.state === 'published' && enrollmentSimulation()) await matchPublishedEnrollmentClass(c,body.id);
+      if (body.state === 'published' && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
       return { classId: body.id, revision };
     }));
     r.json(result);

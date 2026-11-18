@@ -10,7 +10,7 @@
 
 系统管理员可将已停用账号的现有绑定转给启用账号，必须填写原因，变更记入审计。SMTP 传输需要私有环境显式设置 `PORTAL_ENROLLMENT_MAIL_TRANSPORT=smtp`、`PORTAL_PUBLIC_ORIGIN`（迁移期间兼容旧变量 `PORTAL_ENROLLMENT_PUBLIC_ORIGIN`），以及可用的账号凭证。后台保存密码前，部署方须在该环境配置 `PORTAL_ENROLLMENT_MAIL_CREDENTIAL_KEY`，使用 32 字节随机值的 64 位十六进制编码，私有保存和备份。此密钥用于解密本环境已存凭证。主机默认允许 Lark；其他服务商需要设置 `PORTAL_ENROLLMENT_SMTP_ALLOWED_HOSTS`。测试还要求 `PORTAL_ENROLLMENT_TEST_RECIPIENTS`。默认时区为 Asia/Jakarta，生产核对后可用 `PORTAL_ENROLLMENT_MAIL_TIMEZONE` 调整。领用额度后更换计数时区会改变日期口径，应在启用前确认。
 
-本功能的发信池设置独立于 Enrollment 公开招生开关。现有报名应用仍使用本地模拟准入，配置 SMTP 不会开放正式招生；正式启用须随 Enrollment 发布联调统一放行。
+发信池设置独立于 Enrollment 招生开关。正式招生须分别启用报名服务和新申请，并通过收款配置和邮件就绪检查。设置 SMTP 后仍按发布手册单独放行。
 
 ## UPER 官方招生发信账号
 

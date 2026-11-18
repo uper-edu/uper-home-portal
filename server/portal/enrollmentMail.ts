@@ -59,6 +59,19 @@ export async function enrollmentMailEnabled(c:Client){
 }
 async function counters(c:Client,now:number,recipient=''){
   const {day,month}=timeKeys(now);
+
+function smtpAccountAllowed(account:StoredMailAccount){
+  return (process.env.PORTAL_ENROLLMENT_SMTP_ALLOWED_HOSTS||'smtp.larksuite.com').split(',')
+    .some(host=>host.trim().toLowerCase()===account.host.toLowerCase());
+}
+
+export async function enrollmentSmtpReady(c:Client){
+  if(enrollmentMailMode()!=='smtp'||process.env.PORTAL_WORKER_ENABLED==='false')return false;
+  const {config,revision}=await configuration(c);
+  const members=new Set(mailPoolMembers(config));
+  return revision>0&&config.enabled&&config.accounts.some(account=>account.enabled&&members.has(account.address)&&
+    smtpAccountAllowed(account)&&Boolean(resolveMailPassword(environment(),account)));
+}
   const usage:Record<string,Usage>=Object.create(null);
   const rows=(await c.query(`SELECT account,
     SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,recipient,NULL)) AS external,
@@ -104,7 +117,7 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     const external=isExternal(recipient);
     const members=new Set(mailPoolMembers(config));
     const candidates=config.accounts.filter(a=>a.enabled&&members.has(a.address)&&(!bound||a.address===bound)&&
-      !excluded.has(a.address)&&(enrollmentMailMode()==='simulation'||resolveMailPassword(environment(),a)));
+      !excluded.has(a.address)&&(enrollmentMailMode()==='simulation'||smtpAccountAllowed(a)&&resolveMailPassword(environment(),a)));
     const eligible=new Set<string>();
     for(const window of new Set(candidates.map(a=>a.windowSeconds))){
       const rows=(await c.query('SELECT account,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2 GROUP BY account',
@@ -139,8 +152,7 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
     const origin=portalPublicOrigin();
     if(!origin)return 'rejected';
     const site=new URL(origin);
-    const hosts=(process.env.PORTAL_ENROLLMENT_SMTP_ALLOWED_HOSTS||'smtp.larksuite.com').split(',').map(v=>v.trim().toLowerCase());
-    if((site.protocol!=='https:'&&!(isLocalMailEnvironment()&&site.origin==='http://localhost:3000'))||!hosts.includes(account.host.toLowerCase()))return 'rejected';
+    if((site.protocol!=='https:'&&!(isLocalMailEnvironment()&&site.origin==='http://localhost:3000'))||!smtpAccountAllowed(account))return 'rejected';
     const transport=nodemailer.createTransport({
       host:account.host,port:account.port,secure:account.port===465,requireTLS:account.port===587,
       auth:{user:account.address,pass:secret},connectionTimeout:10_000,greetingTimeout:10_000,socketTimeout:20_000,

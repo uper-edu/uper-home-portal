@@ -5,7 +5,7 @@ import { mountEnrollmentManagement } from './enrollmentManagement.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
 import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
-import { enrollmentSimulation } from './enrollmentSimulation.ts';
+import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
@@ -914,7 +914,7 @@ export async function mountPortal(app: Express) {
         now,
         config,
       );
-      if(enrollmentSimulation())await attachEnrollmentOpportunitySummaries(pool,result.leads);
+      if(enrollmentServicePolicy().servicing)await attachEnrollmentOpportunitySummaries(pool,result.leads);
       res.json({
         ...result,
         notificationScope,

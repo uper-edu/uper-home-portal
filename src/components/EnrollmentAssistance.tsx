@@ -51,6 +51,8 @@ export function EnrollmentAssistance({language}:{language:InterestLanguage}){
     enrollment_assistance_email:['请使用与销售确认的报名邮箱。','Use the email address agreed with your advisor.','Gunakan email yang disepakati dengan tim kami.'],
     enrollment_class_full:['该班次已满。你可以加入候补。','This class is full. You can join the waitlist.','Kelas penuh. Kamu dapat masuk daftar tunggu.'],
     enrollment_assistance_existing_order:['这笔报名已有订单，请到「我的报名」查看。','There is already an order. Find it in My enrollments.','Pesanan sudah ada. Periksa Pendaftaran saya.'],
+    enrollment_intake_paused:['新报名暂时暂停，请联系销售。','New applications are paused. Please contact your advisor.','Pendaftaran baru dijeda. Hubungi tim kami.'],
+    enrollment_email_unavailable:['目前无法发送验证码，请稍后重试或联系销售。','We could not send your verification code. Try again later or contact your advisor.','Kode verifikasi belum dapat dikirim. Coba lagi nanti atau hubungi tim kami.'],
   };
   return <section className="enrollment-screen enrollment-apply-screen">
     <h1>{t('确认课程报名','Confirm course enrollment','Konfirmasi pendaftaran kelas')}</h1>
