@@ -33,11 +33,13 @@ const accountListHref='/system?tab=mail';
 const poolListHref='/system?tab=mail&mailView=pool';
 const noop=()=>{};
 const historyPageSize=20;
-const deliveryTones={queued:'info',accepted:'success',failed:'danger',unknown:'warning',simulated:'neutral'} as const;
+const deliveryTones={queued:'info',accepted:'success',failed:'danger',unknown:'warning',simulated:'neutral',cancelled:'neutral'} as const;
 const stateWords:Record<string,[string,string,string]>={
   simulated:['已模拟','Simulated','Disimulasikan'],accepted:['SMTP 已接收','SMTP accepted','Diterima SMTP'],
   failed:['发送失败','Failed','Gagal'],unknown:['结果待核对','Outcome unknown','Hasil belum pasti'],
   queued:['待发送／等待额度','Queued / waiting for quota','Dalam antrean / menunggu kuota'],
+  cancelled:['已取消','Cancelled','Dibatalkan'],
+  interest_no_longer_available:['班次或登记状态已变更','Class or request no longer eligible','Kelas atau permintaan tidak lagi memenuhi syarat'],
   paused:['发信池暂停','Pool paused','Pool dijeda'],recipient_blocked:['收件人超出测试范围','Recipient outside test scope','Penerima di luar cakupan uji'],
   shared_window:['共享频率已满','Shared rate reached','Batas frekuensi tercapai'],binding_pending:['首次路由待确认','Initial routing pending','Perutean awal tertunda'],
   pool_daily_limit:['发信池日额度已满','Pool daily limit reached','Batas harian pool tercapai'],
@@ -46,14 +48,14 @@ const stateWords:Record<string,[string,string,string]>={
   priority:['按账号优先级选号','Selected by account priority','Dipilih menurut prioritas akun'],
   disabled:['未启用','Disabled','Nonaktif'],simulation:['模拟 SMTP','Simulated SMTP','SMTP simulasi'],smtp:['正式 SMTP','Live SMTP','SMTP aktif'],
 };
-
-export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
 const readinessWords:Record<string,[string,string,string]>={
   service_disabled:['报名服务尚未启用','Enrollment service is disabled','Layanan pendaftaran belum aktif'],
   paused:['新报名已暂停','New applications are paused','Pendaftaran baru dijeda'],
   bank_required:['请在报名规则中配置正式收款账户','Configure the payment account in Enrollment rules','Atur rekening pembayaran di Aturan pendaftaran'],
   mail_required:['请核对 SMTP 投递、发信池和发件账号','Check SMTP delivery, the sending pool, and sender accounts','Periksa pengiriman SMTP, pool, dan akun pengirim'],
 };
+
+export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
   lang:CrmLanguage;isLight:boolean;admin?:boolean;allowed?:boolean;
   view?:'accounts'|'pool';recordId?:string;returnPoolId?:string;onNavigate?:(href:string)=>void;
   onDraft?:(dirty:boolean)=>void;onBusy?:(busy:boolean)=>void;
@@ -62,9 +64,9 @@ const readinessWords:Record<string,[string,string,string]>={
   const stickyHelpId=useId();
   const memberOrderId=useId();
   const [result,setResult]=useState<AdminView|BusinessView>();
+  const [readiness,setReadiness]=useState<EnrollmentReadiness>();
   const [loading,setLoading]=useState(false),[failure,setFailure]=useState<'error'|'denied'>();
   const [draft,setDraft]=useState<MailEditorDraft>(),[account,setAccount]=useState<MailAccount>();
-  const [readiness,setReadiness]=useState<EnrollmentReadiness>();
   const [portInput,setPortInput]=useState('');
   const validPort=portInput==='465'||portInput==='587';
   const [editing,setEditing]=useState<MailEditorTarget>(),[dirty,setDirty]=useState(false),[busy,setBusy]=useState(false);
@@ -96,12 +98,12 @@ const readinessWords:Record<string,[string,string,string]>={
       if(!response.ok)throw Error();
       const next:AdminView|BusinessView=await response.json();
       setResult(next);
-      return next;
-    }catch{setFailure('error');}
       if(!admin){
         const intake=await fetch('/api/crm/enrollment/readiness',{cache:'no-store'}).catch(()=>undefined);
         if(intake?.ok)setReadiness(await intake.json());
       }
+      return next;
+    }catch{setFailure('error');}
     finally{setLoading(false);}
   },[admin,allowed]);
   useEffect(()=>{void refresh();},[refresh]);
@@ -497,11 +499,11 @@ const readinessWords:Record<string,[string,string,string]>={
           </AdminField>
           <AdminStaticField label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')} value={word(business.mode)}/>
         </AdminFormGrid>
-        <div data-admin-stack className="enrollment-mail-fixed-sender">
-          <AdminField className="enrollment-mail-switch-row">{t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran')}
         {readiness?.reasons.length?<AdminFormFeedback state="error" lang={lang}>
           {readiness.reasons.map(reason=>readinessWords[reason]?t(...readinessWords[reason]):'').filter(Boolean).join(' · ')}
         </AdminFormFeedback>:null}
+        <div data-admin-stack className="enrollment-mail-fixed-sender">
+          <AdminField className="enrollment-mail-switch-row">{t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran')}
             <input className="admin-switch" type="checkbox" role="switch" aria-describedby={stickyHelpId}
               checked={settings.sticky} disabled={busy||feedback==='unknown'}
               onChange={event=>changeSettings({sticky:event.target.checked})}/></AdminField>

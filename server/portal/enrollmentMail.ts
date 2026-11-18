@@ -11,10 +11,12 @@ import {activeEnrollmentMailConfig,enrollmentMailPoolLimit,enrollmentSmtpLimit,m
 import {mailCredentialKeyConfigured,mailPasswordFingerprint,resolveMailPassword,sealMailPassword,type StoredMailAccount} from './enrollmentMailCredentials.ts';
 import {enrollmentMailPreset} from './enrollmentMailPresets.ts';
 import {selectMailAccount,type Usage} from './enrollmentMailRouting.ts';
+import {enrollmentInterestStillAvailable} from './enrollmentInterestDelivery.ts';
+import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
-type RouteReason='paused'|'recipient_blocked'|'shared_window'|'pool_daily_limit'|'binding_pending'|'bound_account'|'no_capacity'|'balanced'|'priority'|'existing';
-type State='accepted'|'simulated'|'rejected'|'unknown'|'waiting';
+type RouteReason='paused'|'recipient_blocked'|'shared_window'|'pool_daily_limit'|'binding_pending'|'bound_account'|'no_capacity'|'balanced'|'priority'|'existing'|'interest_no_longer_available';
+type State='accepted'|'simulated'|'rejected'|'unknown'|'waiting'|'cancelled';
 type Mail={subject:string;text:string;html:string;language:string};
 const environment=()=>process.env.PORTAL_ENV||'unconfigured';
 const timezone=()=>process.env.PORTAL_ENROLLMENT_MAIL_TIMEZONE||'Asia/Jakarta';
@@ -57,8 +59,6 @@ async function configuration(c:Client,lock=false){
 export async function enrollmentMailEnabled(c:Client){
   return enrollmentMailMode()!=='disabled'&&(await configuration(c)).config.enabled;
 }
-async function counters(c:Client,now:number,recipient=''){
-  const {day,month}=timeKeys(now);
 
 function smtpAccountAllowed(account:StoredMailAccount){
   return (process.env.PORTAL_ENROLLMENT_SMTP_ALLOWED_HOSTS||'smtp.larksuite.com').split(',')
@@ -72,6 +72,8 @@ export async function enrollmentSmtpReady(c:Client){
   return revision>0&&config.enabled&&config.accounts.some(account=>account.enabled&&members.has(account.address)&&
     smtpAccountAllowed(account)&&Boolean(resolveMailPassword(environment(),account)));
 }
+async function counters(c:Client,now:number,recipient=''){
+  const {day,month}=timeKeys(now);
   const usage:Record<string,Usage>=Object.create(null);
   const rows=(await c.query(`SELECT account,
     SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,recipient,NULL)) AS external,
@@ -87,8 +89,9 @@ const isExternal=(recipient:string)=>!(process.env.PORTAL_ENROLLMENT_MAIL_INTERN
 async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set<string>,queueKey?:string){
   return transact(async c=>{
     const {config}=await configuration(c,true);
-    if(queueKey&&!(await c.query(`SELECT event_key FROM enrollment_notification_receipts
-      WHERE event_key=:p1 AND state='queued'`,[queueKey])).rows.length)return {reason:'paused'} as const;
+    const [queued]=queueKey?(await c.query(`SELECT kind,subject_id,payload FROM enrollment_notification_receipts
+      WHERE event_key=:p1 AND state='queued'`,[queueKey])).rows:[];
+    if(queueKey&&!queued)return {reason:'paused'} as const;
     if(!config.enabled||enrollmentMailMode()==='disabled')return {reason:'paused'} as const;
     if(!permittedRecipient(recipient))return {reason:'recipient_blocked'} as const;
     const prior=(await c.query(`SELECT state,account,started_ms FROM enrollment_mail_attempts
@@ -96,6 +99,10 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     if(prior){
       if(prior.state==='reserved'&&Date.now()-Number(prior.started_ms)<120_000)return {reason:'binding_pending'} as const;
       return {prior:prior.state==='reserved'?'unknown':prior.state,previousAccount:prior.account} as const;
+    }
+    if(queued&&['waitlist_vacancy','demand_match'].includes(queued.kind)){
+      if(!enrollmentServicePolicy().acceptingNew)return {reason:'paused'} as const;
+      if(!await enrollmentInterestStillAvailable(c,event,recipient,queued))return {reason:'interest_no_longer_available'} as const;
     }
     const {rows:[clock]}=await c.query('SELECT FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) AS now_ms');
     const now=Number(clock.now_ms);
@@ -241,6 +248,7 @@ export async function dispatchEnrollmentMail(event:string,recipient:string,mail:
   for(;;){
     const plan=await reserve(event,recipient,code!==undefined,excluded,queueKey);
     if(!('id' in plan)&&'reason' in plan){
+      if(plan.reason==='interest_no_longer_available')return {state:'cancelled',reason:plan.reason};
       if(plan.reason==='recipient_blocked'||lastRejected)return {state:'rejected',account:lastRejected,reason:plan.reason};
       return {state:'waiting',account:'waitingAccount' in plan?plan.waitingAccount:undefined,reason:plan.reason};
     }

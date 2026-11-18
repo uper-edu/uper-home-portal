@@ -64,7 +64,7 @@ export async function interestNotice(c:Client,kind:'waitlist_vacancy'|'demand_ma
   const type=kind==='waitlist_vacancy'?'waitlist':'demand';
   const attribution=(await c.query('SELECT attribution FROM enrollment_record_attribution WHERE kind=:p1 AND record_id=:p2',[type,interestId])).rows[0]?.attribution;
   const language=attribution?.lang??'en';
-  const content={language,class:cohort.data.level,format:cohort.data.format,period:cohort.data.period,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
+  const content={language,classId:cohort.id,class:cohort.data.level,format:cohort.data.format,period:cohort.data.period,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
     weeklySchedule:cohort.data.weeklySchedule,minutes:cohort.data.minutes,price:cohort.data.price,
     url:'/enrollment/'+encodeURIComponent(cohort.id)+'?'+new URLSearchParams({lang:language})};
   await record(c,'email:'+kind+':'+interestId+':'+cohort.id+':'+cycle,'email',kind,interestId,{
