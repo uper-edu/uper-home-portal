@@ -75,14 +75,14 @@ const prefTranslations = {
   }
 };
 
-const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
+const Navbar = ({ onOpenAppearance, learnerPreview }: { onOpenAppearance: () => void; learnerPreview?:boolean }) => {
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = useLocation();
   const { isApple } = useDesignStyle();
-  const { name: studentName } = useStudentName(i18n.language);
+  const { name: studentName } = useStudentName(i18n.language, !learnerPreview);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -169,7 +169,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
   ];
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'glass-card py-3 shadow-xs' : 'bg-transparent py-5'}`}>
+    <nav inert={learnerPreview} className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'glass-card py-3 shadow-xs' : 'bg-transparent py-5'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
         <Link to={journeyLink("/")} className="flex items-center gap-1.5 md:gap-2 group">
           <img 
@@ -862,7 +862,7 @@ const MobileBottomBar = () => {
   );
 };
 
-export default function Layout() {
+export default function Layout({learnerPreview=false}:{learnerPreview?:boolean}) {
   const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const location = useLocation();
@@ -880,6 +880,7 @@ export default function Layout() {
   }, [i18n.language]);
 
   useEffect(() => {
+    if (learnerPreview) return;
     // Language switching replaces the query string without leaving the page.
     if (scrollPath.current === pathname) return;
     scrollPath.current = pathname;
@@ -926,7 +927,7 @@ export default function Layout() {
   return (
     <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
 
-      <Navbar onOpenAppearance={() => setAppearanceOpen(true)} />
+      <Navbar learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} />
       <main className="flex-grow">
         <motion.div
           key={location.pathname}

@@ -13,6 +13,7 @@ import { EnrollmentSupport } from '../components/EnrollmentSupport';
 
 import { EnrollmentApplication, enrollmentCopy } from '../components/EnrollmentApplication';
 import { EnrollmentAssistance } from '../components/EnrollmentAssistance';
+import {learnerPreviewToken} from '../utils/enrollmentLearnerPreview';
 import './enrollment.css';
 
 const copy = {
@@ -72,29 +73,36 @@ export default function Enrollment() {
   const locale = language === 'zh' ? 'zh-CN' : language === 'id' ? 'id-ID' : 'en-GB';
   const t = (key: keyof typeof copy) => copy[key][language === 'zh' ? 2 : language === 'id' ? 1 : 0];
   const [params, setParams] = useSearchParams();
-  const { classId, recordKind, recordId, topic } = useParams();
+  const { classId:routeClassId, recordKind, recordId, topic } = useParams();
+  const previewToken = learnerPreviewToken();
+  const [previewRow,setPreviewRow]=useState<PublicEnrollmentClass>();
+  const [previewView,setPreviewView]=useState<'detail'|'catalog'|'rules'|'apply'>('detail');
+  const classId=previewToken?(previewView==='catalog'?undefined:previewRow?.id):routeClassId;
   const pathname = useLocation().pathname.replace(/\/$/, '');
   const record = recordId && (recordKind === 'waitlist' || recordKind === 'demands') ? { kind:recordKind, id:recordId } as const : undefined;
   const mine = pathname === '/enrollment/mine' || !!recordId;
   const interest = pathname === '/enrollment/interest';
   const payment = pathname === '/enrollment/payment';
-  const application = params.get('apply') === '1' || params.has('order');
-  const rulesPage = !!classId && params.get('view')==='rules';
+  const application = previewToken?previewView==='apply':params.get('apply') === '1' || params.has('order');
+  const rulesPage = !!classId && (previewToken?previewView==='rules':params.get('view')==='rules');
   useEffect(() => {
     if (classId && (application || rulesPage)) window.scrollTo(0, 0);
   }, [classId, application, rulesPage]);
   type Appointment={id:string;level:string;course:string;teacherType:'local'|'foreign';lessons:number;minutes:number;price:number;standardPrice:number};
   const [appointments,setAppointments]=useState<Appointment[]>([]);
-  const [classes, setClasses] = useState<PublicEnrollmentClass[]>();
+  const [liveClasses, setClasses] = useState<PublicEnrollmentClass[]>();
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
-  const [accepting, setAccepting] = useState<boolean>();
+  const [liveAccepting, setAccepting] = useState<boolean>();
+  const classes=previewToken?(previewRow?[previewRow]:undefined):liveClasses;
+  const accepting=previewToken?!!previewRow?.price:liveAccepting;
   const openingClock=useEnrollmentOpeningClock();
   const level = params.get('level') || '1';
   const period = params.get('period') || '';
   const format = params.get('format') || '';
 
   useEffect(() => {
+    if(previewToken)return;
     const abort = new AbortController();
     setFailed(false);
     fetch('/api/enrollment/classes', { signal: abort.signal, cache: 'no-store' }).then(async response => {
@@ -104,15 +112,53 @@ export default function Enrollment() {
       setAppointments(data.appointments??[]);
     }).catch(() => { if (!abort.signal.aborted) setFailed(true); });
     return () => abort.abort();
-  }, [reload]);
+  }, [reload,previewToken]);
   useEffect(() => {
+    if(previewToken)return;
     const abort = new AbortController();
     fetch('/api/enrollment/availability', { signal: abort.signal, cache: 'no-store' })
       .then(response => response.ok ? response.json() : {})
       .then((data: { accepting?: boolean }) => { if (!abort.signal.aborted) setAccepting(data.accepting === true); })
       .catch(() => { if (!abort.signal.aborted) setAccepting(false); });
     return () => abort.abort();
-  }, []);
+  }, [previewToken]);
+  useEffect(()=>{
+    if(!previewToken)return;
+    const receive=(event:MessageEvent)=>{
+      if(event.origin!==window.location.origin||event.source!==window.parent||
+        event.data?.type!=='enrollment-preview-data'||event.data.token!==previewToken||
+        !['detail','catalog'].includes(event.data.view)||typeof event.data.row?.id!=='string')return;
+      setPreviewRow(event.data.row);
+      setPreviewView(event.data.view);
+      window.scrollTo(0,0);
+    };
+    window.addEventListener('message',receive);
+    window.parent.postMessage({type:'enrollment-preview-ready',token:previewToken},window.location.origin);
+    return ()=>window.removeEventListener('message',receive);
+  },[previewToken]);
+  useEffect(()=>{
+    if(!previewToken||!previewRow)return;
+    const navigatePreview=(event:MouseEvent)=>{
+      const target=(event.target as Element|null)?.closest?.('a[href]');
+      if(!target)return;
+      event.preventDefault();
+      event.stopPropagation();
+      if(event.type==='auxclick')return;
+      const url=new URL(target.getAttribute('href')!,window.location.origin);
+      if(url.origin!==window.location.origin)return;
+      if(url.pathname==='/enrollment')setPreviewView('catalog');
+      else if(url.pathname==='/enrollment/'+encodeURIComponent(previewRow.id)){
+        setPreviewView(url.searchParams.get('apply')==='1'?'apply':url.searchParams.get('view')==='rules'?'rules':'detail');
+      }else return;
+      window.scrollTo(0,0);
+    };
+    document.addEventListener('click',navigatePreview,true);
+    document.addEventListener('auxclick',navigatePreview,true);
+    return ()=>{
+      document.removeEventListener('click',navigatePreview,true);
+      document.removeEventListener('auxclick',navigatePreview,true);
+    };
+  },[previewToken,previewRow]);
 
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -160,6 +206,14 @@ export default function Enrollment() {
   const classCard=(row:PublicEnrollmentClass,inCatalog:boolean)=><EnrollmentClassPreview key={row.id} row={row} language={language}
     clock={openingClock} titleLink={inCatalog?detailsPath(row.id):undefined}
     actionLink={inCatalog&&accepting?detailsPath(row.id,true):undefined}/>;
+
+  if(previewToken&&!previewRow)return <p className="enrollment-screen" role="status">{t('loading')}</p>;
+  if(previewToken&&previewView==='apply'&&previewRow)return <section className="enrollment-screen enrollment-apply-screen">
+    <Link className="enrollment-back" to={detailsPath(previewRow.id)}><ArrowLeft size={15} aria-hidden="true"/>{t('backDetail')}</Link>
+    <h1>{t('apply')}</h1>
+    {classCard(previewRow,false)}
+    <p>{enrollmentCopy(language,['学员预览，到此为止。','End of learner preview.','Akhir pratinjau siswa.'])}</p>
+  </section>;
 
   if (pathname==='/enrollment/assist') return <EnrollmentAssistance language={language}/>;
   if (topic) return <EnrollmentSupport topic={topic} language={language}

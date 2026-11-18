@@ -27,3 +27,7 @@
 .crm-class-quote-feedback p { margin:0 0 4px; }
 
 .crm-course-editor :is(input:not([type=checkbox]), .crm-filter-dimension-button):disabled { background:var(--af-soft);color:var(--af-muted);border-color:var(--af-border);opacity:1;cursor:not-allowed; }
+
+.crm-learner-preview{display:grid;justify-items:center;gap:12px}
+.crm-learner-preview button[aria-pressed="true"]{border-color:var(--admin-action);color:var(--admin-action)}
+.crm-learner-preview iframe{width:min(100%,390px);height:min(660px,62dvh);border:0;outline:1px solid var(--admin-border);border-radius:12px;background:white}

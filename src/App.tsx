@@ -19,6 +19,7 @@ import Layout from './components/Layout';
 import { usePageTracking } from './utils/analytics';
 import { ThemeProvider } from './utils/theme';
 import Home from './pages/Home';
+import {learnerPreviewToken} from './utils/enrollmentLearnerPreview';
 
 // Robust dynamic import with automatic retry on chunk loading hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -73,6 +74,11 @@ function SiteNotFound() {
 }
 
 export default function App() {
+  if (learnerPreviewToken()) return <ThemeProvider><HelmetProvider><BrowserRouter>
+    <ApplicationErrorBoundary><Suspense fallback={null}><Routes>
+      <Route element={<Layout learnerPreview/>}><Route path="/enrollment" element={<Enrollment/>}/></Route>
+    </Routes></Suspense></ApplicationErrorBoundary>
+  </BrowserRouter></HelmetProvider></ThemeProvider>;
   return (
     <ThemeProvider>
       <HelmetProvider>

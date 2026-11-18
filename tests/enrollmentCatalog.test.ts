@@ -111,3 +111,30 @@ test('automatic titles use class type, time slot and immutable batch in all thre
   assert.equal('templateId' in view,false);
   assert.equal(validateEnrollmentClass({...sample,batchNumber:999}).batchNumber,undefined);
 });
+
+test('first session seeds only blank recurring fields and keeps manual choices',async()=>{
+  const {enrollmentAutofillStart,enrollmentScheduleErrors}=await import('../src/utils/enrollmentCatalog');
+  const draft={...sample,teacher:'Keep teacher',weeklySchedule:{days:[6,7],start:'',lessons:2}};
+  const next=enrollmentAutofillStart(draft,'2026-12-19T15:00');
+  assert.equal(next.weeklySchedule.start,'15:00');
+  assert.deepEqual(next.weeklySchedule.days,[6,7]);
+  assert.equal(next.weeklySchedule.lessons,2);
+  assert.equal(next.teacher,'Keep teacher');
+  assert.equal(draft.weeklySchedule.start,'');
+  assert.match(next.schedule,/15:00–16:30/);
+  const blankWeek={...draft,weeklySchedule:{days:[],start:'',lessons:2}};
+  assert.deepEqual(enrollmentAutofillStart(blankWeek,'2026-12-19T15:00').weeklySchedule,{days:[6],start:'15:00',lessons:2});
+  assert.deepEqual(enrollmentAutofillStart({...blankWeek,weeklySchedule:{days:[],start:'17:00',lessons:2}},'2026-12-20T15:00').weeklySchedule,
+    {days:[7],start:'17:00',lessons:2});
+  assert.equal(enrollmentAutofillStart(next,'2026-12-19T16:00').weeklySchedule.start,'15:00');
+  assert.equal(enrollmentAutofillStart(draft,'').weeklySchedule.start,'');
+  assert.deepEqual(enrollmentScheduleErrors({...next,templateId:'example'},'zh'),{});
+  for(const lang of ['zh','en','id'] as const){
+    const empty=enrollmentScheduleErrors({...draft,templateId:'example',period:'',firstLesson:'',decisionAt:'',enrollmentCloses:'',weeklySchedule:{days:[],start:'',lessons:0}},lang);
+    for(const field of ['period','firstLesson','decisionAt','enrollmentCloses','days','start','lessons'])assert.ok(empty[field]);
+    const mismatch=enrollmentScheduleErrors({...next,firstLesson:'2026-12-19T16:00'},lang);
+    assert.match(mismatch.start,/15:00/);assert.match(mismatch.start,/16:00/);
+    assert.ok(enrollmentScheduleErrors({...next,weeklySchedule:{...next.weeklySchedule,days:[7]}},lang).days);
+    assert.ok(enrollmentScheduleErrors({...next,weeklySchedule:{...next.weeklySchedule,start:'23:30',lessons:2}},lang).start);
+  }
+});

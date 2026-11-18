@@ -159,9 +159,9 @@ export function enrollmentTimeSlotMatches(period:string,days:readonly number[]) 
 /** firstLesson is stored as a local WIB date and time. Weekdays use Monday=1. */
 export function enrollmentFirstSessionMatches(firstLesson:string,plan:EnrollmentWeeklySchedule) {
   if (!enrollmentInstant(firstLesson)) return false;
-  const weekday=new Date(firstLesson.slice(0,10)+'T00:00:00Z').getUTCDay()||7;
-  return plan.days.includes(weekday)&&firstLesson.slice(11)===plan.start;
+  return plan.days.includes(enrollmentDateWeekday(firstLesson))&&firstLesson.slice(11)===plan.start;
 }
+const enrollmentDateWeekday=(value:string)=>new Date(value.slice(0,10)+'T00:00:00Z').getUTCDay()||7;
 export const enrollmentWeekdays=[
   ['周一','Mon','Sen'],['周二','Tue','Sel'],['周三','Wed','Rab'],['周四','Thu','Kam'],
   ['周五','Fri','Jum'],['周六','Sat','Sab'],['周日','Sun','Min'],
@@ -196,4 +196,46 @@ export function enrollmentClassTitle(row:EnrollmentClassIdentity,language:'zh'|'
 export function enrollmentTeacherLabel(type:'local'|'foreign'|undefined,language:'zh'|'en'|'id') {
   if(!type)return '';
   return {zh:{local:'本土教师',foreign:'外教'},en:{local:'Indonesian Teacher',foreign:'Foreign Teacher'},id:{local:'Pengajar Lokal',foreign:'Pengajar Asing'}}[language][type];
+}
+
+/** Seed empty recurring fields from the first session without replacing an existing schedule. */
+export function enrollmentAutofillStart<T extends {firstLesson:string;weeklySchedule?:EnrollmentWeeklySchedule;minutes:number; schedule:string}>(config:T,firstLesson:string):T {
+  const next={...config,firstLesson};
+  const weekly=config.weeklySchedule;
+  if(enrollmentInstant(firstLesson)&&(!weekly?.days.length||!weekly.start)){
+    next.weeklySchedule={
+      days:weekly?.days.length?weekly.days:[enrollmentDateWeekday(firstLesson)],
+      start:weekly?.start||firstLesson.slice(11),
+      lessons:weekly?.lessons??1,
+    };
+    next.schedule=enrollmentWeeklyScheduleText(next.weeklySchedule,config.minutes);
+  }
+  return next;
+}
+export function enrollmentScheduleErrors(config:Partial<Omit<EnrollmentClassConfig,'period'>> & {period?:string},language:'zh'|'en'|'id') {
+  const errors:Record<string,string>={};
+  const t=(zh:string,en:string,id:string)=>({zh,en,id})[language];
+  const plan=config.weeklySchedule??{days:[],start:'',lessons:1};
+  const first=enrollmentInstant(config.firstLesson),decision=enrollmentInstant(config.decisionAt),closes=enrollmentInstant(config.enrollmentCloses);
+  if(!config.period)errors.period=t('请选择时段。','Select a time slot.','Pilih waktu kelas.');
+  if(!first)errors.firstLesson=t('请填写完整的首次上课日期和时间。','Enter the full first session date and time.','Isi tanggal dan waktu pertemuan pertama.');
+  if(!decision)errors.decisionAt=t('请填写预计通知开班结果的日期和时间。','Enter the expected decision date and time.','Isi tanggal dan waktu perkiraan keputusan.');
+  else if(first&&decision>first)errors.decisionAt=t('通知时间不能晚于首次上课时间。','The decision cannot be later than the first session.','Waktu keputusan tidak boleh setelah pertemuan pertama.');
+  if(!closes)errors.enrollmentCloses=t('请填写自助报名截止日期和时间。','Enter the self-service enrollment deadline.','Isi batas waktu pendaftaran mandiri.');
+  else if(first&&closes>enrollmentInstant(config.firstLesson!.slice(0,10)+'T00:00')!)errors.enrollmentCloses=t('自助报名最晚须在开课当天 00:00 截止。','Self-service enrollment must close by 00:00 on the first session day.','Pendaftaran mandiri harus ditutup paling lambat pukul 00.00 pada hari pertama kelas.');
+  if(config.templateId||plan){
+    if(!plan?.days.length)errors.days=t('请至少选择一个每周上课日。','Select at least one weekly class day.','Pilih minimal satu hari kelas setiap minggu.');
+    else if(config.period&&!enrollmentTimeSlotMatches(config.period,plan.days))errors.days=config.period==='weekend'
+      ?t('周末班只能选择周六、周日。','Weekend classes must use Saturday or Sunday.','Kelas akhir pekan harus pada Sabtu atau Minggu.')
+      :t('工作日晚班只能选择周一至周五。','Weekday evening classes must use Monday to Friday.','Kelas malam hari kerja harus pada Senin hingga Jumat.');
+    else if(first&&!plan.days.includes(enrollmentDateWeekday(config.firstLesson!))){
+      const weekday=enrollmentWeekdays[enrollmentDateWeekday(config.firstLesson!)-1];
+      errors.days=t(`首次上课是${weekday[0]}，但每周上课日未包含这一天。`,`The first session is on ${weekday[1]}, which is missing from the weekly class days.`,`Pertemuan pertama jatuh pada ${weekday[2]}, yang belum tercantum dalam jadwal mingguan.`);
+    }
+    if(!plan?.start)errors.start=t('请填写每次开始时间。','Enter the session start time.','Isi waktu mulai setiap pertemuan.');
+    else if(first&&plan.start!==config.firstLesson!.slice(11))errors.start=t(`每次开始时间为 ${plan.start}，须与首次上课的 ${config.firstLesson!.slice(11)} 一致。`,`Session start time ${plan.start} must match the first session at ${config.firstLesson!.slice(11)}.`,`Waktu mulai ${plan.start} harus sama dengan pertemuan pertama pukul ${config.firstLesson!.slice(11)}.`);
+    if(!Number.isInteger(plan?.lessons)||!plan||plan.lessons<1||plan.lessons>24)errors.lessons=t('每次上课节数须为 1–24 的整数。','Periods per session must be an integer from 1 to 24.','Jumlah jam pelajaran per pertemuan harus bilangan bulat 1–24.');
+    if(plan?.start&&plan.days.length&&!errors.lessons&&!enrollmentWeeklyScheduleText(plan,config.minutes??45))errors.start=t('请检查开始时间和节数，上课结束时间须早于次日 00:00。','Check the start time and periods: the session must end before midnight.','Periksa waktu mulai dan jumlah jam pelajaran: kelas harus selesai sebelum tengah malam.');
+  }
+  return errors;
 }
