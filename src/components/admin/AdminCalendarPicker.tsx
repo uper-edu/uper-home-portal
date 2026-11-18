@@ -1,7 +1,6 @@
 import {useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode} from 'react';
 import {CalendarDays, Check, ChevronLeft, ChevronRight, Circle, Plus, X} from 'lucide-react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import './admin-calendar-picker.css';
 
 const dayMs = 86_400_000;
 const dayKey = (date: Date) => date.toISOString().slice(0, 10);

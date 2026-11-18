@@ -1,3 +1,4 @@
+import {AdminDateField,completeAdminDateTime} from './admin/AdminDateField';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminConfirmation} from './admin/AdminConfirmation';
 import {AdminDisclosure} from './admin/AdminDisclosure';
@@ -1517,24 +1518,13 @@ export default function NotificationCenter({
                       <AdminFormSection className="crm-form-section notification-form-section" title={t("发送时间预览", "Delivery timing preview")}>
                         <div className="notification-rule-preview">
                         <div className="flex flex-wrap gap-3 items-end">
-                          <div>
-                            {field(
-                              t(
-                                "模拟事件时间（本机时区）",
-                                "Simulated event time (browser timezone)",
-                              ),
-                              <input
-                                className={input}
-                                type="datetime-local"
-                                value={simulateAt}
-                                onChange={(e) => setSimulateAt(e.target.value)}
-                              />,
-                            )}
-                          </div>
+                          <AdminDateField label={cancelText("模拟事件时间（本机时区）","Simulated event time (browser timezone)","Waktu simulasi (zona waktu browser)")}
+                            lang={lang} withTime value={simulateAt} disabled={!canEdit||busy} onChange={setSimulateAt}
+                            error={simulateAt&&!completeAdminDateTime(simulateAt)?cancelText("请填写完整的日期和 24 小时时间。","Enter a complete date and 24-hour time.","Isi tanggal dan waktu 24 jam secara lengkap."):undefined}/>
                           <button
                             type="button"
                             className="crm-work-button flex gap-1 items-center"
-                            disabled={!canEdit || busy}
+                            disabled={!canEdit || busy || !!simulateAt&&!completeAdminDateTime(simulateAt)}
                             onClick={async () => {
                               setBusy(true);
                               try {
