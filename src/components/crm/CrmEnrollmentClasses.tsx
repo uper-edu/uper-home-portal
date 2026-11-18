@@ -100,8 +100,8 @@ const classFiltersDefault={search:'',level:'',format:'',period:'',status:'',date
 const inlineFilterWidth=880;
 const classStatusCopy={
   draft:['Draft','Draf','草稿'],
-  published:['Published · Awaiting class confirmation','Diterbitkan · Menunggu konfirmasi kelas','已发布 · 待确认开班'],
-  opened:['Class confirmed','Kelas dikonfirmasi','已确认开班'],
+  published:['Published','Diterbitkan','已发布'],
+  opened:['Confirmed','Dikonfirmasi','已成班'],
   cancelled:['Cancelled','Dibatalkan','已取消'],
 } as const;
 const classStatus=(row:EnrollmentClassAdmin)=>row.state==='published'&&row.opened?'opened':row.state;
