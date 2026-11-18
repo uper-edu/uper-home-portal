@@ -112,8 +112,13 @@
 .enrollment-subtitle { margin: 4px 0 13px; color: var(--enrollment-muted); font-size: 13px; }
 .enrollment-catalog-controls { display: grid; gap: 8px; margin-bottom: 10px; }
 .enrollment-catalog .enrollment-levels, .enrollment-catalog .enrollment-filters { display: grid; gap: 7px; }
-.enrollment-catalog .enrollment-levels { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.enrollment-catalog .enrollment-levels { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .enrollment-catalog .enrollment-levels button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 4px;
   border: 1px solid var(--enrollment-border);
   border-radius: 8px;
   padding: 6px 4px;
@@ -122,6 +127,8 @@
   font-size: 13px;
   font-weight: 640;
 }
+.enrollment-level-name { white-space: nowrap; }
+.enrollment-levels .enrollment-tab-count { margin-inline-start: 0; font-variant-numeric: tabular-nums; }
 .enrollment-catalog .enrollment-levels button[aria-pressed="true"] {
   background: var(--enrollment-accent);
   border-color: var(--enrollment-accent);
@@ -338,7 +345,44 @@
   .enrollment-title-row h1 { margin-bottom: 0; }
   .enrollment-title-row .enrollment-outline { min-height: 42px; font-size: 14px; }
   .enrollment-subtitle { font-size: 15px; margin-bottom: 23px; }
-  .enrollment-catalog-controls { width: min(100%, 390px); margin-bottom: 16px; }
+  .enrollment-catalog-controls {
+    gap: 8px 24px;
+    margin-bottom: 16px;
+  }
+  .enrollment-catalog .enrollment-levels {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    border-bottom: 1px solid var(--enrollment-border);
+  }
+  .enrollment-catalog .enrollment-levels button {
+    position: relative;
+    flex-wrap: nowrap;
+    min-height: 44px;
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 6px 6px 0 0;
+    background: transparent;
+    color: var(--enrollment-muted);
+    font-size: 14px;
+  }
+  .enrollment-catalog .enrollment-levels button:hover { color: var(--enrollment-accent); }
+  .enrollment-catalog .enrollment-levels button[aria-pressed="true"] {
+    background: transparent;
+    color: var(--enrollment-accent);
+    font-weight: 700;
+  }
+  .enrollment-catalog .enrollment-levels button[aria-pressed="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 2px;
+    background: var(--enrollment-accent);
+  }
+  .enrollment-catalog .enrollment-filters {
+    justify-self: end;
+    width: min(100%, 380px);
+  }
   .enrollment-class-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
   .enrollment-class-card { padding: 17px 19px; gap: 5px; }
   .enrollment-class-card h2 { font-size: 17px; }
@@ -365,6 +409,16 @@
   .enrollment-payment-actions { text-align: right; }
   .enrollment-payment-actions p { text-align: right; }
   .enrollment-payment-actions .enrollment-primary { min-width: 210px; }
+}
+
+@media (min-width: 1024px) {
+  .enrollment-catalog-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+    align-items: end;
+    border-bottom: 1px solid var(--enrollment-border);
+  }
+  .enrollment-catalog .enrollment-levels { border-bottom: 0; }
+  .enrollment-catalog .enrollment-filters { padding-bottom: 6px; }
 }
 
 .enrollment-apply-screen { max-width: 664px; }
@@ -438,7 +492,7 @@
   font-weight: 620;
 }
 .enrollment-record-tabs button[aria-pressed="true"] { background: var(--enrollment-accent); border-color: var(--enrollment-accent); color: white; }
-.enrollment-record-tabs button[aria-pressed="true"] .enrollment-tab-count { background: #d5ece6; color: #124d45; }
+:is(.enrollment-record-tabs, .enrollment-levels) button[aria-pressed="true"] .enrollment-tab-count { background: #d5ece6; color: #124d45; }
 .enrollment-record-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--enrollment-muted); font-size: 12px; }
 .enrollment-record { border: 1px solid var(--enrollment-border); border-radius: 10px; padding: 11px 13px; display: grid; gap: 4px; overflow-wrap: anywhere; }
 .enrollment-record header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }

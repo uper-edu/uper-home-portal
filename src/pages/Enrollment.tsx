@@ -27,6 +27,7 @@ const copy = {
   period: ['Time slot', 'Waktu', '时段'],
   format: ['Class type', 'Jenis kelas', '班型'],
   level: ['Level', 'Level', '级别'],
+  allLevels: ['All', 'Semua', '全部'],
   allPeriods: ['All times', 'Semua waktu', '全部时段'],
   allFormats: ['All class types', 'Semua jenis kelas', '全部班型'],
   weekend: ['Weekend', 'Akhir pekan', '周末'],
@@ -67,6 +68,9 @@ const copy = {
   teacher: ['Teacher', 'Pengajar', '授课教师'],
 } as const;
 
+const catalogLevels = ['all', '1', '2', '3', '4'];
+const catalogLevel = (label: string) => label === 'HSK 4A' || label === 'HSK 4B' ? '4' : label.slice(4);
+
 export default function Enrollment() {
   const { i18n } = useTranslation();
   const language = normalizeSiteLanguage(i18n.resolvedLanguage || i18n.language);
@@ -97,7 +101,8 @@ export default function Enrollment() {
   const classes=previewToken?(previewRow?[previewRow]:undefined):liveClasses;
   const accepting=previewToken?!!previewRow?.price:liveAccepting;
   const openingClock=useEnrollmentOpeningClock();
-  const level = params.get('level') || '1';
+  const requestedLevel = params.get('level');
+  const level = requestedLevel && catalogLevels.includes(requestedLevel) ? requestedLevel : '1';
   const period = params.get('period') || '';
   const format = params.get('format') || '';
 
@@ -172,6 +177,7 @@ export default function Enrollment() {
   catalogParams.delete('proof');
   catalogParams.delete('view');
   catalogParams.delete('target');
+  catalogParams.delete('appointmentLevel');
   const waitlistId = params.get('waitlist');
   const matchId = params.get('fromDemand');
   const publicParams = new URLSearchParams(catalogParams);
@@ -187,12 +193,23 @@ export default function Enrollment() {
     return '/enrollment/' + encodeURIComponent(id) + '?' + query.toString();
   };
   const selected = classes?.find(row => row.id === classId);
-  const privateLessons = format === 'one-on-one' || (!format && !period) ? appointments.filter(item=>item.level.startsWith('HSK '+level)) : [];
-  const appointmentParams = new URLSearchParams(publicParams);
-  appointmentParams.set('lang', language);
-  appointmentParams.set('level', level);
-  const rows = classes?.filter(row => row.level.startsWith('HSK ' + level) &&
-    (!period || row.period === period) && (!format || row.format === format));
+  const matchingClasses = classes?.filter(row => (!period || row.period === period) && (!format || row.format === format));
+  const matchingAppointments = format === 'one-on-one' || (!format && !period) ? appointments : [];
+  const matchesLevel = (row: {level:string}) => level === 'all' || catalogLevel(row.level) === level;
+  const rows = matchingClasses?.filter(matchesLevel);
+  const privateLessons = matchingAppointments.filter(matchesLevel);
+  const levelCounts = new Map<string,number>();
+  for (const row of [...(matchingClasses ?? []), ...matchingAppointments]) {
+    const key = catalogLevel(row.level);
+    levelCounts.set(key, (levelCounts.get(key) ?? 0) + 1);
+    levelCounts.set('all', (levelCounts.get('all') ?? 0) + 1);
+  }
+  const appointmentPath = (item: Appointment) => {
+    const query = new URLSearchParams(publicParams);
+    query.set('lang', language);
+    query.set('appointmentLevel', catalogLevel(item.level));
+    return '/enrollment/help/one-on-one?' + query.toString();
+  };
   const formatDay = (value: string) => new Intl.DateTimeFormat(locale, {
     month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta',
   }).format(new Date(value + ':00+07:00'));
@@ -216,8 +233,11 @@ export default function Enrollment() {
   </section>;
 
   if (pathname==='/enrollment/assist') return <EnrollmentAssistance language={language}/>;
-  if (topic) return <EnrollmentSupport topic={topic} language={language}
-    level={params.has('level')&&['1','2','3','4'].includes(level)?level:undefined} period={period} catalogPath={listPath}/>;
+  if (topic) {
+    const appointmentLevel = params.get('appointmentLevel') ?? requestedLevel;
+    return <EnrollmentSupport topic={topic} language={language}
+      level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined} period={period} catalogPath={listPath}/>;
+  }
 
   if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
     <Link className="enrollment-back" to={detailsPath(classId!)}><ArrowLeft size={15} aria-hidden="true"/>{t('backDetail')}</Link>
@@ -324,7 +344,10 @@ export default function Enrollment() {
     <p className="enrollment-subtitle">{t('online')}</p>
     <div className="enrollment-catalog-controls">
       <div className="enrollment-levels" role="group" aria-label={t('level')}>
-        {['1', '2', '3', '4'].map(value => <button key={value} type="button" aria-pressed={level === value} onClick={() => filter('level', value)}>HSK {value}</button>)}
+        {catalogLevels.map(value => <button key={value} type="button" aria-pressed={level === value} onClick={() => filter('level', value)}>
+          <span className="enrollment-level-name">{value === 'all' ? t('allLevels') : 'HSK ' + value}</span>
+          {classes && !failed && <span className="enrollment-tab-count">{levelCounts.get(value) ?? 0}</span>}
+        </button>)}
       </div>
       <div className="enrollment-filters">
         <PublicSingleSelect label={t('period')} value={period} onChange={value => filter('period', value)}
@@ -333,9 +356,9 @@ export default function Enrollment() {
           options={[{ value: '', label: t('allFormats') }, { value: 'standard', label: t('standard') }, { value: 'small', label: t('small') }, { value: 'one-on-one', label: t('one-on-one') }]}/>
       </div>
     </div>
-    {format !== 'one-on-one' && (failed
+    {failed
       ? <p role="alert">{t('error')} <button className="enrollment-quiet" type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
-      : !classes && <p role="status">{t('loading')}</p>)}
+      : !classes && <p role="status">{t('loading')}</p>}
     {rows?.length || privateLessons.length ? <div className="enrollment-class-grid">
       {rows?.map(row => classCard(row, true))}
       {privateLessons.map(item=><article key={item.id} className="enrollment-class-card enrollment-appointment-card">
@@ -351,7 +374,7 @@ export default function Enrollment() {
               `${item.lessons} jam pelajaran · ${item.minutes} menit per jam pelajaran · perkiraan total ${formatCurrency(item.price*item.lessons,language)}`,
             ])}</small>
           </div>
-          <Link className="enrollment-primary" to={'/enrollment/help/one-on-one?'+appointmentParams.toString()}>{t('appointmentAction')}</Link>
+          <Link className="enrollment-primary" to={appointmentPath(item)}>{t('appointmentAction')}</Link>
         </div>
       </article>)}
     </div>
