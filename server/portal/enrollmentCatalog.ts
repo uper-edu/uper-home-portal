@@ -1,11 +1,12 @@
 import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 import {listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
 import {enrollmentTemplateClassFields} from '../../src/utils/enrollmentTemplates.ts';
 import type { Express, Request, Response } from 'express';
 import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
-import { enrollmentInstant, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentInstant, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
@@ -71,6 +72,8 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       if(current?.state==='cancelled') invalid('enrollment_class_conflict',409);
       const isPublished=current?.state==='published';
       const raw=body.config;
+      if(raw.holidayDates!==undefined&&(!Array.isArray(raw.holidayDates)||!raw.holidayDates.every(validEnrollmentHolidayDate)))
+        invalid('enrollment_class_invalid');
       if(isPublished&&body.state!=='published')invalid('enrollment_class_conflict',409);
       if(!isPublished&&(!current||body.state==='published'||current.data?.templateId)&&!raw.templateId)invalid('enrollment_template_required');
       const useTemplate=raw.templateId&&!isPublished;
@@ -97,6 +100,8 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       const data:EnrollmentClassConfig={...validateEnrollmentClass(config,!!snapshot&&body.state==='draft'),
         ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons}}:{}),
         ...(config.templateId?{templateId:config.templateId,templateRevision:config.templateRevision,teacherType:config.teacherType,courseName:config.courseName}:{})};
+      if(raw.holidayDates!==undefined) data.holidayDates=[...new Set<string>(raw.holidayDates)].sort();
+      else if(current?.data.holidayDates!==undefined) data.holidayDates=current.data.holidayDates;
 
       // Ignore client-supplied numbers. Drafts never consume a number.
       if(current?.data.batchNumber)data.batchNumber=current.data.batchNumber;
@@ -118,7 +123,9 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       }
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)",
         [actor.id, { classId: body.id, state: body.state, revision }]);
-      if (body.state === 'published' && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
+      const onlyHolidayDates = isPublished && raw.holidayDates !== undefined &&
+        isDeepStrictEqual({...current.data,holidayDates:undefined},{...data,holidayDates:undefined});
+      if (body.state === 'published' && !onlyHolidayDates && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
       return { classId: body.id, revision };
     }));
     r.json(result);

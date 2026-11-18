@@ -23,11 +23,38 @@ import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
 import { enrollmentAutofillStart,enrollmentScheduleErrors,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentTimeSlotMatches,enrollmentFirstSessionMatches,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
+import { validEnrollmentHolidayDate } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
 import { enrollmentPost } from '../EnrollmentApplication';
 
 type Copy = readonly [string, string, string];
+
+function EnrollmentHolidayDates({dates, disabled, t, onChange}:{
+  dates: string[]; disabled: boolean; t: (text: Copy) => string; onChange: (dates: string[]) => void;
+}) {
+  const [date, setDate] = useState('');
+  const inputId = useId();
+  const canAdd = validEnrollmentHolidayDate(date) && !dates.includes(date);
+  const label = t(['Class break dates', 'Tanggal libur kelas', '停课日期']);
+  return <AdminField as="div" data-admin-full-width="">
+    <label htmlFor={inputId}>{label}</label>
+    <input id={inputId} type="date" value={date} disabled={disabled} onInput={event=>setDate(event.currentTarget.value)}/>
+    <div>
+      <AdminRowAction disabled={disabled || !canAdd} onClick={()=>{
+        onChange([...dates,date].sort());
+        setDate('');
+      }}>{t(['Add date', 'Tambah tanggal', '添加日期'])}</AdminRowAction>
+    </div>
+    {dates.length>0&&<ul aria-label={label}>
+      {dates.map(saved=><li key={saved}>
+        <time dateTime={saved}>{saved}</time>{' '}
+        <AdminRowAction disabled={disabled} aria-label={t([`Remove ${saved}`,`Hapus ${saved}`,`移除 ${saved}`])}
+          onClick={()=>onChange(dates.filter(value=>value!==saved))}>{t(['Remove', 'Hapus', '移除'])}</AdminRowAction>
+      </li>)}
+    </ul>}
+  </AdminField>;
+}
 type Catalog = { classes: EnrollmentClassAdmin[]; courses: EnrollmentTeachingCourse[]; templates: EnrollmentTemplate[] };
 type ClassDraftConfig=Omit<EnrollmentClassConfig,'period'>&{period:EnrollmentClassConfig['period']|''};
 type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: ClassDraftConfig };
@@ -550,6 +577,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
               <AdminField required={!!draft.config.templateId}>{t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])}<input aria-label={t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])} {...hintProps('lessons')} type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/>{hint('lessons')}</AdminField>
               <AdminStaticField fullWidth label={t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
                 value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
+              <EnrollmentHolidayDates key={draft.id} dates={draft.config.holidayDates??[]} disabled={fieldDisabled} t={t}
+                onChange={holidayDates=>{
+                  setDirty(true);
+                  setDraft(current=>current&&({...current,config:{...current.config,holidayDates}}));
+                }}/>
               {inputField('decisionAt')}
               {inputField('enrollmentCloses')}
             </AdminFormGrid>

@@ -20,6 +20,7 @@ export interface EnrollmentClassConfig {
   decisionAt: string;
   schedule: string;
   weeklySchedule?: EnrollmentWeeklySchedule;
+  holidayDates?: string[];
   /** Legacy key for the total number of billable periods. */
   sessions: number;
   minutes: number;
@@ -52,7 +53,12 @@ export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
-  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'canDelete'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
+  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'canDelete' | 'holidayDates'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
+
+export function validEnrollmentHolidayDate(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number(value.slice(0, 4)) > 0 && enrollmentInstant(value + 'T00:00') !== null;
+}
 
 export function enrollmentInstant(value: unknown): Date | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
