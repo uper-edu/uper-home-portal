@@ -220,7 +220,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const ready=!!catalog&&read!=='denied';
  const titleActions=<AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={read==='loading'} onClick={()=>void load()}/>;
  return <div className="crm-course-catalog">
-     {!quoteEdit&&<><header className="admin-edit-header"><h2>{title}</h2><div className="crm-ops-actions">{titleActions}
+     {!quoteEdit&&<><header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2></div><div className="crm-ops-actions">{titleActions}
        <CrmPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></div></header>
      {ready&&filterControls}
      {ready&&<EnrollmentSettingsListSummary lang={lang} count={visible.length} total={catalog.templates.length}

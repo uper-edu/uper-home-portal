@@ -1,3 +1,4 @@
+import {Plus} from 'lucide-react';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
@@ -121,7 +122,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  };
  useEffect(()=>{if(deleting)onDraftChange(true);return()=>{if(deleting)onDraftChange(false);};},[deleting,onDraftChange]);
  return <div className="crm-course-catalog">
- <header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2><p className="crm-work-muted">{t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}</p></div><div className="crm-ops-actions"><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>{data?.canManage&&<button type="button" className="crm-work-button" data-primary disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}>{t('Create course','Buat kursus','创建课程')}</button>}</div></header>
+ <header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2><p className="crm-work-muted">{t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}</p></div><div className="crm-ops-actions"><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>{data?.canManage&&<CrmPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</div></header>
  {!form&&unknown&&<div><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" className="crm-work-button" onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></div>}{!form&&state==='saved'&&<CrmSaveFeedback state="saved" lang={lang}/ >}{!form&&error&&<p role="alert">{error}</p>}
  {(listState!=='ready'||!data?.courses.length)&&<AdminListState lang={lang}
    state={listState==='ready'?'empty':listState}

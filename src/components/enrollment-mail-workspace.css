@@ -1,10 +1,7 @@
 .enrollment-mail-workspace { display:grid;gap:16px; }
 .enrollment-mail-sections { display:grid;gap:16px; }
 .enrollment-mail-sections > .admin-form-section + .admin-form-section { margin-top:0; }
-.enrollment-mail-routing { max-inline-size:520px; }
-.enrollment-mail-delivery-mode { display:flex;flex-wrap:wrap;gap:4px 12px;margin:0;font-size:13px; }
-.enrollment-mail-delivery-mode dt { color:var(--admin-muted); }
-.enrollment-mail-delivery-mode dd { margin:0;font-weight:600; }
+.enrollment-mail-business > .admin-form-section { background:var(--admin-surface); }
 .enrollment-mail-fixed-sender { padding-block-start:12px;border-block-start:1px solid var(--admin-border); }
 [data-admin-form] .enrollment-mail-switch-row.admin-field--choice {
   justify-content:space-between;align-items:center;min-block-size:40px;gap:16px;

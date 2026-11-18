@@ -16,6 +16,7 @@ export function CrmPageAction({
   title,
   description,
   className = "",
+  type = "button",
   children,
 }: {
   label: string;
@@ -31,6 +32,7 @@ export function CrmPageAction({
   title?: string;
   description?: string;
   className?: string;
+  type?: "button" | "submit";
   children?: ReactNode;
 }) {
   const tipId = React.useId();
@@ -63,7 +65,7 @@ export function CrmPageAction({
     ) : (
       <button
         {...props}
-        type="button"
+        type={type}
         onClick={loading ? undefined : onClick}
         disabled={disabled || (loading && !keepFocusWhileLoading)}
         aria-disabled={loading && keepFocusWhileLoading ? true : undefined}

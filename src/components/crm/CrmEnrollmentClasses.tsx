@@ -1,3 +1,4 @@
+import {Plus} from 'lucide-react';
 import {AdminSecondaryActions} from '../admin/AdminRecordActions';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
@@ -393,7 +394,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       <div className="crm-ops-actions">
         {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
         <AdminRefreshAction label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
-        <button type="button" className="crm-work-button" data-primary disabled={readState!=='ready'} onClick={() => edit()}>{t(['Create class', 'Buat kelas', '创建班次'])}</button>
+        <CrmPageAction icon={Plus} variant="primary" label={t(['Create class','Buat kelas','创建班次'])} disabled={readState!=='ready'} onClick={()=>edit()}/>
       </div>
     </header>
     {!!error && !draft && !insertion && <p role="alert">{error}</p>}

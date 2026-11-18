@@ -1,7 +1,9 @@
 import {useEffect,useId,useRef,useState} from 'react';
+import {Save} from 'lucide-react';
+import {CrmPageAction} from './CrmPageAction';
 import {AdminListState} from '../admin/AdminList';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
-import {AdminFormActions,AdminFormSection} from '../AdminFormLayout';
+import {AdminFormSection} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
 import {CrmEnrollmentBank} from './CrmEnrollmentBank';
 import type {CrmLanguage} from '../../utils/crmLanguage';
@@ -116,11 +118,10 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
       <div className="admin-edit-title">
         <h2 ref={heading} tabIndex={-1}>{t('Enrollment rules','Aturan pendaftaran','报名规则')}{saved&&<AdminRequiredNote inline lang={lang}/>}</h2>
       </div>
-      {saved&&<AdminFormActions className="admin-edit-actions">
-        <button type="submit" className="crm-work-button" data-primary disabled={!dirty||controlsDisabled||feedback==='conflict'}>
-          {t('Save','Simpan','保存')}
-        </button>
-      </AdminFormActions>}
+      {saved&&<div className="crm-ops-actions">
+        <CrmPageAction type="submit" icon={Save} variant="primary" label={t('Save','Simpan','保存')}
+          disabled={!dirty||controlsDisabled||feedback==='conflict'}/>
+      </div>}
     </header>
     <div className="crm-enrollment-rules-body" data-admin-stack>
       <p className="crm-work-muted">{t(
