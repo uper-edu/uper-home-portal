@@ -3,7 +3,7 @@ import test from 'node:test';
 import {initializeSystemDefaults} from '../cloud/mysql/system-defaults.mjs';
 
 // All records live in memory. No database connection, account or external send is used.
-function fixture() {
+function fixture(catalogReplaced = false) {
   let state = {campaigns:new Map<string, any>(), roles:new Map<string, any>(),
     courses:new Map<string, any>(), channels:new Map<string, any>(), index:new Map<string, string>()};
   let snapshot:typeof state;
@@ -13,6 +13,8 @@ function fixture() {
     rollback:async () => {state = snapshot;},
     execute:async (sql:string, v:any[] = []):Promise<any[]> => {
       if (sql.startsWith('SELECT campaign_id FROM campaign_source_reviews')) return [[]];
+      if (sql === "SELECT id FROM portal_settings WHERE id='enrollment_catalog_replaced'")
+        return [catalogReplaced ? [{id:'enrollment_catalog_replaced'}] : []];
       if (sql.startsWith('INSERT INTO trial_campaigns')) {
         if (!state.campaigns.has(v[0])) state.campaigns.set(v[0], {id:v[0],code:v[1],config:JSON.parse(v[2])});
       } else if (sql.startsWith('SELECT id,code,config FROM trial_campaigns')) {
@@ -69,6 +71,18 @@ test('repeat defaults preserve saved prices, publication, discounts, roles, camp
   const saved = structuredClone(f.state);
   await initializeSystemDefaults(f.db);
   assert.deepEqual(f.state,saved);
+});
+
+test('a replaced enrollment catalog stays intact on repeated initialization', async () => {
+  const f = fixture(true);
+  f.state.courses.set('hsk-standard-1', {name:'Custom HSK 1',sessions:23,price:920000});
+  f.state.courses.set('new-hsk-4', {name:'Custom HSK 4',sessions:84,price:8400000});
+  const savedCourses = structuredClone(f.state.courses);
+  for (let attempt=0; attempt<2; attempt++) {
+    assert.equal((await initializeSystemDefaults(f.db)).courses, 0);
+    assert.deepEqual(f.state.courses, savedCourses);
+  }
+  assert.equal(f.state.index.size,10);
 });
 
 test('reserved campaign identity conflict rolls back rather than overwriting existing records', async () => {
