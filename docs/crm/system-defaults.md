@@ -29,7 +29,7 @@
 
 已有独立业务资源继续作为唯一来源，不把大数据包重复塞进初始化注册表：
 
-- [`evergreenPromotionLinks.json`](../../src/data/evergreenPromotionLinks.json)：日常自然推广的10条链接，包含两条 Threads 链接。稳定推广ID、归因参数和短链兼容逻辑不变。
+- [`evergreenPromotionLinks.json`](../../src/data/evergreenPromotionLinks.json)：日常自然推广的 14 条链接，包含 Instagram、TikTok、YouTube 和 Threads 各一条直达课程报名的链接。稳定推广ID、归因参数和短链兼容逻辑不变。
 - [`crmCoursePrices.json`](../../src/data/crmCoursePrices.json)：8门HSK标准课程的价格和课时，金额单位IDR；报名仍保存当时报价快照。
 - CMS初始化内容、图片与题库仍由各自已有导入工具和资源包维护；数据库结构升级仍由迁移链维护。
 - Webhook、应用凭证、租户标识、回调及数据库连接留在各环境的私有配置中；群地址仍由 `LARK_GROUP_CRM` 提供。

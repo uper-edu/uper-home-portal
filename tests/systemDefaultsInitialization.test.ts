@@ -48,11 +48,11 @@ function fixture(catalogReplaced = false) {
   return {db, get state() {return state;}};
 }
 
-test('fresh defaults create two campaigns, ten indexed links and eight courses; repeat changes nothing', async () => {
+test('fresh defaults create two campaigns, fourteen indexed links and eight courses; repeat changes nothing', async () => {
   const f = fixture();
   await initializeSystemDefaults(f.db);
   assert.equal(f.state.campaigns.size,2);
-  assert.equal(f.state.index.size,10);
+  assert.equal(f.state.index.size,14);
   assert.equal(f.state.courses.size,8);
   assert.deepEqual(f.state.roles.get('finance').grants, {'crm.read':'all','crm.payments.verify':'all'});
   const saved = structuredClone(f.state);
@@ -82,7 +82,7 @@ test('a replaced enrollment catalog stays intact on repeated initialization', as
     assert.equal((await initializeSystemDefaults(f.db)).courses, 0);
     assert.deepEqual(f.state.courses, savedCourses);
   }
-  assert.equal(f.state.index.size,10);
+  assert.equal(f.state.index.size,14);
 });
 
 test('reserved campaign identity conflict rolls back rather than overwriting existing records', async () => {

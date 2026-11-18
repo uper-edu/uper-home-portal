@@ -41,7 +41,7 @@ test('short-code allocation retries a collision without overwriting another prom
 });
 test('Threads presets reuse the two production IDs and accept already issued short codes',async()=>{
  const records=systemCampaignDefaults('2026-11-10T00:00:00.000Z');
- const threads=records.find(row=>row.id==='social-bio').promotionLinks.filter(link=>link.source==='threads');
+ const threads=records.find(row=>row.id==='social-bio').promotionLinks.filter(link=>link.source==='threads'&&link.landingPath!=='/enrollment');
  assert.deepEqual(threads.map(link=>[link.id,link.landingPath]),[
   ['threads-social-profile-bio-261110092327','/link'],
   ['threads-social-profile-bio-261110093006','/chat'],
@@ -86,9 +86,9 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
    try{
     const readCampaign=async()=>(await db.query("SELECT config FROM trial_campaigns WHERE id='social-bio'"))[0][0].config;
     const initial=await readCampaign();
-    assert.equal(initial.promotionLinks.length,10);
-    assert.equal(new Set(initial.promotionLinks.map(link=>link.id)).size,10);
-    assert.deepEqual(initial.promotionLinks.filter(link=>link.source==='threads').map(link=>link.id),ids);
+    assert.equal(initial.promotionLinks.length,14);
+    assert.equal(new Set(initial.promotionLinks.map(link=>link.id)).size,14);
+    assert.deepEqual(initial.promotionLinks.filter(link=>link.source==='threads'&&link.landingPath!=='/enrollment').map(link=>link.id),ids);
     const [initialIndex]=await db.query("SELECT p FROM campaign_promotion_index WHERE campaign_id='social-bio'");
     assert.deepEqual(new Set(initialIndex.map(row=>row.p)),new Set(initial.promotionLinks.map(link=>link.id)));
     const [initialAliases]=await db.query('SELECT p FROM campaign_promotion_short_links');
@@ -109,7 +109,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
      await migrate(db,fixture.name);
      assert.deepEqual(await readCampaign(),existing);
      const [index]=await db.query("SELECT p FROM campaign_promotion_index WHERE campaign_id='social-bio'");
-     assert.equal(index.length,10);
+     assert.equal(index.length,14);
      const [saved]=await db.query('SELECT p,short_code FROM campaign_promotion_short_links ORDER BY p');
      assert.deepEqual(saved,ids.map((p,i)=>({p,short_code:aliases[i]})));
     }
