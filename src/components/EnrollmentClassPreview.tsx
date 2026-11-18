@@ -17,13 +17,14 @@ export function EnrollmentClassPreview({row,language,clock,titleLink,actionLink,
  const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('预计 '+date+'开课','Expected '+date,'Perkiraan '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
  const size=row.format==='standard'?'10–15':'4–6';
  const title=enrollmentClassTitle(row,language);
+ const titleContent=<span className="enrollment-card-title">{title.split(' · ').map((part,index)=><span className="enrollment-title-part" key={index}>{(index?' · ':'')+part}</span>)}</span>;
  const openingNotice=row.opened?'':enrollmentOpeningNotice(row.decisionAt,language,clock);
  const availability=row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),
  })[row.availability];
  return <article className="enrollment-class-card">
-   <h2>{titleLink?<Link to={titleLink}>{title}<ChevronRight size={15} aria-hidden="true"/></Link>:title}</h2>
-   <p>{[enrollmentTeacherLabel(row.teacherType,language),dateLabel].filter(Boolean).join(' | ')}</p>
+   <h2>{titleLink?<Link to={titleLink}>{titleContent}<ChevronRight size={15} aria-hidden="true"/></Link>:titleContent}</h2>
+   <p>{[enrollmentTeacherLabel(row.teacherType,language),dateLabel].filter(Boolean).join(' · ')}</p>
    <p>{t(size+' 人 · '+row.sessions+' 节 · 每节 '+row.minutes+' 分钟',size+' learners · '+row.sessions+' periods · '+row.minutes+' min each',size+' siswa · '+row.sessions+' jam pelajaran · '+row.minutes+' menit per jam pelajaran')}</p>
    <p className="enrollment-schedule">{enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language)||row.schedule}</p>
    <div className="enrollment-class-status">

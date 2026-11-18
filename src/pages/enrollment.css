@@ -693,3 +693,69 @@
 .enrollment-cancel-dialog h2 { margin:0 0 12px; }
 .enrollment-cancel-dialog p { margin:0 0 16px; }
 .enrollment-cancel-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px; }
+
+
+/* Learner class cards: readable mobile hierarchy, shared by catalog and detail. */
+@media (max-width: 767px) {
+  .enrollment-class-grid { gap: 16px; }
+  .enrollment-class-card {
+    padding: 16px;
+    border-radius: 14px;
+    gap: 6px;
+  }
+  .enrollment-class-card h2 {
+    margin: 0 0 2px;
+    font-size: 17px;
+    font-weight: 680;
+    line-height: 1.45;
+    letter-spacing: -.015em;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+  .enrollment-class-card h2 a { gap: 12px; }
+  .enrollment-class-card .enrollment-card-title { min-width: 0; }
+  .enrollment-class-card .enrollment-title-part { display: inline-block; max-width: 100%; vertical-align: top; }
+  .enrollment-class-card h2 a svg { align-self: flex-start; margin-top: 5px; }
+  .enrollment-class-card p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .enrollment-class-card .enrollment-schedule {
+    color: var(--enrollment-ink);
+    font-weight: 550;
+    font-variant-numeric: tabular-nums;
+  }
+  .enrollment-class-card .enrollment-class-status {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0 8px;
+  }
+  .enrollment-class-card .enrollment-status { font-size: 12px; line-height: 1.5; padding: 3px 8px; font-weight: 600; }
+  .enrollment-class-card .enrollment-class-status small { font-size: 12px; line-height: 1.6; }
+  .enrollment-class-card .enrollment-class-bottom {
+    gap: 12px;
+    padding-top: 12px;
+    align-items: center;
+  }
+  .enrollment-class-card .enrollment-prices { min-width: 0; gap: 4px; }
+  .enrollment-class-card .enrollment-prices strong {
+    font-size: 23px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+  }
+  .enrollment-class-card .enrollment-prices small { font-size: 12px; line-height: 1.5; }
+  .enrollment-class-card .enrollment-prices small:last-child { font-size: 13px; }
+  .enrollment-class-card .enrollment-primary { min-height: 44px; padding: 10px 16px; font-size: 14px; line-height: 1.4; flex-shrink: 0; }
+  .enrollment-class-card section { margin-top: 6px; }
+  .enrollment-appointment-card .enrollment-class-bottom { flex-wrap: wrap; }
+  .enrollment-appointment-card .enrollment-primary { max-width: 100%; }
+}
+@media (max-width: 359px) {
+  .enrollment-class-card .enrollment-class-bottom { flex-direction: column; align-items: stretch; }
+  .enrollment-class-card .enrollment-primary { max-width: 100%; width: 100%; }
+}
