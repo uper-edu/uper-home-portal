@@ -1,3 +1,4 @@
+import {AdminDateField} from '../admin/AdminDateField';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {AdminListState} from '../admin/AdminList';
@@ -496,9 +497,9 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
         </>:<>
           <p>{t('正式受理后会结束报名及转班等待，并释放席位。','Accepting this request ends the enrollment and releases any held seat.','Menerima permintaan mengakhiri pendaftaran dan melepaskan kursi.')}</p>
           <AdminField required>{t('学员申请及受理原因','Request and acceptance reason','Alasan permintaan dan penerimaan')}<textarea name="reason" required maxLength={1000}/></AdminField>
-          <AdminField required>{t('收到正式申请的时间','Formal request received at','Waktu permintaan resmi diterima')}
-            <input name="requestedAt" type="datetime-local" required defaultValue={formatCrmEventTime(new Date().toISOString()).slice(0,16).replace(' ','T')}/>
-          </AdminField>
+          <AdminDateField name="requestedAt" lang={lang} withTime required onChange={()=>setDirty(true)}
+            label={t('收到正式申请的时间','Formal request received at','Waktu permintaan resmi diterima')}
+            defaultValue={formatCrmEventTime(new Date().toISOString()).slice(0,16).replace(' ','T')}/>
           {editor.order.opened&&<>
             <label className="admin-field admin-field--choice"><input type="checkbox" name="special" required/>{t('确认已核实特殊退款原因','Confirm the verified exception','Konfirmasi pengecualian terverifikasi')}</label>
             <AdminField required>{t('申请前已实际交付课次','Sessions delivered before the request','Pertemuan yang telah diberikan sebelum pengajuan')}<input name="delivered" type="number" min="0" step="1" required/></AdminField>

@@ -1,3 +1,4 @@
+import {AdminDateField} from '../admin/AdminDateField';
 import {AdminListPagination} from '../admin/AdminList';
 import {paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
 import {AdminRecordBack} from '../admin/AdminRecordHeader';
@@ -285,7 +286,8 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
           <p>{t('按收款系统中的实际入账账户填写。','Enter the account credited in the payment system.','Isi rekening yang menerima dana di sistem pembayaran.')}</p>
         </AdminField>
         <AdminField>{t('实收金额（Rp）','Verified amount (Rp)','Nominal terverifikasi (Rp)')}<input name="amount" type="number" min="1" step="1" required/></AdminField>
-        <AdminField>{t('实际到账时间','Actual receipt time','Waktu dana diterima')}<input name="time" type="datetime-local" required/></AdminField>
+        <AdminDateField name="time" lang={lang} withTime required onChange={()=>setDirty(true)}
+          label={t('实际到账时间','Actual receipt time','Waktu dana diterima')}/>
         </fieldset>
         <AdminFormActions>
           <button type="button" className="crm-work-button" disabled={busy} onClick={cancelReceipt}>{t('取消','Cancel','Batal')}</button>
