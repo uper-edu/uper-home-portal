@@ -1,5 +1,5 @@
-export const enrollmentLevels = ['HSK 1', 'HSK 2', 'HSK 3', 'HSK 4A', 'HSK 4B'] as const;
-export const enrollmentOpportunityLevels:readonly string[]=[...enrollmentLevels,'HSK 4'].sort();
+export const enrollmentLevels = ['HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 4A', 'HSK 4B'] as const;
+export const enrollmentOpportunityLevels:readonly string[]=enrollmentLevels;
 export const enrollmentFormats = ['standard', 'small'] as const;
 export const enrollmentPeriods = ['weekday-evening', 'weekend'] as const;
 
