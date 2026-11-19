@@ -27,6 +27,7 @@ const plan=selected?selected.map(key=>{
 }):cases;
 const repeat=Number(process.argv.find(arg=>arg.startsWith('--repeat='))?.slice(9)??1);
 assert.ok(Number.isInteger(repeat)&&repeat>=1&&repeat<=3);
+const auditVerifiedLinks=process.argv.includes('--audit-verified-links');
 const origin='http://localhost:3000';
 const request=async(path:string,options?:RequestInit)=>{
   const target=new URL(path,origin);
@@ -51,16 +52,32 @@ const db=await openTrialDatabase(values);
 const rows=async(sql:string,parameters:unknown[]=[])=>((await db.execute(sql,parameters))[0] as Record<string,any>[]);
 const save=(file:string,value:unknown)=>writeFile(join(output,file),JSON.stringify(value,null,2)+'\n',{mode:0o600});
 
+async function enrollmentActivity(email:string,lead:string|null){
+  const [record]=await rows(`SELECT
+    (SELECT COUNT(*) FROM enrollment_orders WHERE email=?) AS orders,
+    (SELECT COUNT(*) FROM enrollment_orders WHERE email=? AND state NOT IN ('expired','ended','refunding','refunded')) AS orderSeats,
+    (SELECT COUNT(*) FROM enrollment_transfer_invitations i JOIN enrollment_orders o ON o.id=i.order_id
+      WHERE o.email=? AND i.state='offered') AS transferHolds,
+    (SELECT COUNT(*) FROM enrollment_waitlist WHERE email=?) AS waitlist,
+    (SELECT COUNT(*) FROM enrollment_demands WHERE email=?) AS demands,
+    (SELECT COUNT(*) FROM enrollment_customer_records WHERE lead_id=?) AS customerRecords`,[email,email,email,email,email,lead]);
+  return Object.fromEntries(Object.entries(record).map(([key,value])=>[key,Number(value)]));
+}
+
 async function run(item:Case,index:number){
   const visitor=randomBytes(32).toString('hex');
   const scope=createHash('sha256').update(visitor).digest('hex');
   const lead=item.reported?randomUUID():null;
+  const email=`chateval-${visitor}@example.invalid`;
+  const token=auditVerifiedLinks?randomBytes(32).toString('hex'):undefined;
+  const digest=token?createHash('sha256').update(token).digest('hex'):undefined;
   const label='CHATEVAL-'+item.id+'-'+visitor.slice(0,8);
   const source=item.source??'standalone_chat';
   const headers={'content-type':'application/json',origin,cookie:'uper_visitor='+visitor,'x-visitor-scope':scope};
   const submit=(path:string,body:unknown)=>request(path,{method:'POST',headers,body:JSON.stringify(body)});
   const transcript={id:item.id,name:item.name,source,repetition:index,assessment:undefined as unknown,
-    turns:[] as Record<string,any>[],providerAttempts:[] as unknown[],opportunityCount:0};
+    turns:[] as Record<string,any>[],providerAttempts:[] as unknown[],opportunityCount:0,
+    enrollmentAudit:undefined as {before:Record<string,number>;after?:Record<string,number>}|undefined};
   let ready=false;
   try{
     await transaction(db,async c=>{
@@ -70,8 +87,20 @@ async function run(item:Case,index:number){
         await c.execute('INSERT INTO portal_leads(id,business_number,profile) VALUES(?,?,?)',[lead,label,JSON.stringify(profile)]);
       }
       await c.execute('INSERT INTO visitor_sessions(id,lead_id,expires_at) VALUES(?,?,UTC_TIMESTAMP()+INTERVAL 3 HOUR)',[visitor,lead]);
+      if(digest)await c.execute('INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(?,?,UTC_TIMESTAMP()+INTERVAL 1 HOUR)',[digest,email]);
     });
     ready=true;
+    const verifiedOrderList=async()=>{
+      const response=await request('/api/enrollment/orders',{headers:{cookie:`uper_enrollment_session=${token}`}});
+      assert.equal(response.status,200,'Synthetic Enrollment session was not accepted');
+      const result=await response.json();
+      assert.deepEqual(result.orders,[]);
+      assert.deepEqual(result.applications,[]);
+    };
+    if(token){
+      await verifiedOrderList();
+      transcript.enrollmentAudit={before:await enrollmentActivity(email,lead)};
+    }
     const started=await submit('/api/portal/conversations',{source});
     assert.equal(started.status,200);
     const {conversationId}=await started.json();
@@ -88,7 +117,7 @@ async function run(item:Case,index:number){
           kind:row.availability==='full'?'waitlist':'class'} as EnrollmentGuideAction)):[enrollment];
         for(const action of actions){
           const href=enrollmentGuideHref(action,'zh','ai_chat');
-          const page=await request(href);
+          const page=await request(href,{headers:{cookie:headers.cookie}});
           turn.links.push({href,status:page.status,robots:page.headers.get('x-robots-tag')});
           await page.body?.cancel();
         }
@@ -113,6 +142,12 @@ async function run(item:Case,index:number){
     transcript.providerAttempts=await rows(
       'SELECT a.model,a.content,(a.error IS NOT NULL) AS failed FROM ai_attempts a JOIN messages m ON m.id=a.message_id WHERE m.conversation_id=? ORDER BY m.sequence,a.id',[conversationId]);
     if(lead)transcript.opportunityCount=Number((await rows('SELECT COUNT(*) AS n FROM enrollment_opportunities WHERE lead_id=?',[lead]))[0].n);
+    if(transcript.enrollmentAudit){
+      transcript.enrollmentAudit.after=await enrollmentActivity(email,lead);
+      assert.ok(Object.values(transcript.enrollmentAudit.before).every(count=>count===0),'Synthetic learner already has enrollment records');
+      assert.deepEqual(transcript.enrollmentAudit.after,transcript.enrollmentAudit.before,'Consultation or navigation wrote enrollment records');
+      await verifiedOrderList();
+    }
     assert.equal(transcript.opportunityCount,0);
     assert.ok(transcript.turns.every(turn=>turn.status===200&&turn.state==='completed'),'One or more AI requests failed');
   }finally{
@@ -135,6 +170,7 @@ async function run(item:Case,index:number){
         await c.execute('DELETE FROM '+table+' WHERE visitor_id=?',[visitor]);
       }
       await c.execute('DELETE FROM visitor_sessions WHERE id=?',[visitor]);
+      if(digest)await c.execute('DELETE FROM enrollment_email_sessions WHERE digest=? AND email=?',[digest,email]);
       if(lead)await c.execute('DELETE FROM portal_leads WHERE id=?',[lead]);
     });
   }
@@ -144,7 +180,7 @@ try{
   await mkdir(output,{recursive:true,mode:0o700});
   const [catalog,intake]=await Promise.all([read('/api/enrollment/classes'),read('/api/enrollment/availability')]);
   await save('run.json',{suite:suite.version,version,clock:'WIB',at:new Date().toISOString(),
-    catalog:{classes:catalog.classes,appointments:catalog.appointments},intake,cases:plan.map(item=>item.id),repeat});
+    catalog:{classes:catalog.classes,appointments:catalog.appointments},intake,cases:plan.map(item=>item.id),repeat,auditVerifiedLinks});
   const work=plan.flatMap(item=>Array.from({length:repeat},(_,i)=>({item,index:i+1})));
   const errors:{id:string;index:number;error:string}[]=[];
   await Promise.all(Array.from({length:3},async()=>{

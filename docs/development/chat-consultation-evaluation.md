@@ -16,6 +16,8 @@ node --import tsx scripts/score-chat-consultation.mts /private/tmp/chat-review
 node --import tsx scripts/score-chat-consultation.mts /private/tmp/chat-review /private/tmp/completed-reviews.json
 ```
 
+核对咨询和点击是否误创建业务记录时，加 `--audit-verified-links`。评测使用独有的本地模拟身份，在对话前后读取已验证邮箱的订单列表及关联记录。对比商机、潜在占席订单、转班留位、候补、需求和客户关联。浏览目标页面和读取订单列表都使用 GET，核对结束后删除专用会话。评分输出 `enrollmentAudits`，老报告中未启用此项的用例不计入该覆盖数。
+
 浏览器须分别验证独立聊天和首页浮窗。独立聊天首次显示登记邀请，可选择「先咨询」，随后仍可打开原资料表。核对跳过时没有注册请求、当前会话刷新保留选择、输入焦点和班次直达。
 
 默认中文桌面和一条夹用 beginner 的对话。英文、印尼文未来分别建基线。固定数据模拟满班等难复现状态，真实结果须标注当地目录是否有样本。浏览器补验独立 Chat、首页浮窗和关键落地页，阻止 GA 与非本机外发。只保留脱敏结果于评审目录，运行记录、数据库和私有配置留在 Git 之外。

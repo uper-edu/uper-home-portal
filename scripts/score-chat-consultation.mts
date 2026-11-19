@@ -17,6 +17,8 @@ const latency:number[]=[];
 const models:Record<string,number>={};
 const actions:Record<string,number>={};
 const providerAttempts:Record<string,{successful:number;failed:number}>={};
+const enrollmentAuditFields=['orders','orderSeats','transferHolds','waitlist','demands','customerRecords'] as const;
+let enrollmentAudits=0;
 const publicClasses=new Map<string,any>(run.catalog.classes.map((row:any)=>[row.id,row]));
 const publicAppointments=new Map<string,any>(run.catalog.appointments.map((row:any)=>[row.id,row]));
 for(const file of loaded.filter(file=>/^\d\d-\d+\.json$/.test(file))){
@@ -25,6 +27,12 @@ for(const file of loaded.filter(file=>/^\d\d-\d+\.json$/.test(file))){
   evidence.set(key,record);
   const note=(issue:string,turn?:number,severe=false)=>checks.push({case:key,turn,issue,severe});
   if(record.opportunityCount!==0)note('Unexpected opportunity write',undefined,true);
+  if(run.auditVerifiedLinks){
+    const proof=record.enrollmentAudit;
+    if(!proof?.before||!proof.after)note('Missing verified enrollment write audit');
+    else if(enrollmentAuditFields.some(field=>proof.before[field]!==0||proof.after[field]!==0))note('Unexpected business record or seat hold for the synthetic learner',undefined,true);
+    else enrollmentAudits++;
+  }
   for(const attempt of record.providerAttempts){
     const model=providerAttempts[attempt.model]??{successful:0,failed:0};
     if(attempt.failed)model.failed++;
@@ -114,7 +122,7 @@ if(process.argv[3]){
 latency.sort((a,b)=>a-b);
 const result={suite:suite.version,build:run.version.backend.buildId,cases:evidence.size,requests:latency.length,
   successfulReplies:Object.values(models).reduce((a,b)=>a+b,0),
-  medianElapsedMs:latency.length?latency[Math.floor(latency.length/2)]:null,models,providerAttempts,actions,missing,checks,
+  medianElapsedMs:latency.length?latency[Math.floor(latency.length/2)]:null,models,providerAttempts,actions,missing,checks,enrollmentAudits,
   reviewStatus:judgement?'scored':'awaiting-two-reviewers',judgement};
 await writeFile(join(directory,'score.json'),JSON.stringify(result,null,2)+'\n');
 if(!process.argv[3])await writeFile(join(directory,'review-template.json'),JSON.stringify(reviewRows,null,2)+'\n',{flag:'wx'}).catch(error=>{
