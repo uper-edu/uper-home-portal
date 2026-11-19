@@ -2,7 +2,7 @@ import {useLocation} from 'react-router-dom';
 import {useEffect,useState} from 'react';
 import type {PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from './EnrollmentClassPreview';
-import {enrollmentGuideHref,enrollmentGuideText,type EnrollmentGuideAction,type EnrollmentGuideLanguage} from '../utils/enrollmentGuidance';
+import {enrollmentAppointmentRequested,enrollmentGuideHref,enrollmentGuideText,type EnrollmentGuideAction,type EnrollmentGuideLanguage} from '../utils/enrollmentGuidance';
 import {trackEvent} from '../utils/analytics';
 
 let catalogRequest:Promise<Map<string,PublicEnrollmentClass>>|undefined;
@@ -44,7 +44,7 @@ export function ChatEnrollmentGuide({action,language,entry}:{action?:EnrollmentG
   return <a className={linkClass} href={enrollmentGuideHref(action,lang,'ai_chat',source)} onClick={onClick}>
     {action.kind==='demand'?t('登记选课需求','Submit course preferences','Kirim preferensi kursus'):
      action.kind==='advisor'?t('咨询 UPER','Ask UPER','Tanya UPER'):
-     action.kind==='appointment'?t('联系 UPER 约课','Arrange one-to-one lessons','Atur jadwal kelas privat'):
+     enrollmentAppointmentRequested(action)?t('联系 UPER 约课','Arrange one-to-one lessons','Atur jadwal kelas privat'):
      action.kind==='records'?t('我的报名','My enrollments','Pendaftaran saya'):
      action.kind==='viewing'?t('查看课表','View schedules','Lihat jadwal'):
      t('查看课程与报名','View courses and enrollment','Lihat kursus dan pendaftaran')}

@@ -132,3 +132,27 @@ test('an explicitly requested level absent from the catalogue does not fall back
   assert.equal(enrollmentDemandPrefill(goal.searchParams).level,'other');
   assert.equal(goal.pathname,'/enrollment/interest');
 });
+
+test('clarifying the price unit does not repeat tuition unless the learner requests the amount',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const quote={kind:'quote' as const,question:'period_unit' as const,quotes:[
+    {id:'group',level:'HSK 3',format:'standard' as const,periods:42,minutes:45,actual:4158000,unitPriced:false},
+    {id:'private',level:'HSK 3',format:'one-on-one' as const,periods:42,minutes:45,actual:750000,unitPriced:true},
+  ]};
+  const unit='报价按一节 45 分钟计算。一次上课如果安排两节，就计两节。';
+  assert.equal(enrollmentReply(quote,'zh'),unit);
+  assert.match(enrollmentReply({...quote,detailFields:['price']},'zh'),/^报价按一节 45 分钟计算。[^\n]*\n\n- [\s\S]*Rp/);
+  const compound=normalizeEnrollmentIntent({kind:'quote',question:'period_unit',fields:['appointment']})!;
+  const withAppointment={...quote,detailFields:compound.detailFields,classId:'group'};
+  const compoundReply=enrollmentReply(withAppointment,'zh');
+  assert.ok(compoundReply.startsWith(unit));
+  assert.match(compoundReply,/一对一由 UPER 顾问约课/);
+  assert.doesNotMatch(compoundReply,/Rp/);
+  const href=new URL(enrollmentGuideHref(withAppointment,'zh','ai_chat'),'https://example.invalid');
+  assert.equal(href.pathname,'/enrollment/help/one-on-one');
+  assert.equal(href.searchParams.get('appointment'),'private');
+  const classAction=matchEnrollmentGuidance(normalized({question:'period_unit'}),[sample()]);
+  assert.equal(enrollmentReply(classAction,'zh'),unit);
+  const classPrice=matchEnrollmentGuidance(normalized({question:'period_unit',fields:['price']}),[sample()]);
+  assert.match(enrollmentReply(classPrice,'zh'),/报价按一节 45 分钟计算。[^\n]*\n[^\n]*Rp 920,000/);
+});

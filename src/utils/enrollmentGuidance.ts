@@ -2,6 +2,8 @@ import {enrollmentFormats,enrollmentLevels,enrollmentPeriods,enrollmentSessionSt
 import {promotionJourneyUrl} from './promotionNavigation';
 
 export type EnrollmentGuideLanguage='zh'|'en'|'id';
+const consultationQuestions=['period_unit','appointment'] as const;
+type ConsultationQuestion=typeof consultationQuestions[number];
 const levels:readonly string[]=enrollmentLevels;
 const periods:readonly string[]=enrollmentPeriods;
 const formats:readonly string[]=enrollmentFormats;
@@ -25,6 +27,7 @@ export type EnrollmentGuideAction={
   referenceUnavailable?:boolean;
   requestedPeriods?:number;
   detailFields?:string[];
+  question?:ConsultationQuestion;
   levelUnavailable?:boolean;
   scheduleConflict?:{day:number;start:string;end:string};
 };
@@ -34,6 +37,8 @@ export type EnrollmentQuote={
   course?:string;teacherType?:'local'|'foreign';
 };
 export const enrollmentGuideText=(lang:EnrollmentGuideLanguage,zh:string,en:string,id:string)=>({zh,en,id})[lang];
+export const enrollmentAppointmentRequested=(action:EnrollmentGuideAction)=>action.kind==='appointment'||
+  (action.kind==='quote'&&(action.question==='appointment'||action.detailFields?.includes('appointment')));
 
 export function enrollmentGuideHref(action:EnrollmentGuideAction,lang:EnrollmentGuideLanguage,via:'ai_chat'|'whatsapp',source=new URLSearchParams()){
   const {kind,classId,level,period,format}=action;
@@ -52,14 +57,14 @@ export function enrollmentGuideHref(action:EnrollmentGuideAction,lang:Enrollment
   if(kind==='advisor')path+='/help/consultation';
   if(kind==='advisor'&&action.offline)query.set('mode','offline');
   if(kind==='records')path+='/mine';
-  if(kind==='quote'&&classId)path+='/'+encodeURIComponent(classId);
-  if(kind==='appointment'){
+  if(enrollmentAppointmentRequested(action)){
     query.set('format','one-on-one');
     if(via==='ai_chat'){
       path+='/help/one-on-one';
-      if(action.quotes?.length===1)query.set('appointment',action.quotes[0].id);
+      const privateQuotes=action.quotes?.filter(quote=>quote.unitPriced);
+      if(privateQuotes?.length===1)query.set('appointment',privateQuotes[0].id);
     }
-  }
+  }else if(kind==='quote'&&classId)path+='/'+encodeURIComponent(classId);
   return promotionJourneyUrl(path+'?'+query,source);
 }
 
@@ -125,7 +130,8 @@ export function normalizeEnrollmentIntent(value:unknown){
   return {
     kind,level:pick(data.level,levels),period:pick(data.period,periods),format:pick(data.format,quoteFormats),
     quoteLevels:pickMany(data.levels,levels),quoteFormats:pickMany(data.formats,quoteFormats),
-    detailFields:pickMany(data.fields,['price','duration','first','weekly','seats','materials','teacher']),
+    detailFields:pickMany(data.fields,kind==='quote'?['price','duration','appointment']:['price','duration','first','weekly','seats','materials','teacher']),
+    question:pick(data.question,consultationQuestions) as ConsultationQuestion|undefined,
     referenceIds:Array.isArray(data.referenceIds)?[...new Set(data.referenceIds.filter((id):id is string=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(id)))].slice(0,2):[],
     maximumTotal,requestedPeriods,earliestDate,latestDate,
     invalidLevel,
@@ -203,7 +209,8 @@ export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEn
   const matching=verifiable.filter(row=>!conflictFor(row))
     .sort((a,b)=>a.firstLesson.localeCompare(b.firstLesson)||a.id.localeCompare(b.id));
   const available=matching.filter(row=>row.availability!=='full');
-  if(available.length)return {kind:'class',...filters,rows:enrollmentGuideRows(available)};
+  if(available.length)return {kind:'class',...filters,rows:enrollmentGuideRows(available),
+    ...(intent.question==='period_unit'?{question:intent.question,detailFields:intent.detailFields}:{})};
   if(matching.length)return {kind:'waitlist',...filters,rows:enrollmentGuideRows(matching)};
   if(candidates.length!==verifiable.length)return {kind:'unavailable',...filters};
   const referenced=verifiable.find(row=>intent.referenceIds.includes(row.id));

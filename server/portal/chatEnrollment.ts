@@ -5,13 +5,14 @@ import {
   enrollmentClassTitle, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
 } from '../../src/utils/enrollmentCatalog.ts';
 import {
-  enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentScheduleConflict, matchEnrollmentGuidance,
+  enrollmentAppointmentRequested, enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentScheduleConflict, matchEnrollmentGuidance,
   normalizeEnrollmentIntent, type ConsultationConstraints, type EnrollmentGuideAction, type EnrollmentGuideLanguage, type EnrollmentQuote,
 } from '../../src/utils/enrollmentGuidance.ts';
 
 export const chatEnrollmentInstruction = `
 For any UPER Mandarin course or Enrollment request, use the optional "enrollment" field in your JSON response. It takes priority over "catalogue", which is only for non-Enrollment programmes. Set catalogue:null for Enrollment. Choose the action that resolves the current task:
 - quote: current tuition, a cost breakdown, or a PRICE comparison by class type. "levels":["HSK 1"], "formats":["standard","small","one-on-one"]. Use "level" for a single target; no level means all levels only if the learner asked for general prices. Use "requestedPeriods" for a private lesson quantity the learner explicitly asks about. One-to-one price questions use quote, not appointment. A learning-experience comparison is not a price request; answer it directly without replacing it with a price list.
+ When the current question asks what a price covers, use question:"period_unit". Omit fields for a standalone question about the unit. If this same turn also asks for amounts or a cost breakdown, add "price" to fields. If it also asks whether or how the learner can register or arrange private lessons, add "appointment" to fields. Include both fields if both are asked.
 - recommend: recommend real classes, check concrete availability, or update a recommendation after preferences changed. For example {"kind":"recommend","level":"HSK 3","format":"standard","windows":[{"day":5,"earliest":"19:00"},{"day":6,"earliest":"15:00","latestEnd":"17:00"}]}. Days are ISO Monday=1 to Sunday=7. All confirmed times are WIB. earliest/latest refer to start; latestEnd refers to when the student must leave. windows lists ALL currently available days when day-specific constraints are known. Use the latest learner-stated constraints, including corrections. Set anyTime only for explicitly flexible timing. Use needsReview only when an unresolved constraint genuinely affects the recommendation (e.g. unknown timezone, unresolved level); do not use it for representable multi-day availability.
  For a hard total budget in Indonesian rupiah set maximumTotal (an integer); for a latest or earliest allowed first class, use latestDate or earliestDate (YYYY-MM-DD in WIB). Never imply that an out-of-budget class matches.
  Use the published schedule's WIB for ordinary browsing and confirmed Jakarta preferences. When a learner explicitly means a different or unresolved local timezone, clarify it or convert if known; don't treat an unstated timezone as a conflict in every Indonesian course enquiry. Valid period values are weekend, weekday-evening or mixed; express "afternoon" etc. in time windows. When a beginner explicitly asks to find a class and has no conflicting placement, HSK 1 is a suggested starting point.
@@ -20,7 +21,7 @@ For any UPER Mandarin course or Enrollment request, use the optional "enrollment
 - specifications: look up official textbook, teaching outcomes, number of periods or teacher type. Include requested level, optional levels array, format and period, or supplied referenceIds for specific classes. Do not guess the textbook or staffing.
 - demand: the learner requests the existing course preference form or wants to register what they need without enrolling. Return demand even with missing fields, even if no class has been checked. Also use it when recommendation explicitly concludes that a preference form is their best next step. Use safe known level, period, and format filters. Do not say the form does not exist. It does not reserve a seat or take payment.
 - advisor: the learner explicitly requests a person, or wants an offline option that requires validation. For offline set "offline":true and include known level and period. Explain what the advisor needs to confirm. Use the server's contact button rather than writing phone numbers, addresses, or URLs. Never promise a call, a date, or a place.
-- appointment: the learner wants to arrange private lessons. Include level and preferred period if known.
+- appointment: the learner asks how to arrange private lessons, or wants to book a time. Include level and preferred period if known. Use fields:["price"] only when they ask for the price in this turn. If the same turn explicitly asks both price and how to arrange it, use appointment with that field, or quote with question:"appointment".
 - records: the learner wants to check their own enrollment, payment, or refund status. They must verify their email.
 - viewing: asks whether browsing requires a phone or email, or explicitly wants to see details without applying. Include level if known. Never infer consent.
 - browse: discovery without enough constraints for a specific recommendation. On a saved assessment introduction, always include a browsing entry for the suggested level unless the learner explicitly declined; preserve your brief learning recommendation in reply.
@@ -67,7 +68,7 @@ export async function chatEnrollmentAction(
   const intent=normalizeEnrollmentIntent(value);
   if(!intent)return assessmentIntroduction||profileIntroduction||value!==undefined?{kind:'catalog'}:undefined;
   intent.referenceIds=intent.referenceIds.filter(id=>knownReferences.includes(id));
-  const {kind,level,format,period}=intent;
+  const {kind,level,format,period,question}=intent;
   if(kind==='advisor'){
     const offline=typeof value==='object'&&value!==null&&'offline' in value&&value.offline===true;
     return {kind,level,period,format,offline};
@@ -76,14 +77,16 @@ export async function chatEnrollmentAction(
   try{
     if(kind==='quote'||kind==='appointment'){
       const formats=intent.quoteFormats.length?intent.quoteFormats:intent.format?[intent.format]:[];
-      if(intent.invalidLevel&&!level&&!intent.quoteLevels.length)return {kind,format,quoteMissing:true,quotes:[]};
+      if(intent.invalidLevel&&!level&&!intent.quoteLevels.length)
+        return {kind,format,question,detailFields:intent.detailFields,quoteMissing:true,quotes:[]};
       const noGroups=kind==='appointment'||formats.every(format=>format==='one-on-one')&&formats.length>0;
       const quotes=enrollmentQuoteRows(intent,noGroups?[]:await readPublicEnrollmentClasses(c),
         !formats.length||formats.includes('one-on-one')||kind==='appointment'?await readPublicEnrollmentAppointments(c):[]);
       const levels=intent.quoteLevels.length?intent.quoteLevels:level?[level]:[];
       const quoteMissing=intent.invalidLevel||!quotes.length||levels.some(requested=>!quotes.some(row=>enrollmentLevelMatches(requested,row.level)))||
         formats.some(format=>!quotes.some(row=>row.format===format));
-      return {kind,level:levels.length===1?levels[0]:level,period,format:formats.length===1?formats[0]:format,requestedPeriods:intent.requestedPeriods,
+      return {kind,level:levels.length===1?levels[0]:level,period,format:formats.length===1?formats[0]:format,question,
+        detailFields:intent.detailFields,requestedPeriods:intent.requestedPeriods,
         classId:quotes.length===1&&!quotes[0].unitPriced?quotes[0].id:undefined,quotes,quoteMissing};
     }
     if(kind==='inspect'||kind==='specifications'){
@@ -98,7 +101,7 @@ export async function chatEnrollmentAction(
       const compare=kind==='inspect'&&(!intent.detailFields.length||intent.detailFields.includes('weekly'))
         ?normalizeEnrollmentIntent({kind:'recommend',...previousConstraints}):undefined;
       const scheduleConflict=compare?rows.map(row=>enrollmentScheduleConflict(compare,row)).find(conflict=>!!conflict):undefined;
-      return {kind:'class',level,format,rows:enrollmentGuideRows(rows),inspection:true,
+      return {kind:'class',level,format,question,rows:enrollmentGuideRows(rows),inspection:true,
         scheduleConflict,
         detailFields:intent.detailFields.length?intent.detailFields:kind==='specifications'?['duration','materials','teacher']:undefined,
         referenceUnavailable:rows.length<intent.referenceIds.length};
@@ -114,6 +117,12 @@ export async function chatEnrollmentAction(
 export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuideLanguage){
   const t=(zh:string,en:string,id:string)=>enrollmentGuideText(lang,zh,en,id);
   const amount=(price:number)=>formatCurrency(price,lang);
+  const rows=action.rows??[];
+  const minutes=[...new Set([...(action.quotes??[]),...rows].map(row=>row.minutes).filter(value=>value>0))];
+  const unitAnswer=minutes.length===1?t(`报价按一节 ${minutes[0]} 分钟计算。一次上课如果安排两节，就计两节。`,
+    `The unit price covers one ${minutes[0]}-minute period. A session with two periods counts as two.`,
+    `Harga satuan berlaku untuk satu jam pelajaran ${minutes[0]} menit. Jika satu sesi terdiri dari dua jam pelajaran, keduanya dihitung.`):
+    t('单价按一节课计算。一次上课可以安排多节，计费按实际节数。','The unit price is per period. A session may include several periods, and each period counts toward tuition.','Harga satuan dihitung per jam pelajaran. Satu sesi dapat mencakup beberapa jam pelajaran, dan masing-masing dihitung dalam biaya kursus.');
   const missing=t('部分所询选项暂无可核实的公开报价。','A verified public price is unavailable for some of these options.','Harga resmi untuk sebagian pilihan ini belum dapat dipastikan.');
   const unavailable=t('先前推荐的班次中，有班次已无法从报名目录核实。','Some previously shown classes can no longer be verified in the enrollment directory.','Sebagian kelas yang sebelumnya ditampilkan tidak lagi dapat diverifikasi di katalog.');
   const quoted=(quotes:EnrollmentQuote[])=>quotes.map((row)=>{
@@ -136,7 +145,9 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
       t(`平均每节约 ${amount(unit)}`,`about ${amount(unit)}/period on average`,`rata-rata sekitar ${amount(unit)}/jam pelajaran`);
     return `- ${name} · ${quantity} · ${actual}${standard} · ${perPeriod}`;
   }).join('\n');
-  const appointment=t('一对一时间与实际购买节数由 UPER 顾问和你确认。','A UPER advisor confirms the one-to-one schedule and number of periods with you.','Tim UPER akan mengonfirmasi jadwal dan jumlah jam pelajaran privat bersama Anda.');
+  const appointment=t('一对一由 UPER 顾问约课。打开下方入口，告诉我们你方便的日期和时间，再和顾问确认具体安排及购买节数。',
+    'To arrange private lessons, open the link below and share when you’re available. A UPER advisor will confirm the schedule and number of periods with you.',
+    'Untuk menjadwalkan kelas privat, buka tautan di bawah dan sampaikan waktu yang Anda inginkan. Tim UPER akan mengonfirmasi jadwal dan jumlah jam pelajaran bersama Anda.');
   const conflict=action.scheduleConflict;
   const day=conflict?enrollmentWeekdays[conflict.day-1]:undefined;
   const conflictReason=conflict&&day?t(`冲突在${day[0]}。课表为 ${conflict.start}–${conflict.end} WIB，超出了你提供的可上课时间。`,
@@ -144,15 +155,25 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
     `Jadwal pada ${day[2]} pukul ${conflict.start}–${conflict.end} WIB berada di luar waktu yang Anda bisa.`):'';
   switch(action.kind){
     case 'quote':
-    case 'appointment':return [
-      quoted(action.quotes??[]),action.quoteMissing?missing:'',
-      action.kind==='appointment'||action.quotes?.some(row=>row.unitPriced)?appointment:'',
-    ].filter(Boolean).join('\n\n');
-    case 'class':{
-      if(!action.inspection)return t('按 WIB 课表核对，这些班次符合你提供的条件。','These classes match your preferences using the WIB schedules.','Kelas ini sesuai dengan preferensi Anda berdasarkan jadwal WIB.');
-      const rows=action.rows??[];
+    case 'appointment':{
+      const showPrices=action.detailFields?.includes('price')||action.requestedPeriods||
+        (action.kind==='quote'&&action.question!=='period_unit');
+      const arrange=enrollmentAppointmentRequested(action);
       return [
-        conflictReason,
+        action.question==='period_unit'?unitAnswer:'',
+        arrange?appointment:'',
+        showPrices?quoted(action.quotes??[]):'',
+        showPrices&&action.quoteMissing?missing:'',
+        showPrices&&action.kind==='quote'&&!arrange&&action.quotes?.some(row=>row.unitPriced)
+          ?t('一对一需要单独约课。请与 UPER 顾问确认上课时段和购买节数。','Private lessons are arranged individually. Confirm the schedule and number of periods with a UPER advisor.','Kelas privat dijadwalkan secara individual. Konfirmasikan jadwal dan jumlah jam pelajaran dengan tim UPER.'):'',
+      ].filter(Boolean).join('\n\n');
+    }
+    case 'class':{
+      const asksForUnit=action.question==='period_unit';
+      if(asksForUnit&&!action.detailFields?.length)return unitAnswer;
+      if(!action.inspection&&!asksForUnit)return t('按 WIB 课表核对，这些班次符合你提供的条件。','These classes match your preferences using the WIB schedules.','Kelas ini sesuai dengan preferensi Anda berdasarkan jadwal WIB.');
+      return [
+        asksForUnit?unitAnswer:'',conflictReason,
         ...rows.map(row=>{
           const availability=row.availability==='full'?t('已满，可候补','full; waitlist available','penuh; daftar tunggu tersedia'):
             row.availability==='limited'?t('余位不多','limited seats','tempat terbatas'):t('有余位','seats available','tempat tersedia');
