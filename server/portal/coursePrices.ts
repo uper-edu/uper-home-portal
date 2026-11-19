@@ -28,9 +28,17 @@ export function managedEnrollmentCatalogueSelection(selection:unknown,book:Cours
   return {kind:'quote',levels:[...new Set(levels)]};
 }
 
-export function renderConsultationReply(output: string, book: CourseBook, lang: string) {
+export function parseConsultationReply(output: string) {
   const result = JSON.parse(output);
-  if (!result || typeof result.reply !== 'string') throw Error('Invalid consultation response');
+  if (!result || typeof result !== 'object' || Array.isArray(result)) throw Error('Invalid consultation response');
+  if(result.catalogue===undefined&&result.enrollment==null&&result.policyTopic!=='refund'&&
+    typeof result.reply==='string'&&/\b(?:Rp\.?|IDR)\s*\d/i.test(result.reply))throw Error('Invalid catalogue selection');
+  return {...result, catalogue: result.catalogue === undefined ? null : result.catalogue};
+}
+
+export function renderConsultationReply(output: string, book: CourseBook, lang: string) {
+  const result = parseConsultationReply(output);
+  if (typeof result.reply !== 'string') throw Error('Invalid consultation response');
   if (result.catalogue === null) {
     const reply = result.reply.trim();
     if (!reply) throw Error('Empty consultation reply');

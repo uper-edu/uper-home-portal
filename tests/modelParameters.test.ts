@@ -12,3 +12,10 @@ test('legacy OpenAI and DeepSeek request contracts remain unchanged', () => {
   }
 });
 test('Luna and Terra use supported reasoning request options',()=>{for(const model of ['gpt-6-luna','gpt-6.1-terra'])assert.deepEqual(modelParameters(model,2400,0),{max_completion_tokens:9600,reasoning_effort:'low'});});
+test('each selectable reasoning effort reaches the request parameters',()=>{
+  for(const model of ['gpt-6.2-sol','gpt-6.1-terra','gpt-6-luna']){
+    for(const effort of ['low','medium','high'] as const){
+      assert.deepEqual(modelParameters(model,1200,0,effort),{max_completion_tokens:4800,reasoning_effort:effort});
+    }
+  }
+});

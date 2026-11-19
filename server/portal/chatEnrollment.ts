@@ -26,6 +26,7 @@ For any UPER Mandarin course or Enrollment request, use the optional "enrollment
 - advisor: the learner explicitly requests a person, asks whether this chat sent a message to an advisor, or wants an offline option that requires validation. Include the level, format, and period already known from the conversation so the contact handoff can carry them. For offline set "offline":true. The server will explain actual contact status and provide the contact button. This chat does not send a message to an advisor.
 - appointment: the learner asks how to arrange private lessons, or wants to book a time. Include level and preferred period if known. Use fields:["price"] only when they ask for the price in this turn. If the same turn explicitly asks both price and how to arrange it, use appointment with that field, or quote with question:"appointment".
 - records: the learner asks about their own enrollment, cancelling an unpaid order, uploading a receipt, payment verification, or a refund. They must verify their email. Set question to the most specific current situation. If the learner says they selected a class or started enrollment but have not transferred money or submitted proof, and are not asking to cancel or about the deadline, use "unpaid_enrollment_status", even if they just state their situation without an explicit question. If this turn only asks where or how to open their order, payment status or refund status, set question:"records_location". Use "proof_after_cancellation" if the learner has already transferred and says the class or order may be cancelled, expired, or closed. For follow-ups in that context, use "avoid_duplicate_payment" when the CURRENT message asks whether or where to pay again, "original_transfer_proof" when it asks what evidence to provide or how to prove the transfer, and "cancelled_transfer_payment_and_proof" if it asks both. Use these specific questions even when cancellation is only mentioned earlier. Use "payment_verification" only for an ordinary or partial-payment verification question. Use "cancel_unpaid" for whether an unpaid order can be cancelled, "expired_unpaid" for what happens when an unpaid order passes its deadline, or "refund" for refund eligibility, processing or timing questions.
+- A learner saying "someone helped me apply for a refund" is reporting a pending refund request, even without a question mark. For that turn, and any refund approval, timing, or processing question, emit top-level "policyTopic":"refund" and enrollment:{"kind":"records","question":"refund"}. Only if they just ask where to look, use "records_location". The server gives the approval prerequisite and verified order entry. Do not generate or infer an approval in reply.
 - viewing: asks whether browsing requires a phone or email, or explicitly wants to see details without applying. Use this even if the learner mentions a previously shown schedule and their main question is whether they need to leave contact information. If they also explicitly ask for the exact current schedule, use inspect or recommend with question:"view_without_contact" and fields:["weekly"]. Include level if known. Never infer consent.
 - browse: discovery without enough constraints for a specific recommendation. On a saved assessment introduction, always include a browsing entry for the suggested level unless the learner explicitly declined; preserve your brief learning recommendation in reply.
 Treat negation, quoted past questions, hypotheticals and deferral according to the current context, not as action confirmations. A refusal to enroll does not prevent answering a price or comparison question. Use enrollment:null when there is no desired or relevant action. A request for a clear next step is not consent to a submission.
@@ -35,6 +36,13 @@ Say what answers the question first, or give useful decision advice. Use one cla
 
 type Client=Parameters<typeof readPublicEnrollmentClasses>[0];
 type Intent=NonNullable<ReturnType<typeof normalizeEnrollmentIntent>>;
+
+export function refundConsultationIntent(topic:unknown,enrollment:unknown){
+  // The model identifies the topic. The server decides what can be said about approval.
+  if(topic!=='refund')return undefined;
+  const action=normalizeEnrollmentIntent(enrollment);
+  return {kind:'records',question:action?.kind==='records'&&action.question==='records_location'?'records_location':'refund'};
+}
 
 export function enrollmentQuoteRows(
   intent:Intent,
@@ -132,7 +140,7 @@ export async function chatEnrollmentAction(
         referenceUnavailable:rows.length<intent.referenceIds.length};
     }
     const readiness=await enrollmentReadiness(c);
-    if(kind==='records')return readiness.servicing?{kind,question}:{kind:'advisor'};
+    if(kind==='records')return readiness.servicing?{kind,question}:{kind:'advisor',question};
     if(!readiness.accepting)return {kind:'paused',level,period,format,question};
     if(kind==='demand')return matchEnrollmentGuidance(intent,[]);
     return matchEnrollmentGuidance(intent,await readPublicEnrollmentClasses(c));
@@ -253,6 +261,9 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
   const conflictReason=conflict&&day?t(`冲突在${day[0]}。课表为 ${conflict.start}–${conflict.end} WIB，超出了你提供的可上课时间。`,
     `The conflict is on ${day[1]}. The ${conflict.start}–${conflict.end} WIB session is outside your availability.`,
     `Jadwal pada ${day[2]} pukul ${conflict.start}–${conflict.end} WIB berada di luar waktu yang Anda bisa.`):'';
+  const refundApproval=t('提交退款申请后，须先由 CRM 管理者批准，财务才会按原支付渠道处理。我无法确认这笔退款是否已获批、金额或到账日期。',
+    'Submitting a refund request starts an approval review. Finance can refund the original payment method only after the CRM Manager approves it. I can’t confirm approval, an amount, or an arrival date.',
+    'Pengajuan refund harus disetujui Manajer CRM sebelum tim Keuangan mengembalikan dana melalui metode pembayaran awal. Saya tidak dapat memastikan persetujuan, jumlah, atau tanggal dana masuk.');
   switch(action.kind){
     case 'quote':
     case 'appointment':{
@@ -403,7 +414,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         action.format==='one-on-one'?t('一对一能否安排、具体时段和老师由顾问确认。',
           'Ask the advisor to confirm availability, lesson times and the teacher for one-to-one classes.',
           'Tanyakan kepada tim UPER tentang ketersediaan, jadwal, dan pengajar kelas privat.'):'';
-      return [context,status].filter(Boolean).join(' ');
+      return [action.question==='refund'?refundApproval:'',context,status].filter(Boolean).join(' ');
     }
     case 'records':{
       const open=t('进入「我的报名」，验证报名邮箱后打开原订单。','Open My Enrollments, verify your enrollment email, then open the original order.','Buka Pendaftaran Saya, verifikasi email pendaftaran, lalu buka pesanan awal.');
@@ -435,9 +446,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         case 'payment_verification':return t('上传凭证后还需要等财务核实。只核实到部分款项时，报名尚未成功。财务确认足额到账后，订单才会显示报名成功。',
           'Finance still needs to verify the transfer after you upload proof. Enrollment is complete only after Finance verifies the full amount.',
           'Setelah bukti diunggah, tim Keuangan masih perlu memverifikasi transfer. Pendaftaran selesai setelah jumlah penuh diverifikasi.')+' '+open;
-        case 'refund':return t('退款须先获批，再由财务按原支付渠道处理。我无法确认你这笔的金额或到账日期。',
-          'A refund must be approved before Finance returns the money through the original payment method. I can’t confirm the amount or arrival date for your order.',
-          'Refund harus disetujui sebelum tim Keuangan mengembalikan dana melalui metode pembayaran awal. Saya tidak dapat memastikan jumlah atau tanggal dana masuk untuk pesanan Anda.')+' '+open;
+        case 'refund':return refundApproval+' '+open;
         default:return t('请在「我的报名」验证报名邮箱，再查看订单、凭证和核款结果。','Verify your enrollment email in My Enrollments to see the order, proof of transfer, and payment verification.','Verifikasi email pendaftaran di Pendaftaran Saya untuk melihat pesanan, bukti transfer, dan hasil verifikasi pembayaran.');
       }
     }

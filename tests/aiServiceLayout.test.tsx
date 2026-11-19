@@ -8,3 +8,14 @@ test('failed test is explicit and language variants preserve the same layout',()
 test('single action uses server check token for exact selection and revision, activates once',async()=>{const calls:any[]=[];const check={id:'server-check',ok:true};const r=await testAndSaveAi({selection,revision:3,requestId:'request-123',onChecked:noop,beforeActivate:noop,call:async(path,body)=>{calls.push({path,body});return path==='/test'?check:{revision:4};}});assert.equal(r.saved,true);assert.deepEqual(calls,[{path:'/test',body:{selection,revision:3}},{path:'/activate',body:{revision:3,checkId:'server-check',requestId:'request-123'}}]);});
 test('failed or unavailable test never activates; lost activation response is not retried',async()=>{for(const mode of ['failed','test-error','activate-error']){let activated=0,called=0;const run=()=>testAndSaveAi({selection,revision:1,requestId:'request-123',onChecked:noop,beforeActivate:noop,call:async(path)=>{called++;if(path==='/test'){if(mode==='test-error')throw Error('timeout');return{id:'test',ok:mode!=='failed'};}activated++;throw Error('response lost');}});if(mode==='failed')assert.equal((await run()).saved,false);else await assert.rejects(run);assert.equal(activated,mode==='activate-error'?1:0);assert.equal(called,mode==='activate-error'?2:1);}});
 test('testing unchanged configuration does not rotate the previous configuration or create an activation',async()=>{let activated=false;const result=await testAndSaveAi({selection,current:selection,revision:2,requestId:'request-123',onChecked:noop,beforeActivate:()=>{activated=true},call:async()=>({ok:true,id:'passed'})});assert.equal(result.unchanged,true);assert.equal(activated,false);});
+test('effort selectors belong to the supported model and a non-default effort is a configuration change',async()=>{
+ const candidate={...selection,fallback:'gpt-6-luna',fallbackEffort:'medium' as const};
+ const html=render({selection:candidate});
+ assert.match(html,/主模型推理强度/);
+ assert.match(html,/备用模型推理强度/);
+ assert.match(html,/gpt-6-luna/);
+ assert.doesNotMatch(render(),/备用模型推理强度/);
+ const requests:string[]=[];
+ await testAndSaveAi({selection:candidate,current:{...candidate,fallbackEffort:'low'},revision:2,requestId:'request-123',onChecked:noop,beforeActivate:noop,call:async(path,body)=>{requests.push(path);if(path==='/test')assert.equal(body.selection.fallbackEffort,'medium');return {ok:true,id:'passed'};}});
+ assert.deepEqual(requests,['/test','/activate']);
+});

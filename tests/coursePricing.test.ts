@@ -36,6 +36,9 @@ test('all and selected catalogue replies render only published courses, amounts 
 
 test('ordinary replies pass through the structured contract and malformed outputs fail',()=>{
   assert.deepEqual(renderConsultationReply('{"reply":"可以继续问课程安排。","catalogue":null}',book,'zh'),{reply:'可以继续问课程安排。',catalogueUsed:false});
+  assert.deepEqual(renderConsultationReply('{"reply":"用同一个口语任务比较进步。","replyLanguage":"zh"}',book,'zh'),{reply:'用同一个口语任务比较进步。',catalogueUsed:false});
+  assert.throws(()=>renderConsultationReply('{"reply":"课程安排","catalogue":{}}',book,'zh'),/Invalid catalogue selection/);
+  assert.throws(()=>renderConsultationReply('{"reply":"  "}',book,'zh'),/Empty consultation reply/);
   assert.throws(()=>renderConsultationReply('{"reply":"Rp 99,999"}',book,'zh'),/Invalid catalogue selection/);
 });
 const course={id:'c',revision:1,name:'HSK 2',sessions:22,price:2000000,active:true,maxDiscountBps:500,maxDiscountAmount:100000};

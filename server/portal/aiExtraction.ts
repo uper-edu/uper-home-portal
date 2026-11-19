@@ -14,6 +14,7 @@ import {fact} from './trustWorkflow.ts';
 import {extractionFamily,extractionRoot} from '../../src/utils/crmExtractionEvidence.ts';
 import {sameProfileValue} from '../../src/utils/crmFieldValues.ts';
 import {supportsCourseBudget} from '../../src/utils/crmBudget.ts';
+import type {ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
 import {modelParameters} from './modelParameters.ts';
 import {log} from '../logger.ts';
 /** Called in the original source transaction. Technical processing only; never a sales task or notification. */
@@ -28,14 +29,14 @@ export function needsResidenceReview(text:string,observations:any[]){
  if(/我(?:作为|是)?销售|销售(?:本人|自己)|as (?:a )?sales/i.test(text)&&!/客户(?:说|表示)?(?:长期居住地是|目前住在|现在住在|住在|现居|常住|已经搬到)/.test(text))return false;
  return !observations.some(o=>o.kind==='field'&&o.field==='city')&&/(?:居住地(?:是|为)?|住在|现居|常住|搬到|tinggal(?:\s+di)?|domisili(?:\s+di)?|lives?\s+in|living\s+in|resides?\s+in|moved\s+to).{0,12}(?:雅加达|万隆|泗水|Jakarta|Bandung|Surabaya)/i.test(text);
 }
-export async function extractWithAI(text:string,context:any,request:typeof fetch=fetch,providersOverride?:Array<{model:string;key?:string;url:string}>){
+export async function extractWithAI(text:string,context:any,request:typeof fetch=fetch,providersOverride?:Array<{model:string;key?:string;url:string;reasoningEffort?:ReasoningEffort}>){
  const {runtimeProviders}=await import('./aiServiceConfig.ts');
  const providers=(providersOverride||await runtimeProviders()).map(p=>({...p,name:p.model}));
  for(const p of providers){if(!p.key)continue;try{
   let actualModel=p.name;
   const ask=async(review=false)=>{
    const instruction=extractionInstruction+(context?.profilePolicyVersion===AI_PROFILE_POLICY?'\n'+aiProfileInstruction:'')+(supportsCustomerInsights(context?.insightsVersion)?'\n'+customerInsightsInstruction+(context?.insightsVersion===CUSTOMER_INSIGHTS_VERSION?'\n'+classEquipmentInstruction:''):'')+'\n'+stageEventInstruction+'\n'+naturalRequestInstruction+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
-   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},...modelParameters(p.name,supportsCustomerInsights(context?.insightsVersion)?4800:2400,0)}),signal:AbortSignal.timeout(30000)});
+   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},...modelParameters(p.name,supportsCustomerInsights(context?.insightsVersion)?4800:2400,0,p.reasoningEffort)}),signal:AbortSignal.timeout(30000)});
    if(!response.ok)throw Error('provider');const body=await response.json();actualModel=body.model||p.name;if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');
    return validateExtraction(JSON.parse(body.choices?.[0]?.message?.content||''),text);
   };

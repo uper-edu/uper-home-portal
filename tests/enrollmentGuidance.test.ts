@@ -193,6 +193,16 @@ test('an advisor link reports the actual unsent status and retains public prefer
   assert.match(enrollmentGuideHref(action,'zh','ai_chat'),/level=2.*period=weekend.*format=one-on-one/);
 });
 
+test('refund guidance puts approval before original-method processing and preserves status-only lookup',async()=>{
+  const {refundConsultationIntent,enrollmentReply}=await import('../server/portal/chatEnrollment');
+  assert.deepEqual(refundConsultationIntent('refund',null),{kind:'records',question:'refund'});
+  assert.deepEqual(refundConsultationIntent('refund',{kind:'records',question:'records_location'}),{kind:'records',question:'records_location'});
+  assert.equal(refundConsultationIntent('other',null),undefined);
+  assert.match(enrollmentReply({kind:'records',question:'refund'},'zh'),/CRM 管理者批准.*财务.*原支付渠道.*我的报名/);
+  assert.match(enrollmentReply({kind:'records',question:'refund'},'en'),/only after the CRM Manager approves/);
+  assert.match(enrollmentReply({kind:'advisor',question:'refund'},'id'),/disetujui Manajer CRM.*Keuangan/);
+});
+
 test('an explicitly requested level absent from the catalogue does not fall back to another level',()=>{
   const intent=normalizeEnrollmentIntent({kind:'browse',level:'HSK 6'})!;
   assert.equal(matchEnrollmentGuidance(intent,[sample()]).levelUnavailable,true);
@@ -247,7 +257,7 @@ test('current questions are answered using verified facts, allowed actions and d
   assert.match(enrollmentReply({...records,question:'original_transfer_proof'},'zh'),/^请用原转账回单.*流水号[\s\S]*入口已关闭/);
   assert.match(enrollmentReply({...records,question:'cancelled_transfer_payment_and_proof'},'en'),/^Do not pay again[\s\S]*original transfer receipt/);
   assert.match(enrollmentReply({...records,question:'proof_after_cancellation'},'zh'),/暂勿再次付款[\s\S]*如果订单仍有[\s\S]*如果入口已关闭/);
-  assert.match(enrollmentReply({...records,question:'refund'},'zh'),/^退款须先获批/);
+  assert.match(enrollmentReply({...records,question:'refund'},'zh'),/CRM 管理者批准.*财务.*原支付渠道/);
   assert.match(enrollmentGuideHref(records,'zh','ai_chat'),/^\/enrollment\/mine\?/);
   assert.equal(normalizeEnrollmentIntent({kind:'records',question:'invented_action'})?.question,undefined);
 });

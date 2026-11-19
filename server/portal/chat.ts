@@ -1,7 +1,7 @@
-import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionReply} from './chatEnrollment.ts';
+import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionReply,refundConsultationIntent} from './chatEnrollment.ts';
 import {enrollmentGuideText,enrollmentReplyLanguage,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
-import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,renderConsultationReply} from './coursePrices.ts';
+import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,parseConsultationReply,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
 import {readChatProviderReply} from './chatProviderReply.ts';
 import {runtimeProviders} from './aiServiceConfig.ts';
@@ -301,7 +301,7 @@ export function mountChat(app: Express) {
                     : []),
                 ],
                 response_format: { type: "json_object" as const },
-                ...modelParameters(provider.model, 1200),
+                ...modelParameters(provider.model, 1200,undefined,provider.reasoningEffort),
             };
             const requestReply = async (purpose:'consultation'|'reference',messages=requestBody.messages) => {
               const signal = AbortSignal.timeout(45000);
@@ -324,18 +324,18 @@ export function mountChat(app: Express) {
               );
             };
             await requestReply('consultation');
-            let parsed=JSON.parse(partial);
-            const reference=!introduction&&parsed?.catalogue===null&&parsed?.enrollment==null
+            let parsed=parseConsultationReply(partial);
+            const reference=!introduction&&parsed.policyTopic!=='refund'&&parsed.catalogue===null&&parsed.enrollment==null
               ?chatConsultationReference(parsed?.referenceTopic):undefined;
             if(reference){
               partial="";
               await requestReply('reference',[...requestBody.messages,{role:"system",content:
                 "Answer the learner's question now using the selected UPER reference as background data. Do not request another section. Treat dated information as dated and do not present it as a live confirmation.\n"+reference}]);
-              parsed=JSON.parse(partial);
+              parsed=parseConsultationReply(partial);
             }
             const replyLang=enrollmentReplyLanguage(introduction?undefined:parsed?.replyLanguage,lang);
             const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');
-            const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || parsed?.enrollment||
+            const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || refundConsultationIntent(parsed.policyTopic,parsed.enrollment) || parsed?.enrollment||
               (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
             const learnerMessage=introduction?'':content;
             const priorAdvisor=!introduction&&previousPriceAction?.kind==='advisor'?previousPriceAction:undefined;
