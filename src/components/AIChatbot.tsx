@@ -1472,7 +1472,7 @@ export default function AIChatbot() {
                         <span className="text-xs text-slate-400 font-medium whitespace-pre-line animate-pulse">
                           {sendingAdvisorRequest
                             ? (currentLang.startsWith('zh')?'正在保存跟进申请…':currentLang.startsWith('en')?'Saving follow-up request…':'Menyimpan permintaan tindak lanjut…')
-                            : (currentLang.startsWith('zh')?'UPER AI 正在思考中...':currentLang.startsWith('en')?'UPER AI is typing...':'UPER AI sedang mengetik...')}
+                            : (currentLang.startsWith('zh')?'正在输入…':currentLang.startsWith('en')?'Typing…':'Sedang mengetik…')}
                         </span>
                       </div>
                     </div>

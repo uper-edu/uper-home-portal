@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   UserCheck,
+  UserRound,
   Clock,
   HelpCircle,
   Globe2
@@ -422,23 +423,25 @@ export default function StandAloneChat() {
       {switchConfirm&&<div role="dialog" aria-modal="true" aria-label={chooseText(lang,'切换使用者','Switch user','Ganti pengguna')} onKeyDown={e=>{if(e.key==='Escape'&&!switchingPerson)setSwitchConfirm(false);if(e.key==='Tab'){const b=e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');if(e.shiftKey&&document.activeElement===b[0]){e.preventDefault();b[b.length-1]?.focus();}else if(!e.shiftKey&&document.activeElement===b[b.length-1]){e.preventDefault();b[0]?.focus();}}}} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"><div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md space-y-4"><h2 className="text-lg font-semibold">{chooseText(lang,'切换使用者','Switch user','Ganti pengguna')}</h2><p>{chooseText(lang,'下一位需要重新填写个人资料。当前使用者已保存的记录会保留；未提交的内容不会转给下一位。','The next person must enter their details. Saved records are kept; unsent content is not transferred.','Pengguna berikutnya perlu mengisi data pribadi. Catatan tersimpan tetap ada; isian yang belum dikirim tidak diteruskan.')}</p><button autoFocus disabled={switchingPerson} className="min-h-11 px-4" onClick={()=>setSwitchConfirm(false)}>{chooseText(lang,'取消','Cancel','Batal')}</button><button disabled={switchingPerson} className="min-h-11 px-4 underline" onClick={()=>void performPersonSwitch()}>{switchingPerson?chooseText(lang,'正在切换…','Switching…','Mengganti…'):chooseText(lang,'继续切换','Continue','Lanjutkan')}</button></div></div>}
       {personError&&<p role="alert">{chooseText(lang,'切换未确认成功，请刷新后核对当前使用者，不要继续填写。','The switch could not be confirmed. Reload and check the current user before continuing.','Pergantian belum dapat dikonfirmasi. Muat ulang dan periksa pengguna sebelum melanjutkan.')}</p>}
       {retakeConfirm&&<div role="dialog" onKeyDown={e=>{if(e.key==='Escape')setRetakeConfirm(false);if(e.key==='Tab'){const b=e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');if(e.shiftKey&&document.activeElement===b[0]){e.preventDefault();b[b.length-1]?.focus();}else if(!e.shiftKey&&document.activeElement===b[b.length-1]){e.preventDefault();b[0]?.focus();}}}} aria-modal="true" aria-label={chooseText(lang,'重新测评','Retake assessment','Ulangi tes')} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"><div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md space-y-4"><h2 className="text-lg font-semibold">{chooseText(lang,`为 ${profile?.fullName||''} 重新测评？`,`Retake the assessment for ${profile?.fullName||''}?`,`Ulangi tes untuk ${profile?.fullName||''}?`)}</h2><p>{chooseText(lang,'之前的测评记录会保留。','Previous assessment records will be kept.','Riwayat tes sebelumnya tetap disimpan.')}</p><button autoFocus type="button" className="min-h-11 px-4 underline" onClick={()=>{setRetakeConfirm(false);handleStartVoluntaryAssessment();}}>{chooseText(lang,'开始重新测评','Start retake','Mulai tes ulang')}</button><button type="button" className="min-h-11 px-4" onClick={()=>setRetakeConfirm(false)}>{chooseText(lang,'取消','Cancel','Batal')}</button><button type="button" className="block underline min-h-11" onClick={()=>void switchPerson()}>{chooseText(lang,'不是本人？切换使用者','Not you? Switch user','Bukan Anda? Ganti pengguna')}</button></div></div>}
-      <main ref={mainRef} inert={showOnboardingModal} className={`flex-1 min-h-0 overflow-y-auto space-y-4 w-full mx-auto ${isTakingAssessment ? 'p-2 sm:p-4 max-w-5xl' : 'p-4 sm:p-6 max-w-4xl'}`}>
+      <main ref={mainRef} inert={showOnboardingModal} className={`flex-1 min-h-0 overflow-y-auto space-y-3 w-full mx-auto ${isTakingAssessment ? 'p-2 sm:p-4 max-w-5xl' : 'p-4 sm:p-6 max-w-4xl'}`}>
         {!isTakingAssessment && messages.map((msg) => (
           <div
             key={msg.id}
             className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
           >
-            {msg.role==='user' && msg.delivery && <div role="status" className="text-xs mb-1">{deliveryText(msg.delivery,lang)}{!['pending','saved'].includes(msg.delivery) && <button className="ml-3 underline min-h-11" disabled={isTyping} onClick={()=>void handleSendMessage(undefined,msg)}>{lang==='zh'?'重试':lang==='en'?'Retry':'Coba lagi'}</button>}</div>}
-            <div className={`flex items-start gap-2.5 max-w-[92%] sm:max-w-[80%] ${
+            {msg.role==='user' && msg.delivery && msg.delivery!=='saved' && <div role="status" className="text-xs mb-1">{deliveryText(msg.delivery,lang)}{msg.delivery!=='pending' && <button className="ml-3 underline min-h-11" disabled={isTyping} onClick={()=>void handleSendMessage(undefined,msg)}>{lang==='zh'?'重试':lang==='en'?'Retry':'Coba lagi'}</button>}</div>}
+            <div className={`flex items-start gap-2 max-w-[96%] sm:max-w-[80%] ${
               msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
             }`}>
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0 mt-0.5 text-primary-400">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-              )}
+              <div aria-hidden="true" className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border sm:size-8 ${
+                msg.role === 'user'
+                  ? 'border-primary-200 bg-primary-50 text-primary-700'
+                  : 'border-slate-700 bg-slate-900 text-primary-400'
+              }`}>
+                {msg.role === 'user' ? <UserRound className="size-4" /> : <Sparkles className="size-4" />}
+              </div>
 
-              <div className={`p-4 sm:p-5 rounded-3xl text-sm leading-relaxed ${
+              <div className={`min-w-0 rounded-2xl px-3 py-2 text-sm leading-relaxed sm:px-4 ${
                 msg.role === 'user'
                   ? 'bg-primary-600 text-white rounded-tr-sm shadow-md shadow-primary-600/20'
                   : 'bg-white text-slate-800 rounded-tl-sm border border-slate-200/80 shadow-sm'
@@ -449,7 +452,7 @@ export default function StandAloneChat() {
                     <div data-hsk-result-anchor className="scroll-mt-4"><HskAssessmentReport result={msg.assessmentData} lang={lang} saving={savingReport} onRetry={()=>void retryReport(msg.assessmentData!)}/></div>
                   </div>
                 ) : (
-                  <div className="prose prose-sm max-w-none text-inherit prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5">
+                  <div className="prose prose-sm max-w-none text-inherit break-words prose-p:my-1 prose-headings:my-2 prose-ul:my-1 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                     <Markdown remarkPlugins={[remarkGfm]}>{msg.content}</Markdown>
                     <ChatEnrollmentGuide action={msg.enrollment} language={lang} entry="standalone_chat"/>
                   </div>
@@ -502,11 +505,7 @@ export default function StandAloneChat() {
               <span className="w-1.5 h-1.5 bg-primary-600 rounded-full animate-bounce [animation-delay:0.4s]" />
             </div>
             <span>
-              {lang === 'en'
-                ? 'UPER AI is preparing a reply...'
-                : lang === 'zh'
-                ? 'UPER AI 正在生成专属解答与规划...'
-                : 'UPER AI sedang menyiapkan jawaban...'}
+              {chooseText(lang,'正在输入…','Typing…','Sedang mengetik…')}
             </span>
           </div>
         )}
