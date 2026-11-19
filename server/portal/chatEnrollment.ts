@@ -2,7 +2,7 @@ import { readPublicEnrollmentAppointments, readPublicEnrollmentClasses } from '.
 import { enrollmentReadiness } from './enrollmentApplication.ts';
 import { formatCurrency } from '../../src/utils/currency.ts';
 import {
-  enrollmentClassTitle, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
+  enrollmentClassSizeText, enrollmentClassTitle, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
 } from '../../src/utils/enrollmentCatalog.ts';
 import {
   enrollmentAppointmentRequested, enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentScheduleConflict, matchEnrollmentGuidance,
@@ -17,8 +17,9 @@ For any UPER Mandarin course or Enrollment request, use the optional "enrollment
  For a hard total budget in Indonesian rupiah set maximumTotal (an integer); for a latest or earliest allowed first class, use latestDate or earliestDate (YYYY-MM-DD in WIB). Never imply that an out-of-budget class matches.
  Use the published schedule's WIB for ordinary browsing and confirmed Jakarta preferences. When a learner explicitly means a different or unresolved local timezone, clarify it or convert if known; don't treat an unstated timezone as a conflict in every Indonesian course enquiry. Valid period values are weekend, weekday-evening or mixed; express "afternoon" etc. in time windows. When a beginner explicitly asks to find a class and has no conflicting placement, HSK 1 is a suggested starting point.
  Only set format or formats as a filter when the learner specifically requests those class types. For example, wanting to speak more does not mean they can only accept a small group. If the learner has multiple acceptable types use formats rather than choosing one for them. Never replace known hard restrictions in a follow-up that only asks for details or a reason. To replace any existing constraint, include constraintEvidence as an exact quote from the CURRENT learner message that changes the requirement and supply the full revised constraints, including those unchanged.
-- inspect: answer a follow-up about actual fees, dates, schedules, duration, or seats for classes previously shown. Put their IDs (in the order asked) in "referenceIds". Use ONLY IDs provided in the previous recommendation context. A recent focus on one class must not hide the original pair when the learner asks about the two classes. Choose "fields" from price, duration, first, weekly, seats, materials, teacher. Use recommend for new constraints, even if "referenceIds" also names the class the learner wants to verify.
+- inspect: answer a follow-up about actual fees, dates, schedules, duration, or seats for classes previously shown. Put their IDs (in the order asked) in "referenceIds". Use ONLY IDs provided in the previous recommendation context. A recent focus on one class must not hide the original pair when the learner asks about the two classes. Choose "fields" from price, duration, first, weekly, seats, materials, teacher, class_size, outcomes. Use recommend for new constraints, even if "referenceIds" also names the class the learner wants to verify.
 - specifications: look up official textbook, teaching outcomes, number of periods or teacher type when the learner asks for those facts in the current turn. Include the requested level, optional levels array, format and period, or supplied referenceIds for specific classes. Do not guess the textbook or staffing. A follow-up asking which of two levels suits them is a learning advice question, not another request for textbook or teacher facts. Explain the trade-off in reply (starting from scratch versus already comfortable with basic Mandarin) and ask about their foundation if unknown. Do not infer the language of instruction from teacher type or call previously supplied Enrollment facts unverified merely because the current question asks for advice. For advice without a concrete fact or class request, use enrollment:null or browse if a browsing link would help.
+ For a question about class size or maximum, the named teacher, or learning outcomes, use inspect with known referenceIds, or specifications with the requested level, format, period, batchNumber or exact first date (equal earliestDate and latestDate). Only include the fields asked for: class_size, teacher, outcomes, or seats. For actual enrollment or paid counts, say these are not public and offer the seats status instead. Seat status gives approximate availability, never exact remaining seats or occupancy. Distinguish the advertised group size from the current number of learners.
 - demand: the learner requests the existing course preference form or wants to register what they need without enrolling. Return demand even with missing fields, even if no class has been checked. Also use it when recommendation explicitly concludes that a preference form is their best next step. Use safe known level, period, and format filters. When the learner explicitly asks for just the link, set question:"link_only". Do not say the form does not exist. It does not reserve a seat or take payment.
 - advisor: the learner explicitly requests a person, or wants an offline option that requires validation. Include the level, format, and period already known from the conversation so the contact handoff can carry them. For offline set "offline":true. Explain what the advisor needs to confirm. Use the server's contact button rather than writing phone numbers, addresses, or URLs. Never promise a call, a date, or a place.
 - appointment: the learner asks how to arrange private lessons, or wants to book a time. Include level and preferred period if known. Use fields:["price"] only when they ask for the price in this turn. If the same turn explicitly asks both price and how to arrange it, use appointment with that field, or quote with question:"appointment".
@@ -94,9 +95,15 @@ export async function chatEnrollmentAction(
       const levels=intent.quoteLevels.length?intent.quoteLevels:level?[level]:[];
       if(!intent.referenceIds.length&&(kind==='inspect'||!levels.length))return {kind:'catalog',level,format};
       const classes=await readPublicEnrollmentClasses(c);
+      const matched=classes.filter(row=>levels.some(requested=>enrollmentLevelMatches(requested,row.level))&&
+        (!format||row.format===format)&&(!period||row.period===period)&&
+        (!intent.batchNumber||row.batchNumber===intent.batchNumber)&&
+        (!intent.earliestDate||row.firstLesson.slice(0,10)>=intent.earliestDate)&&
+        (!intent.latestDate||row.firstLesson.slice(0,10)<=intent.latestDate));
+      const specific=intent.batchNumber||intent.earliestDate||intent.latestDate||
+        intent.detailFields.some(field=>['class_size','teacher','outcomes','seats'].includes(field));
       const rows=intent.referenceIds.length?intent.referenceIds.flatMap(id=>classes.filter(row=>row.id===id)):
-        [...new Map(classes.filter(row=>levels.some(requested=>enrollmentLevelMatches(requested,row.level))&&
-          (!format||row.format===format)&&(!period||row.period===period)).map(row=>
+        specific?matched:[...new Map(matched.map(row=>
           [JSON.stringify([row.level,row.material,row.teacherType,row.sessions,row.minutes]),row])).values()];
       if(!rows.length)return {kind:'unavailable',level,format,referenceUnavailable:true};
       const compare=kind==='inspect'&&(!intent.detailFields.length||intent.detailFields.includes('weekly'))
@@ -205,7 +212,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
       const rowDescriptions=rows.map(row=>{
         const availability=row.availability==='full'?t('已满','full','penuh'):
           row.availability==='limited'?t('余位不多','limited seats','tempat terbatas'):
-          row.availability==='available'?t('有余位','seats available','tempat tersedia'):'';
+          row.availability==='available'?t('查询时有余位','Seats available when checked','Tempat tersedia saat diperiksa'):t('余位暂无法核实','Current availability could not be verified','Ketersediaan belum dapat diverifikasi');
         const quantity=row.sessions&&row.minutes?t(`共 ${row.sessions} 节，每节 ${row.minutes} 分钟`,
           `${row.sessions} periods of ${row.minutes} minutes each`,`${row.sessions} jam pelajaran, masing-masing ${row.minutes} menit`):'';
         const teacher=enrollmentTeacherLabel(row.teacherType,lang);
@@ -219,13 +226,19 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         const plan=row.weeklySchedule;
         const sessionLength=weekly&&plan&&plan.lessons>1?t(`每次 ${plan.lessons} 节，共 ${plan.lessons*row.minutes} 分钟`,
           `${plan.lessons} periods (${plan.lessons*row.minutes} min) per session`,`${plan.lessons} jam pelajaran (${plan.lessons*row.minutes} menit) per sesi`):'';
+        const size=enrollmentClassSizeText(row.classSize,lang);
         const details={
           duration:[quantity,sessionLength],price:row.price>0?[t(`实付总价 ${amount(row.price)}`,`current total ${amount(row.price)}`,`total biaya saat ini ${amount(row.price)}`),
             ...(priceBreakdown?[standard,unit]:[])]:[],
           first:[`${t('首课','First class','Kelas pertama')} ${row.firstLesson.replace('T',' ')} WIB`],
           weekly:[weekly||t('详细周课表暂无法核实','weekly schedule not currently verified','jadwal mingguan belum dapat diverifikasi'),
             ...(requested?.includes('duration')?[]:[sessionLength])],seats:[availability],
-          materials:[material||t('教材待确认','Textbook to be confirmed','Buku perlu dikonfirmasi')],teacher:[teacher],
+          materials:[material||t('教材待确认','Textbook to be confirmed','Buku perlu dikonfirmasi')],teacher:[teacher,row.teacher?.trim()?t(`授课教师 ${row.teacher.trim()}`,`Teacher: ${row.teacher.trim()}`,`Pengajar: ${row.teacher.trim()}`):
+            t('老师姓名尚未公布','Teacher name has not been announced','Nama pengajar belum diumumkan')],
+          class_size:[size?(row.classSize?.usualMinimum?t(`班级规模 ${size}，上限 ${row.classSize.maximum} 人`,`Class size: ${size}, maximum ${row.classSize.maximum}`,`Ukuran kelas: ${size}, maksimal ${row.classSize.maximum}`):size):
+            t('班级人数上限暂未公布','Class capacity has not been published','Kapasitas kelas belum diumumkan')],
+          outcomes:[row.learningOutcomes?.trim()?t(`学习成果：${row.learningOutcomes.trim()}`,`Learning outcomes: ${row.learningOutcomes.trim()}`,`Hasil belajar: ${row.learningOutcomes.trim()}`):
+            t('学习成果暂未公布','Learning outcomes have not been published','Hasil belajar belum dipublikasikan')],
         };
         const fields=requested??Object.keys(details);
         const isDetail=(field:string):field is keyof typeof details=>Object.hasOwn(details,field);
@@ -252,7 +265,9 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
           ?t('这班已满，可以打开班次详情加入候补。','This class is full. Open the class details to join the waitlist.','Kelas ini penuh. Buka detail kelas untuk masuk daftar tunggu.'):'',
       ].filter(Boolean).join('\n\n');
     }
-    case 'waitlist':return [action.question==='reserve'?reserve:'',
+    case 'waitlist':return [
+      action.detailFields?.some(field=>['class_size','teacher','outcomes'].includes(field))?enrollmentReply({...action,kind:'class'},lang):'',
+      action.question==='reserve'?reserve:'',
       conflictReason,t('符合条件的班次目前已满。打开班次可以加入候补，候补无需付款，也不会占用席位。',
         'Matching classes are full. Open a class to join its waitlist. You won’t be charged or hold a seat by joining.',
         'Kelas yang sesuai sedang penuh. Buka kelas untuk masuk daftar tunggu. Daftar tunggu tidak dipungut biaya dan tidak menahan tempat.')].filter(Boolean).join(' ');

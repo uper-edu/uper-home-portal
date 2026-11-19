@@ -11,7 +11,7 @@ const formats:readonly string[]=enrollmentFormats;
 const quoteFormats=[...formats,'one-on-one'];
 type EnrollmentGuideClass=Pick<PublicEnrollmentClass,'id'|'level'|'courseName'|'batchNumber'|'period'|'format'|
   'firstLesson'|'weeklySchedule'|'schedule'|'minutes'|'price'|'availability'> &
-  Partial<Pick<PublicEnrollmentClass,'sessions'|'teacherType'|'standardPrice'|'opened'|'material'|'learningOutcomes'>>;
+  Partial<Pick<PublicEnrollmentClass,'sessions'|'teacherType'|'standardPrice'|'opened'|'material'|'learningOutcomes'|'teacher'|'classSize'>>;
 
 export type EnrollmentGuideAction={
   kind:'catalog'|'class'|'waitlist'|'demand'|'unavailable'|'paused'|'advisor'|'appointment'|'quote'|'records'|'viewing';
@@ -20,6 +20,7 @@ export type EnrollmentGuideAction={
   format?:string;
   classId?:string;
   rows?:EnrollmentGuideClass[];
+  linkOnlyClassIds?:string[];
   explicitDemand?:boolean;
   quoteMissing?:boolean;
   quotes?:EnrollmentQuote[];
@@ -133,10 +134,10 @@ export function normalizeEnrollmentIntent(value:unknown){
   return {
     kind,level:pick(data.level,levels),period:pick(data.period,periods),format:pick(data.format,quoteFormats),
     quoteLevels:pickMany(data.levels,levels),quoteFormats:pickMany(data.formats,quoteFormats),
-    detailFields:pickMany(data.fields,kind==='quote'?['price','duration','appointment']:['price','duration','first','weekly','seats','materials','teacher']),
+    detailFields:pickMany(data.fields,kind==='quote'?['price','duration','appointment']:['price','duration','first','weekly','seats','materials','teacher','class_size','outcomes']),
     question:pick(data.question,consultationQuestions) as ConsultationQuestion|undefined,
     referenceIds:Array.isArray(data.referenceIds)?[...new Set(data.referenceIds.filter((id):id is string=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(id)))].slice(0,2):[],
-    maximumTotal,requestedPeriods,earliestDate,latestDate,
+    maximumTotal,requestedPeriods,earliestDate,latestDate,batchNumber:positiveInteger(data.batchNumber,1_000_000),
     invalidLevel,
     days,earliest,latest,latestEnd,windows:validWindows?windows:undefined,anyTime:data.anyTime===true,
     needsReview:data.needsReview===true||invalidSchedule||
@@ -152,8 +153,16 @@ export function enrollmentLevelMatches(requested:string,actual:string){
 
 export function enrollmentGuideRows(entries:PublicEnrollmentClass[]):EnrollmentGuideClass[]{
   return entries.slice(0,2).map(({
-    id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,
-  })=>({id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes}));
+    id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize,
+  })=>({id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize}));
+}
+
+export function repeatedEnrollmentCards(action:EnrollmentGuideAction,history:EnrollmentGuideAction[]){
+  return action.rows?.filter(row=>{
+    const previous=history.find(item=>item.rows?.some(candidate=>candidate.id===row.id))?.rows?.find(candidate=>candidate.id===row.id);
+    return previous&&previous.availability===row.availability&&previous.opened===row.opened&&
+      previous.price===row.price&&previous.firstLesson===row.firstLesson;
+  }).map(row=>row.id)??[];
 }
 
 export function enrollmentScheduleConflict(intent:EnrollmentIntent,row:PublicEnrollmentClass){

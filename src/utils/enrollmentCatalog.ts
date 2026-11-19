@@ -59,7 +59,19 @@ export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 
 }
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
-  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'decisionAt' | 'canDelete' | 'hasOrders' | 'holidayDates' | 'scheduleReview'> & { opened?: boolean; availability?: 'full' | 'limited' | 'available' };
+  'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'decisionAt' | 'canDelete' | 'hasOrders' | 'holidayDates' | 'scheduleReview'> & {
+    opened?: boolean; availability?: 'full' | 'limited' | 'available';
+    classSize?: {maximum:number; usualMinimum?:number};
+  };
+
+export function enrollmentClassSizeText(size:PublicEnrollmentClass['classSize'],lang:'zh'|'en'|'id'){
+  if(!size)return '';
+  const {maximum,usualMinimum}=size;
+  const range=usualMinimum&&usualMinimum<maximum?`${usualMinimum}–${maximum}`:'';
+  return range
+    ? {zh:`${range} 人`,en:`${range} learners`,id:`${range} siswa`}[lang]
+    : {zh:`最多 ${maximum} 人`,en:`Up to ${maximum} learners`,id:`Maksimal ${maximum} siswa`}[lang];
+}
 
 export function validEnrollmentHolidayDate(value: unknown): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
@@ -83,7 +95,11 @@ export function enrollmentScheduleDefaults(firstLesson:string) {
 export function publicEnrollmentClass(record: EnrollmentClassAdmin): PublicEnrollmentClass {
   const { id, level, courseName, batchNumber, format, period, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher } = record;
-  return { id, level, courseName, batchNumber, format, period, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price,
+  const maximum=record.capacity;
+  // The advertised range describes group size. It is independent of the opening threshold.
+  const usualMinimum=format==='standard'&&maximum===15?10:format==='small'&&maximum===6?4:undefined;
+  const classSize=Number.isSafeInteger(maximum)&&maximum>0?{maximum,usualMinimum}:undefined;
+  return { id, level, courseName, batchNumber, format, period, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price, classSize,
     standardPrice, learningOutcomes, material, resources, teacher };
 }
 

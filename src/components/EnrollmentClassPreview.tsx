@@ -1,14 +1,14 @@
 import {Link} from 'react-router-dom';
 import {ChevronRight} from 'lucide-react';
 import {formatCurrency} from '../utils/currency';
-import {enrollmentClassTitle,enrollmentTeacherLabel,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentClassSizeText,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import {enrollmentCopy} from './EnrollmentApplication';
 import '../pages/enrollment.css';
 
 type Language='zh'|'en'|'id';
 type EnrollmentCardRow=Pick<PublicEnrollmentClass,'level'|'format'|'period'|'batchNumber'|'teacherType'|
   'firstLesson'|'minutes'|'weeklySchedule'|'schedule'|'opened'|'price'|'availability'> &
-  Partial<Pick<PublicEnrollmentClass,'sessions'|'standardPrice'|'learningOutcomes'|'material'|'resources'|'teacher'>>;
+  Partial<Pick<PublicEnrollmentClass,'sessions'|'standardPrice'|'learningOutcomes'|'material'|'resources'|'teacher'|'classSize'>>;
 
 export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDetails=false,intakePaused=false,availabilitySnapshot=false,onNavigate}:{
   row:EnrollmentCardRow;language:Language;titleLink?:string;actionLink?:string;showDetails?:boolean;intakePaused?:boolean;
@@ -20,7 +20,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
    month:'long',day:'numeric',timeZone:'Asia/Jakarta',
  }).format(dateValue).replaceAll(' ','\u00a0'):'';
  const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('首课 '+date,'First session '+date,'Pertemuan pertama '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
- const size=row.format==='standard'?'10–15':'4–6';
+ const size=enrollmentClassSizeText(row.classSize,language);
  const periods=row.sessions&&row.sessions>0?row.sessions:undefined;
  const title=enrollmentClassTitle(row,language);
  const titleContent=<span className="enrollment-card-title">{title.split(' · ').map((part,index)=><span className="enrollment-title-part" key={index}>{(index?' · ':'')+part}</span>)}</span>;
@@ -31,7 +31,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
    <h2>{titleLink?<Link to={titleLink} onClick={onNavigate}>{titleContent}<ChevronRight size={15} aria-hidden="true"/></Link>:titleContent}</h2>
    <p>{[enrollmentTeacherLabel(row.teacherType,language),dateLabel].filter(Boolean).join(' · ')}</p>
    <p>{[
-     t(size+' 人',size+' learners',size+' siswa'),
+     size,
      periods&&t(periods+' 节',periods+' periods',periods+' jam pelajaran'),
      t('每节 '+row.minutes+' 分钟',row.minutes+' min each',row.minutes+' menit per jam pelajaran'),
    ].filter(Boolean).join(' · ')}</p>

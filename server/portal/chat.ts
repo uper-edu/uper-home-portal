@@ -1,5 +1,5 @@
 import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply} from './chatEnrollment.ts';
-import {enrollmentGuideText,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
+import {enrollmentGuideText,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
 import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
@@ -192,7 +192,7 @@ export function mountChat(app: Express) {
           .map(message=>message.metadata.enrollment as EnrollmentGuideAction);
         const previousRecommendation=previousActions.find(action=>!action.inspection)?.rows??previousActions[0]?.rows;
         const referenceContext=(previousRecommendation??[]).map((row,index)=>({
-          id:row.id,position:index+1,level:row.level,format:row.format,firstLesson:row.firstLesson,
+          id:row.id,position:index+1,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,firstLesson:row.firstLesson,
         }));
         const previousConstraints=[...recentMessages].reverse().find(message=>
           message.role==='assistant'&&message.metadata?.consultationConstraints)?.metadata.consultationConstraints as ConsultationConstraints|undefined;
@@ -338,7 +338,8 @@ export function mountChat(app: Express) {
             const normalized=resolveConsultationRecommendation(modelIntent,previousConstraints,introduction?'':content);
             const action=await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
               referenceContext.map(row=>row.id),previousConstraints);
-            enrollment=action;
+            const linkOnlyClassIds=action?repeatedEnrollmentCards(action,previousActions):[];
+            enrollment=action&&linkOnlyClassIds.length?{...action,linkOnlyClassIds}:action;
             if(enrollment&&(enrollment.kind!=='catalog'||parsed?.catalogue===null)){
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
               const facts=enrollmentReply(enrollment,lang);

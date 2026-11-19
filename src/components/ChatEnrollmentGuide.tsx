@@ -1,6 +1,6 @@
 import {useLocation} from 'react-router-dom';
 import {useEffect,useState} from 'react';
-import type {PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentClassTitle,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from './EnrollmentClassPreview';
 import {enrollmentAppointmentRequested,enrollmentGuideHref,enrollmentGuideText,type EnrollmentGuideAction,type EnrollmentGuideLanguage} from '../utils/enrollmentGuidance';
 import {trackEvent} from '../utils/analytics';
@@ -32,11 +32,14 @@ export function ChatEnrollmentGuide({action,language,entry}:{action?:EnrollmentG
   if(entry==='homepage_widget'&&!source.has('entry_point'))source.set('entry_point',entry);
   const onClick=()=>trackEvent('link_click',{target:'enrollment',entry_point:entry});
   const linkClass='inline-flex min-h-11 items-center rounded-lg font-semibold text-teal-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2';
-  if(rows?.length)return <div className="not-prose enrollment-class-grid mt-3" data-enrollment-card-group>
+  if(rows?.length)return <div className="not-prose enrollment-class-grid mt-3" data-enrollment-card-group={rows.some(row=>!action.linkOnlyClassIds?.includes(row.id))||undefined}>
     {rows.map(snapshot=>{
       const current=(snapshot.sessions===undefined||snapshot.opened===undefined)?catalog?.get(snapshot.id):undefined;
       const row=current??snapshot;
       const titleLink=enrollmentGuideHref({...action,kind:'class',classId:row.id},lang,'ai_chat',source);
+      if(action.linkOnlyClassIds?.includes(row.id))return <a key={row.id} className={linkClass} href={titleLink} onClick={onClick}>
+        {enrollmentClassTitle(row,lang)}
+      </a>;
       return <EnrollmentClassPreview key={row.id} row={row} language={lang} titleLink={titleLink}
         actionLink={action.inspection||action.question==='view_without_contact'?undefined:titleLink+'&apply=1'} availabilitySnapshot={!current} onNavigate={onClick}/>;
     })}

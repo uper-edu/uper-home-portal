@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {enrollmentDemandPrefill,enrollmentGuideHref,matchEnrollmentGuidance,normalizeEnrollmentIntent,resolveConsultationRecommendation} from '../src/utils/enrollmentGuidance';
+import {enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation} from '../src/utils/enrollmentGuidance';
 import type {PublicEnrollmentClass} from '../src/utils/enrollmentCatalog';
 
 const sample=(overrides:Partial<PublicEnrollmentClass>={}):PublicEnrollmentClass=>({
@@ -234,4 +234,15 @@ test('navigation turns address the specific request while the enrollment state s
   assert.equal(enrollmentReply({...records,question:'records_location'},'zh'),'进入「我的报名」，验证报名邮箱后打开原订单。');
   assert.match(enrollmentReply({...records,question:'expired_unpaid'},'zh'),/超过付款期限后订单会终止，席位会释放/);
   assert.doesNotMatch(enrollmentReply({kind:'paused',question:'link_only'},'zh'),/选课需求表在下方/);
+});
+
+test('public class answers use advertised size and give repeat cards only when the visible status changes',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const rows=enrollmentGuideRows([sample({classSize:{usualMinimum:10,maximum:15},teacher:'安老师',learningOutcomes:'练习自我介绍'})]);
+  const action={kind:'class' as const,inspection:true,rows,detailFields:['class_size','teacher','outcomes','seats']};
+  assert.match(enrollmentReply(action,'zh'),/10–15 人.*上限 15 人.*安老师.*自我介绍.*查询时有余位/);
+  assert.deepEqual(repeatedEnrollmentCards(action,[action]),['fixture-a']);
+  const changed={...action,rows:[{...rows[0],availability:'full' as const}]};
+  assert.deepEqual(repeatedEnrollmentCards(changed,[action]),[]);
+  assert.match(enrollmentReply({...action,rows:[sample({availability:undefined})]},'zh'),/人数上限暂未公布.*姓名尚未公布.*成果暂未公布.*余位暂无法核实/);
 });

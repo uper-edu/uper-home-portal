@@ -48,9 +48,10 @@ export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeo
         AND JSON_EXTRACT(c.value,'$.active')=true
       ORDER BY e.first_lesson_at,e.id
     `)).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number }) => {
-      const available = row.data.capacity - Number(row.seats);
-      const availability = available <= 0 ? 'full' : available <= 3 ? 'limited' : 'available';
-      return { ...publicEnrollmentClass(record(row)), opened: Number(row.opened) === 1, availability };
+      const publicClass=publicEnrollmentClass(record(row));
+      const available=publicClass.classSize?publicClass.classSize.maximum-Number(row.seats):NaN;
+      const availability=Number.isFinite(available)?available<=0?'full':available<=3?'limited':'available':undefined;
+      return { ...publicClass, opened: Number(row.opened) === 1, availability };
     });
 }
 
