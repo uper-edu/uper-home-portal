@@ -188,6 +188,9 @@ test('current questions are answered using verified facts, allowed actions and d
   assert.doesNotMatch(enrollmentReply({...appointment,kind:'appointment'},'zh'),/Rp/);
   assert.match(enrollmentGuideHref(appointment,'zh','ai_chat'),/^\/enrollment\/help\/one-on-one\?.*appointment=private-a/);
   const records={kind:'records' as const};
+  const unpaid=normalizeEnrollmentIntent({kind:'records',question:'unpaid_enrollment_status'})?.question;
+  assert.equal(enrollmentReply({...records,question:unpaid},'zh'),
+    '还没转账、也没上传凭证，报名尚未成功。可在「我的报名」验证报名邮箱，查看是否已有待付款订单。');
   assert.match(enrollmentReply({...records,question:'cancel_unpaid'},'zh'),/^订单仍在付款期限内[\s\S]*自行取消/);
   assert.match(enrollmentReply({...records,question:'avoid_duplicate_payment'},'zh'),/^不用再付.*另一个账户/);
   assert.match(enrollmentReply({...records,question:'original_transfer_proof'},'zh'),/^请用原转账回单.*流水号[\s\S]*入口已关闭/);
