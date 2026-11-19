@@ -34,7 +34,7 @@ import {writeHskResult,readHskHistory,readHskDraft} from '../services/hskAttempt
 import HSKPlacementAssessment from '../components/HSKPlacementAssessment';
 import {hskWhatsAppDraft} from '../services/hskWhatsApp';
 import HskAssessmentWelcome from '../components/HskAssessmentWelcome';
-import { LeadProfile, calculateLeadTier } from '../types/leadSystem';
+import type { LeadProfile } from '../types/leadSystem';
 import {
   getStudentContext,
   getChatAssessmentStatus,
@@ -51,7 +51,6 @@ interface ChatMessage {
   timestamp: Date;
   suggestedPrompts?: string[];
   isAssessmentCard?: boolean;
-  isProfileWelcome?: boolean;
   isAssessmentResult?: boolean;
   assessmentData?: HskResult & { whatsapp?: string };
 }
@@ -72,12 +71,13 @@ export default function StandAloneChat() {
     const ctx = getStudentContext();
     return !ctx?.leadProfile&&!choseConsultationFirst();
   });
-  const [isTakingAssessment, setIsTakingAssessment] = useState(() => getChatAssessmentStatus(initialContext) === 'pending');
+  const [isTakingAssessment, setIsTakingAssessment] = useState(() => getChatAssessmentStatus(initialContext) === 'pending' && Boolean(readHskDraft()));
   useEffect(() => {
     let active=true;
     const owner = visitorScope();
-    Promise.all([restoreChat('standalone_chat').catch(()=>[]),restoreHskAttempts().catch(()=>readHskHistory(initialContext?.preferredLanguage||'en'))]).then(([rows,attempts])=>{
+    Promise.all([restoreChat('standalone_chat').catch(()=>null),restoreHskAttempts().catch(()=>readHskHistory(initialContext?.preferredLanguage||'en'))]).then(([restoredRows,attempts])=>{
       if(!active || owner !== visitorScope())return;
+      const rows=restoredRows??[];
       const latest=attempts[0] || safeHskResult(initialContext?.assessment?.result, initialContext?.preferredLanguage || 'en');
       if(latest){writeHskResult(latest);if(!readHskDraft())setIsTakingAssessment(false);}
       const unavailable = !latest && initialContext?.assessment?.result;
@@ -86,24 +86,27 @@ export default function StandAloneChat() {
       const visibleRows=rows.filter((r:any)=>!(latest&&r.request_id?.startsWith('profile-intro-')) && !((r.request_id?.startsWith('hsk-intro-')||r.request_id?.startsWith('profile-intro-'))&&['failed','interrupted'].includes(r.status)));
       const cards:ChatMessage[]=latest?[{id:`assessment-${latest.attempt.attemptId}`,role:'assistant',content:latest.summary,timestamp:new Date(latest.attempt.completedAt!),isAssessmentResult:true,assessmentData:latest}]:unavailable?[{id:'assessment-unavailable',role:'assistant',content:chooseText(initialContext?.preferredLanguage || 'en','历史报告待核对','Historical report needs review','Laporan lama perlu ditinjau'),timestamp:new Date(),isAssessmentResult:true,assessmentData:unavailable}]:[];
       const introIndex=latest?visibleRows.findIndex((r:any)=>r.id==='reply-hsk-intro-'+latest.attempt.attemptId):-1;
-      const profileCards:ChatMessage[]=!latest&&rows.some((r:any)=>r.request_id?.startsWith('profile-intro-'))?[{id:'profile-welcome',role:'assistant',content:'',timestamp:new Date(),isProfileWelcome:true}]:[];
-      if(rows.length||cards.length)setMessages(introIndex<0?[...profileCards,...visibleRows,...cards]:[...visibleRows.slice(0,introIndex),...cards,...visibleRows.slice(introIndex)]);
+      if(rows.length||cards.length)setMessages(introIndex<0?[...visibleRows,...cards]:[...visibleRows.slice(0,introIndex),...cards,...visibleRows.slice(introIndex)]);
       if(failedIntro)setConsultationError(latest);
       if(failedProfileIntro&&!latest)setProfileConsultationError(true);
+      if(!restoredRows)return;
+      if(latest?.saveStatus==='saved' && !rows.some(row=>row.request_id==='hsk-intro-'+latest.attempt.attemptId)){
+        void beginAssessmentConsultation(latest);
+      }else if(!latest && !rows.length && initialContext?.leadProfile &&
+        getChatAssessmentStatus(initialContext) !== 'completed' && !readHskDraft()){
+        void beginProfileConsultation();
+      }
     });
     return()=>{active=false;};
   },[]);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (!initialContext?.leadProfile) return [];
-    const pending = getChatAssessmentStatus(initialContext) === 'pending';
     const language = chatLanguage(initialContext.preferredLanguage,window.location.search);
     return [{
       id: 'msg-resume', role: 'assistant', timestamp: new Date(),
-      content: language === 'zh'
-        ? (pending ? '欢迎回来！您的资料已保存，请在下方选择 HSK 测评模式。' : '欢迎回来！您的资料已保存，可以继续咨询，也可以点击顶部的 HSK 摸底测验。')
-        : language === 'id'
-        ? (pending ? 'Selamat datang kembali! Profil Anda tersimpan. Silakan pilih mode tes HSK di bawah.' : 'Selamat datang kembali! Profil Anda tersimpan. Lanjutkan konsultasi atau pilih Ikuti Tes HSK di atas.')
-        : (pending ? 'Welcome back! Your profile is saved. Please select an HSK assessment mode below.' : 'Welcome back! Your profile is saved. Continue your consultation or select Take HSK Test above.')
+      content: chooseText(language,'欢迎回来！可以继续咨询，也可以点击顶部的 HSK 摸底测验。',
+        'Welcome back! Continue your consultation or select Take HSK Test above.',
+        'Selamat datang kembali! Lanjutkan konsultasi atau pilih Ikuti Tes HSK di atas.'),
     }];
   });
   const [inputValue, setInputValue] = useState('');
@@ -142,7 +145,7 @@ export default function StandAloneChat() {
     trackEvent('assessment_exit',{reason:readHskDraft()?'paused':'skipped'});
     setIsTakingAssessment(false);
     saveStudentContext({ chatAssessmentStatus: readHskDraft()?'paused':'skipped' });
-    setMessages(prev=>[...prev.filter(m=>!m.isAssessmentCard && m.id!=='msg-resume' && !m.isProfileWelcome),{id:'profile-welcome',role:'assistant',content:'',timestamp:new Date(),isProfileWelcome:true}]);
+    setMessages(prev=>prev.filter(m=>!m.isAssessmentCard && m.id!=='msg-resume'));
     void beginProfileConsultation();
   };
 
@@ -208,124 +211,9 @@ export default function StandAloneChat() {
       preferredLanguage: selectedLang
     });
 
-    const studentName = completedProfile.fullName;
-    const goal = completedProfile.goal;
-    const levelState = completedProfile.levelState;
-    const reportedLevel = completedProfile.reportedLevel;
-
-    if (levelState === 'PARTIAL') {
-      // PARTIAL -> Assessment Needed
-      setIsTakingAssessment(true);
-      const greetingContent = selectedLang === 'en'
-        ? `Hello **${studentName}**! Welcome to your UPER Education academic consultation. 🌟
-
-Based on your inquiry profile:
-- 🎯 **Primary Goal:** ${goal}
-- 📊 **Current Level:** ${reportedLevel} (Verification Required)
-
-*According to UPER placement guidance, accurate placement is essential so that classes are neither too demanding nor too basic. We have prepared an **UPER HSK 1–3 diagnostic adaptation** for you below:*`
-        : selectedLang === 'zh'
-        ? `您好 **${studentName}**！欢迎来到 UPER 学习咨询中心。🌟
-
-根据您的登记信息：
-- 🎯 **学习目标：** ${goal}
-- 📊 **自报基础：** ${reportedLevel} (需测评定级)
-
-*为确保分班精准、避免课程过难或重复学习，我们已在下方为您开启 **UPER HSK 1~3 级混合摸底测试**：*`
-        : `Halo **${studentName}**! Senang bertemu dengan Anda di sesi konsultasi UPER Education.
-
-Berdasarkan formulir Anda:
-- 🎯 **Tujuan Belajar:** ${goal}
-- 📊 **Tingkat Saat Ini:** ${reportedLevel} (Perlu verifikasi)
-
-*Sesuai standar akademik UPER, kami telah mengaktifkan **Diagnostik Penempatan UPER HSK** untuk Anda di bawah ini:*`;
-
-      const initialGreeting: ChatMessage = {
-        id: 'msg-init-partial',
-        role: 'assistant',
-        content: greetingContent,
-        timestamp: new Date(),
-        isAssessmentCard: true
-      };
-      setMessages([initialGreeting]);
-
-
-    } else if (levelState === 'KNOWN') {
-      // KNOWN -> Skip Assessment (But offer voluntary entry)
-      const greetingContent = selectedLang === 'zh'
-        ? `您好 **${studentName}**！您填写的中文基础是 **${reportedLevel}（自报）**，尚不代表测评结论。可以自选摸底测评，或先咨询课程。具体班级、开班时间及名额需要确认。您最想了解什么？`
-        : selectedLang === 'id'
-        ? `Halo **${studentName}**! Tingkat **${reportedLevel}** berasal dari laporan Anda, bukan hasil tes. Anda dapat memilih tes atau konsultasi. Jadwal dan ketersediaan perlu dikonfirmasi.`
-        : `Hello **${studentName}**! **${reportedLevel}** is your self-reported starting point, not an assessment result. You can choose a diagnostic or ask about courses. Classes, schedules and availability require confirmation.`;
-
-      const initialGreeting: ChatMessage = {
-        id: 'msg-init-known',
-        role: 'assistant',
-        content: greetingContent,
-        timestamp: new Date(),
-        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何了解适合的课程或试听？'] : selectedLang === 'en' ? [
-          '🎯 Take UPER HSK Placement Diagnostic (Optional)',
-          'What are the course fees and available installment plans?',
-          'When are the nearest class start dates for my level?'
-        ] : [
-          '🎯 Ikuti diagnostik UPER HSK (opsional)',
-          'Berapa biaya kelas lanjutan dan opsi cicilannya?',
-          'Kapan jadwal kelas terdekat untuk level saya?'
-        ]
-      };
-      setMessages([initialGreeting]);
-
-
-    } else {
-      // ZERO -> Complete Beginner (Also offer voluntary entry)
-      const greetingContent = selectedLang === 'en'
-        ? `Hello **${studentName}**! Welcome to UPER Education.
-
-As a **Complete Beginner**, your academic pathway is structured as follows:
-- **Diagnostic Status:** Mandatory placement testing waived (self-reported beginner).
-- **Recommended Program:** **HSK 1 Starter & Practical Conversation Track** (Comprehensive Pinyin system, tones, and 150 core high-frequency vocabulary).
-
-*Optional: If you would like to preview diagnostic audio, feel free to click **"Take HSK Test"** at the top right anytime.*
-
-How can I assist you today with course schedules, class options, or tuition details?`
-        : selectedLang === 'zh'
-        ? `您好 **${studentName}**！欢迎来到 UPER Education。
-
-针对您的**零基础起点**，UPER 为您规划了清晰的教学路径：
-- **测评状态：** 免除强制摸底测验（已确认零基础起点）。
-- **推荐班级：** **HSK 1 零基础启航班**（涵盖标准拼音发音、四声调及 150 个核心高频生词）。
-
-*注：如您希望体验真实的考场听力真题，也可随时点击右上角的 **【HSK 摸底测验】** 进行自测。*
-
-请问您目前最希望了解哪方面的信息（例如开班排期、授课形式或学费方案）？`
-        : `Halo **${studentName}**! Selamat datang di UPER Education.
-
-Bagi peserta **Pemula (Zero Beginner)**, jalur akademik yang disiapkan adalah sebagai berikut:
-- **Status Diagnostik:** Bebas tes penempatan wajib (fondasi awal terkonfirmasi).
-- **Rekomendasi Kelas:** **HSK 1 Starter & Percakapan Praktis** (sistem Pinyin, empat nada, dan 150 kosakata esensial).
-
-*Opsional: Anda dapat mengklik tombol **"Ikuti Tes HSK"** di pojok kanan atas kapan saja jika ingin mencoba format soal ujian.*
-
-Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, atau biaya?`;
-
-      const initialGreeting: ChatMessage = {
-        id: 'msg-init-zero',
-        role: 'assistant',
-        content: greetingContent,
-        timestamp: new Date(),
-        suggestedPrompts: selectedLang === 'zh' ? ['参加UPER分班诊断（自选）','学费和分期安排如何？','如何了解适合的课程或试听？'] : selectedLang === 'en' ? [
-          '🎯 Take UPER HSK Placement Diagnostic (Optional)',
-          'How long does it take from zero to conversational fluency?',
-          'What are the tuition fees and schedules for HSK 1 beginner classes?'
-        ] : [
-          '🎯 Ikuti diagnostik UPER HSK (opsional)',
-          'Berapa lama belajar dari nol hingga bisa bicara lancar?',
-          'Berapa biaya dan jadwal kelas pemula HSK 1?'
-        ]
-      };
-      setMessages([initialGreeting]);
-
-    }
+    setIsTakingAssessment(false);
+    setMessages(prev=>prev.filter(m=>!m.isAssessmentCard && m.id!=='msg-resume'));
+    void beginProfileConsultation(selectedLang);
   };
 
   const handleAssessmentComplete = (result: HskResult) => {
@@ -339,7 +227,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
       saveStudentContext({leadProfile:updatedProfile,chatAssessmentStatus:'completed',assessment:{completed:true,result,score:result.score,total:result.maxScore,maxScore:result.maxScore,questionCount:result.questionCount,levelConfirmed:result.levelConfirmed,summary:result.summary,breakdown:result.breakdown,saveStatus:result.saveStatus,completedAt:result.attempt.completedAt}});
     }
     setProfileConsultationError(false);
-    setMessages(prev=>[...prev.filter(m=>!m.isAssessmentResult && !m.isAssessmentCard && !m.isProfileWelcome && !m.id.startsWith('reply-profile-intro') && m.id!=='msg-resume'),{id:`assessment-${result.attempt.attemptId}`,role:'assistant',content:result.summary,timestamp:new Date(),isAssessmentResult:true,assessmentData:result,
+    setMessages(prev=>[...prev.filter(m=>!m.isAssessmentResult && !m.isAssessmentCard && !m.id.startsWith('reply-profile-intro') && m.id!=='msg-resume'),{id:`assessment-${result.attempt.attemptId}`,role:'assistant',content:result.summary,timestamp:new Date(),isAssessmentResult:true,assessmentData:result,
       suggestedPrompts:[]}]);
     if(result.saveStatus==='saved')void beginAssessmentConsultation(result);
   };
@@ -351,7 +239,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
     const botId='reply-hsk-intro-'+attemptId;
     if(consultationRunning.current.has(attemptId)||messages.some(m=>m.id===botId&&m.content))return;
     consultationRunning.current.add(attemptId);setConsultationError(null);setIsTyping(true);
-    setMessages(prev=>[...prev.filter(m=>m.id!==botId),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
+    setMessages(prev=>[...prev.filter(m=>m.id!==botId&&m.id!=='msg-resume'),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
     let reply='';
     try{
       const res=await assessmentConsultation(attemptId,lang);
@@ -360,14 +248,14 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
     }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setConsultationError(result);}
     finally{consultationRunning.current.delete(attemptId);setIsTyping(false);}
   };
-  const beginProfileConsultation=async()=>{
+  const beginProfileConsultation=async(language=lang)=>{
     const botId='reply-profile-intro';
     if(consultationRunning.current.has(botId)||messages.some(m=>m.id.startsWith(botId)&&m.content))return;
     consultationRunning.current.add(botId);setProfileConsultationError(false);setIsTyping(true);
-    setMessages(prev=>[...prev.filter(m=>m.id!==botId),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
+    setMessages(prev=>[...prev.filter(m=>m.id!==botId&&m.id!=='msg-resume'),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
     let reply='';
     try{
-      const res=await profileConsultation(lang);
+      const res=await profileConsultation(language);
       const response=await finishChat(res,'standalone_chat','profile-intro',e=>{if(e.reset)reply='';if(e.chunk)reply+=e.chunk;setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:reply}:m));});
       setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply,enrollment:response.enrollment}:m));
     }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setProfileConsultationError(true);}
@@ -555,7 +443,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
                   ? 'bg-primary-600 text-white rounded-tr-sm shadow-md shadow-primary-600/20'
                   : 'bg-white text-slate-800 rounded-tl-sm border border-slate-200/80 shadow-sm'
               }`}>
-                {msg.isProfileWelcome ? <HskAssessmentWelcome profile={profile} lang={lang} completed={false}/> : msg.isAssessmentResult && msg.assessmentData ? (
+                {msg.isAssessmentResult && msg.assessmentData ? (
                   <div className="space-y-4">
                     <HskAssessmentWelcome profile={profile} lang={lang}/>
                     <div data-hsk-result-anchor className="scroll-mt-4"><HskAssessmentReport result={msg.assessmentData} lang={lang} saving={savingReport} onRetry={()=>void retryReport(msg.assessmentData!)}/></div>

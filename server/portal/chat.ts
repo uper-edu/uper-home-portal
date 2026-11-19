@@ -20,7 +20,7 @@ import { wrap, own, fail } from "./runtime.ts";
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import { learnerAssessmentGuidance } from "../../src/data/hskLearnerGuidance.ts";
-import { consultationNextStep } from "./consultationGuidance.ts";
+import { assessmentIntroOpening, consultationNextStep, consultationProfile, profileIntroQuote } from "./consultationGuidance.ts";
 import { enrollmentConsultationPolicy } from "./enrollmentConsultationPolicy.ts";
 import { log } from "../logger.ts";
 export function mountChat(app: Express) {
@@ -37,7 +37,8 @@ export function mountChat(app: Express) {
       let messageId = req.body.messageId,
         content = req.body.content;
       let introInstruction = "";
-      let assessmentStartingPoint:string|undefined;
+      let assessmentForIntroduction: ReturnType<typeof safeHskResult>;
+      let assessmentGuidance: ReturnType<typeof learnerAssessmentGuidance>;
       if (assessmentIntroduction) {
         const row = (
           await pool.query(
@@ -60,17 +61,12 @@ export function mountChat(app: Express) {
           reading: result.sections.reading,
           characterRecognition: result.sections.writing,
         };
-        const guidance = learnerAssessmentGuidance(
+        assessmentForIntroduction=result;
+        const guidance = assessmentGuidance = learnerAssessmentGuidance(
           result,
           req.body.lang === "zh" ? "zh" : req.body.lang === "id" ? "id" : "en",
         );
-        if(guidance)assessmentStartingPoint=guidance.needsReview?guidance.review:enrollmentGuideText(
-          req.body.lang==='zh'||req.body.lang==='id'?req.body.lang:'en',
-          `测评建议你从${guidance.start}开始。`,
-          `Your assessment suggests starting with ${guidance.start}.`,
-          `Hasil asesmen menyarankan kamu mulai dari ${guidance.start}.`,
-        );
-        introInstruction = `\nThe learner just submitted a saved assessment. Begin their consultation in ${language}, using this result: ${JSON.stringify({ mode: result.attempt.mode, sections, stars: result.breakdown, audioFailures: result.attempt.audioFailures, navigation: result.attempt.navigation, skippedCount: result.skippedCount, unansweredCount: result.unansweredCount, startingPointGuidance: guidance })}. Use at most two short sentences: one learning recommendation (or an answer to their explicit course request), followed by one relevant question. Do not greet again. Follow the contextual next-step instruction below. For learner-facing text, combine skippedCount and unansweredCount and call their sum unanswered. Backend navigation still distinguishes deliberate skips and timeouts for review. Do not infer previous learning experience from answers. This assessment uses multiple-choice character recognition; handwriting and speaking were not assessed. Never describe it as evidence of writing or speaking ability. When audioFailures is nonempty, briefly mention that listening needs verification and avoid unqualified praise of listening performance. Do not repeat the score tables, explain the scoring method, claim certification, invent a course or schedule, or invent a screening level. If startingPointGuidance is supplied, briefly use its suggested starting point and respect its needsReview, without repeating tables, percentages, methods or irrelevant unanswered warnings; do not claim an official HSK level. If no guidance is supplied for screening, do not infer a level. This is a system-triggered introduction, not a message written by the learner.`;
+        introInstruction = `\nThe learner just submitted a saved assessment. Begin their consultation in ${language}, using this result: ${JSON.stringify({ mode: result.attempt.mode, sections, stars: result.breakdown, audioFailures: result.attempt.audioFailures, navigation: result.attempt.navigation, skippedCount: result.skippedCount, unansweredCount: result.unansweredCount, startingPointGuidance: guidance })}. The server will present the verified starting point or review reason. Use at most two short sentences for what to practise next or an already stated course interest. Do not repeat the starting point, review reason or greeting. Ask only if one missing fact changes the next step. Follow the contextual next-step instruction below. For learner-facing text, combine skippedCount and unansweredCount and call their sum unanswered. Backend navigation still distinguishes deliberate skips and timeouts for review. Do not infer previous learning experience from answers. This assessment uses multiple-choice character recognition; handwriting and speaking were not assessed. Never describe it as evidence of writing or speaking ability. When audioFailures is nonempty, briefly mention that listening needs verification and avoid unqualified praise of listening performance. Do not repeat the score tables, explain the scoring method, claim certification, invent a course or schedule, or invent a screening level. If startingPointGuidance is supplied, briefly use its suggested starting point and respect its needsReview, without repeating tables, percentages, methods or irrelevant unanswered warnings; do not claim an official HSK level. If no guidance is supplied for screening, do not infer a level. This is a system-triggered introduction, not a message written by the learner.`;
       } else if (profileIntroduction) {
         if (!conv.lead_id)
           fail(404, "Registered consultation profile required");
@@ -82,7 +78,7 @@ export function mountChat(app: Express) {
             : req.body.lang === "id"
               ? "Indonesian"
               : "English";
-        introInstruction = `\nStart a short profile-based consultation in ${language}. The learner skipped or paused the current assessment. Do not imply they completed it or assign an assessed level from their self-report. Their welcome and profile are already displayed. Address any stated course inquiry first, otherwise output one concise question only, without a greeting or a repeated profile summary; follow the contextual next-step instruction below. This is a system-triggered introduction, not a message written by the learner.`;
+        introInstruction = `\nStart a short profile-based consultation in ${language}. The learner is continuing after submitting a profile without a completed assessment for this introduction. Use the selected buyingSignal and buyingSignals as topics the learner explicitly wants to discuss. Start by answering the latest learner question or the selected questionnaire topics. If several topics were selected, cover each briefly and give one useful next step. Use only verified Enrollment quotes for tuition. Do not introduce installment terms unless the learner asked about them. Asked schedule means recommend verified classes when level and availability are known, or offer the known filters. Follow a stated offline preference and use the advisor entry when an offline offering cannot be verified. Treat reported level as self-report. If the learner is exploring, give a short practical suggestion tied to their goal. Ask one question only when needed. Avoid a repeated profile summary; follow the contextual next-step instruction below. This is a system-triggered introduction, not a message written by the learner.`;
       }
       if (
         typeof messageId !== "string" ||
@@ -203,7 +199,12 @@ export function mountChat(app: Express) {
               ])
             ).rows[0]?.profile
           : null;
-        const ownedResult = safeHskResult(ownedProfile?.latestAssessment);
+        const ownedResult = assessmentForIntroduction ?? safeHskResult(ownedProfile?.latestAssessment);
+        const profileTopics=profileIntroduction?consultationProfile(ownedProfile):null;
+        const profileQuote = profileTopics&&!history.some(message=>message.role==='user')
+          ? profileIntroQuote(profileTopics) : undefined;
+        const additionalTopics=[...(profileTopics?.buyingSignals??[]),profileTopics?.buyingSignal]
+          .some(topic=>topic&&topic!=='Asked price'&&topic!=='None yet');
         const placementContext = ownedResult
           ? "\nVisitor-owned diagnostic result (server-recomputed answers, not HSK certification). Character recognition is multiple choice; writing and speaking were not assessed. Playback errors require listening verification. In learner-facing text, combine skipped and unanswered counts as unanswered. For screening, use only the supplied startingPointGuidance as a tentative learning recommendation, respect startingPointGuidance.needsReview, and never claim an official HSK level: " +
             JSON.stringify({
@@ -264,6 +265,7 @@ export function mountChat(app: Express) {
                       JSON.stringify(previousConstraints??null) +
                       placementContext +
                       introInstruction +
+                      (profileQuote ? '\nThe server will fill in verified tuition. In reply, address the other selected topics without quoting prices. If another selected topic needs an Enrollment action, emit that action.' : '') +
                       consultationNextStep(
                         ownedProfile,
                         !!ownedResult && !profileIntroduction,
@@ -281,7 +283,7 @@ export function mountChat(app: Express) {
                               ownedProfile,
                               assessmentIntroduction,
                             ) +
-                            "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. Do not continue or repeat an earlier assistant message. Do not greet. Use at most two concise sentences and exactly one relevant question.",
+                            "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. Do not continue or repeat an earlier assistant message. Do not greet. Give one useful next step. If earlier conversation already gives a level and usable time window, emit a recommend action and keep those constraints. If the assessment needs review, avoid choosing a definite class based on it. If the learner only asks to understand the results, give a practice suggestion. Ask at most one question, only when necessary.",
                         },
                       ]
                     : []),
@@ -335,24 +337,44 @@ export function mountChat(app: Express) {
             if (!partial.trim() || !complete) throw Error("Incomplete answer");
             const parsed=JSON.parse(partial);
             const replyLang=enrollmentReplyLanguage(introduction?undefined:parsed?.replyLanguage,lang);
-            const modelIntent=parsed?.enrollment||
+            const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');
+            const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || parsed?.enrollment||
               (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
             const normalized=resolveConsultationRecommendation(modelIntent,previousConstraints,introduction?'':content);
             const action=await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
               referenceContext.map(row=>row.id),previousConstraints);
             const linkOnlyClassIds=action?repeatedEnrollmentCards(action,previousActions):[];
-            enrollment=action?{...action,replyLanguage:replyLang,...(linkOnlyClassIds.length?{linkOnlyClassIds}:{})}:undefined;
-            if(enrollment&&(enrollment.kind!=='catalog'||parsed?.catalogue===null)){
+            const assessmentClass=assessmentIntroduction&&action?.kind==='class'&&!action.inspection;
+            enrollment=action?{...action,replyLanguage:replyLang,
+              ...(assessmentClass?{detailFields:[...new Set(['first','weekly','seats',...(action.detailFields??[])])]}:{}),
+              ...(linkOnlyClassIds.length?{linkOnlyClassIds}:{})}:undefined;
+            if(enrollment&&(introduction||enrollment.kind!=='catalog'||parsed?.catalogue===null)){
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
               const facts=enrollmentReply(enrollment,replyLang);
               const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&!(enrollment.kind==='records'&&enrollment.question)&&
                 !['quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
-              reply=[preserveAnswer?directAnswer:'',assessmentIntroduction&&!directAnswer?assessmentStartingPoint:'',
+              reply=[preserveAnswer&&!assessmentGuidance?.needsReview?directAnswer:'',
                 facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
               catalogueUsed=false;
             }else{
               ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, replyLang));
               if(enrollment&&!catalogueUsed)reply+='\n\n'+enrollmentReply(enrollment,replyLang);
+            }
+            if(assessmentGuidance){
+              reply=[assessmentIntroOpening(assessmentGuidance,ownedProfile?.reportedLevel,replyLang),reply,
+                assessmentClass?enrollmentGuideText(replyLang,
+                  '可以打开班次详情核对课表和学费。',
+                  'Open the class details to check the schedule and tuition.',
+                  'Buka detail kelas untuk memeriksa jadwal dan biaya kursus.'):'']
+                .filter(Boolean).join('\n\n');
+            }
+            if(profileQuote&&additionalTopics){
+              if(enrollment?.kind==='quote'&&typeof parsed?.reply==='string'&&parsed.reply.trim()){
+                reply=[reply,parsed.reply.trim()].filter(Boolean).join('\n\n');
+              }else if(enrollment?.kind!=='quote'){
+                const quote=await chatEnrollmentAction(db,profileQuote,false,true);
+                if(quote)reply=[enrollmentReply(quote,replyLang),reply].filter(Boolean).join('\n\n');
+              }
             }
             modelUsed = actualModel;
             await db.query(

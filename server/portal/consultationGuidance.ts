@@ -1,3 +1,27 @@
+import {enrollmentGuideText,type EnrollmentGuideLanguage} from '../../src/utils/enrollmentGuidance';
+
+const intakeLevels=['HSK 1','HSK 2','HSK 3','HSK 4'] as const;
+export function profileIntroQuote(profile: ReturnType<typeof consultationProfile>) {
+  const selected=new Set([profile?.buyingSignal,...(profile?.buyingSignals??[])]);
+  if(!profile || profile.mode!=='Online' || !selected.has('Asked price')) return undefined;
+  const level=profile.reportedLevel==='Complete beginner'?'HSK 1':
+    intakeLevels.find(candidate=>candidate===profile.reportedLevel);
+  return level ? {kind:'quote',level,fields:['price']} : undefined;
+}
+
+export function assessmentIntroOpening(guidance:{level:string;start:string;review:string;needsReview:boolean},reportedLevel:unknown,lang:EnrollmentGuideLanguage) {
+  if(guidance.needsReview)return guidance.review;
+  const startingPoint=enrollmentGuideText(lang,
+    `这次测评建议先从 ${guidance.start}开始。`,
+    `This assessment suggests starting with ${guidance.start}.`,
+    `Hasil asesmen menyarankan Anda mulai dari ${guidance.start}.`);
+  const previous=intakeLevels.find(level=>level===reportedLevel);
+  if(!previous||previous===guidance.level)return startingPoint;
+  return startingPoint+' '+enrollmentGuideText(lang,
+    `你填写的 ${previous} 是自报级别。这次测评给出的是学习起点建议，你也可以继续了解 ${previous} 的课程。`,
+    `Your reported ${previous} comes from your questionnaire. The assessment offers a suggested starting point, and you can still explore ${previous} classes.`,
+    `Level ${previous} yang Anda laporkan berasal dari kuesioner Anda. Hasil asesmen ini memberi saran titik awal. Anda tetap bisa melihat kelas ${previous}.`);
+}
 /** Whitelisted consultation context, without contacts, customer IDs or CRM ownership. */
 export function consultationProfile(profile: any, assessed=false) {
   if (!profile) return null;

@@ -118,11 +118,7 @@ export default function GFormOnboardingModal({
   
   const [selectedGoals, setSelectedGoals] = useState<GoalType[]>([]);
   const [reportedLevel, setReportedLevel] = useState<ReportedLevelType | null>(null);
-  const nextLabel = !reportedLevel
-    ? {en:'Continue',zh:'继续',id:'Lanjut'}[lang]
-    : determineLevelState(reportedLevel) === 'PARTIAL'
-    ? {en:'Continue to assessment',zh:'进入测评',id:'Lanjut ke tes'}[lang]
-    : {en:'Start AI consultation',zh:'开始 AI 咨询',id:'Mulai konsultasi AI'}[lang];
+  const nextLabel = {en:'Start consultation',zh:'开始咨询',id:'Mulai konsultasi'}[lang];
   const [city, setCity] = useState<CityType | null>(null);
   const [cityDetail, setCityDetail] = useState('');
   const [mode, setMode] = useState<ModeType | null>(null);
@@ -416,14 +412,14 @@ export default function GFormOnboardingModal({
 
           <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
             {lang === 'en' && (step === 1 
-              ? "Complete your details to receive your customized HSK roadmap and curriculum syllabus via WhatsApp."
-              : "Our AI advisor will tailor your course schedule and activate placement assessment if appropriate.")}
+              ? "Share your details so we can tailor the consultation to you."
+              : "Choose what you want to ask about. You can take the placement assessment from the chat when you’re ready.")}
             {lang === 'id' && (step === 1 
-              ? 'Lengkapi kontak Anda untuk menerima silabus kelas dan materi persiapan HSK via WhatsApp.' 
-              : 'AI kami akan menyesuaikan rekomendasi kelas dan mengaktifkan tes diagnostik yang tepat.')}
+              ? 'Isi informasi Anda agar kami dapat menyesuaikan konsultasi dengan kebutuhan Anda.'
+              : 'Pilih topik yang ingin Anda tanyakan. Anda bisa mengikuti tes penempatan dari chat saat siap.')}
             {lang === 'zh' && (step === 1 
-              ? '填写基本信息以获取个性化学习方案及专属 HSK 备考大纲。' 
-              : 'AI 顾问将根据您的实际需求定制班级排期，并在需要时启动摸底测验。')}
+              ? '填写基本资料，获取更符合你需求的课程建议。'
+              : '选好你关注的问题，提交后可直接咨询。需要定学习起点时，可从对话页进入摸底测验。')}
           </p>
           {onConsultFirst&&<button type="button" disabled={submitting||saveUnknown} onClick={()=>onConsultFirst(lang)}
             className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-primary-100 underline underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-200 disabled:opacity-50">

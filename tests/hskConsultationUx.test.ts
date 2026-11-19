@@ -7,7 +7,7 @@ import { newHskAttempt, gradeHskAttempt } from '../src/data/hskAssessment';
 import { getVersionQuestions } from '../src/data/hskAssessmentVersions';
 import { learnerScreeningGuidance, learnerAssessmentGuidance } from '../src/data/hskLearnerGuidance';
 import { hskWhatsAppDraft } from '../src/services/hskWhatsApp';
-import { consultationFocus, consultationProfile } from '../server/portal/consultationGuidance';
+import { assessmentIntroOpening, consultationFocus, consultationProfile, profileIntroQuote } from '../server/portal/consultationGuidance';
 import HskAssessmentReport from '../src/components/HskAssessmentReport';
 import HSKPlacementAssessment from '../src/components/HSKPlacementAssessment';
 import { getChatAssessmentStatus } from '../src/services/studentProfileStorage';
@@ -69,4 +69,17 @@ test('consultation question follows explicit request and supplied profile withou
   assert.equal(consultationProfile({...p,goal:'Prepare for HSK certification'})?.hskExamPlan,'Within 6 months');
   assert.equal(consultationProfile({...p,reportedLevel:'Beginner'},true)?.reportedLevel,undefined);
   assert.equal(consultationProfile({...p,reportedLevel:'Beginner'},true)?.selfReportedBeforeAssessment,'Beginner');
+});
+
+test('the selected fee topic uses a known online level without guessing offline or unknown quotes',()=>{
+  const profile={mode:'Online',reportedLevel:'Complete beginner',buyingSignals:['Asked schedule','Asked price']};
+  assert.deepEqual(profileIntroQuote(consultationProfile(profile)),{kind:'quote',level:'HSK 1',fields:['price']});
+  assert.equal(profileIntroQuote(consultationProfile({...profile,mode:'Offline'})),undefined);
+  assert.equal(profileIntroQuote(consultationProfile({...profile,reportedLevel:'Not sure'})),undefined);
+});
+test('assessment introductions distinguish prior study from placement and surface playback uncertainty',()=>{
+  const guidance={level:'HSK 1',start:'HSK 1 内容',review:'部分听力未正常播放，建议进一步确认。',needsReview:false};
+  assert.match(assessmentIntroOpening(guidance,'HSK 3','zh'),/建议先从 HSK 1.*填写的 HSK 3.*学习起点建议/);
+  assert.doesNotMatch(assessmentIntroOpening(guidance,'HSK 1','zh'),/你填写的/);
+  assert.equal(assessmentIntroOpening({...guidance,needsReview:true},'HSK 3','zh'),guidance.review);
 });
