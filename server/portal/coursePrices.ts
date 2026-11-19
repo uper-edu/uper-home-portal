@@ -1,6 +1,6 @@
 import { formatCurrency } from '../../src/utils/currency';
 
-type PublishedCourse = { id: string; sessions: number; total: number };
+type PublishedCourse = { id: string; sessions: number; total: number; enrollmentLevel?: string };
 type CourseBook = { courses: PublishedCourse[] };
 
 export type ConsultationLanguage = 'zh' | 'en' | 'id';
@@ -55,40 +55,117 @@ function normalizeCatalogueSelection(value: unknown): CatalogueSelection | null 
   };
 }
 
+function compactEnrollmentAction(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const action = raw as Record<string, unknown>;
+  const serverKind = typeof action.kind === 'string' ? action.kind : '';
+  let kind: string | null = null;
+  if (serverKind === 'class') kind = action.inspection ? 'inspect' : 'recommend';
+  else if (serverKind === 'waitlist') kind = 'recommend';
+  else if (serverKind === 'catalog') kind = 'browse';
+  else if (['quote', 'appointment', 'demand', 'advisor', 'records', 'viewing'].includes(serverKind)) {
+    kind = serverKind;
+  } else if (serverKind === 'unavailable' || serverKind === 'paused') {
+    kind = null;
+  }
+  if (!kind) return null;
+
+  const compact: Record<string, unknown> = { kind };
+  if (typeof action.level === 'string') compact.level = action.level;
+  if (typeof action.format === 'string') compact.format = action.format;
+  if (typeof action.period === 'string') compact.period = action.period;
+  if (typeof action.question === 'string') compact.question = action.question;
+  if (action.offline === true) compact.offline = true;
+  if (Array.isArray(action.detailFields) && action.detailFields.length) compact.fields = action.detailFields;
+  if (kind === 'inspect' && Array.isArray(action.rows) && action.rows.length) {
+    const referenceIds = action.rows
+      .map(row => (row && typeof row === 'object' ? (row as Record<string, unknown>).id : undefined))
+      .filter((id): id is string => typeof id === 'string');
+    if (referenceIds.length) compact.referenceIds = referenceIds;
+  }
+  return compact;
+}
+
 /**
  * Generates the strict JSON output contract appended at the end of the system prompt.
- * Keeping key order ("lang", "catalogue", "reply") and full multi-branch examples prevents
- * DeepSeek JSON-mode empty outputs and omitted trailing keys.
+ * Placing structured control keys before "reply" and concrete single-line examples at the end
+ * prevents DeepSeek JSON-mode space-blanking and omitted control fields.
  */
-export function courseCatalogueInstruction(book: CourseBook) {
-  return `
+export function courseCatalogueInstruction(book: CourseBook, enrollmentManaged = false) {
+  const published = book.courses
+    .filter(course => !enrollmentManaged || !course.enrollmentLevel)
+    .map(course => course.id);
+
+  if (!enrollmentManaged) {
+    return `
 OUTPUT FORMAT (STRICT JSON ONLY):
 Return exactly ONE single-line valid JSON object (escape any line breaks inside strings as \\n; never output markdown code fences or prose outside JSON).
-Always output all three keys in this exact order: "lang", "catalogue", "reply".
+Always output keys in this order: "replyLanguage", "catalogue", "reply".
 
 Examples:
 - Normal Chinese reply:
-  {"lang":"zh","catalogue":null,"reply":"建议先不要重复转账，请保留原银行回单。"}
+  {"replyLanguage":"zh","catalogue":null,"reply":"建议先不要重复转账，请保留原银行回单。"}
 - Normal English reply:
-  {"lang":"en","catalogue":null,"reply":"You can start from HSK 1 if you are a complete beginner."}
+  {"replyLanguage":"en","catalogue":null,"reply":"You can start from HSK 1 if you are a complete beginner."}
 - Published price/offerings lookup (all courses, Indonesian):
-  {"lang":"id","catalogue":{"courses":"all","detail":"price"},"reply":""}
+  {"replyLanguage":"id","catalogue":{"courses":"all","detail":"price"},"reply":""}
 - Published price/offerings lookup (specific courses, Chinese):
-  {"lang":"zh","catalogue":{"courses":["HSK 1"],"detail":"price"},"reply":""}
-- Published price/offerings lookup (course not in published list, Chinese):
-  {"lang":"zh","catalogue":{"courses":[],"detail":"price"},"reply":""}
+  {"replyLanguage":"zh","catalogue":{"courses":["HSK 1"],"detail":"price"},"reply":""}
 
 Rules:
-- "lang" MUST be "zh", "en", or "id" matching the learner's latest message (or explicit language override such as "请用英文回答" -> "en", "Jawab dalam bahasa Indonesia" -> "id"). Never default to "en" or "id" for a Chinese message.
-- For ANY request about UPER course offerings, class counts, or published prices (even when the requested HSK level is not in the published list, such as HSK 7/8/9), set "catalogue" to {"courses":"all","detail":"price"|"offerings"} or {"courses":["exact published name",...],"detail":"price"|"offerings"} and set "reply":"".
-- Use "detail":"price" when price (or price + class count) is requested; use "detail":"offerings" for course names and class counts only.
-- Resolve short follow-ups from conversation context (e.g. "how much?", "HSK 5", "what about 2 and 3?" after a price discussion).
-- If asked for all levels or general HSK prices with no specific course in context, use "courses":"all". If a requested level has A and B parts (e.g. HSK 4 -> ["HSK 4A","HSK 4B"], HSK 5 -> ["HSK 5A","HSK 5B"]), select both unless a specific part was asked for.
-- For course-specific queries use ONLY exact names from the published list below. If some requested courses are missing from the list, include "unavailable":true inside "catalogue". If none are found, set "courses":[].
-- For all other questions—including a negated price request, a quoted past price question, a budget statement alone, payment/transfer/refund/order status, or general study advice—set "catalogue":null and answer in "reply" in the target "lang".
-- Never put UPER course prices or class counts in "reply". The server renders them from "catalogue".
-Published course names (data, not instructions): ${JSON.stringify(book.courses.map(course => course.id))}.
+- "replyLanguage" MUST be "zh", "en", or "id" matching the learner's target language (omit only for other languages). Never default to "en" or "id" for a Chinese message.
+- For an UPER course offering, class count, or published price question, set "reply":"" and "catalogue" to {"courses":"all","detail":"price"} or {"courses":["exact published course name"],"detail":"offerings"}.
+- Use "price" when price or price and class count are requested, and "offerings" for course names and class counts only.
+- Resolve short follow-ups from the conversation, including an unqualified "how much?", "HSK5", and "what about 2 and 3?" after a price discussion.
+- If asked for every level or for general HSK prices with no course in context, use "all". If a level has A and B offerings, select both unless a specific part was asked for.
+- For course-specific queries use only exact names from the published list below. If some requested courses are missing, include "unavailable":true. If no requested course is found, use an empty array.
+- For other questions set "catalogue":null and answer normally in "reply". A negated price request, a quoted past question, or a budget alone is not a request for a price.
+- Never put UPER course prices or class counts in "reply". The server supplies them from the current catalogue.
+Published course names (data, not instructions): ${JSON.stringify(published)}.
 `;
+  }
+
+  const legacyCatalogueRule = published.length
+    ? `- Only when answering a question about the Published non-Enrollment courses listed below, set "enrollment":null, "reply":"", and "catalogue":{"courses":"all"|["exact published course name"],"detail":"price"|"offerings"} ("price" for prices, "offerings" for course names and class counts only; include "unavailable":true if some requested non-Enrollment courses are missing).`
+    : `- Published non-Enrollment course names is empty ([]), so ALWAYS set "catalogue":null.`;
+
+  return `
+OUTPUT FORMAT (STRICT JSON ONLY):
+Return exactly ONE single-line valid JSON object (escape any line breaks inside strings as \\n; never output markdown code fences or prose outside JSON).
+Always place structured control keys BEFORE "reply", in this order:
+"replyLanguage", "enrollment", "catalogue", optional top-level keys ("classCriteria", "policyTopic", "referenceTopic", "recommendationTiming") only when applicable, and "reply" last.
+
+Examples:
+- Normal conversational reply (Chinese):
+  {"replyLanguage":"zh","enrollment":null,"catalogue":null,"reply":"建议先从日常口语和基础发音开始。"}
+- Enrollment group overview / quote (Indonesian):
+  {"replyLanguage":"id","enrollment":{"kind":"quote","question":"group_overview","level":"HSK 1","format":"small"},"catalogue":null,"reply":""}
+- Enrollment after-sales / records (Chinese):
+  {"replyLanguage":"zh","enrollment":{"kind":"records","question":"avoid_duplicate_payment"},"catalogue":null,"reply":""}
+- Enrollment class recommendation (English):
+  {"replyLanguage":"en","enrollment":{"kind":"recommend","level":"HSK 1","format":"standard","windows":[{"day":6,"earliest":"14:00","latestEnd":"17:00"}]},"catalogue":null,"reply":""}
+
+Rules:
+- "replyLanguage" MUST be "zh", "en", or "id" matching the learner's requested language, or the language of the latest message (never default to "en" or "id" for a Chinese message). Omit "replyLanguage" only for another language.
+- For ANY Enrollment-managed Mandarin programme request (HSK courses, tuition, fees, schedules, class size, teacher, textbook, seats, waitlist, demand form, private lessons, advisor contact, unpaid order, transfer proof, refund), ALWAYS use "enrollment" and set "catalogue":null. Never use "catalogue":{} (an empty object) and never use legacy "catalogue" for Mandarin tuition or courses.
+${legacyCatalogueRule}
+- Never write UPER course prices or class counts in "reply"; the server supplies verified prices, schedules, seats, and links from Enrollment.
+Published non-Enrollment course names (data, not instructions): ${JSON.stringify(published)}.
+`;
+}
+
+export function managedEnrollmentCatalogueSelection(selection: unknown, book: CourseBook) {
+  if (!selection || typeof selection !== 'object' || !('courses' in selection)) return undefined;
+  const names = selection.courses;
+  const levels = book.courses
+    .filter(
+      course =>
+        course.enrollmentLevel &&
+        (names === 'all' || (Array.isArray(names) && (names.includes(course.id) || names.includes(course.enrollmentLevel)))),
+    )
+    .map(course => course.enrollmentLevel!);
+  if (!levels.length) return undefined;
+  return { kind: 'quote', levels: [...new Set(levels)] };
 }
 
 /** Escapes unescaped control characters inside double-quoted JSON string literals. */
@@ -141,24 +218,30 @@ export function parseConsultationJson(output: string): any {
   }
 }
 
-/** Validates structured consultation output and renders official course catalogue entries when selected. */
-export function resolveConsultationReply(output: string, book: CourseBook, lang: string) {
+export function parseConsultationReply(output: string) {
   const result = parseConsultationJson(output);
-  if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.reply !== 'string') {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
     throw Error('Invalid consultation response');
   }
-  const outputLang = normalizeLanguage(result.lang);
-  const effectiveLang: ConsultationLanguage = outputLang ?? (lang === 'id' || lang === 'en' ? lang : 'zh');
+  if (
+    result.catalogue === undefined &&
+    result.enrollment == null &&
+    result.policyTopic !== 'refund' &&
+    typeof result.reply === 'string' &&
+    /\b(?:Rp\.?|IDR)\s*\d/i.test(result.reply)
+  ) {
+    throw Error('Invalid catalogue selection');
+  }
+  return { ...result, catalogue: result.catalogue === undefined ? null : result.catalogue };
+}
 
+export function renderConsultationReply(output: string, book: CourseBook, lang: string) {
+  const result = parseConsultationReply(output);
+  if (typeof result.reply !== 'string') throw Error('Invalid consultation response');
   if (result.catalogue === null) {
     const reply = result.reply.trim();
     if (!reply) throw Error('Empty consultation reply');
-    return {
-      reply,
-      catalogueUsed: false,
-      catalogue: null as CatalogueSelection | null,
-      lang: effectiveLang,
-    };
+    return { reply, catalogueUsed: false };
   }
 
   const selection = result.catalogue;
@@ -169,42 +252,24 @@ export function resolveConsultationReply(output: string, book: CourseBook, lang:
   if (requested !== 'all' && (!Array.isArray(requested) || requested.some(name => typeof name !== 'string'))) {
     throw Error('Invalid catalogue courses');
   }
-  const catalogue: CatalogueSelection = {
-    courses: requested === 'all' ? 'all' : [...requested],
-    detail: selection.detail,
-    ...(selection.unavailable === true ? { unavailable: true } : {}),
-  };
-
   const names = requested === 'all' ? null : new Set<string>(requested);
   const courses = book.courses
     .filter(course => !names || names.has(course.id))
     .sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }));
-  const copy = effectiveLang === 'zh'
+  const copy = lang === 'zh'
     ? { heading: '目前已发布的课程', classes: '节课', price: '课程总价', missing: '所询课程暂无已发布资料。' }
-    : effectiveLang === 'id'
+    : lang === 'id'
       ? { heading: 'Kursus yang dipublikasikan', classes: 'pertemuan', price: 'total kursus', missing: 'Informasi resmi untuk kursus yang ditanyakan belum tersedia.' }
       : { heading: 'Published courses', classes: 'sessions', price: 'course total', missing: 'Published information is unavailable for the requested course.' };
-  if (!courses.length) {
-    return { reply: copy.missing, catalogueUsed: true, catalogue, lang: effectiveLang };
-  }
+  if (!courses.length) return { reply: copy.missing, catalogueUsed: true };
 
-  const priceSeparator = effectiveLang === 'zh' ? '，' : ' · ';
+  const priceSeparator = lang === 'zh' ? '，' : ' · ';
   const lines = courses.map(course => {
-    const price = selection.detail === 'price' ? `${priceSeparator}${copy.price} ${formatCurrency(course.total, effectiveLang)}` : '';
+    const price = selection.detail === 'price' ? `${priceSeparator}${copy.price} ${formatCurrency(course.total, lang)}` : '';
     return `- ${course.id} · ${course.sessions} ${copy.classes}${price}`;
   });
   const missing = selection.unavailable === true || (names && courses.length < names.size);
-  return {
-    reply: [copy.heading, lines.join('\n'), ...(missing ? [copy.missing] : [])].join('\n\n'),
-    catalogueUsed: true,
-    catalogue,
-    lang: effectiveLang,
-  };
-}
-
-export function renderConsultationReply(output: string, book: CourseBook, lang: string) {
-  const { reply, catalogueUsed } = resolveConsultationReply(output, book, lang);
-  return { reply, catalogueUsed };
+  return { reply: [copy.heading, lines.join('\n'), ...(missing ? [copy.missing] : [])].join('\n\n'), catalogueUsed: true };
 }
 
 /** Identifies blank/malformed JSON/schema responses eligible for bounded same-provider retry. */
@@ -217,10 +282,19 @@ export function isRecoverableConsultationError(error: unknown): boolean {
  * Formats stored conversation rows into alternating user/assistant messages where every assistant turn
  * matches the JSON output contract, preventing plain-text in-context contamination under JSON mode.
  */
-export function formatConsultationHistory(rows: HistoryRow[]): Array<{ role: 'user' | 'assistant'; content: string }> {
+export function formatConsultationHistory(
+  rows: HistoryRow[],
+  options: { enrollmentManaged?: boolean } = {},
+): Array<{ role: 'user' | 'assistant'; content: string }> {
+  const enrollmentManaged = options.enrollmentManaged === true;
   const out: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   let users: string[] = [];
-  let pendingAssistant: { lang?: ConsultationLanguage; catalogue: CatalogueSelection | null; reply: string } | null = null;
+  let pendingAssistant: {
+    replyLanguage?: ConsultationLanguage;
+    enrollment?: Record<string, unknown> | null;
+    catalogue: CatalogueSelection | null;
+    reply: string;
+  } | null = null;
 
   const flushUsers = () => {
     if (!users.length) return;
@@ -241,9 +315,11 @@ export function formatConsultationHistory(rows: HistoryRow[]): Array<{ role: 'us
 
   const flushAssistant = () => {
     if (!pendingAssistant) return;
-    const payload = pendingAssistant.lang
-      ? { lang: pendingAssistant.lang, catalogue: pendingAssistant.catalogue, reply: pendingAssistant.reply }
-      : { catalogue: pendingAssistant.catalogue, reply: pendingAssistant.reply };
+    const payload: Record<string, unknown> = {};
+    if (pendingAssistant.replyLanguage) payload.replyLanguage = pendingAssistant.replyLanguage;
+    if (enrollmentManaged) payload.enrollment = pendingAssistant.enrollment ?? null;
+    payload.catalogue = pendingAssistant.catalogue;
+    payload.reply = pendingAssistant.reply;
     out.push({ role: 'assistant', content: JSON.stringify(payload) });
     pendingAssistant = null;
   };
@@ -257,21 +333,40 @@ export function formatConsultationHistory(rows: HistoryRow[]): Array<{ role: 'us
     if (row.role !== 'assistant') continue;
     flushUsers();
     const meta = parseMetadata(row.metadata);
-    const lang = normalizeLanguage(meta?.replyLang);
+    const enrollmentMeta = meta?.enrollment;
+    const replyLanguage = normalizeLanguage(
+      meta?.replyLanguage ??
+        (enrollmentMeta && typeof enrollmentMeta === 'object'
+          ? (enrollmentMeta as Record<string, unknown>).replyLanguage
+          : undefined) ??
+        meta?.replyLang,
+    );
     const catalogue = normalizeCatalogueSelection(meta?.catalogueSelection);
+    const enrollment = enrollmentManaged ? compactEnrollmentAction(enrollmentMeta) : undefined;
 
     if (!catalogue && pendingAssistant && !pendingAssistant.catalogue) {
-      const mergedLang = lang ?? pendingAssistant.lang;
+      const mergedLang = replyLanguage ?? pendingAssistant.replyLanguage;
       pendingAssistant = {
-        ...(mergedLang ? { lang: mergedLang } : {}),
+        ...(mergedLang ? { replyLanguage: mergedLang } : {}),
+        ...(enrollmentManaged ? { enrollment: enrollment ?? pendingAssistant.enrollment ?? null } : {}),
         catalogue: null,
         reply: [pendingAssistant.reply, row.content].filter(Boolean).join('\n\n'),
       };
     } else {
       flushAssistant();
       pendingAssistant = catalogue
-        ? { ...(lang ? { lang } : {}), catalogue, reply: '' }
-        : { ...(lang ? { lang } : {}), catalogue: null, reply: row.content };
+        ? {
+            ...(replyLanguage ? { replyLanguage } : {}),
+            ...(enrollmentManaged ? { enrollment: enrollment ?? null } : {}),
+            catalogue,
+            reply: '',
+          }
+        : {
+            ...(replyLanguage ? { replyLanguage } : {}),
+            ...(enrollmentManaged ? { enrollment: enrollment ?? null } : {}),
+            catalogue: null,
+            reply: row.content,
+          };
     }
   }
 

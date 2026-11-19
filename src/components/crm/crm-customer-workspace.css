@@ -55,7 +55,6 @@
 .crm-work-row {
   padding: 17px 18px;
   border-bottom: 1px solid var(--cw-border);
-  cursor: pointer;
 }
 .crm-work-row:last-child {
   border-bottom: 0;
@@ -128,15 +127,12 @@
 }
 .crm-work-assessment {
   font-size: 12px;
-  color: var(--cw-muted);
+  gap:3px;
   text-align: left;
   cursor: pointer;
 }
 .crm-work-assessment span:first-child::after {
   content: " · ";
-}
-.crm-work-assessment:hover {
-  color: var(--cw-accent);
 }
 .crm-work-row .crm-followup {
   min-width: 0;
@@ -795,6 +791,14 @@
 
 /* Shared rhythm for the customer workspace: blocks, fields and readable rows. */
 .crm-followup-sections { display: grid; gap: var(--cw-section-space); }
+.crm-customer-opportunities { display: grid; gap: 12px; min-width: 0; }
+.crm-customer-opportunities > header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px;
+}
+.crm-customer-opportunities > header h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.crm-customer-opportunity-table { --admin-list-table-min: 420px; }
+.crm-customer-opportunity-table :is(th,td):first-child { width: 46%; }
+.crm-customer-opportunity-table td { overflow-wrap: anywhere; }
 .crm-customer-panel-body .crm-trust-panel { gap: var(--cw-subsection-space); margin-block: 0; }
 .crm-customer-panel-body .crm-trust-panel label { gap: var(--cw-field-space); }
 .crm-customer-panel-body .crm-trust-panel article > * + * { margin-top: var(--cw-item-space); }

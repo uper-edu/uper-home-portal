@@ -1,12 +1,16 @@
+import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionFollowUp,refundConsultationIntent} from './chatEnrollment.ts';
+import {enrollmentGuideText,enrollmentReplyLanguage,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
 import {
   courseCatalogueInstruction,
   formatConsultationHistory,
   isRecoverableConsultationError,
-  resolveConsultationReply,
-  type CatalogueSelection,
+  managedEnrollmentCatalogueSelection,
+  parseConsultationReply,
+  renderConsultationReply,
 } from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
+import {readChatProviderReply} from './chatProviderReply.ts';
 import {runtimeProviders} from './aiServiceConfig.ts';
 import {modelParameters} from './modelParameters.ts';
 import {crmInstant} from '../../src/utils/crmOperatingTime.ts';
@@ -21,10 +25,11 @@ import {
   databaseConfigured,
 } from "./store.ts";
 import { wrap, own, fail } from "./runtime.ts";
-import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
+import { chatConsultationCore, chatConsultationReference } from "./chatConsultationKnowledge.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import { learnerAssessmentGuidance } from "../../src/data/hskLearnerGuidance.ts";
-import { consultationNextStep } from "./consultationGuidance.ts";
+import { assessmentIntroOpening, consultationNextStep, consultationProfile, profileIntroQuote, resolveRecommendationTiming, type DeferredRecommendation } from "./consultationGuidance.ts";
+import { enrollmentConsultationPolicy } from "./enrollmentConsultationPolicy.ts";
 import { log } from "../logger.ts";
 export function mountChat(app: Express) {
   app.post(
@@ -40,10 +45,13 @@ export function mountChat(app: Express) {
       let messageId = req.body.messageId,
         content = req.body.content;
       let introInstruction = "";
+      let assessmentForIntroduction: ReturnType<typeof safeHskResult>;
+      let assessmentGuidance: ReturnType<typeof learnerAssessmentGuidance>;
+      let assessmentRecordedAt:number|undefined;
       if (assessmentIntroduction) {
         const row = (
           await pool.query(
-            "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
+            "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
             [req.body.assessmentAttemptId, conv.visitor_id],
           )
         ).rows[0];
@@ -62,11 +70,13 @@ export function mountChat(app: Express) {
           reading: result.sections.reading,
           characterRecognition: result.sections.writing,
         };
-        const guidance = learnerAssessmentGuidance(
+        assessmentForIntroduction=result;
+        assessmentRecordedAt=(row.created_at instanceof Date?row.created_at:crmInstant(row.created_at))?.getTime();
+        const guidance = assessmentGuidance = learnerAssessmentGuidance(
           result,
           req.body.lang === "zh" ? "zh" : req.body.lang === "id" ? "id" : "en",
         );
-        introInstruction = `\nThe learner just submitted a saved assessment. Begin their consultation in ${language}, using this result: ${JSON.stringify({ mode: result.attempt.mode, sections, stars: result.breakdown, audioFailures: result.attempt.audioFailures, navigation: result.attempt.navigation, skippedCount: result.skippedCount, unansweredCount: result.unansweredCount, startingPointGuidance: guidance })}. Use at most two short sentences: one learning recommendation (or an answer to their explicit course request), followed by one relevant question. Do not greet again. Follow the contextual next-step instruction below. For learner-facing text, combine skippedCount and unansweredCount and call their sum unanswered. Backend navigation still distinguishes deliberate skips and timeouts for review. Do not infer previous learning experience from answers. This assessment uses multiple-choice character recognition; handwriting and speaking were not assessed. Never describe it as evidence of writing or speaking ability. When audioFailures is nonempty, briefly mention that listening needs verification and avoid unqualified praise of listening performance. Do not repeat the score tables, explain the scoring method, claim certification, invent a course or schedule, or invent a screening level. If startingPointGuidance is supplied, briefly use its suggested starting point and respect its needsReview, without repeating tables, percentages, methods or irrelevant unanswered warnings; do not claim an official HSK level. If no guidance is supplied for screening, do not infer a level. This is a system-triggered introduction, not a message written by the learner.`;
+        introInstruction = `\nThe learner just submitted a saved assessment. Begin their consultation in ${language}, using this result: ${JSON.stringify({ mode: result.attempt.mode, sections, stars: result.breakdown, audioFailures: result.attempt.audioFailures, navigation: result.attempt.navigation, skippedCount: result.skippedCount, unansweredCount: result.unansweredCount, startingPointGuidance: guidance })}. The server will present the verified starting point or review reason. Use at most two short sentences for what to practise next or an already stated course interest. Do not repeat the starting point, review reason or greeting. Ask only if one missing fact changes the next step. Follow the contextual next-step instruction below. For learner-facing text, combine skippedCount and unansweredCount and call their sum unanswered. Backend navigation still distinguishes deliberate skips and timeouts for review. Do not infer previous learning experience from answers. This assessment uses multiple-choice character recognition; handwriting and speaking were not assessed. Never describe it as evidence of writing or speaking ability. When audioFailures is nonempty, briefly mention that listening needs verification and avoid unqualified praise of listening performance. Do not repeat the score tables, explain the scoring method, claim certification, invent a course or schedule, or invent a screening level. If startingPointGuidance is supplied, briefly use its suggested starting point and respect its needsReview, without repeating tables, percentages, methods or irrelevant unanswered warnings; do not claim an official HSK level. If no guidance is supplied for screening, do not infer a level. This is a system-triggered introduction, not a message written by the learner.`;
       } else if (profileIntroduction) {
         if (!conv.lead_id)
           fail(404, "Registered consultation profile required");
@@ -78,7 +88,7 @@ export function mountChat(app: Express) {
             : req.body.lang === "id"
               ? "Indonesian"
               : "English";
-        introInstruction = `\nStart a short profile-based consultation in ${language}. The learner skipped or paused the current assessment. Do not imply they completed it or assign an assessed level from their self-report. Their welcome and profile are already displayed. Address any stated course inquiry first, otherwise output one concise question only, without a greeting or a repeated profile summary; follow the contextual next-step instruction below. This is a system-triggered introduction, not a message written by the learner.`;
+        introInstruction = `\nStart a short profile-based consultation in ${language}. The learner is continuing after submitting a profile without a completed assessment for this introduction. Use the selected buyingSignal and buyingSignals as topics the learner explicitly wants to discuss. Start by answering the latest learner question or the selected questionnaire topics. If several topics were selected, cover each briefly and give one useful next step. Use only verified Enrollment quotes for tuition. Do not introduce installment terms unless the learner asked about them. Asked schedule means recommend verified classes when level and availability are known, or offer the known filters. Follow a stated offline preference and use the advisor entry when an offline offering cannot be verified. Treat reported level as self-report. If the learner is exploring, give a short practical suggestion tied to their goal. Ask one question only when needed. Avoid a repeated profile summary; follow the contextual next-step instruction below. This is a system-triggered introduction, not a message written by the learner.`;
       }
       if (
         typeof messageId !== "string" ||
@@ -132,6 +142,7 @@ export function mountChat(app: Express) {
               reply: answer.content,
               modelUsed: answer.model,
               status: answer.status,
+              enrollment: answer.metadata?.enrollment ?? undefined,
             });
             return;
           }
@@ -175,14 +186,31 @@ export function mountChat(app: Express) {
           res.setHeader("Cache-Control", "no-cache, no-transform");
           res.write(`data: ${JSON.stringify({ saved: true, messageId })}\n\n`);
         }
-        const history = (
+        const recentMessages = (
           await db.query(
-            "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+            "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
             [conv.id],
           )
         ).rows.slice(-40);
-        const latestUserContent = history.filter((m: any) => m.role === "user").at(-1)?.content;
-        const modelHistory = formatConsultationHistory(history);
+        const history = formatConsultationHistory(recentMessages, { enrollmentManaged: true });
+        const newestMessages=[...recentMessages].reverse();
+        const latestUserAt=introduction?undefined:recentMessages.find(message=>message.role==='user'&&message.request_id===messageId)?.created_at;
+        const messageAt=(latestUserAt instanceof Date?latestUserAt:crmInstant(latestUserAt))?.getTime();
+        const previousAssistant=newestMessages.find(message=>message.role==='assistant');
+        const previousPriceAction=previousAssistant?.metadata?.enrollment as EnrollmentGuideAction|undefined;
+        const quotedOptions=previousTuition(previousPriceAction).map(({id,level,format,actual,periods,minutes,unitPriced})=>
+          ({id,level,format,actual,periods,minutes,unitPriced}));
+        const previousDeferral=newestMessages.find(message=>message.role==='assistant'&&
+          Object.hasOwn(message.metadata??{},'recommendationDeferral'))?.metadata.recommendationDeferral as DeferredRecommendation|undefined;
+        const previousActions=newestMessages.filter(message=>
+          message.role==='assistant'&&message.metadata?.enrollment?.rows?.length)
+          .map(message=>message.metadata.enrollment as EnrollmentGuideAction);
+        const previousRecommendation=previousActions.find(action=>!action.inspection)?.rows??previousActions[0]?.rows;
+        const referenceContext=(previousRecommendation??[]).map((row,index)=>({
+          id:row.id,position:index+1,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,firstLesson:row.firstLesson,
+        }));
+        const previousConstraints=newestMessages.find(message=>
+          message.role==='assistant'&&message.metadata?.consultationConstraints)?.metadata.consultationConstraints as ConsultationConstraints|undefined;
         const ownedProfile = conv.lead_id
           ? (
               await db.query("SELECT profile FROM portal_leads WHERE id=:p1", [
@@ -190,7 +218,12 @@ export function mountChat(app: Express) {
               ])
             ).rows[0]?.profile
           : null;
-        const ownedResult = safeHskResult(ownedProfile?.latestAssessment);
+        const ownedResult = assessmentForIntroduction ?? safeHskResult(ownedProfile?.latestAssessment);
+        const profileTopics=profileIntroduction?consultationProfile(ownedProfile):null;
+        const profileQuote = profileTopics&&!history.some(message=>message.role==='user')
+          ? profileIntroQuote(profileTopics) : undefined;
+        const additionalTopics=[...(profileTopics?.buyingSignals??[]),profileTopics?.buyingSignal]
+          .some(topic=>topic&&topic!=='Asked price'&&topic!=='None yet');
         const placementContext = ownedResult
           ? "\nVisitor-owned diagnostic result (server-recomputed answers, not HSK certification). Character recognition is multiple choice; writing and speaking were not assessed. Playback errors require listening verification. In learner-facing text, combine skipped and unanswered counts as unanswered. For screening, use only the supplied startingPointGuidance as a tentative learning recommendation, respect startingPointGuidance.needsReview, and never claim an official HSK level: " +
             JSON.stringify({
@@ -218,150 +251,260 @@ export function mountChat(app: Express) {
         const currentPriceBook = await managedCoursePrices(pool) ?? { courses: [] };
         const lang = req.body.lang === 'id' || req.body.lang === 'en' ? req.body.lang : 'zh';
         const systemPrompt =
-          getSystemInstruction(false) +
+          chatConsultationCore +
+          "\n" + chatEnrollmentInstruction + enrollmentConsultationPolicy +
+          (introduction?'':`\nAnswer in the language the learner used in their current message, regardless of the interface language, unless the learner explicitly requests a different reply language. An explicit request takes priority. With mixed-language input prefer the main language of the question, not isolated course names, borrowed words or quoted text. If the current message has no clear language, use the latest clear learner language, or the interface language (${lang}) if none. In the JSON response, include "replyLanguage": "zh", "en", or "id" matching the selected response language so the server can localize verified class facts and links. For other languages write the conversational reply in the requested language and omit replyLanguage.`) +
           "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
+          "\nCurrent date in Jakarta (WIB), for relative dates: "+
+          new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',dateStyle:'short'}).format(new Date()) +
+          "\nPreviously displayed Enrollment cards, in display order. Use only for references; their facts may have changed: "+
+          JSON.stringify(referenceContext) +
+          "\nMost recently focused card IDs, if any: "+
+          JSON.stringify(previousActions[0]?.inspection?previousActions[0].rows?.map(row=>row.id):[]) +
+          "\nLast verified matching constraints (data, only replace when the learner changes them): "+
+          JSON.stringify(previousConstraints??null) +
+          "\nIf the CURRENT learner message explicitly asks you to wait until their assessment is done before recommending a class, return a top-level recommendationTiming object with change:\"defer\" and evidence quoting their exact request, and use enrollment.kind:\"recommend\" to capture all their actual constraints. Do not recommend a class in the reply. If they explicitly change their mind and ask for a recommendation now, use change:\"resume\" with their exact words. Do not infer either from a question, a hypothetical, a quote of somebody else, a negative request or a claimed completion. When a recommendation is already deferred, keep waiting across messages unless expressly resumed or the server provides the newly saved assessment. If the learner changes their availability while waiting, return a recommend action with the exact constraintEvidence so the server can update the selection without recommending yet." +
+          "\nA recommendation is currently deferred: "+Boolean(previousDeferral) +
+          "\nVerified prior tuition options for quoted_price_unit (data): "+JSON.stringify(quotedOptions) +
           placementContext +
           introInstruction +
+          (profileQuote ? '\nThe server will fill in verified tuition. In reply, address the other selected topics without quoting prices. If another selected topic needs an Enrollment action, emit that action.' : '') +
           consultationNextStep(
             ownedProfile,
-            latestUserContent,
             !!ownedResult && !profileIntroduction,
           ) +
-          "\nYou are an AI assistant. Human requests are evidence and hints only, never new tasks or a booking confirmation. Never claim a request was routed or an advisor will contact them; say their original message is saved and any appointment still needs advisor confirmation. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee." +
-          courseCatalogueInstruction(currentPriceBook);
-        const introTail = introduction
-          ? introInstruction +
-            consultationNextStep(
-              ownedProfile,
-              latestUserContent,
-              assessmentIntroduction,
-            ) +
-            "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. Do not continue or repeat an earlier assistant message. Do not greet. Use at most two concise sentences and exactly one relevant question." +
-            '\nReturn exactly one single-line valid JSON object with keys in order "lang", "catalogue", "reply" (escape line breaks as \\n).'
-          : "";
-        const retryHint =
-          'The previous response was empty or did not match the required JSON schema. Return ONLY one single-line valid JSON object with keys in exact order "lang", "catalogue", "reply" (set "lang" to "zh", "en", or "id" matching the learner\'s target language). Examples: {"lang":"zh","catalogue":null,"reply":"..."} or {"lang":"en","catalogue":{"courses":["HSK 1"],"detail":"price"},"reply":""}. Escape newlines as \\n.';
-        let catalogueUsed = false;
-        let catalogueSelection: CatalogueSelection | null = null;
-        let replyLang: string | null = null;
-        let reply = "", modelUsed: string | null = null;
-        for (const provider of await runtimeProviders()) {
-          if (!provider.key) continue;
-          const isDeepSeek = provider.model === "deepseek-flash";
-          const maxAttempts = isDeepSeek ? 3 : 2;
-          let consecutiveBlanks = 0;
-          let succeeded = false;
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            let partial = "", actualModel = provider.model;
-            const useStream = attempt === 1;
-            const useJsonFormat = !(isDeepSeek && attempt === maxAttempts && consecutiveBlanks >= 2);
-            const temperature = isDeepSeek ? 0 : attempt > 1 ? 0 : undefined;
-            const messages = [
-              { role: "system", content: systemPrompt },
-              ...modelHistory,
-              ...(introduction ? [{ role: "system", content: introTail }] : []),
-              ...(attempt > 1 ? [{ role: "system", content: retryHint }] : []),
-            ];
-            try {
-              const upstream = await fetch(provider.url, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${provider.key}`,
-                  "Content-Type": "application/json",
+          "\nYou are an AI assistant. This chat sends no messages to advisors and makes no bookings. For any advisor contact or delivery-status request, return enrollment:{kind:'advisor',level,period,format} and leave reply empty so the server can supply the actual send status. Include format:'one-on-one' when the learner wants to discuss private lessons with a person. On a follow-up, keep the known level, period and format; use null only to clear a preference the learner explicitly withdrew. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee." +
+          "\n" + courseCatalogueInstruction(currentPriceBook, true);
+        const baseMessages = [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          ...history,
+          ...(introduction
+            ? [
+                {
+                  role: "system",
+                  content:
+                    introInstruction +
+                    consultationNextStep(
+                      ownedProfile,
+                      assessmentIntroduction,
+                    ) +
+                    "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. Do not continue or repeat an earlier assistant message. Do not greet. Give one useful next step. If earlier conversation already gives a level and usable time window, emit a recommend action and keep those constraints. If the assessment needs review, avoid choosing a definite class based on it. If the learner only asks to understand the results, give a practice suggestion. Ask at most one question, only when necessary." +
+                    '\nReturn exactly one single-line valid JSON object with keys "replyLanguage", "enrollment", "catalogue", "reply" (escape line breaks as \\n).',
                 },
-                body: JSON.stringify({
-                  model: provider.model,
-                  messages,
-                  stream: useStream,
-                  ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
-                  ...modelParameters(provider.model, 1200, temperature),
-                }),
-                signal: AbortSignal.timeout(45000),
-              });
-              if (!upstream.ok) throw Error(`Provider HTTP ${upstream.status}`);
-              let complete = false;
-              if (
-                upstream.headers
-                  .get("content-type")
-                  ?.includes("text/event-stream")
-              ) {
-                const reader = upstream.body!.getReader();
-                const decoder = new TextDecoder();
-                let buffer = "";
-                while (true) {
-                  const next = await reader.read();
-                  if (next.done) break;
-                  buffer += decoder.decode(next.value, { stream: true });
-                  let index;
-                  while ((index = buffer.indexOf("\n")) >= 0) {
-                    const line = buffer.slice(0, index).trim();
-                    buffer = buffer.slice(index + 1);
-                    if (!line.startsWith("data:")) continue;
-                    const data = line.slice(5).trim();
-                    if (data === "[DONE]") {
-                      complete = true;
-                      continue;
-                    }
-                    const payload = JSON.parse(data);
-                    actualModel = payload.model || actualModel;
-                    if (payload.error) throw Error("Provider stream error");
-                    if (payload.choices?.[0]?.finish_reason === "length")
-                      throw Error("Answer truncated");
-                    const chunk = payload.choices?.[0]?.delta?.content || "";
-                    partial += chunk;
-                    // Only validated complete replies are sent to the client.
+              ]
+            : []),
+        ];
+        const retryHint =
+          'The previous response was empty or did not match the required JSON schema. Return ONLY one single-line valid JSON object with keys in order "replyLanguage", "enrollment", "catalogue", "reply" (escape newlines as \\n; always set "catalogue":null for Enrollment Mandarin courses and never set "catalogue":{}). Example: {"replyLanguage":"zh","enrollment":null,"catalogue":null,"reply":"..."}.';
+        let catalogueUsed = false;
+        let enrollment:EnrollmentGuideAction|undefined;
+        let consultationConstraints:ConsultationConstraints|undefined;
+        let recommendationDeferral:DeferredRecommendation|undefined;
+        let savedReplyLang:string|null=null;
+        let reply = "", modelUsed: string | null = null;
+        const providers = await runtimeProviders();
+        for (const [providerIndex,provider] of providers.entries()) {
+          if (!provider.key) continue;
+          let partial = "", actualModel = provider.model;
+          const temperature = provider.provider === 'deepseek' ? 0 : undefined;
+          try {
+            const requestParsedReply = async (purpose:'consultation'|'reference',messages=baseMessages) => {
+              let consecutiveBlanks = 0;
+              for (let attempt = 0; attempt < 3; attempt++) {
+                partial = "";
+                const useStream = attempt === 0;
+                const useJsonFormat = attempt < 2 || consecutiveBlanks < 2;
+                const attemptMessages = attempt === 0 ? messages : [...messages, { role: "system", content: retryHint }];
+                const signal = AbortSignal.timeout(45000);
+                const send = () => fetch(provider.url, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${provider.key}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: provider.model,
+                    messages: attemptMessages,
+                    stream: useStream,
+                    ...(useStream ? { stream_options: { include_usage: true } } : {}),
+                    ...(useJsonFormat ? { response_format: { type: "json_object" as const } } : {}),
+                    ...modelParameters(provider.model, 1200, temperature, provider.reasoningEffort),
+                  }),
+                  signal,
+                });
+                try {
+                  await readChatProviderReply(
+                    send,
+                    ({content,model}) => { partial=content; actualModel=model||provider.model; },
+                    call => log.info('chat.token_usage', {
+                      conversationId:conv.id, messageId:assistantId,
+                      provider:provider.provider, configuredModel:provider.model, role:providerIndex===0?'primary':'fallback',
+                      purpose, serviceTier:'requested_default', ...call,
+                    }),
+                    { stream: useStream, retry: attempt > 0 },
+                  );
+                  const candidate = parseConsultationReply(partial);
+                  if (candidate.enrollment != null && !normalizeEnrollmentIntent(candidate.enrollment)) {
+                    throw Error('Invalid consultation response');
                   }
+                  if (candidate.catalogue !== null) {
+                    const sel = candidate.catalogue;
+                    if (!sel || typeof sel !== 'object' || Array.isArray(sel) || !['price', 'offerings'].includes(sel.detail)) {
+                      throw Error('Invalid catalogue selection');
+                    }
+                    if (sel.courses !== 'all' && (!Array.isArray(sel.courses) || sel.courses.some((name: unknown) => typeof name !== 'string'))) {
+                      throw Error('Invalid catalogue courses');
+                    }
+                    if (candidate.enrollment != null) {
+                      candidate.catalogue = null;
+                    }
+                  }
+                  const isReferenceLookup =
+                    purpose === 'consultation' &&
+                    !introduction &&
+                    candidate.policyTopic !== 'refund' &&
+                    candidate.catalogue === null &&
+                    candidate.enrollment == null &&
+                    Boolean(chatConsultationReference(candidate.referenceTopic));
+                  if (
+                    candidate.enrollment == null &&
+                    candidate.catalogue === null &&
+                    candidate.policyTopic !== 'refund' &&
+                    !isReferenceLookup
+                  ) {
+                    if (typeof candidate.reply !== 'string') throw Error('Invalid consultation response');
+                    if (!candidate.reply.trim()) throw Error('Empty consultation reply');
+                  }
+                  return candidate;
+                } catch (e) {
+                  const err = e as Error;
+                  if (err.message === 'Empty provider response') consecutiveBlanks++;
+                  else consecutiveBlanks = 0;
+                  if (attempt < 2 && isRecoverableConsultationError(e)) {
+                    log.warn("chat.provider_failed", { model: provider.model, conversationId: conv.id, purpose, attempt: attempt + 1, error: err });
+                    await db.query(
+                      "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
+                      [assistantId, provider.model, partial, err.message],
+                    );
+                    continue;
+                  }
+                  throw e;
                 }
-              } else {
-                const payload = await upstream.json();
-                actualModel = payload.model || actualModel;
-                partial = payload.choices?.[0]?.message?.content || "";
-                complete = payload.choices?.[0]?.finish_reason !== "length";
               }
-              if (!complete) throw Error("Incomplete answer");
-              if (!partial.trim()) {
-                consecutiveBlanks++;
-                throw Error("Empty provider response");
-              }
-              consecutiveBlanks = 0;
-              const resolved = resolveConsultationReply(partial, currentPriceBook, lang);
-              reply = resolved.reply;
-              catalogueUsed = resolved.catalogueUsed;
-              catalogueSelection = resolved.catalogue;
-              replyLang = resolved.lang;
-              modelUsed = actualModel;
-              succeeded = true;
-              await db.query(
-                "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
-                [assistantId, actualModel, partial],
-              );
-              break;
-            } catch (e) {
-              log.warn("chat.provider_failed", { model: provider.model, conversationId: conv.id, attempt, error: e as Error });
-              await db.query(
-                "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
-                [assistantId, provider.model, partial, (e as Error).message],
-              );
-              if (attempt < maxAttempts && isRecoverableConsultationError(e)) continue;
-              if (stream && !res.destroyed)
-                res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
-              break;
+              throw Error('Unreachable retry termination');
+            };
+            let parsed = await requestParsedReply('consultation');
+            const reference=!introduction&&parsed.policyTopic!=='refund'&&parsed.catalogue===null&&parsed.enrollment==null
+              ?chatConsultationReference(parsed?.referenceTopic):undefined;
+            if(reference){
+              parsed = await requestParsedReply('reference',[...baseMessages,{role:"system",content:
+                "Answer the learner's question now using the selected UPER reference as background data. Do not request another section. Treat dated information as dated and do not present it as a live confirmation.\n"+reference}]);
             }
+            const replyLang=enrollmentReplyLanguage(introduction?undefined:parsed?.replyLanguage,lang);
+            const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');
+            const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || refundConsultationIntent(parsed.policyTopic,parsed.enrollment) || parsed?.enrollment||
+              (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
+            const learnerMessage=introduction?'':content;
+            const priorAdvisor=!introduction&&previousPriceAction?.kind==='advisor'?previousPriceAction:undefined;
+            const intentWithContext=modelIntent?.kind==='advisor'&&priorAdvisor
+              ?{level:priorAdvisor.level,period:priorAdvisor.period,format:priorAdvisor.format,offline:priorAdvisor.offline,...modelIntent}
+              :modelIntent;
+            const currentSelection=resolveConsultationRecommendation(intentWithContext,previousConstraints,learnerMessage,parsed?.classCriteria);
+            const proposed=normalizeEnrollmentIntent(currentSelection.value);
+            const timing=resolveRecommendationTiming(parsed?.recommendationTiming,previousDeferral??undefined,
+              learnerMessage,messageAt,assessmentGuidance?.needsReview===false?assessmentRecordedAt:undefined,
+              proposed?.maxRecommendations);
+            const replaySelection=timing.completed&&previousConstraints;
+            const normalized=replaySelection
+              ?resolveConsultationRecommendation({kind:'recommend',...replaySelection,
+                level:replaySelection.level??assessmentGuidance?.level,maxRecommendations:previousDeferral?.limit??1},undefined,'')
+              :currentSelection;
+            const held=timing.acknowledge||Boolean(timing.waiting&&proposed?.kind==='recommend');
+            const priorPrice=!introduction&&proposed?.question==='quoted_price_unit'
+              ?previousTuitionFollowUp(previousPriceAction,proposed,learnerMessage,replyLang)
+              :undefined;
+            const action=held||(priorPrice&&!priorPrice.appointment)?undefined:await chatEnrollmentAction(
+              db,priorPrice?.appointment??normalized.value,assessmentIntroduction,profileIntroduction,
+              [...referenceContext.map(row=>row.id),...(previousActions[0]?.rows?.map(row=>row.id)??[])],
+              normalized.constraints??previousConstraints);
+            const linkOnlyClassIds=action?repeatedEnrollmentCards(action,previousActions):[];
+            const assessmentClass=assessmentIntroduction&&action?.kind==='class'&&!action.inspection;
+            enrollment=action?{...action,replyLanguage:replyLang,
+              ...(assessmentClass?{detailFields:[...new Set(['first','weekly','seats',...(action.detailFields??[])])]}:{}),
+              ...(linkOnlyClassIds.length?{linkOnlyClassIds}:{})}:undefined;
+            if(held){
+              reply=enrollmentGuideText(replyLang,
+                '我记住了你给的选班条件。等你完成测评，我再用这些条件帮你找合适的班次。',
+                'I’ll keep your class preferences in mind and use them to find a suitable class once you finish the assessment.',
+                'Saya simpan preferensi kelas Anda dan akan menggunakannya untuk mencari kelas yang sesuai setelah Anda menyelesaikan asesmen.');
+              catalogueUsed=false;
+            }else if(priorPrice){
+              reply=[priorPrice.reply,enrollment?enrollmentReply(enrollment,replyLang):''].filter(Boolean).join('\n\n');
+              catalogueUsed=false;
+            }else if(enrollment&&(introduction||enrollment.kind!=='catalog'||parsed?.catalogue===null)){
+              const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
+              const facts=enrollmentReply(enrollment,replyLang);
+              const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&enrollment.question!=='clarify_timezone'&&enrollment.question!=='clarify_local_timezone'&&!(enrollment.kind==='records'&&enrollment.question)&&
+                !['advisor','quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
+              reply=[preserveAnswer&&!assessmentGuidance?.needsReview?directAnswer:'',
+                facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
+              catalogueUsed=false;
+            }else{
+              ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, replyLang));
+              if(enrollment&&!catalogueUsed)reply+='\n\n'+enrollmentReply(enrollment,replyLang);
+            }
+            if(assessmentGuidance){
+              reply=[assessmentIntroOpening(assessmentGuidance,ownedProfile?.reportedLevel,replyLang),reply,
+                assessmentClass?enrollmentGuideText(replyLang,
+                  '可以打开班次详情核对课表和学费。',
+                  'Open the class details to check the schedule and tuition.',
+                  'Buka detail kelas untuk memeriksa jadwal dan biaya kursus.'):'']
+                .filter(Boolean).join('\n\n');
+            }
+            if(profileQuote&&additionalTopics){
+              if(enrollment?.kind==='quote'&&typeof parsed?.reply==='string'&&parsed.reply.trim()){
+                reply=[reply,parsed.reply.trim()].filter(Boolean).join('\n\n');
+              }else if(enrollment?.kind!=='quote'){
+                const quote=await chatEnrollmentAction(db,profileQuote,false,true);
+                if(quote)reply=[enrollmentReply(quote,replyLang),reply].filter(Boolean).join('\n\n');
+              }
+            }
+            savedReplyLang = replyLang;
+            modelUsed = actualModel;
+            await db.query(
+              "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
+              [assistantId, actualModel, partial],
+            );
+            consultationConstraints=normalized.constraints;
+            recommendationDeferral=timing.waiting;
+            break;
+          } catch (e) {
+            if (stream && !res.destroyed)
+              res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+            log.warn("chat.provider_failed", { model: provider.model, conversationId: conv.id, error: e as Error });
+            await db.query(
+              "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
+              [assistantId, provider.model, partial, (e as Error).message],
+            );
           }
-          if (succeeded) break;
         }
         await transaction(async (c) => {
           await c.query(
-            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.catalogueSelection',CAST(:p7 AS JSON),'$.replyLang',:p8) WHERE id=:p1",
+            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON),'$.replyLanguage',:p10) WHERE id=:p1",
             [
               assistantId,
               reply,
               modelUsed ? "completed" : "failed",
               modelUsed,
               modelUsed ? null : "all_providers_failed",
-              catalogueUsed ? 'course-fees-v1' : null,
-              catalogueSelection,
-              replyLang,
+              catalogueUsed?'course-fees-v1':null,
+              enrollment??null,
+              consultationConstraints??null,
+              recommendationDeferral??null,
+              modelUsed?savedReplyLang:null,
             ],
           );
           if (!modelUsed) {
@@ -372,6 +515,7 @@ export function mountChat(app: Express) {
         const result = {
           reply: modelUsed ? reply : "AI 回复失败，消息已保存。请稍后重试。",
           suggestedPrompts: [],
+          enrollment:modelUsed?enrollment:undefined,
           modelUsed,
           saved: true,
           status: modelUsed ? "completed" : "failed",

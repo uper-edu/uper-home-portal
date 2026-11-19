@@ -1,6 +1,7 @@
 import type { ProcessMetrics } from "../../utils/crmProcessMetrics";
 import {
   metricSelectionLabel,
+  durationBandLabel,
   type MetricSelection,
 } from "../../utils/crmLeadAnalytics";
 import { progressLabel } from "../../utils/crmSalesProgress";
@@ -80,16 +81,8 @@ export function CrmProcessOverview({
   );
   const bands = (prefix: "contact" | "response") => (
     <div className="crm-analysis-bands">
-      {(["fast", "day", "later", "unknown"] as const).map((band, i) =>
-        metricLink(
-          (prefix + "_" + band) as MetricSelection,
-          [
-            t("Under 1 hour", "Kurang dari 1 jam", "不足1小时"),
-            t("1–24 hours", "1–24 jam", "1–24小时（不含24）"),
-            t("24+ hours", "24 jam atau lebih", "24小时及以上"),
-            t("Cannot calculate", "Tidak dapat dihitung", "时长不可计算"),
-          ][i],
-        ),
+      {(["fast", "day", "later", "unknown"] as const).map(band =>
+        metricLink((prefix + "_" + band) as MetricSelection,durationBandLabel(band,lang)),
       )}
     </div>
   );

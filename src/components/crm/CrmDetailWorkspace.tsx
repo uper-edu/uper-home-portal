@@ -1,3 +1,5 @@
+import {AdminConfirmation} from '../admin/AdminConfirmation';
+import {AdminRecordHeader,type AdminBackTarget} from '../admin/AdminRecordHeader';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {recordScrollMode} from '../adminScroll';
 import { campaignUi, type CampaignUiLanguage } from "../../utils/campaignI18n";
@@ -13,6 +15,7 @@ export function CrmDetailHeader({
   identityNavigation,
   titleId,
   titleRef,
+  back,
 }: {
   title: ReactNode;
   meta: ReactNode;
@@ -22,7 +25,13 @@ export function CrmDetailHeader({
   identityNavigation?: {back: ReactNode; adjacent: ReactNode; label: string};
   titleId?: string;
   titleRef?: React.Ref<HTMLHeadingElement>;
+  back?:AdminBackTarget;
 }) {
+  if(back)return <AdminRecordHeader back={back} title={<div className="crm-detail-identity">
+    <h2 id={titleId} ref={titleRef} tabIndex={-1}>{title}</h2>
+    {status&&<div className="crm-detail-current-state">{status}</div>}
+    <div className="crm-detail-meta">{meta}</div>
+  </div>} actions={<div className="crm-detail-actions">{actions}</div>}/>;
   return (
     <>
     {navigation && <nav className="crm-detail-navigation">{navigation}</nav>}
@@ -71,7 +80,7 @@ export function CrmDetailTabs({
     }
   }, [value, id]);
   return (
-    <div className="crm-detail-tabs" role="tablist" aria-label={label}>
+    <div className="crm-content-tabs crm-detail-tabs" role="tablist" aria-label={label}>
       {tabs.map((tab, i) => {
         const Icon = tab.icon;
         return (
@@ -79,6 +88,7 @@ export function CrmDetailTabs({
             key={tab.id}
             type="button"
             id={`${id}-tab-${tab.id}`}
+            className="crm-content-tab"
             role="tab"
             aria-selected={value === tab.id}
             aria-controls={contentId}
@@ -114,6 +124,21 @@ export function CrmDetailTabs({
     </div>
   );
 }
+export function CrmContentNav({label,items,onNavigate}:{
+  label:string;
+  items:{href:string;label:string;current:boolean}[];
+  onNavigate:(href:string)=>void;
+}) {
+  return <nav className="crm-content-tabs" aria-label={label}>
+    {items.map(item=><a key={item.href} className="crm-content-tab" href={item.href}
+      aria-current={item.current?'page':undefined} onClick={event=>{
+        if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+        event.preventDefault();
+        if(!item.current)onNavigate(item.href);
+      }}>{item.label}</a>)}
+  </nav>;
+}
+
 export function CrmSaveFeedback({
   state,
   children,
@@ -157,48 +182,15 @@ export function CrmDiscardDialog({
   announceDescription?: boolean;
   busy?: boolean;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null),
-    opener = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    opener.current = document.activeElement as HTMLElement;
-    dialog.current?.showModal();
-    return () => {
-      dialog.current?.close();
-      if (opener.current?.isConnected)
-        opener.current.focus({ preventScroll: true });
-    };
-  }, []);
-  return (
-    <dialog
-      className="crm-discard-dialog"
-      data-tone={tone}
-      data-theme={isLight ? "light" : "dark"}
-      ref={dialog}
-      aria-labelledby="crm-unsaved-title"
-      aria-describedby="crm-unsaved-description"
-      onCancel={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!busy) onKeep();
-      }}
-    >
-      <h2 id="crm-unsaved-title">{campaignUi(lang)(title)}</h2>
-      <p id="crm-unsaved-description" aria-live={announceDescription ? "polite" : undefined}>{campaignUi(lang)(description)}</p>
-      <footer>
-        <button type="button" autoFocus disabled={busy} onClick={onKeep}>
-          {campaignUi(lang)(keepLabel)}
-        </button>
-        {onDiscard && <button type="button" disabled={busy} onClick={onDiscard}>
-          {campaignUi(lang)(discardLabel)}
-        </button>}
-      </footer>
-    </dialog>
-  );
+  const u=campaignUi(lang);
+  return <AdminConfirmation light={isLight} danger={tone==='danger'} busy={busy} announceDescription={announceDescription}
+    title={u(title)} description={u(description)} cancelLabel={u(keepLabel)} confirmLabel={u(discardLabel)}
+    onCancel={onKeep} onConfirm={onDiscard}/>;
 }
-export function useCrmShellHeight() {
+export function useCrmShellHeight(selector="[data-crm-header]") {
   const [height, setHeight] = React.useState(120);
   useEffect(() => {
-    const header = document.querySelector("[data-crm-header]");
+    const header = document.querySelector(selector);
     if (!header) return;
     const measure = () =>
       setHeight(Math.ceil(header.getBoundingClientRect().height));
@@ -206,7 +198,7 @@ export function useCrmShellHeight() {
     const observer = new ResizeObserver(measure);
     observer.observe(header);
     return () => observer.disconnect();
-  }, []);
+  }, [selector]);
   return height;
 }
 

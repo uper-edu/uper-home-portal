@@ -25,8 +25,9 @@ export function learnerScreeningGuidance(result: HskResult, lang: HskLanguage) {
   return {
     adviceVersion: 'learner-startpoint-presentation-v2',
     ...text,
-    start: effective.stage===3 ? t('HSK 3巩固与实际应用','HSK 3 consolidation and practical use','Penguatan HSK 3 dan penggunaan praktis')
-      : t(`HSK ${effective.suggestedStartLevel}内容`,`HSK ${effective.suggestedStartLevel} content`,`Materi HSK ${effective.suggestedStartLevel}`),
+    level: `HSK ${effective.suggestedStartLevel}`,
+    start: effective.stage===3 ? t('HSK 3 巩固与实际应用','HSK 3 consolidation and practical use','Penguatan HSK 3 dan penggunaan praktis')
+      : t(`HSK ${effective.suggestedStartLevel} 内容`,`HSK ${effective.suggestedStartLevel} content`,`Materi HSK ${effective.suggestedStartLevel}`),
     review: reasons[effective.reason],
     needsReview: effective.needsReview,
     reason: effective.reason,
@@ -42,7 +43,7 @@ export function learnerAssessmentGuidance(result: HskResult, lang: HskLanguage) 
   const stage=highest(counts),upper=highest(counts.map((n,i)=>n+missing[i]));
   const t=(zh:string,en:string,id:string)=>({zh,en,id})[lang];
   const audio=result.attempt.audioFailures.length>0;
-  return {adviceVersion:'learner-startpoint-presentation-v2',start:stage===3?t('HSK 3巩固与实际应用','HSK 3 consolidation and practical use','Penguatan HSK 3 dan penggunaan praktis'):t(`HSK ${Math.min(3,stage+1)}内容`,`HSK ${Math.min(3,stage+1)} content`,`Materi HSK ${Math.min(3,stage+1)}`),
+  return {adviceVersion:'learner-startpoint-presentation-v2',level:`HSK ${Math.min(3,stage+1)}`,start:stage===3?t('HSK 3 巩固与实际应用','HSK 3 consolidation and practical use','Penguatan HSK 3 dan penggunaan praktis'):t(`HSK ${Math.min(3,stage+1)} 内容`,`HSK ${Math.min(3,stage+1)} content`,`Materi HSK ${Math.min(3,stage+1)}`),
     needsReview:audio||upper!==stage,reason:audio?'audio_error':upper!==stage?'incomplete':'clear',
     review:audio?t('部分听力未正常播放，建议请顾问进一步确认听力基础。','Some listening audio did not play correctly. Ask an advisor to help check your listening.','Sebagian audio tidak diputar dengan benar. Minta konsultan membantu memeriksa kemampuan menyimak.'):upper!==stage?t('未答题可能影响学习起点，建议请顾问进一步确认。','Unanswered items could affect your starting point. Ask an advisor to help confirm it.','Soal kosong dapat memengaruhi titik awal. Minta konsultan membantu memastikannya.'):'',};
 }

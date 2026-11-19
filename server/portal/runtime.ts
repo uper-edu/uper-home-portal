@@ -1,5 +1,11 @@
+import {mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
 import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
+import { mountEnrollmentManagement } from './enrollmentManagement.ts';
+import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
+import { mountEnrollmentApplication } from './enrollmentApplication.ts';
+import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
+import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
@@ -350,6 +356,11 @@ export async function mountPortal(app: Express) {
   await initializePortalDefaults();
   mountCourseRoutes(app,{wrap,staff});
   app.use(accessRestoreGate);
+  mountEnrollmentCatalog(app, { wrap, staff });
+  mountEnrollmentManagement(app, wrap, staff);
+  mountEnrollmentApplication(app, { wrap, staff });
+  mountEnrollmentMail(app,{wrap,staff});
+  startEnrollmentMail();
   mountAccessOperations(app);
   mountLocalAuth(app, (req) => platform.authenticate(req));
   mountAccessHandovers(app);
@@ -903,6 +914,7 @@ export async function mountPortal(app: Express) {
         now,
         config,
       );
+      if(enrollmentServicePolicy().servicing)await attachEnrollmentOpportunitySummaries(pool,result.leads);
       res.json({
         ...result,
         notificationScope,
@@ -1452,6 +1464,8 @@ export async function mountPortal(app: Express) {
     "/api/crm/notification-jobs/:id/cancel",
     wrap(async (req, res) => {
       const employee = await staff(req, "notifications.manage");
+      const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+      if(!reason||reason.length>300) fail(400,"Cancellation reason is required");
       await tx(async (c) => {
         const job = (
           await c.query(
@@ -1462,10 +1476,6 @@ export async function mountPortal(app: Express) {
         if (!job) fail(404, "Notification not found");
         if (job.state !== "pending")
           fail(409, "Only pending notifications can be cancelled");
-        const reason = String(req.body.reason || "Cancelled by employee").slice(
-          0,
-          300,
-        );
         await c.query(
           "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
           [job.id, reason],
@@ -1904,10 +1914,12 @@ export async function mountPortal(app: Express) {
     ],
     wrap(async (req, res) => {
       const { l, e } = await leadAccess(req, "crm.write");
+      const linkOpportunity=req.body?.opportunityLink!==undefined;
+      if(linkOpportunity&&(!validMutationOrigin(req)||!e.permissions.includes('crm.followup')))fail(403,'Permission denied');
       try {
         const result = await tx((c) =>
           saveSalesWorkflow(c, l.id, e.id, req.body, (current) =>
-            requestAllowed(e,current,req),
+            requestAllowed(e,current,req)&&(!linkOpportunity||permittedRecord(e,current,'crm.followup')),
           ),
         );
         result.lead=(await projectIdentityProfiles(pool,[result.lead]))[0]||result.lead;
@@ -1923,17 +1935,6 @@ export async function mountPortal(app: Express) {
             : "Follow-up service unavailable",
         );
       }
-    }),
-  );
-  app.post(
-    "/api/crm/notification-jobs/:id/cancel",
-    wrap(async (req, res) => {
-      await staff(req, "notifications.manage");
-      await pool.query(
-        "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'",
-        [req.params.id],
-      );
-      res.json({ success: true });
     }),
   );
   app.get(

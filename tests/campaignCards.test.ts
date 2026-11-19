@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {CampaignCards,CampaignSidebarSummary} from '../src/components/crm/CampaignCards.tsx';
+import {CampaignCards,CampaignSidebarRow} from '../src/components/crm/CampaignCards.tsx';
 import {campaignDateRange,campaignEntrySummary,campaignCollectionLabel,campaignLocation,campaignDeliveryLabel,campaignTimeRange,campaignScheduleRange} from '../src/utils/campaignPresentation.ts';
 const campaign:any={id:'legacy',code:'cl-original',name:'TEST Original Name',nameEn:'Do not substitute',status:'active',type:'campus_seminar',locationType:'hybrid',startDate:'2026-11-10',endDate:'2026-11-11',city:'Jakarta',stats:{leadsCount:4,assessedCount:2,enrolledCount:0,confirmedAttendanceCount:3},promotionLinks:[{id:'p1'},{id:'p2'}]};
 const render=(campaigns:any[],props:any={})=>renderToStaticMarkup(React.createElement(CampaignCards,{campaigns,lang:'en',onOpen:()=>{},...props}));
@@ -54,10 +54,11 @@ test('optional place/date fields stay absent, delivery is explicit and unknown v
  assert.equal(campaignDeliveryLabel({locationType:'online'}),'Online');assert.equal(campaignDeliveryLabel({locationType:'offline'}),'Onsite');assert.equal(campaignDeliveryLabel({}),'Not set');
  assert.equal(campaignLocation({locationType:'online',venue:'Original venue',city:'Jakarta'}),'');assert.equal(campaignLocation({locationType:'hybrid',venue:'Original venue',city:'Jakarta'}),'Original venue · Jakarta');
 });
-test('sidebar shares configuration/date meaning, adds compact results and does not repeat IDs or offer marketing controls',()=>{
- const html=renderToStaticMarkup(React.createElement(CampaignSidebarSummary,{campaign,lang:'en',reviewCount:2}));
- for(const value of ['TEST Original Name','2 links','10–11 Nov 2026','Jakarta','Registered 4','Enrolled 0','2 promotion attributions'])assert.ok(html.includes(value),value);
- assert.doesNotMatch(html,/cl-original|Materials|QR|Confirmed participation/);
+test('sidebar shares configuration/date meaning, uses the shared selected row with original code, compact results and one action',()=>{
+ const html=renderToStaticMarkup(React.createElement(CampaignSidebarRow,{campaign,lang:'en',reviewCount:2,selected:true,onClick:()=>{}}));
+ for(const value of ['TEST Original Name','cl-original','2 links','10–11 Nov 2026','Jakarta','Registered 4','Enrolled 0','2 promotion attributions'])assert.ok(html.includes(value),value);
+ assert.match(html,/class="crm-record-row" data-selected="true"/);assert.equal((html.match(/<button/g)||[]).length,1);
+ assert.doesNotMatch(html,/Materials|QR|Confirmed participation/);
 });
 test('only known per-campaign pending review counts are displayed, without inferring an error for other campaigns',()=>{
  const html=render([campaign,{...campaign,id:'other',name:'TEST Other'}],{reviewCounts:{available:true,counts:{legacy:2}},onReview:()=>{}});

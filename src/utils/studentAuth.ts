@@ -62,12 +62,12 @@ export async function fetchStudentName(token: string, locale: string): Promise<s
   }
 }
 
-export function useStudentName(locale: string): { name: string | null; loading: boolean } {
+export function useStudentName(locale: string, enabled = true): { name: string | null; loading: boolean } {
   const [name, setName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = readSsoToken();
+    const token = enabled ? readSsoToken() : null;
     if (!token) {
       setLoading(false);
       return;
@@ -84,7 +84,7 @@ export function useStudentName(locale: string): { name: string | null; loading: 
     return () => {
       active = false;
     };
-  }, [locale]);
+  }, [locale,enabled]);
 
   return { name, loading };
 }

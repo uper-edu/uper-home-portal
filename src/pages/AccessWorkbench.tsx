@@ -1,21 +1,35 @@
-import {CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
+import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
+import {SystemAccessGuide} from '../components/SystemAccessGuide';
+import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
+import {CrmPageAction} from '../components/crm/CrmPageAction';
+import {AdminConfirmation} from '../components/admin/AdminConfirmation';
+import {AdminDisclosure} from '../components/admin/AdminDisclosure';
+import {AdminEditor} from '../components/admin/AdminEditor';
+import {AdminSearchField} from '../components/admin/AdminSearchField';
+import {CrmContentNav,CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
-import {AdminFormGuide} from '../components/AdminFormGuide';
-import {AdminFormSection,AdminFormActions} from '../components/AdminFormLayout';
+import {AdminFormSection,AdminFormFeedback,AdminFormGrid} from '../components/AdminFormLayout';
 import {AiServicePanel} from '../components/AiServicePanel';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
-import {AdminField,AdminRequiredNote,firstMissingAdminField} from '../components/AdminForm';
-import {BrowserMetadataGuide} from '../components/BrowserMetadataGuide';
+import {AdminField,firstMissingAdminField} from '../components/AdminForm';
 import {PageMetadata} from '../components/PageMetadata';
-import { accessSafetyGuide } from "../utils/accessSafetyLanguage";
-import { managementRequest } from "../utils/accessOperationClient";
+import { managementRequest, pendingAccessOperations } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
-import { AccessSafetyPanel } from "../components/AccessSafetyPanel";
-import { AccessUserCard, AccessRoleCard } from "../components/AccessRecordCard";
-import { accessGuide, accessError } from "../utils/accessLanguage";
-import { Fragment, useEffect, useRef, useState } from "react";
-import { BookOpen, Eye, History, ShieldCheck, Users, FlaskConical } from "lucide-react";
+import {AdminSecondaryActions} from "../components/admin/AdminRecordActions";
+import { AccessSafetyPanel, canUseAccessRecovery } from "../components/AccessSafetyPanel";
+import {AdminListState,AdminListTable} from '../components/admin/AdminList';
+import {AdminRecordEntry,AdminRowAction} from '../components/admin/AdminListControl';
+import {AdminRecordHeader} from '../components/admin/AdminRecordHeader';
+import {AdminDetailActions,AdminRecordFilters,AdminRecordRow,AdminRecordSidebar,AdminRecordSidebarToggle,AdminRecordTitle} from '../components/admin/AdminRecordWorkspace';
+import {AdminStatus} from '../components/AdminStatus';
+import {containPaneKeys,recordSplitMinWidth} from '../components/adminScroll';
+import {useCrmShellHeight,useRecordScrollMode} from '../components/crm/CrmDetailWorkspace';
+import '../components/crm/crm-detail-workspace.css';
+import '../components/crm/crm-record-workspace.css';
+import { accessError } from "../utils/accessLanguage";
+import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
+import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -32,12 +46,12 @@ import "../components/crm/crm-lead-filters.css";
 import "./access-management.css";
 const moduleIcons = {
   users: Users,
-  roles: ShieldCheck,
-  preview: Eye,
-  audit: History,
+  roles: Users,
+  audit: Users,
   guide: BookOpen,
   test: FlaskConical,
   ai: FlaskConical,
+  mail: Mail,
 };
 type User = {
   id: string;
@@ -56,6 +70,22 @@ type Role = {
   enabled: boolean;
   revision: number;
 };
+const accessTabs=['users','roles','audit'] as const;
+const isAccessTab=(tab:string)=>accessTabs.some(value=>value===tab);
+
+function systemLocation(href:string, employeeId:string) {
+  const url=new URL(href,window.location.origin);
+  if(url.searchParams.get('tab')==='preview'){
+    url.searchParams.set('tab','users');
+    if(!url.searchParams.get('user'))url.searchParams.set('user',employeeId);
+  }
+  const tab=url.searchParams.get('tab')||'users';
+  return {
+    href:url.pathname+url.search,
+    tab:Object.hasOwn(moduleIcons,tab)||tab==='recovery'||tab==='restore-review'?tab:'users',
+    params:url.searchParams,
+  };
+}
 async function apiRequest(path = "", body?: any) {
   const r = await fetch("/api/admin/access" + path, {
     method: body ? "POST" : "GET",
@@ -64,7 +94,7 @@ async function apiRequest(path = "", body?: any) {
     cache: "no-store",
   });
   const d = await r.json();
-  if (!r.ok) throw Error(d.error || "access_unavailable");
+  if (!r.ok) throw Object.assign(Error(d.error || "access_unavailable"),{status:r.status});
   return d;
 }
 export default function AccessWorkbench() {
@@ -94,15 +124,22 @@ export function AccessWorkspace({
     col = lang === "zh" ? 2 : lang === "id" ? 1 : 0,
     t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   const [discarding, setDiscarding] = useState(false);
+  const [recoveryDraft,setRecoveryDraft]=useState(false);
+  const [recoveryBusy,setRecoveryBusy]=useState(false);
   const [larkDirty,setLarkDirty]=useState(false);
   const [larkDraft,setLarkDraft]=useState<any>(undefined);
-  const [tab, setTab] = useState("users"),
+  const [initialLocation] = useState(()=>systemLocation(window.location.href,employee.id));
+  const [mailView,setMailView]=useState<'accounts'|'pool'>(initialLocation.params.get('mailView')==='pool'?'pool':'accounts');
+  const [mailRecordId,setMailRecordId]=useState(initialLocation.params.get(mailView==='pool'?'mailPool':'mailAccount')??'');
+  const [mailReturnPool,setMailReturnPool]=useState(initialLocation.params.get('mailFromPool')??'');
+  const [tab, setTab] = useState(initialLocation.tab),
+    [readDenied,setReadDenied]=useState(false),
     [data, setData] = useState<{ users: User[]; roles: Role[]; testDirectoryAvailable?:boolean } | null>(null),
     [err, setErr] = useState(""),
     [notice, setNotice] = useState(""),
+    [larkValidation, setLarkValidation] = useState(""),
     [busy, setBusy] = useState(false),
-    [query, setQuery] = useState(""),
-    [previewUserId, setPreviewUserId] = useState(employee.id),
+    [saving, setSaving] = useState(false),
     [audit, setAudit] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null),
     [role, setRole] = useState<Role | null>(null),
@@ -112,20 +149,70 @@ export function AccessWorkspace({
     [impact, setImpact] = useState<any>(null),
     [password, setPassword] = useState(""),
     [dirty, setDirty] = useState(false);
-  const panel = useRef<HTMLElement>(null),
-    priorFocus = useRef<HTMLElement | null>(null);
+  const [sensitiveAction,setSensitiveAction]=useState<"sessions"|"password">();
+  const refreshing = useRef(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [recordId,setRecordId]=useState(()=>(isAccessTab(tab)&&tab!=='audit'?initialLocation.params.get(tab==='roles'?'role':'user'):'')||'');
+  const [roleFilter,setRoleFilter]=useState(()=>new URLSearchParams(window.location.search).get('assignedRole')||'');
+  const [filters,setFilters]=useState<Record<string,{query:string;status:string}>>({});
+  const {query='',status:statusFilter=''}=filters[tab]??{};
+  const setQuery=(query:string)=>setFilters(old=>({...old,[tab]:{query,status:statusFilter}}));
+  const setStatusFilter=(status:string)=>setFilters(old=>({...old,[tab]:{query,status}}));
+  const changeRoleFilter=(value:string)=>{
+    const url=new URL(window.location.href);
+    if(value)url.searchParams.set('assignedRole',value);else url.searchParams.delete('assignedRole');
+    locationRef.current=url.pathname+url.search;
+    window.history.replaceState(window.history.state,'',locationRef.current);
+    setRoleFilter(value);
+  };
+  const [showRecords,setShowRecords]=useState(false);
+  const [wide,setWide]=useState(()=>window.innerWidth>=recordSplitMinWidth);
+  const shellHeight=useCrmShellHeight("[data-admin-header]"),scrollMode=useRecordScrollMode(shellHeight);
+  const locationRef=useRef(initialLocation.href);
+  useEffect(()=>{
+    if(window.location.pathname+window.location.search!==initialLocation.href)
+      window.history.replaceState(window.history.state,'',initialLocation.href);
+  },[initialLocation]);
+  const pendingNavigation=useRef<(()=>void)|undefined>(undefined);
+  const listPosition=useRef<{module:string;id:string;top:number}|undefined>(undefined);
+  const listSearch=useRef<HTMLInputElement>(null),railSearch=useRef<HTMLInputElement>(null);
+  const recordHeading=useRef<HTMLHeadingElement>(null),sidebarToggle=useRef<HTMLButtonElement>(null);
+  useEffect(()=>{
+    const media=window.matchMedia(`(min-width: ${recordSplitMinWidth}px)`);
+    const sync=()=>{setWide(media.matches);if(media.matches)setShowRecords(false);};
+    media.addEventListener('change',sync);
+    return ()=>media.removeEventListener('change',sync);
+  },[]);
+  const panel = useRef<HTMLDialogElement>(null);
   const can = (permission: string) => employee.permissions.includes(permission);
-  useEffect(() => setNotice(""), [lang]);
+  useEffect(() => {setNotice("");setLarkValidation("");}, [lang]);
   const api = (path = "", body?: any) =>
     body && !path.endsWith("/preview")
       ? managementRequest(employee.id, "/api/admin/access" + path, body)
       : apiRequest(path, body);
+  const submitSensitiveAction=async()=>{
+    if(!sensitiveAction||busy||!user?.id||!can('access.sessions')||!why.trim()||
+      (sensitiveAction==='password'&&password.length<8))return;
+    const action=sensitiveAction;
+    setBusy(true);setErr('');
+    try{
+      await api('/users/'+user.id+'/'+action,action==='sessions'?{reason:why}:
+        {temporaryPassword:password,reason:why,revision:user.revision});
+      if(action==='password'){setPassword('');setUser({...user,revision:user.revision+1});}
+      setNotice(action==='sessions'?t('Sessions revoked.','Sesi dicabut.','会话已撤销。'):
+        t('Password reset; sessions revoked.','Kata sandi direset; sesi dicabut.','密码已重置，会话已撤销。'));
+    }catch(e){setErr((e as Error).message);}
+    finally{setSensitiveAction(undefined);setBusy(false);}
+  };
   const load = async () => {
     setErr("");
     try {
       setData(await api());
+      setReadDenied(false);
     } catch (e) {
-      setErr((e as Error).message);
+      const failure=e as Error&{status?:number};
+      if(failure.status===401||failure.status===403){setReadDenied(true);setData(null);resetEditor();}
+      setErr(failure.message);
     }
   };
   useEffect(()=>{const refresh=()=>{void load();};window.addEventListener('uper-lark-changed',refresh);return()=>window.removeEventListener('uper-lark-changed',refresh);},[employee.id]);
@@ -157,23 +244,35 @@ export function AccessWorkspace({
         .then(setAudit)
         .catch((e) => setErr(e.message));
   }, [tab]);
-  useEffect(() => {
-    if (!user && !role) return;
-    priorFocus.current = document.activeElement as HTMLElement;
-    panel.current?.focus();
-    return () => priorFocus.current?.focus();
-  }, [!!user, !!role]);
+  const recoveryView=tab==='recovery'||tab==='restore-review';
   const editorHasDraft = Boolean(user || role) && (dirty || larkDirty || why.length > 0 || password.length > 0);
+  const refreshAccess = async () => {
+    if (refreshing.current || busy || editorHasDraft) return;
+    refreshing.current = true;
+    setIsRefreshing(true);
+    setErr("");
+    try {
+      await Promise.all([
+        load(),
+        tab === "audit" && can("access.audit") ? api("/audit").then(setAudit) : undefined,
+      ]);
+    } catch (error) {
+      setErr((error as Error).message);
+    } finally {
+      refreshing.current = false;
+      setIsRefreshing(false);
+    }
+  };
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
-      if (editorHasDraft) {
+      if (editorHasDraft||recoveryDraft||recoveryBusy) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [editorHasDraft]);
+  }, [editorHasDraft,recoveryDraft,recoveryBusy]);
   const close = () => {
     if (busy) return;
     if (editorHasDraft) {
@@ -185,6 +284,7 @@ export function AccessWorkspace({
   const resetEditor = () => {
     setLarkDirty(false);
     setLarkDraft(undefined);
+    setLarkValidation("");
     setDiscarding(false);
     setUser(null);
     setRole(null);
@@ -194,6 +294,74 @@ export function AccessWorkspace({
     setWhy("");
     setImpact(null);
   };
+  const recordHref=(module:string,id='',assignedRole?:string)=>{
+    const params=new URLSearchParams({tab:module});
+    if(id)params.set(module==='users'?'user':'role',id);
+    if(assignedRole)params.set('assignedRole',assignedRole);
+    return '/system?'+params;
+  };
+  const applyLocation=(href:string)=>{
+    const {tab:nextTab,params,href:canonical}=systemLocation(href,employee.id);
+    if(href!==canonical)window.history.replaceState(window.history.state,'',canonical);
+    setTab(nextTab);
+    setMailView(params.get('mailView')==='pool'?'pool':'accounts');
+    setMailRecordId(params.get(params.get('mailView')==='pool'?'mailPool':'mailAccount')??'');
+    setMailReturnPool(params.get('mailFromPool')??'');
+    setRecordId(nextTab==='users'?params.get('user')||'':nextTab==='roles'?params.get('role')||'':'');
+    setRoleFilter(params.get('assignedRole')||'');
+    setShowRecords(false);
+    locationRef.current=canonical;
+  };
+  const proceedNavigation=(href:string)=>{
+    if(href===locationRef.current)return;
+    window.history.pushState(window.history.state,'',href);
+    applyLocation(href);
+  };
+  const requestNavigation=(action:()=>void)=>{
+    if(busy||recoveryBusy)return;
+    if(editorHasDraft||recoveryDraft){pendingNavigation.current=action;setDiscarding(true);return;}
+    if(user||role)resetEditor();
+    action();
+  };
+  const navigateRecord=(module:string,id:string,assignedRole?:string)=>{
+    if(!recordId&&id&&module===tab){
+      listPosition.current={module,id,top:window.scrollY};
+    }
+    requestNavigation(()=>{
+      if(assignedRole)setFilters(old=>({...old,users:{query:'',status:''}}));
+      proceedNavigation(recordHref(module,id,assignedRole??(module==='users'&&tab==='users'?roleFilter:'')));
+    });
+  };
+  const openRecord=(event:MouseEvent<HTMLElement>,module:string,id:string,assignedRole?:string)=>{
+    if(event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+    event.preventDefault();
+    navigateRecord(module,id,assignedRole);
+  };
+  useEffect(()=>{
+    const onPop=()=>{
+      const destination=window.location.pathname+window.location.search;
+      if(destination===locationRef.current)return;
+      if(editorHasDraft||busy||recoveryDraft||recoveryBusy){
+        window.history.pushState(window.history.state,'',locationRef.current);
+        requestNavigation(()=>{window.history.replaceState(window.history.state,'',destination);applyLocation(destination);});
+      }else requestNavigation(()=>applyLocation(destination));
+    };
+    window.addEventListener('popstate',onPop);
+    return ()=>window.removeEventListener('popstate',onPop);
+  },[editorHasDraft,busy,recoveryDraft,recoveryBusy,user,role]);
+  useEffect(()=>{
+    const frame=requestAnimationFrame(()=>{
+      if(recordId){recordHeading.current?.focus({preventScroll:true});return;}
+      const position=listPosition.current;
+      if(position?.module===tab){
+        window.scrollTo({top:position.top,behavior:'instant'});
+        const entry=[...document.querySelectorAll<HTMLElement>('[data-access-record]')].find(el=>el.dataset.accessRecord===position.id);
+        (entry??listSearch.current)?.focus({preventScroll:true});
+        listPosition.current=undefined;
+      }
+    });
+    return ()=>cancelAnimationFrame(frame);
+  },[recordId,tab,Boolean(data)]);
   const openUser = (u: User | null) => {
     setLarkDirty(false);setLarkDraft(undefined);
     setDiscarding(false);
@@ -253,10 +421,12 @@ export function AccessWorkspace({
   };
   const save = async () => {
     if (busy) return;
-    if(larkDirty && !larkDraft){setNotice(t("Look up the Lark identity first, or clear the input.","Cari identitas Lark dahulu atau kosongkan input.","请先查询核对Lark身份，或清空查询输入。"));return;}
+    if(larkDirty && !larkDraft){setLarkValidation(t("Look up the Lark identity first, or clear the input.","Cari identitas Lark dahulu atau kosongkan input.","请先查询核对Lark身份，或清空查询输入。"));return;}
+    setLarkValidation("");
     const missing=panel.current&&firstMissingAdminField(panel.current);
     if(missing){missing.focus();setErr('admin_required_missing');return;}
     setBusy(true);
+    setSaving(true);
     setErr("");
     try {
       if (user)
@@ -290,8 +460,10 @@ export function AccessWorkspace({
       setErr((e as Error).message);
     } finally {
       setBusy(false);
+      setSaving(false);
     }
   };
+  const hasPendingResult=err!==""&&pendingAccessOperations(employee.id).some(operation=>operation.url.startsWith("/api/admin/access/"));
   const errorText =
     err === "admin_required_missing" ? t("Complete the required fields.","Lengkapi kolom wajib.","请填写必填项。") : err === "access_preview_required"
       ? t(
@@ -410,8 +582,75 @@ export function AccessWorkspace({
         )
       : null;
   const priorAccess = data?.users.find((u) => u.id === user?.id)?.effective;
-  const selectedPreviewUser =
-    data?.users.find((u) => u.id === previewUserId) || data?.users[0];
+  const accessTitle=t("Users & access","Pengguna & akses","用户与权限");
+  const accessNav=[
+    ['users',t('Users','Pengguna','用户')],
+    ['roles',t('Roles','Peran','角色')],
+    ...(can('access.audit')?[['audit',t('Change audit','Audit perubahan','变更审计')]]:[]),
+  ];
+  const userTab=tab==='users';
+  const recordTab=(userTab||tab==='roles')&&can('access.read')&&!readDenied;
+  const listTitle=userTab?t('Users','Pengguna','用户'):t('Roles','Peran','角色');
+  const searchLabel=userTab?t('Find a user','Cari pengguna','查找用户'):t('Find a role','Cari peran','查找角色');
+  const nameLabel=t('Name','Nama','名称');
+  const idLabel=userTab?t('Login ID','ID login','登录 ID'):t('Role ID','ID peran','角色 ID');
+  const emailLabel=t('Login email','Email login','登录邮箱');
+  const rolesLabel=t('Roles','Peran','角色');
+  const statusLabel=t('Status','Status','状态');
+  const larkLabel=t('Lark binding','Koneksi Lark','Lark 绑定');
+  const permissionCountLabel=t('Permissions','Izin','权限项数');
+  const activeLabel=t('Enabled','Aktif','已启用');
+  const inactiveLabel=t('Disabled','Nonaktif','已停用');
+  const roleName=(id:string)=>data?.roles.find(r=>r.id===id)?.config.names[col]||id;
+  const recordName=(r:User|Role)=>'loginId' in r?r.displayName||r.loginId:r.config.names[col]||r.id;
+  const recordMeta=(r:User|Role)=>'loginId' in r?r.loginId:r.id;
+  const recordActive=(r:User|Role)=>'loginId' in r?r.active:r.enabled;
+  const recordStatus=(r:User|Role)=><AdminStatus active={recordActive(r)}>{recordActive(r)?activeLabel:inactiveLabel}</AdminStatus>;
+  const bindingStatus=(u:User)=>u.larkBound?t('Bound','Terhubung','已绑定'):t('Not bound','Belum terhubung','未绑定');
+  const allRecords=userTab?data?.users??[]:data?.roles??[];
+  const selectedRecord=allRecords.find(r=>r.id===recordId);
+  const searchTerm=query.trim().toLowerCase();
+  const records=[...allRecords].filter(r=>{
+    const terms='loginId' in r?[r.displayName,r.loginId,r.email]:[r.id,...r.config.names];
+    return terms.some(term=>term?.toLowerCase().includes(searchTerm)) &&
+      (!statusFilter || recordActive(r)===(statusFilter==='active')) &&
+      (!userTab || !roleFilter || ('loginId' in r && r.roles.includes(roleFilter)));
+  }).sort((a,b)=>userTab?Number(b.id===employee.id)-Number(a.id===employee.id):0);
+  const recordListState=err?'error':data?'empty':'loading';
+  const narrowRail=!wide&&showRecords;
+  const searchControl=<AdminSearchField inputRef={listSearch} label={searchLabel} value={query} onChange={setQuery}/>;
+  const filterControls=<>
+    <CrmSingleSelect lang={lang} isLight={isLight} label={statusLabel} value={statusFilter} onChange={setStatusFilter}
+      options={[{value:'',label:t('All statuses','Semua status','全部状态')},{value:'active',label:activeLabel},{value:'inactive',label:inactiveLabel}]}/>
+    {userTab&&<CrmSingleSelect lang={lang} isLight={isLight} label={rolesLabel} value={roleFilter} onChange={changeRoleFilter}
+      options={[{value:'',label:t('All roles','Semua peran','全部角色')},...(data?.roles??[]).map(r=>({value:r.id,label:roleName(r.id)}))]}/>}
+  </>;
+  const permissions=(r:User|Role)=>{
+    const userRecord='loginId' in r;
+    const entries=permissionCatalog.filter(p=>userRecord?r.effective.permissions.includes(p.key):Boolean(r.config.grants[p.key]));
+    return <section><h2>{userRecord?t('Effective access','Akses efektif','生效权限'):t('Granted permissions','Izin diberikan','授予权限')}</h2>
+      {!entries.length&&<p>{t('No permissions','Tanpa izin','无权限项')}</p>}
+      {[...new Set(entries.map(p=>p.module))].map(module=><section key={module} className="access-record-permissions">
+        <h3>{modules[module][col]}</h3>
+        {userRecord?<AdminListTable className="access-permission-table" label={modules[module][col]}
+          headers={[t('Permission','Izin','权限'),t('Effective scope','Cakupan efektif','生效范围'),t('Source roles','Peran sumber','来源角色')]}>
+          {entries.filter(p=>p.module===module).map(p=>{
+            const sources=data?.roles.filter(role=>r.roles.includes(role.id)&&role.enabled&&r.effective.rolePermissions?.[role.id]?.includes(p.key))??[];
+            const scope=p.scoped?(r.effective.grants?.[p.key]??[]).map(value=>scopeLabel(value,p.key)).join(' / ')||'—':activeLabel;
+            return <tr key={p.key}><td>{p.names[col]}</td><td>{scope}</td><td>
+              {sources.length?<div className="access-permission-sources">
+                {sources.map(role=><AdminRowAction key={role.id} href={recordHref('roles',role.id)}
+                  onClick={event=>openRecord(event,'roles',role.id)}>{role.config.names[col]}</AdminRowAction>)}
+              </div>:'—'}
+            </td></tr>;
+          })}
+        </AdminListTable>:<dl>{entries.filter(p=>p.module===module).map(p=><div key={p.key}>
+          <dt>{p.names[col]}</dt>
+          <dd>{p.scoped?scopeLabel(r.config.grants[p.key],p.key):activeLabel}</dd>
+        </div>)}</dl>}
+      </section>)}
+    </section>;
+  };
   return (
     <div data-admin-form="" className="access-page" data-admin-workspace="system" data-theme={isLight ? "light" : "dark"}>
       <PageMetadata lang={lang} options={{module:tab,state:can("access.read")?undefined:"denied"}}/>
@@ -429,15 +668,13 @@ export function AccessWorkspace({
           <>
             {[
               ["ai", "AI services", "Layanan AI", "AI服务配置"],
-              ["users", "Users", "Pengguna", "用户"],
-              ["roles", "Roles", "Peran", "角色"],
-              ["preview", "Access preview", "Pratinjau akses", "权限预览"],
-              ["audit", "Change audit", "Audit perubahan", "变更审计"],
+              ["users", "Users & access", "Pengguna & akses", "用户与权限"],
+              ["mail", "Email configuration", "Konfigurasi email", "邮件配置"],
               ["guide", "Guide", "Panduan", "使用指南"],
               ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
               .filter((a) => a[0] !== "ai" || isAiAdministrator(employee))
-              .filter((a) => a[0] !== "audit" || can("access.audit"))
+              .filter((a) => a[0] !== "mail" || canUseAccessRecovery(employee))
               .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
                 const Icon = moduleIcons[a[0] as keyof typeof moduleIcons];
@@ -445,14 +682,8 @@ export function AccessWorkspace({
                   <button
                     type="button"
                     key={a[0]}
-                    aria-current={tab === a[0] ? "page" : undefined}
-                    onClick={() => {
-                      if (user || role) {
-                        close();
-                        return;
-                      }
-                      setTab(a[0]);
-                    }}
+                    aria-current={(a[0]==='users'?(isAccessTab(tab)||recoveryView):tab===a[0])?"page":undefined}
+                    onClick={()=>{if(a[0]!=='users'||!isAccessTab(tab))navigateRecord(a[0],'');}}
                   >
                     <Icon size={16} aria-hidden="true" />
                     {a[col + 1]}
@@ -468,8 +699,30 @@ export function AccessWorkspace({
           lang={lang}
           onResolved={operationResolved}
         />
-        <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight} />
-        <div className="admin-page-toolbar">
+        <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight}
+          view={tab==='recovery'?'recovery':tab==='restore-review'?'review':undefined}
+          onReview={()=>navigateRecord('restore-review','')}
+          onReturn={()=>requestNavigation(()=>{
+            proceedNavigation(recordHref('users'));
+            requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('.access-recovery-menu button')?.focus());
+          })}
+          onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>
+        {discarding&&!user&&!role&&<CrmDiscardDialog lang={lang} isLight={isLight}
+          onKeep={()=>{pendingNavigation.current=undefined;setDiscarding(false);}}
+          onDiscard={()=>{
+            const action=pendingNavigation.current;
+            pendingNavigation.current=undefined;
+            setDiscarding(false);
+            action?.();
+          }}/>}
+
+        {tab==='ai'&&isAiAdministrator(employee)&&can('access.read')&&!readDenied
+          ?<AiServicePanel lang={lang} isLight={isLight} renderHeading={refresh=><div className="admin-page-toolbar">
+            <div><h1>{t("System management", "Manajemen sistem", "系统管理")}</h1>
+              <p>{t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。")}</p></div>
+            <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")} secondary={refresh}/>
+          </div>}/>
+          :tab!=='guide'&&tab!=='mail'&&!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
           <div>
             <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
@@ -480,13 +733,27 @@ export function AccessWorkspace({
               )}
             </p>
           </div>
-          {can("access.read") && tab !== "ai" && (
-            <button disabled={busy || editorHasDraft} onClick={() => void load()}>
-              {t("Reload", "Muat ulang", "重新载入")}
-            </button>
+          {can("access.read") && tab !== "ai" && (tab!=='audit'||can('access.audit')) && (
+            <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
+              secondary={<>
+                {isAccessTab(tab)&&canUseAccessRecovery(employee)&&<div className="access-recovery-menu">
+                  <AdminSecondaryActions alwaysMenu appearance="header" label={t('More actions','Tindakan lain','更多操作')}>
+                    <AdminRowAction href={recordHref('recovery')} onClick={event=>openRecord(event,'recovery','')}>
+                      {t('Administrator recovery','Pemulihan administrator','管理员恢复')}
+                    </AdminRowAction>
+                  </AdminSecondaryActions>
+                </div>}
+                <AdminRefreshAction label={t("Refresh", "Segarkan", "刷新")}
+                loading={isRefreshing} disabled={busy || editorHasDraft}
+                onClick={() => void refreshAccess()}/>
+              </>}
+              primary={recordTab&&can(userTab?'access.users':'access.roles')&&
+                <CrmPageAction icon={Plus} variant="primary"
+                  label={userTab?t('Add user','Tambah pengguna','新增用户'):t('Add role','Tambah peran','新增角色')}
+                  onClick={()=>userTab?openUser(null):openRole(null)}/>}/>
           )}
-        </div>
-        {!can("access.read") ? (
+        </div>}
+        {!can("access.read")||readDenied ? (
           <p role="alert">
             {t(
               "System management access denied.",
@@ -501,188 +768,98 @@ export function AccessWorkspace({
                 {errorText}
               </p>
             )}
-            {notice && (
-              <p role="status" className="access-notice">
-                {notice}
-              </p>
+            {notice && !user && !role && (
+              <AdminFormFeedback state="saved" lang={lang} placement="floating">{notice}</AdminFormFeedback>
             )}
-            {!data && !err && (
+            {isAccessTab(tab)&&<CrmContentNav label={accessTitle}
+              items={accessNav.map(([id,label])=>({href:recordHref(id),label,current:tab===id}))}
+              onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
+            {!recoveryView && !recordTab && !data && !err && (
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
-            {tab === 'ai' && isAiAdministrator(employee) && <AiServicePanel lang={lang} isLight={isLight}/>}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
-            {tab === "guide" ? (
-              <section className="access-card">
-                <h2>
-                  {t(
-                    "How access works",
-                    "Cara kerja akses",
-                    "权限逻辑与操作指南",
-                  )}
-                </h2>
-                <BrowserMetadataGuide lang={lang}/><AdminFormGuide lang={lang}/>
-                <ol>
-                  {accessGuide.map((text, i) => (
-                    <li key={i}>{text[col]}</li>
-                  ))}
-                </ol>
-                {accessSafetyGuide.map((section) => (
-                  <section className="access-impact" key={section.title[0]}>
-                    <h3>{section.title[col]}</h3>
-                    <p>{section.body[col]}</p>
-                  </section>
-                ))}
-              </section>
-            ) : null}
-            {data && tab === "users" && (
-              <>
-                <div className="access-toolbar">
-                  <AdminField>
-                    {t("Find a user", "Cari pengguna", "查找用户")}
-                    <input
-                      type="search"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
-                  </AdminField>
-                  {can("access.users") && (
-                    <button onClick={() => openUser(null)}>
-                      {t("Add user", "Tambah pengguna", "新增用户")}
-                    </button>
-                  )}
-                </div>
-                <div className="access-grid access-user-grid">
-                  {data.users
-                    .filter((u) =>
-                      (u.displayName + " " + u.loginId + " " + (u.email || ""))
-                        .toLowerCase()
-                        .includes(query.toLowerCase()),
-                    )
-                    .sort(
-                      (a, b) =>
-                        Number(b.id === employee.id) -
-                        Number(a.id === employee.id),
-                    )
-                    .map((u) => (
-                      <AccessUserCard key={u.id}
-                        name={u.displayName}
-                        active={u.active}
-                        current={u.id === employee.id}
-                        lang={lang}
-                        loginId={u.loginId}
-                        email={u.email}
-                        larkBound={u.larkBound}
-                        roles={u.roles.map((id) => ({
-                          id,
-                          label:
-                            data.roles.find((r) => r.id === id)?.config.names[
-                              col
-                            ] || id,
-                        }))}
-                        onEdit={
-                          can("access.users") || can("access.sessions")
-                            ? () => openUser(u)
-                            : undefined
-                        }
-                      />
-                    ))}
-                </div>
-              </>
-            )}
-            {data && tab === "roles" && (
-              <>
-                <div className="access-toolbar">
-                  <p>
-                    {t(
-                      "Role IDs stay stable when names change.",
-                      "ID peran tetap saat nama berubah.",
-                      "角色名称可以修改，内部ID保持稳定。",
-                    )}
-                  </p>
-                  {can("access.roles") && (
-                    <button onClick={() => openRole(null)}>
-                      {t("Add role", "Tambah peran", "新增角色")}
-                    </button>
-                  )}
-                </div>
-                <div className="access-grid access-role-grid">
-                  {data.roles.map((r) => (
-                    <AccessRoleCard
-                      key={r.id}
-                      name={r.config.names[col]}
-                      description={r.config.description[col]}
-                      active={r.enabled}
-                      permissionCount={Object.keys(r.config.grants).length}
-                      lang={lang}
-                      onEdit={
-                        can("access.roles") ? () => openRole(r) : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-            {data && tab === "preview" && (
-              <div className="access-preview">
-                <CrmSingleSelect
-                  label={t("Employee", "Staf", "员工")}
-                  value={selectedPreviewUser?.id || ""}
-                  options={data.users.map((u) => ({
-                    value: u.id,
-                    label: u.displayName,
-                  }))}
-                  onChange={setPreviewUserId}
-                  searchable
-                  lang={lang}
-                  isLight={isLight}
-                />
-                {[selectedPreviewUser]
-                  .filter((u): u is User => !!u)
-                  .map((u) => (
-                    <section className="access-card" key={u.id}>
-                      <h2>{u.displayName}</h2>
-                      {!u.active && (
-                        <p>
-                          {t(
-                            "Disabled: cannot authenticate.",
-                            "Nonaktif: tidak dapat login.",
-                            "已停用：无法登录。",
-                          )}
-                        </p>
-                      )}
-                      <ul>
-                        {permissionCatalog
-                          .filter((p) =>
-                            u.effective.permissions.includes(p.key),
-                          )
-                          .map((p) => (
-                            <li key={p.key}>
-                              {p.names[col]} —{" "}
-                              {p.scoped
-                                ? (u.effective.grants?.[p.key] || [])
-                                    .map((scope) => scopeLabel(scope, p.key))
-                                    .join(" / ")
-                                : t("Enabled", "Aktif", "已启用")}
-                              <small>
-                                {t("From", "Dari", "来源")}：
-                                {data.roles
-                                  .filter(
-                                    (r) =>
-                                      u.roles.includes(r.id) &&
-                                      r.enabled &&
-                                      r.config.grants[p.key],
-                                  )
-                                  .map((r) => r.config.names[col])
-                                  .join(" · ")}
-                              </small>
-                            </li>
-                          ))}
-                      </ul>
-                    </section>
-                  ))}
-              </div>
-            )}
-            {tab === "audit" && (
+            {tab==='mail'&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} admin allowed={canUseAccessRecovery(employee)}
+              view={mailView} recordId={mailRecordId} returnPoolId={mailReturnPool} onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}
+              onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>}
+            {tab==='guide'&&<SystemAccessGuide lang={lang} canAudit={can('access.audit')}
+              canAi={isAiAdministrator(employee)} canTest={!!data?.testDirectoryAvailable}
+              canRecover={canUseAccessRecovery(employee)} shellHeight={shellHeight}
+              onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
+            {recordTab && <section className="access-record-workspace crm-detail-root" data-theme={isLight?"light":"dark"} style={{"--crm-shell-height":shellHeight+"px"} as React.CSSProperties} aria-label={listTitle}>
+              {!recordId && <div className="access-record-toolbar">
+                {searchControl}
+                {filterControls}
+              </div>}
+              {!recordId && records.length>0 && <AdminListTable label={listTitle} busy={isRefreshing}
+                headers={userTab?[nameLabel,idLabel,emailLabel,rolesLabel,statusLabel,larkLabel]:
+                  [nameLabel,idLabel,statusLabel,permissionCountLabel]}>
+                {records.map(r=><tr key={r.id}>
+                  <td><AdminRecordEntry data-access-record={r.id} href={recordHref(tab,r.id,userTab?roleFilter:undefined)}
+                    onClick={event=>openRecord(event,tab,r.id)}>{recordName(r)}</AdminRecordEntry></td>
+                  <td>{recordMeta(r)}</td>
+                  {'loginId' in r?<><td>{r.email||'—'}</td><td>{r.roles.map(roleName).join(' · ')||'—'}</td>
+                    <td>{recordStatus(r)}</td><td>{bindingStatus(r)}</td></>:
+                    <><td>{recordStatus(r)}</td><td>{Object.keys(r.config.grants).length}</td></>}
+                </tr>)}
+              </AdminListTable>}
+              {!recordId&&!records.length&&<AdminListState lang={lang} state={recordListState} onRetry={refreshAccess}/>}
+              {recordId&&<div className="access-record-split" data-record-detail="true" data-record-scroll={scrollMode}>
+                {narrowRail&&<div className="crm-record-navigation">
+                  <AdminRecordSidebarToggle controls="access-records" expanded label={t('Return to details','Kembali ke detail','返回详情')}
+                    onClick={()=>{setShowRecords(false);requestAnimationFrame(()=>sidebarToggle.current?.focus());}}/>
+                </div>}
+                <AdminRecordSidebar id="access-records" title={listTitle} count={records.length} selectedId={recordId}
+                  hidden={!wide&&!narrowRail} busy={isRefreshing} busyLabel={t('Refreshing…','Memuat ulang…','正在刷新…')}
+                  filters={<AdminRecordFilters lang={lang} count={Number(Boolean(statusFilter))+Number(userTab&&Boolean(roleFilter))}
+                    search={<AdminSearchField inputRef={railSearch} label={searchLabel} value={query} onChange={setQuery}/>}>{filterControls}</AdminRecordFilters>}
+                  note={selectedRecord&&!records.includes(selectedRecord)?t('The open record is outside the current filters.','Rekaman terbuka di luar filter saat ini.','当前记录不在筛选结果中，详情仍保留。'):undefined}
+                  empty={!records.length?<AdminListState lang={lang} compact state={recordListState} onRetry={refreshAccess}/>:undefined}>
+                  {records.map(r=><AdminRecordRow key={r.id} selected={recordId===r.id} name={recordName(r)} title={recordName(r)}
+                    href={recordHref(tab,r.id,userTab?roleFilter:undefined)} onClick={event=>openRecord(event,tab,r.id)} meta={<>{recordMeta(r)} · {recordStatus(r)}</>}/>)}
+                </AdminRecordSidebar>
+                <article className="crm-detail-panel access-record-detail" hidden={narrowRail}>
+                  <AdminRecordHeader back={{label:userTab?t('Back to users','Kembali ke pengguna','返回用户列表'):t('Back to roles','Kembali ke peran','返回角色列表'),onClick:()=>navigateRecord(tab,'')}}
+                    title={<AdminRecordTitle title={selectedRecord?recordName(selectedRecord):listTitle} titleRef={recordHeading}
+                      status={selectedRecord&&recordStatus(selectedRecord)} meta={selectedRecord&&recordMeta(selectedRecord)}/>}
+                    actions={<AdminDetailActions label={t('Record actions','Tindakan rekaman','记录操作')}
+                      secondary={<>
+                        {!wide&&<AdminRecordSidebarToggle ref={sidebarToggle} controls="access-records" expanded={false}
+                          label={t('Show records','Tampilkan rekaman','查看记录列表')} onClick={()=>{setShowRecords(true);requestAnimationFrame(()=>railSearch.current?.focus());}}/>}
+                        <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={isRefreshing} disabled={busy||editorHasDraft} onClick={()=>void refreshAccess()}/>
+                      </>}
+                      primary={selectedRecord&&('loginId' in selectedRecord
+                        ?(can('access.users')||can('access.sessions'))&&<CrmPageAction icon={Pencil} variant="primary"
+                          label={can('access.users')?t('Edit user','Edit pengguna','编辑用户'):t('Manage sessions and password','Kelola sesi dan sandi','管理会话与密码')}
+                          onClick={()=>openUser(selectedRecord)}/>
+                        :can('access.roles')&&<CrmPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
+                          onClick={()=>openRole(selectedRecord)}/>)}/>}/>
+                  <div className="crm-detail-body access-record-body" data-admin-scroll="detail" tabIndex={0} onKeyDown={containPaneKeys}>
+                    {selectedRecord?'loginId' in selectedRecord?<><section>
+                      <h2>{t('Account information','Informasi akun','账号信息')}</h2>
+                      <dl className="access-record-facts">
+                        <div><dt>{emailLabel}</dt><dd>{selectedRecord.email||'—'}</dd></div>
+                        <div><dt>{larkLabel}</dt><dd>{bindingStatus(selectedRecord)}</dd></div>
+                        <div><dt>{t('Assigned roles','Peran yang ditetapkan','已分配角色')}</dt>
+                          <dd>{selectedRecord.roles.length?selectedRecord.roles.map(id=>data?.roles.some(role=>role.id===id)
+                            ?<AdminRowAction key={id} href={recordHref('roles',id)} onClick={event=>openRecord(event,'roles',id)}>{roleName(id)}</AdminRowAction>
+                            :<span key={id}>{id}</span>):'—'}</dd></div>
+                      </dl>
+                    </section>{permissions(selectedRecord)}</>:<>
+                      <section><h2>{t('Purpose','Kegunaan','职责说明')}</h2><p>{selectedRecord.config.description[col]||'—'}</p>
+                        <AdminRowAction href={recordHref('users','',selectedRecord.id)} onClick={event=>openRecord(event,'users','',selectedRecord.id)}>
+                          {t('View users assigned this role','Lihat pengguna dengan peran ini','查看分配了此角色的用户')}
+                        </AdminRowAction></section>
+                      {permissions(selectedRecord)}
+                    </>:<AdminListState lang={lang} state={recordListState} onRetry={refreshAccess}
+                      message={recordListState==='empty'?t('This record is unavailable.','Rekaman ini tidak tersedia.','此记录已不存在或不可访问。'):undefined}/>}
+                  </div>
+                </article>
+              </div>}
+            </section>}
+            {tab === "audit" && !can('access.audit') && <p role="alert">
+              {t('You do not have access to change audit.','Anda tidak memiliki akses ke audit perubahan.','无变更审计访问权限。')}
+            </p>}
+            {tab === "audit" && can('access.audit') && (
               <section className="access-card">
                 <h2>
                   {t(
@@ -701,13 +878,11 @@ export function AccessWorkspace({
                   </p>
                 )}
                 {audit.map((a) => (
-                  <details key={a.id}>
-                    <summary>
-                      {a.actor} · {formatCrmEventTime(a.created_at)} ·{" "}
-                      {auditLabels[a.action]?.[col] || a.action}
-                    </summary>
-                    <pre>{JSON.stringify(a.data, null, 2)}</pre>
-                  </details>
+                  <AdminDisclosure key={a.id} density="compact" heading={<>
+                    {a.actor} · {formatCrmEventTime(a.created_at)} · {auditLabels[a.action]?.[col] || a.action}
+                  </>}>
+                    <pre className="admin-disclosure-original">{JSON.stringify(a.data,null,2)}</pre>
+                  </AdminDisclosure>
                 ))}
               </section>
             )}
@@ -715,66 +890,63 @@ export function AccessWorkspace({
         )}
       </main>
       {(user || role) && (
-        <div
-          className="access-backdrop"
-          onKeyDown={(e) => {
-            if(discarding)return;
-            if (e.key === "Escape") close();
-            if (e.key === "Tab") {
-              const controls = Array.from(
-                panel.current?.querySelectorAll<HTMLElement>(
-                  "button:not(:disabled),input:not(:disabled),textarea:not(:disabled),summary,a[href]",
-                ) || [],
-              ).filter((e) => e.offsetParent !== null);
-              if (e.shiftKey && document.activeElement === controls[0]) {
-                e.preventDefault();
-                controls.at(-1)?.focus();
-              } else if (
-                !e.shiftKey &&
-                document.activeElement === controls.at(-1)
-              ) {
-                e.preventDefault();
-                controls[0]?.focus();
-              }
-            }
-          }}
-        >
-          <section
-            ref={panel}
-            tabIndex={-1}
-            data-admin-form="" className="access-panel admin-editor-layout"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="access-editor-title"
-          >
-            <div className="access-toolbar admin-editor-heading">
-              <h2 id="access-editor-title">
-                {user
-                  ? t("User settings", "Pengaturan pengguna", "用户设置")
-                  : t("Role settings", "Pengaturan peran", "角色设置")}
-              </h2>
-              <AdminRequiredNote lang={lang}/>
-              <button onClick={close} disabled={busy}>
-                {t("Close", "Tutup", "关闭")}
+        <AdminEditor variant="drawer" responsiveForm={!!user} className="access-panel" lang={lang} light={isLight} required
+          dialogRef={panel} onClose={close} busy={busy} bodyClassName="access-editor-body"
+          title={user?t("User settings","Pengaturan pengguna","用户设置"):t("Role settings","Pengaturan peran","角色设置")}
+          footer={<>
+              {user?.id && can("access.sessions") && (
+                <>
+                  <button type="button" disabled={busy||!why.trim()} onClick={()=>setSensitiveAction('sessions')}>
+                    {t("Revoke sessions", "Cabut sesi", "撤销会话")}
+                  </button>
+                  <button type="button" disabled={busy||password.length<8||!why.trim()} onClick={()=>setSensitiveAction('password')}>
+                    {t("Reset password", "Reset kata sandi", "重置密码")}
+                  </button>
+                </>
+              )}
+              <button type="button" disabled={busy} onClick={close}>{t("Cancel","Batal","取消")}</button>
+              <button type="button" data-primary=""
+                disabled={
+                  busy ||
+                  !why.trim() ||
+                  (!!user && !can("access.users")) ||
+                  (!dirty && !larkDraft) ||
+                  (!!role && !preview) ||
+                  (!user?.id && !!user && password.length < 8)
+                }
+                onClick={() => void save()}
+              >
+                {saving
+                  ? t("Saving…", "Menyimpan…", "保存中…")
+                  : t("Save changes", "Simpan perubahan", "保存修改")}
               </button>
-            </div>
-            <div className="admin-editor-body" data-admin-stack="">
+          </>}
+        >
             {discarding && <CrmDiscardDialog lang={lang} isLight={isLight}
               title={t("Unsaved changes", "Perubahan belum disimpan", "修改尚未保存")}
               description={t("Keep editing, or discard your unsaved changes and close. Saved records stay unchanged.", "Lanjutkan mengedit atau buang perubahan yang belum disimpan dan tutup. Data tersimpan tidak berubah.", "可以继续编辑，或放弃未保存的修改并关闭；已保存记录保持不变。")}
               keepLabel={t("Keep editing", "Lanjutkan mengedit", "继续编辑")}
               discardLabel={t("Discard draft and close", "Buang draf dan tutup", "放弃草稿并关闭")}
-              onKeep={()=>setDiscarding(false)} onDiscard={resetEditor} />}
+              onKeep={()=>{pendingNavigation.current=undefined;setDiscarding(false);}} onDiscard={()=>{
+                const action=pendingNavigation.current;
+                pendingNavigation.current=undefined;
+                resetEditor();action?.();
+              }} />}
+            {sensitiveAction&&user?.id&&<AdminConfirmation light={isLight} busy={busy} danger
+              title={sensitiveAction==='sessions'?t('Revoke sessions','Cabut sesi','撤销会话'):t('Reset password','Reset kata sandi','重置密码')}
+              description={<>{user.displayName||user.loginId} · {sensitiveAction==='sessions'
+                ? t('The employee will need to sign in again on all devices.','Staf perlu masuk lagi di semua perangkat.','该员工需要在所有设备上重新登录。')
+                : t('This revokes active sessions. The employee must change the temporary password at the next login.','Tindakan ini mencabut sesi aktif. Staf harus mengubah kata sandi sementara saat masuk berikutnya.','现有会话将失效，员工下次登录时必须修改临时密码。')}</>}
+              cancelLabel={t('Cancel','Batal','取消')} confirmLabel={t('Confirm','Konfirmasi','确认')}
+              onCancel={()=>setSensitiveAction(undefined)} onConfirm={()=>void submitSensitiveAction()}/>}
             <AccessOperationStatus
               actor={employee.id}
               lang={lang}
               onResolved={operationResolved}
             />
-            {err && (
-              <p role="alert" className="access-error">
-                {errorText}
-              </p>
-            )}
+            {saving&&<AdminFormFeedback state="saving" lang={lang}/>}
+            {err&&<AdminFormFeedback state={hasPendingResult?'unknown':'error'} lang={lang}>{errorText}</AdminFormFeedback>}
+            {larkValidation&&larkDirty&&!larkDraft&&<AdminFormFeedback state="error" lang={lang}>{larkValidation}</AdminFormFeedback>}
             {err && err!=="admin_required_missing" && (
               <button
                 disabled={busy}
@@ -873,37 +1045,35 @@ export function AccessWorkspace({
                 </button>
               </section>
             )}
-            {notice && (
-              <p role="status" className="access-notice">
-                {notice}
-              </p>
-            )}
+            {notice&&<AdminFormFeedback state="saved" lang={lang}>{notice}</AdminFormFeedback>}
             {user && (
               <AdminFormSection title={t("User details", "Detail pengguna", "用户信息")}>
-                <AdminField>
-                  {t("Login ID", "ID login", "登录ID")}
-                  <input
-                    required={!user.id}
-                    value={user.loginId}
-                    disabled={!!user.id}
-                    onChange={(e) => {
-                      setUser({ ...user, loginId: e.target.value });
-                      setDirty(true);
-                    }}
-                  />
-                </AdminField>
-                <AdminField>
-                  {t("Name", "Nama", "姓名")}
-                  <input
-                    disabled={!can("access.users")}
-                    required
-                    value={user.displayName}
-                    onChange={(e) => {
-                      setUser({ ...user, displayName: e.target.value });
-                      setDirty(true);
-                    }}
-                  />
-                </AdminField>
+                <AdminFormGrid>
+                  <AdminField>
+                    {t("Login ID", "ID login", "登录ID")}
+                    <input
+                      required={!user.id}
+                      value={user.loginId}
+                      disabled={!!user.id}
+                      onChange={(e) => {
+                        setUser({ ...user, loginId: e.target.value });
+                        setDirty(true);
+                      }}
+                    />
+                  </AdminField>
+                  <AdminField>
+                    {t("Name", "Nama", "姓名")}
+                    <input
+                      disabled={!can("access.users")}
+                      required
+                      value={user.displayName}
+                      onChange={(e) => {
+                        setUser({ ...user, displayName: e.target.value });
+                        setDirty(true);
+                      }}
+                    />
+                  </AdminField>
+                </AdminFormGrid>
                 <AdminField>
                   {t(
                     "Login email (optional)",
@@ -1079,7 +1249,7 @@ export function AccessWorkspace({
             )}
             {user?.id && can("access.users") && (
               <AdminFormSection title={t("Lark account", "Akun Lark", "Lark账号")}>
-                <LarkEmployeeBinding key={user.id} employeeId={user.id} lang={lang} onDraftChange={setLarkDirty} onBindingDraft={setLarkDraft} disabled={busy} />
+                <LarkEmployeeBinding key={user.id} employeeId={user.id} lang={lang} isLight={isLight} onDraftChange={setLarkDirty} onBindingDraft={setLarkDraft} disabled={busy} />
               </AdminFormSection>
             )}
             {role && (
@@ -1265,84 +1435,7 @@ export function AccessWorkspace({
                 onChange={(e) => setWhy(e.target.value)}
               />
             </AdminField>
-            </div>
-            <AdminFormActions className="access-actions admin-editor-footer">
-              <button
-                disabled={
-                  busy ||
-                  !why.trim() ||
-                  (!!user && !can("access.users")) ||
-                  (!dirty && !larkDraft) ||
-                  (!!role && !preview) ||
-                  (!user?.id && !!user && password.length < 8)
-                }
-                onClick={() => void save()}
-              >
-                {busy
-                  ? t("Saving…", "Menyimpan…", "保存中…")
-                  : t("Save changes", "Simpan perubahan", "保存修改")}
-              </button>
-              {user?.id && can("access.sessions") && (
-                <>
-                  <button
-                    disabled={busy || !why.trim()}
-                    onClick={async () => {
-                      setBusy(true);
-                      setErr("");
-                      try {
-                        await api("/users/" + user.id + "/sessions", {
-                          reason: why,
-                        });
-                        setNotice(
-                          t(
-                            "Sessions revoked.",
-                            "Sesi dicabut.",
-                            "会话已撤销。",
-                          ),
-                        );
-                      } catch (e) {
-                        setErr((e as Error).message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {t("Revoke sessions", "Cabut sesi", "撤销会话")}
-                  </button>
-                  <button
-                    disabled={busy || password.length < 8 || !why.trim()}
-                    onClick={async () => {
-                      setBusy(true);
-                      setErr("");
-                      try {
-                        await api("/users/" + user.id + "/password", {
-                          temporaryPassword: password,
-                          reason: why,
-                          revision: user.revision,
-                        });
-                        setPassword("");
-                        setUser({ ...user, revision: user.revision + 1 });
-                        setNotice(
-                          t(
-                            "Password reset; sessions revoked.",
-                            "Kata sandi direset; sesi dicabut.",
-                            "密码已重置，会话已撤销。",
-                          ),
-                        );
-                      } catch (e) {
-                        setErr((e as Error).message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {t("Reset password", "Reset kata sandi", "重置密码")}
-                  </button>
-                </>
-              )}
-            </AdminFormActions>
-          </section>
-        </div>
+        </AdminEditor>
       )}
     </div>
   );

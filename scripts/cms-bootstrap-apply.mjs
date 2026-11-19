@@ -65,7 +65,7 @@ export async function applyBootstrap({backupPath,receiptPath,output,apply=false}
    operation={schemaVersion:bootstrapSchemaVersion,inputDigest:stableDigest,at:new Date().toISOString()};
    await writePrivateArtifact(operationPath,JSON.stringify(operation,null,2));
   }
-  const migration=await migrate(db,'uper_trial_home',{initializeSystemDefaults:false});
+  const migration=await migrate(db,'uper_trial_home',{initializeSystemDefaults:false,includeEnrollment:false});
   await transaction(db,async c=>{
    for(const change of changes){
     const [rows]=await c.execute('SELECT items,items_text,revision FROM cms_collections WHERE name=? FOR UPDATE',[change.name]);

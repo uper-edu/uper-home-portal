@@ -17,6 +17,7 @@ function initializationFixture(savedGroups: {id:string; config:any}[] = []) {
     }
     if (sql.startsWith('SELECT id,config FROM notification_channels')) return [groups];
     if (sql.startsWith("SELECT config FROM notification_rules")) return [[]];
+    if (sql === "SELECT id FROM portal_settings WHERE id='enrollment_catalog_replaced'") return [[]];
     if (sql.startsWith('SELECT id FROM crm_courses')) return [[]];
     if (sql.startsWith('INSERT INTO notification_channels')) {
       groups.push({id:values[0], config:JSON.parse(values[1])});

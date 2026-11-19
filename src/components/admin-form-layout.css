@@ -4,12 +4,18 @@
 [data-admin-form] .admin-field:not(.admin-field--choice)>.admin-field-label,[data-admin-form] .admin-field:not(.admin-field--choice)>label{margin:0;font-size:14px;line-height:1.6;font-weight:500;color:var(--af-text)}
 [data-admin-form] .admin-field :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),textarea,select){box-sizing:border-box;max-width:100%;min-width:0;min-height:40px;font-size:14px;line-height:1.6;border-radius:10px}
 [data-admin-form] .admin-field--choice{display:flex;align-items:flex-start;gap:8px;margin:0;min-width:0;font-size:14px;line-height:1.6}
-[data-admin-form] .admin-field--choice input:is([type=checkbox],[type=radio]){flex:0 0 auto;align-self:start;max-width:20px;width:auto}
+[data-admin-form] .admin-field--choice input:is([type=checkbox],[type=radio]):not(.admin-switch){flex:0 0 auto;align-self:start;max-width:20px;width:auto}
 [data-admin-form] .admin-field--choice .admin-field-label{font-weight:400}
 [data-admin-form] .admin-field-control{display:grid;gap:var(--admin-form-help-gap);min-width:0}
 [data-admin-form] .admin-field-control>:is(small,p){margin:0;font-size:13px;line-height:1.6;color:var(--af-muted)}
 [data-admin-stack]{display:grid;gap:var(--admin-form-field-gap);align-content:start;min-width:0}
 [data-admin-grid]{column-gap:var(--admin-form-column-gap);row-gap:var(--admin-form-field-gap)}
+.admin-form-grid-container { container: admin-form-grid / inline-size; min-width: 0; }
+.admin-form-responsive-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+@container admin-form-grid (min-width: 560px) {
+  .admin-form-responsive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-form-responsive-grid > [data-admin-full-width] { grid-column: 1 / -1; }
+}
 .admin-form-section{min-width:0;color:var(--af-text);margin:0}
 .admin-form-section+.admin-form-section{margin-top:var(--admin-form-group-gap)}
 .admin-form-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--af-border)}
@@ -22,6 +28,12 @@
 .admin-form-section[data-admin-section=card]>.admin-form-section-body{padding:16px}
 .admin-form-section[data-admin-section=subgroup]>.admin-form-section-heading{padding:0;border:0}
 .admin-form-section[data-admin-section=subgroup]>.admin-form-section-body{padding-bottom:0}
+/* Open groups use spacing so the fixed editor header and footer own the dividers. */
+[data-admin-section-stack="open"]{container:admin-form-sections / inline-size;min-inline-size:0;margin:0;padding:0;border:0}
+[data-admin-section-stack="open"]>.admin-form-section+.admin-form-section{padding-top:24px;margin:0}
+@container admin-form-sections (min-width:568px){
+  [data-admin-section-stack="open"]>.admin-form-section>.admin-form-section-body{padding-inline-start:8px}
+}
 .admin-form-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
 .admin-form-actions>button{min-height:40px;border-radius:10px;font-size:14px;line-height:1.5}
 .admin-form-feedback{margin:0;padding:10px 12px;border:1px solid var(--af-border,var(--admin-border));border-radius:10px;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
@@ -36,10 +48,6 @@
 .admin-editor-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding:16px;padding:var(--admin-editor-padding)}
 .admin-editor-footer{flex:none;padding:12px var(--admin-editor-padding);border-top:1px solid var(--af-border);background:var(--af-surface)}
 .admin-editor-form{height:100%;max-height:inherit;margin:0}
-/* Existing modal lifecycles and parent-owned close/discard logic remain unchanged. */
-.access-panel.admin-editor-layout{padding:0;gap:0;overflow:hidden}
-.access-panel.admin-editor-layout>.admin-editor-heading{margin:0;position:static}
-.access-panel.admin-editor-layout>.admin-editor-footer{position:static;bottom:auto;margin:0}
 .admin-editor-layout .admin-editor-body .access-languages{gap:12px 16px}
 .admin-editor-layout .admin-editor-body .access-permission{padding-top:12px}
 .admin-editor-layout .admin-editor-body .access-impact{margin:0}
@@ -57,11 +65,25 @@
 .admin-editor-body .admin-form-section-body>:is(.space-y-3,.space-y-4)>*{margin-top:0;margin-bottom:0}
 .admin-form-feedback .crm-save-feedback{margin:0}
 /* Module styles load lazily: give the opt-in layout explicit precedence. */
-.access-panel.admin-editor-layout{display:flex}
 .ai-service-grid>.admin-form-section+.admin-form-section{margin-top:0}
 [data-admin-form] .admin-editor-body input[aria-label]:not([type=file]):not([type=checkbox]):not([type=radio]){min-height:40px;font-size:14px;line-height:1.6}
 .admin-form-guide h3{margin:0 0 4px;font-size:14px;font-weight:600;line-height:1.6}
 .admin-form-guide p{margin:0;font-size:14px;line-height:1.6}
 fieldset.admin-editor-body{border:0;margin:0;min-inline-size:0}
-.cms-delete-body{font-size:14px;line-height:1.6}
-.cms-delete-body>p{margin:0;font-size:14px;line-height:1.6}
+
+[data-admin-form] .admin-static-field-value {
+  display:flex;
+  align-items:center;
+  min-block-size:40px;
+  min-inline-size:0;
+  margin:0;
+  padding:8px 12px;
+  border:1px solid var(--af-border);
+  border-radius:10px;
+  background:var(--af-soft);
+  color:var(--af-muted);
+  font-size:14px;
+  font-weight:400;
+  line-height:1.6;
+  overflow-wrap:anywhere;
+}

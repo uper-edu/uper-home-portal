@@ -1,4 +1,5 @@
 import {enrollCourse} from './courseCatalog.ts';
+import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
 import {auditLog} from './audit.ts';
 import {randomUUID} from 'node:crypto';
 import {restoreMistakenFulfilment} from './agreementRestore.ts';
@@ -204,7 +205,7 @@ export function mountTrustRoutes(
   );
   app.get('/api/crm/leads/:id/stage-context',wrap(async(req:any,res:any)=>{
     const {l}=await leadAccess(req,'crm.read');const {pool}=await import('./store.ts');
-    res.set('Cache-Control','no-store').json({leadId:l.id,...await salesProgressContext(pool,l.id,l.profile)});
+    res.set('Cache-Control','no-store').json({leadId:l.id,assistedEnrollmentAvailable:enrollmentServicePolicy().servicing,...await salesProgressContext(pool,l.id,l.profile)});
   }));
   app.post('/api/crm/leads/:id/agreement-restore',wrap(async(req:any,res:any)=>{const {l,e}=await leadAccess(req,'crm.followup');const {tx}=await import('./store.ts');res.json(await tx((c:any)=>restoreMistakenFulfilment(c,l.id,e.id,req.body,(p:any)=>requestAllowed(e,p,req))));}));
   app.post('/api/crm/leads/:id/enrollment-void',wrap(async(req:any,res:any)=>{
@@ -217,6 +218,8 @@ export function mountTrustRoutes(
       await lockIdentityRegistry(c);
       const current=await lockLead(c,l.id,(p:any)=>requestAllowed(e,p,req));
       return operation(c,e.id,req.body,{leadId:l.id,kind:'stage'},async()=>{
+        if(req.body.newStage==='progress:enrolled'&&enrollmentServicePolicy().servicing)
+          invalid('enrollment_assistance_required',409);
         const decision=await validateSalesProgress(c,l.id,current,req.body);
         if(req.body.newStage===current.currentStage)invalid('阶段没有变化，请勿重复保存');
         const stageFactId=randomUUID();

@@ -1,4 +1,16 @@
 {
+  "The current campaign is outside these filters. Its details and draft stay open.": [
+    "Kampanye ini di luar hasil filter. Detail dan draf tetap terbuka.",
+    "当前活动不在筛选结果中，详情及草稿仍保留。"
+  ],
+  "Campaign actions": [
+    "Tindakan kampanye",
+    "活动操作"
+  ],
+  "Back to campaign details": [
+    "Kembali ke detail kampanye",
+    "返回活动详情"
+  ],
   "Address": [
     "Alamat",
     "地址"
@@ -1743,6 +1755,12 @@
   "Opens Link Hub. Visitors can choose online consultation, the handbook, or the community.": ["Membuka Link Hub. Pengunjung dapat memilih konsultasi daring, buku panduan, atau komunitas.", "打开链接导航页，访客可选择在线咨询、手册或社群。"],
   "Opens the UPER homepage. Visitors can browse the site or choose an online consultation.": ["Membuka beranda UPER. Pengunjung dapat menjelajahi situs atau memilih konsultasi daring.", "打开 UPER 官网首页，访客可以浏览网站或进入在线咨询。"],
   "Opens the HSK page for course and exam information.": ["Membuka halaman HSK untuk informasi kursus dan ujian.", "打开 HSK 专页，查看课程和考试信息。"],
+  "Opens course enrollment for class schedules, fees, and applications.": ["Membuka halaman pendaftaran untuk melihat jadwal, biaya, dan mengajukan pendaftaran.", "打开课程报名页，查看班次和学费并申请报名。"],
+  "Course enrollment by promotion link": ["Pendaftaran kursus menurut tautan promosi", "按推广链接统计课程报名"],
+  "Saved course records": ["Catatan kursus tersimpan", "已保存业务记录"],
+  "Seats reserved": ["Kursi diberikan", "已获席订单"],
+  "Enrollments confirmed after full payment": ["Pendaftaran terkonfirmasi setelah pelunasan", "核实足额到账后报名成功"],
+  "Saved records include course preferences, waitlists, and applications with a seat. Counts are cumulative.": ["Catatan mencakup preferensi kursus, daftar tunggu, dan permohonan yang mendapat kursi. Jumlah ditampilkan secara kumulatif.", "业务记录包括选课需求、候补和已获席申请，表中数字均为累计。"],
   "Opens the CSCA page for assessment and preparation information.": ["Membuka halaman CSCA untuk informasi asesmen dan persiapan.", "打开 CSCA 专页，查看考试与备考信息。"],
   "Opens the study abroad advisory page.": ["Membuka halaman konsultasi studi ke luar negeri.", "打开留学咨询服务页。"],
   "Opens the study tours page for programme information.": ["Membuka halaman program tur studi.", "打开研学游页面，查看项目信息。"],

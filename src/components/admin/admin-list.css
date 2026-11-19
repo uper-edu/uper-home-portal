@@ -1,0 +1,46 @@
+.crm-list-table{overflow:auto;min-width:0;border:1px solid var(--admin-border);border-radius:14px;background:var(--admin-surface);color:var(--admin-text)}
+.crm-list-table table{width:100%;min-width:var(--admin-list-table-min,720px);border-collapse:collapse;font-size:14px;line-height:1.5;text-align:start}
+.crm-list-table :is(th,td){padding:10px 14px;text-align:start;border-bottom:1px solid var(--admin-border);vertical-align:middle}
+.crm-list-table th{height:42px;font-size:13px;font-weight:600;color:var(--admin-muted);white-space:nowrap;background:var(--admin-bg,var(--admin-surface))}
+.crm-list-table td{height:56px}
+.crm-list-table tr:last-child td{border-bottom:0}
+.crm-list-table :is(small,.crm-list-secondary){display:block;margin-top:3px;font-size:12px;font-weight:400;color:var(--admin-muted)}
+.crm-list-table :is(th,td).crm-list-number{text-align:end;white-space:nowrap;font-variant-numeric:tabular-nums}
+.crm-list-table .crm-payment-status[data-tone=danger]{color:var(--admin-danger);background:var(--admin-danger-bg);border-color:var(--admin-danger-border)}
+
+.crm-list-table .admin-row-action:focus-visible,.crm-list-table .admin-record-entry:focus-visible,.crm-list-table [tabindex]:focus-visible {
+  outline: 2px solid var(--admin-focus);
+  outline-offset: 2px;
+}
+.admin-list-state {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  min-height: 72px;
+  padding: 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+.admin-list-state p { margin: 0; }
+.admin-list-state[data-compact] { position: fixed; z-index: 60; right: 24px; bottom: 24px; max-width: min(500px,calc(100vw - 48px)); min-height: 44px; padding: 6px 12px; box-shadow: 0 8px 24px rgb(15 23 42 / 15%); }
+.admin-list-state[data-list-state=loading] { color: var(--admin-info); }
+.admin-list-state[data-list-state=error] {
+  color: var(--admin-danger);
+  background: var(--admin-danger-bg);
+  border-color: var(--admin-danger-border);
+}
+.admin-list-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; font-size: 13px; color: var(--admin-muted); }
+.admin-list-pagination > div { display: flex; gap: 8px; }
+.admin-list-pagination .admin-list-page-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.admin-list-control { min-height: 40px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-action); font-size: 14px; }
+.admin-list-control:not(:disabled):hover { background: var(--admin-selected); }
+.admin-list-control:disabled { color: var(--admin-muted); opacity: .6; }
+.admin-list-control:focus-visible { outline: 2px solid var(--admin-focus); outline-offset: 2px; }
+@media(max-width:600px) { .admin-list-control { min-height: 44px; } }
+
+/* Apply paired theme colors together. */
+.crm-list-table,.admin-list-state,.admin-list-control { transition: none; }

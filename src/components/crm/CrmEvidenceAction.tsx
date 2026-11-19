@@ -1,5 +1,5 @@
 import { useCrmUiText } from "./CrmUiLanguage";
-import { useId, useState } from "react";
+import { useId, useState, type MouseEventHandler } from "react";
 import { FileSearch, MessageSquareText, NotebookText, ChevronDown, ArrowRight, CornerDownRight } from "lucide-react";
 /** Compact source navigation; business callbacks and permissions stay with the caller. */
 export function CrmEvidenceAction({
@@ -10,12 +10,14 @@ export function CrmEvidenceAction({
   controls,
   label: customLabel,
   behavior,
+  id: buttonId,
 }: {
+  id?:string;
   label?: string;
   behavior?: "expand" | "locate" | "open";
   kind?: "evidence" | "conversation" | "record";
   description: string;
-  onClick: () => void;
+  onClick: MouseEventHandler<HTMLButtonElement>;
   expanded?: boolean;
   controls?: string;
 }) {
@@ -40,6 +42,7 @@ export function CrmEvidenceAction({
     >
       <button
         type="button"
+        id={buttonId}
         className="crm-evidence-action-button"
         data-evidence-behavior={mode}
         aria-label={description}

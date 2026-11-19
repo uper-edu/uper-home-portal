@@ -31,10 +31,36 @@ export async function getCurrentCampaigns(employee?: any) {
   if (review.status === 'linked') profile.attributionCampaignId = review.campaign_id;
  }
  const resolved = profiles.filter((profile: any) => campaigns.filter(campaign => matchesCampaign(profile, campaign)).length <= 1);
+ const visibleCustomers=new Set<string>(profiles.map((profile:any)=>profile.id));
+ const journeyRows=(await pool.query(`SELECT a.attribution->>'$.campaignId' AS campaign_id,
+   a.attribution->>'$.promotionId' AS promotion_id,
+   COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id) AS customer_id,
+   COUNT(*) AS submitted,SUM(a.kind='order') AS seats,
+   SUM(a.kind='order' AND (EXISTS(SELECT 1 FROM enrollment_notification_receipts n
+     WHERE n.subject_id=a.record_id AND n.channel='email' AND n.kind IN ('payment_confirmed','payment_and_opening'))
+     OR EXISTS(SELECT 1 FROM enrollment_transfers t WHERE t.order_id=a.record_id))) AS confirmed
+   FROM enrollment_record_attribution a
+   JOIN enrollment_customer_records r ON r.kind=a.kind AND r.record_id=a.record_id
+   JOIN portal_leads l ON l.id=r.lead_id
+   WHERE JSON_EXTRACT(a.attribution,'$.verified')=true
+   GROUP BY campaign_id,promotion_id,customer_id`)).rows;
+ const enrollmentByCampaign=new Map<string,Map<string,{submitted:number;seats:number;confirmed:number}>>();
+ for(const row of journeyRows){
+  if(!visibleCustomers.has(row.customer_id))continue;
+  const links=enrollmentByCampaign.get(row.campaign_id)??new Map();
+  const totals=links.get(row.promotion_id)??{submitted:0,seats:0,confirmed:0};
+  totals.submitted+=Number(row.submitted);
+  totals.seats+=Number(row.seats);
+  totals.confirmed+=Number(row.confirmed);
+  links.set(row.promotion_id,totals);
+  enrollmentByCampaign.set(row.campaign_id,links);
+ }
  return campaigns.map(campaign => ({
   ...attachPromotionShortCodes(campaign,shortCodes),
   stats: {...campaign.stats, ...campaignMetrics(resolved, campaign), roi:null},
-  promotionResults: campaignPromotionResults(resolved, campaign),
+  promotionResults: campaignPromotionResults(resolved, campaign).map(row=>({
+   ...row,enrollmentJourney:enrollmentByCampaign.get(campaign.id)?.get(row.key),
+  })),
  }));
 }
 type CampaignSaveOperation = { kind: "create" } | { kind: "update"; id: string };

@@ -1,3 +1,14 @@
+import type {CrmLanguage} from './crmLanguage';
+
+const paymentWorkspaceLabels={
+  enrollment:['报名订单核款','Enrollment order verification','Verifikasi pembayaran pesanan pendaftaran'],
+  historical:['历史客户款项','Historical customer payments','Riwayat pembayaran pelanggan'],
+} as const;
+
+export function paymentWorkspaceLabel(view:keyof typeof paymentWorkspaceLabels,lang:CrmLanguage){
+  return paymentWorkspaceLabels[view][lang==='zh'?0:lang==='id'?2:1];
+}
+
 import type {PaymentEntry} from './crmPayments';
 
 export function paymentStateTone(state:string){

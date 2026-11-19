@@ -17,6 +17,12 @@
       "server/portal/campaignPromotion.ts"
     ]
   },
+  "DELETE FROM crm_courses WHERE id=:p1": {
+    "sql": "DELETE FROM crm_courses WHERE id=:p1",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2": {
     "sql": "DELETE FROM crm_payment_references WHERE lead_id IN (:p1) AND entry_id=:p2",
     "sources": [
@@ -54,10 +60,34 @@
       "server/portal/localAuth.ts"
     ]
   },
+  "DELETE FROM enrollment_classes WHERE id=:p1": {
+    "sql": "DELETE FROM enrollment_classes WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "DELETE FROM enrollment_email_challenges WHERE email=:p1": {
+    "sql": "DELETE FROM enrollment_email_challenges WHERE email=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "DELETE FROM enrollment_email_sessions WHERE email=:p1": {
+    "sql": "DELETE FROM enrollment_email_sessions WHERE email=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "DELETE FROM portal_settings WHERE id LIKE 'lark_oauth:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.expiresAt'))<:p1": {
     "sql": "DELETE FROM portal_settings WHERE id LIKE 'lark_oauth:%' AND JSON_UNQUOTE(JSON_EXTRACT(value,'$.expiresAt'))<:p1",
     "sources": [
       "server/portal/larkSelfService.ts"
+    ]
+  },
+  "DELETE FROM portal_settings WHERE id=:p1": {
+    "sql": "DELETE FROM portal_settings WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
     ]
   },
   "DELETE FROM trial_campaigns WHERE id=:p1": {
@@ -88,7 +118,8 @@
     "sql": "INSERT INTO access_operations(actor_id,operation_id,action,fingerprint,result) VALUES(:p1,:p2,:p3,:p4,:p5)",
     "sources": [
       "server/portal/accessOperations.ts",
-      "server/portal/accessRecovery.ts"
+      "server/portal/accessRecovery.ts",
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "INSERT INTO access_roles(id,config,enabled) VALUES(:p1,:p2,:p3)": {
@@ -274,8 +305,8 @@
       "server/portal/trustWorkflow.ts"
     ]
   },
-  "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)": {
-    "sql": "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8)",
+  "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id,occurred_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9)": {
+    "sql": "INSERT INTO crm_payment_analytics(id,environment,project_id,source_entry_id,kind,sequence_no,amount,course_id,occurred_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9)",
     "sources": [
       "server/portal/paymentAnalytics.ts"
     ]
@@ -320,6 +351,187 @@
     "sql": "INSERT INTO crm_users(id,login_id,display_name,password_hash,roles,teams) VALUES(:p1,:p1,:p1,:p2,:p3,:p4) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,\n          actor,email,data,expires_at,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,\n          actor,email,data,expires_at,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id": {
+    "sql": "INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts",
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO enrollment_classes (course_id,revision,state,first_lesson_at,enrollment_closes_at,data,id,updated_at) VALUES (:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_classes (course_id,revision,state,first_lesson_at,enrollment_closes_at,data,id,updated_at) VALUES (:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)\n        VALUES('order',:p1,:p2,:p3,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)\n        VALUES('order',:p1,:p2,:p3,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)\n    VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE opportunity_id=:p4": {
+    "sql": "INSERT INTO enrollment_customer_records(kind,record_id,lead_id,opportunity_id,created_at)\n    VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE opportunity_id=:p4",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "INSERT INTO enrollment_email_challenges(email,challenge_id,digest,expires_at,resend_at)\n        VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE email=email": {
+    "sql": "INSERT INTO enrollment_email_challenges(email,challenge_id,digest,expires_at,resend_at)\n        VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE email=email",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))": {
+    "sql": "INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)\n      VALUES('vacancy',:p1,:p2,:p3,UTC_TIMESTAMP(6))\n      ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at": {
+    "sql": "INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)\n      VALUES('vacancy',:p1,:p2,:p3,UTC_TIMESTAMP(6))\n      ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)\n    VALUES('match',:p1,:p2,0,UTC_TIMESTAMP(6))\n    ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at": {
+    "sql": "INSERT INTO enrollment_interest_events(kind,interest_id,class_id,cycle,created_at)\n    VALUES('match',:p1,:p2,0,UTC_TIMESTAMP(6))\n    ON DUPLICATE KEY UPDATE created_at=enrollment_interest_events.created_at",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "INSERT INTO enrollment_mail_attempts(id,environment,event_key,account,recipient,day_key,month_key,started_ms,is_external,pool_id,state)\n      VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,:p10,'reserved')": {
+    "sql": "INSERT INTO enrollment_mail_attempts(id,environment,event_key,account,recipient,day_key,month_key,started_ms,is_external,pool_id,state)\n      VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,:p10,'reserved')",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO enrollment_mail_bindings(environment,recipient,account)\n        VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE account=account": {
+    "sql": "INSERT INTO enrollment_mail_bindings(environment,recipient,account)\n        VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE account=account",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO enrollment_mail_configuration(environment,revision,config)\n    VALUES(:p1,0,:p2) ON DUPLICATE KEY UPDATE environment=environment": {
+    "sql": "INSERT INTO enrollment_mail_configuration(environment,revision,config)\n    VALUES(:p1,0,:p2) ON DUPLICATE KEY UPDATE environment=environment",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n            VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n            VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key": {
+    "sql": "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key",
+    "sources": [
+      "server/portal/enrollmentNotices.ts"
+    ]
+  },
+  "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,'email','assistance_confirmation',:p2,:p3,:p4,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)\n    VALUES(:p1,'email','assistance_confirmation',:p2,:p3,:p4,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentNotices.ts"
+    ]
+  },
+  "INSERT INTO enrollment_opportunities(id,lead_id,level,created_at)\n        VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_opportunities(id,lead_id,level,created_at)\n        VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "INSERT INTO enrollment_opportunities(id,lead_id,level,sales_stage,created_at)\n          VALUES(:p1,:p2,:p3,'progress:unreached',UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_opportunities(id,lead_id,level,sales_stage,created_at)\n          VALUES(:p1,:p2,:p3,'progress:unreached',UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)": {
+    "sql": "INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)\n      VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_payment_credits(id,receipt_reference,source_order_id,target_order_id,amount,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_payment_credits(id,receipt_reference,source_order_id,target_order_id,amount,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)\n        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)\n        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,receiving_account,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,receiving_account,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO enrollment_record_attribution(kind,record_id,attribution)\n    VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE record_id=record_id": {
+    "sql": "INSERT INTO enrollment_record_attribution(kind,record_id,attribution)\n    VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE record_id=record_id",
+    "sources": [
+      "server/portal/enrollmentAttribution.ts"
+    ]
+  },
+  "INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,timing,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_refund_cases(order_id,class_id,actor,reason,delivered_sessions,expected,timing,created_at)\n        VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO enrollment_refund_returns(reference,refund_reference,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_refund_returns(reference,refund_reference,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO enrollment_transfer_invitations\n    (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)\n    SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)), e.enrollment_closes_at,\n      DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR),UTC_TIMESTAMP(6)\n    FROM enrollment_classes e WHERE e.id=:p5 AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)": {
+    "sql": "INSERT INTO enrollment_transfer_invitations\n    (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)\n    SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)), e.enrollment_closes_at,\n      DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR),UTC_TIMESTAMP(6)\n    FROM enrollment_classes e WHERE e.id=:p5 AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/enrollmentTransferOffers.ts"
+    ]
+  },
+  "INSERT INTO enrollment_transfers(id,order_id,source_class_id,target_class_id,invitation_id,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_transfers(id,order_id,source_class_id,target_class_id,invitation_id,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO enrollment_vacancy_cycles(class_id,is_full,cycle) VALUES(:p1,:p2,0)": {
+    "sql": "INSERT INTO enrollment_vacancy_cycles(class_id,is_full,cycle) VALUES(:p1,:p2,0)",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "INSERT INTO enrollment_waitlist(id,class_id,email,phone,learner_name,state,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,'waiting',UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO enrollment_waitlist(id,class_id,email,phone,learner_name,state,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,'waiting',UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "INSERT INTO followup_tasks(id,lead_id,kind,owner_id,due_at": {
@@ -492,6 +704,24 @@
       "server/portal/salesWorkflow.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.configured',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.configured',:p2)",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.pool_selected',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.pool_selected',:p2)",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.reassigned',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.reassigned',:p2)",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.handover.required',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.handover.required',:p2)",
     "sources": [
@@ -576,10 +806,82 @@
       "server/portal/agreementRestore.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.delete',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.delete',:p2)",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'course.save',:p2)",
     "sources": [
       "server/portal/courseCatalog.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.bank.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.bank.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.cancel',:p2)",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.delete',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.delete',:p2)",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.class.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.end',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.end',:p2)",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.insert',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.order.insert',:p2)",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.priority.enable',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.priority.enable',:p2)",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.record.email.change',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.record.email.change',:p2)",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.rules.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.rules.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.delete',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.delete',:p2)",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.save',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.template.save',:p2)",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'enrollment.void',:p2)": {
@@ -628,6 +930,12 @@
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(?,'cms.upload',?)",
     "sources": [
       "cloud/mysql/cms-media-upload.mjs"
+    ]
+  },
+  "INSERT INTO portal_audit(actor,action,data) VALUES('learner','enrollment.order.cancel',:p1)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES('learner','enrollment.order.cancel',:p1)",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
     ]
   },
   "INSERT INTO portal_audit(actor,action,data) VALUES('migration','channel.mapping',:p1)": {
@@ -687,6 +995,7 @@
   "INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)": {
     "sql": "INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)",
     "sources": [
+      "server/portal/enrollmentCrm.ts",
       "server/portal/runtime.ts",
       "cloud/mysql/site.mjs",
       "scripts/portal-migrate.ts"
@@ -695,13 +1004,21 @@
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
+      "server/portal/enrollmentCatalog.ts",
       "server/portal/larkChannelModes.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
     "sources": [
+      "server/portal/enrollmentTemplates.ts",
       "server/portal/larkSelfService.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES(:p1,JSON_OBJECT('startedAt',DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f'))) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,JSON_OBJECT('startedAt',DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f'))) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/paymentAnalyticsDispatch.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)": {
@@ -721,6 +1038,24 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES('crm_policy',:p1) ON DUPLICATE KEY UPDATE value=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('enrollment_bank',:p1) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('enrollment_bank',:p1) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('enrollment_batch_lock',JSON_OBJECT()) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('enrollment_batch_lock',JSON_OBJECT()) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES('enrollment_rules',:p1) ON DUPLICATE KEY UPDATE id=id",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id": {
@@ -813,6 +1148,30 @@
       "scripts/portal-migrate.ts"
     ]
   },
+  "INSERT INTO visitor_sessions(id,lead_id,expires_at) VALUES(:p1,:p2,UTC_TIMESTAMP(6))": {
+    "sql": "INSERT INTO visitor_sessions(id,lead_id,expires_at) VALUES(:p1,:p2,UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT\n    (SELECT COUNT(DISTINCT subject_id) FROM enrollment_notification_receipts WHERE channel='email'\n      AND kind IN ('payment_confirmed','payment_and_opening') AND recorded_at>=:p1 AND recorded_at<:p2) AS enrolled,\n    (SELECT COUNT(*) FROM enrollment_class_openings WHERE opened_at>=:p1 AND opened_at<:p2) AS opened,\n    (SELECT COALESCE(SUM(amount),0) FROM enrollment_receipts WHERE created_at>=:p1 AND created_at<:p2) AS received,\n    (SELECT COALESCE(SUM(amount),0) FROM enrollment_refund_payments WHERE created_at>=:p1 AND created_at<:p2) AS refunded": {
+    "sql": "SELECT\n    (SELECT COUNT(DISTINCT subject_id) FROM enrollment_notification_receipts WHERE channel='email'\n      AND kind IN ('payment_confirmed','payment_and_opening') AND recorded_at>=:p1 AND recorded_at<:p2) AS enrolled,\n    (SELECT COUNT(*) FROM enrollment_class_openings WHERE opened_at>=:p1 AND opened_at<:p2) AS opened,\n    (SELECT COALESCE(SUM(amount),0) FROM enrollment_receipts WHERE created_at>=:p1 AND created_at<:p2) AS received,\n    (SELECT COALESCE(SUM(amount),0) FROM enrollment_refund_payments WHERE created_at>=:p1 AND created_at<:p2) AS refunded",
+    "sources": [
+      "server/portal/enrollmentWeekly.ts"
+    ]
+  },
+  "SELECT\n    SUM(state IN ('paid','recovered')) AS paid,\n    COALESCE(SUM(received),0) AS received,\n    SUM(received=0 AND state='awaiting_payment' AND payment_due_at>=UTC_TIMESTAMP(6)) AS waiting,\n    DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f') AS cutoff\n    FROM enrollment_orders o WHERE class_id=:p1 AND state NOT IN ('refunding','refunded')": {
+    "sql": "SELECT\n    SUM(state IN ('paid','recovered')) AS paid,\n    COALESCE(SUM(received),0) AS received,\n    SUM(received=0 AND state='awaiting_payment' AND payment_due_at>=UTC_TIMESTAMP(6)) AS waiting,\n    DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f') AS cutoff\n    FROM enrollment_orders o WHERE class_id=:p1 AND state NOT IN ('refunding','refunded')",
+    "sources": [
+      "server/portal/enrollmentNotices.ts"
+    ]
+  },
+  "SELECT (SELECT COUNT(*) FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded'))\n    + (SELECT COUNT(*) FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n      WHERE i.target_class_id=:p1 AND i.state='offered'\n        AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)) AS count": {
+    "sql": "SELECT (SELECT COUNT(*) FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded'))\n    + (SELECT COUNT(*) FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n      WHERE i.target_class_id=:p1 AND i.state='offered'\n        AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)) AS count",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
   "SELECT * FROM access_handovers ORDER BY created_at DESC": {
     "sql": "SELECT * FROM access_handovers ORDER BY created_at DESC",
     "sources": [
@@ -835,7 +1194,8 @@
     "sql": "SELECT * FROM access_operations WHERE actor_id=:p1 AND operation_id=:p2",
     "sources": [
       "server/portal/accessOperations.ts",
-      "server/portal/accessRecovery.ts"
+      "server/portal/accessRecovery.ts",
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT * FROM access_roles": {
@@ -1065,6 +1425,36 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "SELECT * FROM enrollment_opportunities WHERE id=:p1": {
+    "sql": "SELECT * FROM enrollment_opportunities WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT * FROM enrollment_opportunities WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT * FROM enrollment_opportunities WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT * FROM enrollment_orders WHERE class_id=:p1 AND email=:p2\n    AND state NOT IN ('expired','ended','refunding','refunded') ORDER BY created_at,id": {
+    "sql": "SELECT * FROM enrollment_orders WHERE class_id=:p1 AND email=:p2\n    AND state NOT IN ('expired','ended','refunding','refunded') ORDER BY created_at,id",
+    "sources": [
+      "server/portal/enrollmentLearners.ts"
+    ]
+  },
+  "SELECT * FROM enrollment_orders WHERE email=:p1 AND request_id=:p2": {
+    "sql": "SELECT * FROM enrollment_orders WHERE email=:p1 AND request_id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT * FROM enrollment_orders WHERE id=:p1": {
+    "sql": "SELECT * FROM enrollment_orders WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT * FROM followup_tasks t WHERE kind='consultation' AND status='open' AND due_at<:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE SKIP LOCKED": {
     "sql": "SELECT * FROM followup_tasks t WHERE kind='consultation' AND status='open' AND due_at<:p1 AND NOT EXISTS(SELECT 1 FROM notification_migration_holds h WHERE h.kind='task' AND h.id=t.id) FOR UPDATE SKIP LOCKED",
     "sources": [
@@ -1276,6 +1666,24 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE": {
+    "sql": "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active,\n    DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt\n    FROM enrollment_assisted_applications WHERE token_digest=:p1 OR id=:p2": {
+    "sql": "SELECT *,expires_at>UTC_TIMESTAMP(6) AS active,\n    DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt\n    FROM enrollment_assisted_applications WHERE token_digest=:p1 OR id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT *,payment_due_at>=UTC_TIMESTAMP(6) AS before_due,\n    upload_expires_at>=UTC_TIMESTAMP(6) AS upload_active FROM enrollment_orders WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT *,payment_due_at>=UTC_TIMESTAMP(6) AS before_due,\n    upload_expires_at>=UTC_TIMESTAMP(6) AS upload_active FROM enrollment_orders WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1) FOR UPDATE": {
     "sql": "SELECT `key`,failures FROM crm_login_limits WHERE `key` IN (:p1) FOR UPDATE",
     "sources": [
@@ -1295,10 +1703,23 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1": {
+    "sql": "SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts",
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
   "SELECT a.activity_at,a.event_type,a.source FROM (\n          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' AND TRIM(m.content)<>''\n          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1": {
     "sql": "SELECT a.activity_at,a.event_type,a.source FROM (\n          SELECT m.created_at AS activity_at,m.id AS activity_id,'conversation.updated' AS event_type,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' AND TRIM(m.content)<>''\n          UNION ALL SELECT o.created_at,o.id,o.type,o.payload->>'$.source' FROM outbox o WHERE o.lead_id=:p1 AND o.type IN ('lead.created','assessment.completed','conversation.reactivated','handoff.requested','booking.requested','enrollment.requested')\n        ) a WHERE a.activity_at<=COALESCE(STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ'),UTC_TIMESTAMP(6)) ORDER BY a.activity_at DESC,a.activity_id DESC LIMIT 1",
     "sources": [
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT a.attribution->>'$.campaignId' AS campaign_id,\n   a.attribution->>'$.promotionId' AS promotion_id,\n   COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id) AS customer_id,\n   COUNT(*) AS submitted,SUM(a.kind='order') AS seats,\n   SUM(a.kind='order' AND (EXISTS(SELECT 1 FROM enrollment_notification_receipts n\n     WHERE n.subject_id=a.record_id AND n.channel='email' AND n.kind IN ('payment_confirmed','payment_and_opening'))\n     OR EXISTS(SELECT 1 FROM enrollment_transfers t WHERE t.order_id=a.record_id))) AS confirmed\n   FROM enrollment_record_attribution a\n   JOIN enrollment_customer_records r ON r.kind=a.kind AND r.record_id=a.record_id\n   JOIN portal_leads l ON l.id=r.lead_id\n   WHERE JSON_EXTRACT(a.attribution,'$.verified')=true\n   GROUP BY campaign_id,promotion_id,customer_id": {
+    "sql": "SELECT a.attribution->>'$.campaignId' AS campaign_id,\n   a.attribution->>'$.promotionId' AS promotion_id,\n   COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id) AS customer_id,\n   COUNT(*) AS submitted,SUM(a.kind='order') AS seats,\n   SUM(a.kind='order' AND (EXISTS(SELECT 1 FROM enrollment_notification_receipts n\n     WHERE n.subject_id=a.record_id AND n.channel='email' AND n.kind IN ('payment_confirmed','payment_and_opening'))\n     OR EXISTS(SELECT 1 FROM enrollment_transfers t WHERE t.order_id=a.record_id))) AS confirmed\n   FROM enrollment_record_attribution a\n   JOIN enrollment_customer_records r ON r.kind=a.kind AND r.record_id=a.record_id\n   JOIN portal_leads l ON l.id=r.lead_id\n   WHERE JSON_EXTRACT(a.attribution,'$.verified')=true\n   GROUP BY campaign_id,promotion_id,customer_id",
+    "sources": [
+      "server/portal/mysqlCampaignStorage.ts"
     ]
   },
   "SELECT a.model,a.error,a.created_at,m.model AS final_model FROM ai_attempts a LEFT JOIN messages m ON m.id=a.message_id ORDER BY a.created_at DESC LIMIT 12": {
@@ -1307,16 +1728,52 @@
       "server/portal/aiServiceConfig.ts"
     ]
   },
+  "SELECT account FROM enrollment_mail_bindings WHERE environment=:p1 AND recipient=:p2": {
+    "sql": "SELECT account FROM enrollment_mail_bindings WHERE environment=:p1 AND recipient=:p2",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT account,\n    SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,recipient,NULL)) AS external,\n    COUNT(*) AS monthly,MAX(day_key=:p2 AND recipient=:p4) AS seen\n    FROM enrollment_mail_attempts WHERE environment=:p1 AND month_key=:p3 AND state<>'rejected'\n    GROUP BY account": {
+    "sql": "SELECT account,\n    SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,recipient,NULL)) AS external,\n    COUNT(*) AS monthly,MAX(day_key=:p2 AND recipient=:p4) AS seen\n    FROM enrollment_mail_attempts WHERE environment=:p1 AND month_key=:p3 AND state<>'rejected'\n    GROUP BY account",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT account,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2 GROUP BY account": {
+    "sql": "SELECT account,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2 GROUP BY account",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT actor,data,created_at FROM portal_audit WHERE action='campaign.promotion.review' AND JSON_CONTAINS(:p1,JSON_QUOTE(JSON_UNQUOTE(JSON_EXTRACT(data,'$.leadId')))) ORDER BY id DESC": {
     "sql": "SELECT actor,data,created_at FROM portal_audit WHERE action='campaign.promotion.review' AND JSON_CONTAINS(:p1,JSON_QUOTE(JSON_UNQUOTE(JSON_EXTRACT(data,'$.leadId')))) ORDER BY id DESC",
     "sources": [
       "server/portal/promotionReviews.ts"
     ]
   },
+  "SELECT amount,settled_at AS settledAt FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference": {
+    "sql": "SELECT amount,settled_at AS settledAt FROM enrollment_receipts\n        WHERE order_id=:p1 ORDER BY settled_at,reference",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
   "SELECT attachment FROM site_submissions WHERE id=? AND kind='application'": {
     "sql": "SELECT attachment FROM site_submissions WHERE id=? AND kind='application'",
     "sources": [
       "cloud/mysql/site.mjs"
+    ]
+  },
+  "SELECT attribution FROM enrollment_record_attribution WHERE kind=:p1 AND record_id=:p2": {
+    "sql": "SELECT attribution FROM enrollment_record_attribution WHERE kind=:p1 AND record_id=:p2",
+    "sources": [
+      "server/portal/enrollmentNotices.ts"
+    ]
+  },
+  "SELECT b.data,p.payload FROM enrollment_classes b\n          JOIN enrollment_notification_receipts p ON p.event_key=CONCAT('lark:class:',b.id) WHERE b.id=:p1": {
+    "sql": "SELECT b.data,p.payload FROM enrollment_classes b\n          JOIN enrollment_notification_receipts p ON p.event_key=CONCAT('lark:class:',b.id) WHERE b.id=:p1",
+    "sources": [
+      "server/portal/enrollmentCardTargets.ts"
     ]
   },
   "SELECT business_number FROM portal_leads WHERE id=:p1": {
@@ -1343,16 +1800,53 @@
       "server/portal/attribution.ts"
     ]
   },
+  "SELECT candidate_id FROM identity_candidates\n      WHERE lead_id=:p1 AND decision IN ('different','shared')": {
+    "sql": "SELECT candidate_id FROM identity_candidates\n      WHERE lead_id=:p1 AND decision IN ('different','shared')",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT candidate_id FROM identity_candidates WHERE lead_id=:p1 AND candidate_id<>:p2 AND decision='pending'": {
     "sql": "SELECT candidate_id FROM identity_candidates WHERE lead_id=:p1 AND candidate_id<>:p2 AND decision='pending'",
     "sources": [
       "server/portal/identityConsolidation.ts"
     ]
   },
+  "SELECT canonical.profile FROM enrollment_customer_records r\n      JOIN portal_leads l ON l.id=r.lead_id\n      JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id)\n      WHERE r.kind='order' AND r.record_id=:p1": {
+    "sql": "SELECT canonical.profile FROM enrollment_customer_records r\n      JOIN portal_leads l ON l.id=r.lead_id\n      JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id)\n      WHERE r.kind='order' AND r.record_id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1": {
+    "sql": "SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts",
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "SELECT class_id FROM enrollment_waitlist WHERE id=:p1 AND email=:p2": {
+    "sql": "SELECT class_id FROM enrollment_waitlist WHERE id=:p1 AND email=:p2",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
   "SELECT COALESCE(MAX(sequence_no),0) AS last_sequence FROM crm_payment_analytics WHERE environment=:p1 AND project_id=:p2": {
     "sql": "SELECT COALESCE(MAX(sequence_no),0) AS last_sequence FROM crm_payment_analytics WHERE environment=:p1 AND project_id=:p2",
     "sources": [
       "server/portal/paymentAnalytics.ts"
+    ]
+  },
+  "SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (\n      SELECT o.payment_due_at AS due,\n        EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,\n        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0)\n          +COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0) AS verified,\n        EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'\n          AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled\n      FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS\n        (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n        AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n          AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ) AS as_of_cutoff": {
+    "sql": "SELECT COALESCE(SUM(due>=:p1 AND has_proof=0 AND verified=0 AND cancelled=0),0) AS waiting FROM (\n      SELECT o.payment_due_at AS due,\n        EXISTS(SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id AND p.created_at<:p1) AS has_proof,\n        COALESCE((SELECT SUM(r.amount) FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at<:p1),0)\n          +COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0) AS verified,\n        EXISTS(SELECT 1 FROM portal_audit a WHERE a.action='enrollment.class.cancel'\n          AND a.data->>'$.classId'=o.class_id AND a.created_at<:p1) AS cancelled\n      FROM enrollment_orders o WHERE o.created_at<:p1 AND NOT EXISTS\n        (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n        AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n          AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ) AS as_of_cutoff",
+    "sources": [
+      "server/portal/enrollmentWeekly.ts"
+    ]
+  },
+  "SELECT COALESCE(SUM(r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n        WHERE a.receipt_reference=r.reference)),0) AS sum FROM enrollment_receipts r WHERE r.order_id=:p1 AND r.settled_at<=:p2": {
+    "sql": "SELECT COALESCE(SUM(r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n        WHERE a.receipt_reference=r.reference)),0) AS sum FROM enrollment_receipts r WHERE r.order_id=:p1 AND r.settled_at<=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
     ]
   },
   "SELECT code,config FROM trial_campaigns WHERE id=:p1 FOR UPDATE": {
@@ -1416,6 +1910,13 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')": {
+    "sql": "SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts",
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
   "SELECT COUNT(*) AS count FROM notification_jobs WHERE channel='lark' AND recipient=:p1 AND state IN ('accepted','simulated') AND COALESCE(completed_at,due_at)>CAST(:p2 AS DATETIME(6))-INTERVAL 1 hour": {
     "sql": "SELECT COUNT(*) AS count FROM notification_jobs WHERE channel='lark' AND recipient=:p1 AND state IN ('accepted','simulated') AND COALESCE(completed_at,due_at)>CAST(:p2 AS DATETIME(6))-INTERVAL 1 hour",
     "sources": [
@@ -1428,6 +1929,18 @@
       "server/portal/worker.ts"
     ]
   },
+  "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id=:p3 AND state<>'rejected'": {
+    "sql": "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id=:p3 AND state<>'rejected'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2": {
+    "sql": "SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT course_id,state FROM crm_payment_analytics WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT course_id,state FROM crm_payment_analytics WHERE id=:p1 FOR UPDATE",
     "sources": [
@@ -1438,6 +1951,18 @@
     "sql": "SELECT created_at,content FROM messages WHERE conversation_id=:p1 AND (id=:p2 OR request_id=:p2) AND role='user' ORDER BY created_at LIMIT 1",
     "sources": [
       "server/portal/followup.ts"
+    ]
+  },
+  "SELECT criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 AND state='active'": {
+    "sql": "SELECT criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 AND state='active'",
+    "sources": [
+      "server/portal/enrollmentInterestDelivery.ts"
+    ]
+  },
+  "SELECT d.id,d.email,d.criteria,d.revision FROM enrollment_demands d\n    WHERE d.state='active' AND NOT EXISTS (\n      SELECT 1 FROM enrollment_interest_events e\n      WHERE e.kind='match' AND e.interest_id=d.id AND e.class_id=:p1 AND e.cycle=0)\n    ORDER BY d.id": {
+    "sql": "SELECT d.id,d.email,d.criteria,d.revision FROM enrollment_demands d\n    WHERE d.state='active' AND NOT EXISTS (\n      SELECT 1 FROM enrollment_interest_events e\n      WHERE e.kind='match' AND e.interest_id=d.id AND e.class_id=:p1 AND e.cycle=0)\n    ORDER BY d.id",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "SELECT data FROM crm_facts WHERE id=:p1 FOR SHARE": {
@@ -1507,6 +2032,18 @@
       "server/portal/larkGroupChannelTest.ts"
     ]
   },
+  "SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1": {
+    "sql": "SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS replyBy FROM enrollment_transfer_invitations WHERE id=:p1": {
+    "sql": "SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS replyBy FROM enrollment_transfer_invitations WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentTransferOffers.ts"
+    ]
+  },
   "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff": {
     "sql": "SELECT DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%dT%H:%i:%s.%fZ') AS cutoff",
     "sources": [
@@ -1532,6 +2069,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT DISTINCT course_id FROM enrollment_classes": {
+    "sql": "SELECT DISTINCT course_id FROM enrollment_classes",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
   "SELECT DISTINCT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(payload,'$.source')),'null') value FROM outbox WHERE JSON_CONTAINS_PATH(payload,'one','$.\"source\"') UNION SELECT DISTINCT source value FROM conversations": {
     "sql": "SELECT DISTINCT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(payload,'$.source')),'null') value FROM outbox WHERE JSON_CONTAINS_PATH(payload,'one','$.\"source\"') UNION SELECT DISTINCT source value FROM conversations",
     "sources": [
@@ -1550,16 +2093,130 @@
       "server/portal/interactionTimeline.ts"
     ]
   },
+  "SELECT e.data,\n    (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6)))\n    + (SELECT COUNT(*) FROM enrollment_transfer_invitations t WHERE t.target_class_id=e.id AND t.state='offered'\n      AND t.expires_at>UTC_TIMESTAMP(6)) AS occupied\n    FROM enrollment_classes e JOIN crm_courses course ON course.id=e.course_id\n    WHERE e.id=:p1 AND e.state='published' AND JSON_EXTRACT(course.value,'$.active')=true\n      AND LEAST(e.enrollment_closes_at,DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)": {
+    "sql": "SELECT e.data,\n    (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6)))\n    + (SELECT COUNT(*) FROM enrollment_transfer_invitations t WHERE t.target_class_id=e.id AND t.state='offered'\n      AND t.expires_at>UTC_TIMESTAMP(6)) AS occupied\n    FROM enrollment_classes e JOIN crm_courses course ON course.id=e.course_id\n    WHERE e.id=:p1 AND e.state='published' AND JSON_EXTRACT(course.value,'$.active')=true\n      AND LEAST(e.enrollment_closes_at,DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/enrollmentInterestDelivery.ts"
+    ]
+  },
+  "SELECT e.id AS class_id FROM enrollment_classes e\n        LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id\n        WHERE (e.state='published' AND EXISTS (\n          SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id AND o.state='awaiting_payment' AND o.received=0\n            AND o.payment_due_at<UTC_TIMESTAMP(6) AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6))\n        )) OR ((v.is_full=TRUE OR e.state='cancelled'\n          OR LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6))\n          AND EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id AND w.state='waiting'))\n        ORDER BY e.id": {
+    "sql": "SELECT e.id AS class_id FROM enrollment_classes e\n        LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id\n        WHERE (e.state='published' AND EXISTS (\n          SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id AND o.state='awaiting_payment' AND o.received=0\n            AND o.payment_due_at<UTC_TIMESTAMP(6) AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6))\n        )) OR ((v.is_full=TRUE OR e.state='cancelled'\n          OR LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6))\n          AND EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id AND w.state='waiting'))\n        ORDER BY e.id",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id\n        WHERE e.id<>:p1 AND e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n          AND JSON_EXTRACT(c.value,'$.active')=true AND e.data->>'$.level'=:p2 AND e.data->>'$.format'=:p3\n          AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n            AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))\n            < CAST(e.data->>'$.capacity' AS UNSIGNED)\n        ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id\n        WHERE e.id<>:p1 AND e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n          AND JSON_EXTRACT(c.value,'$.active')=true AND e.data->>'$.level'=:p2 AND e.data->>'$.format'=:p3\n          AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n            AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))\n            < CAST(e.data->>'$.capacity' AS UNSIGNED)\n        ORDER BY e.first_lesson_at,e.id",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id\n    WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true\n    AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))\n      < CAST(e.data->>'$.capacity' AS UNSIGNED)\n    ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id\n    WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true\n    AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n      AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))\n      < CAST(e.data->>'$.capacity' AS UNSIGNED)\n    ORDER BY e.first_lesson_at,e.id",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT e.id,e.data->>'$.level' AS level,e.data->>'$.format' AS format,\n          e.data->>'$.period' AS period,e.first_lesson_at AS firstLessonAt\n        FROM enrollment_classes e\n        WHERE e.id IN (SELECT i.target_class_id FROM enrollment_transfer_invitations i WHERE i.order_id=:p1)\n          OR e.id IN (SELECT x.source_class_id FROM enrollment_transfers x WHERE x.order_id=:p1)\n          OR e.id IN (SELECT x.target_class_id FROM enrollment_transfers x WHERE x.order_id=:p1)": {
+    "sql": "SELECT e.id,e.data->>'$.level' AS level,e.data->>'$.format' AS format,\n          e.data->>'$.period' AS period,e.first_lesson_at AS firstLessonAt\n        FROM enrollment_classes e\n        WHERE e.id IN (SELECT i.target_class_id FROM enrollment_transfer_invitations i WHERE i.order_id=:p1)\n          OR e.id IN (SELECT x.source_class_id FROM enrollment_transfers x WHERE x.order_id=:p1)\n          OR e.id IN (SELECT x.target_class_id FROM enrollment_transfers x WHERE x.order_id=:p1)",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n      ORDER BY e.first_lesson_at,e.id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n    EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id) AS hasOrders,\n    (e.state='draft' AND g.class_id IS NULL AND JSON_EXTRACT(e.data,'$.batchNumber') IS NULL\n      AND NOT EXISTS (SELECT 1 FROM enrollment_assisted_applications a WHERE a.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i WHERE i.source_class_id=e.id OR i.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfers x WHERE x.source_class_id=e.id OR x.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_refund_cases f WHERE f.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_interest_events n WHERE n.class_id=e.id)) AS canDelete\n    FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n    WHERE (:p1 IS NULL OR e.id=:p1) ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n    EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id) AS hasOrders,\n    (e.state='draft' AND g.class_id IS NULL AND JSON_EXTRACT(e.data,'$.batchNumber') IS NULL\n      AND NOT EXISTS (SELECT 1 FROM enrollment_assisted_applications a WHERE a.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i WHERE i.source_class_id=e.id OR i.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfers x WHERE x.source_class_id=e.id OR x.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_refund_cases f WHERE f.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_interest_events n WHERE n.class_id=e.id)) AS canDelete\n    FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n    WHERE (:p1 IS NULL OR e.id=:p1) ORDER BY e.first_lesson_at,e.id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_demands WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT email FROM enrollment_demands WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE": {
+    "sql": "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_orders WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT email FROM enrollment_orders WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_waitlist WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT email FROM enrollment_waitlist WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT event_key AS id,state,DATE_FORMAT(recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n    FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email' AND kind='assistance_confirmation'\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1": {
+    "sql": "SELECT event_key AS id,state,DATE_FORMAT(recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n    FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email' AND kind='assistance_confirmation'\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentNotices.ts"
+    ]
+  },
+  "SELECT event_key FROM enrollment_notification_receipts WHERE event_key=:p1": {
+    "sql": "SELECT event_key FROM enrollment_notification_receipts WHERE event_key=:p1",
+    "sources": [
+      "server/portal/enrollmentNotices.ts"
+    ]
+  },
+  "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40": {
+    "sql": "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT event_key,state,payload->>'$.environment' AS environment\n          FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email'\n          AND kind='payment_confirmed'": {
+    "sql": "SELECT event_key,state,payload->>'$.environment' AS environment\n          FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email'\n          AND kind='payment_confirmed'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT expected,timing,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n    FROM enrollment_refund_cases WHERE order_id=:p1": {
+    "sql": "SELECT expected,timing,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n    FROM enrollment_refund_cases WHERE order_id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
   "SELECT f.*,EXISTS(SELECT 1 FROM crm_facts x WHERE x.lead_id=f.lead_id AND x.kind='fact.corrected' AND JSON_UNQUOTE(JSON_EXTRACT(x.data,'$.correctionOf'))=f.id) AS withdrawn,m.id AS message_id,m.content AS message_content,m.created_at AS message_at FROM crm_facts f LEFT JOIN conversations c ON c.lead_id=f.lead_id AND c.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.conversationId')) LEFT JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND (m.request_id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId')) OR m.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId'))) WHERE JSON_CONTAINS(:p1,JSON_QUOTE(f.lead_id)) AND f.kind IN ('questionnaire.submitted','followup.recorded','task.request_evidence','information.extracted') ORDER BY f.created_at DESC,f.id": {
     "sql": "SELECT f.*,EXISTS(SELECT 1 FROM crm_facts x WHERE x.lead_id=f.lead_id AND x.kind='fact.corrected' AND JSON_UNQUOTE(JSON_EXTRACT(x.data,'$.correctionOf'))=f.id) AS withdrawn,m.id AS message_id,m.content AS message_content,m.created_at AS message_at FROM crm_facts f LEFT JOIN conversations c ON c.lead_id=f.lead_id AND c.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.conversationId')) LEFT JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND (m.request_id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId')) OR m.id=JSON_UNQUOTE(JSON_EXTRACT(f.data,'$.messageId'))) WHERE JSON_CONTAINS(:p1,JSON_QUOTE(f.lead_id)) AND f.kind IN ('questionnaire.submitted','followup.recorded','task.request_evidence','information.extracted') ORDER BY f.created_at DESC,f.id",
     "sources": [
       "server/portal/buyingEvidence.ts"
     ]
   },
+  "SELECT f.id AS factId,f.actor,f.data->>'$.result.logId' AS id,\n      f.data->>'$.result.opportunity.stage' AS stage,f.data->>'$.summary' AS note,\n      f.data->'$.result.opportunity.sourceRefs' AS sourceRefs,\n      DATE_FORMAT(f.created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n      FROM crm_facts f JOIN portal_leads l ON l.id=f.lead_id\n      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND f.kind='followup.recorded'\n        AND f.data->>'$.result.opportunity.id'=:p2": {
+    "sql": "SELECT f.id AS factId,f.actor,f.data->>'$.result.logId' AS id,\n      f.data->>'$.result.opportunity.stage' AS stage,f.data->>'$.summary' AS note,\n      f.data->'$.result.opportunity.sourceRefs' AS sourceRefs,\n      DATE_FORMAT(f.created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n      FROM crm_facts f JOIN portal_leads l ON l.id=f.lead_id\n      WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND f.kind='followup.recorded'\n        AND f.data->>'$.result.opportunity.id'=:p2",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE": {
     "sql": "SELECT fingerprint,result FROM crm_operations WHERE actor=:p1 AND request_id=:p2 FOR UPDATE",
     "sources": [
       "server/portal/assignmentBackfill.ts"
+    ]
+  },
+  "SELECT FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) AS now_ms": {
+    "sql": "SELECT FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) AS now_ms",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT GET_LOCK(:p1,0) AS acquired": {
@@ -1572,6 +2229,8 @@
   "SELECT GET_LOCK(:p1,5)": {
     "sql": "SELECT GET_LOCK(:p1,5)",
     "sources": [
+      "server/portal/enrollmentEmailAccess.ts",
+      "server/portal/enrollmentPaymentCredits.ts",
       "server/portal/identityConsolidation.ts"
     ]
   },
@@ -1611,10 +2270,28 @@
       "server/portal/identityReview.ts"
     ]
   },
+  "SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n            WHERE i.id=:p1 AND i.order_id=:p2 AND i.source_class_id=:p3 AND i.target_class_id=:p4 AND i.state='offered'\n              AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n            FOR UPDATE OF i": {
+    "sql": "SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n            WHERE i.id=:p1 AND i.order_id=:p2 AND i.source_class_id=:p3 AND i.target_class_id=:p4 AND i.state='offered'\n              AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n            FOR UPDATE OF i",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n          WHERE i.order_id=:p1 AND i.state='offered'\n            AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n          FOR UPDATE OF i": {
+    "sql": "SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n          WHERE i.order_id=:p1 AND i.state='offered'\n            AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n          FOR UPDATE OF i",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
   "SELECT i.id,i.content,j.snapshot,j.completed_at,j.due_at FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id WHERE i.employee_id=:p1 AND j.channel='inapp' AND j.state='accepted'": {
     "sql": "SELECT i.id,i.content,j.snapshot,j.completed_at,j.due_at FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id WHERE i.employee_id=:p1 AND j.channel='inapp' AND j.state='accepted'",
     "sources": [
       "server/portal/inappInbox.ts"
+    ]
+  },
+  "SELECT i.id,i.target_class_id,\n    DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expires_at_iso,\n    CASE WHEN i.state='offered'\n      AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6)\n      THEN 'expired' ELSE i.state END AS state,e.data\n    FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n    WHERE i.order_id=:p1 ORDER BY i.created_at DESC": {
+    "sql": "SELECT i.id,i.target_class_id,\n    DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expires_at_iso,\n    CASE WHEN i.state='offered'\n      AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6)\n      THEN 'expired' ELSE i.state END AS state,e.data\n    FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id\n    WHERE i.order_id=:p1 ORDER BY i.created_at DESC",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
     ]
   },
   "SELECT id FROM campaign_source_reviews WHERE campaign_id=:p1 LIMIT 1": {
@@ -1694,6 +2371,66 @@
     "sql": "SELECT id FROM crm_users WHERE lower(login_id)=lower(:p1)",
     "sources": [
       "server/portal/accessManagement.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_classes\n          WHERE state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n            AND data->>'$.level'=:p1 AND data->>'$.format'=:p2 ORDER BY first_lesson_at,id": {
+    "sql": "SELECT id FROM enrollment_classes\n          WHERE state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n            AND data->>'$.level'=:p1 AND data->>'$.format'=:p2 ORDER BY first_lesson_at,id",
+    "sources": [
+      "server/portal/enrollmentTransferOffers.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_classes WHERE course_id=:p1 LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_classes WHERE course_id=:p1 LIMIT 1",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_classes WHERE JSON_UNQUOTE(JSON_EXTRACT(data,'$.templateId'))=:p1 LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_classes WHERE JSON_UNQUOTE(JSON_EXTRACT(data,'$.templateId'))=:p1 LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p2 FOR SHARE": {
+    "sql": "SELECT id FROM enrollment_demands WHERE id=:p1 AND state='active' AND revision=:p2 FOR SHARE",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_mail_attempts\n        WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_mail_attempts\n        WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND recipient=:p2 AND state IN ('reserved','unknown') LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded')": {
+    "sql": "SELECT id FROM enrollment_orders WHERE class_id=:p1 AND state NOT IN ('expired','ended','refunding','refunded')",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_orders WHERE class_id=:p1 LIMIT 1 FOR UPDATE": {
+    "sql": "SELECT id FROM enrollment_orders WHERE class_id=:p1 LIMIT 1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_transfer_invitations\n          WHERE order_id=:p1 AND (source_class_id=:p2 OR (state='offered' AND expires_at>UTC_TIMESTAMP(6))) LIMIT 1": {
+    "sql": "SELECT id FROM enrollment_transfer_invitations\n          WHERE order_id=:p1 AND (source_class_id=:p2 OR (state='offered' AND expires_at>UTC_TIMESTAMP(6))) LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentTransferOffers.ts"
+    ]
+  },
+  "SELECT id FROM enrollment_transfer_invitations WHERE id=:p1 AND state='offered' AND expires_at>UTC_TIMESTAMP(6)": {
+    "sql": "SELECT id FROM enrollment_transfer_invitations WHERE id=:p1 AND state='offered' AND expires_at>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
     ]
   },
   "SELECT id FROM followup_tasks WHERE id=:p1 AND": {
@@ -1799,10 +2536,34 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "SELECT id,actor,sales_stage AS stage,note,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n      FROM enrollment_opportunity_progress WHERE opportunity_id=:p1 ORDER BY created_at DESC,id DESC": {
+    "sql": "SELECT id,actor,sales_stage AS stage,note,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt\n      FROM enrollment_opportunity_progress WHERE opportunity_id=:p1 ORDER BY created_at DESC,id DESC",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT id,business_number,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NULL ORDER BY created_at DESC": {
     "sql": "SELECT id,business_number,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NULL ORDER BY created_at DESC",
     "sources": [
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT id,class_id AS classId,order_id AS orderId,actor,\n      data->>'$.lang' AS lang,expires_at>UTC_TIMESTAMP(6) AS active,\n      DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,\n      DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications\n      WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1": {
+    "sql": "SELECT id,class_id AS classId,order_id AS orderId,actor,\n      data->>'$.lang' AS lang,expires_at>UTC_TIMESTAMP(6) AS active,\n      DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,\n      DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications\n      WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT id,class_id,email FROM enrollment_orders WHERE id=:p1": {
+    "sql": "SELECT id,class_id,email FROM enrollment_orders WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT id,class_id,state,order_id,learner_name FROM enrollment_waitlist WHERE email=:p1 ORDER BY created_at DESC,id DESC": {
+    "sql": "SELECT id,class_id,state,order_id,learner_name FROM enrollment_waitlist WHERE email=:p1 ORDER BY created_at DESC,id DESC",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "SELECT id,code FROM trial_campaigns WHERE LOWER(code)=:p1 OR LOWER(code) LIKE :p2 OR LOWER(id)=:p1 OR LOWER(id) LIKE :p2 FOR UPDATE": {
@@ -1884,6 +2645,12 @@
       "server/portal/notificationGroupChannels.ts"
     ]
   },
+  "SELECT id,course_id,state,data,revision,\n      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,\n      COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active\n      FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT id,course_id,state,data,revision,\n      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,\n      COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active\n      FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT id,created_at FROM messages WHERE conversation_id=:p1 AND request_id=:p2 AND role='user'": {
     "sql": "SELECT id,created_at FROM messages WHERE conversation_id=:p1 AND request_id=:p2 AND role='user'",
     "sources": [
@@ -1908,6 +2675,12 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT id,data FROM enrollment_classes\n    WHERE id=:p1 AND state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)": {
+    "sql": "SELECT id,data FROM enrollment_classes\n    WHERE id=:p1 AND state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
   "SELECT id,data,created_at FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND kind='task_request'": {
     "sql": "SELECT id,data,created_at FROM crm_engagements WHERE id=:p1 AND (lead_id=:p2 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2)) AND kind='task_request'",
     "sources": [
@@ -1920,10 +2693,28 @@
       "server/portal/larkNotificationV2.ts"
     ]
   },
+  "SELECT id,data,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,\n        DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,expires_at>UTC_TIMESTAMP(6) AS active\n        FROM enrollment_assisted_applications WHERE email=:p1 AND order_id IS NULL ORDER BY created_at DESC,id LIMIT 100": {
+    "sql": "SELECT id,data,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS createdAt,\n        DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,expires_at>UTC_TIMESTAMP(6) AS active\n        FROM enrollment_assisted_applications WHERE email=:p1 AND order_id IS NULL ORDER BY created_at DESC,id LIMIT 100",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT id,data,source_id FROM crm_engagements WHERE id=:p1 AND kind='task_request' AND": {
     "sql": "SELECT id,data,source_id FROM crm_engagements WHERE id=:p1 AND kind='task_request' AND",
     "sources": [
       "server/portal/notificationTarget.ts"
+    ]
+  },
+  "SELECT id,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS availableAt\n          FROM enrollment_proofs WHERE order_id=:p1 ORDER BY created_at,id LIMIT 1": {
+    "sql": "SELECT id,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS availableAt\n          FROM enrollment_proofs WHERE order_id=:p1 ORDER BY created_at,id LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT id,email,criteria,state,revision,DATE_FORMAT(updated_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC": {
+    "sql": "SELECT id,email,criteria,state,revision,DATE_FORMAT(updated_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "SELECT id,input_hash,visitor_id FROM site_submissions WHERE kind='application' AND request_id=?": {
@@ -2025,6 +2816,18 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT id,profile FROM portal_leads\n      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)": {
+    "sql": "SELECT id,profile FROM portal_leads\n      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT id,profile FROM portal_leads\n    WHERE LOWER(profile->>'$.email')=:p1 AND profile->>'$.enrollmentEmailVerified'='true'": {
+    "sql": "SELECT id,profile FROM portal_leads\n    WHERE LOWER(profile->>'$.email')=:p1 AND profile->>'$.enrollmentEmailVerified'='true'",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
   "SELECT id,profile FROM portal_leads WHERE id IN (:p1,:p2) ORDER BY id": {
     "sql": "SELECT id,profile FROM portal_leads WHERE id IN (:p1,:p2) ORDER BY id",
     "sources": [
@@ -2060,6 +2863,12 @@
     "sql": "SELECT id,profile FROM portal_leads WHERE JSON_LENGTH(profile->'$.commitments')>0",
     "sources": [
       "server/portal/worker.ts"
+    ]
+  },
+  "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "SELECT id,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NOT NULL": {
@@ -2118,10 +2927,28 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT id,source_order_id,target_order_id,receipt_reference AS reference,amount,\n          DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS appliedAt FROM enrollment_payment_credits\n          WHERE JSON_CONTAINS(:p1,JSON_QUOTE(source_order_id)) OR JSON_CONTAINS(:p1,JSON_QUOTE(target_order_id))\n          ORDER BY created_at DESC,id": {
+    "sql": "SELECT id,source_order_id,target_order_id,receipt_reference AS reference,amount,\n          DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS appliedAt FROM enrollment_payment_credits\n          WHERE JSON_CONTAINS(:p1,JSON_QUOTE(source_order_id)) OR JSON_CONTAINS(:p1,JSON_QUOTE(target_order_id))\n          ORDER BY created_at DESC,id",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50": {
     "sql": "SELECT id,source_type,source_id,status,output,error_code,attempts,input,created_at,completed_at FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC LIMIT 50",
     "sources": [
       "server/portal/trustRoutes.ts"
+    ]
+  },
+  "SELECT id,state,order_id,\n        DATE_FORMAT(COALESCE(activity_at,created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_waitlist WHERE email=:p1": {
+    "sql": "SELECT id,state,order_id,\n        DATE_FORMAT(COALESCE(activity_at,created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_waitlist WHERE email=:p1",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT id,value FROM crm_courses ORDER BY id": {
+    "sql": "SELECT id,value FROM crm_courses ORDER BY id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
     ]
   },
   "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')": {
@@ -2147,6 +2974,18 @@
     "sql": "SELECT input_hash,visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT interest_id,\n        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events\n        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id": {
+    "sql": "SELECT interest_id,\n        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events\n        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT is_full,cycle FROM enrollment_vacancy_cycles WHERE class_id=:p1 FOR UPDATE": {
+    "sql": "SELECT is_full,cycle FROM enrollment_vacancy_cycles WHERE class_id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "SELECT items,items_text FROM cms_collections WHERE name=?": {
@@ -2191,10 +3030,28 @@
       "server/portal/accessRecovery.ts"
     ]
   },
+  "SELECT kind,subject_id,payload FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'": {
+    "sql": "SELECT kind,subject_id,payload FROM enrollment_notification_receipts\n      WHERE event_key=:p1 AND state='queued'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1": {
     "sql": "SELECT l.profile,c.attribution FROM portal_leads l LEFT JOIN conversations c ON c.id=:p2 WHERE l.id=:p1",
     "sources": [
       "scripts/portal-migrate.ts"
+    ]
+  },
+  "SELECT lead_id FROM crm_payment_ledgers WHERE JSON_CONTAINS(value,JSON_OBJECT('priceSnapshot',JSON_OBJECT('courseId',:p1)),'$.projects') LIMIT 1": {
+    "sql": "SELECT lead_id FROM crm_payment_ledgers WHERE JSON_CONTAINS(value,JSON_OBJECT('priceSnapshot',JSON_OBJECT('courseId',:p1)),'$.projects') LIMIT 1",
+    "sources": [
+      "server/portal/courseCatalog.ts"
+    ]
+  },
+  "SELECT lead_id FROM enrollment_customer_records WHERE kind=:p1 AND record_id=:p2": {
+    "sql": "SELECT lead_id FROM enrollment_customer_records WHERE kind=:p1 AND record_id=:p2",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
     ]
   },
   "SELECT lead_id,candidate_id,decision,reason,decided_by FROM identity_candidates WHERE ((lead_id=:p1 AND candidate_id=:p2) OR (lead_id=:p2 AND candidate_id=:p1)) AND decision IN ('shared','different')": {
@@ -2313,10 +3170,112 @@
       "server/portal/aiServiceConfig.ts"
     ]
   },
+  "SELECT n.event_key AS id,n.subject_id AS orderId,n.kind,n.state,\n      n.payload->>'$.subject' AS subject,n.payload->>'$.language' AS language,\n      DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n      FROM enrollment_customer_records r JOIN enrollment_notification_receipts n ON n.subject_id=r.record_id\n      WHERE r.kind='order' AND r.opportunity_id=:p1 AND n.channel='email'\n        AND n.kind NOT IN ('otp_apply','otp_mine')\n      ORDER BY n.recorded_at DESC,n.event_key DESC": {
+    "sql": "SELECT n.event_key AS id,n.subject_id AS orderId,n.kind,n.state,\n      n.payload->>'$.subject' AS subject,n.payload->>'$.language' AS language,\n      DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n      FROM enrollment_customer_records r JOIN enrollment_notification_receipts n ON n.subject_id=r.record_id\n      WHERE r.kind='order' AND r.opportunity_id=:p1 AND n.channel='email'\n        AND n.kind NOT IN ('otp_apply','otp_mine')\n      ORDER BY n.recorded_at DESC,n.event_key DESC",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT n.event_key AS id,n.subject_id AS recordId,n.kind,n.state,\n      n.payload->>'$.subject' AS subject,NULLIF(n.payload->>'$.sender','null') AS sender,\n      n.payload->>'$.routeReason' AS routeReason,\n      DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n      FROM enrollment_notification_receipts n WHERE n.channel='email' AND n.kind NOT IN ('otp_apply','otp_mine')\n      ORDER BY n.recorded_at DESC,n.event_key DESC LIMIT 100": {
+    "sql": "SELECT n.event_key AS id,n.subject_id AS recordId,n.kind,n.state,\n      n.payload->>'$.subject' AS subject,NULLIF(n.payload->>'$.sender','null') AS sender,\n      n.payload->>'$.routeReason' AS routeReason,\n      DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt\n      FROM enrollment_notification_receipts n WHERE n.channel='email' AND n.kind NOT IN ('otp_apply','otp_mine')\n      ORDER BY n.recorded_at DESC,n.event_key DESC LIMIT 100",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
   "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads": {
     "sql": "SELECT NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.tier')),'null') tier,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.currentStage')),'null') state,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.team')),'null') team FROM portal_leads",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY o.created_at DESC,o.id": {
+    "sql": "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY o.created_at DESC,o.id",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n    WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2\n    AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')\n    AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n      WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))\n    ORDER BY o.created_at,o.id": {
+    "sql": "SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id\n    WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND o.level=:p2\n    AND (o.sales_stage IS NULL OR o.sales_stage<>'progress:closed')\n    AND NOT EXISTS (SELECT 1 FROM enrollment_customer_records r JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n      WHERE r.opportunity_id=o.id AND e.state IN ('paid','recovered','refunding','refunded'))\n    ORDER BY o.created_at,o.id",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT o.*, customer.profile,\n      (SELECT DATE_FORMAT(a.expires_at,'%Y-%m-%dT%H:%i:%sZ') FROM enrollment_assisted_applications a\n        WHERE a.opportunity_id=o.id AND a.order_id IS NULL AND a.expires_at>UTC_TIMESTAMP(6)\n        ORDER BY a.created_at DESC,a.id LIMIT 1) AS assistanceDueAt\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id": {
+    "sql": "SELECT o.*, customer.profile,\n      (SELECT DATE_FORMAT(a.expires_at,'%Y-%m-%dT%H:%i:%sZ') FROM enrollment_assisted_applications a\n        WHERE a.opportunity_id=o.id AND a.order_id IS NULL AND a.expires_at>UTC_TIMESTAMP(6)\n        ORDER BY a.created_at DESC,a.id LIMIT 1) AS assistanceDueAt\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT o.*,customer.id AS customer_id\n    FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))": {
+    "sql": "SELECT o.*,customer.id AS customer_id\n    FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT o.*,e.state AS class_state,e.first_lesson_at AS firstLessonAt,\n        e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,\n        EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,\n        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n        latest_proof.id AS proof_id,latest_proof.mime AS proof_mime\n      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n      LEFT JOIN LATERAL (SELECT p.id,p.mime FROM enrollment_proofs p\n        WHERE p.order_id=o.id ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE\n      WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')\n        OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR latest_proof.id IS NOT NULL)\n      ORDER BY o.created_at DESC LIMIT 150": {
+    "sql": "SELECT o.*,e.state AS class_state,e.first_lesson_at AS firstLessonAt,\n        e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,\n        EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,\n        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n        latest_proof.id AS proof_id,latest_proof.mime AS proof_mime\n      FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n      LEFT JOIN LATERAL (SELECT p.id,p.mime FROM enrollment_proofs p\n        WHERE p.order_id=o.id ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE\n      WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')\n        OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR latest_proof.id IS NOT NULL)\n      ORDER BY o.created_at DESC LIMIT 150",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT o.email,o.data,o.state,b.data AS class_data,a.attribution,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS deadline\n    FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n    LEFT JOIN enrollment_record_attribution a ON a.kind='order' AND a.record_id=o.id WHERE o.id=:p1": {
+    "sql": "SELECT o.email,o.data,o.state,b.data AS class_data,a.attribution,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS deadline\n    FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n    LEFT JOIN enrollment_record_attribution a ON a.kind='order' AND a.record_id=o.id WHERE o.id=:p1",
+    "sources": [
+      "server/portal/enrollmentNotices.ts"
+    ]
+  },
+  "SELECT o.id AS orderId,p.digest,p.transfer_details AS details,verified.amount AS verified,\n      COALESCE(r.amount,0) AS matched\n    FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1\n    JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s\n      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount+\n      COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0)<o.price\n    LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1\n      AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)\n    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS\n      (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n      AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n        AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ORDER BY p.created_at,p.id": {
+    "sql": "SELECT o.id AS orderId,p.digest,p.transfer_details AS details,verified.amount AS verified,\n      COALESCE(r.amount,0) AS matched\n    FROM enrollment_orders o JOIN enrollment_proofs p ON p.order_id=o.id AND p.created_at<:p1\n    JOIN LATERAL (SELECT COALESCE(SUM(s.amount),0) AS amount FROM enrollment_receipts s\n      WHERE s.order_id=o.id AND s.created_at<:p1) verified ON verified.amount+\n      COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0)<o.price\n    LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1\n      AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)\n    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS\n      (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)\n      AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'\n        AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)\n    ORDER BY p.created_at,p.id",
+    "sources": [
+      "server/portal/enrollmentProofTotals.ts"
+    ]
+  },
+  "SELECT o.id FROM enrollment_orders o\n        JOIN enrollment_classes e ON e.id=o.class_id\n        WHERE e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price\n          AND o.data->>'$.autoTransferSource'=o.class_id\n          AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i\n            WHERE i.order_id=o.id AND i.source_class_id=o.class_id)\n        ORDER BY o.created_at,o.id": {
+    "sql": "SELECT o.id FROM enrollment_orders o\n        JOIN enrollment_classes e ON e.id=o.class_id\n        WHERE e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price\n          AND o.data->>'$.autoTransferSource'=o.class_id\n          AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i\n            WHERE i.order_id=o.id AND i.source_class_id=o.class_id)\n        ORDER BY o.created_at,o.id",
+    "sources": [
+      "server/portal/enrollmentTransferOffers.ts"
+    ]
+  },
+  "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        o.data,e.state AS class_state,e.data AS class_data,\n        i.id AS invitation_id,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,\n        (e.state='published' AND (o.state='partial' OR\n          (o.state='awaiting_payment' AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,\n        DATE_FORMAT(GREATEST(o.created_at,COALESCE(o.activity_at,o.created_at),COALESCE(n.latest,o.created_at),\n          COALESCE(i.created_at,o.created_at),IF(e.state='cancelled',e.updated_at,o.created_at)),\n          '%Y-%m-%dT%H:%i:%s.%fZ') AS updated_at_iso\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        LEFT JOIN LATERAL (SELECT MAX(recorded_at) AS latest FROM enrollment_notification_receipts\n          WHERE subject_id=o.id AND channel='email') n ON TRUE\n        LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at FROM enrollment_transfer_invitations offer\n          JOIN enrollment_classes target ON target.id=offer.target_class_id AND target.state='published'\n          WHERE offer.order_id=o.id AND offer.source_class_id=o.class_id AND offer.state='offered'\n            AND LEAST(offer.expires_at, DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n            AND e.state='cancelled' AND o.state IN ('paid','recovered')\n          ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE\n        WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100": {
+    "sql": "SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,\n        CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n          AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,\n        o.data,e.state AS class_state,e.data AS class_data,\n        i.id AS invitation_id,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,\n        (e.state='published' AND (o.state='partial' OR\n          (o.state='awaiting_payment' AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,\n        DATE_FORMAT(GREATEST(o.created_at,COALESCE(o.activity_at,o.created_at),COALESCE(n.latest,o.created_at),\n          COALESCE(i.created_at,o.created_at),IF(e.state='cancelled',e.updated_at,o.created_at)),\n          '%Y-%m-%dT%H:%i:%s.%fZ') AS updated_at_iso\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        LEFT JOIN LATERAL (SELECT MAX(recorded_at) AS latest FROM enrollment_notification_receipts\n          WHERE subject_id=o.id AND channel='email') n ON TRUE\n        LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at FROM enrollment_transfer_invitations offer\n          JOIN enrollment_classes target ON target.id=offer.target_class_id AND target.state='published'\n          WHERE offer.order_id=o.id AND offer.source_class_id=o.class_id AND offer.state='offered'\n            AND LEAST(offer.expires_at, DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n            AND e.state='cancelled' AND o.state IN ('paid','recovered')\n          ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE\n        WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT o.id,o.created_at,o.data,o.state,o.price,o.received,b.state AS class_state\n    FROM enrollment_customer_records root\n    JOIN portal_leads original ON original.id=root.lead_id\n    JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    JOIN portal_leads member ON COALESCE(NULLIF(member.profile->>'$.identityMergedInto','null'),member.id)=canonical.id\n    JOIN enrollment_customer_records related ON related.lead_id=member.id AND related.kind='order'\n    JOIN enrollment_orders o ON o.id=related.record_id JOIN enrollment_classes b ON b.id=o.class_id\n    WHERE root.kind='order' AND root.record_id=:p1 AND o.email=:p2 AND b.data->>'$.level'=:p3\n      AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(member.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(original.profile->>'$.identityLifecycle','')<>'pending'\n      AND (o.state='expired' OR (b.state='published' AND o.state IN ('awaiting_payment','proof_review','partial')\n        AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6))))\n    ORDER BY o.created_at,o.id": {
+    "sql": "SELECT o.id,o.created_at,o.data,o.state,o.price,o.received,b.state AS class_state\n    FROM enrollment_customer_records root\n    JOIN portal_leads original ON original.id=root.lead_id\n    JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    JOIN portal_leads member ON COALESCE(NULLIF(member.profile->>'$.identityMergedInto','null'),member.id)=canonical.id\n    JOIN enrollment_customer_records related ON related.lead_id=member.id AND related.kind='order'\n    JOIN enrollment_orders o ON o.id=related.record_id JOIN enrollment_classes b ON b.id=o.class_id\n    WHERE root.kind='order' AND root.record_id=:p1 AND o.email=:p2 AND b.data->>'$.level'=:p3\n      AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(member.profile->>'$.identityLifecycle','')<>'pending'\n      AND COALESCE(original.profile->>'$.identityLifecycle','')<>'pending'\n      AND (o.state='expired' OR (b.state='published' AND o.state IN ('awaiting_payment','proof_review','partial')\n        AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6))))\n    ORDER BY o.created_at,o.id",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "SELECT o.id,o.state,o.price,o.received,b.state AS class_state,b.data AS class_data,\n        DATE_FORMAT(p.first_proof,'%Y-%m-%dT%H:%i:%sZ') AS proofAt\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        JOIN (SELECT order_id,MIN(created_at) AS first_proof FROM enrollment_proofs WHERE order_id=:p1 GROUP BY order_id) p\n        ON p.order_id=o.id WHERE o.id=:p1": {
+    "sql": "SELECT o.id,o.state,o.price,o.received,b.state AS class_state,b.data AS class_data,\n        DATE_FORMAT(p.first_proof,'%Y-%m-%dT%H:%i:%sZ') AS proofAt\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        JOIN (SELECT order_id,MIN(created_at) AS first_proof FROM enrollment_proofs WHERE order_id=:p1 GROUP BY order_id) p\n        ON p.order_id=o.id WHERE o.id=:p1",
+    "sources": [
+      "server/portal/enrollmentCardTargets.ts"
+    ]
+  },
+  "SELECT o.state,o.received,o.price,o.class_id,o.data,e.state AS class_state\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE o.id=:p1": {
+    "sql": "SELECT o.state,o.received,o.price,o.class_id,o.data,e.state AS class_state\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id WHERE o.id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1": {
+    "sql": "SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "SELECT order_id FROM enrollment_proofs WHERE id=:p1": {
+    "sql": "SELECT order_id FROM enrollment_proofs WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT order_id, reference, amount, receiving_account AS account,\n          DATE_FORMAT(settled_at,'%Y-%m-%dT%H:%i:%sZ') AS settledAt\n          FROM enrollment_receipts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(order_id))\n          ORDER BY settled_at DESC,reference": {
+    "sql": "SELECT order_id, reference, amount, receiving_account AS account,\n          DATE_FORMAT(settled_at,'%Y-%m-%dT%H:%i:%sZ') AS settledAt\n          FROM enrollment_receipts WHERE JSON_CONTAINS(:p1,JSON_QUOTE(order_id))\n          ORDER BY settled_at DESC,reference",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
     ]
   },
   "SELECT p FROM campaign_promotion_short_links WHERE short_code=:p1": {
@@ -2331,10 +3290,28 @@
       "server/portal/campaignPromotion.ts"
     ]
   },
+  "SELECT p.reference,p.receipt_reference,p.amount,\n    (SELECT COALESCE(SUM(b.amount),0) FROM enrollment_refund_returns b WHERE b.refund_reference=p.reference) AS returned\n    FROM enrollment_refund_payments p WHERE p.order_id=:p1 ORDER BY p.created_at,p.reference": {
+    "sql": "SELECT p.reference,p.receipt_reference,p.amount,\n    (SELECT COALESCE(SUM(b.amount),0) FROM enrollment_refund_returns b WHERE b.refund_reference=p.reference) AS returned\n    FROM enrollment_refund_payments p WHERE p.order_id=:p1 ORDER BY p.created_at,p.reference",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
   "SELECT password_hash,login_id FROM crm_users WHERE id=:p1": {
     "sql": "SELECT password_hash,login_id FROM crm_users WHERE id=:p1",
     "sources": [
       "server/portal/localAuth.ts"
+    ]
+  },
+  "SELECT payload FROM enrollment_notification_receipts\n          WHERE channel='lark' AND kind='weekly_report' AND event_key=:p1": {
+    "sql": "SELECT payload FROM enrollment_notification_receipts\n          WHERE channel='lark' AND kind='weekly_report' AND event_key=:p1",
+    "sources": [
+      "server/portal/enrollmentCardTargets.ts"
+    ]
+  },
+  "SELECT pool_id,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id": {
+    "sql": "SELECT pool_id,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT profile FROM portal_leads": {
@@ -2391,10 +3368,52 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
-  "SELECT q.id,q.environment,q.project_id,q.source_entry_id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED": {
-    "sql": "SELECT q.id,q.environment,q.project_id,q.source_entry_id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED",
+  "SELECT proof,mime FROM enrollment_proofs WHERE id=:p1": {
+    "sql": "SELECT proof,mime FROM enrollment_proofs WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED": {
+    "sql": "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED",
     "sources": [
       "server/portal/paymentAnalyticsDispatch.ts"
+    ]
+  },
+  "SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%sZ') AS record_created_at_iso,\n    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n      AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'\n      ELSE COALESCE(o.state,w.state,d.state) END AS state,\n    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,\n    CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n      SELECT 1 FROM enrollment_receipts v WHERE v.order_id=o.id\n        AND v.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n    ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,\n    d.criteria,b.id AS class_id,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(o.class_id,w.class_id)\n  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id\n  LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id\n  LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts\n    WHERE channel='email' AND subject_id=r.record_id AND kind NOT IN ('otp_apply','otp_mine')\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE": {
+    "sql": "SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%sZ') AS record_created_at_iso,\n    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)\n      AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'\n      ELSE COALESCE(o.state,w.state,d.state) END AS state,\n    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,\n    CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n      SELECT 1 FROM enrollment_receipts v WHERE v.order_id=o.id\n        AND v.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n    ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,\n    DATE_FORMAT(o.payment_due_at,'%Y-%m-%dT%H:%i:%sZ') AS payment_due_at,\n    d.criteria,b.id AS class_id,b.state AS class_state,b.data AS class_data,g.opened_at,a.attribution,e.latest_notice\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_orders o ON r.kind='order' AND o.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(o.class_id,w.class_id)\n  LEFT JOIN enrollment_class_openings g ON g.class_id=b.id\n  LEFT JOIN enrollment_record_attribution a ON a.kind=r.kind AND a.record_id=r.record_id\n  LEFT JOIN LATERAL (SELECT payload->>'$.subject' AS latest_notice FROM enrollment_notification_receipts\n    WHERE channel='email' AND subject_id=r.record_id AND kind NOT IN ('otp_apply','otp_mine')\n    ORDER BY recorded_at DESC,event_key DESC LIMIT 1) e ON TRUE",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT r.lead_id,r.opportunity_id,o.level FROM enrollment_customer_records r\n    LEFT JOIN enrollment_opportunities o ON o.id=r.opportunity_id WHERE r.kind=:p1 AND r.record_id=:p2": {
+    "sql": "SELECT r.lead_id,r.opportunity_id,o.level FROM enrollment_customer_records r\n    LEFT JOIN enrollment_opportunities o ON o.id=r.opportunity_id WHERE r.kind=:p1 AND r.record_id=:p2",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT r.reference,r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n      WHERE a.receipt_reference=r.reference) AS available FROM enrollment_receipts r WHERE r.order_id=:p1\n      ORDER BY r.settled_at,r.reference": {
+    "sql": "SELECT r.reference,r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a\n      WHERE a.receipt_reference=r.reference) AS available FROM enrollment_receipts r WHERE r.order_id=:p1\n      ORDER BY r.settled_at,r.reference",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "SELECT r.reference,r.receiving_account AS account,\n      r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a WHERE a.receipt_reference=r.reference) AS amount\n    FROM enrollment_receipts r WHERE r.order_id=:p1\n    UNION ALL SELECT r.reference,r.receiving_account AS account,SUM(a.amount) AS amount\n      FROM enrollment_payment_credits a JOIN enrollment_receipts r ON r.reference=a.receipt_reference\n      WHERE a.target_order_id=:p1 GROUP BY r.reference,r.receiving_account ORDER BY reference": {
+    "sql": "SELECT r.reference,r.receiving_account AS account,\n      r.amount-(SELECT COALESCE(SUM(a.amount),0) FROM enrollment_payment_credits a WHERE a.receipt_reference=r.reference) AS amount\n    FROM enrollment_receipts r WHERE r.order_id=:p1\n    UNION ALL SELECT r.reference,r.receiving_account AS account,SUM(a.amount) AS amount\n      FROM enrollment_payment_credits a JOIN enrollment_receipts r ON r.reference=a.receipt_reference\n      WHERE a.target_order_id=:p1 GROUP BY r.reference,r.receiving_account ORDER BY reference",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "SELECT ranked.* FROM (\n        SELECT filtered.*,COUNT(*) OVER() AS total,\n          ROW_NUMBER() OVER(ORDER BY\n          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.pending_review ELSE 0 END DESC,\n          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due IS NULL ELSE 0 END,\n          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due END ASC,\n          CASE WHEN :p2 IN ('pending','proof_review') AND filtered.pending_review=1 THEN filtered.proof_at END ASC,\n          filtered.created_at DESC,filtered.id) AS position\n        FROM (\n          SELECT o.id,o.state,o.price,o.received,o.created_at,o.data->>'$.name' AS name,e.state AS class_state,\n            e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,\n            e.first_lesson_at AS firstLessonAt,\n            latest_proof.created_at IS NOT NULL AS has_proof,\n            DATE_FORMAT(latest_proof.created_at,'%Y-%m-%dT%H:%i:%sZ') AS proof_at,\n            IF(o.state IN ('proof_review','partial','expired') AND latest_proof.created_at IS NOT NULL\n              AND NOT EXISTS(SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at>=latest_proof.created_at),\n              1,0) AS pending_review,\n            CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n              SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n                AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n            ) THEN o.data->>'$.firstReviewDueAt' END AS review_due,\n            o.data->>'$.creditOut' IS NOT NULL AS has_credit\n          FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n          LEFT JOIN LATERAL (SELECT p.created_at FROM enrollment_proofs p WHERE p.order_id=o.id\n            ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE\n          WHERE (:p1='' OR LOCATE(:p1,LOWER(CONCAT_WS(' ',o.data->>'$.name',o.id,e.id,e.data->>'$.level',\n            REPLACE(e.data->>'$.level',' ',''),e.data->>'$.schedule')))>0)\n        ) filtered\n        WHERE (filtered.state IN ('proof_review','partial','paid','recovered','refunding','refunded') OR filtered.has_proof=1\n          OR (filtered.state IN ('ended','expired') AND (filtered.received>0 OR filtered.has_credit=1)))\n        AND (:p2='all' OR (:p2='pending' AND (filtered.state IN ('proof_review','partial')\n              OR (filtered.state='expired' AND filtered.has_proof=1 AND filtered.received<filtered.price)))\n          OR (:p2='paid' AND filtered.state IN ('paid','recovered'))\n          OR (:p2='refund' AND filtered.state IN ('refunding','refunded'))\n          OR (:p2='closed' AND filtered.state IN ('ended','expired'))\n          OR (:p2='proof_review' AND (filtered.state='proof_review' OR\n            (filtered.state IN ('partial','expired') AND filtered.pending_review=1 AND filtered.received<filtered.price)))\n          OR (:p2='partial' AND filtered.state='partial'))\n      ) ranked WHERE ranked.position>:p3 AND ranked.position<=:p3+:p4 ORDER BY ranked.position": {
+    "sql": "SELECT ranked.* FROM (\n        SELECT filtered.*,COUNT(*) OVER() AS total,\n          ROW_NUMBER() OVER(ORDER BY\n          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.pending_review ELSE 0 END DESC,\n          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due IS NULL ELSE 0 END,\n          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due END ASC,\n          CASE WHEN :p2 IN ('pending','proof_review') AND filtered.pending_review=1 THEN filtered.proof_at END ASC,\n          filtered.created_at DESC,filtered.id) AS position\n        FROM (\n          SELECT o.id,o.state,o.price,o.received,o.created_at,o.data->>'$.name' AS name,e.state AS class_state,\n            e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,\n            e.first_lesson_at AS firstLessonAt,\n            latest_proof.created_at IS NOT NULL AS has_proof,\n            DATE_FORMAT(latest_proof.created_at,'%Y-%m-%dT%H:%i:%sZ') AS proof_at,\n            IF(o.state IN ('proof_review','partial','expired') AND latest_proof.created_at IS NOT NULL\n              AND NOT EXISTS(SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at>=latest_proof.created_at),\n              1,0) AS pending_review,\n            CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (\n              SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id\n                AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')\n            ) THEN o.data->>'$.firstReviewDueAt' END AS review_due,\n            o.data->>'$.creditOut' IS NOT NULL AS has_credit\n          FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n          LEFT JOIN LATERAL (SELECT p.created_at FROM enrollment_proofs p WHERE p.order_id=o.id\n            ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE\n          WHERE (:p1='' OR LOCATE(:p1,LOWER(CONCAT_WS(' ',o.data->>'$.name',o.id,e.id,e.data->>'$.level',\n            REPLACE(e.data->>'$.level',' ',''),e.data->>'$.schedule')))>0)\n        ) filtered\n        WHERE (filtered.state IN ('proof_review','partial','paid','recovered','refunding','refunded') OR filtered.has_proof=1\n          OR (filtered.state IN ('ended','expired') AND (filtered.received>0 OR filtered.has_credit=1)))\n        AND (:p2='all' OR (:p2='pending' AND (filtered.state IN ('proof_review','partial')\n              OR (filtered.state='expired' AND filtered.has_proof=1 AND filtered.received<filtered.price)))\n          OR (:p2='paid' AND filtered.state IN ('paid','recovered'))\n          OR (:p2='refund' AND filtered.state IN ('refunding','refunded'))\n          OR (:p2='closed' AND filtered.state IN ('ended','expired'))\n          OR (:p2='proof_review' AND (filtered.state='proof_review' OR\n            (filtered.state IN ('partial','expired') AND filtered.pending_review=1 AND filtered.received<filtered.price)))\n          OR (:p2='partial' AND filtered.state='partial'))\n      ) ranked WHERE ranked.position>:p3 AND ranked.position<=:p3+:p4 ORDER BY ranked.position",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT ranked.* FROM (\n      SELECT scoped.*,COUNT(*) OVER() AS total,\n        ROW_NUMBER() OVER(ORDER BY CASE WHEN :p5='transfer' AND scoped.reply_by IS NULL THEN 0 ELSE 1 END,\n          CASE WHEN :p5='transfer' OR :p9='awaiting_reply' THEN scoped.reply_by END,scoped.created_at DESC,scoped.id) AS position\n      FROM (\n        SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,e.first_lesson_at,\n          o.created_at,EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened,\n          EXISTS(SELECT 1 FROM enrollment_transfers x WHERE x.order_id=o.id) AS transferred,\n          (e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price) AS can_transfer,\n          (SELECT MAX(LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR))\n            FROM enrollment_transfer_invitations i JOIN enrollment_classes target ON target.id=i.target_class_id\n            WHERE i.order_id=o.id AND i.state='offered'\n              AND LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)) AS reply_by\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        LEFT JOIN enrollment_customer_records link ON link.kind='order' AND link.record_id=o.id\n        LEFT JOIN portal_leads existing ON existing.id=link.lead_id\n        LEFT JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(existing.profile->>'$.identityMergedInto','null'),existing.id)\n        WHERE ( :p1=1 OR (canonical.profile->>'$.owner'=:p2\n          AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'\n          AND e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price))\n          AND (:p3='' OR o.class_id=:p3)\n          AND (:p4='' OR LOCATE(:p4,LOWER(CONCAT_WS(' ',o.id,o.data->>'$.name',e.id,e.data->>'$.level',e.data->>'$.schedule',DATE_FORMAT(e.first_lesson_at + INTERVAL 7 HOUR,'%Y-%m-%d'))))>0)\n          AND (:p5<>'' OR o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')\n            OR (o.received>0 AND o.state IN ('expired','ended')))\n      ) scoped\n      WHERE (:p5<>'transfer' OR scoped.can_transfer=1)\n        AND (:p5<>'refund' OR scoped.state IN ('refunding','refunded'))\n        AND (:p9=''\n          OR (:p9='ready_to_invite' AND scoped.can_transfer=1 AND scoped.reply_by IS NULL)\n          OR (:p9='awaiting_reply' AND scoped.can_transfer=1 AND scoped.reply_by IS NOT NULL)\n          OR (:p9 IN ('refunding','refunded') AND scoped.state=:p9))\n        AND (:p6='' OR (:p6='awaiting_reply' AND scoped.reply_by IS NOT NULL)\n          OR (:p6='ready_to_invite' AND scoped.reply_by IS NULL)\n          OR (:p6='closed' AND scoped.state IN ('expired','ended'))\n          OR (:p6='paid_cancelled' AND scoped.class_state='cancelled' AND scoped.state IN ('paid','recovered'))\n          OR (:p6='paid' AND scoped.class_state<>'cancelled' AND scoped.state IN ('paid','recovered'))\n          OR (:p6 NOT IN ('paid','paid_cancelled') AND scoped.state=:p6))\n      ) ranked WHERE ranked.position>:p8 AND ranked.position<=:p8+:p7 ORDER BY ranked.position": {
+    "sql": "SELECT ranked.* FROM (\n      SELECT scoped.*,COUNT(*) OVER() AS total,\n        ROW_NUMBER() OVER(ORDER BY CASE WHEN :p5='transfer' AND scoped.reply_by IS NULL THEN 0 ELSE 1 END,\n          CASE WHEN :p5='transfer' OR :p9='awaiting_reply' THEN scoped.reply_by END,scoped.created_at DESC,scoped.id) AS position\n      FROM (\n        SELECT o.id,o.class_id,o.received,o.price,o.state,o.data,e.state AS class_state,e.data AS class_data,e.first_lesson_at,\n          o.created_at,EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened,\n          EXISTS(SELECT 1 FROM enrollment_transfers x WHERE x.order_id=o.id) AS transferred,\n          (e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price) AS can_transfer,\n          (SELECT MAX(LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR))\n            FROM enrollment_transfer_invitations i JOIN enrollment_classes target ON target.id=i.target_class_id\n            WHERE i.order_id=o.id AND i.state='offered'\n              AND LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)) AS reply_by\n        FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id\n        LEFT JOIN enrollment_customer_records link ON link.kind='order' AND link.record_id=o.id\n        LEFT JOIN portal_leads existing ON existing.id=link.lead_id\n        LEFT JOIN portal_leads canonical ON canonical.id=COALESCE(NULLIF(existing.profile->>'$.identityMergedInto','null'),existing.id)\n        WHERE ( :p1=1 OR (canonical.profile->>'$.owner'=:p2\n          AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'\n          AND e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price))\n          AND (:p3='' OR o.class_id=:p3)\n          AND (:p4='' OR LOCATE(:p4,LOWER(CONCAT_WS(' ',o.id,o.data->>'$.name',e.id,e.data->>'$.level',e.data->>'$.schedule',DATE_FORMAT(e.first_lesson_at + INTERVAL 7 HOUR,'%Y-%m-%d'))))>0)\n          AND (:p5<>'' OR o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')\n            OR (o.received>0 AND o.state IN ('expired','ended')))\n      ) scoped\n      WHERE (:p5<>'transfer' OR scoped.can_transfer=1)\n        AND (:p5<>'refund' OR scoped.state IN ('refunding','refunded'))\n        AND (:p9=''\n          OR (:p9='ready_to_invite' AND scoped.can_transfer=1 AND scoped.reply_by IS NULL)\n          OR (:p9='awaiting_reply' AND scoped.can_transfer=1 AND scoped.reply_by IS NOT NULL)\n          OR (:p9 IN ('refunding','refunded') AND scoped.state=:p9))\n        AND (:p6='' OR (:p6='awaiting_reply' AND scoped.reply_by IS NOT NULL)\n          OR (:p6='ready_to_invite' AND scoped.reply_by IS NULL)\n          OR (:p6='closed' AND scoped.state IN ('expired','ended'))\n          OR (:p6='paid_cancelled' AND scoped.class_state='cancelled' AND scoped.state IN ('paid','recovered'))\n          OR (:p6='paid' AND scoped.class_state<>'cancelled' AND scoped.state IN ('paid','recovered'))\n          OR (:p6 NOT IN ('paid','paid_cancelled') AND scoped.state=:p6))\n      ) ranked WHERE ranked.position>:p8 AND ranked.position<=:p8+:p7 ORDER BY ranked.position",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
     ]
   },
   "SELECT ranked.* FROM (SELECT i.*,l.profile AS lead_profile,ROW_NUMBER() OVER (PARTITION BY i.content->>'$.leadId',i.content->>'$.event' ORDER BY j.due_at DESC,j.id DESC) AS rn FROM notification_inbox i JOIN notification_jobs j ON j.id=i.id LEFT JOIN portal_leads l ON l.id=i.content->>'$.leadId' WHERE i.employee_id=:p1) ranked WHERE rn=1 LIMIT 200": {
@@ -2407,6 +3426,18 @@
     "sql": "SELECT raw_code FROM campaign_source_reviews WHERE status='linked' AND (LOWER(raw_code)=:p1 OR LOWER(raw_code) LIKE :p2)",
     "sources": [
       "server/portal/campaignCodeAllocation.ts"
+    ]
+  },
+  "SELECT record_id FROM enrollment_record_attribution WHERE attribution->>'$.promotionId'=:p1 AND JSON_EXTRACT(attribution,'$.verified')=true LIMIT 1": {
+    "sql": "SELECT record_id FROM enrollment_record_attribution WHERE attribution->>'$.promotionId'=:p1 AND JSON_EXTRACT(attribution,'$.verified')=true LIMIT 1",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
+    ]
+  },
+  "SELECT reference FROM enrollment_refund_returns WHERE reference=:p1": {
+    "sql": "SELECT reference FROM enrollment_refund_returns WHERE reference=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
     ]
   },
   "SELECT RELEASE_LOCK(:p1)": {
@@ -2429,11 +3460,23 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT resend_at>UTC_TIMESTAMP(6) AS blocked,locked_until>UTC_TIMESTAMP(6) AS locked\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE": {
+    "sql": "SELECT resend_at>UTC_TIMESTAMP(6) AS blocked,locked_until>UTC_TIMESTAMP(6) AS locked\n        FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2": {
     "sql": "SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2",
     "sources": [
       "server/portal/assignmentBackfill.ts",
       "server/portal/courseCatalog.ts",
+      "server/portal/enrollmentBank.ts",
+      "server/portal/enrollmentCatalog.ts",
+      "server/portal/enrollmentCrm.ts",
+      "server/portal/enrollmentResolution.ts",
+      "server/portal/enrollmentRules.ts",
+      "server/portal/enrollmentTemplates.ts",
       "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
     ]
@@ -2441,8 +3484,7 @@
   "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2": {
     "sql": "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
     "sources": [
-      "server/portal/assessments.ts",
-      "server/portal/chat.ts"
+      "server/portal/assessments.ts"
     ]
   },
   "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC LIMIT 20": {
@@ -2452,8 +3494,38 @@
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
-    "sql": "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+  "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2": {
+    "sql": "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
+  "SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1": {
+    "sql": "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1 FOR UPDATE": {
+    "sql": "SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "SELECT revision,state,data FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT revision,state,data FROM enrollment_classes WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
+    "sql": "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
     "sources": [
       "server/portal/chat.ts"
     ]
@@ -2470,10 +3542,34 @@
       "server/portal/notificationTarget.ts"
     ]
   },
+  "SELECT source_class_id,target_class_id,created_at FROM enrollment_transfers WHERE order_id=:p1 ORDER BY created_at DESC": {
+    "sql": "SELECT source_class_id,target_class_id,created_at FROM enrollment_transfers WHERE order_id=:p1 ORDER BY created_at DESC",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
   "SELECT source_type,source_id,input,output FROM crm_ai_extractions WHERE lead_id=:p1 AND source_id=:p2 ORDER BY created_at DESC LIMIT 1": {
     "sql": "SELECT source_type,source_id,input,output FROM crm_ai_extractions WHERE lead_id=:p1 AND source_id=:p2 ORDER BY created_at DESC LIMIT 1",
     "sources": [
       "server/portal/recordAmendments.ts"
+    ]
+  },
+  "SELECT state FROM enrollment_classes WHERE id=:p1": {
+    "sql": "SELECT state FROM enrollment_classes WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT state FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE": {
+    "sql": "SELECT state FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "SELECT state,account,started_ms FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1": {
+    "sql": "SELECT state,account,started_ms FROM enrollment_mail_attempts\n      WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
     ]
   },
   "SELECT state,channel,attempts,snapshot,completed_at FROM notification_jobs WHERE id=:p1": {
@@ -2504,6 +3600,18 @@
     "sql": "SELECT t.*,l.profile FROM followup_tasks t JOIN portal_leads l ON l.id=t.lead_id WHERE t.id=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT t.id,t.kind,t.status,t.owner_id,t.details,\n    DATE_FORMAT(t.due_at,'%Y-%m-%dT%H:%i:%sZ') AS dueAt,customer.id AS customerId\n    FROM followup_tasks t JOIN portal_leads original ON original.id=t.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE t.status IN ('open','overdue') AND JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))\n      AND (t.details->>'$.opportunityId' IS NOT NULL OR t.details->>'$.enrollmentOrderId' IS NOT NULL)": {
+    "sql": "SELECT t.id,t.kind,t.status,t.owner_id,t.details,\n    DATE_FORMAT(t.due_at,'%Y-%m-%dT%H:%i:%sZ') AS dueAt,customer.id AS customerId\n    FROM followup_tasks t JOIN portal_leads original ON original.id=t.lead_id\n    JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n    WHERE t.status IN ('open','overdue') AND JSON_CONTAINS(:p1,JSON_QUOTE(customer.id))\n      AND (t.details->>'$.opportunityId' IS NOT NULL OR t.details->>'$.enrollmentOrderId' IS NOT NULL)",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "SELECT target_class_id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND id<>:p2": {
+    "sql": "SELECT target_class_id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND id<>:p2",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
     ]
   },
   "SELECT u.* FROM crm_sessions s JOIN crm_users u ON u.id=s.user_id WHERE s.token_hash=:p1 AND s.expires_at>UTC_TIMESTAMP(6) AND u.active=true": {
@@ -2568,16 +3676,39 @@
       "server/portal/courseCatalog.ts"
     ]
   },
+  "SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/enrollmentApplication.ts",
+      "server/portal/enrollmentCatalog.ts",
+      "server/portal/enrollmentTemplates.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id": {
+    "sql": "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
+    ]
+  },
   "SELECT value FROM portal_settings WHERE id=:p1": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1",
     "sources": [
       "server/portal/larkChannelModes.ts",
-      "server/portal/larkSelfService.ts"
+      "server/portal/larkSelfService.ts",
+      "server/portal/paymentAnalyticsDispatch.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE": {
+    "sql": "SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE",
+    "sources": [
+      "server/portal/enrollmentTemplates.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE",
     "sources": [
+      "server/portal/enrollmentCatalog.ts",
+      "server/portal/enrollmentTemplates.ts",
       "server/portal/larkChannelModes.ts"
     ]
   },
@@ -2603,6 +3734,7 @@
   "SELECT value FROM portal_settings WHERE id='crm_policy'": {
     "sql": "SELECT value FROM portal_settings WHERE id='crm_policy'",
     "sources": [
+      "server/portal/enrollmentRules.ts",
       "server/portal/runtime.ts"
     ]
   },
@@ -2611,6 +3743,36 @@
     "sources": [
       "server/portal/autoAssignment.ts",
       "server/portal/crmAccessControls.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_bank'": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_bank'",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_bank' FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_bank' FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_batch_lock' FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_batch_lock' FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_rules'": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_rules'",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
+    ]
+  },
+  "SELECT value FROM portal_settings WHERE id='enrollment_rules' FOR UPDATE": {
+    "sql": "SELECT value FROM portal_settings WHERE id='enrollment_rules' FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='sla'": {
@@ -2641,6 +3803,30 @@
     "sql": "SELECT visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",
     "sources": [
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT w.class_id,w.id,w.id AS record_id,'waitlist' AS kind,w.state,w.learner_name AS name,\n    w.email,w.phone,NULL AS price,NULL AS received,NULL AS due_at,NULL AS recorded_closure\n  FROM enrollment_waitlist w WHERE (:p1 IS NULL OR w.class_id=:p1)": {
+    "sql": "SELECT w.class_id,w.id,w.id AS record_id,'waitlist' AS kind,w.state,w.learner_name AS name,\n    w.email,w.phone,NULL AS price,NULL AS received,NULL AS due_at,NULL AS recorded_closure\n  FROM enrollment_waitlist w WHERE (:p1 IS NULL OR w.class_id=:p1)",
+    "sources": [
+      "server/portal/enrollmentManagement.ts"
+    ]
+  },
+  "SELECT w.id FROM enrollment_waitlist w JOIN enrollment_vacancy_cycles v ON v.class_id=w.class_id\n      WHERE w.id=:p1 AND w.email=:p2 AND w.class_id=:p3 AND w.state='waiting' AND v.cycle=:p4 AND v.is_full=FALSE": {
+    "sql": "SELECT w.id FROM enrollment_waitlist w JOIN enrollment_vacancy_cycles v ON v.class_id=w.class_id\n      WHERE w.id=:p1 AND w.email=:p2 AND w.class_id=:p3 AND w.state='waiting' AND v.cycle=:p4 AND v.is_full=FALSE",
+    "sources": [
+      "server/portal/enrollmentInterestDelivery.ts"
+    ]
+  },
+  "SELECT w.id,COALESCE(w.learner_name,\n    NULLIF(l.profile->>'$.fullName',w.email)) AS learner_name\n    FROM enrollment_waitlist w LEFT JOIN enrollment_customer_records a ON a.kind='waitlist' AND a.record_id=w.id\n    LEFT JOIN portal_leads l ON l.id=a.lead_id\n    WHERE w.class_id=:p1 AND w.email=:p2 AND w.state='waiting' ORDER BY w.created_at,w.id": {
+    "sql": "SELECT w.id,COALESCE(w.learner_name,\n    NULLIF(l.profile->>'$.fullName',w.email)) AS learner_name\n    FROM enrollment_waitlist w LEFT JOIN enrollment_customer_records a ON a.kind='waitlist' AND a.record_id=w.id\n    LEFT JOIN portal_leads l ON l.id=a.lead_id\n    WHERE w.class_id=:p1 AND w.email=:p2 AND w.state='waiting' ORDER BY w.created_at,w.id",
+    "sources": [
+      "server/portal/enrollmentLearners.ts"
+    ]
+  },
+  "SELECT w.id,w.email,COALESCE(w.learner_name,NULLIF(l.profile->>'$.fullName',w.email)) AS learner_name\n    FROM enrollment_waitlist w LEFT JOIN enrollment_customer_records a ON a.kind='waitlist' AND a.record_id=w.id\n    LEFT JOIN portal_leads l ON l.id=a.lead_id\n    WHERE w.class_id=:p1 AND w.state='waiting' ORDER BY w.created_at,w.id": {
+    "sql": "SELECT w.id,w.email,COALESCE(w.learner_name,NULLIF(l.profile->>'$.fullName',w.email)) AS learner_name\n    FROM enrollment_waitlist w LEFT JOIN enrollment_customer_records a ON a.kind='waitlist' AND a.record_id=w.id\n    LEFT JOIN portal_leads l ON l.id=a.lead_id\n    WHERE w.class_id=:p1 AND w.state='waiting' ORDER BY w.created_at,w.id",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "UPDATE access_handovers SET causes=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
@@ -2836,6 +4022,265 @@
       "server/portal/accessManagement.ts"
     ]
   },
+  "UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)\n          WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)": {
+    "sql": "UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)\n          WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_assisted_applications SET order_id=:p2,confirmed_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_assisted_applications SET order_id=:p2,confirmed_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_classes SET course_id=:p1,revision=:p2,state=:p3,first_lesson_at=:p4,enrollment_closes_at=:p5,data=:p6,updated_at=UTC_TIMESTAMP(6) WHERE id=:p7": {
+    "sql": "UPDATE enrollment_classes SET course_id=:p1,revision=:p2,state=:p3,first_lesson_at=:p4,enrollment_closes_at=:p5,data=:p6,updated_at=UTC_TIMESTAMP(6) WHERE id=:p7",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "UPDATE enrollment_classes SET state='cancelled',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_classes SET state='cancelled',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n          AND opportunity_id IS NULL": {
+    "sql": "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n          AND opportunity_id IS NULL",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2": {
+    "sql": "UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "UPDATE enrollment_demands SET email=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_demands SET email=:p2,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "UPDATE enrollment_demands SET state='withdrawn',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_demands SET state='withdrawn',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "UPDATE enrollment_email_challenges SET attempts=:p1,\n          locked_until=IF(:p1>=:p3,TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),NULL) WHERE email=:p2": {
+    "sql": "UPDATE enrollment_email_challenges SET attempts=:p1,\n          locked_until=IF(:p1>=:p3,TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),NULL) WHERE email=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,\n        expires_at=TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),resend_at=TIMESTAMPADD(SECOND,:p5,UTC_TIMESTAMP(6)) WHERE email=:p3": {
+    "sql": "UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,\n        expires_at=TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),resend_at=TIMESTAMPADD(SECOND,:p5,UTC_TIMESTAMP(6)) WHERE email=:p3",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1": {
+    "sql": "UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_email_challenges SET used=TRUE,\n          resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2": {
+    "sql": "UPDATE enrollment_email_challenges SET used=TRUE,\n          resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_mail_attempts SET state=:p2 WHERE id=:p1": {
+    "sql": "UPDATE enrollment_mail_attempts SET state=:p2 WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_mail_bindings SET account=:p3 WHERE environment=:p1 AND recipient=:p2": {
+    "sql": "UPDATE enrollment_mail_bindings SET account=:p3 WHERE environment=:p1 AND recipient=:p2",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_mail_configuration SET config=:p2,revision=revision+1 WHERE environment=:p1": {
+    "sql": "UPDATE enrollment_mail_configuration SET config=:p2,revision=revision+1 WHERE environment=:p1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3\n          WHERE event_key=:p1 AND state='queued'": {
+    "sql": "UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3\n          WHERE event_key=:p1 AND state='queued'",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_notification_receipts SET state='cancelled' WHERE event_key=:p1": {
+    "sql": "UPDATE enrollment_notification_receipts SET state='cancelled' WHERE event_key=:p1",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1": {
+    "sql": "UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "UPDATE enrollment_opportunities SET sales_stage=COALESCE(:p1,sales_stage),revision=revision+1 WHERE id=:p2": {
+    "sql": "UPDATE enrollment_opportunities SET sales_stage=COALESCE(:p1,sales_stage),revision=revision+1 WHERE id=:p2",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET class_id=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2": {
+    "sql": "UPDATE enrollment_orders SET class_id=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET data=JSON_SET(data,'$.autoTransferSource',:p1)\n    WHERE class_id=:p1 AND data->>'$.priority'='true'\n      AND state IN ('awaiting_payment','proof_review','partial','paid','recovered','expired')": {
+    "sql": "UPDATE enrollment_orders SET data=JSON_SET(data,'$.autoTransferSource',:p1)\n    WHERE class_id=:p1 AND data->>'$.priority'='true'\n      AND state IN ('awaiting_payment','proof_review','partial','paid','recovered','expired')",
+    "sources": [
+      "server/portal/enrollmentTransferOffers.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET data=JSON_SET(data,'$.firstReviewDueAt',:p2,'$.firstProofAvailableAt',:p3) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET data=JSON_SET(data,'$.firstReviewDueAt',:p2,'$.firstProofAvailableAt',:p3) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)),activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET data=JSON_SET(data,'$.priority',CAST('true' AS JSON)),activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=UTC_TIMESTAMP(6) WHERE id=:p4": {
+    "sql": "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=UTC_TIMESTAMP(6) WHERE id=:p4",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET received=received-:p1,data=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3": {
+    "sql": "UPDATE enrollment_orders SET received=received-:p1,data=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p3",
+    "sources": [
+      "server/portal/enrollmentPaymentCredits.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2": {
+    "sql": "UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts",
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET state='ended',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET state='ended',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET state='ended',data=JSON_SET(data,'$.closureReason','learner_cancelled'),\n        activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET state='ended',data=JSON_SET(data,'$.closureReason','learner_cancelled'),\n        activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET state='expired',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL\n    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)\n      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))": {
+    "sql": "UPDATE enrollment_orders SET state='expired',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL\n    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)\n      AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET state='refunded',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET state='refunded',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET state='refunding',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET state='refunding',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET upload_id=:p1,upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id=:p2": {
+    "sql": "UPDATE enrollment_orders SET upload_id=:p1,upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET upload_id=NULL,upload_expires_at=NULL WHERE id=:p1": {
+    "sql": "UPDATE enrollment_orders SET upload_id=NULL,upload_expires_at=NULL WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "UPDATE enrollment_transfer_invitations SET state='accepted' WHERE id=:p1": {
+    "sql": "UPDATE enrollment_transfer_invitations SET state='accepted' WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_transfer_invitations SET state='declined' WHERE id=:p1": {
+    "sql": "UPDATE enrollment_transfer_invitations SET state='declined' WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_transfer_invitations SET state='released' WHERE order_id=:p1 AND state='offered' AND id<>:p2": {
+    "sql": "UPDATE enrollment_transfer_invitations SET state='released' WHERE order_id=:p1 AND state='offered' AND id<>:p2",
+    "sources": [
+      "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_vacancy_cycles SET is_full=:p1,cycle=:p2 WHERE class_id=:p3": {
+    "sql": "UPDATE enrollment_vacancy_cycles SET is_full=:p1,cycle=:p2 WHERE class_id=:p3",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "UPDATE enrollment_waitlist SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1": {
+    "sql": "UPDATE enrollment_waitlist SET email=:p2,activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
+    "sources": [
+      "server/portal/enrollmentCrm.ts"
+    ]
+  },
+  "UPDATE enrollment_waitlist SET state='closed',activity_at=UTC_TIMESTAMP(6) WHERE class_id=:p1 AND state='waiting'": {
+    "sql": "UPDATE enrollment_waitlist SET state='closed',activity_at=UTC_TIMESTAMP(6) WHERE class_id=:p1 AND state='waiting'",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
+  "UPDATE enrollment_waitlist SET state='converted',activity_at=UTC_TIMESTAMP(6),order_id=:p1 WHERE id=:p2 AND state='waiting'": {
+    "sql": "UPDATE enrollment_waitlist SET state='converted',activity_at=UTC_TIMESTAMP(6),order_id=:p1 WHERE id=:p2 AND state='waiting'",
+    "sources": [
+      "server/portal/enrollmentLearners.ts"
+    ]
+  },
+  "UPDATE enrollment_waitlist SET state='withdrawn',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND email=:p2 AND state='waiting'": {
+    "sql": "UPDATE enrollment_waitlist SET state='withdrawn',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1 AND email=:p2 AND state='waiting'",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
+    ]
+  },
   "UPDATE followup_tasks SET details=:p2,revision=revision+1 WHERE id=:p1": {
     "sql": "UPDATE followup_tasks SET details=:p2,revision=revision+1 WHERE id=:p1",
     "sources": [
@@ -2947,8 +4392,8 @@
       "server/portal/trustRoutes.ts"
     ]
   },
-  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.catalogueSelection',CAST(:p7 AS JSON),'$.replyLang',:p8) WHERE id=:p1": {
-    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.catalogueSelection',CAST(:p7 AS JSON),'$.replyLang',:p8) WHERE id=:p1",
+  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON),'$.replyLanguage',:p10) WHERE id=:p1": {
+    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON),'$.replyLanguage',:p10) WHERE id=:p1",
     "sources": [
       "server/portal/chat.ts"
     ]
@@ -3018,12 +4463,6 @@
     "sql": "UPDATE notification_jobs SET state='accepted',completed_at=:p2 WHERE id=:p1",
     "sources": [
       "server/portal/worker.ts"
-    ]
-  },
-  "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'": {
-    "sql": "UPDATE notification_jobs SET state='cancelled' WHERE id=:p1 AND state='pending'",
-    "sources": [
-      "server/portal/runtime.ts"
     ]
   },
   "UPDATE notification_jobs SET state='cancelled',result=:p2,completed_at=:p3 WHERE id=:p1": {
@@ -3253,6 +4692,7 @@
       "server/portal/autoAssignment.ts",
       "server/portal/dynamicProfile.ts",
       "server/portal/enrollmentCorrection.ts",
+      "server/portal/enrollmentCrm.ts",
       "server/portal/identityConsolidation.ts",
       "server/portal/noResponse.ts",
       "server/portal/ownerAssignment.ts",
@@ -3271,6 +4711,18 @@
       "server/portal/autoAssignment.ts"
     ]
   },
+  "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_bank'": {
+    "sql": "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_bank'",
+    "sources": [
+      "server/portal/enrollmentBank.ts"
+    ]
+  },
+  "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_rules'": {
+    "sql": "UPDATE portal_settings SET value=:p1 WHERE id='enrollment_rules'",
+    "sources": [
+      "server/portal/enrollmentRules.ts"
+    ]
+  },
   "UPDATE portal_settings SET value=:p1 WHERE id='sla'": {
     "sql": "UPDATE portal_settings SET value=:p1 WHERE id='sla'",
     "sources": [
@@ -3280,6 +4732,7 @@
   "UPDATE portal_settings SET value=:p2 WHERE id=:p1": {
     "sql": "UPDATE portal_settings SET value=:p2 WHERE id=:p1",
     "sources": [
+      "server/portal/enrollmentCatalog.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/runtime.ts"
     ]

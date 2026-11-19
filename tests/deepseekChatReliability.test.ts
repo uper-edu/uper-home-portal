@@ -5,14 +5,15 @@ import {
   escapeControlCharsInJsonStrings,
   formatConsultationHistory,
   isRecoverableConsultationError,
+  managedEnrollmentCatalogueSelection,
   parseConsultationJson,
+  parseConsultationReply,
   renderConsultationReply,
-  resolveConsultationReply,
 } from '../server/portal/coursePrices.ts';
-import { consultationFocus } from '../server/portal/consultationGuidance.ts';
-import { getSystemInstruction } from '../src/data/knowledgeBase.ts';
+import { chatConsultationCore } from '../server/portal/chatConsultationKnowledge.ts';
+import { enrollmentConsultationPolicy } from '../server/portal/enrollmentConsultationPolicy.ts';
 
-const book = {
+const legacyBook = {
   courses: [
     { id: 'HSK 1', sessions: 23, total: 1150000 },
     { id: 'HSK 2', sessions: 24, total: 1200000 },
@@ -21,18 +22,27 @@ const book = {
   ],
 };
 
-test('escapeControlCharsInJsonStrings and parseConsultationJson recover raw control chars and fences while rejecting blanks', () => {
-  const withRawNewlines = '{"lang":"zh","catalogue":null,"reply":"第一行\n第二行\t制表\r回车\b退格"}';
+const managedBook = {
+  courses: [
+    { id: 'HSK 1 · 新概念汉语 · 23 × 45 min', sessions: 23, total: 1150000, enrollmentLevel: 'HSK 1' },
+    { id: 'Winter Study Tour Beijing', sessions: 10, total: 15000000 },
+  ],
+};
+
+test('escapeControlCharsInJsonStrings, parseConsultationJson, and parseConsultationReply recover raw control chars and fences while enforcing price guards', () => {
+  const withRawNewlines = '{"replyLanguage":"zh","enrollment":null,"catalogue":null,"reply":"第一行\n第二行\t制表\r回车"}';
   const escaped = escapeControlCharsInJsonStrings(withRawNewlines);
   assert.deepEqual(JSON.parse(escaped), {
-    lang: 'zh',
+    replyLanguage: 'zh',
+    enrollment: null,
     catalogue: null,
-    reply: '第一行\n第二行\t制表\r回车\b退格',
+    reply: '第一行\n第二行\t制表\r回车',
   });
 
-  const fenced = '```json\n{"lang":"en",\n"catalogue":null,"reply":"Line 1\nLine 2 \\"quoted\\""}\n```';
+  const fenced = '```json\n{"replyLanguage":"en",\n"enrollment":null,"catalogue":null,"reply":"Line 1\nLine 2 \\"quoted\\""}\n```';
   assert.deepEqual(parseConsultationJson(fenced), {
-    lang: 'en',
+    replyLanguage: 'en',
+    enrollment: null,
     catalogue: null,
     reply: 'Line 1\nLine 2 "quoted"',
   });
@@ -41,107 +51,129 @@ test('escapeControlCharsInJsonStrings and parseConsultationJson recover raw cont
     assert.throws(() => parseConsultationJson(empty), /Empty provider response/);
   }
   assert.throws(() => parseConsultationJson('not json at all'), SyntaxError);
+
+  assert.throws(() => parseConsultationReply('{"reply":"Rp 99,999"}'), /Invalid catalogue selection/);
+  assert.deepEqual(
+    parseConsultationReply('{"replyLanguage":"zh","enrollment":{"kind":"quote","level":"HSK 1"},"reply":""}'),
+    { replyLanguage: 'zh', enrollment: { kind: 'quote', level: 'HSK 1' }, catalogue: null, reply: '' },
+  );
+  assert.deepEqual(
+    renderConsultationReply(
+      JSON.stringify({ replyLanguage: 'en', catalogue: { courses: ['HSK 1'], detail: 'price' }, reply: '' }),
+      legacyBook,
+      'en',
+    ),
+    { reply: 'Published courses\n\n- HSK 1 · 23 sessions · course total Rp 1,150,000', catalogueUsed: true },
+  );
 });
 
-test('resolveConsultationReply and renderConsultationReply enforce catalogue schema and support lang override', () => {
-  assert.throws(() => renderConsultationReply('{"reply":"Rp 99,999"}', book, 'zh'), /Invalid catalogue selection/);
-  assert.throws(() => resolveConsultationReply('{"lang":"zh","reply":"Rp 99,999"}', book, 'zh'), /Invalid catalogue selection/);
-
-  const rendered = renderConsultationReply(
-    JSON.stringify({ lang: 'en', catalogue: { courses: ['HSK 1'], detail: 'price' }, reply: '' }),
-    book,
-    'zh',
+test('formatConsultationHistory emits valid JSON assistant turns for enrollment-managed conversations and merges consecutive user turns', () => {
+  const formatted = formatConsultationHistory(
+    [
+      { role: 'user', content: '我想找 HSK 1 周末标准班，周六下午有空。' },
+      {
+        role: 'assistant',
+        content: '按你给出的条件，可以先看 HSK 1 · 标准班 · 周末班。',
+        metadata: {
+          replyLanguage: 'zh',
+          enrollment: {
+            kind: 'class',
+            level: 'HSK 1',
+            format: 'standard',
+            period: 'weekend',
+            replyLanguage: 'zh',
+            rows: [{ id: 'cls-1', price: 920000 }],
+          },
+        },
+      },
+      { role: 'user', content: '第一个班什么时候开课？' },
+      {
+        role: 'assistant',
+        content: '**HSK 1 · 标准班 · 周末班 · 第 1 期**，首课 2026-12-19 15:00 WIB。',
+        metadata: JSON.stringify({
+          enrollment: {
+            kind: 'class',
+            inspection: true,
+            detailFields: ['first'],
+            replyLanguage: 'zh',
+            rows: [{ id: 'cls-1', price: 920000 }],
+          },
+        }),
+      },
+      { role: 'user', content: '我要不要给另一个账号再付？' },
+      { role: 'user', content: '我怎么证明我已付？' },
+    ],
+    { enrollmentManaged: true },
   );
-  assert.deepEqual(Object.keys(rendered).sort(), ['catalogueUsed', 'reply']);
-  assert.equal(rendered.catalogueUsed, true);
-  assert.match(rendered.reply, /Published courses[\s\S]*HSK 1 · 23 sessions · course total Rp 1,150,000/);
-
-  const idOverride = resolveConsultationReply(
-    JSON.stringify({ lang: 'id', catalogue: { courses: ['HSK 1', 'HSK 9'], detail: 'price', unavailable: true }, reply: '' }),
-    book,
-    'en',
-  );
-  assert.equal(idOverride.lang, 'id');
-  assert.equal(idOverride.catalogueUsed, true);
-  assert.deepEqual(idOverride.catalogue, { courses: ['HSK 1', 'HSK 9'], detail: 'price', unavailable: true });
-  assert.match(idOverride.reply, /Kursus yang dipublikasikan[\s\S]*Rp 1\.150\.000[\s\S]*Informasi resmi untuk kursus yang ditanyakan belum tersedia/);
-
-  const fallbackLang = resolveConsultationReply(
-    JSON.stringify({ lang: 'fr', catalogue: null, reply: 'Silakan cek jadwal terlebih dahulu.' }),
-    book,
-    'id',
-  );
-  assert.equal(fallbackLang.lang, 'id');
-  assert.equal(fallbackLang.catalogue, null);
-  assert.equal(fallbackLang.catalogueUsed, false);
-});
-
-test('formatConsultationHistory emits valid JSON assistant turns and merges consecutive user or non-catalogue assistant turns', () => {
-  const formatted = formatConsultationHistory([
-    { role: 'user', content: 'HSK 1 多少钱？' },
-    {
-      role: 'assistant',
-      content: '目前已发布的课程\n\n- HSK 1 · 23 节课，课程总价 Rp 1,150,000',
-      metadata: { replyLang: 'zh', catalogueSelection: { courses: ['HSK 1'], detail: 'price' } },
-    },
-    { role: 'user', content: '如果班次取消，我已经转账了怎么办？' },
-    {
-      role: 'assistant',
-      content: '请保留原转账凭证。',
-      metadata: JSON.stringify({ replyLang: 'zh' }),
-    },
-    { role: 'user', content: '我要不要给另一个账号再付？' },
-    { role: 'user', content: '我怎么证明我已付？' },
-  ]);
 
   assert.equal(formatted.length, 5);
-  assert.deepEqual(formatted[0], { role: 'user', content: 'HSK 1 多少钱？' });
   assert.equal(formatted[1].role, 'assistant');
   assert.deepEqual(JSON.parse(formatted[1].content), {
-    lang: 'zh',
-    catalogue: { courses: ['HSK 1'], detail: 'price' },
-    reply: '',
+    replyLanguage: 'zh',
+    enrollment: { kind: 'recommend', level: 'HSK 1', format: 'standard', period: 'weekend' },
+    catalogue: null,
+    reply: '按你给出的条件，可以先看 HSK 1 · 标准班 · 周末班。',
   });
   assert.equal(formatted[3].role, 'assistant');
   assert.deepEqual(JSON.parse(formatted[3].content), {
-    lang: 'zh',
+    replyLanguage: 'zh',
+    enrollment: { kind: 'inspect', fields: ['first'], referenceIds: ['cls-1'] },
     catalogue: null,
-    reply: '请保留原转账凭证。',
+    reply: '**HSK 1 · 标准班 · 周末班 · 第 1 期**，首课 2026-12-19 15:00 WIB。',
   });
   assert.equal(formatted[4].role, 'user');
   assert.match(formatted[4].content, /Earlier learner message\(s\) whose reply did not complete/);
   assert.match(formatted[4].content, /我要不要给另一个账号再付？/);
   assert.match(formatted[4].content, /\[Latest learner message\]\n我怎么证明我已付？/);
+});
 
-  const mergedAssistants = formatConsultationHistory([
-    { role: 'assistant', content: '建议从 HSK 1 开始。', metadata: { replyLang: 'zh' } },
-    { role: 'assistant', content: '请问您更偏向周末还是工作日晚间上课？', metadata: { replyLang: 'zh' } },
-    { role: 'user', content: '周末可以。' },
-  ]);
-  assert.equal(mergedAssistants.length, 2);
-  assert.equal(mergedAssistants[0].role, 'assistant');
-  assert.deepEqual(JSON.parse(mergedAssistants[0].content), {
-    lang: 'zh',
+test('formatConsultationHistory maps waitlists/catalog/unavailable safely and merges consecutive assistant turns', () => {
+  const formatted = formatConsultationHistory(
+    [
+      {
+        role: 'assistant',
+        content: '建议先从 HSK 1 开始。',
+        metadata: {
+          replyLanguage: 'zh',
+          enrollment: { kind: 'catalog', level: 'HSK 1', question: 'starting_point' },
+        },
+      },
+      {
+        role: 'assistant',
+        content: '暂无可核实班次。',
+        metadata: {
+          enrollment: { kind: 'unavailable' },
+        },
+      },
+      { role: 'user', content: '那能查我的订单吗？' },
+    ],
+    { enrollmentManaged: true },
+  );
+
+  assert.equal(formatted.length, 2);
+  assert.deepEqual(JSON.parse(formatted[0].content), {
+    replyLanguage: 'zh',
+    enrollment: { kind: 'browse', level: 'HSK 1', question: 'starting_point' },
     catalogue: null,
-    reply: '建议从 HSK 1 开始。\n\n请问您更偏向周末还是工作日晚间上课？',
+    reply: '建议先从 HSK 1 开始。\n\n暂无可核实班次。',
   });
 
-  const catalogueThenPlain = formatConsultationHistory([
+  const legacyFormatted = formatConsultationHistory([
     {
       role: 'assistant',
-      content: 'Published courses\n\n- HSK 1 · 23 sessions · course total Rp 1,150,000',
+      content: 'Published courses\n\n- HSK 1 · 23 sessions',
       metadata: { replyLang: 'en', catalogueSelection: { courses: ['HSK 1'], detail: 'price' } },
     },
-    { role: 'assistant', content: 'Which start date works for you?', metadata: { replyLang: 'en' } },
+    { role: 'assistant', content: 'Which start date works for you?', metadata: { replyLanguage: 'en' } },
   ]);
-  assert.equal(catalogueThenPlain.length, 2);
-  assert.deepEqual(JSON.parse(catalogueThenPlain[0].content), {
-    lang: 'en',
+  assert.equal(legacyFormatted.length, 2);
+  assert.deepEqual(JSON.parse(legacyFormatted[0].content), {
+    replyLanguage: 'en',
     catalogue: { courses: ['HSK 1'], detail: 'price' },
     reply: '',
   });
-  assert.deepEqual(JSON.parse(catalogueThenPlain[1].content), {
-    lang: 'en',
+  assert.deepEqual(JSON.parse(legacyFormatted[1].content), {
+    replyLanguage: 'en',
     catalogue: null,
     reply: 'Which start date works for you?',
   });
@@ -171,19 +203,35 @@ test('isRecoverableConsultationError distinguishes schema/blank failures from tr
   }
 });
 
-test('prompt alignment removes conflicting directives and keeps JSON schema contract clear', () => {
-  const sys = getSystemInstruction(false);
-  assert.doesNotMatch(sys, /suggestedPrompts/);
-  assert.match(sys, /explicitly requests a target language/i);
+test('enrollment-managed JSON instruction puts structured keys before reply and excludes Enrollment Mandarin from legacy catalogue', async () => {
+  const instruction = courseCatalogueInstruction(managedBook, true);
+  assert.match(instruction, /"replyLanguage", "enrollment", "catalogue"/);
+  assert.match(instruction, /"replyLanguage":"zh","enrollment":null,"catalogue":null/);
+  assert.match(instruction, /"replyLanguage":"id","enrollment":\{"kind":"quote","question":"group_overview"/);
+  assert.doesNotMatch(instruction, /新概念汉语/);
+  assert.match(instruction, /Winter Study Tour Beijing/);
+  assert.deepEqual(managedEnrollmentCatalogueSelection({ courses: ['HSK 1'], detail: 'price' }, managedBook), {
+    kind: 'quote',
+    levels: ['HSK 1'],
+  });
+  assert.match(chatConsultationCore, /from Enrollment/);
+  assert.match(enrollmentConsultationPolicy, /Enrollment policy facts/);
 
-  const focus = consultationFocus({ buyingSignals: ['Asked price'] });
-  assert.equal(focus.topic, 'fees');
-  assert.doesNotMatch(focus.instruction, /Your FIRST sentence must address the requested course fees/);
-  assert.match(focus.instruction, /"catalogue":null/);
-
-  const cat = courseCatalogueInstruction(book);
-  assert.match(cat, /Always output all three keys in this exact order: "lang", "catalogue", "reply"/);
-  assert.match(cat, /\{"lang":"zh","catalogue":null,/);
-  assert.match(cat, /\{"lang":"id","catalogue":\{"courses":"all","detail":"price"\},"reply":""\}/);
-  assert.match(cat, /"HSK 5A"/);
+  const settings = {
+    MYSQL_TRIAL_URL: 'mysql://unused:unused@127.0.0.1/uper_trial_unit',
+    TRIAL_DATASET: 'synthetic',
+    PORTAL_ENV: 'dev',
+    PORTAL_DEPLOYMENT: '',
+  };
+  const original = Object.fromEntries(Object.keys(settings).map(key => [key, process.env[key]]));
+  Object.assign(process.env, settings);
+  try {
+    const { chatEnrollmentInstruction } = await import('../server/portal/chatEnrollment.ts');
+    assert.match(chatEnrollmentInstruction, /"enrollment"/);
+  } finally {
+    for (const [key, value] of Object.entries(original)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });

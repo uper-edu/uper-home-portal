@@ -60,7 +60,8 @@ export async function initializeSystemDefaults(c){
     [CRM_BOT_CHANNEL, JSON.stringify(larkConfig)],
    );
   }
-  for(const course of courseBook.courses){
+  const [catalogOverride]=await c.execute("SELECT id FROM portal_settings WHERE id='enrollment_catalog_replaced'");
+  for(const course of catalogOverride.length?[]:courseBook.courses){
    const id='hsk-standard-'+course.id.replace(/^HSK /,'').toLowerCase();
    const [existing]=await c.execute("SELECT id FROM crm_courses WHERE id=? OR JSON_UNQUOTE(JSON_EXTRACT(value,'$.name'))=?",[id,course.id]);
    if(existing.some(r=>r.id===id))continue;
@@ -71,6 +72,6 @@ export async function initializeSystemDefaults(c){
    await c.execute('INSERT INTO crm_courses(id,revision,value) VALUES(?,1,?)',[id,JSON.stringify(value)]);
   }
   await syncPromotionIndex(c);
-  await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:courseBook.courses.length};
+  await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:catalogOverride.length?0:courseBook.courses.length};
  }catch(e){await c.rollback();throw e;}
 }

@@ -242,6 +242,7 @@ export async function restoreChat(source: ChatSource) {
         : undefined,
     timestamp: new Date(m.created_at),
     action: m.role === 'user' ? data.messages.find((a:any) => a.request_id === m.request_id && ['handoff','booking','enrollment'].includes(a.metadata?.followupAction))?.metadata.followupAction : undefined,
+    enrollment: m.role==='assistant'&&m.status==='completed'?m.metadata?.enrollment:undefined,
     content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
   }));
   return [

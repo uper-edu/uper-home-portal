@@ -27,6 +27,7 @@ test('heading exposes a manager-only secondary action, contextual return, and tr
  const render=(patch:any={})=>renderToStaticMarkup(React.createElement(CampaignWorkspaceHeading,{...props,...patch}));
  const html=render();assert.match(html,/<h1[^>]*>Marketing Campaigns<\/h1>/);assert.match(html,/Promotion source exceptions/);assert.match(html,/Items need review/);assert.doesNotMatch(html,/<nav|Unverified sources|Review 2/);
  assert.doesNotMatch(render({canManage:false}),/<button|Promotion source exceptions|campaign-review-dot/);
- const review=render({reviewing:true});assert.match(review,/<h1[^>]*>Promotion source exceptions<\/h1>/);assert.match(review,/<span>Campaigns<\/span>/);assert.doesNotMatch(review,/campaign-source-review-trigger/);
+ const review=render({reviewing:true});assert.match(review,/<h1[^>]*>Promotion source exceptions<\/h1>/);assert.match(review,/class="admin-record-back"[^>]*>.*Back to campaign list<\/button>/);
+ assert.match(render({reviewing:true,returnToDetail:true}),/Back to campaign details/);assert.doesNotMatch(review,/campaign-source-review-trigger/);
  assert.match(render({state:{pending:false,loading:false,unavailable:true}}),/Status unavailable/);
 });

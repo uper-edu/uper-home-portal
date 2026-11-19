@@ -2,7 +2,7 @@ import evergreenLinks from '../data/evergreenPromotionLinks.json';
 
 export const promotionParameters = ['p', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id'] as const;
 export const promotionEvidenceKeys = ['p', 'lang', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'entry_point'] as const;
-export const promotionLandingPaths = ['/chat', '/link', '/', '/hsk', '/csca', '/consultancy', '/tours'] as const;
+export const promotionLandingPaths = ['/chat', '/link', '/', '/hsk', '/enrollment', '/csca', '/consultancy', '/tours'] as const;
 export type PromotionLandingPath = typeof promotionLandingPaths[number];
 export type PromotionKind = 'unpaid' | 'paid' | 'unclassified';
 export type PublicPromotion = {

@@ -75,14 +75,14 @@ const prefTranslations = {
   }
 };
 
-const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
+const Navbar = ({ onOpenAppearance, learnerPreview }: { onOpenAppearance: () => void; learnerPreview?:boolean }) => {
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = useLocation();
   const { isApple } = useDesignStyle();
-  const { name: studentName } = useStudentName(i18n.language);
+  const { name: studentName } = useStudentName(i18n.language, !learnerPreview);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -154,6 +154,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
         { nameKey: 'nav.studyTours', path: '/tours' },
       ]
     },
+    { nameKey: 'nav.enrollment', path: '/enrollment' },
     { nameKey: 'nav.partners', path: '/partners' },
     { nameKey: 'nav.news', path: '/news' },
     { nameKey: 'nav.careers', path: '/careers' },
@@ -168,7 +169,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
   ];
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'glass-card py-3 shadow-xs' : 'bg-transparent py-5'}`}>
+    <nav inert={learnerPreview} className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'glass-card py-3 shadow-xs' : 'bg-transparent py-5'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
         <Link to={journeyLink("/")} className="flex items-center gap-1.5 md:gap-2 group">
           <img 
@@ -224,8 +225,9 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
             ) : (
               <Link 
                 key={link.nameKey} 
-                to={link.path!} 
-                className={`transition-colors py-2 ${location.pathname === link.path ? (isApple ? 'text-slate-900 font-bold' : 'text-primary-600 font-semibold') : (isApple ? 'hover:text-slate-900 text-slate-600' : 'hover:text-primary-600')}`}
+                to={link.path==='/enrollment' ? promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2), promotionQuery, 'website') : link.path!}
+                aria-current={location.pathname === link.path ? 'page' : undefined}
+                className={`transition-colors py-2 ${(location.pathname === link.path || (link.path === '/enrollment' && location.pathname.startsWith('/enrollment/'))) ? (isApple ? 'text-slate-900 font-bold' : 'text-primary-600 font-semibold') : (isApple ? 'hover:text-slate-900 text-slate-600' : 'hover:text-primary-600')}`}
               >
                 {t(link.nameKey)}
               </Link>
@@ -387,7 +389,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
               ) : (
                 <Link 
                   key={link.nameKey} 
-                  to={link.path!} 
+                  to={link.path==='/enrollment' ? promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2), promotionQuery, 'website') : link.path!}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`p-3 rounded-lg font-medium ${location.pathname === link.path ? (isApple ? 'bg-slate-100 text-slate-900 font-bold' : 'bg-primary-50 text-primary-600') : (isApple ? 'hover:bg-slate-50 text-slate-750' : 'hover:bg-white/50 text-slate-700')}`}
                 >
@@ -849,7 +851,7 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
 const MobileBottomBar = () => {
   const { t } = useTranslation();
   return (
-    <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 p-3 flex gap-3 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+    <div className="public-mobile-bottom-bar md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 p-3 flex gap-3 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
       <button className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:bg-slate-200 transition-colors">
         <FileText className="w-4 h-4" /> {t('mobile.freeGuide')}
       </button>
@@ -860,13 +862,14 @@ const MobileBottomBar = () => {
   );
 };
 
-export default function Layout() {
+export default function Layout({learnerPreview=false}:{learnerPreview?:boolean}) {
   const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const location = useLocation();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   // Scroll to top on route change, but restore scroll on back navigation
   const { pathname } = location;
+  const enrollmentScreen = (/^\/enrollment\/(?:mine|help)\//).test(pathname) || /^\/enrollment(?:\/[^/]+)?\/?$/.test(pathname);
   const navType = useNavigationType();
   const scrollPath = useRef<string | null>(null);
 
@@ -877,6 +880,7 @@ export default function Layout() {
   }, [i18n.language]);
 
   useEffect(() => {
+    if (learnerPreview) return;
     // Language switching replaces the query string without leaving the page.
     if (scrollPath.current === pathname) return;
     scrollPath.current = pathname;
@@ -921,9 +925,9 @@ export default function Layout() {
   }, [pathname]);
 
   return (
-    <div className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
+    <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
 
-      <Navbar onOpenAppearance={() => setAppearanceOpen(true)} />
+      <Navbar learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} />
       <main className="flex-grow">
         <motion.div
           key={location.pathname}
@@ -940,11 +944,13 @@ export default function Layout() {
           </Suspense>
         </motion.div>
       </main>
-      <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
+      {!enrollmentScreen && <>
+        <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
+        <VisitorBoundary><AIChatbot /></VisitorBoundary>
+        <BackToTop />
+        <MobileBottomBar />
+      </>}
       <AppearanceModal isOpen={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
-      <VisitorBoundary><AIChatbot /></VisitorBoundary>
-      <BackToTop />
-      <MobileBottomBar />
     </div>
   );
 }

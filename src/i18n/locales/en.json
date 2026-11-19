@@ -7,6 +7,8 @@
   "nav": {
     "home": "Home",
     "studentPrograms": "Programs",
+    "enrollment": "Course Enrollment",
+    "enrollmentDetails": "View classes and tuition",
     "hskAi": "HSK Training",
     "cscaCoaching": "CSCA Training",
     "studyTours": "Study Tours",

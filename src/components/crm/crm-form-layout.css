@@ -20,7 +20,6 @@
 .crm-operation-compose .crm-editor-scroll.crm-owner-editor{gap:16px}
 .crm-form-section .crm-profile-batch-fields{margin-top:12px}
 .crm-form-section .crm-profile-field-editor{border:0;border-top:1px solid var(--cw-border);border-radius:0;padding:12px 0 0;gap:8px}
-.crm-form-section .crm-profile-batch-fields>.crm-profile-field-editor:only-child{grid-column:1/-1}
 .crm-form-section .crm-profile-basis label{display:flex;align-items:flex-start;gap:8px;margin-top:8px}
 .crm-form-section .crm-profile-basis input[type=checkbox]{flex:none;width:auto}
 .crm-contact-preparation-body .crm-editor-scroll>.crm-form-section{margin:0}
@@ -33,9 +32,6 @@
 .crm-identity-decision.crm-form-section>.admin-form-section-body{padding:16px}
 .crm-identity-decision.crm-form-section .crm-identity-actions{padding-top:12px;border-top:1px solid var(--cw-border)}
 /* Campaign modal keeps one body scroller and one original save footer. */
-.campaign-editor.crm-form-campaign-editor>form{height:100%;min-height:0}
-.campaign-editor.crm-form-campaign-editor>form>header,.campaign-editor.crm-form-campaign-editor>form>footer{padding:16px 24px}
-.campaign-editor.crm-form-campaign-editor .campaign-editor-body{padding:16px 24px}
 .campaign-editor .crm-form-section>.admin-form-section-heading{padding:8px 0 12px;gap:12px;background:transparent}
 .campaign-editor .crm-form-section .admin-form-section-heading h3{font-size:14px;line-height:1.6;font-weight:600}
 .campaign-editor .crm-form-details.crm-disclosure{margin:0;padding:12px 0;border:0;border-top:1px solid var(--dw-border,var(--cw-border,#cbd5e1));border-radius:0;background:transparent}
@@ -99,8 +95,7 @@
 .notification-channel-list,.notification-channel-heading{max-width:1120px}
 .notification-config-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;min-height:40px}
 .notification-config-heading-row h2{margin:0}
-.notification-config-heading-row .notification-topic-actions{width:auto}
-.notification-config-heading-row .notification-topic-actions>button:first-child{display:grid;place-items:center;min-width:40px}
+.notification-config-heading-row .notification-topic-actions{width:auto;flex-wrap:wrap;margin-inline-start:auto}
 .notification-channel-list,.notification-policy-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,312px),1fr));gap:12px}
 .notification-policy-list{grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))}
 .notification-channel-card,.notification-policy-card{display:grid;gap:8px;min-width:0;padding:12px;border:1px solid var(--af-border);border-radius:14px;background:var(--af-surface)}
@@ -161,7 +156,6 @@
 .crm-attendance-fields .crm-attendance-actions{justify-content:flex-start}
 /* Keep group spacing in the owning stack, not in both stack and old sibling margins. */
 .crm-editor-scroll>.crm-form-section+.crm-form-section,.crm-form-layout>.crm-form-section+.crm-form-section{margin-top:0}
-.crm-form-section .crm-profile-batch-fields:empty{display:none;margin:0}
 .crm-form-section>.admin-form-section-body>.crm-profile-basis:first-child{border-top:0;padding-top:0}
 .crm-form-section .admin-form-section-heading h3{font-size:14px;line-height:1.6;font-weight:600}
 .crm-form-section,.notification-form-editor{--af-text:var(--cw-text,var(--dw-text,var(--admin-text)));--af-muted:var(--cw-muted,var(--dw-muted,var(--admin-muted)));--af-border:var(--cw-border,var(--dw-border,#cbd5e1));--af-surface:var(--cw-surface,var(--dw-surface,var(--admin-surface)));--af-soft:var(--cw-soft,var(--dw-soft,var(--admin-surface)))}
@@ -173,7 +167,6 @@
 .crm-promotion-editor .admin-form-section-body{padding-bottom:0}
 .crm-promotion-editor .crm-detail-choice{--cf-control-height:40px;--cf-radius:10px;font-size:14px;line-height:1.6}
 .crm-promotion-editor .admin-field input{height:40px;padding-block:0}
-.crm-promotion-custom-source{grid-column:1/-1}
 .crm-promotion-placement{display:grid;gap:var(--admin-form-label-gap)}
 .campaign-placement-suggestions{display:flex;flex-wrap:wrap;gap:8px}
 .campaign-placement-suggestions>button{min-height:40px}
@@ -198,3 +191,51 @@
 .crm-stage-editor .crm-stage-source-picker{padding-top:8px}
 .crm-stage-editor .crm-stage-source-picker>summary{min-height:40px;align-content:center}
 @media(max-width:600px){.crm-stage-drawer .crm-stage-options span{grid-template-columns:1fr}}
+
+.crm-enrollment-rules {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--admin-space-4, 16px);
+  color: var(--af-text);
+}
+.crm-enrollment-rules .admin-edit-title h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+}
+.crm-enrollment-rules-body {
+  padding: var(--admin-form-panel-top) 16px var(--admin-form-panel-bottom);
+  background: var(--af-surface);
+  border: 1px solid var(--af-border);
+  border-radius: 14px;
+}
+.crm-enrollment-rules-body > p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.crm-enrollment-rules-body > .crm-form-grid,
+.crm-enrollment-rules-body > .admin-form-section { max-width: 720px; }
+.crm-enrollment-rules-body > .admin-form-section {
+  border-top: 1px solid var(--af-border);
+  padding-top: var(--admin-form-group-gap);
+}
+.crm-enrollment-rules .admin-field input {
+  width: 8rem;
+  padding: 8px 12px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid color-mix(in srgb, var(--admin-muted) 75%, var(--af-surface));
+  color: var(--af-text);
+  background: var(--af-surface);
+}
+.crm-enrollment-rules .admin-field input[aria-invalid=true] { border-color: var(--admin-danger-border); }
+.crm-enrollment-rules :is(button,input):focus-visible {
+  outline: 2px solid var(--admin-focus);
+  outline-offset: 2px;
+}
+.crm-enrollment-rules > .admin-required-error {
+  order: 1;
+  margin: 0 16px var(--admin-form-panel-bottom);
+}

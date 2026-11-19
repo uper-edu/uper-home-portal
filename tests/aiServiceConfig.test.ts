@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {validateSelection,isAiAdministrator,probeModel} from '../server/portal/aiServiceConfig';
+import {validateSelection,isAiAdministrator,probeModel,providerFor} from '../server/portal/aiServiceConfig';
 import {aiServiceText} from '../src/utils/aiServiceLanguage';
 const permissions=['access.read','access.users','access.roles','access.sessions','access.audit'];
 test('only complete System Administrator can manage AI, not CRM Manager or Sales',()=>{
@@ -10,6 +10,19 @@ test('only complete System Administrator can manage AI, not CRM Manager or Sales
 test('model selection is allowlisted, different and strips unexpected properties',()=>{
  assert.deepEqual(validateSelection({primary:'gpt-6.1-sol',fallback:'deepseek-flash',key:'not retained'}),{primary:'gpt-6.1-sol',fallback:'deepseek-flash'});
  for(const value of [null,{}, {primary:'gpt-4o',fallback:'gpt-4o'},{primary:'arbitrary',fallback:'deepseek-flash'},{primary:'gpt-6.1-sol',fallback:'deepseek-chat'}])assert.throws(()=>validateSelection(value));
+});
+test('Luna and Sol can be tested with different efforts while legacy providers keep their existing parameters',async()=>{
+ const {activationCheck}=await import('../server/portal/aiServiceConfig');
+ const selection={primary:'gpt-6.2-sol',fallback:'gpt-6-luna',fallbackEffort:'medium'};
+ assert.deepEqual(validateSelection({...selection,primaryEffort:'low'}),selection);
+ assert.equal(providerFor('gpt-6-luna','medium').reasoningEffort,'medium');
+ assert.throws(()=>validateSelection({...selection,primaryEffort:'arbitrary'}),/invalid_reasoning_effort/);
+ assert.equal(providerFor('gpt-6.1-terra','high').reasoningEffort,'high');
+ assert.throws(()=>validateSelection({...selection,fallback:'deepseek-flash'}),/invalid_reasoning_effort/);
+ const check={selection,id:'check',actor:'admin',revision:2,ok:true,expiresAt:200};
+ const body={revision:2,checkId:'check',restore:true};
+ assert.equal(activationCheck({revision:2,checks:[check],previous:{...selection,primaryEffort:'low'}},body,'admin',100),check);
+ assert.throws(()=>activationCheck({revision:2,checks:[check],previous:{...selection,fallbackEffort:'high'}},body,'admin',100),/conflict/);
 });
 test('all AI interface messages have three nonempty languages',()=>{for(const v of Object.values(aiServiceText)){assert.equal(v.length,3);assert.ok(v.every(s=>s.trim().length));}});
 test('missing key cannot pass model checks or fall back',async()=>{const old=process.env.OPENAI_API_KEY;delete process.env.OPENAI_API_KEY;try{assert.deepEqual(await probeModel('gpt-6.1-sol'),{model:'gpt-6.1-sol',ok:false,error:'key_missing'});}finally{if(old===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=old;}});

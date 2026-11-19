@@ -1,12 +1,22 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Globe2, MessageCircle, Sparkles, MapPin, GraduationCap, Plane, Bot, Handshake, Calendar, Quote, ChevronLeft, ChevronRight, Building2, Briefcase, Target, Clock, Users, Tag, Landmark, School, Network, Trophy, CheckCircle2, FileText, Headset, Star, CheckCircle } from 'lucide-react';
-import { Link, useNavigationType } from 'react-router-dom';
+import { Link, useNavigationType, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
 import { client } from '../cmsClient';
 import imageUrlBuilder from '../cmsClient';
+import { promotionJourneyUrl } from '../utils/promotionNavigation';
 import { useDesignStyle } from '../utils/theme';
+
+function EnrollmentProgramLink() {
+  const {t,i18n}=useTranslation();
+  const [params]=useSearchParams();
+  return <Link className="relative mt-5 w-fit inline-flex items-center gap-2 font-semibold text-primary-700 hover:underline"
+    to={promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2),params,'website')}>
+    {t('nav.enrollmentDetails')}<ArrowRight size={18} aria-hidden="true"/>
+  </Link>;
+}
 
 const builder = imageUrlBuilder(client);
 function urlFor(source: any) {
@@ -1556,7 +1566,8 @@ const MainServices = () => {
                       </div>
                     )}
                   </div>
-                  <Link to={srv.link} className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center relative overflow-hidden">
+                  <div className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center relative overflow-hidden">
+                  <Link to={srv.link} className="block">
                     {!isApple && (
                       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${srv.color} opacity-5 rounded-bl-full -z-0 transition-transform duration-500 group-hover:scale-150`}></div>
                     )}
@@ -1571,6 +1582,8 @@ const MainServices = () => {
                       </div>
                     </div>
                   </Link>
+                  {srv.id==='hsk'&&<EnrollmentProgramLink/>}
+                  </div>
                 </div>
               </motion.div>
             );

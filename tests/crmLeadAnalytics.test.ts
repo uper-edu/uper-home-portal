@@ -4,6 +4,9 @@ import { processMetrics } from "../src/utils/crmProcessMetrics";
 import {
   metricSelections,
   matchesLeadMetric,
+  matchesMetricRow,
+  durationBandLabel,
+  metricSelectionLabel,
   DAY,
 } from "../src/utils/crmLeadAnalytics";
 import {
@@ -339,4 +342,17 @@ test("independent analysis page has a distinct private Chinese page title", asyn
  const {resolveMetadata}=await import('../src/utils/siteMetadata');
  const metadata=resolveMetadata('/crm','zh',{module:'analysis'});
  assert.match(metadata.title,/客户统计与分析/);
+});
+
+
+test('first-contact duration captions describe the same intervals as drilldown filters',()=>{
+  for(const target of ['contact','response']){
+    for(const time of [3599999,3600000,DAY-1,DAY]){
+      const row={contactMs:time,responseMs:time} as Parameters<typeof matchesMetricRow>[0];
+      const actual=(['fast','day','later'] as const).filter(band=>matchesMetricRow(row,target+'_'+band));
+      assert.deepEqual(actual,[time<3600000?'fast':time<DAY?'day':'later']);
+      for(const lang of ['zh','en','id'])
+        assert.ok(metricSelectionLabel(target+'_'+actual[0],lang).endsWith(durationBandLabel(actual[0],lang)));
+    }
+  }
 });

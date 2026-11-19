@@ -8,5 +8,9 @@
   {"id":"threads-social-profile-bio-261110092327","name":"Threads · Link Hub","source":"threads","medium":"social","content":"profile-bio","landingPath":"/link"},
   {"id":"threads-social-profile-bio-261110093006","name":"Threads · Chat","source":"threads","medium":"social","content":"profile-bio","landingPath":"/chat"},
   {"id":"home-link","name":"UPER · Link Hub","source":"website","medium":"internal","content":"website-link","landingPath":"/link"},
-  {"id":"home-chat","name":"UPER · Chat","source":"website","medium":"internal","content":"website-chat","landingPath":"/chat"}
+  {"id":"home-chat","name":"UPER · Chat","source":"website","medium":"internal","content":"website-chat","landingPath":"/chat"},
+  {"id":"enroll-ig","name":"Instagram · Enrollment","source":"instagram","medium":"social","content":"enrollment","landingPath":"/enrollment"},
+  {"id":"enroll-tt","name":"TikTok · Enrollment","source":"tiktok","medium":"social","content":"enrollment","landingPath":"/enrollment"},
+  {"id":"enroll-yt","name":"YouTube · Enrollment","source":"youtube","medium":"social","content":"enrollment","landingPath":"/enrollment"},
+  {"id":"enroll-th","name":"Threads · Enrollment","source":"threads","medium":"social","content":"enrollment","landingPath":"/enrollment"}
 ]

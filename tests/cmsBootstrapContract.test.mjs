@@ -114,3 +114,13 @@ test('the previous eight-link package remains verifiable after adding Threads',(
  const parsed=inspectInitializationSql(sqlPackage(rows,20));
  assert.equal(parsed.rows.campaign_promotion_index.length,8);
 });
+
+test('the ten-link package remains verifiable after adding direct enrollment links',()=>{
+ const rows=fresh();
+ const social=rows.trial_campaigns.find(row=>row.id==='social-bio');
+ social.config.promotionLinks=social.config.promotionLinks.filter(link=>link.landingPath!=='/enrollment');
+ const index=promotionIndexEntries(rows.trial_campaigns);
+ rows.campaign_promotion_index=[...index].map(([p,campaign_id])=>({p,campaign_id}));
+ const parsed=inspectInitializationSql(sqlPackage(rows,20));
+ assert.equal(parsed.rows.campaign_promotion_index.length,10);
+});

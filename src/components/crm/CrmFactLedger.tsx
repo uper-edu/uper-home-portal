@@ -1,3 +1,5 @@
+import {AdminDisclosure,AdminDisclosureIndicator,AdminDisclosureSummary} from '../admin/AdminDisclosure';
+import {AdminSearchField} from '../admin/AdminSearchField';
 import {CrmEnrollmentCorrectionAction,CrmEnrollmentVoidStatus} from './CrmEnrollmentCorrection';
 import {historyResultKind} from '../../utils/crmHistoryResultContent';
 import {CrmHistoryResultCard,CrmHistoryResultHeadline,CrmHistoryResultPreview} from './CrmHistoryResultCard';
@@ -28,7 +30,8 @@ import {profileSaveSummary} from '../../utils/crmProfileSaveResult';
 import {viewerTimeZone,formatCrmOperatingTime} from '../../utils/crmOperatingTime';
 import {useEffect,useState,useRef,useId} from 'react';
 import {crmValue} from '../../utils/crmLanguage';
-import {MessageSquareText,NotebookText,ClipboardList,GraduationCap,UserRoundPen,FileSearch,ArrowLeftRight,ChevronDown,RefreshCw,TrendingUp} from 'lucide-react';
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
+import {MessageSquareText,NotebookText,ClipboardList,GraduationCap,UserRoundPen,FileSearch,ArrowLeftRight,TrendingUp} from 'lucide-react';
 import {CrmRecordAmendmentForm}from'./CrmRecordAmendmentForm';
 import {CrmSaveFeedback}from'./CrmDetailWorkspace';
 import {contactCorrectionOptions,canAmendSalesRecord}from'../../utils/crmRecordAmendments';
@@ -39,6 +42,7 @@ const value=(v:any)=>v==null?'未填写':Array.isArray(v)?v.map(x=>crmValue(Stri
 export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,onDirty,onBusy,suspended,canEditProfile,isLight=true,lang='zh',focusRequest,onEditing,hideHeading=false,onProjection,extractions=[],extractionLoading=false,extractionError=false,onReloadExtraction,onViewAssessment,onSource,onAmendSalesRecord,requests=[],windowMode=false}:any){
  const ui=useCrmUiText(lang);
 
+ const [loading,setLoading]=useState(true);
  const typeId=useId(),searchId=useId(),ledgerRoot=useRef<HTMLElement>(null);
  const[data,setData]=useState<any>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0),[target,setTarget]=useState<any>(null),[notice,setNotice]=useState(''),[filter,setFilter]=useState('all'),[search,setSearch]=useState(''),[expanded,setExpanded]=useState<Set<string>>(new Set()),[evidenceSelection,setEvidenceSelection]=useState<{groupId:string;citation:HistoryCitation}|null>(null);
  useEffect(()=>{
@@ -46,15 +50,16 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
   const collapseOutside=(event:PointerEvent)=>{
    const node=event.target;if(!(node instanceof Element))return;
    const card=node.closest('.crm-history-node');
-   if(card&&ledgerRoot.current?.contains(card))return;
+   if(card&&ledgerRoot.current?.contains(card)||node.closest('.crm-history-heading .crm-page-action'))return;
    setExpanded(current=>current.size?new Set():current);
   };
   document.addEventListener('pointerdown',collapseOutside,true);
   return()=>document.removeEventListener('pointerdown',collapseOutside,true);
  },[windowMode,suspended]);
- useEffect(()=>{let active=true;setError('');onProjection?.({state:'loading',events:[]});fetch(`/api/crm/leads/${leadId}/facts`).then(async r=>{if(!r.ok)throw Error('历史依据暂不可用，请重试');return r.json();}).then(d=>{if(active){setData(d);onProjection?.({state:'ready',events:d.events});}}).catch(e=>{if(active){setError(e.message);onProjection?.({state:'error',events:[]});}});return()=>{active=false};},[leadId,revision,retry]);
+ useEffect(()=>{let active=true;setLoading(true);setError('');onProjection?.({state:'loading',events:[]});fetch(`/api/crm/leads/${leadId}/facts`).then(async r=>{if(!r.ok)throw Error('历史依据暂不可用，请重试');return r.json();}).then(d=>{if(active){setData(d);onProjection?.({state:'ready',events:d.events});}}).catch(e=>{if(active){setError(e.message);onProjection?.({state:'error',events:[]});}}).finally(()=>{if(active)setLoading(false);});return()=>{active=false};},[leadId,revision,retry]);
  const [preparedFocus,setPreparedFocus]=useState<any>(null);
- const handled=useRef<any>(null),positioned=useRef<any>(null),focusNode=useRef<HTMLDetailsElement>(null),groups=buildHistoryTimeline(data?.events||[],lead,extractions),focused=focusRequest&&data?historyGroupFor(groups,focusRequest.id):null;
+ const handled=useRef<any>(null),positioned=useRef<any>(null),focusNode=useRef<HTMLDetailsElement>(null),settleFrame=useRef(0),groups=buildHistoryTimeline(data?.events||[],lead,extractions),focused=focusRequest&&data?historyGroupFor(groups,focusRequest.id):null;
+ useEffect(()=>()=>cancelAnimationFrame(settleFrame.current),[focusRequest?.token]);
  useEffect(()=>{onEditing?.(!!target)},[target]);
  useEffect(()=>{
   if(!data||!focusRequest||handled.current===focusRequest.token)return;
@@ -65,41 +70,71 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
   const fieldCitation=focusRequest.quote?null:historyFieldCitation(focused,focusRequest.fields||[],extractions,focusRequest.id);
   setEvidenceSelection(fieldCitation?{groupId:focused.id,citation:fieldCitation}:null);
   if(focusRequest.quote){const sources=[{scope:"main",text:focused.original},...focused.events.filter((e:any)=>e.eventType==="record.amended").map((e:any)=>({scope:e.payload.id||e.eventId,text:e.original||e.payload.text||""}))];const matching=sources.filter(v=>historyQuoteRange(v.text,{scope:v.scope,quote:focusRequest.quote} as any));if(matching.length===1)setEvidenceSelection({groupId:focused.id,citation:{id:"open-source",scope:matching[0].scope,quote:focusRequest.quote,sourceText:matching[0].text}});}
-  setNotice('已定位对应原始记录。');
+  setNotice(focusRequest.returnPosition?'':'已定位对应原始记录。');
   setPreparedFocus(focusRequest.token);
   const row=locateLedgerEvent(data.events,focusRequest.id);if(focusRequest.mode==='amend'&&!disabled&&row&&amendable.has(row.eventType))setTarget({...row,withdrawCommitmentId:focusRequest.withdrawCommitmentId});
  },[data,focusRequest,disabled,target,focused?.id,extractionLoading]);
- useEffect(()=>{
+ const positionFocusedRecord=()=>{
   if(!focusRequest||!focused||preparedFocus!==focusRequest.token||positioned.current===focusRequest.token||filter!==(focusRequest.filter||'all')||search!==(focusRequest.search||'')||!expanded.has(focused.id)||target)return;
-  const frame=requestAnimationFrame(()=>{
    const node=focusNode.current,summary=node?.querySelector<HTMLElement>('summary');if(!node||!summary)return;
-   const destination=node.querySelector<HTMLElement>('mark[data-citation-highlight]')||node.querySelector<HTMLElement>('.crm-history-field-match')||summary;
-   if(destination!==summary){destination.tabIndex=-1;for(let disclosure=destination.closest('details');disclosure;disclosure=disclosure.parentElement?.closest('details')||null)disclosure.open=true;}
+   const position=focusRequest.returnPosition;
+   const sourceControl=position?.controlId?node.querySelector<HTMLElement>('#'+CSS.escape(position.controlId)):null;
+   const destination=sourceControl||node.querySelector<HTMLElement>('mark[data-citation-highlight]')||node.querySelector<HTMLElement>('.crm-history-field-match')||summary;
+   if(destination!==summary){
+    if(!sourceControl)destination.tabIndex=-1;
+    for(let disclosure=destination.closest('details');disclosure;disclosure=disclosure.parentElement?.closest('details')||null)disclosure.open=true;
+   }
    const pane=destination.closest<HTMLElement>('.crm-operation-content')||destination.closest<HTMLElement>('.crm-customer-panel-body');
-   if(pane&&['auto','scroll'].includes(getComputedStyle(pane).overflowY)&&pane.scrollHeight>pane.clientHeight){
-    revealRecord(pane,destination);
+   const positionInPane=()=>{
+    if(!pane||!['auto','scroll'].includes(getComputedStyle(pane).overflowY)||pane.scrollHeight<=pane.clientHeight){destination.scrollIntoView({block:'nearest'});return;}
+    if(sourceControl&&typeof position.offset==='number'){
+     pane.scrollTop+=destination.getBoundingClientRect().top-pane.getBoundingClientRect().top-position.offset;
+    }else revealRecord(pane,destination);
     const toolbar=ledgerRoot.current?.querySelector<HTMLElement>('.crm-history-toolbar'),safeTop=Math.max(pane.getBoundingClientRect().top,toolbar?.getBoundingClientRect().bottom||0)+12;
     const rect=destination.getBoundingClientRect(),safeBottom=pane.getBoundingClientRect().bottom-16;
     if(rect.top<safeTop||rect.bottom>safeBottom)pane.scrollTop+=rect.top-(safeTop+Math.max(0,(safeBottom-safeTop-rect.height)/2));
-   }else destination.scrollIntoView({block:'nearest'});
+   };
+   positionInPane();
    destination.focus({preventScroll:true});positioned.current=focusRequest.token;
-  });
+   if(windowMode&&sourceControl){
+    // The timeline can repack after the first expanded paint. Adjust once after that pass.
+    settleFrame.current=requestAnimationFrame(()=>{
+     settleFrame.current=requestAnimationFrame(()=>{
+      if(document.activeElement===sourceControl&&node.open)positionInPane();
+     });
+    });
+   }
+ };
+ useEffect(()=>{
+  if(windowMode)return;
+  const frame=requestAnimationFrame(positionFocusedRecord);
   return()=>cancelAnimationFrame(frame);
- },[focusRequest,focused?.id,preparedFocus,filter,search,expanded,target]);
+ },[windowMode,focusRequest,focused?.id,preparedFocus,filter,search,expanded,target]);
+ const openConversation=(button:HTMLButtonElement,returnId:string,details:{sourceConversationId:string;sourceMessageId:string})=>{
+  const pane=button.closest('.crm-operation-content,.crm-customer-panel-body');
+  onSource({returnId,returnSearch:search,returnFilter:filter,details,
+   returnPosition:{controlId:button.id,offset:pane?button.getBoundingClientRect().top-pane.getBoundingClientRect().top:undefined}});
+ };
  const time=(v:string|null)=>v?formatCrmOperatingTime(v,viewerTimeZone()):'未注明';
  const firstInstant=historyFirstInstant(groups);
  const visible=groups.filter(g=>(filter==='all'||g.category===filter)&&(!search.trim()||[g.title,g.original,...g.events.map(e=>e.original||''),...g.extractions.map(r=>r.input?.text||'')].join('\n').toLowerCase().includes(search.trim().toLowerCase())));
  const day=(g:any)=>g.displayAt?time(g.displayAt).slice(0,10):ui('发生时间未注明');
- return <CrmHistorySearch.Provider value={search}><section ref={ledgerRoot} className={"crm-history-timeline"+(windowMode?" crm-history-bilateral":"")} aria-label={ui("历史记录与依据")}>{!hideHeading&&<h3>{ui("历史记录与依据")}</h3>}
+ return <CrmHistorySearch.Provider value={search}><section ref={ledgerRoot} className={"crm-history-timeline"+(windowMode?" crm-history-bilateral":"")} aria-label={ui("历史记录与依据")}>
+ <header className="crm-history-heading">
+  {!hideHeading&&<h3>{ui("历史记录与依据")}</h3>}
+  <AdminRefreshAction label={ui("刷新记录")} loading={loading||extractionLoading}
+   disabled={!!target} onClick={()=>{setRetry(n=>n+1);onReloadExtraction?.();}}/>
+ </header>
  <div className="crm-history-toolbar" role="group" aria-label={ui("历史记录筛选")}>
  <div className="crm-history-type-filter"><label htmlFor={typeId}>{ui("类型")}</label><CrmSingleSelect controlId={typeId} label={ui("历史记录类型")} value={filter} disabled={!!target} onChange={setFilter} lang={lang} isLight={isLight} options={Object.entries(historyCategories).map(([key,label])=>({value:key,label:ui(label)+(data?'（'+(key==='all'?groups.length:groups.filter(g=>g.category===key).length)+'）':'')}))}/></div>
- <div className="crm-history-search"><label htmlFor={searchId}>{ui("搜索原文与内容")}</label><input id={searchId} type="search" aria-label={ui("搜索历史记录")} value={search} disabled={!!target} onChange={e=>setSearch(e.target.value)}/></div>
- <button type="button" className="crm-work-button crm-history-refresh" disabled={!!target} onClick={()=>{setRetry(n=>n+1);onReloadExtraction?.();}}><RefreshCw size={15} aria-hidden="true"/>{ui("刷新记录")}</button></div>
+ <div className="crm-history-search"><label htmlFor={searchId}>{ui("搜索原文与内容")}</label><AdminSearchField id={searchId} label={ui("搜索历史记录")} value={search} disabled={!!target} onChange={setSearch}/></div>
+ </div>
 
  {notice&&<p role="status">{ui(notice)}</p>}{error&&<p role="alert">{ui(error)} <button onClick={()=>setRetry(v=>v+1)}>{ui("重试读取")}</button></p>}
  {extractionError&&<p role="alert">{ui("AI整理状态暂不可用，原始记录仍保留。")}<button onClick={onReloadExtraction}>{ui("重试AI整理状态")}</button></p>}
  {!data&&!error&&<p role="status">{ui("正在读取历史依据…")}</p>}{data&&!visible.length&&<p>{groups.length ? ui("没有符合筛选的记录。") : ui("尚无历史记录。")}</p>}
- <CrmHistoryStream enabled={windowMode}>{visible.map((g,i)=>{const Icon=icons[g.category]||FileSearch,correction=historyContactCorrection(g,lead),amendments=g.events.filter(e=>e.eventType==='record.amended'),root=g.root,primary=g.events.find(e=>e.eventType==='followup.recorded')||g.events.find(e=>e.eventType==='questionnaire.submitted')||g.events.find(e=>e.eventType==='task.request_evidence')||g.events.find(e=>amendable.has(e.eventType)),editingHere=!!target&&g.events.some(e=>e.eventId===target.eventId),message=g.events.find(e=>e.eventType==='customer.message'),information=historyInformation(g,extractions),citation=evidenceSelection?.groupId===g.id?evidenceSelection.citation:null;
+ <CrmHistoryStream enabled={windowMode} onLayout={windowMode?positionFocusedRecord:undefined}>{visible.map((g,i)=>{const Icon=icons[g.category]||FileSearch,correction=historyContactCorrection(g,lead),amendments=g.events.filter(e=>e.eventType==='record.amended'),root=g.root,primary=g.events.find(e=>e.eventType==='followup.recorded')||g.events.find(e=>e.eventType==='questionnaire.submitted')||g.events.find(e=>e.eventType==='task.request_evidence')||g.events.find(e=>amendable.has(e.eventType)),editingHere=!!target&&g.events.some(e=>e.eventId===target.eventId),message=g.events.find(e=>e.eventType==='customer.message'),information=historyInformation(g,extractions),citation=evidenceSelection?.groupId===g.id?evidenceSelection.citation:null;
+ const conversationControl=(source:string)=>(windowMode?'window-':'inline-')+historyOriginalId(g.id,source);
  const externalAmendment=windowMode&&canAmendSalesRecord(primary,Boolean(onAmendSalesRecord));
  const amendmentAction=primary&&amendable.has(primary.eventType)&&(!disabled||externalAmendment)?<button type="button" className="crm-work-link" disabled={!!target||suspended} onClick={()=>{setNotice('');if(externalAmendment)onAmendSalesRecord(primary);else setTarget(primary);}}>{ui("补充／修正记录")}</button>:null;
  const showEvidence=(c:HistoryCitation)=>{setEvidenceSelection({groupId:g.id,citation:c});requestAnimationFrame(()=>{const node=ledgerRoot.current?.querySelector<HTMLElement>('#'+CSS.escape(historyOriginalId(g.id,c.scope)));if(!node)return;for(let disclosure=node.closest('details');disclosure;disclosure=disclosure.parentElement?.closest('details')||null)disclosure.open=true;const mark=node.querySelector<HTMLElement>('mark[data-citation-highlight]')||node,pane=node.closest<HTMLElement>('.crm-customer-panel-body');if(pane)revealRecord(pane,mark);else mark.scrollIntoView({block:'nearest'});mark.focus({preventScroll:true});});};
@@ -114,7 +149,7 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
   if(node.closest('summary,button,a,input,textarea,select,label,[role="button"],[role="link"],[contenteditable="true"]')||node.closest('details')!==e.currentTarget||!window.getSelection()?.isCollapsed)return;
   setExpanded(v=>v.has(g.id)?new Set():new Set([g.id]));e.currentTarget.querySelector('summary')?.focus({preventScroll:true});
  }:undefined} data-history-id={g.id} data-history-category={g.category} className="crm-history-node" ref={g.id===focused?.id?focusNode:undefined} open={editingHere||expanded.has(g.id)} onToggle={e=>{if(windowMode)return;const open=e.currentTarget.open;setExpanded(v=>{if(v.has(g.id)===open)return v;const n=new Set(v);open?n.add(g.id):n.delete(g.id);return n;});}}>
- <summary onClick={windowMode?e=>{e.preventDefault();setExpanded(v=>v.has(g.id)?new Set():new Set([g.id]));}:undefined}><span className="crm-history-icon" title={ui(historyCategories[g.category])}><Icon size={17} aria-hidden="true"/></span><div className="crm-history-summary">{windowMode&&<div className="crm-history-card-time">{timestamp}<span className="crm-history-elapsed" title={ui("距首次记录")} aria-label={ui("距首次记录")+" "+historyElapsedLabel(g.displayAt,firstInstant,lang)}>{historyElapsedLabel(g.displayAt,firstInstant,lang)}</span></div>}<div className="crm-history-head"><strong>{resultCard?<CrmHistoryResultHeadline group={g} expanded={isExpanded}/>:g.root?.eventType==='stage.changed'?<>{ui("销售阶段：")}<CrmSalesStageChange before={g.root.payload.before} after={g.root.payload.after}/></>:<CrmSearchHighlight text={windowMode&&isExpanded&&['sales','message'].includes(g.category)?ui(g.category==='sales'?'销售进展记录':'客户对话原文'):headlinePoint?historyPointSummary(headlinePoint,lang):historyBusinessTitle(g,lang)}/>}</strong>{!windowMode&&timestamp}<ChevronDown className="crm-history-chevron" size={16} aria-hidden="true"/></div><div className="crm-history-meta">{!(resultCard&&isExpanded)&&ui(origin.format)}{windowMode?(resultCard&&isExpanded?'':' · ')+(['客户','系统','AI整理','记录者未注明'].includes(origin.author)?ui(origin.author):origin.author):''}{(windowMode?origin.channel:g.log?.channel)?' · '+ui(crmValue(windowMode?origin.channel:g.log.channel,lang)):''}{root?.payload?.enrollmentVoid?' · '+ui('已作废 · 报名误记'):''}{amendments.length ? (' · '+amendments.length + ui("条补充／修正")) : ''}{g.extractions.some(r=>r.status==='failed') ? ui(" · AI整理未完成") : ''}{correction ? (ui(" · 联系结果已修正：") + ui(contactCorrectionOptions.find(o=>o[0]===correction.contactResult)?.[1]||'')) : ''}</div>{resultCard&&!isExpanded&&(g.category==='assessment'||g.category==='profile')&&<p className="crm-history-preview"><CrmHistoryResultPreview group={g}/></p>}{!resultCard&&businessPreview&&<p className="crm-history-preview"><CrmSearchHighlight text={businessPreview}/></p>}{windowMode&&previewPoints.length>0&&<p className="crm-history-preview"><CrmSearchHighlight text={previewPoints.map(point=>historyPointSummary(point,lang)).join(" · ")}/></p>}{windowMode&&recordCorrections.length>0&&<p className="crm-history-preview">{ui('本条记录修正后')} · {recordCorrections.map(item=>ui(item.label)+': '+historyInformationValue(item.field,item.value,lang)).join(' · ')}</p>}</div></summary>
+ <AdminDisclosureSummary onClick={windowMode?e=>{e.preventDefault();setExpanded(v=>v.has(g.id)?new Set():new Set([g.id]));}:undefined}><span className="crm-history-icon" title={ui(historyCategories[g.category])}><Icon size={17} aria-hidden="true"/></span><div className="crm-history-summary">{windowMode&&<div className="crm-history-card-time">{timestamp}<span className="crm-history-elapsed" title={ui("距首次记录")} aria-label={ui("距首次记录")+" "+historyElapsedLabel(g.displayAt,firstInstant,lang)}>{historyElapsedLabel(g.displayAt,firstInstant,lang)}</span></div>}<div className="crm-history-head"><strong>{resultCard?<CrmHistoryResultHeadline group={g} expanded={isExpanded}/>:g.root?.eventType==='stage.changed'?<>{ui("销售阶段：")}<CrmSalesStageChange before={g.root.payload.before} after={g.root.payload.after}/></>:<CrmSearchHighlight text={windowMode&&isExpanded&&['sales','message'].includes(g.category)?ui(g.category==='sales'?'销售进展记录':'客户对话原文'):headlinePoint?historyPointSummary(headlinePoint,lang):historyBusinessTitle(g,lang)}/>}</strong>{!windowMode&&timestamp}<AdminDisclosureIndicator className="crm-history-chevron"/></div><div className="crm-history-meta">{!(resultCard&&isExpanded)&&ui(origin.format)}{windowMode?(resultCard&&isExpanded?'':' · ')+(['客户','系统','AI整理','记录者未注明'].includes(origin.author)?ui(origin.author):origin.author):''}{(windowMode?origin.channel:g.log?.channel)?' · '+ui(crmValue(windowMode?origin.channel:g.log.channel,lang)):''}{root?.payload?.enrollmentVoid?' · '+ui('已作废 · 报名误记'):''}{amendments.length ? (' · '+amendments.length + ui("条补充／修正")) : ''}{g.extractions.some(r=>r.status==='failed') ? ui(" · AI整理未完成") : ''}{correction ? (ui(" · 联系结果已修正：") + ui(contactCorrectionOptions.find(o=>o[0]===correction.contactResult)?.[1]||'')) : ''}</div>{resultCard&&!isExpanded&&(g.category==='assessment'||g.category==='profile')&&<p className="crm-history-preview"><CrmHistoryResultPreview group={g}/></p>}{!resultCard&&businessPreview&&<p className="crm-history-preview"><CrmSearchHighlight text={businessPreview}/></p>}{windowMode&&previewPoints.length>0&&<p className="crm-history-preview"><CrmSearchHighlight text={previewPoints.map(point=>historyPointSummary(point,lang)).join(" · ")}/></p>}{windowMode&&recordCorrections.length>0&&<p className="crm-history-preview">{ui('本条记录修正后')} · {recordCorrections.map(item=>ui(item.label)+': '+historyInformationValue(item.field,item.value,lang)).join(' · ')}</p>}</div></AdminDisclosureSummary>
  <div className="crm-history-body" data-primary-record={g.id}>
  {windowMode&&<CrmHistoryRecordCorrections group={g} items={information} onEvidence={scope=>{const node=ledgerRoot.current?.querySelector<HTMLElement>('#'+CSS.escape(historyOriginalId(g.id,scope)));if(!node)return;for(let disclosure=node.closest('details');disclosure;disclosure=disclosure.parentElement?.closest('details')||null)disclosure.open=true;const pane=node.closest<HTMLElement>('.crm-customer-panel-body');if(pane)revealRecord(pane,node);else node.scrollIntoView({block:'nearest'});node.focus({preventScroll:true});}}/>}
  {root?.effective===false&&<p className="crm-work-muted">{ui("原依据已有历史调整，原文保留。")}</p>}
@@ -124,17 +159,18 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
  {root?.eventType==='stage.changed'&&root.payload?.enrollmentConfirmed===true&&<><CrmEnrollmentVoidStatus value={root.payload.enrollmentVoid}/><CrmEnrollmentCorrectionAction factId={root.eventId} voided={root.payload.enrollmentVoid}/></>}
  {resultCard?<CrmHistoryResultCard group={g} citation={citation}/>:g.category==='questionnaire'?<CrmHistoryQuestionnaireOriginal group={g} citation={citation} salesSummary={windowMode} showTimes={!windowMode} fields={windowMode&&focused?.id===g.id?focusRequest?.fields:undefined} action={amendmentAction}/>:<><div className="crm-history-original-heading">{(!windowMode||recordCorrections.length>0||salesPoints.length>0)&&<h4>{windowMode?ui(recordCorrections.length?'原文（修正前）':g.category==='message'?'客户原文':'销售原文'):g.category==='assessment'?ui('测评原始结果'):ui('原文与当时记录')}</h4>}{amendmentAction}</div>{g.category==='assessment'?<>{!windowMode&&<><p><strong>{historyAssessment(g).conclusion}</strong></p><p>{historyAssessment(g).detail}</p></>}{onViewAssessment&&<button className="crm-work-link" type="button" onClick={onViewAssessment}>{ui("查看历次测评")}</button>}</>:g.original?<CrmHistoryOriginal groupId={g.id} text={g.original} citation={citation}/>:!windowMode&&<p>{ui("原记录为结构化信息，相关字段见下方。")}</p>}</>}
  {!windowMode&&<CrmHistoryAttribution author={g.log?.staffName||root?.payload?.staffName||root?.actorName||root?.actor} recordedAt={g.recordedAt}/>}
- {message&&onSource&&<CrmEvidenceAction kind="conversation" description={ui("查看对话与上下文")} onClick={()=>onSource({returnId:g.root?.eventId||g.id,returnSearch:search,returnFilter:filter,details:{sourceConversationId:message.payload?.conversationId,sourceMessageId:message.sourceRecordId}})}/>}
+ {message&&onSource&&<CrmEvidenceAction id={conversationControl("conversation")} kind="conversation" description={ui("查看对话与上下文")} onClick={event=>openConversation(event.currentTarget,g.root?.eventId||g.id,{sourceConversationId:message.payload?.conversationId,sourceMessageId:message.sourceRecordId})}/>}
  {!windowMode&&contactDetails}
 
- {g.log?.sourceMessageId&&g.log?.sourceConversationId&&onSource&&!(message?.sourceRecordId===g.log.sourceMessageId&&message?.payload?.conversationId===g.log.sourceConversationId)&&<CrmEvidenceAction kind="conversation" description={ui("查看关联客户原文")} onClick={()=>onSource({returnId:g.root?.eventId||g.id,returnSearch:search,returnFilter:filter,details:{sourceConversationId:g.log.sourceConversationId,sourceMessageId:g.log.sourceMessageId}})}/>}
+ {g.log?.sourceMessageId&&g.log?.sourceConversationId&&onSource&&!(message?.sourceRecordId===g.log.sourceMessageId&&message?.payload?.conversationId===g.log.sourceConversationId)&&<CrmEvidenceAction id={conversationControl("linked-conversation")} kind="conversation" description={ui("查看关联客户原文")} onClick={event=>openConversation(event.currentTarget,g.root?.eventId||g.id,{sourceConversationId:g.log.sourceConversationId,sourceMessageId:g.log.sourceMessageId})}/>}
  {!resultCard&&(root?.eventType==='profile.changed'||!windowMode&&root?.eventType==='stage.changed')&&<dl className="crm-history-details">{historyStructuredFields(root).map(v=><div key={v.key}><dt>{v.label}</dt><dd>{v.key==='currentStage'?<CrmSalesStageChange before={v.before} after={v.value}/>:<>{v.before!=null&&<span className="crm-work-muted">{value(v.before)} → </span>}{value(v.value)}</>}</dd></div>)}</dl>}
- {windowMode&&hasProcessing&&<details className="crm-history-processing-details" open={citation&&citation.scope!=='main'||windowMode&&focused?.id===g.id&&focusRequest?.fields?.length?true:undefined}>
- <summary>{ui(amendments.length?'修正历史与处理详情':'记录与处理详情')}</summary>
+ {windowMode&&hasProcessing&&<AdminDisclosure density="compact" className="crm-history-processing-details"
+  heading={ui(amendments.length?'修正历史与处理详情':'记录与处理详情')}
+  open={citation&&citation.scope!=='main'||windowMode&&focused?.id===g.id&&focusRequest?.fields?.length?true:undefined}>
  {g.timeLabel&&<p className="crm-work-muted">{ui('卡片时间：')}{ui(g.timeLabel)}</p>}
  {historyHasSeparateRecordingTime(g)&&<p className="crm-work-muted">{ui(g.category==='questionnaire'?'系统接收时间':'系统录入时间')} <time dateTime={g.recordedAt!}>{time(g.recordedAt)}</time></p>}
  <HistoryProcessingContent group={g} information={information} extractions={extractions} amendments={amendments} citation={citation} focusedFields={focused?.id===g.id?focusRequest?.fields:undefined} extractionLoading={extractionLoading} extractionError={extractionError} showEvidence={showEvidence} onViewAssessment={onViewAssessment}/>
- </details>}
+ </AdminDisclosure>}
  {!windowMode&&<HistoryProcessingContent group={g} information={information} extractions={extractions} amendments={amendments} citation={citation} extractionLoading={extractionLoading} extractionError={extractionError} showEvidence={showEvidence} onViewAssessment={onViewAssessment}/>}
 
  <CrmHistorySources group={g} representedRoot={!!resultCard} disabled={disabled} suspended={suspended} editing={!!target} primaryId={primary?.eventId} onAmend={setTarget}/>

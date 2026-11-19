@@ -1,3 +1,10 @@
+import {AdminDateField,completeAdminDateTime} from './admin/AdminDateField';
+import {AdminRefreshAction} from './admin/AdminRefreshAction';
+import {AdminConfirmation} from './admin/AdminConfirmation';
+import {AdminDisclosure} from './admin/AdminDisclosure';
+import {AdminListPagination,AdminListState,AdminListTable} from './admin/AdminList';
+import {AdminStatus} from './AdminStatus';
+import {AdminRowAction} from './admin/AdminListControl';
 import {LARK_DEFAULT_LANGUAGE,LARK_DEFAULT_MAX_PER_HOUR} from '../utils/larkNotificationDefaults';
 import {allowsLarkGroup, allowsLarkPersonal, LARK_GROUP, LARK_PERSONAL, MAX_NOTIFICATION_GROUPS, notificationGroupIds, policyDeliveryChannels} from '../utils/notificationGroupTargets';
 import {LEAD_ASSIGNED_EVENT} from '../utils/leadAssignmentNotification';
@@ -5,7 +12,7 @@ import {larkNotificationColor} from '../utils/larkNotificationColors';
 import {dailyDigestPreview} from '../utils/larkDailyDigest';
 import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
-import {AdminFormSection} from './AdminFormLayout';
+import {AdminFormFeedback,AdminFormSection} from './AdminFormLayout';
 import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import { LarkChannelTestControls, type LarkChannelTest } from "./crm/LarkChannelTestControls";
 import {crmFormText} from '../utils/crmFormLanguage';
@@ -30,7 +37,6 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
   Plus,
   Settings2,
   Radio,
@@ -155,6 +161,13 @@ const stateNames: Record<string, [string, string]> = {
   unknown: ["结果未知", "Unknown"],
   cancelled: ["已取消", "Cancelled"],
 };
+const jobsPageSize=25;
+const jobsPositionKey='uper_notification_jobs_position';
+function notificationJobsLocation(){
+  const params=typeof window==='undefined'?new URLSearchParams():new URLSearchParams(window.location.search);
+  const state=params.get('deliveryState')??'all',page=Number(params.get('deliveryPage'));
+  return {state:Object.hasOwn(stateNames,state)?state:'all',page:Number.isSafeInteger(page)&&page>0?page:1,job:params.get('job')};
+}
 async function api(path: string, body?: unknown, method = body === undefined ? "GET" : "POST") {
   const r = await fetch("/api/crm/" + path, {
     method,
@@ -210,6 +223,7 @@ export default function NotificationCenter({
     [loading, setLoading] = useState(false),
     [busy, setBusy] = useState(false),
     [denied, setDenied] = useState(false);
+  const [auditRead,setAuditRead] = useState<"loading"|"ready"|"denied"|"error">("loading");
   const [editor, setEditor] = useState<"rule" | "channel" | null>(null),
     [key, setKey] = useState(""),
     [existing, setExisting] = useState(false),
@@ -280,9 +294,50 @@ export default function NotificationCenter({
       }[]
     >([]),
     [simulateAt, setSimulateAt] = useState(""),
-    [filter, setFilter] = useState("all"),
+    [jobsLocation,setJobsLocation] = useState(notificationJobsLocation),
     [cancelId, setCancelId] = useState(""),
     [cancelReason, setCancelReason] = useState("");
+  const [cancelNeedsCheck,setCancelNeedsCheck]=useState(false);
+  const [cancelFeedback,setCancelFeedback]=useState<{state:'error'|'unknown';message:string}>();
+  const closeCancel=()=>{setCancelId('');setCancelReason('');setCancelFeedback(undefined);setCancelNeedsCheck(false);};
+  const targetJob=jobsLocation.job;
+  const [jobs,setJobs]=useState<{target:string|null;rows?:Row[];error?:string;denied?:boolean}>();
+  const jobsTable=useRef<HTMLDivElement>(null);
+  const jobsRequest=useRef(0);
+  const jobsResult=jobs?.target===targetJob?jobs:undefined;
+  const matchingJobs=jobsResult?.rows?.filter(row=>targetJob?row.id===targetJob:jobsLocation.state==='all'||row.state===jobsLocation.state);
+  const jobPages=Math.max(1,Math.ceil((matchingJobs?.length??0)/jobsPageSize));
+  const jobPage=Math.min(jobsLocation.page,jobPages);
+  const visibleJobs=matchingJobs?.slice((jobPage-1)*jobsPageSize,jobPage*jobsPageSize);
+  const changeJobsLocation=(state:string,page:number)=>{
+    const url=new URL(window.location.href);
+    if(state==='all')url.searchParams.delete('deliveryState');
+    else url.searchParams.set('deliveryState',state);
+    if(page===1)url.searchParams.delete('deliveryPage');
+    else url.searchParams.set('deliveryPage',String(page));
+    window.history.replaceState(window.history.state,'',url);
+    setJobsLocation(notificationJobsLocation());
+  };
+  const openAllJobs=()=>{
+    const url=new URL(window.location.href);
+    url.searchParams.delete('job');
+    window.history.pushState(window.history.state,'',url);
+    setJobsLocation(notificationJobsLocation());
+  };
+  useEffect(()=>{
+    if(tab!=='notification-jobs'||!active)return;
+    const restore=()=>setJobsLocation(notificationJobsLocation());
+    restore();
+    window.addEventListener('popstate',restore);
+    return ()=>window.removeEventListener('popstate',restore);
+  },[tab,active]);
+  const rememberJobPosition=(event:React.MouseEvent<HTMLAnchorElement>,id:string)=>{
+    if(event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+    const rowTop=event.currentTarget.closest('tr')?.getBoundingClientRect().top;
+    try{sessionStorage.setItem(jobsPositionKey,JSON.stringify({
+      url:window.location.pathname+window.location.search,id,rowTop,top:window.scrollY,left:jobsTable.current?.scrollLeft,
+    }));}catch{}
+  };
   const box = `rounded-2xl border ${isLight ? "bg-white border-slate-200/90" : "bg-slate-900 border-slate-800"}`;
   const muted = isLight ? "text-slate-500" : "text-slate-400";
   const input = `w-full h-9 px-3 rounded-lg border text-xs outline-none focus:ring-2 focus:ring-primary-500/30 ${isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-950 border-slate-700 text-slate-200"}`;
@@ -295,9 +350,29 @@ export default function NotificationCenter({
   };
   const load = useCallback(async () => {
     setLoading(true);
+    if(tab==='notification-jobs'){
+      const request=++jobsRequest.current;
+      try{
+        const data=await api(tab+(targetJob?'?job='+encodeURIComponent(targetJob):''));
+        if(!Array.isArray(data))throw Error('Invalid delivery records response');
+        if(request===jobsRequest.current){setJobs({target:targetJob,rows:data});setError('');}
+      }catch(e){
+        if(request===jobsRequest.current){
+          const status=(e as {status?:number}).status;
+          const denied=status===401||status===403;
+          setJobs(previous=>({target:targetJob,...(!denied&&previous?.target===targetJob?{rows:previous.rows}:{}),
+            error:(e as Error).message,denied}));
+        }
+      }finally{if(request===jobsRequest.current)setLoading(false);}
+      return;
+    }
+    if(tab==='notification-audit')setAuditRead(previous=>previous==='ready'?'ready':'loading');
     try {
-      const job=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
-      const data = await api(tab+(tab==='notification-jobs'&&job?'?job='+encodeURIComponent(job):''));
+      const data = await api(tab);
+      if(tab==='notification-audit'){
+        if(!Array.isArray(data))throw Error('Invalid notification history response');
+        setAuditRead('ready');
+      }
       if (tab === "notification-channels") setEnvironmentGroupWebhook(data.groupWebhookUsesEnvironment === true);
       setRows(
         tab === "integration-readiness"
@@ -323,22 +398,91 @@ export default function NotificationCenter({
       if (editorBaseline.current === null) setError("");
       setDenied(false);
     } catch (e) {
-      setError((e as Error).message);
-      setDenied((e as any).status === 403);
+      const status=(e as {status?:number}).status;
+      if(tab==='notification-audit')setAuditRead(status===401||status===403?'denied':'error');
+      else setError((e as Error).message);
+      setDenied(status===401||status===403);
     } finally {
       setLoading(false);
     }
-  }, [tab]);
+  }, [tab,targetJob]);
   useEffect(() => {
     if (!open || !active) return;
     void load();
     const timer = setInterval(() => void load(), 10000);
-    return () => clearInterval(timer);
-  }, [open, load, active]);
+    return ()=>{clearInterval(timer);if(tab==='notification-jobs')jobsRequest.current++;};
+  }, [open,load,active,tab]);
   useEffect(()=>{if(notice){noticeRef.current?.focus({preventScroll:true});noticeRef.current?.scrollIntoView({block:'nearest',behavior:'instant'});}},[notice]);
-  const targetJob=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('job'):null;
   const focusedNotificationJob=useRef<string|null>(null);
-  useEffect(()=>{if(tab!=='notification-jobs'||loading||!targetJob||focusedNotificationJob.current===targetJob)return;const frame=requestAnimationFrame(()=>{const node=document.getElementById('notification-job-'+targetJob);if(node){focusedNotificationJob.current=targetJob;node.querySelectorAll('details').forEach(d=>d.open=true);node.scrollIntoView({block:'center'});node.focus({preventScroll:true});}});return()=>cancelAnimationFrame(frame);},[rows,loading,tab,targetJob]);
+  useEffect(()=>{
+    if(!targetJob)focusedNotificationJob.current=null;
+    if(!active||tab!=='notification-jobs'||!visibleJobs?.length)return;
+    const frame=requestAnimationFrame(()=>{
+      if(targetJob&&focusedNotificationJob.current!==targetJob){
+        const node=document.getElementById('notification-job-'+targetJob);
+        if(node){
+          focusedNotificationJob.current=targetJob;
+          const receipt=node.querySelector<HTMLDetailsElement>('details[data-job-receipt]');
+          if(receipt)receipt.open=true;
+          node.scrollIntoView({block:'center'});
+          node.focus({preventScroll:true});
+        }
+      }
+      try{
+        const position=JSON.parse(sessionStorage.getItem(jobsPositionKey)??'null');
+        if(position?.url!==window.location.pathname+window.location.search)return;
+        sessionStorage.removeItem(jobsPositionKey);
+        if(jobsTable.current&&typeof position.left==='number')jobsTable.current.scrollLeft=position.left;
+        const row=document.getElementById('notification-job-'+position.id);
+        row?.querySelector('a')?.focus({preventScroll:true});
+        const top=row&&typeof position.rowTop==='number'
+          ?window.scrollY+row.getBoundingClientRect().top-position.rowTop:position.top;
+        window.scrollTo({top,behavior:'instant'});
+      }catch{}
+    });
+    return ()=>cancelAnimationFrame(frame);
+  },[jobsResult,jobPage,jobsLocation.state,tab,targetJob,active]);
+  const cancelText=(zhText:string,enText:string,idText:string)=>lang==='zh'?zhText:lang==='id'?idText:enText;
+  const finishCancel=async()=>{
+    closeCancel();
+    setNotice(t('通知已取消','Notification cancelled'));
+    await load();
+  };
+  async function confirmCancel(){
+    if(!canEdit||busy||cancelNeedsCheck||!cancelId||!cancelReason.trim())return;
+    setBusy(true);setCancelFeedback(undefined);
+    try{
+      const outcome=await api('notification-jobs/'+encodeURIComponent(cancelId)+'/cancel',{reason:cancelReason});
+      if(outcome.success!==true)throw Error();
+      await finishCancel();
+    }catch(cause){
+      const status=(cause as {status?:number}).status;
+      const rejected=Boolean(status&&status<500&&status!==409&&status!==404);
+      setCancelNeedsCheck(!rejected);
+      setCancelFeedback(rejected?{state:'error',message:crmError((cause as Error).message,lang)}:
+        {state:'unknown',message:cancelText('取消结果待确认，请先查询这条通知。','Check this notification before trying again.','Periksa notifikasi ini sebelum mencoba lagi.')});
+    }finally{setBusy(false);}
+  }
+  async function checkCancelled(){
+    if(busy||!cancelId||!cancelNeedsCheck)return;
+    setBusy(true);
+    try{
+      const records=await api('notification-jobs?job='+encodeURIComponent(cancelId));
+      const job=Array.isArray(records)?records.find(row=>row.id===cancelId):undefined;
+      if(!job)throw Error();
+      if(job.state==='cancelled'){await finishCancel();return;}
+      if(job.state==='pending'){
+        setCancelNeedsCheck(false);
+        setCancelFeedback({state:'unknown',message:cancelText('通知仍在排队，可以再次确认取消。','The notification is still queued. You can confirm cancellation again.','Notifikasi masih dalam antrean. Anda dapat mengonfirmasi pembatalan lagi.')});
+        return;
+      }
+      closeCancel();
+      setNotice(cancelText('通知已开始处理，无法取消。请查看发送状态。','The notification has started processing and can no longer be cancelled. Review its delivery state.','Notifikasi sudah diproses dan tidak dapat dibatalkan. Periksa status pengiriman.'));
+      await load();
+    }catch{
+      setCancelFeedback({state:'unknown',message:cancelText('暂时无法查询这条通知，请稍后核对。','This notification is unavailable. Try checking again later.','Notifikasi belum dapat diperiksa. Coba lagi nanti.')});
+    }finally{setBusy(false);}
+  }
   const format = (value: string | undefined) =>
     value ? new Date(value).toLocaleString(crmLocale(lang)) : "—";
   const label = (name: string) =>
@@ -744,9 +888,8 @@ export default function NotificationCenter({
                     setTab(value);
                     setRows([]);
                     setEditor(null);
-                    setFilter("all");
                     setNotice("");
-                    setCancelId("");
+                    closeCancel();
                   })}
                   className={`flex gap-1.5 items-center px-3 py-2 rounded-lg text-xs font-semibold ${tab === value ? (isLight ? "bg-white text-primary-700 shadow-2xs" : "bg-primary-600 text-white") : muted}`}
                 >
@@ -762,10 +905,7 @@ export default function NotificationCenter({
               <h2>{notificationHeading.title[languageIndex]}</h2>
               {!editor && !denied && (
                 <div className="notification-topic-actions">
-                  <button type="button" className={button} disabled={loading} onClick={() => void load()}
-                    aria-label={t("刷新", "Refresh")} title={t("刷新", "Refresh")}>
-                    <RefreshCw aria-hidden="true" className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}/>
-                  </button>
+                  <AdminRefreshAction label={t("刷新", "Refresh")} loading={loading} onClick={()=>void load()}/>
                   {(isRuleTopic || (isChannelTopic && canEdit)) && (
                     <button type="button" id={editorTriggerId(isRuleTopic ? "rule" : "channel", "")}
                       className={`${primary} flex items-center gap-1`} disabled={!canEdit} onClick={() => edit()}>
@@ -778,7 +918,7 @@ export default function NotificationCenter({
             </div>
             <p>{notificationHeading.purpose[languageIndex]}</p>
           </header>
-          {error && !editor && (
+          {error && !editor && (tab!=="notification-jobs"||cancelId) && (
             <p
               role="alert"
               className="text-xs p-3 rounded-lg bg-rose-500/10 text-rose-500"
@@ -799,7 +939,7 @@ export default function NotificationCenter({
               {notice}
             </p>
           )}
-          {!denied && (
+          {(!denied||tab==="notification-jobs"||tab==="notification-audit") && (
             <>
               {tab !== "notification-channels" && !editor && <div className="notification-topic-toolbar">
                 <p className={`text-xs ${muted}`}>
@@ -1378,24 +1518,13 @@ export default function NotificationCenter({
                       <AdminFormSection className="crm-form-section notification-form-section" title={t("发送时间预览", "Delivery timing preview")}>
                         <div className="notification-rule-preview">
                         <div className="flex flex-wrap gap-3 items-end">
-                          <div>
-                            {field(
-                              t(
-                                "模拟事件时间（本机时区）",
-                                "Simulated event time (browser timezone)",
-                              ),
-                              <input
-                                className={input}
-                                type="datetime-local"
-                                value={simulateAt}
-                                onChange={(e) => setSimulateAt(e.target.value)}
-                              />,
-                            )}
-                          </div>
+                          <AdminDateField label={cancelText("模拟事件时间（本机时区）","Simulated event time (browser timezone)","Waktu simulasi (zona waktu browser)")}
+                            lang={lang} withTime value={simulateAt} disabled={!canEdit||busy} onChange={setSimulateAt}
+                            error={simulateAt&&!completeAdminDateTime(simulateAt)?cancelText("请填写完整的日期和 24 小时时间。","Enter a complete date and 24-hour time.","Isi tanggal dan waktu 24 jam secara lengkap."):undefined}/>
                           <button
                             type="button"
                             className="crm-work-button flex gap-1 items-center"
-                            disabled={!canEdit || busy}
+                            disabled={!canEdit || busy || !!simulateAt&&!completeAdminDateTime(simulateAt)}
                             onClick={async () => {
                               setBusy(true);
                               try {
@@ -1579,7 +1708,7 @@ export default function NotificationCenter({
               )}
               {!editor && (
                 <>
-                  {rows.length === 0 && !loading && (
+                  {tab !== "notification-jobs" && tab !== "notification-audit" && rows.length === 0 && !loading && (
                     <p className={`text-xs text-center py-8 ${muted}`}>
                       {t("暂无记录", "No records yet")}
                     </p>
@@ -1635,10 +1764,10 @@ export default function NotificationCenter({
                             <footer className="notification-policy-card-footer">
                               <small>{row.id} · v{row.version}</small>
                               {canEdit && <div className="notification-policy-card-actions">
-                                <button type="button" id={editorTriggerId("rule", row.id)} className="crm-work-button"
+                                <AdminRowAction id={editorTriggerId("rule", row.id)}
                                   disabled={busy} onClick={() => edit(row)}>
                                   {t("编辑策略", "Edit policy")}
-                                </button>
+                                </AdminRowAction>
                                 {typeof version === "number" && <button type="button"
                                   className="crm-work-button notification-channel-remove"
                                   aria-label={t("删除通知策略", "Delete notification policy")}
@@ -1676,9 +1805,9 @@ export default function NotificationCenter({
                             </header>
                             <p className="notification-channel-help">{t("个人业务通知和绑定确认使用此模式。", "This mode applies to personal business notifications and binding confirmations.")}</p>
                             {canEdit && <div className="notification-channel-card-actions">
-                              <button type="button" id={editorTriggerId("channel", row.id)} className="crm-work-button" disabled={busy} onClick={() => edit(row)}>
+                              <AdminRowAction id={editorTriggerId("channel", row.id)} disabled={busy} onClick={() => edit(row)}>
                                 {t("编辑渠道", "Edit channel")}
-                              </button>
+                              </AdminRowAction>
                               {row.testDelivery && <LarkChannelTestControls id={row.id} personal
                                 name={t("Lark 个人通知", "Lark personal notifications")} test={row.testDelivery}
                                 lang={lang} isLight={isLight} request={api}/>}
@@ -1736,9 +1865,9 @@ export default function NotificationCenter({
                             </dl>
                             {canEdit && (
                               <div className="notification-channel-card-actions">
-                                <button type="button" id={editorTriggerId("channel", row.id)} className="crm-work-button" disabled={busy} onClick={() => edit(row)}>
+                                <AdminRowAction id={editorTriggerId("channel", row.id)} disabled={busy} onClick={() => edit(row)}>
                                   {t("编辑渠道", "Edit channel")}
-                                </button>
+                                </AdminRowAction>
                                 {row.testDelivery && <LarkChannelTestControls id={row.id}
                                   name={name} test={row.testDelivery} lang={lang} isLight={isLight} request={api}/>}
                                 {row.testDelivery && !row.systemManaged && <button type="button"
@@ -1770,98 +1899,79 @@ export default function NotificationCenter({
                   )}
                   {tab === "notification-jobs" && (
                     <>
-                      {targetJob&&!loading&&!error&&rows.length===0&&<p role="alert">{lang==='zh'?'未找到对应发送记录，可能已移除或无权查看。':lang==='id'?'Catatan pengiriman tidak ditemukan atau tidak dapat diakses.':'Delivery record not found or unavailable to this account.'}</p>}
-                      <div className="max-w-xs">
-                        {select(
-                          t("发送状态", "Delivery state"),
-                          filter,
-                          [
-                            ["all", t("全部状态", "All states")],
-                            ...Object.entries(stateNames).map(
-                              ([v, n]) =>
-                                [
-                                  v,
-                                  lang === "id" ? crmId(n[1]) : n[zh ? 0 : 1],
-                                ] as [string, string],
-                            ),
-                          ],
-                          setFilter,
-                        )}
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left">
-                          <thead className={muted}>
-                            <tr>
-                              {[
-                                t("事件 / 客户", "Event / lead"),
-                                t("渠道 / 收件人", "Channel / recipient"),
-                                t("状态", "State"),
-                                t("计划时间 / 次数", "Scheduled / attempts"),
-                                t("结果 / 操作", "Result / action"),
-                              ].map((s) => (
-                                <th key={s} className="p-3 whitespace-nowrap">
-                                  {s}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rows
-                              .filter(
-                                (r) => filter === "all" || r.state === filter,
-                              )
-                              .map((row) => (
+                      {jobsResult?.denied?<AdminListState lang={lang} state="denied"/>:<>
+                        {targetJob?<AdminRowAction onClick={openAllJobs}>
+                          {zh?'查看全部发送记录':lang==='id'?'Lihat semua catatan pengiriman':'View all delivery records'}
+                        </AdminRowAction>:<div className="max-w-xs">
+                          {select(t("发送状态","Delivery state"),jobsLocation.state,[
+                            ["all",t("全部状态","All states")],
+                            ...Object.entries(stateNames).map(([value,name])=>[
+                              value,lang==="id"?crmId(name[1]):name[zh?0:1],
+                            ] as [string,string]),
+                          ],state=>changeJobsLocation(state,1))}
+                        </div>}
+                        {!targetJob&&<p className="crm-list-meta">
+                          {zh?'按当前筛选查看最近 200 条发送记录。':lang==='id'?'Filter berlaku pada 200 catatan pengiriman terakhir.':'Filters apply to the latest 200 delivery records.'}
+                        </p>}
+                        {!jobsResult&&<AdminListState lang={lang} state="loading"/>}
+                        {jobsResult?.error&&<AdminListState lang={lang} state="error" message={crmError(jobsResult.error,lang)}
+                          compact={Boolean(visibleJobs?.length)} onRetry={()=>void load()}/>}
+                        {jobsResult&&!jobsResult.error&&!visibleJobs?.length&&<AdminListState lang={lang} state="empty"
+                          message={targetJob?(zh?'未找到对应发送记录，可能已移除或无权查看。':lang==='id'?'Catatan pengiriman tidak ditemukan atau tidak dapat diakses.':'Delivery record not found or unavailable to this account.'):undefined}/>}
+                        {!!visibleJobs?.length&&<AdminListTable label={t("发送记录","Delivery records")} busy={loading} viewportRef={jobsTable}
+                          headers={[
+                            t("事件 / 客户","Event / lead"),t("渠道 / 收件人","Channel / recipient"),t("状态","State"),
+                            t("计划时间 / 次数","Scheduled / attempts"),t("结果 / 操作","Result / action"),
+                          ]}>
+                          {visibleJobs.map(row=>(
                                 <tr
                                   id={"notification-job-"+row.id}
                                   tabIndex={-1}
                                   data-notification-focused={targetJob===row.id||undefined}
                                   key={row.id}
-                                  className={`border-t ${isLight ? "border-slate-200" : "border-slate-800"}`}
                                 >
-                                  <td className="p-3">
+                                  <td>
                                     <p>{label(row.snapshot?.event || "")}</p>
                                     {row.snapshot?.leadId && (
-                                      <a
-                                        className="text-primary-500 underline"
+                                      <AdminRowAction
                                         href={
                                           "/crm?lead=" +
                                           encodeURIComponent(
                                             row.snapshot.leadId,
                                           )
                                         }
+                                        onClick={event=>rememberJobPosition(event,row.id)}
                                       >
                                         {t("查看客户", "View lead")}
-                                      </a>
+                                      </AdminRowAction>
                                     )}
                                     <p className={`text-[10px] ${muted}`}>
                                       {row.id}
                                     </p>
                                   </td>
-                                  <td className="p-3">
+                                  <td>
                                     {(row.systemGroupRecipient || (row.channel === "lark" && row.recipient === historicalSystemGroupId)) ? systemGroupLabel : <>
                                       {crmValue(row.channel, lang)}
                                       <br />
                                       {row.recipient}
                                     </>}
                                   </td>
-                                  <td className="p-3">
-                                    <span
-                                      className={`whitespace-nowrap ${row.state === "failed" || row.state === "unknown" ? "text-rose-500" : row.state === "accepted" ? "text-emerald-600" : muted}`}
-                                    >
+                                  <td>
+                                    <AdminStatus tone={row.state==='unknown'?'warning':row.state==='failed'?'danger':row.state==='accepted'?'success':'neutral'}>
                                       {(lang === "id"
                                         ? crmId(stateNames[row.state]?.[1])
                                         : stateNames[row.state]?.[
                                             zh ? 0 : 1
                                           ]) || row.state}
-                                    </span>
+                                    </AdminStatus>
                                   </td>
-                                  <td className="p-3 whitespace-nowrap">
+                                  <td className="whitespace-nowrap">
                                     {format(row.due_at)}
                                     <br />
                                     {row.attempts} {t("次", "attempts")} · v
                                     {row.version}
                                   </td>
-                                  <td className="p-3 max-w-xs break-words">
+                                  <td className="max-w-xs break-words">
                                     {row.historicalHold && (
                                       <p className={muted}>
                                         {lang === "zh"
@@ -1879,24 +1989,17 @@ export default function NotificationCenter({
                                         )
                                       : "—"}
                                     {row.result && (
-                                      <details className="mt-1 text-xs">
-                                        <summary className="cursor-pointer">
-                                          {t(
-                                            "原始技术回执",
-                                            "Original technical receipt",
-                                          )}
-                                        </summary>
-                                        <pre className="whitespace-pre-wrap mt-1">
-                                          {row.result}
-                                        </pre>
-                                      </details>
+                                      <AdminDisclosure density="compact" data-job-receipt=""
+                                        heading={t("原始技术回执","Original technical receipt")}>
+                                        <pre className="admin-disclosure-original">{row.result}</pre>
+                                      </AdminDisclosure>
                                     )}
-                                    {row.state === "pending" && (
+                                    {canEdit && row.state === "pending" && (
                                       <button
                                         className={`${button} block mt-2`}
                                         onClick={() => {
+                                          closeCancel();
                                           setCancelId(row.id);
-                                          setCancelReason("");
                                         }}
                                       >
                                         {t("取消通知", "Cancel notification")}
@@ -1905,82 +2008,32 @@ export default function NotificationCenter({
                                   </td>
                                 </tr>
                               ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      {cancelId && (
-                        <div className={`${box} p-4 space-y-3`}>
-                          {text(
-                            t("取消原因", "Cancellation reason"),
-                            cancelReason,
-                            setCancelReason,
-                          )}
-                          <p className={`text-xs ${muted}`}>
-                            {t(
-                              "仅取消这条通知，不完成客户跟进任务。",
-                              "Cancels this notification only; does not complete follow-up.",
-                            )}
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              className={primary}
-                              disabled={
-                                !canEdit || busy || !cancelReason.trim()
-                              }
-                              onClick={async () => {
-                                setBusy(true);
-                                try {
-                                  await api(
-                                    "notification-jobs/" +
-                                      encodeURIComponent(cancelId) +
-                                      "/cancel",
-                                    { reason: cancelReason },
-                                  );
-                                  setCancelId("");
-                                  setNotice(
-                                    t("通知已取消", "Notification cancelled"),
-                                  );
-                                  await load();
-                                } catch (e) {
-                                  setError((e as Error).message);
-                                } finally {
-                                  setBusy(false);
-                                }
-                              }}
-                            >
-                              {t("确认取消", "Confirm cancellation")}
-                            </button>
-                            <button
-                              className={button}
-                              onClick={() => setCancelId("")}
-                            >
-                              {t("保留通知", "Keep notification")}
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                        </AdminListTable>}
+                        {!targetJob&&<AdminListPagination lang={lang} page={jobPage} pageCount={jobPages}
+                          onPageChange={page=>changeJobsLocation(jobsLocation.state,page)}/>}
+                      </>}
+                      {cancelId && !jobsResult?.denied && <AdminConfirmation light={isLight} busy={busy} danger
+                        title={t('取消通知','Cancel notification')}
+                        description={<>{t('仅取消这条通知，不完成客户跟进任务。','Cancels this notification only; does not complete follow-up.')} · {cancelId}</>}
+                        cancelLabel={t('保留通知','Keep notification')} confirmLabel={t('确认取消','Confirm cancellation')}
+                        confirmDisabled={cancelNeedsCheck||!cancelReason.trim()} onCancel={closeCancel} onConfirm={()=>void confirmCancel()}>
+                        <AdminField required>{t('取消原因','Cancellation reason')}
+                          <textarea value={cancelReason} onChange={event=>setCancelReason(event.target.value)}
+                            required maxLength={300} disabled={busy||cancelNeedsCheck}/>
+                        </AdminField>
+                        {cancelFeedback&&<AdminFormFeedback lang={lang} state={cancelFeedback.state}>{cancelFeedback.message}</AdminFormFeedback>}
+                        {cancelNeedsCheck&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkCancelled()}>
+                          {cancelText('查询取消结果','Check cancellation result','Periksa hasil pembatalan')}</button>}
+                      </AdminConfirmation>}
                     </>
                   )}
-                  {tab === "notification-audit" && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead className={muted}>
-                          <tr>
-                            {[
-                              t("操作人", "Actor"),
-                              t("操作", "Action"),
-                              t(
-                                "对象 / 版本 / 原因",
-                                "Object / version / reason",
-                              ),
-                            ].map((s) => (
-                              <th className="p-3" key={s}>
-                                {s}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
+                  {tab === "notification-audit" && (auditRead!=='ready'||!rows.length) && (
+                    <AdminListState lang={lang} state={auditRead==='ready'?'empty':auditRead}
+                      message={auditRead==='ready'?t("暂无记录","No records yet"):undefined} onRetry={()=>void load()}/>
+                  )}
+                  {tab === "notification-audit" && auditRead==='ready' && rows.length>0 && (
+                    <AdminListTable label={t('执行与变更历史','Execution & change history')}
+                      headers={[t('操作人','Actor'),t('操作','Action'),t('对象 / 版本 / 原因','Object / version / reason')]}>
                           {rows.map((row) => (
                             <tr
                               key={row.id}
@@ -2015,9 +2068,7 @@ export default function NotificationCenter({
                               </td>
                             </tr>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    </AdminListTable>
                   )}
                   {tab === "integration-readiness" &&
                     rows.map((row) => (
@@ -2091,7 +2142,7 @@ export function NotificationTopicPanels({topic,enabled=true,...props}:{topic:Tab
 }
 
 /** Same navigation for notification readers without policy-management permission. */
-export function NotificationWorkspace(props:{isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
- const [topic,setTopic]=useState<Tab>(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('policyTopic')==='notification-jobs'?'notification-jobs':'notification-rules');const col=props.lang==='zh'?2:props.lang==='id'?1:0;
- return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>setTopic(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
+export function NotificationWorkspace({topic,onTopicChange,...props}:{topic:Tab;onTopicChange:(topic:Tab)=>void;isLight:boolean;lang:"en"|"zh"|"id";canEdit:boolean}){
+ const col=props.lang==='zh'?2:props.lang==='id'?1:0;
+ return <div className="crm-ops-workspace-sample" data-theme={props.isLight?'light':'dark'}><AdminTopicFrame label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]} selection={topic} navigation={<nav className="crm-ops-nav" aria-label={['Notifications and audit','Notifikasi dan audit','通知与审计'][col]}>{notificationTopics.map(s=><button key={s.id} type="button" aria-current={s.id===topic?'page':undefined} onClick={()=>onTopicChange(s.id as Tab)}>{createElement(notificationTopicIcons[s.id as Tab],{size:16,"aria-hidden":true})}{s.title[col]}</button>)}</nav>}><NotificationTopicPanels {...props} topic={topic}/></AdminTopicFrame></div>;
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { BookOpen, Award, BarChart, CheckCircle2, Bot, Sparkles, BrainCircuit, LineChart, HelpCircle, ArrowRight, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
@@ -8,10 +8,12 @@ import remarkGfm from 'remark-gfm';
 import { SEO } from '../components/SEO';
 import { hskFaqsByLang } from '../data/hskFaqs';
 import { useDesignStyle } from '../utils/theme';
+import { promotionJourneyUrl } from '../utils/promotionNavigation';
 import ProgramFAQPortal from '../components/ProgramFAQPortal';
 
 export default function HSK() {
   const { t, i18n } = useTranslation();
+  const [params] = useSearchParams();
   const { isApple } = useDesignStyle();
 
   const levelsTranslation = t("hsk.levels", { returnObjects: true });
@@ -76,6 +78,9 @@ export default function HSK() {
           >
             {t("hsk.header.desc")}
           </motion.p>
+          <Link className="mt-6 inline-flex items-center gap-2 font-semibold text-primary-700 hover:underline" to={promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2),params,'website')}>
+            {t('nav.enrollmentDetails')}<ArrowRight size={18} aria-hidden="true"/>
+          </Link>
         </div>
 
         {/* Levels Grid */}
@@ -274,6 +279,7 @@ export default function HSK() {
 
 const FutureAIVision = () => {
   const { t } = useTranslation();
+  const [params] = useSearchParams();
   const { isApple } = useDesignStyle();
   const itemsTranslation = t("hsk.vision.items", { returnObjects: true });
   const items = Array.isArray(itemsTranslation) ? itemsTranslation : [{},{},{}];
@@ -373,6 +379,7 @@ const FutureAIVision = () => {
 
 const HSKFAQsAccordion = () => {
   const { t, i18n } = useTranslation();
+  const [params] = useSearchParams();
   const { isApple } = useDesignStyle();
   const [openId, setOpenId] = React.useState<string | null>('hsk_q1'); // Open first item by default
 

@@ -12,8 +12,10 @@ export async function salesProgressContext(c:any,leadId:string,profile:any){
  const attempts=(await c.query("SELECT id,result,created_at FROM hsk_attempts WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at DESC,id DESC",[leadId])).rows;
  const extractions=(await c.query("SELECT * FROM crm_ai_extractions WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY created_at,id",[leadId])).rows;
  const campaigns=(await c.query('SELECT id,code,config FROM trial_campaigns')).rows;
+ const logFacts=new Map(facts.filter((f:any)=>f.kind==='followup.recorded'&&f.data?.result?.logId)
+  .map((f:any)=>[f.data.result.logId,f.id]));
  const sources:any[]=[
-  ...(profile.followUpLogs||[]).map((l:any)=>({type:'sales_record',id:l.id,label:'销售记录',text:l.summary||'',occurredAt:iso(l.occurredAt),recordedAt:iso(l.at||l.timestamp),timeBasis:'staff_reported'})),
+  ...(profile.followUpLogs||[]).map((l:any)=>({type:'sales_record',id:l.id,factId:logFacts.get(l.id),label:'销售记录',text:l.summary||'',occurredAt:iso(l.occurredAt),recordedAt:iso(l.at||l.timestamp),timeBasis:'staff_reported'})),
   ...messages.map((m:any)=>({type:'customer_message',id:m.id,label:'客户对话',text:m.content,occurredAt:null,receivedAt:iso(m.created_at),recordedAt:iso(m.created_at),timeBasis:'received'})),
   ...attempts.map((a:any)=>({type:'assessment',id:a.id,label:'真实测评记录',text:JSON.stringify(a.result||{}),occurredAt:assessmentTime(a),receivedAt:iso(a.created_at),recordedAt:iso(a.created_at),timeBasis:'reported_completion'})),
   ...facts.filter((f:any)=>f.kind==='questionnaire.submitted').map((f:any)=>({type:'fact',id:f.id,label:'客户问卷',sourceKind:'questionnaire',questionnaire:questionnaireAnswers({answers:{...f.data.answers,campaignName:f.data.answers?.campaignName||campaigns.find((v:any)=>[v.id,v.code].includes(f.data.answers?.campaignId))?.config?.name}}),submittedAt:f.data.answers?.submittedAt||null,text:'',occurredAt:null,receivedAt:iso(f.created_at),recordedAt:iso(f.created_at),timeBasis:'received'}))

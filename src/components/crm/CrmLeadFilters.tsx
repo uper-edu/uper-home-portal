@@ -1,6 +1,8 @@
 import {metricSelectionLabel} from '../../utils/crmLeadAnalytics';
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { CrmRecordFilters, CrmRecordSearch } from "./CrmRecordWorkspace";
+import {AdminSearchField} from '../admin/AdminSearchField';
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import {
@@ -48,24 +50,6 @@ export function CrmLeadFilters({
   onViewMode,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const filterRoot=useRef<HTMLDivElement>(null);
-  useEffect(()=>{
-    if(!compact||!expanded)return;
-    const dismiss=(event:PointerEvent)=>{
-      const target=event.target as Element;
-      if(filterRoot.current?.contains(target)||target.closest?.('.crm-detail-choice-popup'))return;
-      setExpanded(false);
-    };
-    document.addEventListener('pointerdown',dismiss);
-    return()=>document.removeEventListener('pointerdown',dismiss);
-  },[compact,expanded]);
-  const [sheetHeight,setSheetHeight]=useState(440);
-  useLayoutEffect(()=>{
-    if(!compact||!expanded)return;
-    const measure=()=>{const top=filterRoot.current?.getBoundingClientRect().top??0;setSheetHeight(Math.min(680,Math.max(120,window.innerHeight-Math.max(12,top)-16)))};
-    measure();window.addEventListener('resize',measure);window.addEventListener('scroll',measure,true);
-    return()=>{window.removeEventListener('resize',measure);window.removeEventListener('scroll',measure,true)};
-  },[compact,expanded]);
   const t = (en: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? crmId(en) : en;
   const update = (patch: Partial<LeadFilters>) => onChange({ ...f, ...patch });
@@ -147,8 +131,7 @@ export function CrmLeadFilters({
     onChange(next);
   };
   const reset = () => {
-    const next = defaultLeadFilters(scope);
-    onChange(next);
+    onChange(defaultLeadFilters(scope));
     setExpanded(false);
   };
   const advancedCount = advancedLeadDimensions.reduce(
@@ -175,38 +158,7 @@ export function CrmLeadFilters({
       ))}
     </fieldset>
   );
-  return (
-    <div
-      className={
-        "crm-filter-area crm-lead-filter-v3" +
-        (compact ? " crm-filter-sidebar" : "")
-      }
-      data-theme={isLight ? "light" : "dark"}
-      data-expanded={expanded}
-      ref={filterRoot}
-      onKeyDown={event=>{if(compact&&expanded&&event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();setExpanded(false);filterRoot.current?.querySelector<HTMLButtonElement>('.crm-filter-more')?.focus()}}}
-    >
-      <div className={compact?'crm-sidebar-filter-sheet':undefined} style={compact&&expanded?{maxHeight:sheetHeight}:undefined}>
-      <section
-        aria-label={t("Lead filters", "客户筛选")}
-        className="crm-filter-panel"
-      >
-        <div className="crm-filter-main">
-          <div className="crm-lead-search">
-            <Search size={16} aria-hidden="true" />
-            <input
-              type="search"
-              maxLength={200}
-              className="crm-filter-search"
-              aria-label={t("Search customers", "搜索客户")}
-              placeholder={t(
-                "Name, phone, email or lead number…",
-                "姓名、电话、邮箱或业务编号…",
-              )}
-              value={f.search}
-              onChange={(e) => update({ search: e.target.value })}
-            />
-          </div>
+  const conditions=<>
           <CrmSingleSelect
             className="crm-filter-owner"
             label={t("Owner", "负责人")}
@@ -225,10 +177,7 @@ export function CrmLeadFilters({
             isLight={isLight}
           />
           {selectDimension("stage", f, update, "crm-filter-stage")}
-          <div
-            className="crm-filter-task"
-
-          >
+          <div className="crm-filter-task">
             <CrmSingleSelect
               label={t("First contact requirement", "首次联系")}
               value={f.task}
@@ -239,24 +188,8 @@ export function CrmLeadFilters({
               isLight={isLight}
             />
           </div>
-          <button
-            type="button"
-            className="crm-filter-more"
-            aria-expanded={expanded}
-            aria-controls="lead-more-filters"
-            title={t('Match any selected value within a field, and all fields together.','同一条件多选时符合任一项即可，不同条件之间须同时符合。')}
-            onClick={() => {
-              setExpanded(!expanded);
-            }}
-          >
-            <SlidersHorizontal size={15} aria-hidden="true" />
-            {compact?t("Filters","筛选"):t("More filters", "更多筛选")}
-            {(compact?leadConditionCount(f):advancedCount) ? ` (${compact?leadConditionCount(f):advancedCount})` : ""}
-            <ChevronDown size={14} aria-hidden="true" />
-          </button>
-        </div>
-        {expanded && (
-          <div id="lead-more-filters" className="crm-lead-advanced">
+</>;
+  const advanced=(
             <div className="crm-lead-filter-groups">
               {group(t("Interaction and follow-up", "互动与跟进"), [
                 "connect",
@@ -264,10 +197,8 @@ export function CrmLeadFilters({
               ])}
               {group(t("Sales progress", "销售进展"), ["tier", "signal"])}
               {group(t("Learning needs", "学习需求"), ["mode"])}
-            </div>
-          </div>
-        )}
-        {leadConditionCount(f) > 0 && (
+            </div>);
+  const chips=(leadConditionCount(f) > 0 && (
           <div
             className="crm-filter-chips"
             aria-label={t("Applied filters", "已选条件")}
@@ -302,18 +233,8 @@ export function CrmLeadFilters({
               {t("Clear conditions", "清空条件")}
             </button>
           </div>
-        )}
-      </section>
-      <div
-        className="crm-filter-results"
-        aria-label={analysis ? t("Analysis filters", "分析筛选") : t("Customer list controls", "客户列表工具栏")}
-      >
-        {!compact&&<>
-        <p role="status" aria-live="polite">
-          {t(`${count} customers match`, `匹配 ${count} 位客户`)}
-          <span className="crm-filter-updating" style={{visibility:loading?'visible':'hidden'}} aria-hidden={!loading}>{t('Updating…','更新中…')}</span>
-        </p>
-        </>}
+        ));
+  const resultControls=<>
         <button type="button" className="crm-lead-defaults" title={t("Restore role defaults and sorting; keep view unchanged","恢复角色默认筛选和排序，视图不变")} onClick={reset}>
           {t("Restore default filters", "恢复默认筛选")}
         </button>
@@ -349,8 +270,61 @@ export function CrmLeadFilters({
           onChange={(v) => update({ sort: v })}
           lang={lang}
           isLight={isLight}
-        />}
-        {!compact && !analysis && (
+        />}</>;
+  if(compact)return <CrmRecordFilters lang={lang} count={leadConditionCount(f)}
+    search={<CrmRecordSearch label={t("Search customers","搜索客户")}
+      placeholder={t("Search customers…","搜索客户…")} value={f.search} onChange={search=>update({search})}/>}>
+    <div className="crm-filter-area crm-lead-filter-v3 crm-record-lead-conditions" data-theme={isLight?'light':'dark'}>
+      <div className="crm-filter-main">{conditions}</div>{advanced}{chips}
+      <div className="crm-filter-results">{resultControls}</div>
+    </div>
+  </CrmRecordFilters>;
+  return (
+    <div className="crm-filter-area crm-lead-filter-v3" data-theme={isLight?'light':'dark'} data-expanded={expanded}>
+      <div>
+      <section
+        aria-label={t("Lead filters", "客户筛选")}
+        className="crm-filter-panel"
+      >
+        <div className="crm-filter-main">
+          <AdminSearchField className="crm-lead-search" maxLength={200}
+            label={t("Search customers", "搜索客户")}
+            placeholder={t("Name, phone, email or lead number…", "姓名、电话、邮箱或业务编号…")}
+            value={f.search} onChange={search=>update({search})}/>
+          {conditions}
+          <button
+            type="button"
+            className="crm-filter-more"
+            aria-expanded={expanded}
+            aria-controls="lead-more-filters"
+            title={t('Match any selected value within a field, and all fields together.','同一条件多选时符合任一项即可，不同条件之间须同时符合。')}
+            onClick={() => {
+              setExpanded(!expanded);
+            }}
+          >
+            <SlidersHorizontal size={15} aria-hidden="true" />
+            {t("More filters", "更多筛选")}
+            {advancedCount ? ` (${advancedCount})` : ""}
+            <ChevronDown size={14} aria-hidden="true" />
+          </button>
+        </div>
+        {expanded && (
+          <div id="lead-more-filters" className="crm-lead-advanced">
+            {advanced}
+          </div>
+        )}
+        {chips}
+      </section>
+      <div
+        className="crm-filter-results"
+        aria-label={analysis ? t("Analysis filters", "分析筛选") : t("Customer list controls", "客户列表工具栏")}
+      >
+        <p role="status" aria-live="polite">
+          {t(`${count} customers match`, `匹配 ${count} 位客户`)}
+          <span className="crm-filter-updating" style={{visibility:loading?'visible':'hidden'}} aria-hidden={!loading}>{t('Updating…','更新中…')}</span>
+        </p>
+        {resultControls}
+        {!analysis && (
           <CrmSingleSelect
             className="crm-lead-view"
             label={t("View", "视图")}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-if (!process.env.MYSQL_NATIVE_TEST_ENV) test('campaign deletion checks Lead attribution before removing all short links and indexes', async t => {
+if (!process.env.MYSQL_NATIVE_TEST_ENV) test('campaign deletion checks Lead and verified enrollment attribution before removing short links and indexes', async t => {
   const mockEnv = {
     TRIAL_DATASET:'synthetic',
     PORTAL_DEPLOYMENT:'local',
@@ -20,13 +20,17 @@ if (!process.env.MYSQL_NATIVE_TEST_ENV) test('campaign deletion checks Lead attr
   const {operationContext} = await import('../server/portal/operationContext.ts');
   const campaign = {id:'custom', code:'campaign-code', name:'Custom', promotionLinks:[{id:'first'}, {id:'second'}]};
   const writes: Array<[string, string[]]> = [];
-  const run = (profiles: object[] = [], linkedPromotion = '', reviewedCampaign = false) => operationContext.run({
+  const run = (profiles: object[] = [], linkedPromotion = '', reviewedCampaign = false, linkedEnrollment = '') => operationContext.run({
     async query(sql: string, params: string[]) {
       if (sql.startsWith('SELECT code,config')) return {rows:[{code:campaign.code, config:campaign}]};
       if (sql === 'SELECT profile FROM portal_leads') return {rows:profiles.map(profile => ({profile}))};
       if (sql.startsWith('SELECT id FROM portal_leads')) return {rows:params[0] === linkedPromotion ? [{id:'lead'}] : []};
       if (sql.startsWith('SELECT id FROM campaign_source_reviews')) return {rows:reviewedCampaign ? [{id:'review'}] : []};
       if (sql.startsWith('SELECT id FROM portal_audit')) return {rows:[]};
+      if (sql.startsWith('SELECT record_id FROM enrollment_record_attribution')) {
+        assert.match(sql,/JSON_EXTRACT\(attribution,'\$\.verified'\)=true/);
+        return {rows:params[0]===linkedEnrollment?[{record_id:'enrollment'}]:[]};
+      }
       assert.match(sql, /^DELETE /);
       writes.push([sql.split(' ')[2], params]);
       return {rowCount:1};
@@ -37,6 +41,7 @@ if (!process.env.MYSQL_NATIVE_TEST_ENV) test('campaign deletion checks Lead attr
   await assert.rejects(run([{campaignId:campaign.code}]), conflict);
   await assert.rejects(run([{identitySources:[{campaignId:campaign.id}]}]), conflict);
   await assert.rejects(run([], 'second'), conflict);
+  await assert.rejects(run([], '', false, 'second'), conflict);
   await assert.rejects(run([], '', true), {status:409});
   assert.deepEqual(writes, []);
   assert.equal(await run(), true);

@@ -1,3 +1,5 @@
+import {ChatEnrollmentGuide} from './ChatEnrollmentGuide';
+import type {EnrollmentGuideAction} from '../utils/enrollmentGuidance';
 import {websitePromotionUrl} from '../utils/promotionNavigation';
 import {RegistrationSaveError,registrationSaveText} from '../services/registrationSave';
 import type {ChatRequestAction} from '../utils/chatRequestIntent';
@@ -26,6 +28,7 @@ import {
 } from '../services/studentProfileStorage';
 
 interface Message {
+  enrollment?:EnrollmentGuideAction;
   delivery?: Delivery;
   id: string;
   role: 'user' | 'assistant';
@@ -861,7 +864,7 @@ export default function AIChatbot() {
         });
         if(result.status==='contact_required')setShowForm(true);
         if(result.modelUsed)setActiveModelUsed(result.modelUsed);
-        setMessages(prev=>prev.map(m=>m.id===userMsg.id?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:result.reply,isComplete:true}:m));
+        setMessages(prev=>prev.map(m=>m.id===userMsg.id?{...m,delivery:'saved'}:m.id===botMsgId?{...m,content:result.reply,enrollment:result.enrollment,isComplete:true}:m));
         setSuggestedPrompts(result.suggestedPrompts || []);
       // Contextual lead form suggestion check - trigger exactly at 3, 6, 10, 20, 30, 45 exchanges
       const userMsgsCount = messagesToContext.filter(m => m.role === 'user').length;
@@ -1444,7 +1447,7 @@ export default function AIChatbot() {
                                 onUpdate={() => scrollToBottom('auto')}
                               />
                             ) : (
-                              <RenderMarkdown content={m.content} />
+                              <><RenderMarkdown content={m.content} /><ChatEnrollmentGuide action={m.enrollment} language={currentLang} entry="homepage_widget"/></>
                             )
                           ) : (
                             <span className="whitespace-pre-line">{m.content}</span>
@@ -1469,7 +1472,7 @@ export default function AIChatbot() {
                         <span className="text-xs text-slate-400 font-medium whitespace-pre-line animate-pulse">
                           {sendingAdvisorRequest
                             ? (currentLang.startsWith('zh')?'正在保存跟进申请…':currentLang.startsWith('en')?'Saving follow-up request…':'Menyimpan permintaan tindak lanjut…')
-                            : (currentLang.startsWith('zh')?'UPER AI 正在思考中...':currentLang.startsWith('en')?'UPER AI is typing...':'UPER AI sedang mengetik...')}
+                            : (currentLang.startsWith('zh')?'正在输入…':currentLang.startsWith('en')?'Typing…':'Sedang mengetik…')}
                         </span>
                       </div>
                     </div>

@@ -1,13 +1,13 @@
 .crm-filter-area {
-  --cf-border: #dbe3ee;
-  --cf-bg: #fff;
-  --cf-subtle: #f8fafc;
-  --cf-text: #1e293b;
-  --cf-muted: #64748b;
-  --cf-accent: #0f766e;
-  --cf-selected: #f0fdfa;
-  --cf-control-height: 38px;
-  --cf-radius: 8px;
+  --cf-border: var(--admin-border);
+  --cf-bg: var(--admin-surface);
+  --cf-subtle: var(--admin-selected);
+  --cf-text: var(--admin-text);
+  --cf-muted: var(--admin-muted);
+  --cf-accent: var(--admin-action);
+  --cf-selected: var(--admin-selected);
+  --cf-control-height: 40px;
+  --cf-radius: 10px;
   --cf-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --input-font-size: 13px;
   color: var(--cf-text);
@@ -15,15 +15,6 @@
   line-height: 20px;
   font-weight: 400;
   container: crm-filters / inline-size;
-}
-.crm-filter-area[data-theme="dark"] {
-  --cf-border: #475569;
-  --cf-bg: #0f172a;
-  --cf-subtle: #1e293b;
-  --cf-text: #f1f5f9;
-  --cf-muted: #94a3b8;
-  --cf-accent: #5eead4;
-  --cf-selected: #134e4a;
 }
 .crm-filter-panel {
   border: 1px solid var(--cf-border);
@@ -44,24 +35,9 @@
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  accent-color: #0f766e;
-}
-.crm-filter-area input.crm-filter-search,
-.crm-filter-area input.crm-filter-option-search {
-  font: inherit;
-  border: 1px solid var(--cf-border);
-  border-radius: var(--cf-radius);
-  background: var(--cf-bg);
-  color: var(--cf-text);
-  min-width: 0;
-  width: 100%;
-  height: var(--cf-control-height);
-  padding: 0 10px;
+  accent-color: var(--admin-action);
 }
 .crm-filter-workscope { grid-area: scope; min-width:0; }
-.crm-filter-search {
-  grid-area: search;
-}
 .crm-filter-area input::placeholder {
   color: var(--cf-muted);
   opacity: 1;
@@ -352,31 +328,13 @@
       "reset reset";
   }
 }
-/* The global Apple theme uses !important for native form controls. Keep its
-   padding, colors and font overrides from changing only half of this toolbar. */
-:root[data-design-style="apple"] #root .crm-filter-area input[type="search"] {
-  font: inherit !important;
-  color: var(--cf-text) !important;
-  background: var(--cf-bg) !important;
-  box-shadow: none !important;
-}
-:root[data-design-style="apple"] #root .crm-filter-area input[type="search"] {
-  border: 1px solid var(--cf-border) !important;
-  border-radius: var(--cf-radius) !important;
-  padding: 0 10px !important;
-}
-:root[data-design-style="apple"] #root .crm-filter-area input:focus-visible {
-  outline: 2px solid var(--cf-accent) !important;
-  outline-offset: 2px;
-}
-
 .crm-filter-single-option {
   width: 100%;
   text-align: left;
   color: var(--cf-text);
 }
 .crm-filter-single-option[aria-selected="true"] {
-  color: var(--cf-accent);
+  color: var(--cf-text);
   background: var(--cf-selected);
 }
 .crm-filter-selection-mark {
@@ -412,13 +370,9 @@
 .crm-lead-filter-v3>.crm-filter-panel{padding:12px;border-radius:14px}
 .crm-lead-filter-v3 .crm-filter-main{grid-template-columns:minmax(240px,1.6fr) minmax(170px,1fr) minmax(170px,1fr) minmax(210px,1.2fr) auto;grid-template-areas:"search owner stage task more";gap:8px}
 .crm-lead-search{grid-area:search;position:relative;min-width:0}
-.crm-lead-search>svg{position:absolute;left:12px;top:12px;color:var(--cf-muted);pointer-events:none}
-.crm-lead-filter-v3 .crm-lead-search input.crm-filter-search{padding-left:36px}
-:root[data-design-style="apple"] #root .crm-lead-filter-v3 .crm-lead-search input[type="search"]{padding-left:36px!important}
 .crm-lead-filter-v3 .crm-filter-stage{grid-area:stage;min-width:0}
 .crm-lead-filter-v3 .crm-filter-more>svg{flex:none}
 .crm-lead-filter-v3 .crm-filter-more[aria-expanded="true"]>svg:last-child{transform:rotate(180deg)}
-.crm-lead-filter-v3 .crm-filter-dimension-button{min-height:40px;height:40px}
 .crm-lead-advanced{border-top:1px solid var(--cf-border);margin-top:12px;padding-top:12px}
 .crm-lead-filter-help{margin:0 0 12px;color:var(--cf-muted);font-size:12px;line-height:1.5}
 .crm-lead-filter-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
@@ -486,3 +440,29 @@
 
 /* Optional semantic headings do not enter the option keyboard sequence. */
 .crm-filter-area .crm-choice-group{padding:8px 12px 4px;font-size:12px;line-height:1.5;font-weight:600;color:var(--cf-muted)}
+
+/* One control style for collection filters, sidebars and edit forms. */
+.crm-detail-choice > .crm-filter-dimension-button:where(:not(.crm-task-more *)) {
+  min-height:40px;
+  padding-inline:10px;
+  border-radius:10px;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:400;
+  line-height:20px;
+  color:var(--admin-text);
+  background:var(--admin-surface);
+}
+.crm-detail-choice-popup button.crm-filter-option {
+  min-height:36px;
+  align-items:center;
+  font:inherit;
+  overflow-wrap:anywhere;
+}
+.crm-detail-choice-popup .crm-filter-option:has(.crm-choice-detail){align-items:flex-start}
+.crm-detail-choice-popup .crm-filter-option[aria-selected="true"]{font-weight:600}
+.crm-detail-choice-popup .crm-filter-selection-mark{color:var(--admin-action)}
+.crm-detail-choice-popup .crm-filter-option:focus-visible,
+.crm-detail-choice-popup .crm-filter-option-search:focus-visible,
+.crm-detail-choice > .crm-filter-dimension-button:focus-visible{outline:2px solid var(--admin-focus);outline-offset:-2px}
+.crm-detail-choice-popup .crm-filter-option:disabled:hover{background:transparent}

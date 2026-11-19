@@ -1,3 +1,4 @@
+import {AdminSecondaryActions} from '../admin/AdminRecordActions';
 import {formatCurrency} from '../../utils/currency';
 import {AdminFormSection} from '../AdminFormLayout';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
@@ -21,11 +22,11 @@ export function CrmPaymentProjectDetail({project:p,ledger,leadId,ownerName='',pe
  return <AdminFormSection className="crm-payment-project-detail" title={<><span className="crm-payment-course-title">{p.course}{p.priceSnapshot?.sessions&&<span className="crm-payment-course-meta"> · {p.priceSnapshot.sessions} {t('课时','sessions','pertemuan')}</span>}</span><CrmPaymentStatus state={s.state} lang={lang}/></>} actions={<>
   {canVerify&&!focusEntryId&&s.state!=='paid'&&s.state!=='nocharge'&&<button type="button" className="crm-work-button" data-primary disabled={disabled||pendingReceipt} onClick={()=>onChoose(paymentReceiptForm(p.id))}>{t('核验收款','Verify payment','Verifikasi pembayaran')}</button>}
   {canSubmit&&!verificationOnly&&<button type="button" className="crm-work-button" disabled={disabled} onClick={()=>onChoose({action:'submit',projectId:p.id,kind:'receipt',amount:'',time:'',method:'',evidence:''})}>{t('登记付款','Record payment','Catat pembayaran')}</button>}
-  {canVerify&&!focusEntryId&&<CrmPaymentMoreActions label={t('更多操作','More actions','Tindakan lain')} disabled={disabled}>
+  {canVerify&&!focusEntryId&&<AdminSecondaryActions alwaysMenu appearance="header" label={t('更多操作','More actions','Tindakan lain')} disabled={disabled}>
    {(s.state==='paid'||s.state==='nocharge')&&<button type="button" className="crm-work-link" disabled={disabled||pendingReceipt} onClick={()=>onChoose(paymentReceiptForm(p.id))}>{t('登记额外到账','Record additional receipt','Catat penerimaan tambahan')}</button>}
    <button type="button" className="crm-work-link" disabled={disabled||s.net<=0||pendingRefund} onClick={()=>onChoose(paymentRefundForm(p.id))}>{t('登记已退款项','Record completed refund','Catat pengembalian selesai')}</button>
    {(pendingRefund||s.net<=0)&&<p className="crm-work-muted">{pendingRefund?t('请先核对下方待核验退款。','Review the pending refund below first.','Periksa pengembalian menunggu di bawah dahulu.'):t('暂无可退款的已核实收款。','No verified funds are available for refund.','Belum ada penerimaan terverifikasi untuk dikembalikan.')}</p>}
-  </CrmPaymentMoreActions>}
+  </AdminSecondaryActions>}
   {canReviseProject&&!verificationOnly&&!p.priceSnapshot&&!p.termination&&<button type="button" className="crm-work-button" disabled={disabled} onClick={()=>onChoose({action:'revise_project',projectId:p.id,course:p.course,expected:p.expected??'',reason:''})}>{t('更正项目','Correct project','Koreksi proyek')}</button>}
   {canTerminate&&!verificationOnly&&!p.termination&&<button type="button" className="crm-work-button" disabled={disabled}
     onClick={()=>onChoose({action:'terminate',projectId:p.id,time:'',reason:''})}>{t('终止报名','Terminate enrollment','Hentikan pendaftaran')}</button>}

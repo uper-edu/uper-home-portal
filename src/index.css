@@ -8,6 +8,8 @@
 @import "./components/crm/crm-page-actions.css";
 @import "./components/crm/crm-page-heading.css";
 @import "./components/crm/crm-lead-filters.css";
+@import "./components/admin/admin-search-field.css";
+@import "./components/admin/admin-record-controls.css";
 @variant dark (.never-match-this-class-to-disable-dark-mode &);
 @plugin "@tailwindcss/typography";
 

@@ -51,7 +51,7 @@ test('Customer 360 current snapshot is outside its scrolling timeline; historica
 });
 test('detail sidebar adds a compact current stage and restrictions without removing selection or owner',()=>{
  const value={...lead,identityReview:{pending:true,canReview:false},contactArrangement:{state:'stopped'}};
- const html=render(React.createElement(CrmLeadWorkspace,{leads:[value],selectedId:value.id,view:'worklist',lang:'zh',timezone:'Asia/Jakarta',isLight:true,employeeId:'manager',employees:[{id:'sales-a',displayName:'Sales A'}],onOpen(){},onReset(){},children:React.createElement('div',null,'DETAIL')}));
+ const html=render(React.createElement(CrmLeadWorkspace,{leads:[value],selectedId:value.id,view:'worklist',lang:'zh',timezone:'Asia/Jakarta',isLight:true,employeeId:'manager',employees:[{id:'sales-a',displayName:'Sales A'}],onOpen(){},onReset(){},children:()=>React.createElement('div',null,'DETAIL')}));
  for(const text of ['is-compact','需求沟通中','身份待核实','已停止主动联系','Sales A','aria-current="true"','DETAIL'])assert.ok(html.includes(text));
  assert.equal((html.match(/data-restriction="identity"/g)||[]).length,1);
  assert.equal((html.match(/已停止主动联系<\/span>/g)||[]).length,1);

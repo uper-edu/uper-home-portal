@@ -1,9 +1,16 @@
+import {AdminFormActions,AdminFormFeedback} from './AdminFormLayout';
+import {AdminRecordHeader} from './admin/AdminRecordHeader';
+import {AdminRecordTitle} from './admin/AdminRecordWorkspace';
+import {CrmPageAction} from './crm/CrmPageAction';
+import {ShieldAlert} from 'lucide-react';
+import {AdminRefreshAction} from './admin/AdminRefreshAction';
+import {AdminDisclosure} from './admin/AdminDisclosure';
 import {viewerTimeZone} from '../utils/crmOperatingTime';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
 import {isCrmManager} from '../utils/crmOutreach';
 import { describeFollowUpTask } from "../utils/crmFollowUp";
 import "./access-safety.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { adminText } from "./AdminHeader";
 import type { CrmEmployee } from "./CrmAccess";
 import type { CrmLanguage } from "../utils/crmLanguage";
@@ -36,7 +43,8 @@ export function AccessHandoverPanel({
     [targets, setTargets] = useState<Record<string, string>>({}),
     [reasons, setReasons] = useState<Record<string, string>>({}),
     [busy, setBusy] = useState(false),
-    [loaded, setLoaded] = useState(false);
+    [loaded, setLoaded] = useState(false),
+    [refreshing, setRefreshing] = useState(false);
   const t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
   const manager =
     actor.permissions.includes("crm.assign") &&
@@ -78,25 +86,21 @@ export function AccessHandoverPanel({
       data-theme={isLight ? "light" : "dark"}
       aria-label={t("Staff handover", "Serah terima staf", "人员交接")}
     >
-      <details>
-        <summary>
-          {t("Staff handover", "Serah terima staf", "人员交接")} ·{" "}
-          {cases.filter((h) => h.state !== "completed").length}
-        </summary>
-        <p>
+      <AdminDisclosure heading={<>{t("Staff handover","Serah terima staf","人员交接")} · {cases.filter(h=>h.state!=="completed").length}</>}>
+        <div className="access-safety-refresh-row"><p>
           {t(
             "Disabling access is immediate. Transfer only selected work; existing task deadlines stay unchanged.",
             "Penonaktifan akses berlaku segera. Alihkan hanya pekerjaan terpilih; tenggat tetap.",
             "停用立即生效；交接只处理所选事项，原任务截止时间保持不变。",
           )}
         </p>
+          <AdminRefreshAction label={t("Refresh handovers", "Muat ulang serah terima", "刷新交接")}
+            loading={refreshing} disabled={busy} onClick={async()=>{setRefreshing(true);try{await load();}finally{setRefreshing(false);}}}/>
+        </div>
         {!loaded && !error && (
           <p role="status">{t("Loading…", "Memuat…", "正在载入…")}</p>
         )}
         {error && <p role="alert">{accessError(error, lang)}</p>}
-        <button type="button" disabled={busy} onClick={() => void load()}>
-          {t("Refresh handovers", "Muat ulang serah terima", "刷新交接")}
-        </button>
         {cases
           .filter((h) => h.state !== "completed")
           .map((h) => {
@@ -295,33 +299,55 @@ export function AccessHandoverPanel({
             void load();
           }}
         />
-      </details>
+      </AdminDisclosure>
     </section>
   );
 }
+export function canUseAccessRecovery(actor:CrmEmployee){
+  return ["access.read","access.users","access.roles","access.sessions","access.audit"]
+    .every(permission=>actor.permissions.includes(permission));
+}
+
 export function AccessSafetyPanel({
   actor,
   lang,
   isLight,
+  view,onReview,onReturn,onDraft,onBusy,
 }: {
   actor: CrmEmployee;
   lang: CrmLanguage;
   isLight: boolean;
+  view?: 'recovery'|'review';
+  onReview: () => void;
+  onReturn: () => void;
+  onDraft: (dirty:boolean) => void;
+  onBusy: (busy:boolean) => void;
 }) {
   const [state, setState] = useState<any>(null),
     [released, setReleased] = useState(false),
     [error, setError] = useState(""),
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [refreshing, setRefreshing] = useState(false);
   const t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
-  const full = [
-    "access.read",
-    "access.users",
-    "access.roles",
-    "access.sessions",
-    "access.audit",
-  ].every((p) => actor.permissions.includes(p));
+  const full=canUseAccessRecovery(actor);
+  const titleRef=useRef<HTMLHeadingElement>(null);
+  useEffect(()=>{if(view)titleRef.current?.focus();},[view]);
+  const showReview=full&&view==='review'&&state?.required;
+  useEffect(()=>{
+    if(!showReview)return;
+    onDraft(Boolean(reason||confirmed));
+    return ()=>onDraft(false);
+  },[showReview,reason,confirmed,onDraft]);
+  useEffect(()=>{
+    if(view!=='review') {setReason('');setConfirmed(false);}
+  },[view]);
+  useEffect(()=>{
+    if(view!=='review')return;
+    onBusy(busy);
+    return ()=>onBusy(false);
+  },[view,busy,onBusy]);
   const load = async () => {
     try {
       setState(await read("/api/admin/access/restore"));
@@ -367,8 +393,27 @@ export function AccessSafetyPanel({
   };
   return (
     <>
-      {error && <p role="alert">{accessError(error, lang)}</p>}
-      {released && (
+      {full&&state?.required&&view!=='review'&&<section className="access-restore-banner" aria-label={t('Restore security review','Tinjauan keamanan pemulihan','恢复后安全复核')}>
+        <AdminFormFeedback state="unknown" lang={lang} role="status">
+          {t('Business access is locked pending security review.','Akses bisnis dikunci hingga tinjauan keamanan selesai.','恢复后安全复核待完成，业务访问已锁定。')}
+        </AdminFormFeedback>
+        <CrmPageAction icon={ShieldAlert} label={t('Open security review','Buka tinjauan keamanan','进入安全复核')} onClick={onReview}/>
+      </section>}
+      {view&&<AdminRecordHeader back={{label:t('Back to users & access','Kembali ke pengguna & akses','返回用户与权限'),onClick:onReturn}}
+        title={<AdminRecordTitle titleRef={titleRef} title={view==='recovery'
+          ?t('Administrator recovery','Pemulihan administrator','管理员恢复')
+          :t('Restore security review','Tinjauan keamanan pemulihan','恢复后安全复核')}/>}/>}
+      {view&&!full&&<AdminFormFeedback state="error" lang={lang}>
+        {t('You do not have permission to use administrator recovery.','Anda tidak memiliki izin pemulihan administrator.','无管理员恢复访问权限。')}
+      </AdminFormFeedback>}
+      {view&&full&&error&&<AdminFormFeedback state="error" lang={lang}>{accessError(error,lang)}</AdminFormFeedback>}
+      {view&&full&&!state&&!error&&!released&&<p role="status">{t('Checking recovery status…','Memeriksa status pemulihan…','正在核对恢复状态…')}</p>}
+      {view&&full&&!state&&error&&<AdminRefreshAction label={t('Retry','Coba lagi','重试')} loading={refreshing}
+        onClick={async()=>{setRefreshing(true);try{await load();}finally{setRefreshing(false);}}}/>}
+      {view==='review'&&full&&state&&!state.required&&!released&&<p role="status">
+        {t('No security review is currently required.','Tinjauan keamanan saat ini tidak diperlukan.','当前无需恢复后安全复核。')}
+      </p>}
+      {view==='review' && released && (
         <p role="status">
           {t(
             "Review released. Sign in again with your new credentials.",
@@ -380,15 +425,7 @@ export function AccessSafetyPanel({
           </button>
         </p>
       )}
-      {full && !released && (
-        <AccessRecoveryPreparation
-          actor={actor.id}
-          lang={lang}
-          isLight={isLight}
-          queryOnly={!!state?.required}
-        />
-      )}
-      {state?.required && (
+      {showReview && (
         <section
           data-admin-form="" className="access-card access-safety-surface"
           data-theme={isLight ? "light" : "dark"}
@@ -398,16 +435,17 @@ export function AccessSafetyPanel({
             "恢复安全复核",
           )}
         >
-          <h2>
+          <header className="access-safety-refresh-row"><h2>
             {t(
               "Business access is locked for restore review",
               "Akses bisnis dikunci untuk tinjauan pemulihan",
               "恢复待复核，业务访问已锁定",
             )}
           </h2>
-          <button type="button" disabled={busy} onClick={() => void load()}>
-            {t("Refresh review", "Muat ulang tinjauan", "刷新复核")}
-          </button>
+            <AdminRequiredNote lang={lang} inline/>
+            <AdminRefreshAction label={t("Refresh review", "Muat ulang tinjauan", "刷新复核")}
+              loading={refreshing} disabled={busy} onClick={async()=>{setRefreshing(true);try{await load();}finally{setRefreshing(false);}}}/>
+          </header>
           <p>
             {t(
               "Compare the latest trusted authorization checkpoint, or explicitly review every account. Active accounts require a fresh password reset. Old notifications remain held.",
@@ -512,7 +550,7 @@ export function AccessSafetyPanel({
               )}
             </p>
           ))}
-          <button
+          <AdminFormActions><button type="button" data-primary
             disabled={
               busy ||
               !reason.trim() ||
@@ -527,8 +565,18 @@ export function AccessSafetyPanel({
               "Buka akses bisnis yang telah ditinjau",
               "解除已复核业务访问限制",
             )}
-          </button>
+          </button></AdminFormActions>
         </section>
+      )}
+      {full && state && !released && (view==='recovery'||showReview) && (
+        <AccessRecoveryPreparation
+          actor={actor.id}
+          lang={lang}
+          isLight={isLight}
+          queryOnly={view==='review'||!!state.required}
+          onDraft={view==='recovery'?onDraft:undefined}
+          onBusy={view==='recovery'?onBusy:undefined}
+        />
       )}
       {actor.permissions.includes("access.read") && (
         <AccessHandoverPanel

@@ -97,7 +97,8 @@ export function LessonFigure({
 export function LessonOpening({
   chapterKey,
   col,
-}: Props & { chapterKey: string }) {
+  isLight,
+}: Props & { chapterKey: string; isLight: boolean }) {
   const s = guideLessons[chapterKey];
   if (!s) return null;
   if (chapterKey === "panorama") return <CrmPanorama col={col} />;
@@ -113,7 +114,7 @@ export function LessonOpening({
       {["tasks-sla","visual-status"].includes(chapterKey)&&<p className="crm-learning-subtitle">{s.title[col]}</p>}
       <p className="crm-learning-answer">{s.answer[col]}</p>
       {chapterKey === "tasks-sla" ? (
-        <CrmSimpleGuideExamples col={col} />
+        <CrmSimpleGuideExamples col={col} isLight={isLight} />
       ) : chapterKey === "visual-status" ? (
         <StatusLegend col={col} />
       ) : (
@@ -182,7 +183,7 @@ export function LessonOpening({
         </h4>
         <p>{s.boundary[col]}</p>
       </div>
-      {chapterKey === "followup" && <><CrmSimpleGuideExamples col={col} /><CrmProfileRulesExample col={col}/></>}
+      {chapterKey === "followup" && <><CrmSimpleGuideExamples col={col} isLight={isLight} /><CrmProfileRulesExample col={col}/></>}
     </div>
   );
 }

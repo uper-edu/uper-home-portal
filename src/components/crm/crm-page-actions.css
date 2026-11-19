@@ -29,7 +29,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.crm-page-action:hover:not(:disabled) {
+.crm-page-action:not(.crm-page-action--primary):hover:not(:disabled):not([aria-disabled=true]) {
   background: #f8fafc;
   border-color: #94a3b8;
 }
@@ -43,7 +43,7 @@
   border-color: #0f766e;
   box-shadow: 0 1px 2px #0f766e26;
 }
-.crm-page-action--primary:hover:not(:disabled) {
+.crm-page-action--primary:hover:not(:disabled):not([aria-disabled=true]) {
   background: #115e59;
   border-color: #115e59;
 }
@@ -52,7 +52,7 @@
   padding: 10px;
   flex-shrink: 0;
 }
-.crm-page-action:disabled {
+.crm-page-action:is(:disabled,[aria-disabled=true]) {
   cursor: wait;
   opacity: 0.55;
   box-shadow: none;
@@ -62,7 +62,7 @@
   border-color: #475569;
   color: #e2e8f0;
 }
-[data-theme="dark"] .crm-page-action:hover:not(:disabled) {
+[data-theme="dark"] .crm-page-action:not(.crm-page-action--primary):hover:not(:disabled):not([aria-disabled=true]) {
   background: #243247;
   border-color: #64748b;
 }
@@ -71,7 +71,7 @@
   border-color: #5eead4;
   color: #134e4a;
 }
-[data-theme="dark"] .crm-page-action--primary:hover:not(:disabled) {
+[data-theme="dark"] .crm-page-action--primary:hover:not(:disabled):not([aria-disabled=true]) {
   background: #99f6e4;
   border-color: #99f6e4;
 }

@@ -33,5 +33,17 @@ v<YYYYMMDDHHMMSS>_<简短用途>.sql
 ## 与其他 SQL 的关系
 
 - 应用启动自动迁移链（`cloud/mysql/schema*.sql` 与 `cloud/mysql/migrate.mjs`、`trial_schema_versions` 记录）由代码运行时管理，**不放入本目录**，也不要为它手工补编号。
+- `cloud/mysql/schema-enrollment-20261114172847.sql`（2026-11-14 17:28）由启动迁移创建并核对 `enrollment_classes`，用于报名班次的草稿和发布。重复运行只核对结构，不更改数据。
+- `cloud/mysql/schema-enrollment-20261114174435.sql`（2026-11-14 17:44）由启动迁移创建报名邮箱验证、订单、凭证、实收和开班记录表。重复执行保留业务记录。
 - 仓库 CMS 正式种子与图片在 `cloud/mysql/seeds/cms/v2/`，是内容数据源，不是增量脚本。
 - 完整空库初始化见 [docs/operations/cms-cos-bootstrap.md](../docs/operations/cms-cos-bootstrap.md)；不要把初始化包当增量导入已有业务库。
+- `cloud/mysql/schema-enrollment-20261114175859.sql`（2026-11-14 17:58）由启动迁移创建候补、选课需求、余位轮次和通知事件表。重复执行保留记录。
+- `cloud/mysql/schema-enrollment-20261114181313.sql`（2026-11-14 18:13）由启动迁移创建转班邀请、转班历史、退款单和分笔退款记录。重复执行保留记录。
+- `cloud/mysql/schema-enrollment-20261114182623.sql`（2026-11-14 18:26）由启动迁移创建商机以及客户与报名、候补、选课需求的关联表。重复执行保留已有关联。
+- `cloud/mysql/schema-enrollment-20261114183459.sql`（2026-11-14 18:34）由启动迁移创建报名来源及模拟通知留痕表。重复执行保留已有业务记录和通知流水。
+- `cloud/mysql/schema-enrollment-20261114193153.sql`（2026-11-14 19:31）由启动迁移在缺列时为候补记录增加可空的学员姓名，供同一验证邮箱下的报名和转班匹配。既有记录按原 CRM 来源读取，无法确认学员时保留候补。重复执行不修改记录。
+- `cloud/mysql/schema-enrollment-20261114234419.sql`（2026-11-14 23:44）由启动迁移为付款凭证增加可空的学员申报金额和流水号。旧凭证保留原样，金额继续显示未知。重复执行只核对结构。
+- `cloud/mysql/schema-enrollment-20261114235011.sql`（2026-11-14 23:50）由启动迁移为财务实收流水增加可空的实际收款账户。历史流水保持原样，已有空值显示为未记录。重复执行只核对结构。
+- `cloud/mysql/schema-enrollment-20261114235404.sql`（2026-11-14 23:54）由启动迁移为退款单增加可空的申请时刻和预计发出期限快照。历史退款单保留原有记录，不补造期限。重复执行只核对结构。
+- `cloud/mysql/schema-enrollment-20261115000007.sql`（2026-11-15 00:00）由启动迁移为报名订单和候补增加可空的最近业务变更时间，用于「我的报名」排序。保留旧记录并优先复用已有留痕。
+- `cloud/mysql/schema-enrollment-20261115014556.sql`（2026-11-15 01:45）由启动迁移创建报名订单款项冲抵记录。保留银行原流水和旧订单，无历史冲抵回填，重复执行不改变业务记录。

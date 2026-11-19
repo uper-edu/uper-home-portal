@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {environmentName,readEnvironment,frontendEnvironment,loadPortalEnvironment,portalWorkerEnabled} from '../server/environment.mjs';
 function fixture(t){const directory=fs.mkdtempSync(path.join(os.tmpdir(),'uper-env-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));return directory;}
 test('environment selection never falls back to .env or mixes dev and test credentials',t=>{
@@ -53,4 +55,43 @@ test('remote development cannot start a worker and standalone fixtures still opt
  assert.throws(()=>portalWorkerEnabled({...remote,PORTAL_WORKER_ENABLED:'true'}),/Remote development/);
  assert.equal(portalWorkerEnabled({TRIAL_DATASET:'synthetic'}),false);
  assert.equal(portalWorkerEnabled({TRIAL_DATASET:'synthetic',PORTAL_WORKER_ENABLED:'true'}),true);
+});
+
+test('explicit environment preparation creates only the selected file and preserves existing values', t => {
+  const directory = fixture(t);
+  const command = fileURLToPath(new URL('../scripts/prepare-environment.mjs', import.meta.url));
+  const targetDirectory = path.join(directory, 'config');
+  fs.mkdirSync(targetDirectory);
+  for (const target of ['dev', 'test', 'prod']) {
+    fs.writeFileSync(path.join(directory, '.env.' + target + '.example'),
+      'PORTAL_ENV=' + target + '\nOPENAI_API_KEY=\nPORTAL_WORKER_ENABLED=true\nOPENAI_MODEL=example-model\n');
+  }
+  const prepare = target => JSON.parse(execFileSync(process.execPath, [command, target, targetDirectory],
+    {cwd: directory, encoding: 'utf8'}));
+  const testFile = path.join(targetDirectory, '.env.test');
+  const devFile = path.join(targetDirectory, '.env.dev');
+  const prodFile = path.join(targetDirectory, '.env.prod');
+  const devContents = 'PORTAL_ENV=dev\nOPENAI_API_KEY=fixture-dev\n';
+  fs.writeFileSync(devFile, devContents);
+  assert.equal(prepare('test').created, true);
+  assert.equal(fs.statSync(testFile).mode & 0o777, 0o600);
+  assert.equal(readEnvironment('test', targetDirectory).values.OPENAI_API_KEY, '');
+  assert.equal(fs.readFileSync(devFile, 'utf8'), devContents);
+  assert.equal(fs.existsSync(prodFile), false);
+
+  const existing = 'PORTAL_ENV=test\nOPENAI_API_KEY="fixture#key"\nPORTAL_WORKER_ENABLED=\n';
+  fs.writeFileSync(testFile, existing);
+  assert.deepEqual(prepare('test'), {environment: 'test', created: false, added: ['OPENAI_MODEL']});
+  const updated = fs.readFileSync(testFile, 'utf8');
+  assert.ok(updated.startsWith(existing));
+  const {values} = readEnvironment('test', targetDirectory);
+  assert.equal(values.OPENAI_API_KEY, 'fixture#key');
+  assert.equal(values.PORTAL_WORKER_ENABLED, '');
+  assert.equal(values.OPENAI_MODEL, 'example-model');
+  const modified = fs.statSync(testFile).mtimeMs;
+  assert.deepEqual(prepare('test'), {environment: 'test', created: false, added: []});
+  assert.equal(fs.readFileSync(testFile, 'utf8'), updated);
+  assert.equal(fs.statSync(testFile).mtimeMs, modified);
+  assert.equal(fs.readFileSync(devFile, 'utf8'), devContents);
+  assert.equal(fs.existsSync(prodFile), false);
 });

@@ -1,0 +1,11 @@
+.crm-list-filters,.crm-list-views{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
+.crm-list-search{flex:0 1 330px;min-width:min(230px,100%)}
+.crm-list-views button{min-height:36px;padding-inline:12px;border:1px solid var(--admin-border);border-radius:8px;background:var(--admin-surface);color:var(--admin-text);font-size:13px}
+.crm-list-views button[aria-pressed=true]{background:var(--admin-selected);border-color:var(--admin-action);color:var(--admin-action);font-weight:650}
+.crm-list-record,.crm-list-action{display:inline-flex;align-items:center;min-height:28px;text-align:start;color:var(--admin-action);text-underline-offset:3px}
+.crm-list-record{font-weight:650}
+.crm-list-action{font-weight:550}
+.crm-list-record:hover,.crm-list-action:hover{text-decoration:underline}
+:is(.crm-list-table,.crm-list-filters,.crm-list-views) :is(a,button,input):focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+.crm-list-meta{font-size:13px;color:var(--admin-muted);margin:0}
+@media(max-width:600px){.crm-list-search{flex-basis:100%}.crm-list-table :is(.crm-list-record,.crm-list-action){min-height:44px}}

@@ -9,7 +9,10 @@
 @media(max-width:760px){.crm-operation-heading,.crm-operation-content{padding:16px}.crm-identity-table th:first-child{width:100px}.crm-identity-table td,.crm-identity-table th{padding:8px}.crm-identity-evidence,.crm-identity-decision-fields{grid-template-columns:1fr}.crm-identity-decision{bottom:-16px;margin-bottom:-16px}.crm-operation-content .crm-sales-editor-footer{bottom:-16px;margin:0 -16px -16px;padding:16px}}
 /* The workspace base uses align-items:start; modal children must span the layer. */
 .crm-operation-layer[open]{align-items:stretch}.crm-operation-heading,.crm-operation-content{width:100%;min-width:0;box-sizing:border-box}
-dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;padding:20px}dialog.crm-sales-dialog-backdrop:not([open]){display:none}dialog.crm-sales-dialog-backdrop::backdrop{background:transparent}.crm-sales-dialog>header{position:sticky;top:-20px;z-index:2;background:var(--cw-surface)}
+dialog.crm-sales-dialog-backdrop{margin:auto;inset:0;width:min(580px,calc(100vw - 32px));max-height:calc(100dvh - 32px);border:0;border-radius:16px;padding:0;overflow:hidden;display:block;background:var(--admin-surface)}
+dialog.crm-sales-dialog-backdrop:not([open]){display:none}
+.crm-sales-dialog-backdrop>.crm-sales-dialog{width:100%;max-height:calc(100dvh - 32px);box-shadow:none}
+.crm-sales-dialog>header{position:sticky;top:0;z-index:2;background:var(--cw-surface)}
 .crm-operation-heading>div{min-width:0}.crm-operation-context{font-size:13px;line-height:1.5;margin-top:4px;color:var(--cw-muted);overflow-wrap:anywhere}.crm-operation-heading>button{flex:none}
 .crm-identity-record-role{display:block;font-size:13px;font-weight:650;color:var(--cw-accent);margin-bottom:5px}.crm-identity-list-note{padding:10px 16px;border-left:3px solid #b45309;background:var(--cw-soft);color:var(--cw-text);font-size:14px}
 .crm-identity-intro{align-items:center}.crm-identity-intro p{margin:0;max-width:800px}.crm-identity-review-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:24px;align-items:start}.crm-identity-comparisons{display:grid;gap:20px;min-width:0}.crm-identity-section{border:1px solid var(--cw-border);border-radius:12px;overflow:hidden}.crm-identity-section h3{font-size:15px;font-weight:650;margin:0;padding:12px 16px;border-bottom:1px solid var(--cw-border)}.crm-identity-table th:first-child{width:145px}.crm-identity-table td{white-space:pre-wrap}.crm-identity-table tr[data-comparison=different] td{background:color-mix(in srgb,var(--identity-difference) 6%,var(--cw-surface))}.crm-identity-table tr[data-comparison=same] .crm-identity-field-status{color:var(--cw-accent)}.crm-identity-group>summary{padding:12px 0;font-weight:600;cursor:pointer}.crm-identity-review-layout>.crm-identity-decision{top:0;bottom:auto;margin:0;border:1px solid var(--cw-border);border-radius:12px;padding:18px;gap:14px}.crm-identity-decision h3{font-size:16px;font-weight:650;margin:0}.crm-identity-review-layout .crm-identity-decision-fields{grid-template-columns:1fr}.crm-identity-review-layout .crm-identity-actions{justify-content:stretch}.crm-identity-review-layout .crm-identity-actions>button{width:100%}.crm-identity-decision p{font-size:13px;line-height:1.6;margin:0}.crm-identity-decision textarea{min-height:110px}.crm-work-next{display:flex;flex-direction:column;align-items:flex-start;gap:10px}.crm-work-next .crm-followup-action{font-weight:600;font-size:14px;line-height:1.5}
@@ -39,7 +42,7 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-progress-options{border:0;padding:0;margin:0}.crm-progress-options legend,.crm-profile-field-picker legend{font-size:14px;font-weight:600;margin-bottom:10px}
 .crm-progress-options>div,.crm-profile-field-picker>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
 .crm-progress-options label,.crm-profile-field-picker label{display:flex!important;align-items:flex-start;gap:8px!important;line-height:1.5}.crm-progress-options input,.crm-profile-field-picker input{margin-top:3px;flex:none}
-.crm-profile-field-picker{border:0;margin:0;padding:0}.crm-profile-batch{min-width:0}.crm-profile-batch-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.crm-profile-field-picker{border:0;margin:0;padding:0}.crm-profile-batch{min-width:0}.crm-profile-batch-fields{margin-top:16px}
 .crm-profile-field-editor{min-width:0;border:1px solid var(--cw-border);border-radius:10px;padding:12px;display:grid;align-content:start;gap:8px}
 .crm-profile-field-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.crm-profile-field-title strong{font-size:14px}
 .crm-profile-field-source{font-size:12px;color:var(--cw-muted)}.crm-profile-field-source summary{cursor:pointer}.crm-profile-field-source label{display:flex!important;align-items:center;gap:6px}
@@ -71,7 +74,7 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-operation-progress .crm-simple-fields{display:grid;gap:16px}
 .crm-operation-progress .crm-simple-two-fields{gap:16px 20px}
 .crm-operation-progress .crm-simple-select-field>p{font-weight:500;font-size:14px;margin:0 0 8px;color:var(--cw-muted)}
-.crm-operation-progress .crm-filter-dimension-button,.crm-operation-progress input:not([type=radio]):not([type=checkbox]){min-height:40px;border-radius:10px;font-size:14px;background:var(--cw-surface)}
+.crm-operation-progress input:not([type=radio]):not([type=checkbox]):not([type=search]){min-height:40px;border-radius:10px;font-size:14px;background:var(--cw-surface)}
 .crm-operation-progress .crm-progress-writing-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:10px}
 .crm-operation-progress .crm-progress-writing-heading>label{font-size:15px;font-weight:600;color:var(--cw-text)}
 .crm-operation-progress .crm-progress-reference-button{display:inline-flex;align-items:center;gap:6px;padding:4px 0;min-height:32px;font-size:13px;color:var(--cw-muted);background:transparent;border:0}
@@ -107,9 +110,7 @@ dialog.crm-sales-dialog-backdrop{margin:0;inset:0;width:100vw;height:100dvh;max-
 .crm-editor-actions>button,.crm-contact-actions>button{min-height:40px;border-radius:10px}
 .crm-operation-layer .crm-editor-primary{background:var(--admin-action-fill);border-color:var(--admin-action-fill);color:var(--admin-on-action)}
 .crm-editor-original{margin:0;padding:12px 16px;border-left:3px solid var(--cw-accent);background:var(--cw-soft);color:var(--cw-muted);white-space:pre-wrap;max-height:140px;overflow:auto}
-.crm-operation-compose .crm-profile-batch-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 .crm-editor-actions>.crm-work-link{order:-1;min-width:88px}
-@media(max-width:760px){.crm-operation-compose .crm-profile-batch-fields{grid-template-columns:1fr}}
 .crm-editor-scroll>label:not(:has(input[type=checkbox])){display:grid;gap:8px;font-size:14px;font-weight:500}
 .crm-editor-scroll>label:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.6}
 .crm-editor-scroll :is(input:not([type=checkbox]):not([type=radio]),textarea){width:100%;max-width:100%;box-sizing:border-box;border:1px solid var(--cw-border);border-radius:10px;background:var(--cw-surface);color:var(--cw-text);font-size:14px;line-height:1.6;padding:10px 12px;min-height:40px}

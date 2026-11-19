@@ -56,3 +56,10 @@ test('preflight still rejects nonempty invalid fields and permits valid fields',
  assert.equal(firstMissingAdminField(root([valid,short])),short);
  assert.equal(firstMissingAdminField(root([valid])),undefined);
 });
+
+test('an optional single select uses the same role without implying that it is required',()=>{
+ const html=render(h(CrmSingleSelect,{label:'班次状态',value:'draft',options:[{value:'draft',label:'草稿'}],onChange:()=>{},lang:'zh',isLight:true}));
+ assert.match(html,/role="combobox"/);
+ assert.match(html,/aria-description="草稿"/);
+ assert.doesNotMatch(html,/aria-required/);
+});

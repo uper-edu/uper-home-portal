@@ -70,8 +70,12 @@ export function verifyBootstrapRows(rows,schemaVersion=bootstrapSchemaVersion){
  // Keep the original export contract independent of today's system defaults.
  const legacy=JSON.parse(JSON.stringify(legacyCampaigns).replaceAll('SYSTEM_INITIALIZED_AT',at));
  const withoutInstagram=legacy.filter(config=>config.id!=='instagram-bio');
+ const current=systemCampaignDefaults(at);
+ const beforeEnrollment=current.map(config=>config.id==='social-bio'
+  ? {...config,promotionLinks:config.promotionLinks.filter(link=>link.landingPath!=='/enrollment')}
+  : config);
  const accepted=schemaVersion>=18
-  ? [systemCampaignDefaults(at),withoutInstagram,legacy]
+  ? [current,beforeEnrollment,withoutInstagram,legacy]
   : [legacy.filter(config=>config.id!=='social-bio')];
  const sort=items=>[...items].sort((a,b)=>a.id.localeCompare(b.id));
  const actualCampaigns=fingerprint(sort(campaigns.map(({id,code,config})=>({id,code,config}))));

@@ -6,12 +6,9 @@ import {dispatchPaymentAnalytics} from '../server/portal/paymentAnalyticsDispatc
 const clock = new Date('2026-11-07T18:00:00Z');
 const environment = (target: 'dev' | 'test' | 'prod' = 'dev') => ({
   PORTAL_ENV: target,
-  PORTAL_GA_DISPATCH_ENABLED: 'true',
   PORTAL_GA_MEASUREMENT_ID: analytics.environments[target].measurementId,
   PORTAL_GA_API_SECRET: 'mock-secret',
-  PORTAL_GA_START_AT: '2026-11-07T16:00:00Z',
 });
-const resolveIdentity = async () => ({clientId: '1234.5678', analyticsAllowed: true});
 type Candidate = {
   id: string;
   environment: 'dev' | 'test' | 'prod';
@@ -21,6 +18,7 @@ type Candidate = {
   amount: number;
   course_id: string;
   created_at: Date;
+  occurred_at: Date | null;
   sequence_no: number;
   state: string;
   dispatch_state?: string;
@@ -31,7 +29,9 @@ function row(sequence: number, overrides: Partial<Candidate> = {}): Candidate {
     id: 'event-' + sequence, environment: 'dev', project_id: 'crm-private-project',
     source_entry_id: 'crm-private-entry-' + sequence, kind: sequence === 0 ? 'purchase' : 'refund',
     amount: [1_000_000, 100_000, 50_000][sequence] ?? 10_000, course_id: 'hsk-1',
-    created_at: new Date('2026-11-07T17:00:00Z'), sequence_no: sequence, state: 'held', ...overrides,
+    created_at: new Date('2026-11-07T17:00:00Z'),
+    occurred_at: new Date('2026-11-07T17:00:00Z'), sequence_no: sequence, state: 'held',
+    ...overrides,
   };
 }
 
@@ -40,6 +40,9 @@ function fixture(...candidates: Candidate[]) {
   let failFinalize = false;
   let inside = false;
   let queries = 0;
+  let cutoff: string | undefined = '2026-11-07 16:00:00.000000';
+  let activationWrites = 0;
+  let databaseTime = '2026-11-07 18:00:00.000000';
   const calls: {url: URL; payload: any; init?: RequestInit}[] = [];
   const request: typeof fetch = async (url, init) => {
     assert.equal(inside, false, 'the claim must be committed before transport');
@@ -51,6 +54,15 @@ function fixture(...candidates: Candidate[]) {
       queries++;
       const [key, value] = args;
       const result = (rowCount = 0, rows: any[] = []) => ({rows, rowCount});
+      if (sql.startsWith('SELECT value FROM portal_settings')) {
+        return result(0,cutoff ? [{value:{startedAt:cutoff}}] : []);
+      }
+      if (sql.startsWith('INSERT INTO portal_settings')) {
+        assert.match(sql,/UTC_TIMESTAMP\(6\).*ON DUPLICATE KEY UPDATE id=id/);
+        activationWrites++;
+        cutoff ??= databaseTime;
+        return result(1);
+      }
       if (sql.startsWith("UPDATE crm_payment_analytics SET dispatch_state='unknown'")) {
         for (const item of candidates) {
           if (item.environment === key && item.dispatch_state === 'sending' && item.attempted_at! <= value) item.dispatch_state = 'unknown';
@@ -61,13 +73,17 @@ function fixture(...candidates: Candidate[]) {
         assert.match(sql, /FOR UPDATE OF q,p SKIP LOCKED$/);
         assert.match(sql, /p\.state='held' AND p\.dispatch_state='accepted' AND NOT EXISTS/);
         assert.match(sql, /earlier\.dispatch_state IN \('sending','unknown','rejected'\)/);
+        assert.match(sql, /q\.created_at>:p4 AND q\.occurred_at>:p4 AND q\.occurred_at<=:p3/);
+        const start = new Date(args[3].replace(' ','T')+'Z');
         const ordered = candidates.slice().sort((a, b) => +a.created_at - +b.created_at || a.id.localeCompare(b.id));
         for (const item of ordered) {
           if (item.environment !== key || item.state !== 'held' || item.dispatch_state || item.created_at < value || item.created_at > args[2]) continue;
+          if (item.created_at <= start || !item.occurred_at || item.occurred_at <= start || item.occurred_at > args[2]) continue;
           const sameProject = candidates.filter(other => other.environment === key && other.project_id === item.project_id);
           const purchase = sameProject.find(other => other.sequence_no === 0);
           if (!purchase || (item.kind === 'refund' && (purchase.state !== 'held' || purchase.dispatch_state !== 'accepted' ||
-              sameProject.some(other => other.sequence_no < item.sequence_no &&
+              sameProject.some(other => other.sequence_no < item.sequence_no && other.created_at > start &&
+                other.occurred_at && other.occurred_at > start &&
                 (['sending', 'unknown', 'rejected'].includes(other.dispatch_state ?? '') ||
                  (other.state === 'held' && other.dispatch_state !== 'accepted')))))) continue;
           return result(1, [{...item, purchase_id: purchase.id}]);
@@ -103,25 +119,23 @@ function fixture(...candidates: Candidate[]) {
     return run;
   }
   const run = (overrides: Partial<Parameters<typeof dispatchPaymentAnalytics>[0]> = {}) =>
-    dispatchPaymentAnalytics({transaction, resolveIdentity, env: environment(), request, clock, ...overrides});
-  return {run, calls, request, candidates, get queries() {return queries;}, failFinalize() {failFinalize = true;}};
+    dispatchPaymentAnalytics({transaction, env: environment(), request, clock, ...overrides});
+  return {run, calls, request, candidates, get queries() {return queries;}, failFinalize() {failFinalize = true;},
+    get activationWrites(){return activationWrites;},
+    setActivation(saved:string|undefined,now?:string){cutoff=saved;databaseTime=now??databaseTime;}};
 }
 
-test('dispatch is disabled by default and rejects cross-environment targets before DB or transport', async () => {
+test('dispatch requires configured credentials and rejects cross-environment targets before DB or transport', async () => {
   const f = fixture(row(0));
   const productionId = analytics.environments.prod.measurementId;
   for (const overrides of [
     {env: {}},
-    {env: {...environment(), PORTAL_GA_DISPATCH_ENABLED: 'false'}},
     {env: {...environment(), PORTAL_GA_API_SECRET: ''}},
-    {env: {...environment(), PORTAL_GA_START_AT: '2026-11-08T00:00:00Z'}},
-    {env: {...environment(), PORTAL_GA_START_AT: '2026-02-31T00:00:00Z'}},
     {env: {...environment(), PORTAL_PACKAGE_ENV: 'prod'}},
     {env: {...environment(), PORTAL_GA_MEASUREMENT_ID: productionId}},
     {env: {...environment('test'), PORTAL_GA_MEASUREMENT_ID: productionId}},
     {env: {...environment('test'), PORTAL_GA_MEASUREMENT_ID: analytics.environments.dev.measurementId}},
     {env: environment('prod')},
-    {resolveIdentity: undefined},
   ]) await f.run(overrides);
   assert.equal(f.queries, 0);
   assert.equal(f.calls.length, 0);
@@ -165,6 +179,9 @@ test('a committed purchase claim wins concurrent ticks and both partial refunds 
   assert.deepEqual(events.map(event => event.params.value), [1_000_000, 100_000, 50_000]);
   assert.equal(events.filter(event => event.name === 'refund').reduce((sum, event) => sum + event.params.value, 0), 150_000);
   assert.ok(events.every(event => event.params.transaction_id === 'event-0' && event.params.currency === 'IDR'));
+  const clientIds = f.calls.map(call=>call.payload.client_id);
+  assert.match(clientIds[0],/^\d{1,20}\.\d{1,20}$/);
+  assert.equal(new Set(clientIds).size,1);
   assert.equal(f.calls[0].init?.redirect, 'error');
   assert.doesNotMatch(JSON.stringify(f.calls.map(call => call.payload)), /crm-private|mock-secret/);
   assert.ok(f.candidates.every(item => item.dispatch_state === 'accepted'));
@@ -216,20 +233,15 @@ test('a late response cannot overwrite an outcome already marked unknown', async
   assert.equal(f.calls.length, 1);
 });
 
-test('denied or invalid identity, history, cancelled candidates and orphan refunds stay outside transport', async () => {
-  const f = fixture(row(0), row(1));
-  await f.run({resolveIdentity: async () => ({clientId: '1234.5678', analyticsAllowed: false})});
+test('invalid amounts, history, cancelled candidates and orphan refunds stay outside transport', async () => {
+  const f = fixture(row(0,{amount:0}), row(1));
   await f.run();
   assert.deepEqual(f.candidates.map(item => item.dispatch_state), ['blocked', undefined]);
   assert.equal(f.calls.length, 0);
-  const invalid = fixture(row(0));
-  await invalid.run({resolveIdentity: async () => ({clientId: 'private@example.invalid', analyticsAllowed: true})});
-  assert.equal(invalid.candidates[0].dispatch_state, 'blocked');
-  assert.equal(invalid.calls.length, 0);
   const historic = fixture(row(0, {created_at: new Date('2026-11-07T15:00:00Z')}), row(1));
   await historic.run();
   assert.equal(historic.calls.length, 0);
-  await historic.run({clock: new Date('2026-11-12T18:00:00Z'), env: {...environment(), PORTAL_GA_START_AT: '2026-11-07T10:00:00Z'}});
+  await historic.run({clock: new Date('2026-11-12T18:00:00Z')});
   assert.equal(historic.calls.length, 0);
   const cancelled = fixture(row(0, {state: 'cancelled'}), row(1));
   await cancelled.run();
@@ -240,4 +252,27 @@ test('denied or invalid identity, history, cancelled candidates and orphan refun
   const afterVoid = fixture(row(0, {dispatch_state: 'accepted'}), row(1, {state: 'cancelled'}), row(2));
   await afterVoid.run();
   assert.equal(afterVoid.calls[0].payload.events[0].params.value, 50_000);
+});
+
+test('first activation persists one database cutoff and ignores prior or backdated money movements after restart', async () => {
+  const f = fixture(
+    row(0,{id:'prior',project_id:'prior'}),
+    row(0,{id:'backdated',project_id:'backdated',created_at:new Date('2026-11-07T18:00:01Z')}),
+    row(0,{id:'current',project_id:'current',created_at:new Date('2026-11-07T18:00:01Z'),occurred_at:new Date('2026-11-07T18:00:01Z')}),
+  );
+  f.setActivation(undefined);
+  await Promise.all([f.run(),f.run()]);
+  assert.equal(f.activationWrites,1);
+  assert.equal(f.calls.length,0);
+  await f.run({clock:new Date('2026-11-07T18:01:00Z')});
+  await f.run({clock:new Date('2026-11-07T18:02:00Z')});
+  assert.deepEqual(f.calls.map(x=>x.payload.events[0].params.transaction_id),['current']);
+  assert.equal(f.activationWrites,1);
+});
+
+test('unrelated purchases have distinct transaction client identifiers',async()=>{
+  const f=fixture(row(0),row(0,{id:'separate-purchase',project_id:'another-project'}));
+  await f.run();
+  await f.run();
+  assert.equal(new Set(f.calls.map(call=>call.payload.client_id)).size,2);
 });

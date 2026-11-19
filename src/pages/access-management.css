@@ -40,8 +40,7 @@
   grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 16px;
 }
-.access-card,
-.access-panel {
+.access-card {
   background: var(--access-surface);
   border: 1px solid var(--access-border);
   border-radius: 16px;
@@ -163,12 +162,6 @@
   border-top: 1px solid var(--access-border);
   padding-top: 14px;
 }
-.access-record-action button {
-  width: 100%;
-}
-.access-record-action button:hover {
-  background: var(--access-bg);
-}
 @supports not (grid-template-rows: subgrid) {
   .access-user-card,
   .access-role-card {
@@ -180,13 +173,12 @@
     margin-top: auto;
   }
 }
-.access-page button {
+.access-page button:not(.crm-page-action, .admin-row-action, .admin-record-entry, .crm-filter-dimension-button, .crm-filter-option, .admin-editor-close, .admin-compact-action):not(:where(.enrollment-mail-workspace .admin-record-back)) {
   min-height: 40px;
   padding: 8px 12px;
   border-radius: 10px;
 }
-.access-page main button,
-.access-panel > button,
+.access-page main button:not(.crm-page-action, .admin-row-action, .admin-record-entry, .crm-filter-dimension-button, .crm-filter-option, .admin-editor-close, .admin-compact-action):not(:where(.enrollment-mail-workspace .admin-record-back)),
 .access-actions button {
   border: 1px solid var(--access-border);
   background: var(--access-surface);
@@ -195,13 +187,12 @@
 .access-page button:disabled {
   opacity: 0.55;
 }
-.access-page button:focus-visible,
+.access-page button:focus-visible:not(:where(.admin-row-action, .admin-record-entry, .crm-filter-dimension-button, .crm-filter-option, .admin-editor-close, .admin-compact-action, .enrollment-mail-workspace .admin-record-back)),
 .access-page input:focus-visible,
 .access-page textarea:focus-visible {
   outline: 2px solid #0d9488;
   outline-offset: 3px;
 }
-.access-toolbar,
 .access-actions {
   display: flex;
   justify-content: space-between;
@@ -258,23 +249,8 @@
   overflow-wrap: anywhere;
   font-size: 12px;
 }
-.access-backdrop {
-  position: fixed;
-  inset: 0;
-  background: #0008;
-  z-index: 70;
-  display: flex;
-  justify-content: flex-end;
-}
-.access-panel {
-  width: min(720px, 100%);
-  height: 100dvh;
-  overflow: auto;
-  border-radius: 16px 0 0 16px;
-  display: grid;
-  align-content: start;
-  gap: 18px;
-}
+.access-panel { --admin-editor-width: 720px; }
+.access-editor-body { display: grid; align-content: start; gap: var(--admin-form-field-gap); }
 .access-error {
   color: #9f1239;
   background: #fff1f2;
@@ -335,10 +311,6 @@
   .access-main {
     padding: 16px;
   }
-  .access-panel {
-    border-radius: 0;
-    padding: 16px;
-  }
   .access-languages {
     grid-template-columns: 1fr;
   }
@@ -355,15 +327,16 @@
   }
 }
 .test-directory textarea{width:100%;box-sizing:border-box;resize:vertical;line-height:1.7;min-height:24rem;font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;}
-.test-directory .access-actions button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;}
+.access-page .access-section-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 16px;}
+.access-section-heading h2{margin:0;}
+.access-section-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-inline-start:auto;}
 .test-directory p{overflow-wrap:anywhere;}
 
 /* Account enablement shares the same confirmed-success colour pair as CMS. */
 .access-page .access-record-status[data-active=true]{color:var(--admin-success);background:var(--admin-success-bg)}
 .access-page .access-record-status:not([data-active=true]){color:var(--admin-muted)}
 .ai-service-panel {display:grid;gap:16px;min-width:0;font-size:14px;line-height:1.5;}
-.ai-service-toolbar {margin:0;}
-.ai-service-toolbar p {margin:0;color:var(--admin-muted);}
+.ai-service-guide {margin:0;color:var(--admin-muted);}
 .ai-service-panel button {display:inline-flex;align-items:center;justify-content:center;gap:8px;}
 .ai-service-grid {grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
 .ai-service-card {display:flex;flex-direction:column;gap:20px;}
@@ -408,3 +381,49 @@
 .access-lark-binding label { display: grid; gap: 4px; font-size: 13px; }
 .access-lark-binding button { justify-self: start; }
 .access-lark-status { margin: 0; font-size: 12px; line-height: 1.5; }
+
+.access-record-workspace { min-width: 0; }
+.access-record-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.access-record-toolbar > .admin-search-field { flex: 1 1 260px; }
+.access-record-split { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px 20px; align-items: start; }
+.access-record-split [hidden] { display: none; }
+.access-record-detail { min-width: 0; }
+.access-record-body > section + section { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--admin-border); }
+.access-record-facts, .access-record-permissions dl { display: grid; gap: 8px; margin-block: 12px; }
+.access-record-facts > div, .access-record-permissions dl > div { display: grid; grid-template-columns: minmax(100px,1fr) minmax(0,2fr); gap: 12px; }
+.access-record-facts dd, .access-record-permissions dd { margin: 0; overflow-wrap: anywhere; }
+.access-record-facts dd a + a { margin-inline-start: 12px; }
+.access-record-facts dt, .access-record-permissions dd { color: var(--admin-muted); }
+.access-record-permissions { margin-block: 16px; }
+@media (min-width:1120px) {
+  .access-record-split { grid-template-columns: var(--admin-record-sidebar-width) minmax(0,1fr); }
+  .access-record-split[data-record-scroll=independent] .access-record-detail { height: var(--admin-record-pane-height); }
+  .access-record-split[data-record-scroll=independent] .access-record-body { overflow-y: auto; overscroll-behavior-y: contain; }
+}
+
+.access-permission-table { --admin-list-table-min: 460px; margin-top: 8px; }
+.access-permission-table table { table-layout: fixed; }
+.access-permission-table th:nth-child(1) { width: 36%; }
+.access-permission-table th:nth-child(2) { width: 24%; }
+.access-permission-table td { overflow-wrap: anywhere; }
+.access-permission-sources { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.access-permission-sources a { white-space: normal; text-align: start; }
+
+.system-access-guide { display:grid;gap:16px;font-size:14px;line-height:1.65; }
+.system-access-guide h2 { margin:0 0 12px;font-size:18px; }
+.system-guide-contents ol { display:flex;flex-wrap:wrap;gap:8px 20px;list-style:none;padding:0;margin:0; }
+.system-guide-body .admin-page-toolbar h1 { margin:0; }
+.system-guide-body { display:grid;gap:16px;min-width:0; }
+.system-guide-chapter { scroll-margin-top:calc(var(--system-guide-header, 120px) + 16px); }
+.system-guide-chapter > ol { margin:0 0 12px;padding-inline-start:24px; }
+.system-guide-chapter li+li { margin-top:4px; }
+.system-guide-contents li+li { margin-top:0; }
+.system-guide-links { display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px; }
+.system-guide-contents,.system-guide-chapter { gap: 8px; }
+.system-guide-contents h2,.system-guide-chapter h2 { margin-bottom: 4px; }
+@media (min-width:1024px) {
+  .system-access-guide { grid-template-columns:256px minmax(0,1fr);align-items:start;gap:24px; }
+  .system-guide-contents { position:sticky;top:calc(var(--system-guide-header,120px) + 24px);max-height:calc(100dvh - var(--system-guide-header,120px) - 48px);overflow:auto;overscroll-behavior:contain; }
+  .system-guide-contents ol { display:grid;gap:4px; }
+  .system-guide-contents a { display:flex;min-height:40px;align-items:center; }
+}

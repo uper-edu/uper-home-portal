@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import {learnerPreviewToken} from '../utils/enrollmentLearnerPreview';
 
 import en from './locales/en.json';
 import id from './locales/id.json';
@@ -36,7 +37,7 @@ i18n
       order: isStorageAccessible 
         ? ['querystring', 'localStorage', 'navigator', 'htmlTag'] 
         : ['querystring', 'navigator', 'htmlTag'],
-      caches: isStorageAccessible ? ['localStorage'] : [],
+      caches: isStorageAccessible && !learnerPreviewToken() ? ['localStorage'] : [],
       lookupQuerystring: 'lang',
       lookupLocalStorage: 'i18nextLng',
     },

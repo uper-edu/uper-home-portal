@@ -1,0 +1,18 @@
+.enrollment-mail-workspace { display:grid;gap:16px; }
+.enrollment-mail-sections { display:grid;gap:16px; }
+.enrollment-mail-sections > .admin-form-section + .admin-form-section { margin-top:0; }
+.enrollment-mail-business > .admin-form-section { background:var(--admin-surface); }
+.enrollment-mail-fixed-sender { padding-block-start:12px;border-block-start:1px solid var(--admin-border); }
+[data-admin-form] .enrollment-mail-switch-row.admin-field--choice {
+  justify-content:space-between;align-items:center;min-block-size:40px;gap:16px;
+}
+[data-admin-form] .enrollment-mail-switch-row .admin-field-label { font-weight:500; }
+.enrollment-mail-fixed-sender { gap:var(--admin-form-help-gap); }
+.enrollment-mail-fixed-sender p { margin:0; }
+.enrollment-mail-fixed-sender p + p { margin-block-start:var(--admin-form-help-gap); }
+.enrollment-mail-history-controls { display:flex;flex-wrap:wrap;align-items:center;gap:12px; }
+.enrollment-mail-history-controls .admin-search-field { flex:0 1 320px;min-inline-size:0; }
+[data-admin-form] .enrollment-mail-pool-rules input[type=number] { padding-block:8px; }
+.enrollment-mail-member-picker { --admin-list-table-min:560px; }
+.enrollment-mail-member-picker td:nth-child(2) { overflow-wrap:anywhere; }
+.enrollment-mail-editor-fields { display:grid;gap:var(--admin-form-group-gap);min-inline-size:0;margin:0;padding:0;border:0; }

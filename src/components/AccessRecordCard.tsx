@@ -1,3 +1,4 @@
+import {AdminRowAction} from './admin/AdminListControl';
 import type { ReactNode } from "react";
 import { adminText } from "./AdminHeader";
 import type { CrmLanguage } from "../utils/crmLanguage";
@@ -69,9 +70,9 @@ function RecordAction({
   return (
     <footer className="access-record-action">
       {onEdit && (
-        <button aria-label={`${label}: ${name}`} onClick={onEdit}>
+        <AdminRowAction aria-label={`${label}: ${name}`} onClick={onEdit}>
           {label}
-        </button>
+        </AdminRowAction>
       )}
     </footer>
   );

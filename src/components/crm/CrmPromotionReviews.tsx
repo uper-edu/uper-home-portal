@@ -1,3 +1,5 @@
+import {AdminRowAction} from '../admin/AdminListControl';
+import {AdminStatus} from '../AdminStatus';
 import {AdminFormSection,AdminFormActions} from '../AdminFormLayout';
 import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
 import {
@@ -140,20 +142,14 @@ export function CrmPromotionReviews({
             {u("Showing promotion issues for {name}.", {
               name: campaignFilter.name,
             })}{" "}
-            <button
-              type="button"
-              className="underline"
-              onClick={onClearCampaignFilter}
-            >
-              {u("Show all campaigns")}
-            </button>
+            <AdminRowAction onClick={onClearCampaignFilter}>{u("Show all campaigns")}</AdminRowAction>
           </p>
         )}
         {loading && !loadedRows && <p className="campaign-review-message" role="status">{u("Loading promotion reviews…")}</p>}
         {error && (
           <p className="campaign-review-message" role="alert">
             {campaignUiError(lang, error)}{" "}
-            <button type="button" className="campaign-workspace-action" onClick={() => void load()}>{u("Retry")}</button>
+            <AdminRowAction onClick={() => void load()}>{u("Retry")}</AdminRowAction>
           </p>
         )}
         {receipt && (
@@ -344,6 +340,9 @@ function PromotionReviewCard({
   const tone = row.status === "linked" ? "success" : row.status === "invalid" ? "danger" : "warning";
   const exception = row.exception === "invalid_p" ? u("Invalid promotion ID")
     : row.exception === "unknown_p" ? u("Unknown promotion ID") : null;
+  const canReview=row.canReview!==false;
+  const sourceEvidence=(embedded=false)=><CampaignSourceEvidence lang={lang} leadId={row.leadId} evidence={row.evidence}
+    originalPromotionId={row.rawPromotionLinkId} onLead={onLead} embedded={embedded}/>;
   const collapse = () => {
     if (dirty) {
       setOpen(false);
@@ -358,11 +357,10 @@ function PromotionReviewCard({
       <header className="campaign-review-card-header">
         <div className="campaign-review-card-title">
           <h2>{row.name}</h2>
-          <span className="admin-status" data-tone={tone}><span className="admin-status-dot" />{status}</span>
+          <AdminStatus tone={tone}>{status}</AdminStatus>
         </div>
-        <button type="button" ref={trigger} className="campaign-workspace-action"
-          disabled={busy || unknown || row.canReview === false}
-          title={row.canReview === false ? u("CRM Manager review required by policy") : undefined}
+        {canReview&&<AdminRowAction ref={trigger}
+          disabled={busy || unknown}
           aria-label={open ? u("Keep draft & close") : undefined}
           aria-expanded={open} aria-controls={open ? "promotion-review-" + row.leadId : undefined}
           onClick={() => {
@@ -382,7 +380,7 @@ function PromotionReviewCard({
           }}>
           {!open && (row.revision ? u("Review again") : u("Review promotion entry"))}
           <ChevronDown size={16} aria-hidden="true" />
-        </button>
+        </AdminRowAction>}
       </header>
       <dl className="campaign-review-facts">
         <div>
@@ -409,7 +407,10 @@ function PromotionReviewCard({
           <p>{row.resolution.reason}</p>
         </div>
       )}
-      {open && (
+      {(!open||!canReview)&&<CrmDisclosure className="campaign-review-history" heading={u("Source evidence")}>
+        {sourceEvidence(true)}
+      </CrmDisclosure>}
+      {open && canReview && (
         <AdminForm lang={lang}
           id={"promotion-review-" + row.leadId}
           onSubmit={save}
@@ -419,8 +420,7 @@ function PromotionReviewCard({
           })}
         >
           <div className="campaign-review-form-grid">
-            <CampaignSourceEvidence lang={lang} leadId={row.leadId} evidence={row.evidence}
-              originalPromotionId={row.rawPromotionLinkId} onLead={onLead} />
+            {sourceEvidence()}
             <AdminFormSection className="crm-form-section"
               title={<span className="campaign-review-form-title">{u("Review decision · this customer only")} <AdminRequiredNote lang={lang} inline /></span>}>
                 {error && (

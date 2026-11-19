@@ -62,7 +62,9 @@
 
 三条互动时间线的标题由 `interactionTrackLabel` 统一提供：有效沟通／Conversation／Komunikasi，客户互动／Customer activity／Aktivitas pelanggan，销售联系／Sales outreach／Kontak sales。列表与跟进页不另造近义标题；具体发生时间和距今时长独立呈现，无记录的完整无障碍说明保留。
 
-## Lark通知标题区
+## 通知发送记录与 Lark 通报
+
+发送记录使用共享 `AdminStatus`。结果未知为琥珀，明确失败为红，接口接受为绿色。群内实收仍以独立的确认信息表达。
 
 统一由 `larkNotificationColor` 决定实际卡片和管理页模拟预览的标题色，不允许各发送分支自行配色。Lark实际标题使用平台原生template；管理页预览复用既有语义变量，仅示意类别，不能承诺与Lark客户端像素一致。
 

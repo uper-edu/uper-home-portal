@@ -1,6 +1,12 @@
 import './components/admin-colors.css';
 import ApplicationErrorBoundary from './components/ApplicationErrorBoundary';
 import './components/admin-form-layout.css';
+import './components/admin/admin-dialog.css';
+import './components/admin/admin-record-actions.css';
+import './components/admin/admin-calendar-picker.css';
+
+import './components/admin/admin-list.css';
+import './components/admin/admin-disclosure.css';
 import './components/admin-form.css';
 import './components/crm/crm-form-layout.css';
 import VisitorBoundary from './components/VisitorBoundary';
@@ -15,6 +21,7 @@ import Layout from './components/Layout';
 import { usePageTracking } from './utils/analytics';
 import { ThemeProvider } from './utils/theme';
 import Home from './pages/Home';
+import {learnerPreviewToken} from './utils/enrollmentLearnerPreview';
 
 // Robust dynamic import with automatic retry on chunk loading hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -37,6 +44,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
 }
 
 const LinkHub = lazyWithRetry(() => import('./pages/LinkHub'));
+const Enrollment = lazyWithRetry(() => import('./pages/Enrollment'));
 const About = lazyWithRetry(() => import('./pages/About'));
 const FAQ = lazyWithRetry(() => import('./pages/FAQ'));
 const Partners = lazyWithRetry(() => import('./pages/Partners'));
@@ -68,6 +76,11 @@ function SiteNotFound() {
 }
 
 export default function App() {
+  if (learnerPreviewToken()) return <ThemeProvider><HelmetProvider><BrowserRouter>
+    <ApplicationErrorBoundary><Suspense fallback={null}><Routes>
+      <Route element={<Layout learnerPreview/>}><Route path="/enrollment" element={<Enrollment/>}/></Route>
+    </Routes></Suspense></ApplicationErrorBoundary>
+  </BrowserRouter></HelmetProvider></ThemeProvider>;
   return (
     <ThemeProvider>
       <HelmetProvider>
@@ -101,6 +114,14 @@ export default function App() {
                   <Route path="partners" element={<Partners />} />
                   <Route path="tours" element={<StudyTours />} />
                   <Route path="hsk" element={<HSK />} />
+                  <Route path="enrollment" element={<Enrollment />} />
+                  <Route path="enrollment/mine" element={<Enrollment />} />
+                  <Route path="enrollment/mine/:recordKind/:recordId" element={<Enrollment />} />
+                  <Route path="enrollment/payment" element={<Enrollment />} />
+                  <Route path="enrollment/assist" element={<Enrollment />} />
+                  <Route path="enrollment/help/:topic" element={<Enrollment />} />
+                  <Route path="enrollment/interest" element={<Enrollment />} />
+                  <Route path="enrollment/:classId" element={<Enrollment />} />
                   <Route path="csca" element={<CSCA />} />
                   <Route path="consultancy" element={<StudyAbroad />} />
                   <Route path="contact" element={<Contact />} />

@@ -41,6 +41,8 @@ export function CampaignMaterials({
     Partial<Record<CampaignLanguage, CampaignDraft>>
   >(campaign.aiAssets.templateDrafts || {});
   const changed = useRef<Set<CampaignLanguage>>(new Set());
+  const [pendingSave,setPendingSave]=useState<string>();
+  const [checkState,setCheckState]=useState<'missing'|'error'>();
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
@@ -103,40 +105,44 @@ export function CampaignMaterials({
       setBusy(false);
     }
   }
+  const completeSave=(record:CrmCampaignRecord)=>{
+    if(record?.id!==campaign.id)throw Error();
+    changed.current.clear();
+    setPendingSave(undefined);setCheckState(undefined);
+    onSaved(record);
+    feedback("Drafts saved. No message was sent or welcome message activated.");
+  };
   async function save() {
+    if(busy||pendingSave)return;
+    const requestId=crypto.randomUUID();
+    setBusy(true);feedback("");
+    try{
+      const updates=Object.fromEntries([...changed.current].map(l=>[l,drafts[l]]));
+      const r=await fetch('/api/crm/campaigns/'+encodeURIComponent(campaign.id),{
+        method:'PUT',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({requestId,aiAssets:{templateDrafts:updates}}),
+        signal:AbortSignal.timeout(20000),
+      });
+      if(r.status>=400&&r.status<500){
+        feedback(t('The draft was rejected. Review the activity and your access.','Draf ditolak. Periksa aktivitas dan izin Anda.','草稿保存被拒绝，请核对活动和权限。'),true);
+        return;
+      }
+      if(!r.ok)throw Error();
+      completeSave((await r.json()).campaign);
+    }catch{
+      setPendingSave(requestId);setCheckState(undefined);
+    }finally{setBusy(false);}
+  }
+  async function checkSave(){
+    if(busy||!pendingSave)return;
     setBusy(true);
-    feedback("");
-    try {
-      const updates = Object.fromEntries(
-        [...changed.current].map((l) => [l, drafts[l]]),
-      );
-      const r = await fetch(
-        `/api/crm/campaigns/${encodeURIComponent(campaign.id)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: campaign.name,
-            aiAssets: { templateDrafts: updates },
-          }),
-          signal: AbortSignal.timeout(20000),
-        },
-      );
-      if (!r.ok) throw Error();
-      const data = await r.json();
-      changed.current.clear();
-      onSaved(data.campaign);
-      feedback(
-        "Drafts saved. No message was sent or welcome message activated.",
-      );
-    } catch {
-      feedback(
-        "Save not confirmed. Your drafts remain here; retry saving.",
-        true,
-      );
-    } finally {
-      setBusy(false);
-    }
+    try{
+      const r=await fetch('/api/crm/campaign-save-results/'+encodeURIComponent(pendingSave),{cache:'no-store'});
+      if(r.status===404){setCheckState('missing');return;}
+      if(!r.ok)throw Error();
+      completeSave((await r.json()).campaign);
+    }catch{setCheckState('error');}
+    finally{setBusy(false);}
   }
   return (
     <section data-admin-form=""
@@ -162,7 +168,7 @@ export function CampaignMaterials({
             isLight={isLight}
             value={promotionLinkId}
             onChange={setPromotionLinkId}
-            disabled={busy}
+            disabled={busy||!!pendingSave}
           >
             <option value="" disabled>
               {u("Select a promotion link")}
@@ -191,7 +197,7 @@ export function CampaignMaterials({
             type="button"
             aria-pressed={l === language}
             className={l === language ? "campaign-primary" : ""}
-            disabled={busy}
+            disabled={busy||!!pendingSave}
             onClick={() => {
               setLanguage(l);
               feedback("");
@@ -211,7 +217,7 @@ export function CampaignMaterials({
             setAsset(v as CampaignAssetKey);
             feedback("");
           }}
-          disabled={busy}
+          disabled={busy||!!pendingSave}
         >
           {campaignAssetKeys.map((k) => (
             <option key={k} value={k}>
@@ -235,7 +241,7 @@ export function CampaignMaterials({
         <span>{campaignAssetLabel(asset, lang)}</span>
         <textarea
           readOnly={!canEdit}
-          disabled={busy}
+          disabled={busy||!!pendingSave}
           value={value}
           onChange={(e) => {
             changed.current.add(language);
@@ -254,7 +260,7 @@ export function CampaignMaterials({
             type="button"
             onClick={() => void generate()}
             disabled={
-              busy ||
+              busy || !!pendingSave ||
               !promotionLinkId
             }
           >
@@ -279,7 +285,7 @@ export function CampaignMaterials({
           <button
             className="campaign-primary"
             type="button"
-            disabled={busy || !changed.current.size}
+            disabled={busy||!!pendingSave||!changed.current.size}
             onClick={save}
           >
             {busy
@@ -288,7 +294,16 @@ export function CampaignMaterials({
           </button>
         )}
       </AdminFormActions>
-      {(busy || changed.current.size > 0) && (
+      {pendingSave&&<div data-admin-stack="">
+        <CrmSaveFeedback lang={lang} state="unknown">
+          {checkState==='missing'?t('The original result is not available yet. Your draft is retained.','Hasil awal belum tersedia. Draf Anda disimpan.','暂未查到原操作结果，草稿已保留。'):
+            checkState==='error'?t('Unable to check the result. Your draft is retained.','Hasil belum dapat diperiksa. Draf disimpan.','暂时无法查询结果，草稿已保留。'):
+            t('Check the original result before saving again.','Periksa hasil awal sebelum menyimpan lagi.','保存结果待确认，请先查询。')}
+        </CrmSaveFeedback>
+        <button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkSave()}>
+          {t('Check save result','Periksa hasil simpan','查询保存结果')}</button>
+      </div>}
+      {!pendingSave&&(busy || changed.current.size > 0) && (
         <CrmSaveFeedback lang={lang} state={busy ? "saving" : "dirty"} />
       )}
       {message && (

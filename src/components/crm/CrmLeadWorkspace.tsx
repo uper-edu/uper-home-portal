@@ -1,3 +1,4 @@
+import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import {CrmCurrentSalesState,CrmIdentityStatus} from './CrmCurrentSalesState';
 import {CrmIdentityAction} from './CrmIdentityAction';
 import {CrmProgressAction} from './CrmProgressAction';
@@ -8,21 +9,20 @@ import {listLeadHint,listLearningNeeds,listAssessmentConclusion} from '../../uti
 import {CrmListAgreements} from './CrmListAgreements';
 import {CrmContactResult} from './CrmContactResult';
 import {CrmInteractionTimelines} from './CrmInteractionTimelines';
-import {containPaneKeys,revealRecord} from '../adminScroll';
+import {containPaneKeys} from '../adminScroll';
+import {CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordSidebarToggle} from './CrmRecordWorkspace';
 import {useCrmShellHeight,useRecordScrollMode} from "./CrmDetailWorkspace";
 import { worklistIntents, visibleIntentEvidence, buyingEvidenceLabel, evidenceHeading } from "../../utils/crmBuyingEvidence";
 import { CrmSingleSelect } from "./CrmSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Search,PanelLeftOpen } from "lucide-react";
 import type { CrmLeadRecord } from "../../types/crmLead";
-import { crmValue, crmStageValue, type CrmLanguage } from "../../utils/crmLanguage";
+import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
 import { leadDisplayNumber } from "../../utils/leadNumber";
 import { formatCrmOperatingTime,viewerTimeZone,crmInstant } from "../../utils/crmOperatingTime";
 import { safeStorage } from "../../utils/safeStorage";
 import {
   customerCity,
-  customerOutcome,
   customerFields,
   defaultCustomerFields,
   validCustomerFields,
@@ -58,6 +58,18 @@ function LearningNeedText({value,lang}:{value:string;lang:CrmLanguage}){
  },[value,more]);
  return <div ref={ref} className="crm-work-learning-value is-inline"><span id={contentId}>{expanded||preview===null?value:preview}</span>{preview!==null&&<>{' '}<button type="button" className="crm-work-link crm-learning-expand" aria-expanded={expanded} aria-controls={contentId} onClick={()=>setExpanded(v=>!v)}>{expanded?less:more}</button></>}</div>;
 }
+function CustomerOpportunities({lead,lang,table=false}:{lead:CrmLeadRecord;lang:CrmLanguage;table?:boolean}){
+ const summary=lead.enrollmentOpportunitySummary;
+ if(!summary)return table?'—':<CrmSalesStage stage={lead.currentStage} lang={lang}/>;
+ if(!summary.count)return table?'0':<span className="crm-work-muted">{lang==='zh'?'暂无进行中商机':lang==='id'?'Belum ada peluang aktif':'No active opportunities'}</span>;
+ const list='/crm?'+new URLSearchParams({tab:'opportunities',customerId:lead.id,opportunityOwner:'all'});
+ if(!table&&summary.only)return <>
+  <AdminRowAction href={list+'&'+new URLSearchParams({opportunity:summary.only.id})}>{summary.only.level}</AdminRowAction>
+  <CrmSalesStage stage={summary.only.stage} lang={lang}/>
+ </>;
+ const label=lang==='zh'?`${summary.count} 笔进行中`:lang==='id'?`${summary.count} berlangsung`:`${summary.count} in progress`;
+ return <AdminRowAction href={list} aria-label={label}>{table?summary.count:label}</AdminRowAction>;
+}
 export interface LeadWorkspaceProps {
   leads: CrmLeadRecord[];
   selectedId?: string;
@@ -83,9 +95,10 @@ export interface LeadWorkspaceProps {
   onOpen: (lead: CrmLeadRecord, tab?: CustomerTab) => void;
   onReset: () => void;
   sidebarFilters?: React.ReactNode;
+  detailNavigation?: (toggle: React.ReactNode) => React.ReactNode;
   search?:string;
   onSearch?:(value:string)=>void;
-  children?: React.ReactNode;
+  children?: ((toggle:React.ReactNode)=>React.ReactNode)|null;
 }
 export function CrmLeadWorkspace({
   leads,
@@ -99,34 +112,24 @@ export function CrmLeadWorkspace({
   employeeId,
   employees,
   onSignal,onOpen,onIdentity,onClaim,onProcess,canProcess,canClaim,progressAction,
-  onReset,sidebarFilters,search="",onSearch,
+  onReset,sidebarFilters,detailNavigation,search="",onSearch,
   children,
 }: LeadWorkspaceProps) {
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const [agreementNow,setAgreementNow]=useState(Date.now());
   useEffect(()=>{const timer=setInterval(()=>setAgreementNow(Date.now()),60000);return()=>clearInterval(timer);},[]);
-  const workspace = useRef<HTMLDivElement>(null);
   const headerHeight=useCrmShellHeight();
   const scrollMode=useRecordScrollMode(headerHeight);
-  const collapsed=false;
+  const independent=scrollMode==='independent';
+  const [collapsed,setCollapsed]=useState(false);
   const [showList,setShowList]=useState(false);
-  const listToggle=useRef<HTMLButtonElement>(null);
-  const open:typeof onOpen=(lead,tab)=>{setShowList(false);onOpen(lead,tab);};
-  const revealList=()=>{setShowList(true);requestAnimationFrame(()=>{workspace.current?.scrollIntoView({block:'start',behavior:'instant'});workspace.current?.querySelector<HTMLElement>('.crm-customer-open[aria-current=true]')?.focus({preventScroll:true});});};
+  const sidebarVisible=independent?!collapsed:showList;
+  const open:typeof onOpen=(lead,tab)=>{
+    if(!independent&&lead.id===selectedId)setShowList(false);
+    onOpen(lead,tab);
+  };
   useEffect(()=>{setShowList(false);},[selectedId]);
-  const hasSelected = leads.some(lead => lead.id === selectedId);
-  const hasDetails = Boolean(children);
-  useLayoutEffect(() => {
-    if (!hasDetails || !hasSelected || collapsed || loading || !window.matchMedia("(min-width: 1120px)").matches) return;
-    const frame = requestAnimationFrame(() => {
-      const list = workspace.current?.querySelector<HTMLElement>(".crm-work-rows");
-      const row = list?.querySelector<HTMLElement>("[data-lead-id][data-selected=true]");
-      if (!list || !row) return;
-      revealRecord(list,row);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [selectedId, hasSelected, hasDetails, collapsed, loading]);
   const storageKey = `uper_crm_customer_fields_${employeeId}`;
   const [fields, setFields] = useState<CustomerField[]>(() => {
     try {
@@ -150,11 +153,11 @@ export function CrmLeadWorkspace({
     value && Date.parse(value) > 0
       ? formatCrmOperatingTime(value, viewerTimeZone())
       : t("Unknown time", "未知时间");
-  const identityAction=(lead:CrmLeadRecord)=>!children&&lead.identityReview?.pending&&lead.identityReview.canReview?<CrmIdentityAction lang={lang} onClick={()=>onIdentity?onIdentity(lead):open(lead,'profile')}/>:null;
-  const follow = (lead: CrmLeadRecord, compact = false) => (
-    <>{!children&&<CrmStopContact lead={lead} lang={lang}/>}<CrmFollowUp
+  const identityAction=(lead:CrmLeadRecord)=>lead.identityReview?.pending&&lead.identityReview.canReview?<CrmIdentityAction lang={lang} onClick={()=>onIdentity?onIdentity(lead):open(lead,'profile')}/>:null;
+  const follow = (lead: CrmLeadRecord, compact = false, readOnly = false) => (
+    <>{!readOnly&&<CrmStopContact lead={lead} lang={lang}/>}<CrmFollowUp
       hideStoppedNotice
-      readOnly={Boolean(children)}
+      readOnly={readOnly}
       lead={lead}
       lang={lang}
       timezone={timezone}
@@ -170,13 +173,11 @@ export function CrmLeadWorkspace({
         return leadDisplayNumber(lead);
       case "name":
         return (
-          <div><button
-            type="button"
-            className="crm-work-link crm-customer-open"
+          <div><AdminRecordEntry className="crm-customer-open"
             onClick={() => open(lead)}
           >
             {lead.fullName || t("Unnamed customer", "未填写姓名")}
-          </button><CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
+          </AdminRecordEntry><CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
         );
       case "owner":
         return owner(lead);
@@ -205,15 +206,17 @@ export function CrmLeadWorkspace({
         );
       case "group":
         return crmValue(lead.tier, lang);
-      case "stage":
-        return crmStageValue(lead.currentStage, lang);
-      case "signal":
-        return (
-          visibleIntentEvidence(lead)
-            .map((s) => `${evidenceHeading(s.kind,lang)}: ${buyingEvidenceLabel(s,lang)}`)
-            .join(lang === "id" ? crmId(", ") : lang === "zh" ? "、" : ", ") ||
-          "—"
-        );
+      case "opportunities":
+        return <CustomerOpportunities lead={lead} lang={lang} table/>;
+      case "signal": {
+        const evidence=visibleIntentEvidence(lead);
+        if(!evidence.length)return "—";
+        return <ul className="crm-table-evidence-list">{evidence.map(item=>{
+          const label=evidenceHeading(item.kind,lang)+': '+buyingEvidenceLabel(item,lang);
+          return <li key={item.id}>{onSignal?<AdminRowAction onClick={()=>onSignal(lead,item.id)}
+            aria-label={t("View original evidence and history","查看原文依据及历次记录")+' · '+label}>{label}</AdminRowAction>:label}</li>;
+        })}</ul>;
+      }
       case "contact":
         return lead.connectStatus==="Interested"?t("Historical interest record","历史意向记录"):<CrmContactResult result={lead.connectStatus}>{crmValue(lead.connectStatus, lang)}</CrmContactResult>;
       case "touches":
@@ -228,32 +231,53 @@ export function CrmLeadWorkspace({
         return crmValue(lead.entryPoint, lang);
       case "campaign":
         return lead.campaign || "—";
-      case "outcome":
-        return customerOutcome(lead.outcome, lang);
     }
   };
-  // Selection can outlive a filter change.
-  // Keep the authorized detail open, without injecting it into filtered results.
+  const emptyResults=loading&&!leads.length?<p className="crm-record-sidebar-message" role="status">{t("Loading customers…","正在加载客户…")}</p>:
+    loadUnavailable&&!leads.length?<p className="crm-record-sidebar-message" role="alert">{lang==='zh'?'客户列表暂不可用，请查看刷新提示并重试。':lang==='id'?'Daftar pelanggan belum tersedia. Periksa pesan pembaruan dan coba lagi.':'Customer list unavailable. Check the refresh message and retry.'}</p>:
+    !leads.length?<div className="crm-record-sidebar-message">
+      <p>{accessibleCount===0?t("No accessible leads are currently available","当前没有可访问的客户"):t("No leads match the current filters","当前筛选条件下没有匹配客户")}</p>
+      {accessibleCount!==0&&<button type="button" className="crm-work-link" onClick={onReset}>{t("Clear filters and show all accessible leads","清空筛选，查看全部可见客户")}</button>}
+    </div>:undefined;
+  const listToggle=<CrmRecordSidebarToggle controls="crm-customer-records" expanded={sidebarVisible}
+    label={sidebarVisible?(lang==='zh'?'收起客户侧栏':lang==='id'?'Sembunyikan panel pelanggan':'Hide customer sidebar'):
+      (lang==='zh'?'展开客户侧栏':lang==='id'?'Tampilkan panel pelanggan':'Show customer sidebar')}
+    onClick={()=>independent?setCollapsed(value=>!value):setShowList(value=>!value)}/>;
+  // Filters can hide the current row while its authorized detail and draft stay open.
   return (
     <div
-      ref={workspace}
       className="crm-customer-workspace crm-detail-root"
       data-theme={isLight ? "light" : "dark"} lang={lang==='zh'?'zh-CN':lang}
       data-open={!!children}
       data-record-scroll={scrollMode}
       onKeyDown={containPaneKeys}
-      data-list-collapsed={Boolean(children&&collapsed)}
-      data-show-list={Boolean(children&&showList)}
+      data-list-collapsed={Boolean(children&&!sidebarVisible)}
+      data-show-list={Boolean(children&&!independent&&showList)}
+      data-record-detail={children?true:undefined}
       style={
         { "--crm-shell-height": `${headerHeight}px` } as React.CSSProperties
       }
     >
-      <div className={`crm-customer-results ${children?'crm-list-shell':''}`} aria-busy={loading}>
-        {children&&<div className="crm-workspace-list-heading"><span>{t("Customers","客户")} <span className="crm-sidebar-customer-count" aria-label={t(`${leads.length} matching customers`,`匹配${leads.length}位客户`)}>· {leads.length}</span></span><span className="crm-sidebar-count-updating" role="status" style={{visibility:loading?'visible':'hidden'}}>{t('Updating…','更新中…')}</span></div>}
-        {children&&!sidebarFilters&&onSearch&&<div className="crm-workspace-list-search"><Search size={16}/><input aria-label={t("Search customer list","搜索客户侧栏")} placeholder={t("Search customers…","搜索客户…")} value={search} onChange={e=>onSearch(e.target.value)}/></div>}
-        {children&&sidebarFilters}
-        {children&&selectedId&&!loading&&!leads.some(lead=>lead.id===selectedId)&&<p className="crm-sidebar-selection-note" role="status">{t("Selected customer is outside the current filters. Your open details and draft are retained.","当前客户不在筛选结果中，已打开的详情与草稿保持不变。")}</p>}
-        {view === "table" && !children && (
+      {children&&!independent&&showList&&detailNavigation?.(listToggle)}
+      {children?<CrmRecordSidebar id="crm-customer-records" title={t("Customers","客户")} count={leads.length}
+        selectedId={leads.some(lead=>lead.id===selectedId)?selectedId:undefined}
+        busy={loading} busyLabel={t('Updating…','更新中…')} hidden={!sidebarVisible}
+        filters={sidebarFilters??(onSearch&&<CrmRecordSearch label={t("Search customers","搜索客户")}
+          placeholder={t("Search customers…","搜索客户…")} value={search} onChange={onSearch}/>)}
+        note={selectedId&&!loading&&!leads.some(lead=>lead.id===selectedId)?
+          (lang==='zh'?'当前客户不在筛选结果中，已打开的详情与草稿保持不变。':lang==='id'?'Pelanggan ini di luar hasil filter. Detail dan draf tetap terbuka.':'The current customer is outside these filters. The detail and draft stay open.'):undefined}
+        empty={emptyResults}>
+        {leads.map(lead=><CrmRecordRow key={lead.id} selected={lead.id===selectedId}
+          name={lead.fullName||t("Unnamed customer","未填写姓名")} title={t("Open customer: ","打开客户：")+lead.fullName}
+          onClick={()=>open(lead)} meta={<>{leadDisplayNumber(lead)} · {owner(lead)}</>}
+          extra={<>
+            <CrmCurrentSalesState lead={lead} lang={lang} compact/>
+            <LeadActivity readOnly lead={lead} lang={lang} timezone={timezone} onOpen={()=>open(lead,'activities')}/>
+            {follow(lead,true,true)}
+            <CrmListAgreements lead={lead} lang={lang} timezone={timezone} now={agreementNow} readOnly onOpen={()=>open(lead,'activities')}/>
+          </>}/>)}
+      </CrmRecordSidebar>:<div className="crm-customer-results" aria-busy={loading}>
+        {view === "table" && (
           <div className="crm-field-toolbar">
             <span className="crm-work-muted">
               {t("Data table", "字段表")}
@@ -282,7 +306,7 @@ export function CrmLeadWorkspace({
             </button>}
 
           </div>
-        ) : view === "table" && !children ? (
+        ) : view === "table" ? (
           <div
             className="crm-data-table-scroll"
             tabIndex={0}
@@ -311,6 +335,7 @@ export function CrmLeadWorkspace({
                         {field(k, lead)}
                       </td>
                     ))}
+
                   </tr>
                 ))}
               </tbody>
@@ -326,8 +351,6 @@ export function CrmLeadWorkspace({
             </div>
             <div
               className="crm-work-rows"
-              data-admin-scroll={children?"records":undefined}
-              tabIndex={children?0:undefined}
               role="list"
               aria-label={t("Customer worklist", "客户工作列表")}
             >
@@ -342,18 +365,10 @@ export function CrmLeadWorkspace({
                     key={lead.id}
                     data-lead-id={lead.id}
                     data-selected={lead.id === selectedId}
-                    onClick={(e) => {
-                      if (
-                        !(e.target as HTMLElement).closest(
-                          "button,a,input,select",
-                        )
-                      )
-                        open(lead);
-                    }}
+
                   >
                     <div className="crm-work-identity">
-                      <button
-                        type="button"
+                      <AdminRecordEntry
                         className="crm-customer-open crm-work-name"
                         aria-label={
                           t("Open customer: ", "打开客户：") + lead.fullName
@@ -362,15 +377,13 @@ export function CrmLeadWorkspace({
                         onClick={() => open(lead)}
                       >
                         {lead.fullName || t("Unnamed customer", "未填写姓名")}
-                      </button>
-                      <div className={"crm-work-muted"+(children?" crm-sidebar-meta":"")}>
+                      </AdminRecordEntry>
+                      <div className="crm-work-muted">
                         {leadDisplayNumber(lead)} · {owner(lead)}
                       </div>
-                      {children&&<CrmCurrentSalesState lead={lead} lang={lang} compact/>}
-                      {!children&&identityFacts.length>0&&<div className="crm-work-muted crm-work-demographics" aria-label={lang==='zh'?'居住地与客户身份':lang==='id'?'Domisili dan identitas pelanggan':'Residence and customer identity'}>{identityFacts.join(' · ')}</div>}
-                      {!children&&<CrmIdentityStatus lead={lead} lang={lang} explain/>}
-                      {(children||['ai.failed','task.overdue'].includes(lead.attention?.latest?.type||''))&&<LeadActivity
-                        readOnly={Boolean(children)}
+                      {identityFacts.length>0&&<div className="crm-work-muted crm-work-demographics" aria-label={lang==='zh'?'居住地与客户身份':lang==='id'?'Domisili dan identitas pelanggan':'Residence and customer identity'}>{identityFacts.join(' · ')}</div>}
+                      {!lead.identityReview?.canReview&&<CrmIdentityStatus lead={lead} lang={lang} explain/>}
+                      {['ai.failed','task.overdue'].includes(lead.attention?.latest?.type||'')&&<LeadActivity
                         lead={lead}
                         lang={lang}
                         timezone={timezone}
@@ -387,29 +400,32 @@ export function CrmLeadWorkspace({
                           )
                         }
                       />}
-                      {!children&&!lead.identityReview?.pending&&<div className="crm-list-actions crm-identity-actions" role="group" aria-label={lang==='zh'?'客户操作':lang==='id'?'Tindakan pelanggan':'Customer actions'}>{!lead.identityReview?.pending&&!lead.owner&&onClaim&&canClaim?.(lead)!==false&&<button type="button" className="crm-work-button" onClick={()=>onClaim(lead)}>{(lang==='en'?"Assign to me":t("Claim for myself","自己认领"))}</button>}<CrmProgressAction state={progressAction?.(lead)??(canProcess?.(lead)===false?'hidden':'enabled')} lang={lang} primary={!lead.identityReview?.pending} onClick={()=>onProcess?onProcess(lead):open(lead,"activities")}/></div>}
-                    </div>
-                    <div className="crm-work-next">{identityAction(lead)}{follow(lead, true)}<CrmListAgreements lead={lead} lang={lang} timezone={timezone} now={agreementNow} readOnly={Boolean(children)} onOpen={()=>open(lead,'activities')}/>{!children&&<CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} compact/>}{!children&&listLeadHint(lead,lang)&&<p className="crm-work-muted crm-list-key-hint">{listLeadHint(lead,lang)}</p>}</div>
-                    <div className="crm-work-progress">
-                      <div className="crm-list-stage-line"><CrmSalesStage stage={lead.currentStage} lang={lang}/><span className="crm-work-group" title={t('Customer group','客户分组')}>{crmValue(lead.tier,lang)}</span></div>
-                      {intents.length>0&&<div className="crm-list-intent"><span className="crm-list-progress-label">{intents[0].evidence.kind==='questionnaire'?t('Questionnaire interest','问卷关注'):t('Requests and interests','诉求与意向')}</span>
-                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?t('Latest known occurrence: ','最近已知发生时间：'):t('Occurred: ','实际发生于：')}${stamp}`:t('Occurrence time unknown','实际发生时间未知');return <button type="button" key={evidence.value} className="crm-work-support-link crm-list-intent-row" title={`${label} · ${description}`} aria-label={`${label}, ${description}, ${t('View original evidence and history','查看原文依据及历次记录')}`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span>{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></button>;})}
+                      {<div className="crm-list-actions crm-identity-actions">
+                        {lead.identityReview?.pending?identityAction(lead):!lead.owner&&onClaim&&canClaim?.(lead)!==false?
+                          <AdminRowAction onClick={()=>onClaim(lead)}>{lang==='en'?"Assign to me":t("Claim for myself","自己认领")}</AdminRowAction>:
+                          <CrmProgressAction state={progressAction?.(lead)??(canProcess?.(lead)===false?'hidden':'enabled')} lang={lang} primary onClick={()=>onProcess?onProcess(lead):open(lead,"activities")}/>}
                       </div>}
-                      {!children&&<CrmListMilestones lang={lang} lead={lead} onOpen={()=>open(lead,'activities')}/>}
+                    </div>
+                    <div className="crm-work-next">{follow(lead, true)}<CrmListAgreements lead={lead} lang={lang} timezone={timezone} now={agreementNow}  onOpen={()=>open(lead,'activities')}/>{<CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} compact/>}{listLeadHint(lead,lang)&&<p className="crm-work-muted crm-list-key-hint">{listLeadHint(lead,lang)}</p>}</div>
+                    <div className="crm-work-progress">
+                      <div className="crm-list-stage-line"><CustomerOpportunities lead={lead} lang={lang}/><span className="crm-work-group" title={t('Customer group','客户分组')}>{crmValue(lead.tier,lang)}</span></div>
+                      {intents.length>0&&<div className="crm-list-intent"><span className="crm-list-progress-label">{intents[0].evidence.kind==='questionnaire'?t('Questionnaire interest','问卷关注'):t('Requests and interests','诉求与意向')}</span>
+                        {intents.map(({evidence,unknownCount})=>{const label=buyingEvidenceLabel(evidence,lang),valid=Boolean(crmInstant(evidence.at||undefined)),stamp=valid?formatCrmOperatingTime(evidence.at!,viewerTimeZone()):'';const time=valid?stamp.slice(5,16):lang==='zh'?'时间未知':lang==='id'?'Waktu tidak diketahui':'Time unknown';const description=valid?`${unknownCount?t('Latest known occurrence: ','最近已知发生时间：'):t('Occurred: ','实际发生于：')}${stamp}`:t('Occurrence time unknown','实际发生时间未知');return <AdminRowAction key={evidence.value} className="crm-list-intent-row admin-row-action-with-meta" title={`${label} · ${description}`} aria-label={`${label}, ${description}, ${t('View original evidence and history','查看原文依据及历次记录')}`} onClick={()=>onSignal?onSignal(lead,evidence.id):open(lead,'profile')}><span className="admin-action-label">{label}</span><span className="crm-list-intent-time" data-unknown={!valid}>{time}</span></AdminRowAction>;})}
+                      </div>}
+                      {<CrmListMilestones lang={lang} lead={lead} onOpen={()=>open(lead,'activities')}/>}
                     </div>
                     <div className="crm-work-needs">
-                      <div className={!children?`crm-learning-goal${lead.goal?.trim()?'':' is-empty'}`:undefined}>{!children?<LearningNeedText value={assessment.goal} lang={lang}/>:assessment.goal}{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length>0&&<button type="button" className="crm-work-link" onClick={()=>open(lead,"profile")}> · +{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length} {t("Other goals","其他目标")}</button>}</div>
-                      {(children||lead.mode?.trim())&&<div className="crm-work-muted">
+                      <div className={`crm-learning-goal${lead.goal?.trim()?'':' is-empty'}`}><LearningNeedText value={assessment.goal} lang={lang}/>{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length>0&&<button type="button" className="crm-work-link" onClick={()=>open(lead,"profile")}> · +{(lead.goals||[]).filter(g=>g&&g!==lead.goal).length} {t("Other goals","其他目标")}</button>}</div>
+                      {lead.mode?.trim()&&<div className="crm-work-muted">
                         {crmValue(lead.mode, lang)}
                       </div>}
-                      <button
-                        type="button"
+                      <AdminRowAction
                         className="crm-work-assessment"
                         onClick={() => open(lead, "assessment")}
                       >
-                        {!children&&assessment.kind==='self'&&assessment.conclusion===(lang==='zh'?'水平未知':lang==='id'?crmId('Level unknown'):'Level unknown')?<span>{lang==='zh'?'尚无测评记录':lang==='id'?'Belum ada catatan asesmen':'No assessment recorded'}</span>:<><span>{assessment.source}</span><span>{children?assessment.conclusion:listAssessmentConclusion(assessment.conclusion,lang)}</span></>}
-                      </button>
-                      {!children&&listLearningNeeds(lead,lang).length>0&&<dl className="crm-learning-details">{listLearningNeeds(lead,lang).map(row=><div className="crm-learning-need" key={row.label}><dt>{row.label}</dt><dd><LearningNeedText value={row.value} lang={lang}/></dd></div>)}</dl>}
+                        {assessment.kind==='self'&&assessment.conclusion===(lang==='zh'?'水平未知':lang==='id'?crmId('Level unknown'):'Level unknown')?<span>{lang==='zh'?'尚无测评记录':lang==='id'?'Belum ada catatan asesmen':'No assessment recorded'}</span>:<><span>{assessment.source}</span><span>{listAssessmentConclusion(assessment.conclusion,lang)}</span></>}
+                      </AdminRowAction>
+                      {listLearningNeeds(lead,lang).length>0&&<dl className="crm-learning-details">{listLearningNeeds(lead,lang).map(row=><div className="crm-learning-need" key={row.label}><dt>{row.label}</dt><dd><LearningNeedText value={row.value} lang={lang}/></dd></div>)}</dl>}
                     </div>
                   </article>
                 );
@@ -417,8 +433,8 @@ export function CrmLeadWorkspace({
             </div>
           </>
         )}
-      </div>
-      {children&&<div className="crm-lead-detail-column"><div className="crm-workspace-list-access"><button ref={listToggle} className="crm-workspace-toggle" onClick={revealList} aria-expanded={!collapsed}><PanelLeftOpen size={17}/>{lang==='zh'?'显示客户侧栏':lang==='id'?'Tampilkan panel pelanggan':'Show customer sidebar'}</button><button className="crm-workspace-toggle crm-return-selected" onClick={()=>{setShowList(false);requestAnimationFrame(()=>document.querySelector<HTMLElement>('#crm-customer-panel h2')?.focus({preventScroll:true}));}}>{t("Return to selected customer","返回当前客户")}</button></div>{children}</div>}
+      </div>}
+      {children&&<div className="crm-lead-detail-column" hidden={!independent&&showList}>{children(listToggle)}</div>}
     </div>
   );
 }

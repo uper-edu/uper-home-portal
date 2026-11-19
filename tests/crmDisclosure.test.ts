@@ -100,3 +100,17 @@ test("Profile and assessment preserve original facts and evidence without nested
   }
   assert.equal(JSON.stringify(value), original);
 });
+
+test("Shared compact and panel disclosures preserve literal evidence with one keyboard target each", () => {
+  const original = '<provider-receipt>';
+  for (const density of ['compact', 'panel'] as const) {
+    const html = renderToStaticMarkup(
+      React.createElement(CrmDisclosure, { heading: 'Original receipt', density },
+        React.createElement('pre', null, original)),
+    );
+    assert.match(html, new RegExp('data-admin-disclosure="' + density + '"'));
+    assert.match(html, /<summary[^>]*data-admin-disclosure-summary/);
+    assert.match(html, /&lt;provider-receipt&gt;/);
+    assert.doesNotMatch(html, /<details[^>]* open=|role="button"|<button/);
+  }
+});
