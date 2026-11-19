@@ -1,4 +1,4 @@
-import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionReply,refundConsultationIntent} from './chatEnrollment.ts';
+import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionFollowUp,refundConsultationIntent} from './chatEnrollment.ts';
 import {enrollmentGuideText,enrollmentReplyLanguage,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
 import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,parseConsultationReply,renderConsultationReply} from './coursePrices.ts';
@@ -353,8 +353,11 @@ export function mountChat(app: Express) {
                 level:replaySelection.level??assessmentGuidance?.level,maxRecommendations:previousDeferral?.limit??1},undefined,'')
               :currentSelection;
             const held=timing.acknowledge||Boolean(timing.waiting&&proposed?.kind==='recommend');
-            const priorPrice=!introduction&&proposed?.question==='quoted_price_unit';
-            const action=held||priorPrice?undefined:await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
+            const priorPrice=!introduction&&proposed?.question==='quoted_price_unit'
+              ?previousTuitionFollowUp(previousPriceAction,proposed,learnerMessage,replyLang)
+              :undefined;
+            const action=held||(priorPrice&&!priorPrice.appointment)?undefined:await chatEnrollmentAction(
+              db,priorPrice?.appointment??normalized.value,assessmentIntroduction,profileIntroduction,
               [...referenceContext.map(row=>row.id),...(previousActions[0]?.rows?.map(row=>row.id)??[])],
               normalized.constraints??previousConstraints);
             const linkOnlyClassIds=action?repeatedEnrollmentCards(action,previousActions):[];
@@ -369,7 +372,7 @@ export function mountChat(app: Express) {
                 'Saya simpan preferensi kelas Anda dan akan menggunakannya untuk mencari kelas yang sesuai setelah Anda menyelesaikan asesmen.');
               catalogueUsed=false;
             }else if(priorPrice){
-              reply=previousTuitionReply(previousPriceAction,proposed.referenceIds,replyLang);
+              reply=[priorPrice.reply,enrollment?enrollmentReply(enrollment,replyLang):''].filter(Boolean).join('\n\n');
               catalogueUsed=false;
             }else if(enrollment&&(introduction||enrollment.kind!=='catalog'||parsed?.catalogue===null)){
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';

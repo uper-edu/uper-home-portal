@@ -13,7 +13,7 @@ export const chatEnrollmentInstruction = `
 For any UPER Mandarin course or Enrollment request, use the optional "enrollment" field in your JSON response. It takes priority over "catalogue", which is only for non-Enrollment programmes. Set catalogue:null for Enrollment. Choose the action that resolves the current task:
 - Emit a top-level "classCriteria" when the current learner turn adds, corrects, or explicitly narrows class facts or matching criteria, including in an inspect or tuition turn. Include "evidence" with an exact quote from this turn and only the changed fields. A weekday availability change must include complete updated "windows", retaining days and hours that still apply. For a stated first-class boundary, emit "firstSession":{"bound":"on_or_after","date":"YYYY-MM-DD"} for "at least next month" or "not before"; calculate the first day in WIB. Use "on_or_before" for a deadline and "on" for an exact date. For a request to find one class, including after an assessment, emit "count":1. For a weekday or weekend price request include "period" even when prices happen to be the same. Keep any referenced class IDs in the enrollment action. Current constraints override earlier restrictions and do not disappear merely because you choose inspect or quote.
 - quote: current tuition, a cost breakdown, or a PRICE comparison by class type. "levels":["HSK 1"], "formats":["standard","small","one-on-one"]. Use "level" for a single target; no level means all levels only if the learner asked for general prices. Use "requestedPeriods" for a private lesson quantity the learner explicitly asks about. One-to-one price questions use quote, not appointment. A learning-experience comparison is not a price request; answer it directly without replacing it with a price list.
- When the learner asks which amount just quoted is the total and which is per period, set kind:"quote", question:"quoted_price_unit". Use referenceIds from the prior quoted tuition only when the learner points to a particular quoted option; otherwise leave them empty. Use question:"period_unit" for a general question about the billing unit without referring to a prior amount. Omit fields for a standalone question about the unit. If this same turn also asks for current amounts or a cost breakdown, add "price" to fields. If it also asks whether or how the learner can register or arrange private lessons, add "appointment" to fields. Include both fields if both are asked.
+ When the learner asks which amount just quoted is the total and which is per period, set kind:"quote", question:"quoted_price_unit". An unqualified reference to the prior prices includes every previously quoted option, including one-to-one. Leave referenceIds empty in that case. Only when the learner expressly narrows the price question to specific quoted options, set their referenceIds and quoteReferenceEvidence to an exact excerpt from this turn that identifies those options. Evaluate the price question and scheduling question separately. If the learner also asks whether private lessons can be booked as a fixed class or how to arrange them, include "appointment" in fields even when the price question covers all options. Include the appointment's level when known. Use question:"period_unit" for a general question about the billing unit without referring to a prior amount. Omit fields for a standalone question about the unit. If the same turn also asks for current amounts or a cost breakdown, include "price" in fields.
  If the learner asks how many people and how much a small group or standard class generally costs, use quote with question:"group_overview" and the requested format. Keep the target level if known from the current discussion. Do not select a batch unless the learner refers to a specific class. This is a format question even if classes were shown earlier. The server will answer the size and verified price before offering a filtered catalogue link.
 - recommend: recommend real classes, check concrete availability, or update a recommendation after preferences changed. For example {"kind":"recommend","level":"HSK 3","format":"standard","windows":[{"day":5,"earliest":"19:00"},{"day":6,"earliest":"15:00","latestEnd":"17:00"}]}. Days are ISO Monday=1 to Sunday=7. All confirmed times are WIB. earliest/latest refer to start; latestEnd refers to when the student must leave. windows lists ALL currently available days when day-specific constraints are known. Use the latest learner-stated constraints, including corrections. Set anyTime only for explicitly flexible timing. Use needsReview only when an unresolved constraint genuinely affects the recommendation (e.g. unknown timezone, unresolved level); do not use it for representable multi-day availability.
  For a hard total budget in Indonesian rupiah set maximumTotal (an integer); for a latest or earliest allowed first class, use latestDate or earliestDate (YYYY-MM-DD in WIB). Never imply that an out-of-budget class matches.
@@ -205,6 +205,18 @@ export function previousTuitionReply(
   }).join('\n\n');
 }
 
+export function previousTuitionFollowUp(
+  previous:EnrollmentGuideAction|undefined, intent:Intent, learnerMessage:string, lang:EnrollmentGuideLanguage,
+){
+  const evidence=intent.quoteReferenceEvidence;
+  const referenceIds=evidence&&learnerMessage.includes(evidence)?intent.referenceIds:[];
+  const levels=[...new Set(previousTuition(previous).map(row=>row.level))];
+  const appointment=intent.detailFields.includes('appointment')
+    ?{kind:'appointment',level:intent.level??(levels.length===1?levels[0]:undefined),period:intent.period}
+    :undefined;
+  return {reply:previousTuitionReply(previous,referenceIds,lang),appointment};
+}
+
 export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuideLanguage){
   const t=(zh:string,en:string,id:string)=>enrollmentGuideText(lang,zh,en,id);
   const missingLevels=action.missingClassLevels?.join(lang==='zh'?'、':', ');
@@ -248,9 +260,9 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
       t(`平均每节约 ${amount(unit)}`,`about ${amount(unit)}/period on average`,`rata-rata sekitar ${amount(unit)}/jam pelajaran`);
     return `- ${name} · ${quantity} · ${actual}${standard} · ${perPeriod}`;
   }).join('\n');
-  const appointment=t('一对一由 UPER 顾问约课。打开下方入口，告诉我们你方便的日期和时间，再和顾问确认具体安排及购买节数。',
-    'To arrange private lessons, open the link below and share when you’re available. A UPER advisor will confirm the schedule and number of periods with you.',
-    'Untuk menjadwalkan kelas privat, buka tautan di bawah dan sampaikan waktu yang Anda inginkan. Tim UPER akan mengonfirmasi jadwal dan jumlah jam pelajaran bersama Anda.');
+  const appointment=t('一对一由 UPER 顾问约课，不能直接选固定班报名。打开下方入口，告诉我们你方便的日期和时间，再和顾问确认上课安排及购买节数。',
+    'Private lessons are arranged individually with a UPER advisor. Use the link below to share your availability and confirm the schedule and number of periods.',
+    'Kelas privat dijadwalkan secara individual bersama tim UPER. Buka tautan di bawah untuk menyampaikan waktu yang tersedia dan mengonfirmasi jadwal serta jumlah jam pelajaran.');
   const privateSeatCounts=action.question==='private_seat_counts'?t(
     '占席人数、实收人数和开班门槛均不公开。',
     'We don’t publish the number of seats held, the number of learners whose payments have been verified, or the minimum enrollment needed to confirm a class.',

@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {enrollmentClassComparison,enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation} from '../src/utils/enrollmentGuidance';
+import type {EnrollmentGuideAction} from '../src/utils/enrollmentGuidance';
 import type {PublicEnrollmentClass} from '../src/utils/enrollmentCatalog';
 
 const sample=(overrides:Partial<PublicEnrollmentClass>={}):PublicEnrollmentClass=>({
@@ -245,7 +246,7 @@ test('current questions are answered using verified facts, allowed actions and d
   assert.match(enrollmentReply({...classAction,question:'starting_point'},'zh'),/^如果你从零开始.*HSK 1.*打开一个班次.*每周时间/);
   const appointment={kind:'quote' as const,question:'appointment' as const,quotes:[{id:'private-a',level:'HSK 1',format:'one-on-one',periods:23,minutes:45,
     actual:350000,unitPriced:true}]};
-  assert.match(enrollmentReply(appointment,'zh'),/^一对一由 UPER 顾问约课。[\s\S]*每节 Rp 350,000/);
+  assert.match(enrollmentReply(appointment,'zh'),/^一对一由 UPER 顾问约课，不能直接选固定班报名。[\s\S]*每节 Rp 350,000/);
   assert.doesNotMatch(enrollmentReply({...appointment,kind:'appointment'},'zh'),/Rp/);
   assert.match(enrollmentGuideHref(appointment,'zh','ai_chat'),/^\/enrollment\/help\/one-on-one\?.*appointment=private-a/);
   const records={kind:'records' as const};
@@ -320,6 +321,33 @@ test('a follow-up about quoted amounts uses the previous tuition and maps each a
   assert.doesNotMatch(previousTuitionReply(quote,['private'],'zh'),/整班实付|Rp 2,760,000/);
   assert.match(previousTuitionReply({ ...quote, question:'period_unit' },[],'zh'),/^你指的是哪项报价/);
   assert.match(previousTuitionReply({...quote,question:'group_overview'},[],'zh'),/Rp 2,760,000 是整班实付总价，Rp 120,000 是每节 45 分钟的折合单价/);
+});
+
+test('a tuition follow-up keeps all prior options and carries a separate one-to-one booking request',async()=>{
+  const {previousTuitionFollowUp}=await import('../server/portal/chatEnrollment');
+  const previous:EnrollmentGuideAction={kind:'quote',quotes:[
+    {id:'standard',level:'HSK 1',format:'standard',periods:23,minutes:45,actual:920000,unitPriced:false},
+    {id:'small',level:'HSK 1',format:'small',periods:23,minutes:45,actual:2760000,unitPriced:false},
+    {id:'private',level:'HSK 1',format:'one-on-one',periods:23,minutes:45,actual:350000,unitPriced:true},
+  ]};
+  const query={kind:'quote',question:'quoted_price_unit',referenceIds:['standard','small','private']};
+  const intent=normalizeEnrollmentIntent({...query,fields:['appointment']})!;
+  assert.deepEqual(intent.referenceIds,query.referenceIds);
+  assert.deepEqual(normalizeEnrollmentIntent({...query,kind:'inspect',question:'apply'})!.referenceIds,['standard','small']);
+  const combined=previousTuitionFollowUp(previous,intent,'你刚才说的价格按什么算？一对一怎么约？','zh');
+  assert.match(combined.reply,/Rp 920,000[\s\S]*Rp 2,760,000[\s\S]*Rp 350,000[\s\S]*Rp 8,050,000/);
+  assert.equal(combined.appointment?.kind,'appointment');
+  assert.equal(combined.appointment?.level,'HSK 1');
+  const broad=normalizeEnrollmentIntent({...query,referenceIds:['standard'],quoteReferenceEvidence:'旧消息里的要求'})!;
+  const all=previousTuitionFollowUp(previous,broad,'这些报价按什么算？','zh');
+  assert.equal(all.reply,combined.reply);
+  assert.equal(all.appointment,undefined);
+  const narrow=normalizeEnrollmentIntent({...query,referenceIds:['private'],quoteReferenceEvidence:'只问一对一'})!;
+  const single=previousTuitionFollowUp(previous,narrow,'只问一对一，这两个金额怎么区分？','zh');
+  assert.match(single.reply,/Rp 350,000.*Rp 8,050,000/);
+  assert.doesNotMatch(single.reply,/Rp 920,000|Rp 2,760,000/);
+  const unknown=normalizeEnrollmentIntent({...query,referenceIds:['unknown'],quoteReferenceEvidence:'只问一对一'})!;
+  assert.match(previousTuitionFollowUp(previous,unknown,'只问一对一','zh').reply,/^你指的是哪项报价/);
 });
 
 test('navigation turns address the specific request while the enrollment state stays intact',async()=>{

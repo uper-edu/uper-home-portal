@@ -139,12 +139,17 @@ export function normalizeEnrollmentIntent(value:unknown){
   const earliestDate=date(data.earliestDate),latestDate=date(data.latestDate);
   const invalidLevel=(data.level!=null&&!pick(data.level,levels))||
     (Array.isArray(data.levels)&&data.levels.some(level=>!pick(level,levels)));
+  const question=pick(data.question,consultationQuestions) as ConsultationQuestion|undefined;
+  const referenceIds=Array.isArray(data.referenceIds)
+    ?[...new Set(data.referenceIds.filter((id):id is string=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(id)))]:[];
   return {
     kind,level:pick(data.level,levels),period:pick(data.period,periods),format:pick(data.format,quoteFormats),
     quoteLevels:pickMany(data.levels,levels),quoteFormats:pickMany(data.formats,quoteFormats),
     detailFields:pickMany(data.fields,kind==='quote'?['price','duration','appointment']:['price','duration','first','weekly','seats','materials','teacher','class_size','outcomes']),
-    question:pick(data.question,consultationQuestions) as ConsultationQuestion|undefined,
-    referenceIds:Array.isArray(data.referenceIds)?[...new Set(data.referenceIds.filter((id):id is string=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(id)))].slice(0,2):[],
+    question,
+    referenceIds:question==='quoted_price_unit'?referenceIds:referenceIds.slice(0,2),
+    quoteReferenceEvidence:question==='quoted_price_unit'&&typeof data.quoteReferenceEvidence==='string'
+      ?data.quoteReferenceEvidence.trim():undefined,
     maximumTotal,requestedPeriods,earliestDate,latestDate,maxRecommendations:positiveInteger(data.maxRecommendations,2),batchNumber:positiveInteger(data.batchNumber,1_000_000),
     invalidLevel,
     days,earliest,latest,latestEnd,windows:validWindows?windows:undefined,anyTime:data.anyTime===true,
