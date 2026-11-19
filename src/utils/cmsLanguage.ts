@@ -9,6 +9,7 @@ export const cmsIndonesian: Record<string, string> = {
 "Study Tours": "Tur Studi",
 
 "Saved; a newer version is displayed.": "Tersimpan; versi lebih baru ditampilkan.",
+"Review the saved date.": "Tanggal tersimpan perlu diperiksa.",
 "Saved and reloaded.": "Tersimpan dan dimuat ulang.",
 "No committed result found yet. The original request may still be running. Check again.": "Belum ditemukan hasil tersimpan. Permintaan awal mungkin masih berjalan. Periksa lagi.",
 "Result unavailable. Your draft is retained.": "Hasil belum tersedia. Draf tetap disimpan.",

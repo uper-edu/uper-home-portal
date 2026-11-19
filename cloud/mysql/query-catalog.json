@@ -3484,8 +3484,7 @@
   "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2": {
     "sql": "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
     "sources": [
-      "server/portal/assessments.ts",
-      "server/portal/chat.ts"
+      "server/portal/assessments.ts"
     ]
   },
   "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC LIMIT 20": {
@@ -3493,6 +3492,12 @@
     "sources": [
       "server/portal/assessments.ts",
       "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2": {
+    "sql": "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
+    "sources": [
+      "server/portal/chat.ts"
     ]
   },
   "SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE": {
@@ -3519,8 +3524,8 @@
       "server/portal/enrollmentCatalog.ts"
     ]
   },
-  "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
-    "sql": "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+  "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
+    "sql": "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
     "sources": [
       "server/portal/chat.ts"
     ]
@@ -4387,8 +4392,8 @@
       "server/portal/trustRoutes.ts"
     ]
   },
-  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON)) WHERE id=:p1": {
-    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON)) WHERE id=:p1",
+  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON)) WHERE id=:p1": {
+    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON)) WHERE id=:p1",
     "sources": [
       "server/portal/chat.ts"
     ]

@@ -1408,7 +1408,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       return <AdminDateField lang={lang} clearable
                         label={lang==='id'?'Tanggal hitung mundur / acara':t('Countdown Date / Event Date', '倒计时 / 举办日期')}
                         value={instant&&!invalid?instant.toISOString().slice(0,10):''}
-                        error={invalid?(lang==='id'?'Tanggal tersimpan perlu diperiksa.':t('Review the saved date.','原日期待核对。')):undefined}
+                        error={invalid?t('Review the saved date.','原日期待核对。'):undefined}
                         onChange={date=>setEditingItem({...editingItem,countdownDate:date?new Date(date+'T00:00:00Z').toISOString():''})}/>;
                     })()}
 
