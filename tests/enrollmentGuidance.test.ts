@@ -35,6 +35,24 @@ test('check every selected weekly day and fall back separately for full, missing
   assert.equal(matchEnrollmentGuidance(normalized({kind:'advisor'}),[sample()]).kind,'advisor');
 });
 
+test('limit recommendation count without weakening earlier availability, and never swap a referenced class',()=>{
+  const {constraints}=resolveConsultationRecommendation({
+    kind:'recommend',level:'HSK 1',period:'weekend',days:[6,7],latestEnd:'16:00',
+  },undefined,'');
+  const {value}=resolveConsultationRecommendation({kind:'recommend',maxRecommendations:1},constraints,'只推荐一个');
+  const first=sample();
+  const alternative=sample({id:'fixture-b',firstLesson:'2026-12-26T15:00'});
+  const tooLate=sample({id:'fixture-c',weeklySchedule:{days:[6,7],start:'15:00',startByDay:{6:'15:00',7:'15:30'},lessons:1}});
+  const action=matchEnrollmentGuidance(normalizeEnrollmentIntent(value)!,[first,alternative,tooLate]);
+  assert.deepEqual(action.rows?.map(row=>row.id),[first.id]);
+  const focus=matchEnrollmentGuidance(normalizeEnrollmentIntent({...value as object,referenceIds:[tooLate.id]})!,[first,alternative,tooLate]);
+  assert.equal(focus.kind,'demand');
+  assert.deepEqual(focus.scheduleConflict,{day:7,start:'15:30',end:'16:15'});
+  assert.equal(focus.rows,undefined);
+  const gone=matchEnrollmentGuidance(normalized({referenceIds:['withdrawn']}),[first]);
+  assert.equal(gone.referenceUnavailable,true);
+});
+
 test('preserve promotion and language, pass safe filters, and leave contact fields blank',()=>{
   const source=new URLSearchParams('p=sample&utm_source=ig&entry_point=linkhub&email=unwanted@example.invalid');
   const href=enrollmentGuideHref({kind:'demand',level:'HSK 1',period:'weekend',format:'standard'},'id','ai_chat',source);
@@ -171,6 +189,9 @@ test('current questions are answered using verified facts, allowed actions and d
   assert.match(enrollmentGuideHref(appointment,'zh','ai_chat'),/^\/enrollment\/help\/one-on-one\?.*appointment=private-a/);
   const records={kind:'records' as const};
   assert.match(enrollmentReply({...records,question:'cancel_unpaid'},'zh'),/^订单仍在付款期限内[\s\S]*自行取消/);
+  assert.match(enrollmentReply({...records,question:'avoid_duplicate_payment'},'zh'),/^不用再付.*另一个账户/);
+  assert.match(enrollmentReply({...records,question:'original_transfer_proof'},'zh'),/^请用原转账回单.*流水号[\s\S]*入口已关闭/);
+  assert.match(enrollmentReply({...records,question:'cancelled_transfer_payment_and_proof'},'en'),/^Do not pay again[\s\S]*original transfer receipt/);
   assert.match(enrollmentReply({...records,question:'proof_after_cancellation'},'zh'),/暂勿再次付款[\s\S]*如果订单仍有[\s\S]*如果入口已关闭/);
   assert.match(enrollmentReply({...records,question:'refund'},'zh'),/^退款须先获批/);
   assert.match(enrollmentGuideHref(records,'zh','ai_chat'),/^\/enrollment\/mine\?/);
@@ -241,6 +262,13 @@ test('public class answers use advertised size and give repeat cards only when t
   const rows=enrollmentGuideRows([sample({classSize:{usualMinimum:10,maximum:15},teacher:'安老师',learningOutcomes:'练习自我介绍'})]);
   const action={kind:'class' as const,inspection:true,rows,detailFields:['class_size','teacher','outcomes','seats']};
   assert.match(enrollmentReply(action,'zh'),/10–15 人.*上限 15 人.*安老师.*自我介绍.*查询时有余位/);
+  const question=normalizeEnrollmentIntent({kind:'inspect',question:'private_seat_counts'})?.question;
+  const counts={...action,question,detailFields:[]};
+  assert.match(enrollmentReply(counts,'zh'),/^占席人数、实收人数和开班门槛均不公开。[\s\S]*查询时有余位/);
+  assert.match(enrollmentReply(counts,'en'),/^We don’t publish[\s\S]*Seats available when checked/);
+  assert.match(enrollmentReply(counts,'id'),/tidak dipublikasikan[\s\S]*Tempat tersedia saat diperiksa/);
+  assert.match(enrollmentReply({...counts,rows:[{...rows[0],availability:'full'}]},'zh'),/均不公开[\s\S]*已满/);
+  assert.doesNotMatch(enrollmentReply({...action,detailFields:['seats']},'zh'),/均不公开/);
   assert.deepEqual(repeatedEnrollmentCards(action,[action]),['fixture-a']);
   const changed={...action,rows:[{...rows[0],availability:'full' as const}]};
   assert.deepEqual(repeatedEnrollmentCards(changed,[action]),[]);

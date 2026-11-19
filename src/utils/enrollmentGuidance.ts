@@ -5,8 +5,8 @@ export type EnrollmentGuideLanguage='zh'|'en'|'id';
 export function enrollmentReplyLanguage(value:unknown,fallback:EnrollmentGuideLanguage):EnrollmentGuideLanguage{
   return value==='zh'||value==='en'||value==='id'?value:fallback;
 }
-const consultationQuestions=['starting_point','apply','reserve','period_unit','group_overview','appointment','view_without_contact',
-  'link_only','records_location','cancel_unpaid','expired_unpaid','proof_after_cancellation','payment_verification','refund'] as const;
+const consultationQuestions=['starting_point','apply','reserve','period_unit','group_overview','private_seat_counts','appointment','view_without_contact',
+  'link_only','records_location','cancel_unpaid','expired_unpaid','proof_after_cancellation','avoid_duplicate_payment','original_transfer_proof','cancelled_transfer_payment_and_proof','payment_verification','refund'] as const;
 type ConsultationQuestion=typeof consultationQuestions[number];
 const levels:readonly string[]=enrollmentLevels;
 const periods:readonly string[]=enrollmentPeriods;
@@ -143,7 +143,7 @@ export function normalizeEnrollmentIntent(value:unknown){
     detailFields:pickMany(data.fields,kind==='quote'?['price','duration','appointment']:['price','duration','first','weekly','seats','materials','teacher','class_size','outcomes']),
     question:pick(data.question,consultationQuestions) as ConsultationQuestion|undefined,
     referenceIds:Array.isArray(data.referenceIds)?[...new Set(data.referenceIds.filter((id):id is string=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(id)))].slice(0,2):[],
-    maximumTotal,requestedPeriods,earliestDate,latestDate,batchNumber:positiveInteger(data.batchNumber,1_000_000),
+    maximumTotal,requestedPeriods,earliestDate,latestDate,maxRecommendations:positiveInteger(data.maxRecommendations,2),batchNumber:positiveInteger(data.batchNumber,1_000_000),
     invalidLevel,
     days,earliest,latest,latestEnd,windows:validWindows?windows:undefined,anyTime:data.anyTime===true,
     needsReview:data.needsReview===true||invalidSchedule||
@@ -216,7 +216,7 @@ export function resolveConsultationRecommendation(value:unknown,previous:Consult
     ?{...Object.fromEntries(scheduleKeys.map(key=>[key,previous[key]])) as ConsultationConstraints,formats:previous.formats}
     :current;
   const unknownLevel=!constraints.level&&candidate.invalidLevel&&(!previous||changed)&&'level' in value?value.level:undefined;
-  return {value:{...value,...constraints,level:constraints.level??unknownLevel},constraints};
+  return {value:{...value,...constraints,maxRecommendations:candidate.maxRecommendations,level:constraints.level??unknownLevel},constraints};
 }
 
 export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEnrollmentClass[]):EnrollmentGuideAction{
@@ -238,13 +238,14 @@ export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEn
   const matching=verifiable.filter(row=>!conflictFor(row))
     .sort((a,b)=>a.firstLesson.localeCompare(b.firstLesson)||a.id.localeCompare(b.id));
   const requested=intent.referenceIds.flatMap(id=>matching.filter(row=>row.id===id));
-  const options=requested.length?requested:matching;
+  const options=intent.referenceIds.length?requested:matching;
   const available=options.filter(row=>row.availability!=='full');
   const requestedConflict=verifiable.filter(row=>intent.referenceIds.includes(row.id)).map(conflictFor).find(Boolean);
   if(available.length)return {kind:'class',...filters,question:intent.question,maximumTotal,detailFields:intent.detailFields,
-    rows:enrollmentGuideRows(available),scheduleConflict:requestedConflict};
-  if(matching.length)return {kind:'waitlist',...filters,question:intent.question,detailFields:intent.detailFields,
-    rows:enrollmentGuideRows(options),scheduleConflict:requestedConflict};
+    rows:enrollmentGuideRows(available,intent.maxRecommendations),scheduleConflict:requestedConflict};
+  if(options.length)return {kind:'waitlist',...filters,question:intent.question,detailFields:intent.detailFields,
+    rows:enrollmentGuideRows(options,intent.maxRecommendations),scheduleConflict:requestedConflict};
+  if(intent.referenceIds.length&&!requestedConflict)return {kind:'unavailable',...filters,referenceUnavailable:true,question:intent.question};
   if(candidates.length!==verifiable.length)return {kind:'unavailable',...filters,question:intent.question};
   const referenced=verifiable.find(row=>intent.referenceIds.includes(row.id));
   const commonConflict=verifiable.length?conflictFor(verifiable[0]):undefined;
