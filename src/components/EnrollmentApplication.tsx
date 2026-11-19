@@ -1,3 +1,4 @@
+import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import { enrollmentClassTitle } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof } from '../utils/enrollmentOrderStatus';
@@ -473,7 +474,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
             {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}
           </Link>}
         </div>
-      </form> : <EnrollmentDemandForm language={language} busy={busy} onSave={savePreferences}
+      </form> : <EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params)} busy={busy} onSave={savePreferences}
         verification={{email:emailField,code:codeField}} awaitingCode={awaitingCode}/>}
     </>;
   }

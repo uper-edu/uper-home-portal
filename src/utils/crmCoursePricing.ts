@@ -17,5 +17,8 @@ export function publishedCourseBook(rows:any[]){
  rows=rows.filter(r=>!(r.value.teaching&&r.value.price===0));
  const activated=rows.some(r=>r.value.active||(r.value.history||[]).some((h:any)=>h.before?.active||h.after?.active));
  if(!activated)return undefined;
- return {currency:'IDR',courses:rows.filter(r=>r.value.active).map(r=>({id:r.value.name,sessions:r.value.sessions,total:r.value.price}))};
+ return {currency:'IDR',courses:rows.filter(r=>r.value.active).map(({value})=>({
+  id:value.name,sessions:value.sessions,total:value.price,
+  ...(value.teaching?.level?{enrollmentLevel:value.teaching.level}:{}),
+ }))};
 }

@@ -34,6 +34,36 @@ function record(row: { id: string; revision: number; state: EnrollmentClassAdmin
   return { ...row.data, id: row.id, revision: row.revision, state: row.state };
 }
 
+export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeof tx>[0]>[0]) {
+  return (await c.query(`
+      SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
+        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
+          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
+          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats
+      FROM enrollment_classes e
+      JOIN crm_courses c ON c.id=e.course_id
+      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
+      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+        AND JSON_EXTRACT(c.value,'$.active')=true
+      ORDER BY e.first_lesson_at,e.id
+    `)).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number }) => {
+      const available = row.data.capacity - Number(row.seats);
+      const availability = available <= 0 ? 'full' : available <= 3 ? 'limited' : 'available';
+      return { ...publicEnrollmentClass(record(row)), opened: Number(row.opened) === 1, availability };
+    });
+}
+
+export async function readPublicEnrollmentAppointments(c: Parameters<Parameters<typeof tx>[0]>[0]) {
+  const templates=await listEnrollmentTemplates(c);
+  const courses=(await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows;
+  return templates.flatMap(template=>{
+    const course=courses.find(row=>row.id===template.courseId)?.value;
+    if(template.format!=='one-on-one'||!template.saleUnitPrice||!template.standardUnitPrice||!course?.active||!course.teaching)return [];
+    return [{id:template.id,level:course.teaching.level,course:course.name,teacherType:template.teacherType,
+      lessons:course.sessions,minutes:course.teaching.minutes,price:template.saleUnitPrice,standardPrice:template.standardUnitPrice}];
+  });
+}
+
 export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
   wrap: (fn: (q: Request, r: Response) => Promise<unknown>) => (q: Request, r: Response) => void;
   staff: (q: Request, permission: string) => Promise<{ id: string }>;
@@ -179,32 +209,8 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     r.set('Cache-Control', 'no-store').json(result);
   }));
   app.get('/api/enrollment/classes', wrap(async (_q, r) => {
-    const classes = await tx(async c => (await c.query(`
-      SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
-        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
-          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
-          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats
-      FROM enrollment_classes e
-      JOIN crm_courses c ON c.id=e.course_id
-      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
-      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
-        AND JSON_EXTRACT(c.value,'$.active')=true
-      ORDER BY e.first_lesson_at,e.id
-    `)).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number }) => {
-      const available = row.data.capacity - Number(row.seats);
-      const availability = available <= 0 ? 'full' : available <= 3 ? 'limited' : 'available';
-      return { ...publicEnrollmentClass(record(row)), opened: Number(row.opened) === 1, availability };
-    }));
-    const appointments=await tx(async c=>{
-      const templates=await listEnrollmentTemplates(c);
-      const courses=(await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows;
-      return templates.flatMap(template=>{
-        const course=courses.find((row:any)=>row.id===template.courseId)?.value;
-        if(template.format!=='one-on-one'||!template.saleUnitPrice||!template.standardUnitPrice||!course?.active||!course.teaching)return [];
-        return [{id:template.id,level:course.teaching.level,course:course.name,teacherType:template.teacherType,
-          lessons:course.sessions,minutes:course.teaching.minutes,price:template.saleUnitPrice,standardPrice:template.standardUnitPrice}];
-      });
-    });
+    const classes = await tx(readPublicEnrollmentClasses);
+    const appointments=await tx(readPublicEnrollmentAppointments);
     r.set('Cache-Control', 'no-store').json({ classes,appointments });
   }));
 }

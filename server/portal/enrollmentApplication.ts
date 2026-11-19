@@ -100,6 +100,15 @@ function proofContent(raw: unknown, mime: unknown) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+export async function enrollmentReadiness(c:Client,explain=false,policy=enrollmentServicePolicy()) {
+    const reasons = policy.acceptingNew ? [] : [policy.servicing ? 'paused' : 'service_disabled'];
+    if (!policy.simulation && (policy.acceptingNew || explain)) {
+      if (!hasConfiguredEnrollmentBank(await readEnrollmentBank(c))) reasons.push('bank_required');
+      if (!await enrollmentSmtpReady(c)) reasons.push('mail_required');
+    }
+    return {accepting:reasons.length===0,servicing:policy.servicing,reasons};
+  }
+
 export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   wrap: (fn: Route) => (q: Request, r: Response) => void;
   staff: (q: Request, permission: string) => Promise<Employee>;
@@ -111,24 +120,16 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
 
-  async function readiness(c:Client,explain=false) {
-    const reasons = policy.acceptingNew ? [] : [policy.servicing ? 'paused' : 'service_disabled'];
-    if (!policy.simulation && (policy.acceptingNew || explain)) {
-      if (!hasConfiguredEnrollmentBank(await readEnrollmentBank(c))) reasons.push('bank_required');
-      if (!await enrollmentSmtpReady(c)) reasons.push('mail_required');
-    }
-    return {accepting:reasons.length===0,servicing:policy.servicing,reasons};
-  }
   async function requireNewEnrollment(c:Client) {
-    if (!(await readiness(c)).accepting) invalid('enrollment_intake_paused',503);
+    if (!(await enrollmentReadiness(c,false,policy)).accepting) invalid('enrollment_intake_paused',503);
   }
   app.get(base + '/availability', wrap(async (_q,r) => {
-    const accepting=policy.acceptingNew&&await enrollTx(async c=>(await readiness(c)).accepting).catch(()=>false);
+    const accepting=policy.acceptingNew&&await enrollTx(async c=>(await enrollmentReadiness(c,false,policy)).accepting).catch(()=>false);
     r.set('Cache-Control','no-store').json({accepting,servicing:policy.servicing});
   }));
   app.get('/api/crm/enrollment/readiness', wrap(async (q,r) => {
     await staff(q,'crm.operations.manage');
-    r.set('Cache-Control','no-store').json(await enrollTx(c=>readiness(c,true)));
+    r.set('Cache-Control','no-store').json(await enrollTx(c=>enrollmentReadiness(c,true,policy)));
   }));
   if (!policy.servicing) return;
   mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow});

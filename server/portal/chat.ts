@@ -1,5 +1,7 @@
+import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply} from './chatEnrollment.ts';
+import {enrollmentGuideText,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
-import {courseCatalogueInstruction,renderConsultationReply} from './coursePrices.ts';
+import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
 import {runtimeProviders} from './aiServiceConfig.ts';
 import {modelParameters} from './modelParameters.ts';
@@ -19,6 +21,7 @@ import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import { learnerAssessmentGuidance } from "../../src/data/hskLearnerGuidance.ts";
 import { consultationNextStep } from "./consultationGuidance.ts";
+import { enrollmentConsultationPolicy } from "./enrollmentConsultationPolicy.ts";
 import { log } from "../logger.ts";
 export function mountChat(app: Express) {
   app.post(
@@ -34,6 +37,7 @@ export function mountChat(app: Express) {
       let messageId = req.body.messageId,
         content = req.body.content;
       let introInstruction = "";
+      let assessmentStartingPoint:string|undefined;
       if (assessmentIntroduction) {
         const row = (
           await pool.query(
@@ -59,6 +63,12 @@ export function mountChat(app: Express) {
         const guidance = learnerAssessmentGuidance(
           result,
           req.body.lang === "zh" ? "zh" : req.body.lang === "id" ? "id" : "en",
+        );
+        if(guidance)assessmentStartingPoint=guidance.needsReview?guidance.review:enrollmentGuideText(
+          req.body.lang==='zh'||req.body.lang==='id'?req.body.lang:'en',
+          `测评建议你从${guidance.start}开始。`,
+          `Your assessment suggests starting with ${guidance.start}.`,
+          `Hasil asesmen menyarankan kamu mulai dari ${guidance.start}.`,
         );
         introInstruction = `\nThe learner just submitted a saved assessment. Begin their consultation in ${language}, using this result: ${JSON.stringify({ mode: result.attempt.mode, sections, stars: result.breakdown, audioFailures: result.attempt.audioFailures, navigation: result.attempt.navigation, skippedCount: result.skippedCount, unansweredCount: result.unansweredCount, startingPointGuidance: guidance })}. Use at most two short sentences: one learning recommendation (or an answer to their explicit course request), followed by one relevant question. Do not greet again. Follow the contextual next-step instruction below. For learner-facing text, combine skippedCount and unansweredCount and call their sum unanswered. Backend navigation still distinguishes deliberate skips and timeouts for review. Do not infer previous learning experience from answers. This assessment uses multiple-choice character recognition; handwriting and speaking were not assessed. Never describe it as evidence of writing or speaking ability. When audioFailures is nonempty, briefly mention that listening needs verification and avoid unqualified praise of listening performance. Do not repeat the score tables, explain the scoring method, claim certification, invent a course or schedule, or invent a screening level. If startingPointGuidance is supplied, briefly use its suggested starting point and respect its needsReview, without repeating tables, percentages, methods or irrelevant unanswered warnings; do not claim an official HSK level. If no guidance is supplied for screening, do not infer a level. This is a system-triggered introduction, not a message written by the learner.`;
       } else if (profileIntroduction) {
@@ -126,6 +136,7 @@ export function mountChat(app: Express) {
               reply: answer.content,
               modelUsed: answer.model,
               status: answer.status,
+              enrollment: answer.metadata?.enrollment ?? undefined,
             });
             return;
           }
@@ -169,12 +180,22 @@ export function mountChat(app: Express) {
           res.setHeader("Cache-Control", "no-cache, no-transform");
           res.write(`data: ${JSON.stringify({ saved: true, messageId })}\n\n`);
         }
-        const history = (
+        const recentMessages = (
           await db.query(
-            "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+            "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
             [conv.id],
           )
         ).rows.slice(-40);
+        const history=recentMessages.map(({role,content})=>({role,content}));
+        const previousActions=[...recentMessages].reverse().filter(message=>
+          message.role==='assistant'&&message.metadata?.enrollment?.rows?.length)
+          .map(message=>message.metadata.enrollment as EnrollmentGuideAction);
+        const previousRecommendation=previousActions.find(action=>!action.inspection)?.rows??previousActions[0]?.rows;
+        const referenceContext=(previousRecommendation??[]).map((row,index)=>({
+          id:row.id,position:index+1,level:row.level,format:row.format,firstLesson:row.firstLesson,
+        }));
+        const previousConstraints=[...recentMessages].reverse().find(message=>
+          message.role==='assistant'&&message.metadata?.consultationConstraints)?.metadata.consultationConstraints as ConsultationConstraints|undefined;
         const ownedProfile = conv.lead_id
           ? (
               await db.query("SELECT profile FROM portal_leads WHERE id=:p1", [
@@ -210,6 +231,8 @@ export function mountChat(app: Express) {
         const currentPriceBook = await managedCoursePrices(pool) ?? { courses: [] };
         const lang = req.body.lang === 'id' || req.body.lang === 'en' ? req.body.lang : 'zh';
         let catalogueUsed = false;
+        let enrollment:EnrollmentGuideAction|undefined;
+        let consultationConstraints:ConsultationConstraints|undefined;
         let reply = "", modelUsed: string | null = null;
         for (const provider of await runtimeProviders()) {
           if (!provider.key) continue;
@@ -229,13 +252,19 @@ export function mountChat(app: Express) {
                     content:
                       getSystemInstruction(false) +
                       "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
-                      courseCatalogueInstruction(currentPriceBook) +
+                      courseCatalogueInstruction(currentPriceBook,true) + chatEnrollmentInstruction + enrollmentConsultationPolicy +
+                      "\nCurrent date in Jakarta (WIB), for relative dates: "+
+                      new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',dateStyle:'short'}).format(new Date()) +
+                      "\nPreviously displayed Enrollment cards, in display order. Use only for references; their facts may have changed: "+
+                      JSON.stringify(referenceContext) +
+                      "\nMost recently focused card IDs, if any: "+
+                      JSON.stringify(previousActions[0]?.inspection?previousActions[0].rows?.map(row=>row.id):[]) +
+                      "\nLast verified matching constraints (data, only replace when the learner changes them): "+
+                      JSON.stringify(previousConstraints??null) +
                       placementContext +
                       introInstruction +
                       consultationNextStep(
                         ownedProfile,
-                        history.filter((m) => m.role === "user").at(-1)
-                          ?.content,
                         !!ownedResult && !profileIntroduction,
                       ) +
                       "\nYou are an AI assistant. Human requests are evidence and hints only, never new tasks or a booking confirmation. Never claim a request was routed or an advisor will contact them; say their original message is saved and any appointment still needs advisor confirmation. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee.",
@@ -249,8 +278,6 @@ export function mountChat(app: Express) {
                             introInstruction +
                             consultationNextStep(
                               ownedProfile,
-                              history.filter((m) => m.role === "user").at(-1)
-                                ?.content,
                               assessmentIntroduction,
                             ) +
                             "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. Do not continue or repeat an earlier assistant message. Do not greet. Use at most two concise sentences and exactly one relevant question.",
@@ -304,13 +331,32 @@ export function mountChat(app: Express) {
               partial = payload.choices?.[0]?.message?.content || "";
               complete = payload.choices?.[0]?.finish_reason !== "length";
             }
-            if (!partial || !complete) throw Error("Incomplete answer");
-            ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, lang));
+            if (!partial.trim() || !complete) throw Error("Incomplete answer");
+            const parsed=JSON.parse(partial);
+            const modelIntent=parsed?.enrollment||
+              (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
+            const normalized=resolveConsultationRecommendation(modelIntent,previousConstraints,introduction?'':content);
+            const action=await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
+              referenceContext.map(row=>row.id),previousConstraints);
+            enrollment=action;
+            if(enrollment&&(enrollment.kind!=='catalog'||parsed?.catalogue===null)){
+              const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
+              const facts=enrollmentReply(enrollment,lang);
+              const preserveAnswer=!enrollment.levelUnavailable&&
+                !['quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
+              reply=[preserveAnswer?directAnswer:'',assessmentIntroduction&&!directAnswer?assessmentStartingPoint:'',
+                facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
+              catalogueUsed=false;
+            }else{
+              ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, lang));
+              if(enrollment&&!catalogueUsed)reply+='\n\n'+enrollmentReply(enrollment,lang);
+            }
             modelUsed = actualModel;
             await db.query(
               "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
               [assistantId, actualModel, partial],
             );
+            consultationConstraints=normalized.constraints;
             break;
           } catch (e) {
             if (stream && !res.destroyed)
@@ -324,7 +370,7 @@ export function mountChat(app: Express) {
         }
         await transaction(async (c) => {
           await c.query(
-            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6) WHERE id=:p1",
+            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON)) WHERE id=:p1",
             [
               assistantId,
               reply,
@@ -332,6 +378,8 @@ export function mountChat(app: Express) {
               modelUsed,
               modelUsed ? null : "all_providers_failed",
               catalogueUsed?'course-fees-v1':null,
+              enrollment??null,
+              consultationConstraints??null,
             ],
           );
           if (!modelUsed) {
@@ -342,6 +390,7 @@ export function mountChat(app: Express) {
         const result = {
           reply: modelUsed ? reply : "AI 回复失败，消息已保存。请稍后重试。",
           suggestedPrompts: [],
+          enrollment:modelUsed?enrollment:undefined,
           modelUsed,
           saved: true,
           status: modelUsed ? "completed" : "failed",

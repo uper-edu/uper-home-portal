@@ -34,15 +34,15 @@ export const waitlistStates:Record<string,Copy>={
   closed:['候补已结束','Waitlist closed','Daftar tunggu ditutup'],
 };
 
-export function EnrollmentDemandForm({ language, initial, onSave, busy, verification, awaitingCode }: {
-  language:InterestLanguage; initial?:DemandItem;
+export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy, verification, awaitingCode }: {
+  language:InterestLanguage; initial?:DemandItem; prefill?:DemandCriteria;
   onSave:(record:{id:string;revision:number;criteria:DemandCriteria;name?:string})=>void;
   busy:boolean; verification?:{email:ReactNode; code:ReactNode}; awaitingCode?:boolean;
 }) {
   const t=(text:Copy)=>interestText(language,text);
   const [id]=useState(initial?.id||crypto.randomUUID());
   const [name,setName]=useState('');
-  const [criteria,setCriteria]=useState<DemandCriteria>(initial?.criteria ?? {level:'unsure',period:'any',format:'any',notes:'',phone:''});
+  const [criteria,setCriteria]=useState<DemandCriteria>(initial?.criteria ?? prefill ?? {level:'unsure',period:'any',format:'any',notes:'',phone:''});
   const phoneField = useEnrollmentPhoneField(language,criteria.phone);
   const notesRequired=[criteria.level,criteria.period,criteria.format].includes('other');
   const [invalid,setInvalid]=useState(false);

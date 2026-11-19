@@ -43,3 +43,16 @@ test('percentage and absolute allowance both apply; zero discount is explicit an
 test('reject negative, exponent, over-limit, double-field and free-by-discount inputs; free published course remains explicit',()=>{for(const [mode,v]of [['percent','-1'],['percent','1e2'],['percent','101'],['amount','1.5'],['amount','100001'],['other','0']])assert.throws(()=>courseDiscount(course,mode,v));assert.throws(()=>courseDiscount({...course,maxDiscountBps:10000,maxDiscountAmount:null},'percent','100'));assert.equal(courseDiscount({...course,price:0},'none','').finalAmount,0);});
 test('enrollment requires a versioned course and explicit final total confirmation',()=>{assert.equal(enrollmentQuoteError({}),'course_required');assert.equal(enrollmentQuoteError({courseId:'c',courseRevision:1}),'course_total_confirmation_required');assert.equal(enrollmentQuoteError({courseId:'c',courseRevision:1,confirmed:true}),'');});
 test('unpublished drafts preserve reference consultation; publishing activates managed prices and retirement never revives the old price',async()=>{const {publishedCourseBook}=await import('../src/utils/crmCoursePricing');const row={value:{name:'HSK 2',price:2400000,sessions:22,active:false,history:[] as any[]}};assert.equal(publishedCourseBook([row]),undefined);row.value.active=true;assert.equal(publishedCourseBook([row])!.courses[0].total,2400000);row.value.active=false;row.value.history=[{before:{active:true},after:{active:false}}];assert.deepEqual(publishedCourseBook([row])!.courses,[]);});
+
+test('legacy catalogue selections cannot expose standard course totals as Enrollment tuition',async()=>{
+  const {managedEnrollmentCatalogueSelection,courseCatalogueInstruction}=await import('../server/portal/coursePrices');
+  const managed={courses:[
+    {id:'HSK 1 · 新概念汉语 · 23 × 45 min',sessions:23,total:1150000,enrollmentLevel:'HSK 1'},
+    {id:'Other programme',sessions:20,total:1000000},
+  ]};
+  for(const courses of ['all',['HSK 1'],[managed.courses[0].id]]){
+    assert.deepEqual(managedEnrollmentCatalogueSelection({courses,detail:'price'},managed),{kind:'quote',levels:['HSK 1']});
+  }
+  assert.equal(managedEnrollmentCatalogueSelection({courses:['Other programme'],detail:'price'},managed),undefined);
+  assert.doesNotMatch(courseCatalogueInstruction(managed,true),/新概念汉语/);
+});

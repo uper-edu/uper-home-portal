@@ -4,7 +4,7 @@ import {RegistrationSaveError,registrationSaveText,hasPendingRegistration,pendin
 import {visitorScope} from '../services/visitorScope';
 import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
 import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {canonicalCampaignId} from '../utils/organicCampaign';
 import { 
@@ -38,14 +38,20 @@ interface GFormOnboardingModalProps {
   onComplete: (profile: LeadProfile, lang: 'en' | 'id' | 'zh',options?:{queryOnly?:boolean;retryOriginal?:boolean}) => void | Promise<void>;
   isOpen: boolean;
   initialLang?: 'en' | 'id' | 'zh';
+  onConsultFirst?: (lang: 'en' | 'id' | 'zh') => void;
 }
 
 export default function GFormOnboardingModal({ 
   onComplete, 
   isOpen,
-  initialLang = 'en'
+  initialLang = 'en',
+  onConsultFirst,
 }: GFormOnboardingModalProps) {
   const [lang, setLang] = useState<'en' | 'id' | 'zh'>(initialLang);
+  const titleId = useId();
+  useEffect(()=>{
+    if(isOpen)setLang(initialLang);
+  },[isOpen,initialLang]);
 
   // Extract URL parameters automatically
   const [urlParams, setUrlParams] = useState<{
@@ -339,6 +345,9 @@ export default function GFormOnboardingModal({
   return (
     <div translate="no" lang={lang === 'zh' ? 'zh-CN' : lang} className="notranslate fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
       <motion.div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto"
@@ -401,7 +410,7 @@ export default function GFormOnboardingModal({
             </div>
           )}
 
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+          <h2 id={titleId} className="text-xl sm:text-2xl font-bold tracking-tight text-white">
             <span>{lang === 'zh' ? (step === 1 ? '个人基本信息登记' : '学习目标与当前中文基础') : lang === 'id' ? (step === 1 ? 'Informasi Pribadi & Kontak' : 'Tujuan Belajar & Tingkat Bahasa') : (step === 1 ? 'Personal Information' : 'Learning Goals & Mandarin Level')}</span>
           </h2>
 
@@ -416,6 +425,10 @@ export default function GFormOnboardingModal({
               ? '填写基本信息以获取个性化学习方案及专属 HSK 备考大纲。' 
               : 'AI 顾问将根据您的实际需求定制班级排期，并在需要时启动摸底测验。')}
           </p>
+          {onConsultFirst&&<button type="button" disabled={submitting||saveUnknown} onClick={()=>onConsultFirst(lang)}
+            className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-primary-100 underline underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-200 disabled:opacity-50">
+            {lang==='zh'?'先咨询':lang==='id'?'Konsultasi dulu':'Chat first'}
+          </button>}
 
           {/* Progress Bar */}
           <div className="w-full bg-slate-700/50 h-1.5 rounded-full mt-4 overflow-hidden">

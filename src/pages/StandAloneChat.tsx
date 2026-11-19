@@ -1,7 +1,9 @@
+import {ChatEnrollmentGuide} from '../components/ChatEnrollmentGuide';
+import type {EnrollmentGuideAction} from '../utils/enrollmentGuidance';
 import {lookupPromotion} from '../utils/promotionLookup';
 import {trackEvent} from '../utils/analytics';
 import {chatLanguage} from '../utils/chatLanguage';
-import {visitorScope} from '../services/visitorScope';
+import {visitorKey,visitorScope} from '../services/visitorScope';
 import {PageMetadata} from '../components/PageMetadata';
 import { safeHskResult } from "../data/hskReportHistory";
 import {draft,deliveryText,type Delivery} from "../services/chatDelivery";
@@ -41,6 +43,7 @@ import {
 } from '../services/studentProfileStorage';
 
 interface ChatMessage {
+  enrollment?:EnrollmentGuideAction;
   delivery?: Delivery;
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -53,6 +56,12 @@ interface ChatMessage {
   assessmentData?: HskResult & { whatsapp?: string };
 }
 
+const consultationChoiceKey=()=>visitorKey('uper_standalone_chat_consult_first');
+function choseConsultationFirst(){
+  try{return sessionStorage.getItem(consultationChoiceKey())==='1';}
+  catch{return false;}
+}
+
 export default function StandAloneChat() {
   const [initialContext] = useState(getStudentContext);
   const [profile, setProfile] = useState<LeadProfile | null>(() => {
@@ -61,7 +70,7 @@ export default function StandAloneChat() {
   });
   const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(() => {
     const ctx = getStudentContext();
-    return !ctx?.leadProfile;
+    return !ctx?.leadProfile&&!choseConsultationFirst();
   });
   const [isTakingAssessment, setIsTakingAssessment] = useState(() => getChatAssessmentStatus(initialContext) === 'pending');
   useEffect(() => {
@@ -122,6 +131,13 @@ export default function StandAloneChat() {
     saveStudentContext({ preferredLanguage: language });
   };
 
+  const consultFirst=(language:'en'|'id'|'zh')=>{
+    try{sessionStorage.setItem(consultationChoiceKey(),'1');}catch{/* The choice still applies until this page reloads. */}
+    setShowOnboardingModal(false);
+    if(language!==lang)changeLanguage(language);
+    requestAnimationFrame(()=>inputRef.current?.focus());
+  };
+
   const handleAssessmentCancel = () => {
     trackEvent('assessment_exit',{reason:readHskDraft()?'paused':'skipped'});
     setIsTakingAssessment(false);
@@ -153,7 +169,7 @@ export default function StandAloneChat() {
     const unsubscribe = subscribeStudentContext((ctx) => {
       setProfile(ctx?.leadProfile || null);
       if(ctx?.preferredLanguage)setLang(ctx.preferredLanguage);
-      setShowOnboardingModal(!ctx?.leadProfile);
+      if(ctx?.leadProfile)setShowOnboardingModal(false);
     });
     return unsubscribe;
   }, []);
@@ -340,7 +356,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
     try{
       const res=await assessmentConsultation(attemptId,lang);
       const response=await finishChat(res,'standalone_chat','hsk-intro-'+attemptId,e=>{if(e.reset)reply='';if(e.chunk)reply+=e.chunk;setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:reply}:m));});
-      setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply}:m));
+      setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply,enrollment:response.enrollment}:m));
     }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setConsultationError(result);}
     finally{consultationRunning.current.delete(attemptId);setIsTyping(false);}
   };
@@ -353,7 +369,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
     try{
       const res=await profileConsultation(lang);
       const response=await finishChat(res,'standalone_chat','profile-intro',e=>{if(e.reset)reply='';if(e.chunk)reply+=e.chunk;setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:reply}:m));});
-      setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply}:m));
+      setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply,enrollment:response.enrollment}:m));
     }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setProfileConsultationError(true);}
     finally{consultationRunning.current.delete(botId);setIsTyping(false);}
   };
@@ -382,7 +398,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply && !e.chunk)reply=e.reply;
         setMessages(prev=>prev.map(m=>m.id===userMessage.id&&e.saved?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:reply}:m));
       });
-      setMessages(prev=>prev.map(m=>m.id===userMessage.id?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:result.reply,suggestedPrompts:result.suggestedPrompts}:m));
+      setMessages(prev=>prev.map(m=>m.id===userMessage.id?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:result.reply,enrollment:result.enrollment,suggestedPrompts:result.suggestedPrompts}:m));
     }catch(e){
       const delivery=draft('standalone_chat',userMessage.id)?.delivery || 'unknown';
       setMessages(prev=>prev.filter(m=>m.id!==botMessageId).map(m=>m.id===userMessage.id?{...m,delivery}:m));
@@ -409,10 +425,11 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         isOpen={showOnboardingModal}
         onComplete={handleOnboardingComplete}
         initialLang={lang}
+        onConsultFirst={consultFirst}
       />
 
       {/* Standalone Header */}
-      <header className={`bg-slate-900 border-b border-slate-800 text-white px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0 ${isTakingAssessment ? 'py-2 gap-2' : 'py-3 flex-col gap-3 sm:flex-row'}`}>
+      <header inert={showOnboardingModal} className={`bg-slate-900 border-b border-slate-800 text-white px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0 ${isTakingAssessment ? 'py-2 gap-2' : 'py-3 flex-col gap-3 sm:flex-row'}`}>
         {isTakingAssessment ? <span className="text-sm font-semibold min-w-0">{chooseText(lang,'HSK 分班参考测评','HSK placement assessment','Tes penempatan HSK')}</span> : (
         <div className="flex items-center gap-3 min-w-0">
           <Link
@@ -446,6 +463,10 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
         )}
         {/* Right Action: Voluntary HSK Test, Language Switcher & WhatsApp Link */}
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {!profile&&!isTakingAssessment&&<button type="button" onClick={()=>setShowOnboardingModal(true)}
+            className="min-h-11 rounded-xl border border-slate-600 px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-300">
+            {chooseText(lang,'填写学习资料','Add learning profile','Isi profil belajar')}
+          </button>}
           {profile && <button type="button" disabled={switchingPerson||isTyping} onClick={()=>void switchPerson()} className="text-xs text-slate-200 underline underline-offset-2 min-h-11 disabled:opacity-50">{switchingPerson?chooseText(lang,'正在切换…','Switching…','Mengganti…'):chooseText(lang,'切换使用者','Switch user','Ganti pengguna')}</button>}
           {/* Voluntary Assessment Quick Launcher Button */}
           {!isTakingAssessment && (
@@ -513,7 +534,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
       {switchConfirm&&<div role="dialog" aria-modal="true" aria-label={chooseText(lang,'切换使用者','Switch user','Ganti pengguna')} onKeyDown={e=>{if(e.key==='Escape'&&!switchingPerson)setSwitchConfirm(false);if(e.key==='Tab'){const b=e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');if(e.shiftKey&&document.activeElement===b[0]){e.preventDefault();b[b.length-1]?.focus();}else if(!e.shiftKey&&document.activeElement===b[b.length-1]){e.preventDefault();b[0]?.focus();}}}} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"><div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md space-y-4"><h2 className="text-lg font-semibold">{chooseText(lang,'切换使用者','Switch user','Ganti pengguna')}</h2><p>{chooseText(lang,'下一位需要重新填写个人资料。当前使用者已保存的记录会保留；未提交的内容不会转给下一位。','The next person must enter their details. Saved records are kept; unsent content is not transferred.','Pengguna berikutnya perlu mengisi data pribadi. Catatan tersimpan tetap ada; isian yang belum dikirim tidak diteruskan.')}</p><button autoFocus disabled={switchingPerson} className="min-h-11 px-4" onClick={()=>setSwitchConfirm(false)}>{chooseText(lang,'取消','Cancel','Batal')}</button><button disabled={switchingPerson} className="min-h-11 px-4 underline" onClick={()=>void performPersonSwitch()}>{switchingPerson?chooseText(lang,'正在切换…','Switching…','Mengganti…'):chooseText(lang,'继续切换','Continue','Lanjutkan')}</button></div></div>}
       {personError&&<p role="alert">{chooseText(lang,'切换未确认成功，请刷新后核对当前使用者，不要继续填写。','The switch could not be confirmed. Reload and check the current user before continuing.','Pergantian belum dapat dikonfirmasi. Muat ulang dan periksa pengguna sebelum melanjutkan.')}</p>}
       {retakeConfirm&&<div role="dialog" onKeyDown={e=>{if(e.key==='Escape')setRetakeConfirm(false);if(e.key==='Tab'){const b=e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');if(e.shiftKey&&document.activeElement===b[0]){e.preventDefault();b[b.length-1]?.focus();}else if(!e.shiftKey&&document.activeElement===b[b.length-1]){e.preventDefault();b[0]?.focus();}}}} aria-modal="true" aria-label={chooseText(lang,'重新测评','Retake assessment','Ulangi tes')} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"><div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md space-y-4"><h2 className="text-lg font-semibold">{chooseText(lang,`为 ${profile?.fullName||''} 重新测评？`,`Retake the assessment for ${profile?.fullName||''}?`,`Ulangi tes untuk ${profile?.fullName||''}?`)}</h2><p>{chooseText(lang,'之前的测评记录会保留。','Previous assessment records will be kept.','Riwayat tes sebelumnya tetap disimpan.')}</p><button autoFocus type="button" className="min-h-11 px-4 underline" onClick={()=>{setRetakeConfirm(false);handleStartVoluntaryAssessment();}}>{chooseText(lang,'开始重新测评','Start retake','Mulai tes ulang')}</button><button type="button" className="min-h-11 px-4" onClick={()=>setRetakeConfirm(false)}>{chooseText(lang,'取消','Cancel','Batal')}</button><button type="button" className="block underline min-h-11" onClick={()=>void switchPerson()}>{chooseText(lang,'不是本人？切换使用者','Not you? Switch user','Bukan Anda? Ganti pengguna')}</button></div></div>}
-      <main ref={mainRef} className={`flex-1 min-h-0 overflow-y-auto space-y-4 w-full mx-auto ${isTakingAssessment ? 'p-2 sm:p-4 max-w-5xl' : 'p-4 sm:p-6 max-w-4xl'}`}>
+      <main ref={mainRef} inert={showOnboardingModal} className={`flex-1 min-h-0 overflow-y-auto space-y-4 w-full mx-auto ${isTakingAssessment ? 'p-2 sm:p-4 max-w-5xl' : 'p-4 sm:p-6 max-w-4xl'}`}>
         {!isTakingAssessment && messages.map((msg) => (
           <div
             key={msg.id}
@@ -542,6 +563,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
                 ) : (
                   <div className="prose prose-sm max-w-none text-inherit prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5">
                     <Markdown remarkPlugins={[remarkGfm]}>{msg.content}</Markdown>
+                    <ChatEnrollmentGuide action={msg.enrollment} language={lang} entry="standalone_chat"/>
                   </div>
                 )}
               </div>
@@ -605,7 +627,7 @@ Apa yang ingin Anda ketahui lebih lanjut mengenai jadwal kelas, format kursus, a
       </main>
 
       {/* Bottom Sticky Input */}
-      {!isTakingAssessment && <footer className="bg-white border-t border-slate-200 p-3 sm:p-4 shrink-0">
+      {!isTakingAssessment && <footer inert={showOnboardingModal} className="bg-white border-t border-slate-200 p-3 sm:p-4 shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();

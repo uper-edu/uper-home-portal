@@ -232,7 +232,7 @@ export default function Enrollment() {
     const appointment=topic==='one-on-one'?appointments.find(item=>item.id===params.get('appointment')):undefined;
     return <EnrollmentSupport topic={topic} language={language}
       level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined}
-      appointment={appointment} period={period} catalogPath={listPath}/>;
+      appointment={appointment} period={period} catalogPath={listPath} offline={params.get('mode')==='offline'}/>;
   }
 
   if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">

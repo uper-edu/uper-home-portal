@@ -46,12 +46,14 @@
   body:has(.enrollment-proof-actions) .public-mobile-bottom-bar { display: none; }
 }
 
-[data-enrollment-screen] {
+[data-enrollment-screen], [data-enrollment-card-group] {
   --enrollment-ink: #162830;
   --enrollment-muted: #4d6065;
   --enrollment-border: #dce7e4;
   --enrollment-accent: #08796e;
   --enrollment-wash: #f3f7f6;
+}
+[data-enrollment-screen] {
   background: #fff;
   color: var(--enrollment-ink);
   padding-bottom: 0;
@@ -174,6 +176,9 @@
 }
 .enrollment-catalog .public-select details[open] summary::after { transform: rotate(225deg); margin-top: 3px; }
 .enrollment-class-grid { display: grid; gap: 10px; }
+[data-enrollment-card-group].enrollment-class-grid { grid-template-columns: minmax(0, 1fr); min-width: 0; max-width: 28rem; color: var(--enrollment-ink); }
+[data-enrollment-card-group] .enrollment-class-bottom { flex-wrap: wrap; }
+[data-enrollment-card-group] .enrollment-class-bottom .enrollment-primary { max-width: 100%; }
 .enrollment-class-card {
   border: 1px solid var(--enrollment-border);
   border-radius: 11px;

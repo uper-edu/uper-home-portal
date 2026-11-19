@@ -301,10 +301,12 @@ export function resolveMetadata(
       : normalizedPath,
     workspace = path.split("/")[1].toLowerCase(),
     privatePage = isPrivatePath(path),
+    enrollmentHelp = /^\/enrollment\/help\/(?:consultation|account|payment|refund|one-on-one|advisor)$/.test(path),
     page = publicPages[path] || (/^\/enrollment\/[a-zA-Z0-9-]{1,64}$/.test(path) ? publicPages["/enrollment"] : undefined),
     dynamic = /^\/(news|campaign)\/[^/]+$/.test(path),
     known =
       !!page ||
+      enrollmentHelp ||
       dynamic ||
       /^\/(crm|cms|system|chat|consult|style-guide)$/i.test(path);
   let title: string, description: string;
@@ -320,9 +322,10 @@ export function resolveMetadata(
       lang,
       options.state,
     ));
-  else if (page) {
-    title = `${metadataWords(page.title, lang)} | UPER`;
-    description = metadataWords(page.description, lang);
+  else if (page || enrollmentHelp) {
+    const info=page??publicPages["/enrollment"];
+    title = `${metadataWords(info.title, lang)} | UPER`;
+    description = metadataWords(info.description, lang);
   } else if (path === "/style-guide") {
     title =
       metadataWords(

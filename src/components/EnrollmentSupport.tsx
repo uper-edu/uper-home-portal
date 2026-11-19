@@ -6,6 +6,10 @@ import { enrollmentInstant,enrollmentTeacherLabel } from '../utils/enrollmentCat
 
 type Copy = readonly [string,string,string];
 const topics = {
+  consultation:{
+    title:['联系 UPER 咨询课程','Ask UPER about classes','Tanyakan kursus kepada UPER'],
+    instructions:['请告诉我们你想学的内容、上课方式和方便的时间。','Tell us what you want to learn, how you prefer to attend, and when you’re available.','Sampaikan tujuan belajar, pilihan cara belajar, dan waktu yang cocok.'],
+  },
   account: {
     title: ['找回报名邮箱','Recover your enrollment email','Temukan email pendaftaran'],
     instructions: [
@@ -64,24 +68,31 @@ export function EnrollmentJoiningNote({firstLesson,now,language}:{
   ])}</Link></p>;
 }
 
-export function EnrollmentSupport({topic,language,level,appointment:selection,period,catalogPath}:{
-  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;catalogPath?:string;
+export function EnrollmentSupport({topic,language,level,appointment:selection,period,catalogPath,offline}:{
+  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;catalogPath?:string;offline?:boolean;
 }) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
   const appointment=topic==='one-on-one';
   const appointmentCourse=selection?[selection.course,enrollmentTeacherLabel(selection.teacherType,language)].join(' · '):level?'HSK '+level:'';
   const whatsapp=new URL(socialProfiles.whatsapp.url);
+  const preferredTime=period==='weekend' ? t(['周末','weekends','akhir pekan'])
+    : period==='mixed' ? t(['工作日与周末','weekdays & weekends','hari kerja & akhir pekan'])
+    : period==='weekday-evening' ? t(['工作日晚间','weekday evenings','malam hari kerja']) : '';
   if(appointment&&appointmentCourse) {
-    const preferredTime=period==='weekend' ? t(['周末','weekends','akhir pekan'])
-      : period==='mixed' ? t(['工作日与周末','weekdays & weekends','hari kerja & akhir pekan'])
-      : period==='weekday-evening' ? t(['工作日晚间','weekday evenings','malam hari kerja']) : '';
     const message=t([
       `你好，我想咨询 ${appointmentCourse} 的一对一约课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
       `Hello, I'd like to schedule one-to-one lessons for ${appointmentCourse}.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
       `Halo, saya ingin menjadwalkan kelas privat untuk ${appointmentCourse}.${preferredTime?' Saya lebih suka '+preferredTime+'.':''}`,
     ]);
     whatsapp.searchParams.set('text',message);
+  } else if(topic==='consultation'&&offline) {
+    const course=appointmentCourse||t(['中文课','Mandarin classes','kelas Mandarin']);
+    whatsapp.searchParams.set('text',t([
+      `你好，我想咨询雅加达的 ${course} 线下课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
+      `Hello, I'd like to ask about in-person ${course} in Jakarta.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
+      `Halo, saya ingin bertanya tentang kelas tatap muka ${course} di Jakarta.${preferredTime?' Waktu yang saya inginkan: '+preferredTime+'.':''}`,
+    ]));
   }
   return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
     <Link className="enrollment-back" to={appointment?catalogPath??'/enrollment?lang='+language:'/enrollment/mine?lang='+language}><ArrowLeft size={15} aria-hidden="true"/>
@@ -93,7 +104,7 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,pe
         <p>{t(info.instructions)}</p>
       </article>
       <div className="enrollment-journey-actions">
-        <a className="enrollment-primary enrollment-whatsapp-action" href={appointment?whatsapp.toString():socialProfiles.whatsapp.url} target="_blank" rel="noopener noreferrer">
+        <a className="enrollment-primary enrollment-whatsapp-action" href={whatsapp.toString()} target="_blank" rel="noopener noreferrer">
           <SocialProfileIcon platform="whatsapp" className="size-4"/>
           {t(['通过 WhatsApp 联系','Contact on WhatsApp','Hubungi via WhatsApp'])}
         </a>
