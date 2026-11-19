@@ -214,7 +214,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             messageId: "repeat-1",
             content: "Same text",
           });
-          assert.equal(first.data.modelUsed, "deepseek-chat");
+          assert.equal(first.data.modelUsed, "deepseek-flash");
           for (let i = 0; i < 10; i++)
             await request("/api/chat", {
               conversationId: conv,

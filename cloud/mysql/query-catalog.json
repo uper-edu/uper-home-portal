@@ -2452,8 +2452,8 @@
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
-    "sql": "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+  "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence": {
+    "sql": "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
     "sources": [
       "server/portal/chat.ts"
     ]
@@ -2947,8 +2947,8 @@
       "server/portal/trustRoutes.ts"
     ]
   },
-  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6) WHERE id=:p1": {
-    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6) WHERE id=:p1",
+  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.catalogueSelection',CAST(:p7 AS JSON),'$.replyLang',:p8) WHERE id=:p1": {
+    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.catalogueSelection',CAST(:p7 AS JSON),'$.replyLang',:p8) WHERE id=:p1",
     "sources": [
       "server/portal/chat.ts"
     ]

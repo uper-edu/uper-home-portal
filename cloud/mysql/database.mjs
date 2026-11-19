@@ -3,7 +3,7 @@ import { isIP } from 'node:net';
 import {mysqlTlsRequired,approvedRemoteDevelopment} from './transport.mjs';
 
 // No fallback to DATABASE_URL: this runtime must never connect to local CRM.
-export function validateTrialDatabase(env) {
+export function validateTrialDatabase(env, platform = process.platform) {
   if(env.PORTAL_DEPLOYMENT==='remote-dev'&&!approvedRemoteDevelopment(env))throw Error('Unapproved remote development database');
   const activeLocal=env.TRIAL_DATASET==='local-crm'&&env.PORTAL_LOCAL_CUTOVER==='true';
   if (!activeLocal && env.TRIAL_DATASET !== 'synthetic' && !(env.TRIAL_DATASET==='migration-copy' && env.PORTAL_MIGRATION_REHEARSAL==='true')) throw Error('Synthetic trial dataset or explicit offline migration rehearsal is required');
@@ -15,7 +15,12 @@ export function validateTrialDatabase(env) {
   if (activeLocal ? name!=='uper_local_crm' : !validSyntheticName) throw Error('A dedicated production or uper_trial_ database is required');
   if (!url.username || !url.password) throw Error('Database credentials are required');
   if(env.TRIAL_DATASET==='migration-copy' && (!env.MYSQL_TRIAL_SOCKET || !/restore|rehearsal/.test(name)))throw Error('Migration copy requires a private local restore database');
-  if(activeLocal && (url.hostname!=='localhost'||env.MYSQL_TRIAL_SOCKET!=='/private/tmp/uper-crm-mysql-local3000.sock'))throw Error('Approved private local CRM MySQL instance required');
+  // Windows local development uses the explicitly selected loopback TCP server.
+  const windowsLocal = platform === 'win32' && env.PORTAL_ENV === 'dev' &&
+    env.APP_ENV === 'local' && env.PORTAL_DEPLOYMENT === 'local-dev' &&
+    url.hostname === '127.0.0.1' && (url.port || '3306') === '3306' && !env.MYSQL_TRIAL_SOCKET;
+  const privateSocket = url.hostname === 'localhost' && env.MYSQL_TRIAL_SOCKET === '/private/tmp/uper-crm-mysql-local3000.sock';
+  if(activeLocal && !windowsLocal && !privateSocket)throw Error('Approved private local CRM MySQL instance required');
   return { url, name };
 }
 

@@ -35,7 +35,7 @@ Production uses `https://uperedu.com` as its canonical origin and accepts `https
 
 ## AI and notification configuration
 
-Configure `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-4o`) privately. A valid `DEEPSEEK_API_KEY` enables fallback to `deepseek-chat`. Provider attempts and the final consultation response are persisted; a configuration endpoint does not prove live provider health. Unrelated contact/careers forms retain their SMTP handlers.
+Configure `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-4o`) privately. A valid `DEEPSEEK_API_KEY` enables fallback to `deepseek-flash`. Provider attempts and the final consultation response are persisted; a configuration endpoint does not prove live provider health. Unrelated contact/careers forms retain their SMTP handlers.
 
 Sales Operations manages notification rules, channels and delivery audit. Opening a customer or reading messages does not complete follow-up tasks. Lark starts in simulation for a new environment and requires explicit approval and a configured server-side Webhook before live sending. Email/SMS delivery is not connected. Environment templates deliberately do not embed the current server's secrets or activate live delivery.
 

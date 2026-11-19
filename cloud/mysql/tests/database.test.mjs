@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateTrialDatabase, transaction, withLock } from '../database.mjs';
 
+test('Windows local cutover accepts only the explicitly selected loopback database', () => {
+  const env={PORTAL_ENV:'dev',APP_ENV:'local',PORTAL_DEPLOYMENT:'local-dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',MYSQL_TRIAL_URL:'mysql://test:strong-password@127.0.0.1:3306/uper_local_crm'};
+  assert.equal(validateTrialDatabase(env,'win32').name,'uper_local_crm');
+  for(const change of [{PORTAL_ENV:'prod'},{APP_ENV:'production'},{PORTAL_DEPLOYMENT:'production'},{PORTAL_LOCAL_CUTOVER:'false'},{MYSQL_TRIAL_URL:env.MYSQL_TRIAL_URL.replace('127.0.0.1','10.0.0.1')},{MYSQL_TRIAL_URL:env.MYSQL_TRIAL_URL.replace(':3306',':3307')},{MYSQL_TRIAL_URL:env.MYSQL_TRIAL_URL.replace('uper_local_crm','uper_trial_other')},{MYSQL_TRIAL_SOCKET:'/unexpected/socket'}]) {
+    assert.throws(()=>validateTrialDatabase({...env,...change},'win32'));
+  }
+  assert.throws(()=>validateTrialDatabase(env,'darwin'));
+  assert.equal(validateTrialDatabase({...env,MYSQL_TRIAL_URL:env.MYSQL_TRIAL_URL.replace('127.0.0.1','localhost'),MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock'},'darwin').name,'uper_local_crm');
+});
+
 test('trial database refuses existing local CRM and implicit fallbacks', () => {
   for (const name of ['uper_portal', 'mysql', 'uper_trial_', 'production']) {
     assert.throws(() => validateTrialDatabase({TRIAL_DATASET:'synthetic',MYSQL_TRIAL_URL:`mysql://test:test@localhost/${name}`}));

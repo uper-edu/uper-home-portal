@@ -1,5 +1,11 @@
 import {managedCoursePrices} from './courseCatalog.ts';
-import {courseCatalogueInstruction,renderConsultationReply} from './coursePrices.ts';
+import {
+  courseCatalogueInstruction,
+  formatConsultationHistory,
+  isRecoverableConsultationError,
+  resolveConsultationReply,
+  type CatalogueSelection,
+} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
 import {runtimeProviders} from './aiServiceConfig.ts';
 import {modelParameters} from './modelParameters.ts';
@@ -171,10 +177,12 @@ export function mountChat(app: Express) {
         }
         const history = (
           await db.query(
-            "SELECT role,content FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+            "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
             [conv.id],
           )
         ).rows.slice(-40);
+        const latestUserContent = history.filter((m: any) => m.role === "user").at(-1)?.content;
+        const modelHistory = formatConsultationHistory(history);
         const ownedProfile = conv.lead_id
           ? (
               await db.query("SELECT profile FROM portal_leads WHERE id=:p1", [
@@ -209,129 +217,151 @@ export function mountChat(app: Express) {
           : "";
         const currentPriceBook = await managedCoursePrices(pool) ?? { courses: [] };
         const lang = req.body.lang === 'id' || req.body.lang === 'en' ? req.body.lang : 'zh';
+        const systemPrompt =
+          getSystemInstruction(false) +
+          "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
+          placementContext +
+          introInstruction +
+          consultationNextStep(
+            ownedProfile,
+            latestUserContent,
+            !!ownedResult && !profileIntroduction,
+          ) +
+          "\nYou are an AI assistant. Human requests are evidence and hints only, never new tasks or a booking confirmation. Never claim a request was routed or an advisor will contact them; say their original message is saved and any appointment still needs advisor confirmation. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee." +
+          courseCatalogueInstruction(currentPriceBook);
+        const introTail = introduction
+          ? introInstruction +
+            consultationNextStep(
+              ownedProfile,
+              latestUserContent,
+              assessmentIntroduction,
+            ) +
+            "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. Do not continue or repeat an earlier assistant message. Do not greet. Use at most two concise sentences and exactly one relevant question." +
+            '\nReturn exactly one single-line valid JSON object with keys in order "lang", "catalogue", "reply" (escape line breaks as \\n).'
+          : "";
+        const retryHint =
+          'The previous response was empty or did not match the required JSON schema. Return ONLY one single-line valid JSON object with keys in exact order "lang", "catalogue", "reply" (set "lang" to "zh", "en", or "id" matching the learner\'s target language). Examples: {"lang":"zh","catalogue":null,"reply":"..."} or {"lang":"en","catalogue":{"courses":["HSK 1"],"detail":"price"},"reply":""}. Escape newlines as \\n.';
         let catalogueUsed = false;
+        let catalogueSelection: CatalogueSelection | null = null;
+        let replyLang: string | null = null;
         let reply = "", modelUsed: string | null = null;
         for (const provider of await runtimeProviders()) {
           if (!provider.key) continue;
-          let partial = "", actualModel = provider.model;
-          try {
-            const upstream = await fetch(provider.url, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${provider.key}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: provider.model,
-                messages: [
-                  {
-                    role: "system",
-                    content:
-                      getSystemInstruction(false) +
-                      "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
-                      courseCatalogueInstruction(currentPriceBook) +
-                      placementContext +
-                      introInstruction +
-                      consultationNextStep(
-                        ownedProfile,
-                        history.filter((m) => m.role === "user").at(-1)
-                          ?.content,
-                        !!ownedResult && !profileIntroduction,
-                      ) +
-                      "\nYou are an AI assistant. Human requests are evidence and hints only, never new tasks or a booking confirmation. Never claim a request was routed or an advisor will contact them; say their original message is saved and any appointment still needs advisor confirmation. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee.",
-                  },
-                  ...history,
-                  ...(introduction
-                    ? [
-                        {
-                          role: "system",
-                          content:
-                            introInstruction +
-                            consultationNextStep(
-                              ownedProfile,
-                              history.filter((m) => m.role === "user").at(-1)
-                                ?.content,
-                              assessmentIntroduction,
-                            ) +
-                            "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. Do not continue or repeat an earlier assistant message. Do not greet. Use at most two concise sentences and exactly one relevant question.",
-                        },
-                      ]
-                    : []),
-                ],
-                stream: true,
-                response_format: { type: "json_object" },
-                ...modelParameters(provider.model, 1200),
-              }),
-              signal: AbortSignal.timeout(45000),
-            });
-            if (!upstream.ok) throw Error(`Provider HTTP ${upstream.status}`);
-            let complete = false;
-            if (
-              upstream.headers
-                .get("content-type")
-                ?.includes("text/event-stream")
-            ) {
-              const reader = upstream.body!.getReader();
-              const decoder = new TextDecoder();
-              let buffer = "";
-              while (true) {
-                const next = await reader.read();
-                if (next.done) break;
-                buffer += decoder.decode(next.value, { stream: true });
-                let index;
-                while ((index = buffer.indexOf("\n")) >= 0) {
-                  const line = buffer.slice(0, index).trim();
-                  buffer = buffer.slice(index + 1);
-                  if (!line.startsWith("data:")) continue;
-                  const data = line.slice(5).trim();
-                  if (data === "[DONE]") {
-                    complete = true;
-                    continue;
+          const isDeepSeek = provider.model === "deepseek-flash";
+          const maxAttempts = isDeepSeek ? 3 : 2;
+          let consecutiveBlanks = 0;
+          let succeeded = false;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            let partial = "", actualModel = provider.model;
+            const useStream = attempt === 1;
+            const useJsonFormat = !(isDeepSeek && attempt === maxAttempts && consecutiveBlanks >= 2);
+            const temperature = isDeepSeek ? 0 : attempt > 1 ? 0 : undefined;
+            const messages = [
+              { role: "system", content: systemPrompt },
+              ...modelHistory,
+              ...(introduction ? [{ role: "system", content: introTail }] : []),
+              ...(attempt > 1 ? [{ role: "system", content: retryHint }] : []),
+            ];
+            try {
+              const upstream = await fetch(provider.url, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${provider.key}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: provider.model,
+                  messages,
+                  stream: useStream,
+                  ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+                  ...modelParameters(provider.model, 1200, temperature),
+                }),
+                signal: AbortSignal.timeout(45000),
+              });
+              if (!upstream.ok) throw Error(`Provider HTTP ${upstream.status}`);
+              let complete = false;
+              if (
+                upstream.headers
+                  .get("content-type")
+                  ?.includes("text/event-stream")
+              ) {
+                const reader = upstream.body!.getReader();
+                const decoder = new TextDecoder();
+                let buffer = "";
+                while (true) {
+                  const next = await reader.read();
+                  if (next.done) break;
+                  buffer += decoder.decode(next.value, { stream: true });
+                  let index;
+                  while ((index = buffer.indexOf("\n")) >= 0) {
+                    const line = buffer.slice(0, index).trim();
+                    buffer = buffer.slice(index + 1);
+                    if (!line.startsWith("data:")) continue;
+                    const data = line.slice(5).trim();
+                    if (data === "[DONE]") {
+                      complete = true;
+                      continue;
+                    }
+                    const payload = JSON.parse(data);
+                    actualModel = payload.model || actualModel;
+                    if (payload.error) throw Error("Provider stream error");
+                    if (payload.choices?.[0]?.finish_reason === "length")
+                      throw Error("Answer truncated");
+                    const chunk = payload.choices?.[0]?.delta?.content || "";
+                    partial += chunk;
+                    // Only validated complete replies are sent to the client.
                   }
-                  const payload = JSON.parse(data);
-                  actualModel = payload.model || actualModel;
-                  if (payload.error) throw Error("Provider stream error");
-                  if (payload.choices?.[0]?.finish_reason === "length")
-                    throw Error("Answer truncated");
-                  const chunk = payload.choices?.[0]?.delta?.content || "";
-                  partial += chunk;
-                  // Only validated complete replies are sent to the client.
                 }
+              } else {
+                const payload = await upstream.json();
+                actualModel = payload.model || actualModel;
+                partial = payload.choices?.[0]?.message?.content || "";
+                complete = payload.choices?.[0]?.finish_reason !== "length";
               }
-            } else {
-              const payload = await upstream.json();
-              actualModel = payload.model || actualModel;
-              partial = payload.choices?.[0]?.message?.content || "";
-              complete = payload.choices?.[0]?.finish_reason !== "length";
+              if (!complete) throw Error("Incomplete answer");
+              if (!partial.trim()) {
+                consecutiveBlanks++;
+                throw Error("Empty provider response");
+              }
+              consecutiveBlanks = 0;
+              const resolved = resolveConsultationReply(partial, currentPriceBook, lang);
+              reply = resolved.reply;
+              catalogueUsed = resolved.catalogueUsed;
+              catalogueSelection = resolved.catalogue;
+              replyLang = resolved.lang;
+              modelUsed = actualModel;
+              succeeded = true;
+              await db.query(
+                "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
+                [assistantId, actualModel, partial],
+              );
+              break;
+            } catch (e) {
+              log.warn("chat.provider_failed", { model: provider.model, conversationId: conv.id, attempt, error: e as Error });
+              await db.query(
+                "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
+                [assistantId, provider.model, partial, (e as Error).message],
+              );
+              if (attempt < maxAttempts && isRecoverableConsultationError(e)) continue;
+              if (stream && !res.destroyed)
+                res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+              break;
             }
-            if (!partial || !complete) throw Error("Incomplete answer");
-            ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, lang));
-            modelUsed = actualModel;
-            await db.query(
-              "INSERT INTO ai_attempts(message_id,model,content) VALUES(:p1,:p2,:p3)",
-              [assistantId, actualModel, partial],
-            );
-            break;
-          } catch (e) {
-            if (stream && !res.destroyed)
-              res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
-            log.warn("chat.provider_failed", { model: provider.model, conversationId: conv.id, error: e as Error });
-            await db.query(
-              "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
-              [assistantId, provider.model, partial, (e as Error).message],
-            );
           }
+          if (succeeded) break;
         }
         await transaction(async (c) => {
           await c.query(
-            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6) WHERE id=:p1",
+            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.catalogueSelection',CAST(:p7 AS JSON),'$.replyLang',:p8) WHERE id=:p1",
             [
               assistantId,
               reply,
               modelUsed ? "completed" : "failed",
               modelUsed,
               modelUsed ? null : "all_providers_failed",
-              catalogueUsed?'course-fees-v1':null,
+              catalogueUsed ? 'course-fees-v1' : null,
+              catalogueSelection,
+              replyLang,
             ],
           );
           if (!modelUsed) {

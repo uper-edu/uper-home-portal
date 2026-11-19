@@ -4,5 +4,5 @@
 
 export default {
   "primary": "gpt-6.1-sol",
-  "fallback": "deepseek-chat"
+  "fallback": "deepseek-flash"
 };

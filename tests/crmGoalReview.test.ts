@@ -5,7 +5,7 @@ import {goalReviewInput,goalRelation} from '../src/utils/crmGoalReview.ts';
 import {dynamicProfileHints} from '../src/utils/crmDynamicProfile.ts';
 
 const profile=()=>({id:'sample',goal:'在印尼中资或合资企业工作',tier:'Warm',profileFieldMeta:{goal:{revision:3,sourceFactIds:['questionnaire'],pendingDifferences:[{value:'希望能和中国客户开会',sourceFactId:'meeting',effectiveAt:'2026-11-06T01:00:00Z'},{value:'不再以职场沟通为目标，只为申请奖学金',sourceFactId:'changed'}]}}});
-const providers=[{model:'gpt-4o',key:'fake-unit-key',url:'https://unit.invalid/primary'},{model:'deepseek-chat',key:'fake-unit-key-2',url:'https://unit.invalid/fallback'}];
+const providers=[{model:'gpt-4o',key:'fake-unit-key',url:'https://unit.invalid/primary'},{model:'deepseek-flash',key:'fake-unit-key-2',url:'https://unit.invalid/fallback'}];
 const response=(relations:any)=>new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({relations})}}]}));
 
 test('semantic review uses model results, keeps compatible detail and true conflicts distinct, without rewriting facts',async()=>{

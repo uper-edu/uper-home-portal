@@ -137,7 +137,7 @@ else {
             if (e.chunk) text += e.chunk;
           }
           assert.equal(text, "BACKUP answer");
-          assert.equal(events.at(-1).modelUsed, "deepseek-chat");
+          assert.equal(events.at(-1).modelUsed, "deepseek-flash");
           assert.equal(
             rows.find((r) => r.role === "assistant").content,
             "BACKUP answer",
@@ -168,7 +168,7 @@ else {
       async () => {
         const { events } = await request("legacy", false);
         assert.equal(events[0].reply, "BACKUP answer");
-        assert.equal(events[0].modelUsed, "deepseek-chat");
+        assert.equal(events[0].modelUsed, "deepseek-flash");
       },
     );
   });

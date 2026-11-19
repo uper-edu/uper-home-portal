@@ -19,7 +19,7 @@ export function consultationFocus(profile:any, latestUserMessage='') {
     : /enrol|register|报名|daftar/i.test(text)?'enrollment':undefined;
   const interest=topic(latestUserMessage)||topic(interests);
   if(interest)return {topic:interest,instruction:interest==='fees'
-    ? 'Your FIRST sentence must address the requested course fees and payment information for the supplied learning start, using only the provided course catalogue. Describe catalogue fees as listed rates, not a confirmed offer; unknown payment terms need advisor confirmation. Do not substitute a generic learning recommendation. Then ask the preferred class start date if missing, not weekly study hours.'
+    ? 'Only if the learner is actually requesting UPER course fees or published class counts, use the JSON "catalogue" object with "reply":"" so the server renders the official listed rates (never write UPER prices or class counts in "reply"). For payment status, transfers, refunds, negated fee questions, or general payment-term questions, set "catalogue":null and answer the learner\'s actual question directly in "reply" (noting that unknown payment terms need advisor confirmation, without substituting a generic learning recommendation).'
     : interest==='schedule' ? 'Address the requested class schedule first. Use only confirmed catalogue dates; if none are supplied, say an advisor needs to confirm the next opening. Ask their preferred class start date or time window if missing, not weekly self-study hours.'
     : 'Address enrollment first using verified course facts. Ask only one next missing detail; do not repeat a city, format, goal or deadline already provided.'};
   const goal=data?.goal || '';

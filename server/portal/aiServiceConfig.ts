@@ -5,14 +5,25 @@ const tx=async(work:any)=>(await import('./store.ts')).tx(work);
 import {validMutationOrigin} from './accessTransport.ts';
 import {modelParameters} from './modelParameters.ts';
 export type AiSelection={primary:string;fallback:string};
-export const aiModels=['gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','deepseek-chat'];
+export const aiModels=['gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','deepseek-flash'];
+export function canonicalModel(model:string){return model==='deepseek-chat'?'deepseek-flash':model;}
+function normalizeSelection(v:any):any{return v&&typeof v==='object'?{...v,...(v.primary?{primary:canonicalModel(v.primary)}:{}),...(v.fallback?{fallback:canonicalModel(v.fallback)}:{})}:v;}
+function normalizeState(s:any){
+ if(!s||typeof s!=='object')return s;
+ const next:any={...s};
+ if('current' in s)next.current=normalizeSelection(s.current);
+ if('previous' in s)next.previous=normalizeSelection(s.previous);
+ if(Array.isArray(s.checks))next.checks=s.checks.map((c:any)=>({...c,selection:normalizeSelection(c.selection),...(Array.isArray(c.results)?{results:c.results.map((r:any)=>({...r,model:canonicalModel(r.model)}))}:{})}));
+ if(Array.isArray(s.history))next.history=s.history.map((h:any)=>({...h,current:normalizeSelection(h.current),...('previous' in h?{previous:normalizeSelection(h.previous)}:{})}));
+ return next;
+}
 const defaults=():AiSelection=>({...aiDefaults,primary:process.env.OPENAI_MODEL||aiDefaults.primary});
 export function validateSelection(v:any):AiSelection {
  if(!v||!aiModels.includes(v.primary)||!aiModels.includes(v.fallback)||v.primary===v.fallback)throw Object.assign(Error('invalid_selection'),{status:400});
  return {primary:v.primary,fallback:v.fallback};
 }
-export function providerFor(model:string){const deep=model==='deepseek-chat';return {model,key:deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY,url:deep?(process.env.DEEPSEEK_API_BASE_URL||'https://api.deepseek.com/chat/completions'):(process.env.OPENAI_API_BASE_URL||'https://api.openai.com/v1/chat/completions')};}
-export async function aiState(db?:any){db ||= (await import('./store.ts')).pool;return (await db.query("SELECT value FROM portal_settings WHERE id='ai_service'")).rows[0]?.value||{revision:0,current:defaults(),previous:null,checks:[],history:[]};}
+export function providerFor(model:string){const resolved=canonicalModel(model),deep=resolved==='deepseek-flash';return {model:resolved,key:deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY,url:deep?(process.env.DEEPSEEK_API_BASE_URL||'https://api.deepseek.com/chat/completions'):(process.env.OPENAI_API_BASE_URL||'https://api.openai.com/v1/chat/completions')};}
+export async function aiState(db?:any){db ||= (await import('./store.ts')).pool;const saved=(await db.query("SELECT value FROM portal_settings WHERE id='ai_service'")).rows[0]?.value;return saved?normalizeState(saved):{revision:0,current:defaults(),previous:null,checks:[],history:[]};}
 export async function runtimeProviders(){const s=process.env.MYSQL_TRIAL_URL?await aiState():{current:defaults()};return [s.current.primary,s.current.fallback].map(providerFor);}
 import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
 export {isAiAdministrator};
@@ -25,7 +36,7 @@ export function activationCheck(s:any,body:any,actor:string,now=Date.now()){
  return check;
 }
 
-export function acceptedModel(requested:string,actual:string){return actual===requested||actual.startsWith(requested+'-')||(requested==='deepseek-chat'&&actual==='deepseek-flash');}
+export function acceptedModel(requested:string,actual:string){return actual===requested||actual.startsWith(requested+'-');}
 export async function probeModel(model:string){
  const p=providerFor(model);if(!p.key)return {model,ok:false,error:'key_missing'};
  let calls=0;const start=Date.now();
