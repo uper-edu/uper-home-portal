@@ -131,7 +131,7 @@ function displayRecord(row: any) {
     class:row.class_data ? {id:row.class_id,level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
-    attribution:row.attribution?{entry:row.attribution.entry,source:row.attribution.source,campaign:row.attribution.campaign,verified:row.attribution.verified}:null,
+    attribution:row.attribution?{entry:row.attribution.entry,via:row.attribution.via,source:row.attribution.source,campaign:row.attribution.campaign,verified:row.attribution.verified}:null,
     latestNotice:row.latest_notice,
   };
 }

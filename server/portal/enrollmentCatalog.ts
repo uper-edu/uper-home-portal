@@ -1,3 +1,4 @@
+import {portalPublicOrigin} from './enrollmentEmail.ts';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
@@ -211,6 +212,6 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
   app.get('/api/enrollment/classes', wrap(async (_q, r) => {
     const classes = await tx(readPublicEnrollmentClasses);
     const appointments=await tx(readPublicEnrollmentAppointments);
-    r.set('Cache-Control', 'no-store').json({ classes,appointments });
+    r.set('Cache-Control', 'no-store').json({ classes,appointments,publicOrigin:portalPublicOrigin() });
   }));
 }

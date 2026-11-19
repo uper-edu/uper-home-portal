@@ -1,3 +1,4 @@
+import {CrmEnrollmentContactLink} from './CrmEnrollmentContactLink';
 import {CrmFormSection} from './CrmFormLayout';
 import {CrmContactReference} from './CrmContactReference';
 import {copyPreparedContact} from '../../utils/crmContactPreparation';
@@ -245,6 +246,11 @@ export function CrmContactPreview({
           </p>
         )}
         <CrmContactReference lang={lang} disabled={working||purpose!=='sales_followup'} onPrepare={v=>{const confirm=edited&&!!text.trim();choose({language,template:v});if(!confirm)requestAnimationFrame(()=>message.current?.focus());}}/>
+        {!denied&&purpose==='sales_followup'&&<CrmEnrollmentContactLink lang={lang} language={language} isLight={isLight}
+          disabled={working||Boolean(pending)} onInsert={value=>{
+            setText(previous=>[previous.trimEnd(),value].filter(Boolean).join('\n\n'));
+            setEdited(true);setCopied(false);requestAnimationFrame(()=>message.current?.focus());
+          }}/>}
         <AdminField required htmlFor={messageId}>
           {t("Message", "Pesan", "消息内容")}
         <textarea

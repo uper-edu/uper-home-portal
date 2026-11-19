@@ -14,9 +14,10 @@ export async function recordEnrollmentAttribution(c:Client, kind:string, id:stri
   },true);
   const entry=promotionEntryPoint(params.get('entry_point')) ?? 'direct';
   const language=params.get('lang');
+  const via=params.get('enrollment_via');
   await c.query(`INSERT INTO enrollment_record_attribution(kind,record_id,attribution)
     VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE record_id=record_id`, [kind,id,{
-    entry,lang:['zh','id','en'].includes(language??'')?language:undefined,
+    entry,via:via==='ai_chat'||via==='whatsapp'?via:undefined,lang:['zh','id','en'].includes(language??'')?language:undefined,
     campaignId:attribution.campaignId,campaign:attribution.campaign,
     promotionId:attribution.promotionLinkId,verified:attribution.promotionLinkStatus==='verified',
     source:attribution.promotionSnapshot?.source,medium:attribution.promotionSnapshot?.medium,
