@@ -88,7 +88,7 @@ export async function recordEnrollmentCustomer(c: Client, record: Submission) {
   if (!lead) invalid('enrollment_customer_unavailable',409);
   const leadId = existing?.lead_id ?? lead.id;
   let opportunityId: string | null = null;
-  if (record.level) {
+  if (record.level && lead.profile.identityLifecycle!=='pending') {
     const active=await activeOpportunityCandidates(c,lead,record.level);
     if (active.length===1) opportunityId=active[0].id;
     if (!active.length) {
