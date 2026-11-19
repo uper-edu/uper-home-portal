@@ -258,3 +258,14 @@ test('class comparisons represent each level before limiting cards and name miss
     /HSK 3[\s\S]*HSK 4 目前没有符合这些条件/);
   assert.match(enrollmentReply({kind:'unavailable',missingClassLevels:levels},'zh'),/HSK 1、HSK 2、HSK 3、HSK 4 目前没有/);
 });
+
+test('group overview answers size and tuition without selecting a particular batch',async()=>{
+  const {enrollmentQuoteRows,enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const intent=normalizeEnrollmentIntent({kind:'quote',question:'group_overview',format:'small',level:'HSK 1'})!;
+  const quotes=enrollmentQuoteRows(intent,[sample({format:'small',batchNumber:2,price:2760000,classSize:{usualMinimum:4,maximum:6}})],[]);
+  const action={kind:'quote' as const,question:intent.question,level:intent.level,format:intent.format,quotes};
+  const answer=enrollmentReply(action,'zh');
+  assert.match(answer,/^HSK 1 小班为4–6 人。.*Rp 2,760,000.*Rp 120,000/);
+  assert.doesNotMatch(answer,/第 2 期/);
+  assert.match(enrollmentGuideHref(action,'zh','ai_chat'),/^\/enrollment\?.*format=small/);
+});

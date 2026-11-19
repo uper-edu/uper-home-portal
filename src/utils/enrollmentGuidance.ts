@@ -2,7 +2,7 @@ import {enrollmentFormats,enrollmentLevels,enrollmentPeriods,enrollmentSessionSt
 import {promotionJourneyUrl} from './promotionNavigation';
 
 export type EnrollmentGuideLanguage='zh'|'en'|'id';
-const consultationQuestions=['starting_point','apply','reserve','period_unit','appointment','view_without_contact',
+const consultationQuestions=['starting_point','apply','reserve','period_unit','group_overview','appointment','view_without_contact',
   'link_only','records_location','cancel_unpaid','expired_unpaid','proof_after_cancellation','payment_verification','refund'] as const;
 type ConsultationQuestion=typeof consultationQuestions[number];
 const levels:readonly string[]=enrollmentLevels;
@@ -40,6 +40,7 @@ export type EnrollmentQuote={
   id:string;level:string;format:string;period?:string;batchNumber?:number;
   periods:number;minutes:number;actual:number;standard?:number;unitPriced:boolean;
   course?:string;teacherType?:'local'|'foreign';
+  classSize?:PublicEnrollmentClass['classSize'];
 };
 export const enrollmentGuideText=(lang:EnrollmentGuideLanguage,zh:string,en:string,id:string)=>({zh,en,id})[lang];
 export const enrollmentAppointmentRequested=(action:EnrollmentGuideAction)=>action.kind==='appointment'||

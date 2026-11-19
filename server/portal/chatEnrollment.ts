@@ -13,6 +13,7 @@ export const chatEnrollmentInstruction = `
 For any UPER Mandarin course or Enrollment request, use the optional "enrollment" field in your JSON response. It takes priority over "catalogue", which is only for non-Enrollment programmes. Set catalogue:null for Enrollment. Choose the action that resolves the current task:
 - quote: current tuition, a cost breakdown, or a PRICE comparison by class type. "levels":["HSK 1"], "formats":["standard","small","one-on-one"]. Use "level" for a single target; no level means all levels only if the learner asked for general prices. Use "requestedPeriods" for a private lesson quantity the learner explicitly asks about. One-to-one price questions use quote, not appointment. A learning-experience comparison is not a price request; answer it directly without replacing it with a price list.
  When the current question asks what a price covers, use question:"period_unit". Omit fields for a standalone question about the unit. If this same turn also asks for amounts or a cost breakdown, add "price" to fields. If it also asks whether or how the learner can register or arrange private lessons, add "appointment" to fields. Include both fields if both are asked.
+ If the learner asks how many people and how much a small group or standard class generally costs, use quote with question:"group_overview" and the requested format. Keep the target level if known from the current discussion. Do not select a batch unless the learner refers to a specific class. This is a format question even if classes were shown earlier. The server will answer the size and verified price before offering a filtered catalogue link.
 - recommend: recommend real classes, check concrete availability, or update a recommendation after preferences changed. For example {"kind":"recommend","level":"HSK 3","format":"standard","windows":[{"day":5,"earliest":"19:00"},{"day":6,"earliest":"15:00","latestEnd":"17:00"}]}. Days are ISO Monday=1 to Sunday=7. All confirmed times are WIB. earliest/latest refer to start; latestEnd refers to when the student must leave. windows lists ALL currently available days when day-specific constraints are known. Use the latest learner-stated constraints, including corrections. Set anyTime only for explicitly flexible timing. Use needsReview only when an unresolved constraint genuinely affects the recommendation (e.g. unknown timezone, unresolved level); do not use it for representable multi-day availability.
  For a hard total budget in Indonesian rupiah set maximumTotal (an integer); for a latest or earliest allowed first class, use latestDate or earliestDate (YYYY-MM-DD in WIB). Never imply that an out-of-budget class matches.
  Use the published schedule's WIB for ordinary browsing and confirmed Jakarta preferences. When a learner explicitly means a different or unresolved local timezone, clarify it or convert if known; don't treat an unstated timezone as a conflict in every Indonesian course enquiry. Valid period values are weekend, weekday-evening or mixed; express "afternoon" etc. in time windows. When a beginner explicitly asks to find a class and has no conflicting placement, HSK 1 is a suggested starting point.
@@ -46,7 +47,7 @@ export function enrollmentQuoteRows(
     (!formats.length||formats.includes(row.format));
   const classQuotes=classes.filter(row=>qualifies(row)&&(!intent.period||row.period===intent.period))
     .map(row=>({id:row.id,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,
-      periods:row.sessions,minutes:row.minutes,actual:row.price,standard:row.standardPrice,unitPriced:false}));
+      periods:row.sessions,minutes:row.minutes,actual:row.price,standard:row.standardPrice,unitPriced:false,classSize:row.classSize}));
   const privateQuotes:EnrollmentQuote[]=appointments.map(row=>({
     id:row.id,level:row.level,format:'one-on-one',course:row.course,teacherType:row.teacherType,
     periods:row.lessons,minutes:row.minutes,actual:row.price,standard:row.standardPrice,unitPriced:true,
@@ -55,7 +56,7 @@ export function enrollmentQuoteRows(
   const used=new Set<string>();
   return [...classQuotes,...privateQuotes].filter(row=>{
     if(!(row.actual>0&&row.periods>0&&row.minutes>0))return false;
-    const key=row.unitPriced?row.id:JSON.stringify([row.level,row.format,row.actual,row.standard,row.periods,row.minutes]);
+    const key=row.unitPriced?row.id:JSON.stringify([row.level,row.format,row.actual,row.standard,row.periods,row.minutes,row.classSize]);
     if(used.has(key))return false;
     used.add(key);
     return true;
@@ -89,7 +90,7 @@ export async function chatEnrollmentAction(
         formats.some(format=>!quotes.some(row=>row.format===format));
       return {kind,level:levels.length===1?levels[0]:level,period,format:formats.length===1?formats[0]:format,question,
         detailFields:intent.detailFields,requestedPeriods:intent.requestedPeriods,
-        classId:quotes.length===1&&!quotes[0].unitPriced?quotes[0].id:undefined,quotes,quoteMissing};
+        classId:question!=='group_overview'&&quotes.length===1&&!quotes[0].unitPriced?quotes[0].id:undefined,quotes,quoteMissing};
     }
     if(kind==='inspect'||kind==='specifications'){
       const levels=intent.quoteLevels.length?intent.quoteLevels:level?[level]:[];
@@ -181,6 +182,25 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
   switch(action.kind){
     case 'quote':
     case 'appointment':{
+      if(action.question==='group_overview'){
+        const groups=(action.quotes??[]).filter(row=>!row.unitPriced);
+        if(!groups.length)return missing;
+        const range=(values:number[])=>{
+          const low=Math.min(...values),high=Math.max(...values);
+          return low===high?amount(low):`${amount(low)}–${amount(high)}`;
+        };
+        const sizes=[...new Set(groups.map(row=>enrollmentClassSizeText(row.classSize,lang)))];
+        const size=sizes.length===1&&sizes[0]?sizes[0]:t('规模以具体班次为准','Size varies by class','Ukuran mengikuti kelas yang dipilih');
+        const total=range(groups.map(row=>row.actual));
+        const unit=range(groups.map(row=>Math.round(row.actual/row.periods)));
+        const title=action.format==='small'?t('小班','Small groups','Kelas kecil'):
+          action.format==='standard'?t('标准班','Standard classes','Kelas standar'):t('班课','Group classes','Kelas grup');
+        const label=[action.level,title].filter(Boolean).join(' ');
+        const detail=t(`${label}${sizes.length===1&&sizes[0]?'为':'，'}${size}。当前公开班次的实付总价为 ${total}，折合每节约 ${unit}。`,
+          `${label}: ${size}. Current published tuition totals ${total}, or about ${unit} per period.`,
+          `${label}: ${size}. Total biaya kelas yang tersedia adalah ${total}, atau sekitar ${unit} per jam pelajaran.`);
+        return [detail,action.quoteMissing?missing:''].filter(Boolean).join(' ');
+      }
       const showPrices=action.detailFields?.includes('price')||action.requestedPeriods||
         (action.kind==='quote'&&action.question!=='period_unit');
       const arrange=enrollmentAppointmentRequested(action);
