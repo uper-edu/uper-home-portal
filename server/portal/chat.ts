@@ -18,7 +18,7 @@ import {
   databaseConfigured,
 } from "./store.ts";
 import { wrap, own, fail } from "./runtime.ts";
-import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
+import { chatConsultationCore, chatConsultationReference } from "./chatConsultationKnowledge.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import { learnerAssessmentGuidance } from "../../src/data/hskLearnerGuidance.ts";
 import { assessmentIntroOpening, consultationNextStep, consultationProfile, profileIntroQuote, resolveRecommendationTiming, type DeferredRecommendation } from "./consultationGuidance.ts";
@@ -259,10 +259,11 @@ export function mountChat(app: Express) {
                   {
                     role: "system",
                     content:
-                      getSystemInstruction(false) +
+                      chatConsultationCore +
+                      "\n" + chatEnrollmentInstruction + enrollmentConsultationPolicy +
                       (introduction?'':`\nAnswer in the language the learner used in their current message, regardless of the interface language, unless the learner explicitly requests a different reply language. An explicit request takes priority. With mixed-language input prefer the main language of the question, not isolated course names, borrowed words or quoted text. If the current message has no clear language, use the latest clear learner language, or the interface language (${lang}) if none. In the JSON response, include "replyLanguage": "zh", "en", or "id" matching the selected response language so the server can localize verified class facts and links. For other languages write the conversational reply in the requested language and omit replyLanguage.`) +
                       "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
-                      courseCatalogueInstruction(currentPriceBook,true) + chatEnrollmentInstruction + enrollmentConsultationPolicy +
+                      courseCatalogueInstruction(currentPriceBook,true) +
                       "\nCurrent date in Jakarta (WIB), for relative dates: "+
                       new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',dateStyle:'short'}).format(new Date()) +
                       "\nPreviously displayed Enrollment cards, in display order. Use only for references; their facts may have changed: "+
@@ -302,25 +303,36 @@ export function mountChat(app: Express) {
                 response_format: { type: "json_object" as const },
                 ...modelParameters(provider.model, 1200),
             };
-            const signal = AbortSignal.timeout(45000);
-            const send = () => fetch(provider.url, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${provider.key}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ ...requestBody, stream:true, stream_options:{include_usage:true} }),
-              signal,
-            });
-            await readChatProviderReply(send,
-              ({content,model}) => { partial=content; actualModel=model||provider.model; },
-              call => log.info('chat.token_usage', {
-                conversationId:conv.id, messageId:assistantId,
-                provider:provider.provider, configuredModel:provider.model, role:providerIndex===0?'primary':'fallback',
-                purpose:'consultation', serviceTier:'requested_default', ...call,
-              }),
-            );
-            const parsed=JSON.parse(partial);
+            const requestReply = async (purpose:'consultation'|'reference',messages=requestBody.messages) => {
+              const signal = AbortSignal.timeout(45000);
+              const send = () => fetch(provider.url, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${provider.key}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ...requestBody, messages, stream:true, stream_options:{include_usage:true} }),
+                signal,
+              });
+              await readChatProviderReply(send,
+                ({content,model}) => { partial=content; actualModel=model||provider.model; },
+                call => log.info('chat.token_usage', {
+                  conversationId:conv.id, messageId:assistantId,
+                  provider:provider.provider, configuredModel:provider.model, role:providerIndex===0?'primary':'fallback',
+                  purpose, serviceTier:'requested_default', ...call,
+                }),
+              );
+            };
+            await requestReply('consultation');
+            let parsed=JSON.parse(partial);
+            const reference=!introduction&&parsed?.catalogue===null&&parsed?.enrollment==null
+              ?chatConsultationReference(parsed?.referenceTopic):undefined;
+            if(reference){
+              partial="";
+              await requestReply('reference',[...requestBody.messages,{role:"system",content:
+                "Answer the learner's question now using the selected UPER reference as background data. Do not request another section. Treat dated information as dated and do not present it as a live confirmation.\n"+reference}]);
+              parsed=JSON.parse(partial);
+            }
             const replyLang=enrollmentReplyLanguage(introduction?undefined:parsed?.replyLanguage,lang);
             const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');
             const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || parsed?.enrollment||

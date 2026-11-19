@@ -9,10 +9,12 @@ const baseline=JSON.parse(readFileSync(new URL('./fixtures/chat-consultation-bas
 
 test('consultation baseline includes the original cases, independent retests and holdouts',()=>{
   assert.equal(baseline.firstBlindRun.modelReplies,42);
-  assert.ok(suite.cases.length>=30);
+  assert.ok(suite.cases.length>=39);
   assert.equal(new Set(suite.cases.map((entry:{id:string})=>entry.id)).size,suite.cases.length);
-  assert.ok(suite.cases.every((entry:{turns:string[];expected:string[]})=>
-    entry.turns.length>=3&&entry.turns.length<=5&&entry.expected.length>=2));
+  assert.ok(suite.cases.every((entry:{turns:string[];expected:string[];profileIntroduction?:boolean})=>
+    entry.turns.length>=(entry.profileIntroduction?1:3)&&entry.turns.length<=5&&entry.expected.length>=2));
+  assert.equal(suite.cases.find((entry:{id:string})=>entry.id==='38')?.assessmentAfterTurns,true);
+  assert.equal(suite.cases.find((entry:{id:string})=>entry.id==='39')?.profileIntroduction,true);
   assert.ok(suite.cases.some((entry:{source?:string})=>entry.source==='homepage_widget'));
   assert.ok(suite.cases.some((entry:{holdout?:boolean})=>entry.holdout));
   assert.equal(suite.thresholds.severeFailures,0);
@@ -55,4 +57,16 @@ test('reply language validation falls back safely and the standard suite covers 
   assert.equal(enrollmentReplyLanguage('en','zh'),'en');
   assert.equal(enrollmentReplyLanguage('unsupported','zh'),'zh');
   assert.equal(suite.cases.find((entry:{id:string})=>entry.id==='37')?.interfaceLanguage,'en');
+});
+
+test('the short system prompt keeps broad UPER references behind specific topic requests',async()=>{
+  const {chatConsultationCore,chatConsultationReference}=await import('../server/portal/chatConsultationKnowledge');
+  assert.match(chatConsultationCore,/from Enrollment/);
+  assert.doesNotMatch(chatConsultationCore,/Essential Application Documents Checklist|Physical Visa Hubs/);
+  assert.match(chatConsultationReference('exams_and_programmes')!,/CSCA|HSKK/);
+  assert.match(chatConsultationReference('study_abroad')!,/Essential Application Documents Checklist/);
+  assert.match(chatConsultationReference('living_and_visa')!,/Visa Hubs/);
+  assert.match(chatConsultationReference('office_and_careers')!,/Open Job Positions/);
+  assert.equal(chatConsultationReference('constructor'),undefined);
+  assert.equal(chatConsultationReference('enrollment'),undefined);
 });

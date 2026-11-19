@@ -9,7 +9,8 @@ import {newHskAttempt} from '../src/data/hskAssessment';
 import {getVersionQuestions} from '../src/data/hskAssessmentVersions';
 import {enrollmentGuideHref,type EnrollmentGuideAction} from '../src/utils/enrollmentGuidance';
 
-type Case={id:string;name:string;turns:string[];expected:string[];source?:string;reported?:string;scores?:number[];interfaceLanguage?:'zh'|'en'|'id'};
+type Case={id:string;name:string;turns:string[];expected:string[];source?:string;reported?:string;scores?:number[];
+  assessmentAfterTurns?:boolean;profileIntroduction?:boolean;buyingSignal?:string;interfaceLanguage?:'zh'|'en'|'id'};
 const suite=JSON.parse(await readFile(new URL('../tests/fixtures/chat-consultation-v1.json',import.meta.url),'utf8'));
 const cases=suite.cases as Case[];
 assert.ok(cases.length>=30&&new Set(cases.map(test=>test.id)).size===cases.length);
@@ -83,8 +84,9 @@ async function run(item:Case,index:number){
   try{
     await transaction(db,async c=>{
       if(lead){
+        const buyingSignal=item.buyingSignal??'Which level is right';
         const profile={id:lead,name:'模拟学员 '+item.id,goal:'Improve my Mandarin skills',reportedLevel:item.reported,
-          city:'Jakarta',mode:'Online',buyingSignal:'Which level is right',currentStage:'progress:unreached'};
+          city:'Jakarta',mode:'Online',buyingSignal,...(item.buyingSignal?{buyingSignals:[buyingSignal]}:{}),currentStage:'progress:unreached'};
         await c.execute('INSERT INTO portal_leads(id,business_number,profile) VALUES(?,?,?)',[lead,label,JSON.stringify(profile)]);
       }
       await c.execute('INSERT INTO visitor_sessions(id,lead_id,expires_at) VALUES(?,?,UTC_TIMESTAMP()+INTERVAL 3 HOUR)',[visitor,lead]);
@@ -106,11 +108,13 @@ async function run(item:Case,index:number){
     assert.equal(started.status,200);
     const {conversationId}=await started.json();
 
-    async function chat(input:string,body:Record<string,string>){
+    async function chat(input:string,body:{content?:string;assessmentAttemptId?:string;consultationStart?:true}){
       const clock=Date.now();
-      const response=await submit('/api/chat',{conversationId,lang:interfaceLanguage,messageId:randomUUID(),...body});
+      const messageId=randomUUID();
+      const requestId=body.assessmentAttemptId?'hsk-intro-'+body.assessmentAttemptId:body.consultationStart?'profile-intro-'+lead:messageId;
+      const response=await submit('/api/chat',{conversationId,lang:interfaceLanguage,messageId,...body});
       const {reply,enrollment,modelUsed,status,error}=await response.json();
-      const turn={input,status:response.status,reply,error,modelUsed,state:status,elapsedMs:Date.now()-clock,
+      const turn={input,requestId,status:response.status,reply,error,modelUsed,state:status,elapsedMs:Date.now()-clock,
         enrollment:enrollment as EnrollmentGuideAction|undefined,links:[] as unknown[]};
       transcript.turns.push(turn);
       if(enrollment){
@@ -125,12 +129,12 @@ async function run(item:Case,index:number){
       }
       console.log(item.id,index,transcript.turns.length,response.status,modelUsed??'—',enrollment?.kind??'—');
     }
-    if(item.scores){
+    async function assess(scores:number[]){
       const attempt=newHskAttempt('express',randomUUID());
       attempt.completedAt=new Date().toISOString();
       for(const [ordinal,level] of ['HSK 1','HSK 2','HSK 3'].entries()){
         getVersionQuestions('express').filter(question=>question.level===level).forEach((question,n)=>{
-          attempt.answers[question.id]=question.options.find(option=>option.isCorrect===(n<item.scores![ordinal]))!.id;
+          attempt.answers[question.id]=question.options.find(option=>option.isCorrect===(n<scores[ordinal]))!.id;
         });
       }
       const saved=await submit('/api/portal/assessments',{attempt,lang:'zh'});
@@ -139,9 +143,14 @@ async function run(item:Case,index:number){
       transcript.assessment={score:result?.score,maxScore:result?.maxScore};
       await chat('【系统事件】学员完成并保存测评',{assessmentAttemptId:attempt.attemptId});
     }
+    if(item.profileIntroduction)await chat('【系统事件】学员完成问卷并关注学费',{consultationStart:true});
+    if(item.scores&&!item.assessmentAfterTurns)await assess(item.scores);
     for(const input of item.turns)await chat(input,{content:input});
+    if(item.scores&&item.assessmentAfterTurns)await assess(item.scores);
+    const assistants=await rows("SELECT id,request_id FROM messages WHERE conversation_id=? AND role='assistant'",[conversationId]);
+    for(const turn of transcript.turns)turn.assistantId=assistants.find(row=>row.request_id===turn.requestId)?.id;
     transcript.providerAttempts=await rows(
-      'SELECT a.model,a.content,(a.error IS NOT NULL) AS failed FROM ai_attempts a JOIN messages m ON m.id=a.message_id WHERE m.conversation_id=? ORDER BY m.sequence,a.id',[conversationId]);
+      'SELECT a.message_id,a.model,a.content,(a.error IS NOT NULL) AS failed FROM ai_attempts a JOIN messages m ON m.id=a.message_id WHERE m.conversation_id=? ORDER BY m.sequence,a.id',[conversationId]);
     if(lead)transcript.opportunityCount=Number((await rows('SELECT COUNT(*) AS n FROM enrollment_opportunities WHERE lead_id=?',[lead]))[0].n);
     if(transcript.enrollmentAudit){
       transcript.enrollmentAudit.after=await enrollmentActivity(email,lead);
