@@ -37,3 +37,13 @@ test('each consultation next step uses a known route and strips private data fro
   assert.equal(resolveMetadata('/enrollment/help/consultation','zh').indexable,false);
   assert.equal(resolveMetadata('/enrollment/help/random','zh').status,404);
 });
+
+test('a human handoff retains known public course preferences without placing personal data in its URL',()=>{
+  const next=new URL(enrollmentGuideHref({kind:'advisor',level:'HSK 2',period:'weekend',format:'one-on-one'},
+    'zh','ai_chat',new URLSearchParams('phone=123&email=guest@example.invalid&message=private')), 'https://example.invalid');
+  assert.equal(next.pathname,'/enrollment/help/consultation');
+  assert.equal(next.searchParams.get('level'),'2');
+  assert.equal(next.searchParams.get('period'),'weekend');
+  assert.equal(next.searchParams.get('format'),'one-on-one');
+  assert.ok(['phone','email','message'].every(field=>!next.searchParams.has(field)));
+});

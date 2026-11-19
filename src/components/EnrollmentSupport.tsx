@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { interestText, type InterestLanguage } from './EnrollmentInterests';
+import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 import { enrollmentInstant,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 
@@ -68,8 +68,8 @@ export function EnrollmentJoiningNote({firstLesson,now,language}:{
   ])}</Link></p>;
 }
 
-export function EnrollmentSupport({topic,language,level,appointment:selection,period,catalogPath,offline}:{
-  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;catalogPath?:string;offline?:boolean;
+export function EnrollmentSupport({topic,language,level,appointment:selection,period,format,catalogPath,offline}:{
+  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;format?:string;catalogPath?:string;offline?:boolean;
 }) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
@@ -79,11 +79,14 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,pe
   const preferredTime=period==='weekend' ? t(['周末','weekends','akhir pekan'])
     : period==='mixed' ? t(['工作日与周末','weekdays & weekends','hari kerja & akhir pekan'])
     : period==='weekday-evening' ? t(['工作日晚间','weekday evenings','malam hari kerja']) : '';
-  if(appointment&&appointmentCourse) {
+  const formatLabel=format==='standard'||format==='small'||format==='one-on-one'?interestOption(language,format):'';
+  if(appointment) {
+    const course=appointmentCourse?t([`${appointmentCourse} 的一对一约课`,`one-to-one lessons for ${appointmentCourse}`,`kelas privat untuk ${appointmentCourse}`]):
+      t(['一对一约课','one-to-one lessons','kelas privat']);
     const message=t([
-      `你好，我想咨询 ${appointmentCourse} 的一对一约课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
-      `Hello, I'd like to schedule one-to-one lessons for ${appointmentCourse}.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
-      `Halo, saya ingin menjadwalkan kelas privat untuk ${appointmentCourse}.${preferredTime?' Saya lebih suka '+preferredTime+'.':''}`,
+      `你好，我想咨询${course}。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
+      `Hello, I'd like to schedule ${course}.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
+      `Halo, saya ingin menjadwalkan ${course}.${preferredTime?' Saya lebih suka '+preferredTime+'.':''}`,
     ]);
     whatsapp.searchParams.set('text',message);
   } else if(topic==='consultation'&&offline) {
@@ -92,6 +95,13 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,pe
       `你好，我想咨询雅加达的 ${course} 线下课。${preferredTime?'我方便的时段是'+preferredTime+'。':''}`,
       `Hello, I'd like to ask about in-person ${course} in Jakarta.${preferredTime?' My preferred time is '+preferredTime+'.':''}`,
       `Halo, saya ingin bertanya tentang kelas tatap muka ${course} di Jakarta.${preferredTime?' Waktu yang saya inginkan: '+preferredTime+'.':''}`,
+    ]));
+  } else if(topic==='consultation') {
+    const context=[appointmentCourse,formatLabel,preferredTime].filter(Boolean).join(' · ');
+    if(context)whatsapp.searchParams.set('text',t([
+      `你好，我想咨询中文课程。我在找 ${context} 的课程。`,
+      `Hello, I'd like to ask about Mandarin classes. I'm looking for ${context}.`,
+      `Halo, saya ingin bertanya tentang kursus Mandarin. Saya mencari kelas dengan pilihan berikut (${context}).`,
     ]));
   }
   return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
