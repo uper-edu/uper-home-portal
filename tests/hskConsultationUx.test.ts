@@ -7,7 +7,7 @@ import { newHskAttempt, gradeHskAttempt } from '../src/data/hskAssessment';
 import { getVersionQuestions } from '../src/data/hskAssessmentVersions';
 import { learnerScreeningGuidance, learnerAssessmentGuidance } from '../src/data/hskLearnerGuidance';
 import { hskWhatsAppDraft } from '../src/services/hskWhatsApp';
-import { assessmentIntroOpening, consultationFocus, consultationProfile, profileIntroQuote } from '../server/portal/consultationGuidance';
+import { assessmentIntroOpening, consultationFocus, consultationProfile, profileIntroQuote, resolveRecommendationTiming } from '../server/portal/consultationGuidance';
 import HskAssessmentReport from '../src/components/HskAssessmentReport';
 import HSKPlacementAssessment from '../src/components/HSKPlacementAssessment';
 import { getChatAssessmentStatus } from '../src/services/studentProfileStorage';
@@ -82,4 +82,18 @@ test('assessment introductions distinguish prior study from placement and surfac
   assert.match(assessmentIntroOpening(guidance,'HSK 3','zh'),/建议先从 HSK 1.*填写的 HSK 3.*学习起点建议/);
   assert.doesNotMatch(assessmentIntroOpening(guidance,'HSK 1','zh'),/你填写的/);
   assert.equal(assessmentIntroOpening({...guidance,needsReview:true},'HSK 3','zh'),guidance.review);
+});
+
+test('class recommendations wait for an owned later assessment or an explicit change of mind',()=>{
+  const defer={change:'defer',evidence:'测评后再推荐'};
+  const initial=resolveRecommendationTiming(defer,undefined,'我周末有空，请测评后再推荐。',200,undefined,1);
+  assert.deepEqual(initial,{waiting:{requestedAt:200,limit:1},acknowledge:true,completed:false});
+  const pending=initial.waiting!;
+  assert.deepEqual(resolveRecommendationTiming(undefined,pending,'我先做测评',300,undefined,undefined).waiting,pending);
+  assert.deepEqual(resolveRecommendationTiming(undefined,pending,'',undefined,199,undefined).waiting,pending);
+  assert.equal(resolveRecommendationTiming(undefined,pending,'',undefined,301,undefined).completed,true);
+  const resume={change:'resume',evidence:'现在就推荐'};
+  assert.equal(resolveRecommendationTiming(resume,pending,'我改主意了，现在就推荐',300,undefined,undefined).waiting,undefined);
+  assert.deepEqual(resolveRecommendationTiming(resume,pending,'我还在做测评',300,undefined,undefined).waiting,pending);
+  assert.equal(resolveRecommendationTiming(defer,undefined,'我想看班次',200,undefined,1).acknowledge,false);
 });

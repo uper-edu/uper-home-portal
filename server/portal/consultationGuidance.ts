@@ -1,5 +1,23 @@
 import {enrollmentGuideText,type EnrollmentGuideLanguage} from '../../src/utils/enrollmentGuidance';
 
+export type DeferredRecommendation={requestedAt:number;limit?:number};
+
+export function resolveRecommendationTiming(
+  directive:unknown,previous:DeferredRecommendation|undefined,learnerMessage:string,messageAt:number|undefined,
+  assessmentAt:number|undefined,limit:number|undefined,
+){
+  const event=directive&&typeof directive==='object'?directive as Record<string,unknown>:undefined;
+  const evidence=typeof event?.evidence==='string'?event.evidence.trim():'';
+  const verified=messageAt!==undefined&&evidence.length>=2&&learnerMessage.includes(evidence);
+  if(verified&&event?.change==='defer'){
+    return {waiting:{requestedAt:messageAt,limit:limit??previous?.limit},acknowledge:true,completed:false};
+  }
+  if(verified&&event?.change==='resume')return {waiting:undefined,acknowledge:false,completed:false};
+  if(previous&&assessmentAt!==undefined&&assessmentAt>=previous.requestedAt)
+    return {waiting:undefined,acknowledge:false,completed:true};
+  return {waiting:previous,acknowledge:false,completed:false};
+}
+
 const intakeLevels=['HSK 1','HSK 2','HSK 3','HSK 4'] as const;
 export function profileIntroQuote(profile: ReturnType<typeof consultationProfile>) {
   const selected=new Set([profile?.buyingSignal,...(profile?.buyingSignals??[])]);

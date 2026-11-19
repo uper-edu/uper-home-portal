@@ -1,5 +1,5 @@
-import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply} from './chatEnrollment.ts';
-import {enrollmentGuideText,enrollmentReplyLanguage,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
+import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionReply} from './chatEnrollment.ts';
+import {enrollmentGuideText,enrollmentReplyLanguage,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
 import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
@@ -20,7 +20,7 @@ import { wrap, own, fail } from "./runtime.ts";
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import { learnerAssessmentGuidance } from "../../src/data/hskLearnerGuidance.ts";
-import { assessmentIntroOpening, consultationNextStep, consultationProfile, profileIntroQuote } from "./consultationGuidance.ts";
+import { assessmentIntroOpening, consultationNextStep, consultationProfile, profileIntroQuote, resolveRecommendationTiming, type DeferredRecommendation } from "./consultationGuidance.ts";
 import { enrollmentConsultationPolicy } from "./enrollmentConsultationPolicy.ts";
 import { log } from "../logger.ts";
 export function mountChat(app: Express) {
@@ -39,10 +39,11 @@ export function mountChat(app: Express) {
       let introInstruction = "";
       let assessmentForIntroduction: ReturnType<typeof safeHskResult>;
       let assessmentGuidance: ReturnType<typeof learnerAssessmentGuidance>;
+      let assessmentRecordedAt:number|undefined;
       if (assessmentIntroduction) {
         const row = (
           await pool.query(
-            "SELECT result FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
+            "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
             [req.body.assessmentAttemptId, conv.visitor_id],
           )
         ).rows[0];
@@ -62,6 +63,7 @@ export function mountChat(app: Express) {
           characterRecognition: result.sections.writing,
         };
         assessmentForIntroduction=result;
+        assessmentRecordedAt=(row.created_at instanceof Date?row.created_at:crmInstant(row.created_at))?.getTime();
         const guidance = assessmentGuidance = learnerAssessmentGuidance(
           result,
           req.body.lang === "zh" ? "zh" : req.body.lang === "id" ? "id" : "en",
@@ -178,19 +180,28 @@ export function mountChat(app: Express) {
         }
         const recentMessages = (
           await db.query(
-            "SELECT role,content,metadata FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+            "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
             [conv.id],
           )
         ).rows.slice(-40);
         const history=recentMessages.map(({role,content})=>({role,content}));
-        const previousActions=[...recentMessages].reverse().filter(message=>
+        const newestMessages=[...recentMessages].reverse();
+        const latestUserAt=introduction?undefined:recentMessages.find(message=>message.role==='user'&&message.request_id===messageId)?.created_at;
+        const messageAt=(latestUserAt instanceof Date?latestUserAt:crmInstant(latestUserAt))?.getTime();
+        const previousAssistant=newestMessages.find(message=>message.role==='assistant');
+        const previousPriceAction=previousAssistant?.metadata?.enrollment as EnrollmentGuideAction|undefined;
+        const quotedOptions=previousTuition(previousPriceAction).map(({id,level,format,actual,periods,minutes,unitPriced})=>
+          ({id,level,format,actual,periods,minutes,unitPriced}));
+        const previousDeferral=newestMessages.find(message=>message.role==='assistant'&&
+          Object.hasOwn(message.metadata??{},'recommendationDeferral'))?.metadata.recommendationDeferral as DeferredRecommendation|undefined;
+        const previousActions=newestMessages.filter(message=>
           message.role==='assistant'&&message.metadata?.enrollment?.rows?.length)
           .map(message=>message.metadata.enrollment as EnrollmentGuideAction);
         const previousRecommendation=previousActions.find(action=>!action.inspection)?.rows??previousActions[0]?.rows;
         const referenceContext=(previousRecommendation??[]).map((row,index)=>({
           id:row.id,position:index+1,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,firstLesson:row.firstLesson,
         }));
-        const previousConstraints=[...recentMessages].reverse().find(message=>
+        const previousConstraints=newestMessages.find(message=>
           message.role==='assistant'&&message.metadata?.consultationConstraints)?.metadata.consultationConstraints as ConsultationConstraints|undefined;
         const ownedProfile = conv.lead_id
           ? (
@@ -234,6 +245,7 @@ export function mountChat(app: Express) {
         let catalogueUsed = false;
         let enrollment:EnrollmentGuideAction|undefined;
         let consultationConstraints:ConsultationConstraints|undefined;
+        let recommendationDeferral:DeferredRecommendation|undefined;
         let reply = "", modelUsed: string | null = null;
         for (const provider of await runtimeProviders()) {
           if (!provider.key) continue;
@@ -263,6 +275,9 @@ export function mountChat(app: Express) {
                       JSON.stringify(previousActions[0]?.inspection?previousActions[0].rows?.map(row=>row.id):[]) +
                       "\nLast verified matching constraints (data, only replace when the learner changes them): "+
                       JSON.stringify(previousConstraints??null) +
+                      "\nIf the CURRENT learner message explicitly asks you to wait until their assessment is done before recommending a class, return a top-level recommendationTiming object with change:\"defer\" and evidence quoting their exact request, and use enrollment.kind:\"recommend\" to capture all their actual constraints. Do not recommend a class in the reply. If they explicitly change their mind and ask for a recommendation now, use change:\"resume\" with their exact words. Do not infer either from a question, a hypothetical, a quote of somebody else, a negative request or a claimed completion. When a recommendation is already deferred, keep waiting across messages unless expressly resumed or the server provides the newly saved assessment. If the learner changes their availability while waiting, return a recommend action with the exact constraintEvidence so the server can update the selection without recommending yet." +
+                      "\nA recommendation is currently deferred: "+Boolean(previousDeferral) +
+                      "\nVerified prior tuition options for quoted_price_unit (data): "+JSON.stringify(quotedOptions) +
                       placementContext +
                       introInstruction +
                       (profileQuote ? '\nThe server will fill in verified tuition. In reply, address the other selected topics without quoting prices. If another selected topic needs an Enrollment action, emit that action.' : '') +
@@ -340,15 +355,34 @@ export function mountChat(app: Express) {
             const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');
             const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || parsed?.enrollment||
               (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
-            const normalized=resolveConsultationRecommendation(modelIntent,previousConstraints,introduction?'':content);
-            const action=await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
+            const proposed=normalizeEnrollmentIntent(modelIntent);
+            const timing=resolveRecommendationTiming(parsed?.recommendationTiming,previousDeferral??undefined,
+              introduction?'':content,messageAt,assessmentGuidance?.needsReview===false?assessmentRecordedAt:undefined,
+              proposed?.maxRecommendations);
+            const replaySelection=timing.completed&&previousConstraints;
+            const normalized=replaySelection
+              ?resolveConsultationRecommendation({kind:'recommend',...replaySelection,
+                level:replaySelection.level??assessmentGuidance?.level,maxRecommendations:previousDeferral?.limit},undefined,'')
+              :resolveConsultationRecommendation(modelIntent,previousConstraints,introduction?'':content);
+            const held=timing.acknowledge||Boolean(timing.waiting&&proposed?.kind==='recommend');
+            const priorPrice=!introduction&&proposed?.question==='quoted_price_unit';
+            const action=held||priorPrice?undefined:await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
               referenceContext.map(row=>row.id),previousConstraints);
             const linkOnlyClassIds=action?repeatedEnrollmentCards(action,previousActions):[];
             const assessmentClass=assessmentIntroduction&&action?.kind==='class'&&!action.inspection;
             enrollment=action?{...action,replyLanguage:replyLang,
               ...(assessmentClass?{detailFields:[...new Set(['first','weekly','seats',...(action.detailFields??[])])]}:{}),
               ...(linkOnlyClassIds.length?{linkOnlyClassIds}:{})}:undefined;
-            if(enrollment&&(introduction||enrollment.kind!=='catalog'||parsed?.catalogue===null)){
+            if(held){
+              reply=enrollmentGuideText(replyLang,
+                '我记住了你给的选班条件。等你完成测评，我再用这些条件帮你找合适的班次。',
+                'I’ll keep your class preferences in mind and use them to find a suitable class once you finish the assessment.',
+                'Saya simpan preferensi kelas Anda dan akan menggunakannya untuk mencari kelas yang sesuai setelah Anda menyelesaikan asesmen.');
+              catalogueUsed=false;
+            }else if(priorPrice){
+              reply=previousTuitionReply(previousPriceAction,proposed.referenceIds,replyLang);
+              catalogueUsed=false;
+            }else if(enrollment&&(introduction||enrollment.kind!=='catalog'||parsed?.catalogue===null)){
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
               const facts=enrollmentReply(enrollment,replyLang);
               const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&!(enrollment.kind==='records'&&enrollment.question)&&
@@ -382,6 +416,7 @@ export function mountChat(app: Express) {
               [assistantId, actualModel, partial],
             );
             consultationConstraints=normalized.constraints;
+            recommendationDeferral=timing.waiting;
             break;
           } catch (e) {
             if (stream && !res.destroyed)
@@ -395,7 +430,7 @@ export function mountChat(app: Express) {
         }
         await transaction(async (c) => {
           await c.query(
-            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON)) WHERE id=:p1",
+            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON)) WHERE id=:p1",
             [
               assistantId,
               reply,
@@ -405,6 +440,7 @@ export function mountChat(app: Express) {
               catalogueUsed?'course-fees-v1':null,
               enrollment??null,
               consultationConstraints??null,
+              recommendationDeferral??null,
             ],
           );
           if (!modelUsed) {

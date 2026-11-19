@@ -245,6 +245,22 @@ test('clarifying the price unit does not repeat tuition unless the learner reque
   assert.match(classPriceReply,/实付总价 Rp 920,000.*标准总价 Rp 1,150,000.*每节 Rp 40,000/);
 });
 
+test('a follow-up about quoted amounts uses the previous tuition and maps each amount to its unit',async()=>{
+  const {previousTuitionReply}=await import('../server/portal/chatEnrollment');
+  const old=matchEnrollmentGuidance(normalized({fields:['price']}),[sample()]);
+  assert.match(previousTuitionReply(old,[],'zh'),/Rp 920,000 是整班实付总价（共 23 节），Rp 40,000 是每节 45 分钟的单价/);
+  assert.doesNotMatch(previousTuitionReply(old,[],'zh'),/Rp 1,150,000/);
+  assert.match(previousTuitionReply(old,['other-record'],'zh'),/^你指的是哪项报价/);
+  const quote={kind:'quote' as const,quotes:[
+    {id:'small',level:'HSK 1',format:'small',periods:23,minutes:45,actual:2760000,unitPriced:false},
+    {id:'private',level:'HSK 1',format:'one-on-one',periods:23,minutes:45,actual:350000,unitPriced:true},
+  ]};
+  assert.match(previousTuitionReply(quote,['private'],'zh'),/Rp 350,000 是每节 45 分钟的单价，Rp 8,050,000 是按 23 节估算的整级参考价/);
+  assert.doesNotMatch(previousTuitionReply(quote,['private'],'zh'),/整班实付|Rp 2,760,000/);
+  assert.match(previousTuitionReply({ ...quote, question:'period_unit' },[],'zh'),/^你指的是哪项报价/);
+  assert.match(previousTuitionReply({...quote,question:'group_overview'},[],'zh'),/Rp 2,760,000 是整班实付总价，Rp 120,000 是每节 45 分钟的折合单价/);
+});
+
 test('navigation turns address the specific request while the enrollment state stays intact',async()=>{
   const {enrollmentReply}=await import('../server/portal/chatEnrollment');
   const form=matchEnrollmentGuidance(normalizeEnrollmentIntent({kind:'demand',level:'HSK 2',question:'link_only'})!,[]);

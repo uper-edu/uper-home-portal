@@ -5,7 +5,7 @@ export type EnrollmentGuideLanguage='zh'|'en'|'id';
 export function enrollmentReplyLanguage(value:unknown,fallback:EnrollmentGuideLanguage):EnrollmentGuideLanguage{
   return value==='zh'||value==='en'||value==='id'?value:fallback;
 }
-const consultationQuestions=['starting_point','apply','reserve','period_unit','group_overview','private_seat_counts','appointment','view_without_contact',
+const consultationQuestions=['starting_point','apply','reserve','period_unit','quoted_price_unit','group_overview','private_seat_counts','appointment','view_without_contact',
   'link_only','records_location','unpaid_enrollment_status','cancel_unpaid','expired_unpaid','proof_after_cancellation','avoid_duplicate_payment','original_transfer_proof','cancelled_transfer_payment_and_proof','payment_verification','refund'] as const;
 type ConsultationQuestion=typeof consultationQuestions[number];
 const levels:readonly string[]=enrollmentLevels;

@@ -12,7 +12,7 @@ import {
 export const chatEnrollmentInstruction = `
 For any UPER Mandarin course or Enrollment request, use the optional "enrollment" field in your JSON response. It takes priority over "catalogue", which is only for non-Enrollment programmes. Set catalogue:null for Enrollment. Choose the action that resolves the current task:
 - quote: current tuition, a cost breakdown, or a PRICE comparison by class type. "levels":["HSK 1"], "formats":["standard","small","one-on-one"]. Use "level" for a single target; no level means all levels only if the learner asked for general prices. Use "requestedPeriods" for a private lesson quantity the learner explicitly asks about. One-to-one price questions use quote, not appointment. A learning-experience comparison is not a price request; answer it directly without replacing it with a price list.
- When the current question asks what a price covers, use question:"period_unit". Omit fields for a standalone question about the unit. If this same turn also asks for amounts or a cost breakdown, add "price" to fields. If it also asks whether or how the learner can register or arrange private lessons, add "appointment" to fields. Include both fields if both are asked.
+ When the learner asks which amount just quoted is the total and which is per period, set kind:"quote", question:"quoted_price_unit". Use referenceIds from the prior quoted tuition only when the learner points to a particular quoted option; otherwise leave them empty. Use question:"period_unit" for a general question about the billing unit without referring to a prior amount. Omit fields for a standalone question about the unit. If this same turn also asks for current amounts or a cost breakdown, add "price" to fields. If it also asks whether or how the learner can register or arrange private lessons, add "appointment" to fields. Include both fields if both are asked.
  If the learner asks how many people and how much a small group or standard class generally costs, use quote with question:"group_overview" and the requested format. Keep the target level if known from the current discussion. Do not select a batch unless the learner refers to a specific class. This is a format question even if classes were shown earlier. The server will answer the size and verified price before offering a filtered catalogue link.
 - recommend: recommend real classes, check concrete availability, or update a recommendation after preferences changed. For example {"kind":"recommend","level":"HSK 3","format":"standard","windows":[{"day":5,"earliest":"19:00"},{"day":6,"earliest":"15:00","latestEnd":"17:00"}]}. Days are ISO Monday=1 to Sunday=7. All confirmed times are WIB. earliest/latest refer to start; latestEnd refers to when the student must leave. windows lists ALL currently available days when day-specific constraints are known. Use the latest learner-stated constraints, including corrections. Set anyTime only for explicitly flexible timing. Use needsReview only when an unresolved constraint genuinely affects the recommendation (e.g. unknown timezone, unresolved level); do not use it for representable multi-day availability.
  For a hard total budget in Indonesian rupiah set maximumTotal (an integer); for a latest or earliest allowed first class, use latestDate or earliestDate (YYYY-MM-DD in WIB). Never imply that an out-of-budget class matches.
@@ -128,6 +128,64 @@ export async function chatEnrollmentAction(
   }catch{return {kind:'unavailable',level,period,format,question};}
 }
 
+const quoteShowsTuition=(action:EnrollmentGuideAction)=>action.detailFields?.includes('price')||action.requestedPeriods||
+  (action.kind==='quote'&&action.question!=='period_unit'&&action.question!=='quoted_price_unit');
+
+export function previousTuition(action:EnrollmentGuideAction|undefined):EnrollmentQuote[]{
+  if(!action)return [];
+  if((action.kind==='quote'||action.kind==='appointment')&&(quoteShowsTuition(action)||action.question==='group_overview'))
+    return (action.quotes??[]).filter(row=>action.question!=='group_overview'||!row.unitPriced);
+  if(action.kind!=='class'||(action.detailFields?.length&&!action.detailFields.includes('price'))||
+    (!action.detailFields?.includes('price')&&(action.question==='period_unit'||action.question==='reserve'||action.question==='private_seat_counts')))
+    return [];
+  return (action.rows??[]).flatMap(row=>row.price>0&&row.sessions&&row.minutes>0
+    ?[{id:row.id,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,
+      actual:row.price,periods:row.sessions,minutes:row.minutes,unitPriced:false}]
+    :[]);
+}
+
+export function previousTuitionReply(
+  previous:EnrollmentGuideAction|undefined, referenceIds:readonly string[], lang:EnrollmentGuideLanguage,
+){
+  const t=(zh:string,en:string,id:string)=>enrollmentGuideText(lang,zh,en,id);
+  const amount=(value:number)=>formatCurrency(value,lang);
+  const quotes=previousTuition(previous);
+  const selected=referenceIds.length?quotes.filter(row=>referenceIds.includes(row.id)):quotes;
+  if(!selected.length)return t(
+    '你指的是哪项报价？告诉我班型或贴一下金额，我可以帮你区分总价和单价。',
+    'Which quote do you mean? Tell me the class type or paste the amount and I can explain what it covers.',
+    'Penawaran mana yang Anda maksud? Sebutkan jenis kelas atau nominalnya agar saya bisa menjelaskan cakupannya.',
+  );
+  const pricePerPeriod=(row:EnrollmentQuote)=>row.unitPriced?row.actual:Math.round(row.actual/row.periods);
+  if(previous?.question==='group_overview'){
+    const range=(values:number[])=>{
+      const low=Math.min(...values),high=Math.max(...values);
+      return low===high?amount(low):`${amount(low)}–${amount(high)}`;
+    };
+    const total=range(selected.map(row=>row.actual)),unit=range(selected.map(pricePerPeriod));
+    const durations=[...new Set(selected.map(row=>row.minutes))];
+    const period=durations.length===1?t(`每节 ${durations[0]} 分钟`,`per ${durations[0]}-minute period`,`per jam pelajaran ${durations[0]} menit`)
+      :t('每节课','per period','per jam pelajaran');
+    return t(`刚才的 ${total} 是整班实付总价，${unit} 是${period}的折合单价。`,
+      `The ${total} I quoted is the total tuition for the class. ${unit} is the equivalent price ${period}.`,
+      `Biaya ${total} tadi adalah total biaya kelas, sedangkan ${unit} adalah harga setara ${period}.`);
+  }
+  return selected.map(row=>{
+    const unit=amount(pricePerPeriod(row));
+    const name=row.unitPriced?[row.course||row.level,t('一对一','One-to-one','Kelas privat')].join(' · '):enrollmentClassTitle(row,lang);
+    if(row.unitPriced){
+      const total=amount(row.actual*row.periods);
+      return t(`${name}：${unit} 是每节 ${row.minutes} 分钟的单价，${total} 是按 ${row.periods} 节估算的整级参考价。实际费用按约定节数计算。`,
+        `${name}: ${unit} is the price per ${row.minutes}-minute period. ${total} is the estimate for ${row.periods} periods. The amount due depends on how many periods you arrange.`,
+        `${name}: ${unit} adalah harga per jam pelajaran ${row.minutes} menit. ${total} adalah perkiraan untuk ${row.periods} jam pelajaran. Biaya akhir mengikuti jumlah jam yang disepakati.`);
+    }
+    const total=amount(row.actual),approximate=row.actual%row.periods!==0;
+    return t(`${name}：${total} 是整班实付总价（共 ${row.periods} 节），${unit} 是每节 ${row.minutes} 分钟的${approximate?'折合单价，已四舍五入':'单价'}。`,
+      `${name}: ${total} is the total tuition for all ${row.periods} periods. ${unit} is the ${approximate?'average ':''}price per ${row.minutes}-minute period.`,
+      `${name}: ${total} adalah total biaya untuk ${row.periods} jam pelajaran. ${unit} adalah harga ${approximate?'rata-rata ':''}per jam pelajaran ${row.minutes} menit.`);
+  }).join('\n\n');
+}
+
 export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuideLanguage){
   const t=(zh:string,en:string,id:string)=>enrollmentGuideText(lang,zh,en,id);
   const missingLevels=action.missingClassLevels?.join(lang==='zh'?'、':', ');
@@ -206,8 +264,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
           `${label}: ${size}. Total biaya kelas yang tersedia adalah ${total}, atau sekitar ${unit} per jam pelajaran.`);
         return [detail,action.quoteMissing?missing:''].filter(Boolean).join(' ');
       }
-      const showPrices=action.detailFields?.includes('price')||action.requestedPeriods||
-        (action.kind==='quote'&&action.question!=='period_unit');
+      const showPrices=quoteShowsTuition(action);
       const arrange=enrollmentAppointmentRequested(action);
       return [
         action.question==='period_unit'?unitAnswer:'',
