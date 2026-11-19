@@ -1,5 +1,6 @@
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
-import {AdminListState} from '../admin/AdminList';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
+import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { GraduationCap, NotebookPen } from 'lucide-react';
@@ -8,7 +9,7 @@ import {containPaneKeys, revealRecord} from '../adminScroll';
 import {CrmDetailActions, CrmRecordFilters, CrmRecordNavigation, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordSidebarToggle, CrmRecordTitle} from './CrmRecordWorkspace';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone, CrmListViews } from './CrmList';
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEventHandler } from 'react';
 import { CrmPageIdentity } from './CrmPageIdentity';
 import { CrmPageAction } from './CrmPageAction';
 import { CrmSalesStage } from './CrmSalesStage';
@@ -139,6 +140,29 @@ function currentStatus(row:Opportunity) {
 function ended(row:Opportunity) {
   return ['enrolled','closed'].includes(row.state)||row.salesStage==='progress:closed';
 }
+
+function opportunityNextStep(row:Opportunity,lang:CrmLanguage,prioritizePaymentReview:boolean) {
+  if(ended(row))return {kind:'text',label:t(lang,next[row.state==='enrolled'?'enrolled':'closed'])} as const;
+  if(row.identityPending)return {kind:'text',label:t(lang,['待核实身份','Identity review pending','Identitas menunggu verifikasi'])} as const;
+  const review=row.state==='applying'?row.records.find(requiresPaymentReview):undefined;
+  if(review&&prioritizePaymentReview)return {kind:'review',record:review} as const;
+  const due=row.records.find(record=>record.state==='awaiting_payment')?.paymentDueAt;
+  if(row.followup){
+    const followup=row.followup;
+    const name=followup.action||describeFollowUpTask({
+      id:followup.id,kind:followup.type||'',dueAt:followup.at||'',ownerId:row.owner||'',status:'pending',
+    },lang,viewerTimeZone()).action;
+    const label=due?t(lang,['跟进付款','Follow up on payment','Tindak lanjuti pembayaran']):name;
+    return {kind:'followup',followup,label,name} as const;
+  }
+  if(currentStatus(row)==='awaiting_confirmation')return {kind:'confirm',due:row.assistanceDueAt!} as const;
+  if(review)return {kind:'review',record:review} as const;
+  if(due)return {kind:'payment',due} as const;
+  if(row.state==='interest'&&!row.records.length)
+    return {kind:'text',label:t(lang,['跟进购课意向','Follow up on purchase intent','Tindak lanjuti minat membeli kursus'])} as const;
+  return {kind:'text',label:t(lang,next[row.state])} as const;
+}
+
 function stage(row:Opportunity,lang:CrmLanguage) {
   if (row.identityPending) return t(lang,['身份待核实','Identity review pending','Identitas menunggu verifikasi']);
   return progressLabel(row.salesStage,lang);
@@ -151,6 +175,94 @@ function read<T>(path:string,signal:AbortSignal):Promise<T> {
 }
 function crmHref(values:Record<string,string>) {
   return '/crm?'+new URLSearchParams(values).toString();
+}
+
+function CustomerOpportunityNextStep({row,lang,recordHref,onNavigate}:{
+  row:Opportunity;lang:CrmLanguage;recordHref:string;onNavigate:MouseEventHandler<HTMLAnchorElement>;
+}) {
+  const step=opportunityNextStep(row,lang,true);
+  switch(step.kind){
+    case 'review': return <AdminRowAction href={recordHref+'&'+new URLSearchParams({enrollmentRecord:step.record.id})} onClick={onNavigate}>
+      {t(lang,['查看核验进度','View verification progress','Lihat status verifikasi'])}
+    </AdminRowAction>;
+    case 'followup': return <>{step.label}{(step.followup.at||step.followup.date)&&
+      <small><time dateTime={step.followup.at||step.followup.date}>
+        {step.followup.at?formatCrmSummaryTime(step.followup.at):step.followup.date}
+      </time></small>}</>;
+    case 'payment': return <>{t(lang,['等待学员付款','Wait for learner payment','Tunggu pembayaran siswa'])}
+      <small><time dateTime={step.due}>{formatCrmSummaryTime(step.due)}</time></small></>;
+    case 'confirm': return <>{t(lang,['等待学员确认','Wait for learner confirmation','Tunggu konfirmasi siswa'])}
+      <small><time dateTime={step.due}>{formatCrmSummaryTime(step.due)}</time></small></>;
+    default: return step.label;
+  }
+}
+
+export function CrmCustomerOpportunities({customerId,actorId,lang,refreshVersion,onNavigate,onRegister,registerBusy}:{
+  customerId:string;actorId:string;lang:CrmLanguage;refreshVersion:number;
+  onNavigate:MouseEventHandler<HTMLAnchorElement>;onRegister?:()=>void;registerBusy:boolean;
+}) {
+  const [retry,setRetry]=useState(0);
+  const scope=JSON.stringify([actorId,customerId]);
+  const [result,setResult]=useState<{scope:string;rows?:Opportunity[];failure?:'denied'|'error'}>();
+  const current=result?.scope===scope?result:undefined;
+  useEffect(()=>{
+    const controller=new AbortController();
+    setResult(previous=>previous?.scope===scope&&!previous.failure?previous:undefined);
+    void read<OpportunityList>(base+'?'+new URLSearchParams({customerId}),controller.signal).then(
+      data=>{if(!controller.signal.aborted)setResult({scope,rows:data.opportunities});},
+      (error:Error)=>{
+        if(!controller.signal.aborted)setResult({scope,failure:['401','403','404'].includes(error.message)?'denied':'error'});
+      });
+    return ()=>controller.abort();
+  },[customerId,scope,refreshVersion,retry]);
+  const rows=current?.rows;
+  const active=rows?.filter(row=>!ended(row))??[];
+  const history=rows?.filter(ended)??[];
+  const references=opportunityReferences(rows??[]);
+  const listPath=opportunityListPath({...filterDefaults,opportunityOwner:'all',opportunityStatus:'all'},customerId);
+  const label=t(lang,['商机','Opportunity','Peluang']);
+  const activeLabel=t(lang,['进行中商机','Active opportunities','Peluang berlangsung']);
+  const historyLabel=t(lang,[`历史商机（${history.length}）`,`Past opportunities (${history.length})`,`Riwayat peluang (${history.length})`]);
+  const statusLabel=t(lang,['当前状态','Current status','Status saat ini']);
+  const table=(entries:Opportunity[],historical:boolean)=><AdminListTable
+    className="crm-customer-opportunity-table" label={historical?historyLabel:activeLabel}
+    headers={historical?[label,statusLabel]:[label,statusLabel,t(lang,['下一步','Next step','Langkah berikutnya'])]}>
+    {entries.map(row=>{
+      const href=listPath+'&'+new URLSearchParams({opportunity:row.id});
+      const status=currentStatus(row);
+      const reference=references.get(row.id);
+      const title=opportunityTitle(row);
+      const referenceLabel=reference?t(lang,[`商机编号 ${reference}`,`Opportunity ID ${reference}`,`ID peluang ${reference}`]):undefined;
+      const statusLabelCopy=row.state==='enrolled'?t(lang,next.enrolled):
+        status==='active'&&row.records.some(record=>record.kind==='demand'&&record.state==='active')
+          ?t(lang,['待匹配班次','Awaiting a matching class','Menunggu kelas yang sesuai'])
+          :states[status]?t(lang,states[status]):status;
+      return <tr key={row.id}>
+        <td><AdminRecordEntry href={href} onClick={onNavigate} aria-label={referenceLabel?`${title} · ${referenceLabel}`:undefined}>{title}</AdminRecordEntry>
+          {referenceLabel&&<small>{referenceLabel}</small>}</td>
+        <td><CrmListStatus tone={enrollmentListTone(status)}>{statusLabelCopy}</CrmListStatus></td>
+        {!historical&&<td><CustomerOpportunityNextStep row={row} lang={lang} recordHref={href} onNavigate={onNavigate}/></td>}
+      </tr>;
+    })}
+  </AdminListTable>;
+  return <section className="crm-customer-opportunities" aria-labelledby="crm-customer-opportunities">
+    <header>
+      <h3 id="crm-customer-opportunities">{activeLabel}</h3>
+      <div className="crm-trust-actions">
+        {!!rows?.length&&<AdminRowAction href={listPath} onClick={onNavigate}>{t(lang,['查看全部商机','View all opportunities','Lihat semua peluang'])}</AdminRowAction>}
+        {onRegister&&<button type="button" className="crm-work-button" disabled={registerBusy} onClick={onRegister}>
+          {t(lang,['登记购课意向','Record course purchase intent','Catat minat membeli kursus'])}
+        </button>}
+      </div>
+    </header>
+    {current?.failure?<AdminListState lang={lang} state={current.failure}
+      onRetry={()=>setRetry(value=>value+1)}/>:
+      !rows?<AdminListState lang={lang} state="loading"/>:
+      active.length?table(active,false):
+        <AdminListState lang={lang} state="empty"
+          message={t(lang,['暂无进行中的商机。','No active opportunities.','Belum ada peluang yang berlangsung.'])}/>}
+    {!!history.length&&<AdminDisclosure heading={historyLabel} density="compact">{table(history,true)}</AdminDisclosure>}
+  </section>;
 }
 const emailKind:Record<string,Copy> = {
   seat_reserved:['已获席','Seat reserved','Kursi dipesan'],
@@ -572,41 +684,37 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
     else setProgress(null);
   };
   const nextAction=(row:Opportunity)=>{
-    if(ended(row))return t(lang,next[row.state==='enrolled'?'enrolled':'closed']);
-    if(row.identityPending)return t(lang,['待核实身份','Identity review pending','Identitas menunggu verifikasi']);
-    const review=row.records.find(requiresPaymentReview);
+    const step=opportunityNextStep(row,lang,canFinance);
+    if(ended(row)||row.identityPending)return step.kind==='text'?step.label:null;
     const reviewDue=row.records.flatMap(record=>record.firstReviewDueAt?[record.firstReviewDueAt]:[]).sort()[0];
     const reviewDeadline=id!==row.id&&reviewDue&&<CrmEnrollmentReviewDeadline dueAt={reviewDue} lang={lang} compact/>;
-    if(review&&row.state==='applying'&&canFinance)return <>
+    if(step.kind==='review'&&canFinance)return <>
       {id===row.id?t(lang,['待核对到账','Payment awaiting verification','Pembayaran menunggu verifikasi']):
-        <AdminRowAction href={paymentLink(review)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</AdminRowAction>}
+        <AdminRowAction href={paymentLink(step.record)} onClick={()=>rememberListPosition(row.id)}>{t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</AdminRowAction>}
       {reviewDeadline}</>;
-    const due=row.records.find(record=>record.state==='awaiting_payment')?.paymentDueAt;
-    const followup=row.followup;
-    if(followup){
-      const name=followup.action||describeFollowUpTask({id:followup.id,kind:followup.type||'',dueAt:followup.at||''} as any,lang,viewerTimeZone()).action;
-      const action=due?t(lang,['跟进付款','Follow up on payment','Tindak lanjuti pembayaran']):name;
+    if(step.kind==='followup'){
+      const {followup,label,name}=step;
       return <>
         {followup.kind==='agreement'?
-          <AdminRowAction disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{action}</AdminRowAction>:
-          <AdminRowAction title={name} href={crmHref({tab:'leads',lead:row.customerId,target:'task',targetId:followup.id})}>{action}</AdminRowAction>}
+          <AdminRowAction disabled={busy} onClick={()=>void openProgress(row,followup.id)} title={name}>{label}</AdminRowAction>:
+          <AdminRowAction title={name} href={crmHref({tab:'leads',lead:row.customerId,target:'task',targetId:followup.id})}>{label}</AdminRowAction>}
         {followup.at||followup.date?<div className="crm-work-muted"><time dateTime={followup.at||followup.date}>{followup.at?formatCrmSummaryTime(followup.at):followup.date}</time></div>:null}
         {reviewDeadline}
       </>;
     }
-    if (currentStatus(row)==='awaiting_confirmation') return <>
+    if(step.kind==='confirm')return <>
       <span>{t(lang,['等待学员确认','Wait for learner confirmation','Tunggu konfirmasi siswa'])}</span>
       <span className="crm-list-secondary">{t(lang,['确认截止','Confirm by','Batas konfirmasi'])} ·{' '}
-        <time dateTime={row.assistanceDueAt}>{formatCrmSummaryTime(row.assistanceDueAt!)}</time></span>
+        <time dateTime={step.due}>{formatCrmSummaryTime(step.due)}</time></span>
     </>;
-    if(review&&row.state==='applying'){
+    if(step.kind==='review'){
       const status=t(lang,['待财务核验','Awaiting finance verification','Menunggu verifikasi keuangan']);
-      return <>{id===row.id?status:<AdminRowAction href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:review.id})}
+      return <>{id===row.id?status:<AdminRowAction href={crmHref({...listRoute,opportunity:row.id,enrollmentRecord:step.record.id})}
         onClick={()=>rememberListPosition(row.id)}>{t(lang,['查看核验进度','View verification progress','Lihat status verifikasi'])}</AdminRowAction>}{reviewDeadline}</>;
     }
-    if(due)return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={due} title={formatCrmEventTime(due)}>{formatCrmSummaryTime(due)}</time></div></>;
+    if(step.kind==='payment')return <>{t(lang,states.awaiting_payment)}<div className="crm-work-muted"><time dateTime={step.due} title={formatCrmEventTime(step.due)}>{formatCrmSummaryTime(step.due)}</time></div></>;
     if(row.canInitiateFollowup&&row.state==='interest'&&!id)return <AdminRowAction disabled={busy} onClick={()=>void openProgress(row)}>{t(lang,['记录进展','Record progress','Catat kemajuan'])}</AdminRowAction>;
-    return <>{t(lang,row.state==='interest'&&!row.records.length?['跟进购课意向','Follow up on purchase intent','Tindak lanjuti minat membeli kursus']:next[row.state])}{reviewDeadline}</>;
+    return <>{step.label}{reviewDeadline}</>;
   };
   const label=t(lang,['商机','Opportunities','Peluang']);
   const allLabel=t(lang,['全部','All','Semua']);

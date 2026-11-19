@@ -25,7 +25,7 @@ import {CrmCustomer360Button} from '../components/crm/CrmCustomer360Button';
 import {crmUiText} from '../utils/crmUiText';
 import {CrmHistoryAccess} from '../components/crm/CrmHistoryAccess';
 import {CrmEnrollmentNoticeTarget} from '../components/crm/CrmEnrollmentNoticeTarget';
-import {CrmEnrollmentOpportunities} from '../components/crm/CrmEnrollmentOpportunities';
+import {CrmCustomerOpportunities,CrmEnrollmentOpportunities} from '../components/crm/CrmEnrollmentOpportunities';
 import {CrmOpenEnrollmentOpportunity} from '../components/crm/CrmOpenEnrollmentOpportunity';
 import '../components/crm/crm-opportunities.css';
 import '../components/crm/crm-list.css';
@@ -1325,15 +1325,17 @@ function CrmWorkspace({
             />
           )}
           {activeDrawerTab === "activities" && <div className="crm-followup-sections">
-            <section aria-labelledby="crm-customer-opportunities" className="crm-opportunity-records">
-              <h3 id="crm-customer-opportunities">{adminText(lang,'Opportunities','Peluang','商机')}</h3>
-              <div className="crm-trust-actions">
-                <a className="crm-work-link" href={'/crm?'+new URLSearchParams({tab:'opportunities',customerId:selectedLead.id,opportunityOwner:'all',opportunityStatus:'all'})}
-                  onClick={event=>{const url=event.currentTarget.href;if(!discardDraft(()=>window.location.assign(url)))event.preventDefault();}}>{adminText(lang,'View opportunities','Lihat peluang','查看商机')}</a>
-                {progressActionState(employee,selectedLead)==='enabled'&&<button type="button" className="crm-work-button" disabled={isSubmittingLog}
-                  onClick={()=>{const open=()=>setOpportunityOpen(true);if(discardDraft(open))open();}}>{adminText(lang,'Record course purchase intent','Catat minat membeli kursus','登记购课意向')}</button>}
-              </div>
-            </section>
+            <CrmCustomerOpportunities customerId={selectedLead.id} actorId={employee.id} lang={lang}
+              refreshVersion={detailRefreshVersion} registerBusy={isSubmittingLog}
+              onNavigate={event=>{
+                if(event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+                const url=event.currentTarget.href;
+                if(!discardDraft(()=>window.location.assign(url)))event.preventDefault();
+              }}
+              onRegister={progressActionState(employee,selectedLead)==='enabled'?()=>{
+                const open=()=>setOpportunityOpen(true);
+                if(discardDraft(open))open();
+              }:undefined}/>
             {!selectedLead.identityReview?.pending&&!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
             {conversationReturn&&<button type="button" className="crm-work-link" onClick={()=>changeCustomerTab("chat")}>{t("Return to conversation","返回对话")}</button>}
             {taskOpening&&<p role="status">{t("Loading task context…","正在加载任务依据…")}</p>}
