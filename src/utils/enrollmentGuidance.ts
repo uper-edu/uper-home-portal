@@ -2,7 +2,8 @@ import {enrollmentFormats,enrollmentLevels,enrollmentPeriods,enrollmentSessionSt
 import {promotionJourneyUrl} from './promotionNavigation';
 
 export type EnrollmentGuideLanguage='zh'|'en'|'id';
-const consultationQuestions=['period_unit','appointment'] as const;
+const consultationQuestions=['starting_point','apply','reserve','period_unit','appointment','view_without_contact',
+  'link_only','records_location','cancel_unpaid','expired_unpaid','proof_after_cancellation','payment_verification','refund'] as const;
 type ConsultationQuestion=typeof consultationQuestions[number];
 const levels:readonly string[]=enrollmentLevels;
 const periods:readonly string[]=enrollmentPeriods;
@@ -28,6 +29,8 @@ export type EnrollmentGuideAction={
   requestedPeriods?:number;
   detailFields?:string[];
   question?:ConsultationQuestion;
+  maximumTotal?:number;
+  intakePaused?:boolean;
   levelUnavailable?:boolean;
   scheduleConflict?:{day:number;start:string;end:string};
 };
@@ -194,9 +197,9 @@ export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEn
   const {kind,level,period,format,days,earliest,latest,latestEnd,windows,anyTime,needsReview,maximumTotal,earliestDate,latestDate}=intent;
   const filters={level,period,format};
   if(kind==='advisor'||kind==='appointment'||kind==='records'||kind==='viewing')return {kind,...filters};
-  if(kind==='demand')return {kind,...filters,level:level??(intent.invalidLevel?'other':undefined),explicitDemand:true};
+  if(kind==='demand')return {kind,...filters,level:level??(intent.invalidLevel?'other':undefined),explicitDemand:true,question:intent.question};
   if(intent.invalidLevel&&!level&&!intent.quoteLevels.length)return {kind:'catalog',levelUnavailable:true};
-  if(kind==='browse'||!level||needsReview||!(period||days||earliest||latest||latestEnd||windows||anyTime||earliestDate||latestDate))return {kind:'catalog',...filters};
+  if(kind==='browse'||!level||needsReview||!(period||days||earliest||latest||latestEnd||windows||anyTime||earliestDate||latestDate))return {kind:'catalog',...filters,question:intent.question};
   const candidates=classes.filter(row=>
     enrollmentLevelMatches(level,row.level)&&
     (!period||row.period===period)&&(!format||row.format===format)&&
@@ -208,14 +211,18 @@ export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEn
   const conflictFor=(row:PublicEnrollmentClass)=>enrollmentScheduleConflict(intent,row);
   const matching=verifiable.filter(row=>!conflictFor(row))
     .sort((a,b)=>a.firstLesson.localeCompare(b.firstLesson)||a.id.localeCompare(b.id));
-  const available=matching.filter(row=>row.availability!=='full');
-  if(available.length)return {kind:'class',...filters,rows:enrollmentGuideRows(available),
-    ...(intent.question==='period_unit'?{question:intent.question,detailFields:intent.detailFields}:{})};
-  if(matching.length)return {kind:'waitlist',...filters,rows:enrollmentGuideRows(matching)};
-  if(candidates.length!==verifiable.length)return {kind:'unavailable',...filters};
+  const requested=intent.referenceIds.flatMap(id=>matching.filter(row=>row.id===id));
+  const options=requested.length?requested:matching;
+  const available=options.filter(row=>row.availability!=='full');
+  const requestedConflict=verifiable.filter(row=>intent.referenceIds.includes(row.id)).map(conflictFor).find(Boolean);
+  if(available.length)return {kind:'class',...filters,question:intent.question,maximumTotal,detailFields:intent.detailFields,
+    rows:enrollmentGuideRows(available),scheduleConflict:requestedConflict};
+  if(matching.length)return {kind:'waitlist',...filters,question:intent.question,detailFields:intent.detailFields,
+    rows:enrollmentGuideRows(options),scheduleConflict:requestedConflict};
+  if(candidates.length!==verifiable.length)return {kind:'unavailable',...filters,question:intent.question};
   const referenced=verifiable.find(row=>intent.referenceIds.includes(row.id));
   const commonConflict=verifiable.length?conflictFor(verifiable[0]):undefined;
   const shared=commonConflict&&verifiable.every(row=>JSON.stringify(conflictFor(row))===JSON.stringify(commonConflict))
     ?commonConflict:undefined;
-  return {kind:'demand',...filters,scheduleConflict:referenced?conflictFor(referenced):shared};
+  return {kind:'demand',...filters,question:intent.question,scheduleConflict:referenced?conflictFor(referenced):shared};
 }

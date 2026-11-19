@@ -38,7 +38,7 @@ export function ChatEnrollmentGuide({action,language,entry}:{action?:EnrollmentG
       const row=current??snapshot;
       const titleLink=enrollmentGuideHref({...action,kind:'class',classId:row.id},lang,'ai_chat',source);
       return <EnrollmentClassPreview key={row.id} row={row} language={lang} titleLink={titleLink}
-        actionLink={action.inspection?undefined:titleLink+'&apply=1'} availabilitySnapshot={!current} onNavigate={onClick}/>;
+        actionLink={action.inspection||action.question==='view_without_contact'?undefined:titleLink+'&apply=1'} availabilitySnapshot={!current} onNavigate={onClick}/>;
     })}
   </div>;
   return <a className={linkClass} href={enrollmentGuideHref(action,lang,'ai_chat',source)} onClick={onClick}>

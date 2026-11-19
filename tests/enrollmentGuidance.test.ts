@@ -133,6 +133,68 @@ test('an explicitly requested level absent from the catalogue does not fall back
   assert.equal(goal.pathname,'/enrollment/interest');
 });
 
+test('a matching class answers the schedule and budget in text before relying on a card',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const intent=normalizeEnrollmentIntent({kind:'recommend',level:'HSK 3',period:'mixed',fields:['weekly'],referenceIds:['requested']})!;
+  const mixed=sample({id:'requested',level:'HSK 3',period:'mixed',sessions:42,price:4158000,firstLesson:'2026-12-18T19:00',
+    weeklySchedule:{days:[5,6],start:'19:00',startByDay:{5:'19:00',6:'15:00'},lessons:2}});
+  const schedule=matchEnrollmentGuidance(intent,[{...mixed,id:'earlier',firstLesson:'2026-11-27T19:00'},mixed]);
+  assert.deepEqual(schedule.rows?.map(row=>row.id),['requested']);
+  assert.match(enrollmentReply(schedule,'zh'),/^下方班次的每周课表符合你给出的时间。[\s\S]*五 19:00–20:30；周六 15:00–16:30 WIB.*每次 2 节，共 90 分钟/);
+  assert.match(enrollmentReply(schedule,'en'),/Fri 19:00–20:30 \/ Sat 15:00–16:30 WIB/);
+  assert.match(enrollmentReply(schedule,'id'),/Jum 19:00–20:30 \/ Sab 15:00–16:30 WIB/);
+  const budget=matchEnrollmentGuidance(normalized({maximumTotal:1000000}),[sample(),sample({id:'over-budget',price:1100000})]);
+  assert.deepEqual(budget.rows?.map(row=>row.id),['fixture-a']);
+  assert.match(enrollmentReply(budget,'zh'),/^.*可以先看 HSK 1.*标准班.*Rp 1,000,000 以内[\s\S]*实付总价 Rp 920,000/);
+  assert.match(enrollmentReply({...budget,question:'starting_point'},'zh'),/^按你的预算.*标准班.*Rp 1,000,000/);
+});
+
+test('current questions are answered using verified facts, allowed actions and destinations',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const classAction=matchEnrollmentGuidance(normalized(),[sample({availability:'limited'})]);
+  assert.match(enrollmentReply({...classAction,question:'reserve'},'zh'),/^我无法在聊天里帮你锁位。[\s\S]*余位不多[\s\S]*验证邮箱/);
+  assert.doesNotMatch(enrollmentReply({...classAction,question:'reserve',intakePaused:true},'zh'),/提交申请/);
+  const full=matchEnrollmentGuidance(normalized({question:'reserve'}),[sample({availability:'full'})]);
+  assert.match(enrollmentReply(full,'zh'),/^我无法在聊天里帮你锁位。[\s\S]*已满[\s\S]*候补/);
+  assert.match(enrollmentReply({...classAction,question:'period_unit',detailFields:['price']},'zh'),
+    /^报价按一节 45 分钟计算。[\s\S]*每节 Rp 40,000/);
+  assert.match(enrollmentReply({...classAction,detailFields:['price']},'zh'),/实付总价 Rp 920,000.*标准总价 Rp 1,150,000.*每节 Rp 40,000/);
+  assert.match(enrollmentReply({...classAction,question:'view_without_contact',detailFields:['weekly']},'zh'),
+    /^可以。查看公开课表、学费和余位无需填电话或验证邮箱。[\s\S]*15:00–15:45 WIB/);
+  assert.match(enrollmentReply({...classAction,question:'apply',inspection:true,detailFields:['duration','price']},'zh'),
+    /共 23 节，每节 45 分钟[\s\S]*实付总价 Rp 920,000[\s\S]*验证邮箱并提交/);
+  assert.match(enrollmentReply({...classAction,question:'starting_point'},'zh'),/^如果你从零开始.*HSK 1.*打开一个班次.*每周时间/);
+  const appointment={kind:'quote' as const,question:'appointment' as const,quotes:[{id:'private-a',level:'HSK 1',format:'one-on-one',periods:23,minutes:45,
+    actual:350000,unitPriced:true}]};
+  assert.match(enrollmentReply(appointment,'zh'),/^一对一由 UPER 顾问约课。[\s\S]*每节 Rp 350,000/);
+  assert.doesNotMatch(enrollmentReply({...appointment,kind:'appointment'},'zh'),/Rp/);
+  assert.match(enrollmentGuideHref(appointment,'zh','ai_chat'),/^\/enrollment\/help\/one-on-one\?.*appointment=private-a/);
+  const records={kind:'records' as const};
+  assert.match(enrollmentReply({...records,question:'cancel_unpaid'},'zh'),/^订单仍在付款期限内[\s\S]*自行取消/);
+  assert.match(enrollmentReply({...records,question:'proof_after_cancellation'},'zh'),/暂勿再次付款[\s\S]*如果订单仍有[\s\S]*如果入口已关闭/);
+  assert.match(enrollmentReply({...records,question:'refund'},'zh'),/^退款须先获批/);
+  assert.match(enrollmentGuideHref(records,'zh','ai_chat'),/^\/enrollment\/mine\?/);
+  assert.equal(normalizeEnrollmentIntent({kind:'records',question:'invented_action'})?.question,undefined);
+});
+
+test('identical class facts are stated once and first dates and differences stay tied to the right class',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const second=sample({id:'fixture-b',batchNumber:2,firstLesson:'2027-01-02T15:00'});
+  const first=sample({batchNumber:1});
+  const same=matchEnrollmentGuidance(normalized(),[second,first]);
+  const reply=enrollmentReply(same,'zh');
+  assert.equal(reply.split('15:00–15:45').length-1,1);
+  assert.equal(reply.split('Rp 920,000').length-1,1);
+  assert.match(reply,/第 1 期.*2026-12-19/);
+  assert.match(reply,/第 2 期.*2027-01-02/);
+  assert.deepEqual(same.rows?.map(row=>row.id),['fixture-a','fixture-b']);
+  const different=matchEnrollmentGuidance(normalized({fields:['weekly','price','first']}),[first,{
+    ...second,price:1000000,weeklySchedule:{days:[6,7],start:'16:00',lessons:1},
+  }]);
+  assert.match(enrollmentReply(different,'zh'),/第 1 期.*15:00–15:45.*Rp 920,000/);
+  assert.match(enrollmentReply(different,'zh'),/第 2 期.*16:00–16:45.*Rp 1,000,000/);
+});
+
 test('clarifying the price unit does not repeat tuition unless the learner requests the amount',async()=>{
   const {enrollmentReply}=await import('../server/portal/chatEnrollment');
   const quote={kind:'quote' as const,question:'period_unit' as const,quotes:[
@@ -154,5 +216,22 @@ test('clarifying the price unit does not repeat tuition unless the learner reque
   const classAction=matchEnrollmentGuidance(normalized({question:'period_unit'}),[sample()]);
   assert.equal(enrollmentReply(classAction,'zh'),unit);
   const classPrice=matchEnrollmentGuidance(normalized({question:'period_unit',fields:['price']}),[sample()]);
-  assert.match(enrollmentReply(classPrice,'zh'),/报价按一节 45 分钟计算。[^\n]*\n[^\n]*Rp 920,000/);
+  const classPriceReply=enrollmentReply(classPrice,'zh');
+  assert.ok(classPriceReply.startsWith(unit));
+  assert.match(classPriceReply,/实付总价 Rp 920,000.*标准总价 Rp 1,150,000.*每节 Rp 40,000/);
+});
+
+test('navigation turns address the specific request while the enrollment state stays intact',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const form=matchEnrollmentGuidance(normalizeEnrollmentIntent({kind:'demand',level:'HSK 2',question:'link_only'})!,[]);
+  assert.equal(enrollmentReply(form,'zh'),'选课需求表在下方。');
+  assert.match(enrollmentGuideHref(form,'zh','ai_chat'),/^\/enrollment\/interest\?.*level=2/);
+  const other=matchEnrollmentGuidance(normalizeEnrollmentIntent({kind:'demand',level:'HSK 6'})!,[]);
+  assert.match(enrollmentReply(other,'zh'),/「其他」。请在备注填写你想学的级别/);
+  assert.doesNotMatch(enrollmentReply(other,'zh'),/不确定我的级别/);
+  assert.match(enrollmentGuideHref(other,'zh','ai_chat'),/level=other/);
+  const records={kind:'records' as const};
+  assert.equal(enrollmentReply({...records,question:'records_location'},'zh'),'进入「我的报名」，验证报名邮箱后打开原订单。');
+  assert.match(enrollmentReply({...records,question:'expired_unpaid'},'zh'),/超过付款期限后订单会终止，席位会释放/);
+  assert.doesNotMatch(enrollmentReply({kind:'paused',question:'link_only'},'zh'),/选课需求表在下方/);
 });

@@ -342,7 +342,7 @@ export function mountChat(app: Express) {
             if(enrollment&&(enrollment.kind!=='catalog'||parsed?.catalogue===null)){
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
               const facts=enrollmentReply(enrollment,lang);
-              const preserveAnswer=!enrollment.levelUnavailable&&
+              const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&!(enrollment.kind==='records'&&enrollment.question)&&
                 !['quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
               reply=[preserveAnswer?directAnswer:'',assessmentIntroduction&&!directAnswer?assessmentStartingPoint:'',
                 facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
