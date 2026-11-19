@@ -372,11 +372,17 @@ test('public class answers use advertised size and give repeat cards only when t
   assert.match(enrollmentReply(action,'zh'),/10–15 人.*上限 15 人.*安老师.*自我介绍.*查询时有余位/);
   const question=normalizeEnrollmentIntent({kind:'inspect',question:'private_seat_counts'})?.question;
   const counts={...action,question,detailFields:[]};
-  assert.match(enrollmentReply(counts,'zh'),/^占席人数、实收人数和开班门槛均不公开。[\s\S]*查询时有余位/);
-  assert.match(enrollmentReply(counts,'en'),/^We don’t publish[\s\S]*Seats available when checked/);
-  assert.match(enrollmentReply(counts,'id'),/tidak dipublikasikan[\s\S]*Tempat tersedia saat diperiksa/);
-  assert.match(enrollmentReply({...counts,rows:[{...rows[0],availability:'full'}]},'zh'),/均不公开[\s\S]*已满/);
-  assert.doesNotMatch(enrollmentReply({...action,detailFields:['seats']},'zh'),/均不公开/);
+  for(const [language,publicStatus] of [['zh','查询时有余位'],['en','Seats available when checked'],['id','Tempat tersedia saat diperiksa']] as const){
+    const reply=enrollmentReply(counts,language);
+    assert.ok(reply.includes(publicStatus));
+    assert.doesNotMatch(reply,/不公开|don’t publish|tidak dipublikasikan|占席人数|实收人数|开班门槛/);
+  }
+  assert.match(enrollmentReply({...counts,rows:[{...rows[0],availability:'full'}]},'zh'),/已满/);
+  const timezone=matchEnrollmentGuidance(normalizeEnrollmentIntent({kind:'browse',question:'clarify_timezone'})!,[]);
+  assert.equal(timezone.kind,'catalog');
+  assert.match(enrollmentReply(timezone,'zh'),/雅加达时间.*当地的时间.*城市或时区/);
+  assert.match(enrollmentReply({...timezone,question:'clarify_local_timezone'},'zh'),/^你在哪个城市或时区/);
+  assert.match(enrollmentReply({kind:'demand',question:'compare_waitlist'},'zh'),/^建议登记选课需求。候补只等那个班的空位/);
   assert.deepEqual(repeatedEnrollmentCards(action,[action]),['fixture-a']);
   const changed={...action,rows:[{...rows[0],availability:'full' as const}]};
   assert.deepEqual(repeatedEnrollmentCards(changed,[action]),[]);

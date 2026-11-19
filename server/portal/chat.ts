@@ -377,7 +377,7 @@ export function mountChat(app: Express) {
             }else if(enrollment&&(introduction||enrollment.kind!=='catalog'||parsed?.catalogue===null)){
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
               const facts=enrollmentReply(enrollment,replyLang);
-              const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&!(enrollment.kind==='records'&&enrollment.question)&&
+              const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&enrollment.question!=='clarify_timezone'&&enrollment.question!=='clarify_local_timezone'&&!(enrollment.kind==='records'&&enrollment.question)&&
                 !['advisor','quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
               reply=[preserveAnswer&&!assessmentGuidance?.needsReview?directAnswer:'',
                 facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
