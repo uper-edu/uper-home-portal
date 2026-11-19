@@ -3,6 +3,7 @@ import {enrollmentGuideText,enrollmentReplyLanguage,normalizeEnrollmentIntent,re
 import {managedCoursePrices} from './courseCatalog.ts';
 import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
+import {readChatProviderReply} from './chatProviderReply.ts';
 import {runtimeProviders} from './aiServiceConfig.ts';
 import {modelParameters} from './modelParameters.ts';
 import {crmInstant} from '../../src/utils/crmOperatingTime.ts';
@@ -247,17 +248,12 @@ export function mountChat(app: Express) {
         let consultationConstraints:ConsultationConstraints|undefined;
         let recommendationDeferral:DeferredRecommendation|undefined;
         let reply = "", modelUsed: string | null = null;
-        for (const provider of await runtimeProviders()) {
+        const providers = await runtimeProviders();
+        for (const [providerIndex,provider] of providers.entries()) {
           if (!provider.key) continue;
           let partial = "", actualModel = provider.model;
           try {
-            const upstream = await fetch(provider.url, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${provider.key}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
+            const requestBody = {
                 model: provider.model,
                 messages: [
                   {
@@ -303,53 +299,27 @@ export function mountChat(app: Express) {
                       ]
                     : []),
                 ],
-                stream: true,
-                response_format: { type: "json_object" },
+                response_format: { type: "json_object" as const },
                 ...modelParameters(provider.model, 1200),
-              }),
-              signal: AbortSignal.timeout(45000),
+            };
+            const signal = AbortSignal.timeout(45000);
+            const send = () => fetch(provider.url, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${provider.key}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ ...requestBody, stream:true, stream_options:{include_usage:true} }),
+              signal,
             });
-            if (!upstream.ok) throw Error(`Provider HTTP ${upstream.status}`);
-            let complete = false;
-            if (
-              upstream.headers
-                .get("content-type")
-                ?.includes("text/event-stream")
-            ) {
-              const reader = upstream.body!.getReader();
-              const decoder = new TextDecoder();
-              let buffer = "";
-              while (true) {
-                const next = await reader.read();
-                if (next.done) break;
-                buffer += decoder.decode(next.value, { stream: true });
-                let index;
-                while ((index = buffer.indexOf("\n")) >= 0) {
-                  const line = buffer.slice(0, index).trim();
-                  buffer = buffer.slice(index + 1);
-                  if (!line.startsWith("data:")) continue;
-                  const data = line.slice(5).trim();
-                  if (data === "[DONE]") {
-                    complete = true;
-                    continue;
-                  }
-                  const payload = JSON.parse(data);
-                  actualModel = payload.model || actualModel;
-                  if (payload.error) throw Error("Provider stream error");
-                  if (payload.choices?.[0]?.finish_reason === "length")
-                    throw Error("Answer truncated");
-                  const chunk = payload.choices?.[0]?.delta?.content || "";
-                  partial += chunk;
-                  // Only validated complete replies are sent to the client.
-                }
-              }
-            } else {
-              const payload = await upstream.json();
-              actualModel = payload.model || actualModel;
-              partial = payload.choices?.[0]?.message?.content || "";
-              complete = payload.choices?.[0]?.finish_reason !== "length";
-            }
-            if (!partial.trim() || !complete) throw Error("Incomplete answer");
+            await readChatProviderReply(send,
+              ({content,model}) => { partial=content; actualModel=model||provider.model; },
+              call => log.info('chat.token_usage', {
+                conversationId:conv.id, messageId:assistantId,
+                provider:provider.provider, configuredModel:provider.model, role:providerIndex===0?'primary':'fallback',
+                purpose:'consultation', serviceTier:'requested_default', ...call,
+              }),
+            );
             const parsed=JSON.parse(partial);
             const replyLang=enrollmentReplyLanguage(introduction?undefined:parsed?.replyLanguage,lang);
             const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');

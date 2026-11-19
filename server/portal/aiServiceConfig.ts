@@ -11,7 +11,7 @@ export function validateSelection(v:any):AiSelection {
  if(!v||!aiModels.includes(v.primary)||!aiModels.includes(v.fallback)||v.primary===v.fallback)throw Object.assign(Error('invalid_selection'),{status:400});
  return {primary:v.primary,fallback:v.fallback};
 }
-export function providerFor(model:string){const deep=model==='deepseek-chat';return {model,key:deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY,url:deep?(process.env.DEEPSEEK_API_BASE_URL||'https://api.deepseek.com/chat/completions'):(process.env.OPENAI_API_BASE_URL||'https://api.openai.com/v1/chat/completions')};}
+export function providerFor(model:string){const deep=model==='deepseek-chat';return {model,provider:deep?'deepseek':'openai',key:deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY,url:deep?(process.env.DEEPSEEK_API_BASE_URL||'https://api.deepseek.com/chat/completions'):(process.env.OPENAI_API_BASE_URL||'https://api.openai.com/v1/chat/completions')};}
 export async function aiState(db?:any){db ||= (await import('./store.ts')).pool;return (await db.query("SELECT value FROM portal_settings WHERE id='ai_service'")).rows[0]?.value||{revision:0,current:defaults(),previous:null,checks:[],history:[]};}
 export async function runtimeProviders(){const s=process.env.MYSQL_TRIAL_URL?await aiState():{current:defaults()};return [s.current.primary,s.current.fallback].map(providerFor);}
 import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
