@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation} from '../src/utils/enrollmentGuidance';
+import {enrollmentClassComparison,enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation} from '../src/utils/enrollmentGuidance';
 import type {PublicEnrollmentClass} from '../src/utils/enrollmentCatalog';
 
 const sample=(overrides:Partial<PublicEnrollmentClass>={}):PublicEnrollmentClass=>({
@@ -245,4 +245,16 @@ test('public class answers use advertised size and give repeat cards only when t
   const changed={...action,rows:[{...rows[0],availability:'full' as const}]};
   assert.deepEqual(repeatedEnrollmentCards(changed,[action]),[]);
   assert.match(enrollmentReply({...action,rows:[sample({availability:undefined})]},'zh'),/人数上限暂未公布.*姓名尚未公布.*成果暂未公布.*余位暂无法核实/);
+});
+
+test('class comparisons represent each level before limiting cards and name missing levels',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const records=[sample(),sample({id:'duplicate-level'}),sample({id:'level-2',level:'HSK 2'}),sample({id:'level-3',level:'HSK 3'})];
+  const levels=['HSK 1','HSK 2','HSK 3','HSK 4'];
+  const {rows,missingClassLevels}=enrollmentClassComparison(levels,records);
+  assert.deepEqual(rows.map(row=>row.id),['fixture-a','level-2','level-3']);
+  assert.deepEqual(missingClassLevels,['HSK 4']);
+  assert.match(enrollmentReply({kind:'class',rows:enrollmentGuideRows(rows,levels.length),missingClassLevels,detailFields:['materials']},'zh'),
+    /HSK 3[\s\S]*HSK 4 目前没有符合这些条件/);
+  assert.match(enrollmentReply({kind:'unavailable',missingClassLevels:levels},'zh'),/HSK 1、HSK 2、HSK 3、HSK 4 目前没有/);
 });

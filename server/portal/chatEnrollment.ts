@@ -5,7 +5,7 @@ import {
   enrollmentClassSizeText, enrollmentClassTitle, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
 } from '../../src/utils/enrollmentCatalog.ts';
 import {
-  enrollmentAppointmentRequested, enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentScheduleConflict, matchEnrollmentGuidance,
+  enrollmentAppointmentRequested, enrollmentClassComparison, enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentScheduleConflict, matchEnrollmentGuidance,
   normalizeEnrollmentIntent, type ConsultationConstraints, type EnrollmentGuideAction, type EnrollmentGuideLanguage, type EnrollmentQuote,
 } from '../../src/utils/enrollmentGuidance.ts';
 
@@ -102,14 +102,18 @@ export async function chatEnrollmentAction(
         (!intent.latestDate||row.firstLesson.slice(0,10)<=intent.latestDate));
       const specific=intent.batchNumber||intent.earliestDate||intent.latestDate||
         intent.detailFields.some(field=>['class_size','teacher','outcomes','seats'].includes(field));
-      const rows=intent.referenceIds.length?intent.referenceIds.flatMap(id=>classes.filter(row=>row.id===id)):
+      const comparison=kind==='specifications'&&!intent.referenceIds.length&&levels.length>1
+        ?enrollmentClassComparison(levels,matched):undefined;
+      const rows=comparison?.rows??(intent.referenceIds.length?intent.referenceIds.flatMap(id=>classes.filter(row=>row.id===id)):
         specific?matched:[...new Map(matched.map(row=>
-          [JSON.stringify([row.level,row.material,row.teacherType,row.sessions,row.minutes]),row])).values()];
-      if(!rows.length)return {kind:'unavailable',level,format,referenceUnavailable:true};
+          [JSON.stringify([row.level,row.material,row.teacherType,row.sessions,row.minutes]),row])).values()]);
+      const missingClassLevels=comparison?.missingClassLevels??(
+        !rows.length&&!intent.referenceIds.length&&kind==='specifications'?levels:undefined);
+      if(!rows.length)return {kind:'unavailable',level,format,referenceUnavailable:!!intent.referenceIds.length,missingClassLevels};
       const compare=kind==='inspect'&&(!intent.detailFields.length||intent.detailFields.includes('weekly'))
         ?normalizeEnrollmentIntent({kind:'recommend',...previousConstraints}):undefined;
       const scheduleConflict=compare?rows.map(row=>enrollmentScheduleConflict(compare,row)).find(conflict=>!!conflict):undefined;
-      return {kind:'class',level,format,question,rows:enrollmentGuideRows(rows),inspection:true,
+      return {kind:'class',level,format,question,rows:enrollmentGuideRows(rows,comparison?levels.length:2),inspection:true,missingClassLevels,
         intakePaused:(question==='apply'||question==='reserve')&&!(await enrollmentReadiness(c)).accepting,
         scheduleConflict,
         detailFields:intent.detailFields.length?intent.detailFields:kind==='specifications'?['duration','materials','teacher']:undefined,
@@ -125,6 +129,11 @@ export async function chatEnrollmentAction(
 
 export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuideLanguage){
   const t=(zh:string,en:string,id:string)=>enrollmentGuideText(lang,zh,en,id);
+  const missingLevels=action.missingClassLevels?.join(lang==='zh'?'、':', ');
+  const missingClassNote=missingLevels?t(
+    `${missingLevels} 目前没有符合这些条件、可核实的公开班次。`,
+    `No matching public class could be verified for ${missingLevels}.`,
+    `Belum ada kelas publik yang dapat diverifikasi dan sesuai untuk ${missingLevels}.`):'';
   const amount=(price:number)=>formatCurrency(price,lang);
   const rows=action.rows??[];
   const minutes=[...new Set([...(action.quotes??[]),...rows].map(row=>row.minutes).filter(value=>value>0))];
@@ -259,7 +268,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         question==='reserve'?'':introduction,
         conflictReason,
         sharedFacts.length?t(`两班共有以下信息。${formatFacts(sharedFacts)}`,`For both classes. ${formatFacts(sharedFacts)}`,`Informasi untuk kedua kelas. ${formatFacts(sharedFacts)}`):'',
-        ...individual,action.referenceUnavailable?unavailable:'',
+        ...individual,missingClassNote,action.referenceUnavailable?unavailable:'',
         (question==='apply'||question==='reserve')&&!action.intakePaused&&hasRoom?apply:'',
         (question==='apply'||question==='reserve')&&!action.intakePaused&&!hasRoom&&rows.some(row=>row.availability==='full')
           ?t('这班已满，可以打开班次详情加入候补。','This class is full. Open the class details to join the waitlist.','Kelas ini penuh. Buka detail kelas untuk masuk daftar tunggu.'):'',
@@ -282,8 +291,8 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         action.explicitDemand&&!action.format?t('班型没想好，可以选「不限」。','You can choose “Any” if you’re flexible about class type.',
           'Pilih “Bebas” jika jenis kelasnya fleksibel.'):''].filter(Boolean).join(' ');
     }
-    case 'unavailable':return [action.question==='reserve'?reserve:'',action.referenceUnavailable?unavailable:
-      t('暂时无法核实公开班次或报价。你可以稍后重试，也可以打开报名页查看。','I couldn’t verify current classes or prices. Try again shortly or check the enrollment page.','Kelas atau harga saat ini belum dapat diperiksa. Coba lagi nanti atau buka halaman pendaftaran.')].filter(Boolean).join(' ');
+    case 'unavailable':return [action.question==='reserve'?reserve:'',missingClassNote||(action.referenceUnavailable?unavailable:
+      t('暂时无法核实公开班次或报价。你可以稍后重试，也可以打开报名页查看。','I couldn’t verify current classes or prices. Try again shortly or check the enrollment page.','Kelas atau harga saat ini belum dapat diperiksa. Coba lagi nanti atau buka halaman pendaftaran.'))].filter(Boolean).join(' ');
     case 'paused':return [action.question==='reserve'?reserve:'',
       t('目前暂停接受新报名和新的选课需求。你仍可查看课程，也可以在「我的报名」查看已有记录。','New enrollment and new course preference submissions are paused. You can still browse or check existing records in My Enrollments.','Pendaftaran dan pengiriman preferensi baru sedang dijeda. Anda tetap dapat melihat kelas dan riwayat di Pendaftaran Saya.')].filter(Boolean).join(' ');
     case 'advisor':return action.offline?t('目前报名目录能核实的是线上课。雅加达线下面授的地点和时间请与 UPER 确认。','The current enrollment catalogue covers online classes. Check in-person availability, location and timing in Jakarta with UPER.','Katalog pendaftaran saat ini memuat kelas online. Konfirmasikan ketersediaan, lokasi, dan jadwal tatap muka di Jakarta kepada UPER.'):

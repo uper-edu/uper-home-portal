@@ -27,6 +27,7 @@ export type EnrollmentGuideAction={
   offline?:boolean;
   inspection?:boolean;
   referenceUnavailable?:boolean;
+  missingClassLevels?:string[];
   requestedPeriods?:number;
   detailFields?:string[];
   question?:ConsultationQuestion;
@@ -151,10 +152,21 @@ export function enrollmentLevelMatches(requested:string,actual:string){
   return requested===actual||(requested==='HSK 4'&&['HSK 4A','HSK 4B'].includes(actual));
 }
 
-export function enrollmentGuideRows(entries:PublicEnrollmentClass[]):EnrollmentGuideClass[]{
-  return entries.slice(0,2).map(({
+export function enrollmentGuideRows(entries:PublicEnrollmentClass[],limit=2):EnrollmentGuideClass[]{
+  return entries.slice(0,limit).map(({
     id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize,
   })=>({id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize}));
+}
+
+export function enrollmentClassComparison(levels:readonly string[],entries:PublicEnrollmentClass[]){
+  const rows:PublicEnrollmentClass[]=[];
+  const missingClassLevels:string[]=[];
+  for(const level of levels){
+    const match=entries.find(row=>row.level===level)??entries.find(row=>enrollmentLevelMatches(level,row.level));
+    if(!match)missingClassLevels.push(level);
+    else if(!rows.some(row=>row.id===match.id))rows.push(match);
+  }
+  return {rows,missingClassLevels};
 }
 
 export function repeatedEnrollmentCards(action:EnrollmentGuideAction,history:EnrollmentGuideAction[]){
