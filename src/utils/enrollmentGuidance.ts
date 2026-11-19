@@ -2,6 +2,9 @@ import {enrollmentFormats,enrollmentLevels,enrollmentPeriods,enrollmentSessionSt
 import {promotionJourneyUrl} from './promotionNavigation';
 
 export type EnrollmentGuideLanguage='zh'|'en'|'id';
+export function enrollmentReplyLanguage(value:unknown,fallback:EnrollmentGuideLanguage):EnrollmentGuideLanguage{
+  return value==='zh'||value==='en'||value==='id'?value:fallback;
+}
 const consultationQuestions=['starting_point','apply','reserve','period_unit','group_overview','appointment','view_without_contact',
   'link_only','records_location','cancel_unpaid','expired_unpaid','proof_after_cancellation','payment_verification','refund'] as const;
 type ConsultationQuestion=typeof consultationQuestions[number];
@@ -21,6 +24,7 @@ export type EnrollmentGuideAction={
   classId?:string;
   rows?:EnrollmentGuideClass[];
   linkOnlyClassIds?:string[];
+  replyLanguage?:EnrollmentGuideLanguage;
   explicitDemand?:boolean;
   quoteMissing?:boolean;
   quotes?:EnrollmentQuote[];

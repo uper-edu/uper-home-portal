@@ -550,6 +550,23 @@
       ],
       "holdout": false,
       "eligible": true
+    },
+    {
+      "id": "37",
+      "name": "逐轮语言切换与明确覆盖",
+      "interfaceLanguage": "en",
+      "turns": [
+        "我想了解 HSK 1，小班多少人多少钱？",
+        "Berapa jumlah siswa dan biaya kelas kecil HSK 1?",
+        "HSK 1 小班多少人、多少钱？请用英文回答。",
+        "How much is an HSK 1 small group and how many students? Jawab dalam bahasa Indonesia."
+      ],
+      "expected": [
+        "英文字面界面下正文依次用中文、印尼文、英文、印尼文答复",
+        "明确指定的回复语言优先，报名链接使用同一语言并保留小班筛选"
+      ],
+      "holdout": false,
+      "eligible": true
     }
   ],
   "thresholds": {

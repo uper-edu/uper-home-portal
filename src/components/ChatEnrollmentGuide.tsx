@@ -26,7 +26,7 @@ export function ChatEnrollmentGuide({action,language,entry}:{action?:EnrollmentG
     return ()=>{active=false;};
   },[rows]);
   if(!action)return null;
-  const lang:EnrollmentGuideLanguage=language.startsWith('zh')?'zh':language.startsWith('id')?'id':'en';
+  const lang:EnrollmentGuideLanguage=action.replyLanguage??(language.startsWith('zh')?'zh':language.startsWith('id')?'id':'en');
   const t=(zh:string,en:string,id:string)=>enrollmentGuideText(lang,zh,en,id);
   const source=new URLSearchParams(search);
   if(entry==='homepage_widget'&&!source.has('entry_point'))source.set('entry_point',entry);

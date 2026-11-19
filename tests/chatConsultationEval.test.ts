@@ -47,3 +47,12 @@ test('a human handoff retains known public course preferences without placing pe
   assert.equal(next.searchParams.get('format'),'one-on-one');
   assert.ok(['phone','email','message'].every(field=>!next.searchParams.has(field)));
 });
+
+test('reply language validation falls back safely and the standard suite covers language overrides',async()=>{
+  const {enrollmentReplyLanguage}=await import('../src/utils/enrollmentGuidance');
+  assert.equal(enrollmentReplyLanguage('id','en'),'id');
+  assert.equal(enrollmentReplyLanguage('zh','en'),'zh');
+  assert.equal(enrollmentReplyLanguage('en','zh'),'en');
+  assert.equal(enrollmentReplyLanguage('unsupported','zh'),'zh');
+  assert.equal(suite.cases.find((entry:{id:string})=>entry.id==='37')?.interfaceLanguage,'en');
+});

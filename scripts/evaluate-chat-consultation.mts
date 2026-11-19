@@ -9,7 +9,7 @@ import {newHskAttempt} from '../src/data/hskAssessment';
 import {getVersionQuestions} from '../src/data/hskAssessmentVersions';
 import {enrollmentGuideHref,type EnrollmentGuideAction} from '../src/utils/enrollmentGuidance';
 
-type Case={id:string;name:string;turns:string[];expected:string[];source?:string;reported?:string;scores?:number[]};
+type Case={id:string;name:string;turns:string[];expected:string[];source?:string;reported?:string;scores?:number[];interfaceLanguage?:'zh'|'en'|'id'};
 const suite=JSON.parse(await readFile(new URL('../tests/fixtures/chat-consultation-v1.json',import.meta.url),'utf8'));
 const cases=suite.cases as Case[];
 assert.ok(cases.length>=30&&new Set(cases.map(test=>test.id)).size===cases.length);
@@ -73,6 +73,7 @@ async function run(item:Case,index:number){
   const digest=token?createHash('sha256').update(token).digest('hex'):undefined;
   const label='CHATEVAL-'+item.id+'-'+visitor.slice(0,8);
   const source=item.source??'standalone_chat';
+  const interfaceLanguage=item.interfaceLanguage??'zh';
   const headers={'content-type':'application/json',origin,cookie:'uper_visitor='+visitor,'x-visitor-scope':scope};
   const submit=(path:string,body:unknown)=>request(path,{method:'POST',headers,body:JSON.stringify(body)});
   const transcript={id:item.id,name:item.name,source,repetition:index,assessment:undefined as unknown,
@@ -107,7 +108,7 @@ async function run(item:Case,index:number){
 
     async function chat(input:string,body:Record<string,string>){
       const clock=Date.now();
-      const response=await submit('/api/chat',{conversationId,lang:'zh',messageId:randomUUID(),...body});
+      const response=await submit('/api/chat',{conversationId,lang:interfaceLanguage,messageId:randomUUID(),...body});
       const {reply,enrollment,modelUsed,status,error}=await response.json();
       const turn={input,status:response.status,reply,error,modelUsed,state:status,elapsedMs:Date.now()-clock,
         enrollment:enrollment as EnrollmentGuideAction|undefined,links:[] as unknown[]};
@@ -116,7 +117,7 @@ async function run(item:Case,index:number){
         const actions=enrollment.rows?.length?enrollment.rows.map(row=>({...enrollment,classId:row.id,
           kind:row.availability==='full'?'waitlist':'class'} as EnrollmentGuideAction)):[enrollment];
         for(const action of actions){
-          const href=enrollmentGuideHref(action,'zh','ai_chat');
+          const href=enrollmentGuideHref(action,enrollment.replyLanguage??interfaceLanguage,'ai_chat');
           const page=await request(href,{headers:{cookie:headers.cookie}});
           turn.links.push({href,status:page.status,robots:page.headers.get('x-robots-tag')});
           await page.body?.cancel();

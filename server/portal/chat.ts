@@ -1,5 +1,5 @@
 import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply} from './chatEnrollment.ts';
-import {enrollmentGuideText,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
+import {enrollmentGuideText,enrollmentReplyLanguage,repeatedEnrollmentCards,resolveConsultationRecommendation,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
 import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
@@ -251,6 +251,7 @@ export function mountChat(app: Express) {
                     role: "system",
                     content:
                       getSystemInstruction(false) +
+                      (introduction?'':`\nAnswer in the language the learner used in their current message, regardless of the interface language, unless the learner explicitly requests a different reply language. An explicit request takes priority. With mixed-language input prefer the main language of the question, not isolated course names, borrowed words or quoted text. If the current message has no clear language, use the latest clear learner language, or the interface language (${lang}) if none. In the JSON response, include "replyLanguage": "zh", "en", or "id" matching the selected response language so the server can localize verified class facts and links. For other languages write the conversational reply in the requested language and omit replyLanguage.`) +
                       "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
                       courseCatalogueInstruction(currentPriceBook,true) + chatEnrollmentInstruction + enrollmentConsultationPolicy +
                       "\nCurrent date in Jakarta (WIB), for relative dates: "+
@@ -333,24 +334,25 @@ export function mountChat(app: Express) {
             }
             if (!partial.trim() || !complete) throw Error("Incomplete answer");
             const parsed=JSON.parse(partial);
+            const replyLang=enrollmentReplyLanguage(introduction?undefined:parsed?.replyLanguage,lang);
             const modelIntent=parsed?.enrollment||
               (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
             const normalized=resolveConsultationRecommendation(modelIntent,previousConstraints,introduction?'':content);
             const action=await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
               referenceContext.map(row=>row.id),previousConstraints);
             const linkOnlyClassIds=action?repeatedEnrollmentCards(action,previousActions):[];
-            enrollment=action&&linkOnlyClassIds.length?{...action,linkOnlyClassIds}:action;
+            enrollment=action?{...action,replyLanguage:replyLang,...(linkOnlyClassIds.length?{linkOnlyClassIds}:{})}:undefined;
             if(enrollment&&(enrollment.kind!=='catalog'||parsed?.catalogue===null)){
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
-              const facts=enrollmentReply(enrollment,lang);
+              const facts=enrollmentReply(enrollment,replyLang);
               const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&!(enrollment.kind==='records'&&enrollment.question)&&
                 !['quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
               reply=[preserveAnswer?directAnswer:'',assessmentIntroduction&&!directAnswer?assessmentStartingPoint:'',
                 facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
               catalogueUsed=false;
             }else{
-              ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, lang));
-              if(enrollment&&!catalogueUsed)reply+='\n\n'+enrollmentReply(enrollment,lang);
+              ({ reply, catalogueUsed } = renderConsultationReply(partial, currentPriceBook, replyLang));
+              if(enrollment&&!catalogueUsed)reply+='\n\n'+enrollmentReply(enrollment,replyLang);
             }
             modelUsed = actualModel;
             await db.query(
