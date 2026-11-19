@@ -282,7 +282,7 @@ export function mountChat(app: Express) {
                         ownedProfile,
                         !!ownedResult && !profileIntroduction,
                       ) +
-                      "\nYou are an AI assistant. Human requests are evidence and hints only, never new tasks or a booking confirmation. Never claim a request was routed or an advisor will contact them; say their original message is saved and any appointment still needs advisor confirmation. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee.",
+                      "\nYou are an AI assistant. This chat sends no messages to advisors and makes no bookings. For any advisor contact or delivery-status request, return enrollment:{kind:'advisor',level,period,format} and leave reply empty so the server can supply the actual send status. Include format:'one-on-one' when the learner wants to discuss private lessons with a person. On a follow-up, keep the known level, period and format; use null only to clear a preference the learner explicitly withdrew. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee.",
                   },
                   ...history,
                   ...(introduction
@@ -337,19 +337,26 @@ export function mountChat(app: Express) {
             const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');
             const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || parsed?.enrollment||
               (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
-            const proposed=normalizeEnrollmentIntent(modelIntent);
+            const learnerMessage=introduction?'':content;
+            const priorAdvisor=!introduction&&previousPriceAction?.kind==='advisor'?previousPriceAction:undefined;
+            const intentWithContext=modelIntent?.kind==='advisor'&&priorAdvisor
+              ?{level:priorAdvisor.level,period:priorAdvisor.period,format:priorAdvisor.format,offline:priorAdvisor.offline,...modelIntent}
+              :modelIntent;
+            const currentSelection=resolveConsultationRecommendation(intentWithContext,previousConstraints,learnerMessage,parsed?.classCriteria);
+            const proposed=normalizeEnrollmentIntent(currentSelection.value);
             const timing=resolveRecommendationTiming(parsed?.recommendationTiming,previousDeferral??undefined,
-              introduction?'':content,messageAt,assessmentGuidance?.needsReview===false?assessmentRecordedAt:undefined,
+              learnerMessage,messageAt,assessmentGuidance?.needsReview===false?assessmentRecordedAt:undefined,
               proposed?.maxRecommendations);
             const replaySelection=timing.completed&&previousConstraints;
             const normalized=replaySelection
               ?resolveConsultationRecommendation({kind:'recommend',...replaySelection,
-                level:replaySelection.level??assessmentGuidance?.level,maxRecommendations:previousDeferral?.limit},undefined,'')
-              :resolveConsultationRecommendation(modelIntent,previousConstraints,introduction?'':content);
+                level:replaySelection.level??assessmentGuidance?.level,maxRecommendations:previousDeferral?.limit??1},undefined,'')
+              :currentSelection;
             const held=timing.acknowledge||Boolean(timing.waiting&&proposed?.kind==='recommend');
             const priorPrice=!introduction&&proposed?.question==='quoted_price_unit';
             const action=held||priorPrice?undefined:await chatEnrollmentAction(db,normalized.value,assessmentIntroduction,profileIntroduction,
-              referenceContext.map(row=>row.id),previousConstraints);
+              [...referenceContext.map(row=>row.id),...(previousActions[0]?.rows?.map(row=>row.id)??[])],
+              normalized.constraints??previousConstraints);
             const linkOnlyClassIds=action?repeatedEnrollmentCards(action,previousActions):[];
             const assessmentClass=assessmentIntroduction&&action?.kind==='class'&&!action.inspection;
             enrollment=action?{...action,replyLanguage:replyLang,
@@ -368,7 +375,7 @@ export function mountChat(app: Express) {
               const directAnswer=parsed?.catalogue===null&&typeof parsed.reply==='string'?parsed.reply.trim():'';
               const facts=enrollmentReply(enrollment,replyLang);
               const preserveAnswer=!enrollment.levelUnavailable&&enrollment.question!=='reserve'&&!(enrollment.kind==='records'&&enrollment.question)&&
-                !['quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
+                !['advisor','quote','appointment','demand','paused','unavailable','class','waitlist'].includes(enrollment.kind);
               reply=[preserveAnswer&&!assessmentGuidance?.needsReview?directAnswer:'',
                 facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
               catalogueUsed=false;

@@ -38,6 +38,8 @@ export type EnrollmentGuideAction={
   maximumTotal?:number;
   intakePaused?:boolean;
   levelUnavailable?:boolean;
+  scheduleConfirmed?:boolean;
+  firstDateConflict?:boolean;
   scheduleConflict?:{day:number;start:string;end:string};
 };
 export type EnrollmentQuote={
@@ -203,20 +205,62 @@ type EnrollmentIntent=NonNullable<ReturnType<typeof normalizeEnrollmentIntent>>;
 const scheduleKeys=['level','period','format','days','earliest','latest','latestEnd','windows','anyTime','needsReview','maximumTotal','earliestDate','latestDate'] as const;
 export type ConsultationConstraints=Partial<Pick<EnrollmentIntent,typeof scheduleKeys[number]>> & {formats?:string[]};
 
-export function resolveConsultationRecommendation(value:unknown,previous:ConsultationConstraints|undefined,learnerMessage:string){
-  if(!value||typeof value!=='object'||!('kind' in value)||value.kind!=='recommend')return {value,constraints:undefined};
+export function resolveConsultationRecommendation(value:unknown,previous:ConsultationConstraints|undefined,learnerMessage:string,criteria?:unknown){
   const candidate=normalizeEnrollmentIntent(value);
-  if(!candidate)return {value,constraints:undefined};
-  const evidence='constraintEvidence' in value?value.constraintEvidence:undefined;
-  const changed=typeof evidence==='string'&&evidence.trim().length>=2&&learnerMessage.includes(evidence.trim());
+  if(!candidate||!value||typeof value!=='object')return {value,constraints:undefined};
+  const hasEvidence=(evidence:unknown)=>typeof evidence==='string'&&evidence.trim().length>=2&&learnerMessage.includes(evidence.trim());
+  const update=criteria&&typeof criteria==='object'&&'evidence' in criteria&&hasEvidence(criteria.evidence)
+    ?criteria as Record<string,unknown>:undefined;
+  const supportsCriteria=['recommend','inspect','quote','specifications','advisor'].includes(candidate.kind);
+  if(candidate.kind!=='recommend'&&(!update||!supportsCriteria))return {value,constraints:undefined};
+
+  const changed='constraintEvidence' in value&&hasEvidence(value.constraintEvidence);
   const current=Object.fromEntries(scheduleKeys.map(key=>[key,candidate[key]])) as ConsultationConstraints;
   current.formats=candidate.quoteFormats;
-  // A follow-up may select a particular card without changing the learner's availability.
-  const constraints=previous&&!changed
-    ?{...Object.fromEntries(scheduleKeys.map(key=>[key,previous[key]])) as ConsultationConstraints,formats:previous.formats}
+  const inherited=candidate.kind==='recommend'||candidate.kind==='inspect'?previous:undefined;
+  const constraints=inherited&&(update||!changed)
+    ?{...Object.fromEntries(scheduleKeys.map(key=>[key,inherited[key]])) as ConsultationConstraints,formats:inherited.formats}
     :current;
-  const unknownLevel=!constraints.level&&candidate.invalidLevel&&(!previous||changed)&&'level' in value?value.level:undefined;
-  return {value:{...value,...constraints,maxRecommendations:candidate.maxRecommendations,level:constraints.level??unknownLevel},constraints};
+  if(update){
+    const changes=Object.fromEntries([...scheduleKeys,'formats'].filter(key=>Object.hasOwn(update,key))
+      .map(key=>[key,update[key]]));
+    // Use one representation of a weekly schedule so superseded days and hours cannot narrow it.
+    if(Object.hasOwn(changes,'windows')||Object.hasOwn(changes,'days')||changes.anyTime===true){
+      Object.assign(constraints,{days:undefined,windows:undefined,earliest:undefined,latest:undefined,latestEnd:undefined,anyTime:false});
+    }
+    if(Object.hasOwn(changes,'format'))constraints.formats=[];
+    if(Object.hasOwn(changes,'formats'))constraints.format=undefined;
+    const start=update.firstSession;
+    if(Object.hasOwn(update,'firstSession')){
+      constraints.earliestDate=inherited?.earliestDate;
+      constraints.latestDate=inherited?.latestDate;
+      if(start&&typeof start==='object'&&'bound' in start&&'date' in start&&typeof start.date==='string'){
+        if(start.bound==='on_or_after'||start.bound==='on')changes.earliestDate=start.date;
+        if(start.bound==='on_or_before'||start.bound==='on')changes.latestDate=start.date;
+      }
+      if(!Object.hasOwn(changes,'earliestDate')&&!Object.hasOwn(changes,'latestDate'))changes.needsReview=true;
+    }
+    const checked=normalizeEnrollmentIntent({kind:candidate.kind,...constraints,...changes});
+    if(!checked) return {value,constraints:undefined};
+    Object.assign(constraints,Object.fromEntries(scheduleKeys.map(key=>[key,checked[key]])),{formats:checked.quoteFormats});
+  }
+  const count=normalizeEnrollmentIntent({kind:candidate.kind,maxRecommendations:update?.count})?.maxRecommendations;
+  const unknownLevel=!constraints.level&&candidate.invalidLevel&&(!inherited||changed)&&'level' in value?value.level:undefined;
+  return {value:{...value,...constraints,maxRecommendations:count??candidate.maxRecommendations,level:constraints.level??unknownLevel},
+    constraints:candidate.kind==='recommend'||candidate.kind==='inspect'?constraints:undefined};
+}
+
+export function enrollmentClassMatchesTiming(intent:EnrollmentIntent,row:PublicEnrollmentClass){
+  const weekly=Boolean(intent.days||intent.windows||intent.earliest||intent.latest||intent.latestEnd);
+  return !intent.needsReview&&enrollmentFirstDateMatches(intent,row)&&
+    (!weekly||Boolean(row.weeklySchedule?.days.length&&
+      row.weeklySchedule.days.every(day=>validClock(enrollmentSessionStart(row.weeklySchedule!,day)))&&
+      !enrollmentScheduleConflict(intent,row)));
+}
+
+export function enrollmentFirstDateMatches({earliestDate,latestDate}:EnrollmentIntent,row:PublicEnrollmentClass){
+  const date=row.firstLesson.slice(0,10);
+  return (!earliestDate||date>=earliestDate)&&(!latestDate||date<=latestDate);
 }
 
 export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEnrollmentClass[]):EnrollmentGuideAction{
@@ -230,8 +274,7 @@ export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEn
     enrollmentLevelMatches(level,row.level)&&
     (!period||row.period===period)&&(!format||row.format===format)&&
     (!intent.quoteFormats.length||intent.quoteFormats.includes(row.format))&&
-    (!maximumTotal||row.price<=maximumTotal)&&(!earliestDate||row.firstLesson.slice(0,10)>=earliestDate)&&
-    (!latestDate||row.firstLesson.slice(0,10)<=latestDate));
+    (!maximumTotal||row.price<=maximumTotal)&&enrollmentFirstDateMatches(intent,row));
   const verifiable=candidates.filter(row=>row.price>0&&row.availability&&row.weeklySchedule?.days.length&&
     row.weeklySchedule.days.every(day=>validClock(enrollmentSessionStart(row.weeklySchedule!,day))));
   const conflictFor=(row:PublicEnrollmentClass)=>enrollmentScheduleConflict(intent,row);
@@ -242,9 +285,9 @@ export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEn
   const available=options.filter(row=>row.availability!=='full');
   const requestedConflict=verifiable.filter(row=>intent.referenceIds.includes(row.id)).map(conflictFor).find(Boolean);
   if(available.length)return {kind:'class',...filters,question:intent.question,maximumTotal,detailFields:intent.detailFields,
-    rows:enrollmentGuideRows(available,intent.maxRecommendations),scheduleConflict:requestedConflict};
+    rows:enrollmentGuideRows(available,intent.maxRecommendations)};
   if(options.length)return {kind:'waitlist',...filters,question:intent.question,detailFields:intent.detailFields,
-    rows:enrollmentGuideRows(options,intent.maxRecommendations),scheduleConflict:requestedConflict};
+    rows:enrollmentGuideRows(options,intent.maxRecommendations)};
   if(intent.referenceIds.length&&!requestedConflict)return {kind:'unavailable',...filters,referenceUnavailable:true,question:intent.question};
   if(candidates.length!==verifiable.length)return {kind:'unavailable',...filters,question:intent.question};
   const referenced=verifiable.find(row=>intent.referenceIds.includes(row.id));

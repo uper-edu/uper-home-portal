@@ -142,6 +142,57 @@ test('following up cannot silently relax a prior availability limit or add a nar
   assert.equal(normalizeEnrollmentIntent({kind:'recommend',windows:[{day:5,earliest:'19:00',latest:'19:00'}]})?.windows?.[0].latestStart,'19:00');
 });
 
+test('a verified current correction replaces old weekday windows during a referenced inspection',()=>{
+  const before={level:'HSK 3',days:[6],earliest:'15:00'};
+  const inspection={kind:'inspect',referenceIds:['original-class'],fields:['weekly']};
+  const correction={evidence:'Friday works again',windows:[{day:5,earliest:'19:00'},{day:6,earliest:'15:00'}],count:1};
+  const updated=resolveConsultationRecommendation(inspection,before,'Friday works again. Check the same class.',correction);
+  assert.equal(updated.constraints?.days,undefined);
+  assert.equal(updated.constraints?.earliest,undefined);
+  assert.deepEqual(updated.constraints?.windows?.map(window=>window.day),[5,6]);
+  assert.deepEqual(normalizeEnrollmentIntent(updated.value)?.referenceIds,['original-class']);
+  assert.equal(normalizeEnrollmentIntent(updated.value)?.maxRecommendations,1);
+  assert.equal(resolveConsultationRecommendation(inspection,before,'Check the same class.',correction).constraints,undefined);
+});
+
+test('an unverifiable class reference does not fall back to an unrelated quote or recommendation',async()=>{
+  const {chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+  let reads=0;
+  const client={query:async()=>{reads++;throw Error('No lookup is needed');}};
+  for(const kind of ['inspect','quote','recommend']){
+    const action=await chatEnrollmentAction(client,{kind,level:'HSK 1',referenceIds:['other-class']},false,false,['original-class']);
+    assert.equal(action?.kind,'unavailable');
+    assert.equal(action?.referenceUnavailable,true);
+  }
+  assert.equal(reads,0);
+});
+
+test('a price lookup applies the verified period and direction of the first-session bound',async()=>{
+  const {enrollmentQuoteRows}=await import('../server/portal/chatEnrollment');
+  const quote={kind:'quote',level:'HSK 1',format:'standard',latestDate:'2026-12-01'};
+  const {value}=resolveConsultationRecommendation(quote,undefined,'周末班至少下个月开始',{
+    evidence:'周末班至少下个月开始',period:'weekend',firstSession:{bound:'on_or_after',date:'2026-12-01'},
+  });
+  const intent=normalizeEnrollmentIntent(value)!;
+  assert.equal(intent.latestDate,undefined);
+  assert.deepEqual(enrollmentQuoteRows(intent,[
+    sample({id:'wrong-period',period:'weekday-evening'}),
+    sample({id:'too-early',firstLesson:'2026-11-28T15:00'}),
+    sample(),
+  ],[]).map(row=>row.id),['fixture-a']);
+});
+
+test('an advisor link reports the actual unsent status and retains public preferences',async()=>{
+  const {enrollmentReply,chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+  const action=await chatEnrollmentAction({query:async()=>{throw Error('No lookup is needed');}},
+    {kind:'advisor',level:'HSK 2',format:'one-on-one',period:'weekend'},false,false);
+  assert.ok(action);
+  assert.match(enrollmentReply(action,'zh'),/由顾问确认.*我没有代你向顾问发送消息/);
+  assert.match(enrollmentReply(action,'en'),/haven’t sent a message/);
+  assert.match(enrollmentReply(action,'id'),/belum mengirim pesan/);
+  assert.match(enrollmentGuideHref(action,'zh','ai_chat'),/level=2.*period=weekend.*format=one-on-one/);
+});
+
 test('an explicitly requested level absent from the catalogue does not fall back to another level',()=>{
   const intent=normalizeEnrollmentIntent({kind:'browse',level:'HSK 6'})!;
   assert.equal(matchEnrollmentGuidance(intent,[sample()]).levelUnavailable,true);

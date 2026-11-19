@@ -5,12 +5,13 @@ import {
   enrollmentClassSizeText, enrollmentClassTitle, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
 } from '../../src/utils/enrollmentCatalog.ts';
 import {
-  enrollmentAppointmentRequested, enrollmentClassComparison, enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentScheduleConflict, matchEnrollmentGuidance,
+  enrollmentAppointmentRequested, enrollmentClassComparison, enrollmentClassMatchesTiming, enrollmentFirstDateMatches, enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentScheduleConflict, matchEnrollmentGuidance,
   normalizeEnrollmentIntent, type ConsultationConstraints, type EnrollmentGuideAction, type EnrollmentGuideLanguage, type EnrollmentQuote,
 } from '../../src/utils/enrollmentGuidance.ts';
 
 export const chatEnrollmentInstruction = `
 For any UPER Mandarin course or Enrollment request, use the optional "enrollment" field in your JSON response. It takes priority over "catalogue", which is only for non-Enrollment programmes. Set catalogue:null for Enrollment. Choose the action that resolves the current task:
+- Emit a top-level "classCriteria" when the current learner turn adds, corrects, or explicitly narrows class facts or matching criteria, including in an inspect or tuition turn. Include "evidence" with an exact quote from this turn and only the changed fields. A weekday availability change must include complete updated "windows", retaining days and hours that still apply. For a stated first-class boundary, emit "firstSession":{"bound":"on_or_after","date":"YYYY-MM-DD"} for "at least next month" or "not before"; calculate the first day in WIB. Use "on_or_before" for a deadline and "on" for an exact date. For a request to find one class, including after an assessment, emit "count":1. For a weekday or weekend price request include "period" even when prices happen to be the same. Keep any referenced class IDs in the enrollment action. Current constraints override earlier restrictions and do not disappear merely because you choose inspect or quote.
 - quote: current tuition, a cost breakdown, or a PRICE comparison by class type. "levels":["HSK 1"], "formats":["standard","small","one-on-one"]. Use "level" for a single target; no level means all levels only if the learner asked for general prices. Use "requestedPeriods" for a private lesson quantity the learner explicitly asks about. One-to-one price questions use quote, not appointment. A learning-experience comparison is not a price request; answer it directly without replacing it with a price list.
  When the learner asks which amount just quoted is the total and which is per period, set kind:"quote", question:"quoted_price_unit". Use referenceIds from the prior quoted tuition only when the learner points to a particular quoted option; otherwise leave them empty. Use question:"period_unit" for a general question about the billing unit without referring to a prior amount. Omit fields for a standalone question about the unit. If this same turn also asks for current amounts or a cost breakdown, add "price" to fields. If it also asks whether or how the learner can register or arrange private lessons, add "appointment" to fields. Include both fields if both are asked.
  If the learner asks how many people and how much a small group or standard class generally costs, use quote with question:"group_overview" and the requested format. Keep the target level if known from the current discussion. Do not select a batch unless the learner refers to a specific class. This is a format question even if classes were shown earlier. The server will answer the size and verified price before offering a filtered catalogue link.
@@ -18,11 +19,11 @@ For any UPER Mandarin course or Enrollment request, use the optional "enrollment
  For a hard total budget in Indonesian rupiah set maximumTotal (an integer); for a latest or earliest allowed first class, use latestDate or earliestDate (YYYY-MM-DD in WIB). Never imply that an out-of-budget class matches.
  Use the published schedule's WIB for ordinary browsing and confirmed Jakarta preferences. When a learner explicitly means a different or unresolved local timezone, clarify it or convert if known; don't treat an unstated timezone as a conflict in every Indonesian course enquiry. Valid period values are weekend, weekday-evening or mixed; express "afternoon" etc. in time windows. When a beginner explicitly asks to find a class and has no conflicting placement, HSK 1 is a suggested starting point.
  Only set format or formats as a filter when the learner specifically requests those class types. For example, wanting to speak more does not mean they can only accept a small group. If the learner has multiple acceptable types use formats rather than choosing one for them. Never replace known hard restrictions in a follow-up that only asks for details or a reason. To replace any existing constraint, include constraintEvidence as an exact quote from the CURRENT learner message that changes the requirement and supply the full revised constraints, including those unchanged.
-- inspect: answer a follow-up about actual fees, dates, schedules, duration, or seats for classes previously shown. Put their IDs (in the order asked) in "referenceIds". Use ONLY IDs provided in the previous recommendation context. A recent focus on one class must not hide the original pair when the learner asks about the two classes. Choose "fields" from price, duration, first, weekly, seats, materials, teacher, class_size, outcomes. Use recommend for new constraints, even if "referenceIds" also names the class the learner wants to verify.
+- inspect: answer a follow-up about actual fees, dates, schedules, duration, or seats for classes previously shown. Put their IDs (in the order asked) in "referenceIds". Use ONLY IDs provided in the previous recommendation context. For a singular "that class", "same class" or ordinal reference, set "maxRecommendations":1 and use its single ID. If the singular reference has no unique focus but the shown classes have the same requested facts, use the first shown ID; otherwise ask which class. Keep that class when availability changes. A recent focus on one class must not hide the original pair when the learner asks about the two classes. Choose "fields" from price, duration, first, weekly, seats, materials, teacher, class_size, outcomes. Use recommend for changed constraints when finding new options; for a named or referenced class being rechecked, use inspect and provide the new classCriteria.
 - specifications: look up official textbook, teaching outcomes, number of periods or teacher type when the learner asks for those facts in the current turn. Include the requested level, optional levels array, format and period, or supplied referenceIds for specific classes. Do not guess the textbook or staffing. A follow-up asking which of two levels suits them is a learning advice question, not another request for textbook or teacher facts. Explain the trade-off in reply (starting from scratch versus already comfortable with basic Mandarin) and ask about their foundation if unknown. Do not infer the language of instruction from teacher type or call previously supplied Enrollment facts unverified merely because the current question asks for advice. For advice without a concrete fact or class request, use enrollment:null or browse if a browsing link would help.
  For a question about class size or maximum, the named teacher, or learning outcomes, use inspect with known referenceIds, or specifications with the requested level, format, period, batchNumber or exact first date (equal earliestDate and latestDate). Only include the fields asked for: class_size, teacher, outcomes, or seats. When the current turn asks for actual occupied seats, paid learner counts, or the minimum to confirm opening, set question:"private_seat_counts" and include "seats" in fields. Do this even if the learner asks for availability as a fallback. The server states that these figures are private and gives the public availability status. Seat status gives approximate availability, never exact remaining seats or occupancy. Distinguish the advertised group size from the current number of learners.
 - demand: the learner requests the existing course preference form or wants to register what they need without enrolling. Return demand even with missing fields, even if no class has been checked. Also use it when recommendation explicitly concludes that a preference form is their best next step. Use safe known level, period, and format filters. When the learner explicitly asks for just the link, set question:"link_only". Do not say the form does not exist. It does not reserve a seat or take payment.
-- advisor: the learner explicitly requests a person, or wants an offline option that requires validation. Include the level, format, and period already known from the conversation so the contact handoff can carry them. For offline set "offline":true. Explain what the advisor needs to confirm. Use the server's contact button rather than writing phone numbers, addresses, or URLs. Never promise a call, a date, or a place.
+- advisor: the learner explicitly requests a person, asks whether this chat sent a message to an advisor, or wants an offline option that requires validation. Include the level, format, and period already known from the conversation so the contact handoff can carry them. For offline set "offline":true. The server will explain actual contact status and provide the contact button. This chat does not send a message to an advisor.
 - appointment: the learner asks how to arrange private lessons, or wants to book a time. Include level and preferred period if known. Use fields:["price"] only when they ask for the price in this turn. If the same turn explicitly asks both price and how to arrange it, use appointment with that field, or quote with question:"appointment".
 - records: the learner asks about their own enrollment, cancelling an unpaid order, uploading a receipt, payment verification, or a refund. They must verify their email. Set question to the most specific current situation. If the learner says they selected a class or started enrollment but have not transferred money or submitted proof, and are not asking to cancel or about the deadline, use "unpaid_enrollment_status", even if they just state their situation without an explicit question. If this turn only asks where or how to open their order, payment status or refund status, set question:"records_location". Use "proof_after_cancellation" if the learner has already transferred and says the class or order may be cancelled, expired, or closed. For follow-ups in that context, use "avoid_duplicate_payment" when the CURRENT message asks whether or where to pay again, "original_transfer_proof" when it asks what evidence to provide or how to prove the transfer, and "cancelled_transfer_payment_and_proof" if it asks both. Use these specific questions even when cancellation is only mentioned earlier. Use "payment_verification" only for an ordinary or partial-payment verification question. Use "cancel_unpaid" for whether an unpaid order can be cancelled, "expired_unpaid" for what happens when an unpaid order passes its deadline, or "refund" for refund eligibility, processing or timing questions.
 - viewing: asks whether browsing requires a phone or email, or explicitly wants to see details without applying. Use this even if the learner mentions a previously shown schedule and their main question is whether they need to leave contact information. If they also explicitly ask for the exact current schedule, use inspect or recommend with question:"view_without_contact" and fields:["weekly"]. Include level if known. Never infer consent.
@@ -45,7 +46,8 @@ export function enrollmentQuoteRows(
   const qualifies=(row:{level:string;format:string})=>
     (!levels.length||levels.some(level=>enrollmentLevelMatches(level,row.level)))&&
     (!formats.length||formats.includes(row.format));
-  const classQuotes=classes.filter(row=>qualifies(row)&&(!intent.period||row.period===intent.period))
+  const classQuotes=classes.filter(row=>qualifies(row)&&(!intent.period||row.period===intent.period)&&
+    (!intent.referenceIds.length||intent.referenceIds.includes(row.id))&&enrollmentClassMatchesTiming(intent,row))
     .map(row=>({id:row.id,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,
       periods:row.sessions,minutes:row.minutes,actual:row.price,standard:row.standardPrice,unitPriced:false,classSize:row.classSize}));
   const privateQuotes:EnrollmentQuote[]=appointments.map(row=>({
@@ -70,7 +72,11 @@ export async function chatEnrollmentAction(
   if(value===null)return undefined;
   const intent=normalizeEnrollmentIntent(value);
   if(!intent)return assessmentIntroduction||profileIntroduction||value!==undefined?{kind:'catalog'}:undefined;
-  intent.referenceIds=intent.referenceIds.filter(id=>knownReferences.includes(id));
+  if(intent.referenceIds.some(id=>!knownReferences.includes(id))){
+    if(['inspect','specifications','recommend','quote'].includes(intent.kind))
+      return {kind:'unavailable',referenceUnavailable:true,question:intent.question};
+    intent.referenceIds=[];
+  }
   const {kind,level,format,period,question}=intent;
   if(kind==='advisor'){
     const offline=typeof value==='object'&&value!==null&&'offline' in value&&value.offline===true;
@@ -113,10 +119,15 @@ export async function chatEnrollmentAction(
       if(!rows.length)return {kind:'unavailable',level,format,referenceUnavailable:!!intent.referenceIds.length,missingClassLevels,question};
       const compare=kind==='inspect'&&(!intent.detailFields.length||intent.detailFields.includes('weekly'))
         ?normalizeEnrollmentIntent({kind:'recommend',...previousConstraints}):undefined;
-      const scheduleConflict=compare?rows.map(row=>enrollmentScheduleConflict(compare,row)).find(conflict=>!!conflict):undefined;
-      return {kind:'class',level,format,question,rows:enrollmentGuideRows(rows,comparison?levels.length:intent.maxRecommendations??2),inspection:true,missingClassLevels,
+      const shown=enrollmentGuideRows(rows,comparison?levels.length:intent.maxRecommendations??2);
+      const shownRows=rows.slice(0,shown.length);
+      const scheduleConflict=compare?shownRows.map(row=>enrollmentScheduleConflict(compare,row)).find(Boolean):undefined;
+      const firstDateConflict=!!compare&&shownRows.some(row=>!enrollmentFirstDateMatches(compare,row));
+      const scheduleConfirmed=!!compare&&Boolean(compare.windows||compare.days||compare.earliest||compare.latest||compare.latestEnd||compare.earliestDate||compare.latestDate)&&
+        !scheduleConflict&&!firstDateConflict&&shownRows.every(row=>enrollmentClassMatchesTiming(compare,row));
+      return {kind:'class',level,format,question,rows:shown,inspection:true,missingClassLevels,
         intakePaused:(question==='apply'||question==='reserve')&&!(await enrollmentReadiness(c)).accepting,
-        scheduleConflict,
+        scheduleConflict,firstDateConflict,scheduleConfirmed,
         detailFields:intent.detailFields.length?intent.detailFields:kind==='specifications'?['duration','materials','teacher']:undefined,
         referenceUnavailable:rows.length<intent.referenceIds.length};
     }
@@ -290,7 +301,8 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         `For your budget, I’d start with ${option}. The tuition shown below is within ${budget}.`,
         `Untuk anggaran Anda, saya sarankan mulai dari ${option}. Biaya kursus di bawah ini masih dalam anggaran ${budget}.`):
         budget?t(`下方班次的实付总价在 ${budget} 以内。`,`The tuition shown below is within ${budget}.`,`Biaya kursus di bawah ini masih dalam anggaran ${budget}.`):
-        !action.inspection&&action.detailFields?.includes('weekly')&&rows.length&&!conflict?t('下方班次的每周课表符合你给出的时间。',
+        (action.scheduleConfirmed||!action.inspection&&action.detailFields?.includes('weekly'))&&rows.length&&!conflict?t(
+          action.inspection?'下方班次的上课时间符合你给出的条件。':'下方班次的每周课表符合你给出的时间。',
           'The weekly schedule below fits the hours you shared.','Jadwal mingguan di bawah ini sesuai dengan waktu yang Anda sampaikan.'):
         option&&!action.detailFields?.length?t(`按你给出的条件，可以先看 ${option}。`,`Based on what you’ve told me, I’d start with ${option}.`,
           `Berdasarkan kebutuhan Anda, saya sarankan mulai dari ${option}.`):'';
@@ -351,6 +363,8 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
           'New applications are currently paused. You can still check the schedule below.','Pendaftaran baru sedang dijeda. Anda tetap dapat melihat jadwal di bawah.'):'',
         question==='reserve'?'':introduction,
         conflictReason,
+        action.firstDateConflict?t('这个班次的首课日期超出了你给出的日期范围。','The first class date is outside the range you gave.',
+          'Tanggal kelas pertama berada di luar rentang tanggal yang Anda berikan.'):'',
         sharedFacts.length?t(`两班共有以下信息。${formatFacts(sharedFacts)}`,`For both classes. ${formatFacts(sharedFacts)}`,`Informasi untuk kedua kelas. ${formatFacts(sharedFacts)}`):'',
         ...individual,missingClassNote,action.referenceUnavailable?unavailable:'',
         (question==='apply'||question==='reserve')&&!action.intakePaused&&hasRoom?apply:'',
@@ -379,8 +393,18 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
       t('暂时无法核实公开班次或报价。你可以稍后重试，也可以打开报名页查看。','I couldn’t verify current classes or prices. Try again shortly or check the enrollment page.','Kelas atau harga saat ini belum dapat diperiksa. Coba lagi nanti atau buka halaman pendaftaran.'))].filter(Boolean).join(' ');
     case 'paused':return [action.question==='reserve'?reserve:'',
       t('目前暂停接受新报名和新的选课需求。你仍可查看课程，也可以在「我的报名」查看已有记录。','New enrollment and new course preference submissions are paused. You can still browse or check existing records in My Enrollments.','Pendaftaran dan pengiriman preferensi baru sedang dijeda. Anda tetap dapat melihat kelas dan riwayat di Pendaftaran Saya.')].filter(Boolean).join(' ');
-    case 'advisor':return action.offline?t('目前报名目录能核实的是线上课。雅加达线下面授的地点和时间请与 UPER 确认。','The current enrollment catalogue covers online classes. Check in-person availability, location and timing in Jakarta with UPER.','Katalog pendaftaran saat ini memuat kelas online. Konfirmasikan ketersediaan, lokasi, dan jadwal tatap muka di Jakarta kepada UPER.'):
-      t('你可以通过下方入口主动联系 UPER 顾问。','Use the link below to contact a UPER advisor.','Gunakan tautan di bawah untuk menghubungi tim UPER.');
+    case 'advisor':{
+      const status=t('我没有代你向顾问发送消息。你可以通过下方入口自行联系 UPER 顾问。',
+        'I haven’t sent a message to an advisor on your behalf. Use the link below to contact a UPER advisor.',
+        'Saya belum mengirim pesan kepada tim UPER atas nama Anda. Hubungi tim UPER melalui tautan di bawah.');
+      const context=action.offline?t('公开目录目前列出线上课。雅加达面授班是否可报、地点和时间请由顾问确认。',
+        'The public catalogue currently lists online classes. Ask an advisor about in-person availability, location and timing in Jakarta.',
+        'Katalog publik saat ini memuat kelas online. Tanyakan kepada tim UPER tentang kelas tatap muka di Jakarta, termasuk lokasi dan jadwalnya.'):
+        action.format==='one-on-one'?t('一对一能否安排、具体时段和老师由顾问确认。',
+          'Ask the advisor to confirm availability, lesson times and the teacher for one-to-one classes.',
+          'Tanyakan kepada tim UPER tentang ketersediaan, jadwal, dan pengajar kelas privat.'):'';
+      return [context,status].filter(Boolean).join(' ');
+    }
     case 'records':{
       const open=t('进入「我的报名」，验证报名邮箱后打开原订单。','Open My Enrollments, verify your enrollment email, then open the original order.','Buka Pendaftaran Saya, verifikasi email pendaftaran, lalu buka pesanan awal.');
       const noSecondTransfer=t('不用再付，也不要转到另一个账户。','Do not pay again or transfer to a different account.','Jangan membayar lagi atau mentransfer ke rekening lain.');
